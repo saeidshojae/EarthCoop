@@ -17,6 +17,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('county_id')->constrained();
             $table->string('name');
+            $table->string('national_code')->unique(); // کد یکتای بخش
+            $table->timestamps(); // اضافه کردن ستون‌های created_at و updated_at
         });
     }
 

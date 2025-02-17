@@ -4,29 +4,20 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
+class CreateUserIndustrialFieldsTable extends Migration
 {
-    /**
-     * Run the migrations.
-     *
-     * @return void
-     */
     public function up()
     {
         Schema::create('user_industrial_fields', function (Blueprint $table) {
-            $table->foreignId('user_id')->constrained();
-            $table->foreignId('industrial_field_id')->constrained();
-            $table->primary(['user_id', 'industrial_field_id']);
+            $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('industrial_field_id')->constrained()->onDelete('cascade');
+            $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     *
-     * @return void
-     */
     public function down()
     {
-        Schema::dropIfExists('_user_industrial_fields');
+        Schema::dropIfExists('user_industrial_fields');
     }
-};
+}

@@ -15,8 +15,10 @@ return new class extends Migration
     {
         Schema::create('neighborhoods', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('locality_id')->constrained(); // منطقه شهری یا روستا
+            $table->foreignId('locality_id')->constrained();
             $table->string('name');
+            $table->string('national_code')->unique(); // کد یکتای محله
+            $table->timestamps(); // اضافه کردن ستون‌های created_at و updated_at
         });
     }
 

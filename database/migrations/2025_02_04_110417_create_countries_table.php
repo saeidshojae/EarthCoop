@@ -21,6 +21,7 @@ return new class extends Migration
             $table->char('iso2', 2)->unique(); // مثل IR
             $table->char('iso3', 3)->unique(); // مثل IRN
             $table->string('phone_code'); // مثل +98
+            $table->timestamps(); // اضافه کردن ستون‌های created_at و updated_at
         });
     }
 

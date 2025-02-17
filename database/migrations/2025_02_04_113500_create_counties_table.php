@@ -18,6 +18,7 @@ return new class extends Migration
             $table->foreignId('province_id')->constrained();
             $table->string('name');
             $table->string('national_code')->unique(); // کد یکتای شهرستان (مثلاً ۰۸ برای اصفهان)
+            $table->timestamps(); // اضافه کردن ستون‌های created_at و updated_at
         });
     }
 

@@ -5,9 +5,22 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Providers\RouteServiceProvider;
 use App\Models\User;
+use App\Models\Continent;
+use App\Models\Country;
+use App\Models\Province;
+use App\Models\County;
+use App\Models\District;
+use App\Models\Settlement;
+use App\Models\Locality;
+use App\Models\Neighborhood;
+use App\Models\Street;
+use App\Models\Alley;
+use App\Models\IndustrialField;
+use App\Models\Specialization;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Http\Request;
 
 class RegisterController extends Controller
 {
@@ -20,24 +33,85 @@ class RegisterController extends Controller
         $this->middleware('guest');
     }
 
-    protected function validator(array $data)
+    public function showStep1Form()
     {
-        return Validator::make($data, [
-            'first_name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'nationality' => ['required', 'string', 'max:255'],
-            'national_id' => ['required', 'string', 'max:255', 'unique:users'],
-            'phone' => ['required', 'string', 'max:255', 'unique:users'],
-            'birth_date' => ['required', 'date'],
-            'gender' => ['required', 'in:male,female,other'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-        ]);
+        return view('auth.register_step1');
     }
 
-    protected function create(array $data)
+    public function postStep1Form(Request $request)
     {
-        return User::create([
+        $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'nationality' => 'required|string|max:255',
+            'national_id' => 'required|string|max:255|unique:users',
+            'phone' => 'required|string|max:255|unique:users',
+            'birth_date' => 'required|date',
+            'gender' => 'required|in:male,female,other',
+            'email' => 'required|string|email|max:255|unique:users',
+        ]);
+
+        $request->session()->put('register_step1', $request->all());
+
+        return redirect()->route('register.step2');
+    }
+
+    public function showStep2Form()
+    {
+        $industrialFields = IndustrialField::with('children')->whereNull('parent_id')->get();
+        $specializations = Specialization::all();
+        return view('auth.register_step2', compact('industrialFields', 'specializations'));
+    }
+
+    public function postStep2Form(Request $request)
+    {
+        $request->validate([
+            'industrial_fields' => 'required|array',
+            'specializations' => 'required|array',
+        ]);
+
+        $request->session()->put('register_step2', $request->all());
+
+        return redirect()->route('register.step3');
+    }
+
+    public function showStep3Form()
+    {
+        $continents = Continent::all();
+        $countries = Country::all();
+        $provinces = Province::all();
+        $counties = County::all();
+        $districts = District::all();
+        $settlements = Settlement::all();
+        $localities = Locality::all();
+        $neighborhoods = Neighborhood::all();
+        $streets = Street::all();
+        $alleys = Alley::all();
+        return view('auth.register_step3', compact('continents', 'countries', 'provinces', 'counties', 'districts', 'settlements', 'localities', 'neighborhoods', 'streets', 'alleys'));
+    }
+
+    public function postStep3Form(Request $request)
+    {
+        $request->validate([
+            'continent' => 'required|exists:continents,id',
+            'country' => 'required|exists:countries,id',
+            'province' => 'required|exists:provinces,id',
+            'county' => 'required|exists:counties,id',
+            'district' => 'required|exists:districts,id',
+            'settlement' => 'required|exists:settlements,id',
+            'locality' => 'required|exists:localities,id',
+            'neighborhood' => 'required|exists:neighborhoods,id',
+            'street' => 'required|exists:streets,id',
+            'alley' => 'required|exists:alleys,id',
+        ]);
+
+        $data = array_merge(
+            $request->session()->get('register_step1'),
+            $request->session()->get('register_step2'),
+            $request->all()
+        );
+
+        $user = User::create([
             'first_name' => $data['first_name'],
             'last_name' => $data['last_name'],
             'nationality' => $data['nationality'],
@@ -47,6 +121,21 @@ class RegisterController extends Controller
             'gender' => $data['gender'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
+            'continent_id' => $data['continent'],
+            'country_id' => $data['country'],
+            'province_id' => $data['province'],
+            'county_id' => $data['county'],
+            'district_id' => $data['district'],
+            'settlement_id' => $data['settlement'],
+            'locality_id' => $data['locality'],
+            'neighborhood_id' => $data['neighborhood'],
+            'street_id' => $data['street'],
+            'alley_id' => $data['alley'],
         ]);
+
+        $user->industrialFields()->sync($data['industrial_fields']);
+        $user->specializations()->sync($data['specializations']);
+
+        return redirect($this->redirectPath());
     }
 }

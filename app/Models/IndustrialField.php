@@ -29,4 +29,9 @@ class IndustrialField extends Model
     {
         return $this->hasMany(IndustrialField::class, 'parent_id');
     }
+
+    public function specializations()
+    {
+        return $this->hasMany(Specialization::class);
+    }
 }

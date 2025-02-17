@@ -2,29 +2,21 @@
 
 namespace Database\Seeders;
 
-use App\Models\Specialization;
 use Illuminate\Database\Seeder;
+use App\Models\Specialization;
 
 class SpecializationSeeder extends Seeder
 {
     public function run()
     {
-        // ایجاد رشته‌های تخصصی
-        $humanities = Specialization::create([
-            'title' => 'علوم انسانی',
-            'level' => 1,
-        ]);
+        $specializations = [
+            ['title' => 'Specialization 1', 'industrial_field_id' => 1, 'level' => 3],
+            ['title' => 'Specialization 2', 'industrial_field_id' => 2, 'level' => 3],
+            ['title' => 'Specialization 3', 'industrial_field_id' => 3, 'level' => 3],
+        ];
 
-        $law = Specialization::create([
-            'title' => 'حقوق',
-            'parent_id' => $humanities->id,
-            'level' => 2,
-        ]);
-
-        $civilLaw = Specialization::create([
-            'title' => 'حقوق مدنی',
-            'parent_id' => $law->id,
-            'level' => 3,
-        ]);
+        foreach ($specializations as $specialization) {
+            Specialization::create($specialization);
+        }
     }
 }

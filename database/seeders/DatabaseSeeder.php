@@ -13,6 +13,16 @@ class DatabaseSeeder extends Seeder
             IndustrialFieldSeeder::class,
             SpecializationSeeder::class,
             UserSeeder::class,
+            ContinentSeeder::class,
+            CountrySeeder::class,
+            ProvinceSeeder::class,
+            CountySeeder::class,
+            DistrictSeeder::class,
+            SettlementSeeder::class,
+            LocalitySeeder::class,
+            NeighborhoodSeeder::class,
+            StreetSeeder::class,
+            AlleySeeder::class,
         ]);
     }
 }

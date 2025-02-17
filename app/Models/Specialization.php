@@ -9,15 +9,11 @@ class Specialization extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'title',
-        'parent_id',
-        'level'
-    ];
+    protected $fillable = ['title', 'parent_id', 'industrial_field_id', 'level'];
 
-    public function users()
+    public function industrialField()
     {
-        return $this->belongsToMany(User::class, 'user_specializations');
+        return $this->belongsTo(IndustrialField::class);
     }
 
     public function parent()

@@ -1,158 +1,82 @@
-// filepath: /c:/Users/saeed/EarthCoop/EarthCoop/resources/views/auth/register.blade.php
 @extends('layouts.app')
 
 @section('content')
-<div class="container">
+<div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">{{ __('Register') }}</div>
+            <div class="card shadow-lg rounded">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4>{{ __('Register') }}</h4>
+                </div>
 
                 <div class="card-body">
                     <form method="POST" action="{{ route('register') }}">
                         @csrf
 
-                        <div class="row mb-3">
-                            <label for="first_name" class="col-md-4 col-form-label text-md-end">{{ __('First Name') }}</label>
-
-                            <div class="col-md-6">
-                                <input id="first_name" type="text" class="form-control @error('first_name') is-invalid @enderror" name="first_name" value="{{ old('first_name') }}" required autocomplete="first_name" autofocus>
-
-                                @error('first_name')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
+                        @foreach([
+                            ['first_name', 'First Name', 'text'],
+                            ['last_name', 'Last Name', 'text'],
+                            ['birth_date', 'Birth Date', 'date'],
+                            ['phone', 'Phone', 'text'],
+                            ['nationality', 'Nationality', 'text'],
+                            ['national_id', 'National ID', 'text'],
+                        ] as $field)
+                            <div class="row mb-3">
+                                <label for="{{ $field[0] }}" class="col-md-4 col-form-label text-md-end">{{ __($field[1]) }}</label>
+                                <div class="col-md-6">
+                                    <input id="{{ $field[0] }}" type="{{ $field[2] }}" class="form-control @error($field[0]) is-invalid @enderror" name="{{ $field[0] }}" value="{{ old($field[0]) }}" required autocomplete="{{ $field[0] }}">
+                                    @error($field[0])
+                                        <span class="invalid-feedback" role="alert">
+                                            <strong>{{ $message }}</strong>
+                                        </span>
+                                    @enderror
+                                </div>
                             </div>
-                        </div>
+                        @endforeach
 
-                        <div class="row mb-3">
-                            <label for="last_name" class="col-md-4 col-form-label text-md-end">{{ __('Last Name') }}</label>
-
-                            <div class="col-md-6">
-                                <input id="last_name" type="text" class="form-control @error('last_name') is-invalid @enderror" name="last_name" value="{{ old('last_name') }}" required autocomplete="last_name">
-
-                                @error('last_name')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
+                        @foreach([
+                            ['gender', 'Gender', ['male' => 'Male', 'female' => 'Female', 'other' => 'Other']],
+                            ['industrial_fields', 'Industrial Fields', $industrialFields],
+                            ['specializations', 'Specializations', $specializations],
+                            ['continent', 'Continent', $continents],
+                            ['country', 'Country', $countries],
+                            ['province', 'Province', $provinces],
+                            ['county', 'County', $counties],
+                            ['district', 'District', $districts],
+                            ['settlement', 'Settlement', $settlements],
+                            ['locality', 'Locality', $localities],
+                            ['neighborhood', 'Neighborhood', $neighborhoods],
+                            ['street', 'Street', $streets],
+                            ['alley', 'Alley', $alleys],
+                        ] as $field)
+                            <div class="row mb-3">
+                                <label for="{{ $field[0] }}" class="col-md-4 col-form-label text-md-end">{{ __($field[1]) }}</label>
+                                <div class="col-md-6">
+                                    @if(is_array($field[2]))
+                                        <select id="{{ $field[0] }}" class="form-control @error($field[0]) is-invalid @enderror" name="{{ $field[0] }}" required>
+                                            @foreach($field[2] as $key => $value)
+                                                <option value="{{ is_array($value) ? $value->id : $key }}" {{ old($field[0]) == (is_array($value) ? $value->id : $key) ? 'selected' : '' }}>{{ is_array($value) ? $value->title : $value }}</option>
+                                            @endforeach
+                                        </select>
+                                    @else
+                                        <select id="{{ $field[0] }}" class="form-control @error($field[0]) is-invalid @enderror" name="{{ $field[0] }}[]" multiple required>
+                                            @foreach($field[2] as $item)
+                                                <option value="{{ $item->id }}" {{ in_array($item->id, old($field[0], [])) ? 'selected' : '' }}>{{ $item->title }}</option>
+                                            @endforeach
+                                        </select>
+                                    @endif
+                                    @error($field[0])
+                                        <span class="invalid-feedback" role="alert">
+                                            <strong>{{ $message }}</strong>
+                                        </span>
+                                    @enderror
+                                </div>
                             </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <label for="nationality" class="col-md-4 col-form-label text-md-end">{{ __('Nationality') }}</label>
-
-                            <div class="col-md-6">
-                                <input id="nationality" type="text" class="form-control @error('nationality') is-invalid @enderror" name="nationality" value="{{ old('nationality') }}" required autocomplete="nationality">
-
-                                @error('nationality')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <label for="national_id" class="col-md-4 col-form-label text-md-end">{{ __('National ID') }}</label>
-
-                            <div class="col-md-6">
-                                <input id="national_id" type="text" class="form-control @error('national_id') is-invalid @enderror" name="national_id" value="{{ old('national_id') }}" required autocomplete="national_id">
-
-                                @error('national_id')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <label for="phone" class="col-md-4 col-form-label text-md-end">{{ __('Phone') }}</label>
-
-                            <div class="col-md-6">
-                                <input id="phone" type="text" class="form-control @error('phone') is-invalid @enderror" name="phone" value="{{ old('phone') }}" required autocomplete="phone">
-
-                                @error('phone')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <label for="birth_date" class="col-md-4 col-form-label text-md-end">{{ __('Birth Date') }}</label>
-
-                            <div class="col-md-6">
-                                <input id="birth_date" type="date" class="form-control @error('birth_date') is-invalid @enderror" name="birth_date" value="{{ old('birth_date') }}" required autocomplete="birth_date">
-
-                                @error('birth_date')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <label for="gender" class="col-md-4 col-form-label text-md-end">{{ __('Gender') }}</label>
-
-                            <div class="col-md-6">
-                                <select id="gender" class="form-control @error('gender') is-invalid @enderror" name="gender" required>
-                                    <option value="male" {{ old('gender') == 'male' ? 'selected' : '' }}>Male</option>
-                                    <option value="female" {{ old('gender') == 'female' ? 'selected' : '' }}>Female</option>
-                                    <option value="other" {{ old('gender') == 'other' ? 'selected' : '' }}>Other</option>
-                                </select>
-
-                                @error('gender')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <label for="email" class="col-md-4 col-form-label text-md-end">{{ __('Email Address') }}</label>
-
-                            <div class="col-md-6">
-                                <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" required autocomplete="email">
-
-                                @error('email')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <label for="password" class="col-md-4 col-form-label text-md-end">{{ __('Password') }}</label>
-
-                            <div class="col-md-6">
-                                <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="new-password">
-
-                                @error('password')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <label for="password-confirm" class="col-md-4 col-form-label text-md-end">{{ __('Confirm Password') }}</label>
-
-                            <div class="col-md-6">
-                                <input id="password-confirm" type="password" class="form-control" name="password_confirmation" required autocomplete="new-password">
-                            </div>
-                        </div>
+                        @endforeach
 
                         <div class="row mb-0">
                             <div class="col-md-6 offset-md-4">
-                                <button type="submit" class="btn btn-primary">
+                                <button type="submit" class="btn btn-primary btn-lg">
                                     {{ __('Register') }}
                                 </button>
                             </div>

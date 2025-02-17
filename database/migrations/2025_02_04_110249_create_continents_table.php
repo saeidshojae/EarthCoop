@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('name_en')->unique(); // نام انگلیسی
             $table->string('name_local')->nullable(); // نام محلی
             $table->string('code', 3)->unique(); // کد سه حرفی (مثلاً EUR برای اروپا)
+            $table->timestamps(); // اضافه کردن ستون‌های created_at و updated_at
         });
     }
 

@@ -17,6 +17,7 @@ return new class extends Migration
             $table->id();
             $table->string('title');
             $table->foreignId('parent_id')->nullable()->constrained('specializations');
+            $table->foreignId('industrial_field_id')->constrained()->onDelete('cascade');
             $table->integer('level'); // 1: دسته اصلی, 2: زیردسته, 3: تخصص
             $table->timestamps();
         });
@@ -29,6 +30,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('_specializations');
+        Schema::dropIfExists('specializations');
     }
 };

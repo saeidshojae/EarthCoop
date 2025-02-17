@@ -21,7 +21,7 @@ class User extends Authenticatable
         'birth_date',
         'gender',
         'password',
-        // فیلدهای مربوط به روابط صنفی/تخصصی بعداً اضافه میشن
+        'location',
     ];
 
     protected $hidden = [
@@ -34,15 +34,11 @@ class User extends Authenticatable
         'birth_date' => 'date',
     ];
 
-    // ---------------------------
-    // اضافه کردن روابط جدید
-    // ---------------------------
-    
     public function industrialFields()
     {
         return $this->belongsToMany(IndustrialField::class, 'user_industrial_fields');
     }
-    
+
     public function specializations()
     {
         return $this->belongsToMany(Specialization::class, 'user_specializations');

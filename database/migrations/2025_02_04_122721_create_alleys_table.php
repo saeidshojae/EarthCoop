@@ -15,8 +15,10 @@ return new class extends Migration
     {
         Schema::create('alleys', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('street_id')->constrained(); // خیابان
+            $table->foreignId('street_id')->constrained();
             $table->string('name');
+            $table->string('national_code')->unique(); // کد یکتای کوچه
+            $table->timestamps(); // اضافه کردن ستون‌های created_at و updated_at
         });
     }
 

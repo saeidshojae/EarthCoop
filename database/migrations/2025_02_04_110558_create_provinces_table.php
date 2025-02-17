@@ -15,7 +15,10 @@ return new class extends Migration
     {
         Schema::create('provinces', function (Blueprint $table) {
             $table->id();
-            $table->timestamps();
+            $table->foreignId('country_id')->constrained();
+            $table->string('name_en');
+            $table->string('name_local')->nullable();
+            $table->timestamps(); // اضافه کردن ستون‌های created_at و updated_at
         });
     }
 
