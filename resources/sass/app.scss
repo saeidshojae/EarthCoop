@@ -1,25 +1,25 @@
+// Variables
+@use 'variables';
+
+// Bootstrap
+@use 'bootstrap/scss/bootstrap';
+
 // Fonts
 @font-face {
     font-family: 'Nunito';
-    src: url('/resources/fonts/nunito-sans-latin-400.woff2') format('woff2'),
-         url('/resources/fonts/nunito-sans-latin-400.woff') format('woff');
+    src: url('../fonts/nunito-sans-latin-400.woff2') format('woff2'),
+         url('../fonts/nunito-sans-latin-400.woff') format('woff');
     font-weight: 400;
     font-style: normal;
 }
 
 @font-face {
     font-family: 'Fira Mono';
-    src: url('/resources/fonts/fira-mono-latin-400.woff2') format('woff2'),
-         url('/resources/fonts/fira-mono-latin-400.woff') format('woff');
+    src: url('../fonts/fira-mono-latin-400.woff2') format('woff2'),
+         url('../fonts/fira-mono-latin-400.woff') format('woff');
     font-weight: 400;
     font-style: normal;
 }
-
-// Variables
-@import 'variables';
-
-// Bootstrap
-@import 'bootstrap/scss/bootstrap';
 
 // Apply font
 body {

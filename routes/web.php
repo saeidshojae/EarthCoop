@@ -1,11 +1,5 @@
 <?php
 
-
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [UserProfileController::class, 'edit'])->name('profile.edit');
-    Route::put('/profile', [UserProfileController::class, 'update'])->name('profile.update');
-});
-
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\IndustrialFieldController;
@@ -16,6 +10,10 @@ use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\VerifyController;
 use App\Http\Controllers\Auth\RegisterController;
 
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [UserProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [UserProfileController::class, 'update'])->name('profile.update');
+});
 
 // Routeهای کاربران
 Route::resource('users', UserController::class)->middleware('auth');
@@ -53,9 +51,20 @@ Route::post('/login', [LoginController::class, 'login']);
 
 // تعریف مسیر POST برای خروج
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
 Auth::routes();
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
 Route::get('/users', [UserController::class, 'index'])->name('users.index');
 
+// مسیرهای جدید
+Route::get('/countries/{continent_id}', [LocationController::class, 'getCountries']);
+Route::get('/provinces/{country_id}', [LocationController::class, 'getProvinces']);
+Route::get('/counties/{province_id}', [LocationController::class, 'getCounties']);
+Route::get('/districts/{county_id}', [LocationController::class, 'getDistricts']);
+Route::get('/settlements/{district_id}', [LocationController::class, 'getSettlements']);
+Route::get('/localities/{settlement_id}', [LocationController::class, 'getLocalities']);
+Route::get('/neighborhoods/{locality_id}', [LocationController::class, 'getNeighborhoods']);
+Route::get('/streets/{neighborhood_id}', [LocationController::class, 'getStreets']);
+Route::get('/alleys/{street_id}', [LocationController::class, 'getAlleys']);
