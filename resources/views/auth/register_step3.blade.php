@@ -17,7 +17,7 @@
                             <label for="location" class="col-md-4 col-form-label text-md-end">{{ __('Location') }}</label>
                             <div class="col-md-6">
                                 <select id="location" class="form-select @error('location') is-invalid @enderror" name="location" required>
-                                    <option value="">{{ __('Select Continent') }}</option>
+                                    <option value="">{{ __('continent') }}</option>
                                     @foreach($continents as $continent)
                                         <option value="continent-{{ $continent->id }}">{{ $continent->name_en ?? $continent->name_local ?? $continent->name }}</option>
                                     @endforeach
@@ -64,41 +64,45 @@ $(document).ready(function() {
         if (selectedValue.startsWith('continent-')) {
             const continentID = selectedValue.split('-')[1];
             url = '/countries/' + continentID;
-            nextLabel = '{{ __("Select Country") }}';
+            nextLabel = '{{ __("country") }}';
+           
         } else if (selectedValue.startsWith('country-')) {
             const countryID = selectedValue.split('-')[1];
             url = '/provinces/' + countryID;
-            nextLabel = '{{ __("Select Province") }}';
+            nextLabel = '{{ __("province") }}';
         } else if (selectedValue.startsWith('province-')) {
             const provinceID = selectedValue.split('-')[1];
             url = '/counties/' + provinceID;
-            nextLabel = '{{ __("Select County") }}';
+            nextLabel = '{{ __("county") }}';
         } else if (selectedValue.startsWith('county-')) {
             const countyID = selectedValue.split('-')[1];
             url = '/districts/' + countyID;
-            nextLabel = '{{ __("Select District") }}';
+            nextLabel = '{{ __("district") }}';
         } else if (selectedValue.startsWith('district-')) {
             const districtID = selectedValue.split('-')[1];
             url = '/settlements/' + districtID;
-            nextLabel = '{{ __("Select Settlement") }}';
+            nextLabel = '{{ __("settlement") }}';
         } else if (selectedValue.startsWith('settlement-')) {
             const settlementID = selectedValue.split('-')[1];
             url = '/localities/' + settlementID;
-            nextLabel = '{{ __("Select Locality") }}';
+            nextLabel = '{{ __("locality") }}';
         } else if (selectedValue.startsWith('locality-')) {
             const localityID = selectedValue.split('-')[1];
             url = '/neighborhoods/' + localityID;
-            nextLabel = '{{ __("Select Neighborhood") }}';
+            nextLabel = '{{ __("neighborhood") }}';
         } else if (selectedValue.startsWith('neighborhood-')) {
             const neighborhoodID = selectedValue.split('-')[1];
             url = '/streets/' + neighborhoodID;
-            nextLabel = '{{ __("Select Street") }}';
+            nextLabel = '{{ __("street") }}';
         } else if (selectedValue.startsWith('street-')) {
             const streetID = selectedValue.split('-')[1];
             url = '/alleys/' + streetID;
-            nextLabel = '{{ __("Select Alley") }}';
+            nextLabel = '{{ __("alley") }}';
         }
-
+     else if (selectedValue.startsWith('alley-')) {
+            nextLabel = '{{ __("finish") }}';
+        }
+        console.log('nextLabel:', nextLabel);
         // ارسال درخواست AJAX
         if (url) {
             console.log('Sending AJAX request to:', url);
@@ -110,7 +114,7 @@ $(document).ready(function() {
                     console.log('Received response:', data);
                     $('#location').empty();  // پاکسازی منو
                     const prefix = selectedValue.split('-')[0] + '-';
-                    
+          
                     // اضافه کردن گزینه‌های جدید به منو
                     $('#location').append(`
                         <option value="">${nextLabel}</option>
@@ -118,13 +122,16 @@ $(document).ready(function() {
 
                     $.each(data, function(key, value) {
                         $('#location').append(`
-                            <option value="${prefix}${value.id}">
-                                ${value.name_en || value.name_local || 'نامشخص'}
+                            <option value="${nextLabel}-${value.id}">
+                                ${ value.name || value.name_en || value.name_local || 'نامشخص'}
                             </option>
                         `);
                     });
                     
                     $('#submitBtn').prop('disabled', false);  // فعال کردن دکمه ارسال
+
+                   
+        
                 },
                 error: function(xhr, status, error) {
                     console.error('AJAX request failed:', status, error);
@@ -136,7 +143,7 @@ $(document).ready(function() {
             });
         } else {
             console.log('No URL to send AJAX request to.');
-            $('#submitBtn').prop('disabled', true);  // غیرفعال کردن دکمه ارسال
+            $('#submitBtn').prop('disabled', false);  // غیرفعال کردن دکمه ارسال
         }
     });
 });
