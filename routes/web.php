@@ -59,6 +59,7 @@ Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name
 Route::get('/users', [UserController::class, 'index'])->name('users.index');
 
 // مسیرهای جدید
+// تغییر نام پارامترها برای خوانایی بهتر
 Route::get('/countries/{continent_id}', [LocationController::class, 'getCountries']);
 Route::get('/provinces/{country_id}', [LocationController::class, 'getProvinces']);
 Route::get('/counties/{province_id}', [LocationController::class, 'getCounties']);

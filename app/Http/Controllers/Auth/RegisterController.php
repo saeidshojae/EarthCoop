@@ -77,17 +77,20 @@ class RegisterController extends Controller
 
     public function showStep3Form()
     {
-        $continents = Continent::all();
-        $countries = Country::all();
-        $provinces = Province::all();
-        $counties = County::all();
-        $districts = District::all();
-        $settlements = Settlement::all();
-        $localities = Locality::all();
-        $neighborhoods = Neighborhood::all();
-        $streets = Street::all();
-        $alleys = Alley::all();
-        return view('auth.register_step3', compact('continents', 'countries', 'provinces', 'counties', 'districts', 'settlements', 'localities', 'neighborhoods', 'streets', 'alleys'));
+        return view('auth.register_step3', [
+            'continents' => Continent::all(), // تنها داده پر شده
+            
+            // بقیه سطوح با collection خالی
+            'countries' => collect(),
+            'provinces' => collect(),
+            'counties' => collect(),
+            'districts' => collect(),
+            'settlements' => collect(),
+            'localities' => collect(),
+            'neighborhoods' => collect(),
+            'streets' => collect(),
+            'alleys' => collect()
+        ]);
     }
 
     public function postStep3Form(Request $request)

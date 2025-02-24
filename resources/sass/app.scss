@@ -1,8 +1,8 @@
 // Variables
-@use 'variables';
+@use 'variables' as *;
 
 // Bootstrap
-@use 'bootstrap/scss/bootstrap';
+@use 'bootstrap/scss/bootstrap' as *;
 
 // Fonts
 @font-face {
