@@ -34,9 +34,9 @@ class User extends Authenticatable
         'birth_date' => 'date',
     ];
 
-    public function industrialFields()
+    public function jobFields()
     {
-        return $this->belongsToMany(IndustrialField::class, 'user_industrial_fields');
+        return $this->belongsToMany(jobField::class, 'user_job_fields');
     }
 
     public function specializations()

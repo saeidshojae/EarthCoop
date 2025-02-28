@@ -10,7 +10,7 @@ class DatabaseSeeder extends Seeder
     {
         // اجرای سیدرها به ترتیب
         $this->call([
-            IndustrialFieldSeeder::class,
+            JobFieldSeeder::class,
             SpecializationSeeder::class,
             UserSeeder::class,
             ContinentSeeder::class,

@@ -13,11 +13,11 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('industrial_fields', function (Blueprint $table) {
+        Schema::create('job_fields', function (Blueprint $table) {
             $table->id();
             $table->string('title');
-            $table->foreignId('parent_id')->nullable()->constrained('industrial_fields');
-            $table->integer('level'); // 1: صنعت, 2: گروه, 3: زیرگروه
+            $table->foreignId('parent_id')->nullable()->constrained('job_fields');
+            $table->integer('level'); // 1: صنف, 2: گروه, 3: زیرگروه
             $table->timestamps();
         });
     }
@@ -29,6 +29,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('_industrial_fields');
+        Schema::dropIfExists('job_fields');
     }
 };

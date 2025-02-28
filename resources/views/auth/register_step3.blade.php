@@ -32,7 +32,7 @@
 
                         <div class="row mb-0 mt-4">
                             <div class="col-md-6 offset-md-4">
-                                <button type="submit" class="btn btn-primary w-100 py-2" id="submitBtn" disabled>
+                                <button type="submit" class="btn btn-primary w-100 py-2" id="submitBtn">
                                     {{ __('تکمیل ثبت نام') }}
                                 </button>
                             </div>

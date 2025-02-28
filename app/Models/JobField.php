@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Specialization extends Model
+class JobField extends Model
 {
     use HasFactory;
 
@@ -13,16 +13,15 @@ class Specialization extends Model
     protected $fillable = [
         'title',
         'parent_id',
-        'job_field_id',
         'level',
     ];
 
     /**
-     * ارتباط با رسته‌های صنفی
+     * ارتباط با کاربران
      */
-    public function jobField()
+    public function users()
     {
-        return $this->belongsTo(JobField::class)->withDefault();
+        return $this->belongsToMany(User::class, 'user_job_fields');
     }
 
     /**
@@ -30,7 +29,7 @@ class Specialization extends Model
      */
     public function parent()
     {
-        return $this->belongsTo(Specialization::class, 'parent_id')->withDefault();
+        return $this->belongsTo(JobField::class, 'parent_id')->withDefault();
     }
 
     /**
@@ -38,11 +37,19 @@ class Specialization extends Model
      */
     public function children()
     {
-        return $this->hasMany(Specialization::class, 'parent_id');
+        return $this->hasMany(JobField::class, 'parent_id');
     }
 
     /**
-     * محدوده برای تخصص‌های سطح خاص
+     * ارتباط با تخصص‌ها
+     */
+    public function specializations()
+    {
+        return $this->hasMany(Specialization::class);
+    }
+
+    /**
+     * محدوده برای سطح‌های خاص
      */
     public function scopeByLevel($query, $level)
     {

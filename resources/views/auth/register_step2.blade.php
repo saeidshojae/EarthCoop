@@ -6,56 +6,51 @@
         <div class="col-md-8">
             <div class="card shadow-lg rounded">
                 <div class="card-header bg-primary text-white text-center">
-                    <h4 style="font-family: 'Sahel', sans-serif;">{{ __('مرحله ۲: انتخاب حوزه‌های صنعتی و تخصص‌ها') }}</h4>
+                    <h4 class="font-weight-bold">مرحله ۲: انتخاب رسته‌های صنفی و تخصص‌ها</h4>
                 </div>
-
                 <div class="card-body">
                     <form method="POST" action="{{ route('register.step2.post') }}">
                         @csrf
 
-                        <div class="row mb-3">
-                            <label for="industrial_fields" class="col-md-4 col-form-label text-md-end">{{ __('حوزه‌های صنعتی') }}</label>
-                            <div class="col-md-6">
-                                <select id="industrial_fields" class="form-control @error('industrial_fields') is-invalid @enderror" name="industrial_fields[]" multiple required dir="rtl" style="color: black !important;">
-                                    @foreach($industrialFields as $field)
-                                        <optgroup label="{{ $field->title }}">
-                                            @foreach($field->children as $child)
-                                                <option value="{{ $child->id }}">{{ $child->title }}</option>
+                        <!-- انتخاب رسته‌های صنفی -->
+                        <h5 class="text-primary">انتخاب رسته‌های صنفی</h5>
+                        <div class="form-group">
+                            <label for="job_fields">رسته‌های صنفی:</label>
+                            <select id="job_fields" name="job_fields[]" class="form-control" multiple>
+                                @foreach ($jobFields as $field)
+                                    <optgroup label="{{ $field->title }}">
+                                        @foreach ($field->children as $child)
+                                            <option value="{{ $child->id }}">{{ $child->title }}</option>
+                                            @foreach ($child->children as $subchild)
+                                                <option value="{{ $subchild->id }}">-- {{ $subchild->title }}</option>
                                             @endforeach
-                                        </optgroup>
-                                    @endforeach
-                                </select>
-                                @error('industrial_fields')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
+                                        @endforeach
+                                    </optgroup>
+                                @endforeach
+                            </select>
+                            <small class="form-text text-muted">می‌توانید چند گزینه را انتخاب کنید.</small>
                         </div>
 
-                        <div class="row mb-3">
-                            <label for="specializations" class="col-md-4 col-form-label text-md-end">{{ __('تخصص‌ها') }}</label>
-                            <div class="col-md-6">
-                                <select id="specializations" class="form-control @error('specializations') is-invalid @enderror" name="specializations[]" multiple required dir="rtl" style="color: black !important;">
-                                    @foreach($specializations as $specialization)
-                                        <option value="{{ $specialization->id }}">{{ $specialization->title }}</option>
-                                    @endforeach
-                                </select>
-                                @error('specializations')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
+                        <!-- انتخاب تخصص‌ها -->
+                        <h5 class="text-primary mt-4">انتخاب تخصص‌ها</h5>
+                        <div class="form-group">
+                            <label for="specializations">تخصص‌ها:</label>
+                            <select id="specializations" name="specializations[]" class="form-control" multiple>
+                                @foreach ($specializations as $specialization)
+                                    <optgroup label="{{ $specialization->title }}">
+                                        @foreach ($specialization->children as $child)
+                                            <option value="{{ $child->id }}">{{ $child->title }}</option>
+                                            @foreach ($child->children as $subchild)
+                                                <option value="{{ $subchild->id }}">-- {{ $subchild->title }}</option>
+                                            @endforeach
+                                        @endforeach
+                                    </optgroup>
+                                @endforeach
+                            </select>
+                            <small class="form-text text-muted">می‌توانید چند گزینه را انتخاب کنید.</small>
                         </div>
 
-                        <div class="row mb-0">
-                            <div class="col-md-6 offset-md-4">
-                                <button type="submit" class="btn btn-primary">
-                                    {{ __('بعدی') }}
-                                </button>
-                            </div>
-                        </div>
+                        <button type="submit" class="btn btn-success w-100 mt-4">ادامه</button>
                     </form>
                 </div>
             </div>

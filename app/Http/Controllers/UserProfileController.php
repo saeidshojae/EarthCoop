@@ -14,7 +14,7 @@ use App\Models\Locality;
 use App\Models\Neighborhood;
 use App\Models\Street;
 use App\Models\Alley;
-use App\Models\IndustrialField;
+use App\Models\JobField;
 use App\Models\Specialization;
 
 class UserProfileController extends Controller
@@ -32,9 +32,9 @@ class UserProfileController extends Controller
         $neighborhoods = Neighborhood::all();
         $streets = Street::all();
         $alleys = Alley::all();
-        $industrialFields = IndustrialField::all();
+        $jobFields = JobField::all();
         $specializations = Specialization::all();
-        return view('profile.edit', compact('user', 'continents', 'countries', 'provinces', 'counties', 'districts', 'settlements', 'localities', 'neighborhoods', 'streets', 'alleys', 'industrialFields', 'specializations'));
+        return view('profile.edit', compact('user', 'continents', 'countries', 'provinces', 'counties', 'districts', 'settlements', 'localities', 'neighborhoods', 'streets', 'alleys', 'jobFields', 'specializations'));
     }
 
     public function update(Request $request)
@@ -48,7 +48,7 @@ class UserProfileController extends Controller
             'phone' => 'required|string|max:255|unique:users,phone,' . $user->id,
             'birth_date' => 'required|date',
             'gender' => 'required|in:male,female,other',
-            'industrial_fields' => 'required|array',
+            'job_fields' => 'required|array',
             'specializations' => 'required|array',
             'continent' => 'required|exists:continents,id',
             'country' => 'required|exists:countries,id',
@@ -63,7 +63,7 @@ class UserProfileController extends Controller
         ]);
 
         $user->update($validated);
-        $user->industrialFields()->sync($request->industrial_fields);
+        $user->jobFields()->sync($request->job_fields);
         $user->specializations()->sync($request->specializations);
         $user->continent_id = $request->continent;
         $user->country_id = $request->country;

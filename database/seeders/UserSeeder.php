@@ -3,7 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use App\Models\IndustrialField;
+use App\Models\JobField;
 use App\Models\Specialization;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -26,9 +26,9 @@ class UserSeeder extends Seeder
         ]);
 
         // اتصال کاربر به رسته صنفی "صنایع لبنی" (آی‌دی ۳)
-        $industrialField = IndustrialField::where('title', 'صنایع لبنی')->first();
-        if ($industrialField) {
-            $user->industrialFields()->sync([$industrialField->id]);
+        $jobField = JobField::where('title', 'صنایع لبنی')->first();
+        if ($jobField) {
+            $user->jobFields()->sync([$jobField->id]);
         }
 
         // اتصال کاربر به تخصص "حقوق مدنی" (آی‌دی ۳)

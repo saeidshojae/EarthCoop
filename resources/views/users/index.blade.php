@@ -42,7 +42,7 @@
                                     <td>{{ $user->first_name }} {{ $user->last_name }}</td>
                                     <td>{{ $user->email }}</td>
                                     <td>{{ $user->phone }}</td>
-                                    <td>{{ $user->industrialFields->pluck('title')->join(', ') }}</td>
+                                    <td>{{ $user->jobFields->pluck('title')->join(', ') }}</td>
                                     <td>{{ $user->specializations->pluck('title')->join(', ') }}</td>
                                     <td>
                                         <a href="{{ route('users.edit', $user->id) }}" class="btn btn-warning btn-sm">ویرایش</a>

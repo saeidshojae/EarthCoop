@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Specialization;
+use App\Models\JobField;
 
-class SpecializationController extends Controller
+class JobFieldController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -14,9 +14,9 @@ class SpecializationController extends Controller
      */
     public function index()
     {
-        // لیست تمام تخصص‌ها
-        $specializations = Specialization::all();
-        return view('specializations.index', compact('specializations'));
+        // نمایش لیست کامل رسته‌های صنفی
+        $jobFields = JobField::all();
+        return view('jobFields.index', compact('jobFields'));
     }
 
     /**
@@ -26,8 +26,8 @@ class SpecializationController extends Controller
      */
     public function create()
     {
-        // نمایش فرم ایجاد تخصص جدید
-        return view('specializations.create');
+        // نمایش فرم ایجاد رسته جدید
+        return view('jobFields.create');
     }
 
     /**
@@ -38,18 +38,17 @@ class SpecializationController extends Controller
      */
     public function store(Request $request)
     {
-        // اعتبارسنجی داده‌ها
+        // اعتبارسنجی ورودی‌ها
         $request->validate([
             'title' => 'required|string|max:255',
-            'parent_id' => 'nullable|exists:specializations,id',
-            'job_field_id' => 'required|exists:job_fields,id',
+            'parent_id' => 'nullable|exists:job_fields,id',
             'level' => 'required|integer|min:1',
         ]);
 
-        // ذخیره اطلاعات تخصص جدید
-        Specialization::create($request->all());
+        // ذخیره اطلاعات در دیتابیس
+        JobField::create($request->all());
 
-        return redirect()->route('specializations.index')->with('success', 'تخصص جدید با موفقیت اضافه شد.');
+        return redirect()->route('job-fields.index')->with('success', 'رسته جدید با موفقیت اضافه شد.');
     }
 
     /**
@@ -60,9 +59,9 @@ class SpecializationController extends Controller
      */
     public function show($id)
     {
-        // نمایش جزئیات یک تخصص خاص
-        $specialization = Specialization::findOrFail($id);
-        return view('specializations.show', compact('specialization'));
+        // نمایش جزئیات رسته
+        $jobField = JobField::findOrFail($id);
+        return view('jobFields.show', compact('jobField'));
     }
 
     /**
@@ -73,9 +72,9 @@ class SpecializationController extends Controller
      */
     public function edit($id)
     {
-        // نمایش فرم ویرایش تخصص
-        $specialization = Specialization::findOrFail($id);
-        return view('specializations.edit', compact('specialization'));
+        // نمایش فرم ویرایش
+        $jobField = JobField::findOrFail($id);
+        return view('jobFields.edit', compact('jobField'));
     }
 
     /**
@@ -87,19 +86,18 @@ class SpecializationController extends Controller
      */
     public function update(Request $request, $id)
     {
-        // اعتبارسنجی داده‌ها
+        // اعتبارسنجی ورودی‌ها
         $request->validate([
             'title' => 'required|string|max:255',
-            'parent_id' => 'nullable|exists:specializations,id',
-            'job_field_id' => 'required|exists:job_fields,id',
+            'parent_id' => 'nullable|exists:job_fields,id',
             'level' => 'required|integer|min:1',
         ]);
 
-        // به‌روزرسانی تخصص
-        $specialization = Specialization::findOrFail($id);
-        $specialization->update($request->all());
+        // به‌روزرسانی اطلاعات
+        $jobField = JobField::findOrFail($id);
+        $jobField->update($request->all());
 
-        return redirect()->route('specializations.index')->with('success', 'تخصص با موفقیت به‌روزرسانی شد.');
+        return redirect()->route('job-fields.index')->with('success', 'رسته با موفقیت به‌روزرسانی شد.');
     }
 
     /**
@@ -110,11 +108,11 @@ class SpecializationController extends Controller
      */
     public function destroy($id)
     {
-        // حذف تخصص
-        $specialization = Specialization::findOrFail($id);
-        $specialization->delete();
+        // حذف رسته
+        $jobField = JobField::findOrFail($id);
+        $jobField->delete();
 
-        return redirect()->route('specializations.index')->with('success', 'تخصص با موفقیت حذف شد.');
+        return redirect()->route('job-fields.index')->with('success', 'رسته با موفقیت حذف شد.');
     }
 
     /**
@@ -125,8 +123,8 @@ class SpecializationController extends Controller
      */
     public function getSubcategories($parentId)
     {
-        // واکشی زیرشاخه‌های تخصص
-        $subcategories = Specialization::where('parent_id', $parentId)->select('id', 'title')->get();
+        // واکشی زیرشاخه‌ها
+        $subcategories = JobField::where('parent_id', $parentId)->select('id', 'title')->get();
 
         if ($subcategories->isEmpty()) {
             return response()->json(['message' => 'زیرشاخه‌ای یافت نشد.'], 404);

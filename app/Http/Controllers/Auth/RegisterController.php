@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Providers\RouteServiceProvider;
 use App\Models\User;
 use App\Models\Continent;
 use App\Models\Country;
@@ -15,7 +14,7 @@ use App\Models\Locality;
 use App\Models\Neighborhood;
 use App\Models\Street;
 use App\Models\Alley;
-use App\Models\IndustrialField;
+use App\Models\JobField;
 use App\Models\Specialization;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Support\Facades\Hash;
@@ -26,18 +25,25 @@ class RegisterController extends Controller
 {
     use RegistersUsers;
 
-    protected $redirectTo = RouteServiceProvider::HOME;
+    // مسیر هدایت پس از ثبت‌نام موفقیت‌آمیز
+    protected $redirectTo = '/home';
 
     public function __construct()
     {
         $this->middleware('guest');
     }
 
+    /**
+     * نمایش فرم مرحله ۱
+     */
     public function showStep1Form()
     {
         return view('auth.register_step1');
     }
 
+    /**
+     * مدیریت ارسال داده‌های فرم مرحله ۱
+     */
     public function postStep1Form(Request $request)
     {
         $request->validate([
@@ -51,69 +57,81 @@ class RegisterController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
         ]);
 
+        // ذخیره داده‌های مرحله ۱ در سشن
         $request->session()->put('register_step1', $request->all());
 
         return redirect()->route('register.step2');
     }
 
+    /**
+     * نمایش فرم مرحله ۲
+     */
     public function showStep2Form()
     {
-        $industrialFields = IndustrialField::with('children')->whereNull('parent_id')->get();
-        $specializations = Specialization::all();
-        return view('auth.register_step2', compact('industrialFields', 'specializations'));
+        $jobFields = JobField::with('children.children')->where('parent_id', null)->get();
+        $specializations = Specialization::with('children.children')->where('parent_id', null)->get();
+
+        return view('auth.register_step2', compact('jobFields', 'specializations'));
     }
 
+    /**
+     * مدیریت ارسال داده‌های فرم مرحله ۲
+     */
     public function postStep2Form(Request $request)
     {
         $request->validate([
-            'industrial_fields' => 'required|array',
-            'specializations' => 'required|array',
+            'job_fields' => 'required|array|min:1',
+            'specializations' => 'required|array|min:1',
         ]);
 
-        $request->session()->put('register_step2', $request->all());
+        // ذخیره داده‌های مرحله ۲ در سشن
+        $request->session()->put('register_step2', $request->only('job_fields', 'specializations'));
 
         return redirect()->route('register.step3');
     }
 
+    /**
+     * نمایش فرم مرحله ۳
+     */
     public function showStep3Form()
     {
-        return view('auth.register_step3', [
-            'continents' => Continent::all(), // تنها داده پر شده
-            
-            // بقیه سطوح با collection خالی
-            'countries' => collect(),
-            'provinces' => collect(),
-            'counties' => collect(),
-            'districts' => collect(),
-            'settlements' => collect(),
-            'localities' => collect(),
-            'neighborhoods' => collect(),
-            'streets' => collect(),
-            'alleys' => collect()
-        ]);
+        $locations = [
+            'continents' => Continent::all(),
+            'countries' => Country::all(),
+            'provinces' => Province::all(),
+            'counties' => County::all(),
+            'districts' => District::all(),
+            'settlements' => Settlement::all(),
+            'localities' => Locality::all(),
+            'neighborhoods' => Neighborhood::all(),
+            'streets' => Street::all(),
+            'alleys' => Alley::all(),
+        ];
+
+        return view('auth.register_step3', $locations);
     }
 
+    /**
+     * مدیریت ارسال داده‌های فرم مرحله ۳
+     */
     public function postStep3Form(Request $request)
     {
         $request->validate([
-            'continent' => 'required|exists:continents,id',
-            'country' => 'required|exists:countries,id',
-            'province' => 'required|exists:provinces,id',
-            'county' => 'required|exists:counties,id',
-            'district' => 'required|exists:districts,id',
-            'settlement' => 'required|exists:settlements,id',
-            'locality' => 'required|exists:localities,id',
-            'neighborhood' => 'required|exists:neighborhoods,id',
-            'street' => 'required|exists:streets,id',
-            'alley' => 'required|exists:alleys,id',
+            'location' => 'required|string',
         ]);
 
-        $data = array_merge(
-            $request->session()->get('register_step1'),
-            $request->session()->get('register_step2'),
-            $request->all()
-        );
+        $step1Data = $request->session()->get('register_step1', []);
+        $step2Data = $request->session()->get('register_step2', []);
 
+        // بررسی کامل بودن داده‌های سشن
+        if (empty($step1Data) || empty($step2Data)) {
+            return redirect()->route('register.step1')->withErrors(['error' => 'اطلاعات مورد نیاز برای ثبت‌نام کامل نیست. لطفاً مراحل ثبت‌نام را از ابتدا شروع کنید.']);
+        }
+
+        // ادغام تمامی داده‌ها
+        $data = array_merge($step1Data, $step2Data, $request->all());
+
+        // ایجاد کاربر جدید
         $user = User::create([
             'first_name' => $data['first_name'],
             'last_name' => $data['last_name'],
@@ -124,20 +142,15 @@ class RegisterController extends Controller
             'gender' => $data['gender'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
-            'continent_id' => $data['continent'],
-            'country_id' => $data['country'],
-            'province_id' => $data['province'],
-            'county_id' => $data['county'],
-            'district_id' => $data['district'],
-            'settlement_id' => $data['settlement'],
-            'locality_id' => $data['locality'],
-            'neighborhood_id' => $data['neighborhood'],
-            'street_id' => $data['street'],
-            'alley_id' => $data['alley'],
+            'location' => $data['location'],
         ]);
 
-        $user->industrialFields()->sync($data['industrial_fields']);
+        // اتصال رسته‌های صنفی و تخصص‌ها به کاربر
+        $user->jobFields()->sync($data['job_fields']);
         $user->specializations()->sync($data['specializations']);
+
+        // ورود خودکار کاربر پس از ثبت‌نام
+        auth()->login($user);
 
         return redirect($this->redirectPath());
     }

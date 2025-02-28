@@ -36,7 +36,7 @@
 
                         @foreach([
                             ['gender', 'Gender', ['male' => 'Male', 'female' => 'Female', 'other' => 'Other']],
-                            ['industrial_fields', 'Industrial Fields', $industrialFields],
+                            ['job_fields', 'Job Fields', $jobFields],
                             ['specializations', 'Specializations', $specializations],
                             ['continent', 'Continent', $continents],
                             ['country', 'Country', $countries],

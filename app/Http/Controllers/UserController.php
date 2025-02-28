@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
-use App\Models\IndustrialField;
+use App\Models\JobField;
 use App\Models\Specialization;
 
 class UserController extends Controller
@@ -16,7 +16,7 @@ class UserController extends Controller
      */
     public function index()
     {
-        $users = User::with(['industrialFields', 'specializations'])->get();
+        $users = User::with(['jobFields', 'specializations'])->get();
         return view('users.index', compact('users'));
     }
 
@@ -27,9 +27,9 @@ class UserController extends Controller
      */
     public function create()
     {
-        $industrialFields = IndustrialField::all();
+        $jobFields = JobField::all();
         $specializations = Specialization::all();
-        return view('users.create', compact('industrialFields', 'specializations'));
+        return view('users.create', compact('jobFields', 'specializations'));
     }
 
     /**
@@ -50,14 +50,14 @@ class UserController extends Controller
             'birth_date' => 'required|date',
             'gender' => 'required|in:male,female,other',
             'password' => 'required|min:8',
-            'industrial_fields' => 'nullable|array',
+            'job_fields' => 'nullable|array',
             'specializations' => 'nullable|array',
         ]);
 
         $user = User::create($validated);
 
         // اتصال رسته‌های صنفی و تخصص‌ها
-        $user->industrialFields()->sync($request->industrial_fields);
+        $user->jobFields()->sync($request->job_fields);
         $user->specializations()->sync($request->specializations);
 
         return redirect()->route('users.index')->with('success', 'کاربر با موفقیت ایجاد شد.');
