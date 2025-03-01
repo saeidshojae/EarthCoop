@@ -4,21 +4,11 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\Continent;
-use App\Models\Country;
-use App\Models\Province;
-use App\Models\County;
-use App\Models\District;
-use App\Models\Settlement;
-use App\Models\Locality;
-use App\Models\Neighborhood;
-use App\Models\Street;
-use App\Models\Alley;
+use App\Models\Location; // استفاده از مدل Location به جای مدل‌های قدیمی
 use App\Models\JobField;
 use App\Models\Specialization;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 
 class RegisterController extends Controller
@@ -55,10 +45,11 @@ class RegisterController extends Controller
             'birth_date' => 'required|date',
             'gender' => 'required|in:male,female,other',
             'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:6|confirmed', // اعتبارسنجی فیلد گذرواژه
         ]);
 
         // ذخیره داده‌های مرحله ۱ در سشن
-        $request->session()->put('register_step1', $request->all());
+        $request->session()->put('register_step1', $request->except('password')); // فقط داده‌های غیر از گذرواژه را ذخیره کنید
 
         return redirect()->route('register.step2');
     }
@@ -95,20 +86,10 @@ class RegisterController extends Controller
      */
     public function showStep3Form()
     {
-        $locations = [
-            'continents' => Continent::all(),
-            'countries' => Country::all(),
-            'provinces' => Province::all(),
-            'counties' => County::all(),
-            'districts' => District::all(),
-            'settlements' => Settlement::all(),
-            'localities' => Locality::all(),
-            'neighborhoods' => Neighborhood::all(),
-            'streets' => Street::all(),
-            'alleys' => Alley::all(),
-        ];
+        // واکشی قاره‌ها از جدول locations
+        $continents = Location::whereNull('parent_id')->get();
 
-        return view('auth.register_step3', $locations);
+        return view('auth.register_step3', compact('continents'));
     }
 
     /**
@@ -141,8 +122,7 @@ class RegisterController extends Controller
             'birth_date' => $data['birth_date'],
             'gender' => $data['gender'],
             'email' => $data['email'],
-            'password' => Hash::make($data['password']),
-            'location' => $data['location'],
+            'password' => Hash::make($request->session()->get('register_step1.password')), // هش کردن گذرواژه
         ]);
 
         // اتصال رسته‌های صنفی و تخصص‌ها به کاربر

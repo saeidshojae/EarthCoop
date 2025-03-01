@@ -2,68 +2,89 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Location;
 use Illuminate\Http\Request;
-use App\Models\Country;
-use App\Models\Province;
-use App\Models\County;
-use App\Models\District;
-use App\Models\Settlement;
-use App\Models\Locality;
-use App\Models\Neighborhood;
-use App\Models\Street;
-use App\Models\Alley;
 
 class LocationController extends Controller
 {
-    public function getCountries($continentID) {
-        $countries = Country::where('continent_id', $continentID)->get();
+    /**
+     * واکشی کشورها بر اساس قاره
+     */
+    public function getCountries($continentId)
+    {
+        $countries = Location::where('parent_id', $continentId)->get();
         return response()->json($countries);
     }
-    
-    public function getProvinces($countryID) {
-        $provinces = Province::where('country_id', $countryID)->get();
+
+    /**
+     * واکشی استان‌ها بر اساس کشور
+     */
+    public function getProvinces($countryId)
+    {
+        $provinces = Location::where('parent_id', $countryId)->get();
         return response()->json($provinces);
     }
 
-    public function getCounties($province_id)
+    /**
+     * واکشی شهرستان‌ها بر اساس استان
+     */
+    public function getCounties($provinceId)
     {
-        $counties = County::where('province_id', $province_id)->get();
+        $counties = Location::where('parent_id', $provinceId)->get();
         return response()->json($counties);
     }
 
-    public function getDistricts($county_id)
+    /**
+     * واکشی بخش‌ها بر اساس شهرستان
+     */
+    public function getDistricts($countyId)
     {
-        $districts = District::where('county_id', $county_id)->get();
+        $districts = Location::where('parent_id', $countyId)->get();
         return response()->json($districts);
     }
 
-    public function getSettlements($district_id)
+    /**
+     * واکشی شهرها/دهستان‌ها بر اساس بخش
+     */
+    public function getSettlements($districtId)
     {
-        $settlements = Settlement::where('district_id', $district_id)->get();
+        $settlements = Location::where('parent_id', $districtId)->get();
         return response()->json($settlements);
     }
 
-    public function getLocalities($settlement_id)
+    /**
+     * واکشی روستاها/مناطق بر اساس شهر/دهستان
+     */
+    public function getLocalities($settlementId)
     {
-        $localities = Locality::where('settlement_id', $settlement_id)->get();
+        $localities = Location::where('parent_id', $settlementId)->get();
         return response()->json($localities);
     }
 
-    public function getNeighborhoods($locality_id)
+    /**
+     * واکشی محله‌ها بر اساس روستا/منطقه
+     */
+    public function getNeighborhoods($localityId)
     {
-        $neighborhoods = Neighborhood::where('locality_id', $locality_id)->get();
+        $neighborhoods = Location::where('parent_id', $localityId)->get();
         return response()->json($neighborhoods);
     }
 
-    public function getStreets($neighborhood_id)
+    /**
+     * واکشی خیابان‌ها بر اساس محله
+     */
+    public function getStreets($neighborhoodId)
     {
-        $streets = Street::where('neighborhood_id', $neighborhood_id)->get();
+        $streets = Location::where('parent_id', $neighborhoodId)->get();
         return response()->json($streets);
     }
 
-    public function getAlleys($street_id)
+    /**
+     * واکشی کوچه‌ها بر اساس خیابان
+     */
+    public function getAlleys($streetId)
     {
-        $alleys = Alley::where('street_id', $street_id)->get();
+        $alleys = Location::where('parent_id', $streetId)->get();
         return response()->json($alleys);
     }
 }
