@@ -1,18 +1,15 @@
-<!DOCTYPE html>
-<html lang="fa">
-<head>
-  <meta charset="UTF-8">
-  <title>مرحله ۳: انتخاب مکان</title>
-  <link href="{{ asset('css/app.css') }}" rel="stylesheet">
-  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-</head>
-<body>
-  <div class="container mt-5">
-    <h1 class="mb-4">مرحله ۳: انتخاب مکان</h1>
-    <form action="{{ route('register.step3.process') }}" method="POST">
-      @csrf
-      <div class="form-group">
-        <label for="continent_id">قاره:</label>
+@extends('layouts.app')
+
+@section('content')
+<div class="container mt-5" style="direction: rtl; text-align: right;">
+  <h1 class="mb-4 text-center">مرحله ۳: انتخاب مکان</h1>
+  <form action="{{ route('register.step3.process') }}" method="POST" novalidate>
+    @csrf
+
+    <!-- ردیف اول: قاره و کشور -->
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label for="continent_id" class="form-label">قاره:</label>
         <select name="continent_id" id="continent_id" class="form-control" required>
           <option value="">انتخاب کنید</option>
           @foreach($continents as $continent)
@@ -20,237 +17,188 @@
           @endforeach
         </select>
       </div>
-      <div class="form-group">
-        <label for="country_id">کشور:</label>
-        <select name="country_id" id="country_id" class="form-control" required>
+      <div class="col-md-6 mb-3">
+        <label for="country_id" class="form-label">کشور:</label>
+        <select name="country_id" id="country_id" class="form-control" disabled required>
           <option value="">انتخاب کنید</option>
         </select>
       </div>
-      <div class="form-group">
-        <label for="province_id">استان:</label>
-        <select name="province_id" id="province_id" class="form-control" required>
+    </div>
+
+    <!-- ردیف دوم: استان و شهرستان -->
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label for="province_id" class="form-label">استان:</label>
+        <select name="province_id" id="province_id" class="form-control" disabled required>
           <option value="">انتخاب کنید</option>
         </select>
       </div>
-      <div class="form-group">
-        <label for="county_id">شهرستان:</label>
-        <select name="county_id" id="county_id" class="form-control" required>
+      <div class="col-md-6 mb-3">
+        <label for="county_id" class="form-label">شهرستان:</label>
+        <select name="county_id" id="county_id" class="form-control" disabled required>
           <option value="">انتخاب کنید</option>
         </select>
       </div>
-      <div class="form-group">
-        <label for="section_id">بخش:</label>
-        <select name="section_id" id="section_id" class="form-control" required>
+    </div>
+
+    <!-- ردیف سوم: بخش و شهر -->
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label for="section_id" class="form-label">بخش:</label>
+        <select name="section_id" id="section_id" class="form-control" disabled required>
           <option value="">انتخاب کنید</option>
         </select>
       </div>
-      <div class="form-group">
-        <label for="city_id">شهر:</label>
-        <select name="city_id" id="city_id" class="form-control" required>
+      <div class="col-md-6 mb-3">
+        <label for="city_id" class="form-label">شهر:</label>
+        <select name="city_id" id="city_id" class="form-control" disabled required>
           <option value="">انتخاب کنید</option>
         </select>
       </div>
-      <div class="form-group">
-        <label for="region_id">منطقه:</label>
-        <select name="region_id" id="region_id" class="form-control" required>
+    </div>
+
+    <!-- ردیف چهارم: منطقه و محله -->
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label for="region_id" class="form-label">منطقه:</label>
+        <select name="region_id" id="region_id" class="form-control" disabled required>
           <option value="">انتخاب کنید</option>
         </select>
       </div>
-      <div class="form-group">
-        <label for="neighborhood_id">محله:</label>
-        <select name="neighborhood_id" id="neighborhood_id" class="form-control" required>
+      <div class="col-md-6 mb-3">
+        <label for="neighborhood_id" class="form-label">محله:</label>
+        <select name="neighborhood_id" id="neighborhood_id" class="form-control" disabled required>
           <option value="">انتخاب کنید</option>
         </select>
       </div>
-      <div class="form-group">
-        <label for="street_id">خیابان (اختیاری):</label>
-        <select name="street_id" id="street_id" class="form-control">
+    </div>
+
+    <!-- ردیف پنجم: خیابان و کوچه (اختیاری) -->
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label for="street_id" class="form-label">خیابان (اختیاری):</label>
+        <select name="street_id" id="street_id" class="form-control" disabled>
           <option value="">انتخاب کنید</option>
         </select>
       </div>
-      <div class="form-group">
-        <label for="alley_id">کوچه (اختیاری):</label>
-        <select name="alley_id" id="alley_id" class="form-control">
+      <div class="col-md-6 mb-3">
+        <label for="alley_id" class="form-label">کوچه (اختیاری):</label>
+        <select name="alley_id" id="alley_id" class="form-control" disabled>
           <option value="">انتخاب کنید</option>
         </select>
       </div>
+    </div>
+
+    <div class="text-center">
       <button type="submit" class="btn btn-success mt-3">تکمیل ثبت‌نام</button>
-    </form>
-  </div>
+    </div>
+  </form>
+</div>
 
-  <script type="text/javascript">
-    $(document).ready(function() {
-      $('#continent_id').on('change', function() {
-        var continentID = $(this).val();
-        if(continentID) {
-          $.ajax({
-            url: '/api/locations',
-            type: 'GET',
-            data: { level: 'country', parent_id: continentID },
-            success: function(data) {
-              $('#country_id').empty().append('<option value="">انتخاب کنید</option>');
-              $.each(data, function(key, value) {
-                $('#country_id').append('<option value="'+ value.id +'">'+ value.name +'</option>');
+<!-- بارگذاری jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  $(document).ready(function() {
+    // تابع عمومی جهت بارگذاری مکان‌ها
+    function loadLocation(level, parentId, targetSelectId) {
+      var target = $('#' + targetSelectId);
+      if (parentId) {
+        $.ajax({
+          url: '/api/locations',
+          type: 'GET',
+          dataType: 'json',
+          data: { level: level, parent_id: parentId },
+          success: function(data) {
+            target.empty().append('<option value="">انتخاب کنید</option>');
+            if (data && data.length > 0) {
+              $.each(data, function(index, item) {
+                target.append('<option value="' + item.id + '">' + item.name + '</option>');
               });
+              target.prop('disabled', false);
+            } else {
+              target.prop('disabled', true);
             }
-          });
-        } else {
-          $('#country_id').empty().append('<option value="">انتخاب کنید</option>');
-        }
-      });
-      
-      $('#country_id').on('change', function() {
-        var countryID = $(this).val();
-        if(countryID) {
-          $.ajax({
-            url: '/api/locations',
-            type: 'GET',
-            data: { level: 'province', parent_id: countryID },
-            success: function(data) {
-              $('#province_id').empty().append('<option value="">انتخاب کنید</option>');
-              $.each(data, function(key, value) {
-                $('#province_id').append('<option value="'+ value.id +'">'+ value.name +'</option>');
-              });
-            }
-          });
-        } else {
-          $('#province_id').empty().append('<option value="">انتخاب کنید</option>');
-        }
-      });
+          },
+          error: function(xhr) {
+            console.error("خطا در دریافت داده برای سطح " + level + ": ", xhr.responseText);
+          }
+        });
+      } else {
+        target.empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+      }
+    }
 
-      $('#province_id').on('change', function() {
-        var provinceID = $(this).val();
-        if(provinceID) {
-          $.ajax({
-            url: '/api/locations',
-            type: 'GET',
-            data: { level: 'county', parent_id: provinceID },
-            success: function(data) {
-              $('#county_id').empty().append('<option value="">انتخاب کنید</option>');
-              $.each(data, function(key, value) {
-                $('#county_id').append('<option value="'+ value.id +'">'+ value.name +'</option>');
-              });
-            }
-          });
-        } else {
-          $('#county_id').empty().append('<option value="">انتخاب کنید</option>');
-        }
-      });
+    // هر سطح با تغییر، سطوح پایین‌تر ریست و مجدداً لود می‌شود
 
-      $('#county_id').on('change', function() {
-        var countyID = $(this).val();
-        if(countyID) {
-          $.ajax({
-            url: '/api/locations',
-            type: 'GET',
-            data: { level: 'section', parent_id: countyID },
-            success: function(data) {
-              $('#section_id').empty().append('<option value="">انتخاب کنید</option>');
-              $.each(data, function(key, value) {
-                $('#section_id').append('<option value="'+ value.id +'">'+ value.name +'</option>');
-              });
-            }
-          });
-        } else {
-          $('#section_id').empty().append('<option value="">انتخاب کنید</option>');
-        }
-      });
-
-      $('#section_id').on('change', function() {
-        var sectionID = $(this).val();
-        if(sectionID) {
-          $.ajax({
-            url: '/api/locations',
-            type: 'GET',
-            data: { level: 'city', parent_id: sectionID },
-            success: function(data) {
-              $('#city_id').empty().append('<option value="">انتخاب کنید</option>');
-              $.each(data, function(key, value) {
-                $('#city_id').append('<option value="'+ value.id +'">'+ value.name +'</option>');
-              });
-            }
-          });
-        } else {
-          $('#city_id').empty().append('<option value="">انتخاب کنید</option>');
-        }
-      });
-
-      $('#city_id').on('change', function() {
-        var cityID = $(this).val();
-        if(cityID) {
-          $.ajax({
-            url: '/api/locations',
-            type: 'GET',
-            data: { level: 'region', parent_id: cityID },
-            success: function(data) {
-              $('#region_id').empty().append('<option value="">انتخاب کنید</option>');
-              $.each(data, function(key, value) {
-                $('#region_id').append('<option value="'+ value.id +'">'+ value.name +'</option>');
-              });
-            }
-          });
-        } else {
-          $('#region_id').empty().append('<option value="">انتخاب کنید</option>');
-        }
-      });
-
-      $('#region_id').on('change', function() {
-        var regionID = $(this).val();
-        if(regionID) {
-          $.ajax({
-            url: '/api/locations',
-            type: 'GET',
-            data: { level: 'neighborhood', parent_id: regionID },
-            success: function(data) {
-              $('#neighborhood_id').empty().append('<option value="">انتخاب کنید</option>');
-              $.each(data, function(key, value) {
-                $('#neighborhood_id').append('<option value="'+ value.id +'">'+ value.name +'</option>');
-              });
-            }
-          });
-        } else {
-          $('#neighborhood_id').empty().append('<option value="">انتخاب کنید</option>');
-        }
-      });
-
-      $('#neighborhood_id').on('change', function() {
-        var neighborhoodID = $(this).val();
-        if(neighborhoodID) {
-          $.ajax({
-            url: '/api/locations',
-            type: 'GET',
-            data: { level: 'street', parent_id: neighborhoodID },
-            success: function(data) {
-              $('#street_id').empty().append('<option value="">انتخاب کنید</option>');
-              $.each(data, function(key, value) {
-                $('#street_id').append('<option value="'+ value.id +'">'+ value.name +'</option>');
-              });
-            }
-          });
-        } else {
-          $('#street_id').empty().append('<option value="">انتخاب کنید</option>');
-        }
-      });
-
-      $('#street_id').on('change', function() {
-        var streetID = $(this).val();
-        if(streetID) {
-          $.ajax({
-            url: '/api/locations',
-            type: 'GET',
-            data: { level: 'alley', parent_id: streetID },
-            success: function(data) {
-              $('#alley_id').empty().append('<option value="">انتخاب کنید</option>');
-              $.each(data, function(key, value) {
-                $('#alley_id').append('<option value="'+ value.id +'">'+ value.name +'</option>');
-              });
-            }
-          });
-        } else {
-          $('#alley_id').empty().append('<option value="">انتخاب کنید</option>');
-        }
-      });
+    // سطح قاره -> کشور
+    $('#continent_id').on('change', function(){
+      var continentId = $(this).val();
+      loadLocation('country', continentId, 'country_id');
+      $('#province_id, #county_id, #section_id, #city_id, #region_id, #neighborhood_id, #street_id, #alley_id')
+          .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
     });
-  </script>
-</body>
-</html>
+
+    // سطح کشور -> استان
+    $('#country_id').on('change', function(){
+      var countryId = $(this).val();
+      loadLocation('province', countryId, 'province_id');
+      $('#county_id, #section_id, #city_id, #region_id, #neighborhood_id, #street_id, #alley_id')
+          .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+    });
+
+    // سطح استان -> شهرستان
+    $('#province_id').on('change', function(){
+      var provinceId = $(this).val();
+      loadLocation('county', provinceId, 'county_id');
+      $('#section_id, #city_id, #region_id, #neighborhood_id, #street_id, #alley_id')
+          .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+    });
+
+    // سطح شهرستان -> بخش
+    $('#county_id').on('change', function(){
+      var countyId = $(this).val();
+      loadLocation('section', countyId, 'section_id');
+      $('#city_id, #region_id, #neighborhood_id, #street_id, #alley_id')
+          .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+    });
+
+    // سطح بخش -> شهر
+    $('#section_id').on('change', function(){
+      var sectionId = $(this).val();
+      loadLocation('city', sectionId, 'city_id');
+      $('#region_id, #neighborhood_id, #street_id, #alley_id')
+          .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+    });
+
+    // سطح شهر -> منطقه
+    $('#city_id').on('change', function(){
+      var cityId = $(this).val();
+      loadLocation('region', cityId, 'region_id');
+      $('#neighborhood_id, #street_id, #alley_id')
+          .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+    });
+
+    // سطح منطقه -> محله
+    $('#region_id').on('change', function(){
+      var regionId = $(this).val();
+      loadLocation('neighborhood', regionId, 'neighborhood_id');
+      $('#street_id, #alley_id')
+          .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+    });
+
+    // سطح محله -> خیابان
+    $('#neighborhood_id').on('change', function(){
+      var neighborhoodId = $(this).val();
+      loadLocation('street', neighborhoodId, 'street_id');
+      $('#alley_id')
+          .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+    });
+
+    // سطح خیابان -> کوچه
+    $('#street_id').on('change', function(){
+      var streetId = $(this).val();
+      loadLocation('alley', streetId, 'alley_id');
+    });
+  });
+</script>
+@endsection

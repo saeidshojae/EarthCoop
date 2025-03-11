@@ -1,9 +1,11 @@
 /* استایل‌های پایه */
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Shabnam', Arial, sans-serif; /* استفاده از فونت شبنم */
     background-color: #f4f4f4;
     margin: 0;
     padding: 20px;
+    direction: rtl; /* راست‌چین کردن متن */
+    text-align: right; /* راست‌چین کردن متن */
 }
 
 h1, h2, h3 {

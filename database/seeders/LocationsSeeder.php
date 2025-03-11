@@ -3,170 +3,87 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class LocationsSeeder extends Seeder
 {
     public function run()
     {
-        // سطح اول: قاره
+        // داده‌های قاره‌ها
         $continents = [
-            'آسیا',
-            'اروپا'
+            ['id' => 1, 'name' => 'آسیا', 'parent_id' => null, 'level' => 'continent'],
+            ['id' => 2, 'name' => 'اروپا', 'parent_id' => null, 'level' => 'continent'],
+            ['id' => 3, 'name' => 'آفریقا', 'parent_id' => null, 'level' => 'continent'],
+            // سایر قاره‌ها می‌توانند اضافه شوند
         ];
 
-        foreach ($continents as $continent) {
-            $continentId = DB::table('locations')->insertGetId([
-                'name' => $continent,
-                'parent_id' => null,
-                'level' => 'continent',
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+        // داده‌های کشورهای خاورمیانه و اروپا
+        $countries = [
+            ['id' => 4, 'name' => 'ایران', 'parent_id' => 1, 'level' => 'country'],
+            ['id' => 5, 'name' => 'عراق', 'parent_id' => 1, 'level' => 'country'],
+            ['id' => 6, 'name' => 'ترکیه', 'parent_id' => 1, 'level' => 'country'],
+            ['id' => 7, 'name' => 'فرانسه', 'parent_id' => 2, 'level' => 'country'],
+            ['id' => 8, 'name' => 'آلمان', 'parent_id' => 2, 'level' => 'country'],
+            ['id' => 9, 'name' => 'انگلیس', 'parent_id' => 2, 'level' => 'country'],
+            // سایر کشورهای خاورمیانه و اروپا می‌توانند اضافه شوند
+        ];
 
-            // سطح دوم: کشور
-            $countries = [
-                'ایران',
-                'چین'
-            ];
+        // داده‌های استان‌های ایران
+        $provinces = [
+            ['id' => 10, 'name' => 'تهران', 'parent_id' => 4, 'level' => 'province'],
+            ['id' => 11, 'name' => 'مازندران', 'parent_id' => 4, 'level' => 'province'],
+            ['id' => 12, 'name' => 'اصفهان', 'parent_id' => 4, 'level' => 'province'],
+            // سایر استان‌ها می‌توانند اضافه شوند (31 استان)
+        ];
 
-            foreach ($countries as $country) {
-                $countryId = DB::table('locations')->insertGetId([
-                    'name' => $country,
-                    'parent_id' => $continentId,
-                    'level' => 'country',
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
+        // داده‌های شهرستان‌های استان تهران و مازندران
+        $counties = [
+            ['id' => 13, 'name' => 'شهرستان تهران', 'parent_id' => 10, 'level' => 'county'],
+            ['id' => 14, 'name' => 'شهرستان شمیرانات', 'parent_id' => 10, 'level' => 'county'],
+            ['id' => 15, 'name' => 'شهرستان ساری', 'parent_id' => 11, 'level' => 'county'],
+            ['id' => 16, 'name' => 'شهرستان قائم‌شهر', 'parent_id' => 11, 'level' => 'county'],
+            // سایر شهرستان‌ها می‌توانند اضافه شوند
+        ];
 
-                // سطح سوم: استان
-                $provinces = [
-                    'تهران',
-                    'اصفهان'
-                ];
+        // داده‌های بخش‌های شهرستان تهران و ساری
+        $districts = [
+            ['id' => 17, 'name' => 'بخش مرکزی تهران', 'parent_id' => 13, 'level' => 'district'],
+            ['id' => 18, 'name' => 'بخش تجریش', 'parent_id' => 14, 'level' => 'district'],
+            ['id' => 19, 'name' => 'بخش مرکزی ساری', 'parent_id' => 15, 'level' => 'district'],
+            ['id' => 20, 'name' => 'بخش میاندرود', 'parent_id' => 16, 'level' => 'district'],
+        ];
 
-                foreach ($provinces as $province) {
-                    $provinceId = DB::table('locations')->insertGetId([
-                        'name' => $province,
-                        'parent_id' => $countryId,
-                        'level' => 'province',
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]);
+        // داده‌های شهرها
+        $cities = [
+            ['id' => 21, 'name' => 'تهران', 'parent_id' => 13, 'level' => 'city'],
+            ['id' => 22, 'name' => 'شمیران', 'parent_id' => 14, 'level' => 'city'],
+            ['id' => 23, 'name' => 'ساری', 'parent_id' => 15, 'level' => 'city'],
+            ['id' => 24, 'name' => 'قائم‌شهر', 'parent_id' => 16, 'level' => 'city'],
+        ];
 
-                    // سطح چهارم: شهرستان
-                    $counties = [
-                        'شهرستان تهران',
-                        'شهرستان اصفهان'
-                    ];
+        // داده‌های مناطق شهری
+        $areas = [
+            ['id' => 25, 'name' => 'منطقه 1 تهران', 'parent_id' => 21, 'level' => 'area'],
+            ['id' => 26, 'name' => 'منطقه 2 تهران', 'parent_id' => 21, 'level' => 'area'],
+            ['id' => 27, 'name' => 'منطقه 1 ساری', 'parent_id' => 23, 'level' => 'area'],
+            // سایر مناطق می‌توانند اضافه شوند
+        ];
 
-                    foreach ($counties as $county) {
-                        $countyId = DB::table('locations')->insertGetId([
-                            'name' => $county,
-                            'parent_id' => $provinceId,
-                            'level' => 'county',
-                            'created_at' => now(),
-                            'updated_at' => now()
-                        ]);
+        // داده‌های محلات
+        $neighborhoods = [
+            ['id' => 28, 'name' => 'محله تجریش', 'parent_id' => 25, 'level' => 'neighborhood'],
+            ['id' => 29, 'name' => 'محله نیاوران', 'parent_id' => 25, 'level' => 'neighborhood'],
+            ['id' => 30, 'name' => 'محله ساری', 'parent_id' => 27, 'level' => 'neighborhood'],
+        ];
 
-                        // سطح پنجم: بخش
-                        $sections = [
-                            'بخش مرکزی',
-                            'بخش شمالی'
-                        ];
+        // داده‌های خیابان‌ها و کوچه‌ها
+        $streets = [
+            ['id' => 31, 'name' => 'خیابان ولیعصر', 'parent_id' => 28, 'level' => 'street'],
+            ['id' => 32, 'name' => 'خیابان شریعتی', 'parent_id' => 28, 'level' => 'street'],
+            ['id' => 33, 'name' => 'کوچه ساری', 'parent_id' => 30, 'level' => 'street'],
+        ];
 
-                        foreach ($sections as $section) {
-                            $sectionId = DB::table('locations')->insertGetId([
-                                'name' => $section,
-                                'parent_id' => $countyId,
-                                'level' => 'section',
-                                'created_at' => now(),
-                                'updated_at' => now()
-                            ]);
-
-                            // سطح ششم: شهر
-                            $cities = [
-                                'تهران',
-                                'شیراز'
-                            ];
-
-                            foreach ($cities as $city) {
-                                $cityId = DB::table('locations')->insertGetId([
-                                    'name' => $city,
-                                    'parent_id' => $sectionId,
-                                    'level' => 'city',
-                                    'created_at' => now(),
-                                    'updated_at' => now()
-                                ]);
-
-                                // سطح هفتم: منطقه
-                                $regions = [
-                                    'منطقه 1',
-                                    'منطقه 2'
-                                ];
-
-                                foreach ($regions as $region) {
-                                    $regionId = DB::table('locations')->insertGetId([
-                                        'name' => $region,
-                                        'parent_id' => $cityId,
-                                        'level' => 'region',
-                                        'created_at' => now(),
-                                        'updated_at' => now()
-                                    ]);
-
-                                    // سطح هشتم: محله
-                                    $neighborhoods = [
-                                        'محله 1',
-                                        'محله 2'
-                                    ];
-
-                                    foreach ($neighborhoods as $neighborhood) {
-                                        $neighborhoodId = DB::table('locations')->insertGetId([
-                                            'name' => $neighborhood,
-                                            'parent_id' => $regionId,
-                                            'level' => 'neighborhood',
-                                            'created_at' => now(),
-                                            'updated_at' => now()
-                                        ]);
-
-                                        // سطح نهم: خیابان
-                                        $streets = [
-                                            'خیابان 1',
-                                            'خیابان 2'
-                                        ];
-
-                                        foreach ($streets as $street) {
-                                            $streetId = DB::table('locations')->insertGetId([
-                                                'name' => $street,
-                                                'parent_id' => $neighborhoodId,
-                                                'level' => 'street',
-                                                'created_at' => now(),
-                                                'updated_at' => now()
-                                            ]);
-
-                                            // سطح دهم: کوچه
-                                            $alleys = [
-                                                'کوچه 1',
-                                                'کوچه 2'
-                                            ];
-
-                                            foreach ($alleys as $alley) {
-                                                DB::table('locations')->insert([
-                                                    'name' => $alley,
-                                                    'parent_id' => $streetId,
-                                                    'level' => 'alley',
-                                                    'created_at' => now(),
-                                                    'updated_at' => now()
-                                                ]);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        // وارد کردن داده‌ها به جداول
+        DB::table('locations')->insert(array_merge($continents, $countries, $provinces, $counties, $districts, $cities, $areas, $neighborhoods, $streets));
     }
 }
