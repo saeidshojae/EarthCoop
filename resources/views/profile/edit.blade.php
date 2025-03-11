@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('title', 'ویرایش پروفایل')
+
 @section('content')
 <div class="container mt-5" style="direction: rtl; text-align: right;">
     <h1 class="mb-4 text-center">ویرایش اطلاعات پروفایل</h1>
@@ -11,11 +13,11 @@
     <form action="{{ route('profile.update.modifiable') }}" method="POST" enctype="multipart/form-data">
         @csrf
 
-        <!-- بخش انتخاب صنف (زمینه فعالیت صنفی) با سه سطح -->
+        <!-- بخش انتخاب صنف (زمینه فعالیت) با سه سطح سلسله‌مراتبی -->
         <div class="mb-4">
             <label class="form-label">انتخاب صنف:</label>
             <div>
-                <!-- سطح ۱ برای صنف -->
+                <!-- سطح 1 -->
                 <select id="occupational_level1" class="form-control mb-2">
                     <option value="">انتخاب کنید (سطح ۱)</option>
                     @foreach($occupationalFields as $field)
@@ -24,11 +26,11 @@
                         @endif
                     @endforeach
                 </select>
-                <!-- سطح ۲ برای صنف -->
+                <!-- سطح 2 -->
                 <select id="occupational_level2" class="form-control mb-2" disabled>
                     <option value="">انتخاب کنید (سطح ۲)</option>
                 </select>
-                <!-- سطح ۳ برای صنف -->
+                <!-- سطح 3 -->
                 <select id="occupational_level3" class="form-control mb-2" disabled>
                     <option value="">انتخاب کنید (سطح ۳)</option>
                 </select>
@@ -45,11 +47,11 @@
             </div>
         </div>
 
-        <!-- بخش انتخاب تخصص (زمینه تجربی و تخصصی) با سه سطح -->
+        <!-- بخش انتخاب تخصص (زمینه تجربی و تخصصی) با سه سطح سلسله‌مراتبی -->
         <div class="mb-4">
             <label class="form-label">انتخاب تخصص:</label>
             <div>
-                <!-- سطح ۱ برای تخصص -->
+                <!-- سطح 1 -->
                 <select id="experience_level1" class="form-control mb-2">
                     <option value="">انتخاب کنید (سطح ۱)</option>
                     @foreach($experienceFields as $field)
@@ -58,11 +60,11 @@
                         @endif
                     @endforeach
                 </select>
-                <!-- سطح ۲ برای تخصص -->
+                <!-- سطح 2 -->
                 <select id="experience_level2" class="form-control mb-2" disabled>
                     <option value="">انتخاب کنید (سطح ۲)</option>
                 </select>
-                <!-- سطح ۳ برای تخصص -->
+                <!-- سطح 3 -->
                 <select id="experience_level3" class="form-control mb-2" disabled>
                     <option value="">انتخاب کنید (سطح ۳)</option>
                 </select>
@@ -81,6 +83,7 @@
 
         <!-- بخش انتخاب مکان: از قاره تا کوچه -->
         <h4 class="mt-4">انتخاب مکان</h4>
+        <!-- ردیف 1: قاره - کشور -->
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label for="continent_id" class="form-label">قاره:</label>
@@ -101,6 +104,7 @@
                 </select>
             </div>
         </div>
+        <!-- ردیف 2: استان - شهرستان -->
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label for="province_id" class="form-label">استان:</label>
@@ -115,6 +119,7 @@
                 </select>
             </div>
         </div>
+        <!-- ردیف 3: بخش - شهر -->
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label for="section_id" class="form-label">بخش:</label>
@@ -129,6 +134,7 @@
                 </select>
             </div>
         </div>
+        <!-- ردیف 4: منطقه - محله -->
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label for="region_id" class="form-label">منطقه:</label>
@@ -143,6 +149,7 @@
                 </select>
             </div>
         </div>
+        <!-- ردیف 5: خیابان - کوچه (اختیاری) -->
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label for="street_id" class="form-label">خیابان (اختیاری):</label>
@@ -174,41 +181,42 @@
         </div>
     </form>
 </div>
+@endsection
 
-<!-- jQuery is already loaded above in page? But we load again just in case -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+@push('scripts')
 <script>
 $(document).ready(function() {
-    // تابع برای دریافت گزینه‌های حوزه (صنف/تخصص) از API
+
+    // تابع دریافت گزینه‌های حوزه (صنف/تخصص) از API
     function fetchFieldOptions(parentId, targetSelectId) {
         $.ajax({
             url: '/api/fields',
             type: 'GET',
             data: { parent_id: parentId },
             success: function(data) {
-                let target = $('#' + targetSelectId);
-                target.empty().append('<option value="">انتخاب کنید</option>');
+                let targetSelect = $('#' + targetSelectId);
+                targetSelect.empty().append('<option value="">انتخاب کنید</option>');
                 if (data && data.length > 0) {
                     $.each(data, function(index, item) {
-                        target.append(`<option value="${item.id}">${item.name}</option>`);
+                        targetSelect.append(`<option value="${item.id}">${item.name}</option>`);
                     });
-                    target.prop('disabled', false);
+                    targetSelect.prop('disabled', false);
                 } else {
-                    target.prop('disabled', true);
+                    targetSelect.prop('disabled', true);
                 }
             },
             error: function() {
-                console.error("مشکل دریافت گزینه‌های حوزه.");
+                console.error('مشکل دریافت گزینه‌های حوزه');
             }
         });
     }
 
-    // تابع برای مدیریت وابستگی سلسله‌مراتبی حوزه (صنف و تخصص)
-    function handleFieldDependency(level1Selector, level2Selector, level3Selector, containerSelector, inputName) {
+    // مدیریت وابستگی حوزه (صنف/تخصص) با سه سطح
+    function handleFieldDependency(level1Selector, level2Selector, level3Selector, containerSelector, fieldName) {
         $(level1Selector).on('change', function() {
             let parentId = $(this).val();
             if (parentId) {
-                fetchFieldOptions(parentId, level2Selector.substring(1)); // حذف '#' از شناسه
+                fetchFieldOptions(parentId, level2Selector.substring(1));
             }
             $(level3Selector).empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
         });
@@ -228,7 +236,7 @@ $(document).ready(function() {
                         <span class="badge bg-secondary me-1 my-1" data-id="${selectedId}">
                             ${selectedText}
                             <button type="button" class="btn btn-sm btn-danger remove-selection" data-id="${selectedId}">&times;</button>
-                            <input type="hidden" name="${inputName}[]" value="${selectedId}">
+                            <input type="hidden" name="${fieldName}[]" value="${selectedId}">
                         </span>
                     `);
                 }
@@ -239,9 +247,9 @@ $(document).ready(function() {
         });
     }
 
-    // مدیریت حوزه صنف
+    // تنظیم حوزه صنف
     handleFieldDependency('#occupational_level1', '#occupational_level2', '#occupational_level3', '#selected_occupational', 'occupational_fields');
-    // مدیریت حوزه تخصص
+    // تنظیم حوزه تخصص
     handleFieldDependency('#experience_level1', '#experience_level2', '#experience_level3', '#selected_experience', 'experience_fields');
 
     // تابع برای دریافت گزینه‌های مکان از API
@@ -268,11 +276,11 @@ $(document).ready(function() {
         });
     }
 
-    // تنظیم وابستگی‌های سلسله‌مراتبی مکان
+    // تنظیم وابستگی‌های مکان از قاره تا کوچه
     $('#continent_id').on('change', function() {
         let continentId = $(this).val();
-        if(continentId) {
-            fetchLocationOptions('country', continentId, 'country_id');
+        if (continentId) { 
+            fetchLocationOptions('country', continentId, 'country_id'); 
         }
         $('#province_id, #county_id, #section_id, #city_id, #region_id, #neighborhood_id, #street_id, #alley_id')
             .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
@@ -280,8 +288,8 @@ $(document).ready(function() {
 
     $('#country_id').on('change', function() {
         let countryId = $(this).val();
-        if(countryId) {
-            fetchLocationOptions('province', countryId, 'province_id');
+        if (countryId) { 
+            fetchLocationOptions('province', countryId, 'province_id'); 
         }
         $('#county_id, #section_id, #city_id, #region_id, #neighborhood_id, #street_id, #alley_id')
             .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
@@ -289,8 +297,8 @@ $(document).ready(function() {
 
     $('#province_id').on('change', function() {
         let provinceId = $(this).val();
-        if(provinceId) {
-            fetchLocationOptions('county', provinceId, 'county_id');
+        if (provinceId) { 
+            fetchLocationOptions('county', provinceId, 'county_id'); 
         }
         $('#section_id, #city_id, #region_id, #neighborhood_id, #street_id, #alley_id')
             .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
@@ -298,8 +306,8 @@ $(document).ready(function() {
 
     $('#county_id').on('change', function() {
         let countyId = $(this).val();
-        if(countyId) {
-            fetchLocationOptions('section', countyId, 'section_id');
+        if (countyId) { 
+            fetchLocationOptions('section', countyId, 'section_id'); 
         }
         $('#city_id, #region_id, #neighborhood_id, #street_id, #alley_id')
             .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
@@ -307,8 +315,8 @@ $(document).ready(function() {
 
     $('#section_id').on('change', function() {
         let sectionId = $(this).val();
-        if(sectionId) {
-            fetchLocationOptions('city', sectionId, 'city_id');
+        if (sectionId) { 
+            fetchLocationOptions('city', sectionId, 'city_id'); 
         }
         $('#region_id, #neighborhood_id, #street_id, #alley_id')
             .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
@@ -316,8 +324,8 @@ $(document).ready(function() {
 
     $('#city_id').on('change', function() {
         let cityId = $(this).val();
-        if(cityId) {
-            fetchLocationOptions('region', cityId, 'region_id');
+        if (cityId) { 
+            fetchLocationOptions('region', cityId, 'region_id'); 
         }
         $('#neighborhood_id, #street_id, #alley_id')
             .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
@@ -325,8 +333,8 @@ $(document).ready(function() {
 
     $('#region_id').on('change', function() {
         let regionId = $(this).val();
-        if(regionId) {
-            fetchLocationOptions('neighborhood', regionId, 'neighborhood_id');
+        if (regionId) { 
+            fetchLocationOptions('neighborhood', regionId, 'neighborhood_id'); 
         }
         $('#street_id, #alley_id')
             .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
@@ -334,11 +342,13 @@ $(document).ready(function() {
 
     $('#neighborhood_id').on('change', function() {
         let neighborhoodId = $(this).val();
-        if(neighborhoodId) {
+        if (neighborhoodId) { 
             fetchLocationOptions('street', neighborhoodId, 'street_id');
             fetchLocationOptions('alley', neighborhoodId, 'alley_id');
         }
     });
 });
 </script>
-@endsection
+@endpush
+
+
