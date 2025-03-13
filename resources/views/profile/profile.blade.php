@@ -50,6 +50,29 @@
                     <p>اطلاعیه‌ها: (در صورت نیاز این بخش قابل سفارشی‌سازی است)</p>
                 </div>
             </div>
+
+            <!-- کارت ارسال کد دعوت -->
+            <div class="card mt-4">
+                <div class="card-header bg-success text-white">
+                    ارسال کد دعوت
+                </div>
+                <div class="card-body">
+                    @if(session('success'))
+                        <div class="alert alert-success">{{ session('success') }}</div>
+                    @endif
+                    <form action="{{ route('profile.send.invitation') }}" method="POST">
+                        @csrf
+                        <div class="mb-3">
+                            <label for="invite_email" class="form-label">ایمیل دعوت:</label>
+                            <input type="email" name="invite_email" id="invite_email" class="form-control @error('invite_email') is-invalid @enderror" required>
+                            @error('invite_email')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <button type="submit" class="btn btn-primary">ارسال دعوت</button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 </div>

@@ -4,9 +4,13 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use App\Models\OccupationalField;
 use App\Models\ExperienceField;
 use App\Models\Location;
+use App\Models\InvitationCode;
+use App\Mail\InvitationMail;
 
 class ProfileController extends Controller
 {
@@ -82,5 +86,22 @@ class ProfileController extends Controller
         }
 
         return redirect()->route('profile.edit')->with('success', 'اطلاعات تغییرپذیر پروفایل به‌روز شد.');
+    }
+
+    // ارسال کد دعوت
+    public function sendInvitation(Request $request)
+    {
+        $request->validate([
+            'invite_email' => 'required|email'
+        ]);
+
+        $code = InvitationCode::create([
+            'code' => Str::random(10),
+            'user_id' => auth()->id()
+        ]);
+
+        Mail::to($request->invite_email)->send(new InvitationMail($code->code));
+
+        return back()->with('success', 'ایمیل دعوت با موفقیت ارسال شد.');
     }
 }

@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
@@ -17,12 +17,12 @@
     <!-- استفاده از Vite برای فایل‌های CSS و JS -->
     @vite(['resources/sass/app.scss', 'resources/js/app.js'])
 </head>
-<body>
+<body class="bg-light">
     <div id="app">
-        <!-- منوی ناوبری -->
+        <!-- نوار ناوبری -->
         <nav class="navbar navbar-expand-md navbar-light bg-white shadow-sm">
             <div class="container">
-                <a class="navbar-brand" href="{{ url('/') }}">
+                <a class="navbar-brand fw-bold" href="{{ url('/') }}">
                     {{ config('app.name', 'Laravel') }}
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
@@ -34,37 +34,37 @@
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <!-- منوی سمت چپ -->
                     <ul class="navbar-nav me-auto">
-                        <!-- این قسمت برای لینک‌های اضافی است -->
+                        {{-- لینک‌های اضافی در صورت نیاز --}}
                     </ul>
 
                     <!-- منوی سمت راست -->
                     <ul class="navbar-nav ms-auto">
-                        <!-- لینک‌های کاربر -->
                         @guest
                             @if (Route::has('login'))
                                 <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('login') }}">{{ __('ورود') }}</a>
+                                    <a class="nav-link text-primary fw-semibold" href="{{ route('login') }}">
+                                        {{ __('ورود') }}
+                                    </a>
                                 </li>
                             @endif
-
                             @if (Route::has('register'))
                                 <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('register') }}">{{ __('ثبت‌نام') }}</a>
+                                    <a class="nav-link text-success fw-semibold" href="{{ route('register') }}">
+                                        {{ __('ثبت‌نام') }}
+                                    </a>
                                 </li>
                             @endif
                         @else
                             <li class="nav-item dropdown">
-                                <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button"
+                                <a id="navbarDropdown" class="nav-link dropdown-toggle fw-bold text-dark" href="#" role="button"
                                    data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     {{ Auth::user()->name }}
                                 </a>
-
-                                <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                    <a class="dropdown-item" href="{{ route('logout') }}"
+                                <div class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="navbarDropdown">
+                                    <a class="dropdown-item text-danger fw-semibold" href="{{ route('logout') }}"
                                        onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                                         {{ __('خروج') }}
                                     </a>
-
                                     <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
                                         @csrf
                                     </form>
@@ -78,7 +78,9 @@
 
         <!-- محتوای اصلی -->
         <main class="py-4">
-            @yield('content')
+            <div class="container">
+                @yield('content')
+            </div>
         </main>
     </div>
 
@@ -86,4 +88,3 @@
     @stack('scripts')
 </body>
 </html>
-

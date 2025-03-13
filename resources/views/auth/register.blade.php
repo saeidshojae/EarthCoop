@@ -13,6 +13,16 @@
             @csrf
 
             <div class="mb-3">
+                <label for="invitation_code" class="form-label">کد دعوت:</label>
+                <input type="text" name="invitation_code" id="invitation_code" 
+                       value="{{ old('invitation_code') }}" 
+                       class="form-control @error('invitation_code') is-invalid @enderror" required>
+                @error('invitation_code')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <div class="mb-3">
               <label for="email" class="form-label">ایمیل:</label>
               <input type="email" name="email" id="email" 
                      value="{{ old('email') }}" 

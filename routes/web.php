@@ -6,6 +6,19 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Step2Controller;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Admin\InvitationCodeController;
+
+// مسیر ارسال دعوت
+Route::post('/profile/send-invitation', [ProfileController::class, 'sendInvitation'])->name('profile.send.invitation');
+
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('invitation-codes', [InvitationCodeController::class, 'index'])->name('invitation_codes.index');
+    Route::post('invitation-codes', [InvitationCodeController::class, 'store'])->name('invitation_codes.store');
+});
+
+Route::get('/terms', function () {
+    return view('terms');
+})->name('terms');
 
 // مسیرهای مربوط به صفحات پروفایل (برای کاربران وارد شده)
 Route::middleware('auth')->group(function () {
