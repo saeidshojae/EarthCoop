@@ -10,6 +10,17 @@ use App\Http\Controllers\Admin\InvitationCodeController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\FileController;
+use App\Http\Controllers\Admin\GroupManagementController;
+use App\Http\Controllers\Admin\DashboardController;
+
+
+// داشبورد مدیریت
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('groups', [GroupManagementController::class, 'index'])->name('groups.index');
+    Route::get('groups/{group}/manage', [GroupManagementController::class, 'manage'])->name('groups.manage');
+    Route::put('groups/{group}/users/{user}/role', [GroupManagementController::class, 'updateRole'])->name('groups.updateRole');
+});
 
 // مسیر ارسال دعوت
 Route::post('/profile/send-invitation', [ProfileController::class, 'sendInvitation'])->name('profile.send.invitation');
@@ -74,3 +85,9 @@ Route::get('/home', [HomeController::class, 'index'])->name('home');
 Route::get('/groups/{group}', [GroupController::class, 'show'])->name('groups.show');
 Route::post('/groups/{group}/messages', [MessageController::class, 'store'])->name('groups.messages.store');
 Route::post('/groups/{group}/files', [FileController::class, 'store'])->name('groups.files.store');
+
+//مدیریت گروه ها
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('groups/{group}/manage', [GroupManagementController::class, 'index'])->name('groups.manage');
+    Route::put('groups/{group}/users/{user}/role', [GroupManagementController::class, 'updateRole'])->name('groups.updateRole');
+});

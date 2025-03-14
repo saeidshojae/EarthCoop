@@ -1,4 +1,3 @@
-// filepath: c:\Users\saeed\EarthCoop\earthcoop\resources\views\admin\groups\manage_groups.blade.php
 @extends('layouts.app')
 
 @section('content')
@@ -84,18 +83,4 @@
         </div>
     </div>
 </div>
-
-<!-- گوش دادن به رویدادهای Pusher -->
-<script src="{{ mix('js/app.js') }}"></script>
-<script>
-    Echo.private('group.{{ $group->id }}')
-        .listen('MessageSent', (e) => {
-            console.log(e.message);
-            // کد برای اضافه کردن پیام جدید به لیست پیام‌ها
-            let messageElement = document.createElement('div');
-            messageElement.classList.add('message');
-            messageElement.innerHTML = `<strong>${e.message.user.name}:</strong> ${e.message.message}`;
-            document.querySelector('.messages').appendChild(messageElement);
-        });
-</script>
 @endsection

@@ -6,11 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class Group extends Model
 {
-    protected $fillable = ['group_type', 'name', 'category', 'location_id'];
+    protected $fillable = ['group_type', 'name', 'category', 'location_id', 'description'];
 
     public function users()
     {
-        return $this->belongsToMany(User::class, 'group_user');
+        return $this->belongsToMany(User::class, 'group_user')->withPivot('role')->withTimestamps();
     }
 
     public function messages()
