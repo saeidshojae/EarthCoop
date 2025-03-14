@@ -7,6 +7,8 @@ use App\Http\Controllers\Step2Controller;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\InvitationCodeController;
+use App\Http\Controllers\GroupController;
+use App\Http\Controllers\MessageController;
 
 // مسیر ارسال دعوت
 Route::post('/profile/send-invitation', [ProfileController::class, 'sendInvitation'])->name('profile.send.invitation');
@@ -66,3 +68,7 @@ Route::post('/register/step3', [RegistrationController::class, 'processStep3'])-
 
 // صفحه اصلی پس از ثبت‌نام
 Route::get('/home', [HomeController::class, 'index'])->name('home');
+
+// مربوط به گروه و چت
+Route::get('/groups/{group}', [GroupController::class, 'show'])->name('groups.show');
+Route::post('/groups/{group}/messages', [MessageController::class, 'store'])->name('groups.messages.store');

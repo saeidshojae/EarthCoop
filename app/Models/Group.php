@@ -12,4 +12,9 @@ class Group extends Model
     {
         return $this->belongsToMany(User::class, 'group_user');
     }
+
+    public function messages()
+    {
+        return $this->hasMany(Message::class);
+    }
 }

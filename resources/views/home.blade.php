@@ -42,7 +42,9 @@
                     @if($generalGroups->isNotEmpty())
                         <ul class="list-group">
                             @foreach($generalGroups as $group)
-                                <li class="list-group-item">{{ $group->name }}</li>
+                                <li class="list-group-item">
+                                    <a href="{{ route('groups.show', $group) }}">{{ $group->name }}</a>
+                                </li>
                             @endforeach
                         </ul>
                     @else
@@ -64,7 +66,9 @@
                     @if($specializedGroups->isNotEmpty())
                         <ul class="list-group">
                             @foreach($specializedGroups as $group)
-                                <li class="list-group-item">{{ $group->name }}</li>
+                                <li class="list-group-item">
+                                    <a href="{{ route('groups.show', $group) }}">{{ $group->name }}</a>
+                                </li>
                             @endforeach
                         </ul>
                     @else
@@ -86,7 +90,9 @@
                     @if($exclusiveGroups->isNotEmpty())
                         <ul class="list-group">
                             @foreach($exclusiveGroups as $group)
-                                <li class="list-group-item">{{ $group->name }}</li>
+                                <li class="list-group-item">
+                                    <a href="{{ route('groups.show', $group) }}">{{ $group->name }}</a>
+                                </li>
                             @endforeach
                         </ul>
                     @else

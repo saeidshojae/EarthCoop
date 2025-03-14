@@ -12,10 +12,7 @@
         @csrf
         <div class="mb-3">
             <label for="code" class="form-label">کد دعوت:</label>
-            <input type="text" name="code" id="code" class="form-control @error('code') is-invalid @enderror" required>
-            @error('code')
-                <div class="invalid-feedback">{{ $message }}</div>
-            @enderror
+            <input type="text" name="code" id="code" class="form-control" required>
         </div>
         <button type="submit" class="btn btn-primary">ایجاد کد دعوت</button>
     </form>
@@ -26,7 +23,6 @@
             <tr>
                 <th>کد</th>
                 <th>وضعیت</th>
-                <th>تاریخ ایجاد</th>
             </tr>
         </thead>
         <tbody>
@@ -34,7 +30,6 @@
                 <tr>
                     <td>{{ $code->code }}</td>
                     <td>{{ $code->used ? 'استفاده شده' : 'استفاده نشده' }}</td>
-                    <td>{{ $code->created_at }}</td>
                 </tr>
             @endforeach
         </tbody>
