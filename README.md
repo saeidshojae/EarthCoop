@@ -1,63 +1,45 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<p align="center"><a href="https://your-platform-link" target="_blank"><img src="https://your-logo-link/logo.svg" width="400" alt="Project Logo"></a></p>
 
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+<a href="https://github.com/YourUsername/YourProject/actions"><img src="https://github.com/YourUsername/YourProject/workflows/tests/badge.svg" alt="Build Status"></a>
+<a href="https://packagist.org/packages/YourUsername/YourProject"><img src="https://img.shields.io/packagist/dt/YourProject" alt="Total Downloads"></a>
+<a href="https://packagist.org/packages/YourUsername/YourProject"><img src="https://img.shields.io/packagist/v/YourProject" alt="Latest Stable Version"></a>
+<a href="https://packagist.org/packages/YourUsername/YourProject"><img src="https://img.shields.io/packagist/l/YourProject" alt="License"></a>
 </p>
 
-## About Laravel
+## **درباره EarthCoop یک پلتفرم برای همکاری های اجتماعی**
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+پلتفرم ما با نام EarthCoop ابزاری نوآورانه است که با هدف تسهیل همکاری در سطح محلی تا ملی و جهانی طراحی شده است. این پلتفرم قابلیت‌های خاصی را ارائه می‌دهد تا کاربران بر اساس مشخصات فردی و مکانی، که هنگام ثبت نام اراِیه می دهند بطور خودکار گروه‌بندی شوند تا در کنار هم از سطح محلی تا ملی و جهانی راهکارهایی برای چالش‌های مشترک پیدا کنند.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## **ویژگی‌ها**
+- گروه‌بندی هوشمند کاربران بر اساس:
+  - سن، جنسیت، شغل و صنف، و تخصص و تجربه.
+  - مکان (محله‌ای تا جهانی).
+- ابزارهای تعاملی:
+  - گفتگوهای گروهی.
+  - نظرسنجی‌ها و شیوه های انتخاباتی نوین.
+- حل چالش‌های مشترک در سطوح مختلف.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## **آموزش استفاده**
+1. پروژه را کلون کنید:
+   ```bash
+   git clone https://github.com/YourUsername/YourProject.git
+   ```
+2. بسته‌های مورد نیاز را نصب کنید:
+   ```bash
+   composer install
+   npm install
+   ```
 
-## Learning Laravel
+## **حامیان پروژه**
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+می‌توانید از پروژه حمایت کنید و در توسعه آن نقش داشته باشید.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## **شرایط مشارکت**
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+تمام مشارکت‌ها باید به مستندات پروژه پایبند باشند.
 
-## Laravel Sponsors
-
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
-
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
+---
 
 If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
