@@ -12,7 +12,12 @@
                 <div class="card-body">
                     <div class="text-center mb-4">
                         <!-- تصویر پروفایل -->
-                        <img src="{{ asset('images/default-profile.png') }}" alt="تصویر پروفایل" class="rounded-circle" width="150" height="150">
+                        <img src="{{ Auth::user()->avatar ? asset(Auth::user()->avatar) : asset('images/default-profile.png') }}" 
+                             alt="تصویر پروفایل" 
+                             class="rounded-circle" 
+                             width="150" 
+                             height="150"
+                             style="object-fit: cover;">
                     </div>
                     <table class="table table-bordered">
                         <tr>
@@ -25,11 +30,44 @@
                         </tr>
                         <tr>
                             <th>تاریخ ثبت‌نام:</th>
-                            <td>{{ Auth::user()->created_at->format('Y/m/d') }}</td>
+                            <td>{{ Auth::user()->created_at ? Auth::user()->created_at->format('Y/m/d') : 'نامشخص' }}</td>
                         </tr>
                         <tr>
                             <th>آخرین ورود:</th>
                             <td>{{ Auth::user()->last_login_at ?? 'نامشخص' }}</td>
+                        </tr>
+                        <!-- نمایش صنف‌ها -->
+                        <tr>
+                            <th>صنف‌ها:</th>
+                            <td>
+                                @forelse(Auth::user()->occupationalFields as $field)
+                                    <span class="badge bg-primary me-1">{{ $field->name }}</span>
+                                @empty
+                                    <span class="text-muted">هیچ صنفی انتخاب نشده است</span>
+                                @endforelse
+                            </td>
+                        </tr>
+                        <!-- نمایش تخصص‌ها -->
+                        <tr>
+                            <th>تخصص‌ها:</th>
+                            <td>
+                                @forelse(Auth::user()->experienceFields as $field)
+                                    <span class="badge bg-success me-1">{{ $field->name }}</span>
+                                @empty
+                                    <span class="text-muted">هیچ تخصصی انتخاب نشده است</span>
+                                @endforelse
+                            </td>
+                        </tr>
+                        <!-- نمایش مکان -->
+                        <tr>
+                            <th>مکان:</th>
+                            <td>
+                                @forelse(Auth::user()->locations as $location)
+                                    <span class="badge bg-info me-1">{{ $location->name }}</span>
+                                @empty
+                                    <span class="text-muted">هیچ مکانی انتخاب نشده است</span>
+                                @endforelse
+                            </td>
                         </tr>
                     </table>
                     <div class="text-center mt-4">

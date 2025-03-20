@@ -41,6 +41,18 @@ class GroupManagementController extends Controller
         return view('admin.groups.manage', compact('group', 'users'));
     }
 
+    public function update(Request $request, Group $group)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'required|string',
+        ]);
+
+        $group->update($request->only('name', 'description'));
+
+        return redirect()->route('admin.groups.manage', $group)->with('success', 'اطلاعات گروه با موفقیت به‌روزرسانی شد.');
+    }
+
     public function updateRole(Request $request, Group $group, User $user)
     {
         $request->validate([

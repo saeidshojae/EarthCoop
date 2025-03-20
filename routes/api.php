@@ -2,10 +2,17 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\LocationController; // کنترلر را اضافه کنید
+use App\Http\Controllers\LocationController;
+use App\Http\Controllers\OccupationalFieldController;
+use App\Http\Controllers\ExperienceFieldController;
 
+Route::get('/test', function() {
+    return response()->json(['message' => 'API is working']);
+});
 
 Route::get('/locations', [LocationController::class, 'getLocations']);
+Route::get('/occupational-fields', [OccupationalFieldController::class, 'getFields']);
+Route::get('/experience-fields', [ExperienceFieldController::class, 'getFields']);
 
 /*
 |--------------------------------------------------------------------------

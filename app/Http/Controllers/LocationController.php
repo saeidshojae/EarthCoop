@@ -9,17 +9,16 @@ class LocationController extends Controller
 {
     public function getLocations(Request $request)
     {
-        $level = $request->query('level'); // مقدار سطح مکانی
-        $parent_id = $request->query('parent_id'); // مقدار ID والد
+        $parent_id = $request->query('parent_id');
 
-        // بررسی اعتبار مقادیر ورودی
-        if (!$level || !$parent_id) {
-            return response()->json(['error' => 'پارامترهای لازم ارسال نشده‌اند'], 400);
+        // بررسی اعتبار مقدار ورودی
+        if (!$parent_id) {
+            return response()->json(['error' => 'شناسه والد ارسال نشده است'], 400);
         }
 
-        // دریافت مکان‌های وابسته به سطح و والد مشخص‌شده
-        $locations = Location::where('level', $level)
-                            ->where('parent_id', $parent_id)
+        // دریافت مکان‌های وابسته به والد مشخص‌شده
+        $locations = Location::where('parent_id', $parent_id)
+                            ->orderBy('name')
                             ->get();
 
         return response()->json($locations);

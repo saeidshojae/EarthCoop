@@ -186,14 +186,45 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
+    console.log('jQuery version:', $.fn.jquery); // چاپ نسخه jQuery
 
-    // تابع دریافت گزینه‌های حوزه (صنف/تخصص) از API
-    function fetchFieldOptions(parentId, targetSelectId) {
+    // تنظیم CSRF token برای تمام درخواست‌های AJAX
+    $.ajaxSetup({
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        }
+    });
+
+    // تست اتصال به API
+    $.ajax({
+        url: '/api/test',
+        type: 'GET',
+        success: function(response) {
+            console.log('API Test:', response);
+        },
+        error: function(xhr, status, error) {
+            console.error('API Test Error:', error);
+            console.log('Status:', xhr.status);
+            console.log('Response:', xhr.responseText);
+            console.log('Full URL:', window.location.origin + '/api/test');
+        }
+    });
+
+    // تابع دریافت گزینه‌های حوزه صنف از API
+    function fetchOccupationalFields(parentId, targetSelectId) {
+        if (!parentId) {
+            console.error('شناسه والد برای صنف ارسال نشده است');
+            return;
+        }
+
+        console.log('Fetching occupational fields for parent ID:', parentId);
+
         $.ajax({
-            url: '/api/fields',
+            url: window.location.origin + '/api/occupational-fields',
             type: 'GET',
             data: { parent_id: parentId },
             success: function(data) {
+                console.log('Received occupational fields:', data);
                 let targetSelect = $('#' + targetSelectId);
                 targetSelect.empty().append('<option value="">انتخاب کنید</option>');
                 if (data && data.length > 0) {
@@ -205,148 +236,272 @@ $(document).ready(function() {
                     targetSelect.prop('disabled', true);
                 }
             },
-            error: function() {
-                console.error('مشکل دریافت گزینه‌های حوزه');
+            error: function(xhr, status, error) {
+                console.error('مشکل دریافت گزینه‌های صنف:', error);
+                console.log('Status:', xhr.status);
+                console.log('Response:', xhr.responseText);
+                console.log('Full URL:', window.location.origin + '/api/occupational-fields');
+                alert('خطا در دریافت اطلاعات صنف. لطفاً صفحه را رفرش کنید.');
             }
         });
     }
 
-    // مدیریت وابستگی حوزه (صنف/تخصص) با سه سطح
-    function handleFieldDependency(level1Selector, level2Selector, level3Selector, containerSelector, fieldName) {
-        $(level1Selector).on('change', function() {
-            let parentId = $(this).val();
-            if (parentId) {
-                fetchFieldOptions(parentId, level2Selector.substring(1));
-            }
-            $(level3Selector).empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
-        });
-        $(level2Selector).on('change', function() {
-            let parentId = $(this).val();
-            if (parentId) {
-                fetchFieldOptions(parentId, level3Selector.substring(1));
-            }
-        });
-        $(level3Selector).on('change', function() {
-            let selectedId = $(this).val();
-            let selectedText = $(this).find('option:selected').text();
-            if (selectedId) {
-                let container = $(containerSelector);
-                if (container.find(`[data-id="${selectedId}"]`).length === 0) {
-                    container.append(`
-                        <span class="badge bg-secondary me-1 my-1" data-id="${selectedId}">
-                            ${selectedText}
-                            <button type="button" class="btn btn-sm btn-danger remove-selection" data-id="${selectedId}">&times;</button>
-                            <input type="hidden" name="${fieldName}[]" value="${selectedId}">
-                        </span>
-                    `);
-                }
-            }
-        });
-        $(document).on('click', containerSelector + " .remove-selection", function() {
-            $(this).parent().remove();
-        });
-    }
+    // تابع دریافت گزینه‌های حوزه تخصص از API
+    function fetchExperienceFields(parentId, targetSelectId) {
+        if (!parentId) {
+            console.error('شناسه والد برای تخصص ارسال نشده است');
+            return;
+        }
 
-    // تنظیم حوزه صنف
-    handleFieldDependency('#occupational_level1', '#occupational_level2', '#occupational_level3', '#selected_occupational', 'occupational_fields');
-    // تنظیم حوزه تخصص
-    handleFieldDependency('#experience_level1', '#experience_level2', '#experience_level3', '#selected_experience', 'experience_fields');
+        console.log('Fetching experience fields for parent ID:', parentId);
 
-    // تابع برای دریافت گزینه‌های مکان از API
-    function fetchLocationOptions(level, parentId, targetSelectId) {
         $.ajax({
-            url: '/api/locations',
+            url: window.location.origin + '/api/experience-fields',
             type: 'GET',
-            data: { level: level, parent_id: parentId },
+            data: { parent_id: parentId },
             success: function(data) {
-                let select = $('#' + targetSelectId);
-                select.empty().append('<option value="">انتخاب کنید</option>');
+                console.log('Received experience fields:', data);
+                let targetSelect = $('#' + targetSelectId);
+                targetSelect.empty().append('<option value="">انتخاب کنید</option>');
                 if (data && data.length > 0) {
                     $.each(data, function(index, item) {
-                        select.append(`<option value="${item.id}">${item.name}</option>`);
+                        targetSelect.append(`<option value="${item.id}">${item.name}</option>`);
                     });
-                    select.prop('disabled', false);
+                    targetSelect.prop('disabled', false);
                 } else {
-                    select.prop('disabled', true);
+                    targetSelect.prop('disabled', true);
                 }
             },
-            error: function() {
-                console.error("مشکل دریافت گزینه‌های مکان برای سطح " + level);
+            error: function(xhr, status, error) {
+                console.error('مشکل دریافت گزینه‌های تخصص:', error);
+                console.log('Status:', xhr.status);
+                console.log('Response:', xhr.responseText);
+                console.log('Full URL:', window.location.origin + '/api/experience-fields');
+                alert('خطا در دریافت اطلاعات تخصص. لطفاً صفحه را رفرش کنید.');
             }
         });
     }
 
-    // تنظیم وابستگی‌های مکان از قاره تا کوچه
-    $('#continent_id').on('change', function() {
-        let continentId = $(this).val();
-        if (continentId) { 
-            fetchLocationOptions('country', continentId, 'country_id'); 
+    // تابع دریافت گزینه‌های مکان از API
+    function fetchLocationOptions(parentId, targetSelectId) {
+        if (!parentId) {
+            console.error('شناسه والد برای مکان ارسال نشده است');
+            return;
         }
-        $('#province_id, #county_id, #section_id, #city_id, #region_id, #neighborhood_id, #street_id, #alley_id')
-            .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+
+        console.log('Fetching location options for parent ID:', parentId);
+
+        $.ajax({
+            url: window.location.origin + '/api/locations',
+            type: 'GET',
+            data: { parent_id: parentId },
+            success: function(data) {
+                console.log('Received location options:', data);
+                let targetSelect = $('#' + targetSelectId);
+                targetSelect.empty().append('<option value="">انتخاب کنید</option>');
+                if (data && data.length > 0) {
+                    $.each(data, function(index, item) {
+                        let selected = '';
+                        if (targetSelect.data('selected') == item.id) {
+                            selected = 'selected';
+                        }
+                        targetSelect.append(`<option value="${item.id}" ${selected}>${item.name}</option>`);
+                    });
+                    targetSelect.prop('disabled', false);
+                } else {
+                    targetSelect.prop('disabled', true);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('مشکل دریافت گزینه‌های مکان:', error);
+                console.log('Status:', xhr.status);
+                console.log('Response:', xhr.responseText);
+                console.log('Full URL:', window.location.origin + '/api/locations');
+                alert('خطا در دریافت اطلاعات مکان. لطفاً صفحه را رفرش کنید.');
+            }
+        });
+    }
+
+    // مدیریت وابستگی صنف
+    $('#occupational_level1').on('change', function() {
+        let parentId = $(this).val();
+        if (parentId) {
+            fetchOccupationalFields(parentId, 'occupational_level2');
+        }
+        $('#occupational_level2').empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+        $('#occupational_level3').empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+    });
+
+    $('#occupational_level2').on('change', function() {
+        let parentId = $(this).val();
+        if (parentId) {
+            fetchOccupationalFields(parentId, 'occupational_level3');
+        }
+        $('#occupational_level3').empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+    });
+
+    $('#occupational_level3').on('change', function() {
+        let selectedId = $(this).val();
+        let selectedText = $(this).find('option:selected').text();
+        if (selectedId) {
+            let container = $('#selected_occupational');
+            if (container.find(`[data-id="${selectedId}"]`).length === 0) {
+                container.append(`
+                    <span class="badge bg-primary me-1 my-1" data-id="${selectedId}">
+                        ${selectedText}
+                        <button type="button" class="btn btn-sm btn-danger remove-selection" data-id="${selectedId}">&times;</button>
+                        <input type="hidden" name="occupational_fields[]" value="${selectedId}">
+                    </span>
+                `);
+            }
+        }
+    });
+
+    // مدیریت وابستگی تخصص
+    $('#experience_level1').on('change', function() {
+        let parentId = $(this).val();
+        if (parentId) {
+            fetchExperienceFields(parentId, 'experience_level2');
+        }
+        $('#experience_level2').empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+        $('#experience_level3').empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+    });
+
+    $('#experience_level2').on('change', function() {
+        let parentId = $(this).val();
+        if (parentId) {
+            fetchExperienceFields(parentId, 'experience_level3');
+        }
+        $('#experience_level3').empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+    });
+
+    $('#experience_level3').on('change', function() {
+        let selectedId = $(this).val();
+        let selectedText = $(this).find('option:selected').text();
+        if (selectedId) {
+            let container = $('#selected_experience');
+            if (container.find(`[data-id="${selectedId}"]`).length === 0) {
+                container.append(`
+                    <span class="badge bg-success me-1 my-1" data-id="${selectedId}">
+                        ${selectedText}
+                        <button type="button" class="btn btn-sm btn-danger remove-selection" data-id="${selectedId}">&times;</button>
+                        <input type="hidden" name="experience_fields[]" value="${selectedId}">
+                    </span>
+                `);
+            }
+        }
+    });
+
+    // حذف انتخاب‌ها
+    $(document).on('click', '.remove-selection', function() {
+        $(this).parent().remove();
+    });
+
+    // مدیریت وابستگی مکان‌ها
+    $('#continent_id').on('change', function() {
+        let parentId = $(this).val();
+        if (parentId) {
+            fetchLocationOptions(parentId, 'country_id');
+        }
+        $('#country_id, #province_id, #county_id, #section_id, #city_id, #region_id, #neighborhood_id, #street_id, #alley_id')
+            .empty()
+            .append('<option value="">انتخاب کنید</option>')
+            .prop('disabled', true);
     });
 
     $('#country_id').on('change', function() {
-        let countryId = $(this).val();
-        if (countryId) { 
-            fetchLocationOptions('province', countryId, 'province_id'); 
+        let parentId = $(this).val();
+        if (parentId) {
+            fetchLocationOptions(parentId, 'province_id');
         }
-        $('#county_id, #section_id, #city_id, #region_id, #neighborhood_id, #street_id, #alley_id')
-            .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+        $('#province_id, #county_id, #section_id, #city_id, #region_id, #neighborhood_id, #street_id, #alley_id')
+            .empty()
+            .append('<option value="">انتخاب کنید</option>')
+            .prop('disabled', true);
     });
 
     $('#province_id').on('change', function() {
-        let provinceId = $(this).val();
-        if (provinceId) { 
-            fetchLocationOptions('county', provinceId, 'county_id'); 
+        let parentId = $(this).val();
+        if (parentId) {
+            fetchLocationOptions(parentId, 'county_id');
         }
-        $('#section_id, #city_id, #region_id, #neighborhood_id, #street_id, #alley_id')
-            .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+        $('#county_id, #section_id, #city_id, #region_id, #neighborhood_id, #street_id, #alley_id')
+            .empty()
+            .append('<option value="">انتخاب کنید</option>')
+            .prop('disabled', true);
     });
 
     $('#county_id').on('change', function() {
-        let countyId = $(this).val();
-        if (countyId) { 
-            fetchLocationOptions('section', countyId, 'section_id'); 
+        let parentId = $(this).val();
+        if (parentId) {
+            fetchLocationOptions(parentId, 'section_id');
         }
-        $('#city_id, #region_id, #neighborhood_id, #street_id, #alley_id')
-            .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+        $('#section_id, #city_id, #region_id, #neighborhood_id, #street_id, #alley_id')
+            .empty()
+            .append('<option value="">انتخاب کنید</option>')
+            .prop('disabled', true);
     });
 
     $('#section_id').on('change', function() {
-        let sectionId = $(this).val();
-        if (sectionId) { 
-            fetchLocationOptions('city', sectionId, 'city_id'); 
+        let parentId = $(this).val();
+        if (parentId) {
+            fetchLocationOptions(parentId, 'city_id');
         }
-        $('#region_id, #neighborhood_id, #street_id, #alley_id')
-            .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+        $('#city_id, #region_id, #neighborhood_id, #street_id, #alley_id')
+            .empty()
+            .append('<option value="">انتخاب کنید</option>')
+            .prop('disabled', true);
     });
 
     $('#city_id').on('change', function() {
-        let cityId = $(this).val();
-        if (cityId) { 
-            fetchLocationOptions('region', cityId, 'region_id'); 
+        let parentId = $(this).val();
+        if (parentId) {
+            fetchLocationOptions(parentId, 'region_id');
         }
-        $('#neighborhood_id, #street_id, #alley_id')
-            .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+        $('#region_id, #neighborhood_id, #street_id, #alley_id')
+            .empty()
+            .append('<option value="">انتخاب کنید</option>')
+            .prop('disabled', true);
     });
 
     $('#region_id').on('change', function() {
-        let regionId = $(this).val();
-        if (regionId) { 
-            fetchLocationOptions('neighborhood', regionId, 'neighborhood_id'); 
+        let parentId = $(this).val();
+        if (parentId) {
+            fetchLocationOptions(parentId, 'neighborhood_id');
         }
-        $('#street_id, #alley_id')
-            .empty().append('<option value="">انتخاب کنید</option>').prop('disabled', true);
+        $('#neighborhood_id, #street_id, #alley_id')
+            .empty()
+            .append('<option value="">انتخاب کنید</option>')
+            .prop('disabled', true);
     });
 
     $('#neighborhood_id').on('change', function() {
-        let neighborhoodId = $(this).val();
-        if (neighborhoodId) { 
-            fetchLocationOptions('street', neighborhoodId, 'street_id');
-            fetchLocationOptions('alley', neighborhoodId, 'alley_id');
+        let parentId = $(this).val();
+        if (parentId) {
+            fetchLocationOptions(parentId, 'street_id');
         }
+        $('#street_id, #alley_id')
+            .empty()
+            .append('<option value="">انتخاب کنید</option>')
+            .prop('disabled', true);
     });
+
+    $('#street_id').on('change', function() {
+        let parentId = $(this).val();
+        if (parentId) {
+            fetchLocationOptions(parentId, 'alley_id');
+        }
+        $('#alley_id')
+            .empty()
+            .append('<option value="">انتخاب کنید</option>')
+            .prop('disabled', true);
+    });
+
+    // لود کردن مقادیر پیش‌فرض برای مکان‌ها
+    if ($('#continent_id').val()) {
+        let continentId = $('#continent_id').val();
+        fetchLocationOptions(continentId, 'country_id');
+    }
 });
 </script>
 @endpush

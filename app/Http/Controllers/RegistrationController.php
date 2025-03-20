@@ -7,6 +7,7 @@ use App\Models\OccupationalField;
 use App\Models\ExperienceField;
 use App\Models\Location;
 use App\Models\Group;
+use App\Models\InvitationCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Services\GroupService;
@@ -42,15 +43,29 @@ class RegistrationController extends Controller
         $request->validate([
             'email'    => 'nullable|email|unique:users,email',
             'phone'    => 'nullable|unique:users,phone',
-            'password' => 'required|min:6|confirmed'
+            'password' => 'required|min:6|confirmed',
+            'invitation_code' => 'required|exists:invitation_codes,code'
         ]);
+        
+        // بررسی اعتبار کد دعوت
+        $invitationCode = InvitationCode::where('code', $request->invitation_code)
+            ->where('used', false)
+            ->first();
+            
+        if (!$invitationCode) {
+            return back()->withErrors(['invitation_code' => 'کد دعوت نامعتبر است یا قبلاً استفاده شده است.']);
+        }
         
         $user = User::create([
             'email'          => $request->email,
             'phone'          => $request->phone,
             'password'       => Hash::make($request->password),
             'fingerprint_id' => session('fingerprint_id'),
+            'invitation_code' => $request->invitation_code
         ]);
+        
+        // علامت‌گذاری کد دعوت به عنوان استفاده شده
+        $invitationCode->update(['used' => true]);
         
         auth()->login($user);
         return redirect()->route('register.step1');

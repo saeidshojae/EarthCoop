@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\File;
 use App\Models\Group;
 use Illuminate\Http\Request;
+use App\Events\FileUploaded;
 
 class FileController extends Controller
 {
@@ -15,10 +16,13 @@ class FileController extends Controller
 
         $path = $request->file('file')->store('files');
 
-        $group->files()->create([
+        $file = $group->files()->create([
             'user_id' => auth()->id(),
             'filename' => $path,
         ]);
+
+        // پخش رویداد FileUploaded
+        broadcast(new FileUploaded($file))->toOthers();
 
         return redirect()->route('groups.show', $group);
     }

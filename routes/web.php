@@ -12,19 +12,21 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\Admin\GroupManagementController;
 use App\Http\Controllers\Admin\DashboardController;
-
+use Illuminate\Support\Facades\Broadcast;
 
 // داشبورد مدیریت
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('groups', [GroupManagementController::class, 'index'])->name('groups.index');
     Route::get('groups/{group}/manage', [GroupManagementController::class, 'manage'])->name('groups.manage');
+    Route::put('groups/{group}', [GroupManagementController::class, 'update'])->name('groups.update');
     Route::put('groups/{group}/users/{user}/role', [GroupManagementController::class, 'updateRole'])->name('groups.updateRole');
 });
 
 // مسیر ارسال دعوت
 Route::post('/profile/send-invitation', [ProfileController::class, 'sendInvitation'])->name('profile.send.invitation');
 
+// مسیرهای مربوط به کدهای دعوت
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('invitation-codes', [InvitationCodeController::class, 'index'])->name('invitation_codes.index');
     Route::post('invitation-codes', [InvitationCodeController::class, 'store'])->name('invitation_codes.store');
@@ -82,12 +84,13 @@ Route::post('/register/step3', [RegistrationController::class, 'processStep3'])-
 Route::get('/home', [HomeController::class, 'index'])->name('home');
 
 // مربوط به گروه و چت
-Route::get('/groups/{group}', [GroupController::class, 'show'])->name('groups.show');
-Route::post('/groups/{group}/messages', [MessageController::class, 'store'])->name('groups.messages.store');
+Route::middleware(['auth'])->group(function () {
+    Route::get('/groups/{group}', [GroupController::class, 'show'])->name('groups.show');
+    Route::get('/groups/{group}/messages', [MessageController::class, 'index'])->name('groups.messages.index');
+    Route::post('/groups/{group}/messages', [MessageController::class, 'store'])->name('groups.messages.store');
+});
+
 Route::post('/groups/{group}/files', [FileController::class, 'store'])->name('groups.files.store');
 
-//مدیریت گروه ها
-Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('groups/{group}/manage', [GroupManagementController::class, 'index'])->name('groups.manage');
-    Route::put('groups/{group}/users/{user}/role', [GroupManagementController::class, 'updateRole'])->name('groups.updateRole');
-});
+// مسیر احراز هویت WebSocket
+Broadcast::routes(['middleware' => ['web', 'auth']]);
