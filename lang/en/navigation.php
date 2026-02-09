@@ -1,0 +1,28 @@
+<?php
+
+return [
+    'language' => 'Language',
+    'language_picker' => 'Choose language',
+    'language_fa' => 'فارسی',
+    'language_en' => 'English',
+    'language_ar' => 'العربية',
+    'theme_toggle' => 'Toggle light/dark mode',
+    'login' => 'Login',
+    'register' => 'Register',
+    'profile' => 'Profile',
+    'charter' => 'Charter',
+    'financial_agreement' => 'Financial Agreement',
+    'blog' => 'Blog',
+    'stock_office' => 'Stock Office',
+    'auctions' => 'Share Auctions',
+    'wallet' => 'Wallet',
+    'holdings' => 'Holdings',
+    'stock_office_section' => 'Stock Office',
+    'logout' => 'Logout',
+    'admin_section' => 'Administration',
+    'admin_dashboard' => 'Admin Dashboard',
+    'admin_blog' => 'Blog Management',
+    'admin_portal' => 'Go to Admin Panel',
+    'theme_toggle_short' => 'Light/Dark',
+    'language_current' => 'Current language',
+];

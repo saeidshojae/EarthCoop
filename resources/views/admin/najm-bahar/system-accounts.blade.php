@@ -1,0 +1,186 @@
+@extends('layouts.admin')
+
+@section('title', 'حساب‌های سیستمی نجم بهار - ' . config('app.name', 'EarthCoop'))
+
+@section('content')
+<div class="container-fluid px-4 py-6" dir="rtl">
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-slate-900 dark:text-white">
+            <i class="fas fa-shield-alt ml-2"></i>
+            مدیریت حساب‌های EarthCoop
+        </h1>
+        <p class="text-slate-600 dark:text-slate-400 mt-1">مدیریت حساب اصلی سیستم و حساب‌های فرعی</p>
+    </div>
+
+    @if(session('success'))
+        <div class="mb-6 rounded-lg bg-emerald-50 text-emerald-700 px-4 py-3">
+            {{ session('success') }}
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="mb-6 rounded-lg bg-red-50 text-red-700 px-4 py-3">
+            {{ session('error') }}
+        </div>
+    @endif
+
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-8">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div>
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">حساب اصلی سیستم</h2>
+                <div class="mt-3 text-sm text-slate-600 dark:text-slate-400">
+                    شماره حساب: <span class="font-semibold text-slate-900 dark:text-white">{{ $systemAccount->account_number }}</span>
+                    <span class="mx-2">/</span>
+                    موجودی: <span class="font-semibold text-slate-900 dark:text-white">{{ \App\Helpers\BaharMoney::formatDecimal($systemAccount->balance) }}</span>
+                </div>
+            </div>
+            <form action="{{ route('admin.najm-bahar.system-accounts.ensure-defaults') }}" method="POST">
+                @csrf
+                <button type="submit" class="px-4 py-2 rounded-lg bg-slate-800 text-white hover:bg-slate-900 transition">
+                    تکمیل حساب‌های پیش‌فرض
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-4">حساب‌های فرعی سیستم</h2>
+            <div class="space-y-4">
+                @foreach($subAccounts as $subAccount)
+                    <form action="{{ route('admin.najm-bahar.system-accounts.sub-accounts.update', $subAccount) }}" method="POST" class="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                        @csrf
+                        @method('PUT')
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div>
+                                <p class="text-sm text-slate-500 dark:text-slate-400">کد حساب</p>
+                                <p class="font-semibold text-slate-900 dark:text-white">{{ str_replace('-', '/', $subAccount->sub_account_code) }}</p>
+                                <p class="text-xs text-slate-500 mt-1">موجودی: {{ \App\Helpers\BaharMoney::formatDecimal($subAccount->balance) }}</p>
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">نام حساب</label>
+                                <input
+                                    type="text"
+                                    name="name"
+                                    value="{{ old('name', $subAccount->name) }}"
+                                    class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">وضعیت</label>
+                                <select name="status" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                                    <option value="1" {{ $subAccount->status ? 'selected' : '' }}>فعال</option>
+                                    <option value="0" {{ ! $subAccount->status ? 'selected' : '' }}>غیرفعال</option>
+                                </select>
+                            </div>
+                            <div class="md:self-end">
+                                <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">ذخیره</button>
+                            </div>
+                        </div>
+                    </form>
+                @endforeach
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-4">ایجاد حساب فرعی جدید</h2>
+                <form action="{{ route('admin.najm-bahar.system-accounts.sub-accounts.store') }}" method="POST" class="space-y-4">
+                    @csrf
+                    <div>
+                        <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1" for="name">نام حساب</label>
+                        <input
+                            id="name"
+                            name="name"
+                            type="text"
+                            value="{{ old('name') }}"
+                            class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                            required
+                        />
+                        @error('name')
+                            <div class="text-red-600 text-sm mt-2">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
+                        ایجاد حساب فرعی
+                    </button>
+                </form>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-4">انتقال بین حساب‌های سیستمی</h2>
+                <form action="{{ route('admin.najm-bahar.system-accounts.transfer') }}" method="POST" class="space-y-4" onsubmit="return confirm('آیا از انجام این انتقال مطمئن هستید؟');">
+                    @csrf
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">از حساب</label>
+                            <select name="from_account" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white" required>
+                                <option value="{{ $systemAccount->account_number }}">{{ $systemAccount->account_number }} (اصلی)</option>
+                                @foreach($subAccounts as $subAccount)
+                                    <option value="{{ $subAccount->sub_account_code }}">{{ str_replace('-', '/', $subAccount->sub_account_code) }} - {{ $subAccount->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">به حساب</label>
+                            <select name="to_account" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white" required>
+                                <option value="{{ $systemAccount->account_number }}">{{ $systemAccount->account_number }} (اصلی)</option>
+                                @foreach($subAccounts as $subAccount)
+                                    <option value="{{ $subAccount->sub_account_code }}">{{ str_replace('-', '/', $subAccount->sub_account_code) }} - {{ $subAccount->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">مبلغ (بهار.گل)</label>
+                            <input name="amount" type="number" min="0.01" step="0.01" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white" placeholder="مثال: 10.30" required />
+                        </div>
+                        <div>
+                            <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">توضیح</label>
+                            <input name="description" type="text" maxlength="500" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white" required />
+                        </div>
+                    </div>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">ثبت انتقال</button>
+                </form>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-4">تعدیل حساب سیستمی</h2>
+                <form action="{{ route('admin.najm-bahar.system-accounts.adjust') }}" method="POST" class="space-y-4" onsubmit="return confirm('آیا از ثبت این تعدیل مطمئن هستید؟');">
+                    @csrf
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">حساب</label>
+                            <select name="account" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white" required>
+                                <option value="{{ $systemAccount->account_number }}">{{ $systemAccount->account_number }} (اصلی)</option>
+                                @foreach($subAccounts as $subAccount)
+                                    <option value="{{ $subAccount->sub_account_code }}">{{ str_replace('-', '/', $subAccount->sub_account_code) }} - {{ $subAccount->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">نوع تعدیل</label>
+                            <select name="direction" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white" required>
+                                <option value="credit">افزایش موجودی</option>
+                                <option value="debit">کاهش موجودی</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">مبلغ (بهار.گل)</label>
+                            <input name="amount" type="number" min="0.01" step="0.01" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white" placeholder="مثال: 10.30" required />
+                        </div>
+                        <div>
+                            <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">توضیح</label>
+                            <input name="description" type="text" maxlength="500" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white" required />
+                        </div>
+                    </div>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition">ثبت تعدیل</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection

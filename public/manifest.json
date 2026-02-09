@@ -1,0 +1,19 @@
+{
+  "name": "EarthCoop",
+  "short_name": "EarthCoop",
+  "description": "سامانه‌ی مدیریت اصناف و دسته‌بندی‌های شغلی",
+  "lang": "fa",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4c7caf",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

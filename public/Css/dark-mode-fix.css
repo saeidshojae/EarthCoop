@@ -1,0 +1,332 @@
+/* Dark Mode Fix - Enhanced styling for better readability */
+
+/* General Cards - Improved Colors */
+.dark-mode .bg-white,
+.dark-mode .najm-stats-card,
+.dark-mode .quick-link-card,
+.dark-mode .conversation-table,
+.dark-mode .analytics-stats-card,
+.dark-mode .analytics-chart-card,
+.dark-mode .analytics-table-card,
+.dark-mode .feedbacks-stats-card,
+.dark-mode .rating-chart-card,
+.dark-mode .feedbacks-list-card,
+.dark-mode .feedbacks-list-header,
+.dark-mode .feedback-item,
+.dark-mode .logs-card,
+.dark-mode .logs-stats,
+.dark-mode .log-stat-card,
+.dark-mode .conversations-card,
+.dark-mode .conversation-detail-card,
+.dark-mode .conversation-info,
+.dark-mode .messages-container,
+.dark-mode .chat-container,
+.dark-mode .settings-card,
+.dark-mode .step-card,
+.dark-mode .steps-progress,
+.dark-mode .scanner-card,
+.dark-mode .stat-card,
+.dark-mode .agent-form-card,
+.dark-mode .agent-result-card,
+.dark-mode .auto-fixer-card,
+.dark-mode .issues-card,
+.dark-mode .chart-card,
+.dark-mode .results-header,
+.dark-mode .stats-grid,
+.dark-mode .charts-grid {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
+  border-color: #475569 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Text Colors */
+.dark-mode .text-gray-800,
+.dark-mode .text-gray-900,
+.dark-mode .najm-stats-label,
+.dark-mode .quick-link-text,
+.dark-mode .conversation-title,
+.dark-mode .conversation-preview,
+.dark-mode .analytics-stats-label,
+.dark-mode .analytics-chart-header,
+.dark-mode .analytics-table th,
+.dark-mode .analytics-table td,
+.dark-mode .feedbacks-stats-label,
+.dark-mode .rating-chart-header,
+.dark-mode .feedback-user-name,
+.dark-mode .feedback-date,
+.dark-mode .feedback-content,
+.dark-mode .log-stat-label,
+.dark-mode .conversation-user-name,
+.dark-mode .conversation-user-email,
+.dark-mode .conversation-meta-item,
+.dark-mode .message-text,
+.dark-mode .message-time,
+.dark-mode .form-label-modern,
+.dark-mode .step-label,
+.dark-mode .scanner-title,
+.dark-mode .scanner-description,
+.dark-mode .stat-label,
+.dark-mode .results-date,
+.dark-mode .file-header,
+.dark-mode .issue-type,
+.dark-mode .issue-line,
+.dark-mode .issue-message {
+  color: #f1f5f9 !important;
+}
+
+/* Secondary Text Colors */
+.dark-mode .text-gray-600,
+.dark-mode .text-gray-700,
+.dark-mode .najm-stats-value,
+.dark-mode .quick-link-icon,
+.dark-mode .user-name,
+.dark-mode .conversation-table th,
+.dark-mode .conversation-table td,
+.dark-mode .analytics-stats-value,
+.dark-mode .agent-name,
+.dark-mode .feedback-rating-value,
+.dark-mode .log-stat-value,
+.dark-mode .conversation-meta-label,
+.dark-mode .message-name,
+.dark-mode .form-control-modern,
+.dark-mode .step-number,
+.dark-mode .scanner-icon,
+.dark-mode .stat-value,
+.dark-mode .results-title,
+.dark-mode .file-icon,
+.dark-mode .issue-title {
+  color: #cbd5e1 !important;
+}
+
+.dark-mode .text-gray-500 {
+  color: #94a3b8 !important;
+}
+
+.dark-mode .text-gray-400 {
+  color: #64748b !important;
+}
+
+/* Headers */
+.dark-mode .conversations-header,
+.dark-mode .analytics-table-header,
+.dark-mode .feedbacks-list-header,
+.dark-mode .logs-header,
+.dark-mode .conversation-header,
+.dark-mode .chat-header,
+.dark-mode .settings-card-header,
+.dark-mode .step-card-header,
+.dark-mode .scanner-header,
+.dark-mode .issues-header,
+.dark-mode .results-header,
+.dark-mode .agent-form-card-header,
+.dark-mode .agent-result-card-header {
+  background: linear-gradient(135deg, #334155 0%, #1e293b 100%) !important;
+  color: white !important;
+  border-color: #475569 !important;
+}
+
+/* Tables */
+.dark-mode .conversation-table thead,
+.dark-mode .analytics-table thead {
+  background: #334155 !important;
+}
+
+.dark-mode .conversation-table tr:hover,
+.dark-mode .analytics-table tr:hover {
+  background-color: #334155 !important;
+}
+
+.dark-mode .conversation-table th,
+.dark-mode .conversation-table td,
+.dark-mode .analytics-table th,
+.dark-mode .analytics-table td {
+  border-color: #475569 !important;
+}
+
+/* Cards Hover */
+.dark-mode .najm-stats-card:hover,
+.dark-mode .quick-link-card:hover,
+.dark-mode .analytics-stats-card:hover,
+.dark-mode .feedbacks-stats-card:hover,
+.dark-mode .log-stat-card:hover,
+.dark-mode .conversations-card:hover,
+.dark-mode .conversation-detail-card:hover,
+.dark-mode .chat-container:hover,
+.dark-mode .settings-card:hover,
+.dark-mode .step-card:hover,
+.dark-mode .scanner-card:hover,
+.dark-mode .stat-card:hover,
+.dark-mode .agent-form-card:hover,
+.dark-mode .agent-result-card:hover,
+.dark-mode .auto-fixer-card:hover,
+.dark-mode .issues-card:hover,
+.dark-mode .chart-card:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Messages Container */
+.dark-mode .messages-container,
+.dark-mode .chat-messages {
+  background: #0f172a !important;
+}
+
+.dark-mode .message-bot .message-bubble {
+  background: #334155 !important;
+  color: #f1f5f9 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark-mode .message-user .message-bubble {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+  color: white !important;
+}
+
+/* Form Controls */
+.dark-mode .form-control-modern,
+.dark-mode .form-select,
+.dark-mode .severity-filter,
+.dark-mode .agent-selector,
+.dark-mode input[type="text"],
+.dark-mode input[type="email"],
+.dark-mode input[type="password"],
+.dark-mode select,
+.dark-mode textarea {
+  background: #334155 !important;
+  border-color: #475569 !important;
+  color: #f1f5f9 !important;
+}
+
+.dark-mode .form-control-modern:focus,
+.dark-mode .form-select:focus,
+.dark-mode .severity-filter:focus,
+.dark-mode input:focus,
+.dark-mode select:focus,
+.dark-mode textarea:focus {
+  border-color: #667eea !important;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2) !important;
+}
+
+/* Code Blocks */
+.dark-mode .issue-code,
+.dark-mode .code-block,
+.dark-mode .logs-content {
+  background: #0f172a !important;
+  color: #10b981 !important;
+  border-color: #1e293b !important;
+}
+
+/* Empty States */
+.dark-mode .empty-state-title {
+  color: #f1f5f9 !important;
+}
+
+.dark-mode .empty-state-text {
+  color: #94a3b8 !important;
+}
+
+/* Badges */
+.dark-mode .badge.info,
+.dark-mode .badge.success,
+.dark-mode .badge.warning,
+.dark-mode .badge.danger,
+.dark-mode .issue-badge,
+.dark-mode .file-badge {
+  background: #475569 !important;
+  color: white !important;
+}
+
+/* Buttons */
+.dark-mode .btn-view,
+.dark-mode .btn-suggestion,
+.dark-mode .btn-scan,
+.dark-mode .btn-modern.primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+}
+
+.dark-mode .btn-view:hover,
+.dark-mode .btn-suggestion:hover,
+.dark-mode .btn-scan:hover,
+.dark-mode .btn-modern.primary:hover {
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+}
+
+/* Pagination */
+.dark-mode .pagination-link {
+  background: #334155 !important;
+  border-color: #475569 !important;
+  color: #f1f5f9 !important;
+}
+
+.dark-mode .pagination-link:hover {
+  border-color: #667eea !important;
+  color: #667eea !important;
+}
+
+.dark-mode .pagination-link.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border-color: transparent !important;
+}
+
+/* Tailwind Classes Override */
+.dark-mode .bg-gray-50,
+.dark-mode .bg-gray-100 {
+  background: #0f172a !important;
+}
+
+.dark-mode .bg-gray-200 {
+  background: #1e293b !important;
+}
+
+.dark-mode .border-gray-200,
+.dark-mode .border-gray-300 {
+  border-color: #334155 !important;
+}
+
+.dark-mode .shadow-md {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark-mode .shadow-lg {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Rounded Sections - برای صفحه home */
+.dark-mode .rounded-3xl,
+.dark-mode .rounded-2xl,
+.dark-mode .rounded-xl {
+  background: #1e293b !important;
+}
+
+/* Links */
+.dark-mode a:not(.btn):not(.button) {
+  color: #93c5fd !important;
+}
+
+.dark-mode a:not(.btn):not(.button):hover {
+  color: #60a5fa !important;
+}
+
+/* User Dropdown - Unified Header */
+.dark-mode [x-data*="userDropdownOpen"] > div[x-show] {
+  background: #1e293b !important;
+  border: 1px solid #334155 !important;
+}
+
+.dark-mode [x-data*="userDropdownOpen"] a {
+  color: #f1f5f9 !important;
+}
+
+.dark-mode [x-data*="userDropdownOpen"] a:hover {
+  background: #334155 !important;
+}
+
+.dark-mode [x-data*="userDropdownOpen"] h6 {
+  color: #93c5fd !important;
+}
+
+.dark-mode [x-data*="userDropdownOpen"] hr {
+  border-color: #475569 !important;
+}

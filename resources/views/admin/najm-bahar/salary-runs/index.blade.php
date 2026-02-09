@@ -1,0 +1,88 @@
+@extends('layouts.admin')
+
+@section('title', 'اجرای حقوق نجم بهار')
+
+@section('content')
+<div class="container-fluid px-4 py-6" dir="rtl">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">
+                <i class="fas fa-calendar-check ml-2"></i>
+                اجرای حقوق
+            </h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">مدیریت پرداخت‌های دوره‌ای و پروژه‌ای</p>
+        </div>
+        <a href="{{ route('admin.najm-bahar.salaries.index') }}" class="inline-flex items-center px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors">
+            <i class="fas fa-arrow-right ml-2"></i>
+            بازگشت به قوانین
+        </a>
+    </div>
+
+    @if(session('success'))
+        <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-200 px-4 py-3 rounded-lg mb-6">
+            <i class="fas fa-check-circle ml-2"></i>
+            {{ session('success') }}
+        </div>
+    @endif
+
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-6">
+        <form action="{{ route('admin.najm-bahar.salary-runs.store') }}" method="POST" class="flex flex-wrap items-end gap-4">
+            @csrf
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">تاریخ اجرا</label>
+                <input type="date" name="run_date" value="{{ now()->format('Y-m-d') }}"
+                       class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white">
+            </div>
+            <button type="submit" class="inline-flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <i class="fas fa-play ml-2"></i>
+                ایجاد اجرا
+            </button>
+        </form>
+    </div>
+
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-50 dark:bg-slate-700">
+                    <tr>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">تاریخ اجرا</th>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">بازه</th>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">وضعیت</th>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                    @forelse($runs as $run)
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">{{ $run->run_date }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{{ $run->period_start }} تا {{ $run->period_end }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $run->status === 'processed' ? 'bg-green-100 text-green-800' : ($run->status === 'failed' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800') }}">
+                                    {{ $run->status === 'processed' ? 'پردازش شده' : ($run->status === 'failed' ? 'ناموفق' : 'در انتظار') }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <a href="{{ route('admin.najm-bahar.salary-runs.show', $run) }}" class="text-blue-600 hover:text-blue-900 dark:text-blue-400">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="4" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                                <i class="fas fa-inbox text-4xl mb-3 opacity-50"></i>
+                                <p>هیچ اجرایی ثبت نشده است</p>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        @if($runs->hasPages())
+            <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+                {{ $runs->links() }}
+            </div>
+        @endif
+    </div>
+</div>
+@endsection

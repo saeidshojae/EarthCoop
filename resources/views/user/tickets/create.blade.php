@@ -1,0 +1,281 @@
+@extends('layouts.unified')
+
+@section('title', 'ایجاد تیکت جدید')
+<!-- Tailwind & Bootstrap CSS via Vite -->
+@vite(['resources/css/app.css', 'resources/js/app.js'])
+@section('content')
+<div class="container mx-auto flex flex-col lg:flex-row gap-8 p-6 md:p-8">
+    <!-- Sidebar -->
+    @include('partials.sidebar-unified')
+    
+    <!-- Main Content -->
+    <div class="flex-1 min-w-0">
+        <!-- هدر صفحه -->
+        <div class="mb-6">
+            <a href="{{ route('user.tickets.index') }}" 
+               class="inline-flex items-center text-sm mb-4" style="color: var(--color-slate-gray);">
+                <i class="fas fa-arrow-right ml-2"></i>
+                بازگشت به لیست تیکت‌ها
+            </a>
+            <h1 class="text-2xl font-bold" style="color: var(--color-gentle-black);">
+                <i class="fas fa-plus-circle ml-2" style="color: var(--color-ocean-blue);"></i>
+                ایجاد تیکت جدید
+            </h1>
+            <p class="mt-1" style="color: var(--color-slate-gray);">
+                درخواست پشتیبانی خود را ثبت کنید
+            </p>
+        </div>
+
+        @if($errors->any())
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                <div class="flex items-center gap-3 mb-2">
+                    <i class="fas fa-exclamation-circle text-red-600"></i>
+                    <span class="text-red-800 font-semibold">خطا در ثبت تیکت</span>
+                </div>
+                <ul class="list-disc list-inside text-sm text-red-700 space-y-1">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        <!-- پیشنهادهای پایگاه دانش -->
+        <div class="bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl p-6 mb-6 text-white">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl">
+                    <i class="fas fa-lightbulb"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-white/70">پیشنهاد خودکار</p>
+                    <h2 class="text-xl font-bold">قبل از ارسال تیکت، شاید پاسخ شما اینجاست</h2>
+                </div>
+            </div>
+            <div id="kb-suggestions" class="grid grid-cols-1 md:grid-cols-2 gap-4" data-suggest-url="{{ route('support.kb.suggest') }}">
+                @foreach($kbSuggestions as $article)
+                    <a href="{{ route('support.kb.show', $article->slug) }}" class="p-4 rounded-xl bg-white/5 hover:bg-white/10 transition">
+                        <div class="text-xs text-white/60 mb-1">{{ $article->category?->name }}</div>
+                        <h3 class="text-base font-semibold">{{ $article->title }}</h3>
+                        <p class="text-sm text-white/70 mt-1 line-clamp-2">{{ $article->excerpt }}</p>
+                    </a>
+                @endforeach
+                @if($kbSuggestions->isEmpty())
+                    <p class="text-sm text-white/70">به زودی مقالات راهنما در این بخش نمایش داده می‌شود.</p>
+                @endif
+            </div>
+        </div>
+
+        <!-- فرم ایجاد تیکت -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6" style="background-color: var(--color-pure-white);">
+        <form action="{{ route('user.tickets.store') }}" method="POST" enctype="multipart/form-data">
+            @csrf
+
+            <div class="space-y-6">
+                <!-- موضوع -->
+                <div>
+                    <label for="subject" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                        موضوع تیکت <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" 
+                           id="subject"
+                           name="subject" 
+                           value="{{ old('subject') }}"
+                           required
+                           maxlength="255"
+                           placeholder="مثال: مشکل در ورود به حساب کاربری"
+                           class="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white">
+                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        موضوع تیکت خود را به صورت خلاصه و واضح بنویسید
+                    </p>
+                    @error('subject')
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- دسته -->
+                <div>
+                    <label for="category" class="block text-sm font-semibold mb-2" style="color: var(--color-gentle-black);">
+                        دسته
+                    </label>
+                    <select name="category" 
+                            id="category"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            style="background-color: var(--color-pure-white);">
+                        <option value="">انتخاب دسته (اختیاری)</option>
+                        @foreach($categories as $key => $label)
+                            <option value="{{ $key }}" {{ old('category') == $key ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <!-- اولویت -->
+                <div>
+                    <label for="priority" class="block text-sm font-semibold mb-2" style="color: var(--color-gentle-black);">
+                        اولویت
+                    </label>
+                    <select name="priority" 
+                            id="priority"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            style="background-color: var(--color-pure-white);">
+                        <option value="">انتخاب اولویت (اختیاری)</option>
+                        <option value="low" {{ old('priority') == 'low' ? 'selected' : '' }}>پایین</option>
+                        <option value="normal" {{ old('priority') == 'normal' ? 'selected' : '' }}>عادی</option>
+                        <option value="high" {{ old('priority') == 'high' ? 'selected' : '' }}>بالا</option>
+                    </select>
+                    <p class="mt-1 text-xs" style="color: var(--color-slate-gray);">
+                        در صورت عدم انتخاب، اولویت به صورت خودکار تعیین می‌شود
+                    </p>
+                </div>
+
+                <!-- تگ‌ها -->
+                @if($tags->count() > 0)
+                <div>
+                    <label class="block text-sm font-semibold mb-2" style="color: var(--color-gentle-black);">
+                        تگ‌ها (اختیاری)
+                    </label>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach($tags as $tag)
+                            <label class="inline-flex items-center px-3 py-2 rounded-lg border cursor-pointer hover:bg-gray-50 transition-colors"
+                                   style="border-color: {{ $tag->color }}; background-color: {{ $tag->color }}20;">
+                                <input type="checkbox" 
+                                       name="tags[]" 
+                                       value="{{ $tag->id }}"
+                                       {{ in_array($tag->id, old('tags', [])) ? 'checked' : '' }}
+                                       class="ml-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <span class="text-sm" style="color: var(--color-gentle-black);">{{ $tag->name }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                <!-- پیام -->
+                <div>
+                    <label for="message" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                        شرح مشکل یا درخواست <span class="text-red-500">*</span>
+                    </label>
+                    <textarea 
+                        id="message"
+                        name="message" 
+                        rows="8"
+                        required
+                        minlength="10"
+                        placeholder="شرح کامل مشکل یا درخواست خود را بنویسید..."
+                        class="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white resize-none">{{ old('message') }}</textarea>
+                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        حداقل 10 کاراکتر. هرچه توضیحات شما کامل‌تر باشد، پاسخ سریع‌تری دریافت خواهید کرد.
+                    </p>
+                    @error('message')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- آپلود فایل -->
+                <div>
+                    <label for="attachments" class="block text-sm font-semibold mb-2" style="color: var(--color-gentle-black);">
+                        فایل‌های ضمیمه (اختیاری)
+                    </label>
+                    <input type="file" 
+                           id="attachments"
+                           name="attachments[]" 
+                           multiple
+                           accept="image/*,.pdf,.doc,.docx,.txt,.zip,.rar"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                           style="background-color: var(--color-pure-white);">
+                    <p class="mt-1 text-xs" style="color: var(--color-slate-gray);">
+                        حداکثر 10 مگابایت برای هر فایل. فرمت‌های مجاز: تصاویر، PDF، Word، TXT، ZIP، RAR
+                    </p>
+                    @error('attachments.*')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- راهنما -->
+                <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-info-circle text-blue-600 dark:text-blue-400 mt-1"></i>
+                        <div class="text-sm text-blue-800 dark:text-blue-200">
+                            <p class="font-semibold mb-2">راهنمای ایجاد تیکت:</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>موضوع را به صورت خلاصه و واضح بنویسید</li>
+                                <li>شرح مشکل را به صورت کامل و دقیق توضیح دهید</li>
+                                <li>در صورت امکان، مراحل تکرار مشکل را ذکر کنید</li>
+                                <li>پس از ثبت تیکت، کد پیگیری برای شما ارسال می‌شود</li>
+                                <li>می‌توانید از طریق همین بخش، پاسخ‌های تیم پشتیبانی را مشاهده کنید</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- دکمه‌های فرم -->
+            <div class="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                <a href="{{ route('user.tickets.index') }}" 
+                   class="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                    <i class="fas fa-times ml-2"></i>
+                    انصراف
+                </a>
+                <button type="submit" 
+                        class="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                    <i class="fas fa-paper-plane ml-2"></i>
+                    ثبت تیکت
+                </button>
+            </div>
+        </form>
+    </div>
+    </div>
+</div>
+@endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const subjectInput = document.getElementById('subject');
+    const messageInput = document.getElementById('message');
+    const container = document.getElementById('kb-suggestions');
+    const suggestUrl = container?.dataset.suggestUrl;
+    const defaultSuggestions = @json($kbSuggestionsJson);
+
+    let typingTimer;
+
+    function renderSuggestions(items) {
+        if (!container) return;
+        if (!items.length) {
+            container.innerHTML = '<p class="text-sm text-white/70">موردی یافت نشد.</p>';
+            return;
+        }
+
+        container.innerHTML = items.map(article => `
+            <a href="/support/knowledge-base/${article.slug}" class="p-4 rounded-xl bg-white/5 hover:bg-white/10 transition block">
+                <div class="text-xs text-white/60 mb-1">${article.category ?? ''}</div>
+                <h3 class="text-base font-semibold">${article.title}</h3>
+                <p class="text-sm text-white/70 mt-1 line-clamp-2">${article.excerpt ?? ''}</p>
+            </a>
+        `).join('');
+    }
+
+    function handleInput() {
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(async () => {
+            const query = `${subjectInput?.value || ''} ${messageInput?.value || ''}`.trim();
+            if (!suggestUrl || query.length < 3) {
+                renderSuggestions(defaultSuggestions);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${suggestUrl}?q=${encodeURIComponent(query)}`);
+                if (!response.ok) throw new Error('Network error');
+                const data = await response.json();
+                renderSuggestions(data);
+            } catch (error) {
+                console.error('Failed to fetch KB suggestions', error);
+            }
+        }, 400);
+    }
+
+    subjectInput?.addEventListener('input', handleInput);
+    messageInput?.addEventListener('input', handleInput);
+});
+</script>
+@endpush

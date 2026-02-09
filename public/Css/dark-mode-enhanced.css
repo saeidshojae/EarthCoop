@@ -1,0 +1,545 @@
+/* Dark Mode Enhanced - بهبودهای بصری */
+
+/* ==================== Animations ==================== */
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 0 16px rgba(16, 185, 129, 0.5),
+      0 0 24px rgba(16, 185, 129, 0.2);
+  }
+}
+
+@keyframes toggle-spin {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.05) rotate(180deg);
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
+  }
+}
+
+@keyframes icon-fade-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ==================== Theme Toggle Button - Premium Style ==================== */
+
+.theme-toggle,
+.theme-toggle-navbar {
+  position: relative;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+  user-select: none;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-toggle.dark,
+.theme-toggle-navbar.dark {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.theme-toggle-slider {
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+}
+
+.theme-toggle.dark .theme-toggle-slider,
+.theme-toggle-navbar.dark .theme-toggle-slider {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+.theme-toggle-icon {
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+}
+
+.theme-toggle-icon.sun {
+  animation: icon-fade-in 0.4s ease;
+}
+
+.theme-toggle.dark .theme-toggle-icon.moon {
+  animation: icon-fade-in 0.6s ease;
+}
+
+/* ==================== Enhanced Color Scheme ==================== */
+
+/* Better Text Hierarchy */
+body.dark-mode {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+
+body.dark-mode h1 {
+  color: #f8fafc;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+body.dark-mode h2 {
+  color: #f1f5f9;
+  font-weight: 700;
+}
+body.dark-mode h3 {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+body.dark-mode h4 {
+  color: #cbd5e1;
+  font-weight: 600;
+}
+body.dark-mode h5,
+body.dark-mode h6 {
+  color: #cbd5e1;
+  font-weight: 500;
+}
+
+/* Body Text - Better vs secondary */
+body.dark-mode p {
+  color: #cbd5e1;
+  line-height: 1.6;
+}
+body.dark-mode .text-muted,
+body.dark-mode small {
+  color: #94a3b8;
+}
+body.dark-mode .text-secondary {
+  color: #94a3b8;
+}
+
+/* ==================== Card & Container Improvements ==================== */
+
+body.dark-mode .card {
+  background: linear-gradient(135deg, #1e293b 0%, #1a2f4a 100%);
+  border: 1px solid #334155;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode .card:hover {
+  border-color: #475569;
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.1);
+}
+
+/* ==================== Form Elements ==================== */
+
+body.dark-mode .form-control,
+body.dark-mode .form-select,
+body.dark-mode input,
+body.dark-mode textarea,
+body.dark-mode select {
+  background-color: #293548;
+  border: 1px solid #475569;
+  color: #f1f5f9;
+  transition: all 0.3s ease;
+}
+
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus,
+body.dark-mode input:focus,
+body.dark-mode textarea:focus,
+body.dark-mode select:focus {
+  background-color: #1e293b;
+  border-color: #10b981;
+  color: #f1f5f9;
+  box-shadow:
+    0 0 0 3px rgba(16, 185, 129, 0.1),
+    0 0 0 1px #10b981;
+}
+
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder {
+  color: #64748b;
+  opacity: 0.7;
+}
+
+/* ==================== Tables ==================== */
+
+body.dark-mode .table {
+  color: #cbd5e1;
+  border-color: #334155;
+}
+
+body.dark-mode .table thead {
+  background-color: #293548;
+  border-color: #334155;
+}
+
+body.dark-mode .table thead th {
+  color: #f1f5f9;
+  font-weight: 600;
+  border-color: #334155;
+}
+
+body.dark-mode .table tbody tr {
+  border-color: #333550;
+  transition: background-color 0.2s ease;
+}
+
+body.dark-mode .table tbody tr:hover {
+  background-color: #293548;
+}
+
+body.dark-mode .table tbody td {
+  color: #cbd5e1;
+}
+
+/* ==================== Buttons ==================== */
+
+body.dark-mode .btn-outline-primary {
+  color: #10b981;
+  border-color: #10b981;
+}
+
+body.dark-mode .btn-outline-primary:hover {
+  background-color: #10b981;
+  border-color: #10b981;
+  color: white;
+}
+
+body.dark-mode .btn-secondary {
+  background-color: #334155;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+body.dark-mode .btn-secondary:hover {
+  background-color: #475569;
+  border-color: #475569;
+  color: #f1f5f9;
+}
+
+/* ==================== Labels & Badges ==================== */
+
+body.dark-mode .badge {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #4ade80;
+  font-weight: 500;
+}
+
+body.dark-mode .badge.bg-info {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+  color: #60a5fa !important;
+}
+
+body.dark-mode .badge.bg-warning {
+  background-color: rgba(245, 158, 11, 0.2) !important;
+  color: #fcd34d !important;
+}
+
+body.dark-mode .badge.bg-danger {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+  color: #fca5a5 !important;
+}
+
+/* ==================== Lists & Navigation ==================== */
+
+body.dark-mode .list-group-item {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+body.dark-mode .list-group-item:hover {
+  background-color: #293548;
+  border-color: #475569;
+  color: #f1f5f9;
+}
+
+body.dark-mode .list-group-item.active {
+  background-color: #10b981;
+  border-color: #10b981;
+  color: white;
+}
+
+/* ==================== Modals ==================== */
+
+body.dark-mode .modal-content {
+  background: linear-gradient(135deg, #1e293b 0%, #1a2f4a 100%);
+  border: 1px solid #334155;
+}
+
+body.dark-mode .modal-header {
+  border-bottom: 1px solid #334155;
+  color: #f1f5f9;
+}
+
+body.dark-mode .modal-body {
+  color: #cbd5e1;
+}
+
+body.dark-mode .modal-footer {
+  border-top: 1px solid #334155;
+}
+
+/* ==================== Alerts ==================== */
+
+body.dark-mode .alert {
+  background-color: rgba(30, 41, 59, 0.8);
+  border: 1px solid;
+  color: #cbd5e1;
+}
+
+body.dark-mode .alert-info {
+  border-color: #60a5fa;
+  color: #bfdbfe;
+  background-color: rgba(30, 58, 138, 0.3);
+}
+
+body.dark-mode .alert-success {
+  border-color: #4ade80;
+  color: #bbf7d0;
+  background-color: rgba(20, 83, 45, 0.3);
+}
+
+body.dark-mode .alert-warning {
+  border-color: #fcd34d;
+  color: #fef3c7;
+  background-color: rgba(78, 70, 0, 0.3);
+}
+
+body.dark-mode .alert-danger {
+  border-color: #fca5a5;
+  color: #fecaca;
+  background-color: rgba(127, 29, 29, 0.3);
+}
+
+/* ==================== Navigation ==================== */
+
+body.dark-mode .navbar {
+  background: linear-gradient(90deg, #0d6962 0%, #0b4f50 100%);
+  border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .navbar-brand {
+  color: #f1f5f9 !important;
+  font-weight: 700;
+}
+
+body.dark-mode .nav-link {
+  color: #cbd5e1 !important;
+  transition: color 0.3s ease;
+}
+
+body.dark-mode .nav-link:hover {
+  color: #10b981 !important;
+}
+
+body.dark-mode .nav-link.active {
+  color: #10b981 !important;
+  border-bottom: 2px solid #10b981;
+}
+
+/* ==================== Code Blocks ==================== */
+
+body.dark-mode pre {
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  color: #d4d4d4;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+}
+
+body.dark-mode code {
+  background-color: rgba(30, 41, 59, 0.8);
+  color: #86efac;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-family: "Courier New", monospace;
+}
+
+/* ==================== Links ==================== */
+
+body.dark-mode a {
+  color: #4ade80;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+body.dark-mode a:hover {
+  color: #22c55e;
+  text-decoration: underline;
+}
+
+/* ==================== Borders & Dividers ==================== */
+
+body.dark-mode hr {
+  border-color: #334155;
+  opacity: 1;
+  margin: 2rem 0;
+}
+
+body.dark-mode .border {
+  border-color: #334155 !important;
+}
+
+/* ==================== Tabs ==================== */
+
+body.dark-mode .nav-tabs {
+  border-color: #334155;
+}
+
+body.dark-mode .nav-tabs .nav-link {
+  color: #94a3b8;
+  transition: all 0.3s ease;
+}
+
+body.dark-mode .nav-tabs .nav-link:hover {
+  color: #f1f5f9;
+  border-color: #475569;
+}
+
+body.dark-mode .nav-tabs .nav-link.active {
+  background-color: #1e293b;
+  border-color: #10b981 transparent transparent transparent;
+  color: #10b981;
+  font-weight: 600;
+}
+
+/* ==================== Dropdowns ==================== */
+
+body.dark-mode .dropdown-menu {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode .dropdown-item {
+  color: #cbd5e1;
+  transition: all 0.2s ease;
+}
+
+body.dark-mode .dropdown-item:hover {
+  background-color: #293548;
+  color: #10b981;
+}
+
+body.dark-mode .dropdown-item.active,
+body.dark-mode .dropdown-item:active {
+  background-color: #10b981;
+  color: white;
+}
+
+/* ==================== Pagination ==================== */
+
+body.dark-mode .pagination {
+  gap: 0.25rem;
+}
+
+body.dark-mode .page-item .page-link {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+  transition: all 0.2s ease;
+}
+
+body.dark-mode .page-item .page-link:hover {
+  background-color: #293548;
+  border-color: #475569;
+  color: #f1f5f9;
+}
+
+body.dark-mode .page-item.active .page-link {
+  background-color: #10b981;
+  border-color: #10b981;
+  color: white;
+}
+
+/* ==================== Progress Bar ==================== */
+
+body.dark-mode .progress {
+  background-color: #293548;
+}
+
+body.dark-mode .progress-bar {
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+
+/* ==================== Scrollbar ==================== */
+
+body.dark-mode ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+body.dark-mode ::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb {
+  background: #10b981;
+  border-radius: 6px;
+  border: 2px solid #0f172a;
+  transition: background 0.2s ease;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: #059669;
+}
+
+/* ==================== Transitions & Animations ==================== */
+
+body.dark-mode * {
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+body.dark-mode button,
+body.dark-mode a {
+  transition: all 0.2s ease !important;
+}
+
+/* ==================== Text Selection ==================== */
+
+body.dark-mode ::selection {
+  background: #10b981;
+  color: white;
+}
+
+body.dark-mode ::-moz-selection {
+  background: #10b981;
+  color: white;
+}
+
+/* ==================== Opacity Utilities ==================== */
+
+body.dark-mode .opacity-75 {
+  opacity: 0.8 !important;
+}
+body.dark-mode .opacity-50 {
+  opacity: 0.6 !important;
+}
+
+/* ==================== Special Elements ==================== */
+
+body.dark-mode blockquote {
+  border-left: 4px solid #10b981;
+  background-color: rgba(16, 185, 129, 0.05);
+  padding: 1rem 1.25rem;
+  color: #cbd5e1;
+}
+
+body.dark-mode .loading-spinner {
+  border: 4px solid #334155;
+  border-top-color: #10b981;
+}

@@ -1,0 +1,113 @@
+@extends('layouts.admin')
+
+@section('title', 'حساب‌های نجم بهار - ' . config('app.name', 'EarthCoop'))
+
+@section('content')
+<div class="container-fluid px-4 py-6" dir="rtl">
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-slate-900 dark:text-white">
+            <i class="fas fa-wallet ml-2"></i>
+            مدیریت حساب‌ها
+        </h1>
+        <p class="text-slate-600 dark:text-slate-400 mt-1">نمای کلی حساب‌های نجم بهار و حساب‌های فرعی</p>
+    </div>
+
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-8">
+        <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">نوع حساب</label>
+                <select name="type" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                    <option value="">همه</option>
+                    <option value="system" {{ request('type') === 'system' ? 'selected' : '' }}>سیستمی</option>
+                    <option value="user" {{ request('type') === 'user' ? 'selected' : '' }}>کاربری</option>
+                    <option value="subaccount" {{ request('type') === 'subaccount' ? 'selected' : '' }}>فرعی</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">شماره حساب</label>
+                <input name="account_number" type="text" value="{{ request('account_number') }}" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
+            </div>
+            <div>
+                <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">کد کاربر</label>
+                <input name="user_id" type="text" value="{{ request('user_id') }}" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
+            </div>
+            <div class="flex items-end">
+                <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">جستجو</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-8">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-4">حساب‌ها</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 dark:bg-slate-700">
+                    <tr>
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">شماره حساب</th>
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">نوع</th>
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">کاربر</th>
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">موجودی</th>
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                    @forelse($accounts as $account)
+                        <tr>
+                            <td class="px-4 py-2 font-semibold">{{ $account->account_number }}</td>
+                            <td class="px-4 py-2">{{ $account->type }}</td>
+                            <td class="px-4 py-2">{{ $account->user_id ?? '-' }}</td>
+                            <td class="px-4 py-2">{{ \App\Helpers\BaharMoney::formatDecimal($account->balance) }}</td>
+                            <td class="px-4 py-2">
+                                <a href="{{ route('admin.najm-bahar.accounts.transactions', $account->account_number) }}" class="text-blue-600 hover:text-blue-700">تراکنش‌ها</a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="px-4 py-8 text-center text-slate-500">حسابی یافت نشد</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-4">
+            {{ $accounts->links() }}
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-4">حساب‌های فرعی</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 dark:bg-slate-700">
+                    <tr>
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">کد حساب</th>
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">نام</th>
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">حساب اصلی</th>
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">موجودی</th>
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">وضعیت</th>
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                    @forelse($subAccounts as $subAccount)
+                        <tr>
+                            <td class="px-4 py-2 font-semibold">{{ str_replace('-', '/', $subAccount->sub_account_code) }}</td>
+                            <td class="px-4 py-2">{{ $subAccount->name }}</td>
+                            <td class="px-4 py-2">{{ $subAccount->account->account_number ?? $subAccount->account_id }}</td>
+                            <td class="px-4 py-2">{{ \App\Helpers\BaharMoney::formatDecimal($subAccount->balance) }}</td>
+                            <td class="px-4 py-2">{{ $subAccount->status ? 'فعال' : 'غیرفعال' }}</td>
+                            <td class="px-4 py-2">
+                                <a href="{{ route('admin.najm-bahar.accounts.transactions', $subAccount->sub_account_code) }}" class="text-blue-600 hover:text-blue-700">تراکنش‌ها</a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="px-4 py-8 text-center text-slate-500">حساب فرعی یافت نشد</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@endsection

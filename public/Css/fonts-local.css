@@ -1,0 +1,93 @@
+/* Local Vazir Font - Variable Weight */
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('../fonts/Vazirmatn[wght].woff2') format('woff2-variations');
+    font-weight: 100 900;
+    font-style: normal;
+}
+
+/* Fallback for browsers that don't support variable fonts */
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('../fonts/Vazirmatn-Thin.woff2') format('woff2');
+    font-weight: 100;
+}
+
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('../fonts/Vazirmatn-ExtraLight.woff2') format('woff2');
+    font-weight: 200;
+}
+
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('../fonts/Vazirmatn-Light.woff2') format('woff2');
+    font-weight: 300;
+}
+
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('../fonts/Vazirmatn-Regular.woff2') format('woff2');
+    font-weight: 400;
+}
+
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('../fonts/Vazirmatn-Medium.woff2') format('woff2');
+    font-weight: 500;
+}
+
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('../fonts/Vazirmatn-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+}
+
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('../fonts/Vazirmatn-Bold.woff2') format('woff2');
+    font-weight: 700;
+}
+
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('../fonts/Vazirmatn-ExtraBold.woff2') format('woff2');
+    font-weight: 800;
+}
+
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('../fonts/Vazirmatn-Black.woff2') format('woff2');
+    font-weight: 900;
+}
+
+/* Legacy Vazir Font */
+@font-face {
+    font-family: 'vazir';
+    src: url('../fonts/vazir.ttf') format('truetype');
+    font-weight: 400;
+}
+
+/* System Font Stack - Poppins as fallback (local or system) */
+body {
+    font-family: 'Vazirmatn', 'vazir', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
+}
+
+/* Ensure all text elements use Vazir */
+p, span, div, a, button, input, textarea, select {
+    font-family: 'Vazirmatn', 'vazir', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* Headings - use Vazir with appropriate weights */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Vazirmatn', 'vazir', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* Bootstrap compatibility */
+.font-vazirmatn {
+    font-family: 'Vazirmatn', 'vazir', sans-serif !important;
+}
+
+.font-vazir {
+    font-family: 'vazir', 'Vazirmatn', sans-serif !important;
+}

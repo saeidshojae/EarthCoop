@@ -1,0 +1,227 @@
+@extends('layouts.admin')
+
+@section('title', 'مدیریت کارمزدهای نجم بهار')
+
+@section('content')
+<div class="container-fluid px-4 py-6" dir="rtl">
+    <!-- هدر صفحه -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">
+                <i class="fas fa-money-bill-wave ml-2"></i>
+                مدیریت کارمزدهای نجم بهار
+            </h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">مدیریت و تنظیم کارمزدهای تراکنش‌ها</p>
+        </div>
+        <a href="{{ route('admin.najm-bahar.fees.create') }}" 
+           class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            <i class="fas fa-plus ml-2"></i>
+            ایجاد کارمزد جدید
+        </a>
+    </div>
+
+    @if(session('success'))
+        <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-200 px-4 py-3 rounded-lg mb-6">
+            <i class="fas fa-check-circle ml-2"></i>
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded-lg mb-6">
+            <i class="fas fa-exclamation-circle ml-2"></i>
+            {{ session('error') }}
+        </div>
+    @endif
+
+    <!-- کارت‌های آماری -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-blue-100 text-sm mb-1">کل کارمزدها</p>
+                    <p class="text-3xl font-bold">{{ number_format($stats['total']) }}</p>
+                </div>
+                <div class="bg-blue-400/20 rounded-full p-4">
+                    <i class="fas fa-list text-2xl"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-green-100 text-sm mb-1">کارمزدهای فعال</p>
+                    <p class="text-3xl font-bold">{{ number_format($stats['active']) }}</p>
+                </div>
+                <div class="bg-green-400/20 rounded-full p-4">
+                    <i class="fas fa-check-circle text-2xl"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl p-6 text-white shadow-lg">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-100 text-sm mb-1">کارمزدهای غیرفعال</p>
+                    <p class="text-3xl font-bold">{{ number_format($stats['inactive']) }}</p>
+                </div>
+                <div class="bg-gray-400/20 rounded-full p-4">
+                    <i class="fas fa-pause-circle text-2xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- فیلترها و جستجو -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-6">
+        <form method="GET" action="{{ route('admin.najm-bahar.fees.index') }}" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">جستجو</label>
+                <input type="text" 
+                       name="search" 
+                       value="{{ request('search') }}"
+                       placeholder="جستجو در نام و توضیحات..."
+                       class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">وضعیت</label>
+                <select name="status" 
+                        class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white">
+                    <option value="">همه</option>
+                    <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>فعال</option>
+                    <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>غیرفعال</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">نوع کارمزد</label>
+                <select name="type" 
+                        class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white">
+                    <option value="">همه</option>
+                    <option value="fixed" {{ request('type') == 'fixed' ? 'selected' : '' }}>ثابت</option>
+                    <option value="percentage" {{ request('type') == 'percentage' ? 'selected' : '' }}>درصدی</option>
+                    <option value="combined" {{ request('type') == 'combined' ? 'selected' : '' }}>ترکیبی</option>
+                </select>
+            </div>
+            
+            <div class="md:col-span-3 flex items-center gap-4">
+                <button type="submit" 
+                        class="inline-flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <i class="fas fa-search ml-2"></i>
+                    جستجو
+                </button>
+                @if(request()->has('search') || request()->has('status') || request()->has('type'))
+                    <a href="{{ route('admin.najm-bahar.fees.index') }}" 
+                       class="inline-flex items-center px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                        <i class="fas fa-redo ml-2"></i>
+                        پاک کردن فیلترها
+                    </a>
+                @endif
+            </div>
+        </form>
+    </div>
+
+    <!-- جدول کارمزدها -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-50 dark:bg-slate-700">
+                    <tr>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">نام</th>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">نوع</th>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">مقدار</th>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">نوع تراکنش</th>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">وضعیت</th>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                    @forelse($fees as $fee)
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="font-semibold text-slate-900 dark:text-white">{{ $fee->name }}</div>
+                                @if($fee->description)
+                                    <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ Str::limit($fee->description, 50) }}</div>
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full
+                                    {{ $fee->type === 'fixed' ? 'bg-blue-100 text-blue-800' : '' }}
+                                    {{ $fee->type === 'percentage' ? 'bg-green-100 text-green-800' : '' }}
+                                    {{ $fee->type === 'combined' ? 'bg-purple-100 text-purple-800' : '' }}">
+                                    @if($fee->type === 'fixed')
+                                        ثابت
+                                    @elseif($fee->type === 'percentage')
+                                        درصدی
+                                    @else
+                                        ترکیبی
+                                    @endif
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">
+                                @if($fee->type === 'fixed')
+                                    {{ \App\Helpers\BaharMoney::formatDecimal($fee->fixed_amount) }}
+                                @elseif($fee->type === 'percentage')
+                                    {{ number_format($fee->percentage, 2) }}%
+                                @else
+                                    {{ \App\Helpers\BaharMoney::formatDecimal($fee->fixed_amount) }} + {{ number_format($fee->percentage, 2) }}%
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">
+                                @if($fee->transaction_type === 'all')
+                                    همه
+                                @elseif($fee->transaction_type === 'immediate')
+                                    فوری
+                                @elseif($fee->transaction_type === 'scheduled')
+                                    زمان‌بندی شده
+                                @else
+                                    {{ $fee->transaction_type }}
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $fee->is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                                    {{ $fee->is_active ? 'فعال' : 'غیرفعال' }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div class="flex items-center gap-2">
+                                    <a href="{{ route('admin.najm-bahar.fees.edit', $fee) }}" 
+                                       class="text-blue-600 hover:text-blue-900 dark:text-blue-400">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <form action="{{ route('admin.najm-bahar.fees.destroy', $fee) }}" 
+                                          method="POST" 
+                                          onsubmit="return confirm('آیا از حذف این کارمزد اطمینان دارید؟');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-red-600 hover:text-red-900 dark:text-red-400">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                                <i class="fas fa-inbox text-4xl mb-3 opacity-50"></i>
+                                <p>هیچ کارمزدی یافت نشد</p>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        @if($fees->hasPages())
+            <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+                {{ $fees->links() }}
+            </div>
+        @endif
+    </div>
+</div>
+@endsection
+

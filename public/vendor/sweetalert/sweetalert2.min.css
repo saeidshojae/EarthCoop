@@ -1,0 +1,151 @@
+/* SweetAlert2 Minimal Local Stub */
+.swal2-container {
+    display: flex;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    padding: .625em;
+    overflow: hidden;
+    z-index: 1060;
+    background-color: rgba(0, 0, 0, 0.58);
+    font-family: inherit;
+}
+
+.swal2-popup {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 32em;
+    padding: 0;
+    border: none;
+    border-radius: 5px;
+    background-color: white;
+    font-family: inherit;
+    font-size: 1rem;
+    box-shadow: 0 19px 35px rgba(0, 0, 0, 0.3), 0 15px 12px rgba(0, 0, 0, 0.2);
+}
+
+.swal2-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.25em;
+    padding-bottom: 0;
+}
+
+.swal2-title {
+    position: relative;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    color: #595959;
+    font-size: 1.875em;
+    font-weight: 600;
+    text-align: center;
+    text-transform: none;
+    word-wrap: break-word;
+}
+
+.swal2-html-container {
+    position: relative;
+    z-index: 1;
+    flex-grow: 1;
+    padding: 1em 1.6em;
+    overflow: auto;
+    color: #545454;
+    font-size: 1.125em;
+    text-align: center;
+    word-wrap: break-word;
+    direction: rtl;
+}
+
+.swal2-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    padding: .625em;
+    margin-top: auto;
+}
+
+.swal2-confirm, .swal2-cancel, .swal2-deny {
+    border: 0;
+    border-radius: 0.25em;
+    background: inherit;
+    color: inherit;
+    cursor: pointer;
+    padding: 0.625em 1.1em;
+    font-size: 1em;
+    margin: .125em;
+}
+
+.swal2-confirm {
+    background-color: #3085d6;
+    color: white;
+}
+
+.swal2-confirm:hover {
+    background-color: #265985;
+}
+
+.swal2-cancel {
+    background-color: #d3d3d3;
+    color: black;
+}
+
+.swal2-cancel:hover {
+    background-color: #b4b4b4;
+}
+
+.swal2-deny {
+    background-color: #dd6b55;
+    color: white;
+}
+
+.swal2-deny:hover {
+    background-color: #c55245;
+}
+
+.icon {
+    width: 5em;
+    height: 5em;
+    margin: 0 auto;
+    border: 0.25em solid transparent;
+    border-radius: 50%;
+    box-sizing: content-box;
+    font-size: 3.75em;
+    line-height: 5em;
+}
+
+.icon.success {
+    border-color: #a5dc86;
+    color: #a5dc86;
+}
+
+.icon.error {
+    border-color: #f27474;
+    color: #f27474;
+}
+
+.icon.warning {
+    border-color: #f8bb86;
+    color: #f8bb86;
+}
+
+.icon.info {
+    border-color: #3fc3ee;
+    color: #3fc3ee;
+}
+
+@media (max-width: 576px) {
+    .swal2-popup {
+        width: 100vw;
+        padding: 1.75em;
+    }
+}

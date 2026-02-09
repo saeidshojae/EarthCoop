@@ -1,0 +1,570 @@
+/* Edge Browser Compatibility CSS - استایل‌های سازگاری با Edge */
+
+/* این استایل‌ها برای مرورگرهایی که Tailwind CDN به درستی کار نمی‌کند استفاده می‌شود */
+
+/* Base Reset برای Edge */
+.edge-browser *,
+.edge-browser *::before,
+.edge-browser *::after {
+    box-sizing: border-box;
+}
+
+.edge-browser html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+}
+
+.edge-browser body {
+    margin: 0;
+    padding: 0;
+    font-size: 1rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* وقتی Tailwind لود نشده، این استایل‌ها اعمال می‌شوند */
+.tailwind-fallback {
+    font-size: 16px !important;
+}
+
+.tailwind-fallback body {
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+}
+
+/* تنظیم اندازه فونت برای Edge */
+.edge-browser h1 { font-size: 2.25rem; line-height: 1.2; }
+.edge-browser h2 { font-size: 1.875rem; line-height: 1.3; }
+.edge-browser h3 { font-size: 1.5rem; line-height: 1.4; }
+.edge-browser p { font-size: 1rem; line-height: 1.5; }
+
+@media (min-width: 768px) {
+    .edge-browser h1 { font-size: 3.75rem; }
+    .edge-browser h2 { font-size: 2.5rem; }
+}
+
+@media (min-width: 1024px) {
+    .edge-browser h1 { font-size: 4.5rem; }
+}
+
+/* Reset برای جلوگیری از بزرگنمایی در Edge */
+.edge-browser img {
+    max-width: 100%;
+    height: auto;
+}
+
+.edge-browser table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+/* Fix برای overflow */
+.edge-browser {
+    overflow-x: hidden;
+    width: 100%;
+}
+
+/* Fix for gap property in Edge */
+.gap-2 { margin: 0.5rem 0; }
+.gap-3 { margin: 0.75rem 0; }
+.gap-4 { margin: 1rem 0; }
+.gap-6 { margin: 1.5rem 0; }
+.gap-8 { margin: 2rem 0; }
+
+/* Fix for flex gap - استفاده از margin به جای gap */
+.flex.gap-2 > * + * { margin-left: 0.5rem; margin-right: 0.5rem; }
+.flex.gap-3 > * + * { margin-left: 0.75rem; margin-right: 0.75rem; }
+.flex.gap-4 > * + * { margin-left: 1rem; margin-right: 1rem; }
+.flex.gap-6 > * + * { margin-left: 1.5rem; margin-right: 1.5rem; }
+
+[dir="rtl"] .flex.gap-2 > * + * { margin-left: 0; margin-right: 0.5rem; }
+[dir="rtl"] .flex.gap-3 > * + * { margin-left: 0; margin-right: 0.75rem; }
+[dir="rtl"] .flex.gap-4 > * + * { margin-left: 0; margin-right: 1rem; }
+[dir="rtl"] .flex.gap-6 > * + * { margin-left: 0; margin-right: 1.5rem; }
+
+[dir="ltr"] .flex.gap-2 > * + * { margin-left: 0.5rem; margin-right: 0; }
+[dir="ltr"] .flex.gap-3 > * + * { margin-left: 0.75rem; margin-right: 0; }
+[dir="ltr"] .flex.gap-4 > * + * { margin-left: 1rem; margin-right: 0; }
+[dir="ltr"] .flex.gap-6 > * + * { margin-left: 1.5rem; margin-right: 0; }
+
+/* Fix for space-x in Edge */
+.space-x-2 > * + * { margin-left: 0.5rem; }
+.space-x-3 > * + * { margin-left: 0.75rem; }
+.space-x-4 > * + * { margin-left: 1rem; }
+
+[dir="rtl"] .space-x-2 > * + * { margin-left: 0; margin-right: 0.5rem; }
+[dir="rtl"] .space-x-3 > * + * { margin-left: 0; margin-right: 0.75rem; }
+[dir="rtl"] .space-x-4 > * + * { margin-left: 0; margin-right: 1rem; }
+
+/* Fix for Tailwind utility classes that might not work in Edge */
+.items-center {
+    -webkit-box-align: center;
+    -ms-flex-align: center;
+    align-items: center;
+}
+
+.justify-between {
+    -webkit-box-pack: justify;
+    -ms-flex-pack: justify;
+    justify-content: space-between;
+}
+
+.justify-center {
+    -webkit-box-pack: center;
+    -ms-flex-pack: center;
+    justify-content: center;
+}
+
+.justify-end {
+    -webkit-box-pack: end;
+    -ms-flex-pack: end;
+    justify-content: flex-end;
+}
+
+.flex-col {
+    -webkit-box-orient: vertical;
+    -webkit-box-direction: normal;
+    -ms-flex-direction: column;
+    flex-direction: column;
+}
+
+.flex-row {
+    -webkit-box-orient: horizontal;
+    -webkit-box-direction: normal;
+    -ms-flex-direction: row;
+    flex-direction: row;
+}
+
+.flex-wrap {
+    -ms-flex-wrap: wrap;
+    flex-wrap: wrap;
+}
+
+/* Fix for container */
+.container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+    .container {
+        max-width: 640px;
+    }
+}
+
+@media (min-width: 768px) {
+    .container {
+        max-width: 768px;
+    }
+}
+
+@media (min-width: 1024px) {
+    .container {
+        max-width: 1024px;
+    }
+}
+
+@media (min-width: 1280px) {
+    .container {
+        max-width: 1280px;
+    }
+}
+
+/* Fix for responsive display */
+@media (min-width: 768px) {
+    .md\:flex {
+        display: -webkit-box;
+        display: -ms-flexbox;
+        display: flex;
+    }
+    
+    .md\:hidden {
+        display: none;
+    }
+    
+    .md\:flex-row {
+        -webkit-box-orient: horizontal;
+        -webkit-box-direction: normal;
+        -ms-flex-direction: row;
+        flex-direction: row;
+    }
+    
+    .md\:w-1\/2 {
+        width: 50%;
+    }
+    
+    .md\:text-right {
+        text-align: right;
+    }
+    
+    .md\:text-6xl {
+        font-size: 3.75rem;
+        line-height: 1;
+    }
+    
+    .md\:py-32 {
+        padding-top: 8rem;
+        padding-bottom: 8rem;
+    }
+}
+
+/* Fix for rounded corners */
+.rounded-full {
+    border-radius: 9999px;
+}
+
+.rounded-xl {
+    border-radius: 0.75rem;
+}
+
+.rounded-2xl {
+    border-radius: 1rem;
+}
+
+.rounded-3xl {
+    border-radius: 1.5rem;
+}
+
+/* Fix for shadows */
+.shadow-md {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.shadow-lg {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.shadow-xl {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.shadow-2xl {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Fix for positioning */
+.relative {
+    position: relative;
+}
+
+.absolute {
+    position: absolute;
+}
+
+.fixed {
+    position: fixed;
+}
+
+.inset-0 {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+}
+
+/* Fix for z-index */
+.z-0 { z-index: 0; }
+.z-10 { z-index: 10; }
+.z-40 { z-index: 40; }
+.z-50 { z-index: 50; }
+.z-100 { z-index: 100; }
+
+/* Fix for overflow */
+.overflow-hidden {
+    overflow: hidden;
+}
+
+/* Fix for text alignment */
+.text-center {
+    text-align: center;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-left {
+    text-align: left;
+}
+
+[dir="rtl"] .text-right {
+    text-align: left;
+}
+
+[dir="rtl"] .text-left {
+    text-align: right;
+}
+
+/* Fix for font weights */
+.font-bold {
+    font-weight: 700;
+}
+
+.font-extrabold {
+    font-weight: 800;
+}
+
+.font-medium {
+    font-weight: 500;
+}
+
+.font-semibold {
+    font-weight: 600;
+}
+
+/* Fix for padding and margin */
+.p-4 { padding: 1rem; }
+.p-5 { padding: 1.25rem; }
+.p-6 { padding: 1.5rem; }
+.px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+.px-4 { padding-left: 1rem; padding-right: 1rem; }
+.px-5 { padding-left: 1.25rem; padding-right: 1.25rem; }
+.px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+.px-9 { padding-left: 2.25rem; padding-right: 2.25rem; }
+.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+.py-20 { padding-top: 5rem; padding-bottom: 5rem; }
+
+.mb-4 { margin-bottom: 1rem; }
+.mb-6 { margin-bottom: 1.5rem; }
+.mb-8 { margin-bottom: 2rem; }
+.mb-12 { margin-bottom: 3rem; }
+.mt-12 { margin-top: 3rem; }
+
+/* Fix for width and height */
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+.h-24 { height: 6rem; }
+.w-24 { width: 6rem; }
+.max-w-lg { max-width: 32rem; }
+.max-w-2xl { max-width: 42rem; }
+.max-w-4xl { max-width: 56rem; }
+
+/* Fix for colors - استفاده از رنگ‌های مستقیم برای Edge */
+.bg-white { background-color: #ffffff; }
+.bg-pure-white { background-color: #ffffff; }
+.bg-light-gray { background-color: #f8fafc; }
+.bg-earth-green { background-color: #10b981; }
+.bg-ocean-blue { background-color: #3b82f6; }
+.bg-digital-gold { background-color: #f59e0b; }
+.text-white { color: #ffffff; }
+.text-gentle-black { color: #1e293b; }
+.text-gray-600 { color: #4b5563; }
+.text-gray-700 { color: #374151; }
+.text-earth-green { color: #10b981; }
+.text-ocean-blue { color: #3b82f6; }
+
+/* Fix for opacity */
+.opacity-15 { opacity: 0.15; }
+.opacity-50 { opacity: 0.5; }
+.opacity-80 { opacity: 0.8; }
+.opacity-90 { opacity: 0.9; }
+
+/* Fix for border */
+.border { border-width: 1px; }
+.border-2 { border-width: 2px; }
+.border-4 { border-width: 4px; }
+.border-8 { border-width: 8px; }
+.border-white { border-color: #ffffff; }
+.border-gray-200 { border-color: #e5e7eb; }
+.border-gray-300 { border-color: #d1d5db; }
+
+/* Fix for cursor */
+.cursor-pointer { cursor: pointer; }
+
+/* Fix for transitions */
+.transition {
+    -webkit-transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+    -webkit-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    -webkit-transition-duration: 150ms;
+    transition-duration: 150ms;
+}
+
+.duration-300 {
+    -webkit-transition-duration: 300ms;
+    transition-duration: 300ms;
+}
+
+.duration-500 {
+    -webkit-transition-duration: 500ms;
+    transition-duration: 500ms;
+}
+
+/* Fix for hover states */
+.hover\:bg-dark-green:hover { background-color: #047857; }
+.hover\:bg-dark-blue:hover { background-color: #1d4ed8; }
+.hover\:opacity-80:hover { opacity: 0.8; }
+.hover\:scale-105:hover {
+    -webkit-transform: scale(1.05);
+    -ms-transform: scale(1.05);
+    transform: scale(1.05);
+}
+
+/* Fix for hidden class */
+.hidden {
+    display: none;
+}
+
+/* Fix for leading */
+.leading-tight {
+    line-height: 1.25;
+}
+
+.leading-relaxed {
+    line-height: 1.625;
+}
+
+/* Fix for text sizes */
+.text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+.text-md { font-size: 1rem; line-height: 1.5rem; }
+.text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+.text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+.text-2xl { font-size: 1.5rem; line-height: 2rem; }
+.text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+.text-4xl { font-size: 2.25rem; line-height: 2.5rem; }
+.text-6xl { font-size: 3.75rem; line-height: 1; }
+.text-7xl { font-size: 4.5rem; line-height: 1; }
+
+/* Fix for margin and padding specific */
+.mx-auto { margin-left: auto; margin-right: auto; }
+.ml-3 { margin-left: 0.75rem; }
+.mr-3 { margin-right: 0.75rem; }
+.mr-4 { margin-right: 1rem; }
+.pr-4 { padding-right: 1rem; }
+
+[dir="rtl"] .ml-3 { margin-left: 0; margin-right: 0.75rem; }
+[dir="rtl"] .mr-3 { margin-right: 0; margin-left: 0.75rem; }
+[dir="rtl"] .mr-4 { margin-right: 0; margin-left: 1rem; }
+[dir="rtl"] .pr-4 { padding-right: 0; padding-left: 1rem; }
+
+/* Fix for negative margins */
+.-bottom-8 { bottom: -2rem; }
+.-top-8 { top: -2rem; }
+.-left-8 { left: -2rem; }
+.-right-8 { right: -2rem; }
+
+[dir="rtl"] .-left-8 { left: auto; right: -2rem; }
+[dir="rtl"] .-right-8 { right: auto; left: -2rem; }
+
+/* Fix for width and height specific */
+.w-14 { width: 3.5rem; }
+.h-14 { height: 3.5rem; }
+
+/* Fix for inline-block */
+.inline-block {
+    display: inline-block;
+}
+
+/* Fix for sm breakpoint */
+@media (min-width: 640px) {
+    .sm\:flex-row-reverse {
+        -webkit-box-orient: horizontal;
+        -webkit-box-direction: reverse;
+        -ms-flex-direction: row-reverse;
+        flex-direction: row-reverse;
+    }
+}
+
+/* Fix for lg breakpoint */
+@media (min-width: 1024px) {
+    .lg\:text-7xl {
+        font-size: 4.5rem;
+        line-height: 1;
+    }
+}
+
+/* Fix for flex-row-reverse */
+.flex-row-reverse {
+    -webkit-box-orient: horizontal;
+    -webkit-box-direction: reverse;
+    -ms-flex-direction: row-reverse;
+    flex-direction: row-reverse;
+}
+
+/* Fix for rotate transforms */
+.rotate-3 {
+    -webkit-transform: rotate(3deg);
+    -ms-transform: rotate(3deg);
+    transform: rotate(3deg);
+}
+
+.rotate-6 {
+    -webkit-transform: rotate(6deg);
+    -ms-transform: rotate(6deg);
+    transform: rotate(6deg);
+}
+
+.-rotate-6 {
+    -webkit-transform: rotate(-6deg);
+    -ms-transform: rotate(-6deg);
+    transform: rotate(-6deg);
+}
+
+.rotate-0 {
+    -webkit-transform: rotate(0deg);
+    -ms-transform: rotate(0deg);
+    transform: rotate(0deg);
+}
+
+.hover\:rotate-0:hover {
+    -webkit-transform: rotate(0deg);
+    -ms-transform: rotate(0deg);
+    transform: rotate(0deg);
+}
+
+/* Fix for object-cover */
+.object-cover {
+    object-fit: cover;
+    -o-object-fit: cover;
+}
+
+/* Fix for bg with opacity (using rgba directly) */
+.bg-earth-green\/10 {
+    background-color: rgba(16, 185, 129, 0.1);
+}
+
+.bg-ocean-blue\/10 {
+    background-color: rgba(59, 130, 246, 0.1);
+}
+
+.bg-digital-gold\/10 {
+    background-color: rgba(245, 158, 11, 0.1);
+}
+
+.bg-pure-white\/5 {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.bg-pure-white\/10 {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.bg-pure-white\/30 {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Fix for text colors with opacity */
+.text-earth-green {
+    color: #10b981;
+}
+
+.text-ocean-blue {
+    color: #3b82f6;
+}
+
+.text-digital-gold {
+    color: #f59e0b;
+}
+
+/* Fix for group hover */
+.group:hover .group-hover\:text-purple-700 {
+    color: #6B46C1;
+}
+

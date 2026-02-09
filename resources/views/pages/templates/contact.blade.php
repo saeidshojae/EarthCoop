@@ -1,0 +1,237 @@
+@extends('layouts.unified')
+
+@section('title', ($page->translated_meta_title ?? $page->translated_title) . ' - ' . config('app.name', 'EarthCoop'))
+<!-- Tailwind & Bootstrap CSS via Vite -->
+@vite(['resources/css/app.css', 'resources/js/app.js'])
+@push('styles')
+<style>
+    .contact-hero {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(59, 130, 246, 0.15) 100%);
+        border-radius: 1.75rem;
+        padding: 3rem 2rem;
+    }
+
+    .contact-hero::before,
+    .contact-hero::after {
+        content: '';
+        position: absolute;
+        width: 260px;
+        height: 260px;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.5;
+    }
+
+    .contact-hero::before {
+        top: -140px;
+        left: -100px;
+        background: rgba(16, 185, 129, 0.5);
+    }
+
+    .contact-hero::after {
+        bottom: -140px;
+        right: -60px;
+        background: rgba(37, 99, 235, 0.45);
+    }
+
+    .contact-info-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .contact-info-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
+    }
+
+    .contact-section {
+        background: var(--color-pure-white);
+        border-radius: 1.5rem;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.1);
+    }
+
+    .contact-form-group {
+        position: relative;
+    }
+
+    .contact-form-group input,
+    .contact-form-group textarea {
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .contact-form-group input:focus,
+    .contact-form-group textarea:focus {
+        border-color: var(--color-earth-green);
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+    }
+
+    .fade-in-section {
+        opacity: 0;
+        transform: translateY(26px);
+        transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .fade-in-section.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    @media (max-width: 768px) {
+        .contact-hero {
+            padding: 2.5rem 1.5rem;
+        }
+    }
+</style>
+@endpush
+
+@section('content')
+@php
+    $metaDescription = $page->translated_meta_description ?? __('navigation.footer_contact_description', []);
+@endphp
+
+<div class="bg-light-gray/70 py-12 md:py-16" style="background-color: var(--color-light-gray);">
+    <div class="container mx-auto px-5 md:px-10 max-w-6xl space-y-10">
+        <section class="contact-hero fade-in-section">
+            <div class="relative z-10 space-y-6 text-center md:text-right">
+                <h1 class="text-3xl md:text-5xl font-extrabold text-gentle-black font-vazirmatn leading-tight">
+                    {{ $page->translated_title }}
+                </h1>
+                <p class="text-lg md:text-xl text-slate-600 max-w-3xl mx-auto md:mx-0">
+                    {{ $metaDescription ?? 'برای هرگونه پرسش، پیشنهاد یا همراهی، با ما در ارتباط باشید.' }}
+                </p>
+                <div class="flex flex-wrap md:flex-nowrap gap-4 justify-center md:justify-start">
+                    <div class="contact-info-card bg-white rounded-2xl border border-slate-200 px-6 py-5 flex items-center gap-4 shadow-sm">
+                        <span class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-earth-green/10 text-earth-green text-xl">
+                            <i class="fas fa-phone"></i>
+                        </span>
+                        <div class="text-right">
+                            <p class="text-xs text-slate-500">تماس مستقیم</p>
+                            <p class="font-bold text-slate-700" dir="ltr">+98 21 1234 5678</p>
+                        </div>
+                    </div>
+                    <div class="contact-info-card bg-white rounded-2xl border border-slate-200 px-6 py-5 flex items-center gap-4 shadow-sm">
+                        <span class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-ocean-blue/10 text-ocean-blue text-xl">
+                            <i class="fas fa-envelope"></i>
+                        </span>
+                        <div class="text-right">
+                            <p class="text-xs text-slate-500">پشتیبانی ایمیلی</p>
+                            <a href="mailto:support@earthcoop.info" class="font-bold text-slate-700 hover:text-earth-green transition">support@earthcoop.info</a>
+                        </div>
+                    </div>
+                    <div class="contact-info-card bg-white rounded-2xl border border-slate-200 px-6 py-5 flex items-center gap-4 shadow-sm">
+                        <span class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-digital-gold/10 text-digital-gold text-xl">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </span>
+                        <div class="text-right">
+                            <p class="text-xs text-slate-500">دفتر مرکزی</p>
+                            <p class="font-bold text-slate-700">تهران، ایران</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-8 fade-in-section">
+            <div class="contact-section p-6 lg:col-span-2 space-y-6">
+                <h2 class="text-2xl font-extrabold text-gentle-black font-vazirmatn">پیام خود را برای ما ارسال کنید</h2>
+                <p class="text-slate-600">تیم ما تلاش می‌کند در کوتاه‌ترین زمان ممکن پاسخ‌گوی پیام شما باشد.</p>
+                @if(session('success'))
+                    <div class="alert alert-success mb-4">
+                        {{ session('success') }}
+                        @if(session('ticket_tracking'))
+                            &nbsp;شماره پیگیری: <strong>{{ session('ticket_tracking') }}</strong>
+                        @endif
+                    </div>
+                @endif
+
+                <form class="grid grid-cols-1 md:grid-cols-2 gap-5" action="{{ route('contact.store') }}" method="POST">
+                    @csrf
+                    <div class="contact-form-group md:col-span-1">
+                        <label for="name" class="block text-sm font-semibold text-slate-600 mb-2">نام و نام خانوادگی</label>
+                        <input type="text" id="name" name="name" class="w-full border border-slate-200 rounded-xl px-4 py-3" placeholder="نام خود را وارد کنید">
+                    </div>
+                    <div class="contact-form-group md:col-span-1">
+                        <label for="email" class="block text-sm font-semibold text-slate-600 mb-2">پست الکترونیک</label>
+                        <input type="email" id="email" name="email" class="w-full border border-slate-200 rounded-xl px-4 py-3" placeholder="example@email.com">
+                    </div>
+                    <div class="contact-form-group md:col-span-1">
+                        <label for="subject" class="block text-sm font-semibold text-slate-600 mb-2">موضوع</label>
+                        <input type="text" id="subject" name="subject" class="w-full border border-slate-200 rounded-xl px-4 py-3" placeholder="موضوع پیام" required>
+                    </div>
+                    <div class="contact-form-group md:col-span-1">
+                        <label for="phone" class="block text-sm font-semibold text-slate-600 mb-2">شماره تماس</label>
+                        <input type="text" id="phone" name="phone" class="w-full border border-slate-200 rounded-xl px-4 py-3" placeholder="شماره تماس شما">
+                    </div>
+                    <div class="contact-form-group md:col-span-2">
+                        <label for="message" class="block text-sm font-semibold text-slate-600 mb-2">متن پیام</label>
+                        <textarea id="message" name="message" rows="5" class="w-full border border-slate-200 rounded-xl px-4 py-3 resize-none" placeholder="پیام خود را بنویسید" required>{{ old('message') }}</textarea>
+                    </div>
+                    <div class="md:col-span-2 flex justify-end">
+                        <button type="submit" class="px-8 py-3 rounded-full bg-earth-green text-white font-semibold hover:bg-dark-green transition">
+                            ارسال پیام
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="contact-section p-6 space-y-6">
+                <h2 class="text-xl font-extrabold text-gentle-black font-vazirmatn">ساعات پاسخ‌گویی</h2>
+                <ul class="space-y-3 text-slate-600">
+                    <li class="flex items-start gap-3">
+                        <span class="w-10 h-10 rounded-full bg-earth-green/10 text-earth-green flex items-center justify-center text-lg">
+                            <i class="fas fa-clock"></i>
+                        </span>
+                        <div>
+                            <p class="font-semibold">شنبه تا چهارشنبه</p>
+                            <p class="text-sm">۹ صبح تا ۶ بعدازظهر</p>
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="w-10 h-10 rounded-full bg-ocean-blue/10 text-ocean-blue flex items-center justify-center text-lg">
+                            <i class="fas fa-headset"></i>
+                        </span>
+                        <div>
+                            <p class="font-semibold">پشتیبانی آنلاین</p>
+                            <p class="text-sm">همه روزه در دسترس</p>
+                        </div>
+                    </li>
+                </ul>
+
+                <div class="bg-light-gray/80 border border-slate-200 rounded-2xl p-5">
+                    <h3 class="font-bold text-gentle-black mb-2">پیگیری درخواست‌ها</h3>
+                    <p class="text-sm text-slate-600">
+                        پس از ارسال پیام، شناسه پیگیری برای شما ارسال می‌شود. از طریق همان ایمیل می‌توانید وضعیت پاسخ را دنبال کنید.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="contact-section p-8 fade-in-section">
+            <div class="prose prose-lg max-w-none text-right font-vazirmatn" style="direction: rtl; color: var(--color-gentle-black);">
+                {!! $page->translated_content !!}
+            </div>
+        </section>
+    </div>
+</div>
+@endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const sections = document.querySelectorAll('.fade-in-section');
+        const observer = new IntersectionObserver((entries, obs) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    obs.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.15 });
+
+        sections.forEach(section => observer.observe(section));
+    });
+</script>
+@endpush
+

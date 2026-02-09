@@ -1,0 +1,28 @@
+<?php
+
+return [
+    'language' => 'زبان',
+    'language_picker' => 'انتخاب زبان',
+    'language_fa' => 'فارسی',
+    'language_en' => 'English',
+    'language_ar' => 'العربية',
+    'theme_toggle' => 'تغییر حالت شب/روز',
+    'login' => 'ورود',
+    'register' => 'ثبت‌نام',
+    'profile' => 'پروفایل',
+    'charter' => 'اساسنامه',
+    'financial_agreement' => 'توافقنامه مالی',
+    'blog' => 'وبلاگ',
+    'stock_office' => 'دفتر سهام',
+    'auctions' => 'حراج‌های سهام',
+    'wallet' => 'کیف‌پول',
+    'holdings' => 'کیف‌سهام',
+    'stock_office_section' => 'دفتر سهام',
+    'logout' => 'خروج',
+    'admin_section' => 'مدیریت',
+    'admin_dashboard' => 'پنل مدیریت',
+    'admin_blog' => 'مدیریت وبلاگ',
+    'admin_portal' => 'ورود به پنل مدیریت',
+    'theme_toggle_short' => 'حالت شب/روز',
+    'language_current' => 'زبان فعلی',
+];

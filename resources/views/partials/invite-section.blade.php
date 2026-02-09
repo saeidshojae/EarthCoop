@@ -1,0 +1,22 @@
+<!-- Tailwind & Bootstrap CSS via Vite -->
+@vite(['resources/css/app.css', 'resources/js/app.js'])
+<!-- Invite & Earn Bahār Section - بخش جنبش را گسترش دهید، سکه‌های بهار کسب کنید! -->
+<section class="relative py-20 md:py-32 bg-gradient-to-br from-earth-green to-ocean-blue text-pure-white text-center fade-in-section">
+    <div class="absolute inset-0 bg-black/50 z-0"></div>
+    <div class="container mx-auto px-6 relative z-10">
+        <h2 class="text-4xl md:text-5xl lg:text-6xl font-extrabold font-vazirmatn mb-8 leading-tight animate-pulse">
+            {{ __('langWelcome.invite_title') }}
+        </h2>
+        <p class="text-xl md:text-2xl mb-12 max-w-4xl mx-auto font-vazirmatn opacity-90">
+            {{ __('langWelcome.invite_text') }}
+        </p>
+        <div class="flex flex-col sm:flex-row-reverse gap-6 justify-center">
+            <a href="#bahar" class="border-2 border-pure-white text-pure-white px-12 py-5 rounded-full shadow-xl hover:bg-pure-white hover:text-purple-700 group transition duration-300 font-vazirmatn text-xl font-medium flex items-center justify-center">
+                {{ __('langWelcome.invite_btn_learn') }} <i class="fas fa-coins mr-3 group-hover:text-purple-700 transition-colors duration-300"></i>
+            </a>
+            <a href="{{ route('invite') }}" class="bg-digital-gold text-pure-white px-12 py-5 rounded-full shadow-2xl hover:bg-opacity-90 hover:scale-105 transition duration-300 font-vazirmatn text-xl font-bold animate-glow flex items-center justify-center">
+                    {{ __('langWelcome.invite_btn_send') }} <i class="fas fa-paper-plane mr-3"></i>
+            </a>
+        </div>
+    </div>
+</section>

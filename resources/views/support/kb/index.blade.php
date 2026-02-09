@@ -1,0 +1,203 @@
+@extends('layouts.unified')
+
+@section('title', 'پایگاه دانش پشتیبانی')
+<!-- Tailwind & Bootstrap CSS via Vite -->
+@vite(['resources/css/app.css', 'resources/js/app.js'])
+@section('content')
+<div class="flex" dir="rtl">
+    @include('partials.sidebar-unified')
+
+    <div class="flex-1 min-h-screen bg-[var(--color-soft-warm)] dark:bg-slate-900 p-6">
+        <div class="max-w-5xl mx-auto space-y-6">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-md p-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <p class="text-sm text-slate-400">پشتیبانی سریع‌تر</p>
+                        <h1 class="text-2xl font-bold text-slate-900 dark:text-white">پایگاه دانش</h1>
+                    </div>
+                    <a href="{{ route('user.tickets.create') }}"
+                       class="inline-flex items-center px-5 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold shadow-sm ring-1 ring-emerald-700/20 hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition">
+                        <i class="fas fa-headset ml-2"></i>
+                        ایجاد تیکت جدید
+                    </a>
+                </div>
+                <form method="GET" class="mt-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="col-span-2">
+                            <label class="text-xs text-slate-500">جستجو در مقالات</label>
+                            <input type="search" name="q" value="{{ request('q') }}" placeholder="کلیدواژه، خطا، موضوع..."
+                                   class="mt-1 w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500">دسته‌بندی</label>
+                            <select name="category" class="mt-1 w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                                <option value="">همه</option>
+                                @foreach($categoryOptions as $category)
+                                    <option value="{{ $category->id }}" @selected((string)request('category') === (string)$category->id)>{{ $category->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-3 mt-4">
+                        <button class="inline-flex items-center px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold shadow-sm ring-1 ring-emerald-700/20 hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition">
+                            <i class="fas fa-search ml-2"></i>
+                            جستجو
+                        </button>
+                        <a href="{{ route('support.kb.index') }}" class="text-sm text-slate-500 hover:text-slate-900 dark:hover:text-white">پاک کردن فیلترها</a>
+                    </div>
+                </form>
+            </div>
+
+            @php
+                $hasFilters = request()->filled('category') || request()->filled('tag') || request()->filled('q');
+            @endphp
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {{-- Articles --}}
+                <div id="articles"
+                     class="bg-white dark:bg-slate-800 rounded-2xl shadow border border-slate-100 dark:border-slate-700 p-6 scroll-mt-24 {{ $hasFilters ? 'order-1' : 'order-2' }} lg:order-2 lg:col-span-8">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-xl font-bold text-slate-900 dark:text-white">لیست مقالات</h2>
+                            @if($selectedCategory)
+                                <span class="text-xs px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                    {{ $selectedCategory->name }}
+                                </span>
+                            @endif
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            @foreach($tags as $tag)
+                                <a href="{{ route('support.kb.index', array_filter([
+                                    'category' => request('category'),
+                                    'q' => request('q'),
+                                    'tag' => $tag->id,
+                                ])) }}#articles"
+                                   class="px-3 py-1 rounded-full text-xs font-semibold"
+                                   style="background-color: {{ $tag->color ?? 'rgba(14,165,233,0.1)' }}; color: #0f172a;">
+                                    {{ $tag->name }}
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div class="divide-y divide-slate-100 dark:divide-slate-700">
+                        @forelse($articles as $article)
+                            <a href="{{ route('support.kb.show', $article->slug) }}"
+                               class="flex flex-col gap-2 py-4 hover:bg-slate-50 dark:hover:bg-slate-700/40 rounded-xl px-2 transition">
+                                <div class="flex items-center gap-3">
+                                    <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-xs text-slate-600 dark:text-slate-300">{{ $article->category?->name }}</span>
+                                    @if($article->is_featured)
+                                        <span class="px-2 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">ویژه</span>
+                                    @endif
+                                </div>
+                                <h3 class="text-lg font-bold text-slate-900 dark:text-white">{{ $article->title }}</h3>
+                                <p class="text-sm text-slate-500 line-clamp-2">{{ $article->excerpt }}</p>
+                                <div class="text-xs text-slate-400 flex items-center gap-3">
+                                    <span><i class="far fa-clock ml-1"></i>{{ optional($article->published_at)->format('Y/m/d') }}</span>
+                                    <span><i class="far fa-eye ml-1"></i>{{ number_format($article->view_count) }} بازدید</span>
+                                </div>
+                            </a>
+                        @empty
+                            <div class="py-6 text-center text-slate-500">مقاله‌ای یافت نشد.</div>
+                        @endforelse
+                    </div>
+
+                    <div class="mt-4">
+                        {{ $articles->links() }}
+                    </div>
+                </div>
+
+                {{-- Categories --}}
+                <div class="{{ $hasFilters ? 'order-2' : 'order-1' }} lg:order-1 lg:col-span-4">
+                    <div class="lg:sticky lg:top-6 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-lg font-bold text-slate-900 dark:text-white">دسته‌بندی‌ها</h2>
+                            @if($hasFilters)
+                                <a href="{{ route('support.kb.index') }}" class="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white">پاک کردن فیلترها</a>
+                            @endif
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                            @foreach($categories as $category)
+                                @php
+                                    // با کلیک روی دسته، فیلترهای قبلی (q/tag/page) پاک شوند تا نتایج خالی/ناقص نشود
+                                    $parentHref = route('support.kb.index', ['category' => $category->id]) . '#articles';
+                                @endphp
+                                <div role="button" tabindex="0"
+                                     data-href="{{ $parentHref }}"
+                                     class="js-kb-cat-card group cursor-pointer bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-5 shadow-sm hover:shadow-md hover:border-[var(--color-teal)] transition">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-12 h-12 rounded-xl bg-[var(--color-soft-sky)] text-[var(--color-soft-navy)] flex items-center justify-center text-xl group-hover:scale-105 transition">
+                                            <i class="{{ $category->icon ?? 'fas fa-book' }}"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-lg font-bold text-slate-900 dark:text-white">{{ $category->name }}</h3>
+                                            <p class="text-sm text-slate-500">{{ $category->description }}</p>
+                                        </div>
+                                    </div>
+                                    @if($category->children->count())
+                                        <div class="mt-4">
+                                            <div class="text-xs text-slate-400 mb-2">زیرمجموعه‌ها:</div>
+                                            <div class="flex flex-wrap gap-2">
+                                                @foreach($category->children as $child)
+                                                    <a href="{{ route('support.kb.index', ['category' => $child->id]) }}#articles"
+                                                       class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-xs text-slate-600 dark:text-slate-300 hover:bg-[var(--color-soft-sky)] hover:text-[var(--color-soft-navy)] transition">
+                                                        {{ $child->name }}
+                                                    </a>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
+                                    <div class="mt-4 text-xs text-slate-400">
+                                        <i class="fas fa-arrow-left ml-1"></i>
+                                        مشاهده مقالات این دسته
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // کلیک روی کارت‌های دسته‌بندی (بدون لینک تو در تو)
+    document.querySelectorAll('.js-kb-cat-card[data-href]').forEach(card => {
+        const go = () => window.location.assign(card.dataset.href);
+
+        card.addEventListener('click', (e) => {
+            // اگر روی یک لینک داخلی (مثل زیرمجموعه‌ها) کلیک شد، همون لینک کار خودش رو بکنه
+            if (e.target && e.target.closest('a')) return;
+            go();
+        });
+
+        card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                go();
+            }
+        });
+    });
+
+    // UX موبایل: اگر فیلتر/هش داریم، خودکار به لیست مقالات برو
+    const hasHash = window.location.hash === '#articles';
+    const params = new URLSearchParams(window.location.search);
+    const hasFilters = params.has('category') || params.has('tag') || params.has('q');
+    const isMobile = window.innerWidth < 1024; // < lg
+
+    if (hasHash || (hasFilters && isMobile)) {
+        const el = document.getElementById('articles');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+});
+</script>
+@endpush
+@endsection
+
+
+
+

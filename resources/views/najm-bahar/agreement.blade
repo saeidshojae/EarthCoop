@@ -1,0 +1,99 @@
+@extends('layouts.app')
+
+@section('title', 'توافقنامه نجم بهار')
+
+@section('content')
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-4xl mx-auto">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">سیستم مالی نجم بهار</h1>
+                <p class="text-gray-600">برای استفاده از خدمات مالی نجم بهار، لطفاً توافقنامه زیر را مطالعه و تایید کنید</p>
+            </div>
+
+            @if(session('success'))
+                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            @if(session('error'))
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+                    {{ session('error') }}
+                </div>
+            @endif
+
+            @if($errors->any())
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+                    <ul class="list-disc list-inside">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <div class="bg-gray-50 rounded-lg p-6 mb-8 max-h-96 overflow-y-auto">
+                @if($agreements->count() > 0)
+                    @foreach($agreements as $agreement)
+                        <div class="mb-6">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-3">{{ $agreement->title }}</h3>
+                            <div class="text-gray-700 leading-relaxed mb-4">
+                                {!! nl2br(e($agreement->content)) !!}
+                            </div>
+                            
+                            @if($agreement->children->count() > 0)
+                                <div class="mr-4">
+                                    @foreach($agreement->children as $child)
+                                        <div class="mb-4">
+                                            <h4 class="text-lg font-medium text-gray-700 mb-2">{{ $child->title }}</h4>
+                                            <div class="text-gray-600 leading-relaxed">
+                                                {!! nl2br(e($child->content)) !!}
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                @else
+                    <div class="text-center text-gray-600">
+                        <p>توافقنامه در حال بارگذاری است...</p>
+                    </div>
+                @endif
+            </div>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h4 class="font-semibold text-blue-800 mb-2">خلاصه عملیات مالی:</h4>
+                <ul class="text-blue-700 text-sm space-y-1">
+                    <li>• واریز اولیه: 10,000 بهار</li>
+                    <li>• کسر حق عضویت سالانه: 12 بهار</li>
+                    <li>• موجودی نهایی: 9,988 بهار</li>
+                    <li>• پاداش معرف (در صورت وجود): 10 بهار</li>
+                </ul>
+            </div>
+
+            <form method="POST" action="{{ route('najm.confirm') }}" class="text-center">
+                @csrf
+                <div class="mb-6">
+                    <label class="inline-flex items-center">
+                        <input type="checkbox" name="agreement_accepted" value="1" class="form-checkbox h-5 w-5 text-blue-600" required>
+                        <span class="mr-2 text-gray-700">
+                            توافقنامه نجم بهار را مطالعه کردم و با تمام شرایط آن موافقم
+                        </span>
+                    </label>
+                </div>
+
+                <div class="flex justify-center space-x-4 space-x-reverse">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition duration-200">
+                        تایید و ایجاد حساب نجم بهار
+                    </button>
+                    <a href="{{ route('home') }}" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-lg transition duration-200">
+                        بازگشت به داشبورد
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endsection

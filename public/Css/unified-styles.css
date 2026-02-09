@@ -1,0 +1,344 @@
+/**
+ * Unified Styles - بر اساس طراحی صفحه Home
+ * این فایل شامل تمام استایل‌های یکپارچه برای تمام صفحات است
+ */
+
+/* ==================== CSS Variables ==================== */
+:root {
+    --color-earth-green: #10b981;
+    --color-ocean-blue: #3b82f6;
+    --color-digital-gold: #f59e0b;
+    --color-pure-white: #ffffff;
+    --color-light-gray: #f8fafc;
+    --color-gentle-black: #1e293b;
+    --color-dark-green: #047857;
+    --color-dark-blue: #1d4ed8;
+    --color-red-tomato: #FF6347;
+}
+
+/* ==================== Font Setup ==================== */
+* {
+    font-family: 'Vazirmatn', 'Poppins', sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #f5f7fa 0%, #e8f5e9 100%);
+    min-height: 100vh;
+}
+
+/* ==================== Animations ==================== */
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes bounce-custom {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .7; }
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.logo-animated {
+    animation: bounce-custom 3s infinite ease-in-out;
+}
+
+.badge-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.blinking-item {
+    animation: blink 2s ease-in-out infinite;
+}
+
+.sidebar-menu-link.blinking-item {
+    animation: blink 2s ease-in-out infinite !important;
+}
+
+/* ==================== Ripple Effect ==================== */
+.ripple {
+    position: relative;
+    overflow: hidden;
+}
+
+.ripple::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.ripple:active::after {
+    width: 300px;
+    height: 300px;
+}
+
+/* ==================== Scrollbar ==================== */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #10b981;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #059669;
+}
+
+/* User Dropdown Scrollbar */
+[x-data*="userDropdownOpen"] > div::-webkit-scrollbar {
+    width: 6px;
+}
+
+[x-data*="userDropdownOpen"] > div::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 3px;
+}
+
+[x-data*="userDropdownOpen"] > div::-webkit-scrollbar-thumb {
+    background: #10b981;
+    border-radius: 3px;
+}
+
+[x-data*="userDropdownOpen"] > div::-webkit-scrollbar-thumb:hover {
+    background: #059669;
+}
+
+/* ==================== Dark Mode Support ==================== */
+body.dark-mode {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+}
+
+body.dark-mode .bg-pure-white {
+    background-color: #2d2d2d !important;
+}
+
+body.dark-mode .text-gentle-black {
+    color: #e0e0e0 !important;
+}
+
+body.dark-mode header {
+    background-color: #2d2d2d !important;
+    border-bottom: 1px solid #404040;
+}
+
+/* ==================== Header Navigation Improvements ==================== */
+/* Better spacing and alignment for multilingual navigation */
+header nav a {
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Global link reset to remove default underlines */
+body a {
+    text-decoration: none;
+}
+
+body a:hover {
+    text-decoration: none;
+}
+
+/* RTL/LTR specific adjustments */
+[dir="rtl"] header nav {
+    direction: rtl;
+}
+
+[dir="ltr"] header nav {
+    direction: ltr;
+}
+
+/* Responsive gap adjustments for different languages */
+@media (max-width: 1024px) {
+    header nav {
+        gap: 0.5rem !important;
+    }
+}
+
+/* Ensure navigation items don't wrap awkwardly */
+header nav {
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Better spacing for Arabic text */
+[dir="rtl"] header nav a {
+    font-size: 0.95rem;
+    padding: 0 0.25rem;
+}
+
+/* Improve alignment for different text lengths */
+header .container {
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+@media (min-width: 768px) {
+    header .container {
+        flex-wrap: nowrap;
+    }
+}
+
+/* ==================== Sidebar Styles ==================== */
+.sidebar-menu-item {
+    list-style: none;
+}
+
+.sidebar-menu-link {
+    position: relative;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.sidebar-menu-link:hover {
+    background-color: var(--color-light-gray);
+    color: var(--color-earth-green);
+    transform: translateX(-5px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Sidebar animations */
+.sidebar-menu-item:nth-child(1) .sidebar-menu-link { animation: fadeInUp 0.6s ease-out 0.1s both; }
+.sidebar-menu-item:nth-child(2) .sidebar-menu-link { animation: fadeInUp 0.6s ease-out 0.2s both; }
+.sidebar-menu-item:nth-child(3) .sidebar-menu-link { animation: fadeInUp 0.6s ease-out 0.3s both; }
+.sidebar-menu-item:nth-child(4) .sidebar-menu-link { animation: fadeInUp 0.6s ease-out 0.4s both; }
+.sidebar-menu-item:nth-child(5) .sidebar-menu-link { animation: fadeInUp 0.6s ease-out 0.5s both; }
+.sidebar-menu-item:nth-child(6) .sidebar-menu-link { animation: fadeInUp 0.6s ease-out 0.6s both; }
+.sidebar-menu-item:nth-child(7) .sidebar-menu-link { animation: fadeInUp 0.6s ease-out 0.7s both; }
+.sidebar-menu-item:nth-child(8) .sidebar-menu-link { animation: fadeInUp 0.6s ease-out 0.8s both; }
+.sidebar-menu-item:nth-child(9) .sidebar-menu-link { animation: fadeInUp 0.6s ease-out 0.9s both; }
+.sidebar-menu-item:nth-child(10) .sidebar-menu-link { animation: fadeInUp 0.6s ease-out 1s both; }
+
+/* Dark Mode Support for Sidebar */
+body.dark-mode aside {
+    background-color: #2d2d2d !important;
+    border-color: #404040 !important;
+}
+
+body.dark-mode .sidebar-menu-link {
+    color: #e0e0e0 !important;
+}
+
+body.dark-mode .sidebar-menu-link:hover {
+    background-color: #3a3a3a !important;
+    color: var(--color-earth-green) !important;
+}
+
+body.dark-mode .sidebar-menu-link span {
+    color: #e0e0e0 !important;
+}
+
+/* ==================== Theme Toggle Styles ==================== */
+.theme-toggle {
+    position: relative;
+    width: 50px;
+    height: 26px;
+    background-color: #e5e7eb;
+    border-radius: 34px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.theme-toggle.dark {
+    background-color: #5eb8ad;
+}
+
+.theme-toggle-slider {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.3s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.theme-toggle.dark .theme-toggle-slider {
+    transform: translateX(24px);
+}
+
+.theme-toggle-icon {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+
+.theme-toggle-icon.sun {
+    left: 6px;
+    opacity: 1;
+}
+
+.theme-toggle-icon.moon {
+    right: 6px;
+    opacity: 0.3;
+}
+
+.theme-toggle.dark .theme-toggle-icon.sun {
+    opacity: 0.3;
+}
+
+.theme-toggle.dark .theme-toggle-icon.moon {
+    opacity: 1;
+}
+
+/* Dark Mode Support for Theme Toggle */
+body.dark-mode .theme-toggle {
+    background-color: #4b5563;
+}
+
+body.dark-mode .theme-toggle.dark {
+    background-color: #5eb8ad;
+}
+
+/* ==================== Utility Classes ==================== */
+.bg-earth-green { background-color: var(--color-earth-green); }
+.text-earth-green { color: var(--color-earth-green); }
+.bg-ocean-blue { background-color: var(--color-ocean-blue); }
+.text-ocean-blue { color: var(--color-ocean-blue); }
+.bg-digital-gold { background-color: var(--color-digital-gold); }
+.text-digital-gold { color: var(--color-digital-gold); }
+.bg-pure-white { background-color: var(--color-pure-white); }
+.text-pure-white { color: var(--color-pure-white); }
+.bg-light-gray { background-color: var(--color-light-gray); }
+.text-light-gray { color: var(--color-light-gray); }
+.bg-gentle-black { background-color: var(--color-gentle-black); }
+.text-gentle-black { color: var(--color-gentle-black); }
+

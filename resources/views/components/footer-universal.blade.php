@@ -1,0 +1,195 @@
+{{-- 
+    Universal Footer Component
+    فوتر یکپارچه برای تمام صفحات
+--}}
+
+<style>
+    .footer-universal {
+        background: linear-gradient(135deg, var(--color-gentle-black) 0%, #2d3748 100%);
+        color: var(--color-pure-white);
+        padding: 3rem 0 1rem;
+        margin-top: auto;
+    }
+    
+    body.dark-mode .footer-universal {
+        background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+    }
+    
+    .footer-universal a {
+        color: rgba(255, 255, 255, 0.8);
+        transition: color 0.3s ease;
+    }
+    
+    .footer-universal a:hover {
+        color: var(--color-earth-green);
+        text-decoration: none;
+    }
+    
+    .footer-social-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+    }
+    
+    .footer-social-icon:hover {
+        background: var(--color-earth-green);
+        transform: translateY(-3px);
+    }
+    
+    .footer-divider {
+        height: 1px;
+        background: rgba(255, 255, 255, 0.1);
+        margin: 2rem 0 1rem;
+    }
+</style>
+
+<footer class="footer-universal">
+    <div class="container mx-auto px-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+            {{-- Column 1: About --}}
+            <div>
+                <div class="flex items-center gap-2 mb-4">
+                    <img src="{{ asset('images/logo.png') }}" alt="Logo" class="h-10" style="filter: brightness(0) invert(1);">
+                    <span class="text-xl font-bold">EarthCoop</span>
+                </div>
+                <p class="text-sm text-gray-300 mb-4">
+                    {{ __('footer.about_text') ?? 'پلتفرم تعاونی جهانی برای ساخت آینده‌ای پایدار و عادلانه' }}
+                </p>
+                <div class="flex gap-3">
+                    <a href="https://t.me/earthcoop" target="_blank" class="footer-social-icon">
+                        <i class="fab fa-telegram"></i>
+                    </a>
+                    <a href="https://instagram.com/earthcoop" target="_blank" class="footer-social-icon">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="https://twitter.com/earthcoop" target="_blank" class="footer-social-icon">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                </div>
+            </div>
+            
+            {{-- Column 2: Quick Links --}}
+            <div>
+                <h3 class="text-lg font-bold mb-4 text-white">{{ __('footer.quick_links') ?? 'دسترسی سریع' }}</h3>
+                <ul class="space-y-2">
+                    <li>
+                        <a href="{{ route('welcome') }}" class="text-sm hover:text-earth-green transition">
+                            <i class="fas fa-chevron-left me-2 text-xs"></i>{{ __('footer.home') ?? 'صفحه اصلی' }}
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('blog.index') }}" class="text-sm hover:text-earth-green transition">
+                            <i class="fas fa-chevron-left me-2 text-xs"></i>{{ __('footer.blog') ?? 'بلاگ' }}
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('terms') }}" class="text-sm hover:text-earth-green transition">
+                            <i class="fas fa-chevron-left me-2 text-xs"></i>{{ __('footer.charter') ?? 'اساسنامه' }}
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('pages.show', 'faq') }}" class="text-sm hover:text-earth-green transition">
+                            <i class="fas fa-chevron-left me-2 text-xs"></i>{{ __('footer.faq') ?? 'سوالات متداول' }}
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('pages.show', 'contact') }}" class="text-sm hover:text-earth-green transition">
+                            <i class="fas fa-chevron-left me-2 text-xs"></i>{{ __('navigation.footer_contact') ?? 'تماس با ما' }}
+                        </a>
+                    </li>
+                    @if(auth()->check())
+                        <li>
+                            <a href="{{ route('auction.index') }}" class="text-sm hover:text-earth-green transition">
+                                <i class="fas fa-chevron-left me-2 text-xs"></i>{{ __('footer.stock_office') ?? 'دفتر سهام' }}
+                            </a>
+                        </li>
+                    @endif
+                </ul>
+            </div>
+            
+            {{-- Column 3: Resources --}}
+            <div>
+                <h3 class="text-lg font-bold mb-4 text-white">{{ __('footer.resources') ?? 'منابع' }}</h3>
+                <ul class="space-y-2">
+                    @foreach(\App\Models\Page::where('is_published', 1)->limit(5)->get() as $page)
+                        <li>
+                            <a href="{{ url('/pages/' . $page->slug) }}" class="text-sm hover:text-earth-green transition">
+                                <i class="fas fa-chevron-left me-2 text-xs"></i>{{ $page->title }}
+                            </a>
+                        </li>
+                    @endforeach
+                    @if(auth()->check() && auth()->user()->is_admin == 1)
+                        <li>
+                            <a href="{{ route('admin.dashboard') }}" class="text-sm hover:text-ocean-blue transition">
+                                <i class="fas fa-shield-alt me-2 text-xs"></i>{{ __('footer.admin_panel') ?? 'پنل مدیریت' }}
+                            </a>
+                        </li>
+                    @endif
+                </ul>
+            </div>
+            
+            {{-- Column 4: Contact --}}
+            <div>
+                <h3 class="text-lg font-bold mb-4 text-white">{{ __('footer.contact') ?? 'تماس با ما' }}</h3>
+                <ul class="space-y-3">
+                    <li class="text-sm flex items-start gap-2">
+                        <i class="fas fa-envelope text-earth-green mt-1"></i>
+                        <a href="mailto:info@earthcoop.org" class="hover:text-earth-green transition">
+                            info@earthcoop.org
+                        </a>
+                    </li>
+                    <li class="text-sm flex items-start gap-2">
+                        <i class="fas fa-phone text-earth-green mt-1"></i>
+                        <span>+98 21 1234 5678</span>
+                    </li>
+                    <li class="text-sm flex items-start gap-2">
+                        <i class="fas fa-map-marker-alt text-earth-green mt-1"></i>
+                        <span>{{ __('footer.address') ?? 'تهران، ایران' }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        {{-- Divider --}}
+        <div class="footer-divider"></div>
+        
+        {{-- Bottom Bar --}}
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-400">
+            <div>
+                <p>
+                    &copy; {{ date('Y') }} <span class="text-earth-green font-medium">EarthCoop</span>. 
+                    {{ __('footer.rights_reserved') ?? 'تمامی حقوق محفوظ است' }}.
+                </p>
+            </div>
+            <div class="flex gap-4">
+                <a href="{{ route('terms') }}" class="hover:text-earth-green transition">
+                    {{ __('footer.terms') ?? 'شرایط و قوانین' }}
+                </a>
+                <span>|</span>
+                <a href="#" class="hover:text-earth-green transition">
+                    {{ __('footer.privacy') ?? 'حریم خصوصی' }}
+                </a>
+                <span>|</span>
+                <a href="{{ route('pages.show', 'contact') }}" class="hover:text-earth-green transition">
+                    {{ __('navigation.footer_contact') ?? 'تماس با ما' }}
+                </a>
+                <span>|</span>
+                <a href="{{ route('pages.show', 'faq') }}" class="hover:text-earth-green transition">
+                    {{ __('footer.faq') ?? 'سوالات متداول' }}
+                </a>
+            </div>
+        </div>
+        
+        {{-- Version Info (Optional - for development) --}}
+        @if(config('app.debug'))
+            <div class="mt-4 text-center text-xs text-gray-500">
+                Version: {{ config('app.version', '1.0.0') }} | Environment: {{ config('app.env') }}
+            </div>
+        @endif
+    </div>
+</footer>

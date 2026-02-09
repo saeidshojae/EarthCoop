@@ -1,0 +1,125 @@
+/* RTL/LTR Language Support Styles */
+
+/* LTR Specific Styles */
+[dir="ltr"] {
+    text-align: left;
+}
+
+[dir="ltr"] .text-end {
+    text-align: right !important;
+}
+
+[dir="ltr"] .text-start {
+    text-align: left !important;
+}
+
+[dir="ltr"] .me-2 {
+    margin-right: 0.5rem !important;
+    margin-left: 0 !important;
+}
+
+[dir="ltr"] .ms-2 {
+    margin-left: 0.5rem !important;
+    margin-right: 0 !important;
+}
+
+[dir="ltr"] .me-auto {
+    margin-right: auto !important;
+    margin-left: 0 !important;
+}
+
+[dir="ltr"] .ms-auto {
+    margin-left: auto !important;
+    margin-right: 0 !important;
+}
+
+[dir="ltr"] .dropdown-menu {
+    text-align: left;
+}
+
+[dir="ltr"] .navbar-nav {
+    flex-direction: row;
+}
+
+/* RTL Specific Styles */
+[dir="rtl"] {
+    text-align: right;
+}
+
+[dir="rtl"] .text-end {
+    text-align: left !important;
+}
+
+[dir="rtl"] .text-start {
+    text-align: right !important;
+}
+
+[dir="rtl"] .me-2 {
+    margin-left: 0.5rem !important;
+    margin-right: 0 !important;
+}
+
+[dir="rtl"] .ms-2 {
+    margin-right: 0.5rem !important;
+    margin-left: 0 !important;
+}
+
+[dir="rtl"] .dropdown-menu {
+    text-align: right;
+}
+
+/* Language Switcher Styles */
+.language-switcher {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.language-switcher a {
+    text-decoration: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    transition: background-color 0.2s;
+}
+
+.language-switcher a:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.language-switcher a.active {
+    background-color: rgba(255, 255, 255, 0.2);
+    font-weight: bold;
+}
+
+/* Smooth transitions for direction changes */
+body {
+    transition: direction 0.3s ease;
+}
+
+/* Fix for Bootstrap RTL issues */
+[dir="rtl"] .dropdown-menu-end {
+    right: 0 !important;
+    left: auto !important;
+}
+
+[dir="ltr"] .dropdown-menu-end {
+    right: auto !important;
+    left: 0 !important;
+}
+
+/* Alert and Modal RTL/LTR fixes */
+[dir="ltr"] .alert {
+    text-align: left;
+}
+
+[dir="rtl"] .alert {
+    text-align: right;
+}
+
+[dir="ltr"] .modal-header .btn-close {
+    margin: -0.5rem -0.5rem -0.5rem auto;
+}
+
+[dir="rtl"] .modal-header .btn-close {
+    margin: -0.5rem auto -0.5rem -0.5rem;
+}

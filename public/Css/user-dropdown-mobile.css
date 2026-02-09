@@ -1,0 +1,72 @@
+/* User Dropdown Mobile Styles - دایره‌ای کردن کلید در موبایل */
+
+@media (max-width: 768px) {
+    /* کلید کاربر را دایره‌ای می‌کنیم */
+    .user-dropdown-btn {
+        width: 45px !important;
+        height: 45px !important;
+        padding: 0 !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+    }
+    
+    /* مخفی کردن نام کاربری و آیکن dropdown در موبایل */
+    .user-dropdown-btn span,
+    .user-dropdown-btn .fa-chevron-down {
+        display: none !important;
+    }
+    
+    /* تنظیم اندازه عکس پروفایل در موبایل */
+    .user-dropdown-btn .user-avatar-img {
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: 50% !important;
+        object-fit: cover !important;
+        margin: 0 !important;
+        border: 2px solid rgba(255, 255, 255, 0.3) !important;
+    }
+    
+    /* تنظیم اندازه آیکن کاربر در موبایل */
+    .user-dropdown-btn .user-avatar-icon {
+        width: 100% !important;
+        height: 100% !important;
+        margin: 0 !important;
+        font-size: 1.25rem !important;
+    }
+}
+
+/* اطمینان از تراز بودن با لوگو و منوی همبرگر */
+@media (max-width: 768px) {
+    header .container > div:first-child,
+    header .container > div:last-child {
+        display: flex;
+        align-items: center;
+    }
+    
+    /* منوی همبرگر */
+    header button[class*="md:hidden"] {
+        width: 45px;
+        height: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    /* لوگو */
+    header .flex.items-center a[href*="home"],
+    header .flex.items-center a[href*="welcome"] {
+        display: flex;
+        align-items: center;
+    }
+    
+    header .flex.items-center svg {
+        width: 45px;
+        height: 45px;
+        flex-shrink: 0;
+    }
+}
+

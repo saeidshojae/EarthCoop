@@ -1,0 +1,38 @@
+# Laravel default
+/vendor/
+/node_modules/
+/public/storage
+/storage/*.key
+.env
+.env.*
+Homestead.yaml
+Homestead.json
+.phpunit.result.cache
+/storage/logs/
+/storage/framework/cache/
+/storage/framework/sessions/
+/storage/framework/testing/
+/storage/framework/views/
+/bootstrap/cache/
+/public/build/
+/public/hot
+/public/mix-manifest.json
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# MacOS archive metadata
+/__MACOSX/
+
+# User-uploaded media (keep repo small)
+/public/uploads/
+/public/images/blogs/
+/public/images/users/
+/public/images/groups/
+/public/images/sliders/
+/public/images/fingers/
+/public/images/pages/
+
+# Web server logs
+/public/error_log

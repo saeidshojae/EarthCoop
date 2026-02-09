@@ -1,0 +1,462 @@
+/**
+ * ========================================
+ * New Earth Coop - Design System
+ * سیستم طراحی یکپارچه برای تمام صفحات
+ * ========================================
+ * این فایل شامل تمام متغیرهای رنگی، فونت‌ها و استایل‌های مشترک است
+ * که در تمام صفحات سایت استفاده می‌شود
+ */
+
+/* ==================== رنگ‌های اصلی ==================== */
+:root {
+    /* رنگ‌های اصلی برند */
+    --color-earth-green: #10b981;
+    --color-ocean-blue: #3b82f6;
+    --color-digital-gold: #f59e0b;
+    --color-pure-white: #ffffff;
+    --color-light-gray: #f8fafc;
+    --color-gentle-black: #1e293b;
+    
+    /* رنگ‌های تیره‌تر */
+    --color-dark-green: #047857;
+    --color-dark-blue: #1d4ed8;
+    
+    /* رنگ‌های تأکیدی */
+    --color-accent-peach: #ff7e5f;
+    --color-accent-sky: #6dd5ed;
+    --color-purple-700: #6B46C1;
+    --color-red-tomato: #FF6347;
+    
+    /* رنگ‌های سیستمی قدیمی (برای سازگاری با Bootstrap) */
+    --color-primary: #459f96;
+    --color-primary-light: #37c4b4;
+    --color-primary-dark: #2c6962;
+    
+    /* رنگ‌های پس‌زمینه */
+    --bg-light: #ffffff;
+    --bg-dark: #1a1a1a;
+    --bg-gradient-light: linear-gradient(135deg, #f5f7fa 0%, #e8f5e9 100%);
+    --bg-gradient-dark: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    
+    /* رنگ‌های متن */
+    --text-light: #333333;
+    --text-dark: #e0e0e0;
+    --text-muted-light: #6b7280;
+    --text-muted-dark: #9ca3af;
+    
+    /* رنگ‌های کارت و باکس */
+    --card-light: #ffffff;
+    --card-dark: #2d2d2d;
+    --border-light: #dee2e6;
+    --border-dark: #404040;
+    
+    /* رنگ‌های Navbar */
+    --navbar-light: #459f96;
+    --navbar-dark: #2c6962;
+    
+    /* رنگ‌های Sidebar */
+    --sidebar-light: #ffffff;
+    --sidebar-dark: #252525;
+    
+    /* رنگ‌های Hover */
+    --hover-light: #f8f9fa;
+    --hover-dark: #3a3a3a;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    
+    /* Border Radius */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-full: 9999px;
+    
+    /* Spacing */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+    
+    /* Transitions */
+    --transition-fast: 150ms ease-in-out;
+    --transition-base: 300ms ease-in-out;
+    --transition-slow: 500ms ease-in-out;
+}
+
+/* ==================== فونت‌ها ==================== */
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800;900&family=Poppins:wght@300;400;500;600;700&display=swap');
+
+.font-vazirmatn {
+    font-family: 'Vazirmatn', sans-serif;
+}
+
+.font-poppins {
+    font-family: 'Poppins', sans-serif;
+}
+
+/* تنظیم فونت پیش‌فرض */
+body {
+    font-family: 'Vazirmatn', 'Poppins', sans-serif;
+}
+
+/* ==================== Utility Classes - رنگ‌ها ==================== */
+
+/* پس‌زمینه */
+.bg-earth-green { background-color: var(--color-earth-green) !important; }
+.bg-ocean-blue { background-color: var(--color-ocean-blue) !important; }
+.bg-digital-gold { background-color: var(--color-digital-gold) !important; }
+.bg-pure-white { background-color: var(--color-pure-white) !important; }
+.bg-light-gray { background-color: var(--color-light-gray) !important; }
+.bg-gentle-black { background-color: var(--color-gentle-black) !important; }
+.bg-dark-green { background-color: var(--color-dark-green) !important; }
+.bg-dark-blue { background-color: var(--color-dark-blue) !important; }
+.bg-accent-peach { background-color: var(--color-accent-peach) !important; }
+.bg-accent-sky { background-color: var(--color-accent-sky) !important; }
+
+/* متن */
+.text-earth-green { color: var(--color-earth-green) !important; }
+.text-ocean-blue { color: var(--color-ocean-blue) !important; }
+.text-digital-gold { color: var(--color-digital-gold) !important; }
+.text-pure-white { color: var(--color-pure-white) !important; }
+.text-light-gray { color: var(--color-light-gray) !important; }
+.text-gentle-black { color: var(--color-gentle-black) !important; }
+.text-accent-peach { color: var(--color-accent-peach) !important; }
+.text-accent-sky { color: var(--color-accent-sky) !important; }
+.text-purple-700 { color: var(--color-purple-700) !important; }
+
+/* ==================== Animations ==================== */
+
+/* Float Animation */
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+    animation: float 6s infinite ease-in-out;
+}
+
+/* Glow Animation */
+@keyframes glow {
+    0% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.4), 0 0 25px rgba(245, 158, 11, 0.2); }
+    50% { box-shadow: 0 0 30px rgba(245, 158, 11, 0.7), 0 0 40px rgba(245, 158, 11, 0.4); }
+    100% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.4), 0 0 25px rgba(245, 158, 11, 0.2); }
+}
+
+.animate-glow {
+    animation: glow 3s infinite ease-in-out;
+}
+
+/* Pulse Light Animation */
+@keyframes pulse-light {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+.animate-pulse-light {
+    animation: pulse-light 2s infinite ease-in-out;
+}
+
+/* Bounce Custom Animation */
+@keyframes bounce-custom {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+}
+
+.animate-bounce-custom {
+    animation: bounce-custom 3s infinite ease-in-out;
+}
+
+/* Shimmer Animation */
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+    animation: shimmer 2s infinite linear;
+}
+
+/* Rotate Animation */
+@keyframes rotate {
+    0% { transform: rotateY(0deg); }
+    100% { transform: rotateY(360deg); }
+}
+
+.animate-rotate {
+    animation: rotate 10s infinite linear;
+}
+
+/* Slide In Animation */
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-in {
+    animation: slideIn 0.6s ease-out;
+}
+
+/* Fade In Animation */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+/* Scale In Animation */
+@keyframes scaleIn {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.scale-in {
+    animation: scaleIn 0.4s ease-out;
+}
+
+/* ==================== Effects ==================== */
+
+/* Glass Effect */
+.glass-effect {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--radius-lg);
+}
+
+body.dark-mode .glass-effect {
+    background: rgba(45, 45, 45, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Card Hover Effect */
+.card-hover {
+    transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+}
+
+/* Gradient Text */
+.gradient-text {
+    background: linear-gradient(135deg, var(--color-earth-green), var(--color-ocean-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Gradient Background */
+.gradient-bg-primary {
+    background: linear-gradient(135deg, var(--color-earth-green), var(--color-ocean-blue));
+}
+
+.gradient-bg-warm {
+    background: linear-gradient(135deg, var(--color-accent-peach), var(--color-digital-gold));
+}
+
+.gradient-bg-cool {
+    background: linear-gradient(135deg, var(--color-ocean-blue), var(--color-accent-sky));
+}
+
+/* ==================== Common Components ==================== */
+
+/* Button Styles */
+.btn-primary-new {
+    background: var(--color-earth-green);
+    color: var(--color-pure-white);
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-md);
+    border: none;
+    font-weight: 600;
+    transition: all var(--transition-base);
+    cursor: pointer;
+}
+
+.btn-primary-new:hover {
+    background: var(--color-dark-green);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-secondary-new {
+    background: var(--color-ocean-blue);
+    color: var(--color-pure-white);
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-md);
+    border: none;
+    font-weight: 600;
+    transition: all var(--transition-base);
+    cursor: pointer;
+}
+
+.btn-secondary-new:hover {
+    background: var(--color-dark-blue);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-outline-new {
+    background: transparent;
+    color: var(--color-earth-green);
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-earth-green);
+    font-weight: 600;
+    transition: all var(--transition-base);
+    cursor: pointer;
+}
+
+.btn-outline-new:hover {
+    background: var(--color-earth-green);
+    color: var(--color-pure-white);
+}
+
+/* Input Styles */
+.input-new {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    transition: all var(--transition-base);
+    background: var(--bg-light);
+    color: var(--text-light);
+}
+
+.input-new:focus {
+    outline: none;
+    border-color: var(--color-earth-green);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+body.dark-mode .input-new {
+    background: var(--card-dark);
+    border-color: var(--border-dark);
+    color: var(--text-dark);
+}
+
+body.dark-mode .input-new:focus {
+    border-color: var(--color-earth-green);
+}
+
+/* Card Styles */
+.card-new {
+    background: var(--card-light);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-base);
+}
+
+body.dark-mode .card-new {
+    background: var(--card-dark);
+}
+
+/* Badge Styles */
+.badge-new {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: var(--color-earth-green);
+    color: var(--color-pure-white);
+}
+
+.badge-info {
+    background: var(--color-ocean-blue);
+    color: var(--color-pure-white);
+}
+
+.badge-warning {
+    background: var(--color-digital-gold);
+    color: var(--color-gentle-black);
+}
+
+/* ==================== Responsive Typography ==================== */
+.heading-xl {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.heading-lg {
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.heading-md {
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.heading-sm {
+    font-size: clamp(1.25rem, 2.5vw, 1.5rem);
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+/* ==================== Utility Classes ==================== */
+
+/* Flexbox */
+.flex-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.flex-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Text Alignment - RTL/LTR Support */
+[dir="rtl"] .text-start {
+    text-align: right !important;
+}
+
+[dir="ltr"] .text-start {
+    text-align: left !important;
+}
+
+/* Transitions */
+.transition-all {
+    transition: all var(--transition-base);
+}
+
+.transition-fast {
+    transition: all var(--transition-fast);
+}
+
+.transition-slow {
+    transition: all var(--transition-slow);
+}
+
+/* ==================== Print Styles ==================== */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    body {
+        background: white !important;
+        color: black !important;
+    }
+}

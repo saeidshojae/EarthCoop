@@ -1,0 +1,498 @@
+.chat-wrapper {
+    height: 85vh;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #ccc;
+    overflow: hidden;
+    background: #5ba1b81a;
+  }
+
+  .chat-header {
+    background-color: #01A4DD;
+    padding: 1rem;
+    color: #fff;
+    text-align: center;
+    font-weight: bold;
+    
+  }
+
+  .chat-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    background: url('/images/tg-bg.png');
+    background-size: cover;
+    flex-direction: column;
+    display: flex;
+  }
+
+  .message-bubble {
+  display: inline-block;
+  padding: 10px 14px;
+  margin: 6px 0;
+  border-radius: 10px;
+  max-width: 80%; /* حداکثر عرض، مثلاً ۸۰٪ عرض کانتینر */
+  word-wrap: break-word;
+  white-space: pre-wrap; /* برای پشتیبانی از خط‌های جدید */
+  display: flex;
+    flex-direction: column;
+    margin-top: 0;
+    position: relative;
+}
+
+.message-bubble.you button {
+  position: absolute;
+  top: 1rem;
+  left: -1.5rem
+}
+
+.message-bubble.other button {
+  position: absolute;
+  top: 1rem;
+  right: -1.6rem
+}
+
+.message-bubble .replay-box{
+  background-color: #c1d8afa3;
+    padding: .2rem .5rem;
+    border-radius: .2rem .5rem .5rem .2rem;
+    border-right: .25rem solid #6d845a;
+    margin-bottom: .5rem;
+}
+
+.message-bubble.other .replay-box{
+  background-color: #aac9e157;
+    border-right: .25rem solid #6c8da6;
+}
+  .message-bubble.you {
+    background-color: #dcf8c6;
+    align-self: flex-end;
+    margin-right: auto;
+  }
+
+  .message-bubble.other {
+    align-self: flex-start;
+  }
+
+  .message-time {
+    display: block;
+    text-align: right;
+    font-size: 0.75rem;
+    color: #999;
+    margin-top: 4px;
+  }
+
+  .chat-footer {
+    display: flex;
+    border-top: 1px solid #ccc;
+  }
+
+  .chat-footer input {
+    flex: 1;
+    border: none;
+    padding: 1rem;
+    font-size: 1rem;
+  }
+
+  .chat-footer button {
+    border: none;
+    background: #084add;
+    color: white;
+    padding: 1rem 1.5rem;
+    cursor: pointer;
+  }
+
+  .chat-footer input:focus {
+    outline: none;
+  }
+
+  .message-bubble.you {
+  background-color: #dcf8c6; /* سبز سبک شبیه تلگرام */
+  align-self: flex-start;
+  margin-right: auto;
+}
+
+.message-bubble.other {
+  background-color: white;
+  align-self: flex-end;
+}
+.chat-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+  border-bottom: 1px solid #ddd;
+  justify-content: end;
+flex-direction: row-reverse;
+justify-content: space-between;
+}
+
+.group-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background-color: #ecf5ff;
+  color: rgb(61, 131, 175);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 18px;
+  margin-left: 12px;
+}
+
+.group-info h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.group-info p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #ffffff;
+  text-align: right
+}
+
+.py-4{
+    padding: 0 !important
+}
+
+.py-4 .container{
+    margin-top: 2rem;
+}
+
+.notAllowed{
+    margin: 0;
+    padding: .9rem;
+    text-align: center;
+    width: 100%;
+    background-color: #fff;
+}
+.chat-input button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  width: 4rem;
+    height: 90%;
+    border-radius: .5rem;
+    margin-top: .1rem;
+    background-color: #084add
+}
+
+.chat-input{
+    padding: 1rem;
+}
+.chat-input input{
+    direction: rtl;
+}
+
+@media screen and (max-width: 990px) {
+    .py-4 .container{
+        max-width: 100%;
+        padding: 0;
+        margin-top: 0;
+
+    }
+
+    .chat-wrapper {
+        height: 92vh;
+    }
+    .message-bubble.you{
+        padding: .4rem .6rem
+    }
+
+    .message-bubble.other{
+        padding: .4rem .6rem
+    }
+
+    .time{
+        font-size: .6rem;
+        margin: 0;
+    }
+    
+    .post-card{
+      width: 100% !important;
+    }
+
+    #commentActionBox{
+        width: 90% !important;
+        right: 5% !important;
+        top: 5rem !important;
+    }
+  }
+
+  .dropdown button{
+    background-color: transparent;
+    color: #fff;
+  }
+  .message-bubble p{margin: 0}
+  
+  .dropdown {
+  position: relative;
+  display: inline-block;
+}
+.dropdown-menu {
+  position: absolute;
+  top: 110%;
+  right: 0;
+  background-color: white;
+  border: 1px solid #ccc;
+  min-width: 150px;
+  z-index: 999;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+.dropdown-item {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+.dropdown-item:hover {
+  background-color: #f8f9fa;
+}
+
+#postFormBox{
+  margin-top: 1rem;
+    position: fixed;
+    background-color: #fff;
+    padding: 1rem;
+    width: 90%;
+    right: 5%;
+    height: 85vh;
+    top: 2rem;
+    border-radius: .5rem;
+    z-index: 999;
+    display: none
+}
+#back{
+  position: fixed;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    top: 0;
+    right: 0;
+    display:none
+}
+
+.post-card {
+  background-color: #fff;
+    padding: 1rem;
+    margin: .5rem 0;
+    border-radius: .5rem;
+    width: 50%;
+    border: 2px solid #084add;
+}
+
+.post-card img{
+  width: 100%;
+  border-radius: .2rem;
+  margin-bottom: 1rem
+}
+
+.btn-like{
+  /* background-color: #388ab754; */
+    padding: .2rem .6rem;
+    border-radius: 50rem;
+    margin-right: .5rem;
+    margin-bottom: 1rem
+}
+
+.btn-dislike{
+  /* background-color: #b7383854; */
+    padding: .2rem .6rem;
+    border-radius: 50rem;
+    margin-bottom: 1rem
+
+}
+.btn-like i {
+  color: #2e7aa0
+}
+
+.btn-dislike i {
+  color: #8c2f2f
+}
+
+.btn-like span{
+  margin-left: .5rem
+}
+
+.btn-dislike span{
+  margin-left: .5rem
+}
+.tabs {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0;
+    border-bottom: 2px solid #ccc;
+    direction: rtl
+  }
+  a{
+    text-decoration: none;
+    color: #333
+  }
+  .tab {
+    padding: 0.7rem 1.5rem;
+    cursor: pointer;
+    font-weight: bold;
+    border-radius: 1rem 1rem 0 0;
+    background: #e0e0e0;
+    margin-left: 5px;
+    width: 33%;
+    text-align: center;
+    transition: background-color 0.3s ease;
+  }
+  .tab:hover {
+    background-color: #d0d0d0;
+  }
+  .tab.active {
+    background: #5c9ac6d0;
+    color: white;
+  }
+  .tab-content {
+    direction: rtl;
+    display: none;
+    background: white;
+    padding: 1rem;
+    border-radius: 0 0 1rem 1rem;
+    box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    transition: all 0.3s ease-in-out;
+  }
+  .tab-content.active {
+    display: block;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 0.5rem;
+    text-align: center;
+  }
+  th {
+    background-color: #f1f1f1;
+  }
+  .collapsible-group {
+    display: none;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease-in-out;
+  }
+
+  .toggle-header {
+    cursor: pointer;
+    background-color: #f1f1f1;
+    padding: 0.7rem 1rem;
+    border-radius: 0.5rem;
+    margin-top: 1rem;
+    font-weight: bold;
+  }
+
+  .toggle-header:hover {
+    background-color: #e0e0e0;
+  }
+
+  .arrow-icon {
+    transition: transform 0.3s ease;
+    margin-right: 8px;
+  }
+
+  .arrow-icon.rotate {
+    transform: rotate(180deg);
+  }
+
+  .toggle-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    background: #f1f1f1;
+    padding: 0.7rem 1rem;
+    border-radius: 0.5rem;
+    margin-top: 1rem;
+    font-weight: bold;
+  }
+  
+b{
+    text-align: right;
+    font-size: .7rem;
+    margin-bottom: .15rem;
+    margin-left: 5rem;
+    filter: brightness(.7);
+}
+.message-bubble p{
+    text-align: right
+}
+
+.time-react{
+    position: absolute;
+    bottom: 1px;
+    left: 4px;
+  display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+#commentActionBox{
+  display: none;
+  position: fixed;
+  right: 25%;
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: rgba(0, 0, 0, 0.1) 0px 0px 10px;
+  z-index: 1000;
+  padding: 1rem;
+  direction: rtl;
+  width: 50%;
+  top: 25rem;
+}
+.time{
+  font-size: .5rem;
+}
+.message-bubble {
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+
+.message-bubble.you button{
+  white-space: normal;
+    word-wrap: break-word;
+    text-align: right;
+    top: 1rem;
+    left: -1.8rem;
+    opacity: .7;
+}
+
+
+.text-react{
+  display: flex;
+  flex-direction: column;
+  align-items: end;
+}
+
+.text-react .reaction{
+  display: flex;
+  align-items: center;
+}
+
+.text-react .reaction .like {
+  margin-left: .3rem;
+}
+
+.text-react i {
+  font-size: .7rem;
+}
+
+.text-react .like{
+  border: 1px solid;
+  padding: 0 .5rem;
+  border-radius: .5rem;
+  background-color: #00ff2f2e;
+  cursor: pointer;
+}
+
+.text-react .dislike{
+  border: 1px solid;
+  padding: 0 .5rem;
+  border-radius: .5rem;
+  background-color: #ff00002e;
+}
