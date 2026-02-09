@@ -97,7 +97,7 @@ class NajmBaharProcessScheduled extends Command
                                     'to_sub_account_code' => $meta['to_sub_account_code'] ?? null,
                                     'scheduled_transaction_id' => $item->id,
                                 ],
-                            );
+                            ]);
                         }
 
                         $item->status = 'processed';

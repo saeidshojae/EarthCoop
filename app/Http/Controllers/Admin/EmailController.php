@@ -8,7 +8,6 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
 
 class EmailController extends Controller
 {
@@ -140,10 +139,9 @@ class EmailController extends Controller
 
         foreach ($recipientsList as $recipient) {
             try {
-                Mail::raw($rendered['body'], function ($message) use ($recipient, $rendered) {
+                Mail::html($rendered['body'], function ($message) use ($recipient, $rendered) {
                     $message->to($recipient)
-                        ->subject($rendered['subject'])
-                        ->html($rendered['body']);
+                        ->subject($rendered['subject']);
                 });
             } catch (\Exception $e) {
                 Log::error('Failed to send email', [
@@ -190,10 +188,9 @@ class EmailController extends Controller
 
         foreach ($recipientsList as $recipient) {
             try {
-                Mail::raw($validated['body'], function ($message) use ($recipient, $validated) {
+                Mail::html($validated['body'], function ($message) use ($recipient, $validated) {
                     $message->to($recipient)
-                        ->subject($validated['subject'])
-                        ->html($validated['body']);
+                        ->subject($validated['subject']);
                 });
             } catch (\Exception $e) {
                 Log::error('Failed to send custom email', [
