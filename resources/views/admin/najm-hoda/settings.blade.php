@@ -117,6 +117,25 @@
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     }
     
+    .agent-advanced summary {
+        cursor: pointer;
+        color: #2563eb;
+        font-size: 0.875rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    
+    .agent-advanced summary::-webkit-details-marker {
+        display: none;
+    }
+    
+    .agent-advanced[open] summary {
+        color: #1d4ed8;
+    }
+    
     .status-badge {
         display: inline-block;
         padding: 0.5rem 1rem;
@@ -192,6 +211,30 @@
         background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
         color: white;
     }
+    
+    /* Additional fix for upload form */
+    #steward-upload-status.hidden {
+        display: none !important;
+    }
+    
+    #steward-upload-status {
+        margin-top: 8px;
+        font-size: 12px;
+        padding: 8px;
+        border-radius: 6px;
+    }
+    
+    #steward-upload-status.success {
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #10b981;
+    }
+    
+    #steward-upload-status.error {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #ef4444;
+    }
 </style>
 @endpush
 
@@ -253,8 +296,9 @@
                     <label class="form-label-modern">ارائه‌دهنده AI</label>
                     <select class="form-control-modern" id="ai-provider">
                                 <option value="openai" {{ config('najm-hoda.provider.type') == 'openai' ? 'selected' : '' }}>OpenAI</option>
-                                <option value="claude">Claude (Anthropic)</option>
-                                <option value="gemini">Google Gemini</option>
+                                <option value="openrouter" {{ config('najm-hoda.provider.type') == 'openrouter' ? 'selected' : '' }}>OpenRouter</option>
+                                <option value="claude" {{ config('najm-hoda.provider.type') == 'claude' ? 'selected' : '' }}>Claude (Anthropic)</option>
+                                <option value="gemini" {{ config('najm-hoda.provider.type') == 'gemini' ? 'selected' : '' }}>Google Gemini</option>
                             </select>
                         </div>
 
@@ -313,7 +357,11 @@
                     </label>
                 </div>
                 
-                <div class="collapse" id="settings-{{ $key }}">
+                <details class="agent-advanced">
+                    <summary>
+                        <i class="fas fa-cog"></i>
+                        تنظیمات پیشرفته
+                    </summary>
                     <div class="bg-white rounded-lg p-4 border border-gray-200 mt-2">
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -326,12 +374,62 @@
                                 <input type="number" class="form-control-modern" value="{{ config("najm-hoda.agents.{$key}.max_tokens", 2000) }}">
                             </div>
                         </div>
+                        @if ($key === 'steward')
+                            <div class="mt-3 p-3 border border-sky-400 bg-sky-50 rounded-lg">
+                                <a href="{{ route('admin.kb.steward.dashboard') }}" class="block text-slate-900 font-bold no-underline">
+                                    🔗 داشبورد مهماندار (Steward)
+                                </a>
+                                <div class="text-xs text-slate-600 mt-2">
+                                    مشاهده وضعیت منابع محتوا و یکپارچه‌سازی
+                                </div>
+                            </div>
+
+                            <div class="mt-3 p-3 border border-green-600 bg-green-50 rounded-lg">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h4 class="text-sm font-bold text-green-900 m-0">
+                                        📎 آپلود فایل‌های دانش
+                                    </h4>
+                                    <a href="{{ route('admin.najm-hoda.steward.knowledge-files-page') }}" class="bg-green-700 text-white px-3 py-1.5 rounded-md no-underline text-xs font-bold">
+                                        <i class="fas fa-list"></i>
+                                        مدیریت فایل‌ها
+                                    </a>
+                                </div>
+                                <div class="bg-yellow-100 border border-yellow-400 p-2.5 rounded-md mb-3 text-xs text-yellow-900">
+                                    <strong>⚠️ توجه:</strong> فایل‌های TXT و Markdown محتوا کاملاً استخراج می‌شوند. برای فایل‌های PDF و Word فقط نام فایل برای جستجو استفاده می‌شود.
+                                </div>
+                                <form id="steward-upload-form" enctype="multipart/form-data">
+                                    @csrf
+                                    <div class="mb-2">
+                                        <label class="text-xs text-green-900 block mb-1">
+                                            عنوان فایل:
+                                        </label>
+                                        <input type="text" name="title" class="form-control-modern text-sm px-2.5 py-1.5" placeholder="عنوان توصیفی برای فایل" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="text-xs text-green-900 block mb-1">
+                                            انتخاب فایل:
+                                        </label>
+                                        <input type="file" name="knowledge_file" id="knowledge_file" class="form-control-modern text-sm px-2.5 py-1.5" accept=".pdf,.doc,.docx,.txt,.md" required>
+                                        <small class="text-xs text-green-900">فرمت‌های مجاز: PDF, Word, TXT, Markdown | حداکثر 10MB</small>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="text-xs text-green-900 block mb-1">
+                                            اولویت جستجو (1-10):
+                                        </label>
+                                        <input type="number" name="search_priority" class="form-control-modern text-sm px-2.5 py-1.5" min="1" max="10" value="5">
+                                    </div>
+                                    <button type="submit" class="btn-modern bg-gradient-to-r from-green-600 to-green-800 text-white w-full justify-center text-sm px-2 py-2">
+                                        <i class="fas fa-upload"></i>
+                                        آپلود فایل
+                                    </button>
+                                    <div id="steward-upload-status" class="mt-2 text-xs text-green-900 hidden"></div>
+                                </form>
+                            </div>
+
+                            <div id="uploaded-files-list" class="mt-3"></div>
+                        @endif
                     </div>
-                </div>
-                
-                <button type="button" class="mt-2 text-sm text-blue-600 hover:text-blue-800" onclick="toggleAgentSettings('{{ $key }}')">
-                    <i class="fas fa-cog"></i> تنظیمات پیشرفته
-                </button>
+                </details>
             </div>
             @endforeach
 
@@ -454,15 +552,6 @@ function toggleApiKey() {
     }
 }
 
-function toggleAgentSettings(key) {
-    const collapse = document.getElementById('settings-' + key);
-    if (collapse.classList.contains('show')) {
-        collapse.classList.remove('show');
-    } else {
-        collapse.classList.add('show');
-    }
-}
-
 async function testConnection() {
     if (typeof Swal !== 'undefined') {
         Swal.fire({
@@ -553,6 +642,7 @@ document.getElementById('general-settings-form').addEventListener('submit', asyn
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
             body: JSON.stringify(settings)
@@ -596,5 +686,323 @@ document.getElementById('general-settings-form').addEventListener('submit', asyn
         }
     }
 });
+
+// آپلود فایل دانش Steward - با DOMContentLoaded برای اطمینان از لود شدن
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔍 Checking for steward upload form...');
+    const uploadForm = document.getElementById('steward-upload-form');
+    
+    if (!uploadForm) {
+        console.log('❌ Upload form not found - احتمالاً کارت بسته است');
+        return;
+    }
+    
+    console.log('✅ Upload form found!');
+    
+    uploadForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        console.log('📤 Form submitted!');
+        
+        const form = e.target;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn.innerHTML;
+        const formData = new FormData(form);
+        
+        const statusBox = document.getElementById('steward-upload-status');
+        const showStatus = (message, isError = false) => {
+            if (!statusBox) return;
+            statusBox.classList.remove('hidden', 'success', 'error');
+            statusBox.classList.add(isError ? 'error' : 'success');
+            statusBox.textContent = message;
+            statusBox.style.display = 'block';
+        };
+        
+        // بررسی فایل انتخاب شده است یا نه
+        const fileInput = form.querySelector('input[name="knowledge_file"]');
+        if (!fileInput.files.length) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'هشدار',
+                    text: 'لطفا فایلی را برای آپلود انتخاب کنید'
+                });
+            } else {
+                alert('⚠️ لطفا فایلی را برای آپلود انتخاب کنید');
+            }
+            showStatus('لطفاً یک فایل انتخاب کنید', true);
+            return;
+        }
+        
+        // بررسی اندازه فایل
+        const file = fileInput.files[0];
+        if (file.size > 10 * 1024 * 1024) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'فایل خیلی بزرگ است',
+                    text: 'حداکثر اندازه فایل 10 مگابایت است'
+                });
+            } else {
+                alert('❌ حداکثر اندازه فایل 10 مگابایت است');
+            }
+            showStatus('حداکثر اندازه: 10MB', true);
+            return;
+        }
+        
+        // تنظیم loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> در حال آپلود...';
+        showStatus('درحال ارسال فایل...');
+        
+        try {
+            console.log('📤 Uploading:', file.name, '(' + (file.size / 1024).toFixed(2) + ' KB)');
+            
+            const response = await fetch('{{ route('admin.najm-hoda.steward.upload-knowledge') }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: formData,
+                credentials: 'same-origin'
+            });
+            
+            let data = null;
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                data = await response.json();
+            } else {
+                const rawText = await response.text();
+                console.error('❌ Non-JSON response:', rawText.slice(0, 300));
+                throw new Error('پاسخ غیرمنتظره از سرور. کد: ' + response.status);
+            }
+
+            console.log('📥 Server response:', data);
+
+            if (response.ok && data.success) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '✅ آپلود موفق',
+                        text: data.message,
+                        confirmButtonText: 'باشه'
+                    }).then(() => {
+                        form.reset();
+                        loadKnowledgeFiles();
+                    });
+                } else {
+                    alert('✅ ' + data.message);
+                    form.reset();
+                    loadKnowledgeFiles();
+                }
+                showStatus(data.message || 'آپلود موفق!');
+            } else {
+                const errorMessage = data?.message || 'خطای نامشخص';
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: '❌ خطا در آپلود',
+                        text: errorMessage,
+                        confirmButtonText: 'باشه'
+                    });
+                } else {
+                    alert('❌ ' + errorMessage);
+                }
+                showStatus(errorMessage, true);
+            }
+        } catch (error) {
+            console.error('💥 Upload error:', error);
+            const errorMessage = 'خطا: ' + (error.message || 'نامشخص');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: '❌ خطا',
+                    text: errorMessage,
+                    confirmButtonText: 'باشه'
+                });
+            } else {
+                alert('❌ ' + errorMessage);
+            }
+            showStatus(errorMessage, true);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+        }
+    });
+    
+    // بارگذاری اولیه لیست
+    if (document.getElementById('uploaded-files-list')) {
+        loadKnowledgeFiles();
+    }
+});
+
+// بارگذاری لیست فایل‌های دانش
+async function loadKnowledgeFiles() {
+    try {
+        console.log('Loading knowledge files from:', '/admin/najm-hoda/steward/knowledge-files-api');
+        const response = await fetch('/admin/najm-hoda/steward/knowledge-files-api');
+        const data = await response.json();
+        
+        console.log('Knowledge files response:', data);
+        
+        if (data.success && data.files && data.files.length > 0) {
+            const listHtml = `
+                <div style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; border-radius: 8px;">
+                    <h4 style="font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 12px;">
+                        📚 فایل‌های آپلودشده (${data.files.length})
+                    </h4>
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                            <thead style="background: #f3f4f6; position: sticky; top: 0;">
+                                <tr>
+                                    <th style="padding: 8px; text-align: right; border-bottom: 2px solid #e5e7eb;">عنوان</th>
+                                    <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e5e7eb;">نوع</th>
+                                    <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e5e7eb;">حجم</th>
+                                    <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e5e7eb;">اولویت</th>
+                                    <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e5e7eb;">آپلودکننده</th>
+                                    <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e5e7eb;">تاریخ</th>
+                                    <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e5e7eb; width: 100px;">عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.files.map(file => `
+                                    <tr style="border-bottom: 1px solid #e5e7eb;" id="file-row-${file.id}">
+                                        <td style="padding: 8px;">
+                                            <i class="fas ${file.icon}" style="color: #6366f1; margin-left: 4px;"></i>
+                                            <span id="file-title-${file.id}">${file.title}</span>
+                                        </td>
+                                        <td style="padding: 8px; text-align: center;">
+                                            <span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 11px;">
+                                                ${file.file_type.toUpperCase()}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 8px; text-align: center; color: #6b7280;">${file.file_size}</td>
+                                        <td style="padding: 8px; text-align: center;">
+                                            <span id="file-priority-${file.id}" style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-weight: 700;">
+                                                ${file.search_priority}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 8px; text-align: center; color: #6b7280;">${file.uploader}</td>
+                                        <td style="padding: 8px; text-align: center; color: #6b7280; font-size: 11px;">${file.created_at}</td>
+                                        <td style="padding: 8px; text-align: center;">
+                                            <button onclick="editKnowledgeFile(${file.id}, ${JSON.stringify(file.title)}, ${file.search_priority})" 
+                                                    style="border: none; background: #3b82f6; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; margin-left: 4px; font-size: 11px;"
+                                                    title="ویرایش">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button onclick="deleteKnowledgeFile(${file.id})" 
+                                                    style="border: none; background: #ef4444; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"
+                                                    title="حذف">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            document.getElementById('uploaded-files-list').innerHTML = listHtml;
+        } else {
+            document.getElementById('uploaded-files-list').innerHTML = '<div style="padding: 12px; text-align: center; color: #9ca3af; font-size: 13px;">هیچ فایلی آپلود نشده است</div>';
+        }
+    } catch (error) {
+        console.error('خطا در بارگذاری لیست فایل‌ها:', error);
+    }
+}
+
+// حذف فایل دانش
+async function deleteKnowledgeFile(id) {
+    if (!confirm('آیا از حذف این فایل مطمئن هستید?')) return;
+    
+    try {
+        const response = await fetch(`/admin/najm-hoda/steward/knowledge-files/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'حذف شد',
+                    text: data.message,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            } else {
+                alert('✅ ' + data.message);
+            }
+            loadKnowledgeFiles();
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (error) {
+        alert('❌ خطا در حذف فایل');
+    }
+}
+
+// ویرایش فایل دانش
+async function editKnowledgeFile(id, currentTitle, currentPriority) {
+    const newTitle = prompt('عنوان جدید:', currentTitle);
+    if (!newTitle || newTitle === currentTitle) {
+        // اگر کنسل کرد یا تغییری نداد، از اولویت بپرس
+        const newPriority = prompt('اولویت جستجو (1-10):', currentPriority);
+        if (!newPriority) return;
+        
+        // فقط اولویت تغییر کرده
+        await updateKnowledgeFile(id, currentTitle, parseInt(newPriority));
+        return;
+    }
+    
+    const newPriority = prompt('اولویت جستجو (1-10):', currentPriority);
+    if (!newPriority) return;
+    
+    await updateKnowledgeFile(id, newTitle, parseInt(newPriority));
+}
+
+async function updateKnowledgeFile(id, title, priority) {
+    try {
+        const response = await fetch(`/admin/najm-hoda/steward/knowledge-files/${id}`, {
+            method: 'PUT',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                title: title,
+                search_priority: priority
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ویرایش شد',
+                    text: data.message,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            } else {
+                alert('✅ ' + data.message);
+            }
+            loadKnowledgeFiles();
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (error) {
+        alert('❌ خطا در ویرایش فایل');
+    }
+}
 </script>
 @endpush

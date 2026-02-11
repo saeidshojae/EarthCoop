@@ -24,10 +24,16 @@ return [
      * ارائه‌دهنده سرویس AI
      */
     'provider' => [
-        'type' => env('AI_PROVIDER', 'openai'), // openai, claude, gemini
+        'type' => env('AI_PROVIDER', 'openai'), // openai, openrouter, claude, gemini
         'api_key' => env('AI_API_KEY', env('OPENAI_API_KEY')),
         'organization' => env('AI_ORGANIZATION'),
         'model' => env('AI_MODEL', 'gpt-4-turbo-preview'),
+        'base_url' => env('AI_BASE_URL', 'https://api.openai.com/v1'),
+        'openrouter' => [
+            'base_url' => env('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
+            'site_url' => env('OPENROUTER_SITE_URL'),
+            'app_name' => env('OPENROUTER_APP_NAME', 'NewEarthCoop'),
+        ],
     ],
 
     /**
@@ -48,6 +54,12 @@ return [
             'enabled' => env('AGENT_STEWARD_ENABLED', true),
             'temperature' => 0.7,
             'max_tokens' => 2000,
+            'source_priorities' => [
+                'kb_articles' => env('STEWARD_PRIORITY_KB', 10),
+                'knowledge_files' => env('STEWARD_PRIORITY_FILES', 8),
+                'faq_questions' => env('STEWARD_PRIORITY_FAQ', 7),
+                'blog_posts' => env('STEWARD_PRIORITY_BLOG', 5),
+            ],
         ],
         'guide' => [
             'enabled' => env('AGENT_GUIDE_ENABLED', true),
@@ -148,16 +160,13 @@ return [
     ],
 
     /**
-     * تنظیمات Mock Mode (زمانی که API Key نیست)
+     * پاسخ‌های Mock (برای نمایش متن‌های ثابت)
      */
-    'mock_mode' => [
-        'enabled' => env('NAJM_HODA_MOCK_MODE', !env('AI_API_KEY')),
-        'responses' => [
-            'engineer' => 'من مهندس نجم‌هدا هستم. در حالت آزمایشی قرار دارم.',
-            'pilot' => 'من خلبان نجم‌هدا هستم. برای عملکرد کامل، API Key نیاز است.',
-            'steward' => 'سلام! من مهماندار نجم‌هدا هستم. چطور می‌تونم کمکتون کنم؟',
-            'guide' => 'من راهنمای نجم‌هدا هستم. برای ارائه نقشه راه دقیق، API Key مورد نیاز است.',
-        ],
+    'mock_responses' => [
+        'engineer' => 'من مهندس نجم‌هدا هستم. در حالت آزمایشی قرار دارم.',
+        'pilot' => 'من خلبان نجم‌هدا هستم. برای عملکرد کامل، API Key نیاز است.',
+        'steward' => 'سلام! من مهماندار نجم‌هدا هستم. چطور می‌تونم کمکتون کنم؟',
+        'guide' => 'من راهنمای نجم‌هدا هستم. برای ارائه نقشه راه دقیق، API Key مورد نیاز است.',
     ],
 
     /**

@@ -127,6 +127,8 @@ abstract class BaseAgent
         switch ($provider) {
             case 'openai':
                 return $this->callOpenAI($messages);
+            case 'openrouter':
+                return $this->callOpenRouter($messages);
             case 'claude':
                 return $this->callClaude($messages);
             default:
@@ -139,12 +141,20 @@ abstract class BaseAgent
      */
     protected function callOpenAI(array $messages): string
     {
+        $baseUrl = rtrim((string) config('najm-hoda.provider.base_url', 'https://api.openai.com/v1'), '/');
+        $headers = [
+            'Authorization' => 'Bearer ' . config('najm-hoda.provider.api_key'),
+            'Content-Type' => 'application/json',
+        ];
+
+        $organization = config('najm-hoda.provider.organization');
+        if (!empty($organization)) {
+            $headers['OpenAI-Organization'] = $organization;
+        }
+
         $response = Http::timeout(60)
-            ->withHeaders([
-                'Authorization' => 'Bearer ' . config('najm-hoda.provider.api_key'),
-                'Content-Type' => 'application/json',
-            ])
-            ->post('https://api.openai.com/v1/chat/completions', [
+            ->withHeaders($headers)
+            ->post("{$baseUrl}/chat/completions", [
                 'model' => $this->model,
                 'messages' => $messages,
                 'temperature' => $this->temperature,
@@ -157,6 +167,45 @@ abstract class BaseAgent
         
         $result = $response->json();
         
+        return $result['choices'][0]['message']['content'] ?? '';
+    }
+
+    /**
+     * فراخوانی OpenRouter API
+     */
+    protected function callOpenRouter(array $messages): string
+    {
+        $baseUrl = rtrim((string) config('najm-hoda.provider.openrouter.base_url', 'https://openrouter.ai/api/v1'), '/');
+        $headers = [
+            'Authorization' => 'Bearer ' . config('najm-hoda.provider.api_key'),
+            'Content-Type' => 'application/json',
+        ];
+
+        $siteUrl = config('najm-hoda.provider.openrouter.site_url');
+        if (!empty($siteUrl)) {
+            $headers['HTTP-Referer'] = $siteUrl;
+        }
+
+        $appName = config('najm-hoda.provider.openrouter.app_name');
+        if (!empty($appName)) {
+            $headers['X-Title'] = $appName;
+        }
+
+        $response = Http::timeout(60)
+            ->withHeaders($headers)
+            ->post("{$baseUrl}/chat/completions", [
+                'model' => $this->model,
+                'messages' => $messages,
+                'temperature' => $this->temperature,
+                'max_tokens' => $this->maxTokens,
+            ]);
+
+        if (!$response->successful()) {
+            throw new \Exception('خطا در ارتباط با OpenRouter: ' . $response->body());
+        }
+
+        $result = $response->json();
+
         return $result['choices'][0]['message']['content'] ?? '';
     }
     

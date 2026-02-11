@@ -30,13 +30,21 @@
 
             {{-- انتخاب عامل --}}
             <div class="najm-hoda-agent-selector">
+                @php
+                    $user = auth()->user();
+                    $isAdmin = $user && ($user->is_admin || $user->hasRole('super-admin'));
+                @endphp
                 <select id="najm-hoda-agent" class="form-select form-select-sm"
                     style="width: 100%; border: 1px solid rgba(255,255,255,0.3); background-color: rgba(255,255,255,0.1); color: white; border-radius: 10px; padding: 8px 12px; font-size: 13px; font-weight: 500;">
-                    <option value="auto" style="background: #f8f9fa; color: #333;">🤖 تشخیص خودکار</option>
-                    <option value="engineer" style="background: #f8f9fa; color: #333;">🔧 مهندس</option>
-                    <option value="pilot" style="background: #f8f9fa; color: #333;">✈️ خلبان</option>
-                    <option value="steward" style="background: #f8f9fa; color: #333;">👨‍✈️ مهماندار</option>
-                    <option value="guide" style="background: #f8f9fa; color: #333;">📖 راهنما</option>
+                    @if ($isAdmin)
+                        <option value="auto" style="background: #f8f9fa; color: #333;">🤖 تشخیص خودکار</option>
+                        <option value="engineer" style="background: #f8f9fa; color: #333;">🔧 مهندس</option>
+                        <option value="pilot" style="background: #f8f9fa; color: #333;">✈️ خلبان</option>
+                        <option value="steward" style="background: #f8f9fa; color: #333;">👨‍✈️ مهماندار</option>
+                        <option value="guide" style="background: #f8f9fa; color: #333;">📖 راهنما</option>
+                    @else
+                        <option value="steward" style="background: #f8f9fa; color: #333;">👨‍✈️ مهماندار</option>
+                    @endif
                 </select>
             </div>
         </div>
@@ -47,18 +55,37 @@
             <div class="najm-hoda-message assistant">
                 <div class="najm-hoda-message-avatar">🌟</div>
                 <div class="najm-hoda-message-content">
-                    <strong style="font-size: 15px; color: #37c4b4; display: block; margin-bottom: 8px;">سلام! من
-                        نجم‌هدا هستم</strong>
-                    <p style="margin-bottom: 10px; font-size: 13px;">نرم‌افزار جامع مدیریت هوشمند دنیای ارثکوپ</p>
-                    <p style="margin-bottom: 8px; font-size: 13px; font-weight: 500;">تیم متخصص من:</p>
-                    <ul style="margin: 0; padding-right: 18px; font-size: 12px; line-height: 1.7;">
-                        <li style="margin-bottom: 5px;"><strong>🔧 مهندس</strong>: طراحی و کدنویسی</li>
-                        <li style="margin-bottom: 5px;"><strong>✈️ خلبان</strong>: مدیریت پروژه</li>
-                        <li style="margin-bottom: 5px;"><strong>👨‍✈️ مهماندار</strong>: پشتیبانی</li>
-                        <li><strong>📖 راهنما</strong>: استراتژی</li>
-                    </ul>
-                    <p style="margin-top: 12px; margin-bottom: 0; font-size: 13px; font-weight: 500; color: #37c4b4;">
-                        چطور می‌تونم کمکتون کنم؟</p>
+                    @php
+                        $user = auth()->user();
+                        $isAdmin = $user && ($user->is_admin || $user->hasRole('super-admin'));
+                    @endphp
+                    @if ($isAdmin)
+                        <strong style="font-size: 15px; color: #37c4b4; display: block; margin-bottom: 8px;">سلام! من
+                            نجم‌هدا هستم</strong>
+                        <p style="margin-bottom: 10px; font-size: 13px;">نرم‌افزار جامع مدیریت هوشمند دنیای ارثکوپ</p>
+                        <p style="margin-bottom: 8px; font-size: 13px; font-weight: 500;">تیم متخصص من:</p>
+                        <ul style="margin: 0; padding-right: 18px; font-size: 12px; line-height: 1.7;">
+                            <li style="margin-bottom: 5px;"><strong>🔧 مهندس</strong>: طراحی و کدنویسی</li>
+                            <li style="margin-bottom: 5px;"><strong>✈️ خلبان</strong>: مدیریت پروژه</li>
+                            <li style="margin-bottom: 5px;"><strong>👨‍✈️ مهماندار</strong>: پشتیبانی</li>
+                            <li><strong>📖 راهنما</strong>: استراتژی</li>
+                        </ul>
+                        <p style="margin-top: 12px; margin-bottom: 0; font-size: 13px; font-weight: 500; color: #37c4b4;">
+                            چطور می‌تونم کمکتون کنم؟</p>
+                    @else
+                        <strong style="font-size: 15px; color: #37c4b4; display: block; margin-bottom: 8px;">سلام! من
+                            مهماندار نجم‌هدا هستم</strong>
+                        <p style="margin-bottom: 10px; font-size: 13px;">برای راهنمایی سریع و پشتیبانی اینجا هستم.</p>
+                        <p style="margin-bottom: 8px; font-size: 13px; font-weight: 500;">من می‌تونم:</p>
+                        <ul style="margin: 0; padding-right: 18px; font-size: 12px; line-height: 1.7;">
+                            <li style="margin-bottom: 5px;"><strong>✅ راهنمایی کاربردی</strong> برای استفاده از سامانه</li>
+                            <li style="margin-bottom: 5px;"><strong>🧭 مسیر‌یابی</strong> در بخش‌ها و امکانات</li>
+                            <li style="margin-bottom: 5px;"><strong>🛠️ رفع مشکل</strong> و ثبت پیگیری</li>
+                            <li><strong>📌 معرفی امکانات</strong> مرتبط با نیاز شما</li>
+                        </ul>
+                        <p style="margin-top: 12px; margin-bottom: 0; font-size: 13px; font-weight: 500; color: #37c4b4;">
+                            لطفا سوال یا مشکلتون رو بنویسید تا راهنمایی کنم.</p>
+                    @endif
                 </div>
             </div>
         </div>
@@ -908,10 +935,12 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
                             ?.content || '',
                         'Authorization': 'Bearer ' + (localStorage.getItem('api_token') || '')
                     },
+                    credentials: 'same-origin',
                     body: JSON.stringify({
                         message: message,
                         agent: agent,

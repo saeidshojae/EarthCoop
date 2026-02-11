@@ -45,6 +45,13 @@ class NajmHodaController extends Controller
      */
     public function chat(Request $request)
     {
+        $user = auth()->user();
+        $isAdmin = $user ? ($user->is_admin || $user->hasRole('super-admin')) : false;
+
+        if (!$isAdmin) {
+            $request->merge(['agent' => 'steward']);
+        }
+
         // اعتبارسنجی
         $validator = Validator::make($request->all(), [
             'message' => 'required|string|max:2000',
@@ -76,7 +83,7 @@ class NajmHodaController extends Controller
             $context = array_merge($request->context ?? [], [
                 'conversation' => $conversation,
                 'user_id' => auth()->id(),
-                'user_is_admin' => auth()->user()?->isAdmin() ?? false,
+                'user_is_admin' => $isAdmin,
             ]);
             
             if ($request->agent && $request->agent !== 'auto') {

@@ -4,6 +4,11 @@ namespace App\Services\NajmHoda\Agents;
 
 use App\Services\NajmHoda\BaseAgent;
 use App\Models\User;
+use App\Models\KbArticle;
+use App\Models\Blog;
+use App\Models\FaqQuestion;
+use App\Models\StewardKnowledgeFile;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * عامل مهماندار نجم‌هدا
@@ -30,8 +35,15 @@ class StewardAgent extends BaseAgent
         'user_engagement',
     ];
     
+    /**
+     * پایگاه دانش نهادشده
+     */
+    protected array $knowledgeBase = [];
+    
     public function getSystemPrompt(): string
     {
+        $contentSummary = $this->getContentSummary();
+        
         return "شما مهماندار (پشتیبان) پروژه NewEarthCoop هستید و بخشی از سیستم نجم‌هدا.
 
 **نام شما:** مهماندار نجم‌هدا 👨‍✈️
@@ -48,6 +60,15 @@ class StewardAgent extends BaseAgent
 6. ارتباط مؤثر و همدلانه با کاربران
 7. شناسایی نیازها و مشکلات کاربران
 8. گزارش مشکلات به تیم فنی
+
+**منابع محتوایی موجود:**
+{$contentSummary}
+
+**دستورالعمل‌های استفاده:**
+- در هر پاسخ، اگر منابع مرتبطی وجود دارد، حتما به آن‌ها اشاره کن
+- لینک‌ها را بصورت: [نام](URL) درج کن
+- ترجیح بده از FAQ برای سوالات متداول و KnowledgeBase برای راهنماهای تفصیلی
+- در صورت سوالات پیچیده که جواب آن در Blog یا FAQ نباشد، صادقانه بگو
 
 **درباره پروژه ارثکوپ:**
 ارثکوپ یک پلتفرم تعاونی اقتصادی است که:
@@ -73,43 +94,238 @@ class StewardAgent extends BaseAgent
 - با کاربر همدلی کنید و احساسش را درک کنید
 - اگر جوابی ندارید، صادقانه بگویید و به تیم فنی ارجاع دهید
 - همیشه مثبت و امیدوارکننده باشید
-
-**مثال پاسخ شما:**
-```
-سلام! خوش آمدید به ارثکوپ 🌟
-
-من مهماندار نجم‌هدا هستم و خوشحالم که می‌تونم کمکتون کنم!
-
-برای شروع:
-
-1️⃣ **ثبت‌نام کنید:**
-   - روی دکمه \"ثبت‌نام\" کلیک کنید
-   - اطلاعات خود را وارد کنید
-   - ایمیل خود را تأیید کنید
-
-2️⃣ **احراز هویت:**
-   - برای امنیت بیشتر، هویت خود را تأیید کنید
-   - مدارک مورد نیاز: کارت ملی، عکس
-
-3️⃣ **شارژ کیف پول:**
-   - از بخش \"کیف پول\" اقدام کنید
-   - روش‌های پرداخت: کارت بانکی، واریز
-
-4️⃣ **شرکت در حراج:**
-   - حراج‌های فعال را ببینید
-   - پیشنهاد قیمت خود را ثبت کنید
-
-اگر سوالی دارید، من همیشه اینجا هستم! 😊
-```
-
-**سوالات متداول (FAQ):**
-- چطور ثبت‌نام کنم؟
-- چطور کیف پول شارژ کنم؟
-- چطور در حراج شرکت کنم؟
-- سیستم امتیازدهی چگونه کار می‌کند؟
-- چطور مشکلات را گزارش کنم؟
-
-همیشه به زبان فارسی، صمیمی و دوستانه پاسخ دهید!";
+- حتما به منابع موجود ارجاع بده";
+    }
+    
+    /**
+     * دریافت خلاصه کل محتوا (Knowledge Base + Blog + FAQ)
+     */
+    protected function getContentSummary(): string
+    {
+        return Cache::remember('steward_content_summary', 3600, function () {
+            $summary = "🎯 منابع محتوایی موجود:\n\n";
+            
+            // 1. Knowledge Base Articles
+            $summary .= "📚 پایگاه دانش (Knowledge Base):\n";
+            $articles = KbArticle::where('status', 'published')
+                ->with('category')
+                ->get();
+            
+            if ($articles->isNotEmpty()) {
+                $grouped = $articles->groupBy(function($article) {
+                    return $article->category?->name ?? 'سایر';
+                });
+                foreach ($grouped as $category => $items) {
+                    $summary .= "  • {$category}: {$items->count()} مقاله\n";
+                }
+                $summary .= "\n";
+            } else {
+                $summary .= "  (هیچ مقاله‌ای))\n\n";
+            }
+            
+            // 2. Blog Posts
+            $summary .= "📝 وبلاگ (Blog Posts):\n";
+            $blogs = Blog::select('id', 'title', 'group_id')
+                ->with('group:id,name')
+                ->get();
+            
+            if ($blogs->isNotEmpty()) {
+                $blogsByGroup = $blogs->groupBy(function($blog) {
+                    return $blog->group?->name ?? 'عمومی';
+                });
+                foreach ($blogsByGroup as $groupName => $posts) {
+                    $summary .= "  • {$groupName}: {$posts->count()} پست\n";
+                }
+                $summary .= "\n";
+            } else {
+                $summary .= "  (هیچ پستی)\n\n";
+            }
+            
+            // 3. FAQ Questions
+            $summary .= "❓ سوالات متداول (FAQ):\n";
+            $faqs = FaqQuestion::published()->get();
+            
+            if ($faqs->isNotEmpty()) {
+                $faqsByCategory = $faqs->groupBy('category');
+                foreach ($faqsByCategory as $category => $questions) {
+                    $summary .= "  • {$category}: {$questions->count()} سوال\n";
+                }
+                $summary .= "\n";
+            } else {
+                $summary .= "  (هیچ سوالی)\n\n";
+            }
+            
+            // 4. Uploaded Knowledge Files
+            $summary .= "📎 فایل‌های دانش آپلودشده:\n";
+            $knowledgeFiles = StewardKnowledgeFile::active()->get();
+            
+            if ($knowledgeFiles->isNotEmpty()) {
+                $filesByType = $knowledgeFiles->groupBy('file_type');
+                foreach ($filesByType as $type => $files) {
+                    $summary .= "  • {$type}: {$files->count()} فایل\n";
+                }
+                $summary .= "\n";
+            } else {
+                $summary .= "  (هیچ فایلی)\n\n";
+            }
+            
+            $summary .= "✅ تمام این منابع در پاسخ‌های من استفاده می‌شوند";
+            return $summary;
+        });
+    }
+    
+    /**
+     * دریافت خلاصه پایگاه دانش (برای سازگاری عقبی)
+     */
+    protected function getKnowledgeBaseSummary(): string
+    {
+        return $this->getContentSummary();
+    }
+    
+    /**
+     * جستجوی مقالات مرتبط
+     */
+    protected function findRelatedArticles(string $question): array
+    {
+        $keywords = preg_split('/\s+/', trim($question), -1, PREG_SPLIT_NO_EMPTY);
+        $keywords = array_slice($keywords, 0, 5); // حداکثر 5 کلیدواژه
+        
+        $query = KbArticle::where('status', 'published')
+            ->with('category');
+        
+        foreach ($keywords as $keyword) {
+            if (strlen($keyword) > 2) {
+                $query->orWhere('title', 'like', "%{$keyword}%")
+                      ->orWhere('excerpt', 'like', "%{$keyword}%");
+            }
+        }
+        
+        return $query->take(5)->get()->toArray();
+    }
+    
+    /**
+     * جستجوی محتوا مرتبط (Knowledge Base + Blog + FAQ + Files)
+     */
+    protected function findRelatedContent(string $question): array
+    {
+        $keywords = preg_split('/\s+/', trim($question), -1, PREG_SPLIT_NO_EMPTY);
+        $keywords = array_slice($keywords, 0, 5);
+        
+        $results = [
+            'kb_articles' => [],
+            'blog_posts' => [],
+            'faq_questions' => [],
+            'knowledge_files' => []
+        ];
+        
+        // جستجو در Knowledge Base
+        $kbQuery = KbArticle::where('status', 'published')->with('category');
+        foreach ($keywords as $keyword) {
+            if (strlen($keyword) > 2) {
+                $kbQuery->orWhere('title', 'like', "%{$keyword}%")
+                        ->orWhere('excerpt', 'like', "%{$keyword}%");
+            }
+        }
+        $results['kb_articles'] = $kbQuery->take(3)->get()->map(function($article) {
+            return [
+                'type' => 'KB',
+                'title' => $article->title,
+                'slug' => $article->slug,
+                'category' => $article->category?->name ?? 'عمومی',
+                'excerpt' => $article->excerpt,
+                'url' => "/support/knowledge-base/{$article->slug}"
+            ];
+        })->toArray();
+        
+        // جستجو در Blog
+        $blogQuery = Blog::with('group');
+        foreach ($keywords as $keyword) {
+            if (strlen($keyword) > 2) {
+                $blogQuery->orWhere('title', 'like', "%{$keyword}%")
+                          ->orWhere('content', 'like', "%{$keyword}%");
+            }
+        }
+        $results['blog_posts'] = $blogQuery->take(3)->get()->map(function($blog) {
+            return [
+                'type' => 'Blog',
+                'title' => $blog->title,
+                'group' => $blog->group?->name ?? 'عمومی',
+                'excerpt' => substr($blog->content, 0, 100) . '...',
+                'url' => "/groups/" . ($blog->group_id ?? '#')
+            ];
+        })->toArray();
+        
+        // جستجو در FAQ
+        $faqQuery = FaqQuestion::published();
+        foreach ($keywords as $keyword) {
+            if (strlen($keyword) > 2) {
+                $faqQuery->orWhere('title', 'like', "%{$keyword}%")
+                         ->orWhere('question', 'like', "%{$keyword}%")
+                         ->orWhere('answer', 'like', "%{$keyword}%");
+            }
+        }
+        $results['faq_questions'] = $faqQuery->take(3)->get()->map(function($faq) {
+            return [
+                'type' => 'FAQ',
+                'title' => $faq->title,
+                'category' => $faq->category ?? 'سایر',
+                'question' => $faq->question,
+                'answer' => substr($faq->answer, 0, 100) . '...'
+            ];
+        })->toArray();
+        
+        // جستجو در فایل‌های دانش
+        $results['knowledge_files'] = $this->searchKnowledgeFiles($question);
+        
+        // مرتب‌سازی منابع بر اساس اولویت
+        $results = $this->sortBySourcePriority($results);
+        
+        return $results;
+    }
+    
+    /**
+     * مرتب‌سازی منابع بر اساس اولویت تنظیم‌شده
+     */
+    protected function sortBySourcePriority(array $results): array
+    {
+        $priorities = config('najm-hoda.agents.steward.source_priorities', [
+            'kb_articles' => 10,
+            'knowledge_files' => 8,
+            'faq_questions' => 7,
+            'blog_posts' => 5,
+        ]);
+        
+        // مرتب‌سازی کلیدها بر اساس اولویت
+        uksort($results, function($a, $b) use ($priorities) {
+            $priorityA = $priorities[$a] ?? 0;
+            $priorityB = $priorities[$b] ?? 0;
+            return $priorityB <=> $priorityA; // نزولی
+        });
+        
+        return $results;
+    }
+    
+    /**
+     * فرمت‌کردن مقالات برای Prompt
+     */
+    protected function formatArticlesForPrompt(array $articles): string
+    {
+        if (empty($articles)) {
+            return 'مقاله‌ی مرتبطی یافت نشد.';
+        }
+        
+        $formatted = "موارد زیر مرتبط هستند:\n\n";
+        
+        foreach ($articles as $article) {
+            $category = $article['category']['name'] ?? 'عمومی';
+            $formatted .= "- **{$article['title']}** ({$category})\n";
+            if (!empty($article['excerpt'])) {
+                $formatted .= "  {$article['excerpt']}\n";
+            }
+            $formatted .= "  URL: https://localhost:8000/support/knowledge-base/{$article['slug']}\n\n";
+        }
+        
+        return $formatted;
     }
     
     /**
@@ -119,6 +335,10 @@ class StewardAgent extends BaseAgent
     {
         $context = $this->buildUserContext($userContext);
         
+        // جستجوی محتوا از تمام منابع
+        $relatedContent = $this->findRelatedContent($question);
+        $contentContext = $this->formatContentForPrompt($relatedContent);
+        
         $prompt = "کاربر سوال زیر را پرسیده:
 
 **سوال:** {$question}
@@ -126,17 +346,23 @@ class StewardAgent extends BaseAgent
 **اطلاعات کاربر:**
 {$context}
 
+**منابع محتوایی مرتبط (مرتب‌شده بر اساس اولویت):**
+{$contentContext}
+
 لطفاً:
 1. پاسخ کامل و واضح بده (به زبان ساده)
 2. گام به گام توضیح بده (اگر نیاز باشد)
 3. مثال عملی بزن
-4. لینک‌های مفید ارائه بده (در صورت وجود)
-5. سوالات مرتبط را پیش‌بینی کن
+4. اگر منابعی در پایگاه دانش، فایل‌های آپلودی، وبلاگ یا FAQ مرتبط است، آنها را در پاسخ پیشنهاد بده
+5. لینک‌های مفید ارائه بده
+6. سوالات مرتبط را پیش‌بینی کن
+7. منابع با اولویت بالاتر (مانند مقالات پایگاه دانش و فایل‌های دانش) معتبرتر هستند
 
 **مهم:**
 - اگر سوال فنی و پیچیده است، به تیم فنی ارجاع بده
 - اگر مربوط به پرداخت است، دقت زیادی کن
 - همیشه امنیت کاربر را در نظر بگیر
+- ترجیح بده منابع مرتبط را نام برد
 
 خروجی به فرمت JSON:
 ```json
@@ -144,16 +370,117 @@ class StewardAgent extends BaseAgent
   \"answer\": \"پاسخ کامل\",
   \"steps\": [\"گام 1\", \"گام 2\"],
   \"example\": \"مثال عملی\",
-  \"related_links\": [],
+  \"resources\": [
+    {\"type\": \"KB\", \"title\": \"نام\", \"url\": \"لینک\"},
+    {\"type\": \"Blog\", \"title\": \"نام\", \"url\": \"لینک\"},
+    {\"type\": \"FAQ\", \"title\": \"نام\"}
+  ],
   \"related_questions\": [],
-  \"needs_escalation\": false,
-  \"escalation_reason\": \"\"
+  \"needs_escalation\": false
 }
 ```";
 
         $response = $this->ask($prompt, $userContext);
         
         return $this->parseJsonResponse($response);
+    }
+    
+    /**
+     * فرمت‌کردن محتوای مرتبط برای Prompt
+     */
+    protected function formatContentForPrompt(array $content): string
+    {
+        $formatted = "";
+        
+        // Knowledge Base Articles
+        if (!empty($content['kb_articles'])) {
+            $formatted .= "📚 مقالات پایگاه دانش:\n";
+            foreach ($content['kb_articles'] as $article) {
+                $formatted .= "  • {$article['title']} ({$article['category']})\n";
+                if (!empty($article['excerpt'])) {
+                    $formatted .= "    {$article['excerpt']}\n";
+                }
+                $formatted .= "    URL: {$article['url']}\n";
+            }
+            $formatted .= "\n";
+        }
+        
+        // Uploaded Knowledge Files
+        if (!empty($content['knowledge_files'])) {
+            $formatted .= "📎 فایل‌های دانش آپلودشده:\n";
+            foreach ($content['knowledge_files'] as $file) {
+                $formatted .= "  • {$file['title']} (نوع: {$file['file_type']}, اولویت: {$file['priority']})\n";
+                if (!empty($file['excerpt'])) {
+                    $formatted .= "    {$file['excerpt']}\n";
+                }
+                if (!empty($file['content'])) {
+                    $formatted .= "    محتوا: {$file['content']}\n";
+                }
+            }
+            $formatted .= "\n";
+        }
+        
+        // FAQ Questions
+        if (!empty($content['faq_questions'])) {
+            $formatted .= "❓ سوالات متداول:\n";
+            foreach ($content['faq_questions'] as $faq) {
+                $formatted .= "  • {$faq['title']} ({$faq['category']})\n";
+                $formatted .= "    سوال: {$faq['question']}\n";
+                $formatted .= "    جواب: {$faq['answer']}\n";
+            }
+            $formatted .= "\n";
+        }
+        
+        // Blog Posts
+        if (!empty($content['blog_posts'])) {
+            $formatted .= "📝 پست‌های وبلاگ:\n";
+            foreach ($content['blog_posts'] as $post) {
+                $formatted .= "  • {$post['title']} (گروه: {$post['group']})\n";
+                $formatted .= "    {$post['excerpt']}\n";
+            }
+            $formatted .= "\n";
+        }
+        
+        if (empty($formatted)) {
+            $formatted = "هیچ منبع مرتبطی یافت نشد.\n";
+        }
+        
+        return $formatted;
+    }
+    
+    /**
+     * جستجوی فایل‌های دانش آپلودشده
+     */
+    protected function searchKnowledgeFiles(string $question): array
+    {
+        $keywords = preg_split('/\s+/', trim($question), -1, PREG_SPLIT_NO_EMPTY);
+        $keywords = array_slice($keywords, 0, 5);
+        
+        $query = StewardKnowledgeFile::active();
+        
+        // جستجوی کلمات کلیدی در عنوان و محتوا
+        $query->where(function($q) use ($keywords) {
+            foreach ($keywords as $keyword) {
+                if (strlen($keyword) > 2) {
+                    $q->orWhere('title', 'like', "%{$keyword}%")
+                      ->orWhere('extracted_content', 'like', "%{$keyword}%");
+                }
+            }
+        });
+        
+        return $query->orderBy('search_priority', 'desc')
+                     ->take(3)
+                     ->get()
+                     ->map(function($file) {
+                         return [
+                             'type' => 'File',
+                             'title' => $file->title,
+                             'file_type' => strtoupper($file->file_type),
+                             'excerpt' => $file->summary ?? substr($file->extracted_content, 0, 200),
+                             'content' => substr($file->extracted_content, 0, 1000),
+                             'priority' => $file->search_priority,
+                         ];
+                     })->toArray();
     }
     
     /**

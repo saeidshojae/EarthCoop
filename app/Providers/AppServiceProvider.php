@@ -12,6 +12,14 @@ use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use App\Observers\NajmBaharTransactionObserver;
 use App\Models\Group;
 use App\Observers\GroupObserver;
+use App\Models\KbArticle;
+use App\Observers\KbArticleObserver;
+use App\Models\Blog;
+use App\Observers\BlogObserver;
+use App\Models\FaqQuestion;
+use App\Observers\FaqQuestionObserver;
+use App\Models\StewardKnowledgeFile;
+use App\Observers\StewardKnowledgeFileObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -61,5 +69,21 @@ class AppServiceProvider extends ServiceProvider
 
         // Register Observer for Group legal accounts
         Group::observe(GroupObserver::class);
+
+        // Register Observer for Knowledge Base Articles
+        // This automatically invalidates Steward Agent cache when KB articles change
+        KbArticle::observe(KbArticleObserver::class);
+
+        // Register Observer for Blog Posts
+        // Steward Agent uses blog content for contextual guidance
+        Blog::observe(BlogObserver::class);
+
+        // Register Observer for FAQ Questions
+        // Steward Agent references FAQ answers for common questions
+        FaqQuestion::observe(FaqQuestionObserver::class);
+
+        // Register Observer for Steward Knowledge Files
+        // Invalidates cache when uploaded files are added, updated, or deleted
+        StewardKnowledgeFile::observe(StewardKnowledgeFileObserver::class);
     }
 }

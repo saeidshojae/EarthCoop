@@ -1,0 +1,210 @@
+@extends('layouts.admin')
+
+@section('title', 'مدیریت فایل‌های دانش Steward')
+
+@section('content')
+<div class="container-fluid">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <div>
+            <h1 style="font-size: 28px; font-weight: 700; color: #1f2937; margin: 0;">
+                📎 مدیریت فایل‌های دانش Steward
+            </h1>
+            <p style="color: #6b7280; margin-top: 4px; font-size: 14px;">
+                مدیریت و نظارت بر فایل‌های آپلودشده برای سیستم هوش مصنوعی Steward
+            </p>
+        </div>
+        <a href="{{ route('admin.najm-hoda.settings') }}" class="btn btn-primary" style="padding: 10px 20px;">
+            <i class="fas fa-cog"></i>
+            تنظیمات
+        </a>
+    </div>
+
+    <!-- کارت آمار -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <div style="color: #6b7280; font-size: 12px; font-weight: 700; text-transform: uppercase;">کل فایل‌ها</div>
+            <div style="font-size: 32px; font-weight: 700; color: #1f2937; margin-top: 8px;">
+                {{ $files->total() }}
+            </div>
+        </div>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <div style="color: #6b7280; font-size: 12px; font-weight: 700; text-transform: uppercase;">فایل‌های PDF</div>
+            <div style="font-size: 32px; font-weight: 700; color: #ef4444; margin-top: 8px;">
+                {{ $files->pluck('file_type')->filter(fn($t) => $t === 'pdf')->count() }}
+            </div>
+        </div>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <div style="color: #6b7280; font-size: 12px; font-weight: 700; text-transform: uppercase;">فایل‌های TXT</div>
+            <div style="font-size: 32px; font-weight: 700; color: #3b82f6; margin-top: 8px;">
+                {{ $files->pluck('file_type')->filter(fn($t) => $t === 'txt')->count() }}
+            </div>
+        </div>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <div style="color: #6b7280; font-size: 12px; font-weight: 700; text-transform: uppercase;">فایل‌های Word</div>
+            <div style="font-size: 32px; font-weight: 700; color: #2563eb; margin-top: 8px;">
+                {{ $files->pluck('file_type')->filter(fn($t) => in_array($t, ['doc', 'docx']))->count() }}
+            </div>
+        </div>
+    </div>
+
+    <!-- جدول فایل‌ها -->
+    <div style="background: white; border-radius: 8px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div style="padding: 16px; border-bottom: 1px solid #e5e7eb; background: #f9fafb;">
+            <h3 style="font-size: 16px; font-weight: 700; color: #1f2937; margin: 0;">
+                📚 لیست فایل‌های آپلودشده
+            </h3>
+        </div>
+
+        @if($files->count() > 0)
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+                    <thead style="background: #f3f4f6;">
+                        <tr>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #e5e7eb; font-weight: 700;">عنوان</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #e5e7eb; font-weight: 700;">نوع</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #e5e7eb; font-weight: 700;">حجم</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #e5e7eb; font-weight: 700;">اولویت</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #e5e7eb; font-weight: 700;">وضعیت</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #e5e7eb; font-weight: 700;">آپلودکننده</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #e5e7eb; font-weight: 700;">تاریخ</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid #e5e7eb; font-weight: 700;">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($files as $file)
+                            <tr style="border-bottom: 1px solid #e5e7eb; hover: background: #f9fafb;">
+                                <td style="padding: 12px; text-align: right;">
+                                    <i class="fas {{ $file->file_icon }}" style="color: #6366f1; margin-left: 8px;"></i>
+                                    <strong>{{ $file->title }}</strong>
+                                    <br>
+                                    <small style="color: #9ca3af; font-size: 11px;">{{ $file->original_filename }}</small>
+                                </td>
+                                <td style="padding: 12px; text-align: center;">
+                                    <span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 4px; font-size: 11px; font-weight: 700;">
+                                        {{ strtoupper($file->file_type) }}
+                                    </span>
+                                </td>
+                                <td style="padding: 12px; text-align: center; color: #6b7280;">
+                                    {{ $file->formatted_file_size }}
+                                </td>
+                                <td style="padding: 12px; text-align: center;">
+                                    <span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 4px; font-weight: 700;">
+                                        {{ $file->search_priority }}/10
+                                    </span>
+                                </td>
+                                <td style="padding: 12px; text-align: center;">
+                                    @if($file->is_active)
+                                        <span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 4px; font-size: 11px; font-weight: 700;">
+                                            فعال
+                                        </span>
+                                    @else
+                                        <span style="background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 4px; font-size: 11px; font-weight: 700;">
+                                            غیرفعال
+                                        </span>
+                                    @endif
+                                </td>
+                                <td style="padding: 12px; text-align: center; color: #6b7280;">
+                                    <i class="fas fa-user" style="margin-left: 4px;"></i>
+                                    {{ $file->uploader?->name ?? 'نامشخص' }}
+                                </td>
+                                <td style="padding: 12px; text-align: center; color: #6b7280; font-size: 11px;">
+                                    {{ $file->created_at->format('Y/m/d') }}
+                                    <br>
+                                    <small>{{ $file->created_at->diffForHumans() }}</small>
+                                </td>
+                                <td style="padding: 12px; text-align: center;">
+                                    <button onclick="editFileModal({{ $file->id }}, '{{ $file->title }}', {{ $file->search_priority }})" 
+                                            style="border: none; background: #3b82f6; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin: 2px; font-size: 11px;"
+                                            title="ویرایش">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button onclick="confirmDelete({{ $file->id }})" 
+                                            style="border: none; background: #ef4444; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin: 2px; font-size: 11px;"
+                                            title="حذف">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div style="padding: 16px; border-top: 1px solid #e5e7eb;">
+                {{ $files->links() }}
+            </div>
+        @else
+            <div style="padding: 40px; text-align: center; color: #9ca3af;">
+                <i class="fas fa-inbox" style="font-size: 32px; margin-bottom: 12px; color: #d1d5db;"></i>
+                <p style="margin: 0;">هیچ فایلی آپلود نشده است</p>
+            </div>
+        @endif
+    </div>
+</div>
+
+<script>
+function editFileModal(id, title, priority) {
+    const newTitle = prompt('عنوان جدید:', title);
+    if (!newTitle) return;
+    
+    const newPriority = prompt('اولویت جستجو (1-10):', priority);
+    if (!newPriority) return;
+    
+    updateFile(id, newTitle, parseInt(newPriority));
+}
+
+async function updateFile(id, title, priority) {
+    try {
+        const response = await fetch(`/admin/najm-hoda/steward/knowledge-files/${id}`, {
+            method: 'PUT',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ title, search_priority: priority })
+        });
+        
+        if (response.ok) {
+            alert('✅ فایل با موفقیت ویرایش شد');
+            location.reload();
+        } else {
+            alert('❌ خطا در ویرایش فایل');
+        }
+    } catch (error) {
+        alert('❌ خطا در ارتباط با سرور');
+    }
+}
+
+function confirmDelete(id) {
+    if (!confirm('آیا از حذف این فایل اطمینان دارید؟')) return;
+    deleteFile(id);
+}
+
+async function deleteFile(id) {
+    try {
+        const response = await fetch(`/admin/najm-hoda/steward/knowledge-files/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            alert('✅ فایل حذف شد');
+            location.reload();
+        } else {
+            alert('❌ خطا در حذف فایل');
+        }
+    } catch (error) {
+        alert('❌ خطا در ارتباط با سرور');
+    }
+}
+</script>
+
+@endsection

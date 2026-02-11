@@ -632,6 +632,13 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
         Route::middleware('permission:najm-hoda.manage-settings')->group(function () {
             Route::get('/settings', [AdminNajmHodaController::class, 'settings'])->name('settings');
             Route::post('/settings', [AdminNajmHodaController::class, 'updateSettings'])->name('settings.update');
+            
+            // Steward Knowledge Files - داخل manage-settings
+            Route::get('/steward/knowledge-files', [AdminNajmHodaController::class, 'manageKnowledgeFiles'])->name('steward.knowledge-files-page');
+            Route::post('/steward/upload-knowledge', [AdminNajmHodaController::class, 'uploadKnowledgeFile'])->name('steward.upload-knowledge');
+            Route::get('/steward/knowledge-files-api', [AdminNajmHodaController::class, 'getKnowledgeFiles'])->name('steward.knowledge-files-api');
+            Route::put('/steward/knowledge-files/{id}', [AdminNajmHodaController::class, 'updateKnowledgeFile'])->name('steward.update-knowledge');
+            Route::delete('/steward/knowledge-files/{id}', [AdminNajmHodaController::class, 'deleteKnowledgeFile'])->name('steward.delete-knowledge');
         });
         Route::get('/chat', [AdminNajmHodaController::class, 'chat'])->name('chat');
         Route::post('/chat', [AdminNajmHodaController::class, 'sendMessage'])->name('chat.send');
@@ -1540,5 +1547,8 @@ Route::middleware([\App\Http\Middleware\AdminMiddleware::class])->prefix('admin/
         Route::put('/tags/{tag}', [\App\Http\Controllers\Admin\KbTagController::class, 'update'])->name('tags.update');
         Route::delete('/tags/{tag}', [\App\Http\Controllers\Admin\KbTagController::class, 'destroy'])->name('tags.destroy');
     });
+
+    // Steward Dashboard (Monitoring)
+    Route::get('/steward-dashboard', fn() => view('steward-dashboard'))->name('steward.dashboard');
 });
 

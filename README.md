@@ -234,8 +234,28 @@ Then visit `http://localhost:8000`
 
 ```env
 # .env
-OPENAI_API_KEY=your_openai_key_here
+AI_PROVIDER=openai
+AI_API_KEY=your_ai_key_here
+AI_MODEL=gpt-4-turbo-preview
+AI_BASE_URL=https://api.openai.com/v1
 NAJM_HODA_ENABLED=true
+NAJM_HODA_MOCK_MODE=false
+```
+
+### Enable OpenRouter (Optional)
+
+```env
+AI_PROVIDER=openrouter
+AI_API_KEY=your_openrouter_key_here
+AI_MODEL=openai/gpt-4o-mini
+OPENROUTER_SITE_URL=https://your-domain.example
+OPENROUTER_APP_NAME=NewEarthCoop
+```
+
+### NajmHoda Health Check
+
+```bash
+php scripts/najm_hoda_health_check.php
 ```
 
 ### Setup Pusher (Real-time)
@@ -408,5 +428,6 @@ NewEarthCoop represents a modern approach to economic and social cooperation in 
 <p align="center">
   <a href="https://github.com/saeidshojae/NewEarthCoop">⭐ Star us on GitHub!</a>
 </p>
-#   N e w E a r t h C o o p N e w  
+#   N e w E a r t h C o o p N e w 
+ 
  

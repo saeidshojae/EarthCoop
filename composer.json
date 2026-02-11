@@ -19,7 +19,9 @@
     "laravel/ui": "^4.6",
     "maatwebsite/excel": "^1.1",
     "morilog/jalali": "^3.4",
-    "pusher/pusher-php-server": "^7.2"
+    "phpoffice/phpword": "1.0",
+    "pusher/pusher-php-server": "^7.2",
+    "smalot/pdfparser": "*"
   },
   "require-dev": {
     "fakerphp/faker": "^1.9.1",

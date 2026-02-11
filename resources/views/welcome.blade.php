@@ -796,7 +796,7 @@
                         <p class="text-sm text-gray-600 font-vazirmatn">
                             کد دعوت ندارید؟ 
                             <a href="{{ route('invite') }}" class="text-digital-gold hover:text-orange-600 font-semibold transition">
-                                درخواست کنید
+                                یکی درخواست کنید
                                 <i class="fas fa-arrow-left mr-1"></i>
                             </a>
                         </p>

@@ -12,9 +12,11 @@ use App\Services\NajmHoda\CodeScanner\BackupManagerService;
 use App\Models\Conversation;
 use App\Models\AIInteraction;
 use App\Models\Feedback;
+use App\Models\StewardKnowledgeFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
 /**
@@ -186,7 +188,7 @@ class NajmHodaController extends Controller
         $validated = $request->validate([
             'enabled' => 'nullable|boolean',
             'mock_mode' => 'nullable|boolean',
-            'provider' => 'nullable|in:openai,claude,gemini',
+            'provider' => 'nullable|in:openai,openrouter,claude,gemini',
             'model' => 'nullable|string',
             'api_key' => 'nullable|string',
             'max_tokens' => 'nullable|integer|min:100',
@@ -749,6 +751,288 @@ class NajmHodaController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * صفحهٔ مدیریت فایل‌های دانش Steward
+     */
+    public function manageKnowledgeFiles()
+    {
+        $files = StewardKnowledgeFile::with('uploader:id,first_name,last_name,email')
+            ->latest()
+            ->paginate(20);
+
+        return view('admin.najm-hoda.knowledge-files', compact('files'));
+    }
+
+    /**
+     * آپلود فایل دانش برای Steward Agent
+     */
+    public function uploadKnowledgeFile(Request $request)
+    {
+        // بررسی authentication
+        if (!auth()->check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'ابتدا وارد سیستم شوید'
+            ], 401);
+        }
+
+        try {
+            // Validation
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'knowledge_file' => 'required|file|mimes:pdf,doc,docx,txt,md|max:10240', // 10MB
+                'search_priority' => 'nullable|integer|min:1|max:10',
+            ], [
+                'knowledge_file.required' => 'لطفاً فایل را انتخاب کنید',
+                'knowledge_file.mimes' => 'فایل باید یکی از فرمت‌های PDF، Word، TXT یا Markdown باشد',
+                'knowledge_file.max' => 'حجم فایل نمی‌تواند بیشتر از 10 مگابایت باشد',
+                'title.required' => 'لطفاً عنوان فایل را وارد کنید',
+                'title.max' => 'عنوان نمی‌تواند بیشتر از 255 کاراکتر باشد',
+            ]);
+
+            $file = $request->file('knowledge_file');
+            $originalName = $file->getClientOriginalName();
+            $extension = strtolower($file->getClientOriginalExtension());
+            $fileSize = $file->getSize();
+            
+            // ایجاد نام فایل منحصر به فرد
+            $fileName = time() . '_' . str_replace(' ', '_', preg_replace('/[^\w.-]/u', '', basename($originalName)));
+            
+            // ذخیره فایل در storage
+            $filePath = $file->storeAs('steward/knowledge', $fileName, 'public');
+            
+            if (!$filePath) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '❌ خطا: فایل نتوانست ذخیره شود. لطفاً دوباره تلاش کنید'
+                ], 500);
+            }
+            
+            // استخراج محتوا
+            $extractedContent = $this->extractFileContent($file, $extension);
+            if (empty($extractedContent)) {
+                $extractedContent = "فایل: {$originalName}";
+            }
+            
+            // ذخیره در دیتابیس
+            $knowledgeFile = StewardKnowledgeFile::create([
+                'title' => trim($validated['title']),
+                'original_filename' => $originalName,
+                'file_path' => $filePath,
+                'file_type' => $extension,
+                'file_size' => $fileSize,
+                'extracted_content' => $extractedContent,
+                'summary' => substr($extractedContent, 0, 200),
+                'search_priority' => $validated['search_priority'] ?? 5,
+                'uploaded_by' => auth()->id(),
+                'is_active' => true,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => '✅ فایل "' . $validated['title'] . '" با موفقیت آپلود شد',
+                'file' => [
+                    'id' => $knowledgeFile->id,
+                    'title' => $knowledgeFile->title,
+                    'file_type' => $knowledgeFile->file_type,
+                    'file_size' => $knowledgeFile->formatted_file_size,
+                    'created_at' => $knowledgeFile->created_at->diffForHumans(),
+                ]
+            ], 201);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $errors = collect($e->errors())->flatten()->first();
+            return response()->json([
+                'success' => false,
+                'message' => '⚠️ ' . $errors
+            ], 422);
+            
+        } catch (\Exception $e) {
+            // Log error for debugging
+            \Log::error('Knowledge file upload error: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'file' => $request->file('knowledge_file') ? $request->file('knowledge_file')->getClientOriginalName() : 'unknown',
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => '❌ خطا در آپلود فایل: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * دریافت لیست فایل‌های دانش
+     */
+    public function getKnowledgeFiles()
+    {
+        $files = StewardKnowledgeFile::with('uploader:id,first_name,last_name,email')
+            ->active()
+            ->latest()
+            ->get()
+            ->map(function($file) {
+                // ساخت نام کاربر
+                $uploaderName = 'نامشخص';
+                if ($file->uploader) {
+                    if ($file->uploader->first_name || $file->uploader->last_name) {
+                        $uploaderName = trim($file->uploader->first_name . ' ' . $file->uploader->last_name);
+                    } else {
+                        $uploaderName = $file->uploader->email ?? 'نامشخص';
+                    }
+                }
+                
+                return [
+                    'id' => $file->id,
+                    'title' => $file->title,
+                    'file_type' => $file->file_type,
+                    'file_size' => $file->formatted_file_size,
+                    'search_priority' => $file->search_priority,
+                    'uploader' => $uploaderName,
+                    'created_at' => $file->created_at->diffForHumans(),
+                    'icon' => $file->file_icon,
+                ];
+            })->toArray();
+
+        return response()->json([
+            'success' => true,
+            'files' => $files
+        ]);
+    }
+
+    /**
+     * ویرایش فایل دانش (فقط عنوان و اولویت)
+     */
+    public function updateKnowledgeFile(Request $request, $id)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'search_priority' => 'nullable|integer|min:1|max:10',
+        ]);
+
+        try {
+            $file = StewardKnowledgeFile::findOrFail($id);
+            
+            $file->update([
+                'title' => $request->title,
+                'search_priority' => $request->search_priority ?? $file->search_priority,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'فایل با موفقیت ویرایش شد',
+                'file' => [
+                    'id' => $file->id,
+                    'title' => $file->title,
+                    'search_priority' => $file->search_priority,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'خطا در ویرایش فایل: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * حذف فایل دانش
+     */
+    public function deleteKnowledgeFile($id)
+    {
+        try {
+            $file = StewardKnowledgeFile::findOrFail($id);
+            
+            // حذف فایل از storage
+            if (Storage::disk('public')->exists($file->file_path)) {
+                Storage::disk('public')->delete($file->file_path);
+            }
+            
+            // حذف از دیتابیس
+            $file->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'فایل با موفقیت حذف شد'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'خطا در حذف فایل: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * استخراج محتوای فایل بر اساس نوع
+     */
+    private function extractFileContent($file, $extension)
+    {
+        $content = '';
+        $filename = $file->getClientOriginalName();
+
+        try {
+            if ($extension === 'txt' || $extension === 'md') {
+                // فایل‌های متنی: استخراج کامل محتوا
+                $rawContent = file_get_contents($file->getRealPath());
+                
+                // اطمینان از UTF-8 بودن
+                if (!mb_check_encoding($rawContent, 'UTF-8')) {
+                    $content = mb_convert_encoding($rawContent, 'UTF-8', 'auto');
+                } else {
+                    $content = $rawContent;
+                }
+                
+            } elseif ($extension === 'pdf') {
+                // PDF: تلاش برای استخراج محتوا با smalot/pdfparser
+                if (class_exists('\Smalot\PdfParser\Parser')) {
+                    try {
+                        $parser = new \Smalot\PdfParser\Parser();
+                        $pdf = $parser->parseFile($file->getRealPath());
+                        $extractedText = $pdf->getText();
+                        
+                        if (!empty(trim($extractedText))) {
+                            // محتوا استخراج شد
+                            $content = "📄 فایل PDF: {$filename}\n\n";
+                            $content .= "محتوای استخراج‌شده:\n\n";
+                            $content .= $extractedText;
+                        } else {
+                            // PDF خالی یا بدون متن
+                            $content = "📄 فایل PDF: {$filename}\n\n";
+                            $content .= "این فایل PDF شامل تصاویر یا محتوای غیرقابل استخراج است.";
+                        }
+                    } catch (\Exception $e) {
+                        \Log::warning('PDF parsing failed', [
+                            'filename' => $filename,
+                            'error' => $e->getMessage()
+                        ]);
+                        
+                        $content = "📄 فایل PDF: {$filename}\n\n";
+                        $content .= "خطا در استخراج محتوا. نام فایل برای جستجو استفاده می‌شود.";
+                    }
+                } else {
+                    $content = "📄 فایل PDF: {$filename}\n\n";
+                    $content .= "کتابخانه PDF Parser نصب نیست.";
+                }
+                
+            } elseif ($extension === 'docx' || $extension === 'doc') {
+                // Word: فعلاً فقط نام فایل (کتابخانه phpoffice/phpword نصب نیست)
+                $content = "📝 فایل Word: {$filename}\n\n";
+                $content .= "این یک فایل Word است. ";
+                $content .= "برای استخراج خودکار محتوای Word، نیاز به نصب کتابخانه phpoffice/phpword است.";
+            }
+        } catch (\Exception $e) {
+            \Log::error('File content extraction error', [
+                'filename' => $filename,
+                'extension' => $extension,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            $content = "فایل: {$filename}\n\nخطا در پردازش فایل.";
+        }
+
+        return $content;
+    }
 }
-
-
