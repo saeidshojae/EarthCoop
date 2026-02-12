@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\NajmBaharAgreement;
 use App\Models\User;
+use App\Models\UserExperience;
+use App\Models\Address;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\TransactionService;
 use App\Modules\NajmBahar\Services\FeeService;
@@ -50,8 +52,12 @@ class NajmBaharController extends Controller
             ->with('descendants')
             ->orderBy('order')
             ->get();
+        $hasExperience = UserExperience::where('user_id', $user->id)->exists();
+        $hasAddress = Address::where('user_id', $user->id)->exists();
+        $step1Complete = ($user->first_name && $user->last_name && $user->gender && $user->national_id && $user->phone);
+        $isProfileComplete = $step1Complete && $hasExperience && $hasAddress;
 
-        return view('najm-bahar.agreement', compact('agreements'));
+        return view('najm-bahar.agreement', compact('agreements', 'isProfileComplete'));
     }
 
     /**
@@ -91,8 +97,10 @@ class NajmBaharController extends Controller
                     $userAccount->account_number,
                     $initialAmount,
                     'واریز اولیه جهت افتتاح حساب نجم بهار',
-                    ['type' => 'initial_funding', 'user_id' => $user->id],
-                    $idempotencyKey
+                    ['type' => 'initial_funding', 'user_id' => $user->id, 'system_operation' => true],
+                    $idempotencyKey,
+                    'faded',
+                    'initial_funding'
                 );
 
                 // 3. کسر حق عضویت سالانه و تقسیم به حساب‌های سیستمی
@@ -151,9 +159,12 @@ class NajmBaharController extends Controller
                     [
                         'type' => 'referral_bonus',
                         'referrer_id' => $invitationCheck->user_id,
-                        'new_user_id' => $user->id
+                        'new_user_id' => $user->id,
+                        'system_operation' => true,
                     ],
-                    $bonusIdempotencyKey
+                    $bonusIdempotencyKey,
+                    'faded',
+                    'referral_bonus'
                 );
             }
         }
@@ -244,8 +255,10 @@ class NajmBaharController extends Controller
                 $account->account_number,
                 $this->getInitialAmount(),
                 'واریز اولیه جهت افتتاح حساب نجم بهار',
-                ['type' => 'initial_funding', 'user_id' => $user->id],
-                'initial-funding-' . $user->id
+                ['type' => 'initial_funding', 'user_id' => $user->id, 'system_operation' => true],
+                'initial-funding-' . $user->id,
+                'faded',
+                'initial_funding'
             );
         }
 
@@ -253,7 +266,6 @@ class NajmBaharController extends Controller
             $this->distributeMembershipFee($account->account_number, $user->id);
         }
     }
-
     private function distributeMembershipFee(string $fromAccountNumber, int $userId): int
     {
         $settings = Setting::firstNajmBaharSettings();
@@ -284,8 +296,10 @@ class NajmBaharController extends Controller
                 $membershipAccount,
                 $membershipFee,
                 'پرداخت حق عضویت سالانه EarthCoop',
-                ['type' => 'membership_fee', 'user_id' => $userId, 'split' => 'membership'],
-                'membership-fee-' . $userId . '-membership'
+                ['type' => 'membership_fee', 'user_id' => $userId, 'split' => 'membership', 'system_operation' => true],
+                'membership-fee-' . $userId . '-membership',
+                'faded',
+                'membership_fee'
             );
 
             return $membershipFee;
@@ -307,8 +321,10 @@ class NajmBaharController extends Controller
                 $targetAccount,
                 $amount,
                 'پرداخت حق عضویت سالانه EarthCoop',
-                ['type' => 'membership_fee', 'user_id' => $userId, 'split' => $suffix],
-                'membership-fee-' . $userId . '-' . $suffix
+                ['type' => 'membership_fee', 'user_id' => $userId, 'split' => $suffix, 'system_operation' => true],
+                'membership-fee-' . $userId . '-' . $suffix,
+                'faded',
+                'membership_fee'
             );
         }
 

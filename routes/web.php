@@ -489,114 +489,17 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::post('najm-bahar/sub-accounts/{subAccount}/deactivate', [\App\Http\Controllers\NajmBaharSubAccountController::class, 'deactivate'])->name('najm-bahar.sub-accounts.deactivate');
     Route::post('najm-bahar/sub-accounts/{subAccount}/activate', [\App\Http\Controllers\NajmBaharSubAccountController::class, 'activate'])->name('najm-bahar.sub-accounts.activate');
     
-    Route::get('spring-accounts', function(){
-        $user = auth()->user();
-        $accountService = app(\App\Modules\NajmBahar\Services\AccountService::class);
-        $hasNajmAccount = $accountService->hasMainAccount($user->id);
-
-        if ($hasNajmAccount) {
-            return redirect()->route('najm-bahar.wallet');
-        }
-
-        // بررسی وجود حساب نجم بهار برای کاربر (Legacy Spring)
-        $spring = \App\Models\Spring::where('user_id', $user->id)->first();
-        // تعیین وضعیت تکمیل پروفایل بر اساس استپ 1 (اطلاعات هویتی)، استپ 2 (تخصص) و استپ 3 (مکان)
-        $hasExperience = \App\Models\UserExperience::where('user_id', $user->id)->exists();
-        $hasAddress = \App\Models\Address::where('user_id', $user->id)->exists();
-        $step1Complete = ($user->first_name && $user->last_name && $user->gender && $user->national_id && $user->phone);
-        $isProfileComplete = $step1Complete && $hasExperience && $hasAddress;
-        
-        // اگر حساب وجود ندارد یا status = 0 (توافقنامه امضا نشده)
-        if(!$spring || $spring->status == 0) {
-            // دریافت توافقنامه‌های اصلی (بدون والد) از جدول جدید
-            $agreements = \App\Models\NajmBaharAgreement::whereNull('parent_id')
-                ->with('children')
-                ->orderBy('order')
-                ->orderBy('created_at', 'desc')
-                ->get();
-            
-            // اگر هیچ توافقنامه‌ای در جدول جدید وجود نداشت، از داده‌های قدیمی استفاده کن
-            if ($agreements->isEmpty()) {
-                $setting = \App\Models\Setting::find(1);
-                $oldAgreement = null;
-                if ($setting && !empty($setting->najm_summary)) {
-                    $oldAgreement = [
-                        'title' => 'توافقنامه نجم بهار',
-                        'content' => $setting->najm_summary,
-                        'children' => collect([])
-                    ];
-                }
-                return view('terms-spring', compact('oldAgreement', 'isProfileComplete'));
-            }
-            
-            $springAccount = $spring;
-            return view('terms-spring', compact('agreements', 'springAccount', 'isProfileComplete'));
-        }
-        
-        // اگر توافقنامه امضا شده، هدایت به Dashboard
-        return redirect()->route('najm-bahar.wallet');
+    Route::get('spring-accounts', function () {
+        return redirect()->route('najm-bahar.agreement');
     })->name('spring-accounts');
 
     Route::get('spring-accounts/agreement', function () {
-        $user = auth()->user();
-        $accountService = app(\App\Modules\NajmBahar\Services\AccountService::class);
-        $hasNajmAccount = $accountService->hasMainAccount($user->id);
-
-        if ($hasNajmAccount) {
-            return redirect()->route('najm-bahar.dashboard');
-        }
-
-        // دریافت توافقنامه‌های اصلی (بدون والد) از جدول جدید
-        $agreements = \App\Models\NajmBaharAgreement::whereNull('parent_id')
-            ->with('children')
-            ->orderBy('order')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        // compute profile completeness for agreement page
-        $hasExperience = \App\Models\UserExperience::where('user_id', $user->id)->exists();
-        $hasAddress = \App\Models\Address::where('user_id', $user->id)->exists();
-        $step1Complete = ($user->first_name && $user->last_name && $user->gender && $user->national_id && $user->phone);
-        $isProfileComplete = $step1Complete && $hasExperience && $hasAddress;
-                
-        // اگر هیچ توافقنامه‌ای در جدول جدید وجود نداشت، از داده‌های قدیمی استفاده کن
-        if ($agreements->isEmpty()) {
-            $setting = \App\Models\Setting::find(1);
-            $oldAgreement = null;
-            if ($setting && !empty($setting->najm_summary)) {
-                $oldAgreement = [
-                    'title' => 'توافقنامه نجم بهار',
-                    'content' => $setting->najm_summary,
-                    'children' => collect([])
-                ];
-            }
-            return view('terms-spring', compact('oldAgreement', 'isProfileComplete'));
-        }
-        
-        $springAccount = \App\Models\Spring::where('user_id', auth()->id())->first();
-        // compute profile completeness for agreement page as well
-        $user = auth()->user();
-        $hasExperience = \App\Models\UserExperience::where('user_id', $user->id)->exists();
-        $hasAddress = \App\Models\Address::where('user_id', $user->id)->exists();
-        $step1Complete = ($user->first_name && $user->last_name && $user->gender && $user->national_id && $user->phone);
-        $isProfileComplete = $step1Complete && $hasExperience && $hasAddress;
-
-        return view('terms-spring', compact('agreements', 'springAccount', 'isProfileComplete'));
+        return redirect()->route('najm-bahar.agreement');
     })->name('spring-accounts.agreement');
-    
-    Route::post('/najm/confirm', function(){
-        $spring = \App\Models\Spring::where('user_id', auth()->user()->id)->where('status', '0')->first();
-        
-        // اگر حساب پیدا نشد، خطا
-        if(!$spring) {
-            return redirect()->route('spring-accounts')->with('error', 'حساب نجم بهار شما یافت نشد.');
-        }
-        
-        // تایید توافقنامه
-        $spring->status = 1;
-        $spring->save();
-        
-        return redirect()->route('spring-accounts')->with('success', 'توافقنامه با موفقیت امضا شد.');
+
+    Route::post('/najm/confirm', function () {
+        return redirect()->route('najm-bahar.agreement')
+            ->with('info', 'توافقنامه فقط از مسیر ماژول نجم بهار قابل تایید است.');
     })->name('najm.confirm');
 
 });

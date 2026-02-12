@@ -593,7 +593,7 @@
                             $accountService = app(\App\Modules\NajmBahar\Services\AccountService::class);
                             $needsNajmAgreement = !$accountService->hasMainAccount(auth()->id());
                         @endphp
-                        <a href="{{ route('spring-accounts') }}" class="sidebar-menu-link {{ $needsNajmAgreement ? 'blinking-item' : '' }}">
+                        <a href="{{ route('najm-bahar.agreement') }}" class="sidebar-menu-link {{ $needsNajmAgreement ? 'blinking-item' : '' }}">
                             <i class="fas fa-wallet text-digital-gold"></i>
                             <span class="flex-grow text-right mx-3">حساب مالی نجم بهار</span>
                         </a>

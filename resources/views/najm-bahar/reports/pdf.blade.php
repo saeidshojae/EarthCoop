@@ -162,9 +162,6 @@
                     $isIncoming = false;
                     if ($account ?? null) {
                         $isIncoming = isset($transaction->to_account_id) && $transaction->to_account_id == $account->id;
-                    } else {
-                        $spring = \App\Models\Spring::where('user_id', auth()->id())->first();
-                        $isIncoming = $spring && isset($transaction->to_account_id) && $transaction->to_account_id == $spring->id;
                     }
                 @endphp
                 <tr>

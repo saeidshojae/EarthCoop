@@ -348,11 +348,7 @@ $groupId = $routeParams['group'] ?? null;
                             <tbody>
                                 @foreach($transactions as $transaction)
                                     @php
-                                        $isIncoming = isset($transaction->to_account_id) && $account && $transaction->to_account_id == $account->id;
-                                        if (!$account) {
-                                            $spring = \App\Models\Spring::where('user_id', auth()->id())->first();
-                                            $isIncoming = $spring && isset($transaction->to_account_id) && $transaction->to_account_id == $spring->id;
-                                        }
+                                            $isIncoming = isset($transaction->to_account_id) && $account && $transaction->to_account_id == $account->id;
                                     @endphp
                                     <tr>
                                         <td>

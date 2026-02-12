@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\NajmBaharAgreement;
-use App\Models\Setting;
 use Illuminate\Http\Request;
 
 class NajmBaharController extends Controller
@@ -14,9 +13,6 @@ class NajmBaharController extends Controller
      */
     public function index(Request $request)
     {
-        // انتقال داده‌های قدیمی از settings به جدول جدید (فقط یک بار)
-        $this->migrateOldData();
-        
         $query = NajmBaharAgreement::with('parent', 'children');
 
         // جستجو
@@ -47,26 +43,6 @@ class NajmBaharController extends Controller
         ];
         
         return view('admin.najm-bahar.index', compact('agreements', 'stats'));
-    }
-
-    /**
-     * Migrate old data from settings table
-     */
-    private function migrateOldData()
-    {
-        // فقط اگر هیچ داده‌ای در جدول جدید وجود نداشته باشد
-        if (NajmBaharAgreement::count() == 0) {
-            $setting = Setting::find(1);
-            if ($setting && !empty($setting->najm_summary)) {
-                // ایجاد توافقنامه از داده‌های قدیمی
-                NajmBaharAgreement::create([
-                    'title' => 'توافقنامه نجم بهار',
-                    'content' => $setting->najm_summary,
-                    'parent_id' => null,
-                    'order' => 0
-                ]);
-            }
-        }
     }
 
     /**

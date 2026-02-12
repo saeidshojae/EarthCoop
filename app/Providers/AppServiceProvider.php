@@ -6,8 +6,6 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Spring;
-use App\Modules\NajmBahar\Adapters\LegacyNajmAdapter;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use App\Observers\NajmBaharTransactionObserver;
 use App\Models\Group;
@@ -61,8 +59,6 @@ class AppServiceProvider extends ServiceProvider
             $user = Auth::user();
             return $user && ($user->is_admin || $user->hasRole('super-admin'));
         });
-
-        // Legacy Spring adapter removed - financial operations now handled in NajmBaharController
 
         // Register Observer for NajmBahar Transactions
         NajmTransaction::observe(NajmBaharTransactionObserver::class);

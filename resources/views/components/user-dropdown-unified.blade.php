@@ -126,7 +126,7 @@
             <span class="text-right">{{ __('navigation.charter') }}</span>
         </a>
         
-        <a href="{{ route('spring-accounts.agreement') }}" 
+        <a href="{{ route('najm-bahar.agreement') }}" 
            class="block px-4 py-2 hover:bg-gray-50 transition duration-200 flex items-center gap-3" 
            style="color: var(--color-gentle-black);">
             <i class="fas fa-file-contract"></i>

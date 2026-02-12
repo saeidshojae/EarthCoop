@@ -92,7 +92,7 @@
                                 $accountService = app(\App\Modules\NajmBahar\Services\AccountService::class);
                                 $needsNajmAgreement = !$accountService->hasMainAccount(auth()->id());
                             @endphp
-                            <li class="nav-item {{ $needsNajmAgreement ? 'blinking-text' : '' }}"><a class="nav-link" href="{{ route('spring-accounts') }}">
+                            <li class="nav-item {{ $needsNajmAgreement ? 'blinking-text' : '' }}"><a class="nav-link" href="{{ route('najm-bahar.agreement') }}">
                                 <i class="bi bi-piggy-bank"></i><b>حساب مالی نجم بهار</b></a>
                             </li>
                             

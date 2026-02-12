@@ -83,8 +83,8 @@ class CreateFaqPage extends Command
                     'category' => 'Finance',
                     'category_label' => 'Financial Questions',
                     'icon' => 'fa-coins',
-                    'question' => 'What is the Spring account and how do I activate it?',
-                    'answer' => '<p>The Spring account is our internal financial unit. After completing your profile and accepting the financial agreement, your account will be activated automatically.</p>'
+                    'question' => 'What is the Najm Bahar account and how do I activate it?',
+                    'answer' => '<p>The Najm Bahar account is our internal financial unit. After completing your profile and accepting the financial agreement, your account will be activated automatically.</p>'
                 ],
                 [
                     'category' => 'Support',

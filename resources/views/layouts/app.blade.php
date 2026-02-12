@@ -244,7 +244,7 @@
                                     <a class="dropdown-item fw-semibold" href="{{ route('terms') }}">
                                         {{ __('navigation.charter') }}
                                     </a>
-                                      <a class="dropdown-item fw-semibold" href="{{ route('spring-accounts') }}">
+                                                                            <a class="dropdown-item fw-semibold" href="{{ route('najm-bahar.agreement') }}">
                                         {{ __('navigation.financial_agreement') }}
                                     </a>
                                     

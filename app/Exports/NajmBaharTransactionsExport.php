@@ -41,13 +41,7 @@ class NajmBaharTransactionsExport implements FromCollection, WithHeadings, WithM
 
     public function map($transaction): array
     {
-        $isIncoming = false;
-        if ($this->account) {
-            $isIncoming = isset($transaction->to_account_id) && $transaction->to_account_id == $this->account->id;
-        } else {
-            $spring = \App\Models\Spring::where('user_id', auth()->id())->first();
-            $isIncoming = $spring && isset($transaction->to_account_id) && $transaction->to_account_id == $spring->id;
-        }
+        $isIncoming = $this->account && isset($transaction->to_account_id) && $transaction->to_account_id == $this->account->id;
 
         return [
             \Morilog\Jalali\Jalalian::fromCarbon($transaction->created_at)->format('Y/m/d H:i'),

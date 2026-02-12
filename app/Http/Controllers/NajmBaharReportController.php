@@ -28,12 +28,9 @@ class NajmBaharReportController extends Controller
         $accountNumber = AccountNumberService::makeMainAccountNumberForUser($user->id);
         $account = Account::where('account_number', $accountNumber)->first();
 
-        // اگر حساب NajmBahar وجود ندارد، از Legacy Spring استفاده کن
         if (!$account) {
-            $spring = \App\Models\Spring::where('user_id', $user->id)->first();
-            if (!$spring || $spring->status == 0) {
-                return redirect()->route('spring-accounts');
-            }
+            return redirect()->route('najm-bahar.agreement')
+                ->with('info', 'ابتدا باید حساب نجم بهار خود را ایجاد کنید.');
         }
 
         // فیلترها
@@ -125,8 +122,8 @@ class NajmBaharReportController extends Controller
         $accountNumber = AccountNumberService::makeMainAccountNumberForUser($leader->id);
         $account = Account::where('account_number', $accountNumber)->first();
 
-        $transactions = $this->getTransactions($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $leader->id);
-        $summary = $this->getSummary($account, $accountNumber, $dateFrom, $dateTo, $leader->id);
+        $transactions = $this->getTransactions($account, $accountNumber, $dateFrom, $dateTo, $type, $search);
+        $summary = $this->getSummary($account, $accountNumber, $dateFrom, $dateTo);
 
         $routePrefix = 'groups.najm-bahar.leader-reports';
         $routeParams = ['group' => $group->id, 'leader' => $leader->id];
@@ -141,110 +138,52 @@ class NajmBaharReportController extends Controller
     /**
      * دریافت تراکنش‌ها با فیلتر
      */
-    private function getTransactions($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $legacyUserId = null)
+    private function getTransactions($account, $accountNumber, $dateFrom, $dateTo, $type, $search)
     {
-        if ($account) {
-            $query = Transaction::where(function($q) use ($account) {
-                $q->where('from_account_id', $account->id)
-                  ->orWhere('to_account_id', $account->id);
-            })
-            ->whereBetween('created_at', [
-                Carbon::parse($dateFrom)->startOfDay(),
-                Carbon::parse($dateTo)->endOfDay()
-            ])
-            ->where('status', 'completed');
+        $query = Transaction::where(function($q) use ($account) {
+            $q->where('from_account_id', $account->id)
+              ->orWhere('to_account_id', $account->id);
+        })
+        ->whereBetween('created_at', [
+            Carbon::parse($dateFrom)->startOfDay(),
+            Carbon::parse($dateTo)->endOfDay()
+        ])
+        ->where('status', 'completed');
 
-            // فیلتر نوع
-            if ($type === 'in') {
-                $query->where('to_account_id', $account->id);
-            } elseif ($type === 'out') {
-                $query->where('from_account_id', $account->id);
-            }
-
-            // جستجو در توضیحات
-            if ($search) {
-                $query->where('description', 'like', "%{$search}%");
-            }
-
-            return $query->orderBy('created_at', 'desc')->paginate(25);
-        } else {
-            // Legacy Spring
-            $springUserId = $legacyUserId ?? auth()->id();
-            $spring = \App\Models\Spring::where('user_id', $springUserId)->first();
-            if (!$spring) {
-                return collect()->paginate(25);
-            }
-
-            $query = \App\Models\Transaction::where(function($q) use ($spring) {
-                $q->where('from_account_id', $spring->id)
-                  ->orWhere('to_account_id', $spring->id);
-            })
-            ->whereBetween('created_at', [
-                Carbon::parse($dateFrom)->startOfDay(),
-                Carbon::parse($dateTo)->endOfDay()
-            ]);
-
-            if ($type === 'in') {
-                $query->where('to_account_id', $spring->id);
-            } elseif ($type === 'out') {
-                $query->where('from_account_id', $spring->id);
-            }
-
-            if ($search) {
-                $query->where('description', 'like', "%{$search}%");
-            }
-
-            return $query->orderBy('created_at', 'desc')->paginate(25);
+        // فیلتر نوع
+        if ($type === 'in') {
+            $query->where('to_account_id', $account->id);
+        } elseif ($type === 'out') {
+            $query->where('from_account_id', $account->id);
         }
+
+        // جستجو در توضیحات
+        if ($search) {
+            $query->where('description', 'like', "%{$search}%");
+        }
+
+        return $query->orderBy('created_at', 'desc')->paginate(25);
     }
 
     /**
      * دریافت آمار خلاصه
      */
-    private function getSummary($account, $accountNumber, $dateFrom, $dateTo, $legacyUserId = null)
+    private function getSummary($account, $accountNumber, $dateFrom, $dateTo)
     {
-        if ($account) {
-            $transactions = Transaction::where(function($q) use ($account) {
-                $q->where('from_account_id', $account->id)
-                  ->orWhere('to_account_id', $account->id);
-            })
-            ->whereBetween('created_at', [
-                Carbon::parse($dateFrom)->startOfDay(),
-                Carbon::parse($dateTo)->endOfDay()
-            ])
-            ->where('status', 'completed')
-            ->get();
+        $transactions = Transaction::where(function($q) use ($account) {
+            $q->where('from_account_id', $account->id)
+              ->orWhere('to_account_id', $account->id);
+        })
+        ->whereBetween('created_at', [
+            Carbon::parse($dateFrom)->startOfDay(),
+            Carbon::parse($dateTo)->endOfDay()
+        ])
+        ->where('status', 'completed')
+        ->get();
 
-            $totalIn = $transactions->where('to_account_id', $account->id)->sum('amount');
-            $totalOut = $transactions->where('from_account_id', $account->id)->sum('amount');
-            $count = $transactions->count();
-        } else {
-            // Legacy Spring
-            $springUserId = $legacyUserId ?? auth()->id();
-            $spring = \App\Models\Spring::where('user_id', $springUserId)->first();
-            if (!$spring) {
-                return [
-                    'totalIn' => 0,
-                    'totalOut' => 0,
-                    'net' => 0,
-                    'count' => 0,
-                ];
-            }
-
-            $transactions = \App\Models\Transaction::where(function($q) use ($spring) {
-                $q->where('from_account_id', $spring->id)
-                  ->orWhere('to_account_id', $spring->id);
-            })
-            ->whereBetween('created_at', [
-                Carbon::parse($dateFrom)->startOfDay(),
-                Carbon::parse($dateTo)->endOfDay()
-            ])
-            ->get();
-
-            $totalIn = $transactions->where('to_account_id', $spring->id)->sum('amount');
-            $totalOut = $transactions->where('from_account_id', $spring->id)->sum('amount');
-            $count = $transactions->count();
-        }
+        $totalIn = $transactions->where('to_account_id', $account->id)->sum('amount');
+        $totalOut = $transactions->where('from_account_id', $account->id)->sum('amount');
+        $count = $transactions->count();
 
         return [
             'totalIn' => $totalIn,
@@ -264,10 +203,8 @@ class NajmBaharReportController extends Controller
         $account = Account::where('account_number', $accountNumber)->first();
 
         if (!$account) {
-            $spring = \App\Models\Spring::where('user_id', $user->id)->first();
-            if (!$spring || $spring->status == 0) {
-                return redirect()->route('spring-accounts');
-            }
+            return redirect()->route('najm-bahar.agreement')
+                ->with('info', 'ابتدا باید حساب نجم بهار خود را ایجاد کنید.');
         }
 
         // دریافت فیلترها
@@ -307,58 +244,29 @@ class NajmBaharReportController extends Controller
     /**
      * دریافت تراکنش‌ها برای Export (بدون pagination)
      */
-    private function getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $legacyUserId = null)
+    private function getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search)
     {
-        if ($account) {
-            $query = Transaction::where(function($q) use ($account) {
-                $q->where('from_account_id', $account->id)
-                  ->orWhere('to_account_id', $account->id);
-            })
-            ->whereBetween('created_at', [
-                Carbon::parse($dateFrom)->startOfDay(),
-                Carbon::parse($dateTo)->endOfDay()
-            ])
-            ->where('status', 'completed');
+        $query = Transaction::where(function($q) use ($account) {
+            $q->where('from_account_id', $account->id)
+              ->orWhere('to_account_id', $account->id);
+        })
+        ->whereBetween('created_at', [
+            Carbon::parse($dateFrom)->startOfDay(),
+            Carbon::parse($dateTo)->endOfDay()
+        ])
+        ->where('status', 'completed');
 
-            if ($type === 'in') {
-                $query->where('to_account_id', $account->id);
-            } elseif ($type === 'out') {
-                $query->where('from_account_id', $account->id);
-            }
-
-            if ($search) {
-                $query->where('description', 'like', "%{$search}%");
-            }
-
-            return $query->orderBy('created_at', 'desc')->get();
-        } else {
-            $springUserId = $legacyUserId ?? auth()->id();
-            $spring = \App\Models\Spring::where('user_id', $springUserId)->first();
-            if (!$spring) {
-                return collect();
-            }
-
-            $query = \App\Models\Transaction::where(function($q) use ($spring) {
-                $q->where('from_account_id', $spring->id)
-                  ->orWhere('to_account_id', $spring->id);
-            })
-            ->whereBetween('created_at', [
-                Carbon::parse($dateFrom)->startOfDay(),
-                Carbon::parse($dateTo)->endOfDay()
-            ]);
-
-            if ($type === 'in') {
-                $query->where('to_account_id', $spring->id);
-            } elseif ($type === 'out') {
-                $query->where('from_account_id', $spring->id);
-            }
-
-            if ($search) {
-                $query->where('description', 'like', "%{$search}%");
-            }
-
-            return $query->orderBy('created_at', 'desc')->get();
+        if ($type === 'in') {
+            $query->where('to_account_id', $account->id);
+        } elseif ($type === 'out') {
+            $query->where('from_account_id', $account->id);
         }
+
+        if ($search) {
+            $query->where('description', 'like', "%{$search}%");
+        }
+
+        return $query->orderBy('created_at', 'desc')->get();
     }
 
     /**
@@ -371,10 +279,8 @@ class NajmBaharReportController extends Controller
         $account = Account::where('account_number', $accountNumber)->first();
 
         if (!$account) {
-            $spring = \App\Models\Spring::where('user_id', $user->id)->first();
-            if (!$spring || $spring->status == 0) {
-                return redirect()->route('spring-accounts');
-            }
+            return redirect()->route('najm-bahar.agreement')
+                ->with('info', 'ابتدا باید حساب نجم بهار خود را ایجاد کنید.');
         }
 
         // دریافت فیلترها
@@ -457,7 +363,7 @@ class NajmBaharReportController extends Controller
         $accountNumber = AccountNumberService::makeMainAccountNumberForUser($leader->id);
         $account = Account::where('account_number', $accountNumber)->first();
 
-        $transactions = $this->getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $leader->id);
+        $transactions = $this->getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search);
 
         $fileName = 'najm-bahar-group-' . $group->id . '-leader-' . $leader->id . '-transactions-' . Carbon::now()->format('Y-m-d-His') . '.xlsx';
 
@@ -495,8 +401,8 @@ class NajmBaharReportController extends Controller
         $accountNumber = AccountNumberService::makeMainAccountNumberForUser($leader->id);
         $account = Account::where('account_number', $accountNumber)->first();
 
-        $transactions = $this->getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $leader->id);
-        $summary = $this->getSummary($account, $accountNumber, $dateFrom, $dateTo, $leader->id);
+        $transactions = $this->getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search);
+        $summary = $this->getSummary($account, $accountNumber, $dateFrom, $dateTo);
 
         $leaderName = trim($leader->first_name . ' ' . $leader->last_name) ?: 'کاربر ' . $leader->id;
         $roleLabel = $this->resolveLeaderRoleLabel($window);
