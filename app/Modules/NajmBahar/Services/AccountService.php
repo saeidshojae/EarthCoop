@@ -142,6 +142,8 @@ class AccountService
             'name' => $subAccount->name,
             'type' => 'subaccount',
             'balance' => $subAccount->balance,
+            'balance_active' => $subAccount->balance_active ?? 0,
+            'balance_faded' => $subAccount->balance_faded ?? 0,
         ]);
 
         if ($account->name !== $subAccount->name) {
@@ -149,9 +151,23 @@ class AccountService
             $account->save();
         }
 
-        if ($subAccount->balance !== $account->balance) {
-            $subAccount->balance = $account->balance;
+        // SubAccount is the source of truth; always recompute its total first.
+        $subTotal = intval($subAccount->balance_active ?? 0) + intval($subAccount->balance_faded ?? 0);
+        if ((int) $subAccount->balance !== $subTotal) {
+            $subAccount->balance = $subTotal;
             $subAccount->save();
+        }
+
+        // Keep Account mirror in sync with SubAccount to avoid negative drift.
+        $accountNeedsUpdate = (int) $account->balance !== (int) $subAccount->balance
+            || (int) ($account->balance_active ?? 0) !== (int) ($subAccount->balance_active ?? 0)
+            || (int) ($account->balance_faded ?? 0) !== (int) ($subAccount->balance_faded ?? 0);
+
+        if ($accountNeedsUpdate) {
+            $account->balance = (int) $subAccount->balance;
+            $account->balance_active = (int) ($subAccount->balance_active ?? 0);
+            $account->balance_faded = (int) ($subAccount->balance_faded ?? 0);
+            $account->save();
         }
 
         return $account;

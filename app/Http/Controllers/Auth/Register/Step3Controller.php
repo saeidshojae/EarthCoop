@@ -14,6 +14,7 @@ use App\Models\Street;
 use App\Models\Village;
 use Illuminate\Http\Request;
 use App\Services\GroupService;
+use App\Services\ProfileCompletionService;
 
 class Step3Controller extends Controller
 {
@@ -136,6 +137,8 @@ class Step3Controller extends Controller
             // اتصال گروه‌ها به کاربر
             $groupService = new GroupService();
             $groupService->generateGroupsForUser($user);
+
+            app(ProfileCompletionService::class)->maybeAward($user);
             
             // عملیات مالی نجم بهار حذف شد - حالا در NajmBaharController انجام می‌شود
             

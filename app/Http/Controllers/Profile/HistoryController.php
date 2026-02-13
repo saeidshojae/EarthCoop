@@ -47,7 +47,10 @@ class HistoryController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $currentPoints = optional(auth()->user()->points)->points ?? 0;
+        $pointRecord = \App\Models\UserPoint::where('user_id', auth()->user()->id)->first();
+        $currentPoints = $pointRecord ? (int) $pointRecord->points : (int) (\App\Models\UserPointTransaction::where('user_id', auth()->user()->id)
+            ->orderBy('created_at', 'desc')
+            ->value('balance_after') ?? 0);
 
         return view('history.index', compact('blogs', 'comments', 'reactions', 'polls', 'elections', 'pointTransactions', 'currentPoints'));
     }

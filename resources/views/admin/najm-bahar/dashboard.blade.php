@@ -95,17 +95,24 @@
             <div class="text-red-600 text-sm mt-3">{{ $message }}</div>
         @enderror
 
-        <div class="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div>
-                <h2 class="text-lg font-bold text-slate-900 dark:text-white">مبلغ واریز اولیه</h2>
-                <p class="text-slate-600 dark:text-slate-400 mt-1">
-                    پول خلق شده فعلی: <span class="font-semibold text-slate-900 dark:text-white">{{ \App\Helpers\BaharMoney::formatDecimal($totalMinted) }}</span>
-                </p>
-                <div class="mt-3 text-sm text-slate-600 dark:text-slate-400">
-                    کاربران فعلی: <span class="font-semibold text-slate-900 dark:text-white">{{ number_format($userCount) }}</span>
-                    <span class="mx-2">/</span>
-                    مبلغ اولیه: <span class="font-semibold text-slate-900 dark:text-white">{{ \App\Helpers\BaharMoney::formatDecimal($initialAmount) }}</span>
+        <div class="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white">مبلغ واریز اولیه</h2>
+                    <p class="text-slate-600 dark:text-slate-400 mt-1">
+                        پول خلق شده فعلی: <span class="font-semibold text-slate-900 dark:text-white">{{ \App\Helpers\BaharMoney::formatDecimal($totalMinted) }}</span>
+                    </p>
+                    <div class="mt-3 text-sm text-slate-600 dark:text-slate-400">
+                        کاربران فعلی: <span class="font-semibold text-slate-900 dark:text-white">{{ number_format($userCount) }}</span>
+                        <span class="mx-2">/</span>
+                        مبلغ اولیه: <span class="font-semibold text-slate-900 dark:text-white">{{ \App\Helpers\BaharMoney::formatDecimal($initialAmount) }}</span>
+                    </div>
                 </div>
+                
+                <a href="{{ route('admin.najm-bahar.settings.index') }}" class="px-4 py-2 rounded-lg border border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition font-semibold flex items-center gap-2">
+                    <i class="fas fa-cog"></i>
+                    تنظیمات پیشرفته
+                </a>
             </div>
 
             <form action="{{ route('admin.najm-bahar.initial-amount.update') }}" method="POST" class="flex flex-col sm:flex-row gap-3">

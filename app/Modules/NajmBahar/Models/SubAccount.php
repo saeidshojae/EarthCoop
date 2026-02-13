@@ -13,12 +13,16 @@ class SubAccount extends Model
         'sub_account_code', // e.g. 0000000000-001
         'name',
         'balance',
+        'balance_active',
+        'balance_faded',
         'meta',
         'status'
     ];
 
     protected $casts = [
         'balance' => 'integer',
+        'balance_active' => 'integer',
+        'balance_faded' => 'integer',
         'meta' => 'array',
     ];
 

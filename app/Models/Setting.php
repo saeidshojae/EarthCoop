@@ -22,6 +22,12 @@ class Setting extends Model
         'home_content',
         'najm_bahar_user_threshold',
         'najm_bahar_initial_amount',
+        'najm_bahar_initial_active_percentage',
+        'najm_bahar_initial_active_type',
+        'najm_bahar_initial_active_fixed_amount',
+        'najm_bahar_auto_activation_enabled',
+        'najm_bahar_auto_activation_period',
+        'najm_bahar_auto_activation_amount',
         'najm_bahar_membership_fee_account',
         'najm_bahar_membership_fee_insurance_account',
         'najm_bahar_membership_fee_burn_account',
@@ -29,6 +35,8 @@ class Setting extends Model
         'najm_bahar_membership_fee_membership_amount',
         'najm_bahar_membership_fee_insurance_amount',
         'najm_bahar_membership_fee_burn_amount',
+        'reputation_to_gol_ratio',
+        'reputation_conversion_enabled',
     ];
 
     public static function firstNajmBaharSettings(): self

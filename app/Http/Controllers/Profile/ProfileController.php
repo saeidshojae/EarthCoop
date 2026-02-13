@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Log;
 
 use App\Models\Continent;
 use App\Services\GroupService;
+use App\Services\ProfileCompletionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -588,6 +589,8 @@ protected function isValidIranianNationalCode(string $code): bool
            $user->save();
         }
 
+          app(ProfileCompletionService::class)->maybeAward($user);
+
 
 
         return back()->with('success', 'پروفایل با موفقیت ویرایش شد');
@@ -735,6 +738,8 @@ foreach ($removedExperience as $id) {
     }
 }
 
+        app(ProfileCompletionService::class)->maybeAward($user);
+
         return redirect()->route('profile.edit')->with('success', 'زمینه‌های صنفی و تجربی با موفقیت به‌روزرسانی شدند.');
     }
 
@@ -821,6 +826,8 @@ foreach ($removedExperience as $id) {
 
         // ساخت گروه‌های جدید
         $groupService->generateGroupsForUser($user);
+
+        app(ProfileCompletionService::class)->maybeAward($user);
 
         return back()->with('success', 'مکان شما با موفقیت به‌روزرسانی شد.');
     }

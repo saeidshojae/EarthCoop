@@ -92,6 +92,11 @@ class User extends Authenticatable
         return $this->hasOne(NotificationSetting::class);
     }
 
+    public function points()
+    {
+        return $this->hasOne(UserPoint::class);
+    }
+
     public function profile(){
         if($this->avatar == null){
             $fColor = rand(1, 255);

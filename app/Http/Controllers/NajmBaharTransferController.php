@@ -17,6 +17,25 @@ use App\Models\User;
 
 class NajmBaharTransferController extends Controller
 {
+    private function resolveMoneyState(SubAccount $subAccount, int $amount): string
+    {
+        $faded = intval($subAccount->balance_faded ?? 0);
+        $active = intval($subAccount->balance_active ?? 0);
+
+        if ($faded >= $amount) {
+            return 'faded';
+        }
+
+        if ($active >= $amount) {
+            return 'active';
+        }
+
+        if (($faded + $active) >= $amount) {
+            throw new \RuntimeException('موجودی کافی است اما بین فعال و منقضی تقسیم شده است. لطفا انتقال را در دو مرحله انجام دهید.');
+        }
+
+        throw new \RuntimeException('موجودی حساب فرعی کافی نیست.');
+    }
     public function create(AccountService $accountService, SubAccountService $subAccountService)
     {
         $user = auth()->user();
@@ -83,6 +102,7 @@ class NajmBaharTransferController extends Controller
         $sourceSubAccount->loadMissing('account');
         $targetSubAccount->loadMissing('account');
         $transactionType = $validated['transaction_type'];
+        $moneyState = $this->resolveMoneyState($sourceSubAccount, $amount);
 
         try {
             if ($transactionType === 'scheduled') {
@@ -108,6 +128,7 @@ class NajmBaharTransferController extends Controller
                         'to_sub_account_id' => $targetSubAccount->id,
                         'from_sub_account_code' => $sourceSubAccount->sub_account_code,
                         'to_sub_account_code' => $targetSubAccount->sub_account_code,
+                        'money_state' => $moneyState,
                     ],
                     'description' => $validated['description'] ?? null,
                 ]);
@@ -121,12 +142,14 @@ class NajmBaharTransferController extends Controller
                         'from_sub_account_id' => $sourceSubAccount->id,
                         'to_sub_account_id' => $targetSubAccount->id,
                         'amount' => $amount,
+                        'money_state' => $moneyState,
                         'description' => $validated['description'] ?? null,
                         'metadata' => [
                             'from_sub_account_code' => $sourceSubAccount->sub_account_code,
                             'to_sub_account_code' => $targetSubAccount->sub_account_code,
                             'from_account_number' => $sourceSubAccount->account?->account_number,
                             'actor_user_id' => $user->id,
+                            'money_state' => $moneyState,
                         ],
                     ],
                 ]);
@@ -155,7 +178,8 @@ class NajmBaharTransferController extends Controller
                 $sourceSubAccount->id,
                 $targetSubAccount->id,
                 $amount,
-                $validated['description'] ?? null
+                $validated['description'] ?? null,
+                $moneyState
             );
 
             NajmBaharAuditLogger::log([
@@ -245,6 +269,7 @@ class NajmBaharTransferController extends Controller
         $sourceSubAccount->loadMissing('account');
         $targetSubAccount->loadMissing('account');
         $transactionType = $validated['transaction_type'];
+        $moneyState = $this->resolveMoneyState($sourceSubAccount, $amount);
         $actorName = trim(($request->user()->first_name ?? '') . ' ' . ($request->user()->last_name ?? ''));
 
         try {
@@ -274,6 +299,7 @@ class NajmBaharTransferController extends Controller
                         'group_id' => $group->id,
                         'actor_user_id' => $request->user()->id,
                         'actor_name' => $actorName,
+                        'money_state' => $moneyState,
                     ],
                     'description' => $validated['description'],
                 ]);
@@ -287,6 +313,7 @@ class NajmBaharTransferController extends Controller
                         'from_sub_account_id' => $sourceSubAccount->id,
                         'to_sub_account_id' => $targetSubAccount->id,
                         'amount' => $amount,
+                        'money_state' => $moneyState,
                         'description' => $validated['description'],
                         'metadata' => [
                             'from_sub_account_code' => $sourceSubAccount->sub_account_code,
@@ -295,6 +322,7 @@ class NajmBaharTransferController extends Controller
                             'group_id' => $group->id,
                             'actor_user_id' => $request->user()->id,
                             'actor_name' => $actorName,
+                            'money_state' => $moneyState,
                         ],
                     ],
                 ]);
@@ -324,7 +352,8 @@ class NajmBaharTransferController extends Controller
                 $sourceSubAccount->id,
                 $targetSubAccount->id,
                 $amount,
-                $validated['description']
+                $validated['description'],
+                $moneyState
             );
 
             NajmBaharAuditLogger::logGroupAction($group, $request->user(), [

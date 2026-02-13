@@ -42,6 +42,8 @@ class NajmBaharProcessScheduled extends Command
                         $toSubAccountId = $payload['to_sub_account_id'] ?? null;
                         $amount = isset($payload['amount']) ? intval($payload['amount']) : 0;
                         $description = $payload['description'] ?? null;
+                        $moneyState = $payload['money_state']
+                            ?? ($payload['metadata']['money_state'] ?? 'faded');
                         $meta = $payload['metadata'] ?? [];
 
                         if (! $fromSubAccountId || ! $toSubAccountId || $amount <= 0) {
@@ -52,14 +54,10 @@ class NajmBaharProcessScheduled extends Command
                             $fromSubAccountId,
                             $toSubAccountId,
                             $amount,
-                            $description
+                            $description,
+                            $moneyState,
+                            $item->transaction_id
                         );
-
-                        if ($item->transaction_id) {
-                            NajmTransaction::where('id', $item->transaction_id)->update([
-                                'status' => 'completed',
-                            ]);
-                        }
 
                         if (!empty($meta['group_id'])) {
                             $group = \App\Models\Group::find($meta['group_id']);

@@ -18,6 +18,26 @@ class NajmBaharSubAccountController extends Controller
 {
     protected $subAccountService;
 
+    private function resolveMoneyState(SubAccount $subAccount, int $amount): string
+    {
+        $faded = intval($subAccount->balance_faded ?? 0);
+        $active = intval($subAccount->balance_active ?? 0);
+
+        if ($faded >= $amount) {
+            return 'faded';
+        }
+
+        if ($active >= $amount) {
+            return 'active';
+        }
+
+        if (($faded + $active) >= $amount) {
+            throw new \RuntimeException('موجودی کافی است اما بین فعال و منقضی تقسیم شده است. لطفا انتقال را در دو مرحله انجام دهید.');
+        }
+
+        throw new \RuntimeException('موجودی حساب فرعی کافی نیست.');
+    }
+
     public function __construct(SubAccountService $subAccountService)
     {
         $this->subAccountService = $subAccountService;
@@ -189,7 +209,8 @@ class NajmBaharSubAccountController extends Controller
                         $subAccount->id,
                         $destinationSubAccount->id,
                         $amount,
-                        $validated['description'] ?? null
+                        $validated['description'] ?? null,
+                        $this->resolveMoneyState($subAccount, $amount)
                     );
                 } else {
                     $this->subAccountService->transferFromSubAccount(
@@ -254,7 +275,8 @@ class NajmBaharSubAccountController extends Controller
                 $account->id,
                 $subAccount->id,
                 $amount,
-                $validated['description'] ?? null
+                $validated['description'] ?? null,
+                'active'
             );
 
             return back()->with('success', 'وجه با موفقیت به حساب فرعی منتقل شد.');
@@ -509,7 +531,8 @@ class NajmBaharSubAccountController extends Controller
                         $subAccount->id,
                         $destinationSubAccount->id,
                         $amount,
-                        $validated['description'] ?? null
+                        $validated['description'] ?? null,
+                        $this->resolveMoneyState($subAccount, $amount)
                     );
                 } else {
                     $this->subAccountService->transferFromSubAccount(

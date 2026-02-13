@@ -13,12 +13,16 @@ class Account extends Model
         'name',
         'type', // central|user|legal_entity|bank
         'balance',
+        'balance_active',
+        'balance_faded',
         'meta',
         'status'
     ];
 
     protected $casts = [
         'balance' => 'integer',
+        'balance_active' => 'integer',
+        'balance_faded' => 'integer',
         'meta' => 'array',
     ];
 

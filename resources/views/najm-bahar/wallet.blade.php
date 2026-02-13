@@ -244,12 +244,75 @@
                                 </svg>
                             </div>
                             <div class="mr-4">
-                                <h3 class="text-lg font-semibold text-gray-800">موجودی حساب</h3>
+                                <h3 class="text-lg font-semibold text-gray-800">موجودی کل</h3>
                                 <p class="nb-metric nb-metric-accent">{{ \App\Helpers\BaharMoney::formatDecimal($account->balance) }}</p>
                             </div>
                         </div>
                     </div>
 
+                    <div class="nb-card p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="mr-4">
+                                <h3 class="text-lg font-semibold text-gray-800">موجودی فعال</h3>
+                                <p class="nb-metric" style="color: #10b981;">{{ \App\Helpers\BaharMoney::formatDecimal($account->balance_active ?? 0) }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="nb-card p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="mr-4">
+                                <h3 class="text-lg font-semibold text-gray-800">موجودی کمرنگ</h3>
+                                <p class="nb-metric" style="color: #f59e0b;">{{ \App\Helpers\BaharMoney::formatDecimal($account->balance_faded ?? 0) }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="nb-card p-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+                                    </svg>
+                                </div>
+                                <div class="mr-4">
+                                    <h3 class="text-lg font-semibold text-gray-800">امتیازات</h3>
+                                    <div class="flex items-center gap-3">
+                                        <span class="nb-metric" style="color: #8b5cf6;">{{ number_format($totalPoints ?? 0) }}</span>
+                                        <span class="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700 font-semibold">{{ $userLevel ?? 'Bronze' }}</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 mt-2 text-xs">
+                                        <span class="text-green-600 font-bold">{{ number_format($uncashedPoints ?? 0) }}</span>
+                                        <span class="text-gray-500">پررنگ</span>
+                                        <span class="text-gray-300">|</span>
+                                        <span class="text-gray-400 font-semibold">{{ number_format($cashedPoints ?? 0) }}</span>
+                                        <span class="text-gray-500">کمرنگ</span>
+                                    </div>
+                                </div>
+                            </div>
+                            @if(($uncashedPoints ?? 0) > 0)
+                                <button type="button" id="convertReputationBtn" class="px-4 py-2 bg-gradient-to-br from-purple-600 to-indigo-600 text-white rounded-full font-semibold text-sm shadow-lg hover:shadow-xl transition-all hover:scale-105">
+                                    <i class="fas fa-coins ml-1"></i>
+                                    نقد کردن
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Info Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="nb-card p-6">
                         <div class="flex items-center">
                             <div class="p-3 rounded-full bg-green-100 text-green-600">
@@ -302,12 +365,21 @@
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     @foreach($recentTransactions as $transaction)
+                                        @php
+                                            $isOutgoing = in_array($transaction->from_account_id, $accountIds ?? [], true);
+                                            $isIncoming = in_array($transaction->to_account_id, $accountIds ?? [], true);
+                                            $isInternal = $isOutgoing && $isIncoming;
+                                        @endphp
                                         <tr>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {{ $transaction->created_at->format('Y/m/d H:i') }}
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
-                                                @if($transaction->from_account_id == $account->id)
+                                                @if($isInternal)
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                        انتقال داخلی
+                                                    </span>
+                                                @elseif($isOutgoing)
                                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                                                         برداشت
                                                     </span>
@@ -318,7 +390,9 @@
                                                 @endif
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                @if($transaction->from_account_id == $account->id)
+                                                @if($isInternal)
+                                                    <span class="text-blue-600">{{ \App\Helpers\BaharMoney::formatDecimalValue($transaction->amount) }}</span>
+                                                @elseif($isOutgoing)
                                                     <span class="text-red-600">-{{ \App\Helpers\BaharMoney::formatDecimalValue($transaction->amount) }}</span>
                                                 @else
                                                     <span class="text-green-600">+{{ \App\Helpers\BaharMoney::formatDecimalValue($transaction->amount) }}</span>
@@ -426,4 +500,243 @@
         </div>
     </div>
 </div>
+
+<!-- مدال نقد کردن امتیازات -->
+<div id="reputationConversionModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all">
+        <div class="bg-gradient-to-br from-purple-600 to-indigo-600 p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-coins text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold">تبدیل امتیاز به پول فعال</h3>
+                        <p class="text-sm text-purple-100">نقد کردن امتیازات</p>
+                    </div>
+                </div>
+                <button type="button" class="text-white/80 hover:text-white transition-colors" onclick="closeReputationModal()">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <div id="reputationModalContent" class="p-6 space-y-4">
+            <!-- محتوا از API بارگذاری می‌شود -->
+            <div class="flex items-center justify-center py-8">
+                <div class="animate-spin rounded-full h-10 w-10 border-4 border-purple-200 border-t-purple-600"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+function openReputationModal() {
+    const modal = document.getElementById('reputationConversionModal');
+    const content = document.getElementById('reputationModalContent');
+    
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    
+    // بارگذاری اطلاعات از API
+    fetch('{{ route("reputation.conversion.info") }}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                content.innerHTML = `
+                    <div class="text-center py-6">
+                        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-times-circle text-3xl text-red-600"></i>
+                        </div>
+                        <h4 class="text-lg font-bold text-gray-800 mb-2">خطا</h4>
+                        <p class="text-gray-600">${data.error}</p>
+                    </div>
+                    <button type="button" onclick="closeReputationModal()" class="w-full py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors">
+                        بستن
+                    </button>
+                `;
+                return;
+            }
+
+            if (data.uncashed_points <= 0) {
+                content.innerHTML = `
+                    <div class="text-center py-6">
+                        <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-info-circle text-3xl text-amber-600"></i>
+                        </div>
+                        <h4 class="text-lg font-bold text-gray-800 mb-2">امتیاز قابل نقد ندارید</h4>
+                        <p class="text-gray-600 mb-4">تمام امتیازات شما قبلاً نقد شده است.</p>
+                        <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                            <div class="text-sm space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">مجموع امتیازات:</span>
+                                    <span class="font-bold text-purple-700">${data.total_points.toLocaleString()}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">نقد شده:</span>
+                                    <span class="font-bold text-gray-500">${data.cashed_points.toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="closeReputationModal()" class="w-full py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors">
+                        بستن
+                    </button>
+                `;
+                return;
+            }
+
+            if (!data.has_enough_faded) {
+                content.innerHTML = `
+                    <div class="text-center py-6">
+                        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-exclamation-triangle text-3xl text-red-600"></i>
+                        </div>
+                        <h4 class="text-lg font-bold text-gray-800 mb-2">موجودی کمرنگ ناکافی</h4>
+                        <p class="text-gray-600 mb-4">برای تبدیل امتیازات به پول فعال، موجودی کمرنگ شما کافی نیست.</p>
+                        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">امتیازات قابل نقد:</span>
+                                <span class="font-bold text-purple-600">${data.uncashed_points.toLocaleString()}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">موجودی کمرنگ شما:</span>
+                                <span class="font-bold text-amber-600">${data.balance_faded_formatted} بهار</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="closeReputationModal()" class="w-full py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors">
+                        بستن
+                    </button>
+                `;
+                return;
+            }
+
+            // نمایش فرم تبدیل
+            const maxConvertibleGol = Math.floor(data.uncashed_points / data.conversion_ratio);
+            
+            content.innerHTML = `
+                <div class="space-y-4">
+                    <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span class="text-gray-600">امتیاز پررنگ:</span>
+                                <p class="font-bold text-purple-700 text-lg">${data.uncashed_points.toLocaleString()}</p>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">امتیاز کمرنگ:</span>
+                                <p class="font-bold text-gray-500 text-lg">${data.cashed_points.toLocaleString()}</p>
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-3 border-t border-purple-200">
+                            <span class="text-xs text-purple-700">
+                                <i class="fas fa-exchange-alt ml-1"></i>
+                                ${data.conversion_ratio_text}
+                            </span>
+                        </div>
+                    </div>
+
+                    <form action="{{ route('reputation.conversion.convert') }}" method="POST" id="conversionForm" class="space-y-4">
+                        @csrf
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">مقدار امتیاز برای تبدیل:</label>
+                            <input type="number" name="points" id="pointsInput" min="${data.conversion_ratio}" max="${data.uncashed_points}" step="${data.conversion_ratio}" value="${data.conversion_ratio}" 
+                                class="w-full px-4 py-3 border-2 border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-bold text-lg"
+                                oninput="updateConversionPreview(${data.conversion_ratio})">
+                            <p class="text-xs text-gray-500 mt-1">حداقل: ${data.conversion_ratio} | حداکثر: ${data.uncashed_points.toLocaleString()}</p>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-green-50 to-blue-50 border-2 border-green-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm text-gray-700">دریافت می‌کنید:</span>
+                                <i class="fas fa-arrow-down text-green-600"></i>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-2xl font-black text-green-600" id="convertedAmount">1</span>
+                                <span class="text-lg font-semibold text-green-700">بهار (فعال)</span>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-green-200 flex justify-between text-xs text-gray-600">
+                                <span>موجودی فعال فعلی:</span>
+                                <span class="font-bold">${data.balance_active_formatted} بهار</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <p class="text-xs text-blue-800">
+                                <i class="fas fa-info-circle ml-1"></i>
+                                امتیازات نقد شده کمرنگ می‌شوند اما از حساب شما حذف نمی‌شوند. معادل ارزش امتیاز از موجودی کمرنگ شما کسر و به موجودی فعال اضافه می‌شود.
+                            </p>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button type="submit" class="flex-1 py-3 bg-gradient-to-br from-purple-600 to-indigo-600 text-white rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition-all hover:scale-105">
+                                <i class="fas fa-check-circle ml-2"></i>
+                                تأیید و تبدیل
+                            </button>
+                            <button type="button" onclick="closeReputationModal()" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors">
+                                انصراف
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+
+            // Set initial preview
+            updateConversionPreview(data.conversion_ratio);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            content.innerHTML = `
+                <div class="text-center py-6">
+                    <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-times-circle text-3xl text-red-600"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-gray-800 mb-2">خطا در بارگذاری</h4>
+                    <p class="text-gray-600">لطفاً دوباره تلاش کنید.</p>
+                </div>
+                <button type="button" onclick="closeReputationModal()" class="w-full py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors">
+                    بستن
+                </button>
+            `;
+        });
+}
+
+function closeReputationModal() {
+    const modal = document.getElementById('reputationConversionModal');
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+function updateConversionPreview(ratio) {
+    const pointsInput = document.getElementById('pointsInput');
+    const convertedAmount = document.getElementById('convertedAmount');
+    
+    if (pointsInput && convertedAmount) {
+        const points = parseInt(pointsInput.value) || 0;
+        const bahar = Math.floor(points / ratio);
+        convertedAmount.textContent = bahar.toLocaleString();
+    }
+}
+
+// اتصال دکمه به تابع
+document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('convertReputationBtn');
+    if (btn) {
+        btn.addEventListener('click', openReputationModal);
+    }
+
+    // بستن مدال با کلیک روی پس‌زمینه
+    const modal = document.getElementById('reputationConversionModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeReputationModal();
+            }
+        });
+    }
+});
+</script>
+@endpush
+
 @endsection

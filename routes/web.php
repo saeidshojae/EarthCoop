@@ -17,6 +17,8 @@ use App\Http\Controllers\Admin\GroupSettingController;
 use App\Http\Controllers\Admin\InvitationCodeController;
 use App\Http\Controllers\Admin\RuleController;
 use App\Http\Controllers\Admin\NajmBaharController;
+use App\Http\Controllers\Admin\NajmBaharFeeController;
+use App\Http\Controllers\Admin\NajmBaharSettingsController;
 use App\Http\Controllers\Admin\WelcomePageController;
 use App\Http\Controllers\Admin\SystemSettingsController;
 use App\Http\Controllers\Admin\UserController;
@@ -46,6 +48,8 @@ use App\Http\Controllers\Auth\Register\Step2Controller;
 use App\Http\Controllers\Auth\Register\Step3Controller;
 use App\Http\Controllers\Profile\HistoryController;
 use App\Http\Controllers\Profile\TermController;
+use App\Http\Controllers\NajmBaharMembershipFeeController;
+use App\Http\Controllers\ReputationConversionController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\Authenticate;
@@ -442,6 +446,14 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::post('najm-bahar/transfer', [\App\Http\Controllers\NajmBaharTransferController::class, 'store'])->name('najm-bahar.transfer.store');
     Route::get('najm-bahar/transfer/preview', [\App\Http\Controllers\NajmBaharTransferController::class, 'previewTarget'])->name('najm-bahar.transfer.preview');
     
+    // حق عضویت نجم بهار
+    Route::get('najm-bahar/membership-fee/info', [NajmBaharMembershipFeeController::class, 'getInfo'])->name('najm-bahar.membership-fee.info');
+    Route::post('najm-bahar/membership-fee/pay', [NajmBaharMembershipFeeController::class, 'pay'])->name('najm-bahar.membership-fee.pay');
+    
+    // تبدیل امتیاز به پول اکتیو
+    Route::get('reputation/conversion/info', [ReputationConversionController::class, 'getInfo'])->name('reputation.conversion.info');
+    Route::post('reputation/conversion/convert', [ReputationConversionController::class, 'convert'])->name('reputation.conversion.convert');
+    
     // تنظیمات اعلان‌های نجم بهار (redirect به تنظیمات اصلی - سیستم موقت حذف شد)
     Route::get('najm-bahar/notification-settings', function () {
         return redirect()->route('notifications.settings');
@@ -710,6 +722,13 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
     Route::put('najm-bahar/fees/{fee}', [\App\Http\Controllers\Admin\NajmBaharFeeController::class, 'update'])->name('najm-bahar.fees.update');
     Route::delete('najm-bahar/fees/{fee}', [\App\Http\Controllers\Admin\NajmBaharFeeController::class, 'destroy'])->name('najm-bahar.fees.destroy');
     Route::post('najm-bahar/fees/test', [\App\Http\Controllers\Admin\NajmBaharFeeController::class, 'test'])->name('najm-bahar.fees.test');
+
+    // تنظیمات نجم بهار
+    Route::get('najm-bahar/settings', [\App\Http\Controllers\Admin\NajmBaharSettingsController::class, 'index'])->name('najm-bahar.settings.index');
+    Route::put('najm-bahar/settings', [\App\Http\Controllers\Admin\NajmBaharSettingsController::class, 'update'])->name('najm-bahar.settings.update');
+    
+    // داشبورد مدیریت نجم بهار
+    Route::get('najm-bahar/dashboard', [\App\Http\Controllers\Admin\NajmBaharDashboardController::class, 'index'])->name('najm-bahar.dashboard');
 
     // مدیریت حقوق نجم بهار
     Route::get('najm-bahar/salaries', [\App\Http\Controllers\Admin\NajmBaharSalaryRuleController::class, 'index'])->name('najm-bahar.salaries.index');

@@ -88,28 +88,16 @@ class NajmBaharController extends Controller
                     'حساب نجم بهار ' . $user->fullName()
                 );
 
-                // 2. واریز اولیه 10000 بهار از سیستم
-                $initialAmount = $this->getInitialAmount();
-                $idempotencyKey = 'initial-funding-' . $user->id;
-                
-                $this->transactionService->transfer(
-                    null, // از سیستم
-                    $userAccount->account_number,
-                    $initialAmount,
-                    'واریز اولیه جهت افتتاح حساب نجم بهار',
-                    ['type' => 'initial_funding', 'user_id' => $user->id, 'system_operation' => true],
-                    $idempotencyKey,
-                    'faded',
-                    'initial_funding'
-                );
+                // 2. واریز اولیه با تقسیم اکتیو/کمرنگ بر اساس تنظیمات
+                $this->ensureInitialFundingAndMembershipFee($user, $userAccount);
 
-                // 3. کسر حق عضویت سالانه و تقسیم به حساب‌های سیستمی
-                $membershipFee = $this->distributeMembershipFee($userAccount->account_number, $user->id);
+                // حذف کسر خودکار حق عضویت - کاربر باید خودش با زدن دکمه پرداخت کند
+                // $membershipFee = $this->distributeMembershipFee($userAccount->account_number, $user->id);
 
-                // 4. پاداش معرف (در صورت وجود)
+                // 3. پاداش معرف (در صورت وجود)
                 $this->processReferralBonus($user, $userAccount);
 
-                // 5. ثبت تاریخ پذیرش توافقنامه
+                // 4. ثبت تاریخ پذیرش توافقنامه
                 $user->update([
                     'najm_bahar_agreement_accepted_at' => now()
                 ]);
@@ -117,13 +105,11 @@ class NajmBaharController extends Controller
                 Log::info('NajmBahar account created successfully', [
                     'user_id' => $user->id,
                     'account_number' => $userAccount->account_number,
-                    'initial_amount' => $initialAmount,
-                    'membership_fee' => $membershipFee
                 ]);
             });
 
             return redirect()->route('najm-bahar.dashboard')
-                ->with('success', 'حساب نجم بهار شما با موفقیت ایجاد شد! مبلغ اولیه واریز و حق عضویت کسر گردید.');
+                ->with('success', 'حساب نجم بهار شما با موفقیت ایجاد شد! برای فعالسازی کامل، حق عضویت سالانه را پرداخت کنید.');
 
         } catch (\Exception $e) {
             Log::error('NajmBahar account creation failed', [
@@ -232,8 +218,34 @@ class NajmBaharController extends Controller
 
         // دریافت تراکنش‌های اخیر
         $recentTransactions = $this->transactionService->getUserTransactions($user->id, 10);
+        $accountIds = $this->transactionService->getUserAccountIds($user->id);
 
-        return view('najm-bahar.wallet', compact('account', 'recentTransactions'));
+        // دریافت امتیازات کاربر
+        $userPoint = \App\Models\UserPoint::where('user_id', $user->id)->first();
+        $totalPoints = $userPoint ? $userPoint->points : 0;
+        $userLevel = $userPoint ? $userPoint->level : 'Bronze';
+
+        // امتیازات نقد شده
+        $cashedPoints = \App\Models\UserPointTransaction::where('user_id', $user->id)
+            ->where('is_cashed', true)
+            ->where('delta', '>', 0)
+            ->sum('delta');
+
+        // امتیازات قابل نقد
+        $uncashedPoints = \App\Models\UserPointTransaction::where('user_id', $user->id)
+            ->where('is_cashed', false)
+            ->where('delta', '>', 0)
+            ->sum('delta');
+
+        return view('najm-bahar.wallet', compact(
+            'account',
+            'recentTransactions',
+            'accountIds',
+            'totalPoints',
+            'userLevel',
+            'cashedPoints',
+            'uncashedPoints'
+        ));
     }
 
     private function getInitialAmount(): int
@@ -250,21 +262,74 @@ class NajmBaharController extends Controller
             ->exists();
 
         if (! $hasInitialFunding) {
-            $this->transactionService->transfer(
-                null,
+            $settings = Setting::firstNajmBaharSettings();
+            $initialAmount = $this->getInitialAmount();
+            
+            // دریافت تنظیمات اکتیو/فیدد
+            $activeType = $settings?->najm_bahar_initial_active_type ?? 'percentage';
+            $activePercentage = (int) ($settings?->najm_bahar_initial_active_percentage ?? 30);
+            $activeFixedAmount = (int) ($settings?->najm_bahar_initial_active_fixed_amount ?? 0);
+
+            // محاسبه مقادیر برای metadata
+            if ($activeType === 'fixed_amount') {
+                $activeAmount = min($activeFixedAmount, $initialAmount);
+            } else {
+                $activeAmount = intval(($initialAmount * $activePercentage) / 100);
+            }
+            $fadedAmount = $initialAmount - $activeAmount;
+
+            // واریز اولیه با تقسیم موجودی
+            $updatedAccount = $this->transactionService->depositInitialFunding(
                 $account->account_number,
-                $this->getInitialAmount(),
-                'واریز اولیه جهت افتتاح حساب نجم بهار',
-                ['type' => 'initial_funding', 'user_id' => $user->id, 'system_operation' => true],
-                'initial-funding-' . $user->id,
-                'faded',
-                'initial_funding'
+                $initialAmount,
+                $activePercentage,
+                $activeFixedAmount,
+                $activeType
             );
+
+            // ثبت تراکنش برای auditing و idempotency
+            NajmTransaction::create([
+                'from_account_id' => null,
+                'to_account_id' => $updatedAccount->id,
+                'amount' => $initialAmount,
+                'type' => 'immediate',
+                'status' => 'completed',
+                'metadata' => [
+                    'type' => 'initial_funding',
+                    'user_id' => $user->id,
+                    'system_operation' => true,
+                    'active_type' => $activeType,
+                    'active_percentage' => $activePercentage,
+                    'active_fixed_amount' => $activeFixedAmount,
+                    'active_amount' => $activeAmount,
+                    'faded_amount' => $fadedAmount,
+                ],
+                'description' => 'واریز اولیه جهت افتتاح حساب نجم بهار',
+            ]);
+        } elseif (intval($account->balance) > 0
+            && intval($account->balance_active) === 0
+            && intval($account->balance_faded) === 0
+        ) {
+            $settings = Setting::firstNajmBaharSettings();
+            $activeType = $settings?->najm_bahar_initial_active_type ?? 'percentage';
+            $activePercentage = (int) ($settings?->najm_bahar_initial_active_percentage ?? 30);
+            $activeFixedAmount = (int) ($settings?->najm_bahar_initial_active_fixed_amount ?? 0);
+
+            $initialAmount = intval($account->balance);
+            if ($activeType === 'fixed_amount') {
+                $activeAmount = min($activeFixedAmount, $initialAmount);
+            } else {
+                $activeAmount = intval(($initialAmount * $activePercentage) / 100);
+            }
+            $account->balance_active = $activeAmount;
+            $account->balance_faded = $initialAmount - $activeAmount;
+            $account->save();
         }
 
-        if (! $this->hasCompleteMembershipFeeSplits($account->id)) {
-            $this->distributeMembershipFee($account->account_number, $user->id);
-        }
+        // حذف پرداخت خودکار حق عضویت - کاربر باید خودش پرداخت کند
+        // if (! $this->hasCompleteMembershipFeeSplits($account->id)) {
+        //     $this->distributeMembershipFee($account->account_number, $user->id);
+        // }
     }
     private function distributeMembershipFee(string $fromAccountNumber, int $userId): int
     {
