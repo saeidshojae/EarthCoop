@@ -7,6 +7,7 @@ use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\Transaction;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\AccountNumberService;
+use App\Modules\NajmBahar\Services\TransactionService;
 use App\Exports\NajmBaharTransactionsExport;
 use App\Models\Candidate;
 use App\Models\Group;
@@ -19,6 +20,12 @@ use Illuminate\Support\Facades\View;
 
 class NajmBaharReportController extends Controller
 {
+    private TransactionService $transactionService;
+
+    public function __construct(TransactionService $transactionService)
+    {
+        $this->transactionService = $transactionService;
+    }
     /**
      * نمایش صفحه گزارش‌های مالی
      */
@@ -38,12 +45,13 @@ class NajmBaharReportController extends Controller
         $dateTo = $request->input('date_to', Carbon::now()->format('Y-m-d'));
         $type = $request->input('type', 'all'); // all, in, out
         $search = $request->input('search');
+        $accountIds = $this->transactionService->getUserAccountIds($user->id);
 
         // دریافت تراکنش‌ها
-        $transactions = $this->getTransactions($account, $accountNumber, $dateFrom, $dateTo, $type, $search);
+        $transactions = $this->getTransactions($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $accountIds);
 
         // آمار خلاصه
-        $summary = $this->getSummary($account, $accountNumber, $dateFrom, $dateTo);
+        $summary = $this->getSummary($account, $accountNumber, $dateFrom, $dateTo, $accountIds);
 
         $routePrefix = 'najm-bahar.reports';
         $routeParams = [];
@@ -65,9 +73,10 @@ class NajmBaharReportController extends Controller
         $dateTo = $request->input('date_to', Carbon::now()->format('Y-m-d'));
         $type = $request->input('type', 'all');
         $search = $request->input('search');
+        $accountIds = $this->resolveAccountIds($account, null);
 
-        $transactions = $this->getTransactions($account, $account->account_number, $dateFrom, $dateTo, $type, $search);
-        $summary = $this->getSummary($account, $account->account_number, $dateFrom, $dateTo);
+        $transactions = $this->getTransactions($account, $account->account_number, $dateFrom, $dateTo, $type, $search, $accountIds);
+        $summary = $this->getSummary($account, $account->account_number, $dateFrom, $dateTo, $accountIds);
 
         $routePrefix = 'groups.najm-bahar.reports';
         $routeParams = ['group' => $group->id];
@@ -121,9 +130,10 @@ class NajmBaharReportController extends Controller
 
         $accountNumber = AccountNumberService::makeMainAccountNumberForUser($leader->id);
         $account = Account::where('account_number', $accountNumber)->first();
+        $accountIds = $this->transactionService->getUserAccountIds($leader->id);
 
-        $transactions = $this->getTransactions($account, $accountNumber, $dateFrom, $dateTo, $type, $search);
-        $summary = $this->getSummary($account, $accountNumber, $dateFrom, $dateTo);
+        $transactions = $this->getTransactions($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $accountIds);
+        $summary = $this->getSummary($account, $accountNumber, $dateFrom, $dateTo, $accountIds);
 
         $routePrefix = 'groups.najm-bahar.leader-reports';
         $routeParams = ['group' => $group->id, 'leader' => $leader->id];
@@ -138,11 +148,28 @@ class NajmBaharReportController extends Controller
     /**
      * دریافت تراکنش‌ها با فیلتر
      */
-    private function getTransactions($account, $accountNumber, $dateFrom, $dateTo, $type, $search)
+    private function resolveAccountIds($account, ?array $accountIds): array
     {
-        $query = Transaction::where(function($q) use ($account) {
-            $q->where('from_account_id', $account->id)
-              ->orWhere('to_account_id', $account->id);
+        $ids = $accountIds ?? [];
+        if (empty($ids) && $account) {
+            $ids = [$account->id];
+        }
+
+        $ids = array_filter($ids, fn($id) => ! is_null($id));
+
+        return array_values(array_unique($ids));
+    }
+
+    private function getTransactions($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $accountIds = null)
+    {
+        $accountIds = $this->resolveAccountIds($account, $accountIds);
+        if (empty($accountIds)) {
+            return Transaction::whereRaw('1 = 0')->paginate(25);
+        }
+
+        $query = Transaction::where(function($q) use ($accountIds) {
+            $q->whereIn('from_account_id', $accountIds)
+              ->orWhereIn('to_account_id', $accountIds);
         })
         ->whereBetween('created_at', [
             Carbon::parse($dateFrom)->startOfDay(),
@@ -152,9 +179,9 @@ class NajmBaharReportController extends Controller
 
         // فیلتر نوع
         if ($type === 'in') {
-            $query->where('to_account_id', $account->id);
+            $query->whereIn('to_account_id', $accountIds);
         } elseif ($type === 'out') {
-            $query->where('from_account_id', $account->id);
+            $query->whereIn('from_account_id', $accountIds);
         }
 
         // جستجو در توضیحات
@@ -168,11 +195,21 @@ class NajmBaharReportController extends Controller
     /**
      * دریافت آمار خلاصه
      */
-    private function getSummary($account, $accountNumber, $dateFrom, $dateTo)
+    private function getSummary($account, $accountNumber, $dateFrom, $dateTo, $accountIds = null)
     {
-        $transactions = Transaction::where(function($q) use ($account) {
-            $q->where('from_account_id', $account->id)
-              ->orWhere('to_account_id', $account->id);
+        $accountIds = $this->resolveAccountIds($account, $accountIds);
+        if (empty($accountIds)) {
+            return [
+                'totalIn' => 0,
+                'totalOut' => 0,
+                'net' => 0,
+                'count' => 0,
+            ];
+        }
+
+        $transactions = Transaction::where(function($q) use ($accountIds) {
+            $q->whereIn('from_account_id', $accountIds)
+              ->orWhereIn('to_account_id', $accountIds);
         })
         ->whereBetween('created_at', [
             Carbon::parse($dateFrom)->startOfDay(),
@@ -181,8 +218,8 @@ class NajmBaharReportController extends Controller
         ->where('status', 'completed')
         ->get();
 
-        $totalIn = $transactions->where('to_account_id', $account->id)->sum('amount');
-        $totalOut = $transactions->where('from_account_id', $account->id)->sum('amount');
+        $totalIn = $transactions->whereIn('to_account_id', $accountIds)->sum('amount');
+        $totalOut = $transactions->whereIn('from_account_id', $accountIds)->sum('amount');
         $count = $transactions->count();
 
         return [
@@ -212,9 +249,10 @@ class NajmBaharReportController extends Controller
         $dateTo = $request->input('date_to', Carbon::now()->format('Y-m-d'));
         $type = $request->input('type', 'all');
         $search = $request->input('search');
+        $accountIds = $this->transactionService->getUserAccountIds($user->id);
 
         // دریافت تمام تراکنش‌ها (بدون pagination)
-        $transactions = $this->getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search);
+        $transactions = $this->getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $accountIds);
 
         $fileName = 'najm-bahar-transactions-' . Carbon::now()->format('Y-m-d-His') . '.xlsx';
 
@@ -233,8 +271,9 @@ class NajmBaharReportController extends Controller
         $dateTo = $request->input('date_to', Carbon::now()->format('Y-m-d'));
         $type = $request->input('type', 'all');
         $search = $request->input('search');
+        $accountIds = $this->resolveAccountIds($account, null);
 
-        $transactions = $this->getTransactionsForExport($account, $account->account_number, $dateFrom, $dateTo, $type, $search);
+        $transactions = $this->getTransactionsForExport($account, $account->account_number, $dateFrom, $dateTo, $type, $search, $accountIds);
 
         $fileName = 'najm-bahar-group-' . $group->id . '-transactions-' . Carbon::now()->format('Y-m-d-His') . '.xlsx';
 
@@ -244,11 +283,16 @@ class NajmBaharReportController extends Controller
     /**
      * دریافت تراکنش‌ها برای Export (بدون pagination)
      */
-    private function getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search)
+    private function getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $accountIds = null)
     {
-        $query = Transaction::where(function($q) use ($account) {
-            $q->where('from_account_id', $account->id)
-              ->orWhere('to_account_id', $account->id);
+        $accountIds = $this->resolveAccountIds($account, $accountIds);
+        if (empty($accountIds)) {
+            return collect();
+        }
+
+        $query = Transaction::where(function($q) use ($accountIds) {
+            $q->whereIn('from_account_id', $accountIds)
+              ->orWhereIn('to_account_id', $accountIds);
         })
         ->whereBetween('created_at', [
             Carbon::parse($dateFrom)->startOfDay(),
@@ -257,9 +301,9 @@ class NajmBaharReportController extends Controller
         ->where('status', 'completed');
 
         if ($type === 'in') {
-            $query->where('to_account_id', $account->id);
+            $query->whereIn('to_account_id', $accountIds);
         } elseif ($type === 'out') {
-            $query->where('from_account_id', $account->id);
+            $query->whereIn('from_account_id', $accountIds);
         }
 
         if ($search) {
@@ -288,10 +332,12 @@ class NajmBaharReportController extends Controller
         $dateTo = $request->input('date_to', Carbon::now()->format('Y-m-d'));
         $type = $request->input('type', 'all');
         $search = $request->input('search');
+        $accountIds = $this->transactionService->getUserAccountIds($user->id);
 
         // دریافت تراکنش‌ها
         $transactions = $this->getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search);
-        $summary = $this->getSummary($account, $accountNumber, $dateFrom, $dateTo);
+        $transactions = $this->getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $accountIds);
+        $summary = $this->getSummary($account, $accountNumber, $dateFrom, $dateTo, $accountIds);
 
         $reportOwnerName = trim($user->first_name . ' ' . $user->last_name);
         $accountNumberDisplay = $account?->account_number;
@@ -318,9 +364,11 @@ class NajmBaharReportController extends Controller
         $dateTo = $request->input('date_to', Carbon::now()->format('Y-m-d'));
         $type = $request->input('type', 'all');
         $search = $request->input('search');
+        $accountIds = $this->resolveAccountIds($account, null);
 
         $transactions = $this->getTransactionsForExport($account, $account->account_number, $dateFrom, $dateTo, $type, $search);
-        $summary = $this->getSummary($account, $account->account_number, $dateFrom, $dateTo);
+        $transactions = $this->getTransactionsForExport($account, $account->account_number, $dateFrom, $dateTo, $type, $search, $accountIds);
+        $summary = $this->getSummary($account, $account->account_number, $dateFrom, $dateTo, $accountIds);
 
         $reportOwnerName = 'گروه ' . $group->name;
         $accountNumberDisplay = $account->account_number;
@@ -400,9 +448,10 @@ class NajmBaharReportController extends Controller
 
         $accountNumber = AccountNumberService::makeMainAccountNumberForUser($leader->id);
         $account = Account::where('account_number', $accountNumber)->first();
+        $accountIds = $this->transactionService->getUserAccountIds($leader->id);
 
-        $transactions = $this->getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search);
-        $summary = $this->getSummary($account, $accountNumber, $dateFrom, $dateTo);
+        $transactions = $this->getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $accountIds);
+        $summary = $this->getSummary($account, $accountNumber, $dateFrom, $dateTo, $accountIds);
 
         $leaderName = trim($leader->first_name . ' ' . $leader->last_name) ?: 'کاربر ' . $leader->id;
         $roleLabel = $this->resolveLeaderRoleLabel($window);
