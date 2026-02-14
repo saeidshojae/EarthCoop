@@ -184,7 +184,9 @@ class NajmBaharSubAccountController extends Controller
             'description' => 'nullable|string|max:500',
         ]);
 
-        $amount = intval($subAccount->balance);
+        $activeBalance = intval($subAccount->balance_active ?? 0);
+        $fadedBalance = intval($subAccount->balance_faded ?? 0);
+        $amount = $activeBalance + $fadedBalance;
 
         try {
             $destinationLabel = $validated['destination'] === 'subaccount' ? 'حساب فرعی' : 'حساب اصلی';
@@ -205,20 +207,45 @@ class NajmBaharSubAccountController extends Controller
                         return back()->with('error', 'حساب فرعی مقصد معتبر نیست.')->withInput();
                     }
 
-                    $this->subAccountService->transferBetweenSubAccounts(
-                        $subAccount->id,
-                        $destinationSubAccount->id,
-                        $amount,
-                        $validated['description'] ?? null,
-                        $this->resolveMoneyState($subAccount, $amount)
-                    );
+                    if ($fadedBalance > 0) {
+                        $this->subAccountService->transferBetweenSubAccounts(
+                            $subAccount->id,
+                            $destinationSubAccount->id,
+                            $fadedBalance,
+                            $validated['description'] ?? null,
+                            'faded'
+                        );
+                    }
+
+                    if ($activeBalance > 0) {
+                        $this->subAccountService->transferBetweenSubAccounts(
+                            $subAccount->id,
+                            $destinationSubAccount->id,
+                            $activeBalance,
+                            $validated['description'] ?? null,
+                            'active'
+                        );
+                    }
                 } else {
-                    $this->subAccountService->transferFromSubAccount(
-                        $subAccount->id,
-                        $account->id,
-                        $amount,
-                        $validated['description'] ?? null
-                    );
+                    if ($fadedBalance > 0) {
+                        $this->subAccountService->transferFromSubAccount(
+                            $subAccount->id,
+                            $account->id,
+                            $fadedBalance,
+                            $validated['description'] ?? null,
+                            'faded'
+                        );
+                    }
+
+                    if ($activeBalance > 0) {
+                        $this->subAccountService->transferFromSubAccount(
+                            $subAccount->id,
+                            $account->id,
+                            $activeBalance,
+                            $validated['description'] ?? null,
+                            'active'
+                        );
+                    }
                 }
             }
 
@@ -237,6 +264,8 @@ class NajmBaharSubAccountController extends Controller
                     'destination_label' => $destinationLabel,
                     'destination_sub_account_code' => $destinationSubAccount?->sub_account_code,
                     'balance_transferred' => $amount,
+                    'balance_active' => $activeBalance,
+                    'balance_faded' => $fadedBalance,
                 ],
             ]);
 
