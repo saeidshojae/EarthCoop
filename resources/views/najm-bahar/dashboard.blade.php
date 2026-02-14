@@ -159,12 +159,12 @@
             </div>
         </section>
 
-        <div class="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-6 items-start">
+        <div class="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-6 items-start mt-4">
             <div class="lg:order-1 nb-sidebar">
                 @include('najm-bahar.partials.sidebar')
             </div>
 
-            <main class="space-y-8 lg:order-2">
+            <main class="space-y-3 lg:order-2">
 
                 @if(session('success'))
                     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6" role="alert" aria-live="polite">
@@ -180,54 +180,17 @@
                     </div>
                 @endif
 
-                <div class="nb-card p-6">
+                <!-- نمای کلی حساب شما - first -->
+                <div class="nb-card p-5">
                     <div class="flex items-center justify-between flex-wrap gap-4 mb-6">
                         <div>
-                            <h2 class="text-xl font-bold text-gray-800">گزارش کلی سامانه</h2>
-                            <p class="text-sm text-gray-500">تصویر کلی از وضعیت سیستم نجم بهار</p>
-                        </div>
-                        <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold {{ $isThresholdMet ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
-                            <i class="fas fa-signal"></i>
-                            {{ $isThresholdMet ? 'تراکنش‌ها فعال' : 'تراکنش‌ها قفل' }}
-                        </span>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" style="gap: var(--nb-space-4);">
-                        <div class="nb-stat">
-                            <p class="text-sm text-gray-500">تعداد کل اعضای جامعه</p>
-                            <p class="nb-metric">{{ number_format($userCount) }}</p>
-                        </div>
-                        <div class="nb-stat">
-                            <p class="text-sm text-gray-500">کل پول خلق شده</p>
-                            <p class="nb-metric">{{ \App\Helpers\BaharMoney::formatDecimalHtml($totalMinted) }}</p>
-                        </div>
-                        <div class="nb-stat">
-                            <p class="text-sm text-gray-500">کاربران باقی‌مانده تا حدنصاب</p>
-                            <p class="nb-metric">{{ number_format($remainingUsers) }}</p>
-                        </div>
-                        <div class="nb-stat">
-                            <p class="text-sm text-gray-500">حدنصاب فعال‌سازی تراکنش</p>
-                            <p class="nb-metric">{{ number_format($userThreshold) }}</p>
-                        </div>
-                        <div class="nb-stat">
-                            <p class="text-sm text-gray-500">موجودی حساب حق عضویت</p>
-                            <p class="nb-metric">{{ \App\Helpers\BaharMoney::formatDecimalHtml($membershipBalance) }}</p>
-                            <p class="text-xs text-gray-400 mt-1">{{ $membershipAccountCode }}</p>
-                        </div>
-                        <div class="nb-stat">
-                            <p class="text-sm text-gray-500">وضعیت تراکنش‌های کاربری</p>
-                            <p class="nb-metric nb-metric-accent">{{ $isThresholdMet ? 'فعال' : 'قفل' }}</p>
-                            <p class="text-xs text-gray-400 mt-1">بر اساس حدنصاب سامانه</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="nb-card p-6">
-                    <div class="flex items-center justify-between flex-wrap gap-4 mb-6">
-                        <div>
-                            <h2 class="text-xl font-bold text-gray-800">نمای کلی حساب شما</h2>
+                            <h2 class="text-xl font-bold text-gray-800">
+                                <i class="fas fa-wallet ml-2" style="color: var(--nb-color-earth-green);" aria-hidden="true"></i>
+                                نمای کلی حساب شما
+                            </h2>
                             <p class="text-sm text-gray-500">خلاصه موجودی و فعالیت‌های مالی</p>
                         </div>
-                        <div class="flex items-center gap-3">
+                        <div class="flex flex-col sm:flex-row items-center gap-3">
                             <button type="button" id="membershipFeeBtn" class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-full font-semibold text-sm shadow-lg hover:shadow-xl transition-all hover:scale-105">
                                 <i class="fas fa-id-card"></i>
                                 پرداخت حق عضویت سالانه
@@ -239,17 +202,118 @@
                         </div>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" style="gap: var(--nb-space-4);">
-                        <div class="nb-stat">
-                            <p class="text-sm text-emerald-700">موجودی حساب اصلی</p>
+                        <!-- Balance -->
+                        <div class="nb-stat bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-sm text-emerald-700 font-semibold">موجودی حساب اصلی</p>
+                                <div class="w-8 h-8 rounded-full bg-emerald-200 flex items-center justify-center">
+                                    <i class="fas fa-coins text-emerald-700" aria-hidden="true"></i>
+                                </div>
+                            </div>
                             <p class="nb-metric nb-metric-accent">{{ \App\Helpers\BaharMoney::formatDecimalHtml($account->balance) }}</p>
                         </div>
-                        <div class="nb-stat">
-                            <p class="text-sm text-emerald-700">شماره حساب</p>
-                            <p class="text-base font-mono text-emerald-800">{{ $account->account_number }}</p>
+                        <!-- Account Number -->
+                        <div class="nb-stat bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-sm text-blue-700 font-semibold">شماره حساب</p>
+                                <div class="w-8 h-8 rounded-full bg-blue-200 flex items-center justify-center">
+                                    <i class="fas fa-hashtag text-blue-700" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                            <p class="text-base font-mono text-blue-800">{{ $account->account_number }}</p>
                         </div>
-                        <div class="nb-stat">
-                            <p class="text-sm text-emerald-700">تعداد تراکنش‌های شما</p>
-                            <p class="nb-metric nb-metric-accent">{{ number_format($userTransactionsCount) }}</p>
+                        <!-- Transactions Count -->
+                        <div class="nb-stat bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-sm text-purple-700 font-semibold">تعداد تراکنش‌های شما</p>
+                                <div class="w-8 h-8 rounded-full bg-purple-200 flex items-center justify-center">
+                                    <i class="fas fa-exchange-alt text-purple-700" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                            <p class="nb-metric nb-metric-accent text-purple-700">{{ number_format($userTransactionsCount) }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- گزارش کلی سامانه - second -->
+                <div class="nb-card p-5">
+                    <div class="flex items-center justify-between flex-wrap gap-4 mb-6">
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-800">
+                                <i class="fas fa-chart-pie ml-2" style="color: var(--nb-color-ocean-blue);" aria-hidden="true"></i>
+                                گزارش کلی سامانه
+                            </h2>
+                            <p class="text-sm text-gray-500">تصویر کلی از وضعیت سیستم نجم بهار</p>
+                        </div>
+                        <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold {{ $isThresholdMet ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
+                            <i class="fas fa-signal"></i>
+                            {{ $isThresholdMet ? 'تراکنش‌ها فعال' : 'تراکنش‌ها قفل' }}
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" style="gap: var(--nb-space-4);">
+                        <!-- 1. تعداد کل اعضای جامعه -->
+                        <div class="nb-stat bg-gradient-to-br from-cyan-50 to-cyan-100 border-cyan-200">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-sm text-cyan-700 font-semibold">تعداد کل اعضای جامعه</p>
+                                <div class="w-8 h-8 rounded-full bg-cyan-200 flex items-center justify-center">
+                                    <i class="fas fa-users text-cyan-700" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                            <p class="nb-metric text-cyan-700">{{ number_format($userCount) }}</p>
+                        </div>
+                        <!-- 2. کل پول خلق شده -->
+                        <div class="nb-stat bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-sm text-green-700 font-semibold">کل پول خلق شده</p>
+                                <div class="w-8 h-8 rounded-full bg-green-200 flex items-center justify-center">
+                                    <i class="fas fa-gem text-green-700" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                            <p class="nb-metric text-green-700">{{ \App\Helpers\BaharMoney::formatDecimalHtml($totalMinted) }}</p>
+                        </div>
+                        <!-- 3. موجودی حساب حق عضویت EarthCoop -->
+                        <div class="nb-stat bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-sm text-yellow-700 font-semibold">موجودی حساب حق عضویت</p>
+                                <div class="w-8 h-8 rounded-full bg-yellow-200 flex items-center justify-center">
+                                    <i class="fas fa-receipt text-yellow-700" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                            <p class="nb-metric text-yellow-700">{{ \App\Helpers\BaharMoney::formatDecimalHtml($membershipBalance) }}</p>
+                            <p class="text-xs text-yellow-600 mt-1 font-mono">{{ $membershipAccountCode }}</p>
+                        </div>
+                        <!-- 4. وضعیت تراکنش‌های کاربری -->
+                        <div class="nb-stat bg-gradient-to-br {{ $isThresholdMet ? 'from-green-50 to-green-100 border-green-200' : 'from-amber-50 to-amber-100 border-amber-200' }}">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-sm {{ $isThresholdMet ? 'text-green-700' : 'text-amber-700' }} font-semibold">وضعیت تراکنش‌های کاربری</p>
+                                <div class="w-8 h-8 rounded-full {{ $isThresholdMet ? 'bg-green-200' : 'bg-amber-200' }} flex items-center justify-center">
+                                    <i class="fas {{ $isThresholdMet ? 'fa-check-circle text-green-700' : 'fa-lock text-amber-700' }}" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                            <p class="nb-metric {{ $isThresholdMet ? 'text-green-700' : 'text-amber-700' }}">{{ $isThresholdMet ? 'فعال' : 'قفل' }}</p>
+                            <p class="text-xs {{ $isThresholdMet ? 'text-green-600' : 'text-amber-600' }} mt-1">بر اساس حدنصاب سامانه</p>
+                        </div>
+                        <!-- 5. حدنصاب فعال‌سازی تراکنش -->
+                        <div class="nb-stat bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-sm text-indigo-700 font-semibold">حدنصاب فعال‌سازی</p>
+                                <div class="w-8 h-8 rounded-full bg-indigo-200 flex items-center justify-center">
+                                    <i class="fas fa-chart-line text-indigo-700" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                            <p class="nb-metric text-indigo-700">{{ number_format($userThreshold) }}</p>
+                            <p class="text-xs text-indigo-600 mt-1">عضو پایه</p>
+                        </div>
+                        <!-- 6. کاربران باقی‌مانده تا حدنصاب -->
+                        <div class="nb-stat bg-gradient-to-br from-rose-50 to-rose-100 border-rose-200">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-sm text-rose-700 font-semibold">کاربران باقی‌مانده</p>
+                                <div class="w-8 h-8 rounded-full bg-rose-200 flex items-center justify-center">
+                                    <i class="fas fa-hourglass-end text-rose-700" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                            <p class="nb-metric text-rose-700">{{ number_format($remainingUsers) }}</p>
+                            <p class="text-xs text-rose-600 mt-1">تا حدنصاب</p>
                         </div>
                     </div>
                 </div>

@@ -195,7 +195,11 @@
                     </h1>
                     <p class="text-sm md:text-base text-emerald-50 mt-2">نمایش حساب اصلی، تراکنش‌ها و وضعیت مالی</p>
                 </div>
-                <div class="flex items-center gap-3 flex-wrap">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
+                    <a href="{{ route($routePrefix . '.dashboard', $routeParams) }}" class="nb-action-outline">
+                        <i class="fas fa-arrow-right"></i>
+                        بازگشت به داشبورد
+                    </a>
                     <a href="{{ route($routePrefix . '.transfer', $routeParams) }}" class="nb-action-outline">
                         انتقال وجه
                         <i class="fas fa-exchange-alt"></i>
@@ -220,7 +224,7 @@
                 ])
             </div>
 
-            <main class="space-y-8 lg:order-2">
+            <main class="space-y-3 lg:order-2">
 
                 @if(session('success'))
                     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6" role="alert" aria-live="polite">
