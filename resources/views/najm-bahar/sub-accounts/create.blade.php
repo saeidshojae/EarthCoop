@@ -8,13 +8,31 @@
     .form-container {
         direction: rtl;
     }
-    
-    .create-card {
+
+    .nb-transfer-card {
         background: var(--nb-color-white);
         border-radius: var(--nb-radius-lg);
-        padding: var(--nb-space-6);
-        box-shadow: var(--nb-shadow-md);
         border: 1px solid var(--nb-color-neutral-200);
+        box-shadow: var(--nb-shadow-md);
+    }
+
+    .nb-transfer-header {
+        background: var(--nb-gradient-hero);
+        color: var(--nb-color-white);
+        border-radius: var(--nb-radius-lg);
+        padding: var(--nb-space-6);
+        box-shadow: var(--nb-shadow-lg);
+    }
+
+    .nb-transfer-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--nb-space-2);
+        padding: 6px 14px;
+        border-radius: var(--nb-radius-full);
+        font-size: var(--nb-font-size-sm);
+        font-weight: var(--nb-font-weight-semibold);
+        background: rgba(255, 255, 255, 0.25);
     }
 </style>
 @endpush
@@ -25,17 +43,25 @@ $routeParams = $routeParams ?? [];
 @endphp
 
 @section('content')
-<div class="bg-light-gray/60 py-8 md:py-10" style="background-color: var(--color-light-gray);">
-    <div class="nb-page-container" style="max-width: var(--nb-container-max-width-sm);">
+<div class="bg-light-gray/60 py-10 md:py-12" style="background-color: var(--color-light-gray);">
+    <div class="nb-page-container" style="max-width: var(--nb-container-max-width-md);">
         <div class="form-container">
-            <!-- Header -->
-            <div class="mb-6">
-                <h1 class="text-3xl md:text-4xl font-extrabold text-gentle-black mb-2">
-                    <i class="fas fa-plus-circle ml-3" style="color: var(--color-earth-green);"></i>
-                    ایجاد حساب فرعی جدید
-                </h1>
-                <p class="text-slate-600 dark:text-slate-400">ایجاد حساب فرعی برای مدیریت بهتر وجوه</p>
-            </div>
+            <section class="nb-transfer-header mb-6">
+                <div class="flex flex-col gap-3">
+                    <div class="flex items-center justify-between gap-3 flex-wrap">
+                        <div class="nb-transfer-chip">
+                            <i class="fas fa-plus"></i>
+                            ایجاد حساب فرعی
+                        </div>
+                        <a href="{{ route($routePrefix . '.sub-accounts.index', $routeParams) }}" class="px-4 py-2 bg-white/15 text-white rounded-full hover:bg-white/25 transition">
+                            <i class="fas fa-arrow-right ml-2"></i>
+                            بازگشت
+                        </a>
+                    </div>
+                    <h1 class="text-3xl md:text-4xl font-black">ایجاد حساب فرعی جدید</h1>
+                    <p class="text-sm md:text-base text-emerald-50">ایجاد حساب فرعی برای مدیریت بهتر وجوه</p>
+                </div>
+            </section>
 
             @if ($errors->any())
                 <div class="bg-red-50 border-r-4 border-red-500 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert" aria-live="assertive">
@@ -49,7 +75,7 @@ $routeParams = $routeParams ?? [];
             @endif
 
             <!-- فرم ایجاد -->
-            <div class="create-card">
+            <div class="nb-transfer-card p-6">
                 <form action="{{ route($routePrefix . '.sub-accounts.store', $routeParams) }}" method="POST" id="createForm">
                     @csrf
                     
@@ -76,6 +102,41 @@ $routeParams = $routeParams ?? [];
                         </p>
                     </div>
 
+                    <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg mb-6">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <p class="text-sm text-slate-600">
+                                موجودی فعال حساب اصلی:
+                                <span class="font-semibold text-slate-800">
+                                    {{ \App\Helpers\BaharMoney::formatDecimalHtml($account->balance_active ?? 0) }}
+                                </span>
+                            </p>
+                            <span class="text-xs text-slate-500">شارژ اولیه اختیاری است</span>
+                        </div>
+                        <div class="mt-4">
+                            <label for="initial_amount" class="nb-label">
+                                شارژ اولیه حساب فرعی (اختیاری)
+                            </label>
+                            <input type="text"
+                                   id="initial_amount"
+                                   name="initial_amount"
+                                   value="{{ old('initial_amount') }}"
+                                   inputmode="decimal"
+                                   class="nb-input"
+                                   placeholder="مثال: 10.50">
+                            <span class="nb-help-text">این مبلغ از موجودی فعال حساب اصلی کسر می‌شود.</span>
+                        </div>
+                        <div class="mt-4">
+                            <label for="initial_description" class="nb-label">
+                                توضیحات شارژ اولیه (اختیاری)
+                            </label>
+                            <textarea id="initial_description"
+                                      name="initial_description"
+                                      rows="2"
+                                      class="nb-input"
+                                      placeholder="مثال: شارژ اولیه برای شروع">{{ old('initial_description') }}</textarea>
+                        </div>
+                    </div>
+
                     <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
                         <a href="{{ route($routePrefix . '.sub-accounts.index', $routeParams) }}" 
                            class="w-full sm:w-auto px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium text-center">
@@ -83,7 +144,7 @@ $routeParams = $routeParams ?? [];
                             انصراف
                         </a>
                         <button type="submit" 
-                                class="w-full sm:w-auto px-6 py-3 nb-btn nb-btn-primary">
+                            class="w-full sm:w-auto px-6 py-3 nb-btn nb-btn-primary">
                             <i class="fas fa-save ml-2" aria-hidden="true"></i>
                             ایجاد حساب فرعی
                         </button>

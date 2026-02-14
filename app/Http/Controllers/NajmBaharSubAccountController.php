@@ -14,6 +14,7 @@ use App\Models\GroupUser;
 use App\Services\NajmBaharAuditLogger;
 use App\Models\NajmBaharAuditLog;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class NajmBaharSubAccountController extends Controller
 {
@@ -113,10 +114,54 @@ class NajmBaharSubAccountController extends Controller
 
         $validated = $request->validate([
             'name' => 'nullable|string|max:255',
+            'initial_amount' => ['nullable', 'regex:/^\d+(\.\d{1,2})?$/'],
+            'initial_description' => 'nullable|string|max:500',
         ]);
 
         try {
-            $subAccount = $this->subAccountService->createSubAccount($account->id, $validated['name'] ?? null);
+            $initialAmount = 0;
+            if ($request->filled('initial_amount')) {
+                $initialAmount = BaharMoney::parseToGol($validated['initial_amount']);
+                if ($initialAmount < 0) {
+                    return back()->with('error', 'مبلغ شارژ اولیه معتبر نیست.')->withInput();
+                }
+
+                if ($initialAmount > intval($account->balance_active ?? 0)) {
+                    return back()->with('error', 'موجودی فعال حساب اصلی برای شارژ اولیه کافی نیست.')->withInput();
+                }
+            }
+
+            $initialDescription = $validated['initial_description'] ?? null;
+
+            $subAccount = DB::transaction(function () use ($account, $validated, $initialAmount, $initialDescription) {
+                $created = $this->subAccountService->createSubAccount($account->id, $validated['name'] ?? null);
+
+                if ($initialAmount > 0) {
+                    $this->subAccountService->transferToSubAccount(
+                        $account->id,
+                        $created->id,
+                        $initialAmount,
+                        $initialDescription ?: 'شارژ اولیه حساب فرعی',
+                        'active'
+                    );
+
+                    NajmBaharAuditLogger::log([
+                        'actor_user_id' => Auth::id(),
+                        'action' => 'subaccount.transfer_to',
+                        'account_number' => $account->account_number,
+                        'sub_account_code' => $created->sub_account_code,
+                        'amount' => $initialAmount,
+                        'direction' => 'to_subaccount',
+                        'description' => $initialDescription ?: 'شارژ اولیه حساب فرعی',
+                        'meta' => [
+                            'from_account' => $account->account_number,
+                            'to_sub_account' => $created->sub_account_code,
+                        ],
+                    ]);
+                }
+
+                return $created;
+            });
 
             return redirect()->route('najm-bahar.sub-accounts.index')
                 ->with('success', 'حساب فرعی با موفقیت ایجاد شد.');
