@@ -121,7 +121,7 @@
 
 @section('content')
 <div class="bg-light-gray/60 py-10 md:py-12 nb-dashboard" style="background-color: var(--color-light-gray);">
-    <div class="container mx-auto px-5 md:px-10 max-w-6xl relative z-10 space-y-8">
+    <div class=\"nb-page-container\" style=\"max-width: var(--nb-container-max-width-xl);\" role=\"main\">
         <section class="nb-hero">
             <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>

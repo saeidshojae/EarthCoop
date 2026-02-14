@@ -76,11 +76,11 @@
     }
 
     .agreement-card {
-        background: var(--color-pure-white);
-        border-radius: 1.5rem;
-        padding: 2.5rem;
-        border: 1px solid rgba(148, 163, 184, 0.2);
-        box-shadow: 0 24px 48px rgba(15, 118, 110, 0.08);
+        background: var(--nb-color-white);
+        border-radius: var(--nb-radius-lg);
+        padding: var(--nb-space-8);
+        border: 1px solid var(--nb-color-neutral-200);
+        box-shadow: var(--nb-shadow-md);
     }
 
     .agreement-content {
@@ -213,7 +213,7 @@
 
 @section('content')
 <div class="bg-light-gray/60 py-10 md:py-12" style="background-color: var(--color-light-gray);">
-    <div class="container mx-auto px-5 md:px-10 max-w-6xl space-y-10">
+    <div class="nb-page-container" style="max-width: var(--nb-container-max-width-sm);">
         @if(session('error'))
             <div class="agreement-alert">
                 <i class="fas fa-exclamation-triangle"></i>

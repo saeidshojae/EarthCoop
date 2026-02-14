@@ -5,29 +5,29 @@
 @push('styles')
 <style>
     .nb-transfer-card {
-        background: #ffffff;
-        border-radius: 24px;
-        border: 1px solid rgba(148, 163, 184, 0.2);
-        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+        background: var(--nb-color-white);
+        border-radius: var(--nb-radius-lg);
+        border: 1px solid var(--nb-color-neutral-200);
+        box-shadow: var(--nb-shadow-md);
     }
 
     .nb-transfer-header {
-        background: linear-gradient(135deg, #0f766e 0%, #10b981 55%, #60a5fa 100%);
-        color: #ffffff;
-        border-radius: 24px;
-        padding: 24px;
-        box-shadow: 0 14px 32px rgba(15, 118, 110, 0.2);
+        background: var(--nb-gradient-hero);
+        color: var(--nb-color-white);
+        border-radius: var(--nb-radius-lg);
+        padding: var(--nb-space-6);
+        box-shadow: var(--nb-shadow-lg);
     }
 
     .nb-transfer-chip {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
+        gap: var(--nb-space-2);
         padding: 6px 14px;
-        border-radius: 999px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        background: rgba(255, 255, 255, 0.18);
+        border-radius: var(--nb-radius-full);
+        font-size: var(--nb-font-size-sm);
+        font-weight: var(--nb-font-weight-semibold);
+        background: rgba(255, 255, 255, 0.25);
     }
 </style>
 @endpush
@@ -45,7 +45,7 @@
 
 @section('content')
 <div class="bg-light-gray/60 py-10 md:py-12" style="background-color: var(--color-light-gray);">
-    <div class="container mx-auto px-5 md:px-10 max-w-4xl space-y-6">
+    <div class="nb-page-container" style="max-width: var(--nb-container-max-width-md);">
         @php
             $backUrl = url()->previous();
             $fallbackUrl = $fallbackUrl;
@@ -73,16 +73,18 @@
         </section>
 
         @if(session('success'))
-            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                {{ session('success') }}
-            </div>
-        @endif
+                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded" role="alert" aria-live="polite">
+                    <i class="fas fa-check-circle ml-2" aria-hidden="true"></i>
+                    {{ session('success') }}
+                </div>
+            @endif
 
-        @if(session('error'))
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                {{ session('error') }}
-            </div>
-        @endif
+            @if(session('error'))
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded" role="alert" aria-live="assertive">
+                    <i class="fas fa-exclamation-circle ml-2" aria-hidden="true"></i>
+                    {{ session('error') }}
+                </div>
+            @endif
 
         @if($subAccounts->count() === 0)
             <div class="nb-transfer-card p-6 text-center">
@@ -95,31 +97,31 @@
             </div>
         @else
             <div class="nb-transfer-card p-6">
-                <form action="{{ route($routePrefix . '.transfer.store', $routeParams) }}" method="POST" class="space-y-5">
+                <form action="{{ route($routePrefix . '.transfer.store', $routeParams) }}" method="POST" class="space-y-5" id="transferForm">
                     @csrf
                     <div>
-                        <label for="transaction_type" class="block text-sm font-semibold text-slate-700 mb-2">
+                        <label for="transaction_type" class="nb-label">
                             نوع تراکنش
                         </label>
-                        <select id="transaction_type" name="transaction_type" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" required>
+                        <select id="transaction_type" name="transaction_type" class="nb-input" required>
                             <option value="immediate" {{ old('transaction_type', 'immediate') === 'immediate' ? 'selected' : '' }}>فوری</option>
                             <option value="scheduled" {{ old('transaction_type') === 'scheduled' ? 'selected' : '' }}>زمان بندی شده</option>
                         </select>
                     </div>
 
                     <div id="execute_at_field" class="hidden">
-                        <label for="execute_at" class="block text-sm font-semibold text-slate-700 mb-2">
+                        <label for="execute_at" class="nb-label">
                             زمان اجرای تراکنش
                         </label>
-                        <input type="datetime-local" id="execute_at" name="execute_at" value="{{ old('execute_at') }}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-                        <p class="text-xs text-slate-500 mt-1">تاریخ و زمان آینده را انتخاب کنید.</p>
+                        <input type="datetime-local" id="execute_at" name="execute_at" value="{{ old('execute_at') }}" class="nb-input">
+                        <span class="nb-help-text">تاریخ و زمان آینده را انتخاب کنید.</span>
                     </div>
 
                     <div>
-                        <label for="source_sub_account_id" class="block text-sm font-semibold text-slate-700 mb-2">
+                        <label for="source_sub_account_id" class="nb-label">
                             حساب فرعی مبدا
                         </label>
-                        <select id="source_sub_account_id" name="source_sub_account_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" required>
+                        <select id="source_sub_account_id" name="source_sub_account_id" class="nb-input" required>
                             <option value="">انتخاب حساب فرعی</option>
                             @foreach($subAccounts as $subAccount)
                                 @php
@@ -136,16 +138,16 @@
                                 </option>
                             @endforeach
                         </select>
-                        <p class="text-xs text-slate-500 mt-1">موجودی هر حساب در کنار نام نمایش داده می شود.</p>
+                        <span class="nb-help-text">موجودی هر حساب در کنار نام نمایش داده می شود.</span>
                         <p class="text-xs text-slate-600 mt-2">مانده انتخابی: <span id="source_balance_text">-</span></p>
                     </div>
 
                     <div>
-                        <label for="target_sub_account_code" class="block text-sm font-semibold text-slate-700 mb-2">
+                        <label for="target_sub_account_code" class="nb-label">
                             کد حساب فرعی مقصد
                         </label>
-                        <input type="text" id="target_sub_account_code" name="target_sub_account_code" value="{{ old('target_sub_account_code') }}" placeholder="مثال: 0000000000/001" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" required>
-                        <p class="text-xs text-slate-500 mt-1">می توانید / یا - وارد کنید.</p>
+                        <input type="text" id="target_sub_account_code" name="target_sub_account_code" value="{{ old('target_sub_account_code') }}" placeholder="مثال: 0000000000/001" class="nb-input" required>
+                        <span class="nb-help-text">می توانید / یا - وارد کنید.</span>
                         <div id="target_preview" class="mt-3 text-sm text-slate-600 hidden">
                             <div class="flex flex-col gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                                 <span id="target_owner_name">مالک: -</span>
@@ -156,24 +158,34 @@
                     </div>
 
                     <div>
-                        <label for="amount" class="block text-sm font-semibold text-slate-700 mb-2">
+                        <label for="amount" class="nb-label">
                             مبلغ (بهار)
                         </label>
-                        <input type="number" id="amount" name="amount" value="{{ old('amount') }}" min="0.01" step="0.01" placeholder="مثال: 10.25" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" required>
+                        <input type="text" 
+                               id="amount" 
+                               name="amount" 
+                               value="{{ old('amount') }}" 
+                               inputmode="decimal"
+                               pattern="[0-9]*\.?[0-9]*"
+                               placeholder="مثال: 10.25" 
+                               class="nb-input" 
+                               required
+                               aria-describedby="amount-help">
+                        <span id="amount-help" class="nb-help-text">مبلغ را به بهار وارد کنید</span>
                     </div>
 
                     <div>
-                        <label for="description" class="block text-sm font-semibold text-slate-700 mb-2">
-                            توضیحات (اختیاری)
+                        <label for="description" class="nb-label">
+                            توضیحات {{ $requireDescription ? '' : '(اختیاری)' }}
                         </label>
-                        <textarea id="description" name="description" rows="3" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" placeholder="توضیحات انتقال" {{ $requireDescription ? 'required' : '' }}>{{ old('description') }}</textarea>
+                        <textarea id="description" name="description" rows="3" class="nb-input" placeholder="توضیحات انتقال" {{ $requireDescription ? 'required' : '' }}>{{ old('description') }}</textarea>
                         @if($requireDescription)
-                            <p class="text-xs text-slate-500 mt-1">ثبت توضیحات برای انتقال‌های گروهی الزامی است.</p>
+                            <span class="nb-help-text">ثبت توضیحات برای انتقال‌های گروهی الزامی است.</span>
                         @endif
                     </div>
 
-                    <button type="submit" class="w-full px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold">
-                        <i class="fas fa-paper-plane ml-2"></i>
+                    <button type="submit" class="w-full nb-btn nb-btn-primary" data-loading-text="در حال انتقال...">
+                        <i class="fas fa-paper-plane ml-2" aria-hidden="true"></i>
                         انجام انتقال
                     </button>
                 </form>
@@ -186,6 +198,23 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // Setup form loading state
+        NajmBahar.form.setupLoadingState('transferForm');
+        
+        // Setup numeric validation for amount
+        const sourceSelect = document.getElementById('source_sub_account_id');
+        const amountInput = document.getElementById('amount');
+        
+        if (sourceSelect && amountInput) {
+            sourceSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const maxBalance = selectedOption ? parseFloat(selectedOption.getAttribute('data-balance').replace(/,/g, '')) : null;
+                
+                if (maxBalance) {
+                    NajmBahar.form.setupNumericValidation('amount', maxBalance);
+                }
+            });
+        }
         var transactionType = document.getElementById('transaction_type');
         var executeField = document.getElementById('execute_at_field');
         var executeInput = document.getElementById('execute_at');

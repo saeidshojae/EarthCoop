@@ -75,7 +75,7 @@ $roleLabels = [
 
 @section('content')
 <div class="bg-light-gray/60 py-8 md:py-10" style="background-color: var(--color-light-gray);">
-    <div class="container mx-auto px-4 md:px-6 max-w-7xl">
+    <div class=\"nb-page-container\" style=\"max-width: var(--nb-container-max-width-xl);\">
         <div class="logs-container">
             <div class="flex items-center justify-between mb-6">
                 <div>

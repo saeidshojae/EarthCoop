@@ -10,10 +10,10 @@
     }
 
     .reports-hero {
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(59, 130, 246, 0.08));
-        border: 1px solid #e2e8f0;
-        border-radius: 1.5rem;
-        padding: 1.75rem;
+        background: var(--nb-gradient-subtle);
+        border: 1px solid var(--nb-color-gray-200);
+        border-radius: var(--nb-radius-lg);
+        padding: var(--nb-space-6);
     }
 
     .hero-title {
@@ -33,11 +33,11 @@
     }
     
     .summary-card {
-        background: var(--color-pure-white);
-        border-radius: 1rem;
-        padding: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        border: 1px solid #e2e8f0;
+        background: var(--nb-color-pure-white);
+        border-radius: var(--nb-radius-md);
+        padding: var(--nb-space-6);
+        box-shadow: var(--nb-shadow-sm);
+        border: 1px solid var(--nb-color-gray-200);
     }
 
     .summary-card::after {
@@ -104,25 +104,55 @@
         background-color: #f8fafc;
     }
 
+    .account-toggle {
+        max-width: 200px;
+    }
+
     .account-toggle summary {
         cursor: pointer;
         list-style: none;
+        display: flex;
+        align-items: center;
+        gap: var(--nb-space-2);
+        padding: var(--nb-space-2);
+        border-radius: var(--nb-radius-sm);
+        transition: background var(--nb-transition-fast);
+    }
+
+    .account-toggle summary:hover {
+        background: var(--nb-color-gray-100);
+    }
+
+    .account-toggle summary:focus-visible {
+        outline: var(--nb-focus-ring);
+        outline-offset: var(--nb-focus-offset);
     }
 
     .account-toggle summary::-webkit-details-marker {
         display: none;
     }
 
+    .account-toggle-icon {
+        font-size: var(--nb-text-xs);
+        transition: transform var(--nb-transition-fast);
+        color: var(--nb-color-gray-500);
+    }
+
+    .account-toggle[open] .account-toggle-icon {
+        transform: rotate(180deg);
+    }
+
     .account-number {
-        font-size: 0.875rem;
-        font-weight: 700;
-        color: #0f172a;
+        font-size: var(--nb-text-sm);
+        font-weight: var(--nb-font-bold);
+        color: var(--nb-color-gentle-black);
     }
 
     .account-label {
-        font-size: 0.75rem;
-        color: #64748b;
-        margin-top: 0.25rem;
+        font-size: var(--nb-text-xs);
+        color: var(--nb-color-gray-500);
+        margin-top: var(--nb-space-1);
+        padding: var(--nb-space-2);
     }
     
     .transaction-type-badge {
@@ -191,7 +221,7 @@ $groupId = $routeParams['group'] ?? null;
 
 @section('content')
 <div class="bg-light-gray/60 py-8 md:py-10" style="background-color: var(--color-light-gray);">
-    <div class="container mx-auto px-4 md:px-6 max-w-7xl">
+    <div class="nb-page-container" style="max-width: var(--nb-container-max-width);">
         <div class="reports-container">
             <!-- Header -->
             <div class="reports-hero mb-6">
@@ -355,8 +385,9 @@ $groupId = $routeParams['group'] ?? null;
                 </h3>
                 
                 @if($transactions->count() > 0)
-                    <div class="overflow-x-auto">
-                        <table class="table">
+                    <!-- Desktop Table View -->
+                    <div class="hidden md:block overflow-x-auto">
+                        <table class="nb-table">
                             <thead>
                                 <tr>
                                     <th>شماره رهگیری</th>
@@ -415,8 +446,11 @@ $groupId = $routeParams['group'] ?? null;
                                                 $fromNumberDisplay = $fromNumber ?? '—';
                                             @endphp
                                             <details class="account-toggle" {{ $fromNumber ? '' : 'open' }}>
-                                                <summary class="account-number" title="{{ $fromLabel }}">{{ $fromNumberDisplay }}</summary>
-                                                <div class="account-label">{{ $fromLabel }}</div>
+                                                <summary class="account-number" tabindex="0" role="button" aria-label="جزئیات حساب {{ $fromLabel }}">
+                                                    <span>{{ $fromNumberDisplay }}</span>
+                                                    <i class="fas fa-chevron-down account-toggle-icon" aria-hidden="true"></i>
+                                                </summary>
+                                                <div class="account-label" role="region">{{ $fromLabel }}</div>
                                             </details>
                                         </td>
                                         <td>
@@ -426,8 +460,11 @@ $groupId = $routeParams['group'] ?? null;
                                                 $toNumberDisplay = $toNumber ?? '—';
                                             @endphp
                                             <details class="account-toggle" {{ $toNumber ? '' : 'open' }}>
-                                                <summary class="account-number" title="{{ $toLabel }}">{{ $toNumberDisplay }}</summary>
-                                                <div class="account-label">{{ $toLabel }}</div>
+                                                <summary class="account-number" tabindex="0" role="button" aria-label="جزئیات حساب {{ $toLabel }}">
+                                                    <span>{{ $toNumberDisplay }}</span>
+                                                    <i class="fas fa-chevron-down account-toggle-icon" aria-hidden="true"></i>
+                                                </summary>
+                                                <div class="account-label" role="region">{{ $toLabel }}</div>
                                             </details>
                                         </td>
                                         <td>
@@ -449,6 +486,75 @@ $groupId = $routeParams['group'] ?? null;
                                 @endforeach
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Mobile Card View -->
+                    <div class="md:hidden space-y-3">
+                        @foreach($transactions as $transaction)
+                            @php
+                                $isIncoming = isset($transaction->to_account_id) && $account && $transaction->to_account_id == $account->id;
+                                $fromAccount = $transaction->fromAccount;
+                                $toAccount = $transaction->toAccount;
+                                
+                                $getAccountLabel = function($acc, $type) {
+                                    if (!$acc) return '—';
+                                    if ($acc->type === 'system') return $type === 'to' ? 'EarthCoop' : 'سیستم';
+
+                                    if ($acc->type === 'subaccount') {
+                                        $subAcc = \App\Modules\NajmBahar\Models\SubAccount::where('sub_account_code', $acc->account_number)->first();
+                                        $subName = $subAcc?->name ?? 'حساب فرعی';
+                                        $mainAccount = $subAcc?->account;
+
+                                        if ($mainAccount && $mainAccount->type === 'system') {
+                                            return 'EarthCoop - ' . $subName;
+                                        }
+
+                                        $user = $mainAccount?->user;
+                                        $userName = $user ? trim($user->first_name . ' ' . $user->last_name) : 'کاربر';
+                                        return $userName . ' - ' . $subName;
+                                    }
+
+                                    $user = $acc->user;
+                                    $userName = $user ? trim($user->first_name . ' ' . $user->last_name) : 'کاربر';
+                                    return $userName;
+                                };
+                            @endphp
+                            <div class="nb-table-mobile-card">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="transaction-type-badge {{ $isIncoming ? 'transaction-type-in' : 'transaction-type-out' }}">
+                                        <i class="fas {{ $isIncoming ? 'fa-arrow-down' : 'fa-arrow-up' }}" aria-hidden="true"></i>
+                                        {{ $isIncoming ? 'ورودی' : 'خروجی' }}
+                                    </span>
+                                    <span class="font-bold text-lg {{ $isIncoming ? 'text-green-600' : 'text-red-600' }}">
+                                        {{ $isIncoming ? '+' : '-' }}{{ \App\Helpers\BaharMoney::formatDecimalValueHtml($transaction->amount) }} بهار
+                                    </span>
+                                </div>
+                                <div class="space-y-1 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-500">شماره رهگیری:</span>
+                                        <code class="text-xs bg-slate-100 px-2 py-1 rounded">{{ $transaction->tracking_number ?? '—' }}</code>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-500">تاریخ:</span>
+                                        <span class="font-medium">{{ \Morilog\Jalali\Jalalian::fromCarbon($transaction->created_at)->format('Y/m/d H:i') }}</span>
+                                    </div>
+                                    <div class="flex flex-col gap-1">
+                                        <span class="text-gray-500">از حساب:</span>
+                                        <span class="text-xs">{{ $getAccountLabel($fromAccount, 'from') }}</span>
+                                    </div>
+                                    <div class="flex flex-col gap-1">
+                                        <span class="text-gray-500">به حساب:</span>
+                                        <span class="text-xs">{{ $getAccountLabel($toAccount, 'to') }}</span>
+                                    </div>
+                                    @if($transaction->description)
+                                    <div class="flex flex-col gap-1">
+                                        <span class="text-gray-500">توضیحات:</span>
+                                        <span class="text-xs">{{ $transaction->description }}</span>
+                                    </div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
                     
                     <!-- Pagination -->

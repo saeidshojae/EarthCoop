@@ -182,7 +182,7 @@
 
 @section('content')
 <div class="bg-light-gray/60 py-10 md:py-12 nb-dashboard" style="background-color: var(--color-light-gray);">
-    <div class="container mx-auto px-5 md:px-10 max-w-6xl relative z-10 space-y-8">
+    <div class="nb-page-container" style="max-width: var(--nb-container-max-width);">
         <section class="nb-hero">
             <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -223,19 +223,21 @@
             <main class="space-y-8 lg:order-2">
 
                 @if(session('success'))
-                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6" role="alert" aria-live="polite">
+                        <i class="fas fa-check-circle ml-2" aria-hidden="true"></i>
                         {{ session('success') }}
                     </div>
                 @endif
 
                 @if(session('error'))
-                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6" role="alert" aria-live="assertive">
+                        <i class="fas fa-exclamation-circle ml-2" aria-hidden="true"></i>
                         {{ session('error') }}
                     </div>
                 @endif
 
                 <!-- Account Summary -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                     <div class="nb-card p-6">
                         <div class="flex items-center">
                             <div class="p-3 rounded-full bg-blue-100 text-blue-600">
@@ -312,7 +314,7 @@
                 </div>
 
                 <!-- Additional Info Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                     <div class="nb-card p-6">
                         <div class="flex items-center">
                             <div class="p-3 rounded-full bg-green-100 text-green-600">

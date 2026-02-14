@@ -10,40 +10,41 @@
     }
     
     .account-card {
-        background: var(--color-pure-white);
-        border-radius: 1rem;
-        padding: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        border: 1px solid #e2e8f0;
-        margin-bottom: 1.5rem;
+        background: var(--nb-color-white);
+        border-radius: var(--nb-radius-lg);
+        padding: var(--nb-space-6);
+        box-shadow: var(--nb-shadow-md);
+        border: 1px solid var(--nb-color-neutral-200);
+        margin-bottom: var(--nb-space-6);
     }
     
     .sub-account-card {
-        background: var(--color-pure-white);
-        border-radius: 1rem;
-        padding: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        border: 1px solid #e2e8f0;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        background: var(--nb-color-white);
+        border-radius: var(--nb-radius-lg);
+        padding: var(--nb-space-6);
+        box-shadow: var(--nb-shadow-md);
+        border: 1px solid var(--nb-color-neutral-200);
+        transition: transform var(--nb-duration-base), box-shadow var(--nb-duration-base);
+        will-change: transform, box-shadow;
     }
     
     .sub-account-card:hover {
         transform: translateY(-3px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        box-shadow: var(--nb-shadow-lg);
     }
     
     .balance-display {
-        font-size: 2rem;
-        font-weight: 800;
-        color: var(--color-earth-green);
-        margin: 1rem 0;
+        font-size: var(--nb-font-size-3xl);
+        font-weight: var(--nb-font-weight-black);
+        color: var(--nb-color-earth-green);
+        margin: var(--nb-space-4) 0;
     }
     
     .sub-account-code {
         font-family: monospace;
-        font-size: 1.1rem;
-        color: var(--color-ocean-blue);
-        font-weight: 600;
+        font-size: var(--nb-font-size-lg);
+        color: var(--nb-color-ocean-blue);
+        font-weight: var(--nb-font-weight-semibold);
     }
 </style>
 @endpush
@@ -56,37 +57,37 @@ $accountLabel = $accountLabel ?? 'حساب اصلی';
 
 @section('content')
 <div class="bg-light-gray/60 py-8 md:py-10" style="background-color: var(--color-light-gray);">
-    <div class="container mx-auto px-4 md:px-6 max-w-6xl">
+    <div class="nb-page-container" style="max-width: var(--nb-container-max-width-xl);">
         <div class="sub-accounts-container">
             <!-- Header -->
-            <div class="flex items-center justify-between mb-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
                     <h1 class="text-3xl md:text-4xl font-extrabold text-gentle-black mb-2">
-                        <i class="fas fa-wallet ml-3" style="color: var(--color-earth-green);"></i>
+                        <i class="fas fa-wallet ml-3" style="color: var(--color-earth-green);" aria-hidden="true"></i>
                         حساب‌های فرعی
                     </h1>
                     <p class="text-slate-600 dark:text-slate-400">مدیریت حساب‌های فرعی خود</p>
                 </div>
-                     <a href="{{ route($routePrefix . '.sub-accounts.create', $routeParams) }}" 
-                   class="px-6 py-3 bg-earth-green text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium">
-                    <i class="fas fa-plus ml-2"></i>
+                <a href="{{ route($routePrefix . '.sub-accounts.create', $routeParams) }}" 
+                   class="nb-btn nb-btn-primary">
+                    <i class="fas fa-plus ml-2" aria-hidden="true"></i>
                     ایجاد حساب فرعی جدید
                 </a>
             </div>
 
             @if(session('success'))
-                <div class="bg-green-50 border-r-4 border-green-500 text-green-700 px-4 py-3 rounded-lg mb-6" role="alert">
+                <div class="bg-green-50 border-r-4 border-green-500 text-green-700 px-4 py-3 rounded-lg mb-6" role="alert" aria-live="polite">
                     <div class="flex items-center">
-                        <i class="fas fa-check-circle ml-3"></i>
+                        <i class="fas fa-check-circle ml-3" aria-hidden="true"></i>
                         <div>{{ session('success') }}</div>
                     </div>
                 </div>
             @endif
 
             @if(session('error'))
-                <div class="bg-red-50 border-r-4 border-red-500 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert">
+                <div class="bg-red-50 border-r-4 border-red-500 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert" aria-live="assertive">
                     <div class="flex items-center">
-                        <i class="fas fa-exclamation-circle ml-3"></i>
+                        <i class="fas fa-exclamation-circle ml-3" aria-hidden="true"></i>
                         <div>{{ session('error') }}</div>
                     </div>
                 </div>
@@ -111,7 +112,7 @@ $accountLabel = $accountLabel ?? 'حساب اصلی';
                         </a>
                     @endif
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <p class="text-sm text-slate-600 mb-1">شماره حساب</p>
                         <p class="sub-account-code">{{ $account->account_number }}</p>
@@ -132,7 +133,7 @@ $accountLabel = $accountLabel ?? 'حساب اصلی';
             </div>
 
             @if($subAccounts->count() > 0)
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     @foreach($subAccounts as $subAccount)
                         <div class="sub-account-card">
                             <div class="flex items-center justify-between mb-3">

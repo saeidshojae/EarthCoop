@@ -10,19 +10,19 @@
     }
     
     .detail-card {
-        background: var(--color-pure-white);
-        border-radius: 1rem;
-        padding: 2rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        border: 1px solid #e2e8f0;
-        margin-bottom: 1.5rem;
+        background: var(--nb-color-white);
+        border-radius: var(--nb-radius-lg);
+        padding: var(--nb-space-8);
+        box-shadow: var(--nb-shadow-md);
+        border: 1px solid var(--nb-color-neutral-200);
+        margin-bottom: var(--nb-space-6);
     }
     
     .balance-large {
-        font-size: 3rem;
-        font-weight: 800;
-        color: var(--color-earth-green);
-        margin: 1rem 0;
+        font-size: var(--nb-font-size-5xl);
+        font-weight: var(--nb-font-weight-black);
+        color: var(--nb-color-earth-green);
+        margin: var(--nb-space-4) 0;
     }
 </style>
 @endpush
@@ -35,37 +35,37 @@ $isInactive = (int) ($subAccount->status ?? 1) !== 1;
 
 @section('content')
 <div class="bg-light-gray/60 py-8 md:py-10" style="background-color: var(--color-light-gray);">
-    <div class="container mx-auto px-4 md:px-6 max-w-4xl">
+    <div class="nb-page-container" style="max-width: var(--nb-container-max-width-md);">
         <div class="sub-account-detail-container">
             <!-- Header -->
-            <div class="flex items-center justify-between mb-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
                     <h1 class="text-3xl md:text-4xl font-extrabold text-gentle-black mb-2">
-                        <i class="fas fa-wallet ml-3" style="color: var(--color-earth-green);"></i>
+                        <i class="fas fa-wallet ml-3" style="color: var(--color-earth-green);" aria-hidden="true"></i>
                         {{ $subAccount->name }}
                     </h1>
                     <p class="text-slate-600 dark:text-slate-400">جزئیات حساب فرعی</p>
                 </div>
-                     <a href="{{ route($routePrefix . '.sub-accounts.index', $routeParams) }}" 
-                   class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
-                    <i class="fas fa-arrow-right ml-2"></i>
+                <a href="{{ route($routePrefix . '.sub-accounts.index', $routeParams) }}" 
+                   class="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-center">
+                    <i class="fas fa-arrow-right ml-2" aria-hidden="true"></i>
                     بازگشت
                 </a>
             </div>
 
             @if(session('success'))
-                <div class="bg-green-50 border-r-4 border-green-500 text-green-700 px-4 py-3 rounded-lg mb-6" role="alert">
+                <div class="bg-green-50 border-r-4 border-green-500 text-green-700 px-4 py-3 rounded-lg mb-6" role="alert" aria-live="polite">
                     <div class="flex items-center">
-                        <i class="fas fa-check-circle ml-3"></i>
+                        <i class="fas fa-check-circle ml-3" aria-hidden="true"></i>
                         <div>{{ session('success') }}</div>
                     </div>
                 </div>
             @endif
 
             @if(session('error'))
-                <div class="bg-red-50 border-r-4 border-red-500 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert">
+                <div class="bg-red-50 border-r-4 border-red-500 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert" aria-live="assertive">
                     <div class="flex items-center">
-                        <i class="fas fa-exclamation-circle ml-3"></i>
+                        <i class="fas fa-exclamation-circle ml-3" aria-hidden="true"></i>
                         <div>{{ session('error') }}</div>
                     </div>
                 </div>
@@ -110,11 +110,11 @@ $isInactive = (int) ($subAccount->status ?? 1) !== 1;
                 <form action="{{ route($routePrefix . '.sub-accounts.update', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST" class="mt-6 border-t border-slate-200 pt-5">
                         @csrf
                         @method('PUT')
-                        <label for="sub_account_name" class="block text-sm font-semibold text-slate-700 mb-2">ویرایش نام حساب فرعی</label>
-                        <div class="flex flex-col md:flex-row gap-3">
-                            <input type="text" id="sub_account_name" name="name" value="{{ old('name', $subAccount->name) }}" class="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" required>
-                            <button type="submit" class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
-                                <i class="fas fa-pen ml-2"></i>
+                        <label for="sub_account_name" class="nb-label">ویرایش نام حساب فرعی</label>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <input type="text" id="sub_account_name" name="name" value="{{ old('name', $subAccount->name) }}" class="flex-1 nb-input" required>
+                            <button type="submit" class="w-full sm:w-auto px-6 py-2 nb-btn nb-btn-primary">
+                                <i class="fas fa-pen ml-2" aria-hidden="true"></i>
                                 بروزرسانی نام
                             </button>
                         </div>
@@ -138,33 +138,31 @@ $isInactive = (int) ($subAccount->status ?? 1) !== 1;
                     <form action="{{ route($routePrefix . '.sub-accounts.transfer-to', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST">
                         @csrf
                         <div class="mb-4">
-                            <label for="amount_to" class="block text-sm font-semibold text-slate-700 mb-2">
+                            <label for="amount_to" class="nb-label">
                                 مبلغ (بهار.گل)
                             </label>
-                            <input type="number" 
+                            <input type="text" 
                                    id="amount_to" 
                                    name="amount" 
+                                   inputmode="decimal"
                                    required
-                                   min="1"
-                                   max="{{ \App\Helpers\BaharMoney::formatDecimalValue($account->balance) }}"
-                                   step="0.01"
-                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-earth-green focus:border-transparent"
-                                   placeholder="مثال: 10.30">
-                                {{ $isInactive ? 'disabled' : '' }}>
+                                   class="nb-input" 
+                                   placeholder="مثال: 10.30"
+                                   {{ $isInactive ? 'disabled' : '' }}>
                         </div>
                         <div class="mb-4">
-                            <label for="description_to" class="block text-sm font-semibold text-slate-700 mb-2">
+                            <label for="description_to" class="nb-label">
                                 توضیحات (اختیاری)
                             </label>
                             <textarea id="description_to" 
                                       name="description" 
                                       rows="2"
-                                      class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-earth-green focus:border-transparent"
+                                      class="nb-input"
                                       placeholder="توضیحات تراکنش" {{ $isInactive ? 'disabled' : '' }}></textarea>
                         </div>
                         <button type="submit" 
-                                class="w-full px-4 py-2 bg-earth-green text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium" {{ $isInactive ? 'disabled' : '' }}>
-                            <i class="fas fa-arrow-down ml-2"></i>
+                                class="w-full nb-btn nb-btn-primary" {{ $isInactive ? 'disabled' : '' }}>
+                            <i class="fas fa-arrow-down ml-2" aria-hidden="true"></i>
                             انتقال به حساب فرعی
                         </button>
                     </form>
@@ -185,33 +183,31 @@ $isInactive = (int) ($subAccount->status ?? 1) !== 1;
                     <form action="{{ route($routePrefix . '.sub-accounts.transfer-from', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST">
                         @csrf
                         <div class="mb-4">
-                            <label for="amount_from" class="block text-sm font-semibold text-slate-700 mb-2">
+                            <label for="amount_from" class="nb-label">
                                 مبلغ (بهار.گل)
                             </label>
-                            <input type="number" 
+                            <input type="text" 
                                    id="amount_from" 
                                    name="amount" 
+                                   inputmode="decimal"
                                    required
-                                   min="1"
-                                   max="{{ \App\Helpers\BaharMoney::formatDecimalValue($subAccount->balance) }}"
-                                   step="0.01"
-                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-tomato focus:border-transparent"
-                                   placeholder="مثال: 10.30">
-                                {{ $isInactive ? 'disabled' : '' }}>
+                                   class="nb-input"
+                                   placeholder="مثال: 10.30"
+                                   {{ $isInactive ? 'disabled' : '' }}>
                         </div>
                         <div class="mb-4">
-                            <label for="description_from" class="block text-sm font-semibold text-slate-700 mb-2">
+                            <label for="description_from" class="nb-label">
                                 توضیحات (اختیاری)
                             </label>
                             <textarea id="description_from" 
                                       name="description" 
                                       rows="2"
-                                      class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-tomato focus:border-transparent"
+                                      class="nb-input"
                                       placeholder="توضیحات تراکنش" {{ $isInactive ? 'disabled' : '' }}></textarea>
                         </div>
                         <button type="submit" 
-                                class="w-full px-4 py-2 bg-red-tomato text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium" {{ $isInactive ? 'disabled' : '' }}>
-                            <i class="fas fa-arrow-up ml-2"></i>
+                                class="w-full nb-btn nb-btn-primary" {{ $isInactive ? 'disabled' : '' }}>
+                            <i class="fas fa-arrow-up ml-2" aria-hidden="true"></i>
                             انتقال از حساب فرعی
                         </button>
                     </form>
@@ -220,21 +216,21 @@ $isInactive = (int) ($subAccount->status ?? 1) !== 1;
                         <form action="{{ route($routePrefix . '.sub-accounts.close', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST" class="space-y-3" onsubmit="return confirm('آیا از بستن این حساب فرعی مطمئن هستید؟');">
                                 @csrf
                                 <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-2">انتقال به</label>
-                                    <div class="flex flex-wrap gap-3 text-sm">
-                                        <label class="flex items-center gap-2">
+                                    <label class="nb-label">انتقال به</label>
+                                    <div class="flex flex-wrap gap-4">
+                                        <label class="flex items-center gap-2 text-sm">
                                             <input type="radio" name="destination" value="main" checked>
                                             حساب اصلی
                                         </label>
-                                        <label class="flex items-center gap-2">
+                                        <label class="flex items-center gap-2 text-sm">
                                             <input type="radio" name="destination" value="subaccount">
                                             حساب فرعی دیگر
                                         </label>
                                     </div>
                                 </div>
                                 <div id="destination_subaccount_field" class="hidden">
-                                    <label for="destination_sub_account_id" class="block text-sm font-semibold text-slate-700 mb-2">انتخاب حساب فرعی مقصد</label>
-                                    <select id="destination_sub_account_id" name="destination_sub_account_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                                    <label for="destination_sub_account_id" class="nb-label">انتخاب حساب فرعی مقصد</label>
+                                    <select id="destination_sub_account_id" name="destination_sub_account_id" class="nb-input">
                                         <option value="">انتخاب حساب فرعی</option>
                                         @foreach($otherSubAccounts as $otherSubAccount)
                                             <option value="{{ $otherSubAccount->id }}">
@@ -244,11 +240,11 @@ $isInactive = (int) ($subAccount->status ?? 1) !== 1;
                                     </select>
                                 </div>
                                 <div>
-                                    <label for="close_description" class="block text-sm font-semibold text-slate-700 mb-2">توضیحات (اختیاری)</label>
-                                    <textarea id="close_description" name="description" rows="2" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" placeholder="توضیحات بستن حساب"></textarea>
+                                    <label for="close_description" class="nb-label">توضیحات (اختیاری)</label>
+                                    <textarea id="close_description" name="description" rows="2" class="nb-input" placeholder="توضیحات بستن حساب"></textarea>
                                 </div>
-                                <button type="submit" class="w-full px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors">
-                                    <i class="fas fa-lock ml-2"></i>
+                                <button type="submit" class="w-full nb-btn nb-btn-danger">
+                                    <i class="fas fa-lock ml-2" aria-hidden="true"></i>
                                     بستن حساب فرعی
                                 </button>
                             </form>
@@ -265,16 +261,16 @@ $isInactive = (int) ($subAccount->status ?? 1) !== 1;
                 @if($isInactive)
                     <form action="{{ route($routePrefix . '.sub-accounts.activate', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST" onsubmit="return confirm('آیا از فعال سازی این حساب فرعی اطمینان دارید؟');">
                         @csrf
-                        <button type="submit" class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
-                            <i class="fas fa-check ml-2"></i>
+                        <button type="submit" class="px-6 py-2 nb-btn nb-btn-primary">
+                            <i class="fas fa-check ml-2" aria-hidden="true"></i>
                             فعال سازی حساب فرعی
                         </button>
                     </form>
                 @else
                     <form action="{{ route($routePrefix . '.sub-accounts.deactivate', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST" onsubmit="return confirm('آیا از غیرفعال کردن این حساب فرعی اطمینان دارید؟');">
                         @csrf
-                        <button type="submit" class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
-                            <i class="fas fa-ban ml-2"></i>
+                        <button type="submit" class="px-6 py-2 nb-btn nb-btn-outline">
+                            <i class="fas fa-ban ml-2" aria-hidden="true"></i>
                             غیرفعال کردن حساب فرعی
                         </button>
                         <p class="mt-2 text-sm text-slate-500">
