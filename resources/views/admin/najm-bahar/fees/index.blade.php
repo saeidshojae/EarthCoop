@@ -162,11 +162,11 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">
                                 @if($fee->type === 'fixed')
-                                    {{ \App\Helpers\BaharMoney::formatDecimal($fee->fixed_amount) }}
+                                    {{ \App\Helpers\BaharMoney::formatDecimalHtml($fee->fixed_amount) }}
                                 @elseif($fee->type === 'percentage')
                                     {{ number_format($fee->percentage, 2) }}%
                                 @else
-                                    {{ \App\Helpers\BaharMoney::formatDecimal($fee->fixed_amount) }} + {{ number_format($fee->percentage, 2) }}%
+                                    {{ \App\Helpers\BaharMoney::formatDecimalHtml($fee->fixed_amount) }} + {{ number_format($fee->percentage, 2) }}%
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">
@@ -224,4 +224,5 @@
     </div>
 </div>
 @endsection
+
 

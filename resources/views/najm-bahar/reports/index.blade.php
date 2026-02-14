@@ -229,21 +229,21 @@ $groupId = $routeParams['group'] ?? null;
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <div class="summary-card">
                     <div class="summary-card-value" style="color: var(--color-earth-green);">
-                        {{ \App\Helpers\BaharMoney::formatDecimal($summary['totalIn']) }}
+                        {{ \App\Helpers\BaharMoney::formatDecimalHtml($summary['totalIn']) }}
                     </div>
                     <div class="summary-card-label">مجموع ورودی</div>
                 </div>
                 
                 <div class="summary-card">
                     <div class="summary-card-value" style="color: var(--color-red-tomato);">
-                        {{ \App\Helpers\BaharMoney::formatDecimal($summary['totalOut']) }}
+                        {{ \App\Helpers\BaharMoney::formatDecimalHtml($summary['totalOut']) }}
                     </div>
                     <div class="summary-card-label">مجموع خروجی</div>
                 </div>
                 
                 <div class="summary-card">
                     <div class="summary-card-value" style="color: var(--color-ocean-blue);">
-                        {{ \App\Helpers\BaharMoney::formatDecimal($summary['net']) }}
+                        {{ \App\Helpers\BaharMoney::formatDecimalHtml($summary['net']) }}
                     </div>
                     <div class="summary-card-label">خالص</div>
                 </div>
@@ -361,7 +361,7 @@ $groupId = $routeParams['group'] ?? null;
                                             </span>
                                         </td>
                                         <td class="font-bold {{ $isIncoming ? 'text-green-600' : 'text-red-600' }}">
-                                            {{ $isIncoming ? '+' : '-' }}{{ \App\Helpers\BaharMoney::formatDecimalValue($transaction->amount) }}
+                                            {{ $isIncoming ? '+' : '-' }}{{ \App\Helpers\BaharMoney::formatDecimalValueHtml($transaction->amount) }}
                                         </td>
                                         <td>{{ $transaction->description ?? 'تراکنش' }}</td>
                                         <td>
@@ -391,4 +391,5 @@ $groupId = $routeParams['group'] ?? null;
     </div>
 </div>
 @endsection
+
 

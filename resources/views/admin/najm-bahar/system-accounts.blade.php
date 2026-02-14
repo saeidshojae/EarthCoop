@@ -30,7 +30,7 @@
                 <div class="mt-3 text-sm text-slate-600 dark:text-slate-400">
                     شماره حساب: <span class="font-semibold text-slate-900 dark:text-white">{{ $systemAccount->account_number }}</span>
                     <span class="mx-2">/</span>
-                    موجودی: <span class="font-semibold text-slate-900 dark:text-white">{{ \App\Helpers\BaharMoney::formatDecimal($systemAccount->balance) }}</span>
+                    موجودی: <span class="font-semibold text-slate-900 dark:text-white">{{ \App\Helpers\BaharMoney::formatDecimalHtml($systemAccount->balance) }}</span>
                 </div>
             </div>
             <form action="{{ route('admin.najm-bahar.system-accounts.ensure-defaults') }}" method="POST">
@@ -54,7 +54,7 @@
                             <div>
                                 <p class="text-sm text-slate-500 dark:text-slate-400">کد حساب</p>
                                 <p class="font-semibold text-slate-900 dark:text-white">{{ str_replace('-', '/', $subAccount->sub_account_code) }}</p>
-                                <p class="text-xs text-slate-500 mt-1">موجودی: {{ \App\Helpers\BaharMoney::formatDecimal($subAccount->balance) }}</p>
+                                <p class="text-xs text-slate-500 mt-1">موجودی: {{ \App\Helpers\BaharMoney::formatDecimalHtml($subAccount->balance) }}</p>
                             </div>
                             <div class="flex-1">
                                 <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">نام حساب</label>
@@ -184,3 +184,4 @@
     </div>
 </div>
 @endsection
+

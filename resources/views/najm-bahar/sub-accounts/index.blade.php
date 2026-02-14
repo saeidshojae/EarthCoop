@@ -118,7 +118,7 @@ $accountLabel = $accountLabel ?? 'حساب اصلی';
                     </div>
                     <div>
                         <p class="text-sm text-slate-600 mb-1">موجودی</p>
-                        <p class="balance-display">{{ \App\Helpers\BaharMoney::formatDecimal($account->balance) }}</p>
+                        <p class="balance-display">{{ \App\Helpers\BaharMoney::formatDecimalHtml($account->balance) }}</p>
                     </div>
                 </div>
             </div>
@@ -158,7 +158,7 @@ $accountLabel = $accountLabel ?? 'حساب اصلی';
                             <div class="mb-4">
                                 <p class="text-sm text-slate-600 mb-1">موجودی</p>
                                 <p class="text-2xl font-bold" style="color: var(--color-earth-green);">
-                                    {{ \App\Helpers\BaharMoney::formatDecimal($subAccount->balance) }}
+                                    {{ \App\Helpers\BaharMoney::formatDecimalHtml($subAccount->balance) }}
                                 </p>
                             </div>
                             
@@ -188,4 +188,5 @@ $accountLabel = $accountLabel ?? 'حساب اصلی';
     </div>
 </div>
 @endsection
+
 

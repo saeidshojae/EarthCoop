@@ -54,3 +54,4 @@
         &copy; {{ date('Y') }} EarthCoop. تمامی حقوق محفوظ است.
     </div>
 </footer>
+

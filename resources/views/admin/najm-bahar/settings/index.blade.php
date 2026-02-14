@@ -34,7 +34,7 @@
                             step="0.01"
                             id="najm_bahar_initial_amount"
                             name="najm_bahar_initial_amount"
-                            value="{{ $settings->najm_bahar_initial_amount ? \App\Helpers\BaharMoney::formatDecimal($settings->najm_bahar_initial_amount) : '' }}"
+                            value="{{ $settings->najm_bahar_initial_amount ? \App\Helpers\BaharMoney::formatDecimalValue($settings->najm_bahar_initial_amount) : '' }}"
                             class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             required
                             placeholder="مثال: 10000.00"
@@ -117,7 +117,7 @@
                                 step="0.01"
                                 id="najm_bahar_initial_active_fixed_amount"
                                 name="najm_bahar_initial_active_fixed_amount"
-                                value="{{ $settings->najm_bahar_initial_active_fixed_amount ? \App\Helpers\BaharMoney::formatDecimal($settings->najm_bahar_initial_active_fixed_amount) : '0' }}"
+                                value="{{ $settings->najm_bahar_initial_active_fixed_amount ? \App\Helpers\BaharMoney::formatDecimalValue($settings->najm_bahar_initial_active_fixed_amount) : '0' }}"
                                 class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="مثال: 50.00"
                                 oninput="updatePreview()"
@@ -202,7 +202,7 @@
                                     step="0.01"
                                     id="najm_bahar_auto_activation_amount"
                                     name="najm_bahar_auto_activation_amount"
-                                    value="{{ $settings->najm_bahar_auto_activation_amount ? \App\Helpers\BaharMoney::formatDecimal($settings->najm_bahar_auto_activation_amount) : '0' }}"
+                                    value="{{ $settings->najm_bahar_auto_activation_amount ? \App\Helpers\BaharMoney::formatDecimalValue($settings->najm_bahar_auto_activation_amount) : '0' }}"
                                     class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     placeholder="مثال: 100.00"
                                 />
@@ -411,3 +411,4 @@ toggleReputationConversion() {
     });
 </script>
 @endsection
+

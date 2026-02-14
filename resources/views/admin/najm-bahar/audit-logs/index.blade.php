@@ -87,7 +87,7 @@
                             <td class="px-4 py-2">{{ $log->action }}</td>
                             <td class="px-4 py-2">{{ $log->account_number ?? '-' }}</td>
                             <td class="px-4 py-2">{{ $log->sub_account_code ? str_replace('-', '/', $log->sub_account_code) : '-' }}</td>
-                            <td class="px-4 py-2">{{ $log->amount !== null ? \App\Helpers\BaharMoney::formatDecimal($log->amount) : '-' }}</td>
+                            <td class="px-4 py-2">{{ $log->amount !== null ? \App\Helpers\BaharMoney::formatDecimalHtml($log->amount) : '-' }}</td>
                             <td class="px-4 py-2">{{ $log->description ?? '-' }}</td>
                         </tr>
                     @empty
@@ -104,3 +104,4 @@
     </div>
 </div>
 @endsection
+

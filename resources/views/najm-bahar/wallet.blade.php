@@ -245,7 +245,7 @@
                             </div>
                             <div class="mr-4">
                                 <h3 class="text-lg font-semibold text-gray-800">موجودی کل</h3>
-                                <p class="nb-metric nb-metric-accent">{{ \App\Helpers\BaharMoney::formatDecimal($account->balance) }}</p>
+                                <p class="nb-metric nb-metric-accent">{{ \App\Helpers\BaharMoney::formatDecimalHtml($account->balance) }}</p>
                             </div>
                         </div>
                     </div>
@@ -259,7 +259,7 @@
                             </div>
                             <div class="mr-4">
                                 <h3 class="text-lg font-semibold text-gray-800">موجودی فعال</h3>
-                                <p class="nb-metric" style="color: #10b981;">{{ \App\Helpers\BaharMoney::formatDecimal($account->balance_active ?? 0) }}</p>
+                                <p class="nb-metric" style="color: #10b981;">{{ \App\Helpers\BaharMoney::formatDecimalHtml($account->balance_active ?? 0) }}</p>
                             </div>
                         </div>
                     </div>
@@ -273,7 +273,7 @@
                             </div>
                             <div class="mr-4">
                                 <h3 class="text-lg font-semibold text-gray-800">موجودی کمرنگ</h3>
-                                <p class="nb-metric" style="color: #f59e0b;">{{ \App\Helpers\BaharMoney::formatDecimal($account->balance_faded ?? 0) }}</p>
+                                <p class="nb-metric" style="color: #f59e0b;">{{ \App\Helpers\BaharMoney::formatDecimalHtml($account->balance_faded ?? 0) }}</p>
                             </div>
                         </div>
                     </div>
@@ -391,11 +391,11 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 @if($isInternal)
-                                                    <span class="text-blue-600">{{ \App\Helpers\BaharMoney::formatDecimalValue($transaction->amount) }}</span>
+                                                    <span class="text-blue-600">{{ \App\Helpers\BaharMoney::formatDecimalValueHtml($transaction->amount) }}</span>
                                                 @elseif($isOutgoing)
-                                                    <span class="text-red-600">-{{ \App\Helpers\BaharMoney::formatDecimalValue($transaction->amount) }}</span>
+                                                    <span class="text-red-600">-{{ \App\Helpers\BaharMoney::formatDecimalValueHtml($transaction->amount) }}</span>
                                                 @else
-                                                    <span class="text-green-600">+{{ \App\Helpers\BaharMoney::formatDecimalValue($transaction->amount) }}</span>
+                                                    <span class="text-green-600">+{{ \App\Helpers\BaharMoney::formatDecimalValueHtml($transaction->amount) }}</span>
                                                 @endif
                                                 بهار
                                             </td>
@@ -740,3 +740,4 @@ document.addEventListener('DOMContentLoaded', function() {
 @endpush
 
 @endsection
+

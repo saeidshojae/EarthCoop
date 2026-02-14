@@ -64,12 +64,12 @@
         </div>
         
         <div class="analytics-card">
-            <div class="text-3xl font-bold text-green-600 mb-2">{{ \App\Helpers\BaharMoney::formatDecimal($totalVolume) }}</div>
+            <div class="text-3xl font-bold text-green-600 mb-2">{{ \App\Helpers\BaharMoney::formatDecimalHtml($totalVolume) }}</div>
             <div class="text-slate-600 dark:text-slate-400">حجم کل تراکنش‌ها</div>
         </div>
         
         <div class="analytics-card">
-            <div class="text-3xl font-bold text-amber-600 mb-2">{{ \App\Helpers\BaharMoney::formatDecimal($avgTransactionAmount) }}</div>
+            <div class="text-3xl font-bold text-amber-600 mb-2">{{ \App\Helpers\BaharMoney::formatDecimalHtml($avgTransactionAmount) }}</div>
             <div class="text-slate-600 dark:text-slate-400">میانگین مبلغ تراکنش</div>
         </div>
     </div>
@@ -102,7 +102,7 @@
                         @endif
                     </p>
                     <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ number_format($type->count) }}</p>
-                    <p class="text-xs text-slate-500 mt-1">حجم: {{ \App\Helpers\BaharMoney::formatDecimal($type->volume) }}</p>
+                    <p class="text-xs text-slate-500 mt-1">حجم: {{ \App\Helpers\BaharMoney::formatDecimalHtml($type->volume) }}</p>
                 </div>
             @endforeach
         </div>
@@ -126,7 +126,7 @@
                 <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
                     @forelse($largeTransactions as $transaction)
                         <tr>
-                            <td class="px-4 py-2 font-bold text-red-600">{{ \App\Helpers\BaharMoney::formatDecimal($transaction->amount) }}</td>
+                            <td class="px-4 py-2 font-bold text-red-600">{{ \App\Helpers\BaharMoney::formatDecimalHtml($transaction->amount) }}</td>
                             <td class="px-4 py-2">
                                 <span class="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
                                     {{ $transaction->type === 'immediate' ? 'فوری' : $transaction->type }}
@@ -166,7 +166,7 @@
                         <tr>
                             <td class="px-4 py-2 font-mono">{{ $account->account_number }}</td>
                             <td class="px-4 py-2 font-bold">{{ number_format($account->transactions_count) }}</td>
-                            <td class="px-4 py-2 text-green-600 font-bold">{{ \App\Helpers\BaharMoney::formatDecimal($account->balance) }}</td>
+                            <td class="px-4 py-2 text-green-600 font-bold">{{ \App\Helpers\BaharMoney::formatDecimalHtml($account->balance) }}</td>
                         </tr>
                     @empty
                         <tr>
@@ -192,11 +192,11 @@
                 </div>
                 <div>
                     <p class="text-sm text-slate-600 dark:text-slate-400 mb-1">موجودی کل</p>
-                    <p class="text-2xl font-bold text-green-600">{{ \App\Helpers\BaharMoney::formatDecimal($subAccountStats->total_balance) }}</p>
+                    <p class="text-2xl font-bold text-green-600">{{ \App\Helpers\BaharMoney::formatDecimalHtml($subAccountStats->total_balance) }}</p>
                 </div>
                 <div>
                     <p class="text-sm text-slate-600 dark:text-slate-400 mb-1">میانگین موجودی</p>
-                    <p class="text-2xl font-bold text-amber-600">{{ \App\Helpers\BaharMoney::formatDecimal($subAccountStats->avg_balance) }}</p>
+                    <p class="text-2xl font-bold text-amber-600">{{ \App\Helpers\BaharMoney::formatDecimalHtml($subAccountStats->avg_balance) }}</p>
                 </div>
             </div>
         </div>
@@ -276,4 +276,5 @@
 </script>
 @endpush
 @endsection
+
 

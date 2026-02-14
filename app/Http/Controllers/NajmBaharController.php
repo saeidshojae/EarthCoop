@@ -183,10 +183,13 @@ class NajmBaharController extends Controller
         $membershipSubAccount = $this->accountService->getSystemSubAccountByCode($membershipAccountCode);
         $membershipBalance = (int) ($membershipSubAccount?->balance ?? 0);
 
-        $userTransactionsCount = NajmTransaction::where(function ($query) use ($account) {
-            $query->where('from_account_id', $account->id)
-                ->orWhere('to_account_id', $account->id);
-        })->count();
+        $accountIds = $this->transactionService->getUserAccountIds($user->id);
+        $userTransactionsCount = empty($accountIds)
+            ? 0
+            : NajmTransaction::where(function ($query) use ($accountIds) {
+                $query->whereIn('from_account_id', $accountIds)
+                    ->orWhereIn('to_account_id', $accountIds);
+            })->count();
 
         return view('najm-bahar.dashboard', compact(
             'account',

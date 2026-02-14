@@ -164,7 +164,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="nb-stat">
                             <p class="text-sm text-emerald-700">موجودی حساب اصلی</p>
-                            <p class="nb-metric nb-metric-accent">{{ \App\Helpers\BaharMoney::formatDecimal($account->balance) }}</p>
+                            <p class="nb-metric nb-metric-accent">{{ \App\Helpers\BaharMoney::formatDecimalHtml($account->balance) }}</p>
                         </div>
                         <div class="nb-stat">
                             <p class="text-sm text-emerald-700">شماره حساب گروه</p>
@@ -200,3 +200,4 @@
     </div>
 </div>
 @endsection
+

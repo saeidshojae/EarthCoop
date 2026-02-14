@@ -88,7 +88,7 @@ $isInactive = (int) ($subAccount->status ?? 1) !== 1;
                     </div>
                     <div class="md:col-span-2">
                         <p class="text-sm text-slate-600 mb-1">موجودی</p>
-                        <p class="balance-large">{{ \App\Helpers\BaharMoney::formatDecimal($subAccount->balance) }}</p>
+                        <p class="balance-large">{{ \App\Helpers\BaharMoney::formatDecimalHtml($subAccount->balance) }}</p>
                     </div>
                     <div>
                         <p class="text-sm text-slate-600 mb-1">تاریخ ایجاد</p>
@@ -130,7 +130,7 @@ $isInactive = (int) ($subAccount->status ?? 1) !== 1;
                         انتقال به حساب فرعی
                     </h3>
                     <p class="text-sm text-slate-600 mb-4">
-                        موجودی حساب اصلی: <strong>{{ \App\Helpers\BaharMoney::formatDecimal($account->balance) }}</strong>
+                        موجودی حساب اصلی: <strong>{{ \App\Helpers\BaharMoney::formatDecimalHtml($account->balance) }}</strong>
                     </p>
                     @if($isInactive)
                         <p class="text-sm text-red-600 mb-4">این حساب غیرفعال است و امکان انتقال وجود ندارد.</p>
@@ -177,7 +177,7 @@ $isInactive = (int) ($subAccount->status ?? 1) !== 1;
                         انتقال از حساب فرعی
                     </h3>
                     <p class="text-sm text-slate-600 mb-4">
-                        موجودی حساب فرعی: <strong>{{ \App\Helpers\BaharMoney::formatDecimal($subAccount->balance) }}</strong>
+                        موجودی حساب فرعی: <strong>{{ \App\Helpers\BaharMoney::formatDecimalHtml($subAccount->balance) }}</strong>
                     </p>
                     @if($isInactive)
                         <p class="text-sm text-red-600 mb-4">این حساب غیرفعال است و امکان انتقال وجود ندارد.</p>
@@ -321,4 +321,5 @@ $isInactive = (int) ($subAccount->status ?? 1) !== 1;
     });
 </script>
 @endpush
+
 

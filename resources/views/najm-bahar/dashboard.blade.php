@@ -186,7 +186,7 @@
                         </div>
                         <div class="nb-stat">
                             <p class="text-sm text-gray-500">کل پول خلق شده</p>
-                            <p class="nb-metric">{{ \App\Helpers\BaharMoney::formatDecimal($totalMinted) }}</p>
+                            <p class="nb-metric">{{ \App\Helpers\BaharMoney::formatDecimalHtml($totalMinted) }}</p>
                         </div>
                         <div class="nb-stat">
                             <p class="text-sm text-gray-500">کاربران باقی‌مانده تا حدنصاب</p>
@@ -198,7 +198,7 @@
                         </div>
                         <div class="nb-stat">
                             <p class="text-sm text-gray-500">موجودی حساب حق عضویت</p>
-                            <p class="nb-metric">{{ \App\Helpers\BaharMoney::formatDecimal($membershipBalance) }}</p>
+                            <p class="nb-metric">{{ \App\Helpers\BaharMoney::formatDecimalHtml($membershipBalance) }}</p>
                             <p class="text-xs text-gray-400 mt-1">{{ $membershipAccountCode }}</p>
                         </div>
                         <div class="nb-stat">
@@ -229,7 +229,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="nb-stat">
                             <p class="text-sm text-emerald-700">موجودی حساب اصلی</p>
-                            <p class="nb-metric nb-metric-accent">{{ \App\Helpers\BaharMoney::formatDecimal($account->balance) }}</p>
+                            <p class="nb-metric nb-metric-accent">{{ \App\Helpers\BaharMoney::formatDecimalHtml($account->balance) }}</p>
                         </div>
                         <div class="nb-stat">
                             <p class="text-sm text-emerald-700">شماره حساب</p>

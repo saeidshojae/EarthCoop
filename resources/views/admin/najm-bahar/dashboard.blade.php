@@ -100,12 +100,12 @@
                 <div>
                     <h2 class="text-lg font-bold text-slate-900 dark:text-white">مبلغ واریز اولیه</h2>
                     <p class="text-slate-600 dark:text-slate-400 mt-1">
-                        پول خلق شده فعلی: <span class="font-semibold text-slate-900 dark:text-white">{{ \App\Helpers\BaharMoney::formatDecimal($totalMinted) }}</span>
+                        پول خلق شده فعلی: <span class="font-semibold text-slate-900 dark:text-white">{{ \App\Helpers\BaharMoney::formatDecimalHtml($totalMinted) }}</span>
                     </p>
                     <div class="mt-3 text-sm text-slate-600 dark:text-slate-400">
                         کاربران فعلی: <span class="font-semibold text-slate-900 dark:text-white">{{ number_format($userCount) }}</span>
                         <span class="mx-2">/</span>
-                        مبلغ اولیه: <span class="font-semibold text-slate-900 dark:text-white">{{ \App\Helpers\BaharMoney::formatDecimal($initialAmount) }}</span>
+                        مبلغ اولیه: <span class="font-semibold text-slate-900 dark:text-white">{{ \App\Helpers\BaharMoney::formatDecimalHtml($initialAmount) }}</span>
                     </div>
                 </div>
                 
@@ -147,7 +147,7 @@
                 <p class="text-slate-600 dark:text-slate-400 mt-1">مبالغ به سه حساب سیستمی تقسیم می‌شود.</p>
                 <div class="mt-3 text-sm text-slate-600 dark:text-slate-400">
                     مجموع فعلی: <span class="font-semibold text-slate-900 dark:text-white">
-                        {{ \App\Helpers\BaharMoney::formatDecimal($membershipSplit['membership_amount'] + $membershipSplit['insurance_amount'] + $membershipSplit['burn_amount']) }}
+                        {{ \App\Helpers\BaharMoney::formatDecimalHtml($membershipSplit['membership_amount'] + $membershipSplit['insurance_amount'] + $membershipSplit['burn_amount']) }}
                     </span>
                 </div>
             </div>
@@ -409,7 +409,7 @@
             <div class="stats-icon text-amber-600">
                 <i class="fas fa-coins"></i>
             </div>
-            <div class="stats-value text-amber-600">{{ \App\Helpers\BaharMoney::formatDecimal($stats['total_balance']) }}</div>
+            <div class="stats-value text-amber-600">{{ \App\Helpers\BaharMoney::formatDecimalHtml($stats['total_balance']) }}</div>
             <div class="stats-label">موجودی حساب‌های کاربری (بهار)</div>
         </div>
 
@@ -417,7 +417,7 @@
             <div class="stats-icon text-green-600">
                 <i class="fas fa-seedling"></i>
             </div>
-            <div class="stats-value text-green-600">{{ \App\Helpers\BaharMoney::formatDecimal($stats['total_minted']) }}</div>
+            <div class="stats-value text-green-600">{{ \App\Helpers\BaharMoney::formatDecimalHtml($stats['total_minted']) }}</div>
             <div class="stats-label">کل پول خلق شده (بهار)</div>
         </div>
 
@@ -460,7 +460,7 @@
                 </div>
                 <div class="flex justify-between items-center">
                     <span class="text-slate-600 dark:text-slate-400">حجم تراکنش‌ها:</span>
-                    <span class="font-bold text-green-600">{{ \App\Helpers\BaharMoney::formatDecimal($todayVolume) }}</span>
+                    <span class="font-bold text-green-600">{{ \App\Helpers\BaharMoney::formatDecimalHtml($todayVolume) }}</span>
                 </div>
             </div>
         </div>
@@ -477,7 +477,7 @@
                 </div>
                 <div class="flex justify-between items-center">
                     <span class="text-slate-600 dark:text-slate-400">حجم تراکنش‌ها:</span>
-                    <span class="font-bold text-green-600">{{ \App\Helpers\BaharMoney::formatDecimal($weekVolume) }}</span>
+                    <span class="font-bold text-green-600">{{ \App\Helpers\BaharMoney::formatDecimalHtml($weekVolume) }}</span>
                 </div>
             </div>
         </div>
@@ -512,7 +512,7 @@
                     <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
                         @forelse($recentTransactions as $transaction)
                             <tr>
-                                <td class="px-4 py-2 font-bold">{{ \App\Helpers\BaharMoney::formatDecimal($transaction->amount) }}</td>
+                                <td class="px-4 py-2 font-bold">{{ \App\Helpers\BaharMoney::formatDecimalHtml($transaction->amount) }}</td>
                                 <td class="px-4 py-2">
                                     <span class="px-2 py-1 rounded-full text-xs {{ $transaction->type === 'immediate' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800' }}">
                                         {{ $transaction->type === 'immediate' ? 'فوری' : $transaction->type }}
@@ -552,7 +552,7 @@
                                 @endif
                             </div>
                         </div>
-                        <span class="font-bold text-green-600">{{ \App\Helpers\BaharMoney::formatDecimal($account->balance) }}</span>
+                        <span class="font-bold text-green-600">{{ \App\Helpers\BaharMoney::formatDecimalHtml($account->balance) }}</span>
                     </div>
                 @empty
                     <p class="text-center text-slate-500 py-8">هیچ حسابی یافت نشد</p>
@@ -580,7 +580,7 @@
                         @endif
                     </p>
                     <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ number_format($type->count) }}</p>
-                    <p class="text-xs text-slate-500 mt-1">حجم: {{ \App\Helpers\BaharMoney::formatDecimal($type->volume) }}</p>
+                    <p class="text-xs text-slate-500 mt-1">حجم: {{ \App\Helpers\BaharMoney::formatDecimalHtml($type->volume) }}</p>
                 </div>
             @endforeach
         </div>
@@ -666,4 +666,5 @@
 </script>
 @endpush
 @endsection
+
 

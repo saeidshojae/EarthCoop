@@ -186,7 +186,7 @@ $roleLabels = [
                                         <td>{{ $actionLabels[$log->action] ?? $log->action }}</td>
                                         <td>{{ $log->account_number ?? '-' }}</td>
                                         <td>{{ $log->sub_account_code ? str_replace('-', '/', $log->sub_account_code) : '-' }}</td>
-                                        <td>{{ $log->amount !== null ? \App\Helpers\BaharMoney::formatDecimal($log->amount) : '-' }}</td>
+                                        <td>{{ $log->amount !== null ? \App\Helpers\BaharMoney::formatDecimalHtml($log->amount) : '-' }}</td>
                                         <td>{{ $log->description ?? '-' }}</td>
                                     </tr>
                                 @endforeach
@@ -207,3 +207,4 @@ $roleLabels = [
     </div>
 </div>
 @endsection
+

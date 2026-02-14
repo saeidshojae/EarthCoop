@@ -131,8 +131,8 @@
                                         $name = 'حساب فرعی ' . $codeSlash;
                                     }
                                 @endphp
-                                <option value="{{ $subAccount->id }}" data-balance="{{ \App\Helpers\BaharMoney::formatDecimal($subAccount->balance) }}" {{ old('source_sub_account_id') == $subAccount->id ? 'selected' : '' }}>
-                                    {{ $name }} - {{ $codeSlash }} - {{ \App\Helpers\BaharMoney::formatDecimal($subAccount->balance) }}
+                                <option value="{{ $subAccount->id }}" data-balance="{{ \App\Helpers\BaharMoney::formatDecimalValue($subAccount->balance) }}" {{ old('source_sub_account_id') == $subAccount->id ? 'selected' : '' }}>
+                                    {{ $name }} - {{ $codeSlash }} - {{ \App\Helpers\BaharMoney::formatDecimalHtml($subAccount->balance) }}
                                 </option>
                             @endforeach
                         </select>
@@ -277,3 +277,4 @@
     });
 </script>
 @endpush
+

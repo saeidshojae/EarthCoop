@@ -73,7 +73,7 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">{{ $item->user_id }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{{ $item->group_id ?? '-' }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{{ $item->period_start }} تا {{ $item->period_end }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">{{ \\App\\Helpers\\BaharMoney::formatDecimal($item->amount_gol) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">{{ \\App\\Helpers\\BaharMoney::formatDecimalHtml($item->amount_gol) }}</td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <form action="{{ route('admin.najm-bahar.salary-runs.items.update', [$salaryRun, $item]) }}" method="POST" class="flex items-center gap-2">
                                     @csrf
@@ -135,3 +135,4 @@
     </div>
 </div>
 @endsection
+

@@ -28,7 +28,7 @@
                 <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
                     @forelse($transactions as $transaction)
                         <tr>
-                            <td class="px-4 py-2 font-semibold">{{ \App\Helpers\BaharMoney::formatDecimal($transaction->amount) }}</td>
+                            <td class="px-4 py-2 font-semibold">{{ \App\Helpers\BaharMoney::formatDecimalHtml($transaction->amount) }}</td>
                             <td class="px-4 py-2">{{ $transaction->fromAccount->account_number ?? '-' }}</td>
                             <td class="px-4 py-2">{{ $transaction->toAccount->account_number ?? '-' }}</td>
                             <td class="px-4 py-2">{{ $transaction->type }}</td>
@@ -51,3 +51,4 @@
     </div>
 </div>
 @endsection
+

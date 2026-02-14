@@ -2,6 +2,8 @@
 
 namespace App\Helpers;
 
+use Illuminate\Support\HtmlString;
+
 class BaharMoney
 {
     public const GOL_PER_BAHAR = 100;
@@ -75,6 +77,26 @@ class BaharMoney
         return $isNegative ? '-' . $formatted : $formatted;
     }
 
+    public static function formatDecimalHtml(int $golAmount): HtmlString
+    {
+        $isNegative = $golAmount < 0;
+        $golAmount = abs($golAmount);
+
+        $bahar = intdiv($golAmount, self::GOL_PER_BAHAR);
+        $gol = $golAmount % self::GOL_PER_BAHAR;
+
+        $sign = $isNegative ? '-' : '';
+        $baharFormatted = $sign . number_format($bahar);
+        $golFormatted = str_pad((string) $gol, 2, '0', STR_PAD_LEFT);
+
+        $html = '<span class="bahar-amount" style="white-space: nowrap;">'
+            . '<span class="bahar-main">' . $baharFormatted . '</span>'
+            . '<span class="bahar-decimal" style="font-size: 0.75em; opacity: 0.8;">.' . $golFormatted . '</span>'
+            . ' بهار</span>';
+
+        return new HtmlString($html);
+    }
+
     public static function formatDecimalValue(int $golAmount): string
     {
         $isNegative = $golAmount < 0;
@@ -86,5 +108,25 @@ class BaharMoney
         $formatted = $bahar . '.' . str_pad((string) $gol, 2, '0', STR_PAD_LEFT);
 
         return $isNegative ? '-' . $formatted : $formatted;
+    }
+
+    public static function formatDecimalValueHtml(int $golAmount): HtmlString
+    {
+        $isNegative = $golAmount < 0;
+        $golAmount = abs($golAmount);
+
+        $bahar = intdiv($golAmount, self::GOL_PER_BAHAR);
+        $gol = $golAmount % self::GOL_PER_BAHAR;
+
+        $sign = $isNegative ? '-' : '';
+        $baharFormatted = $sign . $bahar;
+        $golFormatted = str_pad((string) $gol, 2, '0', STR_PAD_LEFT);
+
+        $html = '<span class="bahar-amount" style="white-space: nowrap;">'
+            . '<span class="bahar-main">' . $baharFormatted . '</span>'
+            . '<span class="bahar-decimal" style="font-size: 0.75em; opacity: 0.8;">.' . $golFormatted . '</span>'
+            . '</span>';
+
+        return new HtmlString($html);
     }
 }

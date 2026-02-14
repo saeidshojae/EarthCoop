@@ -93,3 +93,4 @@
         specialtiesBox.style.display = (type === '1') ? 'block' : 'none';
     }
 </script>
+

@@ -1003,3 +1003,4 @@
 <script src="{{ asset('js/profile_forms.js') }}"></script>
 @endpush
 @endsection
+

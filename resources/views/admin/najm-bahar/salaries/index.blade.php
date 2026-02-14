@@ -172,7 +172,7 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">
-                                {{ \App\Helpers\BaharMoney::formatDecimal($rule->amount_gol) }}
+                                {{ \App\Helpers\BaharMoney::formatDecimalHtml($rule->amount_gol) }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $rule->is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
@@ -213,3 +213,4 @@
     </div>
 </div>
 @endsection
+

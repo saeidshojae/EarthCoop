@@ -1,3 +1,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+	.bahar-amount {
+		white-space: nowrap;
+	}
+
+	.bahar-decimal {
+		font-size: 0.75em;
+		opacity: 0.8;
+	}
+}

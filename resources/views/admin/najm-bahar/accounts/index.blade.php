@@ -56,7 +56,7 @@
                             <td class="px-4 py-2 font-semibold">{{ $account->account_number }}</td>
                             <td class="px-4 py-2">{{ $account->type }}</td>
                             <td class="px-4 py-2">{{ $account->user_id ?? '-' }}</td>
-                            <td class="px-4 py-2">{{ \App\Helpers\BaharMoney::formatDecimal($account->balance) }}</td>
+                            <td class="px-4 py-2">{{ \App\Helpers\BaharMoney::formatDecimalHtml($account->balance) }}</td>
                             <td class="px-4 py-2">
                                 <a href="{{ route('admin.najm-bahar.accounts.transactions', $account->account_number) }}" class="text-blue-600 hover:text-blue-700">تراکنش‌ها</a>
                             </td>
@@ -94,7 +94,7 @@
                             <td class="px-4 py-2 font-semibold">{{ str_replace('-', '/', $subAccount->sub_account_code) }}</td>
                             <td class="px-4 py-2">{{ $subAccount->name }}</td>
                             <td class="px-4 py-2">{{ $subAccount->account->account_number ?? $subAccount->account_id }}</td>
-                            <td class="px-4 py-2">{{ \App\Helpers\BaharMoney::formatDecimal($subAccount->balance) }}</td>
+                            <td class="px-4 py-2">{{ \App\Helpers\BaharMoney::formatDecimalHtml($subAccount->balance) }}</td>
                             <td class="px-4 py-2">{{ $subAccount->status ? 'فعال' : 'غیرفعال' }}</td>
                             <td class="px-4 py-2">
                                 <a href="{{ route('admin.najm-bahar.accounts.transactions', $subAccount->sub_account_code) }}" class="text-blue-600 hover:text-blue-700">تراکنش‌ها</a>
@@ -111,3 +111,4 @@
     </div>
 </div>
 @endsection
+
