@@ -1,8 +1,8 @@
 @extends('layouts.unified')
 
 @section('title', 'جزئیات حساب فرعی - ' . config('app.name', 'EarthCoop'))
-<!-- Tailwind & Bootstrap CSS via Vite -->
 @vite(['resources/css/app.css', 'resources/js/app.js'])
+
 @push('styles')
 <style>
     .sub-account-detail-container {
@@ -24,6 +24,36 @@
         color: var(--nb-color-earth-green);
         margin: var(--nb-space-4) 0;
     }
+
+    .account-subcard {
+        background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(249,250,251,0.95) 100%);
+        border: 1.5px solid var(--nb-color-neutral-200);
+        border-radius: var(--nb-radius-lg);
+        padding: var(--nb-space-5);
+        transition: all 0.2s ease;
+    }
+
+    .account-subcard:hover {
+        border-color: var(--nb-color-earth-green);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .account-subcard-label {
+        font-size: var(--nb-font-size-sm);
+        color: var(--nb-color-neutral-600);
+        font-weight: var(--nb-font-weight-medium);
+        margin-bottom: var(--nb-space-2);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .account-subcard-value {
+        font-size: var(--nb-font-size-xl);
+        font-weight: var(--nb-font-weight-bold);
+        color: var(--nb-color-gentle-black);
+    }
 </style>
 @endpush
 
@@ -34,80 +64,137 @@ $isInactive = (int) ($subAccount->status ?? 1) !== 1;
 @endphp
 
 @section('content')
-<div class="bg-light-gray/60 py-8 md:py-10" style="background-color: var(--color-light-gray);">
-    <div class="nb-page-container" style="max-width: var(--nb-container-max-width-md);">
-        <div class="sub-account-detail-container">
-            <!-- Header -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                <div>
-                    <h1 class="text-3xl md:text-4xl font-extrabold text-gentle-black mb-2">
-                        <i class="fas fa-wallet ml-3" style="color: var(--color-earth-green);" aria-hidden="true"></i>
+<div class="bg-light-gray/60" style="background-color: var(--color-light-gray); min-height: 100vh;">
+    <!-- Hero Section -->
+    <div class="nb-hero" style="background: linear-gradient(135deg, var(--nb-color-earth-green) 0%, var(--nb-color-ocean-blue) 100%); padding: var(--nb-space-8) 0;">
+        <div class="nb-page-container" style="max-width: var(--nb-container-max-width-xl);">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="flex-1">
+                    <h1 class="text-3xl md:text-4xl font-extrabold text-white mb-3">
+                        <i class="fas fa-wallet ml-3" aria-hidden="true"></i>
                         {{ $subAccount->name }}
                     </h1>
-                    <p class="text-slate-600 dark:text-slate-400">جزئیات حساب فرعی</p>
-                </div>
-                <a href="{{ route($routePrefix . '.sub-accounts.index', $routeParams) }}" 
-                   class="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-center">
-                    <i class="fas fa-arrow-right ml-2" aria-hidden="true"></i>
-                    بازگشت
-                </a>
-            </div>
-
-            @if(session('success'))
-                <div class="bg-green-50 border-r-4 border-green-500 text-green-700 px-4 py-3 rounded-lg mb-6" role="alert" aria-live="polite">
-                    <div class="flex items-center">
-                        <i class="fas fa-check-circle ml-3" aria-hidden="true"></i>
-                        <div>{{ session('success') }}</div>
-                    </div>
-                </div>
-            @endif
-
-            @if(session('error'))
-                <div class="bg-red-50 border-r-4 border-red-500 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert" aria-live="assertive">
-                    <div class="flex items-center">
-                        <i class="fas fa-exclamation-circle ml-3" aria-hidden="true"></i>
-                        <div>{{ session('error') }}</div>
-                    </div>
-                </div>
-            @endif
-
-            <!-- اطلاعات حساب -->
-            <div class="detail-card">
-                <h2 class="text-xl font-bold text-gentle-black mb-4">
-                    <i class="fas fa-info-circle ml-2" style="color: var(--color-ocean-blue);"></i>
-                    اطلاعات حساب
-                </h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <p class="text-sm text-slate-600 mb-1">شماره حساب</p>
-                        <p class="text-lg font-mono font-bold text-ocean-blue">{{ str_replace('-', '/', $subAccount->sub_account_code) }}</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-slate-600 mb-1">نام حساب</p>
-                        <p class="text-lg font-bold text-gentle-black">{{ $subAccount->name }}</p>
-                    </div>
-                    <div class="md:col-span-2">
-                        <p class="text-sm text-slate-600 mb-1">موجودی</p>
-                        <p class="balance-large">{{ \App\Helpers\BaharMoney::formatDecimalHtml($subAccount->balance) }}</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-slate-600 mb-1">تاریخ ایجاد</p>
-                        <p class="text-base text-gentle-black">{{ \Morilog\Jalali\Jalalian::fromCarbon($subAccount->created_at)->format('Y/m/d H:i') }}</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-slate-600 mb-1">وضعیت</p>
+                    <p class="text-white/90 text-lg">جزئیات حساب فرعی {{ str_replace('-', '/', $subAccount->sub_account_code) }}</p>
+                    <div class="flex flex-wrap gap-2 mt-3">
                         @if($isInactive)
-                            <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-semibold">
+                            <span class="px-3 py-1 bg-red-500/20 text-white rounded-full text-sm font-semibold border border-white/30">
+                                <i class="fas fa-ban ml-1"></i>
                                 غیرفعال
                             </span>
                         @else
-                            <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
+                            <span class="px-3 py-1 bg-green-500/20 text-white rounded-full text-sm font-semibold border border-white/30">
+                                <i class="fas fa-check-circle ml-1"></i>
                                 فعال
                             </span>
                         @endif
                     </div>
                 </div>
-                <form action="{{ route($routePrefix . '.sub-accounts.update', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST" class="mt-6 border-t border-slate-200 pt-5">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <a href="{{ route($routePrefix . '.sub-accounts.index', $routeParams) }}" 
+                       class="px-6 py-3 bg-white/20 backdrop-blur-sm text-white rounded-xl hover:bg-white/30 transition-all border border-white/30 text-center font-semibold">
+                        <i class="fas fa-arrow-right ml-2" aria-hidden="true"></i>
+                        بازگشت
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content with Sidebar -->
+    <div class="nb-page-container py-8" style="max-width: var(--nb-container-max-width-xl);">
+        @if(session('success'))
+            <div class="bg-green-50 border-r-4 border-green-500 text-green-700 px-4 py-3 rounded-lg mb-6" role="alert" aria-live="polite">
+                <div class="flex items-center">
+                    <i class="fas fa-check-circle ml-3" aria-hidden="true"></i>
+                    <div>{{ session('success') }}</div>
+                </div>
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="bg-red-50 border-r-4 border-red-500 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert" aria-live="assertive">
+                <div class="flex items-center">
+                    <i class="fas fa-exclamation-circle ml-3" aria-hidden="true"></i>
+                    <div>{{ session('error') }}</div>
+                </div>
+            </div>
+        @endif
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Sidebar -->
+            <aside class="lg:col-span-3">
+                @include('najm-bahar.partials.sidebar')
+            </aside>
+
+            <!-- Main Content -->
+            <main class="lg:col-span-9 sub-account-detail-container">
+                <!-- اطلاعات حساب -->
+                <div class="detail-card">
+                    <h2 class="text-xl font-bold text-gentle-black mb-6">
+                        <i class="fas fa-info-circle ml-2" style="color: var(--color-ocean-blue);"></i>
+                        اطلاعات حساب
+                    </h2>
+                    
+                    <!-- Subcards Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                        <!-- شماره حساب -->
+                        <div class="account-subcard">
+                            <div class="account-subcard-label">
+                                <i class="fas fa-hashtag text-ocean-blue"></i>
+                                شماره حساب
+                            </div>
+                            <div class="account-subcard-value font-mono text-ocean-blue">
+                                {{ str_replace('-', '/', $subAccount->sub_account_code) }}
+                            </div>
+                        </div>
+
+                        <!-- موجودی فعال -->
+                        <div class="account-subcard">
+                            <div class="account-subcard-label">
+                                <i class="fas fa-coins text-earth-green"></i>
+                                موجودی فعال
+                            </div>
+                            <div class="account-subcard-value text-earth-green">
+                                {{ \App\Helpers\BaharMoney::formatDecimalHtml($subAccount->balance_active ?? 0) }}
+                            </div>
+                        </div>
+
+                        <!-- موجودی منقضی -->
+                        <div class="account-subcard">
+                            <div class="account-subcard-label">
+                                <i class="fas fa-clock text-amber-600"></i>
+                                موجودی منقضی
+                            </div>
+                            <div class="account-subcard-value text-amber-600">
+                                {{ \App\Helpers\BaharMoney::formatDecimalHtml($subAccount->balance_faded ?? 0) }}
+                            </div>
+                        </div>
+
+                        <!-- موجودی کل -->
+                        <div class="account-subcard md:col-span-2">
+                            <div class="account-subcard-label">
+                                <i class="fas fa-wallet text-digital-gold"></i>
+                                موجودی کل
+                            </div>
+                            <div class="text-3xl font-black text-digital-gold">
+                                {{ \App\Helpers\BaharMoney::formatDecimalHtml($subAccount->balance) }}
+                            </div>
+                        </div>
+
+                        <!-- تاریخ ایجاد -->
+                        <div class="account-subcard">
+                            <div class="account-subcard-label">
+                                <i class="fas fa-calendar-alt text-slate-600"></i>
+                                تاریخ ایجاد
+                            </div>
+                            <div class="account-subcard-value text-base">
+                                {{ \Morilog\Jalali\Jalalian::fromCarbon($subAccount->created_at)->format('Y/m/d H:i') }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form ویرایش نام -->
+                    <form action="{{ route($routePrefix . '.sub-accounts.update', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST" class="border-t border-slate-200 pt-6">
                         @csrf
                         @method('PUT')
                         <label for="sub_account_name" class="nb-label">ویرایش نام حساب فرعی</label>
@@ -119,7 +206,7 @@ $isInactive = (int) ($subAccount->status ?? 1) !== 1;
                             </button>
                         </div>
                     </form>
-            </div>
+                </div>
 
             <!-- انتقال وجه -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -279,6 +366,7 @@ $isInactive = (int) ($subAccount->status ?? 1) !== 1;
                     </form>
                 @endif
             </div>
+            </main>
         </div>
     </div>
 </div>

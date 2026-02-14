@@ -12,6 +12,7 @@ use App\Helpers\BaharMoney;
 use App\Models\Group;
 use App\Models\GroupUser;
 use App\Services\NajmBaharAuditLogger;
+use App\Models\NajmBaharAuditLog;
 use Illuminate\Support\Facades\Auth;
 
 class NajmBaharSubAccountController extends Controller
@@ -59,7 +60,23 @@ class NajmBaharSubAccountController extends Controller
 
             $subAccounts = $this->subAccountService->getAllSubAccountsForAccount($account->id);
 
-        return view('najm-bahar.sub-accounts.index', compact('account', 'subAccounts'));
+        $internalActions = [
+            'subaccount.transfer_to',
+            'subaccount.transfer_from',
+            'subaccount.transfer_between',
+            'subaccount.transfer_between_scheduled',
+            'subaccount.transfer_between_executed',
+        ];
+
+        $internalTransfers = NajmBaharAuditLog::query()
+            ->where('actor_user_id', $user->id)
+            ->where('account_number', $account->account_number)
+            ->whereIn('action', $internalActions)
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get();
+
+        return view('najm-bahar.sub-accounts.index', compact('account', 'subAccounts', 'internalTransfers'));
     }
 
     /**
@@ -308,6 +325,20 @@ class NajmBaharSubAccountController extends Controller
                 'active'
             );
 
+            NajmBaharAuditLogger::log([
+                'actor_user_id' => $user->id,
+                'action' => 'subaccount.transfer_to',
+                'account_number' => $account->account_number,
+                'sub_account_code' => $subAccount->sub_account_code,
+                'amount' => $amount,
+                'direction' => 'to_subaccount',
+                'description' => $validated['description'] ?? 'انتقال به حساب فرعی',
+                'meta' => [
+                    'from_account' => $account->account_number,
+                    'to_sub_account' => $subAccount->sub_account_code,
+                ],
+            ]);
+
             return back()->with('success', 'وجه با موفقیت به حساب فرعی منتقل شد.');
         } catch (\Exception $e) {
             return back()->with('error', 'خطا در انتقال وجه: ' . $e->getMessage());
@@ -344,6 +375,20 @@ class NajmBaharSubAccountController extends Controller
                 $amount,
                 $validated['description'] ?? null
             );
+
+            NajmBaharAuditLogger::log([
+                'actor_user_id' => $user->id,
+                'action' => 'subaccount.transfer_from',
+                'account_number' => $account->account_number,
+                'sub_account_code' => $subAccount->sub_account_code,
+                'amount' => $amount,
+                'direction' => 'from_subaccount',
+                'description' => $validated['description'] ?? 'انتقال از حساب فرعی',
+                'meta' => [
+                    'from_sub_account' => $subAccount->sub_account_code,
+                    'to_account' => $account->account_number,
+                ],
+            ]);
 
             return back()->with('success', 'وجه با موفقیت از حساب فرعی منتقل شد.');
         } catch (\Exception $e) {
