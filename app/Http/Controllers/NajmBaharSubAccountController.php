@@ -66,6 +66,7 @@ class NajmBaharSubAccountController extends Controller
             'subaccount.transfer_between',
             'subaccount.transfer_between_scheduled',
             'subaccount.transfer_between_executed',
+            'subaccount.close',
         ];
 
         $internalTransfers = NajmBaharAuditLog::query()
@@ -369,11 +370,14 @@ class NajmBaharSubAccountController extends Controller
         }
 
         try {
+            $moneyState = $this->resolveMoneyState($subAccount, $amount);
+
             $this->subAccountService->transferFromSubAccount(
                 $subAccount->id,
                 $account->id,
                 $amount,
-                $validated['description'] ?? null
+                $validated['description'] ?? null,
+                $moneyState
             );
 
             NajmBaharAuditLogger::log([

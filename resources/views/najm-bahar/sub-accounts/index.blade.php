@@ -95,6 +95,7 @@ $actionLabels = [
     'subaccount.transfer_between' => 'انتقال بین حساب‌های فرعی',
     'subaccount.transfer_between_scheduled' => 'انتقال زمان‌بندی‌شده بین حساب‌های فرعی',
     'subaccount.transfer_between_executed' => 'اجرای انتقال زمان‌بندی‌شده',
+    'subaccount.close' => 'بستن حساب فرعی',
 ];
 @endphp
 

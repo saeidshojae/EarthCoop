@@ -215,16 +215,16 @@
 
 /* Button Base */
 .nb-btn {
-    display: inline-flex;
+    display: inline-flex !important;
     align-items: center;
     justify-content: center;
     gap: var(--nb-space-2);
-    padding: var(--nb-space-3) var(--nb-space-5);
-    border-radius: var(--nb-radius-full);
-    font-weight: var(--nb-font-semibold);
-    transition: transform var(--nb-transition-fast), box-shadow var(--nb-transition-fast);
+    padding: var(--nb-space-3) var(--nb-space-5) !important;
+    border-radius: var(--nb-radius-full) !important;
+    font-weight: var(--nb-font-semibold) !important;
+    transition: transform var(--nb-transition-fast), box-shadow var(--nb-transition-fast) !important;
     cursor: pointer;
-    border: none;
+    border: none !important;
 }
 
 .nb-btn:hover {
@@ -248,24 +248,35 @@
 
 /* Button Variants */
 .nb-btn-primary {
-    background: var(--nb-gradient-action);
-    color: var(--nb-color-pure-white);
-    box-shadow: var(--nb-shadow-action);
+    background: var(--nb-gradient-action) !important;
+    color: var(--nb-color-pure-white) !important;
+    box-shadow: var(--nb-shadow-action) !important;
 }
 
 .nb-btn-primary:hover:not(:disabled) {
-    box-shadow: var(--nb-shadow-action-hover);
+    box-shadow: var(--nb-shadow-action-hover) !important;
 }
 
 .nb-btn-secondary {
-    background: var(--nb-color-pure-white);
-    color: var(--nb-color-gentle-black);
-    border: 1px solid var(--nb-color-gray-200);
+    background: var(--nb-color-pure-white) !important;
+    color: var(--nb-color-gentle-black) !important;
+    border: 1px solid var(--nb-color-gray-200) !important;
+}
+
+.nb-btn-outline {
+    background: transparent !important;
+    color: var(--nb-color-gray-700) !important;
+    border: 1.5px solid var(--nb-color-gray-300) !important;
+}
+
+.nb-btn-outline:hover:not(:disabled) {
+    background: var(--nb-color-gray-100) !important;
+    border-color: var(--nb-color-gray-400) !important;
 }
 
 .nb-btn-danger {
-    background: var(--nb-gradient-danger);
-    color: var(--nb-color-pure-white);
+    background: var(--nb-gradient-danger) !important;
+    color: var(--nb-color-pure-white) !important;
 }
 
 /* Hero Section */

@@ -282,7 +282,7 @@ class SubAccountService
             }
 
             $sub->balance_faded = intval($sub->balance_faded ?? 0) - $amount;
-            $main->balance_faded = intval($main->balance_faded ?? 0) + $amount;
+            $main->balance_active = intval($main->balance_active ?? 0) + $amount;
         }
 
         $this->syncTotals($main, $sub);
