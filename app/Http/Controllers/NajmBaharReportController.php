@@ -13,7 +13,7 @@ use App\Models\Candidate;
 use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\User;
-use Maatwebsite\Excel\Facades\Excel;
+
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\View;
@@ -254,9 +254,9 @@ class NajmBaharReportController extends Controller
         // دریافت تمام تراکنش‌ها (بدون pagination)
         $transactions = $this->getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $accountIds);
 
-        $fileName = 'najm-bahar-transactions-' . Carbon::now()->format('Y-m-d-His') . '.xlsx';
+        $fileName = 'najm-bahar-transactions-' . Carbon::now()->format('Y-m-d-His') . '.csv';
 
-        return Excel::download(new NajmBaharTransactionsExport($transactions, $account), $fileName);
+        return $this->downloadTransactionsCSV($transactions, $account, $fileName);
     }
 
     public function exportExcelForGroup(Request $request, Group $group)
@@ -275,9 +275,9 @@ class NajmBaharReportController extends Controller
 
         $transactions = $this->getTransactionsForExport($account, $account->account_number, $dateFrom, $dateTo, $type, $search, $accountIds);
 
-        $fileName = 'najm-bahar-group-' . $group->id . '-transactions-' . Carbon::now()->format('Y-m-d-His') . '.xlsx';
+        $fileName = 'najm-bahar-group-' . $group->id . '-transactions-' . Carbon::now()->format('Y-m-d-His') . '.csv';
 
-        return Excel::download(new NajmBaharTransactionsExport($transactions, $account), $fileName);
+        return $this->downloadTransactionsCSV($transactions, $account, $fileName);
     }
 
     /**
@@ -366,7 +366,6 @@ class NajmBaharReportController extends Controller
         $search = $request->input('search');
         $accountIds = $this->resolveAccountIds($account, null);
 
-        $transactions = $this->getTransactionsForExport($account, $account->account_number, $dateFrom, $dateTo, $type, $search);
         $transactions = $this->getTransactionsForExport($account, $account->account_number, $dateFrom, $dateTo, $type, $search, $accountIds);
         $summary = $this->getSummary($account, $account->account_number, $dateFrom, $dateTo, $accountIds);
 
@@ -410,12 +409,13 @@ class NajmBaharReportController extends Controller
 
         $accountNumber = AccountNumberService::makeMainAccountNumberForUser($leader->id);
         $account = Account::where('account_number', $accountNumber)->first();
+        $accountIds = $this->transactionService->getUserAccountIds($leader->id);
 
-        $transactions = $this->getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search);
+        $transactions = $this->getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $accountIds);
 
-        $fileName = 'najm-bahar-group-' . $group->id . '-leader-' . $leader->id . '-transactions-' . Carbon::now()->format('Y-m-d-His') . '.xlsx';
+        $fileName = 'najm-bahar-group-' . $group->id . '-leader-' . $leader->id . '-transactions-' . Carbon::now()->format('Y-m-d-His') . '.csv';
 
-        return Excel::download(new NajmBaharTransactionsExport($transactions, $account), $fileName);
+        return $this->downloadTransactionsCSV($transactions, $account, $fileName);
     }
 
     public function exportPdfForGroupLeader(Request $request, Group $group, User $leader)
@@ -608,6 +608,25 @@ class NajmBaharReportController extends Controller
         }
 
         return [$from->format('Y-m-d'), $to->format('Y-m-d')];
+    }
+
+    /**
+     * دریافت CSV تراکنش‌ها
+     */
+    private function downloadTransactionsCSV($transactions, $account, $fileName)
+    {
+        $export = new \App\Exports\NajmBaharTransactionsExport($transactions, $account);
+        $rows = $export->getRows();
+
+        // تبدیل به CSV
+        $csv = '';
+        foreach ($rows as $row) {
+            $csv .= implode("\t", $row) . "\n";
+        }
+
+        return response($csv)
+            ->header('Content-Type', 'text/csv; charset=utf-8')
+            ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
     }
 }
 

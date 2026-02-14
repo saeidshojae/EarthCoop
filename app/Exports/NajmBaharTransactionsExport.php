@@ -2,17 +2,10 @@
 
 namespace App\Exports;
 
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\WithTitle;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use App\Helpers\BaharMoney;
+use Carbon\Carbon;
 
-class NajmBaharTransactionsExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithTitle
+class NajmBaharTransactionsExport
 {
     protected $transactions;
     protected $account;
@@ -25,10 +18,21 @@ class NajmBaharTransactionsExport implements FromCollection, WithHeadings, WithM
 
     public function collection()
     {
-        return $this->transactions;
+        return $this->getRows();
     }
 
-    public function headings(): array
+    public function getRows()
+    {
+        $rows = [$this->getHeadings()];
+        
+        foreach ($this->transactions as $transaction) {
+            $rows[] = $this->mapTransaction($transaction);
+        }
+        
+        return $rows;
+    }
+
+    public function getHeadings(): array
     {
         return [
             'تاریخ',
@@ -39,7 +43,7 @@ class NajmBaharTransactionsExport implements FromCollection, WithHeadings, WithM
         ];
     }
 
-    public function map($transaction): array
+    public function mapTransaction($transaction): array
     {
         $isIncoming = $this->account && isset($transaction->to_account_id) && $transaction->to_account_id == $this->account->id;
 
@@ -50,27 +54,6 @@ class NajmBaharTransactionsExport implements FromCollection, WithHeadings, WithM
             $transaction->description ?? 'تراکنش',
             'تکمیل شده',
         ];
-    }
-
-    public function styles(Worksheet $sheet)
-    {
-        return [
-            1 => [
-                'font' => ['bold' => true, 'size' => 12],
-                'fill' => [
-                    'fillType' => Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => 'E0F2FE']
-                ],
-                'alignment' => [
-                    'horizontal' => Alignment::HORIZONTAL_CENTER,
-                ],
-            ],
-        ];
-    }
-
-    public function title(): string
-    {
-        return 'گزارش تراکنش‌ها';
     }
 }
 

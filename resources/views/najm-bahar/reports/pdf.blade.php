@@ -124,20 +124,20 @@
         @if($accountNumberDisplay)
             <p>شماره حساب: {{ $accountNumberDisplay }}</p>
         @endif
-        <p>از {{ \Morilog\Jalali\Jalalian::fromCarbon(Carbon::parse($dateFrom))->format('Y/m/d') }} تا {{ \Morilog\Jalali\Jalalian::fromCarbon(Carbon::parse($dateTo))->format('Y/m/d') }}</p>
+        <p>از {{ \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($dateFrom))->format('Y/m/d') }} تا {{ \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($dateTo))->format('Y/m/d') }}</p>
     </div>
 
     <div class="summary">
         <div class="summary-card">
-            <div class="summary-card-value" style="color: #10b981;">{{ \App\Helpers\BaharMoney::formatDecimal($summary['totalIn']) }}</div>
+            <div class="summary-card-value" style="color: #10b981;">{{ \App\Helpers\BaharMoney::formatDecimalHtml($summary['totalIn']) }}</div>
             <div class="summary-card-label">مجموع ورودی</div>
         </div>
         <div class="summary-card">
-            <div class="summary-card-value" style="color: #ef4444;">{{ \App\Helpers\BaharMoney::formatDecimal($summary['totalOut']) }}</div>
+            <div class="summary-card-value" style="color: #ef4444;">{{ \App\Helpers\BaharMoney::formatDecimalHtml($summary['totalOut']) }}</div>
             <div class="summary-card-label">مجموع خروجی</div>
         </div>
         <div class="summary-card">
-            <div class="summary-card-value" style="color: #3b82f6;">{{ \App\Helpers\BaharMoney::formatDecimal($summary['net']) }}</div>
+            <div class="summary-card-value" style="color: #3b82f6;">{{ \App\Helpers\BaharMoney::formatDecimalHtml($summary['net']) }}</div>
             <div class="summary-card-label">خالص</div>
         </div>
         <div class="summary-card">
@@ -170,7 +170,7 @@
                         {{ $isIncoming ? 'ورودی' : 'خروجی' }}
                     </td>
                     <td class="{{ $isIncoming ? 'type-in' : 'type-out' }}">
-                        {{ $isIncoming ? '+' : '-' }}{{ \App\Helpers\BaharMoney::formatDecimalValue($transaction->amount) }}
+                        {{ $isIncoming ? '+' : '-' }}{{ \App\Helpers\BaharMoney::formatDecimalValueHtml($transaction->amount) }}
                     </td>
                     <td>{{ $transaction->description ?? 'تراکنش' }}</td>
                     <td>تکمیل شده</td>
@@ -185,4 +185,5 @@
     </div>
 </body>
 </html>
+
 
