@@ -168,24 +168,43 @@
                     }
                     $fromAccount = $transaction->fromAccount;
                     $toAccount = $transaction->toAccount;
-                    $fromAccountName = $fromAccount ? ($fromAccount->user_id ? 'کاربر #' . $fromAccount->user_id : 'سیستم') : '—';
-                    $fromAccountNumber = $fromAccount?->account_number ?? '—';
-                    $toAccountName = $toAccount ? ($toAccount->user_id ? 'کاربر #' . $toAccount->user_id : 'سیستم') : '—';
-                    $toAccountNumber = $toAccount?->account_number ?? '—';
+                    
+                    $getAccountLabel = function($acc, $type) {
+                        if (!$acc) return '—';
+                        if ($acc->type === 'system') return $type === 'to' ? 'EarthCoop' : 'سیستم';
+
+                        if ($acc->type === 'subaccount') {
+                            $subAcc = \App\Modules\NajmBahar\Models\SubAccount::where('sub_account_code', $acc->account_number)->first();
+                            $subName = $subAcc?->name ?? 'حساب فرعی';
+                            $mainAccount = $subAcc?->account;
+
+                            if ($mainAccount && $mainAccount->type === 'system') {
+                                return 'EarthCoop - ' . $subName;
+                            }
+
+                            $user = $mainAccount?->user;
+                            $userName = $user ? trim($user->first_name . ' ' . $user->last_name) : 'کاربر';
+                            return $userName . ' - ' . $subName;
+                        }
+
+                        $user = $acc->user;
+                        $userName = $user ? trim($user->first_name . ' ' . $user->last_name) : 'کاربر';
+                        return $userName;
+                    };
                 @endphp
                 <tr>
                     <td><small>{{ $transaction->tracking_number ?? '—' }}</small></td>
                     <td>{{ \Morilog\Jalali\Jalalian::fromCarbon($transaction->created_at)->format('Y/m/d H:i') }}</td>
                     <td>
                         <small>
-                            <div>{{ $fromAccountName }}</div>
-                            <div style="font-size: 0.8em; color: #666;">{{ $fromAccountNumber }}</div>
+                            <div>{{ $getAccountLabel($fromAccount, 'from') }}</div>
+                            <div style="font-size: 0.8em; color: #666;">{{ $fromAccount?->account_number ?? '—' }}</div>
                         </small>
                     </td>
                     <td>
                         <small>
-                            <div>{{ $toAccountName }}</div>
-                            <div style="font-size: 0.8em; color: #666;">{{ $toAccountNumber }}</div>
+                            <div>{{ $getAccountLabel($toAccount, 'to') }}</div>
+                            <div style="font-size: 0.8em; color: #666;">{{ $toAccount?->account_number ?? '—' }}</div>
                         </small>
                     </td>
                     <td class="{{ $isIncoming ? 'type-in' : 'type-out' }}">

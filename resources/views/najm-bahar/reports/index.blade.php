@@ -103,6 +103,27 @@
     .table tbody tr:hover {
         background-color: #f8fafc;
     }
+
+    .account-toggle summary {
+        cursor: pointer;
+        list-style: none;
+    }
+
+    .account-toggle summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .account-number {
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .account-label {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-top: 0.25rem;
+    }
     
     .transaction-type-badge {
         display: inline-flex;
@@ -354,10 +375,29 @@ $groupId = $routeParams['group'] ?? null;
                                             $isIncoming = isset($transaction->to_account_id) && $account && $transaction->to_account_id == $account->id;
                                             $fromAccount = $transaction->fromAccount;
                                             $toAccount = $transaction->toAccount;
-                                            $fromAccountName = $fromAccount ? ($fromAccount->user_id ? 'کاربر #' . $fromAccount->user_id : 'سیستم') : '—';
-                                            $fromAccountNumber = $fromAccount?->account_number ?? '—';
-                                            $toAccountName = $toAccount ? ($toAccount->user_id ? 'کاربر #' . $toAccount->user_id : 'سیستم') : '—';
-                                            $toAccountNumber = $toAccount?->account_number ?? '—';
+                                            
+                                            $getAccountLabel = function($acc, $type) {
+                                                if (!$acc) return '—';
+                                                if ($acc->type === 'system') return $type === 'to' ? 'EarthCoop' : 'سیستم';
+
+                                                if ($acc->type === 'subaccount') {
+                                                    $subAcc = \App\Modules\NajmBahar\Models\SubAccount::where('sub_account_code', $acc->account_number)->first();
+                                                    $subName = $subAcc?->name ?? 'حساب فرعی';
+                                                    $mainAccount = $subAcc?->account;
+
+                                                    if ($mainAccount && $mainAccount->type === 'system') {
+                                                        return 'EarthCoop - ' . $subName;
+                                                    }
+
+                                                    $user = $mainAccount?->user;
+                                                    $userName = $user ? trim($user->first_name . ' ' . $user->last_name) : 'کاربر';
+                                                    return $userName . ' - ' . $subName;
+                                                }
+
+                                                $user = $acc->user;
+                                                $userName = $user ? trim($user->first_name . ' ' . $user->last_name) : 'کاربر';
+                                                return $userName;
+                                            };
                                     @endphp
                                     <tr>
                                         <td>
@@ -369,16 +409,26 @@ $groupId = $routeParams['group'] ?? null;
                                             {{ \Morilog\Jalali\Jalalian::fromCarbon($transaction->created_at)->format('Y/m/d H:i') }}
                                         </td>
                                         <td>
-                                            <div class="text-sm">
-                                                <div class="font-semibold">{{ $fromAccountName }}</div>
-                                                <div class="text-xs text-slate-500">{{ $fromAccountNumber }}</div>
-                                            </div>
+                                            @php
+                                                $fromLabel = $getAccountLabel($fromAccount, 'from');
+                                                $fromNumber = $fromAccount?->account_number;
+                                                $fromNumberDisplay = $fromNumber ?? '—';
+                                            @endphp
+                                            <details class="account-toggle" {{ $fromNumber ? '' : 'open' }}>
+                                                <summary class="account-number" title="{{ $fromLabel }}">{{ $fromNumberDisplay }}</summary>
+                                                <div class="account-label">{{ $fromLabel }}</div>
+                                            </details>
                                         </td>
                                         <td>
-                                            <div class="text-sm">
-                                                <div class="font-semibold">{{ $toAccountName }}</div>
-                                                <div class="text-xs text-slate-500">{{ $toAccountNumber }}</div>
-                                            </div>
+                                            @php
+                                                $toLabel = $getAccountLabel($toAccount, 'to');
+                                                $toNumber = $toAccount?->account_number;
+                                                $toNumberDisplay = $toNumber ?? '—';
+                                            @endphp
+                                            <details class="account-toggle" {{ $toNumber ? '' : 'open' }}>
+                                                <summary class="account-number" title="{{ $toLabel }}">{{ $toNumberDisplay }}</summary>
+                                                <div class="account-label">{{ $toLabel }}</div>
+                                            </details>
                                         </td>
                                         <td>
                                             <span class="transaction-type-badge {{ $isIncoming ? 'transaction-type-in' : 'transaction-type-out' }}">
