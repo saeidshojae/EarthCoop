@@ -8,6 +8,7 @@ class Transaction extends Model
 {
     protected $table = 'najm_transactions';
     protected $fillable = [
+        'tracking_number',
         'from_account_id',
         'to_account_id',
         'amount',
@@ -25,6 +26,22 @@ class Transaction extends Model
     ];
 
     public $timestamps = true;
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($transaction) {
+            if (!$transaction->tracking_number) {
+                // Generate unique tracking number: TRX-{date}-{random}
+                do {
+                    $tracking_number = 'TRX-' . date('YmdHis') . '-' . random_int(10000, 99999);
+                } while (self::where('tracking_number', $tracking_number)->exists());
+                
+                $transaction->tracking_number = $tracking_number;
+            }
+        });
+    }
 
     /**
      * رابطه با حساب مبدا

@@ -35,7 +35,12 @@ class NajmBaharTransactionsExport
     public function getHeadings(): array
     {
         return [
+            'شماره رهگیری',
             'تاریخ',
+            'از حساب (نام)',
+            'از حساب (شماره)',
+            'به حساب (نام)',
+            'به حساب (شماره)',
             'نوع تراکنش',
             'مبلغ (بهار)',
             'توضیحات',
@@ -46,9 +51,23 @@ class NajmBaharTransactionsExport
     public function mapTransaction($transaction): array
     {
         $isIncoming = $this->account && isset($transaction->to_account_id) && $transaction->to_account_id == $this->account->id;
+        
+        $fromAccount = $transaction->fromAccount;
+        $toAccount = $transaction->toAccount;
+        
+        $fromAccountName = $fromAccount ? ($fromAccount->user_id ? 'حساب کاربر #' . $fromAccount->user_id : 'حساب سیستم') : 'نامشخص';
+        $fromAccountNumber = $fromAccount?->account_number ?? '—';
+        
+        $toAccountName = $toAccount ? ($toAccount->user_id ? 'حساب کاربر #' . $toAccount->user_id : 'حساب سیستم') : 'نامشخص';
+        $toAccountNumber = $toAccount?->account_number ?? '—';
 
         return [
+            $transaction->tracking_number ?? '—',
             \Morilog\Jalali\Jalalian::fromCarbon($transaction->created_at)->format('Y/m/d H:i'),
+            $fromAccountName,
+            $fromAccountNumber,
+            $toAccountName,
+            $toAccountNumber,
             $isIncoming ? 'ورودی' : 'خروجی',
             ($isIncoming ? '+' : '-') . BaharMoney::formatDecimalValue($transaction->amount),
             $transaction->description ?? 'تراکنش',

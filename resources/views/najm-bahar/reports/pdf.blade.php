@@ -149,7 +149,10 @@
     <table class="table">
         <thead>
             <tr>
+                <th>شماره رهگیری</th>
                 <th>تاریخ</th>
+                <th>از حساب</th>
+                <th>به حساب</th>
                 <th>نوع</th>
                 <th>مبلغ (بهار)</th>
                 <th>توضیحات</th>
@@ -163,9 +166,28 @@
                     if ($account ?? null) {
                         $isIncoming = isset($transaction->to_account_id) && $transaction->to_account_id == $account->id;
                     }
+                    $fromAccount = $transaction->fromAccount;
+                    $toAccount = $transaction->toAccount;
+                    $fromAccountName = $fromAccount ? ($fromAccount->user_id ? 'کاربر #' . $fromAccount->user_id : 'سیستم') : '—';
+                    $fromAccountNumber = $fromAccount?->account_number ?? '—';
+                    $toAccountName = $toAccount ? ($toAccount->user_id ? 'کاربر #' . $toAccount->user_id : 'سیستم') : '—';
+                    $toAccountNumber = $toAccount?->account_number ?? '—';
                 @endphp
                 <tr>
+                    <td><small>{{ $transaction->tracking_number ?? '—' }}</small></td>
                     <td>{{ \Morilog\Jalali\Jalalian::fromCarbon($transaction->created_at)->format('Y/m/d H:i') }}</td>
+                    <td>
+                        <small>
+                            <div>{{ $fromAccountName }}</div>
+                            <div style="font-size: 0.8em; color: #666;">{{ $fromAccountNumber }}</div>
+                        </small>
+                    </td>
+                    <td>
+                        <small>
+                            <div>{{ $toAccountName }}</div>
+                            <div style="font-size: 0.8em; color: #666;">{{ $toAccountNumber }}</div>
+                        </small>
+                    </td>
                     <td class="{{ $isIncoming ? 'type-in' : 'type-out' }}">
                         {{ $isIncoming ? 'ورودی' : 'خروجی' }}
                     </td>

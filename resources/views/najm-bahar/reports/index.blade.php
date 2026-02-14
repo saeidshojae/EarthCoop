@@ -338,7 +338,10 @@ $groupId = $routeParams['group'] ?? null;
                         <table class="table">
                             <thead>
                                 <tr>
+                                    <th>شماره رهگیری</th>
                                     <th>تاریخ</th>
+                                    <th>از حساب</th>
+                                    <th>به حساب</th>
                                     <th>نوع</th>
                                     <th>مبلغ</th>
                                     <th>توضیحات</th>
@@ -349,10 +352,33 @@ $groupId = $routeParams['group'] ?? null;
                                 @foreach($transactions as $transaction)
                                     @php
                                             $isIncoming = isset($transaction->to_account_id) && $account && $transaction->to_account_id == $account->id;
+                                            $fromAccount = $transaction->fromAccount;
+                                            $toAccount = $transaction->toAccount;
+                                            $fromAccountName = $fromAccount ? ($fromAccount->user_id ? 'کاربر #' . $fromAccount->user_id : 'سیستم') : '—';
+                                            $fromAccountNumber = $fromAccount?->account_number ?? '—';
+                                            $toAccountName = $toAccount ? ($toAccount->user_id ? 'کاربر #' . $toAccount->user_id : 'سیستم') : '—';
+                                            $toAccountNumber = $toAccount?->account_number ?? '—';
                                     @endphp
                                     <tr>
                                         <td>
+                                            <code class="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
+                                                {{ $transaction->tracking_number ?? '—' }}
+                                            </code>
+                                        </td>
+                                        <td>
                                             {{ \Morilog\Jalali\Jalalian::fromCarbon($transaction->created_at)->format('Y/m/d H:i') }}
+                                        </td>
+                                        <td>
+                                            <div class="text-sm">
+                                                <div class="font-semibold">{{ $fromAccountName }}</div>
+                                                <div class="text-xs text-slate-500">{{ $fromAccountNumber }}</div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="text-sm">
+                                                <div class="font-semibold">{{ $toAccountName }}</div>
+                                                <div class="text-xs text-slate-500">{{ $toAccountNumber }}</div>
+                                            </div>
                                         </td>
                                         <td>
                                             <span class="transaction-type-badge {{ $isIncoming ? 'transaction-type-in' : 'transaction-type-out' }}">

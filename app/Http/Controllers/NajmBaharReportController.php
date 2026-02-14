@@ -167,15 +167,16 @@ class NajmBaharReportController extends Controller
             return Transaction::whereRaw('1 = 0')->paginate(25);
         }
 
-        $query = Transaction::where(function($q) use ($accountIds) {
-            $q->whereIn('from_account_id', $accountIds)
-              ->orWhereIn('to_account_id', $accountIds);
-        })
-        ->whereBetween('created_at', [
-            Carbon::parse($dateFrom)->startOfDay(),
-            Carbon::parse($dateTo)->endOfDay()
-        ])
-        ->where('status', 'completed');
+        $query = Transaction::with(['fromAccount', 'toAccount'])
+            ->where(function($q) use ($accountIds) {
+                $q->whereIn('from_account_id', $accountIds)
+                  ->orWhereIn('to_account_id', $accountIds);
+            })
+            ->whereBetween('created_at', [
+                Carbon::parse($dateFrom)->startOfDay(),
+                Carbon::parse($dateTo)->endOfDay()
+            ])
+            ->where('status', 'completed');
 
         // فیلتر نوع
         if ($type === 'in') {
@@ -290,15 +291,16 @@ class NajmBaharReportController extends Controller
             return collect();
         }
 
-        $query = Transaction::where(function($q) use ($accountIds) {
-            $q->whereIn('from_account_id', $accountIds)
-              ->orWhereIn('to_account_id', $accountIds);
-        })
-        ->whereBetween('created_at', [
-            Carbon::parse($dateFrom)->startOfDay(),
-            Carbon::parse($dateTo)->endOfDay()
-        ])
-        ->where('status', 'completed');
+        $query = Transaction::with(['fromAccount', 'toAccount'])
+            ->where(function($q) use ($accountIds) {
+                $q->whereIn('from_account_id', $accountIds)
+                  ->orWhereIn('to_account_id', $accountIds);
+            })
+            ->whereBetween('created_at', [
+                Carbon::parse($dateFrom)->startOfDay(),
+                Carbon::parse($dateTo)->endOfDay()
+            ])
+            ->where('status', 'completed');
 
         if ($type === 'in') {
             $query->whereIn('to_account_id', $accountIds);
