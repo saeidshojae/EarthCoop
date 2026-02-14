@@ -1,0 +1,349 @@
+/**
+ * Najm Bahar Design Token System
+ * یکپارچه‌سازی تمام متغیرهای طراحی برای Consistency و Maintainability
+ */
+
+:root {
+    /* ============================================
+       COLOR PALETTE
+       ============================================ */
+    
+    /* Primary Colors */
+    --nb-color-earth-green: #10b981;
+    --nb-color-dark-green: #0f766e;
+    --nb-color-ocean-blue: #0ea5e9;
+    --nb-color-sky-blue: #60a5fa;
+    --nb-color-digital-gold: #f59e0b;
+    --nb-color-red-tomato: #ef4444;
+    --nb-color-accent-peach: #fb923c;
+    
+    /* Neutral Colors */
+    --nb-color-pure-white: #ffffff;
+    --nb-color-gentle-black: #0f172a;
+    --nb-color-light-gray: #f8fafc;
+    --nb-color-gray-100: #f1f5f9;
+    --nb-color-gray-200: #e2e8f0;
+    --nb-color-gray-300: #cbd5e1;
+    --nb-color-gray-400: #94a3b8;
+    --nb-color-gray-500: #64748b;
+    --nb-color-gray-600: #475569;
+    --nb-color-gray-700: #334155;
+    --nb-color-gray-800: #1e293b;
+    
+    /* Semantic Colors */
+    --nb-color-success: #22c55e;
+    --nb-color-success-light: #86efac;
+    --nb-color-success-dark: #16a34a;
+    --nb-color-warning: #f59e0b;
+    --nb-color-warning-light: #fbbf24;
+    --nb-color-warning-dark: #d97706;
+    --nb-color-error: #ef4444;
+    --nb-color-error-light: #fca5a5;
+    --nb-color-error-dark: #dc2626;
+    --nb-color-info: #0ea5e9;
+    --nb-color-info-light: #38bdf8;
+    --nb-color-info-dark: #0284c7;
+    
+    /* ============================================
+       GRADIENTS
+       ============================================ */
+    
+    --nb-gradient-hero: linear-gradient(135deg, #0f766e 0%, #10b981 55%, #60a5fa 100%);
+    --nb-gradient-action: linear-gradient(135deg, #10b981, #0ea5e9);
+    --nb-gradient-danger: linear-gradient(135deg, #ef4444, #dc2626);
+    --nb-gradient-card: linear-gradient(135deg, rgba(241, 245, 249, 0.9), rgba(255, 255, 255, 0.8));
+    --nb-gradient-subtle: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(59, 130, 246, 0.08));
+    
+    /* ============================================
+       BORDER RADIUS
+       ============================================ */
+    
+    --nb-radius-sm: 0.5rem;    /* 8px */
+    --nb-radius-md: 1rem;      /* 16px */
+    --nb-radius-lg: 1.5rem;    /* 24px */
+    --nb-radius-xl: 2rem;      /* 32px */
+    --nb-radius-full: 9999px;  /* Fully rounded */
+    
+    /* ============================================
+       SPACING SCALE
+       ============================================ */
+    
+    --nb-space-1: 0.25rem;   /* 4px */
+    --nb-space-2: 0.5rem;    /* 8px */
+    --nb-space-3: 0.75rem;   /* 12px */
+    --nb-space-4: 1rem;      /* 16px */
+    --nb-space-5: 1.25rem;   /* 20px */
+    --nb-space-6: 1.5rem;    /* 24px */
+    --nb-space-8: 2rem;      /* 32px */
+    --nb-space-10: 2.5rem;   /* 40px */
+    --nb-space-12: 3rem;     /* 48px */
+    --nb-space-16: 4rem;     /* 64px */
+    
+    /* ============================================
+       TYPOGRAPHY
+       ============================================ */
+    
+    /* Font Sizes */
+    --nb-text-xs: 0.75rem;     /* 12px */
+    --nb-text-sm: 0.875rem;    /* 14px */
+    --nb-text-base: 1rem;      /* 16px */
+    --nb-text-lg: 1.125rem;    /* 18px */
+    --nb-text-xl: 1.25rem;     /* 20px */
+    --nb-text-2xl: 1.5rem;     /* 24px */
+    --nb-text-3xl: 2rem;       /* 32px */
+    --nb-text-4xl: 2.5rem;     /* 40px */
+    --nb-text-5xl: 3rem;       /* 48px */
+    
+    /* Font Weights */
+    --nb-font-normal: 400;
+    --nb-font-medium: 500;
+    --nb-font-semibold: 600;
+    --nb-font-bold: 700;
+    --nb-font-extrabold: 800;
+    
+    /* Line Heights (Persian-optimized) */
+    --nb-leading-tight: 1.5;
+    --nb-leading-normal: 1.75;
+    --nb-leading-relaxed: 2;
+    
+    /* ============================================
+       SHADOWS
+       ============================================ */
+    
+    --nb-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --nb-shadow-md: 0 8px 20px rgba(15, 23, 42, 0.08);
+    --nb-shadow-lg: 0 14px 30px rgba(15, 23, 42, 0.08);
+    --nb-shadow-xl: 0 18px 40px rgba(15, 118, 110, 0.25);
+    --nb-shadow-2xl: 0 24px 48px rgba(15, 118, 110, 0.12);
+    
+    /* Interactive Shadows */
+    --nb-shadow-hover: 0 18px 36px rgba(15, 23, 42, 0.14);
+    --nb-shadow-action: 0 10px 24px rgba(14, 165, 233, 0.25);
+    --nb-shadow-action-hover: 0 14px 30px rgba(14, 165, 233, 0.35);
+    
+    /* ============================================
+       TRANSITIONS
+       ============================================ */
+    
+    --nb-transition-fast: 0.2s ease;
+    --nb-transition-base: 0.3s ease;
+    --nb-transition-slow: 0.6s ease;
+    
+    /* ============================================
+       Z-INDEX LAYERS
+       ============================================ */
+    
+    --nb-z-base: 1;
+    --nb-z-dropdown: 10;
+    --nb-z-sticky: 20;
+    --nb-z-fixed: 30;
+    --nb-z-modal-backdrop: 40;
+    --nb-z-modal: 50;
+    --nb-z-popover: 60;
+    --nb-z-tooltip: 70;
+    
+    /* ============================================
+       CONTAINER & LAYOUT
+       ============================================ */
+    
+    --nb-container-padding: 1.5rem;        /* 24px */
+    --nb-container-max-width: 80rem;       /* 1280px / 6xl */
+    --nb-container-max-width-sm: 42rem;    /* 672px / 2xl */
+    --nb-container-max-width-md: 56rem;    /* 896px / 3xl */
+    --nb-container-max-width-lg: 64rem;    /* 1024px / 4xl */
+    --nb-container-max-width-xl: 80rem;    /* 1280px / 6xl */
+    --nb-container-max-width-2xl: 90rem;   /* 1440px / 7xl */
+    
+    /* ============================================
+       ACCESSIBILITY
+       ============================================ */
+    
+    --nb-focus-ring: 3px solid rgba(16, 185, 129, 0.5);
+    --nb-focus-offset: 2px;
+    
+    /* ============================================
+       OPACITY LEVELS
+       ============================================ */
+    
+    --nb-opacity-disabled: 0.5;
+    --nb-opacity-hover: 0.9;
+    --nb-opacity-glass: 0.75;
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Container */
+.nb-container {
+    max-width: var(--nb-container-max-width);
+    margin: 0 auto;
+    padding: 0 var(--nb-container-padding);
+}
+
+.nb-container-sm {
+    max-width: var(--nb-container-max-width-sm);
+}
+
+.nb-container-md {
+    max-width: var(--nb-container-max-width-md);
+}
+
+.nb-container-lg {
+    max-width: var(--nb-container-max-width-lg);
+}
+
+/* Focus States (Accessibility) */
+.nb-focusable:focus-visible {
+    outline: var(--nb-focus-ring);
+    outline-offset: var(--nb-focus-offset);
+}
+
+/* Card Components */
+.nb-card {
+    background: var(--nb-color-pure-white);
+    border-radius: var(--nb-radius-lg);
+    border: 1px solid var(--nb-color-gray-200);
+    box-shadow: var(--nb-shadow-lg);
+    transition: transform var(--nb-transition-base), box-shadow var(--nb-transition-base);
+}
+
+.nb-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--nb-shadow-hover);
+}
+
+/* Button Base */
+.nb-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--nb-space-2);
+    padding: var(--nb-space-3) var(--nb-space-5);
+    border-radius: var(--nb-radius-full);
+    font-weight: var(--nb-font-semibold);
+    transition: transform var(--nb-transition-fast), box-shadow var(--nb-transition-fast);
+    cursor: pointer;
+    border: none;
+}
+
+.nb-btn:hover {
+    transform: translateY(-2px);
+}
+
+.nb-btn:active {
+    transform: translateY(0);
+}
+
+.nb-btn:focus-visible {
+    outline: var(--nb-focus-ring);
+    outline-offset: var(--nb-focus-offset);
+}
+
+.nb-btn:disabled {
+    opacity: var(--nb-opacity-disabled);
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Button Variants */
+.nb-btn-primary {
+    background: var(--nb-gradient-action);
+    color: var(--nb-color-pure-white);
+    box-shadow: var(--nb-shadow-action);
+}
+
+.nb-btn-primary:hover:not(:disabled) {
+    box-shadow: var(--nb-shadow-action-hover);
+}
+
+.nb-btn-secondary {
+    background: var(--nb-color-pure-white);
+    color: var(--nb-color-gentle-black);
+    border: 1px solid var(--nb-color-gray-200);
+}
+
+.nb-btn-danger {
+    background: var(--nb-gradient-danger);
+    color: var(--nb-color-pure-white);
+}
+
+/* Hero Section */
+.nb-hero {
+    position: relative;
+    background: var(--nb-gradient-hero);
+    color: var(--nb-color-pure-white);
+    border-radius: var(--nb-radius-xl);
+    padding: var(--nb-space-8);
+    box-shadow: var(--nb-shadow-xl);
+    overflow: hidden;
+}
+
+.nb-hero::after {
+    content: '';
+    position: absolute;
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    top: -80px;
+    right: -80px;
+}
+
+/* Stat Cards */
+.nb-stat {
+    background: var(--nb-gradient-card);
+    border-radius: var(--nb-radius-md);
+    padding: var(--nb-space-5);
+    border: 1px solid var(--nb-color-gray-200);
+    transition: transform var(--nb-transition-fast), box-shadow var(--nb-transition-fast);
+}
+
+.nb-stat:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--nb-shadow-md);
+}
+
+/* Loading Spinner */
+.nb-spinner {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 3px solid var(--nb-color-gray-200);
+    border-top-color: var(--nb-color-earth-green);
+    border-radius: 50%;
+    animation: nb-spin 0.8s linear infinite;
+}
+
+@keyframes nb-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Animations */
+@keyframes nb-fade-up {
+    0% {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.nb-fade-up {
+    animation: nb-fade-up var(--nb-transition-slow) ease both;
+}
+
+/* Performance Optimization */
+.nb-card,
+.nb-stat,
+.nb-btn {
+    will-change: transform, box-shadow;
+}
+
+.nb-card.loaded,
+.nb-stat.loaded,
+.nb-btn.loaded {
+    will-change: auto;
+}

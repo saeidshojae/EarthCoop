@@ -1,3 +1,6 @@
+@import './najm-bahar-tokens.css';
+@import './najm-bahar-shared.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
