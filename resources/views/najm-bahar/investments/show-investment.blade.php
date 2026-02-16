@@ -1,0 +1,41 @@
+@extends('layouts.unified')
+
+@section('title', 'جزئیات سرمایه‌گذاری - نجم بهار')
+
+@section('content')
+<div class="container mx-auto px-4 py-8" dir="rtl">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">جزئیات سرمایه‌گذاری</h1>
+        <p class="text-gray-600 mt-2">{{ $investment->project->title }}</p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6 max-w-2xl">
+        <div class="space-y-3 text-sm">
+            <div class="flex justify-between">
+                <span class="text-gray-600">مبلغ:</span>
+                <span class="font-semibold">{{ number_format($investment->amount) }} گل</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">درصد سود:</span>
+                <span class="font-semibold text-green-600">{{ $investment->agreed_profit_percentage ?? $investment->project->profit_percentage }}%</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">وضعیت:</span>
+                <span class="font-semibold">{{ $investment->status_label ?? $investment->status }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">کد پیگیری:</span>
+                <span class="font-semibold">{{ $investment->transaction_tracking ?? '—' }}</span>
+            </div>
+        </div>
+
+        @if($investment->status === 'pending')
+            <div class="mt-6">
+                <a href="{{ route('najm-bahar.investments.payment', $investment) }}" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg">
+                    ادامه پرداخت
+                </a>
+            </div>
+        @endif
+    </div>
+</div>
+@endsection

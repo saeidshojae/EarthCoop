@@ -1,0 +1,180 @@
+@extends('layouts.admin')
+
+@section('title', 'مدیریت پروژه‌ها - نجم بهار')
+
+@section('content')
+<div class="container mx-auto px-4 py-8" dir="rtl">
+    <!-- هدر صفحه -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">مدیریت پروژه‌های نجم بهار</h1>
+        <p class="text-gray-600 mt-2">بررسی و تایید پروژه‌های ارسال شده</p>
+    </div>
+
+    <!-- آمار کلی -->
+    <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-8">
+        <div class="bg-white rounded-lg shadow p-4">
+            <p class="text-gray-600 text-xs">کل پروژه‌ها</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ $stats['total'] ?? 0 }}</p>
+        </div>
+        <div class="bg-amber-50 rounded-lg shadow p-4">
+            <p class="text-amber-800 text-xs">در انتظار</p>
+            <p class="text-2xl font-bold text-amber-600 mt-1">{{ $stats['pending'] ?? 0 }}</p>
+        </div>
+        <div class="bg-blue-50 rounded-lg shadow p-4">
+            <p class="text-blue-800 text-xs">در حال بررسی</p>
+            <p class="text-2xl font-bold text-blue-600 mt-1">{{ $stats['under_review'] ?? 0 }}</p>
+        </div>
+        <div class="bg-green-50 rounded-lg shadow p-4">
+            <p class="text-green-800 text-xs">تایید شده</p>
+            <p class="text-2xl font-bold text-green-600 mt-1">{{ $stats['approved'] ?? 0 }}</p>
+        </div>
+        <div class="bg-red-50 rounded-lg shadow p-4">
+            <p class="text-red-800 text-xs">رد شده</p>
+            <p class="text-2xl font-bold text-red-600 mt-1">{{ $stats['rejected'] ?? 0 }}</p>
+        </div>
+        <div class="bg-gray-50 rounded-lg shadow p-4">
+            <p class="text-gray-800 text-xs">بایگانی</p>
+            <p class="text-2xl font-bold text-gray-600 mt-1">{{ $stats['archived'] ?? 0 }}</p>
+        </div>
+    </div>
+
+    <!-- فیلتر وضعیت -->
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="border-b border-gray-200">
+            <nav class="flex -mb-px">
+                <a href="{{ route('admin.najm-bahar.projects.index', ['status' => 'all']) }}" 
+                   class="px-6 py-4 text-sm font-medium {{ $status === 'all' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-500 hover:text-gray-700' }}">
+                    همه
+                </a>
+                <a href="{{ route('admin.najm-bahar.projects.index', ['status' => 'pending']) }}" 
+                   class="px-6 py-4 text-sm font-medium {{ $status === 'pending' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-500 hover:text-gray-700' }}">
+                    در انتظار بررسی
+                </a>
+                <a href="{{ route('admin.najm-bahar.projects.index', ['status' => 'under_review']) }}" 
+                   class="px-6 py-4 text-sm font-medium {{ $status === 'under_review' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-500 hover:text-gray-700' }}">
+                    در حال بررسی
+                </a>
+                <a href="{{ route('admin.najm-bahar.projects.index', ['status' => 'approved']) }}" 
+                   class="px-6 py-4 text-sm font-medium {{ $status === 'approved' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-500 hover:text-gray-700' }}">
+                    تایید شده
+                </a>
+                <a href="{{ route('admin.najm-bahar.projects.index', ['status' => 'rejected']) }}" 
+                   class="px-6 py-4 text-sm font-medium {{ $status === 'rejected' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-500 hover:text-gray-700' }}">
+                    رد شده
+                </a>
+            </nav>
+        </div>
+    </div>
+
+    <!-- لیست پروژه‌ها -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        @if($projects->isEmpty())
+            <div class="text-center py-16">
+                <i class="fas fa-inbox text-gray-300 text-6xl mb-4"></i>
+                <p class="text-gray-500 text-lg">پروژه‌ای برای نمایش وجود ندارد</p>
+            </div>
+        @else
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">پروژه</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">صاحب پروژه</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">دسته‌بندی</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">سرمایه</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">سود</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">وضعیت</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">تاریخ ارسال</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @foreach($projects as $project)
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4">
+                                <div class="text-sm font-medium text-gray-900">{{ $project->title }}</div>
+                                @php
+                                    $typeLabels = [
+                                        'production' => 'تولیدی',
+                                        'service' => 'خدماتی',
+                                        'infrastructure' => 'زیرساخت',
+                                        'research' => 'تحقیقی',
+                                        'social' => 'اجتماعی',
+                                    ];
+                                    $visibilityLabels = [
+                                        'public' => 'عمومی',
+                                        'private' => 'خصوصی',
+                                    ];
+                                    $typeLabel = $typeLabels[$project->project_type] ?? $project->project_type;
+                                    $visibilityLabel = $visibilityLabels[$project->project_visibility] ?? $project->project_visibility;
+                                @endphp
+                                <div class="text-xs text-gray-500">نوع: {{ $typeLabel }} | دید: {{ $visibilityLabel }}</div>
+                                <div class="text-xs text-gray-500">مرحله: {{ $project->project_stage ?? '—' }} | ریسک: {{ $project->risk_level ?? '—' }}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                @if($project->owner_type === 'App\Models\User')
+                                    <div class="text-sm text-gray-900">{{ $project->owner->fullName() }}</div>
+                                    <div class="text-xs text-gray-500">کاربر</div>
+                                @else
+                                    <div class="text-sm text-gray-900">{{ $project->owner->name }}</div>
+                                    <div class="text-xs text-gray-500">گروه</div>
+                                @endif
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-xs text-gray-600">{{ $project->category_path }}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm font-semibold text-gray-900">{{ number_format($project->required_capital) }}</div>
+                                <div class="text-xs text-gray-500">گل</div>
+                                <div class="text-xs text-gray-500">ارزش پایه: {{ number_format($project->base_value_min ?? 0) }} - {{ number_format($project->base_value_max ?? 0) }}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm font-semibold text-green-600">{{ $project->profit_percentage }}%</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                @php
+                                    $statusColors = [
+                                        'draft' => 'gray',
+                                        'pending' => 'amber',
+                                        'under_review' => 'blue',
+                                        'approved' => 'green',
+                                        'rejected' => 'red',
+                                        'archived' => 'slate',
+                                    ];
+                                    $statusLabels = [
+                                        'draft' => 'پیش‌نویس',
+                                        'pending' => 'در انتظار',
+                                        'under_review' => 'در حال بررسی',
+                                        'approved' => 'تایید شده',
+                                        'rejected' => 'رد شده',
+                                        'archived' => 'بایگانی',
+                                    ];
+                                    $color = $statusColors[$project->status] ?? 'gray';
+                                    $label = $statusLabels[$project->status] ?? $project->status;
+                                @endphp
+                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-{{ $color }}-100 text-{{ $color }}-800">
+                                    {{ $label }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500">
+                                {{ $project->submitted_at ? $project->submitted_at->diffForHumans() : '-' }}
+                            </td>
+                            <td class="px-6 py-4">
+                                <a href="{{ route('admin.najm-bahar.projects.show', $project) }}" 
+                                   class="inline-flex items-center px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded shadow transition-colors">
+                                    <i class="fas fa-eye ml-1"></i>
+                                    بررسی
+                                </a>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+
+            <!-- صفحه‌بندی -->
+            <div class="px-6 py-4 border-t border-gray-200">
+                {{ $projects->links() }}
+            </div>
+        @endif
+    </div>
+</div>
+@endsection
