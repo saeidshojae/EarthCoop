@@ -317,6 +317,124 @@
                             </div>
                         </div>
 
+                <div class="mt-4 p-4 border border-indigo-200 rounded-xl bg-indigo-50/40">
+                    <h4 class="font-bold text-indigo-900 mb-3">مدیریت نجم‌هدا در گروه‌ها</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="form-group-modern">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="form-label-modern">فعال بودن دستیار گروهی</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="group-assistant-enabled" {{ config('najm-hoda.group_assistant.enabled', true) ? 'checked' : '' }}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">ایمیل بات گروه</label>
+                            <input type="email" class="form-control-modern" id="group-bot-email" value="{{ config('najm-hoda.group_assistant.bot_email', '') }}">
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">نقش رفتاری دستیار</label>
+                            <select class="form-control-modern" id="group-assistant-role">
+                                <option value="secretary" {{ config('najm-hoda.group_assistant.assistant_role', 'secretary') === 'secretary' ? 'selected' : '' }}>منشی</option>
+                                <option value="advisor" {{ config('najm-hoda.group_assistant.assistant_role', 'secretary') === 'advisor' ? 'selected' : '' }}>مشاور</option>
+                                <option value="admin" {{ config('najm-hoda.group_assistant.assistant_role', 'secretary') === 'admin' ? 'selected' : '' }}>ادمین</option>
+                                <option value="hybrid" {{ config('najm-hoda.group_assistant.assistant_role', 'secretary') === 'hybrid' ? 'selected' : '' }}>ترکیبی</option>
+                            </select>
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">عامل پیش‌فرض</label>
+                            <select class="form-control-modern" id="group-default-agent">
+                                <option value="steward" {{ config('najm-hoda.group_assistant.default_agent', 'steward') === 'steward' ? 'selected' : '' }}>مهماندار</option>
+                                <option value="guide" {{ config('najm-hoda.group_assistant.default_agent', 'steward') === 'guide' ? 'selected' : '' }}>راهنما</option>
+                                <option value="pilot" {{ config('najm-hoda.group_assistant.default_agent', 'steward') === 'pilot' ? 'selected' : '' }}>خلبان</option>
+                                <option value="engineer" {{ config('najm-hoda.group_assistant.default_agent', 'steward') === 'engineer' ? 'selected' : '' }}>مهندس</option>
+                                <option value="architect" {{ config('najm-hoda.group_assistant.default_agent', 'steward') === 'architect' ? 'selected' : '' }}>معمار</option>
+                            </select>
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">حالت پاسخ‌دهی</label>
+                            <select class="form-control-modern" id="group-auto-reply-mode">
+                                <option value="disabled" {{ config('najm-hoda.group_assistant.auto_reply_mode', 'mention_or_question') === 'disabled' ? 'selected' : '' }}>غیرفعال</option>
+                                <option value="mention_only" {{ config('najm-hoda.group_assistant.auto_reply_mode', 'mention_or_question') === 'mention_only' ? 'selected' : '' }}>فقط منشن</option>
+                                <option value="mention_or_question" {{ config('najm-hoda.group_assistant.auto_reply_mode', 'mention_or_question') === 'mention_or_question' ? 'selected' : '' }}>منشن یا سوال</option>
+                                <option value="always" {{ config('najm-hoda.group_assistant.auto_reply_mode', 'mention_or_question') === 'always' ? 'selected' : '' }}>همیشه</option>
+                            </select>
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">دامنه دانش</label>
+                            <select class="form-control-modern" id="group-knowledge-scope">
+                                <option value="local" {{ config('najm-hoda.group_assistant.knowledge_scope', 'hybrid') === 'local' ? 'selected' : '' }}>محلی</option>
+                                <option value="hybrid" {{ config('najm-hoda.group_assistant.knowledge_scope', 'hybrid') === 'hybrid' ? 'selected' : '' }}>ترکیبی</option>
+                                <option value="global" {{ config('najm-hoda.group_assistant.knowledge_scope', 'hybrid') === 'global' ? 'selected' : '' }}>سراسری</option>
+                            </select>
+                        </div>
+                        <label class="flex items-center justify-between border border-indigo-200 rounded-lg px-3 py-2 bg-white">
+                            <span class="text-sm text-indigo-900">حالت جلسه</span>
+                            <input type="checkbox" id="group-meeting-mode" {{ config('najm-hoda.group_assistant.meeting_mode_enabled', true) ? 'checked' : '' }}>
+                        </label>
+                        <label class="flex items-center justify-between border border-indigo-200 rounded-lg px-3 py-2 bg-white">
+                            <span class="text-sm text-indigo-900">راهنمایی فعال</span>
+                            <input type="checkbox" id="group-proactive-guidance" {{ config('najm-hoda.group_assistant.allow_proactive_guidance', true) ? 'checked' : '' }}>
+                        </label>
+                        <label class="flex items-center justify-between border border-indigo-200 rounded-lg px-3 py-2 bg-white">
+                            <span class="text-sm text-indigo-900">اجازه پیام خصوصی</span>
+                            <input type="checkbox" id="group-allow-private-messages" {{ config('najm-hoda.group_assistant.allow_private_messages', true) ? 'checked' : '' }}>
+                        </label>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">روش پیام خصوصی</label>
+                            <select class="form-control-modern" id="group-private-message-mode">
+                                <option value="direct" {{ config('najm-hoda.group_assistant.private_message_mode', 'direct') === 'direct' ? 'selected' : '' }}>مستقیم</option>
+                                <option value="request" {{ config('najm-hoda.group_assistant.private_message_mode', 'direct') === 'request' ? 'selected' : '' }}>درخواست چت</option>
+                            </select>
+                        </div>
+                        <label class="flex items-center justify-between border border-indigo-200 rounded-lg px-3 py-2 bg-white">
+                            <span class="text-sm text-indigo-900">فعال بودن اکشن‌گیر</span>
+                            <input type="checkbox" id="group-action-executor-enabled" {{ config('najm-hoda.group_assistant.action_executor.enabled', true) ? 'checked' : '' }}>
+                        </label>
+                        <label class="flex items-center justify-between border border-indigo-200 rounded-lg px-3 py-2 bg-white">
+                            <span class="text-sm text-indigo-900">پیشنهاد قبل از اجرا</span>
+                            <input type="checkbox" id="group-action-propose-before-execute" {{ config('najm-hoda.group_assistant.action_executor.propose_before_execute', false) ? 'checked' : '' }}>
+                        </label>
+                        <label class="flex items-center justify-between border border-indigo-200 rounded-lg px-3 py-2 bg-white">
+                            <span class="text-sm text-indigo-900">ایجاد پست</span>
+                            <input type="checkbox" id="group-action-allow-create-post" {{ config('najm-hoda.group_assistant.action_executor.allow_create_post', true) ? 'checked' : '' }}>
+                        </label>
+                        <label class="flex items-center justify-between border border-indigo-200 rounded-lg px-3 py-2 bg-white">
+                            <span class="text-sm text-indigo-900">ایجاد نظرسنجی</span>
+                            <input type="checkbox" id="group-action-allow-create-poll" {{ config('najm-hoda.group_assistant.action_executor.allow_create_poll', true) ? 'checked' : '' }}>
+                        </label>
+                        <label class="flex items-center justify-between border border-indigo-200 rounded-lg px-3 py-2 bg-white">
+                            <span class="text-sm text-indigo-900">ایجاد دیدگاه</span>
+                            <input type="checkbox" id="group-action-allow-create-comment" {{ config('najm-hoda.group_assistant.action_executor.allow_create_comment', true) ? 'checked' : '' }}>
+                        </label>
+                        <label class="flex items-center justify-between border border-indigo-200 rounded-lg px-3 py-2 bg-white">
+                            <span class="text-sm text-indigo-900">واکنش به پیام</span>
+                            <input type="checkbox" id="group-action-allow-react-message" {{ config('najm-hoda.group_assistant.action_executor.allow_react_message', true) ? 'checked' : '' }}>
+                        </label>
+                        <label class="flex items-center justify-between border border-indigo-200 rounded-lg px-3 py-2 bg-white">
+                            <span class="text-sm text-indigo-900">واکنش به پست</span>
+                            <input type="checkbox" id="group-action-allow-react-post" {{ config('najm-hoda.group_assistant.action_executor.allow_react_post', true) ? 'checked' : '' }}>
+                        </label>
+                        <label class="flex items-center justify-between border border-indigo-200 rounded-lg px-3 py-2 bg-white">
+                            <span class="text-sm text-indigo-900">واکنش به دیدگاه</span>
+                            <input type="checkbox" id="group-action-allow-react-comment" {{ config('najm-hoda.group_assistant.action_executor.allow_react_comment', true) ? 'checked' : '' }}>
+                        </label>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">حداکثر اکشن در ساعت</label>
+                            <input type="number" min="1" max="100" class="form-control-modern" id="group-action-max-per-hour" value="{{ (int) config('najm-hoda.group_assistant.action_executor.max_actions_per_hour', 6) }}">
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">حداکثر پاسخ در ساعت</label>
+                            <input type="number" min="1" max="200" class="form-control-modern" id="group-max-replies-per-hour" value="{{ (int) config('najm-hoda.group_assistant.max_replies_per_hour', 12) }}">
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">حداقل فاصله پاسخ (ثانیه)</label>
+                            <input type="number" min="0" max="3600" class="form-control-modern" id="group-min-reply-interval-seconds" value="{{ (int) config('najm-hoda.group_assistant.min_reply_interval_seconds', 90) }}">
+                        </div>
+                    </div>
+                </div>
+
                 <button type="submit" class="btn-modern primary w-full justify-center">
                     <i class="fas fa-save"></i>
                     ذخیره تنظیمات
@@ -635,6 +753,27 @@ document.getElementById('general-settings-form').addEventListener('submit', asyn
         provider: document.getElementById('ai-provider').value,
         model: document.getElementById('ai-model').value,
         api_key: document.getElementById('ai-api-key').value,
+        group_assistant_enabled: document.getElementById('group-assistant-enabled')?.checked ?? false,
+        group_bot_email: document.getElementById('group-bot-email')?.value ?? '',
+        group_assistant_role: document.getElementById('group-assistant-role')?.value ?? 'secretary',
+        group_default_agent: document.getElementById('group-default-agent')?.value ?? 'steward',
+        group_auto_reply_mode: document.getElementById('group-auto-reply-mode')?.value ?? 'mention_or_question',
+        group_knowledge_scope: document.getElementById('group-knowledge-scope')?.value ?? 'hybrid',
+        group_meeting_mode: document.getElementById('group-meeting-mode')?.checked ?? true,
+        group_proactive_guidance: document.getElementById('group-proactive-guidance')?.checked ?? true,
+        group_allow_private_messages: document.getElementById('group-allow-private-messages')?.checked ?? true,
+        group_private_message_mode: document.getElementById('group-private-message-mode')?.value ?? 'direct',
+        group_action_executor_enabled: document.getElementById('group-action-executor-enabled')?.checked ?? true,
+        group_action_propose_before_execute: document.getElementById('group-action-propose-before-execute')?.checked ?? false,
+        group_action_allow_create_post: document.getElementById('group-action-allow-create-post')?.checked ?? true,
+        group_action_allow_create_poll: document.getElementById('group-action-allow-create-poll')?.checked ?? true,
+        group_action_allow_create_comment: document.getElementById('group-action-allow-create-comment')?.checked ?? true,
+        group_action_allow_react_message: document.getElementById('group-action-allow-react-message')?.checked ?? true,
+        group_action_allow_react_post: document.getElementById('group-action-allow-react-post')?.checked ?? true,
+        group_action_allow_react_comment: document.getElementById('group-action-allow-react-comment')?.checked ?? true,
+        group_action_max_per_hour: Number(document.getElementById('group-action-max-per-hour')?.value ?? 6),
+        group_max_replies_per_hour: Number(document.getElementById('group-max-replies-per-hour')?.value ?? 12),
+        group_min_reply_interval_seconds: Number(document.getElementById('group-min-reply-interval-seconds')?.value ?? 90),
     };
     
     try {

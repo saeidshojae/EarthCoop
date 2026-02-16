@@ -18,6 +18,8 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\NajmBaharRecalculateBalances::class,
         \App\Console\Commands\NajmBaharRunSalaries::class,
         \App\Console\Commands\NajmBaharSyncSubAccountBalances::class,
+        \App\Console\Commands\NajmHodaBootstrapGroups::class,
+        \App\Console\Commands\NajmHodaModerationSweep::class,
         \App\Console\Commands\SendElectionReminders::class,
         \App\Console\Commands\SendAuctionReminders::class,
     ];
@@ -40,6 +42,9 @@ class Kernel extends ConsoleKernel
         
         // Send auction reminders every hour
         $schedule->command('auctions:send-reminders')->hourly();
+
+        // Najm Hoda scheduled group moderation cleanup (respects per-group interval)
+        $schedule->command('najm-hoda:moderation-sweep --max-groups=200')->hourly();
     }
 
     /**

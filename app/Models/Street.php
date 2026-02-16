@@ -8,6 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 class Street extends Model
 {
     use HasFactory;
-    protected $fillable = ['name', 'parent_id', 'status']; // فیلدهای قابل مقداردهی
+    protected $fillable = ['name', 'parents_id', 'status']; // فیلدهای قابل مقداردهی
 
 }

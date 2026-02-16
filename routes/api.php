@@ -429,6 +429,12 @@ Route::middleware('auth:sanctum')->prefix('tickets')->group(function () {
 // مسیر Webhook ایمیل (بدون احراز هویت، با signature verification)
 Route::post('email/webhook', [\App\Http\Controllers\API\EmailWebhookController::class, 'webhook']);
 
+// مسیرهای API برای انتخاب محدوده جغرافیایی (برای فرم های پروژه)
+Route::prefix('geographic')->group(function () {
+    Route::get('continents', [\App\Http\Controllers\API\GeographicController::class, 'continents']);
+    Route::get('{level}/{parentId}/children', [\App\Http\Controllers\API\GeographicController::class, 'children']);
+});
+
 // include NajmBahar routes (module)
 if (file_exists(base_path('routes/najm-bahar.php'))) {
     require base_path('routes/najm-bahar.php');

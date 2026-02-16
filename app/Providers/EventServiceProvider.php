@@ -20,6 +20,7 @@ class EventServiceProvider extends ServiceProvider
         ],
         \App\Events\MessageCreated::class => [
             \App\Listeners\SendGroupMessageNotifications::class,
+            \App\Listeners\HandleNajmHodaGroupMessage::class,
         ],
         \App\Events\UserMentioned::class => [
             \App\Listeners\SendMentionNotification::class,

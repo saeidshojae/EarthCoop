@@ -323,6 +323,12 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::get('/groups/{group}/members', [GroupController::class, 'getMembers'])->name('groups.members');
     Route::post('/groups/{group}/users/{user}/toggle-role', [GroupController::class, 'toggleUserRole'])->name('groups.members.toggle-role');
     Route::get('/groups/{group}/stats', [GroupController::class, 'getStats'])->name('groups.stats');
+    Route::get('/groups/{group}/najm-hoda/settings', [GroupController::class, 'najmHodaSettings'])->name('groups.najm-hoda.settings');
+    Route::put('/groups/{group}/najm-hoda/settings', [GroupController::class, 'updateNajmHodaSettings'])->name('groups.najm-hoda.settings.update');
+    Route::get('/groups/{group}/najm-hoda/action-items', [GroupController::class, 'najmHodaActionItems'])->name('groups.najm-hoda.action-items');
+    Route::put('/groups/{group}/najm-hoda/action-items/{actionItem}', [GroupController::class, 'updateNajmHodaActionItem'])->name('groups.najm-hoda.action-items.update');
+    Route::get('/groups/{group}/najm-hoda/panel', [GroupController::class, 'najmHodaPanel'])->name('groups.najm-hoda.panel');
+    Route::get('/groups/{group}/najm-hoda/guide', [GroupController::class, 'najmHodaGuide'])->name('groups.najm-hoda.guide');
     
     // مدیریت گزارش‌های پیام توسط مدیران گروه - فقط برای مدیران
     Route::get('/groups/{group}/reports', [\App\Http\Controllers\Group\ReportController::class, 'index'])->name('groups.reports');
@@ -547,6 +553,8 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
         Route::middleware('permission:najm-hoda.manage-settings')->group(function () {
             Route::get('/settings', [AdminNajmHodaController::class, 'settings'])->name('settings');
             Route::post('/settings', [AdminNajmHodaController::class, 'updateSettings'])->name('settings.update');
+            Route::get('/group-action-items', [AdminNajmHodaController::class, 'groupActionItems'])->name('group-action-items');
+            Route::put('/group-action-items/{actionItem}', [AdminNajmHodaController::class, 'updateGroupActionItem'])->name('group-action-items.update');
             
             // Steward Knowledge Files - داخل manage-settings
             Route::get('/steward/knowledge-files', [AdminNajmHodaController::class, 'manageKnowledgeFiles'])->name('steward.knowledge-files-page');

@@ -12,7 +12,11 @@ use App\Services\NajmHoda\CodeScanner\BackupManagerService;
 use App\Models\Conversation;
 use App\Models\AIInteraction;
 use App\Models\Feedback;
+use App\Models\Group;
+use App\Models\GroupUser;
+use App\Models\NajmHodaGroupActionItem;
 use App\Models\StewardKnowledgeFile;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -195,6 +199,50 @@ class NajmHodaController extends Controller
             'temperature' => 'nullable|numeric|min:0|max:2',
             'auto_actions_enabled' => 'nullable|boolean',
             'rate_limit_requests' => 'nullable|integer|min:1',
+            'group_assistant_enabled' => 'nullable|boolean',
+            'group_bot_email' => 'nullable|email|max:255',
+            'group_bot_first_name' => 'nullable|string|max:100',
+            'group_bot_last_name' => 'nullable|string|max:100',
+            'group_default_role' => 'nullable|integer|in:0,1,2,3,4,5',
+            'group_assistant_role' => 'nullable|string|in:secretary,advisor,admin,hybrid',
+            'group_default_agent' => 'nullable|string|in:steward,guide,pilot,engineer,architect',
+            'group_auto_reply_mode' => 'nullable|string|in:disabled,mention_only,mention_or_question,always',
+            'group_knowledge_scope' => 'nullable|string|in:local,hybrid,global',
+            'group_meeting_mode' => 'nullable|boolean',
+            'group_proactive_guidance' => 'nullable|boolean',
+            'group_allow_private_messages' => 'nullable|boolean',
+            'group_private_message_mode' => 'nullable|string|in:direct,request',
+            'group_action_executor_enabled' => 'nullable|boolean',
+            'group_action_propose_before_execute' => 'nullable|boolean',
+            'group_action_allow_create_post' => 'nullable|boolean',
+            'group_action_allow_create_poll' => 'nullable|boolean',
+            'group_action_allow_create_comment' => 'nullable|boolean',
+            'group_action_allow_react_message' => 'nullable|boolean',
+            'group_action_allow_react_post' => 'nullable|boolean',
+            'group_action_allow_react_comment' => 'nullable|boolean',
+            'group_action_max_per_hour' => 'nullable|integer|min:1|max:100',
+            'group_max_replies_per_hour' => 'nullable|integer|min:1|max:200',
+            'group_min_reply_interval_seconds' => 'nullable|integer|min:0|max:3600',
+            'group_action_items_enabled' => 'nullable|boolean',
+            'group_action_items_max_items' => 'nullable|integer|min:1|max:50',
+
+            'agent_engineer_enabled' => 'nullable|boolean',
+            'agent_pilot_enabled' => 'nullable|boolean',
+            'agent_steward_enabled' => 'nullable|boolean',
+            'agent_guide_enabled' => 'nullable|boolean',
+            'agent_architect_enabled' => 'nullable|boolean',
+
+            'agent_engineer_temperature' => 'nullable|numeric|min:0|max:1',
+            'agent_pilot_temperature' => 'nullable|numeric|min:0|max:1',
+            'agent_steward_temperature' => 'nullable|numeric|min:0|max:1',
+            'agent_guide_temperature' => 'nullable|numeric|min:0|max:1',
+            'agent_architect_temperature' => 'nullable|numeric|min:0|max:1',
+
+            'agent_engineer_max_tokens' => 'nullable|integer|min:100|max:16000',
+            'agent_pilot_max_tokens' => 'nullable|integer|min:100|max:16000',
+            'agent_steward_max_tokens' => 'nullable|integer|min:100|max:16000',
+            'agent_guide_max_tokens' => 'nullable|integer|min:100|max:16000',
+            'agent_architect_max_tokens' => 'nullable|integer|min:100|max:16000',
         ]);
         
         // به‌روزرسانی فایل .env
@@ -220,6 +268,66 @@ class NajmHodaController extends Controller
         if (isset($validated['temperature'])) {
             $envUpdates['AI_TEMPERATURE'] = $validated['temperature'];
         }
+
+        $booleanMappings = [
+            'group_assistant_enabled' => 'NAJM_HODA_GROUP_ASSISTANT_ENABLED',
+            'group_meeting_mode' => 'NAJM_HODA_GROUP_MEETING_MODE',
+            'group_proactive_guidance' => 'NAJM_HODA_GROUP_PROACTIVE_GUIDANCE',
+            'group_allow_private_messages' => 'NAJM_HODA_GROUP_ALLOW_PRIVATE_MESSAGES',
+            'group_action_executor_enabled' => 'NAJM_HODA_GROUP_ACTION_EXECUTOR_ENABLED',
+            'group_action_propose_before_execute' => 'NAJM_HODA_GROUP_ACTION_PROPOSE_BEFORE_EXECUTE',
+            'group_action_allow_create_post' => 'NAJM_HODA_GROUP_ACTION_ALLOW_CREATE_POST',
+            'group_action_allow_create_poll' => 'NAJM_HODA_GROUP_ACTION_ALLOW_CREATE_POLL',
+            'group_action_allow_create_comment' => 'NAJM_HODA_GROUP_ACTION_ALLOW_CREATE_COMMENT',
+            'group_action_allow_react_message' => 'NAJM_HODA_GROUP_ACTION_ALLOW_REACT_MESSAGE',
+            'group_action_allow_react_post' => 'NAJM_HODA_GROUP_ACTION_ALLOW_REACT_POST',
+            'group_action_allow_react_comment' => 'NAJM_HODA_GROUP_ACTION_ALLOW_REACT_COMMENT',
+            'group_action_items_enabled' => 'NAJM_HODA_GROUP_ACTION_ITEMS_ENABLED',
+            'agent_engineer_enabled' => 'AGENT_ENGINEER_ENABLED',
+            'agent_pilot_enabled' => 'AGENT_PILOT_ENABLED',
+            'agent_steward_enabled' => 'AGENT_STEWARD_ENABLED',
+            'agent_guide_enabled' => 'AGENT_GUIDE_ENABLED',
+            'agent_architect_enabled' => 'AGENT_ARCHITECT_ENABLED',
+        ];
+
+        foreach ($booleanMappings as $inputKey => $envKey) {
+            if (isset($validated[$inputKey])) {
+                $envUpdates[$envKey] = $validated[$inputKey] ? 'true' : 'false';
+            }
+        }
+
+        $directMappings = [
+            'group_bot_email' => 'NAJM_HODA_GROUP_BOT_EMAIL',
+            'group_bot_first_name' => 'NAJM_HODA_GROUP_BOT_FIRST_NAME',
+            'group_bot_last_name' => 'NAJM_HODA_GROUP_BOT_LAST_NAME',
+            'group_default_role' => 'NAJM_HODA_GROUP_DEFAULT_ROLE',
+            'group_assistant_role' => 'NAJM_HODA_GROUP_ASSISTANT_ROLE',
+            'group_default_agent' => 'NAJM_HODA_GROUP_DEFAULT_AGENT',
+            'group_auto_reply_mode' => 'NAJM_HODA_GROUP_AUTO_REPLY_MODE',
+            'group_knowledge_scope' => 'NAJM_HODA_GROUP_KNOWLEDGE_SCOPE',
+            'group_private_message_mode' => 'NAJM_HODA_GROUP_PRIVATE_MESSAGE_MODE',
+            'group_action_max_per_hour' => 'NAJM_HODA_GROUP_ACTION_MAX_PER_HOUR',
+            'group_max_replies_per_hour' => 'NAJM_HODA_GROUP_MAX_REPLIES_PER_HOUR',
+            'group_min_reply_interval_seconds' => 'NAJM_HODA_GROUP_MIN_REPLY_INTERVAL_SECONDS',
+            'group_action_items_max_items' => 'NAJM_HODA_GROUP_ACTION_ITEMS_MAX_ITEMS',
+            'agent_engineer_temperature' => 'AGENT_ENGINEER_TEMPERATURE',
+            'agent_pilot_temperature' => 'AGENT_PILOT_TEMPERATURE',
+            'agent_steward_temperature' => 'AGENT_STEWARD_TEMPERATURE',
+            'agent_guide_temperature' => 'AGENT_GUIDE_TEMPERATURE',
+            'agent_architect_temperature' => 'AGENT_ARCHITECT_TEMPERATURE',
+            'agent_engineer_max_tokens' => 'AGENT_ENGINEER_MAX_TOKENS',
+            'agent_pilot_max_tokens' => 'AGENT_PILOT_MAX_TOKENS',
+            'agent_steward_max_tokens' => 'AGENT_STEWARD_MAX_TOKENS',
+            'agent_guide_max_tokens' => 'AGENT_GUIDE_MAX_TOKENS',
+            'agent_architect_max_tokens' => 'AGENT_ARCHITECT_MAX_TOKENS',
+            'rate_limit_requests' => 'NAJM_HODA_RATE_LIMIT_MAX_REQUESTS',
+        ];
+
+        foreach ($directMappings as $inputKey => $envKey) {
+            if (isset($validated[$inputKey]) && $validated[$inputKey] !== '') {
+                $envUpdates[$envKey] = (string) $validated[$inputKey];
+            }
+        }
         
         if (!empty($envUpdates)) {
             $this->updateEnvFile($envUpdates);
@@ -238,6 +346,174 @@ class NajmHodaController extends Controller
     /**
      * چت مستقیم با نجم‌هدا (برای ادمین)
      */
+    public function groupActionItems(Request $request)
+    {
+        $validated = $request->validate([
+            'group_id' => 'nullable|integer|exists:groups,id',
+            'status' => 'nullable|string|in:open,in_progress,blocked,done,cancelled',
+            'priority' => 'nullable|string|in:low,medium,high,urgent',
+            'q' => 'nullable|string|max:255',
+        ]);
+
+        $query = NajmHodaGroupActionItem::query()
+            ->with([
+                'group:id,name',
+                'assignedUser:id,first_name,last_name,email',
+            ])
+            ->latest('id');
+
+        if (!empty($validated['group_id'])) {
+            $query->where('group_id', $validated['group_id']);
+        }
+
+        if (!empty($validated['status'])) {
+            $query->where('status', $validated['status']);
+        }
+
+        if (!empty($validated['priority'])) {
+            $query->where('priority', $validated['priority']);
+        }
+
+        if (!empty($validated['q'])) {
+            $term = trim($validated['q']);
+            $query->where(function ($subQuery) use ($term) {
+                $subQuery->where('title', 'like', "%{$term}%")
+                    ->orWhere('details', 'like', "%{$term}%")
+                    ->orWhere('assignee_name', 'like', "%{$term}%");
+            });
+        }
+
+        $items = $query->paginate(25)->withQueryString();
+
+        $groups = Group::query()
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
+
+        $stats = [
+            'total' => NajmHodaGroupActionItem::count(),
+            'open' => NajmHodaGroupActionItem::where('status', 'open')->count(),
+            'in_progress' => NajmHodaGroupActionItem::where('status', 'in_progress')->count(),
+            'done' => NajmHodaGroupActionItem::where('status', 'done')->count(),
+            'overdue' => NajmHodaGroupActionItem::whereNotIn('status', ['done', 'cancelled'])
+                ->whereNotNull('due_at')
+                ->where('due_at', '<', now())
+                ->count(),
+        ];
+
+        $statusOptions = ['open', 'in_progress', 'blocked', 'done', 'cancelled'];
+        $priorityOptions = ['low', 'medium', 'high', 'urgent'];
+
+        $groupIds = $items->getCollection()
+            ->pluck('group_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $groupUsersByGroup = GroupUser::query()
+            ->with('user:id,first_name,last_name,email')
+            ->whereIn('group_id', $groupIds)
+            ->where('status', 1)
+            ->get()
+            ->groupBy('group_id')
+            ->map(function ($members) {
+                return $members->map(function ($member) {
+                    $fullName = trim(($member->user->first_name ?? '') . ' ' . ($member->user->last_name ?? ''));
+                    return [
+                        'id' => $member->user_id,
+                        'name' => $fullName !== '' ? $fullName : ($member->user->email ?? ('user#' . $member->user_id)),
+                    ];
+                })->values();
+            });
+
+        return view('admin.najm-hoda.group-action-items', [
+            'items' => $items,
+            'groups' => $groups,
+            'stats' => $stats,
+            'statusOptions' => $statusOptions,
+            'priorityOptions' => $priorityOptions,
+            'groupUsersByGroup' => $groupUsersByGroup,
+            'filters' => [
+                'group_id' => $validated['group_id'] ?? null,
+                'status' => $validated['status'] ?? null,
+                'priority' => $validated['priority'] ?? null,
+                'q' => $validated['q'] ?? null,
+            ],
+        ]);
+    }
+
+    public function updateGroupActionItem(Request $request, NajmHodaGroupActionItem $actionItem)
+    {
+        $validated = $request->validate([
+            'status' => 'nullable|string|in:open,in_progress,blocked,done,cancelled',
+            'priority' => 'nullable|string|in:low,medium,high,urgent',
+            'assigned_user_id' => 'nullable|integer|exists:users,id',
+            'assignee_name' => 'nullable|string|max:150',
+            'due_at' => 'nullable|date',
+            'title' => 'nullable|string|max:255',
+            'details' => 'nullable|string',
+        ]);
+
+        $updatePayload = [];
+        foreach (['status', 'priority', 'assigned_user_id', 'assignee_name', 'due_at', 'title', 'details'] as $key) {
+            if ($request->has($key)) {
+                $updatePayload[$key] = $validated[$key] ?? null;
+            }
+        }
+
+        if (array_key_exists('assigned_user_id', $updatePayload) && !empty($updatePayload['assigned_user_id'])) {
+            $isGroupMember = GroupUser::query()
+                ->where('group_id', $actionItem->group_id)
+                ->where('user_id', $updatePayload['assigned_user_id'])
+                ->where('status', 1)
+                ->exists();
+
+            if (!$isGroupMember) {
+                if (!$request->expectsJson()) {
+                    return back()->withErrors([
+                        'assigned_user_id' => 'کاربر انتخاب شده عضو فعال این گروه نیست.',
+                    ]);
+                }
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Selected user is not an active member of this group.',
+                ], 422);
+            }
+        }
+
+        if (array_key_exists('assigned_user_id', $updatePayload) && !array_key_exists('assignee_name', $updatePayload)) {
+            if (!empty($updatePayload['assigned_user_id'])) {
+                $assignee = User::query()->select('id', 'first_name', 'last_name', 'email')->find($updatePayload['assigned_user_id']);
+                if ($assignee) {
+                    $fullName = trim(($assignee->first_name ?? '') . ' ' . ($assignee->last_name ?? ''));
+                    $updatePayload['assignee_name'] = $fullName !== '' ? $fullName : ($assignee->email ?? null);
+                }
+            } else {
+                $updatePayload['assignee_name'] = null;
+            }
+        }
+
+        $actionItem->fill($updatePayload);
+        $actionItem->save();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Action item updated successfully.',
+                'item' => [
+                    'id' => $actionItem->id,
+                    'status' => $actionItem->status,
+                    'priority' => $actionItem->priority,
+                    'assignee_name' => $actionItem->assignee_name,
+                    'due_at' => optional($actionItem->due_at)->toDateTimeString(),
+                ],
+            ]);
+        }
+
+        return back()->with('success', 'Action item updated successfully.');
+    }
+
     public function chat()
     {
         $agents = $this->getAvailableAgents();

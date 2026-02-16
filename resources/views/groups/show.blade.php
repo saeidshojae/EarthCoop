@@ -39,6 +39,7 @@ $roleValue = 0; // ناظر
 
 $roleLabel = $roleLabels[$roleValue] ?? 'عضو';
 $isGroupManager = in_array((int)($pivot?->pivot?->role ?? 0), [2, 3], true);
+$groupAssistantGloballyEnabled = (bool) config('najm-hoda.group_assistant.enabled', true);
 $groupAccountNumber = AccountNumberService::makeLegalEntityAccountNumberForGroup($group->id);
 
 $locationApproved = true;
@@ -226,6 +227,20 @@ $allActivities = $allActivities->sortByDesc('created_at')->take(10)->values();
                             <i class="fas fa-wallet"></i>
                             حساب نجم بهار گروه
                         </a>
+                        @if($groupAssistantGloballyEnabled)
+                            <a href="{{ route('groups.najm-hoda.panel', $group) }}"
+                                class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-50 transition">
+                                <i class="fas fa-robot"></i>
+                                پنل نجم‌هدا
+                            </a>
+                        @else
+                            <button type="button" disabled
+                                class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 border border-gray-200 rounded-xl cursor-not-allowed"
+                                title="Najm Hoda assistant is disabled globally by site admin.">
+                                <i class="fas fa-robot"></i>
+                                پنل نجم‌هدا (غیرفعال سراسری)
+                            </button>
+                        @endif
                     @endif
                     @if($membershipStatus)
                         <a href="{{ route('groups.najm-bahar.reports', $group) }}"

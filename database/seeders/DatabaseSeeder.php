@@ -27,5 +27,6 @@ class DatabaseSeeder extends Seeder
         // ]);
         // NajmBahar system accounts
         $this->call(\Database\Seeders\NajmBaharSeeder::class);
+        $this->call(\Database\Seeders\NajmBaharProjectCategorySeeder::class);
     }
 }

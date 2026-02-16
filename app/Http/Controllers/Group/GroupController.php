@@ -6,13 +6,51 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Group;
 use App\Models\GroupUser;
+use App\Models\NajmHodaGroupActionItem;
+use App\Models\NajmHodaGroupConfig;
 use App\Models\User;
 use App\Models\ReportedMessage;
+use App\Services\NajmHoda\NajmHodaGroupAssistantService;
 use Illuminate\Support\Facades\DB;
 use PhpParser\Node\Stmt\GroupUse;
 
 class GroupController extends Controller
 {
+    protected function hasGroupLeadershipAccess(Group $group): bool
+    {
+        $role = GroupUser::where('group_id', $group->id)
+            ->where('user_id', auth()->id())
+            ->where('status', 1)
+            ->value('role');
+
+        return in_array((int) $role, [2, 3], true);
+    }
+
+    protected function getGroupAssistantGlobalPolicy(): array
+    {
+        return [
+            'assistant_enabled' => (bool) config('najm-hoda.group_assistant.enabled', true),
+            'meeting_mode_enabled' => (bool) config('najm-hoda.group_assistant.meeting_mode_enabled', true),
+            'allow_proactive_guidance' => (bool) config('najm-hoda.group_assistant.allow_proactive_guidance', true),
+            'allow_private_messages' => (bool) config('najm-hoda.group_assistant.allow_private_messages', true),
+            'private_message_mode' => (string) config('najm-hoda.group_assistant.private_message_mode', 'direct'),
+            'action_executor_enabled' => (bool) config('najm-hoda.group_assistant.action_executor.enabled', true),
+            'action_propose_before_execute' => (bool) config('najm-hoda.group_assistant.action_executor.propose_before_execute', false),
+            'action_allow_create_post' => (bool) config('najm-hoda.group_assistant.action_executor.allow_create_post', true),
+            'action_allow_create_poll' => (bool) config('najm-hoda.group_assistant.action_executor.allow_create_poll', true),
+            'action_allow_create_comment' => (bool) config('najm-hoda.group_assistant.action_executor.allow_create_comment', true),
+            'action_allow_react_message' => (bool) config('najm-hoda.group_assistant.action_executor.allow_react_message', true),
+            'action_allow_react_post' => (bool) config('najm-hoda.group_assistant.action_executor.allow_react_post', true),
+            'action_allow_react_comment' => (bool) config('najm-hoda.group_assistant.action_executor.allow_react_comment', true),
+            'action_max_per_hour' => (int) config('najm-hoda.group_assistant.action_executor.max_actions_per_hour', 6),
+            'max_replies_per_hour' => (int) config('najm-hoda.group_assistant.max_replies_per_hour', 12),
+            'min_reply_interval_seconds' => (int) config('najm-hoda.group_assistant.min_reply_interval_seconds', 90),
+            'auto_reply_mode' => (string) config('najm-hoda.group_assistant.auto_reply_mode', 'mention_or_question'),
+            'knowledge_scope' => (string) config('najm-hoda.group_assistant.knowledge_scope', 'hybrid'),
+            'default_agent' => (string) config('najm-hoda.group_assistant.default_agent', 'steward'),
+        ];
+    }
+
     public function index()
     {
         $user = auth()->user();
@@ -317,7 +355,7 @@ public function addUsersToGroup(Request $request)
         }
 
         $members = $group->users()
-            ->wherePivotIn('role', [0, 1]) // فقط ناظر و فعال
+            ->wherePivotIn('role', [0, 1, 3]) // ناظر، فعال و مدیر
             ->select('users.id', 'users.first_name', 'users.last_name', 'users.email')
             ->withPivot('role', 'status')
             ->orderBy('group_user.role', 'desc') // فعال‌ها اول
@@ -329,7 +367,11 @@ public function addUsersToGroup(Request $request)
                     'name' => $user->fullName(),
                     'email' => $user->email,
                     'role' => (int) $user->pivot->role,
-                    'role_label' => $user->pivot->role == 0 ? 'ناظر' : 'فعال',
+                    'role_label' => match ((int) $user->pivot->role) {
+                        3 => 'مدیر',
+                        1 => 'فعال',
+                        default => 'ناظر',
+                    },
                     'status' => (int) $user->pivot->status,
                 ];
             });
@@ -432,6 +474,356 @@ public function addUsersToGroup(Request $request)
                 'reports' => $reportsStats,
                 'most_active_members' => $mostActiveMembers,
             ]
+        ]);
+    }
+
+    public function najmHodaSettings(Group $group, NajmHodaGroupAssistantService $assistantService)
+    {
+        if (!$this->hasGroupLeadershipAccess($group)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'شما دسترسی لازم را ندارید.'
+            ], 403);
+        }
+
+        $assistantService->ensureGroupAssistantSetup($group);
+
+        $config = NajmHodaGroupConfig::where('group_id', $group->id)->first();
+        if (!$config) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'تنظیمات نجم‌هدا یافت نشد.'
+            ], 404);
+        }
+
+        $stats = [
+            'action_items_total' => NajmHodaGroupActionItem::where('group_id', $group->id)->count(),
+            'action_items_open' => NajmHodaGroupActionItem::where('group_id', $group->id)->where('status', 'open')->count(),
+            'action_items_done' => NajmHodaGroupActionItem::where('group_id', $group->id)->where('status', 'done')->count(),
+            'action_items_overdue' => NajmHodaGroupActionItem::where('group_id', $group->id)
+                ->whereNotIn('status', ['done', 'cancelled'])
+                ->whereNotNull('due_at')
+                ->where('due_at', '<', now())
+                ->count(),
+        ];
+
+        $global = $this->getGroupAssistantGlobalPolicy();
+        $settings = [
+            'enabled' => $global['assistant_enabled'] ? (bool) $config->enabled : false,
+            'assistant_role' => (string) $config->assistant_role,
+            'meeting_mode_enabled' => $global['meeting_mode_enabled'] ? (bool) $config->meeting_mode_enabled : false,
+            'allow_proactive_guidance' => $global['allow_proactive_guidance'] ? (bool) $config->allow_proactive_guidance : false,
+            'allow_private_messages' => $global['allow_private_messages']
+                ? (bool) data_get($config->policy, 'allow_private_messages', true)
+                : false,
+            'private_message_mode' => (string) data_get($config->policy, 'private_message_mode', $global['private_message_mode']),
+            'action_propose_before_execute' => $global['action_executor_enabled'] && $global['action_propose_before_execute']
+                ? (bool) data_get($config->policy, 'action_executor.propose_before_execute', false)
+                : false,
+            'action_allow_create_post' => $global['action_executor_enabled'] && $global['action_allow_create_post']
+                ? (bool) data_get($config->policy, 'action_executor.allow_create_post', true)
+                : false,
+            'action_allow_create_poll' => $global['action_executor_enabled'] && $global['action_allow_create_poll']
+                ? (bool) data_get($config->policy, 'action_executor.allow_create_poll', true)
+                : false,
+            'action_allow_create_comment' => $global['action_executor_enabled'] && $global['action_allow_create_comment']
+                ? (bool) data_get($config->policy, 'action_executor.allow_create_comment', true)
+                : false,
+            'action_allow_react_message' => $global['action_executor_enabled'] && $global['action_allow_react_message']
+                ? (bool) data_get($config->policy, 'action_executor.allow_react_message', true)
+                : false,
+            'action_allow_react_post' => $global['action_executor_enabled'] && $global['action_allow_react_post']
+                ? (bool) data_get($config->policy, 'action_executor.allow_react_post', true)
+                : false,
+            'action_allow_react_comment' => $global['action_executor_enabled'] && $global['action_allow_react_comment']
+                ? (bool) data_get($config->policy, 'action_executor.allow_react_comment', true)
+                : false,
+        ];
+
+        return response()->json([
+            'status' => 'success',
+            'settings' => $settings,
+            'global' => $global,
+            'stats' => $stats,
+        ]);
+    }
+
+    public function najmHodaGuide(Group $group, NajmHodaGroupAssistantService $assistantService)
+    {
+        if (!$this->hasGroupLeadershipAccess($group)) {
+            abort(403);
+        }
+
+        $assistantService->ensureGroupAssistantSetup($group);
+        $config = NajmHodaGroupConfig::where('group_id', $group->id)->first();
+
+        return view('groups.najm-hoda-guide', [
+            'group' => $group,
+            'config' => $config,
+        ]);
+    }
+
+    public function najmHodaPanel(Group $group, NajmHodaGroupAssistantService $assistantService)
+    {
+        if (!$this->hasGroupLeadershipAccess($group)) {
+            abort(403);
+        }
+
+        $assistantService->ensureGroupAssistantSetup($group);
+        $config = NajmHodaGroupConfig::where('group_id', $group->id)->first();
+
+        return view('groups.najm-hoda-panel', [
+            'group' => $group,
+            'config' => $config,
+        ]);
+    }
+
+    public function updateNajmHodaSettings(Request $request, Group $group, NajmHodaGroupAssistantService $assistantService)
+    {
+        if (!$this->hasGroupLeadershipAccess($group)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'شما دسترسی لازم را ندارید.'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'enabled' => 'nullable|boolean',
+            'assistant_role' => 'nullable|in:secretary,advisor,admin,hybrid',
+            'meeting_mode_enabled' => 'nullable|boolean',
+            'allow_proactive_guidance' => 'nullable|boolean',
+            'allow_private_messages' => 'nullable|boolean',
+            'private_message_mode' => 'nullable|in:direct,request',
+            'action_propose_before_execute' => 'nullable|boolean',
+            'action_allow_create_post' => 'nullable|boolean',
+            'action_allow_create_poll' => 'nullable|boolean',
+            'action_allow_create_comment' => 'nullable|boolean',
+            'action_allow_react_message' => 'nullable|boolean',
+            'action_allow_react_post' => 'nullable|boolean',
+            'action_allow_react_comment' => 'nullable|boolean',
+        ]);
+
+        $assistantService->ensureGroupAssistantSetup($group);
+        $config = NajmHodaGroupConfig::where('group_id', $group->id)->first();
+        if (!$config) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'تنظیمات نجم‌هدا یافت نشد.'
+            ], 404);
+        }
+
+        $global = $this->getGroupAssistantGlobalPolicy();
+        $policy = is_array($config->policy) ? $config->policy : [];
+
+        if (!$global['assistant_enabled']) {
+            $config->enabled = false;
+        } elseif (array_key_exists('enabled', $validated)) {
+            $config->enabled = (bool) $validated['enabled'];
+            unset($validated['enabled']);
+        }
+        if (!$global['meeting_mode_enabled']) {
+            $config->meeting_mode_enabled = false;
+        }
+        if (array_key_exists('meeting_mode_enabled', $validated)) {
+            $config->meeting_mode_enabled = $global['meeting_mode_enabled']
+                ? (bool) $validated['meeting_mode_enabled']
+                : false;
+            unset($validated['meeting_mode_enabled']);
+        }
+        if (!$global['allow_proactive_guidance']) {
+            $config->allow_proactive_guidance = false;
+        }
+        if (array_key_exists('allow_proactive_guidance', $validated)) {
+            $config->allow_proactive_guidance = $global['allow_proactive_guidance']
+                ? (bool) $validated['allow_proactive_guidance']
+                : false;
+            unset($validated['allow_proactive_guidance']);
+        }
+
+        if (!$global['allow_private_messages']) {
+            $policy['allow_private_messages'] = false;
+        }
+        if (array_key_exists('allow_private_messages', $validated)) {
+            $policy['allow_private_messages'] = $global['allow_private_messages']
+                ? (bool) $validated['allow_private_messages']
+                : false;
+            unset($validated['allow_private_messages']);
+        }
+        if (array_key_exists('private_message_mode', $validated)) {
+            $policy['private_message_mode'] = $global['allow_private_messages']
+                ? (string) $validated['private_message_mode']
+                : (string) $global['private_message_mode'];
+            unset($validated['private_message_mode']);
+        }
+        $actionPolicy = is_array($policy['action_executor'] ?? null) ? $policy['action_executor'] : [];
+        $actionMap = [
+            'action_propose_before_execute' => 'propose_before_execute',
+            'action_allow_create_post' => 'allow_create_post',
+            'action_allow_create_poll' => 'allow_create_poll',
+            'action_allow_create_comment' => 'allow_create_comment',
+            'action_allow_react_message' => 'allow_react_message',
+            'action_allow_react_post' => 'allow_react_post',
+            'action_allow_react_comment' => 'allow_react_comment',
+        ];
+        foreach ($actionMap as $inputKey => $policyKey) {
+            if (array_key_exists($inputKey, $validated)) {
+                $globalKey = match ($policyKey) {
+                    'propose_before_execute' => 'action_propose_before_execute',
+                    'allow_create_post' => 'action_allow_create_post',
+                    'allow_create_poll' => 'action_allow_create_poll',
+                    'allow_create_comment' => 'action_allow_create_comment',
+                    'allow_react_message' => 'action_allow_react_message',
+                    'allow_react_post' => 'action_allow_react_post',
+                    'allow_react_comment' => 'action_allow_react_comment',
+                    default => null,
+                };
+                $allowedByGlobal = $global['action_executor_enabled'] && ($globalKey ? (bool) ($global[$globalKey] ?? true) : true);
+                $actionPolicy[$policyKey] = $allowedByGlobal ? (bool) $validated[$inputKey] : false;
+                unset($validated[$inputKey]);
+            }
+        }
+        $actionPolicy['enabled'] = (bool) $global['action_executor_enabled'];
+        $actionPolicy['max_actions_per_hour'] = (int) $global['action_max_per_hour'];
+        $policy['action_executor'] = $actionPolicy;
+
+        $config->fill($validated);
+        $config->policy = $policy;
+        $config->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'تنظیمات نجم‌هدا برای این گروه ذخیره شد.',
+        ]);
+    }
+
+    public function najmHodaActionItems(Request $request, Group $group)
+    {
+        if (!$this->hasGroupLeadershipAccess($group)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'شما دسترسی لازم را ندارید.'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'status' => 'nullable|in:open,in_progress,blocked,done,cancelled',
+            'q' => 'nullable|string|max:255',
+        ]);
+
+        $query = NajmHodaGroupActionItem::query()
+            ->where('group_id', $group->id)
+            ->with('assignedUser:id,first_name,last_name,email')
+            ->latest('id');
+
+        if (!empty($validated['status'])) {
+            $query->where('status', $validated['status']);
+        }
+
+        if (!empty($validated['q'])) {
+            $term = trim($validated['q']);
+            $query->where(function ($q) use ($term) {
+                $q->where('title', 'like', "%{$term}%")
+                    ->orWhere('details', 'like', "%{$term}%")
+                    ->orWhere('assignee_name', 'like', "%{$term}%");
+            });
+        }
+
+        $items = $query->take(100)->get()->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'title' => $item->title,
+                'details' => $item->details,
+                'status' => $item->status,
+                'priority' => $item->priority,
+                'assignee_name' => $item->assignee_name,
+                'assigned_user_id' => $item->assigned_user_id,
+                'due_at' => optional($item->due_at)->format('Y-m-d\TH:i'),
+                'due_human' => optional($item->due_at)->diffForHumans(),
+                'updated_at_human' => optional($item->updated_at)->diffForHumans(),
+            ];
+        });
+
+        $members = GroupUser::query()
+            ->with('user:id,first_name,last_name,email')
+            ->where('group_id', $group->id)
+            ->where('status', 1)
+            ->get()
+            ->map(function ($member) {
+                $fullName = trim(($member->user->first_name ?? '') . ' ' . ($member->user->last_name ?? ''));
+                return [
+                    'id' => $member->user_id,
+                    'name' => $fullName !== '' ? $fullName : ($member->user->email ?? ('user#' . $member->user_id)),
+                ];
+            })->values();
+
+        return response()->json([
+            'status' => 'success',
+            'items' => $items,
+            'members' => $members,
+        ]);
+    }
+
+    public function updateNajmHodaActionItem(Request $request, Group $group, NajmHodaGroupActionItem $actionItem)
+    {
+        if (!$this->hasGroupLeadershipAccess($group)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'شما دسترسی لازم را ندارید.'
+            ], 403);
+        }
+
+        if ((int) $actionItem->group_id !== (int) $group->id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'مصوبه مربوط به این گروه نیست.'
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'status' => 'nullable|in:open,in_progress,blocked,done,cancelled',
+            'priority' => 'nullable|in:low,medium,high,urgent',
+            'assigned_user_id' => 'nullable|integer|exists:users,id',
+            'due_at' => 'nullable|date',
+        ]);
+
+        if (array_key_exists('assigned_user_id', $validated) && !empty($validated['assigned_user_id'])) {
+            $isMember = GroupUser::where('group_id', $group->id)
+                ->where('user_id', $validated['assigned_user_id'])
+                ->where('status', 1)
+                ->exists();
+
+            if (!$isMember) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'کاربر انتخاب‌شده عضو فعال این گروه نیست.',
+                ], 422);
+            }
+        }
+
+        $actionItem->fill($validated);
+        if (array_key_exists('assigned_user_id', $validated)) {
+            if (!empty($validated['assigned_user_id'])) {
+                $assignee = User::query()->select('id', 'first_name', 'last_name', 'email')->find($validated['assigned_user_id']);
+                $fullName = trim(($assignee->first_name ?? '') . ' ' . ($assignee->last_name ?? ''));
+                $actionItem->assignee_name = $fullName !== '' ? $fullName : ($assignee->email ?? null);
+            } else {
+                $actionItem->assignee_name = null;
+            }
+        }
+
+        $actionItem->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'مصوبه با موفقیت بروزرسانی شد.',
+            'item' => [
+                'id' => $actionItem->id,
+                'status' => $actionItem->status,
+                'priority' => $actionItem->priority,
+                'assignee_name' => $actionItem->assignee_name,
+                'due_at' => optional($actionItem->due_at)->format('Y-m-d\TH:i'),
+                'updated_at_human' => optional($actionItem->updated_at)->diffForHumans(),
+            ],
         ]);
     }
 

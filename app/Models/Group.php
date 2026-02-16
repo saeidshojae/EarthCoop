@@ -79,5 +79,21 @@ class Group extends Model
     {
         $this->update(['last_activity_at' => now()]);
     }
+
+    /**
+     * پروژه‌های نجم بهار (به عنوان صاحب پروژه)
+     */
+    public function najmBaharProjects()
+    {
+        return $this->morphMany(\App\Modules\NajmBahar\Models\Project::class, 'owner');
+    }
+
+    /**
+     * سرمایه‌گذاری‌های نجم بهار (به عنوان سرمایه‌گذار)
+     */
+    public function najmBaharInvestments()
+    {
+        return $this->morphMany(\App\Modules\NajmBahar\Models\Investment::class, 'investor');
+    }
 }
 

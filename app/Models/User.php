@@ -62,6 +62,11 @@ class User extends Authenticatable
             ->withTimestamps();
     }    
 
+    public function messages()
+    {
+        return $this->hasMany(Message::class, 'user_id');
+    }
+
     public function fullName()
     {
         return $this->first_name . ' ' . $this->last_name;
@@ -265,5 +270,21 @@ class User extends Authenticatable
         }
         
         return $permissions->unique('id');
+    }
+
+    /**
+     * پروژه‌های نجم بهار (به عنوان صاحب پروژه)
+     */
+    public function najmBaharProjects()
+    {
+        return $this->morphMany(\App\Modules\NajmBahar\Models\Project::class, 'owner');
+    }
+
+    /**
+     * سرمایه‌گذاری‌های نجم بهار (به عنوان سرمایه‌گذار)
+     */
+    public function najmBaharInvestments()
+    {
+        return $this->morphMany(\App\Modules\NajmBahar\Models\Investment::class, 'investor');
     }
 }

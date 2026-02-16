@@ -324,6 +324,18 @@
                 </div>
             </a>
 
+            <a href="{{ route('admin.najm-bahar.projects.index') }}" class="block p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-400 hover:shadow transition">
+                <div class="flex items-center gap-3">
+                    <span class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <i class="fas fa-clipboard-check"></i>
+                    </span>
+                    <div>
+                        <p class="font-semibold text-slate-900 dark:text-white">مدیریت پروژه‌ها</p>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">بررسی، ارجاع و تایید پروژه‌های نجم بهار</p>
+                    </div>
+                </div>
+            </a>
+
             <a href="{{ route('admin.najm-bahar.analytics') }}" class="block p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-purple-400 hover:shadow transition">
                 <div class="flex items-center gap-3">
                     <span class="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">

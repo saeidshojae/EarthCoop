@@ -42,18 +42,18 @@ return [
     'agents' => [
         'engineer' => [
             'enabled' => env('AGENT_ENGINEER_ENABLED', true),
-            'temperature' => 0.2, // کمتر = دقیق‌تر، بیشتر = خلاق‌تر
-            'max_tokens' => 4000,
+            'temperature' => env('AGENT_ENGINEER_TEMPERATURE', 0.2), // کمتر = دقیق‌تر، بیشتر = خلاق‌تر
+            'max_tokens' => env('AGENT_ENGINEER_MAX_TOKENS', 4000),
         ],
         'pilot' => [
             'enabled' => env('AGENT_PILOT_ENABLED', true),
-            'temperature' => 0.5,
-            'max_tokens' => 3000,
+            'temperature' => env('AGENT_PILOT_TEMPERATURE', 0.5),
+            'max_tokens' => env('AGENT_PILOT_MAX_TOKENS', 3000),
         ],
         'steward' => [
             'enabled' => env('AGENT_STEWARD_ENABLED', true),
-            'temperature' => 0.7,
-            'max_tokens' => 2000,
+            'temperature' => env('AGENT_STEWARD_TEMPERATURE', 0.7),
+            'max_tokens' => env('AGENT_STEWARD_MAX_TOKENS', 2000),
             'source_priorities' => [
                 'kb_articles' => env('STEWARD_PRIORITY_KB', 10),
                 'knowledge_files' => env('STEWARD_PRIORITY_FILES', 8),
@@ -63,8 +63,13 @@ return [
         ],
         'guide' => [
             'enabled' => env('AGENT_GUIDE_ENABLED', true),
-            'temperature' => 0.6,
-            'max_tokens' => 3000,
+            'temperature' => env('AGENT_GUIDE_TEMPERATURE', 0.6),
+            'max_tokens' => env('AGENT_GUIDE_MAX_TOKENS', 3000),
+        ],
+        'architect' => [
+            'enabled' => env('AGENT_ARCHITECT_ENABLED', true),
+            'temperature' => env('AGENT_ARCHITECT_TEMPERATURE', 0.4),
+            'max_tokens' => env('AGENT_ARCHITECT_MAX_TOKENS', 4000),
         ],
     ],
 
@@ -87,7 +92,7 @@ return [
      */
     'rate_limit' => [
         'enabled' => env('NAJM_HODA_RATE_LIMIT_ENABLED', true),
-        'max_requests_per_minute' => 20,
+        'max_requests_per_minute' => env('NAJM_HODA_RATE_LIMIT_MAX_REQUESTS', 20),
         'max_requests_per_hour' => 100,
         'max_requests_per_day' => 500,
     ],
@@ -186,6 +191,69 @@ return [
         'max_messages_per_conversation' => 100,
         'auto_archive_after_days' => 30,
         'delete_old_conversations' => false,
+    ],
+
+    /**
+     * تنظیمات دستیار گروهی نجم‌هدا
+     *
+     * نقش هدف: منشی/دبیر/راهنما در گروه‌ها
+     */
+    'group_assistant' => [
+        'enabled' => env('NAJM_HODA_GROUP_ASSISTANT_ENABLED', true),
+        'bot_email' => env('NAJM_HODA_GROUP_BOT_EMAIL', 'najm-hoda-bot@local.invalid'),
+        'bot_first_name' => env('NAJM_HODA_GROUP_BOT_FIRST_NAME', 'نجم'),
+        'bot_last_name' => env('NAJM_HODA_GROUP_BOT_LAST_NAME', 'هدا'),
+
+        // 3 = مدیر گروه (طبق منطق فعلی پروژه)
+        'default_group_role' => env('NAJM_HODA_GROUP_DEFAULT_ROLE', 3),
+        'assistant_role' => env('NAJM_HODA_GROUP_ASSISTANT_ROLE', 'secretary'),
+        'default_agent' => env('NAJM_HODA_GROUP_DEFAULT_AGENT', 'steward'),
+
+        // disabled | mention_only | mention_or_question | always
+        'auto_reply_mode' => env('NAJM_HODA_GROUP_AUTO_REPLY_MODE', 'mention_or_question'),
+
+        // local | hybrid | global
+        'knowledge_scope' => env('NAJM_HODA_GROUP_KNOWLEDGE_SCOPE', 'hybrid'),
+        'meeting_mode_enabled' => env('NAJM_HODA_GROUP_MEETING_MODE', true),
+        'allow_proactive_guidance' => env('NAJM_HODA_GROUP_PROACTIVE_GUIDANCE', true),
+        'allow_private_messages' => env('NAJM_HODA_GROUP_ALLOW_PRIVATE_MESSAGES', true),
+        // direct | request
+        'private_message_mode' => env('NAJM_HODA_GROUP_PRIVATE_MESSAGE_MODE', 'direct'),
+
+        'max_replies_per_hour' => env('NAJM_HODA_GROUP_MAX_REPLIES_PER_HOUR', 12),
+        'min_reply_interval_seconds' => env('NAJM_HODA_GROUP_MIN_REPLY_INTERVAL_SECONDS', 90),
+
+        'trigger_keywords' => [
+            'نجم هدا',
+            'نجم‌هدا',
+            'نجمهدا',
+            '@najmhoda',
+            'najm hoda',
+            'najmhoda',
+            'منشی',
+            'دبیر',
+            'صورتجلسه',
+            'صورت جلسه',
+        ],
+
+        'action_items' => [
+            'enabled' => env('NAJM_HODA_GROUP_ACTION_ITEMS_ENABLED', true),
+            'max_items' => env('NAJM_HODA_GROUP_ACTION_ITEMS_MAX_ITEMS', 8),
+        ],
+
+        'action_executor' => [
+            'enabled' => env('NAJM_HODA_GROUP_ACTION_EXECUTOR_ENABLED', true),
+            'propose_before_execute' => env('NAJM_HODA_GROUP_ACTION_PROPOSE_BEFORE_EXECUTE', false),
+            'allow_create_post' => env('NAJM_HODA_GROUP_ACTION_ALLOW_CREATE_POST', true),
+            'allow_create_poll' => env('NAJM_HODA_GROUP_ACTION_ALLOW_CREATE_POLL', true),
+            'allow_create_comment' => env('NAJM_HODA_GROUP_ACTION_ALLOW_CREATE_COMMENT', true),
+            'allow_react_message' => env('NAJM_HODA_GROUP_ACTION_ALLOW_REACT_MESSAGE', true),
+            'allow_react_post' => env('NAJM_HODA_GROUP_ACTION_ALLOW_REACT_POST', true),
+            'allow_react_comment' => env('NAJM_HODA_GROUP_ACTION_ALLOW_REACT_COMMENT', true),
+            'max_actions_per_hour' => env('NAJM_HODA_GROUP_ACTION_MAX_PER_HOUR', 6),
+            // 2: inspector, 3: manager
+            'permitted_roles' => [2, 3],
+        ],
     ],
 
     /**
