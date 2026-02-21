@@ -8,7 +8,9 @@ use App\Services\NajmHoda\Agents\StewardAgent;
 use App\Services\NajmHoda\Agents\GuideAgent;
 use App\Services\NajmHoda\Agents\ArchitectAgent;
 use App\Services\NajmHoda\MockModeService;
+use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * هماهنگ‌کننده مرکزی نجم‌هدا
@@ -24,6 +26,7 @@ class NajmHodaOrchestrator
     protected GuideAgent $guide;
     protected ArchitectAgent $architect;
     protected MockModeService $mockService;
+    protected RuntimeEventBus $runtimeEventBus;
     
     protected array $projectContext = [];
     protected string $currentPhase = '';
@@ -36,6 +39,7 @@ class NajmHodaOrchestrator
         $this->guide = app(GuideAgent::class);
         $this->architect = app(ArchitectAgent::class);
         $this->mockService = app(MockModeService::class);
+        $this->runtimeEventBus = app(RuntimeEventBus::class);
         
         $this->loadProjectContext();
         $this->detectCurrentPhase();
@@ -50,9 +54,18 @@ class NajmHodaOrchestrator
      */
     public function route(string $message, array $context = []): array
     {
+        $requestId = (string) Str::uuid();
+        $this->emitRuntimeEvent('najm_hoda.request.received', [
+            'request_id' => $requestId,
+            'message_preview' => mb_substr($message, 0, 200),
+            'context_keys' => array_keys($context),
+        ]);
+
         // اگر عامل خاصی مشخص شده باشد
         if (isset($context['force_agent']) && $this->isValidAgent($context['force_agent'])) {
-            return $this->handleByAgent($context['force_agent'], $message, $context);
+            $result = $this->handleByAgent($context['force_agent'], $message, $context);
+            $this->emitResponseEvent($requestId, $result, $context['force_agent']);
+            return $result;
         }
         
         // تشخیص خودکار نوع درخواست
@@ -63,27 +76,24 @@ class NajmHodaOrchestrator
             'detected_intent' => $intent['type'],
             'confidence' => $intent['confidence'] ?? 0,
         ]);
-        
-        switch ($intent['type']) {
-            case 'engineering':
-                return $this->handleByAgent('engineer', $message, $context);
-                
-            case 'management':
-                return $this->handleByAgent('pilot', $message, $context);
-                
-            case 'support':
-                return $this->handleByAgent('steward', $message, $context);
-                
-            case 'guidance':
-                return $this->handleByAgent('guide', $message, $context);
-                
-            case 'complex':
-                return $this->handleComplexRequest($message, $context);
-                
-            default:
-                // پیش‌فرض: مهماندار (برای کاربران عادی)
-                return $this->handleByAgent('steward', $message, $context);
-        }
+        $this->emitRuntimeEvent('najm_hoda.intent.detected', [
+            'request_id' => $requestId,
+            'intent' => $intent['type'] ?? 'unknown',
+            'confidence' => $intent['confidence'] ?? 0,
+        ]);
+
+        $result = match ($intent['type']) {
+            'engineering' => $this->handleByAgent('engineer', $message, $context),
+            'management' => $this->handleByAgent('pilot', $message, $context),
+            'support' => $this->handleByAgent('steward', $message, $context),
+            'guidance' => $this->handleByAgent('guide', $message, $context),
+            'complex' => $this->handleComplexRequest($message, $context),
+            default => $this->handleByAgent('steward', $message, $context), // پیش‌فرض: مهماندار
+        };
+
+        $this->emitResponseEvent($requestId, $result, $result['agent'] ?? null);
+
+        return $result;
     }
     
     /**
@@ -304,6 +314,29 @@ class NajmHodaOrchestrator
     protected function isValidAgent(string $name): bool
     {
         return in_array($name, ['engineer', 'pilot', 'steward', 'guide', 'architect']);
+    }
+
+    protected function emitResponseEvent(string $requestId, array $result, ?string $agent): void
+    {
+        $success = (bool) ($result['success'] ?? false);
+        $this->emitRuntimeEvent($success ? 'najm_hoda.response.ready' : 'najm_hoda.response.failed', [
+            'request_id' => $requestId,
+            'agent' => $agent ?? ($result['agent'] ?? 'unknown'),
+            'success' => $success,
+            'has_error' => isset($result['error']) && $result['error'] !== null,
+        ]);
+    }
+
+    protected function emitRuntimeEvent(string $event, array $payload): void
+    {
+        try {
+            $this->runtimeEventBus->emit($event, $payload);
+        } catch (\Throwable $exception) {
+            Log::warning('NajmHoda runtime event emit failed', [
+                'event' => $event,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
     
     /**

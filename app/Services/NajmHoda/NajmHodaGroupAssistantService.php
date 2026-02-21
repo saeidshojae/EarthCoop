@@ -19,11 +19,22 @@ use App\Models\Poll;
 use App\Models\PollOption;
 use App\Models\Reaction;
 use App\Models\User;
+use App\Services\NajmHoda\Runtime\GroupActionExecutor;
+use App\Services\NajmHoda\Runtime\NajmHodaPolicyGate;
+use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class NajmHodaGroupAssistantService
 {
+    public function __construct(
+        protected NajmHodaPolicyGate $policyGate,
+        protected GroupActionExecutor $groupActionExecutor,
+        protected RuntimeEventBus $runtimeEventBus
+    ) {
+    }
+
     public function ensureBotUser(): User
     {
         $email = (string) config('najm-hoda.group_assistant.bot_email', 'najm-hoda-bot@local.invalid');
@@ -36,8 +47,8 @@ class NajmHodaGroupAssistantService
         return User::create([
             'email' => $email,
             'password' => Hash::make(bin2hex(random_bytes(16))),
-            'first_name' => (string) config('najm-hoda.group_assistant.bot_first_name', 'Ù†Ø¬Ù…'),
-            'last_name' => (string) config('najm-hoda.group_assistant.bot_last_name', 'Ù‡Ø¯Ø§'),
+            'first_name' => (string) config('najm-hoda.group_assistant.bot_first_name', 'نجم'),
+            'last_name' => (string) config('najm-hoda.group_assistant.bot_last_name', 'هدا'),
             'status' => 'active',
             'email_verified_at' => now(),
             'terms_accepted_at' => now(),
@@ -66,6 +77,7 @@ class NajmHodaGroupAssistantService
                     'action_executor' => [
                         'enabled' => (bool) config('najm-hoda.group_assistant.action_executor.enabled', true),
                         'propose_before_execute' => (bool) config('najm-hoda.group_assistant.action_executor.propose_before_execute', false),
+                        'dry_run' => (bool) config('najm-hoda.group_assistant.action_executor.dry_run', false),
                         'allow_create_post' => (bool) config('najm-hoda.group_assistant.action_executor.allow_create_post', true),
                         'allow_create_poll' => (bool) config('najm-hoda.group_assistant.action_executor.allow_create_poll', true),
                         'allow_create_comment' => (bool) config('najm-hoda.group_assistant.action_executor.allow_create_comment', true),
@@ -327,7 +339,7 @@ class NajmHodaGroupAssistantService
         }
 
         $isMentioned = $this->isBotMentioned($plain);
-        $isQuestion = str_contains($plain, '?') || str_contains($plain, 'ØŸ');
+        $isQuestion = str_contains($plain, '?') || str_contains($plain, '؟');
         $isMeetingIntent = $this->containsMeetingKeywords($plain);
 
         if ($mode === 'disabled') {
@@ -363,7 +375,7 @@ class NajmHodaGroupAssistantService
             return 'guide';
         }
 
-        $strategyKeywords = ['Ø§Ø³ØªØ±Ø§ØªÚ˜ÛŒ', 'Ù†Ù‚Ø´Ù‡ Ø±Ø§Ù‡', 'Ù‡Ø¯Ù', 'Ú†Ø´Ù… Ø§Ù†Ø¯Ø§Ø²', 'Ú†Ø´Ù…â€ŒØ§Ù†Ø¯Ø§Ø²', 'Ø¨Ø±Ù†Ø§Ù…Ù‡'];
+        $strategyKeywords = ['استراتژی', 'نقشه راه', 'هدف', 'چشم انداز', 'چشم‌انداز', 'برنامه'];
         foreach ($strategyKeywords as $keyword) {
             if (mb_stripos($text, $keyword) !== false) {
                 return 'guide';
@@ -430,16 +442,16 @@ class NajmHodaGroupAssistantService
     {
         $plain = mb_strtolower(trim($text));
         $keywords = [
-            'Ù…Ø¯ÛŒØ± Ú¯Ø±ÙˆÙ‡',
-            'Ù…Ø¯ÛŒØ± Ø§ÛŒÙ† Ú¯Ø±ÙˆÙ‡',
-            'Ú†Ù‡ Ú©Ø³ÛŒ Ù…Ø¯ÛŒØ±',
-            'Ú©ÛŒ Ù…Ø¯ÛŒØ±',
-            'Ø¨Ø§Ø²Ø±Ø³ Ú¯Ø±ÙˆÙ‡',
-            'Ø¨Ø§Ø²Ø±Ø³ Ø§ÛŒÙ† Ú¯Ø±ÙˆÙ‡',
-            'Ú†Ù‡ Ú©Ø³ÛŒ Ø¨Ø§Ø²Ø±Ø³',
-            'Ú©ÛŒ Ø¨Ø§Ø²Ø±Ø³',
-            'Ù†Ù‚Ø´ Ù‡Ø§ÛŒ Ú¯Ø±ÙˆÙ‡',
-            'Ù†Ù‚Ø´â€ŒÙ‡Ø§ÛŒ Ú¯Ø±ÙˆÙ‡',
+            'مدیر گروه',
+            'مدیر این گروه',
+            'چه کسی مدیر',
+            'کی مدیر',
+            'بازرس گروه',
+            'بازرس این گروه',
+            'چه کسی بازرس',
+            'کی بازرس',
+            'نقش های گروه',
+            'نقش‌های گروه',
         ];
 
         foreach ($keywords as $keyword) {
@@ -457,27 +469,27 @@ class NajmHodaGroupAssistantService
 
         $intentMap = [
             'leadership' => [
-                'Ù…Ø¯ÛŒØ± Ú¯Ø±ÙˆÙ‡', 'Ù…Ø¯ÛŒØ± Ø§ÛŒÙ† Ú¯Ø±ÙˆÙ‡', 'Ú†Ù‡ Ú©Ø³ÛŒ Ù…Ø¯ÛŒØ±', 'Ú©ÛŒ Ù…Ø¯ÛŒØ±',
-                'Ø¨Ø§Ø²Ø±Ø³ Ú¯Ø±ÙˆÙ‡', 'Ø¨Ø§Ø²Ø±Ø³ Ø§ÛŒÙ† Ú¯Ø±ÙˆÙ‡', 'Ú†Ù‡ Ú©Ø³ÛŒ Ø¨Ø§Ø²Ø±Ø³', 'Ú©ÛŒ Ø¨Ø§Ø²Ø±Ø³',
-                'Ù†Ù‚Ø´ Ù‡Ø§ÛŒ Ú¯Ø±ÙˆÙ‡', 'Ù†Ù‚Ø´â€ŒÙ‡Ø§ÛŒ Ú¯Ø±ÙˆÙ‡',
+                'مدیر گروه', 'مدیر این گروه', 'چه کسی مدیر', 'کی مدیر',
+                'بازرس گروه', 'بازرس این گروه', 'چه کسی بازرس', 'کی بازرس',
+                'نقش های گروه', 'نقش‌های گروه',
             ],
             'members' => [
-                'Ø§Ø¹Ø¶Ø§ÛŒ ÙØ¹Ø§Ù„', 'ØªØ¹Ø¯Ø§Ø¯ Ø§Ø¹Ø¶Ø§', 'Ø§Ø¹Ø¶Ø§ Ú†Ù†Ø¯ Ù†ÙØ±', 'Ù†Ø§Ø¸Ø±Ù‡Ø§', 'Ù†Ø§Ø¸Ø± Ù‡Ø§', 'Ù…Ø¯ÛŒØ±Ù‡Ø§', 'Ø¨Ø§Ø²Ø±Ø³Ø§Ù†',
+                'اعضای فعال', 'تعداد اعضا', 'اعضا چند نفر', 'ناظرها', 'ناظر ها', 'مدیرها', 'بازرسان',
             ],
             'polls' => [
-                'Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ', 'Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ Ù‡Ø§', 'Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒâ€ŒÙ‡Ø§ÛŒ', 'poll',
+                'نظرسنجی', 'نظرسنجی ها', 'نظرسنجی‌های', 'poll',
             ],
             'elections' => [
-                'Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª', 'Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ø¯Ø§Ø®Ù„ÛŒ', 'Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ø³ÛŒØ³ØªÙ…ÛŒ', 'Ú©Ø§Ù†Ø¯ÛŒØ¯', 'Ø±Ø§ÛŒ Ú¯ÛŒØ±ÛŒ', 'Ø±Ø£ÛŒ Ú¯ÛŒØ±ÛŒ',
+                'انتخابات', 'انتخابات داخلی', 'انتخابات سیستمی', 'کاندید', 'رای گیری', 'رأی گیری',
             ],
             'candidates' => [
-                'Ú©Ø§Ù†Ø¯ÛŒØ¯Ø§', 'Ú©Ø§Ù†Ø¯ÛŒØ¯', 'Ù†Ø§Ù…Ø²Ø¯', 'Ø±Ø§ÛŒ Ú©Ø§Ù†Ø¯ÛŒØ¯Ø§', 'Ø±Ø£ÛŒ Ú©Ø§Ù†Ø¯ÛŒØ¯Ø§', 'Ù†ØªÛŒØ¬Ù‡ Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª',
+                'کاندیدا', 'کاندید', 'نامزد', 'رای کاندیدا', 'رأی کاندیدا', 'نتیجه انتخابات',
             ],
             'posts' => [
-                'Ù¾Ø³Øª', 'Ù¾Ø³Øª Ù‡Ø§', 'Ù¾Ø³Øªâ€ŒÙ‡Ø§ÛŒ Ú¯Ø±ÙˆÙ‡', 'ÙˆØ¨Ù„Ø§Ú¯ Ú¯Ø±ÙˆÙ‡',
+                'پست', 'پست ها', 'پست‌های گروه', 'وبلاگ گروه',
             ],
             'summary' => [
-                'Ø®Ù„Ø§ØµÙ‡ Ú¯Ø±ÙˆÙ‡', 'ÙˆØ¶Ø¹ÛŒØª Ú¯Ø±ÙˆÙ‡', 'Ú¯Ø²Ø§Ø±Ø´ Ú¯Ø±ÙˆÙ‡', 'Ø¢Ù…Ø§Ø± Ú¯Ø±ÙˆÙ‡', 'Ù‡Ù…Ù‡ Ú†ÛŒØ² Ú¯Ø±ÙˆÙ‡',
+                'خلاصه گروه', 'وضعیت گروه', 'گزارش گروه', 'آمار گروه', 'همه چیز گروه',
             ],
         ];
 
@@ -495,7 +507,7 @@ class NajmHodaGroupAssistantService
     protected function tryStructuredMetricQuery(string $text, Group $group, array $snapshot): ?string
     {
         $plain = mb_strtolower(trim($text));
-        $isCountQuestion = str_contains($plain, 'Ú†Ù†Ø¯') || str_contains($plain, 'ØªØ¹Ø¯Ø§Ø¯') || str_contains($plain, 'count');
+        $isCountQuestion = str_contains($plain, 'چند') || str_contains($plain, 'تعداد') || str_contains($plain, 'count');
         if (!$isCountQuestion) {
             return null;
         }
@@ -507,38 +519,38 @@ class NajmHodaGroupAssistantService
         $messages = $snapshot['messages'] ?? [];
         $actionItems = $snapshot['action_items'] ?? [];
 
-        if (str_contains($plain, 'Ù…Ø¯ÛŒØ±')) {
-            return "ØªØ¹Ø¯Ø§Ø¯ Ù…Ø¯ÛŒØ±Ø§Ù† ÙØ¹Ø§Ù„ Ú¯Ø±ÙˆÙ‡ Â«{$group->name}Â»: " . (int) ($members['by_role']['manager'] ?? 0);
+        if (str_contains($plain, 'مدیر')) {
+            return "تعداد مدیران فعال گروه «{$group->name}»: " . (int) ($members['by_role']['manager'] ?? 0);
         }
-        if (str_contains($plain, 'Ø¨Ø§Ø²Ø±Ø³')) {
-            return "ØªØ¹Ø¯Ø§Ø¯ Ø¨Ø§Ø²Ø±Ø³Ø§Ù† ÙØ¹Ø§Ù„ Ú¯Ø±ÙˆÙ‡ Â«{$group->name}Â»: " . (int) ($members['by_role']['inspector'] ?? 0);
+        if (str_contains($plain, 'بازرس')) {
+            return "تعداد بازرسان فعال گروه «{$group->name}»: " . (int) ($members['by_role']['inspector'] ?? 0);
         }
-        if (str_contains($plain, 'Ù†Ø§Ø¸Ø±')) {
-            return "ØªØ¹Ø¯Ø§Ø¯ Ù†Ø§Ø¸Ø±Ø§Ù† ÙØ¹Ø§Ù„ Ú¯Ø±ÙˆÙ‡ Â«{$group->name}Â»: " . (int) ($members['by_role']['observer'] ?? 0);
+        if (str_contains($plain, 'ناظر')) {
+            return "تعداد ناظران فعال گروه «{$group->name}»: " . (int) ($members['by_role']['observer'] ?? 0);
         }
-        if (str_contains($plain, 'Ø¹Ø¶Ùˆ')) {
-            return "ØªØ¹Ø¯Ø§Ø¯ Ø§Ø¹Ø¶Ø§ÛŒ ÙØ¹Ø§Ù„ Ú¯Ø±ÙˆÙ‡ Â«{$group->name}Â»: " . (int) ($members['active'] ?? 0);
+        if (str_contains($plain, 'عضو')) {
+            return "تعداد اعضای فعال گروه «{$group->name}»: " . (int) ($members['active'] ?? 0);
         }
-        if (str_contains($plain, 'Ù†Ø¸Ø±Ø³Ù†Ø¬')) {
-            return "ØªØ¹Ø¯Ø§Ø¯ Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒâ€ŒÙ‡Ø§ÛŒ ÙØ¹Ø§Ù„ Ú¯Ø±ÙˆÙ‡ Â«{$group->name}Â»: " . (int) ($polls['active'] ?? 0);
+        if (str_contains($plain, 'نظرسنج')) {
+            return "تعداد نظرسنجی‌های فعال گروه «{$group->name}»: " . (int) ($polls['active'] ?? 0);
         }
-        if (str_contains($plain, 'Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ø¯Ø§Ø®Ù„ÛŒ')) {
-            return "ØªØ¹Ø¯Ø§Ø¯ Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ø¯Ø§Ø®Ù„ÛŒ ÙØ¹Ø§Ù„ Ú¯Ø±ÙˆÙ‡ Â«{$group->name}Â»: " . (int) ($elections['internal_active'] ?? 0);
+        if (str_contains($plain, 'انتخابات داخلی')) {
+            return "تعداد انتخابات داخلی فعال گروه «{$group->name}»: " . (int) ($elections['internal_active'] ?? 0);
         }
-        if (str_contains($plain, 'Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ø³ÛŒØ³ØªÙ…ÛŒ')) {
-            return "ØªØ¹Ø¯Ø§Ø¯ Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ø³ÛŒØ³ØªÙ…ÛŒ Ø¨Ø§Ø² Ú¯Ø±ÙˆÙ‡ Â«{$group->name}Â»: " . (int) ($elections['system_open'] ?? 0);
+        if (str_contains($plain, 'انتخابات سیستمی')) {
+            return "تعداد انتخابات سیستمی باز گروه «{$group->name}»: " . (int) ($elections['system_open'] ?? 0);
         }
-        if (str_contains($plain, 'Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª')) {
-            return "ØªØ¹Ø¯Ø§Ø¯ Ú©Ù„ Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ú¯Ø±ÙˆÙ‡ Â«{$group->name}Â»: " . ((int) ($elections['internal_total'] ?? 0) + (int) ($elections['system_total'] ?? 0));
+        if (str_contains($plain, 'انتخابات')) {
+            return "تعداد کل انتخابات گروه «{$group->name}»: " . ((int) ($elections['internal_total'] ?? 0) + (int) ($elections['system_total'] ?? 0));
         }
-        if (str_contains($plain, 'Ù¾Ø³Øª')) {
-            return "ØªØ¹Ø¯Ø§Ø¯ Ú©Ù„ Ù¾Ø³Øªâ€ŒÙ‡Ø§ÛŒ Ú¯Ø±ÙˆÙ‡ Â«{$group->name}Â»: " . (int) ($posts['total'] ?? 0);
+        if (str_contains($plain, 'پست')) {
+            return "تعداد کل پست‌های گروه «{$group->name}»: " . (int) ($posts['total'] ?? 0);
         }
-        if (str_contains($plain, 'Ù¾ÛŒØ§Ù…')) {
-            return "ØªØ¹Ø¯Ø§Ø¯ Ù¾ÛŒØ§Ù…â€ŒÙ‡Ø§ÛŒ Ø§Ù…Ø±ÙˆØ² Ú¯Ø±ÙˆÙ‡ Â«{$group->name}Â»: " . (int) ($messages['today'] ?? 0);
+        if (str_contains($plain, 'پیام')) {
+            return "تعداد پیام‌های امروز گروه «{$group->name}»: " . (int) ($messages['today'] ?? 0);
         }
-        if (str_contains($plain, 'Ù…ØµÙˆØ¨Ù‡')) {
-            return "ØªØ¹Ø¯Ø§Ø¯ Ù…ØµÙˆØ¨Ø§Øª Ø¨Ø§Ø² Ú¯Ø±ÙˆÙ‡ Â«{$group->name}Â»: " . (int) ($actionItems['open'] ?? 0);
+        if (str_contains($plain, 'مصوبه')) {
+            return "تعداد مصوبات باز گروه «{$group->name}»: " . (int) ($actionItems['open'] ?? 0);
         }
 
         return null;
@@ -551,29 +563,29 @@ class NajmHodaGroupAssistantService
         if ($intent === 'members') {
             $members = $snapshot['members'] ?? [];
             return implode("\n", [
-                "Ø¢Ù…Ø§Ø± Ø§Ø¹Ø¶Ø§ÛŒ Ú¯Ø±ÙˆÙ‡ Â«{$group->name}Â»:",
-                "Ú©Ù„ Ø§Ø¹Ø¶Ø§: " . ($members['total'] ?? 0),
-                "Ø§Ø¹Ø¶Ø§ÛŒ ÙØ¹Ø§Ù„: " . ($members['active'] ?? 0),
-                "Ù†Ø§Ø¸Ø±Ø§Ù†: " . (($members['by_role']['observer'] ?? 0)),
-                "ÙØ¹Ø§Ù„â€ŒÙ‡Ø§: " . (($members['by_role']['active'] ?? 0)),
-                "Ø¨Ø§Ø²Ø±Ø³Ø§Ù†: " . (($members['by_role']['inspector'] ?? 0)),
-                "Ù…Ø¯ÛŒØ±Ø§Ù†: " . (($members['by_role']['manager'] ?? 0)),
+                "آمار اعضای گروه «{$group->name}»:",
+                "کل اعضا: " . ($members['total'] ?? 0),
+                "اعضای فعال: " . ($members['active'] ?? 0),
+                "ناظران: " . (($members['by_role']['observer'] ?? 0)),
+                "فعال‌ها: " . (($members['by_role']['active'] ?? 0)),
+                "بازرسان: " . (($members['by_role']['inspector'] ?? 0)),
+                "مدیران: " . (($members['by_role']['manager'] ?? 0)),
             ]);
         }
 
         if ($intent === 'polls') {
             $polls = $snapshot['polls'] ?? [];
             $lines = [
-                "ÙˆØ¶Ø¹ÛŒØª Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒâ€ŒÙ‡Ø§ÛŒ Ú¯Ø±ÙˆÙ‡ Â«{$group->name}Â»:",
-                "Ú©Ù„ Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒâ€ŒÙ‡Ø§: " . ($polls['total'] ?? 0),
-                "Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ ÙØ¹Ø§Ù„: " . ($polls['active'] ?? 0),
-                "Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ Ù¾Ø§ÛŒØ§Ù†â€ŒÛŒØ§ÙØªÙ‡: " . ($polls['expired'] ?? 0),
+                "وضعیت نظرسنجی‌های گروه «{$group->name}»:",
+                "کل نظرسنجی‌ها: " . ($polls['total'] ?? 0),
+                "نظرسنجی فعال: " . ($polls['active'] ?? 0),
+                "نظرسنجی پایان‌یافته: " . ($polls['expired'] ?? 0),
                 '',
-                'Ø¢Ø®Ø±ÛŒÙ† Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒâ€ŒÙ‡Ø§:',
+                'آخرین نظرسنجی‌ها:',
             ];
             $recent = $polls['recent'] ?? [];
             if (empty($recent)) {
-                $lines[] = '- Ù…ÙˆØ±Ø¯ÛŒ Ø«Ø¨Øª Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.';
+                $lines[] = '- موردی ثبت نشده است.';
             } else {
                 foreach ($recent as $idx => $item) {
                     $lines[] = ($idx + 1) . ". " . ($item['question'] ?? '-') . " | " . ($item['status_label'] ?? '-');
@@ -585,17 +597,17 @@ class NajmHodaGroupAssistantService
         if ($intent === 'elections') {
             $elections = $snapshot['elections'] ?? [];
             $lines = [
-                "ÙˆØ¶Ø¹ÛŒØª Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ú¯Ø±ÙˆÙ‡ Â«{$group->name}Â»:",
-                "Ú©Ù„ Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ø¯Ø§Ø®Ù„ÛŒ: " . ($elections['internal_total'] ?? 0),
-                "Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ø¯Ø§Ø®Ù„ÛŒ ÙØ¹Ø§Ù„: " . ($elections['internal_active'] ?? 0),
-                "Ú©Ù„ Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ø³ÛŒØ³ØªÙ…ÛŒ: " . ($elections['system_total'] ?? 0),
-                "Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ø³ÛŒØ³ØªÙ…ÛŒ Ø¨Ø§Ø²: " . ($elections['system_open'] ?? 0),
+                "وضعیت انتخابات گروه «{$group->name}»:",
+                "کل انتخابات داخلی: " . ($elections['internal_total'] ?? 0),
+                "انتخابات داخلی فعال: " . ($elections['internal_active'] ?? 0),
+                "کل انتخابات سیستمی: " . ($elections['system_total'] ?? 0),
+                "انتخابات سیستمی باز: " . ($elections['system_open'] ?? 0),
                 '',
-                'Ø¢Ø®Ø±ÛŒÙ† Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª:',
+                'آخرین انتخابات:',
             ];
             $recent = $elections['recent'] ?? [];
             if (empty($recent)) {
-                $lines[] = '- Ù…ÙˆØ±Ø¯ÛŒ Ø«Ø¨Øª Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.';
+                $lines[] = '- موردی ثبت نشده است.';
             } else {
                 foreach ($recent as $idx => $item) {
                     $lines[] = ($idx + 1) . ". " . ($item['title'] ?? '-') . " | " . ($item['kind_label'] ?? '-') . " | " . ($item['status_label'] ?? '-');
@@ -608,29 +620,29 @@ class NajmHodaGroupAssistantService
             $systemCandidates = $snapshot['elections']['system_current_candidates'] ?? [];
             $internalCandidates = $snapshot['elections']['internal_current_candidates'] ?? [];
             $lines = [
-                "ÙˆØ¶Ø¹ÛŒØª Ú©Ø§Ù†Ø¯ÛŒØ¯Ø§Ù‡Ø§ Ø¯Ø± Ú¯Ø±ÙˆÙ‡ Â«{$group->name}Â»:",
+                "وضعیت کاندیداها در گروه «{$group->name}»:",
                 '',
-                'Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ø³ÛŒØ³ØªÙ…ÛŒ Ø¬Ø§Ø±ÛŒ:',
+                'انتخابات سیستمی جاری:',
             ];
 
             if (empty($systemCandidates)) {
-                $lines[] = '- Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ø³ÛŒØ³ØªÙ…ÛŒ Ø¬Ø§Ø±ÛŒ ÛŒØ§ Ú©Ø§Ù†Ø¯ÛŒØ¯Ø§ÛŒ Ø«Ø¨Øªâ€ŒØ´Ø¯Ù‡ ÙˆØ¬ÙˆØ¯ Ù†Ø¯Ø§Ø±Ø¯.';
+                $lines[] = '- انتخابات سیستمی جاری یا کاندیدای ثبت‌شده وجود ندارد.';
             } else {
                 foreach ($systemCandidates as $idx => $cand) {
                     $lines[] = ($idx + 1) . ". " . ($cand['name'] ?? '-') .
-                        " | Ø±Ø£ÛŒ Ù…Ø¯ÛŒØ±: " . ((int) ($cand['manager_votes'] ?? 0)) .
-                        " | Ø±Ø£ÛŒ Ø¨Ø§Ø²Ø±Ø³: " . ((int) ($cand['inspector_votes'] ?? 0)) .
-                        " | Ù…Ø¬Ù…ÙˆØ¹: " . ((int) ($cand['total_votes'] ?? 0));
+                        " | رأی مدیر: " . ((int) ($cand['manager_votes'] ?? 0)) .
+                        " | رأی بازرس: " . ((int) ($cand['inspector_votes'] ?? 0)) .
+                        " | مجموع: " . ((int) ($cand['total_votes'] ?? 0));
                 }
             }
 
             $lines[] = '';
-            $lines[] = 'Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ø¯Ø§Ø®Ù„ÛŒ Ø¬Ø§Ø±ÛŒ:';
+            $lines[] = 'انتخابات داخلی جاری:';
             if (empty($internalCandidates)) {
-                $lines[] = '- Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ø¯Ø§Ø®Ù„ÛŒ Ø¬Ø§Ø±ÛŒ ÛŒØ§ Ú¯Ø²ÛŒÙ†Ù‡ Ø«Ø¨Øªâ€ŒØ´Ø¯Ù‡ ÙˆØ¬ÙˆØ¯ Ù†Ø¯Ø§Ø±Ø¯.';
+                $lines[] = '- انتخابات داخلی جاری یا گزینه ثبت‌شده وجود ندارد.';
             } else {
                 foreach ($internalCandidates as $idx => $cand) {
-                    $lines[] = ($idx + 1) . ". " . ($cand['name'] ?? '-') . " | ØªØ¹Ø¯Ø§Ø¯ Ø±Ø£ÛŒ: " . ((int) ($cand['votes'] ?? 0));
+                    $lines[] = ($idx + 1) . ". " . ($cand['name'] ?? '-') . " | تعداد رأی: " . ((int) ($cand['votes'] ?? 0));
                 }
             }
 
@@ -640,18 +652,18 @@ class NajmHodaGroupAssistantService
         if ($intent === 'posts') {
             $posts = $snapshot['posts'] ?? [];
             $lines = [
-                "ÙˆØ¶Ø¹ÛŒØª Ù¾Ø³Øªâ€ŒÙ‡Ø§ÛŒ Ú¯Ø±ÙˆÙ‡ Â«{$group->name}Â»:",
-                "Ú©Ù„ Ù¾Ø³Øªâ€ŒÙ‡Ø§: " . ($posts['total'] ?? 0),
-                "Ù¾Ø³Øªâ€ŒÙ‡Ø§ÛŒ Ø§ÛŒÙ† Ù…Ø§Ù‡: " . ($posts['this_month'] ?? 0),
+                "وضعیت پست‌های گروه «{$group->name}»:",
+                "کل پست‌ها: " . ($posts['total'] ?? 0),
+                "پست‌های این ماه: " . ($posts['this_month'] ?? 0),
                 '',
-                'Ø¢Ø®Ø±ÛŒÙ† Ù¾Ø³Øªâ€ŒÙ‡Ø§:',
+                'آخرین پست‌ها:',
             ];
             $recent = $posts['recent'] ?? [];
             if (empty($recent)) {
-                $lines[] = '- Ù…ÙˆØ±Ø¯ÛŒ Ø«Ø¨Øª Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.';
+                $lines[] = '- موردی ثبت نشده است.';
             } else {
                 foreach ($recent as $idx => $item) {
-                    $lines[] = ($idx + 1) . ". " . ($item['title'] ?? '-') . " | Ù†ÙˆÛŒØ³Ù†Ø¯Ù‡: " . ($item['author'] ?? '-');
+                    $lines[] = ($idx + 1) . ". " . ($item['title'] ?? '-') . " | نویسنده: " . ($item['author'] ?? '-');
                 }
             }
             return implode("\n", $lines);
@@ -666,14 +678,14 @@ class NajmHodaGroupAssistantService
             $actionItems = $snapshot['action_items'] ?? [];
 
             return implode("\n", [
-                "Ø®Ù„Ø§ØµÙ‡ ÙˆØ¶Ø¹ÛŒØª Ú¯Ø±ÙˆÙ‡ Â«{$group->name}Â»:",
-                "Ø§Ø¹Ø¶Ø§: Ú©Ù„ " . ($members['total'] ?? 0) . " | ÙØ¹Ø§Ù„ " . ($members['active'] ?? 0) . " | Ù…Ø¯ÛŒØ± " . (($members['by_role']['manager'] ?? 0)) . " | Ø¨Ø§Ø²Ø±Ø³ " . (($members['by_role']['inspector'] ?? 0)),
-                "Ù¾ÛŒØ§Ù…â€ŒÙ‡Ø§: Ú©Ù„ " . ($messages['total'] ?? 0) . " | Ø§Ù…Ø±ÙˆØ² " . ($messages['today'] ?? 0) . " | Ø§ÛŒÙ† Ù‡ÙØªÙ‡ " . ($messages['this_week'] ?? 0),
-                "Ù¾Ø³Øªâ€ŒÙ‡Ø§: Ú©Ù„ " . ($posts['total'] ?? 0) . " | Ø§ÛŒÙ† Ù…Ø§Ù‡ " . ($posts['this_month'] ?? 0),
-                "Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒâ€ŒÙ‡Ø§: Ú©Ù„ " . ($polls['total'] ?? 0) . " | ÙØ¹Ø§Ù„ " . ($polls['active'] ?? 0),
-                "Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ø¯Ø§Ø®Ù„ÛŒ: Ú©Ù„ " . ($elections['internal_total'] ?? 0) . " | ÙØ¹Ø§Ù„ " . ($elections['internal_active'] ?? 0),
-                "Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ø³ÛŒØ³ØªÙ…ÛŒ: Ú©Ù„ " . ($elections['system_total'] ?? 0) . " | Ø¨Ø§Ø² " . ($elections['system_open'] ?? 0),
-                "Ù…ØµÙˆØ¨Ø§Øª: Ú©Ù„ " . ($actionItems['total'] ?? 0) . " | Ø¨Ø§Ø² " . ($actionItems['open'] ?? 0) . " | Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯Ù‡ " . ($actionItems['done'] ?? 0),
+                "خلاصه وضعیت گروه «{$group->name}»:",
+                "اعضا: کل " . ($members['total'] ?? 0) . " | فعال " . ($members['active'] ?? 0) . " | مدیر " . (($members['by_role']['manager'] ?? 0)) . " | بازرس " . (($members['by_role']['inspector'] ?? 0)),
+                "پیام‌ها: کل " . ($messages['total'] ?? 0) . " | امروز " . ($messages['today'] ?? 0) . " | این هفته " . ($messages['this_week'] ?? 0),
+                "پست‌ها: کل " . ($posts['total'] ?? 0) . " | این ماه " . ($posts['this_month'] ?? 0),
+                "نظرسنجی‌ها: کل " . ($polls['total'] ?? 0) . " | فعال " . ($polls['active'] ?? 0),
+                "انتخابات داخلی: کل " . ($elections['internal_total'] ?? 0) . " | فعال " . ($elections['internal_active'] ?? 0),
+                "انتخابات سیستمی: کل " . ($elections['system_total'] ?? 0) . " | باز " . ($elections['system_open'] ?? 0),
+                "مصوبات: کل " . ($actionItems['total'] ?? 0) . " | باز " . ($actionItems['open'] ?? 0) . " | انجام شده " . ($actionItems['done'] ?? 0),
             ]);
         }
 
@@ -687,9 +699,9 @@ class NajmHodaGroupAssistantService
         $inspectors = $leaders['inspectors'] ?? [];
 
         $lines = [
-            "Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ù…Ø¯ÛŒØ±ÛŒØª Ú¯Ø±ÙˆÙ‡ Â«{$group->name}Â»:",
+            "اطلاعات مدیریت گروه «{$group->name}»:",
             '',
-            'Ù…Ø¯ÛŒØ±Ø§Ù† Ú¯Ø±ÙˆÙ‡:',
+            'مدیران گروه:',
         ];
 
         if (!empty($managers)) {
@@ -697,21 +709,21 @@ class NajmHodaGroupAssistantService
                 $lines[] = ($idx + 1) . ". {$name}";
             }
         } else {
-            $lines[] = '- Ù…Ø¯ÛŒØ± ÙØ¹Ø§Ù„ÛŒ Ø«Ø¨Øª Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.';
+            $lines[] = '- مدیر فعالی ثبت نشده است.';
         }
 
         $lines[] = '';
-        $lines[] = 'Ø¨Ø§Ø²Ø±Ø³Ø§Ù† Ú¯Ø±ÙˆÙ‡:';
+        $lines[] = 'بازرسان گروه:';
         if (!empty($inspectors)) {
             foreach ($inspectors as $idx => $name) {
                 $lines[] = ($idx + 1) . ". {$name}";
             }
         } else {
-            $lines[] = '- Ø¨Ø§Ø²Ø±Ø³ ÙØ¹Ø§Ù„ÛŒ Ø«Ø¨Øª Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.';
+            $lines[] = '- بازرس فعالی ثبت نشده است.';
         }
 
         $lines[] = '';
-        $lines[] = "ØªØ¹Ø¯Ø§Ø¯ Ø§Ø¹Ø¶Ø§ÛŒ ÙØ¹Ø§Ù„ Ú¯Ø±ÙˆÙ‡: " . ($leaders['active_members_count'] ?? 0);
+        $lines[] = "تعداد اعضای فعال گروه: " . ($leaders['active_members_count'] ?? 0);
 
         return implode("\n", $lines);
     }
@@ -795,7 +807,7 @@ class NajmHodaGroupAssistantService
                     'id' => $poll->id,
                     'question' => $poll->question,
                     'status' => $active ? 'active' : 'expired',
-                    'status_label' => $active ? 'ÙØ¹Ø§Ù„' : 'Ù¾Ø§ÛŒØ§Ù†â€ŒÛŒØ§ÙØªÙ‡',
+                    'status_label' => $active ? 'فعال' : 'پایان‌یافته',
                     'options' => $poll->options->map(function ($option) {
                         return [
                             'text' => $option->text,
@@ -822,18 +834,18 @@ class NajmHodaGroupAssistantService
                 return [
                     'title' => $row->question,
                     'kind' => 'internal',
-                    'kind_label' => 'Ø¯Ø§Ø®Ù„ÛŒ',
-                    'status_label' => $active ? 'ÙØ¹Ø§Ù„' : 'Ù¾Ø§ÛŒØ§Ù†â€ŒÛŒØ§ÙØªÙ‡',
+                    'kind_label' => 'داخلی',
+                    'status_label' => $active ? 'فعال' : 'پایان‌یافته',
                     'at' => optional($row->created_at)->toIso8601String(),
                 ];
             });
         $recentSystem = (clone $systemElectionQuery)->latest('id')->take(3)->get(['id', 'is_closed', 'created_at'])
             ->map(function ($row) {
                 return [
-                    'title' => 'Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª Ø³ÛŒØ³ØªÙ…ÛŒ #' . $row->id,
+                    'title' => 'انتخابات سیستمی #' . $row->id,
                     'kind' => 'system',
-                    'kind_label' => 'Ø³ÛŒØ³ØªÙ…ÛŒ',
-                    'status_label' => ((int) $row->is_closed === 1) ? 'Ø¨Ø³ØªÙ‡' : 'Ø¨Ø§Ø²',
+                    'kind_label' => 'سیستمی',
+                    'status_label' => ((int) $row->is_closed === 1) ? 'بسته' : 'باز',
                     'at' => optional($row->created_at)->toIso8601String(),
                 ];
             });
@@ -999,7 +1011,7 @@ class NajmHodaGroupAssistantService
             return [
                 'decision' => 'skipped',
                 'reason' => 'private_message_disabled',
-                'group_reply' => 'Ø§Ø±Ø³Ø§Ù„ Ù¾ÛŒØ§Ù… Ø®ØµÙˆØµÛŒ Ø¨Ø±Ø§ÛŒ Ø§ÛŒÙ† Ú¯Ø±ÙˆÙ‡ ØºÛŒØ±ÙØ¹Ø§Ù„ Ø§Ø³Øª.',
+                'group_reply' => '????? ???? ????? ???? ??? ???? ??????? ???.',
                 'context' => ['source' => 'group_policy'],
             ];
         }
@@ -1009,7 +1021,7 @@ class NajmHodaGroupAssistantService
             return [
                 'decision' => 'skipped',
                 'reason' => 'private_message_target_not_found',
-                'group_reply' => 'Ù†Ø§Ù… Ú©Ø§Ø±Ø¨Ø± Ù…Ù‚ØµØ¯ Ù…Ø´Ø®Øµ Ù†Ø´Ø¯. Ù„Ø·ÙØ§ Ù†Ø§Ù… Ø¹Ø¶Ùˆ Ø±Ø§ ÙˆØ§Ø¶Ø­ Ø¨Ù†ÙˆÛŒØ³ÛŒØ¯.',
+                'group_reply' => '??? ????? ???? ???? ???. ???? ??? ??? ?? ???? ???????.',
                 'context' => ['source' => 'intent_parse'],
             ];
         }
@@ -1020,7 +1032,7 @@ class NajmHodaGroupAssistantService
             return [
                 'decision' => 'skipped',
                 'reason' => 'private_message_invalid_target',
-                'group_reply' => 'Ø§Ø±Ø³Ø§Ù„ Ù¾ÛŒØ§Ù… Ø®ØµÙˆØµÛŒ Ø¨Ù‡ Ø®ÙˆØ¯ Ù†Ø¬Ù… Ù‡Ø¯Ø§ Ù…Ù…Ú©Ù† Ù†ÛŒØ³Øª.',
+                'group_reply' => '????? ???? ????? ?? ??? ??? ??? ???? ????.',
                 'context' => ['target_user_id' => $target->id],
             ];
         }
@@ -1030,64 +1042,80 @@ class NajmHodaGroupAssistantService
             $mode = 'direct';
         }
 
-        if ($mode === 'request') {
-            $request = ChatRequest::query()
-                ->where('sender_id', $bot->id)
-                ->where('receiver_id', $target->id)
-                ->first();
+        $executorPolicy = $this->getActionExecutorPolicy($config);
+        $dryRun = (bool) ($executorPolicy['dry_run'] ?? false);
 
-            if (!$request) {
-                ChatRequest::create([
-                    'sender_id' => $bot->id,
-                    'receiver_id' => $target->id,
-                    'message' => mb_substr($privateText, 0, 1000),
-                    'status' => 'pending',
-                ]);
-            }
-
-            return [
-                'decision' => 'executed',
-                'reason' => 'private_chat_request_sent',
-                'group_reply' => "Ø¨Ø±Ø§ÛŒ {$target->fullName()} Ø¯Ø±Ø®ÙˆØ§Ø³Øª Ú¯ÙØªÚ¯ÙˆÛŒ Ø®ØµÙˆØµÛŒ Ø§Ø±Ø³Ø§Ù„ Ø´Ø¯.",
-                'context' => [
-                    'mode' => 'request',
-                    'target_user_id' => $target->id,
-                ],
-            ];
-        }
-
-        $privateGroup = $this->findOrCreatePrivateChatGroup($target, $bot);
-        $directMessage = Message::create([
-            'group_id' => $privateGroup->id,
-            'user_id' => $bot->id,
-            'message' => nl2br(e($privateText)),
-        ]);
-        event(new MessageCreated($directMessage, $privateGroup, $bot));
-
-        return [
-            'decision' => 'executed',
-            'reason' => 'private_message_sent',
-            'group_reply' => "Ù¾ÛŒØ§Ù… Ø®ØµÙˆØµÛŒ Ø¨Ø±Ø§ÛŒ {$target->fullName()} Ø§Ø±Ø³Ø§Ù„ Ø´Ø¯.",
-            'context' => [
-                'mode' => 'direct',
-                'target_user_id' => $target->id,
-                'private_group_id' => $privateGroup->id,
-                'private_message_id' => $directMessage->id,
+        return $this->groupActionExecutor->execute(
+            'private_message',
+            [
+                'group_id' => $group->id,
+                'trigger_message_id' => (int) $trigger->id,
+                'requester_user_id' => (int) $trigger->user_id,
+                'target_user_id' => (int) $target->id,
+                'mode' => $mode,
             ],
-        ];
+            $dryRun,
+            function () use ($mode, $target, $bot, $privateText) {
+                if ($mode === 'request') {
+                    $request = ChatRequest::query()
+                        ->where('sender_id', $bot->id)
+                        ->where('receiver_id', $target->id)
+                        ->first();
+
+                    if (!$request) {
+                        ChatRequest::create([
+                            'sender_id' => $bot->id,
+                            'receiver_id' => $target->id,
+                            'message' => mb_substr($privateText, 0, 1000),
+                            'status' => 'pending',
+                        ]);
+                    }
+
+                    return [
+                        'decision' => 'executed',
+                        'reason' => 'private_chat_request_sent',
+                        'group_reply' => "???? {$target->fullName()} ??????? ?????? ????? ????? ??.",
+                        'context' => [
+                            'mode' => 'request',
+                            'target_user_id' => $target->id,
+                        ],
+                    ];
+                }
+
+                $privateGroup = $this->findOrCreatePrivateChatGroup($target, $bot);
+                $directMessage = Message::create([
+                    'group_id' => $privateGroup->id,
+                    'user_id' => $bot->id,
+                    'message' => nl2br(e($privateText)),
+                ]);
+                event(new MessageCreated($directMessage, $privateGroup, $bot));
+
+                return [
+                    'decision' => 'executed',
+                    'reason' => 'private_message_sent',
+                    'group_reply' => "???? ????? ???? {$target->fullName()} ????? ??.",
+                    'context' => [
+                        'mode' => 'direct',
+                        'target_user_id' => $target->id,
+                        'private_group_id' => $privateGroup->id,
+                        'private_message_id' => $directMessage->id,
+                    ],
+                ];
+            }
+        );
     }
 
     protected function hasPrivateMessageIntent(string $text): bool
     {
         $plain = mb_strtolower(trim($text));
         $keywords = [
-            'Ù¾ÛŒØ§Ù… Ø®ØµÙˆØµÛŒ',
-            'Ù¾ÛŒÙˆÛŒ',
+            'پیام خصوصی',
+            'پیوی',
             'pv',
-            'Ø¯Ø§ÛŒØ±Ú©Øª',
+            'دایرکت',
             'dm',
-            'Ú†Øª Ø®ØµÙˆØµÛŒ',
-            'Ø¯Ø±Ø®ÙˆØ§Ø³Øª Ú†Øª',
+            'چت خصوصی',
+            'درخواست چت',
         ];
 
         foreach ($keywords as $keyword) {
@@ -1131,7 +1159,7 @@ class NajmHodaGroupAssistantService
         }
 
         $privateText = null;
-        if (preg_match('/["â€œ](.+?)["â€]/u', $text, $m)) {
+        if (preg_match('/["“](.+?)["”]/u', $text, $m)) {
             $privateText = trim($m[1]);
         }
         if ($privateText === null || $privateText === '') {
@@ -1142,7 +1170,7 @@ class NajmHodaGroupAssistantService
 
         if ($privateText === null || $privateText === '') {
             $raw = trim(strip_tags((string) $trigger->message));
-            $privateText = "Ù¾ÛŒØ§Ù… Ø§Ø² Ø·Ø±Ù Ù†Ø¬Ù… Ù‡Ø¯Ø§ Ø¨Ø±Ø§ÛŒ Ø´Ù…Ø§:\n" . mb_substr($raw, 0, 800);
+            $privateText = "پیام از طرف نجم هدا برای شما:\n" . mb_substr($raw, 0, 800);
         }
 
         return [
@@ -1172,7 +1200,7 @@ class NajmHodaGroupAssistantService
 
         if (!$privateGroup) {
             $privateGroup = Group::create([
-                'name' => 'Ú¯ÙØªÚ¯ÙˆÛŒ Ø®ØµÙˆØµÛŒ ' . trim($target->fullName()),
+                'name' => 'گفتگوی خصوصی ' . trim($target->fullName()),
                 'description' => 'Private chat between Najm Hoda and ' . trim($target->fullName()),
                 'group_type' => 'private',
                 'location_level' => '10',
@@ -1201,39 +1229,21 @@ class NajmHodaGroupAssistantService
         string $cleanText
     ): ?array {
         $policy = $this->getActionExecutorPolicy($config);
-        if (!(bool) ($policy['enabled'] ?? false)) {
-            return null;
-        }
-
         if (!$this->hasGroupActionIntent($cleanText)) {
             return null;
         }
 
-        if (!$this->isActionRequesterAllowed($group, (int) $trigger->user_id, (array) ($policy['permitted_roles'] ?? [2, 3]))) {
+        $actionPolicyCheck = $this->policyGate->ensureActionExecutionAllowed($group, (int) $trigger->user_id, $policy);
+        if (!(bool) ($actionPolicyCheck['allowed'] ?? false)) {
             return [
-                'decision' => 'skipped',
-                'reason' => 'action_requester_not_allowed',
-                'group_reply' => 'Ø¨Ø±Ø§ÛŒ Ø§Ø¬Ø±Ø§ÛŒ Ø§Ú©Ø´Ù†â€ŒÙ‡Ø§ÛŒ Ú¯Ø±ÙˆÙ‡ÛŒ Ø¯Ø³ØªØ±Ø³ÛŒ Ù„Ø§Ø²Ù… Ø±Ø§ Ù†Ø¯Ø§Ø±ÛŒØ¯.',
-                'context' => ['requester_user_id' => (int) $trigger->user_id],
+                'decision' => (string) ($actionPolicyCheck['decision'] ?? 'skipped'),
+                'reason' => (string) ($actionPolicyCheck['reason'] ?? 'action_policy_denied'),
+                'group_reply' => (string) ($actionPolicyCheck['group_reply'] ?? '????? ??? ????? ???? ????.'),
+                'context' => (array) ($actionPolicyCheck['context'] ?? []),
             ];
         }
 
-        $hourlyActions = NajmHodaGroupActionLog::query()
-            ->where('group_id', $group->id)
-            ->where('action_type', 'group_action_execute')
-            ->where('decision', 'executed')
-            ->where('created_at', '>=', now()->subHour())
-            ->count();
-        if ($hourlyActions >= (int) ($policy['max_actions_per_hour'] ?? 6)) {
-            return [
-                'decision' => 'skipped',
-                'reason' => 'action_rate_limited',
-                'group_reply' => 'Ø³Ù‚Ù Ø§Ø¬Ø±Ø§ÛŒ Ø§Ú©Ø´Ù†â€ŒÙ‡Ø§ÛŒ Ø®ÙˆØ¯Ú©Ø§Ø± Ø§ÛŒÙ† Ú¯Ø±ÙˆÙ‡ Ø¯Ø± Ø§ÛŒÙ† Ø³Ø§Ø¹Øª Ù¾Ø± Ø´Ø¯Ù‡ Ø§Ø³Øª.',
-                'context' => ['max_actions_per_hour' => (int) ($policy['max_actions_per_hour'] ?? 6)],
-            ];
-        }
-
-        if ((bool) ($policy['propose_before_execute'] ?? false)) {
+        if ($this->policyGate->shouldProposeBeforeExecute($policy)) {
             return [
                 'decision' => 'proposed',
                 'reason' => 'propose_before_execute',
@@ -1242,12 +1252,21 @@ class NajmHodaGroupAssistantService
             ];
         }
 
-        $execution = $this->executeStructuredGroupAction($group, $trigger, $bot, $cleanText, $policy);
+        $execution = $this->groupActionExecutor->execute(
+            'group_action_execute',
+            [
+                'group_id' => $group->id,
+                'trigger_message_id' => (int) $trigger->id,
+                'requester_user_id' => (int) $trigger->user_id,
+            ],
+            (bool) ($policy['dry_run'] ?? false),
+            fn (): ?array => $this->executeStructuredGroupAction($group, $trigger, $bot, $cleanText, $policy)
+        );
         if ($execution === null) {
             return [
                 'decision' => 'skipped',
                 'reason' => 'action_parse_failed',
-                'group_reply' => 'Ø¯Ø³ØªÙˆØ± Ø§Ú©Ø´Ù† ÙˆØ§Ø¶Ø­ Ù†Ø¨ÙˆØ¯. Ù„Ø·ÙØ§ Ø¨Ø§ Ø§Ù„Ú¯ÙˆÛŒ Ù…Ø´Ø®Øµ Ø¯Ø³ØªÙˆØ± Ø¨Ø¯Ù‡ÛŒØ¯ (Ù¾Ø³Øª/Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ/Ú©Ø§Ù…Ù†Øª/ÙˆØ§Ú©Ù†Ø´).',
+                'group_reply' => 'دستور اکشن واضح نبود. لطفا با الگوی مشخص دستور بدهید (پست/نظرسنجی/کامنت/واکنش).',
                 'context' => ['source' => 'parser'],
             ];
         }
@@ -1265,6 +1284,8 @@ class NajmHodaGroupAssistantService
                 && (bool) config('najm-hoda.group_assistant.action_executor.enabled', true),
             'propose_before_execute' => (bool) ($executor['propose_before_execute'] ?? config('najm-hoda.group_assistant.action_executor.propose_before_execute', false))
                 && (bool) config('najm-hoda.group_assistant.action_executor.propose_before_execute', false),
+            'dry_run' => (bool) ($executor['dry_run'] ?? config('najm-hoda.group_assistant.action_executor.dry_run', false))
+                || (bool) config('najm-hoda.group_assistant.action_executor.dry_run', false),
             'allow_create_post' => (bool) ($executor['allow_create_post'] ?? config('najm-hoda.group_assistant.action_executor.allow_create_post', true))
                 && (bool) config('najm-hoda.group_assistant.action_executor.allow_create_post', true),
             'allow_create_poll' => (bool) ($executor['allow_create_poll'] ?? config('najm-hoda.group_assistant.action_executor.allow_create_poll', true))
@@ -1289,14 +1310,7 @@ class NajmHodaGroupAssistantService
 
     protected function isActionRequesterAllowed(Group $group, int $requesterUserId, array $permittedRoles): bool
     {
-        $role = GroupUser::query()
-            ->where('group_id', $group->id)
-            ->where('user_id', $requesterUserId)
-            ->where('status', 1)
-            ->value('role');
-
-        $allowedRoles = array_map(fn ($r) => (int) $r, $permittedRoles);
-        return in_array((int) $role, $allowedRoles, true);
+        return $this->policyGate->isUserAllowedByRoles($group, $requesterUserId, $permittedRoles);
     }
 
     protected function executeStructuredGroupAction(
@@ -1381,11 +1395,11 @@ class NajmHodaGroupAssistantService
 
     protected function executeCreatePostAction(Group $group, Message $trigger, User $bot, string $text, array $policy): array
     {
-        if (!(bool) ($policy['allow_create_post'] ?? true)) {
+        if (!$this->policyGate->isCapabilityEnabled($policy, 'create_post')) {
             return [
                 'decision' => 'skipped',
                 'reason' => 'create_post_disabled',
-                'group_reply' => 'Ø§ÛŒØ¬Ø§Ø¯ Ù¾Ø³Øª ØªÙˆØ³Ø· Ù†Ø¬Ù… Ù‡Ø¯Ø§ Ø¯Ø± Ø§ÛŒÙ† Ú¯Ø±ÙˆÙ‡ ØºÛŒØ±ÙØ¹Ø§Ù„ Ø§Ø³Øª.',
+                'group_reply' => 'ایجاد پست توسط نجم هدا در این گروه غیرفعال است.',
                 'context' => ['action' => 'create_post'],
             ];
         }
@@ -1393,10 +1407,10 @@ class NajmHodaGroupAssistantService
         $title = null;
         $content = null;
 
-        if (preg_match('/Ø¹Ù†ÙˆØ§Ù†\s*[:ï¼š]\s*(.+?)(?:\||\n|Ù…ØªÙ†\s*[:ï¼š]|$)/u', $text, $m)) {
+        if (preg_match('/عنوان\s*[:：]\s*(.+?)(?:\||\n|متن\s*[:：]|$)/u', $text, $m)) {
             $title = trim($m[1]);
         }
-        if (preg_match('/Ù…ØªÙ†\s*[:ï¼š]\s*(.+)$/us', $text, $m)) {
+        if (preg_match('/متن\s*[:：]\s*(.+)$/us', $text, $m)) {
             $content = trim($m[1]);
         }
 
@@ -1417,7 +1431,7 @@ class NajmHodaGroupAssistantService
             return [
                 'decision' => 'failed',
                 'reason' => 'missing_post_category',
-                'group_reply' => 'Ø¨Ø±Ø§ÛŒ Ø§ÛŒØ¬Ø§Ø¯ Ù¾Ø³ØªØŒ Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒ ÙØ¹Ø§Ù„ ÛŒØ§ÙØª Ù†Ø´Ø¯.',
+                'group_reply' => 'برای ایجاد پست، دسته‌بندی فعال یافت نشد.',
                 'context' => ['action' => 'create_post'],
             ];
         }
@@ -1434,7 +1448,7 @@ class NajmHodaGroupAssistantService
         return [
             'decision' => 'executed',
             'reason' => 'post_created',
-            'group_reply' => "Ù¾Ø³Øª Ø¬Ø¯ÛŒØ¯ Ø«Ø¨Øª Ø´Ø¯. Ø´Ù†Ø§Ø³Ù‡ Ù¾Ø³Øª: {$post->id}",
+            'group_reply' => "پست جدید ثبت شد. شناسه پست: {$post->id}",
             'context' => ['action' => 'create_post', 'post_id' => $post->id],
         ];
     }
@@ -1462,27 +1476,27 @@ class NajmHodaGroupAssistantService
 
     protected function buildAutoPostDraft(Group $group, string $prompt): array
     {
-        $groupName = trim((string) ($group->name ?? 'Ú¯Ø±ÙˆÙ‡'));
+        $groupName = trim((string) ($group->name ?? 'گروه'));
         $today = verta(now())->format('Y/m/d');
 
-        $title = "Ø´Ø±ÙˆØ¹ Ù‡Ù…Ø§Ù‡Ù†Ú¯ Ù‡Ù…Ú©Ø§Ø±ÛŒ Ø¯Ø± {$groupName}";
-        $content = "Ø³Ù„Ø§Ù… Ø¨Ù‡ Ø§Ø¹Ø¶Ø§ÛŒ {$groupName}\n\n"
-            . "Ø¨Ø±Ø§ÛŒ Ø´Ø±ÙˆØ¹ Ù‡Ù…Ø§Ù‡Ù†Ú¯â€ŒØªØ± ÙØ¹Ø§Ù„ÛŒØª Ú¯Ø±ÙˆÙ‡ØŒ Ø§ÛŒÙ† Ú†Ø§Ø±Ú†ÙˆØ¨ Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯ÛŒ Ø±Ø§ Ø§Ø¬Ø±Ø§ Ù…ÛŒâ€ŒÚ©Ù†ÛŒÙ…:\n\n"
-            . "1) Ù‡Ø¯Ù Ú©ÙˆØªØ§Ù‡â€ŒÙ…Ø¯Øª Ø§ÛŒÙ† Ù‡ÙØªÙ‡:\n"
-            . "- Ù‡Ø± Ø¹Ø¶Ùˆ ÛŒÚ© Ø§ÙˆÙ„ÙˆÛŒØª Ø¹Ù…Ù„ÛŒ Ùˆ Ù‚Ø§Ø¨Ù„ Ø§Ù†Ø¯Ø§Ø²Ù‡â€ŒÚ¯ÛŒØ±ÛŒ Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯ Ø¨Ø¯Ù‡Ø¯.\n\n"
-            . "2) Ø´ÙØ§ÙÛŒØª Ø¯Ø± ØªØµÙ…ÛŒÙ…â€ŒÚ¯ÛŒØ±ÛŒ:\n"
-            . "- Ø¬Ù…Ø¹â€ŒØ¨Ù†Ø¯ÛŒ ØªØµÙ…ÛŒÙ…â€ŒÙ‡Ø§ Ø¯Ø± Ù‚Ø§Ù„Ø¨ Ù…ØµÙˆØ¨Ù‡ Ø«Ø¨Øª Ù…ÛŒâ€ŒØ´ÙˆØ¯.\n"
-            . "- Ù…Ø³Ø¦ÙˆÙ„ Ù‡Ø± Ù…ØµÙˆØ¨Ù‡ Ùˆ Ø²Ù…Ø§Ù† Ø§Ù†Ø¬Ø§Ù… Ù…Ø´Ø®Øµ Ù…ÛŒâ€ŒØ´ÙˆØ¯.\n\n"
-            . "3) Ù…Ø´Ø§Ø±Ú©Øª Ù…Ù†Ø¸Ù…:\n"
-            . "- Ø§Ú¯Ø± Ù†Ú©ØªÙ‡ ÛŒØ§ Ù†Ù‚Ø¯ÛŒ Ø¯Ø§Ø±ÛŒØ¯ØŒ Ø²ÛŒØ± Ù‡Ù…ÛŒÙ† Ù¾Ø³Øª Ø«Ø¨Øª Ú©Ù†ÛŒØ¯.\n"
-            . "- Ø§Ú¯Ø± Ù†ÛŒØ§Ø² Ø¨Ø§Ø´Ø¯ Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ Ø±Ø³Ù…ÛŒ Ø¨Ø±Ú¯Ø²Ø§Ø± Ù…ÛŒâ€ŒÚ©Ù†ÛŒÙ….\n\n"
-            . "4) Ù…Ø³ÛŒØ± Ø§Ø¬Ø±Ø§:\n"
-            . "- Ø§ÙˆÙ„ÙˆÛŒØªâ€ŒÙ‡Ø§ÛŒ Ø¬Ù…Ø¹â€ŒØ¢ÙˆØ±ÛŒâ€ŒØ´Ø¯Ù‡ØŒ Ø¨Ù‡ Ø¨Ø±Ù†Ø§Ù…Ù‡ Ø§Ù‚Ø¯Ø§Ù… Ú¯Ø±ÙˆÙ‡ ØªØ¨Ø¯ÛŒÙ„ Ù…ÛŒâ€ŒØ´ÙˆØ¯.\n\n"
-            . "ØªØ§Ø±ÛŒØ® Ø«Ø¨Øª: {$today}\n"
-            . "Ù†Ø¬Ù…â€ŒÙ‡Ø¯Ø§";
+        $title = "شروع هماهنگ همکاری در {$groupName}";
+        $content = "سلام به اعضای {$groupName}\n\n"
+            . "برای شروع هماهنگ‌تر فعالیت گروه، این چارچوب پیشنهادی را اجرا می‌کنیم:\n\n"
+            . "1) هدف کوتاه‌مدت این هفته:\n"
+            . "- هر عضو یک اولویت عملی و قابل اندازه‌گیری پیشنهاد بدهد.\n\n"
+            . "2) شفافیت در تصمیم‌گیری:\n"
+            . "- جمع‌بندی تصمیم‌ها در قالب مصوبه ثبت می‌شود.\n"
+            . "- مسئول هر مصوبه و زمان انجام مشخص می‌شود.\n\n"
+            . "3) مشارکت منظم:\n"
+            . "- اگر نکته یا نقدی دارید، زیر همین پست ثبت کنید.\n"
+            . "- اگر نیاز باشد نظرسنجی رسمی برگزار می‌کنیم.\n\n"
+            . "4) مسیر اجرا:\n"
+            . "- اولویت‌های جمع‌آوری‌شده، به برنامه اقدام گروه تبدیل می‌شود.\n\n"
+            . "تاریخ ثبت: {$today}\n"
+            . "نجم‌هدا";
 
-        if (str_contains(mb_strtolower($prompt), 'Ø¢ØºØ§Ø²')) {
-            $title = "Ù¾Ø³Øª Ø¢ØºØ§Ø² Ø¨Ù‡ Ú©Ø§Ø± {$groupName}";
+        if (str_contains(mb_strtolower($prompt), 'آغاز')) {
+            $title = "پست آغاز به کار {$groupName}";
         }
 
         return [
@@ -1493,27 +1507,27 @@ class NajmHodaGroupAssistantService
 
     protected function executeCreatePollAction(Group $group, Message $trigger, User $bot, string $text, array $policy): array
     {
-        if (!(bool) ($policy['allow_create_poll'] ?? true)) {
+        if (!$this->policyGate->isCapabilityEnabled($policy, 'create_poll')) {
             return [
                 'decision' => 'skipped',
                 'reason' => 'create_poll_disabled',
-                'group_reply' => 'Ø§ÛŒØ¬Ø§Ø¯ Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ ØªÙˆØ³Ø· Ù†Ø¬Ù… Ù‡Ø¯Ø§ Ø¯Ø± Ø§ÛŒÙ† Ú¯Ø±ÙˆÙ‡ ØºÛŒØ±ÙØ¹Ø§Ù„ Ø§Ø³Øª.',
+                'group_reply' => 'ایجاد نظرسنجی توسط نجم هدا در این گروه غیرفعال است.',
                 'context' => ['action' => 'create_poll'],
             ];
         }
 
         $question = null;
-        if (preg_match('/(?:Ø³ÙˆØ§Ù„|Ù¾Ø±Ø³Ø´)\s*[:ï¼š]\s*(.+?)(?:\||\n|Ú¯Ø²ÛŒÙ†Ù‡(?:â€Œ| )?Ù‡Ø§?\s*[:ï¼š]|$)/u', $text, $m)) {
+        if (preg_match('/(?:سوال|پرسش)\s*[:：]\s*(.+?)(?:\||\n|گزینه(?:‌| )?ها?\s*[:：]|$)/u', $text, $m)) {
             $question = trim($m[1]);
         }
 
         $optionsRaw = null;
-        if (preg_match('/Ú¯Ø²ÛŒÙ†Ù‡(?:â€Œ| )?Ù‡Ø§?\s*[:ï¼š]\s*(.+)$/us', $text, $m)) {
+        if (preg_match('/گزینه(?:‌| )?ها?\s*[:：]\s*(.+)$/us', $text, $m)) {
             $optionsRaw = trim($m[1]);
         }
         $options = [];
         if ($optionsRaw) {
-            $parts = preg_split('/[,\|\nØ›;]/u', $optionsRaw) ?: [];
+            $parts = preg_split('/[,\|\n؛;]/u', $optionsRaw) ?: [];
             foreach ($parts as $part) {
                 $opt = trim($part);
                 if ($opt !== '') {
@@ -1534,20 +1548,20 @@ class NajmHodaGroupAssistantService
             }
         }
         if ($question && count($options) < 2) {
-            $options = ['Ù…ÙˆØ§ÙÙ‚Ù…', 'Ù†ÛŒØ§Ø² Ø¨Ù‡ Ø¨Ø±Ø±Ø³ÛŒ Ø¨ÛŒØ´ØªØ±', 'Ù…Ø®Ø§Ù„ÙÙ…'];
+            $options = ['موافقم', 'نیاز به بررسی بیشتر', 'مخالفم'];
         }
 
         if (!$question || count($options) < 2) {
             return [
                 'decision' => 'skipped',
                 'reason' => 'poll_payload_invalid',
-                'group_reply' => 'ÙØ±Ù…Øª Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ Ú©Ø§Ù…Ù„ Ù†ÛŒØ³Øª. Ù…Ø«Ø§Ù„: Â«Ù†Ø¬Ù…â€ŒÙ‡Ø¯Ø§ Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ Ø¨Ø³Ø§Ø² | Ø³ÙˆØ§Ù„: ... | Ú¯Ø²ÛŒÙ†Ù‡â€ŒÙ‡Ø§: Ú¯Ø²ÛŒÙ†Ù‡Û±ØŒ Ú¯Ø²ÛŒÙ†Ù‡Û²Â»',
+                'group_reply' => 'فرمت نظرسنجی کامل نیست. مثال: «نجم‌هدا نظرسنجی بساز | سوال: ... | گزینه‌ها: گزینه۱، گزینه۲»',
                 'context' => ['action' => 'create_poll'],
             ];
         }
 
         $days = 3;
-        if (preg_match('/Ù…Ù‡Ù„Øª\s*[:ï¼š]\s*(\d+)/u', $text, $m)) {
+        if (preg_match('/مهلت\s*[:：]\s*(\d+)/u', $text, $m)) {
             $days = max(1, min((int) $m[1], 90));
         }
 
@@ -1576,36 +1590,36 @@ class NajmHodaGroupAssistantService
         return [
             'decision' => 'executed',
             'reason' => 'poll_created',
-            'group_reply' => "Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ Ø¬Ø¯ÛŒØ¯ Ø«Ø¨Øª Ø´Ø¯. Ø´Ù†Ø§Ø³Ù‡ Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ: {$poll->id}",
+            'group_reply' => "نظرسنجی جدید ثبت شد. شناسه نظرسنجی: {$poll->id}",
             'context' => ['action' => 'create_poll', 'poll_id' => $poll->id, 'options_count' => count($options)],
         ];
     }
 
     protected function executeCreateCommentAction(Group $group, Message $trigger, User $bot, string $text, array $policy): ?array
     {
-        if (!(bool) ($policy['allow_create_comment'] ?? true)) {
+        if (!$this->policyGate->isCapabilityEnabled($policy, 'create_comment')) {
             return [
                 'decision' => 'skipped',
                 'reason' => 'create_comment_disabled',
-                'group_reply' => 'Ø«Ø¨Øª Ú©Ø§Ù…Ù†Øª ØªÙˆØ³Ø· Ù†Ø¬Ù… Ù‡Ø¯Ø§ Ø¯Ø± Ø§ÛŒÙ† Ú¯Ø±ÙˆÙ‡ ØºÛŒØ±ÙØ¹Ø§Ù„ Ø§Ø³Øª.',
+                'group_reply' => 'ثبت کامنت توسط نجم هدا در این گروه غیرفعال است.',
                 'context' => ['action' => 'create_comment'],
             ];
         }
 
         $postId = null;
         $plain = mb_strtolower($text);
-        if (preg_match('/Ù¾Ø³Øª\s*#?(\d+)/u', $text, $postMatch)) {
+        if (preg_match('/پست\s*#?(\d+)/u', $text, $postMatch)) {
             $postId = (int) $postMatch[1];
         } elseif (
-            str_contains($plain, 'Ù¾Ø³Øª Ø¢Ø®Ø±')
-            || str_contains($plain, 'Ø¢Ø®Ø±ÛŒÙ† Ù¾Ø³Øª')
-            || str_contains($plain, 'Ù¾Ø³Øª Ø¬Ø¯ÛŒØ¯')
+            str_contains($plain, 'پست آخر')
+            || str_contains($plain, 'آخرین پست')
+            || str_contains($plain, 'پست جدید')
         ) {
             $postId = (int) Blog::query()
                 ->where('group_id', $group->id)
                 ->latest('id')
                 ->value('id');
-        } elseif (str_contains($plain, 'Ù¾Ø³ØªÙ…') || str_contains($plain, 'Ù¾Ø³Øª Ù…Ù†')) {
+        } elseif (str_contains($plain, 'پستم') || str_contains($plain, 'پست من')) {
             $postId = (int) Blog::query()
                 ->where('group_id', $group->id)
                 ->where('user_id', (int) $trigger->user_id)
@@ -1617,11 +1631,11 @@ class NajmHodaGroupAssistantService
         }
 
         $commentText = null;
-        if (preg_match('/(?:Ú©Ø§Ù…Ù†Øª|Ù†Ø¸Ø±).+?[:ï¼š]\s*(.+)$/us', $text, $m)) {
+        if (preg_match('/(?:کامنت|نظر).+?[:：]\s*(.+)$/us', $text, $m)) {
             $commentText = trim($m[1]);
         }
         if ($commentText === null || $commentText === '') {
-            $commentText = "Ø³Ù¾Ø§Ø³ Ø§Ø² Ø§Ù†ØªØ´Ø§Ø± Ø§ÛŒÙ† Ù…Ø­ØªÙˆØ§. Ù„Ø·ÙØ§ Ø§Ø¹Ø¶Ø§ Ù†Ø¸Ø± Ø¹Ù…Ù„ÛŒ Ø®ÙˆØ¯ Ø±Ø§ Ø²ÛŒØ± Ù‡Ù…ÛŒÙ† Ù¾Ø³Øª Ø«Ø¨Øª Ú©Ù†Ù†Ø¯ ØªØ§ Ø¬Ù…Ø¹â€ŒØ¨Ù†Ø¯ÛŒ Ú©Ù†ÛŒÙ….";
+            $commentText = "سپاس از انتشار این محتوا. لطفا اعضا نظر عملی خود را زیر همین پست ثبت کنند تا جمع‌بندی کنیم.";
         }
 
         $post = Blog::query()->where('id', $postId)->where('group_id', $group->id)->first();
@@ -1629,7 +1643,7 @@ class NajmHodaGroupAssistantService
             return [
                 'decision' => 'skipped',
                 'reason' => 'post_not_found',
-                'group_reply' => 'Ù¾Ø³Øª Ù‡Ø¯Ù Ø¯Ø± Ø§ÛŒÙ† Ú¯Ø±ÙˆÙ‡ Ù¾ÛŒØ¯Ø§ Ù†Ø´Ø¯.',
+                'group_reply' => 'پست هدف در این گروه پیدا نشد.',
                 'context' => ['action' => 'create_comment', 'post_id' => $postId],
             ];
         }
@@ -1644,7 +1658,7 @@ class NajmHodaGroupAssistantService
         return [
             'decision' => 'executed',
             'reason' => 'comment_created',
-            'group_reply' => "Ú©Ø§Ù…Ù†Øª Ø±ÙˆÛŒ Ù¾Ø³Øª {$post->id} Ø«Ø¨Øª Ø´Ø¯.",
+            'group_reply' => "کامنت روی پست {$post->id} ثبت شد.",
             'context' => ['action' => 'create_comment', 'post_id' => $post->id, 'comment_id' => $comment->id],
         ];
     }
@@ -1668,17 +1682,17 @@ class NajmHodaGroupAssistantService
 
     protected function buildAutoPollDraft(Group $group, string $prompt): array
     {
-        $groupName = trim((string) ($group->name ?? 'Ú¯Ø±ÙˆÙ‡'));
+        $groupName = trim((string) ($group->name ?? 'گروه'));
         $plain = mb_strtolower($prompt);
 
-        $question = "Ø¨Ø±Ø§ÛŒ Ø´Ø±ÙˆØ¹ Ù‡Ù…Ø§Ù‡Ù†Ú¯ ÙØ¹Ø§Ù„ÛŒØªâ€ŒÙ‡Ø§ Ø¯Ø± {$groupName}ØŒ Ø¨Ø§ Ø§ÙˆÙ„ÙˆÛŒØªâ€ŒØ¨Ù†Ø¯ÛŒ Ø³Ù‡ Ø§Ù‚Ø¯Ø§Ù… Ø§ØµÙ„ÛŒ Ù…ÙˆØ§ÙÙ‚ÛŒØ¯ØŸ";
-        $options = ['Ù…ÙˆØ§ÙÙ‚Ù…', 'Ù†ÛŒØ§Ø² Ø¨Ù‡ Ø§ØµÙ„Ø§Ø­', 'Ù…Ø®Ø§Ù„ÙÙ…'];
+        $question = "برای شروع هماهنگ فعالیت‌ها در {$groupName}، با اولویت‌بندی سه اقدام اصلی موافقید؟";
+        $options = ['موافقم', 'نیاز به اصلاح', 'مخالفم'];
 
-        if (str_contains($plain, 'Ø¢ØºØ§Ø²') || str_contains($plain, 'Ø´Ø±ÙˆØ¹')) {
-            $question = "Ø¨Ø±Ø§ÛŒ Ø¢ØºØ§Ø² Ø¨Ù‡â€ŒÚ©Ø§Ø± {$groupName}ØŒ Ø¨Ø§ Ø¨Ø±Ù†Ø§Ù…Ù‡ Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯ÛŒ Ù‡ÙØªÙ‡ Ø§ÙˆÙ„ Ù…ÙˆØ§ÙÙ‚ÛŒØ¯ØŸ";
-        } elseif (str_contains($plain, 'Ù…Ø¯ÛŒØ±ÛŒØª') || str_contains($plain, 'Ø¹Ù…Ù„Ú©Ø±Ø¯')) {
-            $question = "Ø§Ø² Ø±ÙˆÙ†Ø¯ Ù…Ø¯ÛŒØ±ÛŒØª ÙØ¹Ù„ÛŒ {$groupName} Ø±Ø¶Ø§ÛŒØª Ø¯Ø§Ø±ÛŒØ¯ØŸ";
-            $options = ['Ø¨Ù„Ù‡', 'ØªØ§ Ø­Ø¯ÛŒ', 'Ø®ÛŒØ±'];
+        if (str_contains($plain, 'آغاز') || str_contains($plain, 'شروع')) {
+            $question = "برای آغاز به‌کار {$groupName}، با برنامه پیشنهادی هفته اول موافقید؟";
+        } elseif (str_contains($plain, 'مدیریت') || str_contains($plain, 'عملکرد')) {
+            $question = "از روند مدیریت فعلی {$groupName} رضایت دارید؟";
+            $options = ['بله', 'تا حدی', 'خیر'];
         }
 
         return [
@@ -1692,11 +1706,11 @@ class NajmHodaGroupAssistantService
         $targetMessageId = null;
         $plain = mb_strtolower($text);
 
-        if (preg_match('/Ù¾ÛŒØ§Ù…\s*#?(\d+)/u', $text, $idMatch)) {
+        if (preg_match('/پیام\s*#?(\d+)/u', $text, $idMatch)) {
             $targetMessageId = (int) $idMatch[1];
         } elseif (
-            str_contains($plain, 'Ù¾ÛŒØ§Ù…Ù…')
-            || str_contains($plain, 'Ù¾ÛŒØ§Ù… Ù…Ù†')
+            str_contains($plain, 'پیامم')
+            || str_contains($plain, 'پیام من')
             || str_contains($plain, 'my message')
         ) {
             $targetMessageId = (int) Message::query()
@@ -1706,8 +1720,8 @@ class NajmHodaGroupAssistantService
                 ->latest('id')
                 ->value('id');
         } elseif (
-            str_contains($plain, 'Ø§ÛŒÙ† Ù¾ÛŒØ§Ù…')
-            || str_contains($plain, 'Ù‡Ù…ÛŒÙ† Ù¾ÛŒØ§Ù…')
+            str_contains($plain, 'این پیام')
+            || str_contains($plain, 'همین پیام')
             || str_contains($plain, 'this message')
         ) {
             $targetMessageId = (int) ($trigger->parent_id ?: 0);
@@ -1716,11 +1730,11 @@ class NajmHodaGroupAssistantService
         if (!$targetMessageId) {
             return null;
         }
-        if (!(bool) ($policy['allow_react_message'] ?? true)) {
+        if (!$this->policyGate->isCapabilityEnabled($policy, 'react_message')) {
             return [
                 'decision' => 'skipped',
                 'reason' => 'react_message_disabled',
-                'group_reply' => 'ÙˆØ§Ú©Ù†Ø´ Ø¨Ù‡ Ù¾ÛŒØ§Ù… ØªÙˆØ³Ø· Ù†Ø¬Ù… Ù‡Ø¯Ø§ ØºÛŒØ±ÙØ¹Ø§Ù„ Ø§Ø³Øª.',
+                'group_reply' => 'واکنش به پیام توسط نجم هدا غیرفعال است.',
                 'context' => ['action' => 'react_message'],
             ];
         }
@@ -1733,7 +1747,7 @@ class NajmHodaGroupAssistantService
             return [
                 'decision' => 'skipped',
                 'reason' => 'message_not_found',
-                'group_reply' => 'Ù¾ÛŒØ§Ù… Ù‡Ø¯Ù Ø¯Ø± Ø§ÛŒÙ† Ú¯Ø±ÙˆÙ‡ Ù¾ÛŒØ¯Ø§ Ù†Ø´Ø¯.',
+                'group_reply' => 'پیام هدف در این گروه پیدا نشد.',
                 'context' => ['action' => 'react_message'],
             ];
         }
@@ -1743,7 +1757,7 @@ class NajmHodaGroupAssistantService
             return [
                 'decision' => 'skipped',
                 'reason' => 'reaction_type_missing',
-                'group_reply' => 'Ù†ÙˆØ¹ ÙˆØ§Ú©Ù†Ø´ Ù¾ÛŒØ§Ù… Ù…Ø´Ø®Øµ Ù†ÛŒØ³Øª.',
+                'group_reply' => 'نوع واکنش پیام مشخص نیست.',
                 'context' => ['action' => 'react_message', 'message_id' => $targetMessage->id],
             ];
         }
@@ -1762,7 +1776,7 @@ class NajmHodaGroupAssistantService
         return [
             'decision' => 'executed',
             'reason' => 'message_reacted',
-            'group_reply' => "ÙˆØ§Ú©Ù†Ø´ {$reactionType} Ø±ÙˆÛŒ Ù¾ÛŒØ§Ù… {$targetMessage->id} Ø«Ø¨Øª Ø´Ø¯.",
+            'group_reply' => "واکنش {$reactionType} روی پیام {$targetMessage->id} ثبت شد.",
             'context' => ['action' => 'react_message', 'message_id' => $targetMessage->id, 'reaction_type' => $reactionType],
         ];
     }
@@ -1770,11 +1784,11 @@ class NajmHodaGroupAssistantService
     protected function executePostReactionAction(Group $group, Message $trigger, User $bot, string $text, array $policy): ?array
     {
         $targetPostId = null;
-        if (preg_match('/Ù¾Ø³Øª\s*#?(\d+)/u', $text, $idMatch)) {
+        if (preg_match('/پست\s*#?(\d+)/u', $text, $idMatch)) {
             $targetPostId = (int) $idMatch[1];
         } elseif (
-            str_contains(mb_strtolower($text), 'Ù¾Ø³ØªÙ…')
-            || str_contains(mb_strtolower($text), 'Ù¾Ø³Øª Ù…Ù†')
+            str_contains(mb_strtolower($text), 'پستم')
+            || str_contains(mb_strtolower($text), 'پست من')
             || str_contains(mb_strtolower($text), 'my post')
         ) {
             $targetPostId = (int) Blog::query()
@@ -1786,11 +1800,11 @@ class NajmHodaGroupAssistantService
         if (!$targetPostId) {
             return null;
         }
-        if (!(bool) ($policy['allow_react_post'] ?? true)) {
+        if (!$this->policyGate->isCapabilityEnabled($policy, 'react_post')) {
             return [
                 'decision' => 'skipped',
                 'reason' => 'react_post_disabled',
-                'group_reply' => 'ÙˆØ§Ú©Ù†Ø´ Ø¨Ù‡ Ù¾Ø³Øª ØªÙˆØ³Ø· Ù†Ø¬Ù… Ù‡Ø¯Ø§ ØºÛŒØ±ÙØ¹Ø§Ù„ Ø§Ø³Øª.',
+                'group_reply' => 'واکنش به پست توسط نجم هدا غیرفعال است.',
                 'context' => ['action' => 'react_post'],
             ];
         }
@@ -1800,7 +1814,7 @@ class NajmHodaGroupAssistantService
             return [
                 'decision' => 'skipped',
                 'reason' => 'post_not_found',
-                'group_reply' => 'Ù¾Ø³Øª Ù‡Ø¯Ù Ø¯Ø± Ø§ÛŒÙ† Ú¯Ø±ÙˆÙ‡ Ù¾ÛŒØ¯Ø§ Ù†Ø´Ø¯.',
+                'group_reply' => 'پست هدف در این گروه پیدا نشد.',
                 'context' => ['action' => 'react_post'],
             ];
         }
@@ -1810,7 +1824,7 @@ class NajmHodaGroupAssistantService
             return [
                 'decision' => 'skipped',
                 'reason' => 'reaction_type_missing',
-                'group_reply' => 'Ø¨Ø±Ø§ÛŒ Ù¾Ø³Øª ÙÙ‚Ø· Ù„Ø§ÛŒÚ©/Ø¯ÛŒØ³â€ŒÙ„Ø§ÛŒÚ© Ù…Ø´Ø®Øµ Ú©Ù†ÛŒØ¯.',
+                'group_reply' => 'برای پست فقط لایک/دیس‌لایک مشخص کنید.',
                 'context' => ['action' => 'react_post', 'post_id' => $post->id],
             ];
         }
@@ -1826,25 +1840,25 @@ class NajmHodaGroupAssistantService
             'type' => $type,
         ]);
 
-        $label = $type === 1 ? 'Ù„Ø§ÛŒÚ©' : 'Ø¯ÛŒØ³â€ŒÙ„Ø§ÛŒÚ©';
+        $label = $type === 1 ? 'لایک' : 'دیس‌لایک';
         return [
             'decision' => 'executed',
             'reason' => 'post_reacted',
-            'group_reply' => "ÙˆØ§Ú©Ù†Ø´ {$label} Ø±ÙˆÛŒ Ù¾Ø³Øª {$post->id} Ø«Ø¨Øª Ø´Ø¯.",
+            'group_reply' => "واکنش {$label} روی پست {$post->id} ثبت شد.",
             'context' => ['action' => 'react_post', 'post_id' => $post->id, 'type' => $type],
         ];
     }
 
     protected function executeCommentReactionAction(Group $group, User $bot, string $text, array $policy): ?array
     {
-        if (!preg_match('/Ú©Ø§Ù…Ù†Øª\s*#?(\d+)/u', $text, $idMatch) && !preg_match('/Ù†Ø¸Ø±\s*#?(\d+)/u', $text, $idMatch)) {
+        if (!preg_match('/کامنت\s*#?(\d+)/u', $text, $idMatch) && !preg_match('/نظر\s*#?(\d+)/u', $text, $idMatch)) {
             return null;
         }
-        if (!(bool) ($policy['allow_react_comment'] ?? true)) {
+        if (!$this->policyGate->isCapabilityEnabled($policy, 'react_comment')) {
             return [
                 'decision' => 'skipped',
                 'reason' => 'react_comment_disabled',
-                'group_reply' => 'ÙˆØ§Ú©Ù†Ø´ Ø¨Ù‡ Ú©Ø§Ù…Ù†Øª ØªÙˆØ³Ø· Ù†Ø¬Ù… Ù‡Ø¯Ø§ ØºÛŒØ±ÙØ¹Ø§Ù„ Ø§Ø³Øª.',
+                'group_reply' => 'واکنش به کامنت توسط نجم هدا غیرفعال است.',
                 'context' => ['action' => 'react_comment'],
             ];
         }
@@ -1857,7 +1871,7 @@ class NajmHodaGroupAssistantService
             return [
                 'decision' => 'skipped',
                 'reason' => 'comment_not_found',
-                'group_reply' => 'Ú©Ø§Ù…Ù†Øª Ù‡Ø¯Ù Ø¯Ø± Ø§ÛŒÙ† Ú¯Ø±ÙˆÙ‡ Ù¾ÛŒØ¯Ø§ Ù†Ø´Ø¯.',
+                'group_reply' => 'کامنت هدف در این گروه پیدا نشد.',
                 'context' => ['action' => 'react_comment'],
             ];
         }
@@ -1867,7 +1881,7 @@ class NajmHodaGroupAssistantService
             return [
                 'decision' => 'skipped',
                 'reason' => 'reaction_type_missing',
-                'group_reply' => 'Ø¨Ø±Ø§ÛŒ Ú©Ø§Ù…Ù†Øª ÙÙ‚Ø· Ù„Ø§ÛŒÚ©/Ø¯ÛŒØ³â€ŒÙ„Ø§ÛŒÚ© Ù…Ø´Ø®Øµ Ú©Ù†ÛŒØ¯.',
+                'group_reply' => 'برای کامنت فقط لایک/دیس‌لایک مشخص کنید.',
                 'context' => ['action' => 'react_comment', 'comment_id' => $comment->id],
             ];
         }
@@ -1884,11 +1898,11 @@ class NajmHodaGroupAssistantService
             'react_type' => 1,
         ]);
 
-        $label = $type === 1 ? 'Ù„Ø§ÛŒÚ©' : 'Ø¯ÛŒØ³â€ŒÙ„Ø§ÛŒÚ©';
+        $label = $type === 1 ? 'لایک' : 'دیس‌لایک';
         return [
             'decision' => 'executed',
             'reason' => 'comment_reacted',
-            'group_reply' => "ÙˆØ§Ú©Ù†Ø´ {$label} Ø±ÙˆÛŒ Ú©Ø§Ù…Ù†Øª {$comment->id} Ø«Ø¨Øª Ø´Ø¯.",
+            'group_reply' => "واکنش {$label} روی کامنت {$comment->id} ثبت شد.",
             'context' => ['action' => 'react_comment', 'comment_id' => $comment->id, 'type' => $type],
         ];
     }
@@ -1902,12 +1916,12 @@ class NajmHodaGroupAssistantService
             'angry' => 'angry',
             'sad' => 'sad',
             'wow' => 'wow',
-            'Ù„Ø§ÛŒÚ©' => 'like',
-            'Ø¹Ø´Ù‚' => 'love',
-            'Ø®Ù†Ø¯Ù‡' => 'laugh',
-            'Ø¹ØµØ¨Ø§Ù†ÛŒ' => 'angry',
-            'ØºÙ…Ú¯ÛŒÙ†' => 'sad',
-            'ÙˆØ§Ùˆ' => 'wow',
+            'لایک' => 'like',
+            'عشق' => 'love',
+            'خنده' => 'laugh',
+            'عصبانی' => 'angry',
+            'غمگین' => 'sad',
+            'واو' => 'wow',
         ];
 
         $plain = mb_strtolower($text);
@@ -1923,10 +1937,10 @@ class NajmHodaGroupAssistantService
     protected function extractLikeDislikeType(string $text): ?int
     {
         $plain = mb_strtolower($text);
-        if (mb_stripos($plain, 'Ø¯ÛŒØ³') !== false || mb_stripos($plain, 'dislike') !== false) {
+        if (mb_stripos($plain, 'دیس') !== false || mb_stripos($plain, 'dislike') !== false) {
             return 0;
         }
-        if (mb_stripos($plain, 'Ù„Ø§ÛŒÚ©') !== false || mb_stripos($plain, 'like') !== false) {
+        if (mb_stripos($plain, 'لایک') !== false || mb_stripos($plain, 'like') !== false) {
             return 1;
         }
 
@@ -1937,40 +1951,40 @@ class NajmHodaGroupAssistantService
     {
         $plain = mb_strtolower(trim($text));
 
-        if (str_contains($plain, 'Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ') || str_contains($plain, 'poll')) {
-            return 'Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯: Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ Ø¬Ø¯ÛŒØ¯ Ø«Ø¨Øª Ø´ÙˆØ¯. Ø¨Ø±Ø§ÛŒ Ø§Ø¬Ø±Ø§ØŒ Ø­Ø§Ù„Øª Â«Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯ Ù‚Ø¨Ù„ Ø§Ø² Ø§Ø¬Ø±Ø§Â» Ø±Ø§ Ø®Ø§Ù…ÙˆØ´ Ú©Ù†ÛŒØ¯.';
+        if (str_contains($plain, 'نظرسنجی') || str_contains($plain, 'poll')) {
+            return 'پیشنهاد: نظرسنجی جدید ثبت شود. برای اجرا، حالت «پیشنهاد قبل از اجرا» را خاموش کنید.';
         }
-        if (str_contains($plain, 'Ù¾Ø³Øª') || str_contains($plain, 'post')) {
-            return 'Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯: Ù¾Ø³Øª Ø¬Ø¯ÛŒØ¯ Ø¯Ø± Ú¯Ø±ÙˆÙ‡ Ù…Ù†ØªØ´Ø± Ø´ÙˆØ¯. Ø¨Ø±Ø§ÛŒ Ø§Ø¬Ø±Ø§ØŒ Ø­Ø§Ù„Øª Â«Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯ Ù‚Ø¨Ù„ Ø§Ø² Ø§Ø¬Ø±Ø§Â» Ø±Ø§ Ø®Ø§Ù…ÙˆØ´ Ú©Ù†ÛŒØ¯.';
+        if (str_contains($plain, 'پست') || str_contains($plain, 'post')) {
+            return 'پیشنهاد: پست جدید در گروه منتشر شود. برای اجرا، حالت «پیشنهاد قبل از اجرا» را خاموش کنید.';
         }
-        if (str_contains($plain, 'Ú©Ø§Ù…Ù†Øª') || str_contains($plain, 'Ù†Ø¸Ø±')) {
-            return 'Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯: Ú©Ø§Ù…Ù†Øª Ø¬Ø¯ÛŒØ¯ Ø±ÙˆÛŒ Ù…Ø­ØªÙˆØ§ÛŒ Ù‡Ø¯Ù Ø«Ø¨Øª Ø´ÙˆØ¯. Ø¨Ø±Ø§ÛŒ Ø§Ø¬Ø±Ø§ØŒ Ø­Ø§Ù„Øª Â«Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯ Ù‚Ø¨Ù„ Ø§Ø² Ø§Ø¬Ø±Ø§Â» Ø±Ø§ Ø®Ø§Ù…ÙˆØ´ Ú©Ù†ÛŒØ¯.';
+        if (str_contains($plain, 'کامنت') || str_contains($plain, 'نظر')) {
+            return 'پیشنهاد: کامنت جدید روی محتوای هدف ثبت شود. برای اجرا، حالت «پیشنهاد قبل از اجرا» را خاموش کنید.';
         }
         if (
-            str_contains($plain, 'ÙˆØ§Ú©Ù†Ø´')
+            str_contains($plain, 'واکنش')
             || str_contains($plain, 'react')
-            || str_contains($plain, 'Ù„Ø§ÛŒÚ©')
-            || str_contains($plain, 'Ø¯ÛŒØ³')
+            || str_contains($plain, 'لایک')
+            || str_contains($plain, 'دیس')
             || str_contains($plain, 'like')
             || str_contains($plain, 'dislike')
         ) {
-            return 'Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯: ÙˆØ§Ú©Ù†Ø´ Ø±ÙˆÛŒ Ù…Ø­ØªÙˆØ§ÛŒ Ù‡Ø¯Ù Ø«Ø¨Øª Ø´ÙˆØ¯. Ø¨Ø±Ø§ÛŒ Ø§Ø¬Ø±Ø§ØŒ Ø­Ø§Ù„Øª Â«Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯ Ù‚Ø¨Ù„ Ø§Ø² Ø§Ø¬Ø±Ø§Â» Ø±Ø§ Ø®Ø§Ù…ÙˆØ´ Ú©Ù†ÛŒØ¯.';
+            return 'پیشنهاد: واکنش روی محتوای هدف ثبت شود. برای اجرا، حالت «پیشنهاد قبل از اجرا» را خاموش کنید.';
         }
 
-        return 'Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯ Ø«Ø¨Øª Ø´Ø¯. Ø¨Ø±Ø§ÛŒ Ø§Ø¬Ø±Ø§ÛŒ Ø®ÙˆØ¯Ú©Ø§Ø±ØŒ Ø­Ø§Ù„Øª Â«Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯ Ù‚Ø¨Ù„ Ø§Ø² Ø§Ø¬Ø±Ø§Â» Ø±Ø§ ØºÛŒØ±ÙØ¹Ø§Ù„ Ú©Ù†ÛŒØ¯.';
+        return 'پیشنهاد ثبت شد. برای اجرای خودکار، حالت «پیشنهاد قبل از اجرا» را غیرفعال کنید.';
     }
 
     protected function containsMeetingKeywords(string $plain): bool
     {
         $keywords = [
-            'ØµÙˆØ±ØªØ¬Ù„Ø³Ù‡',
-            'ØµÙˆØ±Øª Ø¬Ù„Ø³Ù‡',
-            'Ø¬Ù…Ø¹ Ø¨Ù†Ø¯ÛŒ Ø¬Ù„Ø³Ù‡',
-            'Ø¬Ù…Ø¹â€ŒØ¨Ù†Ø¯ÛŒ Ø¬Ù„Ø³Ù‡',
-            'Ù…ØµÙˆØ¨Ø§Øª',
-            'Ø¬Ù„Ø³Ù‡ Ø±Ø§ Ø¬Ù…Ø¹ Ø¨Ù†Ø¯ÛŒ',
-            'Ø¬Ù„Ø³Ù‡ Ø±Ùˆ Ø¬Ù…Ø¹ Ø¨Ù†Ø¯ÛŒ',
-            'Ø¬Ù„Ø³Ù‡ Ø±Ø§ Ù…Ø¯ÛŒØ±ÛŒØª',
+            'صورتجلسه',
+            'صورت جلسه',
+            'جمع بندی جلسه',
+            'جمع‌بندی جلسه',
+            'مصوبات',
+            'جلسه را جمع بندی',
+            'جلسه رو جمع بندی',
+            'جلسه را مدیریت',
         ];
 
         foreach ($keywords as $keyword) {
@@ -2082,16 +2096,16 @@ class NajmHodaGroupAssistantService
     protected function containsActionKeywords(string $plain): bool
     {
         $keywords = [
-            'Ø§Ù‚Ø¯Ø§Ù…',
-            'Ø§Ù‚Ø¯Ø§Ù…Ø§Øª',
-            'Ù¾ÛŒÚ¯ÛŒØ±ÛŒ',
-            'ØªØ³Ú©',
+            'اقدام',
+            'اقدامات',
+            'پیگیری',
+            'تسک',
             'task',
-            'Ù…ØµÙˆØ¨Ù‡',
-            'Ù…ØµÙˆØ¨Ø§Øª',
-            'Ù…Ø³Ø¦ÙˆÙ„ Ø§Ù†Ø¬Ø§Ù…',
-            'Ø¯Ø¯Ù„Ø§ÛŒÙ†',
-            'Ù…Ù‡Ù„Øª',
+            'مصوبه',
+            'مصوبات',
+            'مسئول انجام',
+            'ددلاین',
+            'مهلت',
         ];
 
         foreach ($keywords as $keyword) {
@@ -2126,16 +2140,16 @@ class NajmHodaGroupAssistantService
             ->values()
             ->all();
 
-        $prompt = "Ø´Ù…Ø§ Ø¯Ø¨ÛŒØ± Ø¬Ù„Ø³Ù‡ Ù‡Ø³ØªÛŒØ¯. Ø§Ø² Ú¯ÙØªâ€ŒÙˆÚ¯ÙˆÛŒ Ø²ÛŒØ±ØŒ ÙÙ‚Ø· Ø¢ÛŒØªÙ…â€ŒÙ‡Ø§ÛŒ Ø§Ù‚Ø¯Ø§Ù… Ù‚Ø§Ø¨Ù„ Ø§Ø¬Ø±Ø§ Ø§Ø³ØªØ®Ø±Ø§Ø¬ Ú©Ù†.
+        $prompt = "شما دبیر جلسه هستید. از گفت‌وگوی زیر، فقط آیتم‌های اقدام قابل اجرا استخراج کن.
 
-Ù‚ÙˆØ§Ø¹Ø¯:
-1) ÙÙ‚Ø· Ø§Ù‚Ø¯Ø§Ù…â€ŒÙ‡Ø§ÛŒ Ù…Ø´Ø®Øµ Ùˆ Ù‚Ø§Ø¨Ù„ Ø§Ø¬Ø±Ø§ Ø±Ø§ Ø¨Ø±Ú¯Ø±Ø¯Ø§Ù†.
-2) Ø­Ø¯Ø§Ú©Ø«Ø± " . (int) config('najm-hoda.group_assistant.action_items.max_items', 8) . " Ø¢ÛŒØªÙ….
-3) Ø§Ú¯Ø± Ù…Ø³Ø¦ÙˆÙ„ Ù…Ø´Ø®Øµ Ù†ÛŒØ³ØªØŒ assignee_name Ø±Ø§ Ø®Ø§Ù„ÛŒ Ø¨Ú¯Ø°Ø§Ø±.
-4) Ø§Ú¯Ø± ØªØ§Ø±ÛŒØ® Ø¯Ù‚ÛŒÙ‚ Ù†ÛŒØ³ØªØŒ due_at Ø±Ø§ Ø®Ø§Ù„ÛŒ Ø¨Ú¯Ø°Ø§Ø± Ùˆ due_text Ø±Ø§ Ù…ØªÙ† Ø·Ø¨ÛŒØ¹ÛŒ Ø¨Ú¯Ø°Ø§Ø±.
-5) Ø®Ø±ÙˆØ¬ÛŒ ÙÙ‚Ø· JSON Ù…Ø¹ØªØ¨Ø± Ø¨Ø§Ø´Ø¯.
+قواعد:
+1) فقط اقدام‌های مشخص و قابل اجرا را برگردان.
+2) حداکثر " . (int) config('najm-hoda.group_assistant.action_items.max_items', 8) . " آیتم.
+3) اگر مسئول مشخص نیست، assignee_name را خالی بگذار.
+4) اگر تاریخ دقیق نیست، due_at را خالی بگذار و due_text را متن طبیعی بگذار.
+5) خروجی فقط JSON معتبر باشد.
 
-ÙØ±Ù…Øª:
+فرمت:
 {
   \"items\": [
     {
@@ -2148,13 +2162,13 @@ class NajmHodaGroupAssistantService
   ]
 }
 
-Ù…ØªÙ† Ø¯Ø±Ø®ÙˆØ§Ø³Øª Ø§ØµÙ„ÛŒ:
+متن درخواست اصلی:
 " . trim(strip_tags((string) $trigger->message)) . "
 
-Ù¾Ø§Ø³Ø® Ø¯Ø¨ÛŒØ±:
+پاسخ دبیر:
 " . trim(strip_tags((string) $response->message)) . "
 
-Ø¨Ø®Ø´â€ŒÙ‡Ø§ÛŒÛŒ Ø§Ø² Ú¯ÙØªâ€ŒÙˆÚ¯Ùˆ:
+بخش‌هایی از گفت‌وگو:
 " . json_encode($recent, JSON_UNESCAPED_UNICODE);
 
         $orchestrator = app(NajmHodaOrchestrator::class);
@@ -2242,13 +2256,13 @@ class NajmHodaGroupAssistantService
 
     protected function buildActionItemsSummaryMessage(array $saved): string
     {
-        $lines = ["âœ… Ø¢ÛŒØªÙ…â€ŒÙ‡Ø§ÛŒ Ù¾ÛŒÚ¯ÛŒØ±ÛŒ Ø¬Ù„Ø³Ù‡ Ø«Ø¨Øª Ø´Ø¯:"];
+        $lines = ["✅ آیتم‌های پیگیری جلسه ثبت شد:"];
         foreach ($saved as $index => $item) {
-            $assignee = $item->assignee_name ? " | Ù…Ø³Ø¦ÙˆÙ„: {$item->assignee_name}" : '';
-            $due = $item->due_text ? " | Ù…Ù‡Ù„Øª: {$item->due_text}" : '';
+            $assignee = $item->assignee_name ? " | مسئول: {$item->assignee_name}" : '';
+            $due = $item->due_text ? " | مهلت: {$item->due_text}" : '';
             $lines[] = ($index + 1) . ". {$item->title}{$assignee}{$due}";
         }
-        $lines[] = "Ø¨Ø±Ø§ÛŒ Ø§Ø¯Ø§Ù…Ù‡ØŒ Ù…ÛŒâ€ŒØªÙˆÙ†ÛŒÙ… ÙˆØ¶Ø¹ÛŒØª Ø§Ø¬Ø±Ø§ÛŒ Ù‡Ø± Ù…ÙˆØ±Ø¯ Ø±Ùˆ Ù‡Ù… Ù…Ø±Ø­Ù„Ù‡â€ŒØ§ÛŒ Ù¾ÛŒÚ¯ÛŒØ±ÛŒ Ú©Ù†ÛŒÙ….";
+        $lines[] = "برای ادامه، می‌تونیم وضعیت اجرای هر مورد رو هم مرحله‌ای پیگیری کنیم.";
 
         return nl2br(e(implode("\n", $lines)));
     }
@@ -2261,23 +2275,30 @@ class NajmHodaGroupAssistantService
         string $cleanText
     ): ?array {
         $plain = mb_strtolower($cleanText);
-        $hasModerationIntent = str_contains($plain, 'Ù¾Ø§Ú©Ø³Ø§Ø²ÛŒ')
-            || str_contains($plain, 'Ù¾Ø§Ú© Ú©Ù†')
-            || str_contains($plain, 'Ø­Ø°Ù Ù¾ÛŒØ§Ù…')
-            || str_contains($plain, 'Ù¾ÛŒØ§Ù… Ø¨ÛŒ')
-            || str_contains($plain, 'Ø¨ÛŒ Ø§Ø±ØªØ¨Ø§Ø·')
-            || str_contains($plain, 'Ù†Ø§Ù…Ø±ØªØ¨Ø·');
+        $hasModerationIntent = str_contains($plain, 'پاکسازی')
+            || str_contains($plain, 'پاک کن')
+            || str_contains($plain, 'حذف پیام')
+            || str_contains($plain, 'پیام بی')
+            || str_contains($plain, 'بی ارتباط')
+            || str_contains($plain, 'نامرتبط');
 
         if (!$hasModerationIntent) {
             return null;
         }
+        $this->emitRuntimeInputEvent('najm_hoda.input.group_moderation_command', [
+            'group_id' => (int) $group->id,
+            'trigger_message_id' => (int) $trigger->id,
+            'requester_user_id' => (int) $trigger->user_id,
+            'message_preview' => mb_substr($cleanText, 0, 200),
+        ]);
 
-        if (!$this->isActionRequesterAllowed($group, (int) $trigger->user_id, [2, 3])) {
+        $moderationPolicyCheck = $this->policyGate->ensureModerationAllowed($group, (int) $trigger->user_id, [2, 3]);
+        if (!(bool) ($moderationPolicyCheck['allowed'] ?? false)) {
             return [
-                'decision' => 'skipped',
-                'reason' => 'moderation_requester_not_allowed',
-                'group_reply' => 'Ø¨Ø±Ø§ÛŒ Ù…Ø¯ÛŒØ±ÛŒØª Ù¾Ø§Ú©Ø³Ø§Ø²ÛŒ Ù¾ÛŒØ§Ù…â€ŒÙ‡Ø§ÛŒ Ú¯Ø±ÙˆÙ‡ØŒ Ø¯Ø³ØªØ±Ø³ÛŒ Ù…Ø¯ÛŒØ±/Ø¨Ø§Ø²Ø±Ø³ Ù„Ø§Ø²Ù… Ø§Ø³Øª.',
-                'context' => ['requester_user_id' => (int) $trigger->user_id],
+                'decision' => (string) ($moderationPolicyCheck['decision'] ?? 'skipped'),
+                'reason' => (string) ($moderationPolicyCheck['reason'] ?? 'moderation_policy_denied'),
+                'group_reply' => (string) ($moderationPolicyCheck['group_reply'] ?? '????? ??? ????? ???? ????.'),
+                'context' => (array) ($moderationPolicyCheck['context'] ?? []),
             ];
         }
 
@@ -2285,7 +2306,7 @@ class NajmHodaGroupAssistantService
         $moderation = is_array($policy['moderation'] ?? null) ? $policy['moderation'] : [];
         $currentInterval = max(1, (int) ($moderation['cleanup_interval_hours'] ?? 24));
 
-        $isDisable = str_contains($plain, 'Ø®Ø§Ù…ÙˆØ´') || str_contains($plain, 'ØºÛŒØ±ÙØ¹Ø§Ù„') || str_contains($plain, 'ØªÙˆÙ‚Ù');
+        $isDisable = str_contains($plain, 'خاموش') || str_contains($plain, 'غیرفعال') || str_contains($plain, 'توقف');
         if ($isDisable) {
             $moderation['enabled'] = false;
             $moderation['auto_cleanup_enabled'] = false;
@@ -2298,15 +2319,15 @@ class NajmHodaGroupAssistantService
             return [
                 'decision' => 'executed',
                 'reason' => 'moderation_schedule_disabled',
-                'group_reply' => 'Ù¾Ø§Ú©Ø³Ø§Ø²ÛŒ Ø®ÙˆØ¯Ú©Ø§Ø± Ù¾ÛŒØ§Ù…â€ŒÙ‡Ø§ÛŒ Ø¨ÛŒâ€ŒØ§Ø±ØªØ¨Ø§Ø· Ø®Ø§Ù…ÙˆØ´ Ø´Ø¯.',
+                'group_reply' => 'پاکسازی خودکار پیام‌های بی‌ارتباط خاموش شد.',
                 'context' => ['interval_hours' => $currentInterval],
             ];
         }
 
         $requestedHours = $this->extractCleanupIntervalHours($plain);
-        $isScheduleIntent = str_contains($plain, 'Ù‡Ø±')
-            || str_contains($plain, 'Ø±ÙˆØ²Ø§Ù†Ù‡')
-            || str_contains($plain, 'Û²Û´')
+        $isScheduleIntent = str_contains($plain, 'هر')
+            || str_contains($plain, 'روزانه')
+            || str_contains($plain, '۲۴')
             || str_contains($plain, '24');
         if ($isScheduleIntent) {
             $hours = $requestedHours ?? $currentInterval;
@@ -2322,7 +2343,7 @@ class NajmHodaGroupAssistantService
             return [
                 'decision' => 'executed',
                 'reason' => 'moderation_schedule_enabled',
-                'group_reply' => "Ù¾Ø§Ú©Ø³Ø§Ø²ÛŒ Ø®ÙˆØ¯Ú©Ø§Ø± Ù¾ÛŒØ§Ù…â€ŒÙ‡Ø§ÛŒ Ø¨ÛŒâ€ŒØ§Ø±ØªØ¨Ø§Ø· ÙØ¹Ø§Ù„ Ø´Ø¯ Ùˆ Ù‡Ø± {$hours} Ø³Ø§Ø¹Øª Ø§Ø¬Ø±Ø§ Ù…ÛŒâ€ŒØ´ÙˆØ¯.",
+                'group_reply' => "پاکسازی خودکار پیام‌های بی‌ارتباط فعال شد و هر {$hours} ساعت اجرا می‌شود.",
                 'context' => ['interval_hours' => $hours],
             ];
         }
@@ -2331,7 +2352,7 @@ class NajmHodaGroupAssistantService
         return [
             'decision' => 'executed',
             'reason' => 'moderation_cleanup_manual',
-            'group_reply' => "Ù¾Ø§Ú©Ø³Ø§Ø²ÛŒ Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯. {$result['cleaned']} Ù¾ÛŒØ§Ù… Ø¨ÛŒâ€ŒØ§Ø±ØªØ¨Ø§Ø· Ø¹Ù„Ø§Ù…Øªâ€ŒÚ¯Ø°Ø§Ø±ÛŒ/Ø­Ø°Ù Ø´Ø¯.",
+            'group_reply' => "پاکسازی انجام شد. {$result['cleaned']} پیام بی‌ارتباط علامت‌گذاری/حذف شد.",
             'context' => $result,
         ];
     }
@@ -2517,8 +2538,8 @@ class NajmHodaGroupAssistantService
         }
 
         $trivialPatterns = [
-            'Ø³Ù„Ø§Ù…', 'Ø®ÙˆØ¨ÛŒ', 'Ø§ÙˆÚ©ÛŒ', 'ok', 'Ù…Ø±Ø³ÛŒ', 'Ù…Ù…Ù†ÙˆÙ†', 'ØµØ¨Ø­ Ø¨Ø®ÛŒØ±', 'Ø´Ø¨ Ø¨Ø®ÛŒØ±',
-            'lol', 'ðŸ˜‚', 'ðŸ¤£', 'ðŸ‘', 'â¤ï¸',
+            'سلام', 'خوبی', 'اوکی', 'ok', 'مرسی', 'ممنون', 'صبح بخیر', 'شب بخیر',
+            'lol', '😂', '🤣', '👍', '❤️',
         ];
         foreach ($trivialPatterns as $pattern) {
             if (mb_stripos($plain, $pattern) !== false && mb_strlen($plain) <= 40) {
@@ -2556,8 +2577,8 @@ class NajmHodaGroupAssistantService
         $parts = preg_split('/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [];
 
         $stopWords = [
-            'Ø§Ø²', 'Ø¨Ù‡', 'Ø¯Ø±', 'Ø¨Ø§', 'Ø¨Ø±Ø§ÛŒ', 'Ø§ÛŒÙ†', 'Ø§ÙˆÙ†', 'Ø¢Ù†', 'Ú©Ù‡', 'Ø±Ø§', 'Ùˆ', 'ÛŒØ§', 'Ø±ÙˆÛŒ',
-            'Ù…Ù†', 'ØªÙˆ', 'Ø´Ù…Ø§', 'Ù…Ø§', 'ÛŒÚ©', 'Ø¯Ùˆ', 'Ø³Ù‡', 'Ø®ÛŒÙ„ÛŒ', 'ÙÙ‚Ø·', 'Ù‡Ù…', 'Ù‡Ù…Ù‡', 'Ø§Ø³Øª', 'Ù‡Ø³Øª',
+            'از', 'به', 'در', 'با', 'برای', 'این', 'اون', 'آن', 'که', 'را', 'و', 'یا', 'روی',
+            'من', 'تو', 'شما', 'ما', 'یک', 'دو', 'سه', 'خیلی', 'فقط', 'هم', 'همه', 'است', 'هست',
             'the', 'and', 'or', 'to', 'of', 'a', 'an', 'is', 'are', 'for', 'in', 'on',
         ];
         $stop = array_fill_keys($stopWords, true);
@@ -2658,7 +2679,7 @@ class NajmHodaGroupAssistantService
             'scope' => $config->knowledge_scope,
             'executed_actions_last_14_days' => $recentDecisions,
             'meeting_minutes_count_last_30_days' => $recentMeetingMemories,
-            'privacy_note' => 'Ø¨ÛŒÙ†Ø´â€ŒÙ‡Ø§ ØªØ¬Ù…ÛŒØ¹ÛŒ Ù‡Ø³ØªÙ†Ø¯ Ùˆ Ø¯Ø§Ø¯Ù‡ Ø®Ø§Ù… Ú¯Ø±ÙˆÙ‡â€ŒÙ‡Ø§ÛŒ Ø¯ÛŒÚ¯Ø± Ø§ÙØ´Ø§ Ù†Ù…ÛŒâ€ŒØ´ÙˆØ¯.',
+            'privacy_note' => 'بینش‌ها تجمیعی هستند و داده خام گروه‌های دیگر افشا نمی‌شود.',
         ];
     }
 
@@ -2683,7 +2704,16 @@ class NajmHodaGroupAssistantService
             'context' => $context,
         ]);
     }
+
+    protected function emitRuntimeInputEvent(string $event, array $payload): void
+    {
+        try {
+            $this->runtimeEventBus->emit($event, $payload);
+        } catch (\Throwable $exception) {
+            Log::warning('NajmHoda runtime input emit failed', [
+                'event' => $event,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
 }
-
-
-

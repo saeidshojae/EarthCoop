@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Services\NajmHoda\Agents\ArchitectAgent;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 
 /**
  * دستور CLI برای ساخت عامل جدید توسط Architect Agent
@@ -17,6 +18,14 @@ class NajmHodaCreateAgent extends Command
 
     public function handle()
     {
+        if (!config('najm-hoda.enabled', true)) {
+            Log::info('NajmHoda command skipped because system is disabled', [
+                'command' => 'najm-hoda:create-agent',
+            ]);
+            $this->warn('Najm Hoda is disabled (NAJM_HODA_ENABLED=false).');
+            return self::SUCCESS;
+        }
+
         $description = $this->argument('description');
         
         $this->info("🏗️ معمار نجم‌هدا در حال تحلیل درخواست شما...\n");

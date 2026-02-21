@@ -134,6 +134,299 @@ return [
         'log_outputs' => true,
     ],
 
+    'runtime' => [
+        'entry_policy' => [
+            'rate_limit' => [
+                'max_requests_per_minute' => env('NAJM_HODA_ENTRY_RATE_MAX_PER_MINUTE', 120),
+                'max_chat_requests_per_minute' => env('NAJM_HODA_ENTRY_RATE_CHAT_MAX_PER_MINUTE', 30),
+            ],
+        ],
+        'event_bus' => [
+            'driver' => env('NAJM_HODA_RUNTIME_EVENT_BUS_DRIVER', 'database'), // database | in_memory
+            'max_events' => env('NAJM_HODA_RUNTIME_EVENT_BUS_MAX_EVENTS', 500),
+            'retention_days' => env('NAJM_HODA_RUNTIME_EVENT_RETENTION_DAYS', 14),
+            'prune_interval_seconds' => env('NAJM_HODA_RUNTIME_EVENT_PRUNE_INTERVAL_SECONDS', 300),
+        ],
+        'safety' => [
+            'rate_limit' => [
+                'max_actions_per_minute' => env('NAJM_HODA_RUNTIME_RATE_MAX_PER_MINUTE', 60),
+                'max_actions_per_action_per_minute' => env('NAJM_HODA_RUNTIME_RATE_MAX_PER_ACTION_PER_MINUTE', 20),
+            ],
+            'circuit_breaker' => [
+                'failure_threshold' => env('NAJM_HODA_RUNTIME_CB_FAILURE_THRESHOLD', 5),
+                'failure_window_seconds' => env('NAJM_HODA_RUNTIME_CB_FAILURE_WINDOW', 600),
+                'cooldown_seconds' => env('NAJM_HODA_RUNTIME_CB_COOLDOWN_SECONDS', 300),
+            ],
+        ],
+        'ops' => [
+            'monitor' => [
+                'window_minutes' => env('NAJM_HODA_OPS_WINDOW_MINUTES', 15),
+                'recent_limit' => env('NAJM_HODA_OPS_RECENT_LIMIT', 400),
+                'summary_ttl_minutes' => env('NAJM_HODA_OPS_SUMMARY_TTL_MINUTES', 180),
+                'summary_history_size' => env('NAJM_HODA_OPS_SUMMARY_HISTORY_SIZE', 50),
+            ],
+            'retention' => [
+                'telemetry_index_retention_hours' => env('NAJM_HODA_OPS_TELEMETRY_INDEX_RETENTION_HOURS', 72),
+                'telemetry_index_max_size' => env('NAJM_HODA_OPS_TELEMETRY_INDEX_MAX_SIZE', 5000),
+            ],
+            'thresholds' => [
+                'warning_error_rate_percent' => env('NAJM_HODA_OPS_WARNING_ERROR_RATE_PERCENT', 15),
+                'critical_error_rate_percent' => env('NAJM_HODA_OPS_CRITICAL_ERROR_RATE_PERCENT', 35),
+                'warning_unresolved_requests' => env('NAJM_HODA_OPS_WARNING_UNRESOLVED_REQUESTS', 4),
+                'critical_unresolved_requests' => env('NAJM_HODA_OPS_CRITICAL_UNRESOLVED_REQUESTS', 10),
+            ],
+            'triage' => [
+                'auto_playbook_enabled' => env('NAJM_HODA_OPS_AUTO_PLAYBOOK_ENABLED', true),
+                'degraded_ttl_seconds' => env('NAJM_HODA_OPS_DEGRADED_TTL_SECONDS', 900),
+                'entry_rate_multiplier_base' => env('NAJM_HODA_OPS_ENTRY_RATE_MULTIPLIER_BASE', 1.0),
+                'entry_rate_multiplier_warning' => env('NAJM_HODA_OPS_ENTRY_RATE_MULTIPLIER_WARNING', 0.8),
+                'entry_rate_multiplier_critical' => env('NAJM_HODA_OPS_ENTRY_RATE_MULTIPLIER_CRITICAL', 0.5),
+            ],
+            'playbooks' => [
+                'enforce_low_risk_only' => env('NAJM_HODA_OPS_PLAYBOOK_ENFORCE_LOW_RISK_ONLY', true),
+                'max_actions_per_run' => env('NAJM_HODA_OPS_PLAYBOOK_MAX_ACTIONS_PER_RUN', 5),
+                'default_action_cooldown_seconds' => env('NAJM_HODA_OPS_PLAYBOOK_DEFAULT_ACTION_COOLDOWN_SECONDS', 0),
+                'action_cooldowns' => [
+                    'set_degraded_mode' => env('NAJM_HODA_OPS_PLAYBOOK_COOLDOWN_SET_DEGRADED_MODE', 60),
+                    'clear_degraded_mode' => env('NAJM_HODA_OPS_PLAYBOOK_COOLDOWN_CLEAR_DEGRADED_MODE', 60),
+                    'set_entry_rate_multiplier_base' => env('NAJM_HODA_OPS_PLAYBOOK_COOLDOWN_SET_ENTRY_RATE_MULTIPLIER_BASE', 60),
+                    'set_entry_rate_multiplier_warning' => env('NAJM_HODA_OPS_PLAYBOOK_COOLDOWN_SET_ENTRY_RATE_MULTIPLIER_WARNING', 60),
+                    'set_entry_rate_multiplier_critical' => env('NAJM_HODA_OPS_PLAYBOOK_COOLDOWN_SET_ENTRY_RATE_MULTIPLIER_CRITICAL', 60),
+                ],
+                'plan' => [
+                    'healthy' => ['clear_degraded_mode', 'set_entry_rate_multiplier_base'],
+                    'warning' => ['set_degraded_mode', 'set_entry_rate_multiplier_warning'],
+                    'critical' => ['set_degraded_mode', 'set_entry_rate_multiplier_critical'],
+                ],
+                'catalog' => [
+                    'clear_degraded_mode' => [
+                        'enabled' => true,
+                        'risk' => 'low',
+                    ],
+                    'set_degraded_mode' => [
+                        'enabled' => true,
+                        'risk' => 'low',
+                    ],
+                    'set_entry_rate_multiplier_base' => [
+                        'enabled' => true,
+                        'risk' => 'low',
+                    ],
+                    'set_entry_rate_multiplier_warning' => [
+                        'enabled' => true,
+                        'risk' => 'low',
+                    ],
+                    'set_entry_rate_multiplier_critical' => [
+                        'enabled' => true,
+                        'risk' => 'low',
+                    ],
+                ],
+            ],
+            'escalation' => [
+                'enabled' => env('NAJM_HODA_OPS_ESCALATION_ENABLED', true),
+                'notify_admins' => env('NAJM_HODA_OPS_ESCALATION_NOTIFY_ADMINS', true),
+                'cooldown_seconds' => env('NAJM_HODA_OPS_ESCALATION_COOLDOWN_SECONDS', 900),
+                'max_incidents_per_run' => env('NAJM_HODA_OPS_ESCALATION_MAX_PER_RUN', 3),
+            ],
+        ],
+        'autonomy' => [
+            'enabled' => env('NAJM_HODA_AUTONOMY_ENABLED', true),
+            'context_limit' => env('NAJM_HODA_AUTONOMY_CONTEXT_LIMIT', 200),
+            'plan_ttl_minutes' => env('NAJM_HODA_AUTONOMY_PLAN_TTL_MINUTES', 180),
+            'max_goals_per_run' => env('NAJM_HODA_AUTONOMY_MAX_GOALS_PER_RUN', 5),
+            'allow_apply_low_risk' => env('NAJM_HODA_AUTONOMY_ALLOW_APPLY_LOW_RISK', false),
+            'default_goals' => [
+                'stabilize_operations',
+                'improve_user_experience',
+            ],
+            'thresholds' => [
+                'warning_error_rate_percent' => env('NAJM_HODA_AUTONOMY_WARNING_ERROR_RATE_PERCENT', 15),
+                'warning_unresolved_requests' => env('NAJM_HODA_AUTONOMY_WARNING_UNRESOLVED_REQUESTS', 4),
+            ],
+            'capabilities' => [
+                'run_ops_monitor' => [
+                    'name' => 'Operations Monitor Trigger',
+                    'enabled' => true,
+                    'version' => 1,
+                    'risk' => 'low',
+                    'mode' => 'propose',
+                    'required_input' => ['health_status'],
+                    'optional_input' => ['error_rate_percent', 'unresolved_requests', 'goal_count'],
+                    'output' => ['plan_ref', 'trace_id'],
+                ],
+                'propose_engagement_recommendations' => [
+                    'name' => 'Engagement Recommendation Proposal',
+                    'enabled' => true,
+                    'version' => 1,
+                    'risk' => 'low',
+                    'mode' => 'propose',
+                    'required_input' => ['goal_count'],
+                    'optional_input' => ['health_status', 'error_rate_percent', 'unresolved_requests', 'recommendation_count', 'top_recommendation_key', 'top_recommendation_confidence'],
+                    'output' => ['recommendations', 'confidence', 'rationale'],
+                ],
+            ],
+            'safety' => [
+                'enabled' => env('NAJM_HODA_AUTONOMY_SAFETY_ENABLED', true),
+                'max_actions_per_run' => env('NAJM_HODA_AUTONOMY_SAFETY_MAX_ACTIONS_PER_RUN', 3),
+                'allowed_risk_levels' => ['low'],
+                'blocked_actions' => [],
+                'allowed_actions' => [
+                    'run_ops_monitor',
+                    'propose_engagement_recommendations',
+                ],
+                'action_goal_scope' => [
+                    'run_ops_monitor' => ['stabilize_operations'],
+                    'propose_engagement_recommendations' => ['improve_user_experience'],
+                ],
+            ],
+            'human_escalation' => [
+                'enabled' => env('NAJM_HODA_AUTONOMY_HUMAN_ESCALATION_ENABLED', true),
+                'notify_admins' => env('NAJM_HODA_AUTONOMY_HUMAN_ESCALATION_NOTIFY_ADMINS', true),
+                'require_approval_risk_levels' => ['medium', 'high'],
+                'require_approval_for_apply_mode' => env('NAJM_HODA_AUTONOMY_HUMAN_ESCALATION_APPLY_MODE', true),
+                'fallback_to_propose' => env('NAJM_HODA_AUTONOMY_HUMAN_ESCALATION_FALLBACK_PROPOSE', true),
+                'sla_minutes' => env('NAJM_HODA_AUTONOMY_HUMAN_ESCALATION_SLA_MINUTES', 30),
+                'retention_minutes' => env('NAJM_HODA_AUTONOMY_HUMAN_ESCALATION_RETENTION_MINUTES', 10080),
+                'max_requests_history' => env('NAJM_HODA_AUTONOMY_HUMAN_ESCALATION_MAX_HISTORY', 500),
+            ],
+            'observability' => [
+                'event_limit' => env('NAJM_HODA_AUTONOMY_OBSERVABILITY_EVENT_LIMIT', 300),
+                'window_hours' => env('NAJM_HODA_AUTONOMY_OBSERVABILITY_WINDOW_HOURS', 24),
+                'snapshot_ttl_minutes' => env('NAJM_HODA_AUTONOMY_OBSERVABILITY_SNAPSHOT_TTL_MINUTES', 180),
+            ],
+            'recommendations' => [
+                'enabled' => env('NAJM_HODA_AUTONOMY_RECOMMENDATIONS_ENABLED', true),
+                'max_items' => env('NAJM_HODA_AUTONOMY_RECOMMENDATIONS_MAX_ITEMS', 5),
+                'min_confidence' => env('NAJM_HODA_AUTONOMY_RECOMMENDATIONS_MIN_CONFIDENCE', 0.4),
+            ],
+            'executor' => [
+                'enabled' => env('NAJM_HODA_AUTONOMY_EXECUTOR_ENABLED', true),
+                'max_retries' => env('NAJM_HODA_AUTONOMY_EXECUTOR_MAX_RETRIES', 1),
+                'idempotency_ttl_minutes' => env('NAJM_HODA_AUTONOMY_EXECUTOR_IDEMPOTENCY_TTL_MINUTES', 60),
+                'default_action_cooldown_seconds' => env('NAJM_HODA_AUTONOMY_EXECUTOR_DEFAULT_COOLDOWN_SECONDS', 60),
+                'action_cooldowns' => [
+                    'run_ops_monitor' => env('NAJM_HODA_AUTONOMY_EXECUTOR_COOLDOWN_RUN_OPS_MONITOR', 60),
+                    'propose_engagement_recommendations' => env('NAJM_HODA_AUTONOMY_EXECUTOR_COOLDOWN_RECOMMENDATIONS', 120),
+                    'prioritize_overdue_action_items' => env('NAJM_HODA_AUTONOMY_EXECUTOR_COOLDOWN_PRIORITIZE_ITEMS', 120),
+                ],
+            ],
+            'audit' => [
+                'history_size' => env('NAJM_HODA_AUTONOMY_AUDIT_HISTORY_SIZE', 500),
+                'retention_minutes' => env('NAJM_HODA_AUTONOMY_AUDIT_RETENTION_MINUTES', 10080),
+            ],
+            'costs' => [
+                'daily_budget' => env('NAJM_HODA_AUTONOMY_COST_DAILY_BUDGET', 5.0),
+                'monthly_budget' => env('NAJM_HODA_AUTONOMY_COST_MONTHLY_BUDGET', 100.0),
+                'default_action_cost' => env('NAJM_HODA_AUTONOMY_COST_DEFAULT_ACTION', 0.001),
+                'max_daily_ledger_entries' => env('NAJM_HODA_AUTONOMY_COST_MAX_DAILY_LEDGER_ENTRIES', 2000),
+                'action_estimates' => [
+                    'run_ops_monitor' => env('NAJM_HODA_AUTONOMY_COST_RUN_OPS_MONITOR', 0.002),
+                    'propose_engagement_recommendations' => env('NAJM_HODA_AUTONOMY_COST_PROPOSE_RECOMMENDATIONS', 0.003),
+                    'prioritize_overdue_action_items' => env('NAJM_HODA_AUTONOMY_COST_PRIORITIZE_ITEMS', 0.0015),
+                ],
+            ],
+            'runbooks' => [
+                'min_required_checklist_items' => env('NAJM_HODA_RUNBOOK_MIN_CHECKLIST_ITEMS', 4),
+                'registry' => [
+                    [
+                        'id' => 'incident_response',
+                        'title' => 'Incident Response',
+                        'owner' => 'SRE',
+                        'version' => '1.0.0',
+                        'status' => 'active',
+                        'updated_at' => '2026-02-21',
+                        'checklist' => [
+                            'Confirm incident severity and blast radius.',
+                            'Pause high-risk autonomy actions if needed.',
+                            'Create and assign escalation ticket.',
+                            'Broadcast status update to operations channel.',
+                        ],
+                    ],
+                    [
+                        'id' => 'degraded_mode',
+                        'title' => 'Degraded Mode Operations',
+                        'owner' => 'Platform',
+                        'version' => '1.0.0',
+                        'status' => 'active',
+                        'updated_at' => '2026-02-21',
+                        'checklist' => [
+                            'Switch autonomy to propose-only mode.',
+                            'Disable non-critical background jobs.',
+                            'Increase health-check cadence.',
+                            'Track MTTR and customer impact.',
+                        ],
+                    ],
+                    [
+                        'id' => 'override_control',
+                        'title' => 'Override Control',
+                        'owner' => 'Operations',
+                        'version' => '1.0.0',
+                        'status' => 'active',
+                        'updated_at' => '2026-02-21',
+                        'checklist' => [
+                            'Record override reason and expected duration.',
+                            'Limit blocked actions to scoped set.',
+                            'Assign approver for override exit.',
+                            'Review audit trace before clearance.',
+                        ],
+                    ],
+                    [
+                        'id' => 'recovery_validation',
+                        'title' => 'Recovery Validation',
+                        'owner' => 'Engineering',
+                        'version' => '1.0.0',
+                        'status' => 'active',
+                        'updated_at' => '2026-02-21',
+                        'checklist' => [
+                            'Run post-incident health monitor.',
+                            'Replay critical autonomy traces.',
+                            'Confirm no open policy drift breach.',
+                            'Publish recovery summary and next actions.',
+                        ],
+                    ],
+                ],
+            ],
+            'governance' => [
+                'window_hours' => env('NAJM_HODA_GOVERNANCE_WINDOW_HOURS', 24),
+                'event_limit' => env('NAJM_HODA_GOVERNANCE_EVENT_LIMIT', 3000),
+                'snapshot_ttl_minutes' => env('NAJM_HODA_GOVERNANCE_SNAPSHOT_TTL_MINUTES', 180),
+                'drift' => [
+                    'window_hours' => env('NAJM_HODA_GOVERNANCE_DRIFT_WINDOW_HOURS', 24),
+                    'event_limit' => env('NAJM_HODA_GOVERNANCE_DRIFT_EVENT_LIMIT', 3000),
+                ],
+                'kpis' => [
+                    'auto_action_success_rate' => [
+                        'target_min' => 0.95,
+                        'warning_below' => 0.90,
+                    ],
+                    'autonomy_coverage_rate' => [
+                        'target_min' => 0.60,
+                        'warning_below' => 0.50,
+                    ],
+                    'mttr_reduction_rate' => [
+                        'target_min' => 0.30,
+                        'warning_below' => 0.20,
+                    ],
+                    'rollback_unwanted_rate' => [
+                        'target_max' => 0.02,
+                        'warning_above' => 0.03,
+                    ],
+                    'user_satisfaction_score' => [
+                        'target_min' => 0.80,
+                        'warning_below' => 0.75,
+                    ],
+                    'human_approval_latency_minutes' => [
+                        'target_max' => 30,
+                        'warning_above' => 45,
+                    ],
+                    'policy_drift_rate' => [
+                        'target_max' => 0.01,
+                        'warning_above' => 0.02,
+                    ],
+                ],
+            ],
+        ],
+    ],
+
     /**
      * Webhooks (برای اعلان‌ها)
      */
@@ -244,6 +537,7 @@ return [
         'action_executor' => [
             'enabled' => env('NAJM_HODA_GROUP_ACTION_EXECUTOR_ENABLED', true),
             'propose_before_execute' => env('NAJM_HODA_GROUP_ACTION_PROPOSE_BEFORE_EXECUTE', false),
+            'dry_run' => env('NAJM_HODA_GROUP_ACTION_DRY_RUN', false),
             'allow_create_post' => env('NAJM_HODA_GROUP_ACTION_ALLOW_CREATE_POST', true),
             'allow_create_poll' => env('NAJM_HODA_GROUP_ACTION_ALLOW_CREATE_POLL', true),
             'allow_create_comment' => env('NAJM_HODA_GROUP_ACTION_ALLOW_CREATE_COMMENT', true),

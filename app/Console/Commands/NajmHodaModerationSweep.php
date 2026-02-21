@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Services\NajmHoda\NajmHodaGroupAssistantService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class NajmHodaModerationSweep extends Command
 {
@@ -12,6 +13,14 @@ class NajmHodaModerationSweep extends Command
 
     public function handle(NajmHodaGroupAssistantService $assistant): int
     {
+        if (!config('najm-hoda.enabled', true)) {
+            Log::info('NajmHoda command skipped because system is disabled', [
+                'command' => 'najm-hoda:moderation-sweep',
+            ]);
+            $this->warn('Najm Hoda is disabled (NAJM_HODA_ENABLED=false).');
+            return self::SUCCESS;
+        }
+
         $maxGroups = max(1, (int) $this->option('max-groups'));
         $result = $assistant->runScheduledModerationSweep($maxGroups);
 
@@ -22,4 +31,3 @@ class NajmHodaModerationSweep extends Command
         return self::SUCCESS;
     }
 }
-

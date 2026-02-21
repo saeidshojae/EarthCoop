@@ -9,8 +9,35 @@ use App\Services\NajmHoda\Agents\StewardAgent;
 use App\Services\NajmHoda\Agents\GuideAgent;
 use App\Services\NajmHoda\Agents\ArchitectAgent;
 use App\Services\NajmHoda\MockModeService;
+use App\Services\NajmHoda\Runtime\DatabaseRuntimeEventBus;
+use App\Services\NajmHoda\Runtime\GroupActionExecutor;
+use App\Services\NajmHoda\Runtime\NajmHodaAutonomousGoalLoopService;
+use App\Services\NajmHoda\Runtime\NajmHodaAutonomyApprovalService;
+use App\Services\NajmHoda\Runtime\NajmHodaAutonomyAuditService;
+use App\Services\NajmHoda\Runtime\NajmHodaAutonomyControlService;
+use App\Services\NajmHoda\Runtime\NajmHodaAutonomyCostLedgerService;
+use App\Services\NajmHoda\Runtime\NajmHodaAutonomySafetyGate;
+use App\Services\NajmHoda\Runtime\NajmHodaCapabilityRegistry;
+use App\Services\NajmHoda\Runtime\NajmHodaEntryPolicy;
+use App\Services\NajmHoda\Runtime\NajmHodaExecutionService;
+use App\Services\NajmHoda\Runtime\NajmHodaObservabilityGraphService;
+use App\Services\NajmHoda\Runtime\NajmHodaOperatorActionExecutorV2;
+use App\Services\NajmHoda\Runtime\NajmHodaProactiveRecommendationService;
+use App\Services\NajmHoda\Runtime\NajmHodaOpsEscalationService;
+use App\Services\NajmHoda\Runtime\NajmHodaOpsHealthMonitor;
+use App\Services\NajmHoda\Runtime\NajmHodaOpsRetentionService;
+use App\Services\NajmHoda\Runtime\NajmHodaOpsTriageService;
+use App\Services\NajmHoda\Runtime\NajmHodaGovernanceKpiCatalogService;
+use App\Services\NajmHoda\Runtime\NajmHodaGovernanceMetricsAggregatorService;
+use App\Services\NajmHoda\Runtime\NajmHodaDecisionPolicyDriftService;
+use App\Services\NajmHoda\Runtime\NajmHodaRunbookRegistryService;
+use App\Services\NajmHoda\Runtime\InMemoryRuntimeEventBus;
+use App\Services\NajmHoda\Runtime\NajmHodaPolicyGate;
+use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use App\Services\NajmHoda\CodeScanner\CodeScannerService;
 use App\Services\NajmHoda\CodeScanner\CodeAnalyzerService;
+use App\Services\NotificationService;
+use App\Services\TicketTriageService;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Log;
 
@@ -50,6 +77,154 @@ class NajmHodaServiceProvider extends ServiceProvider
         // ثبت Mock Mode Service
         $this->app->singleton(MockModeService::class, function ($app) {
             return new MockModeService();
+        });
+
+        $this->app->singleton(RuntimeEventBus::class, function ($app) {
+            $driver = (string) config('najm-hoda.runtime.event_bus.driver', 'database');
+            $maxEvents = (int) config('najm-hoda.runtime.event_bus.max_events', 500);
+            $retentionDays = (int) config('najm-hoda.runtime.event_bus.retention_days', 14);
+            $pruneInterval = (int) config('najm-hoda.runtime.event_bus.prune_interval_seconds', 300);
+
+            if ($driver === 'in_memory') {
+                return new InMemoryRuntimeEventBus($maxEvents);
+            }
+
+            return new DatabaseRuntimeEventBus($maxEvents, $retentionDays, $pruneInterval);
+        });
+
+        $this->app->singleton(NajmHodaPolicyGate::class, function ($app) {
+            return new NajmHodaPolicyGate();
+        });
+
+        $this->app->singleton(GroupActionExecutor::class, function ($app) {
+            return new GroupActionExecutor();
+        });
+
+        $this->app->singleton(NajmHodaEntryPolicy::class, function ($app) {
+            return new NajmHodaEntryPolicy();
+        });
+
+        $this->app->singleton(NajmHodaExecutionService::class, function ($app) {
+            return new NajmHodaExecutionService();
+        });
+
+        $this->app->singleton(NajmHodaCapabilityRegistry::class, function ($app) {
+            return new NajmHodaCapabilityRegistry(
+                $app->make(RuntimeEventBus::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaAutonomySafetyGate::class, function ($app) {
+            return new NajmHodaAutonomySafetyGate(
+                $app->make(RuntimeEventBus::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaAutonomyApprovalService::class, function ($app) {
+            return new NajmHodaAutonomyApprovalService(
+                $app->make(RuntimeEventBus::class),
+                $app->make(NotificationService::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaAutonomyControlService::class, function ($app) {
+            return new NajmHodaAutonomyControlService(
+                $app->make(RuntimeEventBus::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaAutonomyAuditService::class, function ($app) {
+            return new NajmHodaAutonomyAuditService(
+                $app->make(RuntimeEventBus::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaAutonomyCostLedgerService::class, function ($app) {
+            return new NajmHodaAutonomyCostLedgerService(
+                $app->make(RuntimeEventBus::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaObservabilityGraphService::class, function ($app) {
+            return new NajmHodaObservabilityGraphService(
+                $app->make(RuntimeEventBus::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaProactiveRecommendationService::class, function ($app) {
+            return new NajmHodaProactiveRecommendationService(
+                $app->make(RuntimeEventBus::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaOperatorActionExecutorV2::class, function ($app) {
+            return new NajmHodaOperatorActionExecutorV2(
+                $app->make(RuntimeEventBus::class),
+                $app->make(NajmHodaAutonomyCostLedgerService::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaAutonomousGoalLoopService::class, function ($app) {
+            return new NajmHodaAutonomousGoalLoopService(
+                $app->make(RuntimeEventBus::class),
+                $app->make(NajmHodaObservabilityGraphService::class),
+                $app->make(NajmHodaProactiveRecommendationService::class),
+                $app->make(NajmHodaOperatorActionExecutorV2::class),
+                $app->make(NajmHodaAutonomyControlService::class),
+                $app->make(NajmHodaAutonomyAuditService::class),
+                $app->make(NajmHodaCapabilityRegistry::class),
+                $app->make(NajmHodaAutonomySafetyGate::class),
+                $app->make(NajmHodaAutonomyApprovalService::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaOpsHealthMonitor::class, function ($app) {
+            return new NajmHodaOpsHealthMonitor(
+                $app->make(RuntimeEventBus::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaOpsTriageService::class, function ($app) {
+            return new NajmHodaOpsTriageService(
+                $app->make(RuntimeEventBus::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaOpsEscalationService::class, function ($app) {
+            return new NajmHodaOpsEscalationService(
+                $app->make(RuntimeEventBus::class),
+                $app->make(TicketTriageService::class),
+                $app->make(NotificationService::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaOpsRetentionService::class, function ($app) {
+            return new NajmHodaOpsRetentionService(
+                $app->make(RuntimeEventBus::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaGovernanceKpiCatalogService::class, function ($app) {
+            return new NajmHodaGovernanceKpiCatalogService();
+        });
+
+        $this->app->singleton(NajmHodaGovernanceMetricsAggregatorService::class, function ($app) {
+            return new NajmHodaGovernanceMetricsAggregatorService(
+                $app->make(RuntimeEventBus::class),
+                $app->make(NajmHodaGovernanceKpiCatalogService::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaDecisionPolicyDriftService::class, function ($app) {
+            return new NajmHodaDecisionPolicyDriftService(
+                $app->make(RuntimeEventBus::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaRunbookRegistryService::class, function ($app) {
+            return new NajmHodaRunbookRegistryService(
+                $app->make(RuntimeEventBus::class)
+            );
         });
 
         // ثبت Code Scanner

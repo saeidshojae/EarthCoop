@@ -14,6 +14,14 @@ class HandleNajmHodaGroupMessage
 
     public function handle(MessageCreated $event): void
     {
+        if (!config('najm-hoda.enabled', true)) {
+            Log::info('NajmHoda group assistant skipped because system is disabled', [
+                'group_id' => $event->group->id ?? null,
+                'message_id' => $event->message->id ?? null,
+            ]);
+            return;
+        }
+
         try {
             $this->assistant->handleIncomingMessage($event->message);
         } catch (\Throwable $e) {
