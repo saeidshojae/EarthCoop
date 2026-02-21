@@ -19,6 +19,8 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\NajmBaharRunSalaries::class,
         \App\Console\Commands\NajmBaharSyncSubAccountBalances::class,
         \App\Console\Commands\NajmHodaBootstrapGroups::class,
+        \App\Console\Commands\NajmHodaGoalLoop::class,
+        \App\Console\Commands\NajmHodaOpsMonitor::class,
         \App\Console\Commands\NajmHodaModerationSweep::class,
         \App\Console\Commands\SendElectionReminders::class,
         \App\Console\Commands\SendAuctionReminders::class,
@@ -45,6 +47,12 @@ class Kernel extends ConsoleKernel
 
         // Najm Hoda scheduled group moderation cleanup (respects per-group interval)
         $schedule->command('najm-hoda:moderation-sweep --max-groups=200')->hourly();
+
+        // Najm Hoda operational health monitor + auto triage
+        $schedule->command('najm-hoda:ops-monitor')->everyFiveMinutes();
+
+        // Najm Hoda autonomous goal loop (phase 4 skeleton)
+        $schedule->command('najm-hoda:goal-loop')->everyTenMinutes();
     }
 
     /**

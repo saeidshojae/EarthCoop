@@ -4,6 +4,8 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Services\NajmHoda\NajmHodaOrchestrator;
+use App\Services\NajmHoda\Runtime\NajmHodaEntryPolicy;
+use App\Services\NajmHoda\Runtime\NajmHodaExecutionService;
 use App\Models\Conversation;
 use App\Models\ConversationMessage;
 use Illuminate\Http\Request;
@@ -18,10 +20,18 @@ use Illuminate\Support\Facades\Log;
 class NajmHodaController extends Controller
 {
     protected NajmHodaOrchestrator $najmHoda;
+    protected NajmHodaEntryPolicy $entryPolicy;
+    protected NajmHodaExecutionService $executionService;
     
-    public function __construct(NajmHodaOrchestrator $najmHoda)
+    public function __construct(
+        NajmHodaOrchestrator $najmHoda,
+        NajmHodaEntryPolicy $entryPolicy,
+        NajmHodaExecutionService $executionService
+    )
     {
         $this->najmHoda = $najmHoda;
+        $this->entryPolicy = $entryPolicy;
+        $this->executionService = $executionService;
     }
     
     /**
@@ -31,6 +41,10 @@ class NajmHodaController extends Controller
      */
     public function welcome()
     {
+        if ($policyResponse = $this->denyByEntryPolicy('api.welcome', false)) {
+            return $policyResponse;
+        }
+
         return response()->json([
             'success' => true,
             'message' => $this->najmHoda->getWelcomeMessage(),
@@ -45,6 +59,10 @@ class NajmHodaController extends Controller
      */
     public function chat(Request $request)
     {
+        if ($policyResponse = $this->denyByEntryPolicy('api.chat')) {
+            return $policyResponse;
+        }
+
         $user = auth()->user();
         $isAdmin = $user ? ($user->is_admin || $user->hasRole('super-admin')) : false;
 
@@ -89,29 +107,41 @@ class NajmHodaController extends Controller
             if ($request->agent && $request->agent !== 'auto') {
                 $context['force_agent'] = $request->agent;
             }
-            
-            $startTime = microtime(true);
-            $response = $this->najmHoda->route($request->message, $context);
-            $responseTime = (microtime(true) - $startTime) * 1000; // ms
-            
-            // ذخیره پاسخ نجم‌هدا
-            if ($response['success']) {
-                $aiMessage = $this->saveAssistantMessage(
-                    $conversation, 
-                    $response['message'],
-                    $response['agent']
+            $response = $this->executionService->executeChat(
+                $this->najmHoda,
+                (string) $request->message,
+                $context
+            );
+
+            if ((bool) ($response['success'] ?? false)) {
+                $this->saveAssistantMessage(
+                    $conversation,
+                    (string) ($response['message'] ?? ''),
+                    (string) ($response['agent'] ?? 'unknown')
                 );
             }
-            
+
+            if (!(bool) ($response['success'] ?? false)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => (string) ($response['message'] ?? '???????? ????? ??? ???. ????? ?????? ???? ????.'),
+                    'agent' => (string) ($response['agent'] ?? 'system'),
+                    'request_id' => (string) ($response['request_id'] ?? ''),
+                    'response_time_ms' => (int) ($response['response_time_ms'] ?? 0),
+                    'error' => $response['error'] ?? null,
+                ], 500);
+            }
+
             return response()->json([
-                'success' => $response['success'],
-                'message' => $response['message'],
-                'agent' => $response['agent'] ?? 'unknown',
-                'agent_name' => $response['agent_persian_name'] ?? 'نجم‌هدا',
-                'agent_icon' => $response['agent_icon'] ?? '🤖',
+                'success' => true,
+                'message' => (string) ($response['message'] ?? ''),
+                'agent' => (string) ($response['agent'] ?? 'unknown'),
+                'agent_name' => (string) ($response['agent_name'] ?? '???????'),
+                'agent_icon' => (string) ($response['agent_icon'] ?? '??'),
                 'conversation_id' => $conversation->id,
-                'suggestions' => $response['suggestions'] ?? [],
-                'response_time_ms' => round($responseTime),
+                'suggestions' => (array) ($response['suggestions'] ?? []),
+                'response_time_ms' => (int) ($response['response_time_ms'] ?? 0),
+                'request_id' => (string) ($response['request_id'] ?? ''),
             ]);
             
         } catch (\Exception $e) {
@@ -136,6 +166,10 @@ class NajmHodaController extends Controller
      */
     public function getConversation($id)
     {
+        if ($policyResponse = $this->denyByEntryPolicy('api.conversation.show')) {
+            return $policyResponse;
+        }
+
         try {
             $conversation = Conversation::with(['messages' => function($query) {
                 $query->orderBy('created_at', 'asc');
@@ -181,6 +215,10 @@ class NajmHodaController extends Controller
      */
     public function listConversations(Request $request)
     {
+        if ($policyResponse = $this->denyByEntryPolicy('api.conversation.list')) {
+            return $policyResponse;
+        }
+
         $query = Conversation::where('user_id', auth()->id())
             ->with('lastMessage')
             ->latest();
@@ -224,6 +262,10 @@ class NajmHodaController extends Controller
      */
     public function deleteConversation($id)
     {
+        if ($policyResponse = $this->denyByEntryPolicy('api.conversation.delete')) {
+            return $policyResponse;
+        }
+
         try {
             $conversation = Conversation::findOrFail($id);
             
@@ -257,6 +299,10 @@ class NajmHodaController extends Controller
      */
     public function archiveConversation($id)
     {
+        if ($policyResponse = $this->denyByEntryPolicy('api.conversation.archive')) {
+            return $policyResponse;
+        }
+
         try {
             $conversation = Conversation::findOrFail($id);
             
@@ -289,6 +335,10 @@ class NajmHodaController extends Controller
      */
     public function submitFeedback(Request $request)
     {
+        if ($policyResponse = $this->denyByEntryPolicy('api.feedback.submit')) {
+            return $policyResponse;
+        }
+
         $validator = Validator::make($request->all(), [
             'type' => 'required|in:bug,feature_request,improvement,complaint,praise,other',
             'subject' => 'required|string|max:200',
@@ -335,6 +385,10 @@ class NajmHodaController extends Controller
      */
     public function getStats()
     {
+        if ($policyResponse = $this->denyByEntryPolicy('api.stats', false)) {
+            return $policyResponse;
+        }
+
         $this->authorize('admin');
         
         try {
@@ -422,5 +476,25 @@ class NajmHodaController extends Controller
         }
         
         return $title;
+    }
+
+    protected function denyByEntryPolicy(string $entrypoint, bool $enforceRateLimit = true)
+    {
+        $entryPolicy = $this->entryPolicy->check(
+            $entrypoint,
+            auth()->id(),
+            request()->ip(),
+            $enforceRateLimit
+        );
+
+        if ((bool) ($entryPolicy['allowed'] ?? false)) {
+            return null;
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => (string) ($entryPolicy['message'] ?? 'Request denied by policy.'),
+            'code' => (string) ($entryPolicy['code'] ?? 'NAJM_HODA_POLICY_DENIED'),
+        ], (int) ($entryPolicy['status'] ?? 403));
     }
 }

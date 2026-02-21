@@ -9,6 +9,16 @@ use App\Services\NajmHoda\CodeScanner\CodeScannerService;
 use App\Services\NajmHoda\CodeScanner\CodeAnalyzerService;
 use App\Services\NajmHoda\CodeScanner\AutoFixerService;
 use App\Services\NajmHoda\CodeScanner\BackupManagerService;
+use App\Services\NajmHoda\Runtime\NajmHodaEntryPolicy;
+use App\Services\NajmHoda\Runtime\NajmHodaExecutionService;
+use App\Services\NajmHoda\Runtime\NajmHodaAutonomyApprovalService;
+use App\Services\NajmHoda\Runtime\NajmHodaAutonomyAuditService;
+use App\Services\NajmHoda\Runtime\NajmHodaAutonomyControlService;
+use App\Services\NajmHoda\Runtime\NajmHodaAutonomyCostLedgerService;
+use App\Services\NajmHoda\Runtime\NajmHodaGovernanceKpiCatalogService;
+use App\Services\NajmHoda\Runtime\NajmHodaGovernanceMetricsAggregatorService;
+use App\Services\NajmHoda\Runtime\NajmHodaDecisionPolicyDriftService;
+use App\Services\NajmHoda\Runtime\NajmHodaRunbookRegistryService;
 use App\Models\Conversation;
 use App\Models\AIInteraction;
 use App\Models\Feedback;
@@ -19,6 +29,7 @@ use App\Models\StewardKnowledgeFile;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
@@ -34,6 +45,8 @@ class NajmHodaController extends Controller
     protected CodeAnalyzerService $analyzer;
     protected AutoFixerService $fixer;
     protected BackupManagerService $backupManager;
+    protected NajmHodaEntryPolicy $entryPolicy;
+    protected NajmHodaExecutionService $executionService;
     
     public function __construct()
     {
@@ -43,6 +56,8 @@ class NajmHodaController extends Controller
         $this->analyzer = app(CodeAnalyzerService::class);
         $this->fixer = app(AutoFixerService::class);
         $this->backupManager = app(BackupManagerService::class);
+        $this->entryPolicy = app(NajmHodaEntryPolicy::class);
+        $this->executionService = app(NajmHodaExecutionService::class);
     }
     
     /**
@@ -526,6 +541,10 @@ class NajmHodaController extends Controller
      */
     public function sendMessage(Request $request)
     {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.chat')) {
+            return $policyResponse;
+        }
+
         try {
             $validated = $request->validate([
                 'message' => 'required|string|max:5000',
@@ -537,13 +556,30 @@ class NajmHodaController extends Controller
                 'force_agent' => $validated['agent'] ?? null,
             ];
             
-            $response = $this->orchestrator->route($validated['message'], $context);
+            $response = $this->executionService->executeChat(
+                $this->orchestrator,
+                (string) $validated['message'],
+                $context
+            );
+
+            if (!(bool) ($response['success'] ?? false)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => (string) ($response['message'] ?? 'متأسفانه خطایی رخ داد.'),
+                    'agent' => (string) ($response['agent'] ?? 'system'),
+                    'request_id' => (string) ($response['request_id'] ?? ''),
+                    'response_time_ms' => (int) ($response['response_time_ms'] ?? 0),
+                    'error' => $response['error'] ?? null,
+                ], 500);
+            }
             
             return response()->json([
                 'success' => true,
-                'response' => $response['message'],
-                'agent' => $response['agent'],
-                'suggestions' => $response['suggestions'] ?? [],
+                'response' => (string) ($response['message'] ?? ''),
+                'agent' => (string) ($response['agent'] ?? 'unknown'),
+                'suggestions' => (array) ($response['suggestions'] ?? []),
+                'request_id' => (string) ($response['request_id'] ?? ''),
+                'response_time_ms' => (int) ($response['response_time_ms'] ?? 0),
             ]);
             
         } catch (\Exception $e) {
@@ -570,6 +606,10 @@ class NajmHodaController extends Controller
      */
     public function designAgent(Request $request)
     {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.agent.design')) {
+            return $policyResponse;
+        }
+
         $validated = $request->validate([
             'description' => 'required|string|min:10',
             'requirements' => 'nullable|array',
@@ -604,6 +644,10 @@ class NajmHodaController extends Controller
      */
     public function saveAgent(Request $request)
     {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.agent.save')) {
+            return $policyResponse;
+        }
+
         $validated = $request->validate([
             'design' => 'required|array',
             'design.agent_info' => 'required|array',
@@ -725,6 +769,26 @@ class NajmHodaController extends Controller
     /**
      * به‌روزرسانی فایل .env
      */
+    protected function denyByEntryPolicy(string $entrypoint, bool $enforceRateLimit = true)
+    {
+        $entryPolicy = $this->entryPolicy->check(
+            $entrypoint,
+            auth()->id(),
+            request()->ip(),
+            $enforceRateLimit
+        );
+
+        if ((bool) ($entryPolicy['allowed'] ?? false)) {
+            return null;
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => (string) ($entryPolicy['message'] ?? 'Request denied by policy.'),
+            'code' => (string) ($entryPolicy['code'] ?? 'NAJM_HODA_POLICY_DENIED'),
+        ], (int) ($entryPolicy['status'] ?? 403));
+    }
+
     protected function updateEnvFile(array $data): void
     {
         $envFile = base_path('.env');
@@ -805,6 +869,10 @@ class NajmHodaController extends Controller
      */
     public function analyzeFile(Request $request)
     {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.code.analyze')) {
+            return $policyResponse;
+        }
+
         $validated = $request->validate([
             'file_path' => 'required|string',
         ]);
@@ -853,6 +921,10 @@ class NajmHodaController extends Controller
      */
     public function getSuggestion(Request $request)
     {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.code.suggestion')) {
+            return $policyResponse;
+        }
+
         $validated = $request->validate([
             'file_path' => 'required|string',
             'issue' => 'required|array',
@@ -936,11 +1008,24 @@ class NajmHodaController extends Controller
             'backup_retention_days' => 'required|integer|min:7|max:90',
         ]);
 
-        // ذخیره در فایل env (فقط نمایشی - باید به صورت دستی انجام شود)
-        // یا ذخیره در دیتابیس/کش
+        $envUpdates = [
+            'NAJM_HODA_AUTO_FIXER_ENABLED' => $validated['enabled'] ? 'true' : 'false',
+            'NAJM_HODA_AUTO_FIXER_LEVEL' => (string) $validated['level'],
+            'NAJM_HODA_AUTO_FIXER_MAX_FIXES' => (string) $validated['max_fixes_per_run'],
+            'NAJM_HODA_AUTO_FIXER_REQUIRE_APPROVAL' => $validated['require_approval'] ? 'true' : 'false',
+            'NAJM_HODA_AUTO_FIXER_BACKUP_RETENTION' => (string) $validated['backup_retention_days'],
+        ];
 
-        // برای الان از Cache استفاده می‌کنیم
-        cache()->put('najm_hoda_auto_fixer_settings', $validated, now()->addYear());
+        $this->updateEnvFile($envUpdates);
+
+        // Apply runtime config immediately for current process.
+        config([
+            'najm-hoda.auto_fixer.enabled' => (bool) $validated['enabled'],
+            'najm-hoda.auto_fixer.level' => (string) $validated['level'],
+            'najm-hoda.auto_fixer.max_fixes_per_run' => (int) $validated['max_fixes_per_run'],
+            'najm-hoda.auto_fixer.require_approval' => (bool) $validated['require_approval'],
+            'najm-hoda.auto_fixer.backup_retention_days' => (int) $validated['backup_retention_days'],
+        ]);
 
         return response()->json([
             'success' => true,
@@ -953,10 +1038,13 @@ class NajmHodaController extends Controller
      */
     public function testAutoFixer()
     {
-        $settings = cache()->get('najm_hoda_auto_fixer_settings', [
-            'enabled' => false,
-            'level' => 'off',
-        ]);
+        $settings = [
+            'enabled' => (bool) config('najm-hoda.auto_fixer.enabled', false),
+            'level' => (string) config('najm-hoda.auto_fixer.level', 'off'),
+            'max_fixes_per_run' => (int) config('najm-hoda.auto_fixer.max_fixes_per_run', 10),
+            'require_approval' => (bool) config('najm-hoda.auto_fixer.require_approval', true),
+            'backup_retention_days' => (int) config('najm-hoda.auto_fixer.backup_retention_days', 30),
+        ];
 
         if (!$settings['enabled'] || $settings['level'] === 'off') {
             return response()->json([
@@ -965,12 +1053,34 @@ class NajmHodaController extends Controller
             ]);
         }
 
-        // شبیه‌سازی تست
+        $scan = $this->scanner->scanProject();
+        $summary = $this->scanner->getSummary($scan);
+
+        $safeFixes = ['Long Line', 'Commented Code', 'Debug Code'];
+        $moderateFixes = ['Inefficient Count', 'Query in Loop'];
+
+        $allowedTypes = match ($settings['level']) {
+            'safe' => $safeFixes,
+            'moderate' => array_merge($safeFixes, $moderateFixes),
+            'aggressive' => array_merge($safeFixes, $moderateFixes),
+            default => [],
+        };
+
+        $fixableCount = 0;
+        foreach (($summary['by_type'] ?? []) as $type => $count) {
+            if (in_array($type, $allowedTypes, true)) {
+                $fixableCount += (int) $count;
+            }
+        }
+
         return response()->json([
             'success' => true,
-            'fixable_count' => rand(5, 20),
+            'fixable_count' => $fixableCount,
             'level' => $settings['level'],
-            'message' => 'تست موفق - هیچ تغییری اعمال نشد'
+            'scanned_files' => (int) ($scan['scanned_files'] ?? 0),
+            'issues_found' => (int) ($scan['issues_found'] ?? 0),
+            'settings' => $settings,
+            'message' => 'تست واقعی انجام شد و هیچ تغییری روی فایل‌ها اعمال نشد'
         ]);
     }
 
@@ -979,15 +1089,13 @@ class NajmHodaController extends Controller
      */
     public function cleanBackups()
     {
-        $settings = cache()->get('najm_hoda_auto_fixer_settings', [
-            'backup_retention_days' => 30
-        ]);
-
-        $deleted = $this->backupManager->cleanOldBackups($settings['backup_retention_days']);
+        $retentionDays = (int) config('najm-hoda.auto_fixer.backup_retention_days', 30);
+        $deleted = $this->backupManager->cleanOldBackups($retentionDays);
 
         return response()->json([
             'success' => true,
-            'deleted_count' => $deleted
+            'deleted_count' => $deleted,
+            'retention_days' => $retentionDays,
         ]);
     }
 
@@ -1007,6 +1115,310 @@ class NajmHodaController extends Controller
     /**
      * بازگردانی از Backup
      */
+    public function opsDigestPage()
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.ops.digest.page', false)) {
+            return $policyResponse;
+        }
+
+        return view('admin.najm-hoda.ops-digest');
+    }
+
+    public function getOpsDigest(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.ops.digest', false)) {
+            return $policyResponse;
+        }
+
+        $limit = max(1, min(100, (int) $request->input('limit', 20)));
+        $history = Cache::get('najm_hoda:ops:run_summary_history', []);
+        if (!is_array($history)) {
+            $history = [];
+        }
+        $history = array_slice($history, 0, $limit);
+
+        $lastSummary = Cache::get('najm_hoda:ops:last_run_summary');
+        if (!is_array($lastSummary)) {
+            $lastSummary = null;
+        }
+
+        $eventBus = app(\App\Services\NajmHoda\Runtime\RuntimeEventBus::class);
+        $recentOpsEvents = array_values(array_filter(
+            $eventBus->recent(null, max(50, $limit * 5)),
+            static fn (array $entry): bool => str_starts_with((string) ($entry['event'] ?? ''), 'najm_hoda.ops.')
+        ));
+        $recentOpsEvents = array_slice($recentOpsEvents, 0, $limit);
+
+        return response()->json([
+            'success' => true,
+            'last_summary' => $lastSummary,
+            'history' => $history,
+            'recent_ops_events' => $recentOpsEvents,
+            'count' => count($history),
+        ]);
+    }
+
+    public function getAutonomyApprovals(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.approvals', false)) {
+            return $policyResponse;
+        }
+
+        $limit = max(1, min(200, (int) $request->input('limit', 50)));
+        $service = app(NajmHodaAutonomyApprovalService::class);
+        $pending = $service->pending($limit);
+
+        return response()->json([
+            'success' => true,
+            'pending' => $pending,
+            'count' => count($pending),
+        ]);
+    }
+
+    public function decideAutonomyApproval(Request $request, string $approvalId)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.approvals.decide', false)) {
+            return $policyResponse;
+        }
+
+        $validated = $request->validate([
+            'decision' => 'required|string|in:approve,reject',
+            'reason' => 'nullable|string|max:1000',
+        ]);
+
+        if (($validated['decision'] ?? '') === 'reject' && trim((string) ($validated['reason'] ?? '')) === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Rejection reason is required.',
+            ], 422);
+        }
+
+        $service = app(NajmHodaAutonomyApprovalService::class);
+        $result = $service->decide(
+            $approvalId,
+            (string) $validated['decision'],
+            auth()->id(),
+            isset($validated['reason']) ? (string) $validated['reason'] : null
+        );
+
+        if (!(bool) ($result['success'] ?? false)) {
+            return response()->json([
+                'success' => false,
+                'message' => (string) ($result['reason'] ?? 'decision_failed'),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'request' => $result['request'] ?? null,
+        ]);
+    }
+
+    public function getAutonomyControls()
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.controls', false)) {
+            return $policyResponse;
+        }
+
+        $service = app(NajmHodaAutonomyControlService::class);
+
+        return response()->json([
+            'success' => true,
+            'state' => $service->state(),
+            'override' => $service->override(),
+        ]);
+    }
+
+    public function updateAutonomyControls(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.controls.update', false)) {
+            return $policyResponse;
+        }
+
+        $validated = $request->validate([
+            'action' => 'required|string|in:pause,resume,set_override,clear_override',
+            'reason' => 'nullable|string|max:1000',
+            'minutes' => 'nullable|integer|min:1|max:10080',
+            'force_mode' => 'nullable|string|in:apply,propose',
+            'allow_apply_low_risk' => 'nullable|boolean',
+            'blocked_actions' => 'nullable|string',
+        ]);
+
+        $service = app(NajmHodaAutonomyControlService::class);
+        $byUserId = auth()->id();
+        $reason = isset($validated['reason']) ? (string) $validated['reason'] : null;
+
+        $result = null;
+        switch ((string) $validated['action']) {
+            case 'pause':
+                $minutes = isset($validated['minutes']) ? (int) $validated['minutes'] : null;
+                $result = $service->pause($byUserId, $reason, $minutes);
+                break;
+            case 'resume':
+                $result = $service->resume($byUserId, $reason);
+                break;
+            case 'set_override':
+                $blocked = isset($validated['blocked_actions']) ? explode(',', (string) $validated['blocked_actions']) : [];
+                $result = $service->setOverride(
+                    $validated['force_mode'] ?? null,
+                    $blocked,
+                    array_key_exists('allow_apply_low_risk', $validated) ? (bool) $validated['allow_apply_low_risk'] : null,
+                    $byUserId,
+                    $reason
+                );
+                break;
+            case 'clear_override':
+                $result = $service->clearOverride($byUserId, $reason);
+                break;
+        }
+
+        return response()->json([
+            'success' => true,
+            'result' => $result,
+            'state' => $service->state(),
+            'override' => $service->override(),
+        ]);
+    }
+
+    public function getAutonomyAuditTraces(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.audit', false)) {
+            return $policyResponse;
+        }
+
+        $limit = max(1, min(300, (int) $request->input('limit', 50)));
+        $service = app(NajmHodaAutonomyAuditService::class);
+        $history = $service->history($limit);
+
+        return response()->json([
+            'success' => true,
+            'history' => $history,
+            'count' => count($history),
+        ]);
+    }
+
+    public function replayAutonomyTrace(string $runId)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.audit.replay', false)) {
+            return $policyResponse;
+        }
+
+        $service = app(NajmHodaAutonomyAuditService::class);
+        $result = $service->replay($runId);
+
+        if (!(bool) ($result['success'] ?? false)) {
+            return response()->json([
+                'success' => false,
+                'message' => (string) ($result['reason'] ?? 'replay_failed'),
+            ], 404);
+        }
+
+        return response()->json($result);
+    }
+
+    public function getAutonomyGovernanceBaseline()
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.governance.baseline', false)) {
+            return $policyResponse;
+        }
+
+        $service = app(NajmHodaGovernanceKpiCatalogService::class);
+        $baseline = $service->baseline();
+
+        return response()->json([
+            'success' => true,
+            'baseline' => $baseline,
+            'count' => count($baseline),
+        ]);
+    }
+
+    public function autonomyGovernancePage()
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.governance.page', false)) {
+            return $policyResponse;
+        }
+
+        return view('admin.najm-hoda.governance-dashboard');
+    }
+
+    public function getAutonomyGovernanceSnapshot(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.governance.snapshot', false)) {
+            return $policyResponse;
+        }
+
+        $windowHours = max(1, min(168, (int) $request->input('window_hours', (int) config('najm-hoda.runtime.autonomy.governance.window_hours', 24))));
+        $service = app(NajmHodaGovernanceMetricsAggregatorService::class);
+        $snapshot = $service->snapshot($windowHours);
+
+        return response()->json([
+            'success' => true,
+            'snapshot' => $snapshot,
+        ]);
+    }
+
+    public function getAutonomyCostStatus()
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.costs.status', false)) {
+            return $policyResponse;
+        }
+
+        $service = app(NajmHodaAutonomyCostLedgerService::class);
+        $status = $service->status();
+
+        return response()->json([
+            'success' => true,
+            'status' => $status,
+        ]);
+    }
+
+    public function getAutonomyGovernanceDriftReport(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.governance.drift', false)) {
+            return $policyResponse;
+        }
+
+        $windowHours = max(1, min(168, (int) $request->input('window_hours', (int) config('najm-hoda.runtime.autonomy.governance.drift.window_hours', 24))));
+        $service = app(NajmHodaDecisionPolicyDriftService::class);
+        $report = $service->report($windowHours);
+
+        return response()->json([
+            'success' => true,
+            'report' => $report,
+        ]);
+    }
+
+    public function getAutonomyRunbookRegistry()
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.runbooks.registry', false)) {
+            return $policyResponse;
+        }
+
+        $service = app(NajmHodaRunbookRegistryService::class);
+        $runbooks = $service->all();
+
+        return response()->json([
+            'success' => true,
+            'runbooks' => $runbooks,
+            'count' => count($runbooks),
+        ]);
+    }
+
+    public function getAutonomyRunbookReadiness()
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.runbooks.readiness', false)) {
+            return $policyResponse;
+        }
+
+        $service = app(NajmHodaRunbookRegistryService::class);
+        $readiness = $service->readiness();
+
+        return response()->json([
+            'success' => true,
+            'readiness' => $readiness,
+        ]);
+    }
+
     public function rollback(Request $request)
     {
         $validated = $request->validate([
