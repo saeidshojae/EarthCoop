@@ -92,6 +92,29 @@ class NajmHodaAutonomyApprovalService
     }
 
     /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function history(int $limit = 100, ?string $status = null): array
+    {
+        $limit = max(1, min(1000, $limit));
+        $requests = $this->loadRequests();
+        if (!is_array($requests)) {
+            return [];
+        }
+
+        if ($status !== null) {
+            $status = strtolower(trim($status));
+            if ($status !== '') {
+                $requests = array_values(array_filter($requests, static function (array $item) use ($status): bool {
+                    return strtolower((string) ($item['status'] ?? '')) === $status;
+                }));
+            }
+        }
+
+        return array_slice($requests, 0, $limit);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function decide(string $requestId, string $decision, ?int $reviewerId, ?string $reason = null): array

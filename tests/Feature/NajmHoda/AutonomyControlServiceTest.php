@@ -40,4 +40,23 @@ class AutonomyControlServiceTest extends TestCase
         $this->assertContains('run_ops_monitor', (array) ($override['blocked_actions'] ?? []));
         $this->assertFalse((bool) ($override['allow_apply_low_risk'] ?? true));
     }
+
+    public function test_kill_switch_can_activate_and_deactivate(): void
+    {
+        config([
+            'najm-hoda.runtime.autonomy.kill_switch.enabled' => true,
+            'najm-hoda.runtime.autonomy.kill_switch.max_minutes' => 120,
+        ]);
+
+        $bus = new InMemoryRuntimeEventBus(100);
+        $service = new NajmHodaAutonomyControlService($bus);
+
+        $active = $service->activateKillSwitch(12, 'incident_response', 30);
+        $this->assertTrue((bool) ($active['active'] ?? false));
+        $this->assertTrue($service->isKillSwitchActive());
+
+        $disabled = $service->deactivateKillSwitch(12, 'recovered');
+        $this->assertFalse((bool) ($disabled['active'] ?? true));
+        $this->assertFalse($service->isKillSwitchActive());
+    }
 }

@@ -39,9 +39,26 @@ class NajmHodaAutonomousGoalLoopService
                 'status' => 'paused',
                 'reason' => 'autonomy_paused_by_admin',
                 'control_state' => $this->controlService->state(),
+                'kill_switch' => $this->controlService->killSwitchState(),
             ];
             $this->auditService->record($pausedResult);
             return $pausedResult;
+        }
+
+        if ($this->controlService->isKillSwitchActive()) {
+            $killSwitchResult = [
+                'executed' => false,
+                'status' => 'kill_switched',
+                'reason' => 'global_kill_switch_active',
+                'control_state' => $this->controlService->state(),
+                'kill_switch' => $this->controlService->killSwitchState(),
+            ];
+
+            $this->eventBus->emit('najm_hoda.autonomy.goal_loop.kill_switched', [
+                'reason' => 'global_kill_switch_active',
+            ]);
+            $this->auditService->record($killSwitchResult);
+            return $killSwitchResult;
         }
 
         $contextLimit = $contextLimit ?? (int) config('najm-hoda.runtime.autonomy.context_limit', 200);
@@ -67,6 +84,7 @@ class NajmHodaAutonomousGoalLoopService
             'plan' => $plan,
             'execution_results' => $executionResults,
             'control_state' => $this->controlService->state(),
+            'kill_switch' => $this->controlService->killSwitchState(),
             'control_override' => $this->controlService->override(),
             'apply_requested' => $apply,
             'generated_at' => now()->toIso8601String(),

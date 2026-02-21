@@ -19,6 +19,10 @@ use App\Services\NajmHoda\Runtime\NajmHodaGovernanceKpiCatalogService;
 use App\Services\NajmHoda\Runtime\NajmHodaGovernanceMetricsAggregatorService;
 use App\Services\NajmHoda\Runtime\NajmHodaDecisionPolicyDriftService;
 use App\Services\NajmHoda\Runtime\NajmHodaRunbookRegistryService;
+use App\Services\NajmHoda\Runtime\NajmHodaGovernanceAlertingService;
+use App\Services\NajmHoda\Runtime\NajmHodaAutonomyGameDayService;
+use App\Services\NajmHoda\Runtime\NajmHodaComplianceEvidenceService;
+use App\Services\NajmHoda\Runtime\NajmHodaProductionReadinessService;
 use App\Models\Conversation;
 use App\Models\AIInteraction;
 use App\Models\Feedback;
@@ -1177,7 +1181,7 @@ class NajmHodaController extends Controller
 
     public function decideAutonomyApproval(Request $request, string $approvalId)
     {
-        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.approvals.decide', false)) {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.approvals.decide', true)) {
             return $policyResponse;
         }
 
@@ -1225,18 +1229,19 @@ class NajmHodaController extends Controller
         return response()->json([
             'success' => true,
             'state' => $service->state(),
+            'kill_switch' => $service->killSwitchState(),
             'override' => $service->override(),
         ]);
     }
 
     public function updateAutonomyControls(Request $request)
     {
-        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.controls.update', false)) {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.controls.update', true)) {
             return $policyResponse;
         }
 
         $validated = $request->validate([
-            'action' => 'required|string|in:pause,resume,set_override,clear_override',
+            'action' => 'required|string|in:pause,resume,set_override,clear_override,activate_kill_switch,deactivate_kill_switch',
             'reason' => 'nullable|string|max:1000',
             'minutes' => 'nullable|integer|min:1|max:10080',
             'force_mode' => 'nullable|string|in:apply,propose',
@@ -1270,12 +1275,20 @@ class NajmHodaController extends Controller
             case 'clear_override':
                 $result = $service->clearOverride($byUserId, $reason);
                 break;
+            case 'activate_kill_switch':
+                $minutes = isset($validated['minutes']) ? (int) $validated['minutes'] : null;
+                $result = $service->activateKillSwitch($byUserId, $reason, $minutes);
+                break;
+            case 'deactivate_kill_switch':
+                $result = $service->deactivateKillSwitch($byUserId, $reason);
+                break;
         }
 
         return response()->json([
             'success' => true,
             'result' => $result,
             'state' => $service->state(),
+            'kill_switch' => $service->killSwitchState(),
             'override' => $service->override(),
         ]);
     }
@@ -1299,7 +1312,7 @@ class NajmHodaController extends Controller
 
     public function replayAutonomyTrace(string $runId)
     {
-        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.audit.replay', false)) {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.audit.replay', true)) {
             return $policyResponse;
         }
 
@@ -1416,6 +1429,145 @@ class NajmHodaController extends Controller
         return response()->json([
             'success' => true,
             'readiness' => $readiness,
+        ]);
+    }
+
+    public function evaluateAutonomyGovernanceAlerts(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.governance.alerts.evaluate', true)) {
+            return $policyResponse;
+        }
+
+        $windowHours = max(1, min(168, (int) $request->input('window_hours', (int) config('najm-hoda.runtime.autonomy.governance.window_hours', 24))));
+        $dryRun = (bool) $request->boolean('dry_run', false);
+        $service = app(NajmHodaGovernanceAlertingService::class);
+        $result = $service->evaluateAndAlert($windowHours, $dryRun);
+
+        return response()->json([
+            'success' => true,
+            'result' => $result,
+        ]);
+    }
+
+    public function getAutonomyGovernanceAlertHistory(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.governance.alerts.history', false)) {
+            return $policyResponse;
+        }
+
+        $limit = max(1, min(300, (int) $request->input('limit', 50)));
+        $service = app(NajmHodaGovernanceAlertingService::class);
+        $history = $service->history($limit);
+
+        return response()->json([
+            'success' => true,
+            'history' => $history,
+            'count' => count($history),
+        ]);
+    }
+
+    public function runAutonomyGameDay(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.gameday.run', true)) {
+            return $policyResponse;
+        }
+
+        $scenariosInput = $request->input('scenarios', []);
+        if (is_string($scenariosInput)) {
+            $scenariosInput = explode(',', $scenariosInput);
+        }
+        $scenarios = is_array($scenariosInput) ? $scenariosInput : [];
+        $dryRun = (bool) $request->boolean('dry_run', false);
+
+        $service = app(NajmHodaAutonomyGameDayService::class);
+        $report = $service->run($scenarios, $dryRun);
+
+        return response()->json([
+            'success' => true,
+            'report' => $report,
+        ]);
+    }
+
+    public function getAutonomyGameDayHistory(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.gameday.history', false)) {
+            return $policyResponse;
+        }
+
+        $limit = max(1, min(100, (int) $request->input('limit', 20)));
+        $service = app(NajmHodaAutonomyGameDayService::class);
+        $history = $service->history($limit);
+
+        return response()->json([
+            'success' => true,
+            'history' => $history,
+            'count' => count($history),
+        ]);
+    }
+
+    public function getAutonomyComplianceEvidence(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.compliance.evidence', false)) {
+            return $policyResponse;
+        }
+
+        $windowHours = max(1, min(720, (int) $request->input('window_hours', (int) config('najm-hoda.runtime.autonomy.compliance.window_hours', 24))));
+        $service = app(NajmHodaComplianceEvidenceService::class);
+        $pack = $service->buildPack($windowHours);
+
+        return response()->json([
+            'success' => true,
+            'pack' => $pack,
+        ]);
+    }
+
+    public function exportAutonomyComplianceEvidence(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.compliance.export', false)) {
+            return $policyResponse;
+        }
+
+        $windowHours = max(1, min(720, (int) $request->input('window_hours', (int) config('najm-hoda.runtime.autonomy.compliance.window_hours', 24))));
+        $service = app(NajmHodaComplianceEvidenceService::class);
+        $json = $service->exportJson($windowHours);
+        $filename = 'najm-hoda-autonomy-evidence-' . now()->format('Ymd_His') . '.json';
+
+        return response($json, 200, [
+            'Content-Type' => 'application/json; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    public function getAutonomyReadinessReview(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.readiness.review', false)) {
+            return $policyResponse;
+        }
+
+        $windowHours = max(1, min(720, (int) $request->input('window_hours', (int) config('najm-hoda.runtime.autonomy.readiness.window_hours', 24))));
+        $service = app(NajmHodaProductionReadinessService::class);
+        $review = $service->review($windowHours);
+
+        return response()->json([
+            'success' => true,
+            'review' => $review,
+        ]);
+    }
+
+    public function exportAutonomyReadinessReview(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.readiness.export', false)) {
+            return $policyResponse;
+        }
+
+        $windowHours = max(1, min(720, (int) $request->input('window_hours', (int) config('najm-hoda.runtime.autonomy.readiness.window_hours', 24))));
+        $service = app(NajmHodaProductionReadinessService::class);
+        $json = $service->exportJson($windowHours);
+        $filename = 'najm-hoda-autonomy-go-no-go-' . now()->format('Ymd_His') . '.json';
+
+        return response($json, 200, [
+            'Content-Type' => 'application/json; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ]);
     }
 

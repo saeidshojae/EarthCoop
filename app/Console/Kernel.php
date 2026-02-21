@@ -19,6 +19,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\NajmBaharRunSalaries::class,
         \App\Console\Commands\NajmBaharSyncSubAccountBalances::class,
         \App\Console\Commands\NajmHodaBootstrapGroups::class,
+        \App\Console\Commands\NajmHodaGameDay::class,
         \App\Console\Commands\NajmHodaGoalLoop::class,
         \App\Console\Commands\NajmHodaOpsMonitor::class,
         \App\Console\Commands\NajmHodaModerationSweep::class,

@@ -312,6 +312,14 @@ return [
             'audit' => [
                 'history_size' => env('NAJM_HODA_AUTONOMY_AUDIT_HISTORY_SIZE', 500),
                 'retention_minutes' => env('NAJM_HODA_AUTONOMY_AUDIT_RETENTION_MINUTES', 10080),
+                'integrity' => [
+                    'enabled' => env('NAJM_HODA_AUTONOMY_AUDIT_INTEGRITY_ENABLED', true),
+                    'secret' => env('NAJM_HODA_AUTONOMY_AUDIT_INTEGRITY_SECRET'),
+                ],
+            ],
+            'kill_switch' => [
+                'enabled' => env('NAJM_HODA_AUTONOMY_KILL_SWITCH_ENABLED', true),
+                'max_minutes' => env('NAJM_HODA_AUTONOMY_KILL_SWITCH_MAX_MINUTES', 10080),
             ],
             'costs' => [
                 'daily_budget' => env('NAJM_HODA_AUTONOMY_COST_DAILY_BUDGET', 5.0),
@@ -385,10 +393,58 @@ return [
                     ],
                 ],
             ],
+            'gameday' => [
+                'report_ttl_minutes' => env('NAJM_HODA_GAMEDAY_REPORT_TTL_MINUTES', 10080),
+                'history_size' => env('NAJM_HODA_GAMEDAY_HISTORY_SIZE', 30),
+            ],
+            'compliance' => [
+                'window_hours' => env('NAJM_HODA_COMPLIANCE_WINDOW_HOURS', 24),
+                'audit_limit' => env('NAJM_HODA_COMPLIANCE_AUDIT_LIMIT', 200),
+                'approval_limit' => env('NAJM_HODA_COMPLIANCE_APPROVAL_LIMIT', 200),
+                'alerts_limit' => env('NAJM_HODA_COMPLIANCE_ALERTS_LIMIT', 200),
+                'gameday_limit' => env('NAJM_HODA_COMPLIANCE_GAMEDAY_LIMIT', 50),
+                'events_limit' => env('NAJM_HODA_COMPLIANCE_EVENTS_LIMIT', 500),
+            ],
+            'readiness' => [
+                'window_hours' => env('NAJM_HODA_READINESS_WINDOW_HOURS', 24),
+                'governance' => [
+                    'max_breach_kpis' => env('NAJM_HODA_READINESS_MAX_BREACH_KPIS', 0),
+                    'max_warning_kpis' => env('NAJM_HODA_READINESS_MAX_WARNING_KPIS', 2),
+                ],
+                'approvals' => [
+                    'max_pending' => env('NAJM_HODA_READINESS_APPROVALS_MAX_PENDING', 25),
+                    'max_overdue' => env('NAJM_HODA_READINESS_APPROVALS_MAX_OVERDUE', 0),
+                ],
+                'gameday' => [
+                    'history_limit' => env('NAJM_HODA_READINESS_GAMEDAY_HISTORY_LIMIT', 10),
+                    'min_cycles' => env('NAJM_HODA_READINESS_GAMEDAY_MIN_CYCLES', 2),
+                    'min_pass_rate' => env('NAJM_HODA_READINESS_GAMEDAY_MIN_PASS_RATE', 1.0),
+                ],
+                'evidence' => [
+                    'min_audit_traces' => env('NAJM_HODA_READINESS_EVIDENCE_MIN_AUDIT_TRACES', 1),
+                    'min_runtime_events' => env('NAJM_HODA_READINESS_EVIDENCE_MIN_RUNTIME_EVENTS', 1),
+                ],
+                'rollback' => [
+                    'required_runbooks' => [
+                        'incident_response',
+                        'degraded_mode',
+                        'override_control',
+                        'recovery_validation',
+                    ],
+                ],
+            ],
             'governance' => [
                 'window_hours' => env('NAJM_HODA_GOVERNANCE_WINDOW_HOURS', 24),
                 'event_limit' => env('NAJM_HODA_GOVERNANCE_EVENT_LIMIT', 3000),
                 'snapshot_ttl_minutes' => env('NAJM_HODA_GOVERNANCE_SNAPSHOT_TTL_MINUTES', 180),
+                'alerting' => [
+                    'enabled' => env('NAJM_HODA_GOVERNANCE_ALERTING_ENABLED', true),
+                    'notify_admins' => env('NAJM_HODA_GOVERNANCE_ALERTING_NOTIFY_ADMINS', true),
+                    'cooldown_minutes' => env('NAJM_HODA_GOVERNANCE_ALERTING_COOLDOWN_MINUTES', 30),
+                    'max_alerts_per_run' => env('NAJM_HODA_GOVERNANCE_ALERTING_MAX_ALERTS_PER_RUN', 20),
+                    'max_history' => env('NAJM_HODA_GOVERNANCE_ALERTING_MAX_HISTORY', 500),
+                    'approval_sla_overdue_threshold' => env('NAJM_HODA_GOVERNANCE_ALERTING_APPROVAL_SLA_OVERDUE_THRESHOLD', 1),
+                ],
                 'drift' => [
                     'window_hours' => env('NAJM_HODA_GOVERNANCE_DRIFT_WINDOW_HOURS', 24),
                     'event_limit' => env('NAJM_HODA_GOVERNANCE_DRIFT_EVENT_LIMIT', 3000),

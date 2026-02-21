@@ -11,9 +11,11 @@ class NajmHodaOperatorActionExecutorV2
 
     public function __construct(
         protected RuntimeEventBus $eventBus,
-        protected ?NajmHodaAutonomyCostLedgerService $costLedger = null
+        protected ?NajmHodaAutonomyCostLedgerService $costLedger = null,
+        protected ?NajmHodaAutonomyControlService $controlService = null
     ) {
         $this->costLedger = $this->costLedger ?? new NajmHodaAutonomyCostLedgerService($eventBus);
+        $this->controlService = $this->controlService ?? new NajmHodaAutonomyControlService($eventBus);
     }
 
     /**
@@ -38,6 +40,11 @@ class NajmHodaOperatorActionExecutorV2
             $action = (string) ($item['action'] ?? '');
             $mode = (string) ($item['mode'] ?? 'propose');
             $risk = (string) ($item['risk'] ?? 'unknown');
+
+            if ($this->controlService->isKillSwitchActive()) {
+                $results[] = $this->skip($runId, $action, 'global_kill_switch_active');
+                continue;
+            }
 
             if ($mode !== 'apply') {
                 $results[] = $this->skip($runId, $action, 'mode_not_apply');

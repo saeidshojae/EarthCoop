@@ -3,6 +3,7 @@
 namespace Tests\Feature\NajmHoda;
 
 use App\Services\NajmHoda\Runtime\InMemoryRuntimeEventBus;
+use App\Services\NajmHoda\Runtime\NajmHodaAutonomyControlService;
 use App\Services\NajmHoda\Runtime\NajmHodaOperatorActionExecutorV2;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -87,5 +88,29 @@ class OperatorActionExecutorV2Test extends TestCase
         $result = $executor->execute($plan, 'run-4');
         $this->assertSame('skipped', (string) data_get($result, '0.status', ''));
         $this->assertSame('daily_budget_exceeded', (string) data_get($result, '0.reason', ''));
+    }
+
+    public function test_executor_skips_actions_when_kill_switch_is_active(): void
+    {
+        config([
+            'najm-hoda.runtime.autonomy.kill_switch.enabled' => true,
+        ]);
+
+        $bus = new InMemoryRuntimeEventBus(100);
+        $controlService = new NajmHodaAutonomyControlService($bus);
+        $controlService->activateKillSwitch(1, 'incident', 30);
+
+        $executor = new NajmHodaOperatorActionExecutorV2($bus, null, $controlService);
+
+        $plan = [[
+            'action' => 'run_ops_monitor',
+            'mode' => 'apply',
+            'risk' => 'low',
+            'input' => ['health_status' => 'warning'],
+        ]];
+
+        $result = $executor->execute($plan, 'run-5');
+        $this->assertSame('skipped', (string) data_get($result, '0.status', ''));
+        $this->assertSame('global_kill_switch_active', (string) data_get($result, '0.reason', ''));
     }
 }

@@ -570,6 +570,35 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
         Route::post('/save-agent', [AdminNajmHodaController::class, 'saveAgent'])->name('save-agent');
         Route::get('/logs', [AdminNajmHodaController::class, 'logs'])->name('logs');
         Route::delete('/logs', [AdminNajmHodaController::class, 'clearLogs'])->name('logs.clear');
+        Route::get('/ops', [AdminNajmHodaController::class, 'opsDigestPage'])->name('ops.page');
+        Route::get('/ops/digest', [AdminNajmHodaController::class, 'getOpsDigest'])->name('ops.digest');
+        Route::middleware('permission:najm-hoda.manage-settings,najm-hoda.autonomy.read')->group(function () {
+            Route::get('/autonomy/approvals', [AdminNajmHodaController::class, 'getAutonomyApprovals'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.approvals');
+            Route::get('/autonomy/controls', [AdminNajmHodaController::class, 'getAutonomyControls'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.controls');
+            Route::get('/autonomy/audit', [AdminNajmHodaController::class, 'getAutonomyAuditTraces'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.audit');
+            Route::get('/autonomy/governance', [AdminNajmHodaController::class, 'autonomyGovernancePage'])->name('autonomy.governance.page');
+            Route::get('/autonomy/governance/baseline', [AdminNajmHodaController::class, 'getAutonomyGovernanceBaseline'])->name('autonomy.governance.baseline');
+            Route::get('/autonomy/governance/snapshot', [AdminNajmHodaController::class, 'getAutonomyGovernanceSnapshot'])->name('autonomy.governance.snapshot');
+            Route::get('/autonomy/governance/drift', [AdminNajmHodaController::class, 'getAutonomyGovernanceDriftReport'])->name('autonomy.governance.drift');
+            Route::get('/autonomy/governance/alerts/history', [AdminNajmHodaController::class, 'getAutonomyGovernanceAlertHistory'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.governance.alerts.history');
+            Route::get('/autonomy/gameday/history', [AdminNajmHodaController::class, 'getAutonomyGameDayHistory'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.gameday.history');
+            Route::get('/autonomy/runbooks', [AdminNajmHodaController::class, 'getAutonomyRunbookRegistry'])->name('autonomy.runbooks.registry');
+            Route::get('/autonomy/runbooks/readiness', [AdminNajmHodaController::class, 'getAutonomyRunbookReadiness'])->name('autonomy.runbooks.readiness');
+            Route::get('/autonomy/costs/status', [AdminNajmHodaController::class, 'getAutonomyCostStatus'])->name('autonomy.costs.status');
+            Route::get('/autonomy/compliance/evidence', [AdminNajmHodaController::class, 'getAutonomyComplianceEvidence'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.compliance.evidence');
+            Route::get('/autonomy/compliance/evidence/export', [AdminNajmHodaController::class, 'exportAutonomyComplianceEvidence'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.compliance.export');
+            Route::get('/autonomy/readiness/review', [AdminNajmHodaController::class, 'getAutonomyReadinessReview'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.readiness.review');
+            Route::get('/autonomy/readiness/review/export', [AdminNajmHodaController::class, 'exportAutonomyReadinessReview'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.readiness.export');
+        });
+        Route::middleware('permission:najm-hoda.manage-settings,najm-hoda.autonomy.write')->group(function () {
+            Route::post('/autonomy/approvals/{approvalId}/decision', [AdminNajmHodaController::class, 'decideAutonomyApproval'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.approvals.decision');
+            Route::post('/autonomy/controls', [AdminNajmHodaController::class, 'updateAutonomyControls'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.controls.update');
+            Route::post('/autonomy/audit/{runId}/replay', [AdminNajmHodaController::class, 'replayAutonomyTrace'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.audit.replay');
+            Route::post('/autonomy/governance/alerts/evaluate', [AdminNajmHodaController::class, 'evaluateAutonomyGovernanceAlerts'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.governance.alerts.evaluate');
+        });
+        Route::post('/autonomy/gameday/run', [AdminNajmHodaController::class, 'runAutonomyGameDay'])
+            ->middleware(['permission:najm-hoda.manage-settings,najm-hoda.autonomy.gameday,najm-hoda.autonomy.write', 'throttle:najm-hoda-autonomy-write'])
+            ->name('autonomy.gameday.run');
         
         // Code Scanner
         Route::middleware('permission:najm-hoda.use-code-scanner')->group(function () {

@@ -704,3 +704,213 @@
 - Updated phase tracker:
   - `P5-T06` marked `done`
   - `P5-T07` marked `in_progress`
+
+### Update - PHASE5-GLOBAL-KILL-SWITCH-COMPLETE-2026-02-21
+- Implemented fail-safe global kill switch for autonomy runtime:
+  - `app/Services/NajmHoda/Runtime/NajmHodaAutonomyControlService.php`
+  - features:
+    - `activateKillSwitch` / `deactivateKillSwitch`
+    - bounded duration with expiry handling
+    - deterministic active-state checks via `isKillSwitchActive`
+    - telemetry events for activation/deactivation
+- Enforced kill switch in autonomous execution path:
+  - `app/Services/NajmHoda/Runtime/NajmHodaAutonomousGoalLoopService.php`
+    - loop halts with `status=kill_switched` and audit trace
+  - `app/Services/NajmHoda/Runtime/NajmHodaOperatorActionExecutorV2.php`
+    - apply actions are skipped with `global_kill_switch_active`
+- Extended admin control surface:
+  - `app/Http/Controllers/Admin/NajmHodaController.php`
+  - control actions added:
+    - `activate_kill_switch`
+    - `deactivate_kill_switch`
+  - controls payload now includes `kill_switch` state
+- Wired dependencies and config:
+  - `app/Providers/NajmHodaServiceProvider.php`
+  - `config/najm-hoda.php` (`runtime.autonomy.kill_switch.*`)
+- Updated ops digest admin UI controls:
+  - `resources/views/admin/najm-hoda/ops-digest.blade.php`
+- Added/updated tests:
+  - `tests/Feature/NajmHoda/AutonomyControlServiceTest.php`
+  - `tests/Feature/NajmHoda/OperatorActionExecutorV2Test.php`
+  - `tests/Feature/NajmHoda/AutonomousGoalLoopTest.php`
+- Updated phase tracker:
+  - `P5-T07` marked `done`
+  - `P5-T08` marked `in_progress`
+
+### Update - PHASE5-ALERTING-SLA-GUARD-COMPLETE-2026-02-21
+- Implemented governance alerting and SLA guard service:
+  - `app/Services/NajmHoda/Runtime/NajmHodaGovernanceAlertingService.php`
+  - features:
+    - KPI warning/breach alert generation from governance snapshot
+    - human-approval SLA overdue guard (`approval_sla_overdue_threshold`)
+    - alert cooldown and bounded per-run emission
+    - alert history persistence in cache
+    - optional admin notifications
+- Registered service in DI:
+  - `app/Providers/NajmHodaServiceProvider.php`
+- Added admin APIs:
+  - `POST admin/najm-hoda/autonomy/governance/alerts/evaluate`
+  - `GET admin/najm-hoda/autonomy/governance/alerts/history`
+  - files:
+    - `app/Http/Controllers/Admin/NajmHodaController.php`
+    - `routes/web.php`
+- Added runtime config:
+  - `config/najm-hoda.php`
+  - path: `runtime.autonomy.governance.alerting.*`
+- Added tests:
+  - `tests/Feature/NajmHoda/GovernanceAlertingServiceTest.php`
+- Regression checks passed:
+  - `GovernanceMetricsAggregatorServiceTest`
+  - `AutonomyApprovalServiceTest`
+- Updated phase tracker:
+  - `P5-T08` marked `done`
+  - `P5-T09` marked `in_progress`
+
+### Update - PHASE5-GAMEDAY-CHAOS-AUTOMATION-COMPLETE-2026-02-21
+- Implemented autonomy GameDay chaos drill service with deterministic pass/fail report:
+  - `app/Services/NajmHoda/Runtime/NajmHodaAutonomyGameDayService.php`
+  - covered scenarios:
+    - `kill_switch_blocks_goal_loop`
+    - `pause_blocks_goal_loop`
+    - `replay_consistency`
+    - `approval_sla_alert_guard`
+  - includes control-state rollback after drills to avoid operational drift.
+- Added CLI command for periodic or on-demand drills:
+  - `app/Console/Commands/NajmHodaGameDay.php`
+  - command: `najm-hoda:gameday`
+  - options:
+    - `--scenario=*`
+    - `--dry-run`
+    - `--history=N`
+- Registered command and runtime service wiring:
+  - `app/Console/Kernel.php`
+  - `app/Providers/NajmHodaServiceProvider.php`
+- Added admin APIs for GameDay execution and history:
+  - `POST admin/najm-hoda/autonomy/gameday/run`
+  - `GET admin/najm-hoda/autonomy/gameday/history`
+  - files:
+    - `app/Http/Controllers/Admin/NajmHodaController.php`
+    - `routes/web.php`
+- Added runtime config:
+  - `config/najm-hoda.php`
+  - path: `runtime.autonomy.gameday.*`
+- Added tests:
+  - `tests/Feature/NajmHoda/AutonomyGameDayServiceTest.php`
+- Updated phase tracker:
+  - `P5-T09` marked `done`
+  - `P5-T10` marked `in_progress`
+
+### Update - PHASE5-SECURITY-HARDENING-INITIAL-2026-02-21
+- Started security hardening for autonomy surface (`P5-T10`) with first enforcement layer:
+  - Added dedicated autonomy rate limiters:
+    - `najm-hoda-autonomy-read`
+    - `najm-hoda-autonomy-write`
+  - file:
+    - `app/Providers/RouteServiceProvider.php`
+- Applied dedicated throttle middleware to sensitive autonomy endpoints:
+  - approvals decision
+  - controls update
+  - audit replay
+  - governance alert evaluate
+  - gameday run
+  - files:
+    - `routes/web.php`
+- Tightened entry-policy enforcement for autonomy write actions:
+  - `app/Http/Controllers/Admin/NajmHodaController.php`
+  - switched write-path checks from no-rate-limit mode to enforced mode.
+- Added audit tamper detection:
+  - trace integrity hash is recorded and verified during replay
+  - tampered traces are rejected and telemetry is emitted
+  - files:
+    - `app/Services/NajmHoda/Runtime/NajmHodaAutonomyAuditService.php`
+    - `config/najm-hoda.php` (`runtime.autonomy.audit.integrity.*`)
+- Added tests for tamper-check:
+  - `tests/Feature/NajmHoda/AutonomyAuditServiceTest.php`
+- `P5-T10` remains `in_progress` for final RBAC/coverage hardening pass.
+
+### Update - PHASE5-SECURITY-HARDENING-COMPLETE-2026-02-21
+- Completed final RBAC hardening pass for autonomy surface with low-risk backward compatibility:
+  - Split autonomy routes into read/write permission domains.
+  - Kept fallback authorization to existing permission (`najm-hoda.manage-settings`) to prevent operational lockout.
+  - files:
+    - `routes/web.php`
+- Added dedicated autonomy permission slugs for progressive least-privilege rollout:
+  - `najm-hoda.autonomy.read`
+  - `najm-hoda.autonomy.write`
+  - `najm-hoda.autonomy.gameday`
+  - file:
+    - `database/seeders/RolePermissionSeeder.php`
+- Security model after this change:
+  - Existing admins continue to function through fallback permission.
+  - New least-privilege roles can be introduced without route refactor.
+- Updated phase tracker:
+  - `P5-T10` marked `done`
+  - `P5-T11` marked `in_progress`
+
+### Update - PHASE5-COMPLIANCE-EVIDENCE-PACK-COMPLETE-2026-02-21
+- Implemented compliance evidence pack service for autonomy auditability:
+  - `app/Services/NajmHoda/Runtime/NajmHodaComplianceEvidenceService.php`
+  - package sections:
+    - `audit_traces`
+    - `approvals`
+    - `governance_alerts`
+    - `gameday_reports`
+    - `runtime_events`
+  - includes summary counters and `integrity_hash` for export payload.
+- Extended approval service for evidence collection:
+  - added `history(limit, status?)`
+  - file: `app/Services/NajmHoda/Runtime/NajmHodaAutonomyApprovalService.php`
+- Added admin compliance APIs:
+  - `GET admin/najm-hoda/autonomy/compliance/evidence`
+  - `GET admin/najm-hoda/autonomy/compliance/evidence/export`
+  - files:
+    - `app/Http/Controllers/Admin/NajmHodaController.php`
+    - `routes/web.php`
+- Added runtime config for compliance export sizing/window:
+  - `config/najm-hoda.php` (`runtime.autonomy.compliance.*`)
+- Added focused test:
+  - `tests/Feature/NajmHoda/ComplianceEvidenceServiceTest.php`
+- Validation:
+  - php lint passed for touched files
+  - route registration verified for compliance endpoints
+  - `ComplianceEvidenceServiceTest` passed
+- Updated phase tracker:
+  - `P5-T11` marked `done`
+  - `P5-T12` marked `in_progress`
+
+### Update - PHASE5-PRODUCTION-READINESS-GO-NO-GO-COMPLETE-2026-02-21
+- Implemented production readiness review service for autonomy Go/No-Go decision:
+  - `app/Services/NajmHoda/Runtime/NajmHodaProductionReadinessService.php`
+  - decision output:
+    - `go`
+    - `conditional_go`
+    - `no_go`
+  - readiness checks:
+    - governance KPI statuses (warning/breach thresholds)
+    - policy drift status
+    - runbook readiness + required rollback runbooks
+    - approval queue pressure (pending/overdue)
+    - GameDay pass-rate over required cycles
+    - compliance evidence integrity and minimum coverage
+- Added admin APIs for readiness preview/export:
+  - `GET admin/najm-hoda/autonomy/readiness/review`
+  - `GET admin/najm-hoda/autonomy/readiness/review/export`
+  - files:
+    - `app/Http/Controllers/Admin/NajmHodaController.php`
+    - `routes/web.php`
+- Added readiness runtime configuration:
+  - `config/najm-hoda.php`
+  - path: `runtime.autonomy.readiness.*`
+- Registered services in DI container:
+  - `app/Providers/NajmHodaServiceProvider.php`
+  - `NajmHodaComplianceEvidenceService`
+  - `NajmHodaProductionReadinessService`
+- Added tests:
+  - `tests/Feature/NajmHoda/ProductionReadinessServiceTest.php`
+  - covers `no_go` and `go` paths.
+- Validation:
+  - php lint passed on touched files
+  - readiness routes registered and protected by autonomy-read middleware
+  - `ProductionReadinessServiceTest` passed
+- Updated phase tracker:
+  - `P5-T12` marked `done`

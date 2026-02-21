@@ -31,6 +31,10 @@ use App\Services\NajmHoda\Runtime\NajmHodaGovernanceKpiCatalogService;
 use App\Services\NajmHoda\Runtime\NajmHodaGovernanceMetricsAggregatorService;
 use App\Services\NajmHoda\Runtime\NajmHodaDecisionPolicyDriftService;
 use App\Services\NajmHoda\Runtime\NajmHodaRunbookRegistryService;
+use App\Services\NajmHoda\Runtime\NajmHodaGovernanceAlertingService;
+use App\Services\NajmHoda\Runtime\NajmHodaAutonomyGameDayService;
+use App\Services\NajmHoda\Runtime\NajmHodaComplianceEvidenceService;
+use App\Services\NajmHoda\Runtime\NajmHodaProductionReadinessService;
 use App\Services\NajmHoda\Runtime\InMemoryRuntimeEventBus;
 use App\Services\NajmHoda\Runtime\NajmHodaPolicyGate;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
@@ -160,7 +164,8 @@ class NajmHodaServiceProvider extends ServiceProvider
         $this->app->singleton(NajmHodaOperatorActionExecutorV2::class, function ($app) {
             return new NajmHodaOperatorActionExecutorV2(
                 $app->make(RuntimeEventBus::class),
-                $app->make(NajmHodaAutonomyCostLedgerService::class)
+                $app->make(NajmHodaAutonomyCostLedgerService::class),
+                $app->make(NajmHodaAutonomyControlService::class)
             );
         });
 
@@ -224,6 +229,46 @@ class NajmHodaServiceProvider extends ServiceProvider
         $this->app->singleton(NajmHodaRunbookRegistryService::class, function ($app) {
             return new NajmHodaRunbookRegistryService(
                 $app->make(RuntimeEventBus::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaGovernanceAlertingService::class, function ($app) {
+            return new NajmHodaGovernanceAlertingService(
+                $app->make(RuntimeEventBus::class),
+                $app->make(NajmHodaGovernanceMetricsAggregatorService::class),
+                $app->make(NajmHodaAutonomyApprovalService::class),
+                $app->make(NotificationService::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaAutonomyGameDayService::class, function ($app) {
+            return new NajmHodaAutonomyGameDayService(
+                $app->make(RuntimeEventBus::class),
+                $app->make(NajmHodaAutonomyControlService::class),
+                $app->make(NajmHodaAutonomousGoalLoopService::class),
+                $app->make(NajmHodaAutonomyAuditService::class),
+                $app->make(NajmHodaGovernanceAlertingService::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaComplianceEvidenceService::class, function ($app) {
+            return new NajmHodaComplianceEvidenceService(
+                $app->make(NajmHodaAutonomyAuditService::class),
+                $app->make(NajmHodaAutonomyApprovalService::class),
+                $app->make(NajmHodaGovernanceAlertingService::class),
+                $app->make(NajmHodaAutonomyGameDayService::class)
+            );
+        });
+
+        $this->app->singleton(NajmHodaProductionReadinessService::class, function ($app) {
+            return new NajmHodaProductionReadinessService(
+                $app->make(RuntimeEventBus::class),
+                $app->make(NajmHodaGovernanceMetricsAggregatorService::class),
+                $app->make(NajmHodaDecisionPolicyDriftService::class),
+                $app->make(NajmHodaRunbookRegistryService::class),
+                $app->make(NajmHodaAutonomyApprovalService::class),
+                $app->make(NajmHodaAutonomyGameDayService::class),
+                $app->make(NajmHodaComplianceEvidenceService::class)
             );
         });
 

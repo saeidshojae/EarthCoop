@@ -34,6 +34,7 @@ class NajmHodaAutonomyAuditService
             'generated_at' => (string) ($result['generated_at'] ?? now()->toIso8601String()),
             'recorded_at' => now()->toIso8601String(),
         ];
+        $trace['integrity_hash'] = $this->computeIntegrityHash($trace);
 
         $history = $this->history();
         array_unshift($history, $trace);
@@ -94,6 +95,14 @@ class NajmHodaAutonomyAuditService
             return ['success' => false, 'reason' => 'trace_not_found'];
         }
 
+        if (!$this->verifyIntegrity($trace)) {
+            $this->eventBus->emit('najm_hoda.autonomy.audit.tamper_detected', [
+                'run_id' => (string) ($trace['run_id'] ?? ''),
+                'recorded_at' => (string) ($trace['recorded_at'] ?? ''),
+            ]);
+            return ['success' => false, 'reason' => 'trace_tampered'];
+        }
+
         $payload = [
             'success' => true,
             'run_id' => (string) ($trace['run_id'] ?? ''),
@@ -121,5 +130,47 @@ class NajmHodaAutonomyAuditService
     {
         $ttlMinutes = max(60, (int) config('najm-hoda.runtime.autonomy.audit.retention_minutes', 10080));
         Cache::put($this->historyKey, $history, now()->addMinutes($ttlMinutes));
+    }
+
+    /**
+     * @param array<string, mixed> $trace
+     */
+    protected function verifyIntegrity(array $trace): bool
+    {
+        if (!(bool) config('najm-hoda.runtime.autonomy.audit.integrity.enabled', true)) {
+            return true;
+        }
+
+        $current = (string) ($trace['integrity_hash'] ?? '');
+        if ($current === '') {
+            return false;
+        }
+
+        return hash_equals($current, $this->computeIntegrityHash($trace));
+    }
+
+    /**
+     * @param array<string, mixed> $trace
+     */
+    protected function computeIntegrityHash(array $trace): string
+    {
+        $secret = (string) config('najm-hoda.runtime.autonomy.audit.integrity.secret', config('app.key', 'najm_hoda_audit_default_secret'));
+        $payload = [
+            'run_id' => (string) ($trace['run_id'] ?? ''),
+            'status' => (string) ($trace['status'] ?? ''),
+            'executed' => (bool) ($trace['executed'] ?? false),
+            'goals' => (array) ($trace['goals'] ?? []),
+            'context' => (array) ($trace['context'] ?? []),
+            'recommendations' => (array) ($trace['recommendations'] ?? []),
+            'plan' => (array) ($trace['plan'] ?? []),
+            'execution_results' => (array) ($trace['execution_results'] ?? []),
+            'control_state' => (array) ($trace['control_state'] ?? []),
+            'control_override' => (array) ($trace['control_override'] ?? []),
+            'apply_requested' => (bool) ($trace['apply_requested'] ?? false),
+            'generated_at' => (string) ($trace['generated_at'] ?? ''),
+            'recorded_at' => (string) ($trace['recorded_at'] ?? ''),
+        ];
+
+        return hash_hmac('sha256', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $secret);
     }
 }

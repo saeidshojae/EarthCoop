@@ -50,6 +50,9 @@ class RolePermissionSeeder extends Seeder
             ['name' => 'مشاهده آمار نجم هدا', 'slug' => 'najm-hoda.analytics', 'description' => 'مشاهده آمار و گزارش‌های نجم هدا', 'module' => 'najm-hoda', 'order' => 34],
             ['name' => 'مدیریت Agent ها', 'slug' => 'najm-hoda.agents', 'description' => 'ایجاد و مدیریت Agent های نجم هدا', 'module' => 'najm-hoda', 'order' => 35],
             ['name' => 'Code Scanner', 'slug' => 'najm-hoda.use-code-scanner', 'description' => 'استفاده از Code Scanner', 'module' => 'najm-hoda', 'order' => 36],
+            ['name' => 'مشاهده خودگردانی نجم هدا', 'slug' => 'najm-hoda.autonomy.read', 'description' => 'مشاهده داشبوردها و گزارش‌های خودگردانی نجم هدا', 'module' => 'najm-hoda', 'order' => 37],
+            ['name' => 'اقدام در خودگردانی نجم هدا', 'slug' => 'najm-hoda.autonomy.write', 'description' => 'انجام اقدامات کنترلی و اجرایی در خودگردانی نجم هدا', 'module' => 'najm-hoda', 'order' => 38],
+            ['name' => 'اجرای GameDay نجم هدا', 'slug' => 'najm-hoda.autonomy.gameday', 'description' => 'اجرای سناریوهای GameDay خودگردانی نجم هدا', 'module' => 'najm-hoda', 'order' => 39],
             
             // مدیریت سهام
             ['name' => 'مشاهده داشبورد سهام', 'slug' => 'stock.view-dashboard', 'description' => 'مشاهده داشبورد مدیریت سهام', 'module' => 'stock', 'order' => 40],

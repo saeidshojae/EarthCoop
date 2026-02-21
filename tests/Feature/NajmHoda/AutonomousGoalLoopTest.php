@@ -134,4 +134,33 @@ class AutonomousGoalLoopTest extends TestCase
         $events = $bus->recent('najm_hoda.autonomy.goal_loop.executed', 1);
         $this->assertNotEmpty($events);
     }
+
+    public function test_service_halts_when_global_kill_switch_is_active(): void
+    {
+        config([
+            'najm-hoda.runtime.autonomy.kill_switch.enabled' => true,
+            'najm-hoda.runtime.autonomy.kill_switch.max_minutes' => 120,
+        ]);
+
+        $bus = new InMemoryRuntimeEventBus(200);
+        $registry = new NajmHodaCapabilityRegistry($bus);
+        $safetyGate = new NajmHodaAutonomySafetyGate($bus);
+        $observability = new NajmHodaObservabilityGraphService($bus);
+        $recommendations = new NajmHodaProactiveRecommendationService($bus);
+        $executor = new NajmHodaOperatorActionExecutorV2($bus);
+        $controlService = new NajmHodaAutonomyControlService($bus);
+        $auditService = new NajmHodaAutonomyAuditService($bus);
+        $approvalService = new NajmHodaAutonomyApprovalService($bus, app(NotificationService::class));
+        $service = new NajmHodaAutonomousGoalLoopService($bus, $observability, $recommendations, $executor, $controlService, $auditService, $registry, $safetyGate, $approvalService);
+
+        $controlService->activateKillSwitch(1, 'critical_incident', 30);
+        $result = $service->run(['stabilize_operations'], true, 100);
+
+        $this->assertFalse((bool) ($result['executed'] ?? true));
+        $this->assertSame('kill_switched', (string) ($result['status'] ?? ''));
+        $this->assertSame('global_kill_switch_active', (string) ($result['reason'] ?? ''));
+
+        $events = $bus->recent('najm_hoda.autonomy.goal_loop.kill_switched', 1);
+        $this->assertNotEmpty($events);
+    }
 }

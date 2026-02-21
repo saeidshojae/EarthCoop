@@ -45,37 +45,37 @@
 - شرح: kill switch سراسری برای توقف فوری execution خودکار با مسیر بازگشت کنترل‌شده.
 - خروجی: توقف deterministic + trace کامل فعال/غیرفعال‌سازی.
 - وابستگی: `P5-T06`
-- وضعیت: `in_progress`
+- وضعیت: `done`
 
 8. `P5-T08` Alerting + Escalation SLA Guard
 - شرح: تعریف alert rule برای breach در SLOها و SLA تصمیم انسانی/اجرای خودکار.
 - خروجی: هشدار به‌موقع + escalation policy استاندارد.
 - وابستگی: `P5-T02`, `P5-T06`
-- وضعیت: `pending`
+- وضعیت: `done`
 
 9. `P5-T09` Chaos Drill Automation (GameDay)
 - شرح: خودکارسازی سناریوهای GameDay برای pause/override/fail/replay و تحلیل نتایج.
 - خروجی: گزارش drill دوره‌ای + pass/fail معیارپذیر.
 - وابستگی: `P5-T07`, `P5-T08`
-- وضعیت: `pending`
+- وضعیت: `done`
 
 10. `P5-T10` Security Hardening for Autonomy Surface
 - شرح: سخت‌سازی endpointهای autonomy (RBAC دقیق‌تر، rate-limit اختصاصی، audit tamper-check).
 - خروجی: کاهش سطح حمله + کنترل دسترسی دقیق.
 - وابستگی: `P5-T03`
-- وضعیت: `pending`
+- وضعیت: `done`
 
 11. `P5-T11` Compliance Export + Audit Evidence Pack
 - شرح: خروجی استاندارد برای ممیزی (decision trace, approvals, overrides, failures, replay events).
 - خروجی: evidence pack قابل ارائه به تیم عملیات/امنیت.
 - وابستگی: `P5-T05`, `P5-T10`
-- وضعیت: `pending`
+- وضعیت: `done`
 
 12. `P5-T12` Production Readiness Review + Go/No-Go
 - شرح: مرور نهایی معیارها، ریسک‌های باز، برنامه rollback، و تصمیم Go/No-Go.
 - خروجی: تصمیم بهره‌برداری پایدار 24/7 با چک‌لیست نهایی.
 - وابستگی: `P5-T01` تا `P5-T11`
-- وضعیت: `pending`
+- وضعیت: `done`
 
 ## معیار اتمام فاز 5
 - KPI/SLOها به‌صورت کمی و دوره‌ای پایش شوند.
