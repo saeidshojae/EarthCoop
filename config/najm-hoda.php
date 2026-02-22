@@ -455,6 +455,32 @@ return [
                     'drift_delta_warning_above' => env('NAJM_HODA_EVAL_DRIFT_DELTA_WARN_ABOVE', 0.01),
                 ],
             ],
+            'operations_24x7' => [
+                'enabled' => env('NAJM_HODA_OPS_24X7_ENABLED', true),
+                'window_hours' => env('NAJM_HODA_OPS_24X7_WINDOW_HOURS', 24),
+                'retention_minutes' => env('NAJM_HODA_OPS_24X7_RETENTION_MINUTES', 20160),
+                'history_size' => env('NAJM_HODA_OPS_24X7_HISTORY_SIZE', 500),
+                'virtual_shift' => [
+                    'start_hour' => env('NAJM_HODA_OPS_24X7_SHIFT_START_HOUR', 0),
+                    'end_hour' => env('NAJM_HODA_OPS_24X7_SHIFT_END_HOUR', 8),
+                ],
+                'stop' => [
+                    'after_consecutive_breaches' => env('NAJM_HODA_OPS_24X7_STOP_AFTER_BREACHES', 2),
+                    'critical_alert_threshold' => env('NAJM_HODA_OPS_24X7_CRITICAL_ALERT_THRESHOLD', 1),
+                    'pause_minutes' => env('NAJM_HODA_OPS_24X7_STOP_PAUSE_MINUTES', 60),
+                    'activate_kill_switch' => env('NAJM_HODA_OPS_24X7_STOP_KILL_SWITCH', true),
+                    'kill_switch_minutes' => env('NAJM_HODA_OPS_24X7_STOP_KILL_SWITCH_MINUTES', 60),
+                ],
+                'runbook_effects' => [
+                    'incident_response' => [
+                        'activate_kill_switch' => env('NAJM_HODA_OPS_24X7_RUNBOOK_INCIDENT_KS', true),
+                        'kill_switch_minutes' => env('NAJM_HODA_OPS_24X7_RUNBOOK_INCIDENT_KS_MINUTES', 30),
+                    ],
+                    'recovery_validation' => [
+                        'auto_resume' => env('NAJM_HODA_OPS_24X7_RUNBOOK_RECOVERY_AUTO_RESUME', false),
+                    ],
+                ],
+            ],
             'audit' => [
                 'history_size' => env('NAJM_HODA_AUTONOMY_AUDIT_HISTORY_SIZE', 500),
                 'retention_minutes' => env('NAJM_HODA_AUTONOMY_AUDIT_RETENTION_MINUTES', 10080),

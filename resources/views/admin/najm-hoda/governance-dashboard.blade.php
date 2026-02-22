@@ -113,6 +113,12 @@
                 <button data-codeops-action="evaluate" class="codeops-action px-3 py-2 bg-cyan-700 text-white rounded hover:bg-cyan-800">Evaluate Canary</button>
                 <button data-codeops-action="rollback" class="codeops-action px-3 py-2 bg-rose-700 text-white rounded hover:bg-rose-800">Rollback Canary</button>
             </div>
+            <h4 class="font-medium mt-4 mb-2 text-sm">24/7 Operations</h4>
+            <div class="grid grid-cols-1 gap-2">
+                <button data-ops-action="activate" class="ops-action px-3 py-2 bg-emerald-700 text-white rounded hover:bg-emerald-800">Activate Night Shift</button>
+                <button data-ops-action="tick" class="ops-action px-3 py-2 bg-sky-700 text-white rounded hover:bg-sky-800">Run Shift Tick</button>
+                <button data-ops-action="deactivate" class="ops-action px-3 py-2 bg-gray-700 text-white rounded hover:bg-gray-800">Deactivate 24/7</button>
+            </div>
         </div>
     </div>
 
@@ -190,6 +196,8 @@
     const codeOpsCanaryUrl = @json(route('admin.najm-hoda.autonomy.codeops.canary'));
     const codeOpsCanaryUpdateUrl = @json(route('admin.najm-hoda.autonomy.codeops.canary.update'));
     const evaluationRunUrl = @json(route('admin.najm-hoda.autonomy.evaluation.run'));
+    const operationsStatusUrl = @json(route('admin.najm-hoda.autonomy.operations.status'));
+    const operationsUpdateUrl = @json(route('admin.najm-hoda.autonomy.operations.update'));
     const approvalsDecisionUrlPattern = @json(route('admin.najm-hoda.autonomy.approvals.decision', ['approvalId' => '__APPROVAL_ID__']));
     const approvalsVetoUrlPattern = @json(route('admin.najm-hoda.autonomy.approvals.veto', ['approvalId' => '__APPROVAL_ID__']));
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -229,6 +237,10 @@
             btn.disabled = loading;
             btn.classList.toggle('opacity-60', loading);
         });
+        document.querySelectorAll('.ops-action').forEach((btn) => {
+            btn.disabled = loading;
+            btn.classList.toggle('opacity-60', loading);
+        });
         if (loading) setOversightStatus('loading', 'Loading oversight data...');
     }
 
@@ -242,6 +254,7 @@
         const canOverride = canAbility('controls_override');
         const canCodeOps = canAbility('codeops_canary_write');
         const canEval = canAbility('evaluation_write');
+        const canOps = canAbility('operations_write');
 
         document.querySelectorAll('.control-action').forEach((btn) => {
             const action = btn.getAttribute('data-control-action');
@@ -260,6 +273,11 @@
             btn.disabled = oversightBusy || !canCodeOps;
             btn.classList.toggle('opacity-60', btn.disabled);
             btn.title = canCodeOps ? '' : 'Insufficient permission for codeops canary action';
+        });
+        document.querySelectorAll('.ops-action').forEach((btn) => {
+            btn.disabled = oversightBusy || !canOps;
+            btn.classList.toggle('opacity-60', btn.disabled);
+            btn.title = canOps ? '' : 'Insufficient permission for 24/7 operations action';
         });
         evaluationRunBtn.disabled = oversightBusy || !canEval;
         evaluationRunBtn.classList.toggle('opacity-60', evaluationRunBtn.disabled);
@@ -432,6 +450,7 @@
         const events = snapshot?.events || {};
         const codeops = snapshot?.codeops_canary || {};
         const evaluation = snapshot?.continuous_evaluation || {};
+        const ops24 = snapshot?.operations_24x7 || {};
         const controls = snapshot?.controls || {};
         oversightPolicyHints = snapshot?.policy_hints || {};
         const state = controls?.state || {};
@@ -445,6 +464,7 @@
             oversightCard('Failed runs', audit.failed_count ?? 0, `Events: ${events.recent_count ?? 0}`),
             oversightCard('CodeOps Canary', codeops.status || 'idle', `Phase: ${codeops.phase_percent ?? '-'}%`),
             oversightCard('Nightly Eval', evaluation.status || 'unknown', `Alerts: ${evaluation.alert_count ?? 0}`),
+            oversightCard('Ops 24/7', ops24.status || 'inactive', `Last tick: ${ops24.last_tick_status || '-'}`),
         ].join('');
 
         approvalsCache = Array.isArray(approvals.pending) ? approvals.pending : [];
@@ -720,6 +740,37 @@
         }
     }
 
+    async function handleOperationsAction(action) {
+        if (!action) return;
+        if (!canAbility('operations_write')) return;
+
+        const payload = { action };
+        if (action === 'activate') {
+            payload.mode = 'night_only';
+            payload.reason = 'activate_from_oversight_console';
+        } else if (action === 'deactivate') {
+            payload.reason = 'deactivate_from_oversight_console';
+        } else if (action === 'tick') {
+            payload.manual = true;
+            payload.window_hours = Number(windowEl.value) || 24;
+            payload.reason = 'manual_tick_from_oversight_console';
+        }
+
+        setOversightBusy(true);
+        try {
+            await postJson(operationsUpdateUrl, payload);
+            setOversightStatus('success', `24/7 operations action '${action}' executed.`);
+            sendTelemetry('operations_action', { action });
+            await loadOversight();
+        } catch (err) {
+            setOversightStatus('error', `24/7 operations action failed: ${err.message || 'unknown error'}`);
+            sendTelemetry('operations_action_failed', { action, error: err.message || 'unknown_error' });
+            throw err;
+        } finally {
+            setOversightBusy(false);
+        }
+    }
+
     refreshBtn.addEventListener('click', () => loadGovernance().catch(() => {}));
     windowEl.addEventListener('change', () => loadGovernance().catch(() => {}));
     oversightRefreshBtn.addEventListener('click', () => loadOversight().catch(() => {}));
@@ -773,6 +824,12 @@
         btn.addEventListener('click', () => {
             const action = btn.getAttribute('data-codeops-action');
             handleCodeOpsCanaryAction(action).catch(() => {});
+        });
+    });
+    document.querySelectorAll('.ops-action').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const action = btn.getAttribute('data-ops-action');
+            handleOperationsAction(action).catch(() => {});
         });
     });
     evaluationRunBtn.addEventListener('click', () => handleRunEvaluation().catch(() => {}));

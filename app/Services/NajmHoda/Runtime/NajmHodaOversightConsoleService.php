@@ -12,7 +12,8 @@ class NajmHodaOversightConsoleService
         protected NajmHodaDelegatedPermissionService $delegationService,
         protected NajmHodaAdaptivePolicyLearningService $policyLearningService,
         protected NajmHodaSafeCodeOpsCanaryService $codeOpsCanaryService,
-        protected NajmHodaContinuousEvaluationHarnessService $evaluationHarnessService
+        protected NajmHodaContinuousEvaluationHarnessService $evaluationHarnessService,
+        protected NajmHodaOperationalAutonomyActivationService $operationsActivationService
     ) {
     }
 
@@ -42,6 +43,7 @@ class NajmHodaOversightConsoleService
         ));
         $codeOpsCanary = $this->codeOpsCanaryService->status();
         $evaluationLastReport = $this->evaluationHarnessService->lastReport();
+        $operationsState = $this->operationsActivationService->status();
         $pendingPolicyRecommendations = $this->policyLearningService->listRecommendations('pending', $limit);
         $policyEvidence = $this->policyLearningService->recentEvidence(min(100, $limit));
 
@@ -84,6 +86,7 @@ class NajmHodaOversightConsoleService
                 'decision_quality_score' => (float) data_get($evaluationLastReport, 'decision_quality.score', 0),
                 'drift_status' => (string) data_get($evaluationLastReport, 'drift_trend.status', 'unknown'),
             ],
+            'operations_24x7' => $operationsState,
             'audit' => [
                 'recent' => $auditHistory,
                 'recent_count' => count($auditHistory),

@@ -27,6 +27,7 @@ use App\Services\NajmHoda\Runtime\NajmHodaOversightConsoleService;
 use App\Services\NajmHoda\Runtime\NajmHodaAdaptivePolicyLearningService;
 use App\Services\NajmHoda\Runtime\NajmHodaSafeCodeOpsCanaryService;
 use App\Services\NajmHoda\Runtime\NajmHodaContinuousEvaluationHarnessService;
+use App\Services\NajmHoda\Runtime\NajmHodaOperationalAutonomyActivationService;
 use App\Models\Conversation;
 use App\Models\AIInteraction;
 use App\Models\Feedback;
@@ -1495,6 +1496,66 @@ class NajmHodaController extends Controller
         ]);
     }
 
+    public function getAutonomyOperationsStatus(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.operations.status', false)) {
+            return $policyResponse;
+        }
+
+        $service = app(NajmHodaOperationalAutonomyActivationService::class);
+        $historyLimit = max(1, min(200, (int) $request->input('history_limit', 20)));
+
+        return response()->json([
+            'success' => true,
+            'state' => $service->status(),
+            'history' => $service->history($historyLimit),
+        ]);
+    }
+
+    public function updateAutonomyOperationsStatus(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.operations.update', true)) {
+            return $policyResponse;
+        }
+
+        $validated = $request->validate([
+            'action' => 'required|string|in:activate,deactivate,tick',
+            'mode' => 'nullable|string|in:night_only,always',
+            'window_hours' => 'nullable|integer|min:1|max:720',
+            'manual' => 'nullable|boolean',
+            'reason' => 'nullable|string|max:1000',
+        ]);
+
+        $service = app(NajmHodaOperationalAutonomyActivationService::class);
+        $action = (string) ($validated['action'] ?? '');
+        $reason = isset($validated['reason']) ? (string) $validated['reason'] : null;
+        $result = [];
+
+        if ($action === 'activate') {
+            $result = $service->activate(auth()->id(), isset($validated['mode']) ? (string) $validated['mode'] : null, $reason);
+        } elseif ($action === 'deactivate') {
+            $result = $service->deactivate(auth()->id(), $reason ?: 'manual_deactivation_from_ui');
+        } elseif ($action === 'tick') {
+            $windowHours = isset($validated['window_hours']) ? (int) $validated['window_hours'] : null;
+            $result = $service->tick(auth()->id(), (bool) ($validated['manual'] ?? false), $windowHours);
+        }
+
+        if (!(bool) ($result['success'] ?? false)) {
+            return response()->json([
+                'success' => false,
+                'message' => (string) ($result['reason'] ?? 'operations_action_failed'),
+                'result' => $result,
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'result' => $result,
+            'state' => $service->status(),
+            'history' => $service->history(20),
+        ]);
+    }
+
     public function reviewAutonomyPolicyLearningRecommendation(Request $request, string $recommendationId)
     {
         if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.policy_learning.review', true)) {
@@ -1683,6 +1744,8 @@ class NajmHodaController extends Controller
             'codeops_canary_write' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
             'evaluation_read' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.read'),
             'evaluation_write' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
+            'operations_read' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.read'),
+            'operations_write' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
         ];
 
         return [
@@ -1696,6 +1759,8 @@ class NajmHodaController extends Controller
                 'codeops_canary_write' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.write'],
                 'evaluation_read' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.read'],
                 'evaluation_write' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.write'],
+                'operations_read' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.read'],
+                'operations_write' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.write'],
             ],
         ];
     }

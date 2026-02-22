@@ -1519,3 +1519,42 @@
   - updated: `tests/Feature/NajmHoda/OversightConsoleServiceTest.php`
 - Phase impact:
   - `P6-T09` moved from pending to done.
+
+### Update - PHASE6-T10-OPS-24X7-ACTIVATION-2026-02-22
+- Implemented 24/7 operational autonomy activation with virtual shifts and safe-stop thresholds.
+- Added service:
+  - `app/Services/NajmHoda/Runtime/NajmHodaOperationalAutonomyActivationService.php`
+  - capabilities:
+    - operations mode lifecycle (`activate/deactivate/tick`) with cache-backed state/history
+    - virtual shift gating (`night_only|always`)
+    - tick integration with `continuous evaluation`, `codeops canary`, `governance alerting`
+    - runbook execution mapping (`incident_response/degraded_mode/override_control/recovery_validation`)
+    - safe-stop after consecutive breaches (`pause + kill-switch + halted state`)
+- Added command:
+  - `app/Console/Commands/NajmHodaOpsActivation.php`
+  - signature: `najm-hoda:ops-activation`
+  - options: `--activate --deactivate --tick --status --history --mode --window --reason --manual`
+- Added schedule:
+  - `app/Console/Kernel.php`
+  - periodic tick: `najm-hoda:ops-activation --tick` every 10 minutes
+- Added admin APIs:
+  - `GET /admin/najm-hoda/autonomy/operations/status`
+  - `POST /admin/najm-hoda/autonomy/operations/status`
+  - files: `app/Http/Controllers/Admin/NajmHodaController.php`, `routes/web.php`
+- Oversight/UI integration:
+  - `app/Services/NajmHoda/Runtime/NajmHodaOversightConsoleService.php` now includes `operations_24x7`
+  - `resources/views/admin/najm-hoda/governance-dashboard.blade.php`:
+    - added `Ops 24/7` status card
+    - added operator actions (`Activate Night Shift`, `Run Shift Tick`, `Deactivate 24/7`)
+    - added action telemetry (`operations_action`, `operations_action_failed`)
+- Tests:
+  - new: `tests/Feature/NajmHoda/OperationalAutonomyActivationServiceTest.php`
+  - updated: `tests/Feature/NajmHoda/OversightConsoleServiceTest.php`
+- Validation:
+  - `php -l` passed for changed files
+  - `php artisan help najm-hoda:ops-activation`
+  - `php artisan route:list --name=admin.najm-hoda.autonomy.operations`
+  - `vendor/bin/phpunit --filter=OperationalAutonomyActivationServiceTest` => `OK (2 tests, 16 assertions)`
+  - `vendor/bin/phpunit --filter=OversightConsoleServiceTest` => `OK (1 test, 16 assertions)`
+- Phase impact:
+  - `P6-T10` moved from pending to done.

@@ -11,6 +11,7 @@ use App\Services\NajmHoda\Runtime\NajmHodaContinuousEvaluationHarnessService;
 use App\Services\NajmHoda\Runtime\NajmHodaDecisionPolicyDriftService;
 use App\Services\NajmHoda\Runtime\NajmHodaDelegatedPermissionService;
 use App\Services\NajmHoda\Runtime\NajmHodaGovernanceMetricsAggregatorService;
+use App\Services\NajmHoda\Runtime\NajmHodaOperationalAutonomyActivationService;
 use App\Services\NajmHoda\Runtime\NajmHodaOversightConsoleService;
 use App\Services\NajmHoda\Runtime\NajmHodaSafeCodeOpsCanaryService;
 use App\Services\NotificationService;
@@ -51,6 +52,11 @@ class OversightConsoleServiceTest extends TestCase
             'alert_count' => 0,
             'decision_quality' => ['score' => 0.9],
             'drift_trend' => ['status' => 'ok'],
+        ]);
+        $operations = \Mockery::mock(NajmHodaOperationalAutonomyActivationService::class);
+        $operations->shouldReceive('status')->once()->andReturn([
+            'status' => 'inactive',
+            'last_tick_status' => null,
         ]);
         Cache::put('najm_hoda:autonomy:policy_learning:recommendations', [[
             'id' => 'plr-1',
@@ -102,7 +108,7 @@ class OversightConsoleServiceTest extends TestCase
             'reason' => 'no_active_delegation',
         ]);
 
-        $service = new NajmHodaOversightConsoleService($bus, $approval, $control, $audit, $delegation, $policyLearning, $codeOps, $evaluation);
+        $service = new NajmHodaOversightConsoleService($bus, $approval, $control, $audit, $delegation, $policyLearning, $codeOps, $evaluation, $operations);
         $snapshot = $service->snapshot(50);
 
         $this->assertSame(1, (int) data_get($snapshot, 'approvals.pending_count', 0));
@@ -112,6 +118,7 @@ class OversightConsoleServiceTest extends TestCase
         $this->assertSame(1, (int) data_get($snapshot, 'adaptive_policy.pending_count', 0));
         $this->assertSame('idle', (string) data_get($snapshot, 'codeops_canary.status', ''));
         $this->assertSame('ok', (string) data_get($snapshot, 'continuous_evaluation.status', ''));
+        $this->assertSame('inactive', (string) data_get($snapshot, 'operations_24x7.status', ''));
         $this->assertSame(1, (int) data_get($snapshot, 'audit.failed_count', 0));
         $this->assertSame(1, (int) data_get($snapshot, 'events.risk_signals.delegation_denied', 0));
         $this->assertSame(1, (int) data_get($snapshot, 'delegation.event_summary.denied', 0));

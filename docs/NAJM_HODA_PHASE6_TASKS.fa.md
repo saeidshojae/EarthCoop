@@ -151,7 +151,15 @@
 - شرح: فعال سازی حالت عملیات 24/7 با شیفت مجازی، escalations، و runbook execution واقعی.
 - خروجی: مدیریت خودکار شبانه پایدار با threshold های توقف ایمن.
 - وابستگی: `P6-T08`, `P6-T09`
-- وضعیت: `pending`
+- وضعیت: `done`
+- پیشرفت:
+  - `done`: پیاده سازی سرویس `NajmHodaOperationalAutonomyActivationService` با state/history پایدار، `activate/deactivate/tick` و شیفت مجازی (`night_only|always`)
+  - `done`: اتصال tick عملیاتی به `continuous evaluation` + `codeops canary` + `governance alerting` و تولید وضعیت تجمیعی `ok|warning|breach`
+  - `done`: اجرای runbook واقعی بر اساس وضعیت (`incident_response`, `degraded_mode`, `override_control`, `recovery_validation`) با اثرات کنترلی ایمن
+  - `done`: پیاده سازی safe-stop روی آستانه breach متوالی + pause/kill-switch و توقف کنترل شده حالت 24/7
+  - `done`: اضافه شدن command عملیاتی `najm-hoda:ops-activation` و زمانبندی `--tick` هر 10 دقیقه در `Kernel`
+  - `done`: اضافه شدن APIهای مدیریتی عملیات 24/7 (`status/update`) + اتصال کامل به oversight snapshot و governance dashboard
+  - `done`: تکمیل تست سرویس و رگرسیون snapshot نظارتی (`OperationalAutonomyActivationServiceTest`, `OversightConsoleServiceTest`)
 
 11. `P6-T11` Shadow-to-Live Rollout Strategy
 - شرح: گذار کنترل شده از Shadow Mode به Live Mode با guardrail های مرحله ای.
