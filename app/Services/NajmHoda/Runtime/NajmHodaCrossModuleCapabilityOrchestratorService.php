@@ -13,6 +13,8 @@ class NajmHodaCrossModuleCapabilityOrchestratorService
         protected NajmHodaOperatorActionExecutorV2 $actionExecutor,
         protected NajmHodaCompensatingTransactionService $compensationService,
         protected NajmHodaAutonomyControlService $controlService,
+        protected NajmHodaDelegatedPermissionService $delegatedPermissionService,
+        protected NajmHodaAutonomyApprovalService $approvalService,
         protected NajmHodaMultiHorizonGoalEngineService $multiGoalEngine,
         protected NajmHodaMultiHorizonGoalReviewService $multiGoalReviewService
     ) {
@@ -23,7 +25,7 @@ class NajmHodaCrossModuleCapabilityOrchestratorService
      * @param array<int, string> $goals
      * @return array<string, mixed>
      */
-    public function orchestrate(array $chain, array $goals, bool $apply): array
+    public function orchestrate(array $chain, array $goals, bool $apply, ?int $actorId = null): array
     {
         if (!(bool) config('najm-hoda.runtime.autonomy.orchestrator.enabled', true)) {
             return [
@@ -79,6 +81,13 @@ class NajmHodaCrossModuleCapabilityOrchestratorService
                 $stepResults[] = $this->stepFailure($index, $action, (string) ($gate['reason'] ?? 'safety_blocked'));
                 $rollback = $this->rollback($runId, $executedSteps, $goals, $apply);
                 return $this->failed($runId, $stepResults, $rollback, 'safety_blocked');
+            }
+
+            $delegationCheck = $this->enforceDelegation($planned, $action, $runId, $actorId);
+            if (!(bool) ($delegationCheck['allowed'] ?? true)) {
+                $stepResults[] = $this->stepFailure($index, $action, (string) ($delegationCheck['reason'] ?? 'delegation_denied'));
+                $rollback = $this->rollback($runId, $executedSteps, $goals, $apply);
+                return $this->failed($runId, $stepResults, $rollback, (string) ($delegationCheck['reason'] ?? 'delegation_denied'));
             }
 
             $result = (array) data_get($this->actionExecutor->execute([$planned], $runId), '0', []);
@@ -147,7 +156,7 @@ class NajmHodaCrossModuleCapabilityOrchestratorService
      * @param array<int, string> $goals
      * @return array<string, mixed>
      */
-    public function orchestrateFromMultiGoals(array $query = [], array $goals = [], bool $apply = false): array
+    public function orchestrateFromMultiGoals(array $query = [], array $goals = [], bool $apply = false, ?int $actorId = null): array
     {
         $review = $this->multiGoalReviewService->review($query);
         $snapshot = $this->multiGoalEngine->buildBacklog($query);
@@ -177,11 +186,91 @@ class NajmHodaCrossModuleCapabilityOrchestratorService
             ];
         }
 
-        $result = $this->orchestrate($chain, $goals, $apply);
+        $result = $this->orchestrate($chain, $goals, $apply, $actorId);
         $result['review_status'] = (string) ($review['status'] ?? 'stable');
         $result['source_backlog_count'] = count($backlog);
 
         return $result;
+    }
+
+    /**
+     * @param array<string, mixed> $planned
+     * @return array<string, mixed>
+     */
+    protected function enforceDelegation(array $planned, string $action, string $runId, ?int $actorId): array
+    {
+        $enforce = (bool) config('najm-hoda.runtime.autonomy.permissioning_v2.enforce_apply_requires_delegation', false);
+        if (!$enforce) {
+            return ['allowed' => true];
+        }
+
+        $mode = (string) ($planned['mode'] ?? 'propose');
+        if ($mode !== 'apply') {
+            return ['allowed' => true];
+        }
+
+        $scope = (string) ($planned['input']['scope'] ?? "autonomy:{$action}");
+        $check = $this->delegatedPermissionService->authorize(
+            $actorId,
+            $action,
+            $scope,
+            $this->buildDelegationContext($planned)
+        );
+        if ((bool) ($check['allowed'] ?? false)) {
+            return $check;
+        }
+
+        if ((string) ($check['reason'] ?? '') === 'delegation_requires_approval') {
+            $request = $this->approvalService->requestApproval($planned, [
+                'source' => 'permissioning_v2',
+                'delegation_id' => (string) ($check['delegation_id'] ?? ''),
+                'run_id' => $runId,
+            ]);
+
+            return [
+                'allowed' => false,
+                'reason' => 'delegation_approval_required',
+                'approval_request_id' => (string) ($request['id'] ?? ''),
+            ];
+        }
+
+        return [
+            'allowed' => false,
+            'reason' => 'delegation_denied',
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $planned
+     * @return array<string, mixed>
+     */
+    protected function buildDelegationContext(array $planned): array
+    {
+        $input = is_array($planned['input'] ?? null) ? $planned['input'] : [];
+
+        $context = [];
+        foreach ([
+            'group_id',
+            'group_ids',
+            'target_group_id',
+            'target_group_ids',
+            'scope_group_id',
+            'scope_group_ids',
+            'role',
+            'roles',
+            'role_id',
+            'role_ids',
+            'role_slug',
+            'role_slugs',
+            'actor_roles',
+            'approval_state',
+        ] as $key) {
+            if (array_key_exists($key, $input)) {
+                $context[$key] = $input[$key];
+            }
+        }
+
+        return $context;
     }
 
     /**

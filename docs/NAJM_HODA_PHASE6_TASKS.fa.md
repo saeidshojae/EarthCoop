@@ -78,7 +78,16 @@
 - شرح: مدل تفویض اختیار دقیق برای کاربر/گروه/نقش/عمل با expiration و approval policy.
 - خروجی: delegated permissions قابل ممیزی + کاهش ریسک اقدام خارج از مجوز.
 - وابستگی: `P6-T04`
-- وضعیت: `pending`
+- وضعیت: `in_progress`
+- پیشرفت:
+  - `done`: پیاده سازی سرویس `NajmHodaDelegatedPermissionService` (grant/revoke/authorize/listActive) با retention/expiry و audit events
+  - `done`: اضافه شدن commandهای عملیاتی `najm-hoda:delegation-grant` و `najm-hoda:delegation-audit`
+  - `done`: اتصال enforcement تفویض اختیار به orchestrator در apply-mode (قابل فعال سازی با `permissioning_v2.enforce_apply_requires_delegation`)
+  - `done`: مسیر escalation برای delegation requiring approval از طریق `NajmHodaAutonomyApprovalService`
+  - `done`: تکمیل delegation در سطح نقش/گروه برای سناریوهای واقعی با `context-aware authorization` (پشتیبانی از `role_*` و `group_*` در context)
+  - `done`: عبور context نقش/گروه از orchestrator به permission check در apply-mode
+  - `done`: تکمیل تست رگرسیون role/group delegation و orchestration context propagation
+  - `in_progress`: اتصال کامل delegation audit/explainability به UI نظارتی (`P6-T07`)
 
 6. `P6-T06` Adaptive Safety + Policy Learning Loop
 - شرح: حلقه بازتنظیم policy بر اساس drift، false positive، failures و postmortem ها.
