@@ -578,6 +578,7 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
         Route::middleware('permission:najm-hoda.manage-settings,najm-hoda.autonomy.read')->group(function () {
             Route::get('/autonomy/approvals', [AdminNajmHodaController::class, 'getAutonomyApprovals'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.approvals');
             Route::get('/autonomy/oversight/console', [AdminNajmHodaController::class, 'getAutonomyOversightConsole'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.oversight.console');
+            Route::post('/autonomy/oversight/telemetry', [AdminNajmHodaController::class, 'recordAutonomyOversightTelemetry'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.oversight.telemetry');
             Route::get('/autonomy/controls', [AdminNajmHodaController::class, 'getAutonomyControls'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.controls');
             Route::get('/autonomy/audit', [AdminNajmHodaController::class, 'getAutonomyAuditTraces'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.audit');
             Route::get('/autonomy/governance', [AdminNajmHodaController::class, 'autonomyGovernancePage'])->name('autonomy.governance.page');

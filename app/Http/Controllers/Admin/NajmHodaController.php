@@ -1424,6 +1424,40 @@ class NajmHodaController extends Controller
         ]);
     }
 
+    public function recordAutonomyOversightTelemetry(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.oversight.telemetry', true)) {
+            return $policyResponse;
+        }
+
+        $validated = $request->validate([
+            'event' => 'required|string|max:100',
+            'metadata' => 'nullable|array',
+        ]);
+
+        $event = trim((string) ($validated['event'] ?? ''));
+        if ($event === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'event_required',
+            ], 422);
+        }
+
+        $metadata = is_array($validated['metadata'] ?? null) ? $validated['metadata'] : [];
+        $bus = app(\App\Services\NajmHoda\Runtime\RuntimeEventBus::class);
+        $bus->emit('najm_hoda.autonomy.oversight.interaction', [
+            'event' => $event,
+            'metadata' => $metadata,
+            'actor_id' => auth()->id(),
+            'ip' => $request->ip(),
+            'user_agent' => (string) $request->userAgent(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+        ]);
+    }
+
     /**
      * @return array<string, mixed>
      */

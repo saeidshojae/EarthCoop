@@ -140,6 +140,7 @@
     const snapshotUrl = @json(route('admin.najm-hoda.autonomy.governance.snapshot'));
     const costsUrl = @json(route('admin.najm-hoda.autonomy.costs.status'));
     const oversightUrl = @json(route('admin.najm-hoda.autonomy.oversight.console'));
+    const oversightTelemetryUrl = @json(route('admin.najm-hoda.autonomy.oversight.telemetry'));
     const controlsUrl = @json(route('admin.najm-hoda.autonomy.controls'));
     const controlsUpdateUrl = @json(route('admin.najm-hoda.autonomy.controls.update'));
     const approvalsDecisionUrlPattern = @json(route('admin.najm-hoda.autonomy.approvals.decision', ['approvalId' => '__APPROVAL_ID__']));
@@ -245,6 +246,14 @@
             }
             return data;
         });
+    }
+
+    function sendTelemetry(eventName, metadata = {}) {
+        if (!eventName) return;
+        postJson(oversightTelemetryUrl, {
+            event: eventName,
+            metadata,
+        }).catch(() => {});
     }
 
     function renderSummary(snapshot, costs) {
@@ -434,9 +443,19 @@
             if (!data?.success) throw new Error('oversight_load_failed');
             renderOversight(data.snapshot || {});
             setOversightStatus('success', 'Oversight data updated.');
+            sendTelemetry('oversight_refresh_success', {
+                page: approvalPage,
+                page_size: Number(approvalPageSizeEl.value) || 10,
+                risk: approvalRiskFilterEl.value || '',
+                sla: approvalSlaFilterEl.value || '',
+                q: (approvalSearchEl.value || '').trim(),
+            });
             setTimeout(() => setOversightStatus('', ''), 1500);
         } catch (err) {
             setOversightStatus('error', `Oversight load failed: ${err.message || 'unknown error'}`);
+            sendTelemetry('oversight_refresh_failed', {
+                error: err.message || 'unknown_error',
+            });
             throw err;
         } finally {
             setOversightBusy(false);
@@ -470,9 +489,11 @@
         try {
             await postJson(url, payload);
             setOversightStatus('success', `Approval action '${mode}' executed.`);
+            sendTelemetry('approval_action', { mode, approval_id: id });
             await loadOversight();
         } catch (err) {
             setOversightStatus('error', `Approval action failed: ${err.message || 'unknown error'}`);
+            sendTelemetry('approval_action_failed', { mode, approval_id: id, error: err.message || 'unknown_error' });
             throw err;
         } finally {
             setOversightBusy(false);
@@ -523,9 +544,11 @@
                 });
             }
             setOversightStatus('success', `Control action '${action}' executed.`);
+            sendTelemetry('control_action', { action });
             await loadOversight();
         } catch (err) {
             setOversightStatus('error', `Control action failed: ${err.message || 'unknown error'}`);
+            sendTelemetry('control_action_failed', { action, error: err.message || 'unknown_error' });
             throw err;
         } finally {
             setOversightBusy(false);
@@ -537,26 +560,32 @@
     oversightRefreshBtn.addEventListener('click', () => loadOversight().catch(() => {}));
     approvalSearchEl.addEventListener('input', () => {
         approvalPage = 1;
+        sendTelemetry('approval_filter_changed', { field: 'q' });
         loadOversight().catch(() => {});
     });
     approvalRiskFilterEl.addEventListener('change', () => {
         approvalPage = 1;
+        sendTelemetry('approval_filter_changed', { field: 'risk', value: approvalRiskFilterEl.value || '' });
         loadOversight().catch(() => {});
     });
     approvalSlaFilterEl.addEventListener('change', () => {
         approvalPage = 1;
+        sendTelemetry('approval_filter_changed', { field: 'sla', value: approvalSlaFilterEl.value || '' });
         loadOversight().catch(() => {});
     });
     approvalPageSizeEl.addEventListener('change', () => {
         approvalPage = 1;
+        sendTelemetry('approval_page_size_changed', { value: Number(approvalPageSizeEl.value) || 10 });
         loadOversight().catch(() => {});
     });
     approvalPrevPageBtn.addEventListener('click', () => {
         approvalPage = Math.max(1, approvalPage - 1);
+        sendTelemetry('approval_page_changed', { page: approvalPage });
         loadOversight().catch(() => {});
     });
     approvalNextPageBtn.addEventListener('click', () => {
         approvalPage += 1;
+        sendTelemetry('approval_page_changed', { page: approvalPage });
         loadOversight().catch(() => {});
     });
 

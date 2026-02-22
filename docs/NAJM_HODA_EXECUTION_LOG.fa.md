@@ -1368,3 +1368,20 @@
   - UI shows compact permission hint state to reduce operator ambiguity.
 - Phase impact:
   - `P6-T07` gained explicit role-aware guardrails in the operator interface.
+
+### Update - PHASE6-T07-OVERSIGHT-TELEMETRY-2026-02-22
+- Added operator-interaction telemetry endpoint:
+  - `POST /admin/najm-hoda/autonomy/oversight/telemetry`
+  - controller method: `recordAutonomyOversightTelemetry`
+  - route: `admin.najm-hoda.autonomy.oversight.telemetry`
+- Added UI telemetry emissions in governance dashboard:
+  - `oversight_refresh_success|failed`
+  - `approval_filter_changed`
+  - `approval_page_size_changed`
+  - `approval_page_changed`
+  - `approval_action|approval_action_failed`
+  - `control_action|control_action_failed`
+- Telemetry events are recorded in runtime bus under:
+  - `najm_hoda.autonomy.oversight.interaction`
+- Phase impact:
+  - `P6-T07` reached complete operator workflow coverage (explainability + veto/override + role-aware guard + interaction telemetry).
