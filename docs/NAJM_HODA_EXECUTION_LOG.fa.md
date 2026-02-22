@@ -1284,3 +1284,25 @@
 - Phase impact:
   - `P6-T02` moved from basic kickoff to hardened query semantics for multi-step context assembly.
   - next remaining focus is decision-oriented query patterns (multi-hop templates) on top of current graph output.
+
+### Update - PHASE6-T07-KICKOFF-OVERSIGHT-CONSOLE-2026-02-22
+- Started `P6-T07` with backend oversight-console v2 primitives on existing autonomy stack.
+- Added service:
+  - `app/Services/NajmHoda/Runtime/NajmHodaOversightConsoleService.php`
+  - snapshot includes: approvals backlog, controls state, kill-switch/override, delegation summary, audit failures, recent autonomy risk signals, and actionable recommendations.
+- Added admin endpoints:
+  - `GET /admin/najm-hoda/autonomy/oversight/console`
+  - `POST /admin/najm-hoda/autonomy/approvals/{approvalId}/veto`
+- Updated controller/routes:
+  - `app/Http/Controllers/Admin/NajmHodaController.php`
+  - `routes/web.php`
+- Added operational command + scheduler:
+  - `app/Console/Commands/NajmHodaOversightConsole.php`
+  - registered in `app/Console/Kernel.php`
+  - hourly schedule: `najm-hoda:oversight-console --limit=80`
+- Validation:
+  - `php artisan help najm-hoda:oversight-console`
+  - `php artisan route:list --path=najm-hoda/autonomy/oversight/console`
+  - `php artisan route:list --path=najm-hoda/autonomy/approvals --name=autonomy.approvals.veto`
+  - syntax checks passed for changed files
+  - test: `tests/Feature/NajmHoda/OversightConsoleServiceTest.php` => `OK (1 test, 6 assertions)`

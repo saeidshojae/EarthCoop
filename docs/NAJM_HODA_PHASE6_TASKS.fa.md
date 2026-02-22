@@ -99,7 +99,13 @@
 - شرح: کنسول تصمیم با explainability کامل (چرا/با چه داده ای/با چه ریسکی)، veto سریع، و مسیر override.
 - خروجی: تصمیمات قابل دفاع مدیریتی + کاهش تصمیمات مبهم AI.
 - وابستگی: `P6-T04`, `P6-T05`
-- وضعیت: `pending`
+- وضعیت: `in_progress`
+- پیشرفت:
+  - `done`: پیاده سازی سرویس snapshot کنسول نظارتی (`NajmHodaOversightConsoleService`) با تجمیع approvals/controls/audit/delegation/events
+  - `done`: اضافه شدن endpoint خواندنی کنسول نظارتی (`/admin/najm-hoda/autonomy/oversight/console`)
+  - `done`: اضافه شدن مسیر `quick veto` برای approval (`/admin/najm-hoda/autonomy/approvals/{approvalId}/veto`)
+  - `done`: اضافه شدن command عملیاتی `najm-hoda:oversight-console` + زمانبندی ساعتی snapshot
+  - `in_progress`: اتصال UI مدیریتی explainability/veto/override روی داشبورد autonomy
 
 8. `P6-T08` Safe CodeOps Expansion (Canary + Auto Rollback)
 - شرح: گسترش CodeOps به rollout تدریجی (canary) و rollback خودکار مبتنی بر SLO breach.

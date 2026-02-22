@@ -343,6 +343,8 @@ Route::middleware(Authenticate::class)->group(function () {
     // چت گروهی
     Route::get('/groups/chat/{group}', [ChatController::class, 'chat'])->name('groups.chat');
     Route::get('/api/groups/{group}/messages', [ChatController::class, 'chatAPI']);
+    Route::get('/api/groups/{group}/posts/feed', [ChatController::class, 'postsFeed'])->name('groups.posts.feed');
+    Route::post('/api/groups/{group}/posts/reconcile', [ChatController::class, 'postsReconcile'])->name('groups.posts.reconcile');
     
     Route::get('/search-users', [GroupController::class, 'searchUsers']);
     Route::post('/add-users-to-group', [GroupController::class, 'addUsersToGroup']);
@@ -355,9 +357,9 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::get('/profile-member/{user}', [ProfileController::class, 'showProfileMember'])->name('profile.member.show');
 
     // ارسال پیام در گروه
-    Route::post('/messages/send', [MessageController::class, 'store'])->name('groups.messages.store');
+    Route::post('/messages/send', [MessageController::class, 'store'])->middleware('group.chat.timing')->name('groups.messages.store');
     Route::post('/messages/{message}/edit', [MessageController::class, 'edit'])->name('groups.messages.edit');
-    Route::get('/messages/{message}/delete', [MessageController::class, 'delete'])->name('groups.messages.delete');
+    Route::post('/messages/{message}/delete', [MessageController::class, 'delete'])->name('groups.messages.delete');
     Route::post('/messages/{message}/mark-read', [MessageController::class, 'markAsRead'])->name('messages.mark-read');
     Route::get('/messages/{message}/thread', [MessageController::class, 'getThreadReplies'])->name('messages.thread');
     Route::post('/messages/update-last-read/{group}', [MessageController::class, 'updateLastReadMessage'])->name('groups.messages.updateLastRead');
@@ -366,6 +368,7 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::post('/groups/messages/{message}/pin', [MessageController::class, 'pin'])->name('messages.pin');
     Route::post('/groups/messages/{message}/unpin', [MessageController::class, 'unpin'])->name('messages.unpin');
     Route::post('/groups/messages/{message}/report', [MessageController::class, 'report'])->name('messages.report');
+    Route::get('/groups/{group}/mention-users', [MessageController::class, 'searchUsersForMention'])->name('groups.messages.mention-users');
     
         Route::get('/groups/{group}/search', [MessageController::class, 'search'])
              ->name('groups.search');
@@ -396,16 +399,16 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::get('/groups/comment/{blog}', [CommentController::class, 'comment'])->name('groups.comment');
     Route::get('/api/comments/{blog}/messages', [CommentController::class, 'commentAPI']);
     // ارسال پست
-    Route::post('/blog/send/{group}', [BlogController::class, 'store'])->name('groups.blog.store');
+    Route::post('/blog/send/{group}', [BlogController::class, 'store'])->middleware('group.chat.timing')->name('groups.blog.store');
     Route::delete('/blog/{blog}', [BlogController::class, 'destroy'])->name('groups.blog.destroy');
     Route::put('/blog/{blog}', [BlogController::class, 'update'])->name('groups.blog.update');
 
     // نظرسنجی و رأی‌گیری
-    Route::post('/poll/send/{group}', [PollController::class, 'store'])->name('groups.poll.store');
+    Route::post('/poll/send/{group}', [PollController::class, 'store'])->middleware('group.chat.timing')->name('groups.poll.store');
     Route::put('/poll/{group}/poll/{poll}', [PollController::class, 'update'])->name('groups.poll.update');
-    Route::get('/poll/{group}/delete/{poll}', [PollController::class, 'delete'])->name('groups.poll.delete');
+    Route::post('/poll/{group}/delete/{poll}', [PollController::class, 'delete'])->name('groups.poll.delete');
 
-    Route::post('/polls/{poll}/vote', [PollController::class, 'vote'])->name('poll.vote');
+    Route::post('/polls/{poll}/vote', [PollController::class, 'vote'])->middleware('group.chat.timing')->name('poll.vote');
 
     // ری‌اکت‌ها
     Route::post('/blogs/{blog}/react', [ReactionController::class, 'blogReact'])->name('blogs.react');
@@ -574,6 +577,7 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
         Route::get('/ops/digest', [AdminNajmHodaController::class, 'getOpsDigest'])->name('ops.digest');
         Route::middleware('permission:najm-hoda.manage-settings,najm-hoda.autonomy.read')->group(function () {
             Route::get('/autonomy/approvals', [AdminNajmHodaController::class, 'getAutonomyApprovals'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.approvals');
+            Route::get('/autonomy/oversight/console', [AdminNajmHodaController::class, 'getAutonomyOversightConsole'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.oversight.console');
             Route::get('/autonomy/controls', [AdminNajmHodaController::class, 'getAutonomyControls'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.controls');
             Route::get('/autonomy/audit', [AdminNajmHodaController::class, 'getAutonomyAuditTraces'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.audit');
             Route::get('/autonomy/governance', [AdminNajmHodaController::class, 'autonomyGovernancePage'])->name('autonomy.governance.page');
@@ -592,6 +596,7 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
         });
         Route::middleware('permission:najm-hoda.manage-settings,najm-hoda.autonomy.write')->group(function () {
             Route::post('/autonomy/approvals/{approvalId}/decision', [AdminNajmHodaController::class, 'decideAutonomyApproval'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.approvals.decision');
+            Route::post('/autonomy/approvals/{approvalId}/veto', [AdminNajmHodaController::class, 'vetoAutonomyApproval'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.approvals.veto');
             Route::post('/autonomy/controls', [AdminNajmHodaController::class, 'updateAutonomyControls'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.controls.update');
             Route::post('/autonomy/audit/{runId}/replay', [AdminNajmHodaController::class, 'replayAutonomyTrace'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.audit.replay');
             Route::post('/autonomy/governance/alerts/evaluate', [AdminNajmHodaController::class, 'evaluateAutonomyGovernanceAlerts'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.governance.alerts.evaluate');

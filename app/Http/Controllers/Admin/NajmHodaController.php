@@ -23,6 +23,7 @@ use App\Services\NajmHoda\Runtime\NajmHodaGovernanceAlertingService;
 use App\Services\NajmHoda\Runtime\NajmHodaAutonomyGameDayService;
 use App\Services\NajmHoda\Runtime\NajmHodaComplianceEvidenceService;
 use App\Services\NajmHoda\Runtime\NajmHodaProductionReadinessService;
+use App\Services\NajmHoda\Runtime\NajmHodaOversightConsoleService;
 use App\Models\Conversation;
 use App\Models\AIInteraction;
 use App\Models\Feedback;
@@ -1218,6 +1219,38 @@ class NajmHodaController extends Controller
         ]);
     }
 
+    public function vetoAutonomyApproval(Request $request, string $approvalId)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.approvals.veto', true)) {
+            return $policyResponse;
+        }
+
+        $validated = $request->validate([
+            'reason' => 'nullable|string|max:1000',
+        ]);
+
+        $reason = trim((string) ($validated['reason'] ?? ''));
+        if ($reason === '') {
+            $reason = 'veto_by_operator';
+        }
+
+        $service = app(NajmHodaAutonomyApprovalService::class);
+        $result = $service->decide($approvalId, 'reject', auth()->id(), $reason);
+
+        if (!(bool) ($result['success'] ?? false)) {
+            return response()->json([
+                'success' => false,
+                'message' => (string) ($result['reason'] ?? 'veto_failed'),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'request' => $result['request'] ?? null,
+            'mode' => 'quick_veto',
+        ]);
+    }
+
     public function getAutonomyControls()
     {
         if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.controls', false)) {
@@ -1307,6 +1340,22 @@ class NajmHodaController extends Controller
             'success' => true,
             'history' => $history,
             'count' => count($history),
+        ]);
+    }
+
+    public function getAutonomyOversightConsole(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.oversight', false)) {
+            return $policyResponse;
+        }
+
+        $limit = max(10, min(300, (int) $request->input('limit', 50)));
+        $service = app(NajmHodaOversightConsoleService::class);
+        $snapshot = $service->snapshot($limit);
+
+        return response()->json([
+            'success' => true,
+            'snapshot' => $snapshot,
         ]);
     }
 

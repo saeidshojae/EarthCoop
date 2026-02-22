@@ -22,12 +22,15 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\NajmHodaCoverageHeartbeat::class,
         \App\Console\Commands\NajmHodaCoverageKpi::class,
         \App\Console\Commands\NajmHodaCoverageProbe::class,
+        \App\Console\Commands\NajmHodaDelegationAudit::class,
+        \App\Console\Commands\NajmHodaDelegationGrant::class,
         \App\Console\Commands\NajmHodaGameDay::class,
         \App\Console\Commands\NajmHodaGraphQuery::class,
         \App\Console\Commands\NajmHodaGoalLoop::class,
         \App\Console\Commands\NajmHodaMultiHorizonGoals::class,
         \App\Console\Commands\NajmHodaMultiHorizonGoalsReview::class,
         \App\Console\Commands\NajmHodaOpsMonitor::class,
+        \App\Console\Commands\NajmHodaOversightConsole::class,
         \App\Console\Commands\NajmHodaOrchestrate::class,
         \App\Console\Commands\NajmHodaOnboardingAudit::class,
         \App\Console\Commands\NajmHodaModerationSweep::class,
@@ -65,6 +68,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('najm-hoda:multi-goals --scope=global --window=24 --limit=2000')->everyThirtyMinutes();
         $schedule->command('najm-hoda:multi-goals-review --scope=global --window=24 --limit=2000')->hourly();
         $schedule->command('najm-hoda:orchestrate --from-multi-goals --goal=stabilize_operations')->hourly();
+        $schedule->command('najm-hoda:oversight-console --limit=80')->hourly();
 
         // Najm Hoda coverage probes + KPI snapshot for Phase-6 critical path tracking
         $schedule->command('najm-hoda:coverage-heartbeat')->hourly();
