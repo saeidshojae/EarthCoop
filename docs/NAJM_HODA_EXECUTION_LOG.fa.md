@@ -1306,3 +1306,27 @@
   - `php artisan route:list --path=najm-hoda/autonomy/approvals --name=autonomy.approvals.veto`
   - syntax checks passed for changed files
   - test: `tests/Feature/NajmHoda/OversightConsoleServiceTest.php` => `OK (1 test, 6 assertions)`
+
+### Update - PHASE6-T07-UI-INTEGRATION-GOVERNANCE-DASHBOARD-2026-02-22
+- Integrated oversight console UI into existing governance dashboard:
+  - file: `resources/views/admin/najm-hoda/governance-dashboard.blade.php`
+- Added runtime sections in dashboard:
+  - Oversight summary cards (pending/overdue approvals, active delegations, failed runs)
+  - Pending approvals table with operator actions:
+    - `Approve` -> `autonomy.approvals.decision`
+    - `Reject` -> `autonomy.approvals.decision`
+    - `Veto` -> `autonomy.approvals.veto`
+  - Override controls panel:
+    - `pause/resume`
+    - `activate_kill_switch/deactivate_kill_switch`
+    - `set_override/clear_override`
+  - Explainability recommendations list from oversight snapshot
+- Data sources connected in UI:
+  - `autonomy.governance.baseline`
+  - `autonomy.governance.snapshot`
+  - `autonomy.costs.status`
+  - `autonomy.oversight.console`
+  - `autonomy.controls`
+  - `autonomy.controls.update`
+- Phase impact:
+  - `P6-T07` moved from backend-only to usable operator workflow in admin dashboard.

@@ -105,7 +105,8 @@
   - `done`: اضافه شدن endpoint خواندنی کنسول نظارتی (`/admin/najm-hoda/autonomy/oversight/console`)
   - `done`: اضافه شدن مسیر `quick veto` برای approval (`/admin/najm-hoda/autonomy/approvals/{approvalId}/veto`)
   - `done`: اضافه شدن command عملیاتی `najm-hoda:oversight-console` + زمانبندی ساعتی snapshot
-  - `in_progress`: اتصال UI مدیریتی explainability/veto/override روی داشبورد autonomy
+  - `done`: اتصال UI مدیریتی explainability/veto/override روی `governance-dashboard` با اکشن های approve/reject/veto و override controls
+  - `in_progress`: سخت سازی UX/observability کنسول نظارتی (feedback خطا، pagination approvals، فیلترهای پیشرفته)
 
 8. `P6-T08` Safe CodeOps Expansion (Canary + Auto Rollback)
 - شرح: گسترش CodeOps به rollout تدریجی (canary) و rollback خودکار مبتنی بر SLO breach.
