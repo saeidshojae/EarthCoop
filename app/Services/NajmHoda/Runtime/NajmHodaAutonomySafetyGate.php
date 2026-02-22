@@ -2,6 +2,8 @@
 
 namespace App\Services\NajmHoda\Runtime;
 
+use Illuminate\Support\Facades\Cache;
+
 class NajmHodaAutonomySafetyGate
 {
     public function __construct(
@@ -23,13 +25,19 @@ class NajmHodaAutonomySafetyGate
         $action = (string) ($planItem['action'] ?? '');
         $risk = (string) ($planItem['risk'] ?? 'low');
 
-        $maxActions = max(1, (int) config('najm-hoda.runtime.autonomy.safety.max_actions_per_run', 3));
+        $override = $this->adaptiveOverride();
+        $maxActionsBase = (int) config('najm-hoda.runtime.autonomy.safety.max_actions_per_run', 3);
+        $maxActionsOverride = (int) ($override['max_actions_per_run'] ?? 0);
+        $maxActions = max(1, $maxActionsOverride > 0 ? $maxActionsOverride : $maxActionsBase);
         if ($acceptedCount >= $maxActions) {
             return $this->deny($action, 'budget_exceeded', ['max_actions_per_run' => $maxActions]);
         }
 
         $allowedRisk = config('najm-hoda.runtime.autonomy.safety.allowed_risk_levels', ['low']);
         $allowedRisk = is_array($allowedRisk) ? array_map(static fn ($v): string => (string) $v, $allowedRisk) : ['low'];
+        if (($override['allow_apply_low_risk'] ?? null) === false) {
+            $allowedRisk = ['low'];
+        }
         if (!in_array($risk, $allowedRisk, true)) {
             return $this->deny($action, 'risk_not_allowed', ['risk' => $risk]);
         }
@@ -81,5 +89,32 @@ class NajmHodaAutonomySafetyGate
             'reason' => $reason,
             'context' => $context,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function adaptiveOverride(): array
+    {
+        $override = Cache::get('najm_hoda:autonomy:adaptive_safety_override');
+        if (!is_array($override)) {
+            return [];
+        }
+
+        $expiresAt = (string) ($override['expires_at'] ?? '');
+        if ($expiresAt === '') {
+            return $override;
+        }
+
+        try {
+            if (now()->greaterThan(\Carbon\CarbonImmutable::parse($expiresAt))) {
+                Cache::forget('najm_hoda:autonomy:adaptive_safety_override');
+                return [];
+            }
+        } catch (\Throwable) {
+            return [];
+        }
+
+        return $override;
     }
 }

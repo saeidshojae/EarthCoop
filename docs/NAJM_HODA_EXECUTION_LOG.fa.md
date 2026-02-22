@@ -1385,3 +1385,21 @@
   - `najm_hoda.autonomy.oversight.interaction`
 - Phase impact:
   - `P6-T07` reached complete operator workflow coverage (explainability + veto/override + role-aware guard + interaction telemetry).
+
+### Update - PHASE6-T06-KICKOFF-ADAPTIVE-POLICY-LOOP-2026-02-22
+- Started `P6-T06` implementation with adaptive policy loop primitives.
+- Added service:
+  - `app/Services/NajmHoda/Runtime/NajmHodaAdaptivePolicyLearningService.php`
+  - analyzes governance snapshot + drift report and recommends/apply temporary safety override.
+- Added safety integration:
+  - `app/Services/NajmHoda/Runtime/NajmHodaAutonomySafetyGate.php`
+  - reads `adaptive_safety_override` from cache with TTL expiry handling.
+- Added command and schedule:
+  - `app/Console/Commands/NajmHodaPolicyLearningLoop.php`
+  - registered in `app/Console/Kernel.php`
+  - scheduled every 2 hours:
+    - `najm-hoda:policy-learning-loop --window=24 --apply`
+- Added test:
+  - `tests/Feature/NajmHoda/AdaptivePolicyLearningServiceTest.php`
+- Phase impact:
+  - `P6-T06` moved from pending to in-progress with working analyze/apply loop.

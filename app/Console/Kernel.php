@@ -33,6 +33,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\NajmHodaOversightConsole::class,
         \App\Console\Commands\NajmHodaOrchestrate::class,
         \App\Console\Commands\NajmHodaOnboardingAudit::class,
+        \App\Console\Commands\NajmHodaPolicyLearningLoop::class,
         \App\Console\Commands\NajmHodaModerationSweep::class,
         \App\Console\Commands\SendElectionReminders::class,
         \App\Console\Commands\SendAuctionReminders::class,
@@ -69,6 +70,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('najm-hoda:multi-goals-review --scope=global --window=24 --limit=2000')->hourly();
         $schedule->command('najm-hoda:orchestrate --from-multi-goals --goal=stabilize_operations')->hourly();
         $schedule->command('najm-hoda:oversight-console --limit=80')->hourly();
+        $schedule->command('najm-hoda:policy-learning-loop --window=24 --apply')->everyTwoHours();
 
         // Najm Hoda coverage probes + KPI snapshot for Phase-6 critical path tracking
         $schedule->command('najm-hoda:coverage-heartbeat')->hourly();
