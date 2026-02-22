@@ -147,6 +147,7 @@
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     let oversightBusy = false;
     let approvalsCache = [];
+    let approvalPagination = null;
     let approvalPage = 1;
 
     function setOversightStatus(type, message) {
@@ -277,43 +278,29 @@
         `;
     }
 
-    function filteredApprovals() {
-        const search = (approvalSearchEl.value || '').trim().toLowerCase();
-        const risk = (approvalRiskFilterEl.value || '').trim().toLowerCase();
-        const sla = (approvalSlaFilterEl.value || '').trim().toLowerCase();
-
-        return approvalsCache.filter((row) => {
-            const rowRisk = String(row?.risk || '').toLowerCase();
-            const rowSla = String(row?.sla_status || '').toLowerCase();
-            const rowAction = String(row?.action || '').toLowerCase();
-            const rowId = String(row?.id || '').toLowerCase();
-
-            if (risk && rowRisk !== risk) return false;
-            if (sla && rowSla !== sla) return false;
-            if (search && !rowAction.includes(search) && !rowId.includes(search)) return false;
-            return true;
-        });
-    }
-
     function renderApprovalRows() {
-        const rows = filteredApprovals();
-        const pageSize = Math.max(1, Number(approvalPageSizeEl.value) || 10);
-        const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
-        approvalPage = Math.max(1, Math.min(approvalPage, pageCount));
-        const start = (approvalPage - 1) * pageSize;
-        const visible = rows.slice(start, start + pageSize);
+        const rows = Array.isArray(approvalsCache) ? approvalsCache : [];
+        const pager = approvalPagination || {
+            current_page: 1,
+            last_page: 1,
+            total: rows.length,
+            from: rows.length ? 1 : 0,
+            to: rows.length,
+        };
+        approvalPage = Number(pager.current_page || 1);
+        const pageCount = Number(pager.last_page || 1);
 
-        approvalPaginationMetaEl.textContent = `${rows.length} approvals matched`;
+        approvalPaginationMetaEl.textContent = `${pager.total || 0} approvals matched (${pager.from || 0}-${pager.to || 0})`;
         approvalPageIndicatorEl.textContent = `${approvalPage} / ${pageCount}`;
         approvalPrevPageBtn.disabled = approvalPage <= 1 || oversightBusy;
         approvalNextPageBtn.disabled = approvalPage >= pageCount || oversightBusy;
 
-        if (!visible.length) {
+        if (!rows.length) {
             approvalTableBody.innerHTML = `<tr><td class="p-2 text-gray-500" colspan="5">No approvals for current filter.</td></tr>`;
             return;
         }
 
-        approvalTableBody.innerHTML = visible.map((row) => {
+        approvalTableBody.innerHTML = rows.map((row) => {
             const id = row?.id || '';
             const slaStatus = row?.sla_status || 'within_sla';
             const badge = slaStatus === 'overdue'
@@ -355,6 +342,7 @@
         ].join('');
 
         approvalsCache = Array.isArray(approvals.pending) ? approvals.pending : [];
+        approvalPagination = approvals.pagination || null;
         renderApprovalRows();
 
         const recommendations = snapshot?.recommended_actions || [];
@@ -400,7 +388,17 @@
     async function loadOversight() {
         setOversightBusy(true);
         try {
-            const res = await fetch(`${oversightUrl}?limit=200`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const query = new URLSearchParams({
+                limit: '200',
+                approval_page: String(Math.max(1, approvalPage)),
+                approval_page_size: String(Math.max(5, Number(approvalPageSizeEl.value) || 10)),
+                approval_risk: (approvalRiskFilterEl.value || '').trim(),
+                approval_sla: (approvalSlaFilterEl.value || '').trim(),
+                approval_q: (approvalSearchEl.value || '').trim(),
+                approval_sort_by: 'requested_at',
+                approval_sort_dir: 'desc',
+            });
+            const res = await fetch(`${oversightUrl}?${query.toString()}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
             const data = await res.json();
             if (!data?.success) throw new Error('oversight_load_failed');
             renderOversight(data.snapshot || {});
@@ -500,27 +498,27 @@
     oversightRefreshBtn.addEventListener('click', () => loadOversight().catch(() => {}));
     approvalSearchEl.addEventListener('input', () => {
         approvalPage = 1;
-        renderApprovalRows();
+        loadOversight().catch(() => {});
     });
     approvalRiskFilterEl.addEventListener('change', () => {
         approvalPage = 1;
-        renderApprovalRows();
+        loadOversight().catch(() => {});
     });
     approvalSlaFilterEl.addEventListener('change', () => {
         approvalPage = 1;
-        renderApprovalRows();
+        loadOversight().catch(() => {});
     });
     approvalPageSizeEl.addEventListener('change', () => {
         approvalPage = 1;
-        renderApprovalRows();
+        loadOversight().catch(() => {});
     });
     approvalPrevPageBtn.addEventListener('click', () => {
         approvalPage = Math.max(1, approvalPage - 1);
-        renderApprovalRows();
+        loadOversight().catch(() => {});
     });
     approvalNextPageBtn.addEventListener('click', () => {
         approvalPage += 1;
-        renderApprovalRows();
+        loadOversight().catch(() => {});
     });
 
     approvalTableBody.addEventListener('click', (e) => {

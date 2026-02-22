@@ -1352,6 +1352,70 @@ class NajmHodaController extends Controller
         $limit = max(10, min(300, (int) $request->input('limit', 50)));
         $service = app(NajmHodaOversightConsoleService::class);
         $snapshot = $service->snapshot($limit);
+        $pending = (array) data_get($snapshot, 'approvals.pending', []);
+
+        $risk = strtolower(trim((string) $request->input('approval_risk', '')));
+        $sla = strtolower(trim((string) $request->input('approval_sla', '')));
+        $query = strtolower(trim((string) $request->input('approval_q', '')));
+        $sortBy = strtolower(trim((string) $request->input('approval_sort_by', 'requested_at')));
+        $sortDir = strtolower(trim((string) $request->input('approval_sort_dir', 'desc'))) === 'asc' ? 'asc' : 'desc';
+        $page = max(1, (int) $request->input('approval_page', 1));
+        $pageSize = max(5, min(100, (int) $request->input('approval_page_size', 10)));
+
+        if ($risk !== '') {
+            $pending = array_values(array_filter($pending, static function (array $row) use ($risk): bool {
+                return strtolower((string) ($row['risk'] ?? '')) === $risk;
+            }));
+        }
+
+        if ($sla !== '') {
+            $pending = array_values(array_filter($pending, static function (array $row) use ($sla): bool {
+                return strtolower((string) ($row['sla_status'] ?? '')) === $sla;
+            }));
+        }
+
+        if ($query !== '') {
+            $pending = array_values(array_filter($pending, static function (array $row) use ($query): bool {
+                $action = strtolower((string) ($row['action'] ?? ''));
+                $id = strtolower((string) ($row['id'] ?? ''));
+                return str_contains($action, $query) || str_contains($id, $query);
+            }));
+        }
+
+        $sortable = ['requested_at', 'deadline_at', 'risk', 'action', 'sla_status'];
+        if (!in_array($sortBy, $sortable, true)) {
+            $sortBy = 'requested_at';
+        }
+        usort($pending, static function (array $a, array $b) use ($sortBy, $sortDir): int {
+            $left = (string) ($a[$sortBy] ?? '');
+            $right = (string) ($b[$sortBy] ?? '');
+            $cmp = $left <=> $right;
+            return $sortDir === 'asc' ? $cmp : -$cmp;
+        });
+
+        $total = count($pending);
+        $lastPage = max(1, (int) ceil($total / $pageSize));
+        $page = min($page, $lastPage);
+        $offset = ($page - 1) * $pageSize;
+        $rows = array_slice($pending, $offset, $pageSize);
+
+        data_set($snapshot, 'approvals.pending', $rows);
+        data_set($snapshot, 'approvals.pending_count', $total);
+        data_set($snapshot, 'approvals.pagination', [
+            'current_page' => $page,
+            'per_page' => $pageSize,
+            'total' => $total,
+            'last_page' => $lastPage,
+            'from' => $total > 0 ? ($offset + 1) : 0,
+            'to' => min($offset + $pageSize, $total),
+            'sort_by' => $sortBy,
+            'sort_dir' => $sortDir,
+            'filters' => [
+                'risk' => $risk,
+                'sla' => $sla,
+                'q' => $query,
+            ],
+        ]);
 
         return response()->json([
             'success' => true,

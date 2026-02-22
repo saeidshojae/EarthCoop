@@ -1342,3 +1342,16 @@
   - explicit success/error feedback after approval/override actions
 - Phase impact:
   - oversight workflow is now more stable for real operator use and reduces ambiguous action outcomes.
+
+### Update - PHASE6-T07-SERVER-SIDE-OVERSIGHT-PAGINATION-2026-02-22
+- Extended oversight API in:
+  - `app/Http/Controllers/Admin/NajmHodaController.php` (`getAutonomyOversightConsole`)
+- Added server-side controls for pending approvals:
+  - filters: `approval_q`, `approval_risk`, `approval_sla`
+  - pagination: `approval_page`, `approval_page_size`
+  - sorting: `approval_sort_by`, `approval_sort_dir`
+  - response metadata: `snapshot.approvals.pagination`
+- Connected governance dashboard UI to server-side oversight query params:
+  - `resources/views/admin/najm-hoda/governance-dashboard.blade.php`
+- Phase impact:
+  - oversight table now scales better and keeps operator state consistent across refresh cycles.
