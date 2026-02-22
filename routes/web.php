@@ -581,6 +581,8 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
             Route::post('/autonomy/oversight/telemetry', [AdminNajmHodaController::class, 'recordAutonomyOversightTelemetry'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.oversight.telemetry');
             Route::get('/autonomy/policy-learning/recommendations', [AdminNajmHodaController::class, 'getAutonomyPolicyLearningRecommendations'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.policy-learning.recommendations');
             Route::get('/autonomy/codeops/canary', [AdminNajmHodaController::class, 'getAutonomyCodeOpsCanary'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.codeops.canary');
+            Route::get('/autonomy/evaluation/report', [AdminNajmHodaController::class, 'getAutonomyContinuousEvaluation'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.evaluation.report');
+            Route::get('/autonomy/evaluation/export', [AdminNajmHodaController::class, 'exportAutonomyContinuousEvaluation'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.evaluation.export');
             Route::get('/autonomy/controls', [AdminNajmHodaController::class, 'getAutonomyControls'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.controls');
             Route::get('/autonomy/audit', [AdminNajmHodaController::class, 'getAutonomyAuditTraces'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.audit');
             Route::get('/autonomy/governance', [AdminNajmHodaController::class, 'autonomyGovernancePage'])->name('autonomy.governance.page');
@@ -602,6 +604,7 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
             Route::post('/autonomy/approvals/{approvalId}/veto', [AdminNajmHodaController::class, 'vetoAutonomyApproval'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.approvals.veto');
             Route::post('/autonomy/policy-learning/recommendations/{recommendationId}/review', [AdminNajmHodaController::class, 'reviewAutonomyPolicyLearningRecommendation'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.policy-learning.review');
             Route::post('/autonomy/codeops/canary', [AdminNajmHodaController::class, 'updateAutonomyCodeOpsCanary'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.codeops.canary.update');
+            Route::post('/autonomy/evaluation/run', [AdminNajmHodaController::class, 'runAutonomyContinuousEvaluation'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.evaluation.run');
             Route::post('/autonomy/controls', [AdminNajmHodaController::class, 'updateAutonomyControls'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.controls.update');
             Route::post('/autonomy/audit/{runId}/replay', [AdminNajmHodaController::class, 'replayAutonomyTrace'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.audit.replay');
             Route::post('/autonomy/governance/alerts/evaluate', [AdminNajmHodaController::class, 'evaluateAutonomyGovernanceAlerts'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.governance.alerts.evaluate');

@@ -21,6 +21,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\NajmHodaBootstrapGroups::class,
         \App\Console\Commands\NajmHodaCoverageHeartbeat::class,
         \App\Console\Commands\NajmHodaCodeOpsCanary::class,
+        \App\Console\Commands\NajmHodaContinuousEvaluation::class,
         \App\Console\Commands\NajmHodaCoverageKpi::class,
         \App\Console\Commands\NajmHodaCoverageProbe::class,
         \App\Console\Commands\NajmHodaDelegationAudit::class,
@@ -73,6 +74,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('najm-hoda:oversight-console --limit=80')->hourly();
         $schedule->command('najm-hoda:policy-learning-loop --window=24 --apply')->everyTwoHours();
         $schedule->command('najm-hoda:codeops-canary --evaluate --auto-rollback')->everyThirtyMinutes();
+        $schedule->command('najm-hoda:continuous-evaluation --window=24 --fail-on-breach')->dailyAt('03:30');
 
         // Najm Hoda coverage probes + KPI snapshot for Phase-6 critical path tracking
         $schedule->command('najm-hoda:coverage-heartbeat')->hourly();

@@ -26,6 +26,7 @@ use App\Services\NajmHoda\Runtime\NajmHodaProductionReadinessService;
 use App\Services\NajmHoda\Runtime\NajmHodaOversightConsoleService;
 use App\Services\NajmHoda\Runtime\NajmHodaAdaptivePolicyLearningService;
 use App\Services\NajmHoda\Runtime\NajmHodaSafeCodeOpsCanaryService;
+use App\Services\NajmHoda\Runtime\NajmHodaContinuousEvaluationHarnessService;
 use App\Models\Conversation;
 use App\Models\AIInteraction;
 use App\Models\Feedback;
@@ -1385,6 +1386,67 @@ class NajmHodaController extends Controller
         ]);
     }
 
+    public function getAutonomyContinuousEvaluation(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.evaluation.report', false)) {
+            return $policyResponse;
+        }
+
+        $windowHours = max(1, min(720, (int) $request->input('window_hours', (int) config('najm-hoda.runtime.autonomy.evaluation.window_hours', 24))));
+        $service = app(NajmHodaContinuousEvaluationHarnessService::class);
+        $report = $service->run($windowHours, true);
+        $historyLimit = max(1, min(100, (int) $request->input('history_limit', 20)));
+        $alertLimit = max(1, min(200, (int) $request->input('alerts_limit', 50)));
+
+        return response()->json([
+            'success' => true,
+            'report' => $report,
+            'last_report' => $service->lastReport(),
+            'history' => $service->history($historyLimit),
+            'alerts_history' => $service->alertsHistory($alertLimit),
+        ]);
+    }
+
+    public function runAutonomyContinuousEvaluation(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.evaluation.run', true)) {
+            return $policyResponse;
+        }
+
+        $validated = $request->validate([
+            'window_hours' => 'nullable|integer|min:1|max:720',
+            'dry_run' => 'nullable|boolean',
+        ]);
+
+        $windowHours = isset($validated['window_hours']) ? (int) $validated['window_hours'] : null;
+        $dryRun = (bool) ($validated['dry_run'] ?? false);
+        $service = app(NajmHodaContinuousEvaluationHarnessService::class);
+        $report = $service->run($windowHours, $dryRun);
+
+        return response()->json([
+            'success' => true,
+            'report' => $report,
+            'last_report' => $service->lastReport(),
+        ]);
+    }
+
+    public function exportAutonomyContinuousEvaluation(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.evaluation.export', false)) {
+            return $policyResponse;
+        }
+
+        $windowHours = max(1, min(720, (int) $request->input('window_hours', (int) config('najm-hoda.runtime.autonomy.evaluation.window_hours', 24))));
+        $service = app(NajmHodaContinuousEvaluationHarnessService::class);
+        $json = $service->exportJson($windowHours);
+        $filename = 'najm-hoda-autonomy-evaluation-' . now()->format('Ymd_His') . '.json';
+
+        return response($json, 200, [
+            'Content-Type' => 'application/json; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
     public function updateAutonomyCodeOpsCanary(Request $request)
     {
         if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.codeops.canary.update', true)) {
@@ -1619,6 +1681,8 @@ class NajmHodaController extends Controller
             'policy_learning_review' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
             'codeops_canary_read' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.read'),
             'codeops_canary_write' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
+            'evaluation_read' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.read'),
+            'evaluation_write' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
         ];
 
         return [
@@ -1630,6 +1694,8 @@ class NajmHodaController extends Controller
                 'policy_learning_review' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.write'],
                 'codeops_canary_read' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.read'],
                 'codeops_canary_write' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.write'],
+                'evaluation_read' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.read'],
+                'evaluation_write' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.write'],
             ],
         ];
     }

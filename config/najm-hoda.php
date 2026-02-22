@@ -440,6 +440,21 @@ return [
                 'retention_minutes' => env('NAJM_HODA_CODEOPS_CANARY_RETENTION_MINUTES', 20160),
                 'history_size' => env('NAJM_HODA_CODEOPS_CANARY_HISTORY_SIZE', 500),
             ],
+            'evaluation' => [
+                'window_hours' => env('NAJM_HODA_EVAL_WINDOW_HOURS', 24),
+                'audit_limit' => env('NAJM_HODA_EVAL_AUDIT_LIMIT', 200),
+                'retention_minutes' => env('NAJM_HODA_EVAL_RETENTION_MINUTES', 20160),
+                'history_size' => env('NAJM_HODA_EVAL_HISTORY_SIZE', 180),
+                'alerts_history_size' => env('NAJM_HODA_EVAL_ALERTS_HISTORY_SIZE', 500),
+                'notify_admins' => env('NAJM_HODA_EVAL_NOTIFY_ADMINS', true),
+                'thresholds' => [
+                    'decision_quality_min' => env('NAJM_HODA_EVAL_DECISION_QUALITY_MIN', 0.75),
+                    'decision_quality_warning_below' => env('NAJM_HODA_EVAL_DECISION_QUALITY_WARN_BELOW', 0.65),
+                    'safety_failure_rate_max' => env('NAJM_HODA_EVAL_SAFETY_FAILURE_MAX', 0.20),
+                    'safety_failure_rate_delta_max' => env('NAJM_HODA_EVAL_SAFETY_FAILURE_DELTA_MAX', 0.10),
+                    'drift_delta_warning_above' => env('NAJM_HODA_EVAL_DRIFT_DELTA_WARN_ABOVE', 0.01),
+                ],
+            ],
             'audit' => [
                 'history_size' => env('NAJM_HODA_AUTONOMY_AUDIT_HISTORY_SIZE', 500),
                 'retention_minutes' => env('NAJM_HODA_AUTONOMY_AUDIT_RETENTION_MINUTES', 10080),

@@ -138,7 +138,14 @@
 - شرح: ارزیابی شبانه end-to-end روی کیفیت تصمیم، safety regression، و نرخ انحراف.
 - خروجی: گزارش دوره ای کیفیت خودگردانی + هشدار خودکار افت عملکرد.
 - وابستگی: `P6-T06`, `P6-T07`
-- وضعیت: `pending`
+- وضعیت: `done`
+- پیشرفت:
+  - `done`: پیاده سازی سرویس `NajmHodaContinuousEvaluationHarnessService` برای ارزیابی دوره‌ای کیفیت تصمیم، safety regression و drift trend
+  - `done`: اضافه شدن history و alert-history پایدار برای گزارش‌های ارزیابی شبانه + event telemetry
+  - `done`: اضافه شدن command عملیاتی `najm-hoda:continuous-evaluation` با گزینه‌های `--history/--alerts-history/--fail-on-breach`
+  - `done`: زمانبندی اجرای شبانه harness در `Kernel` (`dailyAt('03:30')`) با fail-fast روی breach
+  - `done`: اضافه شدن APIهای مدیریتی evaluation (`report/export/run`) در پنل ادمین
+  - `done`: اتصال وضعیت آخرین گزارش evaluation به snapshot کنسول نظارتی و نمایش آن در governance dashboard
 
 10. `P6-T10` 24/7 Operational Autonomy Activation
 - شرح: فعال سازی حالت عملیات 24/7 با شیفت مجازی، escalations، و runbook execution واقعی.

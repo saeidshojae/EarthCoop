@@ -11,7 +11,8 @@ class NajmHodaOversightConsoleService
         protected NajmHodaAutonomyAuditService $auditService,
         protected NajmHodaDelegatedPermissionService $delegationService,
         protected NajmHodaAdaptivePolicyLearningService $policyLearningService,
-        protected NajmHodaSafeCodeOpsCanaryService $codeOpsCanaryService
+        protected NajmHodaSafeCodeOpsCanaryService $codeOpsCanaryService,
+        protected NajmHodaContinuousEvaluationHarnessService $evaluationHarnessService
     ) {
     }
 
@@ -40,6 +41,7 @@ class NajmHodaOversightConsoleService
             static fn (array $entry): bool => str_starts_with((string) ($entry['event'] ?? ''), 'najm_hoda.autonomy.delegation.')
         ));
         $codeOpsCanary = $this->codeOpsCanaryService->status();
+        $evaluationLastReport = $this->evaluationHarnessService->lastReport();
         $pendingPolicyRecommendations = $this->policyLearningService->listRecommendations('pending', $limit);
         $policyEvidence = $this->policyLearningService->recentEvidence(min(100, $limit));
 
@@ -75,6 +77,13 @@ class NajmHodaOversightConsoleService
                 'recent_evidence' => $policyEvidence,
             ],
             'codeops_canary' => $codeOpsCanary,
+            'continuous_evaluation' => [
+                'last_report' => $evaluationLastReport,
+                'status' => (string) data_get($evaluationLastReport, 'status', 'unknown'),
+                'alert_count' => (int) data_get($evaluationLastReport, 'alert_count', 0),
+                'decision_quality_score' => (float) data_get($evaluationLastReport, 'decision_quality.score', 0),
+                'drift_status' => (string) data_get($evaluationLastReport, 'drift_trend.status', 'unknown'),
+            ],
             'audit' => [
                 'recent' => $auditHistory,
                 'recent_count' => count($auditHistory),

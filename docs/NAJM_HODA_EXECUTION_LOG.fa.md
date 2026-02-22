@@ -1484,3 +1484,38 @@
   - updated: `tests/Feature/NajmHoda/OversightConsoleServiceTest.php`
 - Phase impact:
   - `P6-T08` moved from pending to done.
+
+### Update - PHASE6-T09-CONTINUOUS-EVALUATION-HARNESS-2026-02-22
+- Implemented nightly continuous evaluation harness for autonomy quality/safety/drift.
+- Added service:
+  - `app/Services/NajmHoda/Runtime/NajmHodaContinuousEvaluationHarnessService.php`
+  - evaluation dimensions:
+    - decision quality score
+    - safety regression (audit failure rate + KPI breach presence + delta)
+    - policy drift trend (status + rate delta)
+  - outputs:
+    - periodic report status (`ok|warning|breach`)
+    - alert list + alert history
+    - cache-backed report history
+- Added command:
+  - `app/Console/Commands/NajmHodaContinuousEvaluation.php`
+  - signature: `najm-hoda:continuous-evaluation`
+  - includes `--history`, `--alerts-history`, `--fail-on-breach`
+- Added schedule:
+  - `app/Console/Kernel.php`
+  - nightly run: `najm-hoda:continuous-evaluation --window=24 --fail-on-breach` at `03:30`
+- Added admin APIs:
+  - `GET /admin/najm-hoda/autonomy/evaluation/report`
+  - `GET /admin/najm-hoda/autonomy/evaluation/export`
+  - `POST /admin/najm-hoda/autonomy/evaluation/run`
+  - files: `app/Http/Controllers/Admin/NajmHodaController.php`, `routes/web.php`
+- Oversight/UI integration:
+  - `app/Services/NajmHoda/Runtime/NajmHodaOversightConsoleService.php` now includes `continuous_evaluation` block
+  - `resources/views/admin/najm-hoda/governance-dashboard.blade.php`:
+    - added nightly evaluation status card
+    - added `Run Nightly Eval` action button
+- Tests:
+  - new: `tests/Feature/NajmHoda/ContinuousEvaluationHarnessServiceTest.php`
+  - updated: `tests/Feature/NajmHoda/OversightConsoleServiceTest.php`
+- Phase impact:
+  - `P6-T09` moved from pending to done.

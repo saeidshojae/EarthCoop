@@ -42,7 +42,10 @@
         <div class="bg-white border rounded-lg p-4 lg:col-span-2">
             <div class="flex items-center justify-between mb-3">
                 <h3 class="font-semibold">Autonomy Oversight Console</h3>
-                <button id="oversightRefresh" class="px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700">Refresh Oversight</button>
+                <div class="flex items-center gap-2">
+                    <button id="evaluationRun" class="px-3 py-1.5 bg-purple-700 text-white rounded hover:bg-purple-800">Run Nightly Eval</button>
+                    <button id="oversightRefresh" class="px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700">Refresh Oversight</button>
+                </div>
             </div>
             <div id="oversightStatus" class="hidden mb-3 text-sm px-3 py-2 rounded"></div>
             <div id="oversightSummary" class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4"></div>
@@ -158,6 +161,7 @@
     const windowEl = document.getElementById('windowHours');
 
     const oversightRefreshBtn = document.getElementById('oversightRefresh');
+    const evaluationRunBtn = document.getElementById('evaluationRun');
     const oversightSummaryEl = document.getElementById('oversightSummary');
     const oversightStatusEl = document.getElementById('oversightStatus');
     const approvalTableBody = document.getElementById('approvalTableBody');
@@ -185,6 +189,7 @@
     const controlsUpdateUrl = @json(route('admin.najm-hoda.autonomy.controls.update'));
     const codeOpsCanaryUrl = @json(route('admin.najm-hoda.autonomy.codeops.canary'));
     const codeOpsCanaryUpdateUrl = @json(route('admin.najm-hoda.autonomy.codeops.canary.update'));
+    const evaluationRunUrl = @json(route('admin.najm-hoda.autonomy.evaluation.run'));
     const approvalsDecisionUrlPattern = @json(route('admin.najm-hoda.autonomy.approvals.decision', ['approvalId' => '__APPROVAL_ID__']));
     const approvalsVetoUrlPattern = @json(route('admin.najm-hoda.autonomy.approvals.veto', ['approvalId' => '__APPROVAL_ID__']));
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -214,6 +219,8 @@
         oversightBusy = loading;
         oversightRefreshBtn.disabled = loading;
         oversightRefreshBtn.classList.toggle('opacity-60', loading);
+        evaluationRunBtn.disabled = loading || !canAbility('evaluation_write');
+        evaluationRunBtn.classList.toggle('opacity-60', evaluationRunBtn.disabled);
         document.querySelectorAll('.control-action, .approval-action').forEach((btn) => {
             btn.disabled = loading;
             btn.classList.toggle('opacity-60', loading);
@@ -234,6 +241,7 @@
         const canKillSwitch = canAbility('controls_kill_switch');
         const canOverride = canAbility('controls_override');
         const canCodeOps = canAbility('codeops_canary_write');
+        const canEval = canAbility('evaluation_write');
 
         document.querySelectorAll('.control-action').forEach((btn) => {
             const action = btn.getAttribute('data-control-action');
@@ -253,6 +261,9 @@
             btn.classList.toggle('opacity-60', btn.disabled);
             btn.title = canCodeOps ? '' : 'Insufficient permission for codeops canary action';
         });
+        evaluationRunBtn.disabled = oversightBusy || !canEval;
+        evaluationRunBtn.classList.toggle('opacity-60', evaluationRunBtn.disabled);
+        evaluationRunBtn.title = canEval ? '' : 'Insufficient permission for evaluation run';
     }
 
     function card(title, value, hint = '') {
@@ -420,6 +431,7 @@
         const audit = snapshot?.audit || {};
         const events = snapshot?.events || {};
         const codeops = snapshot?.codeops_canary || {};
+        const evaluation = snapshot?.continuous_evaluation || {};
         const controls = snapshot?.controls || {};
         oversightPolicyHints = snapshot?.policy_hints || {};
         const state = controls?.state || {};
@@ -432,6 +444,7 @@
             oversightCard('Active delegations', delegation.active_count ?? 0),
             oversightCard('Failed runs', audit.failed_count ?? 0, `Events: ${events.recent_count ?? 0}`),
             oversightCard('CodeOps Canary', codeops.status || 'idle', `Phase: ${codeops.phase_percent ?? '-'}%`),
+            oversightCard('Nightly Eval', evaluation.status || 'unknown', `Alerts: ${evaluation.alert_count ?? 0}`),
         ].join('');
 
         approvalsCache = Array.isArray(approvals.pending) ? approvals.pending : [];
@@ -690,6 +703,23 @@
         }
     }
 
+    async function handleRunEvaluation() {
+        if (!canAbility('evaluation_write')) return;
+        setOversightBusy(true);
+        try {
+            await postJson(evaluationRunUrl, { dry_run: true, window_hours: Number(windowEl.value) || 24 });
+            setOversightStatus('success', 'Nightly evaluation executed (dry-run).');
+            sendTelemetry('evaluation_run', { dry_run: true });
+            await loadOversight();
+        } catch (err) {
+            setOversightStatus('error', `Evaluation run failed: ${err.message || 'unknown error'}`);
+            sendTelemetry('evaluation_run_failed', { error: err.message || 'unknown_error' });
+            throw err;
+        } finally {
+            setOversightBusy(false);
+        }
+    }
+
     refreshBtn.addEventListener('click', () => loadGovernance().catch(() => {}));
     windowEl.addEventListener('change', () => loadGovernance().catch(() => {}));
     oversightRefreshBtn.addEventListener('click', () => loadOversight().catch(() => {}));
@@ -745,6 +775,7 @@
             handleCodeOpsCanaryAction(action).catch(() => {});
         });
     });
+    evaluationRunBtn.addEventListener('click', () => handleRunEvaluation().catch(() => {}));
 
     loadGovernance().catch(() => {});
     loadOversight().catch(() => {});
