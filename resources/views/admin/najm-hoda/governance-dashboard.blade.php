@@ -44,7 +44,30 @@
                 <h3 class="font-semibold">Autonomy Oversight Console</h3>
                 <button id="oversightRefresh" class="px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700">Refresh Oversight</button>
             </div>
+            <div id="oversightStatus" class="hidden mb-3 text-sm px-3 py-2 rounded"></div>
             <div id="oversightSummary" class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4"></div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
+                <input id="approvalSearch" type="text" class="border rounded px-2 py-1" placeholder="Search action / id">
+                <select id="approvalRiskFilter" class="border rounded px-2 py-1">
+                    <option value="">All risk levels</option>
+                    <option value="low">low</option>
+                    <option value="medium">medium</option>
+                    <option value="high">high</option>
+                    <option value="critical">critical</option>
+                    <option value="unknown">unknown</option>
+                </select>
+                <select id="approvalSlaFilter" class="border rounded px-2 py-1">
+                    <option value="">All SLA states</option>
+                    <option value="within_sla">within_sla</option>
+                    <option value="overdue">overdue</option>
+                </select>
+                <select id="approvalPageSize" class="border rounded px-2 py-1">
+                    <option value="5">5 / page</option>
+                    <option value="10" selected>10 / page</option>
+                    <option value="20">20 / page</option>
+                    <option value="50">50 / page</option>
+                </select>
+            </div>
             <div class="overflow-auto">
                 <table class="min-w-full text-sm">
                     <thead>
@@ -58,6 +81,14 @@
                     </thead>
                     <tbody id="approvalTableBody"></tbody>
                 </table>
+            </div>
+            <div class="flex items-center justify-between mt-3">
+                <div id="approvalPaginationMeta" class="text-xs text-gray-500">-</div>
+                <div class="flex items-center gap-2">
+                    <button id="approvalPrevPage" class="px-2 py-1 border rounded text-sm">Prev</button>
+                    <span id="approvalPageIndicator" class="text-sm text-gray-700">1 / 1</span>
+                    <button id="approvalNextPage" class="px-2 py-1 border rounded text-sm">Next</button>
+                </div>
             </div>
         </div>
 
@@ -92,9 +123,18 @@
 
     const oversightRefreshBtn = document.getElementById('oversightRefresh');
     const oversightSummaryEl = document.getElementById('oversightSummary');
+    const oversightStatusEl = document.getElementById('oversightStatus');
     const approvalTableBody = document.getElementById('approvalTableBody');
     const oversightRecommendationsEl = document.getElementById('oversightRecommendations');
     const controlStateBox = document.getElementById('controlStateBox');
+    const approvalSearchEl = document.getElementById('approvalSearch');
+    const approvalRiskFilterEl = document.getElementById('approvalRiskFilter');
+    const approvalSlaFilterEl = document.getElementById('approvalSlaFilter');
+    const approvalPageSizeEl = document.getElementById('approvalPageSize');
+    const approvalPrevPageBtn = document.getElementById('approvalPrevPage');
+    const approvalNextPageBtn = document.getElementById('approvalNextPage');
+    const approvalPageIndicatorEl = document.getElementById('approvalPageIndicator');
+    const approvalPaginationMetaEl = document.getElementById('approvalPaginationMeta');
 
     const baselineUrl = @json(route('admin.najm-hoda.autonomy.governance.baseline'));
     const snapshotUrl = @json(route('admin.najm-hoda.autonomy.governance.snapshot'));
@@ -105,6 +145,36 @@
     const approvalsDecisionUrlPattern = @json(route('admin.najm-hoda.autonomy.approvals.decision', ['approvalId' => '__APPROVAL_ID__']));
     const approvalsVetoUrlPattern = @json(route('admin.najm-hoda.autonomy.approvals.veto', ['approvalId' => '__APPROVAL_ID__']));
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    let oversightBusy = false;
+    let approvalsCache = [];
+    let approvalPage = 1;
+
+    function setOversightStatus(type, message) {
+        if (!message) {
+            oversightStatusEl.className = 'hidden mb-3 text-sm px-3 py-2 rounded';
+            oversightStatusEl.textContent = '';
+            return;
+        }
+
+        const palette = {
+            loading: 'bg-blue-50 text-blue-700 border border-blue-200',
+            success: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+            error: 'bg-red-50 text-red-700 border border-red-200',
+        };
+        oversightStatusEl.className = `mb-3 text-sm px-3 py-2 rounded ${palette[type] || palette.loading}`;
+        oversightStatusEl.textContent = message;
+    }
+
+    function setOversightBusy(loading) {
+        oversightBusy = loading;
+        oversightRefreshBtn.disabled = loading;
+        oversightRefreshBtn.classList.toggle('opacity-60', loading);
+        document.querySelectorAll('.control-action, .approval-action').forEach((btn) => {
+            btn.disabled = loading;
+            btn.classList.toggle('opacity-60', loading);
+        });
+        if (loading) setOversightStatus('loading', 'Loading oversight data...');
+    }
 
     function card(title, value, hint = '') {
         return `
@@ -207,6 +277,66 @@
         `;
     }
 
+    function filteredApprovals() {
+        const search = (approvalSearchEl.value || '').trim().toLowerCase();
+        const risk = (approvalRiskFilterEl.value || '').trim().toLowerCase();
+        const sla = (approvalSlaFilterEl.value || '').trim().toLowerCase();
+
+        return approvalsCache.filter((row) => {
+            const rowRisk = String(row?.risk || '').toLowerCase();
+            const rowSla = String(row?.sla_status || '').toLowerCase();
+            const rowAction = String(row?.action || '').toLowerCase();
+            const rowId = String(row?.id || '').toLowerCase();
+
+            if (risk && rowRisk !== risk) return false;
+            if (sla && rowSla !== sla) return false;
+            if (search && !rowAction.includes(search) && !rowId.includes(search)) return false;
+            return true;
+        });
+    }
+
+    function renderApprovalRows() {
+        const rows = filteredApprovals();
+        const pageSize = Math.max(1, Number(approvalPageSizeEl.value) || 10);
+        const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+        approvalPage = Math.max(1, Math.min(approvalPage, pageCount));
+        const start = (approvalPage - 1) * pageSize;
+        const visible = rows.slice(start, start + pageSize);
+
+        approvalPaginationMetaEl.textContent = `${rows.length} approvals matched`;
+        approvalPageIndicatorEl.textContent = `${approvalPage} / ${pageCount}`;
+        approvalPrevPageBtn.disabled = approvalPage <= 1 || oversightBusy;
+        approvalNextPageBtn.disabled = approvalPage >= pageCount || oversightBusy;
+
+        if (!visible.length) {
+            approvalTableBody.innerHTML = `<tr><td class="p-2 text-gray-500" colspan="5">No approvals for current filter.</td></tr>`;
+            return;
+        }
+
+        approvalTableBody.innerHTML = visible.map((row) => {
+            const id = row?.id || '';
+            const slaStatus = row?.sla_status || 'within_sla';
+            const badge = slaStatus === 'overdue'
+                ? '<span class="px-2 py-1 rounded text-xs bg-red-100 text-red-800">overdue</span>'
+                : '<span class="px-2 py-1 rounded text-xs bg-emerald-100 text-emerald-800">within_sla</span>';
+            return `
+                <tr class="border-b">
+                    <td class="p-2 font-mono text-xs">${id}</td>
+                    <td class="p-2">${row?.action || '-'}</td>
+                    <td class="p-2">${row?.risk || '-'}</td>
+                    <td class="p-2">${badge}</td>
+                    <td class="p-2">
+                        <div class="flex flex-wrap gap-1">
+                            <button class="approval-action px-2 py-1 bg-emerald-600 text-white rounded text-xs" data-id="${id}" data-mode="approve">Approve</button>
+                            <button class="approval-action px-2 py-1 bg-amber-600 text-white rounded text-xs" data-id="${id}" data-mode="reject">Reject</button>
+                            <button class="approval-action px-2 py-1 bg-red-600 text-white rounded text-xs" data-id="${id}" data-mode="veto">Veto</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
     function renderOversight(snapshot) {
         const approvals = snapshot?.approvals || {};
         const delegation = snapshot?.delegation || {};
@@ -224,33 +354,8 @@
             oversightCard('Failed runs', audit.failed_count ?? 0, `Events: ${events.recent_count ?? 0}`),
         ].join('');
 
-        const pending = approvals.pending || [];
-        if (!pending.length) {
-            approvalTableBody.innerHTML = `<tr><td class="p-2 text-gray-500" colspan="5">No pending approvals.</td></tr>`;
-        } else {
-            approvalTableBody.innerHTML = pending.map((row) => {
-                const id = row?.id || '';
-                const slaStatus = row?.sla_status || 'within_sla';
-                const badge = slaStatus === 'overdue'
-                    ? '<span class="px-2 py-1 rounded text-xs bg-red-100 text-red-800">overdue</span>'
-                    : '<span class="px-2 py-1 rounded text-xs bg-emerald-100 text-emerald-800">within_sla</span>';
-                return `
-                    <tr class="border-b">
-                        <td class="p-2 font-mono text-xs">${id}</td>
-                        <td class="p-2">${row?.action || '-'}</td>
-                        <td class="p-2">${row?.risk || '-'}</td>
-                        <td class="p-2">${badge}</td>
-                        <td class="p-2">
-                            <div class="flex flex-wrap gap-1">
-                                <button class="approval-action px-2 py-1 bg-emerald-600 text-white rounded text-xs" data-id="${id}" data-mode="approve">Approve</button>
-                                <button class="approval-action px-2 py-1 bg-amber-600 text-white rounded text-xs" data-id="${id}" data-mode="reject">Reject</button>
-                                <button class="approval-action px-2 py-1 bg-red-600 text-white rounded text-xs" data-id="${id}" data-mode="veto">Veto</button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
+        approvalsCache = Array.isArray(approvals.pending) ? approvals.pending : [];
+        renderApprovalRows();
 
         const recommendations = snapshot?.recommended_actions || [];
         if (!recommendations.length) {
@@ -293,10 +398,20 @@
     }
 
     async function loadOversight() {
-        const res = await fetch(`${oversightUrl}?limit=80`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-        const data = await res.json();
-        if (!data?.success) throw new Error('oversight_load_failed');
-        renderOversight(data.snapshot || {});
+        setOversightBusy(true);
+        try {
+            const res = await fetch(`${oversightUrl}?limit=200`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await res.json();
+            if (!data?.success) throw new Error('oversight_load_failed');
+            renderOversight(data.snapshot || {});
+            setOversightStatus('success', 'Oversight data updated.');
+            setTimeout(() => setOversightStatus('', ''), 1500);
+        } catch (err) {
+            setOversightStatus('error', `Oversight load failed: ${err.message || 'unknown error'}`);
+            throw err;
+        } finally {
+            setOversightBusy(false);
+        }
     }
 
     async function handleApprovalAction(id, mode) {
@@ -318,8 +433,17 @@
             payload = { reason };
         }
 
-        await postJson(url, payload);
-        await loadOversight();
+        setOversightBusy(true);
+        try {
+            await postJson(url, payload);
+            setOversightStatus('success', `Approval action '${mode}' executed.`);
+            await loadOversight();
+        } catch (err) {
+            setOversightStatus('error', `Approval action failed: ${err.message || 'unknown error'}`);
+            throw err;
+        } finally {
+            setOversightBusy(false);
+        }
     }
 
     async function handleControlAction(action) {
@@ -342,29 +466,62 @@
             payload.reason = `${action}_from_oversight_console`;
         }
 
-        await postJson(controlsUpdateUrl, payload);
-        const controlsRes = await fetch(controlsUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-        const controlsData = await controlsRes.json().catch(() => ({}));
-        if (controlsData?.success) {
-            renderOversight({
-                controls: {
-                    state: controlsData.state || {},
-                    kill_switch: controlsData.kill_switch || {},
-                    override: controlsData.override || {},
-                },
-                approvals: { pending: [], pending_count: 0, overdue_count: 0 },
-                delegation: { active_count: 0 },
-                audit: { failed_count: 0 },
-                events: { recent_count: 0 },
-                recommended_actions: [],
-            });
+        setOversightBusy(true);
+        try {
+            await postJson(controlsUpdateUrl, payload);
+            const controlsRes = await fetch(controlsUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const controlsData = await controlsRes.json().catch(() => ({}));
+            if (controlsData?.success) {
+                renderOversight({
+                    controls: {
+                        state: controlsData.state || {},
+                        kill_switch: controlsData.kill_switch || {},
+                        override: controlsData.override || {},
+                    },
+                    approvals: { pending: [], pending_count: 0, overdue_count: 0 },
+                    delegation: { active_count: 0 },
+                    audit: { failed_count: 0 },
+                    events: { recent_count: 0 },
+                    recommended_actions: [],
+                });
+            }
+            setOversightStatus('success', `Control action '${action}' executed.`);
+            await loadOversight();
+        } catch (err) {
+            setOversightStatus('error', `Control action failed: ${err.message || 'unknown error'}`);
+            throw err;
+        } finally {
+            setOversightBusy(false);
         }
-        await loadOversight();
     }
 
     refreshBtn.addEventListener('click', () => loadGovernance().catch(() => {}));
     windowEl.addEventListener('change', () => loadGovernance().catch(() => {}));
     oversightRefreshBtn.addEventListener('click', () => loadOversight().catch(() => {}));
+    approvalSearchEl.addEventListener('input', () => {
+        approvalPage = 1;
+        renderApprovalRows();
+    });
+    approvalRiskFilterEl.addEventListener('change', () => {
+        approvalPage = 1;
+        renderApprovalRows();
+    });
+    approvalSlaFilterEl.addEventListener('change', () => {
+        approvalPage = 1;
+        renderApprovalRows();
+    });
+    approvalPageSizeEl.addEventListener('change', () => {
+        approvalPage = 1;
+        renderApprovalRows();
+    });
+    approvalPrevPageBtn.addEventListener('click', () => {
+        approvalPage = Math.max(1, approvalPage - 1);
+        renderApprovalRows();
+    });
+    approvalNextPageBtn.addEventListener('click', () => {
+        approvalPage += 1;
+        renderApprovalRows();
+    });
 
     approvalTableBody.addEventListener('click', (e) => {
         const target = e.target.closest('.approval-action');
@@ -386,4 +543,3 @@
 })();
 </script>
 @endpush
-

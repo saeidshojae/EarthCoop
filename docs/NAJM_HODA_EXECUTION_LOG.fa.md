@@ -1330,3 +1330,15 @@
   - `autonomy.controls.update`
 - Phase impact:
   - `P6-T07` moved from backend-only to usable operator workflow in admin dashboard.
+
+### Update - PHASE6-T07-UX-HARDENING-2026-02-22
+- Hardened oversight dashboard UX in:
+  - `resources/views/admin/najm-hoda/governance-dashboard.blade.php`
+- Added operator usability capabilities:
+  - oversight status banner (loading/success/error)
+  - approval filters (`search`, `risk`, `sla`)
+  - client-side approval pagination (`page size`, `prev/next`, page meta)
+  - defensive busy-state for action buttons during requests
+  - explicit success/error feedback after approval/override actions
+- Phase impact:
+  - oversight workflow is now more stable for real operator use and reduces ambiguous action outcomes.
