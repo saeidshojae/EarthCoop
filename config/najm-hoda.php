@@ -515,6 +515,11 @@ return [
                     ],
                 ],
             ],
+            'phase6_signoff' => [
+                'retention_minutes' => env('NAJM_HODA_PHASE6_SIGNOFF_RETENTION_MINUTES', 43200),
+                'history_size' => env('NAJM_HODA_PHASE6_SIGNOFF_HISTORY_SIZE', 500),
+                'require_autonomous_live_stage' => env('NAJM_HODA_PHASE6_SIGNOFF_REQUIRE_STAGE4', true),
+            ],
             'audit' => [
                 'history_size' => env('NAJM_HODA_AUTONOMY_AUDIT_HISTORY_SIZE', 500),
                 'retention_minutes' => env('NAJM_HODA_AUTONOMY_AUDIT_RETENTION_MINUTES', 10080),

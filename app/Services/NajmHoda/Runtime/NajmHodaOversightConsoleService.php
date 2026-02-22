@@ -14,7 +14,8 @@ class NajmHodaOversightConsoleService
         protected NajmHodaSafeCodeOpsCanaryService $codeOpsCanaryService,
         protected NajmHodaContinuousEvaluationHarnessService $evaluationHarnessService,
         protected NajmHodaOperationalAutonomyActivationService $operationsActivationService,
-        protected NajmHodaShadowLiveRolloutService $shadowRolloutService
+        protected NajmHodaShadowLiveRolloutService $shadowRolloutService,
+        protected NajmHodaPhaseSixSignoffService $phaseSixSignoffService
     ) {
     }
 
@@ -46,6 +47,7 @@ class NajmHodaOversightConsoleService
         $evaluationLastReport = $this->evaluationHarnessService->lastReport();
         $operationsState = $this->operationsActivationService->status();
         $rolloutState = $this->shadowRolloutService->status();
+        $phaseSixSignoff = $this->phaseSixSignoffService->status();
         $pendingPolicyRecommendations = $this->policyLearningService->listRecommendations('pending', $limit);
         $policyEvidence = $this->policyLearningService->recentEvidence(min(100, $limit));
 
@@ -90,6 +92,7 @@ class NajmHodaOversightConsoleService
             ],
             'operations_24x7' => $operationsState,
             'shadow_rollout' => $rolloutState,
+            'phase6_signoff' => $phaseSixSignoff,
             'audit' => [
                 'recent' => $auditHistory,
                 'recent_count' => count($auditHistory),

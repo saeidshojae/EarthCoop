@@ -28,6 +28,7 @@ use App\Services\NajmHoda\Runtime\NajmHodaAdaptivePolicyLearningService;
 use App\Services\NajmHoda\Runtime\NajmHodaSafeCodeOpsCanaryService;
 use App\Services\NajmHoda\Runtime\NajmHodaContinuousEvaluationHarnessService;
 use App\Services\NajmHoda\Runtime\NajmHodaOperationalAutonomyActivationService;
+use App\Services\NajmHoda\Runtime\NajmHodaPhaseSixSignoffService;
 use App\Services\NajmHoda\Runtime\NajmHodaShadowLiveRolloutService;
 use App\Models\Conversation;
 use App\Models\AIInteraction;
@@ -1811,6 +1812,8 @@ class NajmHodaController extends Controller
             'operations_write' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
             'shadow_rollout_read' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.read'),
             'shadow_rollout_write' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
+            'phase6_signoff_read' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.read'),
+            'phase6_signoff_write' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
         ];
 
         return [
@@ -1828,6 +1831,8 @@ class NajmHodaController extends Controller
                 'operations_write' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.write'],
                 'shadow_rollout_read' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.read'],
                 'shadow_rollout_write' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.write'],
+                'phase6_signoff_read' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.read'],
+                'phase6_signoff_write' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.write'],
             ],
         ];
     }
@@ -2090,6 +2095,62 @@ class NajmHodaController extends Controller
         return response($json, 200, [
             'Content-Type' => 'application/json; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    public function getAutonomyPhaseSixSignoffReport(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.phase6-signoff.report', false)) {
+            return $policyResponse;
+        }
+
+        $windowHours = max(1, min(720, (int) $request->input('window_hours', (int) config('najm-hoda.runtime.autonomy.readiness.window_hours', 24))));
+        $historyLimit = max(1, min(200, (int) $request->input('history_limit', 20)));
+        $service = app(NajmHodaPhaseSixSignoffService::class);
+        $report = $service->report($windowHours, true);
+
+        return response()->json([
+            'success' => true,
+            'report' => $report,
+            'state' => $service->status(),
+            'history' => $service->history($historyLimit),
+        ]);
+    }
+
+    public function updateAutonomyPhaseSixSignoff(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.phase6-signoff.update', true)) {
+            return $policyResponse;
+        }
+
+        $validated = $request->validate([
+            'decision' => 'required|string|in:go,conditional_go,no_go',
+            'window_hours' => 'nullable|integer|min:1|max:720',
+            'note' => 'nullable|string|max:2000',
+        ]);
+
+        $service = app(NajmHodaPhaseSixSignoffService::class);
+        $windowHours = isset($validated['window_hours']) ? (int) $validated['window_hours'] : null;
+        $result = $service->sign(
+            (string) ($validated['decision'] ?? 'conditional_go'),
+            auth()->id(),
+            isset($validated['note']) ? (string) $validated['note'] : null,
+            $windowHours
+        );
+
+        if (!(bool) ($result['success'] ?? false)) {
+            return response()->json([
+                'success' => false,
+                'message' => (string) ($result['reason'] ?? 'phase6_signoff_failed'),
+                'result' => $result,
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'result' => $result,
+            'state' => $service->status(),
+            'history' => $service->history(20),
         ]);
     }
 

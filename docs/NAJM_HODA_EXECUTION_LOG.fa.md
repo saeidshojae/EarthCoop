@@ -1596,3 +1596,41 @@
   - `vendor/bin/phpunit --filter=OversightConsoleServiceTest` => `OK (1 test, 18 assertions)`
 - Phase impact:
   - `P6-T11` moved from pending to done.
+
+### Update - PHASE6-T12-GO-NO-GO-SIGNOFF-2026-02-22
+- Implemented phase-6 executive Go/No-Go signoff workflow on top of existing readiness/compliance foundations.
+- Added service:
+  - `app/Services/NajmHoda/Runtime/NajmHodaPhaseSixSignoffService.php`
+  - capabilities:
+    - aggregate final evidence from `production readiness`, `shadow rollout`, `continuous evaluation`, `operations 24x7`, `codeops`
+    - derive final decision (`go|conditional_go|no_go`) with explicit rationale
+    - persist report/signoff state and history
+    - record executive sign-off with operator id and note
+- Added command:
+  - `app/Console/Commands/NajmHodaPhaseSixSignoff.php`
+  - signature: `najm-hoda:phase6-signoff`
+  - options: `--report --sign --decision --note --history --window`
+- Added schedule:
+  - `app/Console/Kernel.php`
+  - daily signoff report generation:
+    - `najm-hoda:phase6-signoff --report --window=24` at `04:00`
+- Added admin APIs:
+  - `GET /admin/najm-hoda/autonomy/phase6/signoff/report`
+  - `POST /admin/najm-hoda/autonomy/phase6/signoff`
+  - files: `app/Http/Controllers/Admin/NajmHodaController.php`, `routes/web.php`
+- Oversight integration:
+  - `app/Services/NajmHoda/Runtime/NajmHodaOversightConsoleService.php` now includes `phase6_signoff`
+  - policy hints expanded with `phase6_signoff_read/write`
+- Config baseline added:
+  - `config/najm-hoda.php` -> `runtime.autonomy.phase6_signoff.*`
+- Tests:
+  - new: `tests/Feature/NajmHoda/PhaseSixSignoffServiceTest.php`
+  - updated: `tests/Feature/NajmHoda/OversightConsoleServiceTest.php`
+- Validation:
+  - `php -l` passed for changed files
+  - `php artisan help najm-hoda:phase6-signoff`
+  - `php artisan route:list --name=admin.najm-hoda.autonomy.phase6-signoff`
+  - `vendor/bin/phpunit --filter=PhaseSixSignoffServiceTest` => `OK (2 tests, 17 assertions)`
+  - `vendor/bin/phpunit --filter=OversightConsoleServiceTest` => `OK (1 test, 20 assertions)`
+- Phase impact:
+  - `P6-T12` moved from pending to done.

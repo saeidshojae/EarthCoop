@@ -180,7 +180,16 @@
 - شرح: جمع بندی نهایی ریسک/کیفیت/پایداری و تصمیم Go/No-Go برای بهره برداری سطح 6.
 - خروجی: تایید مدیریتی مبتنی بر شواهد فنی و عملیاتی.
 - وابستگی: `P6-T01` تا `P6-T11`
-- وضعیت: `pending`
+- وضعیت: `done`
+- پیشرفت:
+  - `done`: پیاده سازی سرویس `NajmHodaPhaseSixSignoffService` برای تجمیع شواهد نهایی از `readiness + rollout + evaluation + operations + codeops`
+  - `done`: تولید گزارش Go/No-Go اجرایی با تصمیم نهایی (`go|conditional_go|no_go`) و rationale قابل ممیزی
+  - `done`: پیاده سازی مسیر ثبت sign-off مدیریتی با ذخیره تصمیم، یادداشت، کاربر امضاکننده و history پایدار
+  - `done`: اضافه شدن command اجرایی `najm-hoda:phase6-signoff` با گزینه‌های `--report` و `--sign --decision=...`
+  - `done`: زمانبندی گزارش روزانه signoff در `Kernel` (`dailyAt('04:00')`)
+  - `done`: اضافه شدن APIهای مدیریتی P6 signoff (`report/update`) در پنل ادمین
+  - `done`: اتصال وضعیت signoff به snapshot کنسول نظارتی (`phase6_signoff`) برای مشاهده یکپارچه
+  - `done`: تکمیل تست‌ها (`PhaseSixSignoffServiceTest`, `OversightConsoleServiceTest`) و اعتبارسنجی CLI/Routes
 
 ## معیار اتمام فاز 6
 - حداقل 95% مسیرهای بحرانی سیستم تحت پوشش رویداد و ردیابی تصمیم باشند.

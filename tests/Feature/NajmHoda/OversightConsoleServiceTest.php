@@ -15,6 +15,7 @@ use App\Services\NajmHoda\Runtime\NajmHodaOperationalAutonomyActivationService;
 use App\Services\NajmHoda\Runtime\NajmHodaOversightConsoleService;
 use App\Services\NajmHoda\Runtime\NajmHodaSafeCodeOpsCanaryService;
 use App\Services\NajmHoda\Runtime\NajmHodaShadowLiveRolloutService;
+use App\Services\NajmHoda\Runtime\NajmHodaPhaseSixSignoffService;
 use App\Services\NotificationService;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -63,6 +64,11 @@ class OversightConsoleServiceTest extends TestCase
         $rollout->shouldReceive('status')->once()->andReturn([
             'stage' => 'shadow',
             'last_decision' => null,
+        ]);
+        $signoff = \Mockery::mock(NajmHodaPhaseSixSignoffService::class);
+        $signoff->shouldReceive('status')->once()->andReturn([
+            'last_decision' => 'conditional_go',
+            'last_signed_decision' => null,
         ]);
         Cache::put('najm_hoda:autonomy:policy_learning:recommendations', [[
             'id' => 'plr-1',
@@ -114,7 +120,7 @@ class OversightConsoleServiceTest extends TestCase
             'reason' => 'no_active_delegation',
         ]);
 
-        $service = new NajmHodaOversightConsoleService($bus, $approval, $control, $audit, $delegation, $policyLearning, $codeOps, $evaluation, $operations, $rollout);
+        $service = new NajmHodaOversightConsoleService($bus, $approval, $control, $audit, $delegation, $policyLearning, $codeOps, $evaluation, $operations, $rollout, $signoff);
         $snapshot = $service->snapshot(50);
 
         $this->assertSame(1, (int) data_get($snapshot, 'approvals.pending_count', 0));
@@ -126,6 +132,7 @@ class OversightConsoleServiceTest extends TestCase
         $this->assertSame('ok', (string) data_get($snapshot, 'continuous_evaluation.status', ''));
         $this->assertSame('inactive', (string) data_get($snapshot, 'operations_24x7.status', ''));
         $this->assertSame('shadow', (string) data_get($snapshot, 'shadow_rollout.stage', ''));
+        $this->assertSame('conditional_go', (string) data_get($snapshot, 'phase6_signoff.last_decision', ''));
         $this->assertSame(1, (int) data_get($snapshot, 'audit.failed_count', 0));
         $this->assertSame(1, (int) data_get($snapshot, 'events.risk_signals.delegation_denied', 0));
         $this->assertSame(1, (int) data_get($snapshot, 'delegation.event_summary.denied', 0));

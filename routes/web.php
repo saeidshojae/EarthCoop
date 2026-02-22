@@ -600,6 +600,7 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
             Route::get('/autonomy/compliance/evidence/export', [AdminNajmHodaController::class, 'exportAutonomyComplianceEvidence'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.compliance.export');
             Route::get('/autonomy/readiness/review', [AdminNajmHodaController::class, 'getAutonomyReadinessReview'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.readiness.review');
             Route::get('/autonomy/readiness/review/export', [AdminNajmHodaController::class, 'exportAutonomyReadinessReview'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.readiness.export');
+            Route::get('/autonomy/phase6/signoff/report', [AdminNajmHodaController::class, 'getAutonomyPhaseSixSignoffReport'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.phase6-signoff.report');
         });
         Route::middleware('permission:najm-hoda.manage-settings,najm-hoda.autonomy.write')->group(function () {
             Route::post('/autonomy/approvals/{approvalId}/decision', [AdminNajmHodaController::class, 'decideAutonomyApproval'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.approvals.decision');
@@ -612,6 +613,7 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
             Route::post('/autonomy/controls', [AdminNajmHodaController::class, 'updateAutonomyControls'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.controls.update');
             Route::post('/autonomy/audit/{runId}/replay', [AdminNajmHodaController::class, 'replayAutonomyTrace'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.audit.replay');
             Route::post('/autonomy/governance/alerts/evaluate', [AdminNajmHodaController::class, 'evaluateAutonomyGovernanceAlerts'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.governance.alerts.evaluate');
+            Route::post('/autonomy/phase6/signoff', [AdminNajmHodaController::class, 'updateAutonomyPhaseSixSignoff'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.phase6-signoff.update');
         });
         Route::post('/autonomy/gameday/run', [AdminNajmHodaController::class, 'runAutonomyGameDay'])
             ->middleware(['permission:najm-hoda.manage-settings,najm-hoda.autonomy.gameday,najm-hoda.autonomy.write', 'throttle:najm-hoda-autonomy-write'])
