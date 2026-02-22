@@ -125,7 +125,14 @@
 - شرح: گسترش CodeOps به rollout تدریجی (canary) و rollback خودکار مبتنی بر SLO breach.
 - خروجی: استقرار کم ریسک اصلاحات خودکار در محیط واقعی.
 - وابستگی: `P6-T04`, `P6-T06`
-- وضعیت: `pending`
+- وضعیت: `done`
+- پیشرفت:
+  - `done`: پیاده سازی سرویس `NajmHodaSafeCodeOpsCanaryService` با state/history rollout، فازهای canary و health-evaluation مبتنی بر `governance + drift`
+  - `done`: پیاده سازی auto-rollback روی breach با تغییر control override به `propose-only` و `pause` محافظتی
+  - `done`: اضافه شدن command عملیاتی `najm-hoda:codeops-canary` با گزینه های `--start/--promote/--evaluate/--rollback/--auto-rollback`
+  - `done`: اتصال مسیرهای مدیریتی canary در پنل ادمین (`GET/POST /admin/najm-hoda/autonomy/codeops/canary`)
+  - `done`: نمایش وضعیت canary در کنسول نظارتی (`codeops_canary`) و UI داشبورد governance
+  - `done`: زمانبندی ارزیابی دوره‌ای canary با auto-rollback (`everyThirtyMinutes`) در `Kernel`
 
 9. `P6-T09` Continuous Evaluation Harness
 - شرح: ارزیابی شبانه end-to-end روی کیفیت تصمیم، safety regression، و نرخ انحراف.

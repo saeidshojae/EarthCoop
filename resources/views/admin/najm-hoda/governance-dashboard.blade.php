@@ -103,6 +103,13 @@
                 <button data-control-action="set_override" class="control-action px-3 py-2 bg-slate-700 text-white rounded hover:bg-slate-800">Force Propose Mode</button>
                 <button data-control-action="clear_override" class="control-action px-3 py-2 bg-gray-700 text-white rounded hover:bg-gray-800">Clear Override</button>
             </div>
+            <h4 class="font-medium mt-4 mb-2 text-sm">CodeOps Canary</h4>
+            <div class="grid grid-cols-1 gap-2">
+                <button data-codeops-action="start" class="codeops-action px-3 py-2 bg-blue-700 text-white rounded hover:bg-blue-800">Start Canary</button>
+                <button data-codeops-action="promote" class="codeops-action px-3 py-2 bg-indigo-700 text-white rounded hover:bg-indigo-800">Promote Canary</button>
+                <button data-codeops-action="evaluate" class="codeops-action px-3 py-2 bg-cyan-700 text-white rounded hover:bg-cyan-800">Evaluate Canary</button>
+                <button data-codeops-action="rollback" class="codeops-action px-3 py-2 bg-rose-700 text-white rounded hover:bg-rose-800">Rollback Canary</button>
+            </div>
         </div>
     </div>
 
@@ -176,6 +183,8 @@
     const oversightTelemetryUrl = @json(route('admin.najm-hoda.autonomy.oversight.telemetry'));
     const controlsUrl = @json(route('admin.najm-hoda.autonomy.controls'));
     const controlsUpdateUrl = @json(route('admin.najm-hoda.autonomy.controls.update'));
+    const codeOpsCanaryUrl = @json(route('admin.najm-hoda.autonomy.codeops.canary'));
+    const codeOpsCanaryUpdateUrl = @json(route('admin.najm-hoda.autonomy.codeops.canary.update'));
     const approvalsDecisionUrlPattern = @json(route('admin.najm-hoda.autonomy.approvals.decision', ['approvalId' => '__APPROVAL_ID__']));
     const approvalsVetoUrlPattern = @json(route('admin.najm-hoda.autonomy.approvals.veto', ['approvalId' => '__APPROVAL_ID__']));
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -209,6 +218,10 @@
             btn.disabled = loading;
             btn.classList.toggle('opacity-60', loading);
         });
+        document.querySelectorAll('.codeops-action').forEach((btn) => {
+            btn.disabled = loading;
+            btn.classList.toggle('opacity-60', loading);
+        });
         if (loading) setOversightStatus('loading', 'Loading oversight data...');
     }
 
@@ -220,6 +233,7 @@
         const canControls = canAbility('controls_update');
         const canKillSwitch = canAbility('controls_kill_switch');
         const canOverride = canAbility('controls_override');
+        const canCodeOps = canAbility('codeops_canary_write');
 
         document.querySelectorAll('.control-action').forEach((btn) => {
             const action = btn.getAttribute('data-control-action');
@@ -232,6 +246,12 @@
             btn.disabled = oversightBusy || !allowed;
             btn.classList.toggle('opacity-60', btn.disabled);
             btn.title = allowed ? '' : 'Insufficient permission for this action';
+        });
+
+        document.querySelectorAll('.codeops-action').forEach((btn) => {
+            btn.disabled = oversightBusy || !canCodeOps;
+            btn.classList.toggle('opacity-60', btn.disabled);
+            btn.title = canCodeOps ? '' : 'Insufficient permission for codeops canary action';
         });
     }
 
@@ -399,6 +419,7 @@
         const delegation = snapshot?.delegation || {};
         const audit = snapshot?.audit || {};
         const events = snapshot?.events || {};
+        const codeops = snapshot?.codeops_canary || {};
         const controls = snapshot?.controls || {};
         oversightPolicyHints = snapshot?.policy_hints || {};
         const state = controls?.state || {};
@@ -410,6 +431,7 @@
             oversightCard('Overdue approvals', approvals.overdue_count ?? 0),
             oversightCard('Active delegations', delegation.active_count ?? 0),
             oversightCard('Failed runs', audit.failed_count ?? 0, `Events: ${events.recent_count ?? 0}`),
+            oversightCard('CodeOps Canary', codeops.status || 'idle', `Phase: ${codeops.phase_percent ?? '-'}%`),
         ].join('');
 
         approvalsCache = Array.isArray(approvals.pending) ? approvals.pending : [];
@@ -637,6 +659,37 @@
         }
     }
 
+    async function handleCodeOpsCanaryAction(action) {
+        if (!action) return;
+        if (!canAbility('codeops_canary_write')) return;
+
+        const payload = { action, auto_rollback: true };
+        if (action === 'start') {
+            payload.phases = [5, 25, 50, 100];
+            payload.reason = 'start_from_oversight_console';
+        } else if (action === 'promote') {
+            payload.reason = 'promote_from_oversight_console';
+        } else if (action === 'evaluate') {
+            payload.reason = 'evaluate_from_oversight_console';
+        } else if (action === 'rollback') {
+            payload.reason = 'rollback_from_oversight_console';
+        }
+
+        setOversightBusy(true);
+        try {
+            await postJson(codeOpsCanaryUpdateUrl, payload);
+            setOversightStatus('success', `CodeOps canary action '${action}' executed.`);
+            sendTelemetry('codeops_canary_action', { action });
+            await loadOversight();
+        } catch (err) {
+            setOversightStatus('error', `CodeOps canary action failed: ${err.message || 'unknown error'}`);
+            sendTelemetry('codeops_canary_action_failed', { action, error: err.message || 'unknown_error' });
+            throw err;
+        } finally {
+            setOversightBusy(false);
+        }
+    }
+
     refreshBtn.addEventListener('click', () => loadGovernance().catch(() => {}));
     windowEl.addEventListener('change', () => loadGovernance().catch(() => {}));
     oversightRefreshBtn.addEventListener('click', () => loadOversight().catch(() => {}));
@@ -683,6 +736,13 @@
         btn.addEventListener('click', () => {
             const action = btn.getAttribute('data-control-action');
             handleControlAction(action).catch(() => {});
+        });
+    });
+
+    document.querySelectorAll('.codeops-action').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const action = btn.getAttribute('data-codeops-action');
+            handleCodeOpsCanaryAction(action).catch(() => {});
         });
     });
 

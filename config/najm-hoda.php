@@ -432,6 +432,14 @@ return [
                 'max_history' => env('NAJM_HODA_POLICY_LEARNING_MAX_HISTORY', 300),
                 'max_recommendations_history' => env('NAJM_HODA_POLICY_LEARNING_MAX_RECOMMENDATIONS_HISTORY', 500),
             ],
+            'codeops' => [
+                'window_hours' => env('NAJM_HODA_CODEOPS_CANARY_WINDOW_HOURS', 24),
+                'canary_phases' => [5, 25, 50, 100],
+                'max_warnings_for_progress' => env('NAJM_HODA_CODEOPS_CANARY_MAX_WARNINGS', 1),
+                'rollback_pause_minutes' => env('NAJM_HODA_CODEOPS_CANARY_ROLLBACK_PAUSE_MINUTES', 30),
+                'retention_minutes' => env('NAJM_HODA_CODEOPS_CANARY_RETENTION_MINUTES', 20160),
+                'history_size' => env('NAJM_HODA_CODEOPS_CANARY_HISTORY_SIZE', 500),
+            ],
             'audit' => [
                 'history_size' => env('NAJM_HODA_AUTONOMY_AUDIT_HISTORY_SIZE', 500),
                 'retention_minutes' => env('NAJM_HODA_AUTONOMY_AUDIT_RETENTION_MINUTES', 10080),

@@ -25,6 +25,7 @@ use App\Services\NajmHoda\Runtime\NajmHodaComplianceEvidenceService;
 use App\Services\NajmHoda\Runtime\NajmHodaProductionReadinessService;
 use App\Services\NajmHoda\Runtime\NajmHodaOversightConsoleService;
 use App\Services\NajmHoda\Runtime\NajmHodaAdaptivePolicyLearningService;
+use App\Services\NajmHoda\Runtime\NajmHodaSafeCodeOpsCanaryService;
 use App\Models\Conversation;
 use App\Models\AIInteraction;
 use App\Models\Feedback;
@@ -1368,6 +1369,70 @@ class NajmHodaController extends Controller
         ]);
     }
 
+    public function getAutonomyCodeOpsCanary(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.codeops.canary', false)) {
+            return $policyResponse;
+        }
+
+        $service = app(NajmHodaSafeCodeOpsCanaryService::class);
+        $historyLimit = max(1, min(200, (int) $request->input('history_limit', 20)));
+
+        return response()->json([
+            'success' => true,
+            'state' => $service->status(),
+            'history' => $service->history($historyLimit),
+        ]);
+    }
+
+    public function updateAutonomyCodeOpsCanary(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.codeops.canary.update', true)) {
+            return $policyResponse;
+        }
+
+        $validated = $request->validate([
+            'action' => 'required|string|in:start,promote,evaluate,rollback',
+            'reason' => 'nullable|string|max:1000',
+            'window_hours' => 'nullable|integer|min:1|max:168',
+            'auto_rollback' => 'nullable|boolean',
+            'phases' => 'nullable|array',
+            'phases.*' => 'integer|min:1|max:100',
+        ]);
+
+        $service = app(NajmHodaSafeCodeOpsCanaryService::class);
+        $action = (string) ($validated['action'] ?? '');
+        $reason = isset($validated['reason']) ? (string) $validated['reason'] : null;
+        $windowHours = isset($validated['window_hours']) ? (int) $validated['window_hours'] : null;
+        $result = [];
+
+        if ($action === 'start') {
+            $phases = is_array($validated['phases'] ?? null) ? (array) $validated['phases'] : null;
+            $result = $service->startCanary(auth()->id(), $reason, $phases, $windowHours);
+        } elseif ($action === 'promote') {
+            $result = $service->promote(auth()->id(), $reason);
+        } elseif ($action === 'evaluate') {
+            $result = $service->evaluate((bool) ($validated['auto_rollback'] ?? false), auth()->id(), $reason);
+        } elseif ($action === 'rollback') {
+            $result = $service->rollback(auth()->id(), $reason ?: 'manual_codeops_rollback_from_ui');
+        }
+
+        if (!(bool) ($result['success'] ?? false)) {
+            return response()->json([
+                'success' => false,
+                'message' => (string) ($result['reason'] ?? 'codeops_canary_action_failed'),
+                'result' => $result,
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'result' => $result,
+            'state' => $service->status(),
+            'history' => $service->history(20),
+        ]);
+    }
+
     public function reviewAutonomyPolicyLearningRecommendation(Request $request, string $recommendationId)
     {
         if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.policy_learning.review', true)) {
@@ -1552,6 +1617,8 @@ class NajmHodaController extends Controller
             'oversight_read' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.read'),
             'policy_learning_read' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.read'),
             'policy_learning_review' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
+            'codeops_canary_read' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.read'),
+            'codeops_canary_write' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
         ];
 
         return [
@@ -1561,6 +1628,8 @@ class NajmHodaController extends Controller
                 'oversight_write' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.write'],
                 'policy_learning_read' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.read'],
                 'policy_learning_review' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.write'],
+                'codeops_canary_read' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.read'],
+                'codeops_canary_write' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.write'],
             ],
         ];
     }

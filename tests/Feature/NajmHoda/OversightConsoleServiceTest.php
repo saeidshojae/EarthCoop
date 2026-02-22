@@ -11,6 +11,7 @@ use App\Services\NajmHoda\Runtime\NajmHodaDecisionPolicyDriftService;
 use App\Services\NajmHoda\Runtime\NajmHodaDelegatedPermissionService;
 use App\Services\NajmHoda\Runtime\NajmHodaGovernanceMetricsAggregatorService;
 use App\Services\NajmHoda\Runtime\NajmHodaOversightConsoleService;
+use App\Services\NajmHoda\Runtime\NajmHodaSafeCodeOpsCanaryService;
 use App\Services\NotificationService;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -38,6 +39,11 @@ class OversightConsoleServiceTest extends TestCase
         $metrics = \Mockery::mock(NajmHodaGovernanceMetricsAggregatorService::class);
         $drift = \Mockery::mock(NajmHodaDecisionPolicyDriftService::class);
         $policyLearning = new NajmHodaAdaptivePolicyLearningService($bus, $metrics, $drift);
+        $codeOps = \Mockery::mock(NajmHodaSafeCodeOpsCanaryService::class);
+        $codeOps->shouldReceive('status')->once()->andReturn([
+            'status' => 'idle',
+            'phase_percent' => null,
+        ]);
         Cache::put('najm_hoda:autonomy:policy_learning:recommendations', [[
             'id' => 'plr-1',
             'status' => 'pending',
@@ -88,7 +94,7 @@ class OversightConsoleServiceTest extends TestCase
             'reason' => 'no_active_delegation',
         ]);
 
-        $service = new NajmHodaOversightConsoleService($bus, $approval, $control, $audit, $delegation, $policyLearning);
+        $service = new NajmHodaOversightConsoleService($bus, $approval, $control, $audit, $delegation, $policyLearning, $codeOps);
         $snapshot = $service->snapshot(50);
 
         $this->assertSame(1, (int) data_get($snapshot, 'approvals.pending_count', 0));
@@ -96,6 +102,7 @@ class OversightConsoleServiceTest extends TestCase
         $this->assertSame(1, (int) data_get($snapshot, 'delegation.active_count', 0));
         $this->assertSame(1, (int) data_get($snapshot, 'delegation.require_approval_count', 0));
         $this->assertSame(1, (int) data_get($snapshot, 'adaptive_policy.pending_count', 0));
+        $this->assertSame('idle', (string) data_get($snapshot, 'codeops_canary.status', ''));
         $this->assertSame(1, (int) data_get($snapshot, 'audit.failed_count', 0));
         $this->assertSame(1, (int) data_get($snapshot, 'events.risk_signals.delegation_denied', 0));
         $this->assertSame(1, (int) data_get($snapshot, 'delegation.event_summary.denied', 0));

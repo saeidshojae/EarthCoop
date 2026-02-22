@@ -10,7 +10,8 @@ class NajmHodaOversightConsoleService
         protected NajmHodaAutonomyControlService $controlService,
         protected NajmHodaAutonomyAuditService $auditService,
         protected NajmHodaDelegatedPermissionService $delegationService,
-        protected NajmHodaAdaptivePolicyLearningService $policyLearningService
+        protected NajmHodaAdaptivePolicyLearningService $policyLearningService,
+        protected NajmHodaSafeCodeOpsCanaryService $codeOpsCanaryService
     ) {
     }
 
@@ -38,6 +39,7 @@ class NajmHodaOversightConsoleService
             $recentAutonomyEvents,
             static fn (array $entry): bool => str_starts_with((string) ($entry['event'] ?? ''), 'najm_hoda.autonomy.delegation.')
         ));
+        $codeOpsCanary = $this->codeOpsCanaryService->status();
         $pendingPolicyRecommendations = $this->policyLearningService->listRecommendations('pending', $limit);
         $policyEvidence = $this->policyLearningService->recentEvidence(min(100, $limit));
 
@@ -72,6 +74,7 @@ class NajmHodaOversightConsoleService
                 'pending_count' => count($pendingPolicyRecommendations),
                 'recent_evidence' => $policyEvidence,
             ],
+            'codeops_canary' => $codeOpsCanary,
             'audit' => [
                 'recent' => $auditHistory,
                 'recent_count' => count($auditHistory),

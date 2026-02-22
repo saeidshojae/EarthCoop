@@ -1451,3 +1451,36 @@
   - validates delegation explainability summary fields.
 - Phase impact:
   - `P6-T05` moved from in-progress to done.
+
+### Update - PHASE6-T08-SAFE-CODEOPS-CANARY-AUTOROLLBACK-2026-02-22
+- Implemented Safe CodeOps canary rollout with SLO-based auto rollback.
+- Added service:
+  - `app/Services/NajmHoda/Runtime/NajmHodaSafeCodeOpsCanaryService.php`
+  - capabilities:
+    - canary lifecycle (`start/promote/evaluate/rollback`)
+    - phased rollout (`canary_phases`)
+    - health evaluation from governance snapshot + drift report
+    - automatic rollback when health status reaches breach
+    - cache-backed state/history + runtime events
+- Added command:
+  - `app/Console/Commands/NajmHodaCodeOpsCanary.php`
+  - signature: `najm-hoda:codeops-canary`
+  - options: `--start --promote --evaluate --rollback --auto-rollback --status --history`
+- Added runtime schedule:
+  - `app/Console/Kernel.php`
+  - periodic guard: `najm-hoda:codeops-canary --evaluate --auto-rollback` (`everyThirtyMinutes`)
+- Added admin APIs:
+  - `GET /admin/najm-hoda/autonomy/codeops/canary`
+  - `POST /admin/najm-hoda/autonomy/codeops/canary`
+  - controller: `app/Http/Controllers/Admin/NajmHodaController.php`
+  - routes: `routes/web.php`
+- Oversight integration:
+  - `app/Services/NajmHoda/Runtime/NajmHodaOversightConsoleService.php` now includes `codeops_canary` status in snapshot
+  - `resources/views/admin/najm-hoda/governance-dashboard.blade.php` shows canary status/phase and includes canary action buttons (start/promote/evaluate/rollback)
+- Config baseline added:
+  - `config/najm-hoda.php` -> `runtime.autonomy.codeops.*`
+- Tests:
+  - new: `tests/Feature/NajmHoda/SafeCodeOpsCanaryServiceTest.php`
+  - updated: `tests/Feature/NajmHoda/OversightConsoleServiceTest.php`
+- Phase impact:
+  - `P6-T08` moved from pending to done.
