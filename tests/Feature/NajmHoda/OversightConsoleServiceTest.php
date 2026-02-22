@@ -70,6 +70,7 @@ class OversightConsoleServiceTest extends TestCase
             'principal_id' => '15',
             'action' => 'run_ops_monitor',
             'scope' => 'autonomy:run_ops_monitor',
+            'require_approval' => true,
         ]);
 
         $audit->record([
@@ -84,6 +85,7 @@ class OversightConsoleServiceTest extends TestCase
         $bus->emit('najm_hoda.autonomy.delegation.denied', [
             'actor_id' => 99,
             'action' => 'run_ops_monitor',
+            'reason' => 'no_active_delegation',
         ]);
 
         $service = new NajmHodaOversightConsoleService($bus, $approval, $control, $audit, $delegation, $policyLearning);
@@ -92,9 +94,12 @@ class OversightConsoleServiceTest extends TestCase
         $this->assertSame(1, (int) data_get($snapshot, 'approvals.pending_count', 0));
         $this->assertSame(1, (int) data_get($snapshot, 'approvals.overdue_count', 0));
         $this->assertSame(1, (int) data_get($snapshot, 'delegation.active_count', 0));
+        $this->assertSame(1, (int) data_get($snapshot, 'delegation.require_approval_count', 0));
         $this->assertSame(1, (int) data_get($snapshot, 'adaptive_policy.pending_count', 0));
         $this->assertSame(1, (int) data_get($snapshot, 'audit.failed_count', 0));
         $this->assertSame(1, (int) data_get($snapshot, 'events.risk_signals.delegation_denied', 0));
+        $this->assertSame(1, (int) data_get($snapshot, 'delegation.event_summary.denied', 0));
+        $this->assertSame('no_active_delegation', (string) data_get($snapshot, 'delegation.event_summary.recent_denied.0.reason', ''));
 
         $recommendationTypes = array_map(
             static fn (array $item): string => (string) ($item['type'] ?? ''),

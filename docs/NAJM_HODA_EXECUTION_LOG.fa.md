@@ -1429,3 +1429,25 @@
   - `config/najm-hoda.php` adds `runtime.autonomy.policy_learning` settings for TTL/history retention.
 - Phase impact:
   - `P6-T06` moved from in-progress to done with operator-reviewable, evidence-backed policy tuning loop.
+
+### Update - PHASE6-T05-DELEGATION-UI-EXPLAINABILITY-CLOSURE-2026-02-22
+- Completed remaining `P6-T05` item for delegation audit/explainability in oversight UI.
+- Extended oversight snapshot payload:
+  - `app/Services/NajmHoda/Runtime/NajmHodaOversightConsoleService.php`
+  - added delegation explainability fields:
+    - `require_approval_count`
+    - `expiring_soon_count`
+    - `recent_active` (compact active delegation rows)
+    - `event_summary` (`granted/authorized/denied/revoked/expired`, `denied_reasons`, `recent_denied`)
+- Extended governance dashboard rendering:
+  - `resources/views/admin/najm-hoda/governance-dashboard.blade.php`
+  - new "Delegation Explainability" section with:
+    - summary cards
+    - recent active delegation table
+    - denied-reason distribution
+    - recent denied-event feed
+- Updated test:
+  - `tests/Feature/NajmHoda/OversightConsoleServiceTest.php`
+  - validates delegation explainability summary fields.
+- Phase impact:
+  - `P6-T05` moved from in-progress to done.

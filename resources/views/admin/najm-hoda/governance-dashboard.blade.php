@@ -110,6 +110,35 @@
         <h3 class="font-semibold mb-3">Explainability Recommendations</h3>
         <div id="oversightRecommendations" class="space-y-2 text-sm"></div>
     </div>
+
+    <div class="bg-white border rounded-lg p-4">
+        <h3 class="font-semibold mb-3">Delegation Explainability</h3>
+        <div id="delegationSummary" class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div>
+                <h4 class="text-sm font-medium mb-2">Recent Active Delegations</h4>
+                <div class="overflow-auto">
+                    <table class="min-w-full text-xs">
+                        <thead>
+                            <tr class="bg-gray-100 text-right">
+                                <th class="p-2">Principal</th>
+                                <th class="p-2">Action</th>
+                                <th class="p-2">Scope</th>
+                                <th class="p-2">Expiry</th>
+                            </tr>
+                        </thead>
+                        <tbody id="delegationActiveTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div>
+                <h4 class="text-sm font-medium mb-2">Delegation Denied Reasons</h4>
+                <div id="delegationDeniedReasons" class="space-y-2 text-sm mb-3"></div>
+                <h4 class="text-sm font-medium mb-2">Recent Denied Events</h4>
+                <div id="delegationDeniedEvents" class="space-y-2 text-xs"></div>
+            </div>
+        </div>
+    </div>
 </div>
 @endsection
 
@@ -127,6 +156,10 @@
     const approvalTableBody = document.getElementById('approvalTableBody');
     const oversightRecommendationsEl = document.getElementById('oversightRecommendations');
     const controlStateBox = document.getElementById('controlStateBox');
+    const delegationSummaryEl = document.getElementById('delegationSummary');
+    const delegationActiveTableBodyEl = document.getElementById('delegationActiveTableBody');
+    const delegationDeniedReasonsEl = document.getElementById('delegationDeniedReasons');
+    const delegationDeniedEventsEl = document.getElementById('delegationDeniedEvents');
     const approvalSearchEl = document.getElementById('approvalSearch');
     const approvalRiskFilterEl = document.getElementById('approvalRiskFilter');
     const approvalSlaFilterEl = document.getElementById('approvalSlaFilter');
@@ -407,6 +440,55 @@
             <div class="mt-2 text-xs text-gray-500"><strong>Policy hints:</strong> read=${canAbility('oversight_read')}, write=${canAbility('controls_update')}</div>
         `;
         applyPolicyHintsToControls();
+
+        const delegationEventSummary = delegation?.event_summary || {};
+        delegationSummaryEl.innerHTML = [
+            oversightCard('Require Approval', delegation.require_approval_count ?? 0),
+            oversightCard('Expiring <=6h', delegation.expiring_soon_count ?? 0),
+            oversightCard('Delegation Denied', delegationEventSummary.denied ?? 0),
+            oversightCard('Delegation Authorized', delegationEventSummary.authorized ?? 0),
+        ].join('');
+
+        const activeRows = Array.isArray(delegation.recent_active) ? delegation.recent_active : [];
+        if (!activeRows.length) {
+            delegationActiveTableBodyEl.innerHTML = `<tr><td class="p-2 text-gray-500" colspan="4">No active delegation.</td></tr>`;
+        } else {
+            delegationActiveTableBodyEl.innerHTML = activeRows.map((row) => `
+                <tr class="border-b">
+                    <td class="p-2">${row.principal_type || '-'}:${row.principal_id || '-'}</td>
+                    <td class="p-2">${row.action || '-'}</td>
+                    <td class="p-2">${row.scope || 'global'}</td>
+                    <td class="p-2">${row.expires_at || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        const deniedReasons = delegationEventSummary?.denied_reasons || {};
+        const deniedReasonEntries = Object.entries(deniedReasons);
+        if (!deniedReasonEntries.length) {
+            delegationDeniedReasonsEl.innerHTML = `<div class="text-gray-500">No denied reason recorded.</div>`;
+        } else {
+            delegationDeniedReasonsEl.innerHTML = deniedReasonEntries.map(([reason, count]) => `
+                <div class="border rounded p-2 bg-gray-50 flex items-center justify-between">
+                    <span class="text-gray-700">${reason}</span>
+                    <span class="px-2 py-0.5 rounded bg-red-100 text-red-700 text-xs">${count}</span>
+                </div>
+            `).join('');
+        }
+
+        const deniedEvents = Array.isArray(delegationEventSummary?.recent_denied) ? delegationEventSummary.recent_denied : [];
+        if (!deniedEvents.length) {
+            delegationDeniedEventsEl.innerHTML = `<div class="text-gray-500">No recent denied event.</div>`;
+        } else {
+            delegationDeniedEventsEl.innerHTML = deniedEvents.map((evt) => `
+                <div class="border rounded p-2 bg-white">
+                    <div><strong>Actor:</strong> ${evt.actor_id ?? '-'}</div>
+                    <div><strong>Action:</strong> ${evt.action || '-'}</div>
+                    <div><strong>Scope:</strong> ${evt.scope || 'global'}</div>
+                    <div><strong>Reason:</strong> ${evt.reason || 'unknown'}</div>
+                </div>
+            `).join('');
+        }
     }
 
     async function loadGovernance() {

@@ -34,6 +34,10 @@ class NajmHodaOversightConsoleService
         $killSwitch = $this->controlService->killSwitchState();
         $override = $this->controlService->override();
         $delegations = $this->delegationService->listActive(null, null);
+        $delegationEvents = array_values(array_filter(
+            $recentAutonomyEvents,
+            static fn (array $entry): bool => str_starts_with((string) ($entry['event'] ?? ''), 'najm_hoda.autonomy.delegation.')
+        ));
         $pendingPolicyRecommendations = $this->policyLearningService->listRecommendations('pending', $limit);
         $policyEvidence = $this->policyLearningService->recentEvidence(min(100, $limit));
 
@@ -55,6 +59,12 @@ class NajmHodaOversightConsoleService
                 'active_count' => count($delegations),
                 'by_principal_type' => $this->countBy($delegations, 'principal_type'),
                 'by_action' => $this->countBy($delegations, 'action'),
+                'require_approval_count' => count(array_filter($delegations, static function (array $row): bool {
+                    return (bool) ($row['require_approval'] ?? false);
+                })),
+                'expiring_soon_count' => $this->countExpiringSoon($delegations, 6),
+                'recent_active' => $this->compactDelegations($delegations, min(20, $limit)),
+                'event_summary' => $this->summarizeDelegationEvents($delegationEvents),
             ],
             'adaptive_policy' => [
                 'current_override' => $this->policyLearningService->currentOverride(),
@@ -215,5 +225,112 @@ class NajmHodaOversightConsoleService
         }
 
         return $items;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $delegations
+     */
+    protected function countExpiringSoon(array $delegations, int $withinHours): int
+    {
+        $withinHours = max(1, $withinHours);
+        $count = 0;
+        foreach ($delegations as $row) {
+            $expiresAt = (string) ($row['expires_at'] ?? '');
+            if ($expiresAt === '') {
+                continue;
+            }
+
+            try {
+                $deadline = \Carbon\CarbonImmutable::parse($expiresAt);
+                if ($deadline->isPast()) {
+                    continue;
+                }
+
+                if (now()->diffInHours($deadline, false) <= $withinHours) {
+                    $count++;
+                }
+            } catch (\Throwable) {
+                continue;
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $rows
+     * @return array<int, array<string, mixed>>
+     */
+    protected function compactDelegations(array $rows, int $limit): array
+    {
+        $limit = max(1, $limit);
+        $data = array_map(static function (array $row): array {
+            return [
+                'id' => (string) ($row['id'] ?? ''),
+                'principal_type' => (string) ($row['principal_type'] ?? ''),
+                'principal_id' => (string) ($row['principal_id'] ?? ''),
+                'action' => (string) ($row['action'] ?? ''),
+                'scope' => (string) ($row['scope'] ?? 'global'),
+                'require_approval' => (bool) ($row['require_approval'] ?? false),
+                'created_at' => (string) ($row['created_at'] ?? ''),
+                'expires_at' => (string) ($row['expires_at'] ?? ''),
+                'reason' => (string) ($row['reason'] ?? ''),
+            ];
+        }, $rows);
+
+        usort($data, static function (array $a, array $b): int {
+            return strcmp((string) ($b['created_at'] ?? ''), (string) ($a['created_at'] ?? ''));
+        });
+
+        return array_slice($data, 0, $limit);
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $events
+     * @return array<string, mixed>
+     */
+    protected function summarizeDelegationEvents(array $events): array
+    {
+        $summary = [
+            'granted' => 0,
+            'authorized' => 0,
+            'denied' => 0,
+            'revoked' => 0,
+            'expired' => 0,
+            'denied_reasons' => [],
+            'recent_denied' => [],
+        ];
+
+        foreach ($events as $entry) {
+            $event = (string) ($entry['event'] ?? '');
+            if ($event === 'najm_hoda.autonomy.delegation.granted') {
+                $summary['granted']++;
+            } elseif ($event === 'najm_hoda.autonomy.delegation.authorized') {
+                $summary['authorized']++;
+            } elseif ($event === 'najm_hoda.autonomy.delegation.denied') {
+                $summary['denied']++;
+                $reason = trim((string) data_get($entry, 'payload.reason', 'unknown'));
+                if ($reason === '') {
+                    $reason = 'unknown';
+                }
+                $summary['denied_reasons'][$reason] = (int) ($summary['denied_reasons'][$reason] ?? 0) + 1;
+                $summary['recent_denied'][] = [
+                    'actor_id' => data_get($entry, 'payload.actor_id'),
+                    'action' => (string) data_get($entry, 'payload.action', ''),
+                    'scope' => (string) data_get($entry, 'payload.scope', ''),
+                    'reason' => $reason,
+                    'timestamp' => (string) ($entry['timestamp'] ?? ''),
+                ];
+            } elseif ($event === 'najm_hoda.autonomy.delegation.revoked') {
+                $summary['revoked']++;
+            } elseif ($event === 'najm_hoda.autonomy.delegation.expired') {
+                $summary['expired']++;
+            }
+        }
+
+        arsort($summary['denied_reasons']);
+        $summary['recent_denied'] = array_slice($summary['recent_denied'], 0, 10);
+
+        return $summary;
     }
 }
