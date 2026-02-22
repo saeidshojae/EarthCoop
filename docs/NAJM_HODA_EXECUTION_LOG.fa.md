@@ -1403,3 +1403,29 @@
   - `tests/Feature/NajmHoda/AdaptivePolicyLearningServiceTest.php`
 - Phase impact:
   - `P6-T06` moved from pending to in-progress with working analyze/apply loop.
+
+### Update - PHASE6-T06-EVIDENCE-AND-OPERATOR-REVIEW-2026-02-22
+- Completed remaining `P6-T06` gap: evidence trail before/after tuning + operator review workflow.
+- Updated service:
+  - `app/Services/NajmHoda/Runtime/NajmHodaAdaptivePolicyLearningService.php`
+  - added cache-backed evidence trail (`analysis`, `recommendation_reviewed`, `override_cleared`)
+  - added recommendation queue with status lifecycle (`pending/approved/rejected/auto_applied`)
+  - added operator review API methods (`listRecommendations`, `recentEvidence`, `reviewRecommendation`)
+- Added admin endpoints:
+  - `GET /admin/najm-hoda/autonomy/policy-learning/recommendations`
+  - `POST /admin/najm-hoda/autonomy/policy-learning/recommendations/{recommendationId}/review`
+  - controller: `app/Http/Controllers/Admin/NajmHodaController.php`
+  - routes: `routes/web.php`
+- Extended CLI operation:
+  - `app/Console/Commands/NajmHodaPolicyLearningLoop.php`
+  - new flags: `--list-pending`, `--review-id`, `--decision`, `--reason`
+- Extended oversight snapshot for explainability:
+  - `app/Services/NajmHoda/Runtime/NajmHodaOversightConsoleService.php`
+  - new `adaptive_policy` section with current override + pending recommendations + recent evidence.
+- Added/updated tests:
+  - `tests/Feature/NajmHoda/AdaptivePolicyLearningServiceTest.php`
+  - `tests/Feature/NajmHoda/OversightConsoleServiceTest.php`
+- Config hardening:
+  - `config/najm-hoda.php` adds `runtime.autonomy.policy_learning` settings for TTL/history retention.
+- Phase impact:
+  - `P6-T06` moved from in-progress to done with operator-reviewable, evidence-backed policy tuning loop.

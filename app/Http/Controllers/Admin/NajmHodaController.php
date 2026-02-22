@@ -24,6 +24,7 @@ use App\Services\NajmHoda\Runtime\NajmHodaAutonomyGameDayService;
 use App\Services\NajmHoda\Runtime\NajmHodaComplianceEvidenceService;
 use App\Services\NajmHoda\Runtime\NajmHodaProductionReadinessService;
 use App\Services\NajmHoda\Runtime\NajmHodaOversightConsoleService;
+use App\Services\NajmHoda\Runtime\NajmHodaAdaptivePolicyLearningService;
 use App\Models\Conversation;
 use App\Models\AIInteraction;
 use App\Models\Feedback;
@@ -1343,6 +1344,72 @@ class NajmHodaController extends Controller
         ]);
     }
 
+    public function getAutonomyPolicyLearningRecommendations(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.policy_learning.recommendations', false)) {
+            return $policyResponse;
+        }
+
+        $status = trim((string) $request->input('status', ''));
+        if ($status === '') {
+            $status = null;
+        }
+        $limit = max(1, min(300, (int) $request->input('limit', 50)));
+
+        $service = app(NajmHodaAdaptivePolicyLearningService::class);
+        $rows = $service->listRecommendations($status, $limit);
+        $evidence = $service->recentEvidence(min(100, $limit));
+
+        return response()->json([
+            'success' => true,
+            'recommendations' => $rows,
+            'evidence' => $evidence,
+            'count' => count($rows),
+        ]);
+    }
+
+    public function reviewAutonomyPolicyLearningRecommendation(Request $request, string $recommendationId)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.policy_learning.review', true)) {
+            return $policyResponse;
+        }
+
+        $validated = $request->validate([
+            'decision' => 'required|string|in:approve,reject',
+            'reason' => 'nullable|string|max:1000',
+        ]);
+
+        if (
+            (string) ($validated['decision'] ?? '') === 'reject'
+            && trim((string) ($validated['reason'] ?? '')) === ''
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Rejection reason is required.',
+            ], 422);
+        }
+
+        $service = app(NajmHodaAdaptivePolicyLearningService::class);
+        $result = $service->reviewRecommendation(
+            $recommendationId,
+            (string) ($validated['decision'] ?? ''),
+            auth()->id(),
+            isset($validated['reason']) ? (string) $validated['reason'] : null
+        );
+
+        if (!(bool) ($result['success'] ?? false)) {
+            return response()->json([
+                'success' => false,
+                'message' => (string) ($result['reason'] ?? 'review_failed'),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'result' => $result,
+        ]);
+    }
+
     public function getAutonomyOversightConsole(Request $request)
     {
         if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.oversight', false)) {
@@ -1483,6 +1550,8 @@ class NajmHodaController extends Controller
             'controls_kill_switch' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
             'controls_override' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
             'oversight_read' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.read'),
+            'policy_learning_read' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.read'),
+            'policy_learning_review' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
         ];
 
         return [
@@ -1490,6 +1559,8 @@ class NajmHodaController extends Controller
             'required_permissions' => [
                 'oversight_read' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.read'],
                 'oversight_write' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.write'],
+                'policy_learning_read' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.read'],
+                'policy_learning_review' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.write'],
             ],
         ];
     }

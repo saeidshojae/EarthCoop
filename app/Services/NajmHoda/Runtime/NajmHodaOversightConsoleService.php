@@ -9,7 +9,8 @@ class NajmHodaOversightConsoleService
         protected NajmHodaAutonomyApprovalService $approvalService,
         protected NajmHodaAutonomyControlService $controlService,
         protected NajmHodaAutonomyAuditService $auditService,
-        protected NajmHodaDelegatedPermissionService $delegationService
+        protected NajmHodaDelegatedPermissionService $delegationService,
+        protected NajmHodaAdaptivePolicyLearningService $policyLearningService
     ) {
     }
 
@@ -33,6 +34,8 @@ class NajmHodaOversightConsoleService
         $killSwitch = $this->controlService->killSwitchState();
         $override = $this->controlService->override();
         $delegations = $this->delegationService->listActive(null, null);
+        $pendingPolicyRecommendations = $this->policyLearningService->listRecommendations('pending', $limit);
+        $policyEvidence = $this->policyLearningService->recentEvidence(min(100, $limit));
 
         return [
             'generated_at' => now()->toIso8601String(),
@@ -52,6 +55,12 @@ class NajmHodaOversightConsoleService
                 'active_count' => count($delegations),
                 'by_principal_type' => $this->countBy($delegations, 'principal_type'),
                 'by_action' => $this->countBy($delegations, 'action'),
+            ],
+            'adaptive_policy' => [
+                'current_override' => $this->policyLearningService->currentOverride(),
+                'pending_recommendations' => $pendingPolicyRecommendations,
+                'pending_count' => count($pendingPolicyRecommendations),
+                'recent_evidence' => $policyEvidence,
             ],
             'audit' => [
                 'recent' => $auditHistory,
@@ -208,4 +217,3 @@ class NajmHodaOversightConsoleService
         return $items;
     }
 }
-

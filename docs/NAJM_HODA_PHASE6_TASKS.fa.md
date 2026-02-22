@@ -93,14 +93,17 @@
 - شرح: حلقه بازتنظیم policy بر اساس drift، false positive، failures و postmortem ها.
 - خروجی: policy tuning کنترل شده با شواهد پیش و پس از تغییر.
 - وابستگی: `P6-T03`, `P6-T04`
-- وضعیت: `in_progress`
+- وضعیت: `done`
 - پیشرفت:
   - `done`: پیاده سازی سرویس `NajmHodaAdaptivePolicyLearningService` با تحلیل drift/success-rate و توصیه override
   - `done`: اتصال override تطبیقی به `NajmHodaAutonomySafetyGate` از طریق cache-backed override (ttl-based)
   - `done`: اضافه شدن command `najm-hoda:policy-learning-loop` با گزینه های `--apply` و `--clear`
   - `done`: زمانبندی خودکار حلقه (`everyTwoHours`) در `Kernel`
   - `done`: تست پایه سرویس تطبیقی (`AdaptivePolicyLearningServiceTest`)
-  - `in_progress`: افزودن evidence قبل/بعد tuning و مسیر review اپراتور روی پیشنهادها
+  - `done`: افزودن evidence قبل/بعد tuning با history پایدار (`analysis/review/override-cleared`) در cache-backed trail
+  - `done`: اضافه شدن صف پیشنهادهای policy-learning با `recommendation_id`، وضعیت `pending/approved/rejected/auto_applied` و TTL بازبینی
+  - `done`: پیاده‌سازی مسیر review اپراتور برای پیشنهادهای tuning (API + CLI) با کنترل تصمیم `approve/reject` و ثبت دلیل
+  - `done`: اتصال داده‌های `adaptive_policy` (pending recommendations + recent evidence + current override) به snapshot کنسول نظارتی
 
 7. `P6-T07` Human Oversight Console v2
 - شرح: کنسول تصمیم با explainability کامل (چرا/با چه داده ای/با چه ریسکی)، veto سریع، و مسیر override.

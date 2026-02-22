@@ -6,7 +6,10 @@ use App\Services\NajmHoda\Runtime\InMemoryRuntimeEventBus;
 use App\Services\NajmHoda\Runtime\NajmHodaAutonomyApprovalService;
 use App\Services\NajmHoda\Runtime\NajmHodaAutonomyAuditService;
 use App\Services\NajmHoda\Runtime\NajmHodaAutonomyControlService;
+use App\Services\NajmHoda\Runtime\NajmHodaAdaptivePolicyLearningService;
+use App\Services\NajmHoda\Runtime\NajmHodaDecisionPolicyDriftService;
 use App\Services\NajmHoda\Runtime\NajmHodaDelegatedPermissionService;
+use App\Services\NajmHoda\Runtime\NajmHodaGovernanceMetricsAggregatorService;
 use App\Services\NajmHoda\Runtime\NajmHodaOversightConsoleService;
 use App\Services\NotificationService;
 use Illuminate\Support\Facades\Cache;
@@ -32,6 +35,20 @@ class OversightConsoleServiceTest extends TestCase
         $control = new NajmHodaAutonomyControlService($bus);
         $audit = new NajmHodaAutonomyAuditService($bus);
         $delegation = new NajmHodaDelegatedPermissionService($bus);
+        $metrics = \Mockery::mock(NajmHodaGovernanceMetricsAggregatorService::class);
+        $drift = \Mockery::mock(NajmHodaDecisionPolicyDriftService::class);
+        $policyLearning = new NajmHodaAdaptivePolicyLearningService($bus, $metrics, $drift);
+        Cache::put('najm_hoda:autonomy:policy_learning:recommendations', [[
+            'id' => 'plr-1',
+            'status' => 'pending',
+            'created_at' => now()->toIso8601String(),
+            'recommended_override' => ['max_actions_per_run' => 2],
+        ]], now()->addMinutes(60));
+        Cache::put('najm_hoda:autonomy:policy_learning:analysis_history', [[
+            'id' => 'ev-1',
+            'type' => 'analysis',
+            'recorded_at' => now()->toIso8601String(),
+        ]], now()->addMinutes(60));
 
         Cache::put('najm_hoda:autonomy:approval:requests', [[
             'id' => 'req-1',
@@ -69,12 +86,13 @@ class OversightConsoleServiceTest extends TestCase
             'action' => 'run_ops_monitor',
         ]);
 
-        $service = new NajmHodaOversightConsoleService($bus, $approval, $control, $audit, $delegation);
+        $service = new NajmHodaOversightConsoleService($bus, $approval, $control, $audit, $delegation, $policyLearning);
         $snapshot = $service->snapshot(50);
 
         $this->assertSame(1, (int) data_get($snapshot, 'approvals.pending_count', 0));
         $this->assertSame(1, (int) data_get($snapshot, 'approvals.overdue_count', 0));
         $this->assertSame(1, (int) data_get($snapshot, 'delegation.active_count', 0));
+        $this->assertSame(1, (int) data_get($snapshot, 'adaptive_policy.pending_count', 0));
         $this->assertSame(1, (int) data_get($snapshot, 'audit.failed_count', 0));
         $this->assertSame(1, (int) data_get($snapshot, 'events.risk_signals.delegation_denied', 0));
 
@@ -85,4 +103,3 @@ class OversightConsoleServiceTest extends TestCase
         $this->assertContains('approval_backlog', $recommendationTypes);
     }
 }
-

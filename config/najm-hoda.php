@@ -418,6 +418,20 @@ return [
                     'set_ticket_needs_review' => 'rollback_engagement_recommendations',
                 ],
             ],
+            'permissioning_v2' => [
+                'enabled' => env('NAJM_HODA_PERMISSIONING_V2_ENABLED', true),
+                'enforce_apply_requires_delegation' => env('NAJM_HODA_PERMISSIONING_V2_ENFORCE_APPLY', false),
+                'default_expiry_minutes' => env('NAJM_HODA_PERMISSIONING_V2_DEFAULT_EXPIRY_MINUTES', 1440),
+                'retention_minutes' => env('NAJM_HODA_PERMISSIONING_V2_RETENTION_MINUTES', 10080),
+                'max_delegation_history' => env('NAJM_HODA_PERMISSIONING_V2_MAX_HISTORY', 2000),
+            ],
+            'policy_learning' => [
+                'retention_minutes' => env('NAJM_HODA_POLICY_LEARNING_RETENTION_MINUTES', 10080),
+                'review_ttl_minutes' => env('NAJM_HODA_POLICY_LEARNING_REVIEW_TTL_MINUTES', 720),
+                'override_ttl_minutes' => env('NAJM_HODA_POLICY_LEARNING_OVERRIDE_TTL_MINUTES', 180),
+                'max_history' => env('NAJM_HODA_POLICY_LEARNING_MAX_HISTORY', 300),
+                'max_recommendations_history' => env('NAJM_HODA_POLICY_LEARNING_MAX_RECOMMENDATIONS_HISTORY', 500),
+            ],
             'audit' => [
                 'history_size' => env('NAJM_HODA_AUTONOMY_AUDIT_HISTORY_SIZE', 500),
                 'retention_minutes' => env('NAJM_HODA_AUTONOMY_AUDIT_RETENTION_MINUTES', 10080),
