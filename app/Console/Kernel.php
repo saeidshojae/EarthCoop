@@ -37,6 +37,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\NajmHodaOrchestrate::class,
         \App\Console\Commands\NajmHodaOnboardingAudit::class,
         \App\Console\Commands\NajmHodaPolicyLearningLoop::class,
+        \App\Console\Commands\NajmHodaShadowRollout::class,
         \App\Console\Commands\NajmHodaModerationSweep::class,
         \App\Console\Commands\SendElectionReminders::class,
         \App\Console\Commands\SendAuctionReminders::class,
@@ -77,6 +78,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('najm-hoda:codeops-canary --evaluate --auto-rollback')->everyThirtyMinutes();
         $schedule->command('najm-hoda:continuous-evaluation --window=24 --fail-on-breach')->dailyAt('03:30');
         $schedule->command('najm-hoda:ops-activation --tick')->everyTenMinutes();
+        $schedule->command('najm-hoda:shadow-rollout --evaluate --window=24')->hourly();
 
         // Najm Hoda coverage probes + KPI snapshot for Phase-6 critical path tracking
         $schedule->command('najm-hoda:coverage-heartbeat')->hourly();

@@ -481,6 +481,40 @@ return [
                     ],
                 ],
             ],
+            'shadow_rollout' => [
+                'enabled' => env('NAJM_HODA_SHADOW_ROLLOUT_ENABLED', true),
+                'initial_stage' => env('NAJM_HODA_SHADOW_ROLLOUT_INITIAL_STAGE', 'shadow'),
+                'window_hours' => env('NAJM_HODA_SHADOW_ROLLOUT_WINDOW_HOURS', 24),
+                'retention_minutes' => env('NAJM_HODA_SHADOW_ROLLOUT_RETENTION_MINUTES', 20160),
+                'history_size' => env('NAJM_HODA_SHADOW_ROLLOUT_HISTORY_SIZE', 500),
+                'stage_order' => ['shadow', 'limited_live', 'supervised_live', 'autonomous_live'],
+                'stages' => [
+                    'shadow' => [
+                        'decision_quality_min' => env('NAJM_HODA_SHADOW_STAGE1_DECISION_QUALITY_MIN', 0.65),
+                        'max_critical_alerts' => env('NAJM_HODA_SHADOW_STAGE1_MAX_CRITICAL_ALERTS', 0),
+                        'max_total_alerts' => env('NAJM_HODA_SHADOW_STAGE1_MAX_TOTAL_ALERTS', 2),
+                        'allow_non_active_ops' => env('NAJM_HODA_SHADOW_STAGE1_ALLOW_NON_ACTIVE_OPS', false),
+                    ],
+                    'limited_live' => [
+                        'decision_quality_min' => env('NAJM_HODA_SHADOW_STAGE2_DECISION_QUALITY_MIN', 0.70),
+                        'max_critical_alerts' => env('NAJM_HODA_SHADOW_STAGE2_MAX_CRITICAL_ALERTS', 0),
+                        'max_total_alerts' => env('NAJM_HODA_SHADOW_STAGE2_MAX_TOTAL_ALERTS', 1),
+                        'allow_non_active_ops' => env('NAJM_HODA_SHADOW_STAGE2_ALLOW_NON_ACTIVE_OPS', false),
+                    ],
+                    'supervised_live' => [
+                        'decision_quality_min' => env('NAJM_HODA_SHADOW_STAGE3_DECISION_QUALITY_MIN', 0.75),
+                        'max_critical_alerts' => env('NAJM_HODA_SHADOW_STAGE3_MAX_CRITICAL_ALERTS', 0),
+                        'max_total_alerts' => env('NAJM_HODA_SHADOW_STAGE3_MAX_TOTAL_ALERTS', 1),
+                        'allow_non_active_ops' => env('NAJM_HODA_SHADOW_STAGE3_ALLOW_NON_ACTIVE_OPS', false),
+                    ],
+                    'autonomous_live' => [
+                        'decision_quality_min' => env('NAJM_HODA_SHADOW_STAGE4_DECISION_QUALITY_MIN', 0.80),
+                        'max_critical_alerts' => env('NAJM_HODA_SHADOW_STAGE4_MAX_CRITICAL_ALERTS', 0),
+                        'max_total_alerts' => env('NAJM_HODA_SHADOW_STAGE4_MAX_TOTAL_ALERTS', 0),
+                        'allow_non_active_ops' => env('NAJM_HODA_SHADOW_STAGE4_ALLOW_NON_ACTIVE_OPS', false),
+                    ],
+                ],
+            ],
             'audit' => [
                 'history_size' => env('NAJM_HODA_AUTONOMY_AUDIT_HISTORY_SIZE', 500),
                 'retention_minutes' => env('NAJM_HODA_AUTONOMY_AUDIT_RETENTION_MINUTES', 10080),

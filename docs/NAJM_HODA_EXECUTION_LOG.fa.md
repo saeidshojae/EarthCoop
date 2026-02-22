@@ -1558,3 +1558,41 @@
   - `vendor/bin/phpunit --filter=OversightConsoleServiceTest` => `OK (1 test, 16 assertions)`
 - Phase impact:
   - `P6-T10` moved from pending to done.
+
+### Update - PHASE6-T11-SHADOW-TO-LIVE-ROLLOUT-2026-02-22
+- Implemented guarded shadow-to-live rollout strategy with stage transitions and fallback controls.
+- Added service:
+  - `app/Services/NajmHoda/Runtime/NajmHodaShadowLiveRolloutService.php`
+  - capabilities:
+    - rollout stages (`shadow -> limited_live -> supervised_live -> autonomous_live`)
+    - guardrail evaluation by stage (`decision_quality`, `critical alerts`, `total alerts`, `operations state`, `codeops health`)
+    - actions: `evaluate`, `advance`, `fallback`
+    - cache-backed state/history + runtime events
+- Added command:
+  - `app/Console/Commands/NajmHodaShadowRollout.php`
+  - signature: `najm-hoda:shadow-rollout`
+  - options: `--status --evaluate --advance --fallback --stage --history --window --reason`
+- Added schedule:
+  - `app/Console/Kernel.php`
+  - hourly guardrail evaluation:
+    - `najm-hoda:shadow-rollout --evaluate --window=24`
+- Added admin APIs:
+  - `GET /admin/najm-hoda/autonomy/shadow-rollout/status`
+  - `POST /admin/najm-hoda/autonomy/shadow-rollout/status`
+  - files: `app/Http/Controllers/Admin/NajmHodaController.php`, `routes/web.php`
+- Oversight integration:
+  - `app/Services/NajmHoda/Runtime/NajmHodaOversightConsoleService.php` now includes `shadow_rollout` state
+  - role-aware policy hints expanded for rollout actions (`shadow_rollout_read`, `shadow_rollout_write`)
+- Config baseline added:
+  - `config/najm-hoda.php` -> `runtime.autonomy.shadow_rollout.*`
+- Tests:
+  - new: `tests/Feature/NajmHoda/ShadowLiveRolloutServiceTest.php`
+  - updated: `tests/Feature/NajmHoda/OversightConsoleServiceTest.php`
+- Validation:
+  - `php -l` passed for changed files
+  - `php artisan help najm-hoda:shadow-rollout`
+  - `php artisan route:list --name=admin.najm-hoda.autonomy.shadow-rollout`
+  - `vendor/bin/phpunit --filter=ShadowLiveRolloutServiceTest` => `OK (2 tests, 14 assertions)`
+  - `vendor/bin/phpunit --filter=OversightConsoleServiceTest` => `OK (1 test, 18 assertions)`
+- Phase impact:
+  - `P6-T11` moved from pending to done.

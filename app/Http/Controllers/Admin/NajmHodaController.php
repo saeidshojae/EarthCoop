@@ -28,6 +28,7 @@ use App\Services\NajmHoda\Runtime\NajmHodaAdaptivePolicyLearningService;
 use App\Services\NajmHoda\Runtime\NajmHodaSafeCodeOpsCanaryService;
 use App\Services\NajmHoda\Runtime\NajmHodaContinuousEvaluationHarnessService;
 use App\Services\NajmHoda\Runtime\NajmHodaOperationalAutonomyActivationService;
+use App\Services\NajmHoda\Runtime\NajmHodaShadowLiveRolloutService;
 use App\Models\Conversation;
 use App\Models\AIInteraction;
 use App\Models\Feedback;
@@ -1556,6 +1557,68 @@ class NajmHodaController extends Controller
         ]);
     }
 
+    public function getAutonomyShadowRolloutStatus(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.shadow-rollout.status', false)) {
+            return $policyResponse;
+        }
+
+        $service = app(NajmHodaShadowLiveRolloutService::class);
+        $historyLimit = max(1, min(200, (int) $request->input('history_limit', 20)));
+        $windowHours = max(1, min(720, (int) $request->input('window_hours', (int) config('najm-hoda.runtime.autonomy.shadow_rollout.window_hours', 24))));
+        $report = $service->evaluate($windowHours, true);
+
+        return response()->json([
+            'success' => true,
+            'state' => $service->status(),
+            'history' => $service->history($historyLimit),
+            'report' => $report,
+        ]);
+    }
+
+    public function updateAutonomyShadowRolloutStatus(Request $request)
+    {
+        if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.shadow-rollout.update', true)) {
+            return $policyResponse;
+        }
+
+        $validated = $request->validate([
+            'action' => 'required|string|in:evaluate,advance,fallback',
+            'window_hours' => 'nullable|integer|min:1|max:720',
+            'stage' => 'nullable|string|in:shadow,limited_live,supervised_live,autonomous_live',
+            'reason' => 'nullable|string|max:1000',
+        ]);
+
+        $service = app(NajmHodaShadowLiveRolloutService::class);
+        $action = (string) ($validated['action'] ?? '');
+        $reason = isset($validated['reason']) ? (string) $validated['reason'] : null;
+        $result = [];
+
+        if ($action === 'evaluate') {
+            $windowHours = isset($validated['window_hours']) ? (int) $validated['window_hours'] : null;
+            $result = $service->evaluate($windowHours, false);
+        } elseif ($action === 'advance') {
+            $result = $service->advance(auth()->id(), $reason);
+        } elseif ($action === 'fallback') {
+            $result = $service->fallback(auth()->id(), $reason, isset($validated['stage']) ? (string) $validated['stage'] : null);
+        }
+
+        if (!(bool) ($result['success'] ?? false)) {
+            return response()->json([
+                'success' => false,
+                'message' => (string) ($result['reason'] ?? 'shadow_rollout_action_failed'),
+                'result' => $result,
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'result' => $result,
+            'state' => $service->status(),
+            'history' => $service->history(20),
+        ]);
+    }
+
     public function reviewAutonomyPolicyLearningRecommendation(Request $request, string $recommendationId)
     {
         if ($policyResponse = $this->denyByEntryPolicy('admin.autonomy.policy_learning.review', true)) {
@@ -1746,6 +1809,8 @@ class NajmHodaController extends Controller
             'evaluation_write' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
             'operations_read' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.read'),
             'operations_write' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
+            'shadow_rollout_read' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.read'),
+            'shadow_rollout_write' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
         ];
 
         return [
@@ -1761,6 +1826,8 @@ class NajmHodaController extends Controller
                 'evaluation_write' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.write'],
                 'operations_read' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.read'],
                 'operations_write' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.write'],
+                'shadow_rollout_read' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.read'],
+                'shadow_rollout_write' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.write'],
             ],
         ];
     }

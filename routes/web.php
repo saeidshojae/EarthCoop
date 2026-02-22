@@ -584,6 +584,7 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
             Route::get('/autonomy/evaluation/report', [AdminNajmHodaController::class, 'getAutonomyContinuousEvaluation'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.evaluation.report');
             Route::get('/autonomy/evaluation/export', [AdminNajmHodaController::class, 'exportAutonomyContinuousEvaluation'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.evaluation.export');
             Route::get('/autonomy/operations/status', [AdminNajmHodaController::class, 'getAutonomyOperationsStatus'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.operations.status');
+            Route::get('/autonomy/shadow-rollout/status', [AdminNajmHodaController::class, 'getAutonomyShadowRolloutStatus'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.shadow-rollout.status');
             Route::get('/autonomy/controls', [AdminNajmHodaController::class, 'getAutonomyControls'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.controls');
             Route::get('/autonomy/audit', [AdminNajmHodaController::class, 'getAutonomyAuditTraces'])->middleware('throttle:najm-hoda-autonomy-read')->name('autonomy.audit');
             Route::get('/autonomy/governance', [AdminNajmHodaController::class, 'autonomyGovernancePage'])->name('autonomy.governance.page');
@@ -607,6 +608,7 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
             Route::post('/autonomy/codeops/canary', [AdminNajmHodaController::class, 'updateAutonomyCodeOpsCanary'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.codeops.canary.update');
             Route::post('/autonomy/evaluation/run', [AdminNajmHodaController::class, 'runAutonomyContinuousEvaluation'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.evaluation.run');
             Route::post('/autonomy/operations/status', [AdminNajmHodaController::class, 'updateAutonomyOperationsStatus'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.operations.update');
+            Route::post('/autonomy/shadow-rollout/status', [AdminNajmHodaController::class, 'updateAutonomyShadowRolloutStatus'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.shadow-rollout.update');
             Route::post('/autonomy/controls', [AdminNajmHodaController::class, 'updateAutonomyControls'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.controls.update');
             Route::post('/autonomy/audit/{runId}/replay', [AdminNajmHodaController::class, 'replayAutonomyTrace'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.audit.replay');
             Route::post('/autonomy/governance/alerts/evaluate', [AdminNajmHodaController::class, 'evaluateAutonomyGovernanceAlerts'])->middleware('throttle:najm-hoda-autonomy-write')->name('autonomy.governance.alerts.evaluate');

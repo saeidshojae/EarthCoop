@@ -13,7 +13,8 @@ class NajmHodaOversightConsoleService
         protected NajmHodaAdaptivePolicyLearningService $policyLearningService,
         protected NajmHodaSafeCodeOpsCanaryService $codeOpsCanaryService,
         protected NajmHodaContinuousEvaluationHarnessService $evaluationHarnessService,
-        protected NajmHodaOperationalAutonomyActivationService $operationsActivationService
+        protected NajmHodaOperationalAutonomyActivationService $operationsActivationService,
+        protected NajmHodaShadowLiveRolloutService $shadowRolloutService
     ) {
     }
 
@@ -44,6 +45,7 @@ class NajmHodaOversightConsoleService
         $codeOpsCanary = $this->codeOpsCanaryService->status();
         $evaluationLastReport = $this->evaluationHarnessService->lastReport();
         $operationsState = $this->operationsActivationService->status();
+        $rolloutState = $this->shadowRolloutService->status();
         $pendingPolicyRecommendations = $this->policyLearningService->listRecommendations('pending', $limit);
         $policyEvidence = $this->policyLearningService->recentEvidence(min(100, $limit));
 
@@ -87,6 +89,7 @@ class NajmHodaOversightConsoleService
                 'drift_status' => (string) data_get($evaluationLastReport, 'drift_trend.status', 'unknown'),
             ],
             'operations_24x7' => $operationsState,
+            'shadow_rollout' => $rolloutState,
             'audit' => [
                 'recent' => $auditHistory,
                 'recent_count' => count($auditHistory),

@@ -165,7 +165,16 @@
 - شرح: گذار کنترل شده از Shadow Mode به Live Mode با guardrail های مرحله ای.
 - خروجی: پلن rollout مرحله ای + معیار عبور هر مرحله.
 - وابستگی: `P6-T10`
-- وضعیت: `pending`
+- وضعیت: `done`
+- پیشرفت:
+  - `done`: پیاده سازی سرویس `NajmHodaShadowLiveRolloutService` با state/history پایدار، stage-order و guardrail evaluation برای `shadow -> limited_live -> supervised_live -> autonomous_live`
+  - `done`: تعریف معیار عبور مرحله‌ای در کانفیگ (`decision_quality_min`, `max_critical_alerts`, `max_total_alerts`, `allow_non_active_ops`) با قابلیت تنظیم env
+  - `done`: اتصال ارزیابی rollout به سیگنال‌های عملیاتی واقعی (`continuous evaluation`, `codeops canary`, `operations_24x7`, `governance alerts`)
+  - `done`: پیاده سازی تصمیم‌های عملیاتی rollout شامل `evaluate`, `advance`, `fallback` با ثبت event telemetry و trace history
+  - `done`: اضافه شدن command اجرایی `najm-hoda:shadow-rollout` + زمانبندی ساعتی evaluate در `Kernel`
+  - `done`: اضافه شدن API مدیریتی rollout (`status/update`) در پنل ادمین + policy hints مربوطه
+  - `done`: اتصال وضعیت rollout به snapshot کنسول نظارتی (`shadow_rollout`) برای explainability اپراتوری
+  - `done`: تکمیل تست‌ها (`ShadowLiveRolloutServiceTest`, `OversightConsoleServiceTest`) برای guardrail pass/fail و snapshot regression
 
 12. `P6-T12` Phase-6 Go/No-Go + Executive Sign-off
 - شرح: جمع بندی نهایی ریسک/کیفیت/پایداری و تصمیم Go/No-Go برای بهره برداری سطح 6.
