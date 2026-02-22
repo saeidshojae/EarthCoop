@@ -19,6 +19,8 @@ class InMemoryRuntimeEventBus implements RuntimeEventBus
 
     public function emit(string $event, array $payload = []): void
     {
+        $payload = RuntimeEventEnvelope::normalize($event, $payload);
+
         $this->events[] = [
             'event' => $event,
             'payload' => $payload,
@@ -53,4 +55,3 @@ class InMemoryRuntimeEventBus implements RuntimeEventBus
         $this->events = [];
     }
 }
-

@@ -5,6 +5,9 @@ namespace App\Modules\NajmBahar\Services;
 use App\Modules\NajmBahar\Models\Fee;
 use App\Models\Setting;
 use App\Helpers\BaharMoney;
+use App\Services\NajmHoda\Runtime\NajmHodaDomainEventPolicyLinkService;
+use App\Services\NajmHoda\Runtime\RuntimeEventBus;
+use Throwable;
 
 class FeeService
 {
@@ -13,23 +16,49 @@ class FeeService
      */
     public function getMembershipFee(): int
     {
-        $settings = Setting::firstNajmBaharSettings();
-        $configuredAmount = (int) ($settings?->najm_bahar_membership_fee_amount ?? 0);
-        if ($configuredAmount > 0) {
-            return $configuredAmount;
+        $context = [
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'low',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.fee.membership.requested', $context);
+
+        try {
+            $settings = Setting::firstNajmBaharSettings();
+            $configuredAmount = (int) ($settings?->najm_bahar_membership_fee_amount ?? 0);
+            if ($configuredAmount > 0) {
+                $this->emitRuntime('najm_hoda.input.najm_bahar.service.fee.membership.succeeded', array_merge($context, [
+                    'source' => 'settings_membership_fee_amount',
+                    'amount' => $configuredAmount,
+                ]));
+                return $configuredAmount;
+            }
+
+            $configuredSplitTotal = $this->getMembershipSplitTotal($settings);
+            if ($configuredSplitTotal > 0) {
+                $this->emitRuntime('najm_hoda.input.najm_bahar.service.fee.membership.succeeded', array_merge($context, [
+                    'source' => 'settings_split_total',
+                    'amount' => $configuredSplitTotal,
+                ]));
+                return $configuredSplitTotal;
+            }
+
+            $fee = Fee::where('name', 'membership_fee')
+                ->where('is_active', true)
+                ->first();
+
+            $amount = $fee ? (int) $fee->fixed_amount : BaharMoney::toGolFromBahar(12);
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.fee.membership.succeeded', array_merge($context, [
+                'source' => $fee ? 'db_fee' : 'default',
+                'amount' => $amount,
+            ]));
+
+            return $amount;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.fee.membership.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
         }
-
-        $configuredSplitTotal = $this->getMembershipSplitTotal($settings);
-        if ($configuredSplitTotal > 0) {
-            return $configuredSplitTotal;
-        }
-
-        $fee = Fee::where('name', 'membership_fee')
-            ->where('is_active', true)
-            ->first();
-
-        // اگر کارمزد در دیتابیس تعریف نشده، مقدار پیش‌فرض 12 بهار
-        return $fee ? $fee->fixed_amount : BaharMoney::toGolFromBahar(12);
     }
 
     public function getMembershipSplitTotal(?Setting $settings): int
@@ -50,15 +79,24 @@ class FeeService
      */
     public function calculateTransactionFee(int $amount, string $transactionType = 'immediate'): int
     {
-        $fees = Fee::where('transaction_type', $transactionType)
-            ->orWhere('transaction_type', 'all')
-            ->where('is_active', true)
-            ->get();
+        $context = [
+            'amount' => $amount,
+            'transaction_type' => $transactionType,
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'low',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.fee.calculate.requested', $context);
 
-        $totalFee = 0;
+        try {
+            $fees = Fee::where('transaction_type', $transactionType)
+                ->orWhere('transaction_type', 'all')
+                ->where('is_active', true)
+                ->get();
 
-        foreach ($fees as $fee) {
-            $calculatedFee = 0;
+            $totalFee = 0;
+
+            foreach ($fees as $fee) {
+                $calculatedFee = 0;
 
             switch ($fee->type) {
                 case 'fixed':
@@ -83,10 +121,21 @@ class FeeService
                 $calculatedFee = $fee->max_amount;
             }
 
-            $totalFee += $calculatedFee;
-        }
+                $totalFee += $calculatedFee;
+            }
 
-        return $totalFee;
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.fee.calculate.succeeded', array_merge($context, [
+                'fee_count' => (int) $fees->count(),
+                'total_fee' => $totalFee,
+            ]));
+
+            return $totalFee;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.fee.calculate.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
     }
 
     /**
@@ -94,6 +143,40 @@ class FeeService
      */
     public function getActiveFees()
     {
-        return Fee::where('is_active', true)->get();
+        $context = [
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'low',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.fee.active_list.requested', $context);
+
+        try {
+            $result = Fee::where('is_active', true)->get();
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.fee.active_list.succeeded', array_merge($context, [
+                'count' => (int) $result->count(),
+            ]));
+            return $result;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.fee.active_list.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    protected function emitRuntime(string $event, array $payload): void
+    {
+        try {
+            /** @var RuntimeEventBus $bus */
+            $bus = app(RuntimeEventBus::class);
+            $bus->emit($event, $payload);
+            /** @var NajmHodaDomainEventPolicyLinkService $link */
+            $link = app(NajmHodaDomainEventPolicyLinkService::class);
+            $link->ingest($event, $payload);
+        } catch (Throwable) {
+            // Fee computation should not fail due to telemetry.
+        }
     }
 }

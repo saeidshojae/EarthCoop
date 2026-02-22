@@ -7,10 +7,13 @@ use App\Modules\NajmBahar\Models\LedgerEntry;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Services\AccountService;
+use App\Services\NajmHoda\Runtime\NajmHodaDomainEventPolicyLinkService;
+use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Query\Exception as QueryException;
+use Throwable;
 
 class TransactionService
 {
@@ -33,25 +36,48 @@ class TransactionService
         ?string $transactionType = null
     ): NajmTransaction
     {
+        $context = [
+            'from_account_number' => $fromAccountNumber,
+            'to_account_number' => $toAccountNumber,
+            'amount' => $amount,
+            'balance_type' => $balanceType,
+            'transaction_type' => $transactionType,
+            'idempotency_key' => $idempotencyKey,
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.transfer.requested', $context);
+
         if ($amount <= 0) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.transfer.rejected', array_merge($context, [
+                'reason' => 'amount_must_be_positive',
+            ]));
             throw new \InvalidArgumentException('Amount must be positive');
         }
 
-        return DB::transaction(function () use (
-            $fromAccountNumber,
-            $toAccountNumber,
-            $amount,
-            $description,
-            $meta,
-            $idempotencyKey,
-            $balanceType,
-            $transactionType
-        ) {
-            // idempotency: if provided, return existing transaction
-            if ($idempotencyKey) {
-                $existing = NajmTransaction::where('metadata->idempotency_key', $idempotencyKey)->first();
-                if ($existing) return $existing;
-            }
+        try {
+            $result = DB::transaction(function () use (
+                $fromAccountNumber,
+                $toAccountNumber,
+                $amount,
+                $description,
+                $meta,
+                $idempotencyKey,
+                $balanceType,
+                $transactionType,
+                $context
+            ) {
+                // idempotency: if provided, return existing transaction
+                if ($idempotencyKey) {
+                    $existing = NajmTransaction::where('metadata->idempotency_key', $idempotencyKey)->first();
+                    if ($existing) {
+                        $this->emitRuntime('najm_hoda.input.najm_bahar.service.transfer.idempotent_hit', array_merge($context, [
+                            'transaction_id' => (int) $existing->id,
+                            'tracking_number' => (string) ($existing->tracking_number ?? ''),
+                        ]));
+                        return $existing;
+                    }
+                }
             // lock both accounts (order by account_number to avoid deadlocks)
             $numbers = array_filter([$fromAccountNumber, $toAccountNumber]);
             sort($numbers, SORT_STRING);
@@ -310,8 +336,22 @@ class TransactionService
                 'meta' => $meta,
             ]);
 
-            return $tx;
-        });
+                return $tx;
+            });
+
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.transfer.succeeded', array_merge($context, [
+                'transaction_id' => (int) ($result->id ?? 0),
+                'tracking_number' => (string) ($result->tracking_number ?? ''),
+                'status' => (string) ($result->status ?? ''),
+            ]));
+
+            return $result;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.transfer.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
     }
 
     /**
@@ -319,19 +359,41 @@ class TransactionService
      */
     public function adjust(string $accountNumber, int $amount, string $direction, string $description = null, array $meta = [], string|null $idempotencyKey = null): NajmTransaction
     {
+        $context = [
+            'account_number' => $accountNumber,
+            'amount' => $amount,
+            'direction' => $direction,
+            'idempotency_key' => $idempotencyKey,
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.adjust.requested', $context);
+
         if ($amount <= 0) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.adjust.rejected', array_merge($context, [
+                'reason' => 'amount_must_be_positive',
+            ]));
             throw new \InvalidArgumentException('Amount must be positive');
         }
 
         if (!in_array($direction, ['credit', 'debit'], true)) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.adjust.rejected', array_merge($context, [
+                'reason' => 'invalid_direction',
+            ]));
             throw new \InvalidArgumentException('Direction must be credit or debit');
         }
 
-        return DB::transaction(function () use ($accountNumber, $amount, $direction, $description, $meta, $idempotencyKey) {
-            if ($idempotencyKey) {
-                $existing = NajmTransaction::where('metadata->idempotency_key', $idempotencyKey)->first();
-                if ($existing) return $existing;
-            }
+        try {
+            $result = DB::transaction(function () use ($accountNumber, $amount, $direction, $description, $meta, $idempotencyKey, $context) {
+                if ($idempotencyKey) {
+                    $existing = NajmTransaction::where('metadata->idempotency_key', $idempotencyKey)->first();
+                    if ($existing) {
+                        $this->emitRuntime('najm_hoda.input.najm_bahar.service.adjust.idempotent_hit', array_merge($context, [
+                            'transaction_id' => (int) $existing->id,
+                        ]));
+                        return $existing;
+                    }
+                }
 
             $account = Account::where('account_number', $accountNumber)->lockForUpdate()->first();
             if (!$account) {
@@ -370,8 +432,21 @@ class TransactionService
                 'meta' => $meta,
             ]);
 
-            return $tx;
-        });
+                return $tx;
+            });
+
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.adjust.succeeded', array_merge($context, [
+                'transaction_id' => (int) ($result->id ?? 0),
+                'status' => (string) ($result->status ?? ''),
+            ]));
+
+            return $result;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.adjust.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
     }
 
     /**
@@ -435,15 +510,30 @@ class TransactionService
         ?int $activeFixedAmount = null,
         string $type = 'percentage'
     ): Account {
+        $context = [
+            'to_account_number' => $toAccountNumber,
+            'amount' => $amount,
+            'active_percentage' => $activePercentage,
+            'active_fixed_amount' => $activeFixedAmount,
+            'allocation_type' => $type,
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.deposit_initial_funding.requested', $context);
+
         if ($amount <= 0) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.deposit_initial_funding.rejected', array_merge($context, [
+                'reason' => 'amount_must_be_positive',
+            ]));
             throw new \InvalidArgumentException('Amount must be positive');
         }
 
-        return DB::transaction(function () use ($toAccountNumber, $amount, $activePercentage, $activeFixedAmount, $type) {
-            $account = Account::where('account_number', $toAccountNumber)->lockForUpdate()->first();
-            if (!$account) {
-                throw new \RuntimeException("Account not found: {$toAccountNumber}");
-            }
+        try {
+            $result = DB::transaction(function () use ($toAccountNumber, $amount, $activePercentage, $activeFixedAmount, $type) {
+                $account = Account::where('account_number', $toAccountNumber)->lockForUpdate()->first();
+                if (!$account) {
+                    throw new \RuntimeException("Account not found: {$toAccountNumber}");
+                }
 
             // محاسبه موجودی فعال و کمرنگ
             if ($type === 'fixed_amount' && $activeFixedAmount !== null) {
@@ -472,7 +562,39 @@ class TransactionService
             $account->balance = intval($account->balance_active) + intval($account->balance_faded);
             $account->save();
 
-            return $account;
-        });
+                return $account;
+            });
+
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.deposit_initial_funding.succeeded', array_merge($context, [
+                'account_id' => (int) ($result->id ?? 0),
+                'balance' => (int) ($result->balance ?? 0),
+                'balance_active' => (int) ($result->balance_active ?? 0),
+                'balance_faded' => (int) ($result->balance_faded ?? 0),
+            ]));
+
+            return $result;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.deposit_initial_funding.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    protected function emitRuntime(string $event, array $payload): void
+    {
+        try {
+            /** @var RuntimeEventBus $bus */
+            $bus = app(RuntimeEventBus::class);
+            $bus->emit($event, $payload);
+            /** @var NajmHodaDomainEventPolicyLinkService $link */
+            $link = app(NajmHodaDomainEventPolicyLinkService::class);
+            $link->ingest($event, $payload);
+        } catch (Throwable) {
+            // Do not let telemetry emission break financial flows.
+        }
     }
 }

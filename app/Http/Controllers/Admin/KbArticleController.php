@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\KbArticle;
 use App\Models\KbCategory;
 use App\Models\KbTag;
+use App\Services\NajmHoda\Runtime\NajmHodaDomainEventPolicyLinkService;
+use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Throwable;
 
 class KbArticleController extends Controller
 {
@@ -43,6 +46,12 @@ class KbArticleController extends Controller
 
     public function store(Request $request)
     {
+        $this->emitRuntime('najm_hoda.input.content.service.kb_article.store.requested', [
+            'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+            'scope' => 'content',
+            'risk' => 'low',
+        ]);
+
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', 'unique:kb_articles,slug'],
@@ -56,15 +65,32 @@ class KbArticleController extends Controller
             'published_at' => ['nullable', 'date'],
         ]);
 
-        $article = new KbArticle($validated);
-        $article->author_id = auth()->id();
-        $article->last_editor_id = auth()->id();
-        $article->slug = $validated['slug'] ?? Str::slug($validated['title']) . '-' . Str::random(4);
-        $article->save();
+        try {
+            $article = new KbArticle($validated);
+            $article->author_id = auth()->id();
+            $article->last_editor_id = auth()->id();
+            $article->slug = $validated['slug'] ?? Str::slug($validated['title']) . '-' . Str::random(4);
+            $article->save();
+            $article->tags()->sync($validated['tags'] ?? []);
+        } catch (Throwable $e) {
+            $this->emitRuntime('najm_hoda.input.content.service.kb_article.store.failed', [
+                'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+                'error' => $e->getMessage(),
+                'scope' => 'content',
+                'risk' => 'medium',
+            ]);
 
-        $article->tags()->sync($validated['tags'] ?? []);
+            throw $e;
+        }
 
-        return redirect()->route('admin.kb.articles.index')->with('success', 'مقاله با موفقیت ایجاد شد.');
+        $this->emitRuntime('najm_hoda.input.content.service.kb_article.store.succeeded', [
+            'article_id' => (int) $article->id,
+            'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+            'scope' => 'content',
+            'risk' => 'low',
+        ]);
+
+        return redirect()->route('admin.kb.articles.index')->with('success', 'Article created successfully.');
     }
 
     public function edit(KbArticle $article)
@@ -78,6 +104,13 @@ class KbArticleController extends Controller
 
     public function update(Request $request, KbArticle $article)
     {
+        $this->emitRuntime('najm_hoda.input.content.service.kb_article.update.requested', [
+            'article_id' => (int) $article->id,
+            'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+            'scope' => 'content',
+            'risk' => 'low',
+        ]);
+
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', "unique:kb_articles,slug,{$article->id}"],
@@ -91,38 +124,121 @@ class KbArticleController extends Controller
             'published_at' => ['nullable', 'date'],
         ]);
 
-        $article->fill($validated);
-        $article->last_editor_id = auth()->id();
+        try {
+            $article->fill($validated);
+            $article->last_editor_id = auth()->id();
+            $article->slug = !empty($validated['slug'])
+                ? $validated['slug']
+                : Str::slug($validated['title']) . '-' . Str::random(4);
 
-        if (!empty($validated['slug'])) {
-            $article->slug = $validated['slug'];
-        } else {
-            $article->slug = Str::slug($validated['title']) . '-' . Str::random(4);
+            $article->save();
+            $article->tags()->sync($validated['tags'] ?? []);
+        } catch (Throwable $e) {
+            $this->emitRuntime('najm_hoda.input.content.service.kb_article.update.failed', [
+                'article_id' => (int) $article->id,
+                'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+                'error' => $e->getMessage(),
+                'scope' => 'content',
+                'risk' => 'medium',
+            ]);
+
+            throw $e;
         }
 
-        $article->save();
-        $article->tags()->sync($validated['tags'] ?? []);
+        $this->emitRuntime('najm_hoda.input.content.service.kb_article.update.succeeded', [
+            'article_id' => (int) $article->id,
+            'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+            'scope' => 'content',
+            'risk' => 'low',
+        ]);
 
-        return redirect()->route('admin.kb.articles.index')->with('success', 'مقاله با موفقیت بروزرسانی شد.');
+        return redirect()->route('admin.kb.articles.index')->with('success', 'Article updated successfully.');
     }
 
     public function destroy(KbArticle $article)
     {
-        $article->tags()->detach();
-        $article->delete();
+        $this->emitRuntime('najm_hoda.input.content.service.kb_article.delete.requested', [
+            'article_id' => (int) $article->id,
+            'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+            'scope' => 'content',
+            'risk' => 'medium',
+        ]);
 
-        return redirect()->route('admin.kb.articles.index')->with('success', 'مقاله حذف شد.');
+        try {
+            $article->tags()->detach();
+            $article->delete();
+        } catch (Throwable $e) {
+            $this->emitRuntime('najm_hoda.input.content.service.kb_article.delete.failed', [
+                'article_id' => (int) $article->id,
+                'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+                'error' => $e->getMessage(),
+                'scope' => 'content',
+                'risk' => 'high',
+            ]);
+
+            throw $e;
+        }
+
+        $this->emitRuntime('najm_hoda.input.content.service.kb_article.delete.succeeded', [
+            'article_id' => (int) $article->id,
+            'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+            'scope' => 'content',
+            'risk' => 'medium',
+        ]);
+
+        return redirect()->route('admin.kb.articles.index')->with('success', 'Article deleted successfully.');
     }
 
     public function toggleStatus(KbArticle $article)
     {
-        $article->status = $article->status === 'published' ? 'draft' : 'published';
-        $article->save();
+        $this->emitRuntime('najm_hoda.input.content.service.kb_article.toggle_status.requested', [
+            'article_id' => (int) $article->id,
+            'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+            'scope' => 'content',
+            'risk' => 'low',
+        ]);
 
-        return back()->with('success', 'وضعیت مقاله بروزرسانی شد.');
+        try {
+            $article->status = $article->status === 'published' ? 'draft' : 'published';
+            $article->save();
+        } catch (Throwable $e) {
+            $this->emitRuntime('najm_hoda.input.content.service.kb_article.toggle_status.failed', [
+                'article_id' => (int) $article->id,
+                'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+                'error' => $e->getMessage(),
+                'scope' => 'content',
+                'risk' => 'medium',
+            ]);
+
+            throw $e;
+        }
+
+        $this->emitRuntime('najm_hoda.input.content.service.kb_article.toggle_status.succeeded', [
+            'article_id' => (int) $article->id,
+            'status' => (string) $article->status,
+            'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+            'scope' => 'content',
+            'risk' => 'low',
+        ]);
+
+        return back()->with('success', 'Article status updated.');
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    protected function emitRuntime(string $event, array $payload): void
+    {
+        try {
+            /** @var RuntimeEventBus $bus */
+            $bus = app(RuntimeEventBus::class);
+            $bus->emit($event, $payload);
+
+            /** @var NajmHodaDomainEventPolicyLinkService $link */
+            $link = app(NajmHodaDomainEventPolicyLinkService::class);
+            $link->ingest($event, $payload);
+        } catch (Throwable) {
+            // no-op
+        }
     }
 }
-
-
-
-

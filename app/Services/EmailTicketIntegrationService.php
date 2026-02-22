@@ -5,12 +5,15 @@ namespace App\Services;
 use App\Models\Ticket;
 use App\Models\TicketComment;
 use App\Models\User;
+use App\Services\NajmHoda\Runtime\NajmHodaDomainEventPolicyLinkService;
+use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use App\Services\TicketTriageService;
 use App\Services\TicketSlaService;
 use App\Traits\LogsTicketActivity;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 /**
  * سرویس یکپارچه‌سازی ایمیل با تیکت‌ها
@@ -35,6 +38,14 @@ class EmailTicketIntegrationService
      */
     public function processIncomingEmail(array $emailData): ?Ticket
     {
+        $context = [
+            'scope' => 'support:email',
+            'risk' => 'low',
+            'has_message_id' => !empty($emailData['message_id']),
+            'has_reply_headers' => !empty($emailData['in_reply_to']) || !empty($emailData['references']),
+        ];
+        $this->emitRuntime('najm_hoda.input.support.service.email_integration.process.requested', $context);
+
         try {
             $fromEmail = $emailData['from']['email'] ?? null;
             $fromName = $emailData['from']['name'] ?? null;
@@ -71,18 +82,32 @@ class EmailTicketIntegrationService
 
                     $ticket->update(['last_activity_at' => now()]);
 
+                    $this->emitRuntime('najm_hoda.input.support.service.email_integration.process.succeeded', array_merge($context, [
+                        'ticket_id' => (int) $ticket->id,
+                        'mode' => 'append_comment',
+                    ]));
                     return $ticket;
                 }
             }
 
             // ایجاد تیکت جدید
-            return $this->createTicketFromEmail($fromEmail, $fromName, $subject, $body, $user, $messageId);
+            $ticket = $this->createTicketFromEmail($fromEmail, $fromName, $subject, $body, $user, $messageId);
+            $this->emitRuntime('najm_hoda.input.support.service.email_integration.process.succeeded', array_merge($context, [
+                'ticket_id' => (int) $ticket->id,
+                'mode' => 'create_ticket',
+            ]));
+
+            return $ticket;
 
         } catch (\Exception $e) {
             Log::error('خطا در پردازش ایمیل دریافتی: ' . $e->getMessage(), [
                 'email_data' => $emailData,
                 'trace' => $e->getTraceAsString(),
             ]);
+            $this->emitRuntime('najm_hoda.input.support.service.email_integration.process.failed', array_merge($context, [
+                'error' => $e->getMessage(),
+                'risk' => 'medium',
+            ]));
 
             return null;
         }
@@ -187,9 +212,21 @@ class EmailTicketIntegrationService
      */
     public function sendTicketReplyToEmail(Ticket $ticket, TicketComment $comment): bool
     {
+        $context = [
+            'scope' => 'support:email',
+            'risk' => 'low',
+            'ticket_id' => (int) $ticket->id,
+            'comment_id' => (int) $comment->id,
+        ];
+        $this->emitRuntime('najm_hoda.input.support.service.email_integration.send_reply.requested', $context);
+
         try {
             if (!$ticket->email) {
                 Log::warning('تیکت بدون ایمیل کاربر: ' . $ticket->id);
+                $this->emitRuntime('najm_hoda.input.support.service.email_integration.send_reply.rejected', array_merge($context, [
+                    'reason' => 'missing_ticket_email',
+                    'risk' => 'medium',
+                ]));
                 return false;
             }
 
@@ -233,6 +270,7 @@ class EmailTicketIntegrationService
                 ]);
             }
 
+            $this->emitRuntime('najm_hoda.input.support.service.email_integration.send_reply.succeeded', $context);
             return true;
 
         } catch (\Exception $e) {
@@ -241,6 +279,10 @@ class EmailTicketIntegrationService
                 'comment_id' => $comment->id,
                 'trace' => $e->getTraceAsString(),
             ]);
+            $this->emitRuntime('najm_hoda.input.support.service.email_integration.send_reply.failed', array_merge($context, [
+                'error' => $e->getMessage(),
+                'risk' => 'medium',
+            ]));
 
             return false;
         }
@@ -251,8 +293,19 @@ class EmailTicketIntegrationService
      */
     public function sendTicketCreatedEmail(Ticket $ticket): bool
     {
+        $context = [
+            'scope' => 'support:email',
+            'risk' => 'low',
+            'ticket_id' => (int) $ticket->id,
+        ];
+        $this->emitRuntime('najm_hoda.input.support.service.email_integration.send_created.requested', $context);
+
         try {
             if (!$ticket->email) {
+                $this->emitRuntime('najm_hoda.input.support.service.email_integration.send_created.rejected', array_merge($context, [
+                    'reason' => 'missing_ticket_email',
+                    'risk' => 'medium',
+                ]));
                 return false;
             }
 
@@ -267,14 +320,37 @@ class EmailTicketIntegrationService
                     ->subject($subject);
             });
 
+            $this->emitRuntime('najm_hoda.input.support.service.email_integration.send_created.succeeded', $context);
             return true;
 
         } catch (\Exception $e) {
             Log::error('خطا در ارسال ایمیل ایجاد تیکت: ' . $e->getMessage(), [
                 'ticket_id' => $ticket->id,
             ]);
+            $this->emitRuntime('najm_hoda.input.support.service.email_integration.send_created.failed', array_merge($context, [
+                'error' => $e->getMessage(),
+                'risk' => 'medium',
+            ]));
 
             return false;
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    protected function emitRuntime(string $event, array $payload): void
+    {
+        try {
+            /** @var RuntimeEventBus $bus */
+            $bus = app(RuntimeEventBus::class);
+            $bus->emit($event, $payload);
+
+            /** @var NajmHodaDomainEventPolicyLinkService $link */
+            $link = app(NajmHodaDomainEventPolicyLinkService::class);
+            $link->ingest($event, $payload);
+        } catch (Throwable) {
+            // no-op
         }
     }
 }

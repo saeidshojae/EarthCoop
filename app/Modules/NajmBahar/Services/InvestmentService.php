@@ -8,10 +8,13 @@ use App\Modules\NajmBahar\Models\Investment;
 use App\Modules\NajmBahar\Models\Project;
 use App\Modules\NajmBahar\Services\TransactionService;
 use App\Modules\NajmBahar\Services\AccountNumberService;
+use App\Services\NajmHoda\Runtime\NajmHodaDomainEventPolicyLinkService;
+use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use App\Notifications\NajmBahar\InvestmentStatusChanged;
 use App\Notifications\NajmBahar\NewInvestmentReceived;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Collection;
+use Throwable;
 
 class InvestmentService
 {
@@ -30,34 +33,66 @@ class InvestmentService
      */
     public function createInvestment(Project $project, $investor, int $amount, array $options = []): Investment
     {
+        $context = [
+            'project_id' => (int) ($project->id ?? 0),
+            'investor_type' => get_class($investor),
+            'investor_id' => (int) ($investor->id ?? 0),
+            'amount' => $amount,
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.create.requested', $context);
+
         if ($project->status !== 'approved') {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.create.rejected', array_merge($context, [
+                'reason' => 'project_not_approved',
+            ]));
             throw new \Exception('فقط پروژه‌های تایید شده قابل سرمایه‌گذاری هستند.');
         }
 
         if ($amount <= 0) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.create.rejected', array_merge($context, [
+                'reason' => 'amount_must_be_positive',
+            ]));
             throw new \Exception('مبلغ سرمایه‌گذاری باید مثبت باشد.');
         }
 
         // بررسی سقف سرمایه
         if (($project->total_invested + $amount) > $project->required_capital) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.create.rejected', array_merge($context, [
+                'reason' => 'capital_limit_exceeded',
+            ]));
             throw new \Exception('مبلغ سرمایه‌گذاری از سقف مورد نیاز پروژه بیشتر است.');
         }
 
-        return DB::transaction(function () use ($investor, $project, $amount, $options) {
-            $investment = new Investment([
-                'project_id' => $project->id,
-                'amount' => $amount,
-                'agreed_profit_percentage' => $project->profit_percentage,
-                'expected_return' => $amount + ($amount * $project->profit_percentage / 100),
-                'status' => 'pending', // منتظر پرداخت
-                'notes' => $options['notes'] ?? null,
-            ]);
+        try {
+            $result = DB::transaction(function () use ($investor, $project, $amount, $options) {
+                $investment = new Investment([
+                    'project_id' => $project->id,
+                    'amount' => $amount,
+                    'agreed_profit_percentage' => $project->profit_percentage,
+                    'expected_return' => $amount + ($amount * $project->profit_percentage / 100),
+                    'status' => 'pending',
+                    'notes' => $options['notes'] ?? null,
+                ]);
 
-            $investment->investor()->associate($investor);
-            $investment->save();
+                $investment->investor()->associate($investor);
+                $investment->save();
 
-            return $investment;
-        });
+                return $investment;
+            });
+
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.create.succeeded', array_merge($context, [
+                'investment_id' => (int) ($result->id ?? 0),
+                'status' => (string) ($result->status ?? ''),
+            ]));
+            return $result;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.create.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
     }
 
     /**
@@ -70,15 +105,32 @@ class InvestmentService
      */
     public function processInvestmentPayment(Investment $investment, $payer, ?string $trackingCode = null): Investment
     {
+        $context = [
+            'investment_id' => (int) ($investment->id ?? 0),
+            'status' => (string) ($investment->status ?? ''),
+            'payer_type' => get_class($payer),
+            'payer_id' => (int) ($payer->id ?? 0),
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.process_payment.requested', $context);
+
         if ($investment->status !== 'pending') {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.process_payment.rejected', array_merge($context, [
+                'reason' => 'investment_not_pending',
+            ]));
             throw new \Exception('سرمایه‌گذاری قبلاً پرداخت شده است.');
         }
 
         if (get_class($payer) !== $investment->investor_type || $payer->id !== $investment->investor_id) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.process_payment.rejected', array_merge($context, [
+                'reason' => 'payer_mismatch',
+            ]));
             throw new \Exception('پرداخت‌کننده با سرمایه‌گذار مطابقت ندارد.');
         }
 
-        return DB::transaction(function () use ($investment, $trackingCode) {
+        try {
+            $result = DB::transaction(function () use ($investment, $trackingCode) {
             // حساب سرمایه‌گذار
             $investorAccountNumber = $investment->investor_type === User::class
                 ? AccountNumberService::makeMainAccountNumberForUser($investment->investor_id)
@@ -118,8 +170,20 @@ class InvestmentService
             // ارسال اعلان به صاحب پروژه
             $investment->project->owner->notify(new NewInvestmentReceived($investment));
 
-            return $investment->fresh();
-        });
+                return $investment->fresh();
+            });
+
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.process_payment.succeeded', array_merge($context, [
+                'status' => (string) ($result->status ?? ''),
+                'transaction_id' => (int) ($result->transaction_id ?? 0),
+            ]));
+            return $result;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.process_payment.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
     }
 
     /**
@@ -130,22 +194,44 @@ class InvestmentService
      */
     public function activateInvestment(Investment $investment): Investment
     {
+        $context = [
+            'investment_id' => (int) ($investment->id ?? 0),
+            'status' => (string) ($investment->status ?? ''),
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.activate.requested', $context);
+
         if ($investment->status !== 'paid') {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.activate.rejected', array_merge($context, [
+                'reason' => 'investment_not_paid',
+            ]));
             throw new \Exception('فقط سرمایه‌گذاری‌های پرداخت شده قابل فعال‌سازی هستند.');
         }
 
-        return DB::transaction(function () use ($investment) {
-            $investment->status = 'active';
-            $metadata = $investment->metadata ?? [];
-            $metadata['activated_at'] = now()->toDateTimeString();
-            $investment->metadata = $metadata;
-            $investment->save();
+        try {
+            $result = DB::transaction(function () use ($investment) {
+                $investment->status = 'active';
+                $metadata = $investment->metadata ?? [];
+                $metadata['activated_at'] = now()->toDateTimeString();
+                $investment->metadata = $metadata;
+                $investment->save();
 
-            // ارسال اعلان
-            $investment->investor->notify(new InvestmentStatusChanged($investment, 'active'));
+                $investment->investor->notify(new InvestmentStatusChanged($investment, 'active'));
 
-            return $investment->fresh();
-        });
+                return $investment->fresh();
+            });
+
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.activate.succeeded', array_merge($context, [
+                'status' => (string) ($result->status ?? ''),
+            ]));
+            return $result;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.activate.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
     }
 
     /**
@@ -157,11 +243,24 @@ class InvestmentService
      */
     public function completeInvestment(Investment $investment, ?int $actualReturn = null): Investment
     {
+        $context = [
+            'investment_id' => (int) ($investment->id ?? 0),
+            'status' => (string) ($investment->status ?? ''),
+            'actual_return' => $actualReturn,
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.complete.requested', $context);
+
         if ($investment->status !== 'active') {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.complete.rejected', array_merge($context, [
+                'reason' => 'investment_not_active',
+            ]));
             throw new \Exception('فقط سرمایه‌گذاری‌های فعال قابل تکمیل هستند.');
         }
 
-        return DB::transaction(function () use ($investment, $actualReturn) {
+        try {
+            $result = DB::transaction(function () use ($investment, $actualReturn) {
             // محاسبه مبلغ بازگشتی
             $returnAmount = $actualReturn ?? $investment->expected_return;
 
@@ -200,8 +299,19 @@ class InvestmentService
             // ارسال اعلان
             $investment->investor->notify(new InvestmentStatusChanged($investment, 'completed', "مبلغ بازگشتی: {$returnAmount} گل"));
 
-            return $investment->fresh();
-        });
+                return $investment->fresh();
+            });
+
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.complete.succeeded', array_merge($context, [
+                'status' => (string) ($result->status ?? ''),
+            ]));
+            return $result;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.complete.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
     }
 
     /**
@@ -214,11 +324,24 @@ class InvestmentService
      */
     public function cancelInvestment(Investment $investment, ?string $reason = null, bool $refund = true): Investment
     {
+        $context = [
+            'investment_id' => (int) ($investment->id ?? 0),
+            'status' => (string) ($investment->status ?? ''),
+            'refund' => $refund,
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.cancel.requested', $context);
+
         if (in_array($investment->status, ['completed', 'cancelled', 'refunded'])) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.cancel.rejected', array_merge($context, [
+                'reason' => 'investment_not_cancellable',
+            ]));
             throw new \Exception('این سرمایه‌گذاری قابل لغو نیست.');
         }
 
-        return DB::transaction(function () use ($investment, $reason, $refund) {
+        try {
+            $result = DB::transaction(function () use ($investment, $reason, $refund) {
             // بازگشت وجه در صورت تایید
             if ($refund && in_array($investment->status, ['paid', 'active'])) {
                 // حساب پروژه
@@ -256,8 +379,36 @@ class InvestmentService
             // ارسال اعلان
             $investment->investor->notify(new InvestmentStatusChanged($investment, $investment->status, $reason));
 
-            return $investment->fresh();
-        });
+                return $investment->fresh();
+            });
+
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.cancel.succeeded', array_merge($context, [
+                'status' => (string) ($result->status ?? ''),
+            ]));
+            return $result;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.investment.cancel.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    protected function emitRuntime(string $event, array $payload): void
+    {
+        try {
+            /** @var RuntimeEventBus $bus */
+            $bus = app(RuntimeEventBus::class);
+            $bus->emit($event, $payload);
+            /** @var NajmHodaDomainEventPolicyLinkService $link */
+            $link = app(NajmHodaDomainEventPolicyLinkService::class);
+            $link->ingest($event, $payload);
+        } catch (Throwable) {
+            // Telemetry must not break investment flows.
+        }
     }
 
     /**

@@ -10,81 +10,132 @@ use App\Modules\NajmBahar\Models\SalaryRunItem;
 use App\Modules\NajmBahar\Services\AccountNumberService;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\TransactionService;
+use App\Services\NajmHoda\Runtime\NajmHodaDomainEventPolicyLinkService;
+use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class SalaryService
 {
     public function createRun(Carbon $runDate, ?int $createdBy = null): SalaryRun
     {
+        $context = [
+            'run_date' => $runDate->toDateString(),
+            'created_by' => $createdBy,
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.salary_run.create.requested', $context);
+
         $periodStart = $runDate->copy()->startOfMonth()->toDateString();
         $periodEnd = $runDate->copy()->endOfMonth()->toDateString();
 
-        $run = SalaryRun::create([
-            'run_date' => $runDate->toDateString(),
-            'period_start' => $periodStart,
-            'period_end' => $periodEnd,
-            'status' => 'pending',
-            'created_by' => $createdBy,
-        ]);
+        try {
+            $run = SalaryRun::create([
+                'run_date' => $runDate->toDateString(),
+                'period_start' => $periodStart,
+                'period_end' => $periodEnd,
+                'status' => 'pending',
+                'created_by' => $createdBy,
+            ]);
 
-        $rules = SalaryRule::query()
-            ->where('is_active', true)
-            ->orderBy('id')
-            ->get();
+            $rules = SalaryRule::query()
+                ->where('is_active', true)
+                ->orderBy('id')
+                ->get();
 
-        foreach ($rules as $rule) {
-            if (! $this->isRuleDue($rule, $runDate)) {
-                continue;
+            foreach ($rules as $rule) {
+                if (! $this->isRuleDue($rule, $runDate)) {
+                    continue;
+                }
+
+                $itemsCreated = $this->createItemsForRule($run, $rule, $runDate);
+
+                if ($itemsCreated > 0) {
+                    $rule->last_run_at = $runDate;
+                    $rule->save();
+                }
             }
 
-            $itemsCreated = $this->createItemsForRule($run, $rule, $runDate);
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.salary_run.create.succeeded', array_merge($context, [
+                'salary_run_id' => (int) $run->id,
+                'period_start' => $periodStart,
+                'period_end' => $periodEnd,
+            ]));
 
-            if ($itemsCreated > 0) {
-                $rule->last_run_at = $runDate;
-                $rule->save();
-            }
+            return $run;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.salary_run.create.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
         }
-
-        return $run;
     }
 
     public function processRun(SalaryRun $run, ?int $processedBy = null): array
     {
+        $context = [
+            'salary_run_id' => (int) $run->id,
+            'processed_by' => $processedBy,
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.salary_run.process.requested', $context);
+
         $processed = 0;
         $failed = 0;
         $blocked = 0;
 
-        $items = SalaryRunItem::where('run_id', $run->id)->orderBy('id')->get();
+        try {
+            $items = SalaryRunItem::where('run_id', $run->id)->orderBy('id')->get();
 
-        foreach ($items as $item) {
-            $status = $this->evaluateItemStatus($item);
-            if ($status !== 'ready') {
-                $item->status = $status;
-                $item->save();
-                $blocked++;
-                continue;
+            foreach ($items as $item) {
+                $status = $this->evaluateItemStatus($item);
+                if ($status !== 'ready') {
+                    $item->status = $status;
+                    $item->save();
+                    $this->emitRuntime('najm_hoda.input.najm_bahar.service.salary_run.item.blocked', array_merge($context, [
+                        'salary_run_item_id' => (int) $item->id,
+                        'status' => $status,
+                    ]));
+                    $blocked++;
+                    continue;
+                }
+
+                try {
+                    $this->payItem($item, $processedBy);
+                    $processed++;
+                } catch (Throwable $e) {
+                    $item->status = 'failed';
+                    $item->blocked_reason = $e->getMessage();
+                    $item->save();
+                    $this->emitRuntime('najm_hoda.input.najm_bahar.service.salary_run.item.failed', array_merge($context, [
+                        'salary_run_item_id' => (int) $item->id,
+                        'error' => $e->getMessage(),
+                    ]));
+                    $failed++;
+                }
             }
 
-            try {
-                $this->payItem($item, $processedBy);
-                $processed++;
-            } catch (\Throwable $e) {
-                $item->status = 'failed';
-                $item->blocked_reason = $e->getMessage();
-                $item->save();
-                $failed++;
-            }
+            $run->status = $failed > 0 ? 'failed' : 'processed';
+            $run->save();
+
+            $result = [
+                'processed' => $processed,
+                'blocked' => $blocked,
+                'failed' => $failed,
+            ];
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.salary_run.process.succeeded', array_merge($context, $result, [
+                'run_status' => (string) $run->status,
+            ]));
+            return $result;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.salary_run.process.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
         }
-
-        $run->status = $failed > 0 ? 'failed' : 'processed';
-        $run->save();
-
-        return [
-            'processed' => $processed,
-            'blocked' => $blocked,
-            'failed' => $failed,
-        ];
     }
 
     public function refreshItemStatus(SalaryRunItem $item): SalaryRunItem
@@ -364,5 +415,33 @@ class SalaryService
         $item->status = 'paid';
         $item->blocked_reason = null;
         $item->save();
+
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.salary_run.item.paid', [
+            'salary_run_id' => (int) $item->run_id,
+            'salary_run_item_id' => (int) $item->id,
+            'transaction_id' => (int) $tx->id,
+            'user_id' => (int) $item->user_id,
+            'amount_gol' => (int) $item->amount_gol,
+            'processed_by' => $processedBy,
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ]);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    protected function emitRuntime(string $event, array $payload): void
+    {
+        try {
+            /** @var RuntimeEventBus $bus */
+            $bus = app(RuntimeEventBus::class);
+            $bus->emit($event, $payload);
+            /** @var NajmHodaDomainEventPolicyLinkService $link */
+            $link = app(NajmHodaDomainEventPolicyLinkService::class);
+            $link->ingest($event, $payload);
+        } catch (Throwable) {
+            // Do not fail salary processing because of telemetry emission.
+        }
     }
 }

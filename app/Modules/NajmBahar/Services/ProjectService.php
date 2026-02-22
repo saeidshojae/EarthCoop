@@ -7,11 +7,14 @@ use App\Models\Group;
 use App\Modules\NajmBahar\Models\Project;
 use App\Modules\NajmBahar\Models\ProjectCategory;
 use App\Modules\NajmBahar\Models\ProjectReview;
+use App\Services\NajmHoda\Runtime\NajmHodaDomainEventPolicyLinkService;
+use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use App\Notifications\NajmBahar\ProjectStatusChanged;
 use App\Notifications\NajmBahar\ProjectRevisionRequested;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Collection;
+use Throwable;
 
 class ProjectService
 {
@@ -24,13 +27,23 @@ class ProjectService
      */
     public function createProject($owner, array $data): Project
     {
-        return DB::transaction(function () use ($owner, $data) {
-            // اعتبارسنجی دسته‌بندی‌ها
-            $this->validateCategoryHierarchy(
-                $data['category_level1_id'],
-                $data['category_level2_id'] ?? null,
-                $data['category_level3_id'] ?? null
-            );
+        $context = [
+            'owner_type' => get_class($owner),
+            'owner_id' => (int) ($owner->id ?? 0),
+            'title' => (string) ($data['title'] ?? ''),
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.create.requested', $context);
+
+        try {
+            $result = DB::transaction(function () use ($owner, $data) {
+                // اعتبارسنجی دسته‌بندی‌ها
+                $this->validateCategoryHierarchy(
+                    $data['category_level1_id'],
+                    $data['category_level2_id'] ?? null,
+                    $data['category_level3_id'] ?? null
+                );
 
             // ساخت پروژه با وضعیت draft
             $investmentMethod = $data['investment_method'] ?? 'capital_participation';
@@ -79,8 +92,20 @@ class ProjectService
             // ثبت تاریخچه
             $this->createReview($project, null, 'submitted', 'پروژه ایجاد شد');
 
-            return $project->fresh();
-        });
+                return $project->fresh();
+            });
+
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.create.succeeded', array_merge($context, [
+                'project_id' => (int) ($result->id ?? 0),
+                'status' => (string) ($result->status ?? ''),
+            ]));
+            return $result;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.create.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
     }
 
     /**
@@ -91,13 +116,25 @@ class ProjectService
      */
     public function submitForReview(Project $project): Project
     {
+        $context = [
+            'project_id' => (int) $project->id,
+            'current_status' => (string) ($project->status ?? ''),
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.submit_for_review.requested', $context);
+
         if ($project->status !== 'draft' && $project->status !== 'rejected') {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.submit_for_review.rejected', array_merge($context, [
+                'reason' => 'invalid_project_status',
+            ]));
             throw new \Exception('فقط پروژه‌های پیش‌نویس یا رد شده قابل ارسال مجدد هستند.');
         }
 
-        return DB::transaction(function () use ($project) {
-            // اعتبارسنجی اطلاعات
-            $this->validateProjectData($project);
+        try {
+            $result = DB::transaction(function () use ($project) {
+                // اعتبارسنجی اطلاعات
+                $this->validateProjectData($project);
 
             $project->status = 'pending';
             $project->submitted_at = now();
@@ -110,8 +147,19 @@ class ProjectService
 
             $this->createReview($project, null, $action, 'پروژه برای بررسی ارسال شد');
 
-            return $project->fresh();
-        });
+                return $project->fresh();
+            });
+
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.submit_for_review.succeeded', array_merge($context, [
+                'new_status' => (string) ($result->status ?? ''),
+            ]));
+            return $result;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.submit_for_review.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
     }
 
     /**
@@ -153,15 +201,28 @@ class ProjectService
      */
     public function approveProject(Project $project, User $reviewer, ?string $comment = null): Project
     {
+        $context = [
+            'project_id' => (int) $project->id,
+            'reviewer_id' => (int) $reviewer->id,
+            'current_status' => (string) ($project->status ?? ''),
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.approve.requested', $context);
+
         if (!in_array($project->status, ['pending', 'under_review'])) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.approve.rejected', array_merge($context, [
+                'reason' => 'invalid_project_status',
+            ]));
             throw new \Exception('وضعیت پروژه برای تایید مناسب نیست.');
         }
 
-        return DB::transaction(function () use ($project, $reviewer, $comment) {
-            $project->status = 'approved';
-            $project->approved_at = now();
-            $project->admin_notes = $comment;
-            $project->save();
+        try {
+            $result = DB::transaction(function () use ($project, $reviewer, $comment) {
+                $project->status = 'approved';
+                $project->approved_at = now();
+                $project->admin_notes = $comment;
+                $project->save();
 
             $this->createReview(
                 $project, 
@@ -173,8 +234,19 @@ class ProjectService
             // ارسال اعلان به صاحب پروژه
             $project->owner->notify(new ProjectStatusChanged($project, 'approved', $comment));
 
-            return $project->fresh();
-        });
+                return $project->fresh();
+            });
+
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.approve.succeeded', array_merge($context, [
+                'new_status' => (string) ($result->status ?? ''),
+            ]));
+            return $result;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.approve.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
     }
 
     /**
@@ -188,15 +260,30 @@ class ProjectService
      */
     public function rejectProject(Project $project, User $reviewer, string $reason, ?string $comment = null): Project
     {
+        $context = [
+            'project_id' => (int) $project->id,
+            'reviewer_id' => (int) $reviewer->id,
+            'current_status' => (string) ($project->status ?? ''),
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.reject.requested', array_merge($context, [
+            'reason_text' => $reason,
+        ]));
+
         if (!in_array($project->status, ['pending', 'under_review'])) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.reject.rejected', array_merge($context, [
+                'reason' => 'invalid_project_status',
+            ]));
             throw new \Exception('وضعیت پروژه برای رد مناسب نیست.');
         }
 
-        return DB::transaction(function () use ($project, $reviewer, $reason, $comment) {
-            $project->status = 'rejected';
-            $project->rejection_reason = $reason;
-            $project->admin_notes = $comment;
-            $project->save();
+        try {
+            $result = DB::transaction(function () use ($project, $reviewer, $reason, $comment) {
+                $project->status = 'rejected';
+                $project->rejection_reason = $reason;
+                $project->admin_notes = $comment;
+                $project->save();
 
             $this->createReview(
                 $project, 
@@ -208,8 +295,19 @@ class ProjectService
             // ارسال اعلان به صاحب پروژه با دلیل رد
             $project->owner->notify(new ProjectStatusChanged($project, 'rejected', $comment ?? $reason));
 
-            return $project->fresh();
-        });
+                return $project->fresh();
+            });
+
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.reject.succeeded', array_merge($context, [
+                'new_status' => (string) ($result->status ?? ''),
+            ]));
+            return $result;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.reject.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
     }
 
     /**
@@ -526,7 +624,17 @@ class ProjectService
      */
     public function assignProjectToReviewer(Project $project, string $type, int $targetId, ?string $note = null): Project
     {
-        return DB::transaction(function () use ($project, $type, $targetId, $note) {
+        $context = [
+            'project_id' => (int) $project->id,
+            'target_type' => $type,
+            'target_id' => $targetId,
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.assign.requested', $context);
+
+        try {
+            $result = DB::transaction(function () use ($project, $type, $targetId, $note) {
             // بررسی نوع معتبر
             if (!in_array($type, ['User', 'Group'])) {
                 throw new \Exception('نوع مقصد باید User یا Group باشد.');
@@ -576,8 +684,19 @@ class ProjectService
                 }
             }
 
-            return $project->fresh();
-        });
+                return $project->fresh();
+            });
+
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.assign.succeeded', array_merge($context, [
+                'assignment_status' => (string) ($result->assignment_status ?? ''),
+            ]));
+            return $result;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.assign.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
     }
 
     /**
@@ -590,15 +709,27 @@ class ProjectService
      */
     public function updateAssignmentReview(Project $project, string $status, ?string $reviewNote = null): Project
     {
+        $context = [
+            'project_id' => (int) $project->id,
+            'assignment_status' => $status,
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.assignment_review.requested', $context);
+
         if (!in_array($status, ['completed', 'rejected'])) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.assignment_review.rejected', array_merge($context, [
+                'reason' => 'invalid_assignment_status',
+            ]));
             throw new \Exception('وضعیت باید completed یا rejected باشد.');
         }
 
-        return DB::transaction(function () use ($project, $status, $reviewNote) {
-            $project->assignment_status = $status;
-            $project->assignment_review_note = $reviewNote;
-            $project->assignment_completed_at = now();
-            $project->save();
+        try {
+            $result = DB::transaction(function () use ($project, $status, $reviewNote) {
+                $project->assignment_status = $status;
+                $project->assignment_review_note = $reviewNote;
+                $project->assignment_completed_at = now();
+                $project->save();
 
             // ثبت تاریخچه
             $statusLabel = $status === 'completed' ? 'تکمیل شده' : 'رد شده';
@@ -609,7 +740,35 @@ class ProjectService
                 'بررسی ارجاع شده: ' . $statusLabel . ($reviewNote ? ' - ' . $reviewNote : '')
             );
 
-            return $project->fresh();
-        });
+                return $project->fresh();
+            });
+
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.assignment_review.succeeded', array_merge($context, [
+                'assignment_status' => (string) ($result->assignment_status ?? ''),
+            ]));
+            return $result;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.project.assignment_review.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    protected function emitRuntime(string $event, array $payload): void
+    {
+        try {
+            /** @var RuntimeEventBus $bus */
+            $bus = app(RuntimeEventBus::class);
+            $bus->emit($event, $payload);
+            /** @var NajmHodaDomainEventPolicyLinkService $link */
+            $link = app(NajmHodaDomainEventPolicyLinkService::class);
+            $link->ingest($event, $payload);
+        } catch (Throwable) {
+            // Telemetry must not break project workflows.
+        }
     }
 }

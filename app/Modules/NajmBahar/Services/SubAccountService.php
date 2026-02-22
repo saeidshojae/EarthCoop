@@ -7,13 +7,25 @@ use App\Modules\NajmBahar\Models\LedgerEntry;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Services\AccountService;
+use App\Services\NajmHoda\Runtime\NajmHodaDomainEventPolicyLinkService;
+use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class SubAccountService
 {
     public function createSubAccount(int $accountId, string $name = null): SubAccount
     {
-        $account = Account::findOrFail($accountId);
+        $context = [
+            'account_id' => $accountId,
+            'name' => $name,
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.sub_account.create.requested', $context);
+
+        try {
+            $account = Account::findOrFail($accountId);
 
         $lastSubAccount = SubAccount::where('account_id', $accountId)
             ->orderBy('sub_account_code', 'desc')
@@ -34,7 +46,17 @@ class SubAccountService
         $accountService = app(AccountService::class);
         $accountService->ensureSubAccountAccount($subAccount);
 
-        return $subAccount;
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.sub_account.create.succeeded', array_merge($context, [
+                'sub_account_id' => (int) $subAccount->id,
+                'sub_account_code' => (string) $subAccount->sub_account_code,
+            ]));
+            return $subAccount;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.sub_account.create.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
     }
 
     private function generateSubAccountCode(string $accountNumber, ?SubAccount $lastSubAccount = null): string
@@ -72,7 +94,18 @@ class SubAccountService
         string $description = null,
         string $moneyState = 'faded'
     ): void {
-        DB::transaction(function () use ($accountId, $subAccountId, $amount, $moneyState) {
+        $context = [
+            'account_id' => $accountId,
+            'sub_account_id' => $subAccountId,
+            'amount' => $amount,
+            'money_state' => $moneyState,
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.sub_account.transfer_to.requested', $context);
+
+        try {
+            DB::transaction(function () use ($accountId, $subAccountId, $amount, $moneyState) {
             $account = Account::lockForUpdate()->findOrFail($accountId);
             $subAccount = SubAccount::lockForUpdate()->findOrFail($subAccountId);
 
@@ -86,7 +119,14 @@ class SubAccountService
 
             $this->ensureState($moneyState);
             $this->applyMainToSubTransfer($account, $subAccount, $amount, $moneyState);
-        });
+            });
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.sub_account.transfer_to.succeeded', $context);
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.sub_account.transfer_to.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
     }
 
     public function transferFromSubAccount(
@@ -96,7 +136,18 @@ class SubAccountService
         string $description = null,
         string $moneyState = 'faded'
     ): void {
-        DB::transaction(function () use ($subAccountId, $accountId, $amount, $moneyState) {
+        $context = [
+            'sub_account_id' => $subAccountId,
+            'account_id' => $accountId,
+            'amount' => $amount,
+            'money_state' => $moneyState,
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.sub_account.transfer_from.requested', $context);
+
+        try {
+            DB::transaction(function () use ($subAccountId, $accountId, $amount, $moneyState) {
             $subAccount = SubAccount::lockForUpdate()->findOrFail($subAccountId);
             $account = Account::lockForUpdate()->findOrFail($accountId);
 
@@ -110,7 +161,14 @@ class SubAccountService
 
             $this->ensureState($moneyState);
             $this->applySubToMainTransfer($subAccount, $account, $amount, $moneyState);
-        });
+            });
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.sub_account.transfer_from.succeeded', $context);
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.sub_account.transfer_from.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
     }
 
     public function transferBetweenSubAccounts(
@@ -121,7 +179,19 @@ class SubAccountService
         string $moneyState = 'faded',
         ?int $transactionId = null
     ): ?NajmTransaction {
-        return DB::transaction(function () use ($fromSubAccountId, $toSubAccountId, $amount, $moneyState, $description, $transactionId) {
+        $context = [
+            'from_sub_account_id' => $fromSubAccountId,
+            'to_sub_account_id' => $toSubAccountId,
+            'amount' => $amount,
+            'money_state' => $moneyState,
+            'transaction_id' => $transactionId,
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'medium',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.sub_account.transfer_between.requested', $context);
+
+        try {
+            $result = DB::transaction(function () use ($fromSubAccountId, $toSubAccountId, $amount, $moneyState, $description, $transactionId) {
             $fromSubAccount = SubAccount::lockForUpdate()->findOrFail($fromSubAccountId);
             $toSubAccount = SubAccount::lockForUpdate()->findOrFail($toSubAccountId);
 
@@ -213,22 +283,62 @@ class SubAccountService
                 ]);
             }
 
-            return $tx;
-        });
+                return $tx;
+            });
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.sub_account.transfer_between.succeeded', array_merge($context, [
+                'result_transaction_id' => (int) ($result?->id ?? 0),
+            ]));
+            return $result;
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.sub_account.transfer_between.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
     }
 
     public function deactivateSubAccount(int $subAccountId): void
     {
-        $subAccount = SubAccount::findOrFail($subAccountId);
-        $subAccount->status = 0;
-        $subAccount->save();
+        $context = [
+            'sub_account_id' => $subAccountId,
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'low',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.sub_account.deactivate.requested', $context);
+
+        try {
+            $subAccount = SubAccount::findOrFail($subAccountId);
+            $subAccount->status = 0;
+            $subAccount->save();
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.sub_account.deactivate.succeeded', $context);
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.sub_account.deactivate.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
     }
 
     public function activateSubAccount(int $subAccountId): void
     {
-        $subAccount = SubAccount::findOrFail($subAccountId);
-        $subAccount->status = 1;
-        $subAccount->save();
+        $context = [
+            'sub_account_id' => $subAccountId,
+            'scope' => 'economy:najm-bahar',
+            'risk' => 'low',
+        ];
+        $this->emitRuntime('najm_hoda.input.najm_bahar.service.sub_account.activate.requested', $context);
+
+        try {
+            $subAccount = SubAccount::findOrFail($subAccountId);
+            $subAccount->status = 1;
+            $subAccount->save();
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.sub_account.activate.succeeded', $context);
+        } catch (Throwable $exception) {
+            $this->emitRuntime('najm_hoda.input.najm_bahar.service.sub_account.activate.failed', array_merge($context, [
+                'error' => $exception->getMessage(),
+            ]));
+            throw $exception;
+        }
     }
 
     private function ensureState(string $moneyState): void
@@ -330,6 +440,23 @@ class SubAccountService
             $subAccountMirror->balance_active = (int) ($sub->balance_active ?? 0);
             $subAccountMirror->balance_faded = (int) ($sub->balance_faded ?? 0);
             $subAccountMirror->save();
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    protected function emitRuntime(string $event, array $payload): void
+    {
+        try {
+            /** @var RuntimeEventBus $bus */
+            $bus = app(RuntimeEventBus::class);
+            $bus->emit($event, $payload);
+            /** @var NajmHodaDomainEventPolicyLinkService $link */
+            $link = app(NajmHodaDomainEventPolicyLinkService::class);
+            $link->ingest($event, $payload);
+        } catch (Throwable) {
+            // Telemetry must not break sub-account flows.
         }
     }
 }

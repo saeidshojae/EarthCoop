@@ -19,9 +19,17 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\NajmBaharRunSalaries::class,
         \App\Console\Commands\NajmBaharSyncSubAccountBalances::class,
         \App\Console\Commands\NajmHodaBootstrapGroups::class,
+        \App\Console\Commands\NajmHodaCoverageHeartbeat::class,
+        \App\Console\Commands\NajmHodaCoverageKpi::class,
+        \App\Console\Commands\NajmHodaCoverageProbe::class,
         \App\Console\Commands\NajmHodaGameDay::class,
+        \App\Console\Commands\NajmHodaGraphQuery::class,
         \App\Console\Commands\NajmHodaGoalLoop::class,
+        \App\Console\Commands\NajmHodaMultiHorizonGoals::class,
+        \App\Console\Commands\NajmHodaMultiHorizonGoalsReview::class,
         \App\Console\Commands\NajmHodaOpsMonitor::class,
+        \App\Console\Commands\NajmHodaOrchestrate::class,
+        \App\Console\Commands\NajmHodaOnboardingAudit::class,
         \App\Console\Commands\NajmHodaModerationSweep::class,
         \App\Console\Commands\SendElectionReminders::class,
         \App\Console\Commands\SendAuctionReminders::class,
@@ -54,6 +62,16 @@ class Kernel extends ConsoleKernel
 
         // Najm Hoda autonomous goal loop (phase 4 skeleton)
         $schedule->command('najm-hoda:goal-loop')->everyTenMinutes();
+        $schedule->command('najm-hoda:multi-goals --scope=global --window=24 --limit=2000')->everyThirtyMinutes();
+        $schedule->command('najm-hoda:multi-goals-review --scope=global --window=24 --limit=2000')->hourly();
+        $schedule->command('najm-hoda:orchestrate --from-multi-goals --goal=stabilize_operations')->hourly();
+
+        // Najm Hoda coverage probes + KPI snapshot for Phase-6 critical path tracking
+        $schedule->command('najm-hoda:coverage-heartbeat')->hourly();
+        $schedule->command('najm-hoda:coverage-probe')->hourly();
+        $schedule->command('najm-hoda:coverage-kpi --window=24 --limit=5000')->hourly();
+        $schedule->command('najm-hoda:coverage-kpi --window=24 --limit=5000 --heartbeat --require-sustained')->hourly();
+        $schedule->command('najm-hoda:coverage-kpi --window=24 --limit=5000 --require-sustained')->dailyAt('02:00');
     }
 
     /**

@@ -4,21 +4,18 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Page;
+use App\Services\NajmHoda\Runtime\NajmHodaDomainEventPolicyLinkService;
+use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Throwable;
 
 class PageController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function index(Request $request)
     {
         $query = Page::query();
 
-        // فیلتر وضعیت
         if ($request->filled('status')) {
             if ($request->status === 'published') {
                 $query->where('is_published', true);
@@ -27,38 +24,33 @@ class PageController extends Controller
             }
         }
 
-        // جستجو
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('slug', 'like', "%{$search}%")
-                  ->orWhere('content', 'like', "%{$search}%");
+                    ->orWhere('slug', 'like', "%{$search}%")
+                    ->orWhere('content', 'like', "%{$search}%");
             });
         }
 
         $pages = $query->latest()->get();
+
         return view('admin.pages.index', compact('pages'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function create()
     {
         return view('admin.pages.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
     public function store(Request $request)
     {
+        $this->emitRuntime('najm_hoda.input.content.service.page.store.requested', [
+            'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+            'scope' => 'content',
+            'risk' => 'low',
+        ]);
+
         $validated = $request->validate([
             'title' => 'required|max:255',
             'template' => 'nullable|string|in:default,about,help,cooperation',
@@ -76,61 +68,62 @@ class PageController extends Controller
 
         $validated['slug'] = Str::slug($request->title);
         $validated['template'] = $request->template ?? 'default';
-        
-        // Prepare translations
         $validated['title_translations'] = [
             'fa' => $request->title_fa ?? $request->title,
             'en' => $request->title_en ?? $request->title,
             'ar' => $request->title_ar ?? $request->title,
         ];
-        
         $validated['content_translations'] = [
             'fa' => $request->content_fa ?? $request->content,
             'en' => $request->content_en ?? $request->content,
             'ar' => $request->content_ar ?? $request->content,
         ];
-        
-        // Remove temporary fields
+
         unset($validated['title_fa'], $validated['title_en'], $validated['title_ar']);
         unset($validated['content_fa'], $validated['content_en'], $validated['content_ar']);
-        
-        Page::create($validated);
 
-        return redirect()->route('admin.pages.index')
-            ->with('success', 'صفحه با موفقیت ایجاد شد.');
+        try {
+            $page = Page::create($validated);
+        } catch (Throwable $e) {
+            $this->emitRuntime('najm_hoda.input.content.service.page.store.failed', [
+                'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+                'error' => $e->getMessage(),
+                'scope' => 'content',
+                'risk' => 'medium',
+            ]);
+
+            throw $e;
+        }
+
+        $this->emitRuntime('najm_hoda.input.content.service.page.store.succeeded', [
+            'page_id' => (int) $page->id,
+            'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+            'scope' => 'content',
+            'risk' => 'low',
+        ]);
+
+        return redirect()->route('admin.pages.index')->with('success', 'Page created successfully.');
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function show($id)
     {
         //
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function edit(Page $page)
     {
         return view('admin.pages.edit', compact('page'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function update(Request $request, Page $page)
     {
+        $this->emitRuntime('najm_hoda.input.content.service.page.update.requested', [
+            'page_id' => (int) $page->id,
+            'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+            'scope' => 'content',
+            'risk' => 'low',
+        ]);
+
         $validated = $request->validate([
             'title' => 'required|max:255',
             'template' => 'nullable|string|in:default,about,help,cooperation',
@@ -149,69 +142,136 @@ class PageController extends Controller
 
         $validated['slug'] = Str::slug($request->title);
         $validated['template'] = $request->template ?? 'default';
-        $validated['show_in_header'] = $request->has('show_in_header') ? true : false;
-        
-        // Prepare translations
+        $validated['show_in_header'] = $request->has('show_in_header');
         $validated['title_translations'] = [
             'fa' => $request->title_fa ?? $request->title,
             'en' => $request->title_en ?? $request->title,
             'ar' => $request->title_ar ?? $request->title,
         ];
-        
         $validated['content_translations'] = [
             'fa' => $request->content_fa ?? $request->content,
             'en' => $request->content_en ?? $request->content,
             'ar' => $request->content_ar ?? $request->content,
         ];
-        
-        // Remove temporary fields
+
         unset($validated['title_fa'], $validated['title_en'], $validated['title_ar']);
         unset($validated['content_fa'], $validated['content_en'], $validated['content_ar']);
-        
-        $page->update($validated);
 
-        return redirect()->route('admin.pages.index')
-            ->with('success', 'صفحه با موفقیت به‌روزرسانی شد.');
+        try {
+            $page->update($validated);
+        } catch (Throwable $e) {
+            $this->emitRuntime('najm_hoda.input.content.service.page.update.failed', [
+                'page_id' => (int) $page->id,
+                'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+                'error' => $e->getMessage(),
+                'scope' => 'content',
+                'risk' => 'medium',
+            ]);
+
+            throw $e;
+        }
+
+        $this->emitRuntime('najm_hoda.input.content.service.page.update.succeeded', [
+            'page_id' => (int) $page->id,
+            'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+            'scope' => 'content',
+            'risk' => 'low',
+        ]);
+
+        return redirect()->route('admin.pages.index')->with('success', 'Page updated successfully.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function destroy(Page $page)
     {
-        $page->delete();
-        return redirect()->route('admin.pages.index')
-            ->with('success', 'صفحه با موفقیت حذف شد.');
+        $this->emitRuntime('najm_hoda.input.content.service.page.delete.requested', [
+            'page_id' => (int) $page->id,
+            'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+            'scope' => 'content',
+            'risk' => 'medium',
+        ]);
+
+        try {
+            $page->delete();
+        } catch (Throwable $e) {
+            $this->emitRuntime('najm_hoda.input.content.service.page.delete.failed', [
+                'page_id' => (int) $page->id,
+                'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+                'error' => $e->getMessage(),
+                'scope' => 'content',
+                'risk' => 'high',
+            ]);
+
+            throw $e;
+        }
+
+        $this->emitRuntime('najm_hoda.input.content.service.page.delete.succeeded', [
+            'page_id' => (int) $page->id,
+            'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+            'scope' => 'content',
+            'risk' => 'medium',
+        ]);
+
+        return redirect()->route('admin.pages.index')->with('success', 'Page deleted successfully.');
     }
-   
+
     public function upload(Request $request)
-{
-    if ($request->hasFile('upload')) {
-        $file = $request->file('upload');
-        $filename = time().'_'.$file->getClientOriginalName();
-        $filename = str_replace(' ', '_', time().'_'.$file->getClientOriginalName());
+    {
+        $this->emitRuntime('najm_hoda.input.content.service.page.upload.requested', [
+            'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+            'scope' => 'content',
+            'risk' => 'low',
+        ]);
 
-        $file->move(public_path('uploads'), $filename);
+        if ($request->hasFile('upload')) {
+            $file = $request->file('upload');
+            $filename = str_replace(' ', '_', time() . '_' . $file->getClientOriginalName());
+            $file->move(public_path('uploads'), $filename);
+            $url = url('uploads/' . $filename);
 
-        $url = url('uploads/'.$filename); // ساختن لینک کامل
+            $this->emitRuntime('najm_hoda.input.content.service.page.upload.succeeded', [
+                'file_name' => $filename,
+                'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+                'scope' => 'content',
+                'risk' => 'low',
+            ]);
+
+            return response()->json([
+                'uploaded' => 1,
+                'fileName' => $filename,
+                'url' => $url,
+            ]);
+        }
+
+        $this->emitRuntime('najm_hoda.input.content.service.page.upload.rejected', [
+            'actor_id' => auth()->id() !== null ? (int) auth()->id() : null,
+            'reason' => 'no_upload_file',
+            'scope' => 'content',
+            'risk' => 'medium',
+        ]);
 
         return response()->json([
-            'uploaded' => 1,
-            'fileName' => $filename,
-            'url' => $url,
+            'uploaded' => 0,
+            'error' => [
+                'message' => 'No file uploaded.',
+            ],
         ]);
     }
 
-    return response()->json([
-        'uploaded' => 0,
-        'error' => [
-            'message' => 'هیچ فایلی آپلود نشد.'
-        ]
-    ]);
-}
+    /**
+     * @param array<string, mixed> $payload
+     */
+    protected function emitRuntime(string $event, array $payload): void
+    {
+        try {
+            /** @var RuntimeEventBus $bus */
+            $bus = app(RuntimeEventBus::class);
+            $bus->emit($event, $payload);
 
-    
+            /** @var NajmHodaDomainEventPolicyLinkService $link */
+            $link = app(NajmHodaDomainEventPolicyLinkService::class);
+            $link->ingest($event, $payload);
+        } catch (Throwable) {
+            // no-op
+        }
+    }
 }

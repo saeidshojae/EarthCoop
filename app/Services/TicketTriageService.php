@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Services\NajmHoda\Runtime\NajmHodaDomainEventPolicyLinkService;
+use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 class TicketTriageService
 {
@@ -26,36 +29,58 @@ class TicketTriageService
      */
     public function triage(string $subject, string $message): array
     {
-        $text = Str::lower($subject . ' ' . $message);
-
-        // Determine priority
-        $priority = 'normal';
-        foreach ($this->priorityHigh as $kw) {
-            if (Str::contains($text, Str::lower($kw))) {
-                $priority = 'high';
-                break;
-            }
-        }
-
-        // Determine assignee by matching rules
-        $assigneeId = null;
-
-        foreach ($this->rules as $kw => $roleSlug) {
-            if (Str::contains($text, Str::lower($kw))) {
-                $assigneeId = $this->findOperatorByRole($roleSlug);
-                if ($assigneeId) break;
-            }
-        }
-
-        // If not found try fallback role
-        if (!$assigneeId) {
-            $assigneeId = $this->findOperatorByRole($this->fallbackRole);
-        }
-
-        return [
-            'priority' => $priority,
-            'assignee_id' => $assigneeId,
+        $context = [
+            'scope' => 'support:tickets',
+            'risk' => 'low',
+            'subject_length' => mb_strlen($subject),
+            'message_length' => mb_strlen($message),
         ];
+        $this->emitRuntime('najm_hoda.input.support.service.ticket_triage.requested', $context);
+
+        try {
+            $text = Str::lower($subject . ' ' . $message);
+
+            $priority = 'normal';
+            foreach ($this->priorityHigh as $kw) {
+                if (Str::contains($text, Str::lower($kw))) {
+                    $priority = 'high';
+                    break;
+                }
+            }
+
+            $assigneeId = null;
+
+            foreach ($this->rules as $kw => $roleSlug) {
+                if (Str::contains($text, Str::lower($kw))) {
+                    $assigneeId = $this->findOperatorByRole($roleSlug);
+                    if ($assigneeId) {
+                        break;
+                    }
+                }
+            }
+
+            if (!$assigneeId) {
+                $assigneeId = $this->findOperatorByRole($this->fallbackRole);
+            }
+
+            $result = [
+                'priority' => $priority,
+                'assignee_id' => $assigneeId,
+            ];
+            $this->emitRuntime('najm_hoda.input.support.service.ticket_triage.succeeded', array_merge($context, [
+                'priority' => $priority,
+                'assignee_found' => $assigneeId !== null,
+            ]));
+
+            return $result;
+        } catch (Throwable $e) {
+            $this->emitRuntime('najm_hoda.input.support.service.ticket_triage.failed', array_merge($context, [
+                'error' => $e->getMessage(),
+                'risk' => 'medium',
+            ]));
+
+            throw $e;
+        }
     }
 
     protected function findOperatorByRole(string $roleSlug)
@@ -96,5 +121,23 @@ class TicketTriageService
         }
 
         return null;
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    protected function emitRuntime(string $event, array $payload): void
+    {
+        try {
+            /** @var RuntimeEventBus $bus */
+            $bus = app(RuntimeEventBus::class);
+            $bus->emit($event, $payload);
+
+            /** @var NajmHodaDomainEventPolicyLinkService $link */
+            $link = app(NajmHodaDomainEventPolicyLinkService::class);
+            $link->ingest($event, $payload);
+        } catch (Throwable) {
+            // no-op
+        }
     }
 }

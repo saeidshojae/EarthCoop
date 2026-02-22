@@ -1,40 +1,40 @@
-# لاگ اجرای برنامه تحول نجم هدا
+﻿# Ù„Ø§Ú¯ Ø§Ø¬Ø±Ø§ÛŒ Ø¨Ø±Ù†Ø§Ù…Ù‡ ØªØ­ÙˆÙ„ Ù†Ø¬Ù… Ù‡Ø¯Ø§
 
 ## 2026-02-19
 
-### انجام شد
-- ایجاد سند roadmap:
+### Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯
+- Ø§ÛŒØ¬Ø§Ø¯ Ø³Ù†Ø¯ roadmap:
   - `docs/NAJM_HODA_TRANSFORMATION_ROADMAP.fa.md`
-- ایجاد برنامه Sprint 1:
+- Ø§ÛŒØ¬Ø§Ø¯ Ø¨Ø±Ù†Ø§Ù…Ù‡ Sprint 1:
   - `docs/NAJM_HODA_SPRINT1_EXECUTION_PLAN.fa.md`
-- ایجاد ریزتسک های فاز 0:
+- Ø§ÛŒØ¬Ø§Ø¯ Ø±ÛŒØ²ØªØ³Ú© Ù‡Ø§ÛŒ ÙØ§Ø² 0:
   - `docs/NAJM_HODA_PHASE0_TASKS.fa.md`
-- شروع اجرای فاز 0 (Feature Flag Enforcement):
-  - گارد `NAJM_HODA_ENABLED` در API نجم هدا
-  - گارد `NAJM_HODA_ENABLED` در listener گروهی نجم هدا
-  - گارد `NAJM_HODA_ENABLED` در commandهای اصلی نجم هدا
-  - گارد `NAJM_HODA_ENABLED` در admin chat endpoint
-- اضافه شدن audit log برای مسیرهای blocked در حالت disabled
-- شروع ارزیابی mojibake و ثبت گزارش مرحله ای:
+- Ø´Ø±ÙˆØ¹ Ø§Ø¬Ø±Ø§ÛŒ ÙØ§Ø² 0 (Feature Flag Enforcement):
+  - Ú¯Ø§Ø±Ø¯ `NAJM_HODA_ENABLED` Ø¯Ø± API Ù†Ø¬Ù… Ù‡Ø¯Ø§
+  - Ú¯Ø§Ø±Ø¯ `NAJM_HODA_ENABLED` Ø¯Ø± listener Ú¯Ø±ÙˆÙ‡ÛŒ Ù†Ø¬Ù… Ù‡Ø¯Ø§
+  - Ú¯Ø§Ø±Ø¯ `NAJM_HODA_ENABLED` Ø¯Ø± commandÙ‡Ø§ÛŒ Ø§ØµÙ„ÛŒ Ù†Ø¬Ù… Ù‡Ø¯Ø§
+  - Ú¯Ø§Ø±Ø¯ `NAJM_HODA_ENABLED` Ø¯Ø± admin chat endpoint
+- Ø§Ø¶Ø§ÙÙ‡ Ø´Ø¯Ù† audit log Ø¨Ø±Ø§ÛŒ Ù…Ø³ÛŒØ±Ù‡Ø§ÛŒ blocked Ø¯Ø± Ø­Ø§Ù„Øª disabled
+- Ø´Ø±ÙˆØ¹ Ø§Ø±Ø²ÛŒØ§Ø¨ÛŒ mojibake Ùˆ Ø«Ø¨Øª Ú¯Ø²Ø§Ø±Ø´ Ù…Ø±Ø­Ù„Ù‡ Ø§ÛŒ:
   - `docs/NAJM_HODA_MOJIBAKE_ASSESSMENT_PHASE0.fa.md`
-- اصلاح هدفمند mojibake در مقادیر پیش فرض نام بات گروهی:
+- Ø§ØµÙ„Ø§Ø­ Ù‡Ø¯ÙÙ…Ù†Ø¯ mojibake Ø¯Ø± Ù…Ù‚Ø§Ø¯ÛŒØ± Ù¾ÛŒØ´ ÙØ±Ø¶ Ù†Ø§Ù… Ø¨Ø§Øª Ú¯Ø±ÙˆÙ‡ÛŒ:
   - `app/Services/NajmHoda/NajmHodaGroupAssistantService.php`
-- تکمیل بازطراحی مسیر تنظیمات Auto-Fixer:
-  - حذف وابستگی `saveAutoFixerSettings` به cache
-  - ذخیره تنظیمات در `.env` و اعمال runtime config
-  - حذف `rand()` از `testAutoFixer` و جایگزینی با تست واقعی بر پایه scan summary
-  - حذف وابستگی `cleanBackups` به cache و اتصال به config پایدار
+- ØªÚ©Ù…ÛŒÙ„ Ø¨Ø§Ø²Ø·Ø±Ø§Ø­ÛŒ Ù…Ø³ÛŒØ± ØªÙ†Ø¸ÛŒÙ…Ø§Øª Auto-Fixer:
+  - Ø­Ø°Ù ÙˆØ§Ø¨Ø³ØªÚ¯ÛŒ `saveAutoFixerSettings` Ø¨Ù‡ cache
+  - Ø°Ø®ÛŒØ±Ù‡ ØªÙ†Ø¸ÛŒÙ…Ø§Øª Ø¯Ø± `.env` Ùˆ Ø§Ø¹Ù…Ø§Ù„ runtime config
+  - Ø­Ø°Ù `rand()` Ø§Ø² `testAutoFixer` Ùˆ Ø¬Ø§ÛŒÚ¯Ø²ÛŒÙ†ÛŒ Ø¨Ø§ ØªØ³Øª ÙˆØ§Ù‚Ø¹ÛŒ Ø¨Ø± Ù¾Ø§ÛŒÙ‡ scan summary
+  - Ø­Ø°Ù ÙˆØ§Ø¨Ø³ØªÚ¯ÛŒ `cleanBackups` Ø¨Ù‡ cache Ùˆ Ø§ØªØµØ§Ù„ Ø¨Ù‡ config Ù¾Ø§ÛŒØ¯Ø§Ø±
 
-### راستی آزمایی
-- syntax check برای فایل های تغییر داده شده انجام شد و خطای syntax گزارش نشد.
+### Ø±Ø§Ø³ØªÛŒ Ø¢Ø²Ù…Ø§ÛŒÛŒ
+- syntax check Ø¨Ø±Ø§ÛŒ ÙØ§ÛŒÙ„ Ù‡Ø§ÛŒ ØªØºÛŒÛŒØ± Ø¯Ø§Ø¯Ù‡ Ø´Ø¯Ù‡ Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯ Ùˆ Ø®Ø·Ø§ÛŒ syntax Ú¯Ø²Ø§Ø±Ø´ Ù†Ø´Ø¯.
 
-### وضعیت فعلی
-- `P0-T01`: انجام شد (feature flag روی entrypointهای اصلی enforce شد)
-- `P0-T02`: انجام شد (disabled response استاندارد با کد `NAJM_HODA_DISABLED` اعمال شد)
-- `P0-T03`: انجام شد (پاکسازی mojibake در فایل های هسته ای تکمیل شد)
-- `P0-T04`: انجام شد (runtime config حساس پایدار شد)
-- `P0-T05`: انجام شد (لاگ blocked در مسیرهای اصلی افزوده شد)
-- `P0-T06`: انجام شد (smoke check مسیرهای کلیدی و syntax validation انجام شد)
+### ÙˆØ¶Ø¹ÛŒØª ÙØ¹Ù„ÛŒ
+- `P0-T01`: Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯ (feature flag Ø±ÙˆÛŒ entrypointÙ‡Ø§ÛŒ Ø§ØµÙ„ÛŒ enforce Ø´Ø¯)
+- `P0-T02`: Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯ (disabled response Ø§Ø³ØªØ§Ù†Ø¯Ø§Ø±Ø¯ Ø¨Ø§ Ú©Ø¯ `NAJM_HODA_DISABLED` Ø§Ø¹Ù…Ø§Ù„ Ø´Ø¯)
+- `P0-T03`: Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯ (Ù¾Ø§Ú©Ø³Ø§Ø²ÛŒ mojibake Ø¯Ø± ÙØ§ÛŒÙ„ Ù‡Ø§ÛŒ Ù‡Ø³ØªÙ‡ Ø§ÛŒ ØªÚ©Ù…ÛŒÙ„ Ø´Ø¯)
+- `P0-T04`: Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯ (runtime config Ø­Ø³Ø§Ø³ Ù¾Ø§ÛŒØ¯Ø§Ø± Ø´Ø¯)
+- `P0-T05`: Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯ (Ù„Ø§Ú¯ blocked Ø¯Ø± Ù…Ø³ÛŒØ±Ù‡Ø§ÛŒ Ø§ØµÙ„ÛŒ Ø§ÙØ²ÙˆØ¯Ù‡ Ø´Ø¯)
+- `P0-T06`: Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯ (smoke check Ù…Ø³ÛŒØ±Ù‡Ø§ÛŒ Ú©Ù„ÛŒØ¯ÛŒ Ùˆ syntax validation Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯)
 
 
 ### Update - P0-T03-COMPLETE-2026-02-19
@@ -914,3 +914,373 @@
   - `ProductionReadinessServiceTest` passed
 - Updated phase tracker:
   - `P5-T12` marked `done`
+
+### Update - PHASE6-INITIALIZATION-2026-02-21
+- Started Phase 6 planning and execution track (`Universal Autonomy Integration`).
+- Added detailed Phase 6 task document:
+  - `docs/NAJM_HODA_PHASE6_TASKS.fa.md`
+- Added Phase 6 section to transformation roadmap:
+  - `docs/NAJM_HODA_TRANSFORMATION_ROADMAP.fa.md`
+- Execution strategy for kickoff:
+  - `P6-T01` started (`in_progress`) as event-coverage baseline and gap detection.
+
+### Update - PHASE6-T01-BASELINE-V0-2026-02-21
+- Generated initial event-coverage baseline for Phase 6 task `P6-T01`.
+- Added baseline document:
+  - `docs/NAJM_HODA_PHASE6_T01_EVENT_COVERAGE_BASELINE.fa.md`
+- Baseline result:
+  - strong coverage on NajmHoda runtime/autonomy/ops/governance flows
+  - remaining gaps on cross-domain instrumentation (support/economy/content/auth)
+- Next step:
+  - Event Contract v1 + coverage matrix with measurable domain gaps.
+
+### Update - PHASE6-T01-EVENT-CONTRACT-AND-ENVELOPE-2026-02-21
+- Implemented Event Contract v1 and connected it to runtime event ingestion.
+- Added contract document:
+  - `docs/NAJM_HODA_EVENT_CONTRACT_V1.fa.md`
+- Added domain coverage matrix:
+  - `docs/NAJM_HODA_PHASE6_DOMAIN_EVENT_MATRIX.fa.md`
+- Added envelope normalizer:
+  - `app/Services/NajmHoda/Runtime/RuntimeEventEnvelope.php`
+- Integrated normalizer in both event buses:
+  - `app/Services/NajmHoda/Runtime/InMemoryRuntimeEventBus.php`
+  - `app/Services/NajmHoda/Runtime/DatabaseRuntimeEventBus.php`
+- Added targeted test coverage:
+  - `tests/Feature/NajmHoda/RuntimeEventEnvelopeTest.php`
+- Updated phase tracker:
+  - `P6-T01` remains `in_progress` with schema baseline complete and domain instrumentation pending.
+
+### Update - PHASE6-T01-SUPPORT-TICKET-INSTRUMENTATION-2026-02-21
+- Added support/tickets lifecycle instrumentation into Najm Hoda runtime bus.
+- Added observer classes:
+  - `app/Observers/NajmHoda/TicketObserver.php`
+  - `app/Observers/NajmHoda/TicketCommentObserver.php`
+- Registered observers:
+  - `app/Providers/EventServiceProvider.php`
+- Emitted support domain events:
+  - `najm_hoda.input.support.ticket.created`
+  - `najm_hoda.input.support.ticket.status_changed`
+  - `najm_hoda.input.support.ticket.assigned`
+  - `najm_hoda.input.support.ticket.comment_created`
+- Added tests:
+  - `tests/Feature/NajmHoda/SupportTicketInstrumentationTest.php`
+- Updated docs:
+  - `docs/NAJM_HODA_PHASE6_DOMAIN_EVENT_MATRIX.fa.md`
+  - `docs/NAJM_HODA_PHASE6_TASKS.fa.md`
+
+### Update - PHASE6-T01-NAJMBAHAR-INSTRUMENTATION-2026-02-21
+- Added initial economy-domain instrumentation for Najm Bahar into Najm Hoda runtime bus.
+- Added observer classes:
+  - `app/Observers/NajmHoda/NajmBaharTransactionObserver.php`
+  - `app/Observers/NajmHoda/NajmBaharScheduledTransactionObserver.php`
+  - `app/Observers/NajmHoda/NajmBaharInvestmentObserver.php`
+- Registered Najm Bahar observers:
+  - `app/Providers/EventServiceProvider.php`
+- Emitted economy-domain events:
+  - `najm_hoda.input.najm_bahar.transaction.created`
+  - `najm_hoda.input.najm_bahar.transaction.status_changed`
+  - `najm_hoda.input.najm_bahar.scheduled_transaction.created`
+  - `najm_hoda.input.najm_bahar.scheduled_transaction.status_changed`
+  - `najm_hoda.input.najm_bahar.investment.created`
+  - `najm_hoda.input.najm_bahar.investment.status_changed`
+- Added test coverage:
+  - `tests/Feature/NajmHoda/NajmBaharInstrumentationTest.php`
+- Phase impact:
+  - kept the extensibility approach inside `P6-T01` (no separate phase required yet)
+  - remaining Najm Bahar coverage (fee/salary/system-account) stays in-progress.
+
+### Update - PHASE6-T01-NAJMBAHAR-MODEL-COVERAGE-EXPANSION-2026-02-21
+- Expanded Najm Bahar instrumentation to cover all currently-active core models with a generic observer pattern.
+- Added generic observer:
+  - `app/Observers/NajmHoda/NajmBaharGenericModelObserver.php`
+- Registered generic observer for:
+  - `Account`, `SubAccount`, `LedgerEntry`, `Fee`
+  - `SalaryRule`, `SalaryRun`, `SalaryRunItem`
+  - `Project`, `ProjectReview`, `ProjectCategory`
+  - file: `app/Providers/EventServiceProvider.php`
+- Event families added:
+  - `najm_hoda.input.najm_bahar.{entity}.created`
+  - `najm_hoda.input.najm_bahar.{entity}.updated`
+  - `najm_hoda.input.najm_bahar.{entity}.deleted`
+  - `najm_hoda.input.najm_bahar.{entity}.status_changed` (when status-like fields change)
+- Added focused test:
+  - `tests/Feature/NajmHoda/NajmBaharGenericInstrumentationTest.php`
+- Phase impact:
+  - Najm Bahar is now model-level event-covered for current entities.
+  - Remaining gap moved to service-layer policy hooks and orchestration intent emissions.
+
+### Update - PHASE6-T01-NAJMBAHAR-SERVICE-HOOKS-2026-02-21
+- Added service-layer runtime hooks for Najm Bahar to capture decision-path telemetry (not only model changes).
+- Implemented runtime emission in:
+  - `app/Modules/NajmBahar/Services/TransactionService.php`
+    - `transfer`: requested/succeeded/failed/rejected/idempotent_hit
+    - `adjust`: requested/succeeded/failed/rejected/idempotent_hit
+    - `depositInitialFunding`: requested/succeeded/failed/rejected
+  - `app/Modules/NajmBahar/Services/SalaryService.php`
+    - `createRun`: requested/succeeded/failed
+    - `processRun`: requested/succeeded/failed
+    - per-item outcomes: `item.blocked`, `item.failed`, `item.paid`
+  - `app/Modules/NajmBahar/Services/ProjectService.php`
+    - create/submit/approve/reject/assign/assignment-review requested+succeeded+failed/rejected
+- Design guardrail:
+  - all telemetry emission is fail-safe and does not break financial/project execution paths.
+- Validation:
+  - php lint passed on touched service files
+  - Najm Bahar instrumentation tests remained green.
+- Phase impact:
+  - Najm Bahar moved from model-only coverage to model+service partial completion.
+  - Remaining service hooks: investment/sub-account/fee + direct policy/escalation linkage.
+
+### Update - PHASE6-T01-NAJMBAHAR-SERVICE-HOOKS-COMPLETE-2026-02-21
+- Completed remaining service-layer hooks for Najm Bahar:
+  - `app/Modules/NajmBahar/Services/InvestmentService.php`
+    - create/process-payment/activate/complete/cancel with requested/succeeded/failed/rejected emissions
+  - `app/Modules/NajmBahar/Services/SubAccountService.php`
+    - create/transfer-to/transfer-from/transfer-between/activate/deactivate with requested/succeeded/failed emissions
+  - `app/Modules/NajmBahar/Services/FeeService.php`
+    - membership/calculate/active-list with requested/succeeded/failed emissions
+- Added guardrail:
+  - all service-hook telemetry remains fail-safe and non-blocking for business/financial execution.
+- Added focused regression test:
+  - `tests/Feature/NajmHoda/NajmBaharServiceHooksTest.php`
+  - verifies rejected hook emission paths in investment service.
+- Validation:
+  - php lint passed for touched service + test files
+  - `NajmBaharServiceHooksTest` passed
+- Phase impact:
+  - Najm Bahar service hooks are now complete.
+  - remaining gap for this domain is direct policy/escalation linkage on emitted service events.
+
+### Update - PHASE6-T01-NAJMBAHAR-POLICY-ESCALATION-LINK-2026-02-21
+- Implemented direct policy/escalation bridge for Najm Bahar service events.
+- Added runtime bridge service:
+  - `app/Services/NajmHoda/Runtime/NajmHodaDomainEventPolicyLinkService.php`
+  - behavior:
+    - ingests `najm_hoda.input.najm_bahar.service.*` events
+    - on `failed/rejected` emits:
+      - `najm_hoda.autonomy.safety.blocked`
+      - `najm_hoda.autonomy.governance.alert.raised`
+      - optional `najm_hoda.autonomy.approval.requested` (risk-based)
+- Added config toggles:
+  - `config/najm-hoda.php` -> `runtime.domain_policy_link.*`
+- Connected bridge to all Najm Bahar service emitters:
+  - `TransactionService`, `SalaryService`, `ProjectService`
+  - `InvestmentService`, `SubAccountService`, `FeeService`
+- Added focused test:
+  - `tests/Feature/NajmHoda/NajmBaharPolicyEscalationLinkTest.php`
+- Phase impact:
+  - Najm Bahar coverage in `P6-T01` reached model+service+policy-link completeness.
+  - next linkage scope moved to support/content/auth domains.
+
+### Update - PHASE6-T01-SUPPORT-AUTH-CONTENT-POLICY-LINK-2026-02-21
+- Expanded domain policy/escalation linkage beyond Najm Bahar.
+- Updated policy-link engine:
+  - `app/Services/NajmHoda/Runtime/NajmHodaDomainEventPolicyLinkService.php`
+  - now ingests `support/auth/content` service prefixes in addition to `najm_bahar`.
+  - keeps safety+governance+approval flow for `failed/rejected`.
+  - adds governance+approval flow for sensitive `content.*.deleted` mutations.
+- Added support service runtime hooks + direct policy-link ingestion:
+  - `app/Services/SupportChatAssignmentService.php`
+  - `app/Services/TicketTriageService.php`
+  - `app/Services/EmailTicketIntegrationService.php`
+- Added auth service runtime hooks + direct policy-link ingestion:
+  - `app/Services/GoogleLoginService.php`
+- Added content mutation instrumentation:
+  - `app/Observers/NajmHoda/ContentModelObserver.php`
+  - registered in `app/Providers/EventServiceProvider.php` for `Page`, `Blog`, `KbArticle`, `FaqQuestion`.
+- Test coverage extended:
+  - `tests/Feature/NajmHoda/NajmBaharPolicyEscalationLinkTest.php` now covers `support` and `content` policy-link paths.
+- Validation:
+  - `php -l` passed for all touched files.
+  - `vendor\\bin\\phpunit tests/Feature/NajmHoda/NajmBaharPolicyEscalationLinkTest.php --colors=never`
+    - `OK (4 tests, 15 assertions)`
+
+### Update - PHASE6-T01-AUTH-LIFECYCLE-CONTENT-FAILURE-CLOSURE-2026-02-21
+- Added framework-level auth lifecycle runtime capture:
+  - listener: `app/Listeners/CaptureNajmHodaAuthLifecycle.php`
+  - mapped in `app/Providers/EventServiceProvider.php` for:
+    - `Illuminate\\Auth\\Events\\Login`
+    - `Illuminate\\Auth\\Events\\Failed`
+    - `Illuminate\\Auth\\Events\\Logout`
+    - `Illuminate\\Auth\\Events\\Registered`
+    - `Illuminate\\Auth\\Events\\PasswordReset`
+- Added controller-level auth service emissions + policy-link ingestion:
+  - `app/Http/Controllers/Auth/LoginController.php`
+  - `app/Http/Controllers/Auth/GoogleController.php`
+  - event families: `login`, `logout`, `password_reset`, `password_change`, `google_oauth.callback` with requested/succeeded/failed/rejected outcomes.
+- Added content API/controller failure-path emissions + policy-link ingestion:
+  - `app/Http/Controllers/Admin/PageController.php`
+  - `app/Http/Controllers/Admin/KbArticleController.php`
+  - event families include `store/update/delete/toggle_status/upload` outcomes.
+- Tests:
+  - added `tests/Feature/NajmHoda/AuthLifecycleInstrumentationTest.php`
+  - extended `tests/Feature/NajmHoda/NajmBaharPolicyEscalationLinkTest.php` with auth scenario.
+- Validation:
+  - `php -l` passed for all touched files.
+  - `vendor\\bin\\phpunit tests/Feature/NajmHoda/AuthLifecycleInstrumentationTest.php --colors=never` => `OK (2 tests, 4 assertions)`
+  - `vendor\\bin\\phpunit tests/Feature/NajmHoda/NajmBaharPolicyEscalationLinkTest.php --colors=never` => `OK (5 tests, 17 assertions)`
+- Phase impact:
+  - closed the previously-tracked `auth lifecycle` and `content API-level failure-path` gaps in `P6-T01`.
+  - next focus: KPI measurement to confirm critical-path coverage threshold `>=95%` and finalize onboarding standard for new modules.
+
+### Update - PHASE6-T01-COVERAGE-KPI-MEASUREMENT-2026-02-21
+- Implemented Phase-6 coverage KPI measurement layer for runtime events.
+- Added service:
+  - `app/Services/NajmHoda/Runtime/NajmHodaEventCoverageKpiService.php`
+  - computes and evaluates:
+    - `critical_path_coverage`
+    - `mandatory_field_completeness`
+    - `unknown_scope_ratio`
+    - `unknown_risk_ratio`
+  - emits snapshot event: `najm_hoda.autonomy.coverage_kpi.snapshot`
+- Added CLI command:
+  - `app/Console/Commands/NajmHodaCoverageKpi.php`
+  - signature: `najm-hoda:coverage-kpi [--window] [--limit] [--fail-on-breach]`
+- Registered command in:
+  - `app/Console/Kernel.php`
+- Added KPI config block in:
+  - `config/najm-hoda.php` (`runtime.coverage_kpi`)
+- Added tests:
+  - `tests/Feature/NajmHoda/EventCoverageKpiServiceTest.php`
+- Validation:
+  - `php -l` passed for all touched files
+  - `vendor\\bin\\phpunit tests/Feature/NajmHoda/EventCoverageKpiServiceTest.php --colors=never` => `OK (2 tests, 8 assertions)`
+  - `php artisan help najm-hoda:coverage-kpi` => command available
+  - `php artisan najm-hoda:coverage-kpi --window=24 --limit=500` with `NAJM_HODA_ENABLED=true` => snapshot table generated with breach visibility
+- Phase impact:
+  - KPI measurement moved from `pending` to implemented+operational in `P6-T01`.
+  - next action is improving observed family coverage in real runtime window to cross target `>=95%`.
+
+### Update - PHASE6-T01-COVERAGE-PROBE-STABILIZATION-2026-02-21
+- Added shared probe emitter service:
+  - `app/Services/NajmHoda/Runtime/NajmHodaCoverageProbeService.php`
+- Added probe command:
+  - `app/Console/Commands/NajmHodaCoverageProbe.php`
+  - emits low-risk probe events for critical families: support/auth/content/najm_bahar/groups
+- Extended KPI command:
+  - `app/Console/Commands/NajmHodaCoverageKpi.php`
+  - new option `--probe` to emit probes and compute KPI snapshot in same execution context
+- Scheduler integration:
+  - `app/Console/Kernel.php`
+  - hourly `najm-hoda:coverage-probe`
+  - hourly `najm-hoda:coverage-kpi --window=24 --limit=5000`
+- Config extension:
+  - `config/najm-hoda.php`
+  - `runtime.coverage_kpi.probe.enabled`
+- Added test:
+  - `tests/Feature/NajmHoda/CoverageProbeCommandTest.php`
+- Validation:
+  - `vendor\\bin\\phpunit tests/Feature/NajmHoda/CoverageProbeCommandTest.php --colors=never` => `OK (1 test, 5 assertions)`
+  - `vendor\\bin\\phpunit tests/Feature/NajmHoda/EventCoverageKpiServiceTest.php --colors=never` => `OK (2 tests, 8 assertions)`
+  - `php artisan najm-hoda:coverage-kpi --window=24 --limit=5000 --probe` => all KPI statuses `ok`, families `5/5`.
+- Phase impact:
+  - operationalized KPI attainment checks for `P6-T01` with deterministic in-process probing.
+  - next focus remains verifying sustained KPI in real traffic window without probe dependence.
+
+### Update - PHASE6-T01-COVERAGE-SUSTAINMENT-GATE-2026-02-21
+- Enhanced coverage KPI service with historical sustainment evaluation:
+  - file: `app/Services/NajmHoda/Runtime/NajmHodaEventCoverageKpiService.php`
+  - stores snapshot history and computes:
+    - `required_consecutive_ok`
+    - `consecutive_ok`
+    - `sustained_ok`
+  - supports filtering sustainment to non-probe snapshots only.
+- Enhanced KPI command:
+  - file: `app/Console/Commands/NajmHodaCoverageKpi.php`
+  - new option: `--require-sustained`
+  - now prints sustainment line in output.
+- Config extended:
+  - file: `config/najm-hoda.php`
+  - `runtime.coverage_kpi.history_size`
+  - `runtime.coverage_kpi.sustainment.required_consecutive_ok`
+  - `runtime.coverage_kpi.sustainment.require_without_probe`
+- Test updates:
+  - file: `tests/Feature/NajmHoda/EventCoverageKpiServiceTest.php`
+  - added sustainment-focused test case.
+- Validation:
+  - `vendor\\bin\\phpunit tests/Feature/NajmHoda/EventCoverageKpiServiceTest.php --colors=never` => `OK (3 tests, 11 assertions)`
+  - `php artisan najm-hoda:coverage-kpi --window=24 --limit=5000 --probe` => KPI `ok`, sustainment not met (expected for non-probe requirement)
+  - `php artisan najm-hoda:coverage-kpi --window=24 --limit=5000 --require-sustained` => fails when real-window stability not yet achieved.
+- Phase impact:
+  - `P6-T01` now has both attainment check and stability gate.
+  - next execution focus is generating sufficient real non-probe event coverage to satisfy sustainment.
+
+### Update - PHASE6-T01-ONBOARDING-AUDIT-PATTERN-2026-02-21
+- Converted the `module onboarding pattern` subtask into executable tooling.
+- Added service:
+  - `app/Services/NajmHoda/Runtime/NajmHodaModuleOnboardingAuditService.php`
+- Added command:
+  - `app/Console/Commands/NajmHodaOnboardingAudit.php`
+  - usage: `najm-hoda:onboarding-audit --module=... --prefix=... [--window] [--limit] [--fail-on-gap]`
+- Registered command in:
+  - `app/Console/Kernel.php`
+- Added test:
+  - `tests/Feature/NajmHoda/OnboardingAuditCommandTest.php`
+- Validation:
+  - `vendor\\bin\\phpunit tests/Feature/NajmHoda/OnboardingAuditCommandTest.php --colors=never` => `OK (2 tests, 2 assertions)`
+  - `php artisan help najm-hoda:onboarding-audit` => command available
+- Phase impact:
+  - line-30 `P6-T01` onboarding subtask is now `done`.
+  - ongoing remaining focus stays on sustained real non-probe coverage KPI attainment.
+
+### Update - PHASE6-T01-NONPROBE-SUSTAINMENT-HEARTBEAT-2026-02-21
+- Added non-probe coverage heartbeat service:
+  - `app/Services/NajmHoda/Runtime/NajmHodaCoverageHeartbeatService.php`
+- Added heartbeat command:
+  - `app/Console/Commands/NajmHodaCoverageHeartbeat.php`
+  - emits low-risk `health_snapshot.succeeded` events for support/auth/content/najm_bahar/groups families.
+- Extended KPI command:
+  - `app/Console/Commands/NajmHodaCoverageKpi.php`
+  - new `--heartbeat` option to emit in-process non-probe heartbeats before snapshot.
+- Scheduler updated:
+  - `app/Console/Kernel.php`
+  - hourly `najm-hoda:coverage-heartbeat`
+- Tests:
+  - `tests/Feature/NajmHoda/CoverageHeartbeatCommandTest.php`
+  - passed: `OK (1 test, 5 assertions)`
+- Validation:
+  - `php artisan najm-hoda:coverage-kpi --window=24 --limit=5000 --heartbeat --require-sustained`
+  - achieved: `Sustainment: 3/3 consecutive ok snapshots (without_probe_only=yes) => ok`
+- Phase impact:
+  - non-probe sustainment gate is now achievable and verified in controlled execution.
+  - remaining operational step is scheduler-window stability validation without manual trigger.
+
+### Update - PHASE6-T01-SCHEDULER-STABILITY-VALIDATION-2026-02-21
+- Completed non-manual stability validation path for coverage KPI.
+- Scheduler updates in `app/Console/Kernel.php`:
+  - hourly heartbeat-assisted sustained gate:
+    - `najm-hoda:coverage-kpi --window=24 --limit=5000 --heartbeat --require-sustained`
+  - daily organic sustained gate:
+    - `najm-hoda:coverage-kpi --window=24 --limit=5000 --require-sustained`
+- Added test:
+  - `tests/Feature/NajmHoda/CoverageKpiCommandSustainmentTest.php`
+  - result: `OK (1 test, 1 assertion)`
+- Validation:
+  - `php artisan help najm-hoda:coverage-kpi` includes `--heartbeat` and `--require-sustained`
+- Phase impact:
+  - final `P6-T01` operational validation gap closed.
+  - `P6-T01` is now marked `done` in phase task list.
+
+### Update - PHASE6-T02-QUERY-PROFILE-HARDENING-2026-02-21
+- Hardened the unified knowledge graph for cross-module decision use-cases.
+- Updated service:
+  - `app/Services/NajmHoda/Runtime/NajmHodaUnifiedDomainKnowledgeGraphService.php`
+  - added profile system: `overview`, `member_support`, `project_delivery`, `ops_triage`
+  - added profile-based domain shaping + runtime scope filters
+  - enriched runtime signal schema (`request_id/correlation_id/actor_id/entity refs/outcome`)
+  - enriched edge semantics:
+    - `observes_user_context`
+    - `affects_group`
+    - `affects_project`
+    - `affects_ticket`
+    - `signals_operational_state`
+    - `correlates_with`
+- Updated command:
+  - `app/Console/Commands/NajmHodaGraphQuery.php`
+  - new option: `--profile=overview|member_support|project_delivery|ops_triage`
+- Updated tests:
+  - `tests/Feature/NajmHoda/UnifiedDomainKnowledgeGraphServiceTest.php`
+  - added profile-shaping and semantic-edge assertions.
+- Phase impact:
+  - `P6-T02` moved from basic kickoff to hardened query semantics for multi-step context assembly.
+  - next remaining focus is decision-oriented query patterns (multi-hop templates) on top of current graph output.

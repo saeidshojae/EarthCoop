@@ -147,6 +147,64 @@ return [
             'retention_days' => env('NAJM_HODA_RUNTIME_EVENT_RETENTION_DAYS', 14),
             'prune_interval_seconds' => env('NAJM_HODA_RUNTIME_EVENT_PRUNE_INTERVAL_SECONDS', 300),
         ],
+        'domain_policy_link' => [
+            'enabled' => env('NAJM_HODA_DOMAIN_POLICY_LINK_ENABLED', true),
+            'request_approval_on_failures' => env('NAJM_HODA_DOMAIN_POLICY_LINK_REQUEST_APPROVAL_ON_FAILURES', true),
+            'approval_risk_levels' => ['medium', 'high'],
+        ],
+        'coverage_kpi' => [
+            'window_hours' => env('NAJM_HODA_COVERAGE_KPI_WINDOW_HOURS', 24),
+            'event_limit' => env('NAJM_HODA_COVERAGE_KPI_EVENT_LIMIT', 5000),
+            'snapshot_ttl_minutes' => env('NAJM_HODA_COVERAGE_KPI_SNAPSHOT_TTL_MINUTES', 180),
+            'history_size' => env('NAJM_HODA_COVERAGE_KPI_HISTORY_SIZE', 200),
+            'probe' => [
+                'enabled' => env('NAJM_HODA_COVERAGE_KPI_PROBE_ENABLED', true),
+            ],
+            'heartbeat' => [
+                'enabled' => env('NAJM_HODA_COVERAGE_KPI_HEARTBEAT_ENABLED', true),
+            ],
+            'sustainment' => [
+                'required_consecutive_ok' => env('NAJM_HODA_COVERAGE_KPI_SUSTAIN_REQUIRED', 3),
+                'require_without_probe' => env('NAJM_HODA_COVERAGE_KPI_SUSTAIN_WITHOUT_PROBE', true),
+            ],
+            'critical_families' => [
+                'najm_hoda.input.support.service.',
+                'najm_hoda.input.auth.service.',
+                'najm_hoda.input.content.service.',
+                'najm_hoda.input.najm_bahar.service.',
+                'najm_hoda.input.group_',
+            ],
+            'mandatory_fields' => [
+                'request_id',
+                'correlation_id',
+                'actor_id',
+                'scope',
+                'risk',
+                'event_version',
+                'emitted_at',
+            ],
+            'unknown_scopes' => ['unknown', 'global'],
+            'unknown_risks' => ['unknown'],
+            'thresholds' => [
+                'critical_path_coverage_min' => 0.95,
+                'mandatory_field_completeness_min' => 0.99,
+                'unknown_scope_ratio_max' => 0.02,
+                'unknown_risk_ratio_max' => 0.05,
+            ],
+        ],
+        'multi_horizon_goals' => [
+            'window_hours' => env('NAJM_HODA_MULTI_GOALS_WINDOW_HOURS', 24),
+            'event_limit' => env('NAJM_HODA_MULTI_GOALS_EVENT_LIMIT', 2000),
+            'snapshot_ttl_minutes' => env('NAJM_HODA_MULTI_GOALS_SNAPSHOT_TTL_MINUTES', 180),
+            'thresholds' => [
+                'critical_path_coverage_min' => env('NAJM_HODA_MULTI_GOALS_CRITICAL_COVERAGE_MIN', 0.95),
+                'unknown_risk_ratio_max' => env('NAJM_HODA_MULTI_GOALS_UNKNOWN_RISK_MAX', 0.02),
+            ],
+            'review' => [
+                'max_backlog_growth' => env('NAJM_HODA_MULTI_GOALS_REVIEW_MAX_BACKLOG_GROWTH', 1),
+                'max_high_priority_growth' => env('NAJM_HODA_MULTI_GOALS_REVIEW_MAX_HIGH_GROWTH', 0),
+            ],
+        ],
         'safety' => [
             'rate_limit' => [
                 'max_actions_per_minute' => env('NAJM_HODA_RUNTIME_RATE_MAX_PER_MINUTE', 60),
@@ -263,6 +321,36 @@ return [
                     'optional_input' => ['health_status', 'error_rate_percent', 'unresolved_requests', 'recommendation_count', 'top_recommendation_key', 'top_recommendation_confidence'],
                     'output' => ['recommendations', 'confidence', 'rationale'],
                 ],
+                'set_ticket_needs_review' => [
+                    'name' => 'Set Ticket Needs Review',
+                    'enabled' => true,
+                    'version' => 1,
+                    'risk' => 'low',
+                    'mode' => 'apply',
+                    'required_input' => ['ticket_id'],
+                    'optional_input' => ['target_status'],
+                    'output' => ['ticket_id', 'previous_status', 'target_status'],
+                ],
+                'rollback_ops_monitor' => [
+                    'name' => 'Operations Monitor Rollback',
+                    'enabled' => true,
+                    'version' => 1,
+                    'risk' => 'low',
+                    'mode' => 'apply',
+                    'required_input' => ['origin_action', 'origin_run_id'],
+                    'optional_input' => ['origin_input'],
+                    'output' => ['rollback_trace'],
+                ],
+                'rollback_engagement_recommendations' => [
+                    'name' => 'Engagement Recommendation Rollback',
+                    'enabled' => true,
+                    'version' => 1,
+                    'risk' => 'low',
+                    'mode' => 'apply',
+                    'required_input' => ['origin_action', 'origin_run_id'],
+                    'optional_input' => ['origin_input'],
+                    'output' => ['rollback_trace'],
+                ],
             ],
             'safety' => [
                 'enabled' => env('NAJM_HODA_AUTONOMY_SAFETY_ENABLED', true),
@@ -272,10 +360,16 @@ return [
                 'allowed_actions' => [
                     'run_ops_monitor',
                     'propose_engagement_recommendations',
+                    'set_ticket_needs_review',
+                    'rollback_ops_monitor',
+                    'rollback_engagement_recommendations',
                 ],
                 'action_goal_scope' => [
                     'run_ops_monitor' => ['stabilize_operations'],
                     'propose_engagement_recommendations' => ['improve_user_experience'],
+                    'set_ticket_needs_review' => ['stabilize_operations'],
+                    'rollback_ops_monitor' => ['stabilize_operations'],
+                    'rollback_engagement_recommendations' => ['stabilize_operations', 'improve_user_experience'],
                 ],
             ],
             'human_escalation' => [
@@ -307,6 +401,21 @@ return [
                     'run_ops_monitor' => env('NAJM_HODA_AUTONOMY_EXECUTOR_COOLDOWN_RUN_OPS_MONITOR', 60),
                     'propose_engagement_recommendations' => env('NAJM_HODA_AUTONOMY_EXECUTOR_COOLDOWN_RECOMMENDATIONS', 120),
                     'prioritize_overdue_action_items' => env('NAJM_HODA_AUTONOMY_EXECUTOR_COOLDOWN_PRIORITIZE_ITEMS', 120),
+                    'set_ticket_needs_review' => env('NAJM_HODA_AUTONOMY_EXECUTOR_COOLDOWN_SET_TICKET_REVIEW', 60),
+                    'rollback_ops_monitor' => env('NAJM_HODA_AUTONOMY_EXECUTOR_COOLDOWN_ROLLBACK_OPS_MONITOR', 30),
+                    'rollback_engagement_recommendations' => env('NAJM_HODA_AUTONOMY_EXECUTOR_COOLDOWN_ROLLBACK_RECOMMENDATIONS', 30),
+                ],
+            ],
+            'orchestrator' => [
+                'enabled' => env('NAJM_HODA_AUTONOMY_ORCHESTRATOR_ENABLED', true),
+                'max_steps_per_chain' => env('NAJM_HODA_AUTONOMY_ORCHESTRATOR_MAX_STEPS', 3),
+                'compensation' => [
+                    'fallback_to_capability_rollback' => env('NAJM_HODA_AUTONOMY_ORCHESTRATOR_COMP_FALLBACK', true),
+                ],
+                'rollback_map' => [
+                    'run_ops_monitor' => 'rollback_ops_monitor',
+                    'propose_engagement_recommendations' => 'rollback_engagement_recommendations',
+                    'set_ticket_needs_review' => 'rollback_engagement_recommendations',
                 ],
             ],
             'audit' => [
@@ -330,6 +439,9 @@ return [
                     'run_ops_monitor' => env('NAJM_HODA_AUTONOMY_COST_RUN_OPS_MONITOR', 0.002),
                     'propose_engagement_recommendations' => env('NAJM_HODA_AUTONOMY_COST_PROPOSE_RECOMMENDATIONS', 0.003),
                     'prioritize_overdue_action_items' => env('NAJM_HODA_AUTONOMY_COST_PRIORITIZE_ITEMS', 0.0015),
+                    'set_ticket_needs_review' => env('NAJM_HODA_AUTONOMY_COST_SET_TICKET_REVIEW', 0.0015),
+                    'rollback_ops_monitor' => env('NAJM_HODA_AUTONOMY_COST_ROLLBACK_OPS_MONITOR', 0.001),
+                    'rollback_engagement_recommendations' => env('NAJM_HODA_AUTONOMY_COST_ROLLBACK_RECOMMENDATIONS', 0.001),
                 ],
             ],
             'runbooks' => [

@@ -25,7 +25,8 @@ class DatabaseRuntimeEventBus implements RuntimeEventBus
 
     public function emit(string $event, array $payload = []): void
     {
-        $requestId = isset($payload['request_id']) ? (string) $payload['request_id'] : null;
+        $payload = RuntimeEventEnvelope::normalize($event, $payload);
+        $requestId = (string) ($payload['request_id'] ?? '');
 
         try {
             NajmHodaRuntimeEvent::query()->create([
@@ -114,4 +115,3 @@ class DatabaseRuntimeEventBus implements RuntimeEventBus
         }
     }
 }
-

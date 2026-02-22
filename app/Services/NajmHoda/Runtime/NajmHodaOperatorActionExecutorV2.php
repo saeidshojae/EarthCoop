@@ -2,6 +2,7 @@
 
 namespace App\Services\NajmHoda\Runtime;
 
+use App\Models\Ticket;
 use Illuminate\Support\Facades\Cache;
 
 class NajmHodaOperatorActionExecutorV2
@@ -140,11 +141,48 @@ class NajmHodaOperatorActionExecutorV2
                 'intent' => 'dispatch_recommendations',
                 'recommendation_count' => count((array) ($item['recommendations'] ?? [])),
             ]),
+            'set_ticket_needs_review' => $this->markTicketNeedsReview($runId, $item),
+            'rollback_ops_monitor' => $this->emitExecutionIntent($runId, $action, [
+                'intent' => 'rollback_ops_monitor_context',
+            ]),
+            'rollback_engagement_recommendations' => $this->emitExecutionIntent($runId, $action, [
+                'intent' => 'rollback_engagement_recommendations',
+            ]),
             'prioritize_overdue_action_items' => $this->emitExecutionIntent($runId, $action, [
                 'intent' => 'prioritize_backlog',
             ]),
             default => throw new \RuntimeException('unsupported_action'),
         };
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     * @return array<string, mixed>
+     */
+    protected function markTicketNeedsReview(string $runId, array $item): array
+    {
+        $input = is_array($item['input'] ?? null) ? $item['input'] : [];
+        $ticketId = (int) ($input['ticket_id'] ?? 0);
+        $targetStatus = trim((string) ($input['target_status'] ?? 'needs_review'));
+        if ($ticketId <= 0 || $targetStatus === '') {
+            throw new \RuntimeException('invalid_ticket_input');
+        }
+
+        $ticket = Ticket::query()->find($ticketId);
+        if ($ticket === null) {
+            throw new \RuntimeException('ticket_not_found');
+        }
+
+        $previousStatus = (string) ($ticket->status ?? '');
+        $ticket->status = $targetStatus;
+        $ticket->save();
+
+        return $this->emitExecutionIntent($runId, 'set_ticket_needs_review', [
+            'intent' => 'mark_ticket_needs_review',
+            'ticket_id' => $ticketId,
+            'previous_status' => $previousStatus,
+            'target_status' => $targetStatus,
+        ]);
     }
 
     /**
