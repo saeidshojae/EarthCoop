@@ -108,7 +108,8 @@
   - `done`: اتصال UI مدیریتی explainability/veto/override روی `governance-dashboard` با اکشن های approve/reject/veto و override controls
   - `done`: سخت سازی UX/observability کنسول نظارتی (feedback خطا/موفقیت، loading state، pagination/filter برای approvals)
   - `done`: ارتقای endpoint نظارتی با `server-side filtering/pagination/sorting` برای approvals
-  - `in_progress`: تکمیل جزئیات نظارتی پیشرفته (role-aware UI policy hints + telemetry جزئی تعامل اپراتور)
+  - `done`: اضافه شدن `role-aware policy hints` در snapshot و enforce آن در UI (disable/action guard + hint)
+  - `in_progress`: telemetry جزئی تعامل اپراتور در کنسول نظارتی (ثبت تعاملات UI برای تحلیل کیفیت تصمیم)
 
 8. `P6-T08` Safe CodeOps Expansion (Canary + Auto Rollback)
 - شرح: گسترش CodeOps به rollout تدریجی (canary) و rollback خودکار مبتنی بر SLO breach.

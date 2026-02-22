@@ -1416,11 +1416,48 @@ class NajmHodaController extends Controller
                 'q' => $query,
             ],
         ]);
+        data_set($snapshot, 'policy_hints', $this->oversightPolicyHints());
 
         return response()->json([
             'success' => true,
             'snapshot' => $snapshot,
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function oversightPolicyHints(): array
+    {
+        $user = auth()->user();
+        $can = static function ($permission) use ($user): bool {
+            if ($user === null) {
+                return false;
+            }
+            try {
+                return (bool) $user->hasPermission($permission);
+            } catch (\Throwable) {
+                return false;
+            }
+        };
+
+        $ability = [
+            'approval_approve' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
+            'approval_reject' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
+            'approval_veto' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
+            'controls_update' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
+            'controls_kill_switch' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
+            'controls_override' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.write'),
+            'oversight_read' => $can('najm-hoda.manage-settings') || $can('najm-hoda.autonomy.read'),
+        ];
+
+        return [
+            'ability' => $ability,
+            'required_permissions' => [
+                'oversight_read' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.read'],
+                'oversight_write' => ['najm-hoda.manage-settings', 'najm-hoda.autonomy.write'],
+            ],
+        ];
     }
 
     public function replayAutonomyTrace(string $runId)

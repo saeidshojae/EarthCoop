@@ -149,6 +149,7 @@
     let approvalsCache = [];
     let approvalPagination = null;
     let approvalPage = 1;
+    let oversightPolicyHints = {};
 
     function setOversightStatus(type, message) {
         if (!message) {
@@ -175,6 +176,29 @@
             btn.classList.toggle('opacity-60', loading);
         });
         if (loading) setOversightStatus('loading', 'Loading oversight data...');
+    }
+
+    function canAbility(key) {
+        return Boolean(oversightPolicyHints?.ability?.[key]);
+    }
+
+    function applyPolicyHintsToControls() {
+        const canControls = canAbility('controls_update');
+        const canKillSwitch = canAbility('controls_kill_switch');
+        const canOverride = canAbility('controls_override');
+
+        document.querySelectorAll('.control-action').forEach((btn) => {
+            const action = btn.getAttribute('data-control-action');
+            let allowed = canControls;
+            if (action === 'activate_kill_switch' || action === 'deactivate_kill_switch') {
+                allowed = canKillSwitch;
+            } else if (action === 'set_override' || action === 'clear_override') {
+                allowed = canOverride;
+            }
+            btn.disabled = oversightBusy || !allowed;
+            btn.classList.toggle('opacity-60', btn.disabled);
+            btn.title = allowed ? '' : 'Insufficient permission for this action';
+        });
     }
 
     function card(title, value, hint = '') {
@@ -300,6 +324,10 @@
             return;
         }
 
+        const canApprove = canAbility('approval_approve');
+        const canReject = canAbility('approval_reject');
+        const canVeto = canAbility('approval_veto');
+
         approvalTableBody.innerHTML = rows.map((row) => {
             const id = row?.id || '';
             const slaStatus = row?.sla_status || 'within_sla';
@@ -314,9 +342,9 @@
                     <td class="p-2">${badge}</td>
                     <td class="p-2">
                         <div class="flex flex-wrap gap-1">
-                            <button class="approval-action px-2 py-1 bg-emerald-600 text-white rounded text-xs" data-id="${id}" data-mode="approve">Approve</button>
-                            <button class="approval-action px-2 py-1 bg-amber-600 text-white rounded text-xs" data-id="${id}" data-mode="reject">Reject</button>
-                            <button class="approval-action px-2 py-1 bg-red-600 text-white rounded text-xs" data-id="${id}" data-mode="veto">Veto</button>
+                            <button class="approval-action px-2 py-1 bg-emerald-600 text-white rounded text-xs ${canApprove ? '' : 'opacity-60'}" ${canApprove ? '' : 'disabled title="Insufficient permission"'} data-id="${id}" data-mode="approve">Approve</button>
+                            <button class="approval-action px-2 py-1 bg-amber-600 text-white rounded text-xs ${canReject ? '' : 'opacity-60'}" ${canReject ? '' : 'disabled title="Insufficient permission"'} data-id="${id}" data-mode="reject">Reject</button>
+                            <button class="approval-action px-2 py-1 bg-red-600 text-white rounded text-xs ${canVeto ? '' : 'opacity-60'}" ${canVeto ? '' : 'disabled title="Insufficient permission"'} data-id="${id}" data-mode="veto">Veto</button>
                         </div>
                     </td>
                 </tr>
@@ -330,6 +358,7 @@
         const audit = snapshot?.audit || {};
         const events = snapshot?.events || {};
         const controls = snapshot?.controls || {};
+        oversightPolicyHints = snapshot?.policy_hints || {};
         const state = controls?.state || {};
         const kill = controls?.kill_switch || {};
         const override = controls?.override || {};
@@ -366,7 +395,9 @@
             <div><strong>Kill switch:</strong> ${(kill?.active ? 'active' : 'inactive')}</div>
             <div><strong>Override mode:</strong> ${override?.force_mode || 'none'}</div>
             <div><strong>Allow low-risk apply:</strong> ${override?.allow_apply_low_risk === true ? 'true' : 'false'}</div>
+            <div class="mt-2 text-xs text-gray-500"><strong>Policy hints:</strong> read=${canAbility('oversight_read')}, write=${canAbility('controls_update')}</div>
         `;
+        applyPolicyHintsToControls();
     }
 
     async function loadGovernance() {
@@ -414,6 +445,10 @@
 
     async function handleApprovalAction(id, mode) {
         if (!id || !mode) return;
+        if (mode === 'approve' && !canAbility('approval_approve')) return;
+        if (mode === 'reject' && !canAbility('approval_reject')) return;
+        if (mode === 'veto' && !canAbility('approval_veto')) return;
+
         let url = '';
         let payload = {};
 
@@ -446,6 +481,10 @@
 
     async function handleControlAction(action) {
         if (!action) return;
+        if (!canAbility('controls_update')) return;
+        if ((action === 'activate_kill_switch' || action === 'deactivate_kill_switch') && !canAbility('controls_kill_switch')) return;
+        if ((action === 'set_override' || action === 'clear_override') && !canAbility('controls_override')) return;
+
         const payload = { action };
 
         if (action === 'pause') {

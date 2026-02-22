@@ -1355,3 +1355,16 @@
   - `resources/views/admin/najm-hoda/governance-dashboard.blade.php`
 - Phase impact:
   - oversight table now scales better and keeps operator state consistent across refresh cycles.
+
+### Update - PHASE6-T07-ROLE-AWARE-POLICY-HINTS-2026-02-22
+- Added role-aware policy hints to oversight snapshot in:
+  - `app/Http/Controllers/Admin/NajmHodaController.php`
+  - field: `snapshot.policy_hints`
+- Added UI-side enforcement using policy hints in:
+  - `resources/views/admin/najm-hoda/governance-dashboard.blade.php`
+- Behavior changes:
+  - approval action buttons (`approve/reject/veto`) are disabled when operator permission is insufficient.
+  - control actions (`pause/resume/kill-switch/override`) are disabled based on permission hints.
+  - UI shows compact permission hint state to reduce operator ambiguity.
+- Phase impact:
+  - `P6-T07` gained explicit role-aware guardrails in the operator interface.
