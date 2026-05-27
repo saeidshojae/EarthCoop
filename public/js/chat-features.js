@@ -712,16 +712,40 @@
     }
 
     // ========== Read Receipts ==========
+    const _markedReadIds = new Set();
+    const _markReadQueue = new Set();
+    let _markReadTimer = null;
+    let _markReadBusy = false;
+
+    async function _flushMarkReadQueue() {
+        if (_markReadBusy || _markReadQueue.size === 0) return;
+        _markReadBusy = true;
+        // یکی یکی sequential بفرست تا صف سرور شلوغ نشه
+        for (const id of Array.from(_markReadQueue)) {
+            _markReadQueue.delete(id);
+            try {
+                await fetch(`/messages/${id}/mark-read`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
+                });
+            } catch (e) { /* ignore */ }
+        }
+        _markReadBusy = false;
+        // اگر هنوز آیتم باقی مونده (در حین flush اضافه شدن)
+        if (_markReadQueue.size > 0) {
+            _markReadTimer = setTimeout(_flushMarkReadQueue, 3000);
+        }
+    }
+
     function markMessageAsRead(messageId) {
         if (!messageId) return;
-        
-        fetch(`/messages/${messageId}/mark-read`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': csrfToken,
-                'Accept': 'application/json'
-            }
-        }).catch(err => console.error('Mark read error:', err));
+        const key = String(messageId);
+        if (_markedReadIds.has(key)) return; // قبلاً mark شده
+        _markedReadIds.add(key);
+        _markReadQueue.add(key);
+        // debounce: 3 ثانیه صبر کن تا چند پیام یکجا بفرستند
+        clearTimeout(_markReadTimer);
+        _markReadTimer = setTimeout(_flushMarkReadQueue, 3000);
     }
 
     // Mark messages as read when visible
@@ -990,6 +1014,8 @@
             actionMenu.appendChild(threadBtn);
         }
     }
+    // دسترسی global برای استفاده در appendMessage و polling
+    window.addThreadButton = addThreadButton;
 
     window.showThread = function(messageId) {
         fetch(`/messages/${messageId}/thread`, {

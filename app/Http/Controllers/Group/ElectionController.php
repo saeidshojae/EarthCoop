@@ -60,6 +60,13 @@ class ElectionController
             }
    
         }
+        if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'رأی شما با موفقیت ثبت شد.',
+            ]);
+        }
+
         return redirect()->back()->with('success', 'رأی شما با موفقیت ثبت شد.');
     }
 

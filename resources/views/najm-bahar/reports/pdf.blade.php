@@ -1,230 +1,460 @@
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <!-- Tailwind & Bootstrap CSS via Vite -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>گزارش تراکنش‌های نجم بهار</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Vazirmatn', 'Tahoma', sans-serif;
-            direction: rtl;
-            padding: 2rem;
-            background: #fff;
-            color: #1e293b;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 3px solid #10b981;
-        }
-        
-        .header h1 {
-            font-size: 2rem;
-            color: #10b981;
-            margin-bottom: 0.5rem;
-        }
-        
-        .header p {
-            color: #64748b;
-        }
-        
-        .summary {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        
-        .summary-card {
-            background: #f8fafc;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            border: 1px solid #e2e8f0;
-            text-align: center;
-        }
-        
-        .summary-card-value {
-            font-size: 1.5rem;
-            font-weight: 800;
-            margin-bottom: 0.5rem;
-        }
-        
-        .summary-card-label {
-            font-size: 0.875rem;
-            color: #64748b;
-        }
-        
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-        
-        .table th {
-            background: #10b981;
-            color: white;
-            padding: 0.75rem;
-            text-align: right;
-            font-weight: 600;
-        }
-        
-        .table td {
-            padding: 0.75rem;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        
-        .table tbody tr:hover {
-            background: #f8fafc;
-        }
-        
-        .type-in {
-            color: #10b981;
-        }
-        
-        .type-out {
-            color: #ef4444;
-        }
-        
-        .footer {
-            margin-top: 2rem;
-            padding-top: 1rem;
-            border-top: 1px solid #e2e8f0;
-            text-align: center;
-            color: #64748b;
-            font-size: 0.875rem;
-        }
-        
-        @media print {
-            body {
-                padding: 1rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    @php
-        $reportOwnerName = $reportOwnerName ?? (isset($user) ? trim($user->first_name . ' ' . $user->last_name) : '');
-        $accountNumberDisplay = $accountNumberDisplay ?? ($account?->account_number ?? '');
-    @endphp
-    <div class="header">
-        <h1>گزارش تراکنش‌های نجم بهار</h1>
-        @if($reportOwnerName)
-            <p>{{ $reportOwnerName }}</p>
-        @endif
-        @if($accountNumberDisplay)
-            <p>شماره حساب: {{ $accountNumberDisplay }}</p>
-        @endif
-        <p>از {{ \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($dateFrom))->format('Y/m/d') }} تا {{ \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($dateTo))->format('Y/m/d') }}</p>
-    </div>
-
-    <div class="summary">
-        <div class="summary-card">
-            <div class="summary-card-value" style="color: #10b981;">{{ \App\Helpers\BaharMoney::formatDecimalHtml($summary['totalIn']) }}</div>
-            <div class="summary-card-label">مجموع ورودی</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-card-value" style="color: #ef4444;">{{ \App\Helpers\BaharMoney::formatDecimalHtml($summary['totalOut']) }}</div>
-            <div class="summary-card-label">مجموع خروجی</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-card-value" style="color: #3b82f6;">{{ \App\Helpers\BaharMoney::formatDecimalHtml($summary['net']) }}</div>
-            <div class="summary-card-label">خالص</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-card-value" style="color: #f59e0b;">{{ number_format($summary['count']) }}</div>
-            <div class="summary-card-label">تعداد تراکنش‌ها</div>
-        </div>
-    </div>
-
-    <table class="table">
-        <thead>
-            <tr>
-                <th>شماره رهگیری</th>
-                <th>تاریخ</th>
-                <th>از حساب</th>
-                <th>به حساب</th>
-                <th>نوع</th>
-                <th>مبلغ (بهار)</th>
-                <th>توضیحات</th>
-                <th>وضعیت</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($transactions as $transaction)
-                @php
-                    $isIncoming = false;
-                    if ($account ?? null) {
-                        $isIncoming = isset($transaction->to_account_id) && $transaction->to_account_id == $account->id;
-                    }
-                    $fromAccount = $transaction->fromAccount;
-                    $toAccount = $transaction->toAccount;
-                    
-                    $getAccountLabel = function($acc, $type) {
-                        if (!$acc) return '—';
-                        if ($acc->type === 'system') return $type === 'to' ? 'EarthCoop' : 'سیستم';
-
-                        if ($acc->type === 'subaccount') {
-                            $subAcc = \App\Modules\NajmBahar\Models\SubAccount::where('sub_account_code', $acc->account_number)->first();
-                            $subName = $subAcc?->name ?? 'حساب فرعی';
-                            $mainAccount = $subAcc?->account;
-
-                            if ($mainAccount && $mainAccount->type === 'system') {
-                                return 'EarthCoop - ' . $subName;
-                            }
-
-                            $user = $mainAccount?->user;
-                            $userName = $user ? trim($user->first_name . ' ' . $user->last_name) : 'کاربر';
-                            return $userName . ' - ' . $subName;
-                        }
-
-                        $user = $acc->user;
-                        $userName = $user ? trim($user->first_name . ' ' . $user->last_name) : 'کاربر';
-                        return $userName;
-                    };
-                @endphp
-                <tr>
-                    <td><small>{{ $transaction->tracking_number ?? '—' }}</small></td>
-                    <td>{{ \Morilog\Jalali\Jalalian::fromCarbon($transaction->created_at)->format('Y/m/d H:i') }}</td>
-                    <td>
-                        <small>
-                            <div>{{ $getAccountLabel($fromAccount, 'from') }}</div>
-                            <div style="font-size: 0.8em; color: #666;">{{ $fromAccount?->account_number ?? '—' }}</div>
-                        </small>
-                    </td>
-                    <td>
-                        <small>
-                            <div>{{ $getAccountLabel($toAccount, 'to') }}</div>
-                            <div style="font-size: 0.8em; color: #666;">{{ $toAccount?->account_number ?? '—' }}</div>
-                        </small>
-                    </td>
-                    <td class="{{ $isIncoming ? 'type-in' : 'type-out' }}">
-                        {{ $isIncoming ? 'ورودی' : 'خروجی' }}
-                    </td>
-                    <td class="{{ $isIncoming ? 'type-in' : 'type-out' }}">
-                        {{ $isIncoming ? '+' : '-' }}{{ \App\Helpers\BaharMoney::formatDecimalValueHtml($transaction->amount) }}
-                    </td>
-                    <td>{{ $transaction->description ?? 'تراکنش' }}</td>
-                    <td>تکمیل شده</td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
-
-    <div class="footer">
-        <p>تاریخ تولید گزارش: {{ \Morilog\Jalali\Jalalian::now()->format('Y/m/d H:i') }}</p>
-        <p>EarthCoop - سیستم مالی نجم بهار</p>
-    </div>
-</body>
-</html>
-
-
+<!DOCTYPE html>
+
+<html lang="fa" dir="rtl">
+
+<head>
+
+    <!-- Tailwind & Bootstrap CSS via Vite -->
+
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>گزارش تراکنش‌های نجم بهار</title>
+
+    <style>
+
+        * {
+
+            margin: 0;
+
+            padding: 0;
+
+            box-sizing: border-box;
+
+        }
+
+        
+
+        body {
+
+            font-family: 'Vazirmatn', 'Tahoma', sans-serif;
+
+            direction: rtl;
+
+            padding: 2rem;
+
+            background: #fff;
+
+            color: #1e293b;
+
+        }
+
+        
+
+        .header {
+
+            text-align: center;
+
+            margin-bottom: 2rem;
+
+            padding-bottom: 1rem;
+
+            border-bottom: 3px solid #10b981;
+
+        }
+
+        
+
+        .header h1 {
+
+            font-size: 2rem;
+
+            color: #10b981;
+
+            margin-bottom: 0.5rem;
+
+        }
+
+        
+
+        .header p {
+
+            color: #64748b;
+
+        }
+
+        
+
+        .summary {
+
+            display: grid;
+
+            grid-template-columns: repeat(4, 1fr);
+
+            gap: 1rem;
+
+            margin-bottom: 2rem;
+
+        }
+
+        
+
+        .summary-card {
+
+            background: #f8fafc;
+
+            padding: 1rem;
+
+            border-radius: 0.5rem;
+
+            border: 1px solid #e2e8f0;
+
+            text-align: center;
+
+        }
+
+        
+
+        .summary-card-value {
+
+            font-size: 1.5rem;
+
+            font-weight: 800;
+
+            margin-bottom: 0.5rem;
+
+        }
+
+        
+
+        .summary-card-label {
+
+            font-size: 0.875rem;
+
+            color: #64748b;
+
+        }
+
+        
+
+        .table {
+
+            width: 100%;
+
+            border-collapse: collapse;
+
+            margin-top: 1rem;
+
+        }
+
+        
+
+        .table th {
+
+            background: #10b981;
+
+            color: white;
+
+            padding: 0.75rem;
+
+            text-align: right;
+
+            font-weight: 600;
+
+        }
+
+        
+
+        .table td {
+
+            padding: 0.75rem;
+
+            border-bottom: 1px solid #e2e8f0;
+
+        }
+
+        
+
+        .table tbody tr:hover {
+
+            background: #f8fafc;
+
+        }
+
+        
+
+        .type-in {
+
+            color: #10b981;
+
+        }
+
+        
+
+        .type-out {
+
+            color: #ef4444;
+
+        }
+
+        
+
+        .footer {
+
+            margin-top: 2rem;
+
+            padding-top: 1rem;
+
+            border-top: 1px solid #e2e8f0;
+
+            text-align: center;
+
+            color: #64748b;
+
+            font-size: 0.875rem;
+
+        }
+
+        
+
+        @media print {
+
+            body {
+
+                padding: 1rem;
+
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    @php
+
+        $reportOwnerName = $reportOwnerName ?? (isset($user) ? trim($user->first_name . ' ' . $user->last_name) : '');
+
+        $accountNumberDisplay = $accountNumberDisplay ?? ($account?->account_number ?? '');
+
+    @endphp
+
+    <div class="header">
+
+        <h1>گزارش تراکنش‌های نجم بهار</h1>
+
+        @if($reportOwnerName)
+
+            <p>{{ $reportOwnerName }}</p>
+
+        @endif
+
+        @if($accountNumberDisplay)
+
+            <p>شماره حساب: {{ $accountNumberDisplay }}</p>
+
+        @endif
+
+        <p>از {{ \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($dateFrom))->format('Y/m/d') }} تا {{ \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($dateTo))->format('Y/m/d') }}</p>
+
+    </div>
+
+
+
+    <div class="summary">
+
+        <div class="summary-card">
+
+            <div class="summary-card-value" style="color: #10b981;">{{ \App\Helpers\BaharMoney::formatDecimalHtml($summary['totalIn']) }}</div>
+
+            <div class="summary-card-label">مجموع ورودی</div>
+
+        </div>
+
+        <div class="summary-card">
+
+            <div class="summary-card-value" style="color: #ef4444;">{{ \App\Helpers\BaharMoney::formatDecimalHtml($summary['totalOut']) }}</div>
+
+            <div class="summary-card-label">مجموع خروجی</div>
+
+        </div>
+
+        <div class="summary-card">
+
+            <div class="summary-card-value" style="color: #3b82f6;">{{ \App\Helpers\BaharMoney::formatDecimalHtml($summary['net']) }}</div>
+
+            <div class="summary-card-label">خالص</div>
+
+        </div>
+
+        <div class="summary-card">
+
+            <div class="summary-card-value" style="color: #f59e0b;">{{ number_format($summary['count']) }}</div>
+
+            <div class="summary-card-label">تعداد تراکنش‌ها</div>
+
+        </div>
+
+    </div>
+
+
+
+    <table class="table">
+
+        <thead>
+
+            <tr>
+
+                <th>شماره رهگیری</th>
+
+                <th>تاریخ</th>
+
+                <th>از حساب</th>
+
+                <th>به حساب</th>
+
+                <th>نوع</th>
+
+                <th>مبلغ (بهار)</th>
+
+                <th>توضیحات</th>
+
+                <th>وضعیت</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+            @foreach($transactions as $transaction)
+
+                @php
+
+                    $isIncoming = false;
+
+                    if ($account ?? null) {
+
+                        $isIncoming = isset($transaction->to_account_id) && $transaction->to_account_id == $account->id;
+
+                    }
+
+                    $fromAccount = $transaction->fromAccount;
+
+                    $toAccount = $transaction->toAccount;
+
+                    
+
+                    $getAccountLabel = function($acc, $type) {
+
+                        if (!$acc) return '—';
+
+                        if ($acc->type === 'system') return $type === 'to' ? 'EarthCoop' : 'سیستم';
+
+
+
+                        if ($acc->type === 'subaccount') {
+
+                            $subAcc = \App\Modules\NajmBahar\Models\SubAccount::where('sub_account_code', $acc->account_number)->first();
+
+                            $subName = $subAcc?->name ?? 'حساب فرعی';
+
+                            $mainAccount = $subAcc?->account;
+
+
+
+                            if ($mainAccount && $mainAccount->type === 'system') {
+
+                                return 'EarthCoop - ' . $subName;
+
+                            }
+
+
+
+                            $user = $mainAccount?->user;
+
+                            $userName = $user ? trim($user->first_name . ' ' . $user->last_name) : 'کاربر';
+
+                            return $userName . ' - ' . $subName;
+
+                        }
+
+
+
+                        $user = $acc->user;
+
+                        $userName = $user ? trim($user->first_name . ' ' . $user->last_name) : 'کاربر';
+
+                        return $userName;
+
+                    };
+
+                @endphp
+
+                <tr>
+
+                    <td><small>{{ $transaction->tracking_number ?? '—' }}</small></td>
+
+                    <td>{{ \Morilog\Jalali\Jalalian::fromCarbon($transaction->created_at)->format('Y/m/d H:i') }}</td>
+
+                    <td>
+
+                        <small>
+
+                            <div>{{ $getAccountLabel($fromAccount, 'from') }}</div>
+
+                            <div style="font-size: 0.8em; color: #666;">{{ $fromAccount?->account_number ?? '—' }}</div>
+
+                        </small>
+
+                    </td>
+
+                    <td>
+
+                        <small>
+
+                            <div>{{ $getAccountLabel($toAccount, 'to') }}</div>
+
+                            <div style="font-size: 0.8em; color: #666;">{{ $toAccount?->account_number ?? '—' }}</div>
+
+                        </small>
+
+                    </td>
+
+                    <td class="{{ $isIncoming ? 'type-in' : 'type-out' }}">
+
+                        {{ $isIncoming ? 'ورودی' : 'خروجی' }}
+
+                    </td>
+
+                    <td class="{{ $isIncoming ? 'type-in' : 'type-out' }}">
+
+                        {{ $isIncoming ? '+' : '-' }}{{ \App\Helpers\BaharMoney::formatDecimalValueHtml($transaction->amount) }}
+
+                    </td>
+
+                    <td>{{ $transaction->description ?? 'تراکنش' }}</td>
+
+                    <td>تکمیل شده</td>
+
+                </tr>
+
+            @endforeach
+
+        </tbody>
+
+    </table>
+
+
+
+    <div class="footer">
+
+        <p>تاریخ تولید گزارش: {{ \Morilog\Jalali\Jalalian::now()->format('Y/m/d H:i') }}</p>
+
+        <p>EarthCoop - سیستم مالی نجم بهار</p>
+
+    </div>
+
+</body>
+
+</html>
+
+
+
+
+

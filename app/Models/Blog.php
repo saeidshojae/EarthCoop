@@ -8,7 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class Blog extends Model
 {
     use HasFactory;
-    protected $fillable = ['title', 'content', 'img', 'user_id', 'group_id', 'category_id', 'file_type'];
+    protected $fillable = ['title', 'content', 'img', 'user_id', 'group_id', 'category_id', 'file_type', 'read_by'];
+
+    protected $casts = [
+        'read_by' => 'array'
+    ];
 
     public function group(){
         return $this->belongsTo(Group::class);
@@ -47,6 +51,33 @@ protected static function booted()
             $blog->group->updateLastActivity();
         }
     });
+}
+
+/**
+ * Mark blog post as read by user
+ */
+public function markAsRead(int $userId): void
+{
+    $readBy = $this->read_by ?? [];
+    $readBy[$userId] = now()->toIso8601String();
+    $this->update(['read_by' => $readBy]);
+}
+
+/**
+ * Check if blog post is read by user
+ */
+public function isReadBy(int $userId): bool
+{
+    $readBy = $this->read_by ?? [];
+    return isset($readBy[$userId]);
+}
+
+/**
+ * Get read count
+ */
+public function getReadCountAttribute(): int
+{
+    return count($this->read_by ?? []);
 }
 
 }

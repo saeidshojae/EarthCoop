@@ -1,245 +1,490 @@
-@extends('layouts.unified')
-
-@section('title', 'درخواست کد دعوت - ' . config('app.name', 'EarthCoop'))
-<!-- Tailwind & Bootstrap CSS via Vite -->
-@vite(['resources/css/app.css', 'resources/js/app.js'])
-@push('styles')
-<style>
-    .invite-request-page {
-        background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
-    }
-
-    .invite-background {
-        position: relative;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 3rem 1rem;
-    }
-
-    .invite-background::before,
-    .invite-background::after {
-        content: '';
-        position: absolute;
-        border-radius: 9999px;
-        filter: blur(60px);
-        opacity: 0.1;
-        pointer-events: none;
-    }
-
-    .invite-background::before {
-        top: 4rem;
-        left: 5rem;
-        width: 16rem;
-        height: 16rem;
-        background: #ffffff;
-    }
-
-    .invite-background::after {
-        bottom: 5rem;
-        right: 5rem;
-        width: 22rem;
-        height: 22rem;
-        background: #fed7aa;
-    }
-
-    .invite-glow {
-        position: absolute;
-        top: 50%;
-        right: 2.5rem;
-        width: 18rem;
-        height: 18rem;
-        background: #fb923c;
-        opacity: 0.12;
-        border-radius: 9999px;
-        filter: blur(70px);
-        transform: translateY(-50%);
-        pointer-events: none;
-    }
-
-    .glass-effect {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-    }
-
-    .input-focus:focus {
-        border-color: #f59e0b;
-        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
-    }
-
-    .slide-in {
-        animation: slideIn 0.6s ease-out;
-    }
-
-    @keyframes slideIn {
-        from { opacity: 0; transform: translateY(30px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    .float-animation {
-        animation: float 6s ease-in-out infinite;
-    }
-
-    @keyframes float {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-20px); }
-    }
-
-    .pulse-animation {
-        animation: pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-        0%, 100% { transform: scale(1); opacity: 0.8; }
-        50% { transform: scale(1.05); opacity: 1; }
-    }
-
-    @keyframes bounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-15px); }
-    }
-</style>
-@endpush
-
-@section('content')
-<div class="invite-request-page">
-    <div class="invite-background">
-        <span class="invite-glow"></span>
-        <div class="w-full max-w-2xl relative slide-in">
-            <div class="text-center mb-8">
-                <a href="{{ route('welcome') }}" class="inline-flex items-center justify-center gap-4 mb-6 text-white">
-                    <svg width="96" height="96" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="animate-bounce" style="animation: bounce 3s infinite ease-in-out;">
-                        <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#10b981" opacity="0.8"/>
-                        <path d="M12 2C10.5 4 8 6 8 9C8 12 12 14 12 14C12 14 16 12 16 9C16 6 13.5 4 12 2ZM12 14C12 14 10 16 10 18C10 20 12 22 12 22" fill="#047857"/>
-                    </svg>
-                    <span class="text-4xl font-extrabold tracking-wide drop-shadow-lg">EarthCoop</span>
-                </a>
-                <h1 class="text-4xl md:text-5xl font-black text-white mb-3 drop-shadow-lg">درخواست کد دعوت</h1>
-                <p class="text-orange-50 text-lg md:text-xl font-medium">به جامعه زمین نو بپیوندید</p>
-                <div class="mt-4 inline-flex items-center bg-white/20 backdrop-blur-sm rounded-full px-6 py-3 text-white">
-                    <i class="fas fa-users ml-2 text-yellow-300"></i>
-                    <span class="font-bold">هزاران نفر در انتظار شما هستند!</span>
-                </div>
-            </div>
-
-            <div class="glass-effect rounded-3xl shadow-2xl p-8 md:p-10">
-                @if(session('success'))
-                    <div class="mb-6 bg-green-50 border-r-4 border-green-500 p-5 rounded-xl shadow-sm">
-                        <div class="flex items-start">
-                            <i class="fas fa-check-circle text-green-500 text-2xl ml-4 mt-1"></i>
-                            <div>
-                                <p class="text-green-800 font-bold text-lg mb-1">درخواست شما ثبت شد!</p>
-                                <p class="text-green-700">{{ session('success') }}</p>
-                            </div>
-                        </div>
-                    </div>
-                @endif
-
-                <div class="bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-2xl p-6 mb-8">
-                    <div class="flex items-start">
-                        <div class="bg-orange-500 rounded-full p-3 ml-4">
-                            <i class="fas fa-info text-white text-xl"></i>
-                        </div>
-                        <div class="flex-1 text-right">
-                            <h3 class="text-lg font-bold text-gray-800 mb-2">چرا کد دعوت؟</h3>
-                            <p class="text-gray-700 leading-relaxed">
-                                ما می‌خواهیم اعضای فعال و علاقه‌مند را در جامعه خود داشته باشیم.
-                                با پر کردن این فرم، درخواست شما بررسی و کد دعوت به ایمیل شما ارسال می‌شود.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <form action="{{ route('invite.store') }}" method="POST" class="space-y-6">
-                    @csrf
-                    {{-- Honeypot field برای جلوگیری از ربات‌ها --}}
-                    <input type="text" name="website" value="" class="hidden" tabindex="-1" autocomplete="off">
-
-                    <div>
-                        <label for="email" class="block text-sm font-bold text-gray-700 mb-2">
-                            <i class="fas fa-envelope text-orange-500 ml-2"></i>
-                            آدرس ایمیل
-                            <span class="text-red-500">*</span>
-                        </label>
-                        <input
-                            id="email"
-                            type="email"
-                            name="email"
-                            value="{{ old('email') }}"
-                            class="w-full px-4 py-3 border-2 @error('email') border-red-500 @else border-gray-300 @enderror rounded-xl input-focus transition outline-none"
-                            placeholder="example@email.com"
-                            required
-                        >
-                        @error('email')
-                            <p class="text-red-500 text-sm mt-2 bg-red-50 p-2 rounded-lg">
-                                <i class="fas fa-exclamation-circle ml-1"></i>
-                                {{ $message }}
-                            </p>
-                        @enderror
-                        <p class="text-gray-500 text-xs mt-2">
-                            <i class="fas fa-shield-alt ml-1"></i>
-                            ایمیل شما محفوظ است و به اشتراک گذاشته نمی‌شود
-                        </p>
-                    </div>
-
-                    <div>
-                        <label for="message" class="block text-sm font-bold text-gray-700 mb-2">
-                            <i class="fas fa-comment-dots text-orange-500 ml-2"></i>
-                            چطور با ما آشنا شدید؟
-                        </label>
-                        <textarea
-                            id="message"
-                            name="message"
-                            rows="4"
-                            class="w-full px-4 py-3 border-2 @error('message') border-red-500 @else border-gray-300 @enderror rounded-xl input-focus transition outline-none resize-none"
-                            placeholder="مثلاً: از طریق شبکه‌های اجتماعی، دوستان، یا جستجو در اینترنت..."
-                        >{{ old('message') }}</textarea>
-                        @error('message')
-                            <p class="text-red-500 text-sm mt-2 bg-red-50 p-2 rounded-lg">
-                                <i class="fas fa-exclamation-circle ml-1"></i>
-                                {{ $message }}
-                            </p>
-                        @enderror
-                    </div>
-
-                    <div>
-                        <label for="job" class="block text-sm font-bold text-gray-700 mb-2">
-                            <i class="fas fa-briefcase text-orange-500 ml-2"></i>
-                            حرفه یا زمینه تخصصی
-                        </label>
-                        <input
-                            id="job"
-                            type="text"
-                            name="job"
-                            value="{{ old('job') }}"
-                            class="w-full px-4 py-3 border-2 @error('job') border-red-500 @else border-gray-300 @enderror rounded-xl input-focus transition outline-none"
-                            placeholder="مثلاً: توسعه‌دهنده وب، طراح گرافیک، مدیر پروژه..."
-                        >
-                        @error('job')
-                            <p class="text-red-500 text-sm mt-2 bg-red-50 p-2 rounded-lg">
-                                <i class="fas fa-exclamation-circle ml-1"></i>
-                                {{ $message }}
-                            </p>
-                        @enderror
-                    </div>
-
-                    <button
-                        type="submit"
-                        class="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-lg py-3 md:py-4 rounded-xl shadow-lg hover:shadow-xl transition transform hover:-translate-y-1"
-                    >
-                        <span>ثبت درخواست و دریافت کد</span>
-                        <i class="fas fa-paper-plane pulse-animation"></i>
-                    </button>
-                </form>
-
-                <div class="mt-8 text-center text-sm text-gray-600">
-                    <p>قبلاً عضو شده‌اید؟ <a href="{{ route('login') }}" class="font-bold text-orange-600 hover:text-orange-700">ورود به حساب کاربری</a></p>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-@endsection
-
+@extends('layouts.unified')
+
+
+
+@section('title', 'درخواست کد دعوت - ' . config('app.name', 'EarthCoop'))
+
+<!-- Tailwind & Bootstrap CSS via Vite -->
+
+@vite(['resources/css/app.css', 'resources/js/app.js'])
+
+@push('styles')
+
+<style>
+
+    .invite-request-page {
+
+        background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+
+    }
+
+
+
+    .invite-background {
+
+        position: relative;
+
+        min-height: 100vh;
+
+        display: flex;
+
+        align-items: center;
+
+        justify-content: center;
+
+        padding: 3rem 1rem;
+
+    }
+
+
+
+    .invite-background::before,
+
+    .invite-background::after {
+
+        content: '';
+
+        position: absolute;
+
+        border-radius: 9999px;
+
+        filter: blur(60px);
+
+        opacity: 0.1;
+
+        pointer-events: none;
+
+    }
+
+
+
+    .invite-background::before {
+
+        top: 4rem;
+
+        left: 5rem;
+
+        width: 16rem;
+
+        height: 16rem;
+
+        background: #ffffff;
+
+    }
+
+
+
+    .invite-background::after {
+
+        bottom: 5rem;
+
+        right: 5rem;
+
+        width: 22rem;
+
+        height: 22rem;
+
+        background: #fed7aa;
+
+    }
+
+
+
+    .invite-glow {
+
+        position: absolute;
+
+        top: 50%;
+
+        right: 2.5rem;
+
+        width: 18rem;
+
+        height: 18rem;
+
+        background: #fb923c;
+
+        opacity: 0.12;
+
+        border-radius: 9999px;
+
+        filter: blur(70px);
+
+        transform: translateY(-50%);
+
+        pointer-events: none;
+
+    }
+
+
+
+    .glass-effect {
+
+        background: rgba(255, 255, 255, 0.95);
+
+        backdrop-filter: blur(10px);
+
+        border: 1px solid rgba(255, 255, 255, 0.3);
+
+    }
+
+
+
+    .input-focus:focus {
+
+        border-color: #f59e0b;
+
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+
+    }
+
+
+
+    .slide-in {
+
+        animation: slideIn 0.6s ease-out;
+
+    }
+
+
+
+    @keyframes slideIn {
+
+        from { opacity: 0; transform: translateY(30px); }
+
+        to { opacity: 1; transform: translateY(0); }
+
+    }
+
+
+
+    .float-animation {
+
+        animation: float 6s ease-in-out infinite;
+
+    }
+
+
+
+    @keyframes float {
+
+        0%, 100% { transform: translateY(0px); }
+
+        50% { transform: translateY(-20px); }
+
+    }
+
+
+
+    .pulse-animation {
+
+        animation: pulse 2s ease-in-out infinite;
+
+    }
+
+
+
+    @keyframes pulse {
+
+        0%, 100% { transform: scale(1); opacity: 0.8; }
+
+        50% { transform: scale(1.05); opacity: 1; }
+
+    }
+
+
+
+    @keyframes bounce {
+
+        0%, 100% { transform: translateY(0); }
+
+        50% { transform: translateY(-15px); }
+
+    }
+
+</style>
+
+@endpush
+
+
+
+@section('content')
+
+<div class="invite-request-page">
+
+    <div class="invite-background">
+
+        <span class="invite-glow"></span>
+
+        <div class="w-full max-w-2xl relative slide-in">
+
+            <div class="text-center mb-8">
+
+                <a href="{{ route('welcome') }}" class="inline-flex items-center justify-center gap-4 mb-6 text-white">
+
+                    <svg width="96" height="96" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="animate-bounce" style="animation: bounce 3s infinite ease-in-out;">
+
+                        <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#10b981" opacity="0.8"/>
+
+                        <path d="M12 2C10.5 4 8 6 8 9C8 12 12 14 12 14C12 14 16 12 16 9C16 6 13.5 4 12 2ZM12 14C12 14 10 16 10 18C10 20 12 22 12 22" fill="#047857"/>
+
+                    </svg>
+
+                    <span class="text-4xl font-extrabold tracking-wide drop-shadow-lg">EarthCoop</span>
+
+                </a>
+
+                <h1 class="text-4xl md:text-5xl font-black text-white mb-3 drop-shadow-lg">درخواست کد دعوت</h1>
+
+                <p class="text-orange-50 text-lg md:text-xl font-medium">به جامعه زمین نو بپیوندید</p>
+
+                <div class="mt-4 inline-flex items-center bg-white/20 backdrop-blur-sm rounded-full px-6 py-3 text-white">
+
+                    <i class="fas fa-users ml-2 text-yellow-300"></i>
+
+                    <span class="font-bold">هزاران نفر در انتظار شما هستند!</span>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="glass-effect rounded-3xl shadow-2xl p-8 md:p-10">
+
+                @if(session('success'))
+
+                    <div class="mb-6 bg-green-50 border-r-4 border-green-500 p-5 rounded-xl shadow-sm">
+
+                        <div class="flex items-start">
+
+                            <i class="fas fa-check-circle text-green-500 text-2xl ml-4 mt-1"></i>
+
+                            <div>
+
+                                <p class="text-green-800 font-bold text-lg mb-1">درخواست شما ثبت شد!</p>
+
+                                <p class="text-green-700">{{ session('success') }}</p>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                @endif
+
+
+
+                <div class="bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-2xl p-6 mb-8">
+
+                    <div class="flex items-start">
+
+                        <div class="bg-orange-500 rounded-full p-3 ml-4">
+
+                            <i class="fas fa-info text-white text-xl"></i>
+
+                        </div>
+
+                        <div class="flex-1 text-right">
+
+                            <h3 class="text-lg font-bold text-gray-800 mb-2">چرا کد دعوت؟</h3>
+
+                            <p class="text-gray-700 leading-relaxed">
+
+                                ما می‌خواهیم اعضای فعال و علاقه‌مند را در جامعه خود داشته باشیم.
+
+                                با پر کردن این فرم، درخواست شما بررسی و کد دعوت به ایمیل شما ارسال می‌شود.
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <form action="{{ route('invite.store') }}" method="POST" class="space-y-6">
+
+                    @csrf
+
+                    {{-- Honeypot field برای جلوگیری از ربات‌ها --}}
+
+                    <input type="text" name="website" value="" class="hidden" tabindex="-1" autocomplete="off">
+
+
+
+                    <div>
+
+                        <label for="email" class="block text-sm font-bold text-gray-700 mb-2">
+
+                            <i class="fas fa-envelope text-orange-500 ml-2"></i>
+
+                            آدرس ایمیل
+
+                            <span class="text-red-500">*</span>
+
+                        </label>
+
+                        <input
+
+                            id="email"
+
+                            type="email"
+
+                            name="email"
+
+                            value="{{ old('email') }}"
+
+                            class="w-full px-4 py-3 border-2 @error('email') border-red-500 @else border-gray-300 @enderror rounded-xl input-focus transition outline-none"
+
+                            placeholder="example@email.com"
+
+                            required
+
+                        >
+
+                        @error('email')
+
+                            <p class="text-red-500 text-sm mt-2 bg-red-50 p-2 rounded-lg">
+
+                                <i class="fas fa-exclamation-circle ml-1"></i>
+
+                                {{ $message }}
+
+                            </p>
+
+                        @enderror
+
+                        <p class="text-gray-500 text-xs mt-2">
+
+                            <i class="fas fa-shield-alt ml-1"></i>
+
+                            ایمیل شما محفوظ است و به اشتراک گذاشته نمی‌شود
+
+                        </p>
+
+                    </div>
+
+
+
+                    <div>
+
+                        <label for="message" class="block text-sm font-bold text-gray-700 mb-2">
+
+                            <i class="fas fa-comment-dots text-orange-500 ml-2"></i>
+
+                            چطور با ما آشنا شدید؟
+
+                        </label>
+
+                        <textarea
+
+                            id="message"
+
+                            name="message"
+
+                            rows="4"
+
+                            class="w-full px-4 py-3 border-2 @error('message') border-red-500 @else border-gray-300 @enderror rounded-xl input-focus transition outline-none resize-none"
+
+                            placeholder="مثلاً: از طریق شبکه‌های اجتماعی، دوستان، یا جستجو در اینترنت..."
+
+                        >{{ old('message') }}</textarea>
+
+                        @error('message')
+
+                            <p class="text-red-500 text-sm mt-2 bg-red-50 p-2 rounded-lg">
+
+                                <i class="fas fa-exclamation-circle ml-1"></i>
+
+                                {{ $message }}
+
+                            </p>
+
+                        @enderror
+
+                    </div>
+
+
+
+                    <div>
+
+                        <label for="job" class="block text-sm font-bold text-gray-700 mb-2">
+
+                            <i class="fas fa-briefcase text-orange-500 ml-2"></i>
+
+                            حرفه یا زمینه تخصصی
+
+                        </label>
+
+                        <input
+
+                            id="job"
+
+                            type="text"
+
+                            name="job"
+
+                            value="{{ old('job') }}"
+
+                            class="w-full px-4 py-3 border-2 @error('job') border-red-500 @else border-gray-300 @enderror rounded-xl input-focus transition outline-none"
+
+                            placeholder="مثلاً: توسعه‌دهنده وب، طراح گرافیک، مدیر پروژه..."
+
+                        >
+
+                        @error('job')
+
+                            <p class="text-red-500 text-sm mt-2 bg-red-50 p-2 rounded-lg">
+
+                                <i class="fas fa-exclamation-circle ml-1"></i>
+
+                                {{ $message }}
+
+                            </p>
+
+                        @enderror
+
+                    </div>
+
+
+
+                    <button
+
+                        type="submit"
+
+                        class="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-lg py-3 md:py-4 rounded-xl shadow-lg hover:shadow-xl transition transform hover:-translate-y-1"
+
+                    >
+
+                        <span>ثبت درخواست و دریافت کد</span>
+
+                        <i class="fas fa-paper-plane pulse-animation"></i>
+
+                    </button>
+
+                </form>
+
+
+
+                <div class="mt-8 text-center text-sm text-gray-600">
+
+                    <p>قبلاً عضو شده‌اید؟ <a href="{{ route('login') }}" class="font-bold text-orange-600 hover:text-orange-700">ورود به حساب کاربری</a></p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+@endsection
+
+
+

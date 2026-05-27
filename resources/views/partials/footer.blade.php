@@ -1,57 +1,114 @@
-<!-- Tailwind & Bootstrap CSS via Vite -->
-@vite(['resources/css/app.css', 'resources/js/app.js'])
-<footer class="bg-gentle-black text-pure-white py-12 px-6">
-    <div class="container mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 text-right">
-        <div class="col-span-1 md:col-span-1">
-            <div class="flex items-center space-x-2 rtl:space-x-reverse mb-4 justify-end md:justify-start">
-                <svg width="35" height="35" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#10b981" opacity="0.7"/>
-                    <path d="M12 2C10.5 4 8 6 8 9C8 12 12 14 12 14C12 14 16 12 16 9C16 6 13.5 4 12 2ZM12 14C12 14 10 16 10 18C10 20 12 22 12 22" fill="#047857"/>
-                </svg>
-                <span class="text-2xl font-bold font-vazirmatn">EarthCoop</span>
-            </div>
-            <p class="text-gray-400 text-sm font-vazirmatn">
-                یک تعاونی جهانی که افراد را توانمند می‌سازد تا به صورت جمعی آینده‌ای پایدار را از طریق مالکیت مشترک و اصول دموکراتیک بسازند.
-            </p>
-            <div class="flex space-x-4 rtl:space-x-reverse mt-6 justify-end md:justify-start">
-                <a href="https://instagram.com/earthcoop" target="_blank" class="text-gray-400 hover:text-pure-white transition duration-300"><i class="fab fa-instagram text-xl"></i></a>
-                <a href="https://t.me/earthcoop" target="_blank" class="text-gray-400 hover:text-pure-white transition duration-300"><i class="fab fa-telegram text-xl"></i></a>
-                <a href="https://twitter.com/earthcoop" target="_blank" class="text-gray-400 hover:text-pure-white transition duration-300"><i class="fab fa-twitter text-xl"></i></a>
-            </div>
-        </div>
-
-        <div>
-            <h3 class="text-lg font-semibold mb-4 text-earth-green font-vazirmatn">لینک‌های سریع</h3>
-            <ul class="space-y-2 font-vazirmatn">
-                <li><a href="{{ route('welcome') }}" class="text-gray-400 hover:text-pure-white transition duration-300">خانه</a></li>
-                <li><a href="#about" class="text-gray-400 hover:text-pure-white transition duration-300">درباره ما</a></li>
-                <li><a href="#network" class="text-gray-400 hover:text-pure-white transition duration-300">شبکه ما</a></li>
-                <li><a href="#projects" class="text-gray-400 hover:text-pure-white transition duration-300">پروژه‌ها</a></li>
-                <li><a href="#bahar" class="text-gray-400 hover:text-pure-white transition duration-300">اقتصاد بهار</a></li>
-                <li><a href="{{ route('pages.show', 'faq') }}" class="text-gray-400 hover:text-pure-white transition duration-300">سوالات متداول</a></li>
-                <li><a href="{{ route('pages.show', 'contact') }}" class="text-gray-400 hover:text-pure-white transition duration-300">تماس با ما</a></li>
-            </ul>
-        </div>
-
-        <div>
-            <h3 class="text-lg font-semibold mb-4 text-ocean-blue font-vazirmatn">پشتیبانی</h3>
-            <ul class="space-y-2 font-vazirmatn">
-                <li><a href="{{ route('pages.show', 'faq') }}" class="text-gray-400 hover:text-pure-white transition duration-300">سوالات متداول</a></li>
-                <li><a href="{{ route('terms') }}" class="text-gray-400 hover:text-pure-white transition duration-300">شرایط خدمات</a></li>
-                <li><a href="#" class="text-gray-400 hover:text-pure-white transition duration-300">حریم خصوصی</a></li>
-                <li><a href="{{ route('pages.show', 'contact') }}" class="text-gray-400 hover:text-pure-white transition duration-300">تماس با ما</a></li>
-            </ul>
-        </div>
-
-        <div>
-            <h3 class="text-lg font-semibold mb-4 text-digital-gold font-vazirmatn">در تماس باشید</h3>
-            <p class="text-gray-400 mb-2 font-vazirmatn"><i class="fas fa-map-marker-alt ml-2"></i> دفتر مرکزی جهانی، EarthCoop</p>
-            <p class="text-gray-400 mb-2 font-vazirmatn"><i class="fas fa-envelope ml-2"></i> info@earthcoop.org</p>
-            <p class="text-gray-400 font-vazirmatn"><i class="fas fa-phone-alt ml-2"></i> +1 (123) 456-7890</p>
-        </div>
-    </div>
-    <div class="border-t border-gray-700 mt-8 pt-8 text-center text-gray-500 text-sm font-vazirmatn">
-        &copy; {{ date('Y') }} EarthCoop. تمامی حقوق محفوظ است.
-    </div>
-</footer>
-
+<!-- Tailwind & Bootstrap CSS via Vite -->
+
+@vite(['resources/css/app.css', 'resources/js/app.js'])
+
+<footer class="bg-gentle-black text-pure-white py-12 px-6">
+
+    <div class="container mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 text-right">
+
+        <div class="col-span-1 md:col-span-1">
+
+            <div class="flex items-center space-x-2 rtl:space-x-reverse mb-4 justify-end md:justify-start">
+
+                <svg width="35" height="35" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+                    <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#10b981" opacity="0.7"/>
+
+                    <path d="M12 2C10.5 4 8 6 8 9C8 12 12 14 12 14C12 14 16 12 16 9C16 6 13.5 4 12 2ZM12 14C12 14 10 16 10 18C10 20 12 22 12 22" fill="#047857"/>
+
+                </svg>
+
+                <span class="text-2xl font-bold font-vazirmatn">EarthCoop</span>
+
+            </div>
+
+            <p class="text-gray-400 text-sm font-vazirmatn">
+
+                یک تعاونی جهانی که افراد را توانمند می‌سازد تا به صورت جمعی آینده‌ای پایدار را از طریق مالکیت مشترک و اصول دموکراتیک بسازند.
+
+            </p>
+
+            <div class="flex space-x-4 rtl:space-x-reverse mt-6 justify-end md:justify-start">
+
+                <a href="https://instagram.com/earthcoop" target="_blank" class="text-gray-400 hover:text-pure-white transition duration-300"><i class="fab fa-instagram text-xl"></i></a>
+
+                <a href="https://t.me/earthcoop" target="_blank" class="text-gray-400 hover:text-pure-white transition duration-300"><i class="fab fa-telegram text-xl"></i></a>
+
+                <a href="https://twitter.com/earthcoop" target="_blank" class="text-gray-400 hover:text-pure-white transition duration-300"><i class="fab fa-twitter text-xl"></i></a>
+
+            </div>
+
+        </div>
+
+
+
+        <div>
+
+            <h3 class="text-lg font-semibold mb-4 text-earth-green font-vazirmatn">لینک‌های سریع</h3>
+
+            <ul class="space-y-2 font-vazirmatn">
+
+                <li><a href="{{ route('welcome') }}" class="text-gray-400 hover:text-pure-white transition duration-300">خانه</a></li>
+
+                <li><a href="#about" class="text-gray-400 hover:text-pure-white transition duration-300">درباره ما</a></li>
+
+                <li><a href="#network" class="text-gray-400 hover:text-pure-white transition duration-300">شبکه ما</a></li>
+
+                <li><a href="#projects" class="text-gray-400 hover:text-pure-white transition duration-300">پروژه‌ها</a></li>
+
+                <li><a href="#bahar" class="text-gray-400 hover:text-pure-white transition duration-300">اقتصاد بهار</a></li>
+
+                <li><a href="{{ route('pages.show', 'faq') }}" class="text-gray-400 hover:text-pure-white transition duration-300">سوالات متداول</a></li>
+
+                <li><a href="{{ route('pages.show', 'contact') }}" class="text-gray-400 hover:text-pure-white transition duration-300">تماس با ما</a></li>
+
+            </ul>
+
+        </div>
+
+
+
+        <div>
+
+            <h3 class="text-lg font-semibold mb-4 text-ocean-blue font-vazirmatn">پشتیبانی</h3>
+
+            <ul class="space-y-2 font-vazirmatn">
+
+                <li><a href="{{ route('pages.show', 'faq') }}" class="text-gray-400 hover:text-pure-white transition duration-300">سوالات متداول</a></li>
+
+                <li><a href="{{ route('terms') }}" class="text-gray-400 hover:text-pure-white transition duration-300">شرایط خدمات</a></li>
+
+                <li><a href="#" class="text-gray-400 hover:text-pure-white transition duration-300">حریم خصوصی</a></li>
+
+                <li><a href="{{ route('pages.show', 'contact') }}" class="text-gray-400 hover:text-pure-white transition duration-300">تماس با ما</a></li>
+
+            </ul>
+
+        </div>
+
+
+
+        <div>
+
+            <h3 class="text-lg font-semibold mb-4 text-digital-gold font-vazirmatn">در تماس باشید</h3>
+
+            <p class="text-gray-400 mb-2 font-vazirmatn"><i class="fas fa-map-marker-alt ml-2"></i> دفتر مرکزی جهانی، EarthCoop</p>
+
+            <p class="text-gray-400 mb-2 font-vazirmatn"><i class="fas fa-envelope ml-2"></i> info@earthcoop.org</p>
+
+            <p class="text-gray-400 font-vazirmatn"><i class="fas fa-phone-alt ml-2"></i> +1 (123) 456-7890</p>
+
+        </div>
+
+    </div>
+
+    <div class="border-t border-gray-700 mt-8 pt-8 text-center text-gray-500 text-sm font-vazirmatn">
+
+        &copy; {{ date('Y') }} EarthCoop. تمامی حقوق محفوظ است.
+
+    </div>
+
+</footer>
+
+
+

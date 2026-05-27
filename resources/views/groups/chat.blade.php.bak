@@ -1,0 +1,3698 @@
+@extends('layouts.chat')
+
+@php
+$lastReadMessageId = isset($lastReadMessageId) ? $lastReadMessageId : (auth()->user()->last_read_message_id ?? 'null');
+@endphp
+
+@section('title', $group->name . ' - گفت‌وگوی گروه')
+
+@section('head-tag')
+
+<!-- Tailwind & Bootstrap CSS via Vite -->
+@vite(['resources/css/app.css', 'resources/js/app.js'])
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<!-- Select2 -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+// Ù…Ø·Ù…Ø¦Ù† Ø´Ùˆ Select2 Ø¨Ø¹Ø¯ Ø§Ø² jQuery Ù„ÙˆØ¯ Ø´Ø¯Ù‡
+if (typeof jQuery !== 'undefined') {
+    jQuery.fn.select2.defaults.set('language', {
+        noResults: function() {
+            return "نتیجه‌ای یافت نشد";
+        },
+        searching: function() {
+            return "در حال جستجو...";
+        }
+    });
+}
+</script>
+
+<script src="https://cdn.ckeditor.com/4.22.1/standard/ckeditor.js"></script>
+
+
+
+<!-- CSRF Token (Ø¨Ø±Ø§ÛŒ Ajax) -->
+<meta name="csrf-token" content="{{ csrf_token() }}">
+
+
+<link rel="stylesheet" href="{{ asset('Css/group-chat.css') }}">
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const csrf = '{{ csrf_token() }}';
+
+    // Event listener Ø¨Ø±Ø§ÛŒ Ù„ÛŒÙ†Ú©â€ŒÙ‡Ø§ÛŒ Ù¾Ø±ÙˆÙØ§ÛŒÙ„ - Ø¨Ø§ÛŒØ¯ Ø§ÙˆÙ„ Ø§Ø¬Ø±Ø§ Ø´ÙˆØ¯
+    document.addEventListener('click', function(e) {
+        const link = e.target.closest('a.message-sender');
+        if (link && link.href && !link.href.includes('#')) {
+            // Ø§Ø¬Ø§Ø²Ù‡ Ø¨Ø¯Ù‡ Ù„ÛŒÙ†Ú© Ú©Ø§Ø± Ú©Ù†Ø¯ - Ù‡ÛŒÚ† Ú©Ø§Ø±ÛŒ Ù†Ú©Ù†
+            // ÙÙ‚Ø· Ù…Ø·Ù…Ø¦Ù† Ø´Ùˆ Ú©Ù‡ event propagation Ù…ØªÙˆÙ‚Ù Ù†Ù…ÛŒâ€ŒØ´ÙˆØ¯
+            return true;
+        }
+    }, true); // Ø§Ø³ØªÙØ§Ø¯Ù‡ Ø§Ø² capture phase Ø¨Ø±Ø§ÛŒ Ø§Ø¬Ø±Ø§ÛŒ Ø²ÙˆØ¯ØªØ±
+
+    // ØªØ³Øª: Ø¨Ø±Ø±Ø³ÛŒ ÙˆØ¬ÙˆØ¯ Ù„ÛŒÙ†Ú©â€ŒÙ‡Ø§ Ø¯Ø± DOM
+    setTimeout(function() {
+        const links = document.querySelectorAll('a.message-sender');
+        links.forEach((link, index) => {
+        });
+    }, 500);
+
+    // Event delegation Ø¨Ø±Ø§ÛŒ Ù„ÛŒÙ†Ú©â€ŒÙ‡Ø§ÛŒ Ù¾Ø±ÙˆÙØ§ÛŒÙ„ - Ø³Ø§Ø¯Ù‡ Ùˆ Ù…Ø³ØªÙ‚ÛŒÙ…
+    document.addEventListener('click', function(e) {
+        // Ø¨Ø±Ø±Ø³ÛŒ Ø§ÛŒÙ†Ú©Ù‡ Ø¢ÛŒØ§ Ú©Ù„ÛŒÚ© Ø±ÙˆÛŒ Ù„ÛŒÙ†Ú© Ù¾Ø±ÙˆÙØ§ÛŒÙ„ Ø§Ø³Øª
+        const link = e.target.closest('a.message-sender');
+        if (link) {
+            const href = link.getAttribute('href');
+            if (href && href.includes('/profile-member/')) {
+                e.stopPropagation();
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                window.location.href = href;
+                return false;
+            }
+        }
+    }, true); // Ø§Ø³ØªÙØ§Ø¯Ù‡ Ø§Ø² capture phase Ø¨Ø±Ø§ÛŒ Ø§Ø¬Ø±Ø§ÛŒ Ø²ÙˆØ¯ØªØ±
+
+    // Initialize click handlers for existing profile links
+    setTimeout(function() {
+        document.querySelectorAll('a.message-sender').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                const href = this.getAttribute('href');
+                if (href && href.includes('/profile-member/')) {
+                    window.location.href = href;
+                }
+            }, true); // Ø§Ø³ØªÙØ§Ø¯Ù‡ Ø§Ø² capture phase
+        });
+    }, 100);
+
+    // --- Helpers: Ø§ÛŒØ¬Ø§Ø¯/Ù†Ù…Ø§ÛŒØ´/Ù…Ø®ÙÛŒâ€ŒÚ©Ø±Ø¯Ù† overlay ---
+    function ensureOverlay() {
+        let el = document.getElementById('global-loading');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'global-loading';
+            el.className = 'loading-overlay';
+            el.innerHTML = '<div class="spinner"></div>';
+            document.body.appendChild(el);
+        }
+        return el;
+    }
+    const overlay = ensureOverlay();
+    const showOverlay = () => overlay.classList.add('show');
+    const hideOverlay = () => overlay.classList.remove('show');
+
+    // Ú©Ù„ÛŒØ¯Ú©Ø±Ø¯Ù† Ø±ÙˆÛŒ ÛŒÚ© Ø¯Ú©Ù…Ù‡: Ø­Ø§Ù„Øª Ù„ÙˆØ¯ÛŒÙ†Ú¯ Ù…Ø­Ù„ÛŒ
+    function setBtnLoading(btn, on = true) {
+        if (!btn) return;
+        if (on) {
+            btn.classList.add('btn-loading');
+            btn.disabled = true;
+        } else {
+            btn.classList.remove('btn-loading');
+            btn.disabled = false;
+        }
+    }
+
+    // Ù¾ÙˆØ´Ø´â€ŒØ¯Ù‡Ù†Ø¯Ù‡â€ŒÛŒ Ø¹Ù…ÙˆÙ…ÛŒ Ø¨Ø±Ø§ÛŒ fetch Ø¨Ø§ Ú†Ø±Ø®Ù†Ø¯Ù‡
+    async function withSpinner(fn, {
+        global = true,
+        btn = null
+    } = {}) {
+        try {
+            if (global) showOverlay();
+            if (btn) setBtnLoading(btn, true);
+            return await fn();
+        } finally {
+            if (global) hideOverlay();
+            if (btn) setBtnLoading(btn, false);
+        }
+    }
+
+    document.querySelectorAll(".message-bubble").forEach(bubble => {
+        const id = bubble.dataset.messageId;
+        const editUrl = bubble.dataset.editUrl;
+        const deleteUrl = bubble.dataset.deleteUrl;
+        const reportUrl = bubble.dataset.reportUrl;
+
+        if (!id) {
+            console.warn('message id missing', bubble);
+            return;
+        }
+
+
+        // حذف
+        bubble.querySelector(".btn-delete")?.addEventListener("click", async (e) => {
+            const btn = e.currentTarget;
+            if (!confirm("آیا از حذف پیام مطمئن هستید؟")) return;
+
+            await withSpinner(async () => {
+                const res = await fetch(deleteUrl, {
+                    method: "POST", // حذف پیام با POST (سرور ممکن است روش/مسیر متفاوت داشته باشد)
+                    headers: {
+                        "X-CSRF-TOKEN": csrf,
+                        "Accept": "application/json",
+                        "X-Requested-With": "XMLHttpRequest"
+                    },
+                    credentials: "same-origin"
+                });
+
+                let data = {};
+                try {
+                    data = await res.json();
+                } catch (e) {}
+
+                if (res.ok && (data.status === 'success' || !data.status)) {
+                    const row = bubble.closest('.message-row') || bubble.closest('.message-wrapper');
+                    if (row) {
+                        row.remove();
+                    }
+                } else {
+                    alert(data.message ||
+                        `خطا در حذف پیام (status ${res.status})`);
+                }
+            }, {
+                global: true,
+                btn
+            });
+        });
+
+        // گزارش
+        bubble.querySelector(".btn-report")?.addEventListener("click", async (e) => {
+            const btn = e.currentTarget;
+            const reason = prompt("دلیل گزارش را وارد کنید:");
+            if (!reason) return;
+
+            await withSpinner(async () => {
+                const res = await fetch(reportUrl, {
+                    method: "POST",
+                    headers: {
+                        "X-CSRF-TOKEN": csrf,
+                        "Accept": "application/json",
+                        "Content-Type": "application/json"
+                    },
+                    credentials: "same-origin",
+                    body: JSON.stringify({
+                        reason
+                    })
+                });
+
+                let data = {};
+                try {
+                    data = await res.json();
+                } catch (e) {}
+                alert(data.message || (res.ok ? "گزارش ثبت شد" :
+                    `خطا در ثبت گزارش (status ${res.status})`));
+            }, {
+                global: true,
+                btn
+            });
+        });
+    });
+});
+</script>
+
+
+
+<script>
+const groupId = @json($group->id);
+const authUserId = @json(auth()->id());
+const yourRole = @json($yourRole ?? 0);
+window.groupId = groupId;
+window.authUserId = authUserId;
+window.yourRole = yourRole;
+@php
+    $chatRuntimeConfig = [
+        'enabled' => (bool) config('group-chat.enabled', true),
+        'transport' => (string) config('group-chat.transport', 'auto'),
+        'fallbackToPolling' => (bool) config('group-chat.fallback_to_polling', true),
+        'pollingIntervalMs' => (int) config('group-chat.polling_interval_ms', 1800),
+        'pollingMinIntervalMs' => (int) config('group-chat.polling_min_interval_ms', 1000),
+        'pollingMaxIntervalMs' => (int) config('group-chat.polling_max_interval_ms', 10000),
+        'features' => [
+            'messageNoReload' => (bool) config('group-chat.features.message_no_reload', true),
+            'reactionNoReload' => (bool) config('group-chat.features.reaction_no_reload', true),
+            'postNoReload' => (bool) config('group-chat.features.post_no_reload', true),
+            'pollNoReload' => (bool) config('group-chat.features.poll_no_reload', true),
+            'realtimeMessages' => (bool) config('group-chat.features.realtime_messages', false),
+            'realtimeReactions' => (bool) config('group-chat.features.realtime_reactions', false),
+            'realtimePosts' => (bool) config('group-chat.features.realtime_posts', true),
+            'realtimePolls' => (bool) config('group-chat.features.realtime_polls', false),
+        ],
+    ];
+@endphp
+window.chatConfig = @json($chatRuntimeConfig);
+const manageCount = @json($groupSetting ? $groupSetting->manager_count : 0);
+const inspectorCount = @json($groupSetting ? $groupSetting->inspector_count : 0);
+</script>
+<script src="{{ asset('js/group-chat.js') }}" defer></script>
+<script src="{{ asset('js/chat-features.js') }}" defer></script>
+<script src="{{ asset('js/voice-recorder.js') }}" defer></script>
+
+<!-- Ú©Ø¯ Ø­ÙØ¸ Ù…ÙˆÙ‚Ø¹ÛŒØª scroll Ø¨Ù‡ Ø§Ù†ØªÙ‡Ø§ÛŒ ØµÙØ­Ù‡ Ù…Ù†ØªÙ‚Ù„ Ø´Ø¯ -->
+<style>
+/* Collapsible Group Info Card Ø¨Ø±Ø§ÛŒ Ù…ÙˆØ¨Ø§ÛŒÙ„ */
+.group-info-card [x-cloak] {
+    display: none !important;
+}
+
+/* Ø¯Ø± Ù…ÙˆØ¨Ø§ÛŒÙ„: collapse-content Ù…Ø®ÙÛŒ Ø§Ø³Øª Ù…Ú¯Ø± Ø§ÛŒÙ†Ú©Ù‡ expanded Ø¨Ø§Ø´Ø¯ */
+.group-info-card .collapse-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-out, padding 0.3s ease-out;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+/* Ø¨Ù‡Ø¨ÙˆØ¯ Ø¸Ø§Ù‡Ø± Ú©Ø§Ø±Øª Ø¯Ø± Ù…ÙˆØ¨Ø§ÛŒÙ„ */
+@media (max-width: 1023px) {
+    .group-info-card {
+        box-shadow: 0 2px 12px rgba(16, 185, 129, 0.1);
+    }
+}
+
+.group-info-card [x-show="expanded"].collapse-content {
+    max-height: 5000px;
+    opacity: 1;
+    padding-top: 1.25rem;
+    padding-bottom: 1.25rem;
+    transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease-in, padding 0.3s ease-in;
+}
+
+/* Ø¯Ø± Ø¯Ø³Ú©ØªØ§Ù¾: collapse-content Ø¨Ø§ÛŒØ¯ Ù…Ø®ÙÛŒ Ø¨Ù…Ø§Ù†Ø¯ (Ù†Ø³Ø®Ù‡ Ø¬Ø¯Ø§Ú¯Ø§Ù†Ù‡ Ø¯Ø§Ø±ÛŒÙ…) */
+@media (min-width: 1024px) {
+    .group-info-card .collapse-content {
+        display: none !important;
+    }
+}
+
+.stat-chip {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+    padding: 1rem 1.1rem;
+    border-radius: 1.5rem;
+    background: rgba(236, 253, 245, 0.8);
+    border: 1px solid rgba(16, 185, 129, 0.18);
+    box-shadow: 0 18px 48px -30px rgba(16, 185, 129, 0.5);
+}
+
+.stat-chip__label {
+    font-size: .75rem;
+    font-weight: 600;
+    color: #047857;
+}
+
+.stat-chip__value {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #0f4c3a;
+}
+
+.chat-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.group-info-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(2px);
+    z-index: 900;
+    opacity: 0;
+    transition: opacity .3s ease;
+}
+
+.group-info-backdrop--visible {
+    opacity: 1;
+}
+
+.menu-item {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    font-size: 0.875rem;
+    padding: 4px 8px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #444;
+    transition: color .2s;
+}
+
+.menu-item .icon {
+    width: 14px;
+    height: 14px;
+}
+
+.menu-item:hover {
+    color: #0d6efd;
+}
+
+.menu-item.text-danger {
+    color: #dc3545;
+}
+
+.menu-item.text-danger:hover {
+    color: #bb2d3b;
+}
+
+/* --- REFINED SIZING & PROPORTIONS --- */
+
+/* 1. Chat Container Spacing */
+#chat-box {
+    padding: 1.25rem !important;
+    gap: 0.6rem !important;
+    display: flex;
+    flex-direction: column;
+    height: 75vh !important;
+    overflow-y: auto !important;
+    position: relative;
+    scrollbar-width: thin;
+    scrollbar-color: #10b981 transparent;
+}
+
+.chat-wrapper {
+    position: relative !important;
+    width: 100%;
+}
+
+/* Floating Scroll Button Fix - VISIBLE WHEN SCROLLING DOWN */
+.chat-scroll-btn {
+    position: fixed !important;
+    bottom: 30px !important;
+    left: 30px !important;
+    right: auto !important;
+    z-index: 9999 !important;
+    width: 50px !important;
+    height: 50px !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    color: #fff !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transform: scale(0.5) !important;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    cursor: pointer !important;
+}
+
+.chat-scroll-btn:hover {
+    transform: scale(1.1) translateY(-3px) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+.chat-scroll-btn.visible {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: scale(1) !important;
+}
+
+/* 3. Pinned Messages Layout */
+.pinned-messages {
+    padding: 0.75rem 1rem !important;
+    max-height: 110px !important;
+    gap: 8px !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+.pin {
+    padding: 0.5rem 0.75rem !important;
+    border-radius: 10px !important;
+    font-size: 0.9rem !important;
+}
+
+/* 4. Chat Footer & Input Sizing */
+.telegram-input-container {
+    padding: 5px 10px !important;
+    gap: 10px !important;
+    border-radius: 26px !important;
+    min-height: 46px !important;
+    align-items: center !important;
+    /* Better vertical alignment */
+}
+
+.telegram-send-btn,
+#voice-record-btn {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+}
+
+.telegram-textarea {
+    padding: 8px 5px !important;
+    font-size: 0.95rem !important;
+    max-height: 150px !important;
+}
+
+/* 5. Reply Preview Proportions */
+.reply-preview {
+    padding: 6px 10px !important;
+    border-radius: 8px !important;
+    margin-bottom: 6px !important;
+    font-size: 0.85rem !important;
+}
+
+/* 6. Sender Name Sizing */
+
+/* --- END REFINED SIZING --- */
+
+/* 7. Search & Dropdown Refinements */
+
+.chat-header {
+    position: relative;
+}
+
+.gc-search-wrap {
+    position: absolute;
+    inset-inline-end: 0;
+    top: 100%;
+    margin-top: 8px;
+    right: 1rem !important;
+    width: min(560px, 92vw);
+    z-index: 2000;
+}
+
+.btn-chat-icon {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+}
+
+.btn-chat-icon:hover {
+    background: #f3f4f6;
+}
+
+.btn-chat-icon.searching i {
+    position: relative;
+}
+
+.btn-chat-icon.searching i::after {
+    content: "";
+    position: absolute;
+    inset: auto auto -2px -2px;
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+}
+
+.gc-searchbar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    background: #fff;
+    border: 1px solid #e4e4e7;
+    border-radius: 12px;
+    padding: .4rem .75rem;
+    direction: rtl;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .08);
+}
+
+.gc-searchbar > i {
+    opacity: .6;
+}
+
+#gc-search-input {
+    flex: 1;
+    border: 0;
+    outline: 0;
+    font: inherit;
+    background: transparent;
+    direction: rtl;
+}
+
+#gc-search-clear {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    opacity: .6;
+}
+
+.gc-search-dropdown {
+    position: absolute;
+    inset-inline-start: 0;
+    top: 110%;
+    width: 100%;
+    background: #fff;
+    border: 1px solid #e4e4e7;
+    border-radius: 10px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .08);
+    padding: .3rem;
+    z-index: 2100;
+}
+
+.gc-search-status {
+    display: none;
+    align-items: center;
+    gap: .4rem;
+    font-size: .85rem;
+    color: #666;
+    padding: .4rem .5rem;
+}
+
+.gc-search-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 50vh;
+    overflow: auto;
+}
+
+.gc-search-item {
+    display: flex;
+    gap: .75rem;
+    padding: .5rem .75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    direction: rtl;
+}
+
+.gc-search-item:hover,
+.gc-search-item.active {
+    background: #f6f7fb;
+}
+
+.gc-search-item .type {
+    font-size: .75rem;
+    opacity: .7;
+    min-width: 70px;
+    text-align: center;
+    padding: .1rem .3rem;
+    border: 1px solid #eee;
+    border-radius: 999px;
+}
+
+.gc-search-item .meta {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    min-width: 0;
+}
+
+.gc-search-item .title {
+    font-weight: 600;
+    font-size: .9rem;
+    color: #1f2937;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gc-search-item .snip {
+    font-size: .85rem;
+    color: #374151;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+
+.gc-search-item mark {
+    background: #ffe58f;
+}
+
+.gc-search-more {
+    width: 100%;
+    padding: .45rem .7rem;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: .4rem;
+}
+
+.gc-spin {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #bbb;
+    border-top-color: transparent;
+    border-radius: 50%;
+    display: inline-block;
+    animation: spin .8s linear infinite;
+    vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+    .gc-searchbar {
+        width: 100%;
+    }
+}
+
+
+/* Ø¢ÛŒÚ©Ù† Ø¬Ø³ØªØ¬Ùˆ Ø¯Ø± Ù‡Ø¯Ø± */
+.btn-chat-icon {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+}
+
+.btn-chat-icon:hover {
+    background: #f3f4f6;
+}
+
+.btn-chat-icon.searching i {
+    position: relative;
+}
+
+.btn-chat-icon.searching i::after {
+    content: "";
+    position: absolute;
+    inset: auto auto -2px -2px;
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+}
+
+/* Ú©Ø§Ù†ØªÛŒÙ†Ø± Ø³Ø±Ú† Ø²ÛŒØ± Ù‡Ø¯Ø± */
+/* duplicate search styles removed */
+}
+
+/* duplicate search styles removed */
+</style>
+
+@endsection
+
+@section('content')
+@php
+$memberCount = $group->userCount();
+$guestCount = $group->guestsCount();
+$blogCount = \App\Models\Blog::where('group_id', $group->id)->count();
+$pollCount = $group->polls()->count();
+$pivotUser = $group->users()->where('users.id', auth()->id())->first();
+
+// ØªØ¹ÛŒÛŒÙ† Ù†Ù‚Ø´ Ø¨Ø± Ø§Ø³Ø§Ø³ location_level:
+// - Ø³Ø·Ø­ Ù…Ø­Ù„Ù‡ Ùˆ Ù¾Ø§ÛŒÛŒÙ†â€ŒØªØ± (neighborhood, street, alley) â†’ ÙØ¹Ø§Ù„ (role 1)
+// - Ø³Ø·Ø­ Ù…Ù†Ø·Ù‚Ù‡ Ùˆ Ø¨Ø§Ù„Ø§ØªØ± (region, village, rural, city Ùˆ ...) â†’ Ù†Ø§Ø¸Ø± (role 0)
+// Ø§Ú¯Ø± role Ø¯Ø± pivot ÙˆØ¬ÙˆØ¯ Ø¯Ø§Ø´Øª Ùˆ Ù…Ø¹ØªØ¨Ø± Ø¨ÙˆØ¯ (2, 3, 4, 5)ØŒ Ø§Ø² Ù‡Ù…Ø§Ù† Ø§Ø³ØªÙØ§Ø¯Ù‡ Ù…ÛŒâ€ŒÚ©Ù†ÛŒÙ…
+$pivotRole = isset($pivotUser?->pivot?->role) ? (int)($pivotUser->pivot->role) : null;
+
+// Ø§Ú¯Ø± role Ù…Ø¹ØªØ¨Ø± Ø§Ø³Øª (Ø¨Ø§Ø²Ø±Ø³=2ØŒ Ù…Ø¯ÛŒØ±=3ØŒ Ù…Ù‡Ù…Ø§Ù†=4ØŒ ÙØ¹Ø§Ù„Û²=5)ØŒ Ø§Ø² Ù‡Ù…Ø§Ù† Ø§Ø³ØªÙØ§Ø¯Ù‡ Ù…ÛŒâ€ŒÚ©Ù†ÛŒÙ…
+if (in_array($pivotRole, [2, 3, 4, 5], true)) {
+$roleValue = $pivotRole;
+} else {
+// Ø¯Ø± ØºÛŒØ± Ø§ÛŒÙ† ØµÙˆØ±ØªØŒ Ø¨Ø± Ø§Ø³Ø§Ø³ location_level ØªØ¹ÛŒÛŒÙ† Ù…ÛŒâ€ŒÚ©Ù†ÛŒÙ…
+$locationLevel = strtolower(trim((string)($group->location_level ?? '')));
+if (in_array($locationLevel, ['neighborhood', 'street', 'alley'], true)) {
+$roleValue = 1; // Ø¹Ø¶Ùˆ ÙØ¹Ø§Ù„
+} else {
+$roleValue = 0; // Ù†Ø§Ø¸Ø±
+}
+}
+
+$roleTitle = match($roleValue) {
+0 => 'Ù†Ø§Ø¸Ø±',
+1 => 'ÙØ¹Ø§Ù„',
+2 => 'Ø¨Ø§Ø²Ø±Ø³',
+3 => 'Ù…Ø¯ÛŒØ±',
+4 => 'Ù…Ù‡Ù…Ø§Ù†',
+5 => 'ÙØ¹Ø§Ù„ Û²',
+default => 'Ø¹Ø¶Ùˆ'
+};
+$membershipStatusLabel = (int)($pivotUser?->pivot?->status ?? 0) === 1 ? 'ÙØ¹Ø§Ù„' : 'ØºÛŒØ±ÙØ¹Ø§Ù„';
+$checkBlockElection = \App\Models\Block::where('user_id', auth()->id())->where('position', 'election')->first();
+$electionAvailable = ($election ?? null) && optional($groupSetting)->election_status == 1;
+$canParticipateElection = $electionAvailable && !$checkBlockElection && optional(auth()->user())->status == 1;
+@endphp
+<div id="group-chat-main-container"
+    class="container mx-auto max-w-7xl px-4 md:px-8 pt-3 md:pt-4 pb-8 space-y-6 md:space-y-10 group-chat-container"
+    style="direction: rtl;">
+    <section
+        class="bg-white border border-emerald-100 rounded-2xl md:rounded-3xl shadow-md relative overflow-hidden group-info-card"
+        x-data="{ expanded: false }">
+        <div
+            class="absolute inset-0 pointer-events-none bg-gradient-to-l from-emerald-50/50 via-transparent to-transparent">
+        </div>
+
+        <!-- Ù†Ø³Ø®Ù‡ Ø®Ù„Ø§ØµÙ‡ Ø¨Ø±Ø§ÛŒ Ù…ÙˆØ¨Ø§ÛŒÙ„ -->
+        <button @click="expanded = !expanded"
+            class="lg:hidden w-full relative z-10 flex items-center justify-between gap-3 px-5 py-4 hover:bg-emerald-50/50 active:bg-emerald-50 transition-colors">
+            <div class="flex items-center gap-4 flex-1 min-w-0">
+                <div
+                    class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl font-black shadow-md flex-shrink-0 border border-emerald-200/60">
+                    @if($group->avatar)
+                    <img src="{{ asset('images/groups/' . $group->avatar) }}" alt="{{ $group->name }}"
+                        class="w-full h-full object-cover rounded-2xl">
+                    @else
+                    {{ Str::upper(Str::substr($group->name, 0, 2)) }}
+                    @endif
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h1 class="text-lg font-bold text-slate-900 truncate leading-tight mb-1.5">{{ $group->name }}</h1>
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <span
+                            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-700 text-xs font-semibold">
+                            <i class="fas fa-user-shield text-[10px]"></i>{{ $roleTitle }}
+                        </span>
+                        <span class="text-xs text-slate-500 font-medium">{{ $memberCount }} Ø¹Ø¶Ùˆ</span>
+                    </div>
+                </div>
+            </div>
+            <div
+                class="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 transition-colors ml-2">
+                <i class="fas fa-chevron-down text-emerald-600 text-xs transition-transform duration-300"
+                    :class="{ 'rotate-180': expanded }"></i>
+            </div>
+        </button>
+
+        <!-- Ù…Ø­ØªÙˆØ§ÛŒ Ú©Ø§Ù…Ù„ - Ø¯Ø± Ù…ÙˆØ¨Ø§ÛŒÙ„ Ø¨Ø§ expand/collapse -->
+        <div class="relative z-10 px-5 py-5 collapse-content lg:hidden border-t border-emerald-100/60" x-show="expanded"
+            x-cloak style="display: none;">
+            <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl font-black shadow-inner hidden lg:flex">
+                        @if($group->avatar)
+                        <img src="{{ asset('images/groups/' . $group->avatar) }}" alt="{{ $group->name }}"
+                            class="w-full h-full object-cover rounded-3xl">
+                        @else
+                        {{ Str::upper(Str::substr($group->name, 0, 2)) }}
+                        @endif
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <h1 class="text-xl lg:text-3xl font-black text-slate-900">{{ $group->name }}</h1>
+                            <span
+                                class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-600 text-sm font-semibold">
+                                <i class="fas fa-user-shield"></i>{{ $roleTitle }}
+                            </span>
+                            <span
+                                class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-sm">
+                                <i class="fas fa-wave-square"></i>{{ $membershipStatusLabel }}
+                            </span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+                            <span class="inline-flex items-center gap-2">
+                                <i class="fas fa-users text-emerald-500"></i>{{ $memberCount }} Ø¹Ø¶Ùˆ
+                            </span>
+                            @if($guestCount > 0)
+                            <span class="inline-flex items-center gap-2">
+                                <i class="fas fa-user-clock text-emerald-500"></i>{{ $guestCount }} Ù…Ù‡Ù…Ø§Ù†
+                            </span>
+                            @endif
+                            @if($group->location_level)
+                            <span class="inline-flex items-center gap-2">
+                                <i class="fas fa-map-marker-alt text-emerald-500"></i>{{ $group->location_level }}
+                            </span>
+                            @endif
+                            <span class="inline-flex items-center gap-2">
+                                <i
+                                    class="fas fa-calendar-check text-emerald-500"></i>{{ verta($group->created_at)->format('Y/m/d') }}
+                            </span>
+                        </div>
+                        @if(!empty($group->description))
+                        <p class="text-sm text-slate-500 leading-relaxed max-w-2xl">
+                            {{ Str::limit(strip_tags($group->description), 180) }}
+                        </p>
+                        @endif
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-3 justify-start lg:justify-end">
+                    <button type="button"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition lg:hidden"
+                        onclick="openGroupInfo()">
+                        <i class="fas fa-layer-group"></i>
+                        Ù¾Ù†Ù„ Ú¯Ø±ÙˆÙ‡
+                    </button>
+                    @if(($yourRole ?? 0) !== 5)
+                    <button type="button"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500 text-white shadow-sm hover:bg-emerald-600 transition"
+                        onclick="openBlogBox()">
+                        <i class="far fa-pen-to-square"></i>
+                        Ø§ÛŒØ¬Ø§Ø¯ Ù¾Ø³Øª
+                    </button>
+                    <button type="button"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition"
+                        onclick="openPollBox()">
+                        <i class="fas fa-chart-simple"></i>
+                        Ø³Ø§Ø®Øª Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ
+                    </button>
+                    @endif
+                    @if($electionAvailable)
+                    <button type="button"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl {{ $canParticipateElection ? 'bg-indigo-500 text-white shadow-sm hover:bg-indigo-600 transition' : 'bg-slate-100 text-slate-500 cursor-not-allowed' }}"
+                        @if($canParticipateElection) onclick="openElectionBox()" @else disabled @endif>
+                        <i class="fas fa-vote-yea"></i>
+                        {{ $canParticipateElection ? 'Ø´Ø±Ú©Øª Ø¯Ø± Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª' : 'Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª ÙØ¹Ø§Ù„' }}
+                    </button>
+                    @endif
+                    @if(in_array($yourRole ?? 0, [2,3]))
+                    <button type="button"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
+                        onclick="openElection2Box()">
+                        <i class="fas fa-ballot-check text-emerald-500"></i>
+                        Ø§ÙØ²ÙˆØ¯Ù† Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª
+                    </button>
+                    @endif
+                    @if(($yourRole ?? 0) == 3)
+                    <button type="button" id="manage-members-btn"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-blue-200 text-blue-600 hover:bg-blue-50 transition"
+                        onclick="if(typeof window.showManageMembersModal === 'function') { window.showManageMembersModal(); } else { console.error('showManageMembersModal not found'); alert('ØªØ§Ø¨Ø¹ Ù…Ø¯ÛŒØ±ÛŒØª Ø§Ø¹Ø¶Ø§ ÛŒØ§ÙØª Ù†Ø´Ø¯. Ù„Ø·ÙØ§Ù‹ ØµÙØ­Ù‡ Ø±Ø§ Ø±ÙØ±Ø´ Ú©Ù†ÛŒØ¯.'); }">
+                        <i class="fas fa-users-cog"></i>
+                        Ù…Ø¯ÛŒØ±ÛŒØª Ø§Ø¹Ø¶Ø§
+                    </button>
+                    <button type="button" id="manage-reports-btn"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-orange-200 text-orange-600 hover:bg-orange-50 transition relative"
+                        onclick="if(typeof window.showManageReportsModal === 'function') { window.showManageReportsModal(); } else { console.error('showManageReportsModal not found'); alert('ØªØ§Ø¨Ø¹ Ù…Ø¯ÛŒØ±ÛŒØª Ú¯Ø²Ø§Ø±Ø´â€ŒÙ‡Ø§ ÛŒØ§ÙØª Ù†Ø´Ø¯. Ù„Ø·ÙØ§Ù‹ ØµÙØ­Ù‡ Ø±Ø§ Ø±ÙØ±Ø´ Ú©Ù†ÛŒØ¯.'); }">
+                        <i class="fas fa-flag"></i>
+                        Ú¯Ø²Ø§Ø±Ø´â€ŒÙ‡Ø§
+                        <span id="reports-badge"
+                            class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"
+                            style="display: none;">0</span>
+                    </button>
+                    @endif
+                    <button type="button" id="group-settings-btn"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition"
+                        onclick="showGroupSettingsModal()">
+                        <i class="fas fa-cog"></i>
+                        ØªÙ†Ø¸ÛŒÙ…Ø§Øª
+                    </button>
+                    <a href="{{ route('groups.logout', $group->id) }}"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-red-100 text-red-500 hover:bg-red-50 transition">
+                        <i class="fas fa-door-open"></i>
+                        Ø®Ø±ÙˆØ¬ Ø§Ø² Ú¯Ø±ÙˆÙ‡
+                    </a>
+                </div>
+            </div>
+            <div class="relative z-10 mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="stat-chip">
+                    <span class="stat-chip__label">Ù¾ÛŒØ§Ù…â€ŒÙ‡Ø§ÛŒ Ø³Ù†Ø¬Ø§Ù‚â€ŒØ´Ø¯Ù‡</span>
+                    <span class="stat-chip__value js-pinned-count">{{ $pinnedMessages->count() }}</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="stat-chip__label">Ù¾Ø³Øªâ€ŒÙ‡Ø§</span>
+                    <span class="stat-chip__value">{{ $blogCount }}</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="stat-chip__label">Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒâ€ŒÙ‡Ø§</span>
+                    <span class="stat-chip__value">{{ $pollCount }}</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="stat-chip__label">Ø¢Ø®Ø±ÛŒÙ† ÙØ¹Ø§Ù„ÛŒØª</span>
+                    <span class="stat-chip__value">{{ verta($group->updated_at)->formatDifference() }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ù†Ø³Ø®Ù‡ Ø¯Ø³Ú©ØªØ§Ù¾ - Ù‡Ù…ÛŒØ´Ù‡ Ø¨Ø§Ø² -->
+        <div class="hidden lg:block relative z-10 px-5 py-6">
+            <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex items-center gap-5">
+                    <div
+                        class="w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl font-black shadow-inner">
+                        @if($group->avatar)
+                        <img src="{{ asset('images/groups/' . $group->avatar) }}" alt="{{ $group->name }}"
+                            class="w-full h-full object-cover rounded-3xl">
+                        @else
+                        {{ Str::upper(Str::substr($group->name, 0, 2)) }}
+                        @endif
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <h1 class="text-2xl lg:text-3xl font-black text-slate-900">{{ $group->name }}</h1>
+                            <span
+                                class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-600 text-sm font-semibold">
+                                <i class="fas fa-user-shield"></i>{{ $roleTitle }}
+                            </span>
+                            <span
+                                class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-sm">
+                                <i class="fas fa-wave-square"></i>{{ $membershipStatusLabel }}
+                            </span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+                            <span class="inline-flex items-center gap-2">
+                                <i class="fas fa-users text-emerald-500"></i>{{ $memberCount }} Ø¹Ø¶Ùˆ
+                            </span>
+                            @if($guestCount > 0)
+                            <span class="inline-flex items-center gap-2">
+                                <i class="fas fa-user-clock text-emerald-500"></i>{{ $guestCount }} Ù…Ù‡Ù…Ø§Ù†
+                            </span>
+                            @endif
+                            @if($group->location_level)
+                            <span class="inline-flex items-center gap-2">
+                                <i class="fas fa-map-marker-alt text-emerald-500"></i>{{ $group->location_level }}
+                            </span>
+                            @endif
+                            <span class="inline-flex items-center gap-2">
+                                <i
+                                    class="fas fa-calendar-check text-emerald-500"></i>{{ verta($group->created_at)->format('Y/m/d') }}
+                            </span>
+                        </div>
+                        @if(!empty($group->description))
+                        <p class="text-sm text-slate-500 leading-relaxed max-w-2xl">
+                            {{ Str::limit(strip_tags($group->description), 180) }}
+                        </p>
+                        @endif
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-3 justify-start lg:justify-end">
+                    <button type="button"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition lg:hidden"
+                        onclick="openGroupInfo()">
+                        <i class="fas fa-layer-group"></i>
+                        Ù¾Ù†Ù„ Ú¯Ø±ÙˆÙ‡
+                    </button>
+                    @if(($yourRole ?? 0) !== 5)
+                    <button type="button"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500 text-white shadow-sm hover:bg-emerald-600 transition"
+                        onclick="openBlogBox()">
+                        <i class="far fa-pen-to-square"></i>
+                        Ø§ÛŒØ¬Ø§Ø¯ Ù¾Ø³Øª
+                    </button>
+                    <button type="button"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition"
+                        onclick="openPollBox()">
+                        <i class="fas fa-chart-simple"></i>
+                        Ø³Ø§Ø®Øª Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ
+                    </button>
+                    @endif
+                    @if($electionAvailable)
+                    <button type="button"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl {{ $canParticipateElection ? 'bg-indigo-500 text-white shadow-sm hover:bg-indigo-600 transition' : 'bg-slate-100 text-slate-500 cursor-not-allowed' }}"
+                        @if($canParticipateElection) onclick="openElectionBox()" @else disabled @endif>
+                        <i class="fas fa-vote-yea"></i>
+                        {{ $canParticipateElection ? 'Ø´Ø±Ú©Øª Ø¯Ø± Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª' : 'Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª ÙØ¹Ø§Ù„' }}
+                    </button>
+                    @endif
+                    @if(in_array($yourRole ?? 0, [2,3]))
+                    <button type="button"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
+                        onclick="openElection2Box()">
+                        <i class="fas fa-ballot-check text-emerald-500"></i>
+                        Ø§ÙØ²ÙˆØ¯Ù† Ø§Ù†ØªØ®Ø§Ø¨Ø§Øª
+                    </button>
+                    @endif
+                    @if(($yourRole ?? 0) == 3)
+                    <button type="button" id="manage-members-btn"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-blue-200 text-blue-600 hover:bg-blue-50 transition"
+                        onclick="if(typeof window.showManageMembersModal === 'function') { window.showManageMembersModal(); } else { console.error('showManageMembersModal not found'); alert('ØªØ§Ø¨Ø¹ Ù…Ø¯ÛŒØ±ÛŒØª Ø§Ø¹Ø¶Ø§ ÛŒØ§ÙØª Ù†Ø´Ø¯. Ù„Ø·ÙØ§Ù‹ ØµÙØ­Ù‡ Ø±Ø§ Ø±ÙØ±Ø´ Ú©Ù†ÛŒØ¯.'); }">
+                        <i class="fas fa-users-cog"></i>
+                        Ù…Ø¯ÛŒØ±ÛŒØª Ø§Ø¹Ø¶Ø§
+                    </button>
+                    <button type="button" id="manage-reports-btn"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-orange-200 text-orange-600 hover:bg-orange-50 transition relative"
+                        onclick="if(typeof window.showManageReportsModal === 'function') { window.showManageReportsModal(); } else { console.error('showManageReportsModal not found'); alert('ØªØ§Ø¨Ø¹ Ù…Ø¯ÛŒØ±ÛŒØª Ú¯Ø²Ø§Ø±Ø´â€ŒÙ‡Ø§ ÛŒØ§ÙØª Ù†Ø´Ø¯. Ù„Ø·ÙØ§Ù‹ ØµÙØ­Ù‡ Ø±Ø§ Ø±ÙØ±Ø´ Ú©Ù†ÛŒØ¯.'); }">
+                        <i class="fas fa-flag"></i>
+                        Ú¯Ø²Ø§Ø±Ø´â€ŒÙ‡Ø§
+                        <span id="reports-badge"
+                            class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"
+                            style="display: none;">0</span>
+                    </button>
+                    @endif
+                    <button type="button" id="group-settings-btn"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition"
+                        onclick="showGroupSettingsModal()">
+                        <i class="fas fa-cog"></i>
+                        ØªÙ†Ø¸ÛŒÙ…Ø§Øª
+                    </button>
+                    <a href="{{ route('groups.logout', $group->id) }}"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-red-100 text-red-500 hover:bg-red-50 transition">
+                        <i class="fas fa-door-open"></i>
+                        Ø®Ø±ÙˆØ¬ Ø§Ø² Ú¯Ø±ÙˆÙ‡
+                    </a>
+                </div>
+            </div>
+            <div class="relative z-10 mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="stat-chip">
+                    <span class="stat-chip__label">Ù¾ÛŒØ§Ù…â€ŒÙ‡Ø§ÛŒ Ø³Ù†Ø¬Ø§Ù‚â€ŒØ´Ø¯Ù‡</span>
+                    <span class="stat-chip__value js-pinned-count">{{ $pinnedMessages->count() }}</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="stat-chip__label">Ù¾Ø³Øªâ€ŒÙ‡Ø§</span>
+                    <span class="stat-chip__value">{{ $blogCount }}</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="stat-chip__label">Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒâ€ŒÙ‡Ø§</span>
+                    <span class="stat-chip__value">{{ $pollCount }}</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="stat-chip__label">Ø¢Ø®Ø±ÛŒÙ† ÙØ¹Ø§Ù„ÛŒØª</span>
+                    <span class="stat-chip__value">{{ verta($group->updated_at)->formatDifference() }}</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    @include('groups.modals.group_edit_form', compact('group'))
+    @php use Illuminate\Support\Str; @endphp
+    <div class="loading-overlay" id="global-loading">
+        <div class="spinner"></div>
+    </div>
+
+
+    <div class="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] items-start">
+        <div class="space-y-6">
+            @if ($pinnedMessages->count() > 0)
+            <div class="bg-white border border-emerald-100 rounded-3xl shadow-sm mb-6">
+                <div class="pinned-messages"
+                    style="border-radius: 1.5rem; overflow: hidden; background: #fff; border: none;">
+                    @foreach($pinnedMessages as $pinnedMessage)
+                    <div class="pin-wrapper"
+                        style="position: relative; border-bottom: 1px solid #f1f5f9; padding: 4px;">
+                        <a class="pin" href="#msg-{{ $pinnedMessage->message->id }}"
+                            style="flex: 1; padding-left: 45px; box-shadow: none; border-radius: 0.75rem;">
+                            <div>
+                                <b style="color: #10b981; font-size: 0.85rem;">Ù¾ÛŒØ§Ù… Ø³Ù†Ø¬Ø§Ù‚â€ŒØ´Ø¯Ù‡</b>
+                                <p style="font-size: 0.9rem; color: #475569;">{!!
+                                    Str::limit(strip_tags($pinnedMessage->message->message), 120, '...') !!}</p>
+                            </div>
+                            <i class="fas fa-thumbtack" style="font-size: 1.1rem; color: #10b981; opacity: 0.5;"></i>
+                        </a>
+                        @if($roleValue === 3 || $pinnedMessage->message->user_id === auth()->id())
+                        <button onclick="event.preventDefault(); unpinMessage('{{ $pinnedMessage->message->id }}')"
+                            class="unpin-btn"
+                            style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); border: none; background: #f1f5f9; cursor: pointer; color: #94a3b8; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
+                            title="Ø­Ø°Ù Ø§Ø² Ø­Ø§Ù„Øª Ø³Ù†Ø¬Ø§Ù‚">
+                            <i class="fas fa-times" style="font-size: 0.9rem; color: inherit !important;"></i>
+                        </button>
+                        @endif
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+            <div class="chat-wrapper">
+                <div class="chat-body" id="chat-box">
+                    @foreach($combined as $item)
+                    @include('groups.partials.' . $item->type, compact('item', 'group', 'userVote'))
+                    @endforeach
+                </div>
+            </div>
+
+            <button id="scroll-toggle-btn" class="chat-scroll-btn">
+                <i class="fas fa-arrow-up"></i>
+            </button>
+
+            @php
+            $checkBlockMessage = \App\Models\Block::where('user_id', auth()->user()->id)->where('position',
+            'message')->first();
+            $checkBlockPost = \App\Models\Block::where('user_id', auth()->user()->id)->where('position',
+            'post')->first();
+            $checkBlockPoll = \App\Models\Block::where('user_id', auth()->user()->id)->where('position',
+            'poll')->first();
+            @endphp
+
+            <div class="bg-white border border-emerald-100 rounded-3xl shadow-sm p-5 w-full">
+                @if ($yourRole === 0 && $group->is_open == 0)
+                <p class="text-red-500">
+                    Ø´Ù…Ø§ Ù…Ø¬Ø§Ø² Ø¨Ù‡ Ø§Ø±Ø³Ø§Ù„ Ù¾ÛŒØ§Ù… Ø¯Ø± Ú¯Ø±ÙˆÙ‡ Ù†ÛŒØ³ØªÛŒØ¯.
+                </p>
+                @elseif (auth()->user()->status == 0 || auth()->user()->first_name == null || auth()->user()->last_name
+                == null)
+                <p class="text-amber-600">
+                    Ø¨Ù‡ Ø¯Ù„ÛŒÙ„ Ú©Ø§Ù…Ù„ Ù†Ø¨ÙˆØ¯Ù† Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ú©Ø§Ø±Ø¨Ø±ÛŒ Ø§Ù…Ú©Ø§Ù† Ø§Ø±Ø³Ø§Ù„ Ù¾ÛŒØ§Ù… Ø±Ø§ Ù†Ø¯Ø§Ø±ÛŒØ¯ØŒ Ø§Ø²
+                    <a href='{{ route('profile.edit') }}' class="text-emerald-600 underline">Ø§ÛŒÙ† Ù‚Ø³Ù…Øª</a>
+                    Ø§Ù‚Ø¯Ø§Ù… Ø¨Ù‡ ÙˆØ§Ø±Ø¯ Ú©Ø±Ø¯Ù† Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ú©Ù†ÛŒØ¯.
+                </p>
+                @else
+                <form id="chatForm" class="chat-input telegram-style-input" method="POST"
+                    action="{{ route('groups.messages.store') }}" enctype="multipart/form-data">
+                    @csrf
+                    <input type="hidden" name="group_id" value="{{ $group->id }}">
+                    <input type="hidden" name="parent_id" id="parent_id" value="">
+                    <input type="file" name="voice_message" id="voice-file-input" accept="audio/*" class="d-none">
+
+                    @if ($checkBlockMessage != null)
+                    <div
+                        class="chat-block-message text-danger-emphasis bg-danger-subtle border border-danger-subtle rounded-4 px-3 py-3">
+                        Ø´Ù…Ø§ Ø§Ø² Ø¬Ø§Ù†Ø¨ Ù…Ø¯ÛŒØ±ÛŒØª Ø¨Ø±Ø§ÛŒ Ø¹Ù…Ù„ÛŒØ§Øª Ø§Ø±Ø³Ø§Ù„ Ù¾ÛŒØ§Ù… Ù…Ø³Ø¯ÙˆØ¯ Ø´Ø¯Ù‡â€ŒØ§ÛŒØ¯ØŒ Ø¬Ù‡Øª Ø±ÙØ¹ Ù…Ø³Ø¯ÙˆØ¯ÛŒØª Ø¨Ø§ Ù…Ø¯ÛŒØ±ÛŒØª Ø¯Ø± Ø§Ø±ØªØ¨Ø§Ø·
+                        Ø¨Ø§Ø´ÛŒØ¯.
+                    </div>
+                    @else
+                    <!-- Reply Indicator Container - Ø´Ø¨ÛŒÙ‡ ØªÙ„Ú¯Ø±Ø§Ù… -->
+                    <div id="reply-indicator-container" class="telegram-reply-indicator" style="display: none;"></div>
+
+                    <!-- Input Container -->
+                    <div class="telegram-input-container">
+                        <!-- Attachment Button -->
+                        @if($yourRole != 5)
+                        <div class="position-relative telegram-attach-btn-wrapper">
+                            <button type="button" id="chatCreateToggle" class="telegram-attach-btn">
+                                <i class="fas fa-paperclip"></i>
+                            </button>
+                            <div id="createMenu" style="display: none;" class="chat-tool-menu telegram-attach-menu">
+                                @if ($checkBlockPost != null)
+                                <span class="chat-tool-menu__item text-danger">Ø´Ù…Ø§ Ø¨Ø±Ø§ÛŒ Ø¹Ù…Ù„ÛŒØ§Øª Ø§ÛŒØ¬Ø§Ø¯ Ù¾Ø³Øª Ù…Ø³Ø¯ÙˆØ¯
+                                    Ø´Ø¯Ù‡â€ŒØ§ÛŒØ¯</span>
+                                @else
+                                <button type="button" class="chat-tool-menu__item" id="create-post-btn">
+                                    <i class="far fa-edit text-success"></i>
+                                    Ø§ÛŒØ¬Ø§Ø¯ Ù¾Ø³Øª
+                                </button>
+                                @endif
+
+                                @if ($checkBlockPoll != null)
+                                <span class="chat-tool-menu__item text-danger">Ø´Ù…Ø§ Ø¨Ø±Ø§ÛŒ Ø¹Ù…Ù„ÛŒØ§Øª Ø§ÛŒØ¬Ø§Ø¯ Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ Ù…Ø³Ø¯ÙˆØ¯
+                                    Ø´Ø¯Ù‡â€ŒØ§ÛŒØ¯</span>
+                                @else
+                                <button type="button" class="chat-tool-menu__item" id="create-poll-btn">
+                                    <i class="fas fa-chart-simple text-success"></i>
+                                    Ø§ÛŒØ¬Ø§Ø¯ Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ
+                                </button>
+                                @endif
+
+                                <button type="button" id="audio-upload-trigger" class="chat-tool-menu__item">
+                                    <i class="fas fa-file-audio text-success"></i>
+                                    Ø§Ø±Ø³Ø§Ù„ ÙØ§ÛŒÙ„ ØµÙˆØªÛŒ
+                                </button>
+                            </div>
+                        </div>
+                        @endif
+
+                        <!-- Text Input -->
+                        <div class="telegram-input-wrapper">
+                            <textarea class="telegram-textarea" name="message" placeholder="Ù¾ÛŒØ§Ù… Ø®ÙˆØ¯ Ø±Ø§ Ø¨Ù†ÙˆÛŒØ³ÛŒØ¯..."
+                                id="message_editor" rows="1"></textarea>
+                        </div>
+
+                        <!-- Send Button -->
+                        <div class="telegram-action-buttons">
+                            <button type="button" id="voice-record-btn" class="telegram-action-btn telegram-voice-btn"
+                                title="Ø¶Ø¨Ø· ØµØ¯Ø§">
+                                <i class="fas fa-microphone"></i>
+                            </button>
+                            <button type="submit" id="telegram-send-btn" class="telegram-action-btn telegram-send-btn"
+                                title="Ø§Ø±Ø³Ø§Ù„">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Voice File Preview -->
+                    <div id="voice-file-preview" class="voice-file-preview telegram-voice-preview"
+                        style="display: none !important;">
+                        <i class="fas fa-file-audio"></i>
+                        <div class="voice-file-info">
+                            <div id="voice-file-name"></div>
+                            <small id="voice-file-size"></small>
+                        </div>
+                        <button type="button" class="voice-file-remove-btn" id="voice-file-remove">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    @endif
+                </form>
+                @endif
+            </div>
+        </div>
+
+        <aside class="space-y-6 lg:pl-2">
+            @include('groups.partials.group_info_panel', compact('group'))
+        </aside>
+    </div>
+
+    <div id="groupInfoBackdrop" class="group-info-backdrop hidden"></div>
+    <div id="categoryBlogsOverlay"
+        style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1100;"></div>
+
+    <div id="categoryBlogsModal" style="
+  display:none; position:fixed; inset:0; z-index:1110;
+  align-items:center; justify-content:center;">
+        <div style="
+    width: min(700px, 92vw);
+    max-height: 80vh;
+    background:#fff; border-radius:12px; overflow:hidden;
+    direction: rtl; box-shadow:0 10px 30px rgba(0,0,0,.2);
+  ">
+            <div
+                style="display:flex; align-items:center; justify-content:space-between; padding: .8rem 1rem; background:#f6f6f6;">
+                <strong id="catModalTitle" style="font-size:1rem">Ù„ÛŒØ³Øª Ù¾Ø³Øªâ€ŒÙ‡Ø§</strong>
+                <button id="closeCatModal"
+                    style="border:none; background:transparent; font-size:1.2rem; line-height:1;">âœ–</button>
+            </div>
+            <div id="catModalBody" style="padding: .6rem 1rem; overflow:auto; max-height: calc(80vh - 52px);">
+                <div id="catLoading" style="padding:1rem; text-align:center;">Ø¯Ø± Ø­Ø§Ù„ Ø¨Ø§Ø±Ú¯Ø°Ø§Ø±ÛŒ...</div>
+                <ul id="catList" style="list-style:none; margin:0; padding:0; display:none;"></ul>
+                <div id="catEmpty" style="display:none; text-align:center; padding:1rem;">Ù¾Ø³ØªÛŒ Ø¯Ø± Ø§ÛŒÙ† Ø¯Ø³ØªÙ‡ ÛŒØ§ÙØª Ù†Ø´Ø¯.
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    function togglePollMenu(pollId) {
+        const menu = document.getElementById('poll-menu-' + pollId);
+        if (!menu) return;
+        if (menu.style.display === 'none' || menu.style.display === '') {
+            menu.style.display = 'block';
+        } else {
+            menu.style.display = 'none';
+        }
+    }
+    </script>
+    <script>
+    function showEditPollBox(pollId) {
+        // Ù…Ø«Ø§Ù„: Ù†Ù…Ø§ÛŒØ´ ÛŒÚ© Ø¨Ø§Ú©Ø³ ÙˆÛŒØ±Ø§ÛŒØ´
+        const editBox = document.getElementById('edit-poll-box-' + pollId);
+        if (!editBox) return;
+        editBox.style.display = editBox.style.display === 'none' || editBox.style.display === '' ? 'block' : 'none';
+    }
+    </script>
+    <script>
+    function confirmDelete(event, url) {
+        event.preventDefault();
+        if (confirm('Ø¢ÛŒØ§ Ù…Ø·Ù…Ø¦Ù† Ù‡Ø³ØªÛŒØ¯ Ú©Ù‡ Ù…ÛŒâ€ŒØ®ÙˆØ§Ù‡ÛŒØ¯ Ø§ÛŒÙ† Ø¢ÛŒØªÙ… Ø±Ø§ Ø­Ø°Ù Ú©Ù†ÛŒØ¯ØŸ')) {
+            window.location.href = url; // ÛŒØ§ Ø¨Ø§ AJAX Ø­Ø°Ù Ú©Ù†
+        }
+    }
+    </script>
+    <!-- Edit Modal -->
+    <div id="editModal" class="edit-modal hidden" aria-hidden="true">
+        <div class="edit-modal__backdrop"></div>
+        <div class="edit-modal__panel" role="dialog" aria-modal="true" aria-labelledby="editModalTitle">
+            <div class="edit-modal__header">
+                <h3 id="editModalTitle">ÙˆÛŒØ±Ø§ÛŒØ´ Ù¾ÛŒØ§Ù…</h3>
+                <button type="button" class="edit-close" aria-label="Ø¨Ø³ØªÙ†">Ã—</button>
+            </div>
+            <div class="edit-modal__body">
+                <textarea id="editText" rows="6" class="edit-textarea" placeholder="Ù…ØªÙ† Ù¾ÛŒØ§Ù…..."></textarea>
+            </div>
+            <div class="edit-modal__footer">
+                <button type="button" class="btn btn-primary save-edit">Ø°Ø®ÛŒØ±Ù‡</button>
+                <button type="button" class="btn cancel-edit "
+                    style='    background-color: #c24545 !important;'>Ù„ØºÙˆ</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    .edit-modal.hidden {
+        display: none;
+    }
+
+    .edit-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+    }
+
+    .edit-modal__backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, .35);
+    }
+
+    .edit-modal__panel {
+        direction: rtl;
+        position: relative;
+        margin: 5vh auto 0;
+        max-width: 640px;
+        width: clamp(320px, 90vw, 640px);
+        max-height: 90vh;
+        background: #fff;
+        border-radius: 12px;
+        padding: 1rem;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, .15);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .edit-modal__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .5rem;
+    }
+
+    .edit-modal__body {
+        margin-top: .5rem;
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .edit-textarea {
+        width: 100%;
+        min-height: 120px;
+        padding: .75rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        font: inherit;
+        line-height: 1.5;
+        resize: vertical;
+    }
+
+    .edit-modal__footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: .5rem;
+        margin-top: .75rem;
+    }
+
+    .btn {
+        padding: .5rem .9rem;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        background: #f8fafc;
+        cursor: pointer;
+    }
+
+    .btn-primary {
+        background: #2563eb;
+        color: #fff;
+        border-color: #2563eb;
+    }
+
+    .edit-close {
+        background: transparent;
+        border: none;
+        font-size: 1.25rem;
+        cursor: pointer;
+        line-height: 1;
+    }
+
+    @media (max-width: 480px) {
+        .edit-modal__panel {
+            margin: 2vh auto 0;
+            width: 94vw;
+            padding: .75rem;
+        }
+    }
+    </style>
+
+    <script>
+    (function() {
+        // Ø§Ú¯Ø± CSRF Ø±Ø§ Ø¯Ø± <meta name="csrf-token" content="..."> Ø¯Ø§Ø±ÛŒ:
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+            '{{ csrf_token() }}';
+
+        const modal = document.getElementById('editModal');
+        const textarea = document.getElementById('editText');
+        const btnSave = modal.querySelector('.save-edit');
+        const btnCancel = modal.querySelector('.cancel-edit');
+        const btnClose = modal.querySelector('.edit-close');
+        const backdrop = modal.querySelector('.edit-modal__backdrop');
+
+        // Ù…ØªØºÛŒØ±Ù‡Ø§ÛŒ ÙˆØ¶Ø¹ÛŒØª Ø¬Ø§Ø±ÛŒ ÙˆÛŒØ±Ø§ÛŒØ´
+        let currentBubble = null; // Ø¹Ù†ØµØ± .message-bubble
+        let currentUrl = null; // Ø¢Ø¯Ø±Ø³ PATCH
+        let currentId = null; // message-id
+
+        // Ù‡Ù†Ø¯Ù„Ø± Ú©Ù„ÛŒÚ© Ø±ÙˆÛŒ "ÙˆÛŒØ±Ø§ÛŒØ´"
+        document.addEventListener('click', function(e) {
+            const editBtn = e.target.closest('.btn-edit');
+            if (!editBtn) return;
+
+            const bubble = editBtn.closest('.message-bubble');
+            if (!bubble) return;
+
+            // Ø¨Ø³ØªÙ† Ù…Ù†ÙˆÛŒ Ø¹Ù…Ù„ÛŒØ§Øª Ù‚Ø¨Ù„ Ø§Ø² Ø¨Ø§Ø² Ú©Ø±Ø¯Ù† Ù…Ø¯Ø§Ù„
+            const actionMenu = bubble.closest('.message-head')?.querySelector('[data-action-menu]');
+            if (actionMenu) {
+                actionMenu.classList.remove('is-open');
+                actionMenu.querySelector('.action-menu__toggle')?.setAttribute('aria-expanded', 'false');
+            }
+
+            currentBubble = bubble;
+            currentUrl = bubble.dataset.editUrl;
+            currentId = bubble.dataset.messageId;
+
+            // Ù…ØªÙ† ÙØ¹Ù„ÛŒ Ø¨Ø±Ø§ÛŒ Ù¾Ø± Ú©Ø±Ø¯Ù† Ø¨Ø§Ú©Ø³:
+            // Ø§ÙˆÙ„ ØªÙ„Ø§Ø´ Ù…ÛŒâ€ŒÚ©Ù†ÛŒÙ… Ø§Ø² DOM (message-content) Ø¨Ø®ÙˆØ§Ù†ÛŒÙ… Ùˆ HTML (Ù…Ø«Ù„ <br>) Ø±Ø§ Ø¨Ù‡ Ù…ØªÙ† Ø³Ø§Ø¯Ù‡ Ø¨Ø§ line break ØªØ¨Ø¯ÛŒÙ„ Ú©Ù†ÛŒÙ…
+            const contentEl = bubble.querySelector('.message-content');
+            let raw = '';
+            if (contentEl) {
+                const messageHtml = contentEl.innerHTML || "";
+                raw = htmlToPlain(messageHtml);
+            }
+
+            // Ø§Ú¯Ø± Ø¨Ù‡ Ù‡Ø± Ø¯Ù„ÛŒÙ„ÛŒ Ù…ØªÙ† Ø®Ø§Ù„ÛŒ Ø¨ÙˆØ¯ØŒ Ø§Ø² data-content-raw Ø§Ø³ØªÙØ§Ø¯Ù‡ Ú©Ù† (fallback)
+            if (!raw && bubble.dataset.contentRaw) {
+                raw = bubble.dataset.contentRaw;
+            }
+
+            textarea.value = raw || '';
+            openModal();
+        });
+
+        // Ø°Ø®ÛŒØ±Ù‡ (Ø§Ø±Ø³Ø§Ù„ PATCH)
+        btnSave.addEventListener('click', async function() {
+            const newText = textarea.value.trim();
+
+            if (!currentBubble || !currentUrl) {
+                closeModal();
+                return;
+            }
+
+            // Ú†Ø±Ø®Ù†Ø¯Ù‡ Ùˆ Ø¯Ú©Ù…Ù‡
+            const overlay = document.getElementById('global-loading');
+            const showOverlay = () => overlay && overlay.classList.add('show');
+            const hideOverlay = () => overlay && overlay.classList.remove('show');
+            const setBtnLoading = (on = true) => {
+                btnSave.disabled = on;
+                btnSave.classList.toggle('btn-loading', on);
+            };
+
+            try {
+                showOverlay();
+                setBtnLoading(true);
+
+                // Ø§Ú¯Ø± Ø±ÙˆØªØª Ø¯Ù‚ÛŒÙ‚Ø§Ù‹ POST Ù…ÛŒâ€ŒÙ¾Ø°ÛŒØ±Ù‡ (Ø¨Ø¯ÙˆÙ† Ø´Ø¨ÛŒÙ‡â€ŒØ³Ø§Ø²ÛŒ PATCH)ØŒ Ù‡Ù…ÛŒÙ† Ú©Ø§ÙÛŒÙ‡:
+                const res = await fetch(currentUrl, {
+                    method: 'POST', // Ù…Ø·Ø§Ø¨Ù‚ Ú©Ù†ØªØ±Ù„Ø±Øª
+                    headers: {
+                        'X-CSRF-TOKEN': csrf,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        content: newText
+                    })
+                });
+
+                // Ø®ÙˆØ§Ù†Ø¯Ù† response (ÛŒÚ© Ø¨Ø§Ø±)
+                let responseData = null;
+                try {
+                    const contentType = res.headers.get('content-type') || '';
+                    if (contentType.includes('application/json')) {
+                        responseData = await res.json();
+                    } else {
+                        const text = await res.text();
+                        try {
+                            responseData = JSON.parse(text);
+                        } catch {
+                            responseData = {
+                                message: text
+                            };
+                        }
+                    }
+                } catch (parseError) {
+                    console.error('Error parsing response:', parseError);
+                    alert('خطا در خواندن پاسخ سرور');
+                    return;
+                }
+
+                // Ø¨Ø±Ø±Ø³ÛŒ status response
+                if (!res.ok) {
+                    // Ø®Ø·Ø§ Ø¯Ø± response
+                    const errorMsg = responseData?.message || responseData?.error ||
+                        'خطا در ذخیره‌سازی.';
+                    console.error('Response error:', errorMsg);
+                    alert(errorMsg);
+                    return;
+                }
+
+                // Ø¨Ø±Ø±Ø³ÛŒ ÙˆØ¬ÙˆØ¯ currentBubble
+                if (!currentBubble) {
+                    console.error('currentBubble is null');
+                    alert('خطا: عنصر پیام پیدا نشد');
+                    return;
+                }
+                // Ø°Ø®ÛŒØ±Ù‡ Ú©Ø±Ø¯Ù† currentBubble Ù‚Ø¨Ù„ Ø§Ø² Ø¨Ø³ØªÙ† Ù…ÙˆØ¯Ø§Ù„ (Ú†ÙˆÙ† closeModal Ù…Ù…Ú©Ù† Ø§Ø³Øª Ø¢Ù† Ø±Ø§ null Ú©Ù†Ø¯)
+                const bubbleToUpdate = currentBubble;
+
+                // Ø¨Ø³ØªÙ† Ù…Ù†ÙˆÛŒ Ø¹Ù…Ù„ÛŒØ§Øª (Ø§Ú¯Ø± bubble Ù‡Ù†ÙˆØ² Ø¯Ø± DOM Ø§Ø³Øª)
+                if (bubbleToUpdate && bubbleToUpdate.isConnected) {
+                    try {
+                        const actionMenu = bubbleToUpdate.closest('.message-head')?.querySelector(
+                            '[data-action-menu]');
+                        if (actionMenu) {
+                            actionMenu.classList.remove('is-open');
+                            actionMenu.querySelector('.action-menu__toggle')?.setAttribute(
+                                'aria-expanded', 'false');
+                        }
+                        // Ù‡Ù…Ú†Ù†ÛŒÙ† Ø¨Ø³ØªÙ† details menu Ø¯Ø± ØµÙˆØ±Øª ÙˆØ¬ÙˆØ¯ (Ø¨Ø±Ø§ÛŒ Ø³Ø§Ø²Ú¯Ø§Ø±ÛŒ)
+                        const details = bubbleToUpdate.closest('details.menu-wrapper[open]');
+                        if (details) {
+                            details.removeAttribute('open');
+                        }
+                    } catch (e) {
+                        console.warn('Error closing menu:', e);
+                        // Ø§Ø¯Ø§Ù…Ù‡ Ø¨Ø¯Ù‡ØŒ Ø§ÛŒÙ† Ø®Ø·Ø§ÛŒ Ø¬Ø¯ÛŒ Ù†ÛŒØ³Øª
+                    }
+                }
+
+                // Ø¨Ø³ØªÙ† Ù…ÙˆØ¯Ø§Ù„
+                closeModal();
+
+                // Ø§Ø³ØªÙØ§Ø¯Ù‡ Ø§Ø² bubbleToUpdate Ø¨Ø±Ø§ÛŒ Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ (Ù†Ù‡ currentBubble Ú©Ù‡ Ù…Ù…Ú©Ù† Ø§Ø³Øª null Ø´Ø¯Ù‡ Ø¨Ø§Ø´Ø¯)
+                const finalBubble = bubbleToUpdate;
+
+                // Ø¨Ø±Ø±Ø³ÛŒ format response Ùˆ Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ù…Ø­ØªÙˆØ§
+                let contentToUpdate = null;
+                if (responseData && responseData.content) {
+                    contentToUpdate = responseData.content;
+                } else if (responseData && responseData.message && typeof responseData.message ===
+                    'object' && responseData.message.content) {
+                    // Ø§Ú¯Ø± message ÛŒÚ© object Ø§Ø³Øª Ùˆ content Ø¯Ø§Ø±Ø¯
+                    contentToUpdate = responseData.message.content;
+                } else if (responseData && responseData.message && typeof responseData.message ===
+                    'string' && responseData.message !== 'Ù¾ÛŒØ§Ù… Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª ÙˆÛŒØ±Ø§ÛŒØ´ Ø´Ø¯') {
+                    // Ø§Ú¯Ø± message ÛŒÚ© string Ø§Ø³Øª (Ù†Ù‡ object) Ùˆ Ù¾ÛŒØ§Ù… Ù…ÙˆÙÙ‚ÛŒØª Ù†ÛŒØ³Øª
+                    contentToUpdate = responseData.message;
+                }
+                if (contentToUpdate) {
+                    try {
+                        if (!finalBubble || !finalBubble.isConnected) {
+                            console.error('finalBubble is null or not in DOM');
+                            throw new Error('Message bubble not found in DOM');
+                        }
+                        updateMessageContent(finalBubble, contentToUpdate, true);
+                        // Ù…ÙˆÙÙ‚: Ù‡ÛŒÚ† reload Ù„Ø§Ø²Ù… Ù†ÛŒØ³Øª
+                    } catch (updateError) {
+                        console.error('Error in updateMessageContent:', updateError);
+                        console.error('Error stack:', updateError.stack);
+                        // ÙÙ‚Ø· Ø¯Ø± ØµÙˆØ±Øª Ø®Ø·Ø§ÛŒ Ø¬Ø¯ÛŒ (Ù…Ø«Ù„ null element) reload Ú©Ù†
+                        if (updateError.message && (updateError.message.includes('null') || updateError
+                                .message.includes('not found') || updateError.message.includes(
+                                    'not in DOM'))) {
+                            console.warn('Critical error in updateMessageContent; waiting for polling sync.');
+                            alert('به‌روزرسانی پیام در نما انجام نشد؛ چند لحظه دیگر با همگام‌سازی خودکار اصلاح می‌شود.');
+                        } else {
+                            // Ø¨Ø±Ø§ÛŒ Ø®Ø·Ø§Ù‡Ø§ÛŒ Ø¯ÛŒÚ¯Ø±ØŒ ÙÙ‚Ø· alert Ø¨Ø¯Ù‡
+                            console.warn('Non-critical error in updateMessageContent, not reloading');
+                            alert('Ø®Ø·Ø§ Ø¯Ø± Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ù¾ÛŒØ§Ù…: ' + updateError.message);
+                        }
+                    }
+                } else {
+                    console.warn('Unexpected response format:', responseData);
+                    console.warn('Response keys:', Object.keys(responseData || {}));
+                    // Ø§Ú¯Ø± response Ø¯Ø±Ø³Øª Ù†Ø¨ÙˆØ¯ØŒ Ø³Ø¹ÛŒ Ú©Ù† Ø§Ø² message Ø§Ø³ØªÙØ§Ø¯Ù‡ Ú©Ù†
+                    if (responseData && responseData.message && typeof responseData.message ===
+                        'string' && responseData.message !== 'Ù¾ÛŒØ§Ù… Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª ÙˆÛŒØ±Ø§ÛŒØ´ Ø´Ø¯') {
+                        // Ø§Ú¯Ø± message ÛŒÚ© string Ø§Ø³Øª Ùˆ Ù¾ÛŒØ§Ù… Ù…ÙˆÙÙ‚ÛŒØª Ù†ÛŒØ³ØªØŒ Ø§Ø² Ø¢Ù† Ø§Ø³ØªÙØ§Ø¯Ù‡ Ú©Ù†
+                        try {
+                            if (!finalBubble || !finalBubble.isConnected) {
+                                throw new Error('Message bubble not found in DOM');
+                            }
+                            updateMessageContent(finalBubble, responseData.message, true);
+                        } catch (e) {
+                            console.error('Failed to update using message:', e);
+                            alert('به‌روزرسانی نمای پیام انجام نشد؛ با همگام‌سازی خودکار اصلاح می‌شود.');
+                        }
+                    } else {
+                        // اگر هیچ راهی نبود، fallback نرم: بدون reload و با اتکا به polling
+                        console.error('No valid content found; waiting for polling sync...');
+                        alert('پاسخ نامعتبر بود؛ با همگام‌سازی خودکار پیام اصلاح می‌شود.');
+                    }
+                }
+
+            } catch (err) {
+                console.error('Error in edit handler:', err);
+                console.error('Error stack:', err.stack);
+                console.error('Error name:', err.name);
+                console.error('Error message:', err.message);
+                // Ø§Ú¯Ø± Ø®Ø·Ø§ Ø§Ø² fetch ÛŒØ§ network Ø§Ø³ØªØŒ reload Ú©Ù†
+                if (err.name === 'TypeError' && (err.message.includes('fetch') || err.message.includes(
+                        'network') || err.message.includes('Failed to fetch'))) {
+                    console.warn('Network error detected; skipping hard reload and waiting for polling sync...');
+                    return;
+                }
+                // Ø¨Ø±Ø§ÛŒ Ø³Ø§ÛŒØ± Ø®Ø·Ø§Ù‡Ø§ØŒ ÙÙ‚Ø· alert Ø¨Ø¯Ù‡ Ùˆ reload Ù†Ú©Ù†
+                alert('Ø®Ø·Ø§ Ø¯Ø± ÙˆÛŒØ±Ø§ÛŒØ´ Ù¾ÛŒØ§Ù…: ' + (err.message || 'Ø®Ø·Ø§ÛŒ Ù†Ø§Ù…Ø´Ø®Øµ'));
+                // reload Ù†Ú©Ù† - Ø¨Ú¯Ø°Ø§Ø± Ú©Ø§Ø±Ø¨Ø± Ø®ÙˆØ¯Ø´ ØªØµÙ…ÛŒÙ… Ø¨Ú¯ÛŒØ±Ø¯
+
+            } finally {
+                hideOverlay();
+                setBtnLoading(false);
+            }
+        });
+
+
+        // Ø¨Ø³ØªÙ† Ù…ÙˆØ¯Ø§Ù„
+        [btnCancel, btnClose, backdrop].forEach(el => el.addEventListener('click', closeModal));
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
+        });
+
+        function openModal() {
+            modal.classList.remove('hidden');
+            textarea.focus();
+            // Ù…Ú©Ø§Ù†â€ŒÙ†Ù…Ø§ Ø¢Ø®Ø± Ù…ØªÙ†:
+            const val = textarea.value;
+            textarea.setSelectionRange(val.length, val.length);
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+            textarea.value = '';
+            currentBubble = null;
+            currentUrl = null;
+            currentId = null;
+        }
+
+        function htmlToPlain(html) {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            return (tmp.textContent || tmp.innerText || '').trim();
+        }
+    })();
+    </script>
+
+    <script>
+    const chatBox = document.getElementById('chat-box');
+    const STORAGE_KEY = 'chatScroll_{{ $group->id }}';
+    const GROUP_ID = @json($group->id);
+    const LAST_READ_MESSAGE_ID = @json($lastReadMessageId);
+    const UPDATE_LAST_READ_URL = '{{ route("groups.messages.updateLastRead", $group->id) }}';
+    const CURRENT_USER_ROLE = @json($roleValue ?? 0);
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+        '{{ csrf_token() }}';
+
+    // Ø¬Ù„ÙˆÚ¯ÛŒØ±ÛŒ Ø§Ø² Ø±ÙØªØ§Ø± Ù¾ÛŒØ´â€ŒÙØ±Ø¶ Ù…Ø±ÙˆØ±Ú¯Ø±
+    if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+    }
+
+    // ØªØ§Ø¨Ø¹ Ø¨Ø±Ø§ÛŒ Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ last_read_message_id
+    let lastReadUpdateTimeout = null;
+
+    function updateLastReadMessage(messageId) {
+        if (!messageId || messageId === LAST_READ_MESSAGE_ID) return;
+
+        // Debounce: ÙÙ‚Ø· Ø¢Ø®Ø±ÛŒÙ† Ù¾ÛŒØ§Ù… visible Ø±Ø§ Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ú©Ù†
+        clearTimeout(lastReadUpdateTimeout);
+        lastReadUpdateTimeout = setTimeout(() => {
+            fetch(UPDATE_LAST_READ_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    message_id: messageId
+                })
+            }).catch(err => {
+                // Ignore transient network churn (offline / network switched / unload)
+                if (!navigator.onLine || document.visibilityState === 'hidden') {
+                    return;
+                }
+                const msg = String(err?.message || '');
+                if (msg.includes('Failed to fetch') || msg.includes('Network')) {
+                    return;
+                }
+                console.error('Error updating last read message:', err);
+            });
+        }, 500); // 500ms debounce
+    }
+
+    // ØªØ§Ø¨Ø¹ Ø¨Ø±Ø§ÛŒ Ù¾ÛŒØ¯Ø§ Ú©Ø±Ø¯Ù† Ø¢Ø®Ø±ÛŒÙ† Ù¾ÛŒØ§Ù… visible Ø¯Ø± viewport
+    function getLastVisibleMessageId() {
+        const messages = chatBox.querySelectorAll('.message-row[data-message-id], .message-bubble[data-message-id]');
+        let lastVisibleId = null;
+
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const msg = messages[i];
+            const rect = msg.getBoundingClientRect();
+            const chatBoxRect = chatBox.getBoundingClientRect();
+
+            // Ø¨Ø±Ø±Ø³ÛŒ Ø§ÛŒÙ†Ú©Ù‡ Ø¢ÛŒØ§ Ù¾ÛŒØ§Ù… Ø¯Ø± viewport Ù‚Ø±Ø§Ø± Ø¯Ø§Ø±Ø¯
+            if (rect.top >= chatBoxRect.top && rect.bottom <= chatBoxRect.bottom) {
+                const messageId = parseInt(msg.getAttribute('data-message-id'));
+                if (Number.isInteger(messageId) && messageId > 0) {
+                    lastVisibleId = messageId;
+                    break;
+                }
+            }
+        }
+
+        return lastVisibleId;
+    }
+
+    // ØªØ§Ø¨Ø¹ Ø¨Ø±Ø§ÛŒ Ø°Ø®ÛŒØ±Ù‡ Ù…ÙˆÙ‚Ø¹ÛŒØª Ù‚Ø¨Ù„ Ø§Ø² submit ÙØ±Ù…
+    function saveScrollPositionBeforeSubmit() {
+        const lastVisibleId = getLastVisibleMessageId();
+        if (lastVisibleId) {
+            updateLastReadMessage(lastVisibleId);
+        }
+        sessionStorage.setItem(STORAGE_KEY, chatBox.scrollTop);
+    }
+
+    // Event listener Ø¨Ø±Ø§ÛŒ submit ÙØ±Ù… Ø¯Ø± group-chat.js ØªØ¹Ø±ÛŒÙ Ø´Ø¯Ù‡ Ø§Ø³Øª
+    // Ø§ÛŒÙ† Ú©Ø¯ Ø­Ø°Ù Ø´Ø¯ ØªØ§ Ø§Ø² ØªØ¯Ø§Ø®Ù„ event listenerÙ‡Ø§ Ø¬Ù„ÙˆÚ¯ÛŒØ±ÛŒ Ø´ÙˆØ¯
+
+    // ØªØ§Ø¨Ø¹ Ø¨Ø±Ø§ÛŒ Ø§Ø¶Ø§ÙÙ‡ Ú©Ø±Ø¯Ù† Ù¾ÛŒØ§Ù… Ø¬Ø¯ÛŒØ¯ Ø¨Ù‡ chat Ø¨Ø¯ÙˆÙ† reload
+    function addMessageToChat(messageData) {
+        try {
+            if (typeof appendMessage === 'function') {
+                appendMessage(messageData);
+                return;
+            }
+            const chatBox = document.getElementById('chat-box');
+            if (!chatBox || !messageData) {
+                console.error('Chat box or message data not found');
+                return;
+            }
+
+            // Ø¨Ø±Ø±Ø³ÛŒ Ú©Ù† Ú©Ù‡ Ù¾ÛŒØ§Ù… Ù…Ø¹ØªØ¨Ø± Ø¨Ø§Ø´Ø¯ Ùˆ Ø®Ø§Ù„ÛŒ Ù†Ø¨Ø§Ø´Ø¯
+            if (!messageData.id || !messageData.message || (typeof messageData.message === 'string' && messageData
+                    .message.trim() === '')) {
+                console.warn('Invalid or empty message data:', messageData);
+                return;
+            }
+
+            // Ø¨Ø±Ø±Ø³ÛŒ Ú©Ù† Ú©Ù‡ Ø¢ÛŒØ§ Ø§ÛŒÙ† Ù¾ÛŒØ§Ù… Ù‚Ø¨Ù„Ø§Ù‹ Ø§Ø¶Ø§ÙÙ‡ Ø´Ø¯Ù‡ ÛŒØ§ Ù†Ù‡
+            const existingMessage = document.getElementById(`msg-${messageData.id}`);
+            if (existingMessage) {
+                console.warn('Message already exists:', messageData.id);
+                return;
+            }
+
+            const isMine = messageData.user_id == @json(auth()->id());
+            const messageRow = document.createElement('div');
+            messageRow.className = `message-row ${isMine ? 'you' : 'other'}`;
+            messageRow.setAttribute('data-message-id', messageData.id);
+            messageRow.id = `msg-${messageData.id}`;
+
+            // Ø³Ø§Ø®Øª HTML Ù¾ÛŒØ§Ù…
+            const senderName = messageData.sender || 'Ú©Ø§Ø±Ø¨Ø±';
+            const initials = senderName.split(' ').map(n => n.charAt(0)).join(' ').trim() || 'ØŸ';
+            const messageContent = messageData.message || '';
+            const safeMessageHtml = nl2br(messageContent);
+            const formattedTime = messageData.created_at || new Date().toLocaleTimeString('fa-IR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            let messageHTML = '';
+
+            // Ø¢ÙˆØ§ØªØ§Ø± (ÙÙ‚Ø· Ø¨Ø±Ø§ÛŒ Ù¾ÛŒØ§Ù…â€ŒÙ‡Ø§ÛŒ Ø¯ÛŒÚ¯Ø±Ø§Ù†)
+            if (!isMine) {
+                messageHTML +=
+                    `<a href="/profile/member/${messageData.user_id}" class="avatar-link"><span class="avatar"><span>${initials}</span></span></a>`;
+            }
+
+            // Reply preview
+            let replyPreviewHTML = '';
+            if (messageData.parent_id && messageData.parent_sender && messageData.parent_content) {
+                replyPreviewHTML =
+                    `<div class="reply-preview"><div class="reply-sender">${escapeHtml(messageData.parent_sender)}</div><div class="reply-text">${escapeHtml(messageData.parent_content.substring(0, 80))}</div></div>`;
+            }
+
+            // Voice message
+            let voiceMessageHTML = '';
+            if (messageData.voice_message) {
+                // Convert relative path to full URL if needed
+                let voiceUrl = messageData.voice_message;
+                if (!voiceUrl.startsWith('http://') && !voiceUrl.startsWith('https://')) {
+                    // Remove leading slash if exists
+                    voiceUrl = voiceUrl.startsWith('/') ? voiceUrl.substring(1) : voiceUrl;
+                    // Build full URL - encode each part separately to handle spaces
+                    const pathParts = voiceUrl.split('/');
+                    const encodedParts = pathParts.map(part => encodeURIComponent(part));
+                    voiceUrl = window.location.origin + '/storage/' + encodedParts.join('/');
+                }
+                const voiceType = messageData.file_type || 'audio/webm';
+                voiceMessageHTML =
+                    `<div class="voice-message-container" style="margin-top: 12px; padding: 12px; background: ${isMine ? '#e3f2fd' : '#f5f5f5'}; border-radius: 12px; border: 1px solid ${isMine ? '#90caf9' : '#e0e0e0'}; direction: ltr;"><div style="display: flex; align-items: center; gap: 12px;"><div style="width: 40px; height: 40px; border-radius: 50%; background: ${isMine ? '#2196f3' : '#757575'}; display: flex; align-items: center; justify-content: center; color: white;"><i class="fas fa-microphone"></i></div><div style="flex: 1;"><div style="font-size: 12px; color: #666; margin-bottom: 4px;"><i class="fas fa-headphones"></i> Ù¾ÛŒØ§Ù… ØµÙˆØªÛŒ</div><audio controls style="width: 100%; height: 40px;" preload="metadata"><source src="${voiceUrl}" type="${voiceType}"><source src="${voiceUrl}" type="audio/webm"><source src="${voiceUrl}" type="audio/ogg"><source src="${voiceUrl}" type="audio/mpeg">Ù…Ø±ÙˆØ±Ú¯Ø± Ø´Ù…Ø§ Ø§Ø² Ù¾Ø®Ø´ ØµØ¯Ø§ Ù¾Ø´ØªÛŒØ¨Ø§Ù†ÛŒ Ù†Ù…ÛŒâ€ŒÚ©Ù†Ø¯.</audio></div></div></div>`;
+            }
+
+            messageHTML += `
+            <div class="message-bubble ${isMine ? 'you' : 'other'}" data-message-id="${messageData.id}" data-user-id="${messageData.user_id}" data-edit-url="/messages/${messageData.id}/edit" data-delete-url="/messages/${messageData.id}/delete" data-report-url="/messages/${messageData.id}/report" data-content-raw="${escapeHtml(stripHtml(messageContent))}">
+                <div class="message-head">
+                    ${isMine ? 
+                        // Ø¨Ø±Ø§ÛŒ Ù¾ÛŒØ§Ù…â€ŒÙ‡Ø§ÛŒ Ø®ÙˆØ¯ Ú©Ø§Ø±Ø¨Ø±: Ø³Ù‡ Ù†Ù‚Ø·Ù‡ Ø¯Ø± Ø³Ù…Øª Ú†Ù¾ØŒ Ù†Ø§Ù… Ø¯Ø± Ø³Ù…Øª Ø±Ø§Ø³Øª
+                        `<div class="action-menu message-action" data-action-menu>
+                            <button type="button" class="action-menu__toggle"><i class="fas fa-ellipsis-v"></i></button>
+                            <div class="action-menu__list">
+                                <button type="button" onclick="replyToMessage('${messageData.id}', '${escapeHtml(senderName)}', '${escapeHtml(messageContent.substring(0, 50))}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> Ù¾Ø§Ø³Ø®</button>
+                                <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> ÙˆØ§Ú©Ù†Ø´</button>
+                                <button type="button" class="action-menu__item btn-pin" onclick="pinMessage('${messageData.id}')"><i class="fas fa-thumbtack"></i> Ø³Ù†Ø¬Ø§Ù‚ Ú©Ø±Ø¯Ù†</button>
+                                <button type="button" class="action-menu__item btn-edit"><i class="fas fa-edit"></i> ÙˆÛŒØ±Ø§ÛŒØ´</button>
+                                <button type="button" class="action-menu__item action-menu__item--danger btn-delete"><i class="fas fa-trash"></i> Ø­Ø°Ù</button>
+                                <div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" style="font-size: 0.7rem; opacity: 0.6; margin-left: 4px;"></i><span class="menu-meta-time__label">Ø§Ø±Ø³Ø§Ù„ Ø´Ø¯Ù‡:</span><span class="menu-meta-time__value">${formattedTime}</span></div></div>
+                            </div>
+                        </div>
+                        <div class="message-head__info">
+                            <span class="message-sender message-sender--self">Ø´Ù…Ø§</span>
+                        </div>` :
+                        // Ø¨Ø±Ø§ÛŒ Ù¾ÛŒØ§Ù…â€ŒÙ‡Ø§ÛŒ Ø¯ÛŒÚ¯Ø±Ø§Ù†: Ù†Ø§Ù… Ú©Ø§Ø±Ø¨Ø± Ø¯Ø± Ø³Ù…Øª Ú†Ù¾ØŒ Ø³Ù‡ Ù†Ù‚Ø·Ù‡ Ø¯Ø± Ø³Ù…Øª Ø±Ø§Ø³Øª
+                        `<div class="message-head__info">
+                            <a href="/profile-member/${messageData.user_id}" class="message-sender" onclick="event.stopPropagation(); window.location.href='/profile-member/${messageData.user_id}'; return false;">${escapeHtml(senderName)}</a>
+                        </div>
+                        <div class="action-menu message-action" data-action-menu>
+                            <button type="button" class="action-menu__toggle"><i class="fas fa-ellipsis-v"></i></button>
+                            <div class="action-menu__list">
+                                <button type="button" onclick="replyToMessage('${messageData.id}', '${escapeHtml(senderName)}', '${escapeHtml(messageContent.substring(0, 50))}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> Ù¾Ø§Ø³Ø®</button>
+                                <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> ÙˆØ§Ú©Ù†Ø´</button>
+                                ${(CURRENT_USER_ROLE === 3 || isMine) ? `<button type="button" class="action-menu__item btn-pin" onclick="pinMessage('${messageData.id}')"><i class="fas fa-thumbtack"></i> Ø³Ù†Ø¬Ø§Ù‚ Ú©Ø±Ø¯Ù†</button>` : ''}
+                                <button type="button" class="action-menu__item btn-report"><i class="fas fa-flag"></i> Ú¯Ø²Ø§Ø±Ø´</button>
+                                <div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" style="font-size: 0.7rem; opacity: 0.6; margin-left: 4px;"></i><span class="menu-meta-time__label">Ø§Ø±Ø³Ø§Ù„ Ø´Ø¯Ù‡:</span><span class="menu-meta-time__value">${formattedTime}</span></div></div>
+                            </div>
+                        </div>`
+                    }
+                </div>
+                ${replyPreviewHTML}
+                <p class="message-content">${safeMessageHtml}</p>
+                <div class="message-timestamp"><span class="message-time">${formattedTime}</span></div>
+                ${voiceMessageHTML}
+                ${isMine ? '<div class="read-receipt" style="font-size: 10px; margin-top: 4px; text-align: left; direction: ltr;"><span style="color: #9ca3af;"><i class="fas fa-check"></i> Ø§Ø±Ø³Ø§Ù„ Ø´Ø¯Ù‡</span></div>' : ''}
+            </div>
+        `;
+
+            messageRow.innerHTML = messageHTML;
+            chatBox.appendChild(messageRow);
+
+            // Initialize click handler for profile link
+            const profileLink = messageRow.querySelector('a.message-sender');
+            if (profileLink) {
+                profileLink.addEventListener('click', function(e) {
+                    // Ø§Ø¬Ø§Ø²Ù‡ Ø¨Ø¯Ù‡ Ù„ÛŒÙ†Ú© Ú©Ø§Ø± Ú©Ù†Ø¯
+                    e.stopPropagation();
+                    e.preventDefault();
+                    // Ø§Ú¯Ø± href ÙˆØ¬ÙˆØ¯ Ø¯Ø§Ø±Ø¯ØŒ Ø¨Ù‡ Ø¢Ù† Ø¨Ø±Ùˆ
+                    const href = this.getAttribute('href');
+                    if (href && !href.includes('#')) {
+                        window.location.href = href;
+                    }
+                });
+            }
+
+            // Initialize action menu handlers for the new message
+            initializeMessageActions(messageRow);
+
+            // Initialize action menu toggle (like in group-chat.js)
+            const menu = messageRow.querySelector('[data-action-menu]');
+            if (menu) {
+                const toggle = menu.querySelector('.action-menu__toggle');
+                const list = menu.querySelector('.action-menu__list');
+
+                if (toggle) {
+                    toggle.addEventListener('click', function(event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const isOpen = menu.classList.contains('is-open');
+                        // Close all other menus
+                        document.querySelectorAll('[data-action-menu]').forEach(m => {
+                            if (m !== menu) {
+                                m.classList.remove('is-open');
+                                m.querySelector('.action-menu__toggle')?.setAttribute('aria-expanded',
+                                    'false');
+                            }
+                        });
+                        if (!isOpen) {
+                            menu.classList.add('is-open');
+                            toggle.setAttribute('aria-expanded', 'true');
+                        } else {
+                            menu.classList.remove('is-open');
+                            toggle.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+                }
+
+                if (list) {
+                    list.querySelectorAll('button, a').forEach(item => {
+                        // Ø¨Ø±Ø§ÛŒ Ø¯Ú©Ù…Ù‡ ÙˆØ§Ú©Ù†Ø´ØŒ event listener Ø¬Ø¯Ø§Ú¯Ø§Ù†Ù‡ Ø§Ø¶Ø§ÙÙ‡ Ù†Ù…ÛŒâ€ŒÚ©Ù†ÛŒÙ…
+                        // Ú†ÙˆÙ† addReactionButton Ø®ÙˆØ¯Ø´ event handler Ø§Ø¶Ø§ÙÙ‡ Ù…ÛŒâ€ŒÚ©Ù†Ø¯
+                        if (item.classList.contains('btn-reaction')) {
+                            return;
+                        }
+
+                        item.addEventListener('click', function(e) {
+                            menu.classList.remove('is-open');
+                            toggle?.setAttribute('aria-expanded', 'false');
+                        });
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error in addMessageToChat:', error);
+            // در صورت خطا، fallback نرم: polling پیام را همگام می‌کند.
+            console.warn('addMessageToChat failed; waiting for polling sync.');
+        }
+    }
+
+    // Initialize message action handlers
+    function initializeMessageActions(messageRow) {
+        const bubble = messageRow.querySelector('.message-bubble');
+        if (!bubble) return;
+
+        const id = bubble.dataset.messageId;
+        const deleteUrl = bubble.dataset.deleteUrl;
+        const reportUrl = bubble.dataset.reportUrl;
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+        if (!id) return;
+
+        // Ø­Ø°Ù
+        bubble.querySelector(".btn-delete")?.addEventListener("click", async (e) => {
+            // Ø¨Ø³ØªÙ† Ù…Ù†ÙˆÛŒ Ø¹Ù…Ù„ÛŒØ§Øª
+            const actionMenu = bubble.closest('.message-head')?.querySelector('[data-action-menu]');
+            if (actionMenu) {
+                actionMenu.classList.remove('is-open');
+                actionMenu.querySelector('.action-menu__toggle')?.setAttribute('aria-expanded', 'false');
+            }
+
+            const btn = e.currentTarget;
+            if (!confirm("آیا از حذف پیام مطمئن هستید؟")) return;
+
+            try {
+                const res = await fetch(deleteUrl, {
+                    method: "POST",
+                    headers: {
+                        "X-CSRF-TOKEN": csrf,
+                        "Accept": "application/json",
+                        "X-Requested-With": "XMLHttpRequest"
+                    },
+                    credentials: "same-origin"
+                });
+
+                let data = {};
+                try {
+                    data = await res.json();
+                } catch (e) {}
+
+                if (res.ok && (data.status === 'success' || !data.status)) {
+                    const row = messageRow || bubble.closest('.message-row') || bubble.closest('.message-wrapper');
+                    if (row) {
+                        row.remove();
+                    }
+                } else {
+                    alert(data.message || `Ø®Ø·Ø§ Ø¯Ø± Ø­Ø°Ù Ù¾ÛŒØ§Ù… (status ${res.status})`);
+                }
+            } catch (error) {
+                console.error('Error deleting message:', error);
+                alert('Ø®Ø·Ø§ Ø¯Ø± Ø­Ø°Ù Ù¾ÛŒØ§Ù…');
+            }
+        });
+
+        // Ú¯Ø²Ø§Ø±Ø´
+        bubble.querySelector(".btn-report")?.addEventListener("click", async (e) => {
+            // Ø¨Ø³ØªÙ† Ù…Ù†ÙˆÛŒ Ø¹Ù…Ù„ÛŒØ§Øª
+            const actionMenu = bubble.closest('.message-head')?.querySelector('[data-action-menu]');
+            if (actionMenu) {
+                actionMenu.classList.remove('is-open');
+                actionMenu.querySelector('.action-menu__toggle')?.setAttribute('aria-expanded', 'false');
+            }
+
+            const btn = e.currentTarget;
+            const reason = prompt("دلیل گزارش را وارد کنید:");
+            if (!reason) return;
+
+            try {
+                const res = await fetch(reportUrl, {
+                    method: "POST",
+                    headers: {
+                        "X-CSRF-TOKEN": csrf,
+                        "Accept": "application/json",
+                        "Content-Type": "application/json"
+                    },
+                    credentials: "same-origin",
+                    body: JSON.stringify({
+                        reason
+                    })
+                });
+
+                let data = {};
+                try {
+                    data = await res.json();
+                } catch (e) {}
+                alert(data.message || (res.ok ? "Ú¯Ø²Ø§Ø±Ø´ Ø«Ø¨Øª Ø´Ø¯" :
+                    `Ø®Ø·Ø§ Ø¯Ø± Ø«Ø¨Øª Ú¯Ø²Ø§Ø±Ø´ (status ${res.status})`));
+            } catch (error) {
+                console.error('Error reporting message:', error);
+                alert('Ø®Ø·Ø§ Ø¯Ø± Ø«Ø¨Øª Ú¯Ø²Ø§Ø±Ø´');
+            }
+        });
+    }
+
+    // ØªØ§Ø¨Ø¹ Ø¨Ø±Ø§ÛŒ Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ù…Ø­ØªÙˆØ§ÛŒ Ù¾ÛŒØ§Ù… Ø¨Ø¹Ø¯ Ø§Ø² ÙˆÛŒØ±Ø§ÛŒØ´
+    function updateMessageContent(messageBubble, newContent, isEdited) {
+        try {
+            if (!messageBubble) {
+                console.error('updateMessageContent: messageBubble is null');
+                throw new Error('messageBubble is null');
+            }
+
+            const contentElement = messageBubble.querySelector('.message-content');
+            if (!contentElement) {
+                console.error('updateMessageContent: .message-content element not found');
+                console.error('Message bubble:', messageBubble);
+                console.error('Message bubble HTML:', messageBubble.outerHTML);
+                throw new Error('.message-content element not found');
+            }
+
+            // Ù¾Ø§Ú© Ú©Ø±Ø¯Ù† Ù…Ø­ØªÙˆØ§ÛŒ Ù‚Ø¨Ù„ÛŒ (Ø¨Ø±Ø§ÛŒ Ø¬Ù„ÙˆÚ¯ÛŒØ±ÛŒ Ø§Ø² ØªÚ©Ø±Ø§Ø±)
+            // Ø§Ø¨ØªØ¯Ø§ Ù‡Ù…Ù‡ child elements Ø±Ø§ Ø­Ø°Ù Ú©Ù†
+            while (contentElement.firstChild) {
+                contentElement.removeChild(contentElement.firstChild);
+            }
+            contentElement.innerHTML = '';
+
+            // ØªØ¨Ø¯ÛŒÙ„ Ù…Ø­ØªÙˆØ§ Ø¨Ù‡ HTML Ø¨Ø§ Ø­ÙØ¸ line breaks
+            // Ù…Ø­ØªÙˆØ§ Ø§Ø² backend Ø¨Ù‡ ØµÙˆØ±Øª plain text Ù…ÛŒâ€ŒØ¢ÛŒØ¯ (Ø¨Ø§ \n Ø¨Ø±Ø§ÛŒ line breaks)
+            // Ø¨Ø§ÛŒØ¯ line breaks Ø±Ø§ Ø¨Ù‡ <br> ØªØ¨Ø¯ÛŒÙ„ Ú©Ù†ÛŒÙ… Ùˆ HTML Ø±Ø§ escape Ú©Ù†ÛŒÙ…
+            let htmlContent = '';
+
+            // Ø¨Ø±Ø±Ø³ÛŒ Ø§ÛŒÙ†Ú©Ù‡ Ø¢ÛŒØ§ Ù…Ø­ØªÙˆØ§ HTML Ø§Ø³Øª ÛŒØ§ Ù†Ù‡
+            // Ø§Ú¯Ø± Ø´Ø§Ù…Ù„ ØªÚ¯â€ŒÙ‡Ø§ÛŒ HTML Ù…Ø¹ØªØ¨Ø± Ø¨Ø§Ø´Ø¯ (Ù†Ù‡ ÙÙ‚Ø· < ÛŒØ§ &)ØŒ HTML Ø§Ø³Øª
+            htmlContent = nl2br(newContent);
+
+            // Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ù…Ø­ØªÙˆØ§
+            contentElement.innerHTML = htmlContent;
+            // Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ data-content-raw (Ø¨Ø¯ÙˆÙ† HTML)
+            const rawContent = stripHtml(htmlContent);
+            messageBubble.setAttribute('data-content-raw', escapeHtml(rawContent));
+            // Ø§Ø¶Ø§ÙÙ‡ Ú©Ø±Ø¯Ù† Ø¢ÛŒÚ©ÙˆÙ† ÙˆÛŒØ±Ø§ÛŒØ´ Ø´Ø¯Ù‡
+            if (isEdited) {
+                const timestampElement = messageBubble.querySelector('.message-timestamp');
+                if (timestampElement) {
+                    // Ø§Ú¯Ø± Ø¢ÛŒÚ©ÙˆÙ† ÙˆÛŒØ±Ø§ÛŒØ´ ÙˆØ¬ÙˆØ¯ Ù†Ø¯Ø§Ø±Ø¯ØŒ Ø§Ø¶Ø§ÙÙ‡ Ú©Ù†
+                    let editedIcon = timestampElement.querySelector('.message-edited');
+                    if (!editedIcon) {
+                        editedIcon = document.createElement('span');
+                        editedIcon.className = 'message-edited';
+                        editedIcon.innerHTML = '<i class="fas fa-edit"></i>';
+                        timestampElement.appendChild(editedIcon);
+                    } else {
+                    }
+                } else {
+                    console.warn('Timestamp element not found, cannot add edited icon');
+                }
+            }
+        } catch (error) {
+            console.error('Error in updateMessageContent:', error);
+            console.error('Error stack:', error.stack);
+            // Ø®Ø·Ø§ Ø±Ø§ throw Ú©Ù† ØªØ§ caller Ø¨ØªÙˆØ§Ù†Ø¯ Ø¢Ù† Ø±Ø§ handle Ú©Ù†Ø¯
+            throw error;
+        }
+    }
+
+    // Helper functions
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function stripHtml(html) {
+        if (!html) return '';
+        const tmp = document.createElement('DIV');
+        tmp.innerHTML = html;
+        return tmp.textContent || tmp.innerText || '';
+    }
+
+    // ØªØ¨Ø¯ÛŒÙ„ line breaks Ø¨Ù‡ <br> Ø¨Ø±Ø§ÛŒ Ù†Ù…Ø§ÛŒØ´ Ø¯Ø±Ø³Øª
+    function nl2br(text) {
+        if (!text) return '';
+        // Escape HTML first
+        const escaped = escapeHtml(text);
+        // Convert \n to <br>
+        return escaped.replace(/\n/g, '<br>');
+    }
+
+    // Ø°Ø®ÛŒØ±Ù‡ Ø§Ø³Ú©Ø±ÙˆÙ„ Ù‡Ù†Ú¯Ø§Ù… ØªØ±Ú© ØµÙØ­Ù‡
+    window.addEventListener('beforeunload', () => {
+        const lastVisibleId = getLastVisibleMessageId();
+        if (lastVisibleId) {
+            updateLastReadMessage(lastVisibleId);
+        }
+        sessionStorage.setItem(STORAGE_KEY, chatBox.scrollTop);
+    });
+
+    // Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ last_read_message_id Ù‡Ù†Ú¯Ø§Ù… scroll
+    let scrollTimeout = null;
+    let scrollSaveTimeout = null; // Timeout Ø¨Ø±Ø§ÛŒ Ø°Ø®ÛŒØ±Ù‡ Ù…ÙˆÙ‚Ø¹ÛŒØª scroll
+
+    chatBox.addEventListener('scroll', () => {
+        // Ø°Ø®ÛŒØ±Ù‡ Ù…ÙˆÙ‚Ø¹ÛŒØª scroll Ø¨Ø§ debounce Ø¨Ø±Ø§ÛŒ Ø¨Ù‡Ø¨ÙˆØ¯ performance
+        clearTimeout(scrollSaveTimeout);
+        scrollSaveTimeout = setTimeout(() => {
+            sessionStorage.setItem(STORAGE_KEY, chatBox.scrollTop);
+        }, 500); // 500ms debounce Ø¨Ø±Ø§ÛŒ Ø°Ø®ÛŒØ±Ù‡ Ù…ÙˆÙ‚Ø¹ÛŒØª scroll
+
+        // Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ last_read_message_id Ø¨Ø§ debounce
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+            const lastVisibleId = getLastVisibleMessageId();
+            if (lastVisibleId) {
+                updateLastReadMessage(lastVisibleId);
+            }
+        }, 300); // 300ms debounce Ø¨Ø±Ø§ÛŒ scroll
+    });
+
+    // Ø§Ø³ØªÙØ§Ø¯Ù‡ Ø§Ø² IntersectionObserver Ø¨Ø±Ø§ÛŒ Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ø¯Ù‚ÛŒÙ‚â€ŒØªØ±
+    if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const messageId = entry.target.getAttribute('data-message-id');
+                    if (messageId) {
+                        const msgId = parseInt(messageId);
+                        if (!isNaN(msgId)) {
+                            // ÙÙ‚Ø· Ù¾ÛŒØ§Ù…â€ŒÙ‡Ø§ÛŒ Ø¯ÛŒÚ¯Ø±Ø§Ù† Ø±Ø§ Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ú©Ù†
+                            const userId = entry.target.querySelector('.message-bubble')?.getAttribute(
+                                'data-user-id');
+                            if (userId && userId != @json((string) auth()->id())) {
+                                updateLastReadMessage(msgId);
+                            }
+                        }
+                    }
+                }
+            });
+        }, {
+            root: chatBox,
+            rootMargin: '0px',
+            threshold: 0.5 // ÙˆÙ‚ØªÛŒ 50% Ù¾ÛŒØ§Ù… visible Ø´Ø¯
+        });
+
+        // Observe Ù‡Ù…Ù‡ Ù¾ÛŒØ§Ù…â€ŒÙ‡Ø§ Ø¨Ø¹Ø¯ Ø§Ø² Ù„ÙˆØ¯ ØµÙØ­Ù‡
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const messages = chatBox.querySelectorAll('[data-message-id]');
+                messages.forEach(msg => observer.observe(msg));
+            }, 200);
+        });
+    }
+
+
+    (function() {
+        function openCatModal() {
+            $('#categoryBlogsOverlay').fadeIn(120);
+            $('#categoryBlogsModal').fadeIn(120);
+            $('body').css('overflow', 'hidden');
+        }
+
+        function closeCatModal() {
+            $('#categoryBlogsModal').fadeOut(120);
+            $('#categoryBlogsOverlay').fadeOut(120, function() {
+                $('body').css('overflow', '');
+            });
+        }
+
+        // Ø§ÙˆÙ„ Ø¨Ø³ØªÙ‡ Ø¨Ø§Ø´Ù‡ - Ø§Ø·Ù…ÛŒÙ†Ø§Ù† Ø§Ø² Ø§ÛŒÙ†Ú©Ù‡ modal Ù…Ø®ÙÛŒ Ø§Ø³Øª
+        $('#categoryBlogsModal').hide();
+        $('#categoryBlogsOverlay').hide();
+
+        // Ø¨Ø³ØªÙ† Ø¨Ø§ Ú©Ù„ÛŒÚ© ÛŒØ§ Esc
+        $(document).on('click', '#closeCatModal, #categoryBlogsOverlay', closeCatModal);
+        $(document).on('keydown', function(e) {
+            if (e.key === 'Escape') closeCatModal();
+        });
+
+        // Ø¨Ø§Ø² Ú©Ø±Ø¯Ù† Ù…Ø¯Ø§Ù„
+        document.querySelectorAll('.open-category-blogs').forEach(openCategory => {
+            openCategory.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const ajaxUrl = $(this).data('url');
+                const groupId = $(this).data('group-id') || '';
+
+                if (!ajaxUrl) return;
+
+                // Ø±ÛŒØ³Øª UI
+                $('#catList').empty().hide();
+                $('#catEmpty').hide();
+                $('#catLoading').show();
+                $('#catModalTitle').text('Ø¯Ø± Ø­Ø§Ù„ Ø¨Ø§Ø±Ú¯Ø°Ø§Ø±ÛŒ...');
+                openCatModal();
+
+                $.ajax({
+                        url: ajaxUrl,
+                        method: 'GET',
+                        data: {
+                            group_id: groupId
+                        },
+                        dataType: 'json',
+                        headers: {
+                            'Accept': 'application/json'
+                        },
+                        cache: false,
+                        timeout: 15000 // 15s
+                    })
+                    .done(function(res) {
+                        try {
+                            $('#catModalTitle').text(
+                                'Ø¯Ø³ØªÙ‡: ' +
+                                (res?.category?.name || 'â€”') +
+                                ' (' +
+                                (res?.count ?? 0) +
+                                ')'
+                            );
+
+                            const items = Array.isArray(res?.items) ? res.items : [];
+                            $('#catLoading').hide();
+
+                            if (!items.length) {
+                                $('#catEmpty').show();
+                                return;
+                            }
+
+                            const $list = $('#catList').show();
+
+                            items.forEach(function(item) {
+                                const $li = $('<li/>').css({
+                                    padding: '.75rem .5rem',
+                                    borderBottom: '1px solid #eee',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: '.5rem'
+                                });
+
+                                const $left = $('<div/>').css({
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '.25rem'
+                                });
+
+                                const $title = $('<a/>', {
+                                        href: item.url,
+                                        text: item.title,
+                                        title: item.title
+                                    })
+                                    .css({
+                                        color: '#0d6efd',
+                                        textDecoration: 'none',
+                                        fontWeight: '600'
+                                    })
+                                    .hover(
+                                        function() {
+                                            $(this).css('text-decoration', 'underline');
+                                        },
+                                        function() {
+                                            $(this).css('text-decoration', 'none');
+                                        }
+                                    );
+
+                                const $date = $('<small/>', {
+                                    text: item.date
+                                }).css({
+                                    color: '#666'
+                                });
+
+                                $left.append($title, $date);
+
+                                const $go = $('<a/>', {
+                                    href: item.url,
+                                    text: 'Ù…Ø´Ø§Ù‡Ø¯Ù‡'
+                                }).css({
+                                    padding: '.35rem .6rem',
+                                    borderRadius: '8px',
+                                    border: '1px solid #ddd',
+                                    textDecoration: 'none'
+                                });
+
+                                $li.append($left, $go);
+                                $list.append($li);
+                            });
+                        } catch (err) {
+                            console.error('Parse/render error:', err);
+                            $('#catLoading').hide();
+                            $('#catEmpty').show().text('خطا در پردازش داده‌ها.');
+                        }
+                    })
+                    .fail(function(xhr, status, err) {
+                        console.error('AJAX fail:', status, err, xhr?.status, xhr
+                            ?.responseText);
+                        $('#catLoading').hide();
+                        $('#catEmpty').show().text('خطا در دریافت لیست پست‌ها.');
+                    })
+                    .always(function() {
+                        if ($('#catLoading').is(':visible')) {
+                            $('#catLoading').hide();
+                            $('#catEmpty').show().text('Ø¹Ø¯Ù… Ø¯Ø±ÛŒØ§ÙØª Ù¾Ø§Ø³Ø® Ø§Ø² Ø³Ø±ÙˆØ±.');
+                        }
+                    });
+            });
+        });
+    })();
+    </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const plusButton = document.getElementById('chatCreateToggle');
+        const menu = document.getElementById('createMenu');
+        const triggerWrapper = plusButton?.closest('.telegram-attach-btn-wrapper');
+        const audioUploadTrigger = document.getElementById('audio-upload-trigger');
+
+        // Auto-resize textarea
+        const textarea = document.getElementById('message_editor');
+        if (textarea && !textarea.classList.contains('ckeditor-initialized')) {
+            function autoResize() {
+                if (textarea.scrollHeight > 0) {
+                    textarea.style.height = 'auto';
+                    textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+                }
+            }
+            textarea.addEventListener('input', autoResize);
+            textarea.classList.add('ckeditor-initialized');
+        }
+
+        const voiceFileInput = document.getElementById('voice-file-input');
+
+        const toggleMenu = (visible) => {
+            if (!menu) {
+                return;
+            }
+            const shouldShow = typeof visible === 'boolean' ?
+                visible :
+                (menu.style.display === 'none' || menu.style.display === '');
+            menu.style.display = shouldShow ? 'block' : 'none';
+        };
+
+        plusButton?.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleMenu();
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!menu) {
+                return;
+            }
+            const clickedInsideTrigger = triggerWrapper?.contains(e.target);
+            const clickedInsideMenu = menu.contains(e.target);
+            if (!clickedInsideTrigger && !clickedInsideMenu) {
+                toggleMenu(false);
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                toggleMenu(false);
+            }
+        });
+
+        menu?.querySelectorAll('button').forEach(function(actionButton) {
+            // Ø§Ú¯Ø± Ø¯Ú©Ù…Ù‡ onclick Ø¯Ø§Ø±Ø¯ (Ù…Ø«Ù„ openBlogBox, openPollBox)ØŒ Ù…Ù†Ùˆ Ø±Ø§ Ø¨Ø¨Ù†Ø¯ Ø§Ù…Ø§ event Ø±Ø§ Ù…ØªÙˆÙ‚Ù Ù†Ú©Ù†
+            if (actionButton.onclick || actionButton.getAttribute('onclick')) {
+                actionButton.addEventListener('click', function(e) {
+                    // ÙÙ‚Ø· Ù…Ù†Ùˆ Ø±Ø§ Ø¨Ø¨Ù†Ø¯ØŒ event Ø±Ø§ Ù…ØªÙˆÙ‚Ù Ù†Ú©Ù† ØªØ§ onclick Ø§Ø¬Ø±Ø§ Ø´ÙˆØ¯
+                    toggleMenu(false);
+                });
+            } else {
+                // Ø¨Ø±Ø§ÛŒ Ø¯Ú©Ù…Ù‡â€ŒÙ‡Ø§ÛŒ Ø¯ÛŒÚ¯Ø± (Ù…Ø«Ù„ audio-upload-trigger) Ú©Ù‡ event handler Ø¬Ø¯Ø§Ú¯Ø§Ù†Ù‡ Ø¯Ø§Ø±Ù†Ø¯
+                actionButton.addEventListener('click', function() {
+                    toggleMenu(false);
+                });
+            }
+        });
+
+        audioUploadTrigger?.addEventListener('click', function(e) {
+            e.preventDefault();
+            toggleMenu(false);
+            voiceFileInput?.click();
+        });
+
+        // Handle create post button
+        const createPostBtn = document.getElementById('create-post-btn');
+        if (createPostBtn) {
+            createPostBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleMenu(false);
+                // Ú©Ù…ÛŒ ØªØ£Ø®ÛŒØ± Ø¨Ø±Ø§ÛŒ Ø¨Ø³ØªÙ† Ù…Ù†Ùˆ Ù‚Ø¨Ù„ Ø§Ø² Ø¨Ø§Ø² Ú©Ø±Ø¯Ù† modal
+                setTimeout(function() {
+                    // Ø¨Ø±Ø±Ø³ÛŒ ÙˆØ¬ÙˆØ¯ ØªØ§Ø¨Ø¹ Ø¯Ø± scope global
+                    if (typeof window.openBlogBox === 'function') {
+                        window.openBlogBox();
+                    } else if (typeof openBlogBox === 'function') {
+                        openBlogBox();
+                    } else {
+                        console.error('openBlogBox function not found. Available functions:',
+                            Object.keys(window).filter(k => k.includes('Blog') || k
+                                .includes('Poll')));
+                    }
+                }, 150);
+            });
+        }
+
+        // Handle create poll button
+        const createPollBtn = document.getElementById('create-poll-btn');
+        if (createPollBtn) {
+            createPollBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleMenu(false);
+                // Ú©Ù…ÛŒ ØªØ£Ø®ÛŒØ± Ø¨Ø±Ø§ÛŒ Ø¨Ø³ØªÙ† Ù…Ù†Ùˆ Ù‚Ø¨Ù„ Ø§Ø² Ø¨Ø§Ø² Ú©Ø±Ø¯Ù† modal
+                setTimeout(function() {
+                    // Ø¨Ø±Ø±Ø³ÛŒ ÙˆØ¬ÙˆØ¯ ØªØ§Ø¨Ø¹ Ø¯Ø± scope global
+                    if (typeof window.openPollBox === 'function') {
+                        window.openPollBox();
+                    } else if (typeof openPollBox === 'function') {
+                        openPollBox();
+                    } else {
+                        console.error('openPollBox function not found. Available functions:',
+                            Object.keys(window).filter(k => k.includes('Blog') || k
+                                .includes('Poll')));
+                    }
+                }, 150);
+            });
+        }
+
+    });
+    </script>
+</div>
+</div>
+@include('groups.modals.election_form', compact('group'))
+@include('groups.modals.post_form', compact('group', 'categories'))
+@include('groups.modals.poll_form', compact('group'))
+
+@if($electionAvailable && isset($election) && $election)
+<div id="electionVotingOverlay" class="election-voting-overlay" style="display: none;">
+    <div class="election-voting-overlay__backdrop" onclick="closeElectionBox()"></div>
+    @include('groups.modals.election_modal', compact('group', 'election', 'selectedVotesInspector',
+    'selectedVotesManager', 'managersSorted', 'inspectorsSorted', 'managerCounts', 'inspectorCounts', 'groupSetting'))
+</div>
+@endif
+
+@if (session()->has('success'))
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const successMessage = @json(session('success'));
+    if (successMessage) {
+        window.alert(successMessage);
+    }
+});
+</script>
+@endif
+
+
+@push('scripts')
+<script>
+function installCkeditorChatConfig() {
+    if (!window.CKEDITOR || CKEDITOR.__chatWarnFilterInstalled) {
+        return false;
+    }
+
+    CKEDITOR.__chatWarnFilterInstalled = true;
+    CKEDITOR.config.versionCheck = false;
+
+    const currentRemove = (CKEDITOR.config.removePlugins || '')
+        .split(',')
+        .map(p => p.trim())
+        .filter(Boolean);
+    if (!currentRemove.includes('uploadimage')) {
+        currentRemove.push('uploadimage');
+    }
+    CKEDITOR.config.removePlugins = currentRemove.join(',');
+
+    const originalWarn = CKEDITOR.warn;
+    CKEDITOR.warn = function(message, data) {
+        const text = String(message || '');
+        if (text.includes('clipboard-image-handling-disabled')) {
+            return;
+        }
+        if (text.includes('version is not secure')) {
+            return;
+        }
+        return originalWarn.call(this, message, data);
+    };
+
+    return true;
+}
+
+if (!installCkeditorChatConfig()) {
+    const ckeditorWait = setInterval(() => {
+        if (installCkeditorChatConfig()) {
+            clearInterval(ckeditorWait);
+        }
+    }, 50);
+}
+
+if (window.CKEDITOR) {
+    CKEDITOR.replace('post_editor', {
+        filebrowserUploadUrl: "{{ route('admin.pages.upload') }}?_token={{ csrf_token() }}",
+        filebrowserUploadMethod: 'form',
+        language: 'fa',
+        height: 400,
+        removePlugins: 'uploadimage',
+        removeButtons: '',
+        toolbarGroups: [{
+                name: 'basicstyles',
+                groups: ['basicstyles', 'cleanup']
+            },
+            {
+                name: 'paragraph',
+                groups: ['list', 'indent', 'blocks', 'align']
+            },
+            {
+                name: 'styles'
+            },
+            {
+                name: 'colors'
+            },
+            {
+                name: 'insert'
+            },
+            {
+                name: 'tools'
+            },
+            {
+                name: 'editing'
+            },
+            {
+                name: 'document',
+                groups: ['mode', 'document']
+            },
+            {
+                name: 'clipboard',
+                groups: ['clipboard', 'undo']
+            },
+            {
+                name: 'links'
+            }
+        ]
+    });
+}
+
+
+
+// Ù‚Ø¨Ù„Ø§Ù‹ Ø§ÛŒÙ†Ø¬Ø§ CKEDITOR Ø¨Ø±Ø§ÛŒ message_editor ÙØ¹Ø§Ù„ Ù…ÛŒâ€ŒØ´Ø¯.
+// Ø¨Ø±Ø§ÛŒ Ø³Ø§Ø¯Ù‡â€ŒØ³Ø§Ø²ÛŒ Ùˆ Ø­Ø°Ù CKEditor Ø§Ø² Ú†ØªØŒ Ø§ÛŒÙ† Ø¨Ø®Ø´ ØºÛŒØ±ÙØ¹Ø§Ù„ Ø´Ø¯Ù‡ Ø§Ø³Øª
+// Ùˆ Ø§Ø² textarea Ø³Ø§Ø¯Ù‡ Ø§Ø³ØªÙØ§Ø¯Ù‡ Ù…ÛŒâ€ŒÚ©Ù†ÛŒÙ….
+</script>
+@endpush
+
+<script>
+const elementPin = document.querySelector(".pinned-messages");
+if (elementPin) elementPin.scrollTop = elementPin.scrollHeight;
+
+function openGroupEdit() {
+    document.getElementById('groupEditFormBox').style.display = 'block';
+    document.getElementById('back').style.display = 'block';
+}
+
+function cancelGroupEdit() {
+    document.getElementById('groupEditFormBox').style.display = 'none';
+    document.getElementById('back').style.display = 'none';
+}
+
+function closeAllModals() {
+    document.getElementById('groupEditFormBox').style.display = 'none';
+    document.getElementById('back').style.display = 'none';
+    // ... existing modal close code ...
+}
+</script>
+
+<style>
+.recording-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #dc3545;
+}
+
+.recording-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #dc3545;
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.2);
+        opacity: 0.7;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Voice Recorder Styles */
+#voice-record-btn {
+    transition: all 0.3s ease;
+}
+
+#voice-record-btn:hover {
+    transform: scale(1.05);
+}
+
+#voice-record-btn:active {
+    transform: scale(0.95);
+}
+
+#voice-recording-modal {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+#waveform-canvas {
+    image-rendering: pixelated;
+}
+
+.pinned-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.pin {
+    direction: rtl;
+    background-color: #fff;
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    padding: .5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    text-decoration: none;
+    color: inherit;
+}
+
+.pin:hover {
+    background-color: #f8f9fa;
+}
+
+.pin p {
+    margin: 0;
+    color: #666;
+}
+
+.pin i {
+    font-size: 1.5rem;
+    opacity: .7;
+    color: #dc3545;
+}
+
+.unpin-btn:hover {
+    background: #fee2e2 !important;
+    color: #ef4444 !important;
+}
+
+/* Telegram Style Input Container */
+.telegram-style-input {
+    background: #ffffff;
+    border-top: 1px solid #e5e5e5;
+    padding: 8px 12px;
+    direction: rtl;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+}
+
+.telegram-reply-indicator {
+    background: #f0f0f0;
+    border-left: 3px solid #3390ec;
+    padding: 10px 14px;
+    margin: 0 0 10px 0;
+    border-radius: 0 8px 8px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    direction: rtl;
+    width: 100%;
+    box-sizing: border-box;
+    position: relative;
+}
+
+/* Ø­Ø°Ù Ø§Ø³ØªØ§ÛŒÙ„â€ŒÙ‡Ø§ÛŒ ØªÚ©Ø±Ø§Ø±ÛŒ - reply-indicator Ø¯ÛŒÚ¯Ø± Ù„Ø§Ø²Ù… Ù†ÛŒØ³Øª */
+.telegram-reply-indicator>.reply-indicator {
+    display: none;
+}
+
+/* Ø§Ø³ØªØ§ÛŒÙ„ Ù…Ø³ØªÙ‚ÛŒÙ… Ø¨Ø±Ø§ÛŒ Ù…Ø­ØªÙˆØ§ÛŒ Ø¯Ø§Ø®Ù„ telegram-reply-indicator */
+.telegram-reply-indicator .reply-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+
+.telegram-reply-indicator .reply-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+
+.telegram-reply-indicator .reply-arrow {
+    width: 3px;
+    height: 100%;
+    min-height: 40px;
+    background: #3390ec;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.telegram-reply-indicator .reply-sender-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #3390ec;
+    margin-bottom: 2px;
+    line-height: 1.2;
+}
+
+.telegram-reply-indicator .reply-content {
+    font-size: 0.85rem;
+    color: #666;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.3;
+}
+
+.telegram-reply-indicator .btn-cancel-reply {
+    background: transparent;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 50%;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+}
+
+.telegram-reply-indicator .btn-cancel-reply:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #333;
+}
+
+.telegram-input-container {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    background: #ffffff;
+    border: 1px solid #e5e5e5;
+    border-radius: 24px;
+    padding: 6px 8px;
+    min-height: 44px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+}
+
+.telegram-attach-btn-wrapper {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.telegram-attach-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    color: #707579;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+    font-size: 1.1rem;
+}
+
+.telegram-attach-btn:hover {
+    background: #f0f0f0;
+}
+
+.telegram-input-wrapper {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+}
+
+.telegram-textarea {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    resize: none;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    padding: 8px 4px;
+    max-height: 120px;
+    overflow-y: auto;
+    direction: rtl;
+    font-family: inherit;
+}
+
+.telegram-textarea::placeholder {
+    color: #999;
+}
+
+.telegram-action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.telegram-action-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    color: #707579;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+    font-size: 1.1rem;
+}
+
+.telegram-action-btn:hover {
+    background: #f0f0f0;
+}
+
+.telegram-send-btn {
+    background: #3390ec;
+    color: #ffffff;
+}
+
+.telegram-send-btn:hover {
+    background: #2a7fd4;
+    color: #ffffff;
+}
+
+.telegram-voice-btn {
+    color: #707579;
+}
+
+.telegram-voice-btn:hover {
+    background: #f0f0f0;
+    color: #3390ec;
+}
+
+.telegram-attach-menu {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    min-width: 200px;
+    background: #ffffff;
+    border: 1px solid #e5e5e5;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 4px;
+    z-index: 1000;
+    direction: rtl;
+}
+
+.telegram-voice-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: #f0f0f0;
+    border-radius: 12px;
+    margin-top: 8px;
+    direction: rtl;
+}
+
+.telegram-voice-preview i {
+    font-size: 1.2rem;
+    color: #3390ec;
+}
+
+.voice-file-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.voice-file-info div {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.voice-file-info small {
+    font-size: 0.75rem;
+    color: #666;
+}
+
+.voice-file-remove-btn {
+    background: transparent;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.2s;
+    font-size: 0.9rem;
+}
+
+.voice-file-remove-btn:hover {
+    background: #e5e5e5;
+    color: #333;
+}
+
+/* Ø­Ø°Ù wrapper Ø§Ø¶Ø§ÙÛŒ - Ù…Ø­ØªÙˆØ§ Ù…Ø³ØªÙ‚ÛŒÙ…Ø§Ù‹ Ø¯Ø± telegram-reply-indicator Ù‚Ø±Ø§Ø± Ù…ÛŒâ€ŒÚ¯ÛŒØ±Ø¯ */
+#electionRedirect {
+    width: 100% !important;
+    background-color: #fffce9;
+
+}
+
+@media (max-width: 767px) {
+    .telegram-reply-indicator {
+        padding: 8px 12px;
+        margin-bottom: 8px;
+    }
+
+    .telegram-reply-indicator .reply-sender-name {
+        font-size: 0.85rem;
+    }
+
+    .telegram-reply-indicator .reply-content {
+        font-size: 0.8rem;
+    }
+}
+
+/* Ø¨Ù‡Ø¨ÙˆØ¯ responsive */
+@media (max-width: 767px) {
+    .telegram-input-container {
+        padding: 4px 6px;
+        min-height: 40px;
+    }
+
+    .telegram-attach-btn,
+    .telegram-action-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+    }
+
+    .telegram-textarea {
+        font-size: 0.9rem;
+        padding: 6px 4px;
+    }
+}
+
+/* Auto-resize textarea */
+.telegram-textarea {
+    overflow: hidden;
+}
+
+.chat-footer {
+    width: 100%
+}
+
+@media (min-width: 767px) {
+    .chat-footer {
+        width: calc(100% - 25rem);
+    }
+}
+
+.election-card {
+    width: calc(90% - 400px) !important;
+    left: 5%;
+    background-color: #fff;
+}
+
+.reply-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    direction: rtl;
+}
+
+.reply-content {
+    color: #666;
+    font-size: 0.9em;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    direction: rtl;
+}
+
+.btn-cancel-reply {
+    background: none;
+    border: none;
+    color: #dc3545;
+    cursor: pointer;
+    padding: 5px;
+    margin-left: 10px;
+}
+
+.btn-cancel-reply:hover {
+    color: #c82333;
+}
+
+.reply-box {
+    direction: rtl;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.reply-box:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.reply-box .group-avatar {
+    flex-shrink: 0;
+}
+
+.reply-box .group-avatar span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.reply-box .reply-content {
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.reply-box .reply-sender {
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin-bottom: 2px;
+}
+
+.reply-box .reply-text {
+    font-size: 0.8rem;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- Ø¨Ø§Ø²/Ø¨Ø³ØªÙ‡â€ŒØ´Ø¯Ù† Ù¾Ù†Ù„ ---
+    const wrap = document.getElementById('gc-search-wrap');
+    const input = document.getElementById('gc-search-input');
+    const btn = document.getElementById('btn-chat-search');
+    const dd = document.getElementById('gc-search-dd');
+    const statusEl = dd?.querySelector('.gc-search-status');
+
+    if (!wrap || !input || !btn || !dd) {
+        // Search DOM elements may not exist on all pages - this is expected
+        // console.warn('Search DOM missing', {wrap, input, btn, dd});
+        return;
+    }
+
+    function openSearch() {
+        wrap.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+        setTimeout(() => input.focus(), 10);
+    }
+
+    function closeSearch() {
+        wrap.hidden = true;
+        btn.setAttribute('aria-expanded', 'false');
+    }
+
+    function toggleSearch() {
+        wrap.hidden ? openSearch() : closeSearch();
+    }
+
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSearch();
+    });
+    document.addEventListener('click', (e) => {
+        const inside = e.target.closest('#gc-search-wrap') || e.target.closest('#btn-chat-search');
+        if (!inside) closeSearch();
+    });
+    wrap.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeSearch();
+            btn.focus();
+        }
+    });
+
+    // Ù‡ÙˆÚ© Ø¨Ø±Ø§ÛŒ Ø§Ø³Ù¾ÛŒÙ†Ø± Ø¢ÛŒÚ©Ù†/Ø§Ø³ØªØ§ØªÙˆØ³
+    window.__setSearching = function(on) {
+        statusEl.style.display = on ? 'flex' : 'none';
+        btn.classList.toggle('searching', !!on);
+    };
+    window.__ensureSearchOpen = function() {
+        if (wrap.hidden) openSearch();
+    };
+
+    // --- Ø³Ø±Ú† AJAX ---
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+    const groupId = @json($group->id);
+    const listEl = dd.querySelector('.gc-search-list');
+    const moreBtn = dd.querySelector('.gc-search-more');
+    const clearBtn = document.getElementById('gc-search-clear');
+
+    let page = 1,
+        loading = false,
+        lastQuery = '',
+        items = [],
+        activeIndex = -1,
+        hasMore = false;
+    const openDD = () => dd.hidden = false;
+    const closeDD = () => {
+        dd.hidden = true;
+        activeIndex = -1;
+        updateActive();
+    };
+
+    function debounce(fn, ms = 300) {
+        let t;
+        return (...a) => {
+            clearTimeout(t);
+            t = setTimeout(() => fn(...a), ms);
+        }
+    }
+
+    function setStatus(txt) {
+        statusEl.textContent = txt;
+        statusEl.style.display = txt ? 'flex' : 'none';
+    }
+
+    function setMore(vis) {
+        moreBtn.hidden = !vis;
+    }
+
+    function renderList() {
+        listEl.innerHTML = '';
+        items.forEach((it, idx) => {
+            const li = document.createElement('li');
+            li.className = 'gc-search-item' + (idx === activeIndex ? ' active' : '');
+            li.dataset.index = idx;
+
+            const type = document.createElement('div');
+            type.className = 'type';
+            type.textContent = it.type === 'message' ? 'Ù¾ÛŒØ§Ù…' : it.type === 'post' ? 'Ù¾Ø³Øª' : 'Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ';
+
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            const title = document.createElement('div');
+            title.className = 'title';
+            title.textContent = it.title || (it.type === 'post' ? 'Ù¾Ø³Øª' : it.type === 'poll' ?
+                'Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ' : 'Ú©Ø§Ø±Ø¨Ø±');
+            const snip = document.createElement('div');
+            snip.className = 'snip';
+            snip.innerHTML = it.snippet || '';
+            const date = document.createElement('small');
+            date.style.color = '#6b7280';
+            date.textContent = it.date || '';
+            meta.appendChild(title);
+            meta.appendChild(snip);
+            meta.appendChild(date);
+            li.appendChild(type);
+            li.appendChild(meta);
+            li.addEventListener('click', () => goTo(it));
+            listEl.appendChild(li);
+        });
+    }
+
+    function updateActive() {
+        listEl.querySelectorAll('.gc-search-item').forEach((el, i) => el.classList.toggle('active', i ===
+            activeIndex));
+    }
+
+    function goTo(it) {
+        closeDD();
+        if (!it?.url) return;
+        location.hash = it.url;
+    }
+
+    async function fetchPage(reset = false) {
+        if (loading) return;
+        loading = true;
+        window.__setSearching(true);
+        setStatus('Ø¯Ø± Ø­Ø§Ù„ Ø¬Ø³ØªØ¬Ùˆâ€¦');
+        if (reset) {
+            items = [];
+            page = 1;
+            listEl.innerHTML = '';
+            setMore(false);
+        }
+
+        try {
+            const url = new URL(`{{ url('/groups') }}/${groupId}/search`, window.location.origin);
+            url.searchParams.set('q', lastQuery);
+            url.searchParams.set('page', page);
+            url.searchParams.set('limit', 20);
+
+            const res = await fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrf
+                },
+                credentials: 'same-origin'
+            });
+
+            if (!res.ok) {
+                // Ø¨Ø±Ø§ÛŒ Ú©Ù…Ú© Ø¨Ù‡ Ø¯ÛŒØ¨Ø§Ú¯
+                const txt = await res.text();
+                console.error('Search HTTP Error', res.status, txt);
+                throw new Error('HTTP ' + res.status);
+            }
+
+            const data = await res.json();
+            const newItems = Array.isArray(data?.items) ? data.items : [];
+            hasMore = !!data?.has_more;
+
+            items = items.concat(newItems);
+            renderList();
+            setStatus(newItems.length ? '' : (page === 1 ? 'Ú†ÛŒØ²ÛŒ Ù¾ÛŒØ¯Ø§ Ù†Ø´Ø¯.' : ''));
+            setMore(hasMore);
+            openDD();
+            window.__ensureSearchOpen();
+        } catch (e) {
+            console.error('Search fetch error', e);
+            setStatus('Ø®Ø·Ø§ Ø¯Ø± Ø¯Ø±ÛŒØ§ÙØª Ù†ØªØ§ÛŒØ¬');
+            openDD();
+            window.__ensureSearchOpen();
+        } finally {
+            loading = false;
+            window.__setSearching(false);
+        }
+    }
+
+    const onInput = debounce(() => {
+        const q = input.value.trim();
+        if (!q) {
+            closeDD();
+            return;
+        }
+        lastQuery = q;
+        fetchPage(true);
+    }, 300);
+
+    input.addEventListener('input', onInput);
+    input.addEventListener('focus', () => {
+        if (items.length) openDD();
+        else if (input.value.trim()) {
+            lastQuery = input.value.trim();
+            fetchPage(true);
+        }
+    });
+    clearBtn.addEventListener('click', () => {
+        input.value = '';
+        closeDD();
+        items = [];
+        listEl.innerHTML = '';
+    });
+    moreBtn.addEventListener('click', () => {
+        if (!hasMore) return;
+        page += 1;
+        fetchPage(false);
+    });
+
+    // Ø¨Ø³ØªÙ† dropdown Ø¨Ø§ Ú©Ù„ÛŒÚ© Ø¨ÛŒØ±ÙˆÙ† Ø§Ø² Ø³Ø±Ú†â€ŒØ¨Ø§Ø±
+    document.addEventListener('click', (e) => {
+        const box = e.target.closest('.gc-searchbar');
+        if (!box) closeDD();
+    });
+
+    // Ù†Ø§ÙˆØ¨Ø±ÛŒ Ú©ÛŒØ¨ÙˆØ±Ø¯
+    input.addEventListener('keydown', (e) => {
+        if (dd.hidden) return;
+        const max = items.length - 1;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            activeIndex = activeIndex < max ? activeIndex + 1 : 0;
+            updateActive();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activeIndex = activeIndex > 0 ? activeIndex - 1 : max;
+            updateActive();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (activeIndex >= 0) goTo(items[activeIndex]);
+        } else if (e.key === 'Escape') {
+            closeDD();
+        }
+    });
+});
+</script>
+
+<script>
+// Add pin/unpin functionality
+function updatePinnedCount(delta) {
+    document.querySelectorAll('.js-pinned-count').forEach((el) => {
+        const current = parseInt((el.textContent || '').replace(/[^\d]/g, ''), 10) || 0;
+        const next = Math.max(0, current + delta);
+        el.textContent = String(next);
+    });
+}
+
+function setPinnedCountAbsolute(count) {
+    const normalized = Math.max(0, Number(count) || 0);
+    document.querySelectorAll('.js-pinned-count').forEach((el) => {
+        el.textContent = String(normalized);
+    });
+}
+
+function updatePinButtonsState(messageId, isPinned) {
+    document.querySelectorAll('button.btn-pin').forEach((btn) => {
+        const handler = btn.getAttribute('onclick') || '';
+        const matchesPin = handler.includes(`pinMessage('${messageId}')`) || handler.includes(`pinMessage(${messageId})`);
+        const matchesUnpin = handler.includes(`unpinMessage('${messageId}')`) || handler.includes(`unpinMessage(${messageId})`);
+        if (!matchesPin && !matchesUnpin) return;
+
+        if (isPinned) {
+            btn.setAttribute('onclick', `unpinMessage('${messageId}')`);
+            btn.innerHTML = '<i class="fas fa-thumbtack"></i> برداشتن از سنجاق';
+        } else {
+            btn.setAttribute('onclick', `pinMessage('${messageId}')`);
+            btn.innerHTML = '<i class="fas fa-thumbtack"></i> سنجاق کردن';
+        }
+    });
+}
+
+function removePinnedListItem(messageId) {
+    const item = document.querySelector(`.pinned-messages .pin[href="#msg-${messageId}"]`);
+    if (!item) return;
+    const row = item.closest('.items-center') || item.parentElement;
+    if (row) {
+        row.remove();
+    } else {
+        item.remove();
+    }
+}
+
+function notifyPinAction(text) {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'success',
+            title: 'موفق',
+            text,
+            timer: 1200,
+            showConfirmButton: false
+        });
+    }
+}
+
+async function safeReadJsonFromResponse(response) {
+    const text = await response.text();
+    if (!text) return {};
+
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}');
+        if (start !== -1 && end !== -1 && end > start) {
+            try {
+                return JSON.parse(text.slice(start, end + 1));
+            } catch (_) {
+                // ignore
+            }
+        }
+        return { status: 'error', message: text.trim() || 'Invalid server response' };
+    }
+}
+
+function pinMessage(messageId) {
+    if (!confirm('آیا از سنجاق کردن این پیام مطمئن هستید؟')) return;
+
+    fetch(`/groups/messages/${messageId}/pin`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => safeReadJsonFromResponse(response))
+    .then(data => {
+        if (data.status === 'success') {
+            updatePinnedCount(1);
+            updatePinButtonsState(messageId, true);
+            notifyPinAction('پیام سنجاق شد.');
+            return;
+        }
+
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ icon: 'error', title: 'خطا', text: data.message || 'خطا' });
+        } else {
+            alert(data.message || 'خطا');
+        }
+    })
+    .catch((error) => {
+        console.error('Pin error:', error);
+        alert('خطا در سنجاق کردن پیام');
+    });
+}
+
+function unpinMessage(messageId) {
+    if (!confirm('آیا از برداشتن این پیام از سنجاق مطمئن هستید؟')) return;
+
+    fetch(`/groups/messages/${messageId}/unpin`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => safeReadJsonFromResponse(response))
+    .then(data => {
+        if (data.status === 'success') {
+            updatePinnedCount(-1);
+            updatePinButtonsState(messageId, false);
+            removePinnedListItem(messageId);
+            notifyPinAction('پیام از سنجاق خارج شد.');
+            return;
+        }
+
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ icon: 'error', title: 'خطا', text: data.message || 'خطا' });
+        } else {
+            alert(data.message || 'خطا');
+        }
+    })
+    .catch((error) => {
+        console.error('Unpin error:', error);
+        alert('خطا در برداشتن از سنجاق');
+    });
+}
+
+window.updatePinnedCount = updatePinnedCount;
+window.setPinnedCountAbsolute = setPinnedCountAbsolute;
+window.updatePinButtonsState = updatePinButtonsState;
+window.removePinnedListItem = removePinnedListItem;
+</script>
+
+<script>
+document.addEventListener('click', function(e) {
+    // Ù‡Ù…Ù‡â€ŒÛŒ Ù…Ù†ÙˆÙ‡Ø§ÛŒ Ø¨Ø§Ø²
+    document.querySelectorAll('details.menu-wrapper[open]').forEach(function(d) {
+        // Ø§Ú¯Ø± Ú©Ù„ÛŒÚ© Ø¨ÛŒØ±ÙˆÙ† Ø§Ø² Ù‡Ù…ÛŒÙ† Ù…Ù†Ùˆ Ø¨ÙˆØ¯Ù‡ØŒ Ø¨Ø¨Ù†Ø¯
+        if (!d.contains(e.target)) d.removeAttribute('open');
+    });
+});
+
+// Ø¬Ù„ÙˆÚ¯ÛŒØ±ÛŒ Ø§Ø² Ø¨Ø³ØªÙ‡â€ŒØ´Ø¯Ù† Ù‡Ù†Ú¯Ø§Ù… Ú©Ù„ÛŒÚ© Ø¯Ø§Ø®Ù„ Ù…Ù†Ùˆ
+document.addEventListener('click', function(e) {
+    const dropdown = e.target.closest('.menu-dropdown');
+    if (dropdown) {
+        e.stopPropagation();
+    }
+});
+
+// Ø¨Ø§ ESC Ù‡Ù… Ø¨Ø¨Ù†Ø¯
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('details.menu-wrapper[open]').forEach(d => d.removeAttribute('open'));
+    }
+});
+</script>
+
+{{-- Modal Ù…Ø¯ÛŒØ±ÛŒØª Ø§Ø¹Ø¶Ø§ - Ù‡Ù…ÛŒØ´Ù‡ Ø¯Ø± DOM Ø¨Ø§Ø´Ø¯ Ø§Ù…Ø§ ÙÙ‚Ø· Ø¨Ø±Ø§ÛŒ Ù…Ø¯ÛŒØ±Ø§Ù† Ù‚Ø§Ø¨Ù„ Ù…Ø´Ø§Ù‡Ø¯Ù‡ --}}
+<div id="manageMembersModal" class="modal-shell" style="display: none;" dir="rtl"
+    onclick="handleModalClick(event, 'manageMembersModal')">
+    <div class="modal-shell__dialog" onclick="event.stopPropagation()">
+        <div class="modal-shell__header">
+            <h3 class="modal-shell__title">
+                <i class="fas fa-users-cog me-2 text-blue-500"></i>
+                Ù…Ø¯ÛŒØ±ÛŒØª Ø§Ø¹Ø¶Ø§ÛŒ Ú¯Ø±ÙˆÙ‡
+            </h3>
+            <button type="button" class="modal-shell__close" onclick="closeManageMembersModal()">Ã—</button>
+        </div>
+
+        <div class="modal-shell__form">
+            <div id="members-loading" class="text-center py-8" style="display: none;">
+                <i class="fas fa-spinner fa-spin text-2xl text-blue-500"></i>
+                <p class="mt-2 text-slate-600">Ø¯Ø± Ø­Ø§Ù„ Ø¨Ø§Ø±Ú¯Ø°Ø§Ø±ÛŒ...</p>
+            </div>
+
+            <div id="members-error" class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-4"
+                style="display: none;">
+                <i class="fas fa-exclamation-circle ml-2"></i>
+                <span id="members-error-text"></span>
+            </div>
+
+            <div id="members-list"
+                style="max-height: 400px; overflow-y: auto; padding: 0.5rem 0; min-height: 100px; display: block; visibility: visible;">
+                <!-- Ù„ÛŒØ³Øª Ø§Ø¹Ø¶Ø§ Ø§ÛŒÙ†Ø¬Ø§ Ù†Ù…Ø§ÛŒØ´ Ø¯Ø§Ø¯Ù‡ Ù…ÛŒâ€ŒØ´ÙˆØ¯ -->
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Modal Ù…Ø¯ÛŒØ±ÛŒØª Ú¯Ø²Ø§Ø±Ø´â€ŒÙ‡Ø§ --}}
+@if(($yourRole ?? 0) == 3)
+<div id="manageReportsModal" class="modal-shell" style="display: none;" dir="rtl"
+    onclick="handleModalClick(event, 'manageReportsModal')">
+    <div class="modal-shell__dialog" onclick="event.stopPropagation()" style="max-width: 900px; width: 90vw;">
+        <div class="modal-shell__header">
+            <h3 class="modal-shell__title">
+                <i class="fas fa-flag me-2 text-orange-500"></i>
+                Ù…Ø¯ÛŒØ±ÛŒØª Ú¯Ø²Ø§Ø±Ø´â€ŒÙ‡Ø§ÛŒ Ù¾ÛŒØ§Ù…
+            </h3>
+            <button type="button" class="modal-shell__close" onclick="closeManageReportsModal()">Ã—</button>
+        </div>
+
+        <div class="modal-shell__form">
+            <div id="reports-loading" class="text-center py-8" style="display: none;">
+                <i class="fas fa-spinner fa-spin text-2xl text-orange-500"></i>
+                <p class="mt-2 text-slate-600">Ø¯Ø± Ø­Ø§Ù„ Ø¨Ø§Ø±Ú¯Ø°Ø§Ø±ÛŒ...</p>
+            </div>
+
+            <div id="reports-error" class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-4"
+                style="display: none;">
+                <i class="fas fa-exclamation-circle ml-2"></i>
+                <span id="reports-error-text"></span>
+            </div>
+
+            <div id="reports-list" class="space-y-3 max-h-96 overflow-y-auto">
+                <!-- Ù„ÛŒØ³Øª Ú¯Ø²Ø§Ø±Ø´â€ŒÙ‡Ø§ Ø§ÛŒÙ†Ø¬Ø§ Ù†Ù…Ø§ÛŒØ´ Ø¯Ø§Ø¯Ù‡ Ù…ÛŒâ€ŒØ´ÙˆØ¯ -->
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
+</div>
+
+<!-- Ú©Ø¯ Ù†Ù‡Ø§ÛŒÛŒ Ø­ÙØ¸ Ùˆ Ø¨Ø§Ø²ÛŒØ§Ø¨ÛŒ Ù…ÙˆÙ‚Ø¹ÛŒØª Ø§Ø³Ú©Ø±ÙˆÙ„ Ùˆ Ù…Ø¯ÛŒØ±ÛŒØª Ø¯Ú©Ù…Ù‡ Ø´Ù†Ø§ÙˆØ± -->
+<script>
+(function() {
+    'use strict';
+
+    const STORAGE_KEY = 'pageScroll_{{ $group->id }}';
+    const restorationDelays = [0, 250, 700, 1400, 2600, 4200];
+    window.scrollPositionRestored = false;
+
+    function initUnifiedScroll() {
+        // Get button - check after DOM is ready
+        let btn = document.getElementById('scroll-toggle-btn');
+        if (!btn) {
+            setTimeout(initUnifiedScroll, 100);
+            return;
+        }
+
+        let restored = false;
+
+        function tryRestore() {
+            if (restored) return;
+
+            const stored = parseInt(sessionStorage.getItem(STORAGE_KEY) || '0', 10);
+            if (stored > 0) {
+                window.scrollTo(0, stored);
+            }
+
+            if (stored <= 0 || Math.abs(window.scrollY - stored) <= 5) {
+                restored = true;
+                window.scrollPositionRestored = true;
+            }
+        }
+
+        restorationDelays.forEach(delay => setTimeout(tryRestore, delay));
+
+        window.addEventListener('scroll', function() {
+            if (btn) {
+                btn.classList.toggle('visible', window.scrollY > 80);
+            }
+
+            if (window.scrollPositionRestored) {
+                clearTimeout(window.scTimer);
+                window.scTimer = setTimeout(() => {
+                    sessionStorage.setItem(STORAGE_KEY, window.scrollY);
+                }, 200);
+            }
+        });
+
+        if (btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+            });
+        }
+    }
+
+    if (document.readyState === 'complete') {
+        initUnifiedScroll();
+    } else {
+        window.addEventListener('load', initUnifiedScroll);
+    }
+
+    if (typeof addReactionButton === 'function') {
+        document.querySelectorAll('.message-bubble').forEach(b => {
+            if (b.dataset.messageId) addReactionButton(b);
+        });
+    }
+})();
+</script>
+
+@endsection
+
+
+
+

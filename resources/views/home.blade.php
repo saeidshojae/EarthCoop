@@ -3,11 +3,18 @@
 @section('title', __('navigation.footer_home') . ' - ' . config('app.name', 'EarthCoop'))
 
 @push('styles')
+
+
+
 <!-- Swiper -->
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-element-bundle.min.js"></script>
+
+
 <!-- Tailwind & Bootstrap CSS via Vite -->
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 <style>
+
+
     /* Sidebar animations */
     .sidebar-menu-item:nth-child(1) .sidebar-menu-link { animation: fadeInUp 0.6s ease-out 0.1s both; }
     .sidebar-menu-item:nth-child(2) .sidebar-menu-link { animation: fadeInUp 0.6s ease-out 0.2s both; }
@@ -19,6 +26,7 @@
     .sidebar-menu-item:nth-child(8) .sidebar-menu-link { animation: fadeInUp 0.6s ease-out 0.8s both; }
     .sidebar-menu-item:nth-child(9) .sidebar-menu-link { animation: fadeInUp 0.6s ease-out 0.9s both; }
 
+
     /* Hover effects */
     .sidebar-menu-link:hover {
         background-color: var(--color-light-gray);
@@ -27,19 +35,20 @@
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
 
+
     /* Swiper Slider */
     swiper-container {
         width: 100%;
         height: auto;
     }
-    
+
     swiper-slide {
         text-align: center;
         display: flex;
         justify-content: center;
         align-items: center;
     }
-    
+
     swiper-slide img {
         display: block;
         width: 100%;
@@ -48,15 +57,17 @@
         border-radius: 1rem;
     }
 
+
     /* Content Card */
     .content-card {
         transition: all 0.3s ease;
     }
-    
+
     .content-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
     }
+
 
     /* Dark Mode Support for Sidebar */
     body.dark-mode .sidebar-menu-link {
@@ -74,24 +85,26 @@
     }
 </style>
 @endpush
-
 @section('content')
+
+
 <!-- Main Layout: Sidebar first (right in RTL), then Main (left in RTL) -->
 <div class="container mx-auto flex flex-col lg:flex-row gap-8 p-6 md:p-8">
-    
+
+
     <!-- Right Sidebar - Always visible, no toggle -->
     <aside class="w-full lg:w-80 bg-white rounded-2xl shadow-lg p-6 flex-shrink-0 lg:sticky lg:top-24 h-fit border border-gray-200 transition-all duration-300 hover:shadow-xl"
            style="background-color: var(--color-pure-white);">
-        
         <div class="pb-4 mb-4 border-b border-gray-200">
             <h2 class="text-2xl font-bold text-gentle-black flex items-center justify-between" style="color: var(--color-gentle-black);">
                 <i class="fas fa-bars" style="color: var(--color-earth-green);"></i>
                 <span class="mr-3">منو</span>
             </h2>
         </div>
-        
         <nav>
             <ul class="space-y-2">
+
+
                 <!-- Notifications -->
                 <li class="sidebar-menu-item">
                     <a href="{{ route('notifications.index') }}" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
@@ -105,7 +118,8 @@
                         @endif
                     </a>
                 </li>
-                
+
+
                 <!-- Groups -->
                 <li class="sidebar-menu-item">
                     <a href="{{ route('groups.index') }}" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
@@ -119,7 +133,8 @@
                         @endif
                     </a>
                 </li>
-                
+
+
                 <!-- Collaborations -->
                 <li class="sidebar-menu-item">
                     <a href="{{ route('history.index') }}" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
@@ -130,7 +145,9 @@
                         </div>
                     </a>
                 </li>
+
                 
+
                 <!-- Elections -->
                 <li class="sidebar-menu-item">
                     <a href="{{ route('history.election') }}" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
@@ -142,6 +159,7 @@
                     </a>
                 </li>
                 
+
                 <!-- Polls -->
                 <li class="sidebar-menu-item">
                     <a href="{{ route('history.poll') }}" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
@@ -153,6 +171,7 @@
                     </a>
                 </li>
                 
+
                 <!-- Spring Account -->
                 @php
                     $accountService = app(\App\Modules\NajmBahar\Services\AccountService::class);
@@ -167,7 +186,8 @@
                         </div>
                     </a>
                 </li>
-                
+
+
                 <!-- Invite Friends -->
                 <li class="sidebar-menu-item">
                     <a href="{{ route('my-invation-code') }}" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
@@ -179,6 +199,7 @@
                     </a>
                 </li>
                 
+
                 <!-- Edit Profile -->
                 <li class="sidebar-menu-item">
                     <a href="{{ route('profile.edit') }}" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
@@ -189,7 +210,8 @@
                         </div>
                     </a>
                 </li>
-                
+
+
                 <!-- Support -->
                 <li class="sidebar-menu-item" x-data="{ open: false }">
                     <button @click="open = !open" class="sidebar-menu-link w-full block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
@@ -249,7 +271,8 @@
                         </li>
                     </ul>
                 </li>
-                
+
+
                 <!-- Admin Panel (if admin) -->
                 @if (auth()->user()->is_admin == 1)
                 <li class="sidebar-menu-item">
@@ -262,7 +285,8 @@
                     </a>
                 </li>
                 @endif
-                
+
+
                 <!-- Logout -->
                 <li class="sidebar-menu-item">
                     <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form-home').submit();" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
@@ -278,22 +302,24 @@
                 </li>
             </ul>
         </nav>
-        
         <div class="mt-6 pt-4 border-t border-gray-200 text-center text-sm text-gray-500">
             نسخه ۲.۱.۰ - EarthCoop
         </div>
     </aside>
 
+
     <!-- Main Content -->
     <main class="flex-grow bg-white rounded-2xl shadow-lg p-6 md:p-8 border border-gray-200" style="background-color: var(--color-pure-white);">
-        
+
+
         <!-- Welcome Section -->
         <div class="mb-8">
             <h1 class="text-3xl md:text-4xl font-bold text-gentle-black mb-4 text-center" style="color: var(--color-gentle-black);">
                 {{ \App\Models\Setting::find(1)->home_titre }}
             </h1>
-            <p class="text-center text-gray-600">به سیستم کوپراتیو زمین نو خوش آمدید</p>
+            <p class="text-center text-gray-600">به زمین نو خوش آمدید</p>
         </div>
+
 
         <!-- Image Slider -->
         @if(\App\Models\Slider::where('position', 1)->count() > 0)
@@ -308,15 +334,18 @@
         </div>
         @endif
 
+
         <!-- Home Content -->
         <div class="mb-8 prose prose-lg max-w-none text-gray-700">
             {!! \App\Models\Setting::find(1)->home_content !!}
         </div>
 
+
         <!-- Groups Statistics -->
         @if($groups->count() > 0)
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            
+
+
             <!-- General Groups -->
             <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 content-card" style="background-color: var(--color-pure-white);">
                 <div class="flex items-center justify-between mb-4">
@@ -332,6 +361,7 @@
                 </div>
             </div>
 
+
             <!-- Specialized Groups -->
             <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 content-card" style="background-color: var(--color-pure-white);">
                 <div class="flex items-center justify-between mb-4">
@@ -346,6 +376,7 @@
                     <span>تخصصی و پیشرفته</span>
                 </div>
             </div>
+
 
             <!-- Exclusive Groups -->
             <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 content-card" style="background-color: var(--color-pure-white);">
@@ -364,6 +395,7 @@
         </div>
         @endif
 
+
         <!-- Active Auctions -->
         @if(isset($activeAuctions) && $activeAuctions->count() > 0)
         <div class="mt-8 p-6 bg-white rounded-xl shadow-md border border-gray-200" style="background-color: var(--color-pure-white);">
@@ -376,30 +408,35 @@
                 <div class="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all content-card">
                     <h3 class="font-semibold text-gentle-black mb-2" style="color: var(--color-gentle-black);">{{ $auction->stock->name ?? 'حراج' }}</h3>
                     <p class="text-sm text-gray-600 mb-4">پایان: {{ $auction->ends_at->diffForHumans() }}</p>
+
                     <a href="#" class="inline-block px-4 py-2 rounded-lg text-white transition-all" style="background: linear-gradient(135deg, var(--color-earth-green) 0%, var(--color-dark-green) 100%);">
                         مشاهده جزئیات
+
                     </a>
                 </div>
                 @endforeach
             </div>
         </div>
         @endif
-
     </main>
 </div>
 
+
 <!-- Success/Error Alerts -->
 @if(session('success'))
+
 <div x-data="{ show: true }" 
      x-show="show" 
      x-init="setTimeout(() => show = false, 5000)"
      class="fixed bottom-4 left-4 bg-white rounded-xl shadow-2xl p-4 z-50 max-w-md"
      style="display: none; background-color: var(--color-pure-white);"
      x-cloak>
+
     <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background-color: var(--color-earth-green);">
             <i class="fas fa-check text-white"></i>
         </div>
+
         <div class="flex-1">
             <p class="font-semibold text-gentle-black" style="color: var(--color-gentle-black);">موفقیت</p>
             <p class="text-sm text-gray-600">{{ session('success') }}</p>
@@ -409,19 +446,23 @@
         </button>
     </div>
 </div>
+
 @endif
 
 @if(session('error'))
+
 <div x-data="{ show: true }" 
      x-show="show" 
      x-init="setTimeout(() => show = false, 5000)"
      class="fixed bottom-4 left-4 bg-white rounded-xl shadow-2xl p-4 z-50 max-w-md"
      style="display: none; background-color: var(--color-pure-white);"
      x-cloak>
+
     <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background-color: var(--color-red-tomato);">
             <i class="fas fa-exclamation text-white"></i>
         </div>
+
         <div class="flex-1">
             <p class="font-semibold text-gentle-black" style="color: var(--color-gentle-black);">خطا</p>
             <p class="text-sm text-gray-600">{{ session('error') }}</p>
@@ -431,6 +472,7 @@
         </button>
     </div>
 </div>
-@endif
-@endsection
 
+@endif
+
+@endsection

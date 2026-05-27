@@ -72,5 +72,6 @@ class Kernel extends HttpKernel
 
         'email.verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
         'update.lastseen.logout' => \App\Http\Middleware\UpdateLastSeenOnLogout::class,
+        'group.chat.timing' => \App\Http\Middleware\GroupChatTiming::class,
     ];
 }

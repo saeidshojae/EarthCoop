@@ -19,7 +19,12 @@ class Poll extends Model
         'created_by',
         'type',
         'skill_id',
-        'main_type'
+        'main_type',
+        'read_by'
+    ];
+
+    protected $casts = [
+        'read_by' => 'array'
     ];
 
     public function skill(){
@@ -65,6 +70,33 @@ class Poll extends Model
     {
         return $this->hasMany(PollVote::class, 'poll_id') // کلید خارجی پیش‌فرض
                     ->where('user_id', auth()->id());   // فیلتر با فیلد درست
+    }
+
+    /**
+     * Mark poll as read by user
+     */
+    public function markAsRead(int $userId): void
+    {
+        $readBy = $this->read_by ?? [];
+        $readBy[$userId] = now()->toIso8601String();
+        $this->update(['read_by' => $readBy]);
+    }
+
+    /**
+     * Check if poll is read by user
+     */
+    public function isReadBy(int $userId): bool
+    {
+        $readBy = $this->read_by ?? [];
+        return isset($readBy[$userId]);
+    }
+
+    /**
+     * Get read count
+     */
+    public function getReadCountAttribute(): int
+    {
+        return count($this->read_by ?? []);
     }
 
 }

@@ -1,102 +1,204 @@
-@extends('layouts.admin')
-
-@section('title', 'لاگ‌های مدیریتی نجم بهار - ' . config('app.name', 'EarthCoop'))
-
-@section('content')
-<div class="container-fluid px-4 py-6" dir="rtl">
-    <div class="mb-6">
-        <h1 class="text-3xl font-bold text-slate-900 dark:text-white">
-            <i class="fas fa-clipboard-list ml-2"></i>
-            لاگ‌های مدیریتی نجم بهار
-        </h1>
-        <p class="text-slate-600 dark:text-slate-400 mt-1">نمایش و فیلتر عملیات انجام شده توسط مدیران</p>
-    </div>
-
-    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-8">
-        <form method="GET" class="grid grid-cols-1 md:grid-cols-6 gap-4">
-            <div>
-                <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">ادمین</label>
-                <select name="admin_user_id" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
-                    <option value="">همه</option>
-                    @foreach($admins as $admin)
-                        <option value="{{ $admin->id }}" {{ request('admin_user_id') == $admin->id ? 'selected' : '' }}>
-                            {{ $admin->fullName() }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">عملیات</label>
-                <input name="action" type="text" value="{{ request('action') }}" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
-            </div>
-            <div>
-                <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">نوع هدف</label>
-                <select name="target_type" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
-                    <option value="">همه</option>
-                    @foreach($targetTypes as $targetType)
-                        <option value="{{ $targetType }}" {{ request('target_type') === $targetType ? 'selected' : '' }}>
-                            {{ $targetType }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">از تاریخ</label>
-                <input name="date_from" type="date" value="{{ request('date_from') }}" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
-            </div>
-            <div>
-                <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">تا تاریخ</label>
-                <input name="date_to" type="date" value="{{ request('date_to') }}" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
-            </div>
-            <div class="flex items-end gap-2">
-                <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">فیلتر</button>
-                <a href="{{ route('admin.najm-bahar.logs.index') }}" class="px-4 py-2 rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 transition">پاکسازی</a>
-            </div>
-        </form>
-    </div>
-
-    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead class="bg-slate-50 dark:bg-slate-700">
-                    <tr>
-                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">ادمین</th>
-                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">عملیات</th>
-                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">هدف</th>
-                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">توضیح</th>
-                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">تاریخ</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
-                    @forelse($logs as $log)
-                        <tr>
-                            <td class="px-4 py-2">{{ $log->adminUser?->fullName() ?? ('#' . $log->admin_user_id) }}</td>
-                            <td class="px-4 py-2">{{ $log->action }}</td>
-                            <td class="px-4 py-2">{{ $log->target_type }}{{ $log->target_id ? (' #' . $log->target_id) : '' }}</td>
-                            <td class="px-4 py-2">
-                                <div>{{ $log->description }}</div>
-                                @if($log->metadata)
-                                    <details class="mt-2 text-xs text-slate-500">
-                                        <summary class="cursor-pointer">جزئیات</summary>
-                                        <pre class="whitespace-pre-wrap">{{ json_encode($log->metadata, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) }}</pre>
-                                    </details>
-                                @endif
-                            </td>
-                            <td class="px-4 py-2 text-slate-600 dark:text-slate-400">
-                                {{ \Morilog\Jalali\Jalalian::fromCarbon($log->created_at)->format('Y/m/d H:i') }}
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="px-4 py-8 text-center text-slate-500">لاگی ثبت نشده است</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-        <div class="mt-4">
-            {{ $logs->links() }}
-        </div>
-    </div>
-</div>
-@endsection
+@extends('layouts.admin')
+
+
+
+@section('title', 'لاگ‌های مدیریتی نجم بهار - ' . config('app.name', 'EarthCoop'))
+
+
+
+@section('content')
+
+<div class="container-fluid px-4 py-6" dir="rtl">
+
+    <div class="mb-6">
+
+        <h1 class="text-3xl font-bold text-slate-900 dark:text-white">
+
+            <i class="fas fa-clipboard-list ml-2"></i>
+
+            لاگ‌های مدیریتی نجم بهار
+
+        </h1>
+
+        <p class="text-slate-600 dark:text-slate-400 mt-1">نمایش و فیلتر عملیات انجام شده توسط مدیران</p>
+
+    </div>
+
+
+
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-8">
+
+        <form method="GET" class="grid grid-cols-1 md:grid-cols-6 gap-4">
+
+            <div>
+
+                <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">ادمین</label>
+
+                <select name="admin_user_id" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+
+                    <option value="">همه</option>
+
+                    @foreach($admins as $admin)
+
+                        <option value="{{ $admin->id }}" {{ request('admin_user_id') == $admin->id ? 'selected' : '' }}>
+
+                            {{ $admin->fullName() }}
+
+                        </option>
+
+                    @endforeach
+
+                </select>
+
+            </div>
+
+            <div>
+
+                <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">عملیات</label>
+
+                <input name="action" type="text" value="{{ request('action') }}" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
+
+            </div>
+
+            <div>
+
+                <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">نوع هدف</label>
+
+                <select name="target_type" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+
+                    <option value="">همه</option>
+
+                    @foreach($targetTypes as $targetType)
+
+                        <option value="{{ $targetType }}" {{ request('target_type') === $targetType ? 'selected' : '' }}>
+
+                            {{ $targetType }}
+
+                        </option>
+
+                    @endforeach
+
+                </select>
+
+            </div>
+
+            <div>
+
+                <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">از تاریخ</label>
+
+                <input name="date_from" type="date" value="{{ request('date_from') }}" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
+
+            </div>
+
+            <div>
+
+                <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">تا تاریخ</label>
+
+                <input name="date_to" type="date" value="{{ request('date_to') }}" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
+
+            </div>
+
+            <div class="flex items-end gap-2">
+
+                <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">فیلتر</button>
+
+                <a href="{{ route('admin.najm-bahar.logs.index') }}" class="px-4 py-2 rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 transition">پاکسازی</a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+
+
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+
+        <div class="overflow-x-auto">
+
+            <table class="w-full text-sm">
+
+                <thead class="bg-slate-50 dark:bg-slate-700">
+
+                    <tr>
+
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">ادمین</th>
+
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">عملیات</th>
+
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">هدف</th>
+
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">توضیح</th>
+
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">تاریخ</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+
+                    @forelse($logs as $log)
+
+                        <tr>
+
+                            <td class="px-4 py-2">{{ $log->adminUser?->fullName() ?? ('#' . $log->admin_user_id) }}</td>
+
+                            <td class="px-4 py-2">{{ $log->action }}</td>
+
+                            <td class="px-4 py-2">{{ $log->target_type }}{{ $log->target_id ? (' #' . $log->target_id) : '' }}</td>
+
+                            <td class="px-4 py-2">
+
+                                <div>{{ $log->description }}</div>
+
+                                @if($log->metadata)
+
+                                    <details class="mt-2 text-xs text-slate-500">
+
+                                        <summary class="cursor-pointer">جزئیات</summary>
+
+                                        <pre class="whitespace-pre-wrap">{{ json_encode($log->metadata, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) }}</pre>
+
+                                    </details>
+
+                                @endif
+
+                            </td>
+
+                            <td class="px-4 py-2 text-slate-600 dark:text-slate-400">
+
+                                {{ \Morilog\Jalali\Jalalian::fromCarbon($log->created_at)->format('Y/m/d H:i') }}
+
+                            </td>
+
+                        </tr>
+
+                    @empty
+
+                        <tr>
+
+                            <td colspan="5" class="px-4 py-8 text-center text-slate-500">لاگی ثبت نشده است</td>
+
+                        </tr>
+
+                    @endforelse
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <div class="mt-4">
+
+            {{ $logs->links() }}
+
+        </div>
+
+    </div>
+
+</div>
+
+@endsection
+

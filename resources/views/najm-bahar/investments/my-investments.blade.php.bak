@@ -1,0 +1,60 @@
+@extends('layouts.unified')
+
+@section('title', 'سرمایه‌گذاری‌های من - نجم بهار')
+
+@section('content')
+<div class="container mx-auto px-4 py-8" dir="rtl">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">سرمایه‌گذاری‌های من</h1>
+        <p class="text-gray-600 mt-2">لیست سرمایه‌گذاری‌های ثبت شده</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <p class="text-gray-600 text-sm">کل سرمایه‌گذاری‌ها</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ $stats['total'] ?? 0 }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <p class="text-gray-600 text-sm">فعال</p>
+            <p class="text-2xl font-bold text-green-600 mt-1">{{ $stats['active'] ?? 0 }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <p class="text-gray-600 text-sm">تکمیل شده</p>
+            <p class="text-2xl font-bold text-blue-600 mt-1">{{ $stats['completed'] ?? 0 }}</p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        @if($investments->isEmpty())
+            <div class="text-center py-16">
+                <p class="text-gray-500">هنوز سرمایه‌گذاری‌ای ثبت نکرده‌اید.</p>
+            </div>
+        @else
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">پروژه</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">مبلغ</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">وضعیت</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">تاریخ</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @foreach($investments as $investment)
+                        <tr>
+                            <td class="px-6 py-4 text-sm text-gray-900">{{ $investment->project->title }}</td>
+                            <td class="px-6 py-4 text-sm font-semibold">{{ number_format($investment->amount) }} گل</td>
+                            <td class="px-6 py-4 text-sm">{{ $investment->status_label ?? $investment->status }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500">{{ $investment->created_at->diffForHumans() }}</td>
+                            <td class="px-6 py-4 text-sm">
+                                <a href="{{ route('najm-bahar.investments.show-investment', $investment) }}" class="text-blue-600 hover:underline">جزئیات</a>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
+    </div>
+</div>
+@endsection

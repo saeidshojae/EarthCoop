@@ -1,0 +1,33 @@
+@php
+
+
+
+
+
+
+
+
+
+    // استفاده از map preloaded در controller به جای کوئری مستقیم
+    $groupUserPost = isset($postGroupUsersMap) ? ($postGroupUsersMap[$item->user_id] ?? null) : null;
+    // اگر postGroupUsersMap موجود نبود (fallback)
+    if (!$groupUserPost && isset($item->group_id)) {
+        $groupUserPost = \App\Models\GroupUser::where('group_id', $item->group_id)
+
+
+
+
+
+
+
+
+
+        ->where('user_id', $item->user_id)
+
+
+
+
+
+
+
+

@@ -1,0 +1,280 @@
+@extends('layouts.admin')
+
+@section('title', 'گزارش‌های تحلیلی نجم بهار - ' . config('app.name', 'EarthCoop'))
+
+@push('styles')
+<style>
+    .analytics-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+</style>
+@endpush
+
+@section('content')
+<div class="container-fluid px-4 py-6" dir="rtl">
+    <!-- هدر صفحه -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-white">
+                <i class="fas fa-chart-bar ml-2"></i>
+                گزارش‌های تحلیلی نجم بهار
+            </h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">تحلیل و بررسی عملکرد سیستم مالی</p>
+        </div>
+    </div>
+
+    <!-- فیلتر تاریخ -->
+    <div class="analytics-card">
+        <form method="GET" action="{{ route('admin.najm-bahar.analytics') }}" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">از تاریخ</label>
+                <input type="date" 
+                       name="date_from" 
+                       value="{{ $dateFrom }}"
+                       class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">تا تاریخ</label>
+                <input type="date" 
+                       name="date_to" 
+                       value="{{ $dateTo }}"
+                       class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white">
+            </div>
+            
+            <div class="flex items-end">
+                <button type="submit" 
+                        class="w-full px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <i class="fas fa-search ml-2"></i>
+                    اعمال فیلتر
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- آمار خلاصه -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="analytics-card">
+            <div class="text-3xl font-bold text-blue-600 mb-2">{{ number_format($totalTransactions) }}</div>
+            <div class="text-slate-600 dark:text-slate-400">کل تراکنش‌ها</div>
+        </div>
+        
+        <div class="analytics-card">
+            <div class="text-3xl font-bold text-green-600 mb-2">{{ \App\Helpers\BaharMoney::formatDecimalHtml($totalVolume) }}</div>
+            <div class="text-slate-600 dark:text-slate-400">حجم کل تراکنش‌ها</div>
+        </div>
+        
+        <div class="analytics-card">
+            <div class="text-3xl font-bold text-amber-600 mb-2">{{ \App\Helpers\BaharMoney::formatDecimalHtml($avgTransactionAmount) }}</div>
+            <div class="text-slate-600 dark:text-slate-400">میانگین مبلغ تراکنش</div>
+        </div>
+    </div>
+
+    <!-- نمودار تراکنش‌های روزانه -->
+    <div class="analytics-card">
+        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">
+            <i class="fas fa-chart-line ml-2"></i>
+            نمودار تراکنش‌های روزانه
+        </h3>
+        <canvas id="dailyChart" height="80"></canvas>
+    </div>
+
+    <!-- توزیع نوع تراکنش‌ها -->
+    <div class="analytics-card">
+        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">
+            <i class="fas fa-pie-chart ml-2"></i>
+            توزیع نوع تراکنش‌ها
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            @foreach($typeDistribution as $type)
+                <div class="p-4 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                    <p class="text-sm text-slate-600 dark:text-slate-400 mb-1">
+                        @if($type->type === 'immediate')
+                            فوری
+                        @elseif($type->type === 'scheduled')
+                            زمان‌بندی شده
+                        @else
+                            {{ $type->type }}
+                        @endif
+                    </p>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ number_format($type->count) }}</p>
+                    <p class="text-xs text-slate-500 mt-1">حجم: {{ \App\Helpers\BaharMoney::formatDecimalHtml($type->volume) }}</p>
+                </div>
+            @endforeach
+        </div>
+    </div>
+
+    <!-- تراکنش‌های بزرگ -->
+    <div class="analytics-card">
+        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">
+            <i class="fas fa-arrow-up ml-2"></i>
+            تراکنش‌های بزرگ (بالای 100,000 بهار)
+        </h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 dark:bg-slate-700">
+                    <tr>
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">مبلغ</th>
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">نوع</th>
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">تاریخ</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                    @forelse($largeTransactions as $transaction)
+                        <tr>
+                            <td class="px-4 py-2 font-bold text-red-600">{{ \App\Helpers\BaharMoney::formatDecimalHtml($transaction->amount) }}</td>
+                            <td class="px-4 py-2">
+                                <span class="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                                    {{ $transaction->type === 'immediate' ? 'فوری' : $transaction->type }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-2 text-slate-600 dark:text-slate-400">
+                                {{ \Morilog\Jalali\Jalalian::fromCarbon($transaction->created_at)->format('Y/m/d H:i') }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="3" class="px-4 py-8 text-center text-slate-500">هیچ تراکنش بزرگی یافت نشد</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- حساب‌های فعال -->
+    <div class="analytics-card">
+        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">
+            <i class="fas fa-users ml-2"></i>
+            حساب‌های فعال (با بیشترین تراکنش)
+        </h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 dark:bg-slate-700">
+                    <tr>
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">شماره حساب</th>
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">تعداد تراکنش‌ها</th>
+                        <th class="px-4 py-2 text-right text-slate-700 dark:text-slate-300">موجودی</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                    @forelse($activeAccounts as $account)
+                        <tr>
+                            <td class="px-4 py-2 font-mono">{{ $account->account_number }}</td>
+                            <td class="px-4 py-2 font-bold">{{ number_format($account->transactions_count) }}</td>
+                            <td class="px-4 py-2 text-green-600 font-bold">{{ \App\Helpers\BaharMoney::formatDecimalHtml($account->balance) }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="3" class="px-4 py-8 text-center text-slate-500">هیچ حسابی یافت نشد</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- آمار حساب‌های فرعی -->
+    @if($subAccountStats)
+        <div class="analytics-card">
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">
+                <i class="fas fa-wallet ml-2"></i>
+                آمار حساب‌های فرعی
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <p class="text-sm text-slate-600 dark:text-slate-400 mb-1">تعداد کل</p>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ number_format($subAccountStats->total) }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-600 dark:text-slate-400 mb-1">موجودی کل</p>
+                    <p class="text-2xl font-bold text-green-600">{{ \App\Helpers\BaharMoney::formatDecimalHtml($subAccountStats->total_balance) }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-600 dark:text-slate-400 mb-1">میانگین موجودی</p>
+                    <p class="text-2xl font-bold text-amber-600">{{ \App\Helpers\BaharMoney::formatDecimalHtml($subAccountStats->avg_balance) }}</p>
+                </div>
+            </div>
+        </div>
+    @endif
+</div>
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // نمودار تراکنش‌های روزانه
+    const ctx = document.getElementById('dailyChart').getContext('2d');
+    const dailyData = @json($dailyStats);
+    
+    const labels = dailyData.map(item => {
+        const date = new Date(item.date);
+        return date.toLocaleDateString('fa-IR', { month: 'short', day: 'numeric' });
+    });
+    
+    const counts = dailyData.map(item => item.count);
+    const volumes = dailyData.map(item => item.volume / 100);
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'تعداد تراکنش‌ها',
+                    data: counts,
+                    backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                    borderColor: 'rgb(59, 130, 246)',
+                    borderWidth: 1,
+                },
+                {
+                    label: 'حجم تراکنش‌ها (بهار)',
+                    data: volumes,
+                    backgroundColor: 'rgba(16, 185, 129, 0.6)',
+                    borderColor: 'rgb(16, 185, 129)',
+                    borderWidth: 1,
+                    yAxisID: 'y1',
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'تعداد'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'حجم (بهار)'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                }
+            }
+        }
+    });
+</script>
+@endpush
+@endsection
+
+

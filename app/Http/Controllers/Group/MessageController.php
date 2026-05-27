@@ -13,12 +13,17 @@ use App\Models\Blog;
 use App\Models\Poll;
 use App\Models\User;
 use App\Models\MessageReaction;
+use App\Events\GroupMessageUpdated;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 
 class MessageController extends Controller
 {
     public function store(Request $request)
     {
+        $storeT0 = microtime(true);
+        \Illuminate\Support\Facades\Log::info('[STORE_TIMING] T0 start store()');
+
         // Basic validation
         $basicRules = [
             'message' => 'nullable|string|max:2000',
@@ -28,8 +33,8 @@ class MessageController extends Controller
             'voice_message' => 'nullable|file|max:10240', // 10MB max for voice
         ];
         
-        // اگر فایل صوتی ارسال شده، message می‌تواند خالی باشد
-        // در این صورت در کد بعدی مقدار پیش‌فرض set می‌شود
+
+
         $basicRules['message'] = 'nullable|string|max:2000';
         
         // Validate voice message separately with custom logic
@@ -39,8 +44,7 @@ class MessageController extends Controller
             // Check file size
             if ($voiceFile->getSize() > 10 * 1024 * 1024) {
                 return response()->json([
-                    'status' => 'error',
-                    'message' => 'حجم فایل صوتی نمی‌تواند بیشتر از 10 مگابایت باشد.'
+                    'An error occurred. Please try again.'
                 ], 422);
             }
             
@@ -77,8 +81,7 @@ class MessageController extends Controller
             
             if (!$isValidMime && !$isValidExtension) {
                 return response()->json([
-                    'status' => 'error',
-                    'message' => 'فرمت فایل صوتی پشتیبانی نمی‌شود. فرمت‌های مجاز: MP3, WAV, OGG, WEBM, OPUS'
+                    'An error occurred. Please try again.'
                 ], 422);
             }
         } else {
@@ -86,11 +89,13 @@ class MessageController extends Controller
             $basicRules['voice_message'] = 'nullable|file|max:10240';
         }
         
+        
+        \Illuminate\Support\Facades\Log::info('[STORE_TIMING] T1 before validate: ' . round((microtime(true) - $storeT0) * 1000) . 'ms');
         try {
             $inputs = $request->validate($basicRules);
         } catch (\Illuminate\Validation\ValidationException $e) {
             $errors = $e->errors();
-            $errorMessage = 'خطا در اعتبارسنجی داده‌ها.';
+            $errorMessage = 'Validation failed. Please check your input.';
             
             // Extract first error message
             if (!empty($errors)) {
@@ -107,27 +112,30 @@ class MessageController extends Controller
             ], 422);
         }
 
+        \Illuminate\Support\Facades\Log::info('[STORE_TIMING] T2 after validate: ' . round((microtime(true) - $storeT0) * 1000) . 'ms');
         try {
             $group = Group::findOrFail($request->group_id);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'گروه یافت نشد.'
+                'An error occurred. Please try again.'
             ], 404);
         }
 
+        \Illuminate\Support\Facades\Log::info('[STORE_TIMING] T3 after findOrFail: ' . round((microtime(true) - $storeT0) * 1000) . 'ms');
         $group->update(['last_activity_at' => now()]);
+        \Illuminate\Support\Facades\Log::info('[STORE_TIMING] T4 after group update: ' . round((microtime(true) - $storeT0) * 1000) . 'ms');
         $user = auth()->user();
         $groupUserRole = GroupUser::where('group_id', $group->id)->where('user_id', $user->id)->value('role');
+        \Illuminate\Support\Facades\Log::info('[STORE_TIMING] T5 after groupUserRole: ' . round((microtime(true) - $storeT0) * 1000) . 'ms');
 
-// ✅ جایگزین کن
 $member = $group->users()->whereKey($user->id)->exists();
+\Illuminate\Support\Facades\Log::info('[STORE_TIMING] T6 after member check: ' . round((microtime(true) - $storeT0) * 1000) . 'ms');
 
 if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
-    return response()->json(['status' => 'error', 'message' => 'شما مجوز کافی را ندارید.'], 403);
+    return response()->json(['An error occurred. Please try again.'], 403);
 }
 
-        // Rate Limiting: حداکثر 10 پیام در دقیقه
+
         $key = 'send-message:' . $user->id . ':' . $group->id;
         $maxAttempts = 10;
         $decayMinutes = 1;
@@ -135,14 +143,13 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
         if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($key, $maxAttempts)) {
             $seconds = \Illuminate\Support\Facades\RateLimiter::availableIn($key);
             return response()->json([
-                'status' => 'error',
-                'message' => 'شما بیش از حد مجاز پیام ارسال کرده‌اید. لطفاً ' . $seconds . ' ثانیه صبر کنید.'
+                'message' => 'Please wait ' . $seconds . ' seconds before sending another message.'
             ], 429);
         }
         
         \Illuminate\Support\Facades\RateLimiter::hit($key, $decayMinutes * 60);
         
-        // Spam Detection: بررسی تکرار پیام‌های مشابه
+
         if ($request->message) {
             $recentMessages = Message::where('user_id', $user->id)
                 ->where('group_id', $group->id)
@@ -163,42 +170,53 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
             
             if ($similarCount >= 2) {
                 return response()->json([
-                    'status' => 'error',
-                    'message' => 'پیام شما مشابه پیام‌های قبلی است. لطفاً پیام متفاوتی ارسال کنید.'
+                    'An error occurred. Please try again.'
                 ], 429);
             }
         }
 
 
-        // بررسی کن که حداقل یک پیام یا فایل صوتی وجود داشته باشد
+
         $messageText = trim($request->message ?? '');
         $hasVoiceMessage = $request->hasFile('voice_message');
         
         if (empty($messageText) && !$hasVoiceMessage) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'پیام نمی‌تواند خالی باشد.'
+                'An error occurred. Please try again.'
             ], 422);
         }
         
-        // تبدیل line breaks به <br> برای حفظ سطربندی
+
         if (!empty($messageText)) {
-            // Escape HTML برای امنیت
+
             $messageText = e($messageText);
-            // تبدیل \n به <br>
+
             $messageText = nl2br($messageText);
         }
         
         $messageData = [
             'user_id' => $user->id,
             'group_id' => $group->id,
-            'message' => $messageText ?: ($hasVoiceMessage ? '🎤 پیام صوتی' : ''),
+            'message' => $messageText ?: ($hasVoiceMessage ? 'Voice message' : ''),
             'parent_id' => $request->parent_id,
         ];
 
+        // اگر parent_id عددی است، باید از جدول messages باشد
+        // اگر پیام والد حذف شده، parent_id را null کن تا FK violation نشه
+        $rawParentId = $request->parent_id;
+        if ($rawParentId && is_numeric($rawParentId)) {
+            $parentExists = Message::where('id', (int)$rawParentId)
+                ->where('group_id', $group->id)
+                ->exists();
+            if (!$parentExists) {
+                $messageData['parent_id'] = null;
+                $rawParentId = null;
+            }
+        }
+
         // Handle threading: if parent_id exists, set thread_id
-        if ($request->parent_id) {
-            $parentMessage = Message::find($request->parent_id);
+        if ($rawParentId && is_numeric($rawParentId)) {
+            $parentMessage = Message::find((int)$rawParentId);
             if ($parentMessage) {
                 // If parent has a thread_id, use it; otherwise, parent is the thread root
                 $messageData['thread_id'] = $parentMessage->thread_id ?? $parentMessage->id;
@@ -212,6 +230,9 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
                     $threadRoot->incrementReplyCount();
                 }
             }
+        } elseif ($request->parent_id && !is_numeric($request->parent_id)) {
+            // poll-X یا post-X: اینها string هستند و FK ندارند
+            // هیچ threading logic نداریم برای اینها
         }
 
         // Handle file upload
@@ -231,8 +252,7 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
             // Validate file size (10MB max)
             if ($voiceFile->getSize() > 10 * 1024 * 1024) {
                 return response()->json([
-                    'status' => 'error',
-                    'message' => 'حجم فایل صوتی نمی‌تواند بیشتر از 10 مگابایت باشد.'
+                    'An error occurred. Please try again.'
                 ], 413);
             }
             
@@ -263,11 +283,13 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
             
             // If no text message, set a default message
             if (empty($messageData['message'])) {
-                $messageData['message'] = '🎤 پیام صوتی';
+                $messageData['message'] = 'Voice message';
             }
         }
 
+        \Illuminate\Support\Facades\Log::info('[STORE_TIMING] T7 before Message::create: ' . round((microtime(true) - $storeT0) * 1000) . 'ms');
         $message = Message::create($messageData);
+        \Illuminate\Support\Facades\Log::info('[STORE_TIMING] T8 after Message::create: ' . round((microtime(true) - $storeT0) * 1000) . 'ms');
 
         $response = [
             'status' => 'success',
@@ -310,14 +332,16 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
             }
         }
 
+        \Illuminate\Support\Facades\Log::info('[STORE_TIMING] T9 response built: ' . round((microtime(true) - $storeT0) * 1000) . 'ms');
         // Dispatch event for notifications
-        event(new \App\Events\MessageCreated($message, $group, $user));
+        $this->dispatchGroupEvent(new \App\Events\MessageCreated($message, $group, $user));
 
         // Extract and process mentions (@user_id format)
         if ($request->message) {
             $this->processMentions($request->message, $message, $group, $user);
         }
 
+        \Illuminate\Support\Facades\Log::info('[STORE_TIMING] T10 before return (total): ' . round((microtime(true) - $storeT0) * 1000) . 'ms');
         return response()->json($response);
     }
 
@@ -327,52 +351,115 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
             'content' => 'required|string|max:2000',
         ]);
 
-        // محتوای ویرایش‌شده از مودال به‌صورت متن ساده (با line break های \n) می‌آید.
-        // برای سازگاری با پیام‌های اولیه (که HTML تولید شده توسط CKEditor هستند)،
-        // اینجا متن ساده را به HTML ساده با <br> تبدیل می‌کنیم.
+
+
+
 
         $plainContent = $request->input('content');
 
-        // Escape HTML تا اسکریپت وارد نشود، سپس \n را به <br> تبدیل کن
-        // توجه: messages در blade با {!! $item->content !!} رندر می‌شود،
-        // بنابراین اینجا باید خودمان Escape را انجام دهیم.
+
+
+
         $escaped = e($plainContent);
         $htmlContent = nl2br($escaped);
 
-        // به‌روزرسانی پیام
+
         $message->update([
             'message'   => $htmlContent,
             'edited'    => true,
             'edited_by' => auth()->user()->id,
         ]);
 
+        // اطلاع به سایر کاربران از طریق polling
+        $this->dispatchGroupEvent(new GroupMessageUpdated(
+            (int) $message->group_id,
+            'edit',
+            [
+                'message_id' => (int) $message->id,
+                'content'    => $htmlContent,
+                'edited'     => true,
+            ],
+            (int) auth()->id()
+        ));
+
         return response()->json([
-            'message' => 'پیام با موفقیت ویرایش شد',
+            'status' => 'success',
+            'message' => 'Message updated successfully.',
             'content' => $htmlContent,
             'edited'  => true,
+            'message_id' => (int) $message->id,
         ]);
     }
     
     public function delete(Request $request, Message $message)
     {
-        if(isset($_GET['admin'])){
-            if($message->removed_by == null){
+        $expectsJson = $request->expectsJson() || $request->wantsJson() || $request->ajax()
+            || str_contains((string) $request->header('Accept', ''), 'application/json');
+
+        if (isset($_GET['admin'])) {
+            if ($message->removed_by == null) {
                 $message->removed_by = $_GET['admin'];
                 $message->save();
-                        return back()->with('success', 'پیام با موفقیت از جانب مدیر حذف شد');
 
-            }else{
-                $message->removed_by = null;
-                $message->save();
-                        return back()->with('success', 'پیام با موفقیت بازگردانی شد');
+                if ($expectsJson) {
+                    return response()->json([
+                        'status' => 'success',
+                        'message' => 'Message hidden by admin.',
+                        'removed' => true,
+                        'message_id' => $message->id,
+                    ]);
+                }
 
+                return back()->with('success', 'Operation completed successfully.');
             }
-        }else{
-            $message->delete();
-            return back()->with('success', 'پیام با موفقیت حذف شد');
-        }
-    }
 
+            $message->removed_by = null;
+            $message->save();
+
+            if ($expectsJson) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Message restored.',
+                    'removed' => false,
+                    'message_id' => $message->id,
+                ]);
+            }
+
+            return back()->with('success', 'Operation completed successfully.');
+        }
+
+        $deletedId = (int) $message->id;
+        $groupId = (int) $message->group_id;
+        $actorId = (int) auth()->id();
+
+        $message->delete();
+
+        // ذخیره شناسه حذف‌شده در cache تا polling کاربران دیگه هم باخبر بشن
+        $cacheKey = 'group.' . $groupId . '.deleted_ids';
+        $deletedIds = Cache::get($cacheKey, []);
+        $deletedIds[] = $deletedId;
+        Cache::put($cacheKey, array_unique(array_slice($deletedIds, -50)), now()->addMinutes(5));
+
+        event(new GroupMessageUpdated(
+            $groupId,
+            'delete',
+            [
+                'message_id' => $deletedId,
+            ],
+            $actorId
+        ));
+
+        if ($expectsJson) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Message deleted successfully.',
+                'deleted' => true,
+                'message_id' => $deletedId,
+            ]);
+        }
+
+        return back()->with('success', 'Operation completed successfully.');
+    }
     public function pin(Message $message)
     {
         $group = $message->group;
@@ -383,12 +470,12 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
 
         // Can pin if manager (role 3) OR if it's their own message
         if ($groupUserRole !== 3 && $message->user_id !== $user->id) {
-            return response()->json(['status' => 'error', 'message' => 'شما مجوز کافی برای سنجاق کردن این پیام را ندارید.'], 403);
+            return response()->json(['An error occurred. Please try again.'], 403);
         }
 
         // Check if message is already pinned
         if (PinnedMessage::where('message_id', $message->id)->exists()) {
-            return response()->json(['status' => 'error', 'message' => 'این پیام قبلاً پین شده است.'], 400);
+            return response()->json(['An error occurred. Please try again.'], 400);
         }
 
         PinnedMessage::create([
@@ -397,7 +484,18 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
             'pinned_by' => $user->id
         ]);
 
-        return response()->json(['status' => 'success', 'message' => 'پیام با موفقیت پین شد.']);
+        event(new GroupMessageUpdated(
+            (int) $group->id,
+            'pin',
+            [
+                'message_id' => (int) $message->id,
+                'pinned' => true,
+                'pinned_count' => (int) PinnedMessage::where('group_id', $group->id)->count(),
+            ],
+            (int) $user->id
+        ));
+
+        return response()->json(['Operation completed successfully.']);
     }
 
     public function unpin(Message $message)
@@ -410,12 +508,23 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
 
         // Can unpin if manager (role 3) OR if it's their own message
         if ($groupUserRole !== 3 && $message->user_id !== $user->id) {
-            return response()->json(['status' => 'error', 'message' => 'شما مجوز کافی برای برداشته پیام از حالت سنجاق را ندارید.'], 403);
+            return response()->json(['An error occurred. Please try again.'], 403);
         }
 
         PinnedMessage::where('message_id', $message->id)->delete();
 
-        return response()->json(['status' => 'success', 'message' => 'پیام با موفقیت از حالت پین خارج شد.']);
+        event(new GroupMessageUpdated(
+            (int) $group->id,
+            'pin',
+            [
+                'message_id' => (int) $message->id,
+                'pinned' => false,
+                'pinned_count' => (int) PinnedMessage::where('group_id', $group->id)->count(),
+            ],
+            (int) $user->id
+        ));
+
+        return response()->json(['Operation completed successfully.']);
     }
 
     public function report(Request $request, $id)
@@ -428,7 +537,7 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
         
         $message = Message::findOrFail($id);
         
-        // بررسی اینکه آیا قبلاً گزارش شده است (pending یا pending_group_manager)
+
         $existingReport = ReportedMessage::where('message_id', $id)
             ->where('reported_by', auth()->id())
             ->where(function($query) {
@@ -439,8 +548,7 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
         
         if ($existingReport) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'شما قبلاً این پیام را گزارش کرده‌اید.'
+                'An error occurred. Please try again.'
             ], 400);
         }
 
@@ -450,7 +558,7 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
             'group_id' => $validated['group_id'],
             'reason' => $validated['reason'],
             'description' => $validated['description'] ?? null,
-            'status' => 'pending', // ابتدا به مدیران گروه می‌رسد
+            'status' => 'pending', // pending moderation
             'escalated_to_admin' => false
         ]);
 
@@ -461,8 +569,7 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
         }
 
         return response()->json([
-            'status' => 'success',
-            'message' => 'گزارش شما با موفقیت ثبت شد و به مدیران گروه ارسال خواهد شد.'
+            'Operation completed successfully.'
         ]);
     }
     
@@ -492,18 +599,18 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
             ]);
         }
 
-        // نرمال‌سازی ساده فارسی/عربی + اعداد
+
         $norm = static function(string $t) {
             $map = [
-                'ي'=>'ی','ك'=>'ک','ة'=>'ه','ئ'=>'ی','‌'=>' ','‏'=>' ',
-                '۰'=>'0','۱'=>'1','۲'=>'2','۳'=>'3','۴'=>'4','۵'=>'5','۶'=>'6','۷'=>'7','۸'=>'8','۹'=>'9',
+                '۰'=>'0', '۱'=>'1', '۲'=>'2', '۳'=>'3', '۴'=>'4',
+                '۵'=>'5', '۶'=>'6', '۷'=>'7', '۸'=>'8', '۹'=>'9',
             ];
             return strtr($t, $map);
         };
         $qNorm = $q ? $norm($q) : '';
         $like  = $qNorm ? '%'.str_replace(['%','_'], ['\%','\_'], $qNorm).'%' : '%';
 
-        // --- Messages: بدون هیچ رابطه‌ای با Blog ---
+
         $messages = collect();
         $blogs = collect();
         $polls = collect();
@@ -546,7 +653,7 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
                     'users.last_name',
                 ])
                 ->map(function($row) use ($qNorm) {
-                    $sender = trim(($row->first_name ?? '').' '.($row->last_name ?? '')) ?: 'کاربر';
+                    $sender = trim(($row->first_name ?? '').' '.($row->last_name ?? '')) ?: 'Unknown user';
                     return [
                         'type'    => 'message',
                         'id'      => $row->id,
@@ -591,7 +698,7 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
                 ->map(fn($b) => [
                     'type'=>'post',
                     'id'=>$b->id,
-                    'title'=>$b->title ?: 'پست',
+                    'title'=>$b->title ?: 'Post',
                     'snippet'=>$this->makeSnippet($b->content ?? '', $qNorm ?: ''),
                     'date'=>optional($b->created_at)->format('Y-m-d H:i'),
                     'url'=>'#blog-'.$b->id,
@@ -632,7 +739,7 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
                     return [
                         'type'=>'poll',
                         'id'=>$p->id,
-                        'title'=>$p->question ?: 'نظرسنجی',
+                        'title'=>$p->question ?: 'Poll',
                         'snippet'=>$this->makeSnippet($text ?? '', $qNorm ?: ''),
                         'date'=>optional($p->created_at)->format('Y-m-d H:i'),
                         'url'=>'#poll-'.$p->id,
@@ -642,7 +749,7 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
                 ->toBase();
         }
 
-        // ادغام امن (همه Base Collection هستند)
+
         $items  = $messages->merge($blogs)->merge($polls)->sortByDesc('date')->values();
         $slice  = $items->slice(0, $limit)->values();
         $hasMore = $items->count() > $limit;
@@ -661,15 +768,15 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
         $plain = preg_replace('/\s+/u', ' ', $plain);
         $pos = mb_stripos($plain, $needle);
         if ($pos === false) {
-            return mb_substr($plain, 0, 80).'…';
+            return mb_substr($plain, 0, 80).'...';
         }
         $start = max(0, $pos - $radius);
         $len   = mb_strlen($needle);
         $before = mb_substr($plain, $start, $pos - $start);
         $match  = mb_substr($plain, $pos, $len);
         $after  = mb_substr($plain, $pos + $len, $radius);
-        $prefix = $start > 0 ? '…' : '';
-        $suffix = ($pos + $len + $radius) < mb_strlen($plain) ? '…' : '';
+        $prefix = $start > 0 ? '...' : '';
+        $suffix = ($pos + $len + $radius) < mb_strlen($plain) ? '...' : '';
         return $prefix.$before.'<mark>'.$match.'</mark>'.$after.$suffix;
     }
 
@@ -695,7 +802,7 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
                 $isMember = $group->users()->whereKey($mentionedUser->id)->exists();
                 
                 if ($isMember) {
-                    event(new \App\Events\UserMentioned($mentionedUser, $message, $group, $sender));
+                    $this->dispatchGroupEvent(new \App\Events\UserMentioned($mentionedUser, $message, $group, $sender));
                 }
             }
         }
@@ -712,14 +819,14 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
             return response()->json([]);
         }
 
-        // جستجو در اعضای گروه
+
         $users = $group->users()
             ->where(function($q) use ($query) {
                 $q->where('first_name', 'like', '%' . $query . '%')
                   ->orWhere('last_name', 'like', '%' . $query . '%')
                   ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ['%' . $query . '%']);
             })
-            ->where('group_user.status', 1) // فقط اعضای فعال
+            ->where('group_user.status', 1) // active users only
             ->select('users.id', 'users.first_name', 'users.last_name', 'users.avatar')
             ->limit(10)
             ->get()
@@ -745,19 +852,18 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
         // Check if user is member of the group
         $isMember = $message->group->users()->whereKey($user->id)->exists();
         if (!$isMember) {
-            return response()->json(['status' => 'error', 'message' => 'شما عضو این گروه نیستید.'], 403);
+            return response()->json(['An error occurred. Please try again.'], 403);
         }
 
         // Don't mark own messages as read
         if ($message->user_id === $user->id) {
-            return response()->json(['status' => 'success', 'message' => 'پیام شماست.']);
+            return response()->json(['Operation completed successfully.']);
         }
 
         $message->markAsRead($user->id);
 
         return response()->json([
-            'status' => 'success',
-            'message' => 'پیام به عنوان خوانده شده علامت‌گذاری شد.',
+            'Operation completed successfully.',
             'read_count' => $message->read_count
         ]);
     }
@@ -791,7 +897,7 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
 
         return response()->json([
             'status' => 'success',
-            'message' => $count . ' پیام به عنوان خوانده شده علامت‌گذاری شد.',
+            'message' => $count . ' members found.',
             'count' => $count
         ]);
     }
@@ -814,8 +920,7 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
         
         if (!$message) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'پیام یافت نشد یا متعلق به این گروه نیست.'
+                'An error occurred. Please try again.'
             ], 404);
         }
 
@@ -826,8 +931,7 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
         
         if (!$groupUser) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'شما عضو این گروه نیستید.'
+                'An error occurred. Please try again.'
             ], 403);
         }
 
@@ -846,8 +950,7 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
             });
 
         return response()->json([
-            'status' => 'success',
-            'message' => 'آخرین پیام خوانده شده به‌روزرسانی شد.'
+            'Operation completed successfully.'
         ]);
     }
 
@@ -865,7 +968,7 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
         // Check if user is member of the group
         $isMember = $group->users()->whereKey($user->id)->exists();
         if (!$isMember) {
-            return response()->json(['status' => 'error', 'message' => 'شما عضو این گروه نیستید.'], 403);
+            return response()->json(['An error occurred. Please try again.'], 403);
         }
 
         event(new \App\Events\UserTyping($user, $group, $request->is_typing));
@@ -889,7 +992,7 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
         // Check if user is member of the group
         $isMember = $message->group->users()->whereKey($user->id)->exists();
         if (!$isMember) {
-            return response()->json(['status' => 'error', 'message' => 'شما عضو این گروه نیستید.'], 403);
+            return response()->json(['An error occurred. Please try again.'], 403);
         }
 
         $reactionType = $request->reaction_type;
@@ -939,6 +1042,18 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
             })
             ->values();
 
+        event(new GroupMessageUpdated(
+            (int) $message->group_id,
+            'reaction',
+            [
+                'message_id' => (int) $message->id,
+                'reactions' => $reactions->toArray(),
+                'reaction_type' => $reactionType,
+                'action' => $action,
+            ],
+            (int) $user->id
+        ));
+
         return response()->json([
             'status' => 'success',
             'action' => $action,
@@ -956,7 +1071,7 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
         // Check if user is member of the group
         $isMember = $message->group->users()->whereKey($user->id)->exists();
         if (!$isMember) {
-            return response()->json(['status' => 'error', 'message' => 'شما عضو این گروه نیستید.'], 403);
+            return response()->json(['An error occurred. Please try again.'], 403);
         }
 
         $reactions = $message->reactions()
@@ -996,7 +1111,7 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
         // Check if user is member of the group
         $isMember = $message->group->users()->whereKey($user->id)->exists();
         if (!$isMember) {
-            return response()->json(['status' => 'error', 'message' => 'شما عضو این گروه نیستید.'], 403);
+            return response()->json(['An error occurred. Please try again.'], 403);
         }
 
         // Get thread root (if this message is a reply, get its thread root)
@@ -1041,4 +1156,17 @@ if (!$member || ($groupUserRole === 0 && $group->is_open == 0)) {
         ]);
     }
 
+    private function dispatchGroupEvent(object $event): void
+    {
+        if ((bool) config('group-chat.defer_broadcasts', true)) {
+            dispatch(static fn () => event($event))->afterResponse();
+            return;
+        }
+
+        event($event);
+    }
 }
+
+
+
+

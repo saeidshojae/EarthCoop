@@ -38,6 +38,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        // افزایش execution time برای صفحات سنگین مانند چت گروه
+        ini_set('max_execution_time', 120);
+
+        // اطمینان از اینکه response قبل از afterResponse callbacks به browser ارسال می‌شه
+        // این مهم است تا NajmHoda و سایر پردازش‌های سنگین پس از پاسخ، کاربر را منتظر نگذارند
+        app()->terminating(function () {
+            if (function_exists('fastcgi_finish_request')) {
+                fastcgi_finish_request();
+            }
+        });
+
         // Register Blade namespace for module views
         View::addNamespace('Stock', base_path('app/Modules/Stock/Views'));
         View::addNamespace('Blog', base_path('app/Modules/Blog/Views'));

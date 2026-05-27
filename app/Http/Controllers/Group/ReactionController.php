@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Group;
 
+use App\Events\GroupFeedUpdated;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Blog;
@@ -50,10 +51,22 @@ class ReactionController extends Controller
             }
         }
     
+        $likes = $blog->reactions()->where('type', 1)->count();
+        $dislikes = $blog->reactions()->where('type', 0)->count();
+
+        // لمس کردن blog برای اینکه سایر کاربران از طریق postsFeed آپدیت را دریافت کنند
+        $blog->touch();
+
+        event(new GroupFeedUpdated((int) $blog->group_id, 'post_reaction', [
+            'post_id' => (int) $blog->id,
+            'likes' => (int) $likes,
+            'dislikes' => (int) $dislikes,
+        ], (int) auth()->id()));
+
         return response()->json([
             'status' => 'success',
-            'likes' => $blog->reactions()->where('type', 1)->count(),
-            'dislikes' => $blog->reactions()->where('type', 0)->count(),
+            'likes' => $likes,
+            'dislikes' => $dislikes,
         ]);
     }
     
@@ -69,6 +82,8 @@ class ReactionController extends Controller
             if ($existing->type == $type) {
                 // اگر همون نوع رأی قبلاً ثبت شده → حذفش کن
                 $existing->delete();
+                // Touch comment for real-time updates
+                $comment->touch();
 
                 return response()->json([
                     'status' => 'removed',
@@ -96,6 +111,9 @@ class ReactionController extends Controller
                 app(\App\Services\ReputationService::class)->applyAction(auth()->user(), 'comment_upvoted', ['comment_id' => $comment->id], $comment->id, 'groups');
             } catch (\Throwable $e) {}
         }
+
+        // Touch comment for real-time updates to other users
+        $comment->touch();
 
         return response()->json([
             'status' => 'success',

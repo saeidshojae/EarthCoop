@@ -1,383 +1,766 @@
-@extends('layouts.unified')
-
-@section('title', ($page->translated_meta_title ?? $page->translated_title) . ' - ' . config('app.name', 'EarthCoop'))
-<!-- Tailwind & Bootstrap CSS via Vite -->
-@vite(['resources/css/app.css', 'resources/js/app.js'])
-@push('styles')
-<style>
-    .faq-hero {
-        position: relative;
-        overflow: hidden;
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(16, 185, 129, 0.12) 100%);
-        border-radius: 1.75rem;
-        padding: 3rem 2.5rem;
-    }
-
-    .faq-hero::before,
-    .faq-hero::after {
-        content: '';
-        position: absolute;
-        width: 240px;
-        height: 240px;
-        border-radius: 50%;
-        filter: blur(80px);
-        opacity: 0.45;
-    }
-
-    .faq-hero::before {
-        top: -130px;
-        right: -80px;
-        background: rgba(59, 130, 246, 0.45);
-    }
-
-    .faq-hero::after {
-        bottom: -160px;
-        left: -80px;
-        background: rgba(16, 185, 129, 0.45);
-    }
-
-    .faq-search {
-        position: relative;
-        border-radius: 999px;
-        border: 1px solid rgba(148, 163, 184, 0.4);
-        background: rgba(255, 255, 255, 0.85);
-        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
-    }
-
-    .faq-category-card {
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .faq-category-card:hover {
-        transform: translateY(-6px);
-        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
-    }
-
-    .faq-accordion-item {
-        border-radius: 1.25rem;
-        border: 1px solid rgba(226, 232, 240, 0.8);
-        background: var(--color-pure-white);
-        box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
-        overflow: hidden;
-        transition: border-color 0.3s ease;
-    }
-
-    .faq-accordion-item.active {
-        border-color: rgba(16, 185, 129, 0.4);
-    }
-
-    .faq-accordion-header {
-        width: 100%;
-        padding: 1.25rem 1.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-        background: rgba(248, 250, 252, 0.85);
-        cursor: pointer;
-        transition: background 0.3s ease;
-    }
-
-    .faq-accordion-header:hover {
-        background: rgba(236, 253, 245, 0.85);
-    }
-
-    .faq-accordion-content {
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.5s ease;
-        background: rgba(255, 255, 255, 0.96);
-    }
-
-    .faq-accordion-content-inner {
-        padding: 1.5rem;
-        color: var(--color-gentle-black);
-        line-height: 1.75;
-    }
-
-    .faq-form-card {
-        background: var(--color-pure-white);
-        border-radius: 1.5rem;
-        border: 1px solid rgba(226, 232, 240, 0.8);
-        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.1);
-    }
-
-    .faq-form-card input,
-    .faq-form-card textarea,
-    .faq-form-card select {
-        border-radius: 1rem;
-        border: 1px solid rgba(148, 163, 184, 0.35);
-        transition: border-color 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .faq-form-card input:focus,
-    .faq-form-card textarea:focus,
-    .faq-form-card select:focus {
-        border-color: var(--color-ocean-blue);
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
-    }
-
-    .faq-tabs button {
-        transition: background-color 0.3s ease, color 0.3s ease;
-    }
-
-    .faq-tabs button.active {
-        background: linear-gradient(135deg, var(--color-earth-green), #059669);
-        color: var(--color-pure-white);
-        box-shadow: 0 18px 30px rgba(5, 150, 105, 0.22);
-    }
-
-    .fade-in-section {
-        opacity: 0;
-        transform: translateY(26px);
-        transition: opacity 0.6s ease, transform 0.6s ease;
-    }
-
-    .fade-in-section.is-visible {
-        opacity: 1;
-        transform: translateY(0);
-    }
-
-    @media (max-width: 768px) {
-        .faq-hero {
-            padding: 2.25rem 1.5rem;
-        }
-    }
-</style>
-@endpush
-
-@section('content')
-@php
-    $locale = app()->getLocale();
-    $faqRaw = $page->content_translations[$locale] ?? $page->content_translations['fa'] ?? '[]';
-    $faqSections = json_decode($faqRaw, true);
-    $faqSections = is_array($faqSections) ? $faqSections : [];
-    $extraContent = $page->translated_content;
-    $extraContentDecoded = json_decode($extraContent, true);
-    $jsonError = json_last_error();
-    $isJsonStructure = $jsonError === JSON_ERROR_NONE && (is_array($extraContentDecoded) || is_object($extraContentDecoded));
-    $shouldShowExtraContent = is_string($extraContent) && !$isJsonStructure && trim(strip_tags($extraContent)) !== '';
-    $publishedFaqs = $faqQuestions ?? collect();
-    $categoryList = collect($publishedFaqs)->pluck('category')->merge(collect($faqSections)->pluck('category'))
-        ->filter()->unique()->values();
-@endphp
-
-<div class="bg-light-gray/70 py-12 md:py-16" style="background-color: var(--color-light-gray);">
-    <div class="container mx-auto px-5 md:px-10 max-w-6xl space-y-10">
-        <section class="faq-hero fade-in-section">
-            <div class="relative z-10 space-y-6 text-center md:text-right">
-                <div class="inline-flex items-center gap-3 bg-white/80 rounded-full px-5 py-2 border border-slate-200 shadow-sm">
-                    <span class="text-earth-green text-lg"><i class="fas fa-circle-question"></i></span>
-                    <span class="text-sm font-semibold text-slate-700">پرسش‌های متداول اعضای EarthCoop</span>
-                </div>
-                <h1 class="text-3xl md:text-5xl font-extrabold text-gentle-black font-vazirmatn leading-tight">
-                    {{ $page->translated_title ?? 'سوالات متداول' }}
-                </h1>
-                <p class="text-lg md:text-xl text-slate-600 max-w-3xl mx-auto md:mx-0">
-                    {{ $page->translated_meta_description ?? 'پاسخ سریع به رایج‌ترین سوالات شما درباره EarthCoop و نحوه مشارکت.' }}
-                </p>
-                <div class="faq-search max-w-2xl mx-auto md:mx-0">
-                    <div class="flex items-center px-4">
-                        <i class="fas fa-search text-slate-400 text-lg"></i>
-                        <input type="text" id="faq-search-input" placeholder="سوال خود را جستجو کنید..." class="w-full px-4 py-3 bg-transparent focus:outline-none">
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="grid grid-cols-1 lg:grid-cols-3 gap-8 fade-in-section">
-            <div class="lg:col-span-2 space-y-5" id="faq-accordion">
-                @foreach($publishedFaqs as $question)
-                    <article class="faq-accordion-item" data-category="{{ $question->category ?? 'عمومی' }}">
-                        <button type="button" class="faq-accordion-header">
-                            <div class="flex items-center gap-3 text-right">
-                                <span class="w-10 h-10 rounded-full bg-ocean-blue/10 text-ocean-blue flex items-center justify-center text-lg">
-                                    <i class="fas fa-question"></i>
-                                </span>
-                                <div class="text-right">
-                                    <h3 class="text-lg font-extrabold text-gentle-black">{{ $question->title }}</h3>
-                                    <span class="text-xs text-slate-500">{{ $question->category ?? 'عمومی' }}</span>
-                                </div>
-                            </div>
-                            <i class="fas fa-chevron-down text-slate-400 transition-transform duration-300"></i>
-                        </button>
-                        <div class="faq-accordion-content">
-                            <div class="faq-accordion-content-inner prose max-w-none">
-                                {!! nl2br(e($question->answer)) !!}
-                            </div>
-                        </div>
-                    </article>
-                @endforeach
-
-                @forelse($faqSections as $section)
-                    <article class="faq-accordion-item" data-category="{{ $section['category'] ?? 'عمومی' }}">
-                        <button type="button" class="faq-accordion-header">
-                            <div class="flex items-center gap-3 text-right">
-                                <span class="w-10 h-10 rounded-full bg-earth-green/10 text-earth-green flex items-center justify-center text-lg">
-                                    <i class="fas {{ $section['icon'] ?? 'fa-circle-question' }}"></i>
-                                </span>
-                                <div class="text-right">
-                                    <h3 class="text-lg font-extrabold text-gentle-black">{{ $section['question'] ?? '' }}</h3>
-                                    @if(!empty($section['category_label']))
-                                        <span class="text-xs text-slate-500">{{ $section['category_label'] }}</span>
-                                    @endif
-                                </div>
-                            </div>
-                            <i class="fas fa-chevron-down text-slate-400 transition-transform duration-300"></i>
-                        </button>
-                        <div class="faq-accordion-content">
-                            <div class="faq-accordion-content-inner prose max-w-none">
-                                {!! $section['answer'] ?? '' !!}
-                            </div>
-                        </div>
-                    </article>
-                @empty
-                    <div class="faq-accordion-item">
-                        <div class="faq-accordion-content-inner">
-                            <p class="text-slate-600 text-center">هنوز پرسشی ثبت نشده است. لطفاً سوال خود را از طریق فرم زیر ارسال کنید.</p>
-                        </div>
-                    </div>
-                @endforelse
-            </div>
-
-            <aside class="space-y-6">
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-md p-6">
-                    <h2 class="text-xl font-extrabold text-gentle-black mb-4">دسته‌بندی سوالات</h2>
-                    <div class="faq-tabs flex flex-wrap gap-3" id="faq-categories">
-                        <button type="button" class="active px-4 py-2 rounded-full bg-earth-green/10 text-earth-green font-semibold" data-category="all">همه</button>
-                        @foreach($categoryList as $category)
-                            <button type="button" class="px-4 py-2 rounded-full bg-slate-100 text-slate-600 font-semibold" data-category="{{ $category }}">
-                                {{ $category }}
-                            </button>
-                        @endforeach
-                    </div>
-                </div>
-
-                <div class="faq-form-card p-6 space-y-5">
-                    <h2 class="text-xl font-extrabold text-gentle-black">سوال جدید بپرسید</h2>
-                    <p class="text-sm text-slate-600">اگر پاسخ سوال خود را پیدا نکردید، از طریق این فرم سوالتان را ارسال کنید. تیم ما ظرف ۴۸ ساعت پاسخ می‌دهد.</p>
-                    @if(session('success'))
-                        <div class="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-lg text-sm">
-                            {{ session('success') }}
-                        </div>
-                    @endif
-                    <form method="POST" action="{{ route('questions.store') }}" class="space-y-4">
-                        @csrf
-                        <div>
-                            <label class="text-sm font-semibold text-slate-600 mb-2 block">عنوان سوال</label>
-                            <input type="text" name="title" required class="w-full px-4 py-3" placeholder="موضوع سوال شما" value="{{ old('title') }}">
-                        </div>
-                        <div>
-                            <label class="text-sm font-semibold text-slate-600 mb-2 block">دسته‌بندی</label>
-                            <select name="category" class="w-full px-4 py-3">
-                                <option value="general">عمومی</option>
-                                <option value="membership">عضویت</option>
-                                <option value="finance">امور مالی</option>
-                                <option value="projects">پروژه‌ها</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="text-sm font-semibold text-slate-600 mb-2 block">شرح سوال</label>
-                            <textarea name="question" rows="4" required class="w-full px-4 py-3 resize-none" placeholder="سوال خود را توضیح دهید">{{ old('question') }}</textarea>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-sm font-semibold text-slate-600 mb-2 block">نام شما (اختیاری)</label>
-                                <input type="text" name="contact_name" class="w-full px-4 py-3" placeholder="نام و نام خانوادگی" value="{{ old('contact_name') }}">
-                            </div>
-                            <div>
-                                <label class="text-sm font-semibold text-slate-600 mb-2 block">ایمیل (برای پاسخ)</label>
-                                <input type="email" name="contact_email" class="w-full px-4 py-3" placeholder="example@email.com" value="{{ old('contact_email') }}">
-                            </div>
-                        </div>
-                        <button type="submit" class="w-full px-6 py-3 rounded-full bg-ocean-blue text-white font-semibold hover:bg-dark-blue transition">
-                            ارسال سوال
-                        </button>
-                    </form>
-                </div>
-            </aside>
-        </section>
-
-        @if($shouldShowExtraContent)
-            <section class="faq-form-card p-8 fade-in-section">
-                <div class="prose prose-lg max-w-none text-right font-vazirmatn" style="direction: rtl; color: var(--color-gentle-black);">
-                    {!! $extraContent !!}
-                </div>
-            </section>
-        @endif
-    </div>
-</div>
-@endsection
-
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const accordionItems = document.querySelectorAll('.faq-accordion-item');
-        const searchInput = document.getElementById('faq-search-input');
-        const tabButtons = document.querySelectorAll('#faq-categories button');
-        const sections = document.querySelectorAll('.fade-in-section');
-
-        const observer = new IntersectionObserver((entries, obs) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('is-visible');
-                    obs.unobserve(entry.target);
-                }
-            });
-        }, { threshold: 0.15 });
-
-        sections.forEach(section => observer.observe(section));
-
-        accordionItems.forEach(item => {
-            const header = item.querySelector('.faq-accordion-header');
-            const content = item.querySelector('.faq-accordion-content');
-            const icon = header.querySelector('.fa-chevron-down');
-
-            header.addEventListener('click', () => {
-                const isActive = item.classList.contains('active');
-                accordionItems.forEach(other => {
-                    other.classList.remove('active');
-                    other.querySelector('.faq-accordion-content').style.maxHeight = null;
-                    other.querySelector('.fa-chevron-down').style.transform = 'rotate(0deg)';
-                });
-
-                if (!isActive) {
-                    item.classList.add('active');
-                    content.style.maxHeight = content.scrollHeight + 'px';
-                    icon.style.transform = 'rotate(-180deg)';
-                }
-            });
-        });
-
-        if (accordionItems.length) {
-            accordionItems[0].querySelector('.faq-accordion-header').click();
-        }
-
-        searchInput.addEventListener('input', event => {
-            const term = event.target.value.toLowerCase();
-            accordionItems.forEach(item => {
-                const text = item.innerText.toLowerCase();
-                item.style.display = text.includes(term) ? '' : 'none';
-            });
-        });
-
-        tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const category = button.dataset.category;
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-
-                accordionItems.forEach(item => {
-                    if (category === 'all' || item.dataset.category === category) {
-                        item.style.display = '';
-                    } else {
-                        item.style.display = 'none';
-                    }
-                });
-            });
-        });
-    });
-</script>
-@endpush
-
-
+@extends('layouts.unified')
+
+
+
+@section('title', ($page->translated_meta_title ?? $page->translated_title) . ' - ' . config('app.name', 'EarthCoop'))
+
+<!-- Tailwind & Bootstrap CSS via Vite -->
+
+@vite(['resources/css/app.css', 'resources/js/app.js'])
+
+@push('styles')
+
+<style>
+
+    .faq-hero {
+
+        position: relative;
+
+        overflow: hidden;
+
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(16, 185, 129, 0.12) 100%);
+
+        border-radius: 1.75rem;
+
+        padding: 3rem 2.5rem;
+
+    }
+
+
+
+    .faq-hero::before,
+
+    .faq-hero::after {
+
+        content: '';
+
+        position: absolute;
+
+        width: 240px;
+
+        height: 240px;
+
+        border-radius: 50%;
+
+        filter: blur(80px);
+
+        opacity: 0.45;
+
+    }
+
+
+
+    .faq-hero::before {
+
+        top: -130px;
+
+        right: -80px;
+
+        background: rgba(59, 130, 246, 0.45);
+
+    }
+
+
+
+    .faq-hero::after {
+
+        bottom: -160px;
+
+        left: -80px;
+
+        background: rgba(16, 185, 129, 0.45);
+
+    }
+
+
+
+    .faq-search {
+
+        position: relative;
+
+        border-radius: 999px;
+
+        border: 1px solid rgba(148, 163, 184, 0.4);
+
+        background: rgba(255, 255, 255, 0.85);
+
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+
+    }
+
+
+
+    .faq-category-card {
+
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+    }
+
+
+
+    .faq-category-card:hover {
+
+        transform: translateY(-6px);
+
+        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
+
+    }
+
+
+
+    .faq-accordion-item {
+
+        border-radius: 1.25rem;
+
+        border: 1px solid rgba(226, 232, 240, 0.8);
+
+        background: var(--color-pure-white);
+
+        box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+
+        overflow: hidden;
+
+        transition: border-color 0.3s ease;
+
+    }
+
+
+
+    .faq-accordion-item.active {
+
+        border-color: rgba(16, 185, 129, 0.4);
+
+    }
+
+
+
+    .faq-accordion-header {
+
+        width: 100%;
+
+        padding: 1.25rem 1.5rem;
+
+        display: flex;
+
+        align-items: center;
+
+        justify-content: space-between;
+
+        gap: 1rem;
+
+        background: rgba(248, 250, 252, 0.85);
+
+        cursor: pointer;
+
+        transition: background 0.3s ease;
+
+    }
+
+
+
+    .faq-accordion-header:hover {
+
+        background: rgba(236, 253, 245, 0.85);
+
+    }
+
+
+
+    .faq-accordion-content {
+
+        max-height: 0;
+
+        overflow: hidden;
+
+        transition: max-height 0.5s ease;
+
+        background: rgba(255, 255, 255, 0.96);
+
+    }
+
+
+
+    .faq-accordion-content-inner {
+
+        padding: 1.5rem;
+
+        color: var(--color-gentle-black);
+
+        line-height: 1.75;
+
+    }
+
+
+
+    .faq-form-card {
+
+        background: var(--color-pure-white);
+
+        border-radius: 1.5rem;
+
+        border: 1px solid rgba(226, 232, 240, 0.8);
+
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.1);
+
+    }
+
+
+
+    .faq-form-card input,
+
+    .faq-form-card textarea,
+
+    .faq-form-card select {
+
+        border-radius: 1rem;
+
+        border: 1px solid rgba(148, 163, 184, 0.35);
+
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+
+    }
+
+
+
+    .faq-form-card input:focus,
+
+    .faq-form-card textarea:focus,
+
+    .faq-form-card select:focus {
+
+        border-color: var(--color-ocean-blue);
+
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+
+    }
+
+
+
+    .faq-tabs button {
+
+        transition: background-color 0.3s ease, color 0.3s ease;
+
+    }
+
+
+
+    .faq-tabs button.active {
+
+        background: linear-gradient(135deg, var(--color-earth-green), #059669);
+
+        color: var(--color-pure-white);
+
+        box-shadow: 0 18px 30px rgba(5, 150, 105, 0.22);
+
+    }
+
+
+
+    .fade-in-section {
+
+        opacity: 0;
+
+        transform: translateY(26px);
+
+        transition: opacity 0.6s ease, transform 0.6s ease;
+
+    }
+
+
+
+    .fade-in-section.is-visible {
+
+        opacity: 1;
+
+        transform: translateY(0);
+
+    }
+
+
+
+    @media (max-width: 768px) {
+
+        .faq-hero {
+
+            padding: 2.25rem 1.5rem;
+
+        }
+
+    }
+
+</style>
+
+@endpush
+
+
+
+@section('content')
+
+@php
+
+    $locale = app()->getLocale();
+
+    $faqRaw = $page->content_translations[$locale] ?? $page->content_translations['fa'] ?? '[]';
+
+    $faqSections = json_decode($faqRaw, true);
+
+    $faqSections = is_array($faqSections) ? $faqSections : [];
+
+    $extraContent = $page->translated_content;
+
+    $extraContentDecoded = json_decode($extraContent, true);
+
+    $jsonError = json_last_error();
+
+    $isJsonStructure = $jsonError === JSON_ERROR_NONE && (is_array($extraContentDecoded) || is_object($extraContentDecoded));
+
+    $shouldShowExtraContent = is_string($extraContent) && !$isJsonStructure && trim(strip_tags($extraContent)) !== '';
+
+    $publishedFaqs = $faqQuestions ?? collect();
+
+    $categoryList = collect($publishedFaqs)->pluck('category')->merge(collect($faqSections)->pluck('category'))
+
+        ->filter()->unique()->values();
+
+@endphp
+
+
+
+<div class="bg-light-gray/70 py-12 md:py-16" style="background-color: var(--color-light-gray);">
+
+    <div class="container mx-auto px-5 md:px-10 max-w-6xl space-y-10">
+
+        <section class="faq-hero fade-in-section">
+
+            <div class="relative z-10 space-y-6 text-center md:text-right">
+
+                <div class="inline-flex items-center gap-3 bg-white/80 rounded-full px-5 py-2 border border-slate-200 shadow-sm">
+
+                    <span class="text-earth-green text-lg"><i class="fas fa-circle-question"></i></span>
+
+                    <span class="text-sm font-semibold text-slate-700">پرسش‌های متداول اعضای EarthCoop</span>
+
+                </div>
+
+                <h1 class="text-3xl md:text-5xl font-extrabold text-gentle-black font-vazirmatn leading-tight">
+
+                    {{ $page->translated_title ?? 'سوالات متداول' }}
+
+                </h1>
+
+                <p class="text-lg md:text-xl text-slate-600 max-w-3xl mx-auto md:mx-0">
+
+                    {{ $page->translated_meta_description ?? 'پاسخ سریع به رایج‌ترین سوالات شما درباره EarthCoop و نحوه مشارکت.' }}
+
+                </p>
+
+                <div class="faq-search max-w-2xl mx-auto md:mx-0">
+
+                    <div class="flex items-center px-4">
+
+                        <i class="fas fa-search text-slate-400 text-lg"></i>
+
+                        <input type="text" id="faq-search-input" placeholder="سوال خود را جستجو کنید..." class="w-full px-4 py-3 bg-transparent focus:outline-none">
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-8 fade-in-section">
+
+            <div class="lg:col-span-2 space-y-5" id="faq-accordion">
+
+                @foreach($publishedFaqs as $question)
+
+                    <article class="faq-accordion-item" data-category="{{ $question->category ?? 'عمومی' }}">
+
+                        <button type="button" class="faq-accordion-header">
+
+                            <div class="flex items-center gap-3 text-right">
+
+                                <span class="w-10 h-10 rounded-full bg-ocean-blue/10 text-ocean-blue flex items-center justify-center text-lg">
+
+                                    <i class="fas fa-question"></i>
+
+                                </span>
+
+                                <div class="text-right">
+
+                                    <h3 class="text-lg font-extrabold text-gentle-black">{{ $question->title }}</h3>
+
+                                    <span class="text-xs text-slate-500">{{ $question->category ?? 'عمومی' }}</span>
+
+                                </div>
+
+                            </div>
+
+                            <i class="fas fa-chevron-down text-slate-400 transition-transform duration-300"></i>
+
+                        </button>
+
+                        <div class="faq-accordion-content">
+
+                            <div class="faq-accordion-content-inner prose max-w-none">
+
+                                {!! nl2br(e($question->answer)) !!}
+
+                            </div>
+
+                        </div>
+
+                    </article>
+
+                @endforeach
+
+
+
+                @forelse($faqSections as $section)
+
+                    <article class="faq-accordion-item" data-category="{{ $section['category'] ?? 'عمومی' }}">
+
+                        <button type="button" class="faq-accordion-header">
+
+                            <div class="flex items-center gap-3 text-right">
+
+                                <span class="w-10 h-10 rounded-full bg-earth-green/10 text-earth-green flex items-center justify-center text-lg">
+
+                                    <i class="fas {{ $section['icon'] ?? 'fa-circle-question' }}"></i>
+
+                                </span>
+
+                                <div class="text-right">
+
+                                    <h3 class="text-lg font-extrabold text-gentle-black">{{ $section['question'] ?? '' }}</h3>
+
+                                    @if(!empty($section['category_label']))
+
+                                        <span class="text-xs text-slate-500">{{ $section['category_label'] }}</span>
+
+                                    @endif
+
+                                </div>
+
+                            </div>
+
+                            <i class="fas fa-chevron-down text-slate-400 transition-transform duration-300"></i>
+
+                        </button>
+
+                        <div class="faq-accordion-content">
+
+                            <div class="faq-accordion-content-inner prose max-w-none">
+
+                                {!! $section['answer'] ?? '' !!}
+
+                            </div>
+
+                        </div>
+
+                    </article>
+
+                @empty
+
+                    <div class="faq-accordion-item">
+
+                        <div class="faq-accordion-content-inner">
+
+                            <p class="text-slate-600 text-center">هنوز پرسشی ثبت نشده است. لطفاً سوال خود را از طریق فرم زیر ارسال کنید.</p>
+
+                        </div>
+
+                    </div>
+
+                @endforelse
+
+            </div>
+
+
+
+            <aside class="space-y-6">
+
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-md p-6">
+
+                    <h2 class="text-xl font-extrabold text-gentle-black mb-4">دسته‌بندی سوالات</h2>
+
+                    <div class="faq-tabs flex flex-wrap gap-3" id="faq-categories">
+
+                        <button type="button" class="active px-4 py-2 rounded-full bg-earth-green/10 text-earth-green font-semibold" data-category="all">همه</button>
+
+                        @foreach($categoryList as $category)
+
+                            <button type="button" class="px-4 py-2 rounded-full bg-slate-100 text-slate-600 font-semibold" data-category="{{ $category }}">
+
+                                {{ $category }}
+
+                            </button>
+
+                        @endforeach
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="faq-form-card p-6 space-y-5">
+
+                    <h2 class="text-xl font-extrabold text-gentle-black">سوال جدید بپرسید</h2>
+
+                    <p class="text-sm text-slate-600">اگر پاسخ سوال خود را پیدا نکردید، از طریق این فرم سوالتان را ارسال کنید. تیم ما ظرف ۴۸ ساعت پاسخ می‌دهد.</p>
+
+                    @if(session('success'))
+
+                        <div class="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-lg text-sm">
+
+                            {{ session('success') }}
+
+                        </div>
+
+                    @endif
+
+                    <form method="POST" action="{{ route('questions.store') }}" class="space-y-4">
+
+                        @csrf
+
+                        <div>
+
+                            <label class="text-sm font-semibold text-slate-600 mb-2 block">عنوان سوال</label>
+
+                            <input type="text" name="title" required class="w-full px-4 py-3" placeholder="موضوع سوال شما" value="{{ old('title') }}">
+
+                        </div>
+
+                        <div>
+
+                            <label class="text-sm font-semibold text-slate-600 mb-2 block">دسته‌بندی</label>
+
+                            <select name="category" class="w-full px-4 py-3">
+
+                                <option value="general">عمومی</option>
+
+                                <option value="membership">عضویت</option>
+
+                                <option value="finance">امور مالی</option>
+
+                                <option value="projects">پروژه‌ها</option>
+
+                            </select>
+
+                        </div>
+
+                        <div>
+
+                            <label class="text-sm font-semibold text-slate-600 mb-2 block">شرح سوال</label>
+
+                            <textarea name="question" rows="4" required class="w-full px-4 py-3 resize-none" placeholder="سوال خود را توضیح دهید">{{ old('question') }}</textarea>
+
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                            <div>
+
+                                <label class="text-sm font-semibold text-slate-600 mb-2 block">نام شما (اختیاری)</label>
+
+                                <input type="text" name="contact_name" class="w-full px-4 py-3" placeholder="نام و نام خانوادگی" value="{{ old('contact_name') }}">
+
+                            </div>
+
+                            <div>
+
+                                <label class="text-sm font-semibold text-slate-600 mb-2 block">ایمیل (برای پاسخ)</label>
+
+                                <input type="email" name="contact_email" class="w-full px-4 py-3" placeholder="example@email.com" value="{{ old('contact_email') }}">
+
+                            </div>
+
+                        </div>
+
+                        <button type="submit" class="w-full px-6 py-3 rounded-full bg-ocean-blue text-white font-semibold hover:bg-dark-blue transition">
+
+                            ارسال سوال
+
+                        </button>
+
+                    </form>
+
+                </div>
+
+            </aside>
+
+        </section>
+
+
+
+        @if($shouldShowExtraContent)
+
+            <section class="faq-form-card p-8 fade-in-section">
+
+                <div class="prose prose-lg max-w-none text-right font-vazirmatn" style="direction: rtl; color: var(--color-gentle-black);">
+
+                    {!! $extraContent !!}
+
+                </div>
+
+            </section>
+
+        @endif
+
+    </div>
+
+</div>
+
+@endsection
+
+
+
+@push('scripts')
+
+<script>
+
+    document.addEventListener('DOMContentLoaded', () => {
+
+        const accordionItems = document.querySelectorAll('.faq-accordion-item');
+
+        const searchInput = document.getElementById('faq-search-input');
+
+        const tabButtons = document.querySelectorAll('#faq-categories button');
+
+        const sections = document.querySelectorAll('.fade-in-section');
+
+
+
+        const observer = new IntersectionObserver((entries, obs) => {
+
+            entries.forEach(entry => {
+
+                if (entry.isIntersecting) {
+
+                    entry.target.classList.add('is-visible');
+
+                    obs.unobserve(entry.target);
+
+                }
+
+            });
+
+        }, { threshold: 0.15 });
+
+
+
+        sections.forEach(section => observer.observe(section));
+
+
+
+        accordionItems.forEach(item => {
+
+            const header = item.querySelector('.faq-accordion-header');
+
+            const content = item.querySelector('.faq-accordion-content');
+
+            const icon = header.querySelector('.fa-chevron-down');
+
+
+
+            header.addEventListener('click', () => {
+
+                const isActive = item.classList.contains('active');
+
+                accordionItems.forEach(other => {
+
+                    other.classList.remove('active');
+
+                    other.querySelector('.faq-accordion-content').style.maxHeight = null;
+
+                    other.querySelector('.fa-chevron-down').style.transform = 'rotate(0deg)';
+
+                });
+
+
+
+                if (!isActive) {
+
+                    item.classList.add('active');
+
+                    content.style.maxHeight = content.scrollHeight + 'px';
+
+                    icon.style.transform = 'rotate(-180deg)';
+
+                }
+
+            });
+
+        });
+
+
+
+        if (accordionItems.length) {
+
+            accordionItems[0].querySelector('.faq-accordion-header').click();
+
+        }
+
+
+
+        searchInput.addEventListener('input', event => {
+
+            const term = event.target.value.toLowerCase();
+
+            accordionItems.forEach(item => {
+
+                const text = item.innerText.toLowerCase();
+
+                item.style.display = text.includes(term) ? '' : 'none';
+
+            });
+
+        });
+
+
+
+        tabButtons.forEach(button => {
+
+            button.addEventListener('click', () => {
+
+                const category = button.dataset.category;
+
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+
+                button.classList.add('active');
+
+
+
+                accordionItems.forEach(item => {
+
+                    if (category === 'all' || item.dataset.category === category) {
+
+                        item.style.display = '';
+
+                    } else {
+
+                        item.style.display = 'none';
+
+                    }
+
+                });
+
+            });
+
+        });
+
+    });
+
+</script>
+
+@endpush
+
+
+
+
+

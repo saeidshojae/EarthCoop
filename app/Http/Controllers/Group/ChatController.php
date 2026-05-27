@@ -17,17 +17,25 @@ use App\Models\OccupationalField;
 use App\Models\ExperienceField;
 use App\Models\ChatRequest;
 use App\Models\Poll;
+use App\Models\PollVote;
 use App\Models\User;
 use App\Models\Vote;
 use App\Models\PinnedMessage;
 use App\Models\ReportedMessage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 class ChatController extends Controller
 {
     public function chat(Group $group)
     {
+        $t0 = microtime(true);
+        // Keep initial page load lightweight; older history is fetched via API pagination.
+        $initialMessageLimit = 50;   // کاهش از 120 به 50 برای سرعت بیشتر
+        $initialPostLimit = 20;      // کاهش از 40 به 20
+        $initialPollLimit = 20;      // کاهش از 40 به 20
+
         $groupUser = GroupUser::where('group_id', $group->id)
             ->where('user_id', auth()->id())
             ->first();
@@ -52,12 +60,16 @@ class ChatController extends Controller
         }
         
         $lastReadMessageId = $groupUser ? $groupUser->last_read_message_id : null;
+        \Log::info('ChatController@chat T1 (after groupUser): ' . round((microtime(true)-$t0)*1000) . 'ms');
 
         $messages = $group->messages()
             ->select('id', 'user_id', 'parent_id', 'message as content', 'removed_by', 'edited_by', 'edited', 'created_at', 'updated_at', 'read_by', 'reply_count', 'voice_message', 'file_path', 'file_type', DB::raw("'message' as type"))
-            ->with('reactions')
-            ->orderBy('created_at', 'asc')
+            ->with(['reactions', 'user:id,first_name,last_name,avatar'])
+            ->orderBy('id', 'desc')
+            ->limit($initialMessageLimit)
             ->get()
+            ->reverse()
+            ->values()
             ->map(function ($item) {
                 if (isset($item->voice_message) && $item->voice_message) {
                     $item->voice_message = $this->resolveVoiceMessageUrl($item->voice_message);
@@ -66,19 +78,109 @@ class ChatController extends Controller
             });
 
         $posts = $group->blogs()
-            ->select('id', 'user_id', 'title', 'img','file_type',  'content', 'created_at', 'category_id', 'group_id', DB::raw("'post' as type"))
-            ->orderBy('created_at', 'asc')
+            ->select('id', 'user_id', 'title', 'img','file_type',  'content', 'created_at', 'category_id', 'group_id', 'read_by', DB::raw("'post' as type"))
+            ->with(['user:id,first_name,last_name,avatar', 'reactions'])
+            ->withCount('comments')
+            ->orderBy('id', 'desc')
+            ->limit($initialPostLimit)
             ->get();
+        $posts = $posts->reverse()->values();
+
+        // Preload GroupUser records for post authors با یک کوئری
+        $postUserIds = $posts->pluck('user_id')->unique()->filter()->values();
+        $postGroupUsersMap = $postUserIds->isNotEmpty()
+            ? \App\Models\GroupUser::where('group_id', $group->id)
+                ->whereIn('user_id', $postUserIds)
+                ->get()
+                ->keyBy('user_id')
+            : collect();
 
         $elections = $group->group_type !== 'private' ? $group->elections()
             ->select('id', 'starts_at', 'ends_at', 'is_closed', 'created_at', DB::raw("'election' as type"))
-            ->orderBy('created_at', 'asc')
+            ->orderBy('id', 'desc')
+            ->limit(10)
             ->get() : collect();
+        $elections = $elections->reverse()->values();
 
         $polls = $group->polls()
             ->select('id', 'group_id', 'question','expires_at',  'created_at', 'type as real_type', 'main_type', 'created_by', 'skill_id', DB::raw("'poll' as type"))
-            ->orderBy('created_at', 'asc')
+            ->with([
+                'user:id,first_name,last_name,avatar',
+                'skill:id,name',
+                'options:id,poll_id,text',
+            ])
+            ->orderBy('id', 'desc')
+            ->limit($initialPollLimit)
             ->get();
+        $polls = $polls->reverse()->values();
+        \Log::info('ChatController@chat T2 (after messages+posts+polls): ' . round((microtime(true)-$t0)*1000) . 'ms');
+
+        $pollIds = $polls->pluck('id')->filter()->values();
+        // از subquery به جای لود همه ID‌ها در حافظه استفاده می‌کنیم
+        // (جلوگیری از WHERE IN با هزاران مقدار که باعث timeout می‌شود)
+        $activeMemberIdsSubquery = function($q) use ($group) {
+            $q->select('user_id')
+              ->from('group_user')
+              ->where('group_id', $group->id)
+              ->where('status', 1);
+        };
+
+        $pollOptionVotes = [];
+        $pollTotals = [];
+        $userVotesByPollId = [];
+        $delegationsByPollId = collect();
+
+        if ($pollIds->isNotEmpty()) {
+            $voteAgg = PollVote::query()
+                ->select('poll_id', 'option_id', DB::raw('COUNT(*) as c'))
+                ->whereIn('poll_id', $pollIds)
+                ->whereIn('user_id', $activeMemberIdsSubquery)
+                ->groupBy('poll_id', 'option_id')
+                ->get();
+
+            foreach ($voteAgg as $row) {
+                $pid = (int) $row->poll_id;
+                $oid = (int) $row->option_id;
+                $count = (int) $row->c;
+                if (!isset($pollOptionVotes[$pid])) {
+                    $pollOptionVotes[$pid] = [];
+                }
+                $pollOptionVotes[$pid][$oid] = $count;
+                $pollTotals[$pid] = ($pollTotals[$pid] ?? 0) + $count;
+            }
+
+            $userVotesByPollId = PollVote::query()
+                ->whereIn('poll_id', $pollIds)
+                ->where('user_id', auth()->id())
+                ->pluck('option_id', 'poll_id')
+                ->map(fn ($v) => (int) $v)
+                ->toArray();
+
+            $delegationsByPollId = Delegation::query()
+                ->whereIn('poll_id', $pollIds)
+                ->where('user_id', auth()->id())
+                ->get()
+                ->keyBy('poll_id');
+
+            $specializedPollIds = $polls
+                ->filter(fn ($p) => (int) ($p->real_type ?? 0) === 1)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->values();
+
+            if ($specializedPollIds->isNotEmpty()) {
+                $delegationTotals = Delegation::query()
+                    ->select('poll_id', DB::raw('COUNT(*) as c'))
+                    ->whereIn('poll_id', $specializedPollIds)
+                    ->groupBy('poll_id')
+                    ->pluck('c', 'poll_id');
+
+                foreach ($delegationTotals as $pid => $c) {
+                    $pid = (int) $pid;
+                    $pollTotals[$pid] = ($pollTotals[$pid] ?? 0) + (int) $c;
+                }
+            }
+        }
         
         $anns = Announcement::where('group_level', $group->location_level)
             ->orderBy('created_at', 'asc')
@@ -95,6 +197,7 @@ class ChatController extends Controller
 
         $combined = $messages->concat($posts)->concat($polls)->concat($anns)
             ->sortBy('created_at');
+        \Log::info('ChatController@chat T3 (after polls+anns+combined): ' . round((microtime(true)-$t0)*1000) . 'ms');
 
 
         
@@ -127,10 +230,11 @@ class ChatController extends Controller
             : [];
         $categories = $categoryGroupSetting
             ? Category::whereIn('id', $categoryGroupSetting)->get()
-            : collect();
+            : Category::all();
         
         $activeUserCount = $group->users()->where('role', '>=', '1')->count();
         $allElectionOfGroup = $group->elections()->count();
+        \Log::info('ChatController@chat T4 (after groupSetting+election count): ' . round((microtime(true)-$t0)*1000) . 'ms');
         
         if($groupSetting && $groupSetting->election_status == 1 && $group->group_type !== 'private' && $activeUserCount >= $groupSetting->max_for_election){
             $election = Election::firstOrCreate([
@@ -160,11 +264,15 @@ class ChatController extends Controller
             // $electionHideMessage  = \App\Models\Message::create(['group_id' => $group->id, 'user_id' => 171, 'message' => 'پیام پین شده فرم انتخابات']);
             // $pinCreate = \App\Models\PinnedMessage::create(['group_id' => $group->id, 'message_id' => $electionHideMessage->id, 'pinned_by' => 171]);
     
-            foreach ($group->users as $user) {
-                Candidate::firstOrCreate([
-                    'election_id' => $election->id,
-                    'user_id' => $user->id,
-                ]);
+            // Candidate syncing is expensive for large groups; run only once when election is created.
+            if ($wasRecentlyCreated) {
+                $groupUsers = $group->users()->select('users.id')->get();
+                foreach ($groupUsers as $user) {
+                    Candidate::firstOrCreate([
+                        'election_id' => $election->id,
+                        'user_id' => $user->id,
+                    ]);
+                }
             }
 
             // Dispatch event for new elections
@@ -198,6 +306,7 @@ class ChatController extends Controller
         }
 
         $specialities = ExperienceField::where('status', 1)->get();
+        \Log::info('ChatController@chat T5 (after election queries): ' . round((microtime(true)-$t0)*1000) . 'ms');
 
         $group2 = $group;
         
@@ -214,16 +323,19 @@ class ChatController extends Controller
         // Build vote counts safely; if there's no active election, use empty collections
         // فقط رای‌های کاربرانی که status=1 دارند (عضو فعال) شمرده می‌شوند
         if ($election) {
-            $activeMemberIds = \App\Models\GroupUser::where('group_id', $group->id)
-                ->where('status', 1)
-                ->pluck('user_id')
-                ->toArray();
-            
+            // استفاده از subquery به جای pluck برای جلوگیری از timeout
+            $electionActiveMembersSubquery = function($q) use ($group) {
+                $q->select('user_id')
+                  ->from('group_user')
+                  ->where('group_id', $group->id)
+                  ->where('status', 1);
+            };
+
             $managerCounts = \DB::table('votes')
                 ->select('candidate_id', \DB::raw('COUNT(*) as c'))
                 ->where('election_id', $election->id)
                 ->where('position', '1')
-                ->whereIn('voter_id', $activeMemberIds) // فقط رای‌های اعضای فعال
+                ->whereIn('voter_id', $electionActiveMembersSubquery) // فقط رای‌های اعضای فعال
                 ->groupBy('candidate_id')
                 ->pluck('c', 'candidate_id');
 
@@ -231,7 +343,7 @@ class ChatController extends Controller
                 ->select('candidate_id', \DB::raw('COUNT(*) as c'))
                 ->where('election_id', $election->id)
                 ->where('position', '0')
-                ->whereIn('voter_id', $activeMemberIds) // فقط رای‌های اعضای فعال
+                ->whereIn('voter_id', $electionActiveMembersSubquery) // فقط رای‌های اعضای فعال
                 ->groupBy('candidate_id')
                 ->pluck('c', 'candidate_id');
         } else {
@@ -240,23 +352,27 @@ class ChatController extends Controller
         }
     
       // منبع واحد: همهٔ اعضا + تعداد رأی‌ها (حتی اگر صفر)
-    $allOptions = $group->users->map(function ($u) use ($managerCounts, $inspectorCounts) {
-            $mgr = (int) (($managerCounts && method_exists($managerCounts, 'get')) ? ($managerCounts->get($u->id) ?? 0) : 0);
-            $ins = (int) (($inspectorCounts && method_exists($inspectorCounts, 'get')) ? ($inspectorCounts->get($u->id) ?? 0) : 0);
-
-      return [
-          'id'              => (int) $u->id,
-          'name'            => trim(($u->first_name ?? '').' '.($u->last_name ?? '')),
-          'role'            => $u->pivot->role ?? $u->role, // اگر لازم شد بعداً بر اساس نقش فیلتر کن
-          'manager_votes'   => $mgr,
-          'inspector_votes' => $ins,
-      ];
-  });
-
-  // فقط «مرتب‌سازی»—بدون هیچ فیلتری؛ همه نمایش داده می‌شوند
-  $managersSorted   = $allOptions->sortByDesc('manager_votes')->values();
-  $inspectorsSorted = $allOptions->sortByDesc('inspector_votes')->values();
-
+      // فقط وقتی انتخابات فعال است این کوئری اجرا می‌شود
+        if ($election) {
+            $groupUsersForElection = $group->users()->select('users.id', 'users.first_name', 'users.last_name')->get();
+            $allOptions = $groupUsersForElection->map(function ($u) use ($managerCounts, $inspectorCounts) {
+                    $mgr = (int) (($managerCounts && method_exists($managerCounts, 'get')) ? ($managerCounts->get($u->id) ?? 0) : 0);
+                    $ins = (int) (($inspectorCounts && method_exists($inspectorCounts, 'get')) ? ($inspectorCounts->get($u->id) ?? 0) : 0);
+              return [
+                  'id'              => (int) $u->id,
+                  'name'            => trim(($u->first_name ?? '').' '.($u->last_name ?? '')),
+                  'role'            => $u->pivot->role ?? $u->role,
+                  'manager_votes'   => $mgr,
+                  'inspector_votes' => $ins,
+              ];
+          });
+            $managersSorted   = $allOptions->sortByDesc('manager_votes')->values();
+            $inspectorsSorted = $allOptions->sortByDesc('inspector_votes')->values();
+        } else {
+            $managersSorted   = collect();
+            $inspectorsSorted = collect();
+        }
+        \Log::info('ChatController@chat T6 (after managersSorted): ' . round((microtime(true)-$t0)*1000) . 'ms');
 
         return view('groups.chat', [
             'group' => $group,
@@ -267,7 +383,11 @@ class ChatController extends Controller
             'election' => $election,
             'selectedVotesInspector' => $selectedVotesInspector,
             'selectedVotesManager' => $selectedVotesManager,
-            'polls' => $group->polls()->with('options', 'votes')->get(),
+            'polls' => $group->polls()->with('options')->latest('id')->limit($initialPollLimit)->get(),
+            'pollTotals' => $pollTotals,
+            'pollOptionVotes' => $pollOptionVotes,
+            'userVotesByPollId' => $userVotesByPollId,
+            'delegationsByPollId' => $delegationsByPollId,
             'poll' => $poll,
             'userVote' => $userVote,
             'specialities' => $specialities,
@@ -279,7 +399,8 @@ class ChatController extends Controller
             'inspectorCounts' => $inspectorCounts,
             'managersSorted' => $managersSorted,
             'inspectorsSorted' => $inspectorsSorted,
-            'lastReadMessageId' => $lastReadMessageId
+            'lastReadMessageId' => $lastReadMessageId,
+            'postGroupUsersMap' => $postGroupUsersMap
         ]);
     }
 
@@ -365,131 +486,114 @@ class ChatController extends Controller
             $hasMore = $group->messages()->where('id', '<', $oldestMessageId)->exists();
         }
         
-        $poll = $group->polls()->latest()->with('options')->first();
-        
-        $userVote = null;
-        if ($poll && auth()->check()) {
-            $userVote = $poll->votes()->where('user_id', auth()->id())->first();
-        }
-        
-        $yourRole = GroupUser::where('group_id', $group->id)
-            ->where('user_id', auth()->id())
-            ->value('role');
-        
-        $categories = Category::all();
-        $specialities = OccupationalField::where('status', 1)->get();
         
         // بررسی می‌کنیم که آیا درخواست AJAX است یا header Accept: application/json دارد
-        $isJsonRequest = $request->wantsJson() || 
-                        $request->expectsJson() || 
-                        $request->ajax() || 
-                        $request->header('Accept') === 'application/json' ||
-                        str_contains($request->header('Accept', ''), 'application/json');
-        
+        $isJsonRequest = $request->wantsJson() ||
+            $request->expectsJson() ||
+            $request->ajax() ||
+            $request->header('Accept') === 'application/json' ||
+            str_contains($request->header('Accept', ''), 'application/json');
+
         if ($isJsonRequest) {
-            // اگر last_message_id وجود دارد، فقط messages را برمی‌گردانیم
-            // IMPORTANT: بررسی دقیق lastMessageId
-            if ($lastMessageId && $lastMessageId !== 'null' && $lastMessageId !== null && $lastMessageId !== '') {
-                // فقط messages را map کن (نه posts, polls و ...)
-                $combined = $combined->filter(function($item) {
-                    return $item->type === 'message';
-                })->map(function($item) use ($group) {
-                    // Get sender information
-                    $sender = $group->users->firstWhere('id', $item->user_id);
-                    $senderName = $sender ? trim(($sender->first_name ?? '') . ' ' . ($sender->last_name ?? '')) : 'کاربر';
-                    $item->sender = $senderName;
-                    
-                    // Handle parent message (reply) information
+            $formatMessageItems = function ($items) {
+                $messagesOnly = $items->filter(fn ($item) => $item->type === 'message')->values();
+                if ($messagesOnly->isEmpty()) {
+                    return $items->values();
+                }
+
+                $userIds = $messagesOnly->pluck('user_id')->filter()->unique()->values();
+                $parentIds = $messagesOnly->pluck('parent_id')->filter()->unique()->values();
+
+                $usersById = User::query()
+                    ->whereIn('id', $userIds)
+                    ->select('id', 'first_name', 'last_name')
+                    ->get()
+                    ->keyBy('id');
+
+                $parentsById = \App\Models\Message::query()
+                    ->with('user:id,first_name,last_name')
+                    ->whereIn('id', $parentIds)
+                    ->get()
+                    ->keyBy('id');
+
+                return $items->map(function ($item) use ($usersById, $parentsById) {
+                    if ($item->type !== 'message') {
+                        return $item;
+                    }
+
+                    $sender = $usersById->get($item->user_id);
+                    $item->sender = $sender
+                        ? trim(($sender->first_name ?? '') . ' ' . ($sender->last_name ?? ''))
+                        : 'User';
+
                     if ($item->parent_id) {
-                        $parent = \App\Models\Message::with('user')->find($item->parent_id);
+                        $parent = $parentsById->get($item->parent_id);
                         if ($parent) {
                             $parentUser = $parent->user;
-                            $item->parent_sender = $parentUser ? trim(($parentUser->first_name ?? '') . ' ' . ($parentUser->last_name ?? '')) : 'کاربر';
+                            $item->parent_sender = $parentUser
+                                ? trim(($parentUser->first_name ?? '') . ' ' . ($parentUser->last_name ?? ''))
+                                : 'User';
                             $item->parent_content = strip_tags($parent->message ?? '');
                         }
                     }
-                    
-                    // Handle voice message URL
-                    if (isset($item->voice_message) && $item->voice_message) {
+
+                    if (!empty($item->voice_message)) {
                         $item->voice_message = $this->resolveVoiceMessageUrl($item->voice_message);
                     }
-                    
-                    // Format created_at for display
+
                     $item->created_at = $item->created_at ? \Carbon\Carbon::parse($item->created_at)->format('H:i') : '';
-                    
-                    // Add reactions data
+                    $item->message = $item->content;
+
                     if (isset($item->reactions) && $item->reactions) {
-                        $reactions = $item->reactions->groupBy('reaction_type')
-                            ->map(function($group) {
+                        $item->reactions = $item->reactions
+                            ->groupBy('reaction_type')
+                            ->map(function ($group) {
                                 return [
                                     'type' => $group->first()->reaction_type,
-                                    'count' => $group->count()
+                                    'count' => $group->count(),
                                 ];
                             })
                             ->values();
-                        $item->reactions = $reactions;
                     } else {
                         $item->reactions = [];
                     }
-                    
-                    // Rename content to message for consistency
-                    $item->message = $item->content;
-                    
+
                     return $item;
                 })->values();
-            } else {
-                // برای درخواست‌های عادی (بدون last_message_id)
-                $combined = $combined->map(function($item) use ($group) {
-                    if ($item->type === 'message') {
-                        // Get sender information
-                        $sender = $group->users->firstWhere('id', $item->user_id);
-                        $senderName = $sender ? trim(($sender->first_name ?? '') . ' ' . ($sender->last_name ?? '')) : 'کاربر';
-                        $item->sender = $senderName;
-                        
-                        // Handle parent message (reply) information
-                        if ($item->parent_id) {
-                            $parent = \App\Models\Message::with('user')->find($item->parent_id);
-                            if ($parent) {
-                                $parentUser = $parent->user;
-                                $item->parent_sender = $parentUser ? trim(($parentUser->first_name ?? '') . ' ' . ($parentUser->last_name ?? '')) : 'کاربر';
-                                $item->parent_content = strip_tags($parent->message ?? '');
-                            }
-                        }
-                        
-                        // Handle voice message URL
-                        if (isset($item->voice_message) && $item->voice_message) {
-                            $item->voice_message = $this->resolveVoiceMessageUrl($item->voice_message);
-                        }
-                        
-                        // Format created_at for display
-                        $item->created_at = $item->created_at ? \Carbon\Carbon::parse($item->created_at)->format('H:i') : '';
-                        
-                        // Add reactions data
-                        if (isset($item->reactions) && $item->reactions) {
-                            $reactions = $item->reactions->groupBy('reaction_type')
-                                ->map(function($group) {
-                                    return [
-                                        'type' => $group->first()->reaction_type,
-                                        'count' => $group->count()
-                                    ];
-                                })
-                                ->values();
-                            $item->reactions = $reactions;
-                        } else {
-                            $item->reactions = [];
-                        }
-                        
-                        // Rename content to message for consistency
-                        $item->message = $item->content;
-                    }
-                    
-                    return $item;
-                })->values();
+            };
+
+            if (!empty($lastMessageId) && $lastMessageId !== 'null') {
+                $messagesPayload = $formatMessageItems($messages);
+                $latestMessageId = $messagesPayload->isNotEmpty() ? $messagesPayload->last()->id : (int) $lastMessageId;
+
+                // پیام‌های تازه ویرایش‌شده (برای کاربرانی که پیام رو قبلاً دریافت کرده‌اند)
+                $updatedMsgs = $group->messages()
+                    ->select('id', 'user_id', 'message as content', 'edited', 'updated_at', DB::raw("'message' as type"))
+                    ->where('id', '<=', (int) $lastMessageId)
+                    ->where('edited', true)
+                    ->where('updated_at', '>=', now()->subSeconds(90))
+                    ->get()
+                    ->map(fn ($m) => ['id' => $m->id, 'message' => $m->content, 'edited' => true])
+                    ->values();
+
+                // شناسه‌های پیام‌های حذف‌شده (از cache)
+                $deletedIds = Cache::get('group.' . $group->id . '.deleted_ids', []);
+
+                return response()->json([
+                    'messages' => $messagesPayload,
+                    'updated_messages' => $updatedMsgs,
+                    'deleted_message_ids' => array_values($deletedIds),
+                    'has_more' => false,
+                    'page' => 1,
+                    'next_page' => null,
+                    'oldest_message_id' => $messagesPayload->isNotEmpty() ? $messagesPayload->first()->id : null,
+                    'latest_message_id' => $latestMessageId
+                ]);
             }
-            
-            // Get the latest message ID for polling
+
+            $combined = $formatMessageItems($combined);
             $latestMessageId = $messages->isNotEmpty() ? $messages->last()->id : null;
-            
+
             return response()->json([
                 'messages' => $combined,
                 'has_more' => $hasMore,
@@ -499,8 +603,186 @@ class ChatController extends Controller
                 'latest_message_id' => $latestMessageId
             ]);
         }
-        
+
+        $poll = $group->polls()->latest()->with('options')->first();
+        $userVote = null;
+        if ($poll && auth()->check()) {
+            $userVote = $poll->votes()->where('user_id', auth()->id())->first();
+        }
+
+        $yourRole = GroupUser::where('group_id', $group->id)
+            ->where('user_id', auth()->id())
+            ->value('role');
+
+        $categories = Category::all();
+        $specialities = OccupationalField::where('status', 1)->get();
+
         return view('partials.messages', compact('combined', 'group', 'userVote', 'yourRole', 'categories', 'specialities'))->render();
+    }
+
+    public function postsFeed(Group $group, Request $request)
+    {
+        $isMember = GroupUser::where('group_id', $group->id)
+            ->where('user_id', auth()->id())
+            ->where('status', 1)
+            ->exists();
+
+        if (!$isMember) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Access denied.',
+            ], 403);
+        }
+
+        $afterId = (int) $request->query('after_id', 0);
+        $limit = min(max((int) $request->query('limit', 10), 1), 50);
+
+        $query = $group->blogs()
+            ->with(['user', 'category', 'comments', 'reactions'])
+            ->orderBy('id', 'asc');
+
+        if ($afterId > 0) {
+            $query->where('id', '>', $afterId);
+        } else {
+            $query->latest('id')->take($limit);
+        }
+
+        $posts = $query->get();
+        if ($afterId === 0) {
+            $posts = $posts->sortBy('id')->values();
+        }
+
+        $categories = Category::all();
+        $payload = $posts->map(function ($post) use ($group, $categories) {
+            return [
+                'id' => (int) $post->id,
+                'html' => view('groups.partials.post', [
+                    'item' => $post,
+                    'group' => $group,
+                    'userVote' => null,
+                    'categories' => $categories,
+                ])->render(),
+            ];
+        })->values();
+
+        // Fetch cached deleted post IDs for this group
+        $deletedPostIds = array_values(Cache::get('group.' . $group->id . '.deleted_post_ids', []));
+
+        // Fetch posts edited OR reacted to in the last 90 seconds.
+        // Reactions also call $blog->touch() so updated_at is updated on every reaction change.
+        // Only meaningful when client has already done an initial load (afterId > 0)
+        $updatedPosts = [];
+        if ($afterId > 0) {
+            $updatedPosts = $group->blogs()
+                ->with(['user', 'category', 'comments', 'reactions'])
+                ->where('id', '<=', $afterId)
+                ->where('updated_at', '>=', now()->subSeconds(90))
+                ->whereColumn('updated_at', '!=', 'created_at')
+                ->get()
+                ->map(function ($post) use ($group, $categories) {
+                    return [
+                        'id' => (int) $post->id,
+                        'html' => view('groups.partials.post', [
+                            'item' => $post,
+                            'group' => $group,
+                            'userVote' => null,
+                            'categories' => $categories,
+                        ])->render(),
+                    ];
+                })->values()->all();
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'posts' => $payload,
+            'latest_post_id' => (int) ($posts->last()->id ?? $afterId),
+            'deleted_post_ids' => $deletedPostIds,
+            'updated_posts' => $updatedPosts,
+        ]);
+    }
+
+    public function postsReconcile(Group $group, Request $request)
+    {
+        $isMember = GroupUser::where('group_id', $group->id)
+            ->where('user_id', auth()->id())
+            ->where('status', 1)
+            ->exists();
+
+        if (!$isMember) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Access denied.',
+            ], 403);
+        }
+
+        $ids = collect($request->input('ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->take(250);
+
+        if ($ids->isEmpty()) {
+            return response()->json([
+                'status' => 'success',
+                'deleted_ids' => [],
+            ]);
+        }
+
+        $existingIds = $group->blogs()
+            ->whereIn('id', $ids->all())
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $deletedIds = array_values(array_diff($ids->all(), $existingIds));
+
+        return response()->json([
+            'status' => 'success',
+            'deleted_ids' => $deletedIds,
+        ]);
+    }
+
+    public function messagesReconcile(Group $group, Request $request)
+    {
+        $isMember = GroupUser::where('group_id', $group->id)
+            ->where('user_id', auth()->id())
+            ->where('status', 1)
+            ->exists();
+
+        if (!$isMember) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Access denied.',
+            ], 403);
+        }
+
+        $ids = collect($request->input('ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->take(500);
+
+        if ($ids->isEmpty()) {
+            return response()->json([
+                'status' => 'success',
+                'deleted_ids' => [],
+            ]);
+        }
+
+        $existingIds = $group->messages()
+            ->whereIn('id', $ids->all())
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $deletedIds = array_values(array_diff($ids->all(), $existingIds));
+
+        return response()->json([
+            'status' => 'success',
+            'deleted_ids' => $deletedIds,
+        ]);
     }
 
     private function resolveVoiceMessageUrl(?string $voiceMessage): ?string

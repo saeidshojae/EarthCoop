@@ -1,4 +1,4 @@
-// Add styles for chat features
+﻿// Add styles for chat features
 const style = document.createElement('style');
 style.textContent = `
     .chat-search-box {
@@ -196,7 +196,13 @@ function submitVote(el) {
         },
         success: function(data) {
             if (data.status === 'success') {
-                location.reload(); // بعد از reload، موقعیت از sessionStorage بازیابی می‌شود
+                // ✅ FIXED: No location.reload() - update DOM smoothly instead
+                updatePollUI(data.poll);
+                // Dispatch event for other listeners
+                document.dispatchEvent(new CustomEvent('poll-voted', {
+                    detail: { poll: data.poll, optionId: optionId }
+                }));
+                showSuccessAlert('رای شما ثبت شد');
             } else {
               showErrorAlert(data.message || 'خطا در ثبت رأی');
             }
@@ -318,21 +324,9 @@ document.addEventListener('keydown', function(e) {
 });
 
 document.addEventListener('DOMContentLoaded', function () {
-  document.querySelectorAll('.reaction-buttons').forEach(container => {
-    const blogId = container.dataset.postId;
-    const likeBtn = container.querySelector('.btn-like');
-    const dislikeBtn = container.querySelector('.btn-dislike');
-
-    likeBtn.addEventListener('click', () => {
-      console.log('✅ لایک کلیک شد برای', blogId);
-      sendReaction(blogId, '1', container);
-    });
-
-    dislikeBtn.addEventListener('click', () => {
-      console.log('✅ دیسلایک کلیک شد برای', blogId);
-      sendReaction(blogId, '0', container);
-    });
-  });
+  if (typeof window._initReactionButtons === 'function') {
+    window._initReactionButtons(document);
+  }
 });
 
   
@@ -628,6 +622,7 @@ function openPollBox(){
     let pollingStarted = false;
     let lastMessageId = null; // آخرین پیام ID برای دریافت فقط پیام‌های جدید
     let pollingInterval = null;
+    let lastPostId = 0; // آخرین پست ID برای posts polling
     const pollingDebug = Boolean(window.__chatPollingDebug);
     const pollLog = (...args) => {
         if (pollingDebug) {
@@ -701,7 +696,13 @@ function openPollBox(){
                 pollLog('✅ Polling started after', attempts, 'attempts');
                 
                 // حالا polling را شروع کن - هر 1.5 ثانیه یکبار
+                let _isPollingPending = false;
                 pollingInterval = setInterval(function() {
+                    // اگر درخواست قبلی هنوز جواب نداده، skip کن
+                    if (_isPollingPending) {
+                        pollLog('⏭️ Skipping poll - previous request still pending');
+                        return;
+                    }
                     // دریافت groupId از window
                     if (typeof window.groupId === 'undefined' || !window.groupId) {
                         console.error('❌ window.groupId not found during polling!');
@@ -726,6 +727,7 @@ function openPollBox(){
                         return;
                     }
                     
+                    _isPollingPending = true;
                     $.ajax({
                         url: '/api/groups/' + currentGroupId + '/messages',
                         method: 'GET',
@@ -823,6 +825,45 @@ function openPollBox(){
                             if (response.latest_message_id && (!lastMessageId || response.latest_message_id > lastMessageId)) {
                                 lastMessageId = response.latest_message_id;
                             }
+
+                            // ===== Handle edited messages =====
+                            if (response.updated_messages && Array.isArray(response.updated_messages)) {
+                                response.updated_messages.forEach(function(msg) {
+                                    const bubble = document.querySelector(`.message-bubble[data-message-id="${msg.id}"]`);
+                                    if (!bubble) return;
+                                    const contentEl = bubble.querySelector('.message-content');
+                                    if (contentEl) contentEl.innerHTML = msg.message || '';
+                                    bubble.setAttribute('data-content-raw', (msg.message || '').replace(/<[^>]*>/g, ''));
+                                    // نشانگر ویرایش
+                                    if (msg.edited && !bubble.querySelector('.edited-icon')) {
+                                        const ts = bubble.querySelector('.message-timestamp');
+                                        if (ts) {
+                                            const badge = document.createElement('span');
+                                            badge.className = 'edited-icon';
+                                            badge.style.cssText = 'font-size:10px;color:#9ca3af;margin-left:4px;';
+                                            badge.textContent = '(ویرایش شده)';
+                                            ts.prepend(badge);
+                                        }
+                                    }
+                                });
+                            }
+
+                            // ===== Handle deleted messages =====
+                            if (response.deleted_message_ids && Array.isArray(response.deleted_message_ids)) {
+                                response.deleted_message_ids.forEach(function(msgId) {
+                                    const msgRow = document.getElementById('msg-' + msgId);
+                                    if (msgRow) {
+                                        msgRow.style.transition = 'opacity 0.3s ease-out';
+                                        msgRow.style.opacity = '0';
+                                        setTimeout(() => msgRow.remove(), 300);
+                                    }
+                                    // اگر این پیام reply target بود، indicator رو پاک کن
+                                    const parentInput = document.getElementById('parent_id');
+                                    if (parentInput && parentInput.value == msgId) {
+                                        if (typeof cancelReply === 'function') cancelReply();
+                                    }
+                                });
+                            }
                             
                             reapplySkillListState();
                             startPollCountdowns();
@@ -846,6 +887,9 @@ function openPollBox(){
                                 chatBox.scrollTop = chatBox.scrollHeight;
                             }
                         },
+                        complete: function() {
+                            _isPollingPending = false;
+                        },
                         error: function(xhr, status, error) {
                             console.error('❌❌❌ POLLING ERROR ❌❌❌');
                             console.error('Status:', xhr.status);
@@ -867,11 +911,190 @@ function openPollBox(){
                             // در صورت خطا، polling را ادامه بده (ممکن است مشکل موقتی باشد)
                         }
                     });
-                }, 1500); // هر 1.5 ثانیه یکبار (به جای 3 ثانیه)
+                }, 3000); // هر 3 ثانیه یکبار
+
+                // ===== Posts polling - هر 5 ثانیه =====
+                var _isPostPollPending = false;
+                // مقدار اولیه lastPostId را از DOM بخوان
+                if (lastPostId === 0) {
+                    var domPosts = document.querySelectorAll('[id^="blog-"]');
+                    domPosts.forEach(function(el) {
+                        var pid = parseInt((el.id || '').replace('blog-', ''));
+                        if (pid > lastPostId) lastPostId = pid;
+                    });
+                }
+                setInterval(function() {
+                    if (_isPostPollPending) return;
+                    if (!window.groupId) return;
+                    // sync posts injected by current user's own form submit
+                    if (window._lastKnownPostId && window._lastKnownPostId > lastPostId) {
+                        lastPostId = window._lastKnownPostId;
+                    }
+                    _isPostPollPending = true;
+                    fetch('/api/groups/' + window.groupId + '/posts/feed?after_id=' + lastPostId, {
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                    .then(function(r) { return r.ok ? r.json() : null; })
+                    .then(function(data) {
+                        if (!data) return;
+                        var chatBox = document.getElementById('chat-box');
+                        // Handle new posts
+                        if (chatBox && data.posts && data.posts.length) {
+                            data.posts.forEach(function(p) {
+                                if (!p.html || document.getElementById('blog-' + p.id)) return;
+                                var tmp = document.createElement('div');
+                                tmp.innerHTML = p.html;
+                                var el = tmp.firstElementChild;
+                                if (el) {
+                                    chatBox.appendChild(el);
+                                    if (typeof window._initPostMenus === 'function') window._initPostMenus(el);
+                                    if (typeof window._initReactionButtons === 'function') window._initReactionButtons(el);
+                                }
+                                if (p.id > lastPostId) lastPostId = p.id;
+                            });
+                        }
+                        if (data.latest_post_id > lastPostId) lastPostId = data.latest_post_id;
+                        // Handle deleted posts
+                        if (data.deleted_post_ids && data.deleted_post_ids.length) {
+                            data.deleted_post_ids.forEach(function(pid) {
+                                var el = document.getElementById('blog-' + pid);
+                                // remove outer post-wrapper too
+                                var toRemove = el ? (el.closest('.post-wrapper') || el.parentElement || el) : null;
+                                if (toRemove) {
+                                    toRemove.style.transition = 'opacity 0.3s';
+                                    toRemove.style.opacity = '0';
+                                    setTimeout(function() { toRemove.remove(); }, 300);
+                                }
+                            });
+                        }
+                        // Handle updated posts
+                        if (data.updated_posts && data.updated_posts.length) {
+                            data.updated_posts.forEach(function(p) {
+                                if (!p.html) return;
+                                var existing = document.getElementById('blog-' + p.id);
+                                if (existing) {
+                                    // post-card is inside post-wrapper; replace the outer wrapper
+                                    var wrapper = existing.closest('.post-wrapper') || existing.parentElement || existing;
+                                    var tmp = document.createElement('div');
+                                    tmp.innerHTML = p.html;
+                                    var newEl = tmp.firstElementChild;
+                                    if (newEl) {
+                                        wrapper.replaceWith(newEl);
+                                        if (typeof window._initPostMenus === 'function') window._initPostMenus(newEl);
+                                        if (typeof window._initReactionButtons === 'function') window._initReactionButtons(newEl);
+                                    }
+                                }
+                            });
+                        }
+                    })
+                    .catch(function() {})
+                    .finally(function() { _isPostPollPending = false; });
+                }, 5000);
+
+                // ===== Reconcile check every 10s: ask server which visible posts were deleted =====
+                var _isReconcilePending = false;
+                setInterval(function() {
+                    if (_isReconcilePending || !window.groupId) return;
+                    // collect all post IDs currently visible in DOM
+                    var visibleIds = [];
+                    document.querySelectorAll('[id^="blog-"]').forEach(function(el) {
+                        var pid = parseInt(el.id.replace('blog-', ''));
+                        if (pid > 0) visibleIds.push(pid);
+                    });
+                    if (!visibleIds.length) return;
+                    _isReconcilePending = true;
+                    var csrfToken = (typeof getCsrfToken === 'function') ? getCsrfToken() :
+                        (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+                    fetch('/api/groups/' + window.groupId + '/posts/reconcile', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({ ids: visibleIds })
+                    })
+                    .then(function(r) { return r.ok ? r.json() : null; })
+                    .then(function(data) {
+                        if (!data || !data.deleted_ids || !data.deleted_ids.length) return;
+                        data.deleted_ids.forEach(function(pid) {
+                            var el = document.getElementById('blog-' + pid);
+                            var toRemove = el ? (el.closest('.post-wrapper') || el.parentElement || el) : null;
+                            if (toRemove) {
+                                toRemove.style.transition = 'opacity 0.3s';
+                                toRemove.style.opacity = '0';
+                                setTimeout(function() { toRemove.remove(); }, 300);
+                            }
+                        });
+                    })
+                    .catch(function() {})
+                    .finally(function() { _isReconcilePending = false; });
+                }, 10000); // every 10 seconds
             }
         }, 500); // هر 500ms چک کن
     }
-    
+
+    // تابع مشترک برای راه‌اندازی منوهای action-menu در عناصر تازه اضافه‌شده
+    window._initPostMenus = function(container) {
+        var menus = (container || document).querySelectorAll('[data-action-menu]');
+        menus.forEach(function(menu) {
+            if (menu._menuInit) return;
+            menu._menuInit = true;
+            var toggle = menu.querySelector('.action-menu__toggle');
+            var list = menu.querySelector('.action-menu__list');
+            if (!toggle) return;
+            toggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var isOpen = menu.classList.contains('is-open');
+                document.querySelectorAll('[data-action-menu].is-open').forEach(function(m) {
+                    if (m !== menu) m.classList.remove('is-open');
+                });
+                menu.classList.toggle('is-open', !isOpen);
+            });
+            if (list) list.querySelectorAll('button, a').forEach(function(item) {
+                item.addEventListener('click', function() { menu.classList.remove('is-open'); });
+            });
+        });
+        // Global outside-click: uses live querySelectorAll so covers all dynamically added menus
+        if (!document._postMenuOutsideClickRegistered) {
+            document._postMenuOutsideClickRegistered = true;
+            document.addEventListener('click', function(e) {
+                document.querySelectorAll('[data-action-menu].is-open').forEach(function(m) {
+                    if (!m.contains(e.target)) m.classList.remove('is-open');
+                });
+            });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    document.querySelectorAll('[data-action-menu].is-open').forEach(function(m) {
+                        m.classList.remove('is-open');
+                    });
+                }
+            });
+        }
+    };
+
+    // تابع مشترک برای راه‌اندازی دکمه‌های لایک/دیسلایک در عناصر تازه اضافه‌شده
+    window._initReactionButtons = function(container) {
+        var scope = container || document;
+        scope.querySelectorAll('.reaction-buttons').forEach(function(rc) {
+            if (rc._reactionInit) return;
+            rc._reactionInit = true;
+            var blogId = rc.dataset.postId;
+            var btnLike = rc.querySelector('.btn-like');
+            var btnDislike = rc.querySelector('.btn-dislike');
+            if (btnLike) btnLike.addEventListener('click', function() {
+                sendReaction(blogId, '1', rc);
+            });
+            if (btnDislike) btnDislike.addEventListener('click', function() {
+                sendReaction(blogId, '0', rc);
+            });
+        });
+    };
+    // مقداردهی اولیه برای همه دکمه‌های واکنش موجود در صفحه
+    window._initReactionButtons(document);
+
 document.addEventListener('DOMContentLoaded', function() {
     const chatBox = document.getElementById('chat-box');
     const form = document.getElementById('chatForm');
@@ -925,6 +1148,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (form) {
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
+            console.log('[TIMING] JS T0 - form submit started:', Date.now());
             
             // Sync CKEditor قبل از خواندن محتوا
             for (var i in CKEDITOR.instances) {
@@ -997,8 +1221,50 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 formData.set('message', '🎤 پیام صوتی');
             }
-            
+
+            // ====== OPTIMISTIC UPDATE: نمایش فوری پیام قبل از پاسخ سرور ======
+            console.log('[TIMING] JS T1 - before optimistic update:', Date.now());
+            const tempMsgId = 'temp_' + Date.now();
+            const optimisticMsg = {
+                id: tempMsgId,
+                user_id: window.authUserId,
+                sender: 'شما',
+                message: messageHtml || messageText,
+                created_at: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+                reactions: [],
+                parent_id: null
+            };
+            appendMessage(optimisticMsg);
+            console.log('[TIMING] JS T2 - after appendMessage (message should be visible NOW):', Date.now());
+            // نمایش حالت «در حال ارسال» با کاهش شفافیت
+            const tempMsgEl = document.getElementById('msg-' + tempMsgId);
+            if (tempMsgEl) {
+                tempMsgEl.style.opacity = '0.65';
+                const pendingBubble = tempMsgEl.querySelector('.message-bubble');
+                if (pendingBubble) {
+                    const existingReadReceipt = pendingBubble.querySelector('.read-receipt span');
+                    if (existingReadReceipt) existingReadReceipt.innerHTML = '<i class="fas fa-spinner fa-spin"></i> در حال ارسال...';
+                }
+            }
+            // اسکرول به پایین بعد از نمایش فوری
+            const chatBoxScroll = document.getElementById('chat-box');
+            if (chatBoxScroll) chatBoxScroll.scrollTop = chatBoxScroll.scrollHeight;
+            // ====== END OPTIMISTIC UPDATE ======
+
             try {
+                console.log('[TIMING] JS T3 - before fetch (server request starting):', Date.now());
+                
+                // بررسی اینکه parent_id هنوز معتبره (پیام مرجع هنوز در DOM هست)
+                const parentIdVal = document.getElementById('parent_id')?.value;
+                if (parentIdVal && /^\d+$/.test(parentIdVal)) {
+                    const parentMsgEl = document.getElementById('msg-' + parentIdVal);
+                    if (!parentMsgEl) {
+                        // پیام مرجع حذف شده - reply indicator رو پاک کن
+                        if (typeof cancelReply === 'function') cancelReply();
+                        formData.set('parent_id', '');
+                    }
+                }
+                
                 const response = await fetch(form.action, {
                     method: 'POST',
                     headers: {
@@ -1014,24 +1280,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 const responseData = await response.json();
+                const serverTime = response.headers.get('X-Chat-Server-Time-Ms');
+                console.log('[TIMING] JS T4 - server responded:', Date.now(), 'status:', response.status, 'server_time_ms:', serverTime);
 
                 if (!response.ok) {
                     if (response.status === 422) {
                         const errorMessage = responseData.message || 'خطا در اعتبارسنجی داده‌ها';
                         const errors = responseData.errors ? Object.values(responseData.errors).flat().join('\n') : '';
+                        // حذف پیام موقت
+                        const tempEl422 = document.getElementById('msg-' + tempMsgId);
+                        if (tempEl422) tempEl422.remove();
                         alert(`${errorMessage}\n${errors}`);
-                        return; // جلوگیری از ادامه اجرا
+                        return;
                     } else if (response.status === 500) {
                         console.error('Server Error Details:', responseData);
+                        // حذف پیام موقت
+                        const tempEl500 = document.getElementById('msg-' + tempMsgId);
+                        if (tempEl500) tempEl500.remove();
                         alert('خطا در سرور. لطفاً دوباره تلاش کنید. اگر مشکل ادامه داشت، با پشتیبانی تماس بگیرید.');
-                        return; // جلوگیری از ادامه اجرا
+                        return;
                     } else {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
                 }
                 
                 if (responseData.status === 'success') {
+                    // حذف پیام موقت و جایگزینی با پیام واقعی از سرور
+                    const tempElSuccess = document.getElementById('msg-' + tempMsgId);
+                    if (tempElSuccess) tempElSuccess.remove();
                     appendMessage(responseData.message);
+                    // اسکرول به پایین بعد از دریافت پاسخ
+                    const chatBoxFinal = document.getElementById('chat-box');
+                    if (chatBoxFinal) chatBoxFinal.scrollTop = chatBoxFinal.scrollHeight;
                     // به‌روزرسانی lastMessageId بعد از ارسال پیام
                     if (responseData.message && responseData.message.id) {
                         if (!lastMessageId || responseData.message.id > lastMessageId) {
@@ -1060,9 +1340,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         replyIndicator.remove();
                     }
                 } else {
+                    // حذف پیام موقت در صورت خطا سرور
+                    const tempElFail = document.getElementById('msg-' + tempMsgId);
+                    if (tempElFail) tempElFail.remove();
                     alert('خطا در ارسال پیام: ' + (responseData.message || 'خطای ناشناخته'));
                 }
             } catch (error) {
+                // حذف پیام موقت در صورت خطا شبکه
+                const tempElCatch = document.getElementById('msg-' + tempMsgId);
+                if (tempElCatch) tempElCatch.remove();
                 console.error('Error:', error);
                 if (error.message.includes('Failed to fetch')) {
                     alert('خطا در اتصال به سرور. لطفاً اتصال اینترنت خود را بررسی کنید.');
@@ -1187,6 +1473,7 @@ function appendMessage(message) {
                         <div class="action-menu__list">
                             <button type="button" onclick="replyToMessage('${message.id}', '${escapeHtml(senderName)}', '${escapeHtml(messageContent.substring(0, 50))}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
                             <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> واکنش</button>
+                            ${([2,3].includes(window.yourRole || 0)) ? `<button type="button" class="action-menu__item btn-pin" onclick="pinMessage('${message.id}')"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
                             <button type="button" class="action-menu__item btn-edit"><i class="fas fa-edit"></i> ویرایش</button>
                             <button type="button" class="action-menu__item action-menu__item--danger btn-delete"><i class="fas fa-trash"></i> حذف</button>
                             <div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" style="font-size: 0.7rem; opacity: 0.6; margin-left: 4px;"></i><span class="menu-meta-time__label">ارسال شده:</span><span class="menu-meta-time__value">${formattedTime}</span></div></div>
@@ -1204,6 +1491,7 @@ function appendMessage(message) {
                         <div class="action-menu__list">
                             <button type="button" onclick="replyToMessage('${message.id}', '${escapeHtml(senderName)}', '${escapeHtml(messageContent.substring(0, 50))}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
                             <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> واکنش</button>
+                            ${([2,3].includes(window.yourRole || 0)) ? `<button type="button" class="action-menu__item btn-pin" onclick="pinMessage('${message.id}')"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
                             <button type="button" class="action-menu__item btn-report"><i class="fas fa-flag"></i> گزارش</button>
                             <div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" style="font-size: 0.7rem; opacity: 0.6; margin-left: 4px;"></i><span class="menu-meta-time__label">ارسال شده:</span><span class="menu-meta-time__value">${formattedTime}</span></div></div>
                         </div>
@@ -1227,6 +1515,12 @@ function appendMessage(message) {
     
     messageRow.innerHTML = messageHTML;
     chatBox.appendChild(messageRow);
+    
+    // اضافه کردن Thread button به پیام جدید (مثل پیام‌های Blade-rendered)
+    const newBubble = messageRow.querySelector('[data-message-id]');
+    if (newBubble && typeof window.addThreadButton === 'function') {
+        window.addThreadButton(newBubble);
+    }
     
     // Initialize reaction button for this message
     if (typeof addReactionButton === 'function') {
@@ -1294,6 +1588,84 @@ function appendMessage(message) {
     // و کاربر خودش به پایین رفته باشد
     // در غیر این صورت، scroll restore خودش موقعیت را تنظیم می‌کند
     // این کد حذف شد چون با scroll restore تداخل دارد
+}
+
+// ✅ NEW: Helper to update poll UI without page reload
+function updatePollUI(pollData) {
+    try {
+        const pollElement = document.getElementById(`poll-${pollData.id}`);
+        if (!pollElement) {
+            console.warn('Poll element not found:', pollData.id);
+            return;
+        }
+        
+        // Update vote counts for each option
+        if (pollData.options && Array.isArray(pollData.options)) {
+            pollData.options.forEach(option => {
+                const optionEl = pollElement.querySelector(`[data-option-id="${option.id}"]`);
+                if (optionEl) {
+                    // Update vote count
+                    const countEl = optionEl.querySelector('.vote-count');
+                    if (countEl) {
+                        countEl.textContent = option.count || 0;
+                    }
+                    
+                    // Update percentage bar if exists
+                    const percentEl = optionEl.querySelector('.vote-percent');
+                    if (percentEl) {
+                        percentEl.style.width = `${option.percent || 0}%`;
+                    }
+                }
+            });
+        }
+        
+        console.log('Poll updated successfully:', pollData.id);
+    } catch (error) {
+        console.error('Error updating poll UI:', error);
+    }
+}
+
+// ✅ NEW: Helper to update blog UI without page reload
+function updateBlogUI(blogData) {
+    try {
+        const blogElement = document.getElementById(`blog-${blogData.id}`);
+        if (!blogElement) {
+            console.warn('Blog element not found:', blogData.id);
+            return;
+        }
+        
+        // Update blog content
+        const titleEl = blogElement.querySelector('.blog-title');
+        const contentEl = blogElement.querySelector('.blog-content');
+        
+        if (titleEl) titleEl.textContent = blogData.title || '';
+        if (contentEl) contentEl.innerHTML = blogData.content || '';
+        
+        // Update edit timestamp if exists
+        const timeEl = blogElement.querySelector('.blog-edit-time');
+        if (timeEl && blogData.updated_at) {
+            timeEl.textContent = `(ویرایش شده: ${blogData.updated_at})`;
+        }
+        
+        console.log('Blog updated successfully:', blogData.id);
+    } catch (error) {
+        console.error('Error updating blog UI:', error);
+    }
+}
+
+// ✅ NEW: Alert helper
+function showSuccessAlert(message) {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'success',
+            title: 'موفقیت‌آمیز',
+            text: message,
+            timer: 1500,
+            showConfirmButton: false
+        });
+    } else {
+        alert(message);
+    }
 }
 
 function closeAllModals() {
@@ -1698,7 +2070,29 @@ function reportMessage(messageId) {
 
 function deletePost(postId) {
     if (confirm('آیا از حذف این پست اطمینان دارید؟')) {
-        window.location.href = `/groups/post/delete/${postId}`;
+        fetch(`/blog/${postId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': getCsrfToken(),
+                'Accept': 'application/json'
+            }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.status === 'success') {
+                var el = document.getElementById('blog-' + postId);
+                // remove the outer post-wrapper too so no empty shell remains
+                var toRemove = el ? (el.closest('.post-wrapper') || el.parentElement || el) : null;
+                if (toRemove) {
+                    toRemove.style.transition = 'opacity 0.3s';
+                    toRemove.style.opacity = '0';
+                    setTimeout(function() { toRemove.remove(); }, 300);
+                }
+            } else {
+                alert(data.message || 'خطا در حذف پست');
+            }
+        })
+        .catch(function() { alert('خطا در ارتباط با سرور'); });
     }
 }
 
@@ -1783,7 +2177,40 @@ async function submitPostEdit(event, postId) {
         }
 
         if (data.status === 'success') {
-            location.reload();
+            // Close Bootstrap modal properly BEFORE replacing DOM
+            var bsModalEl = document.getElementById('editPostModal-' + postId);
+            if (bsModalEl) {
+                if (window.bootstrap && bootstrap.Modal) {
+                    var bsInst = bootstrap.Modal.getInstance(bsModalEl);
+                    if (bsInst) bsInst.hide();
+                }
+            }
+            // Fallback: force-remove backdrop & restore body
+            setTimeout(function() {
+                document.querySelectorAll('.modal-backdrop').forEach(function(el) { el.remove(); });
+                document.body.classList.remove('modal-open');
+                document.body.style.removeProperty('overflow');
+                document.body.style.removeProperty('padding-right');
+            }, 350);
+            // Replace full post HTML with server-rendered version
+            if (data.post && data.post.html) {
+                var blogEl = document.getElementById('blog-' + postId);
+                // post-card is inside post-wrapper; replace the outer wrapper to preserve correct nesting
+                var wrapperEl = blogEl ? (blogEl.closest('.post-wrapper') || blogEl.parentElement || blogEl) : null;
+                if (wrapperEl) {
+                    var tmp = document.createElement('div');
+                    tmp.innerHTML = data.post.html;
+                    var newEl = tmp.firstElementChild;
+                    if (newEl) {
+                        wrapperEl.replaceWith(newEl);
+                        if (typeof window._initPostMenus === 'function') window._initPostMenus(newEl);
+                        if (typeof window._initReactionButtons === 'function') window._initReactionButtons(newEl);
+                    }
+                }
+            } else if (data.blog) {
+                updateBlogUI(data.blog);
+            }
+            showSuccessAlert('پست با موفقیت ویرایش شد');
         } else {
             alert(data.message || 'خطا در ویرایش پست');
         }
@@ -1960,3 +2387,79 @@ function submitReport() {
     });
 }
 
+// ===== IntersectionObserver for marking posts and polls as read =====
+(function() {
+    if (!window.groupId) return;
+    
+    const markedAsRead = new Set();
+    const csrfToken = (typeof getCsrfToken === 'function') ? getCsrfToken() :
+        (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+                const element = entry.target;
+                const postId = element.id.replace('blog-', '');
+                const pollId = element.id.replace('poll-', '');
+                
+                // Mark blog post as read
+                if (element.id.startsWith('blog-') && !markedAsRead.has('blog-' + postId)) {
+                    markedAsRead.add('blog-' + postId);
+                    fetch(`/blog/${postId}/mark-read`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    }).catch(() => {});
+                }
+                
+                // Mark poll as read
+                if (element.id.startsWith('poll-') && !markedAsRead.has('poll-' + pollId)) {
+                    markedAsRead.add('poll-' + pollId);
+                    fetch(`/poll/${pollId}/mark-read`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    }).catch(() => {});
+                }
+            }
+        });
+    }, {
+        threshold: 0.5,
+        rootMargin: '0px'
+    });
+    
+    // Observe all existing posts and polls
+    function observePostsAndPolls() {
+        document.querySelectorAll('[id^="blog-"], [id^="poll-"]').forEach(el => {
+            if (!el.dataset.observed) {
+                el.dataset.observed = 'true';
+                observer.observe(el);
+            }
+        });
+    }
+    
+    // Initial observation
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', observePostsAndPolls);
+    } else {
+        observePostsAndPolls();
+    }
+    
+    // Re-observe after polling injects new content
+    const originalAppendChild = Element.prototype.appendChild;
+    Element.prototype.appendChild = function(child) {
+        const result = originalAppendChild.call(this, child);
+        if (child.nodeType === 1 && (child.id && (child.id.startsWith('blog-') || child.id.startsWith('poll-')))) {
+            setTimeout(observePostsAndPolls, 100);
+        }
+        return result;
+    };
+})();

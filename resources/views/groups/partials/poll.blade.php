@@ -1,23 +1,25 @@
 @php
     $isSpecialized = (int) ($item->real_type ?? 0) === 1;
-    $delegation = $isSpecialized
-        ? \App\Models\Delegation::where('poll_id', $item->id)
-            ->where('user_id', auth()->id())
-            ->first()
-        : null;
+    $delegation = $isSpecialized ? ($delegationsByPollId->get($item->id) ?? null) : null;
 
-    $ownerId = optional($item->user)->id ?? 0;
+    $ownerId = (int) (optional($item->user)->id ?? 0);
     $hue = fmod($ownerId * 137.508, 360);
     $saturation = 72;
     $lightness = 88;
     $backgroundColor = "linear-gradient(135deg, hsla({$hue}, {$saturation}%, {$lightness}%, 0.9), hsla({$hue}, {$saturation}%, 96%, 0.9))";
     $textColor = "hsl({$hue}, {$saturation}%, 25%)";
 
-    $isOwner = ($item->created_by ?? null) == auth()->id();
-    $initials = ($item->user ? mb_substr($item->user->first_name, 0, 1) . ' ' . mb_substr($item->user->last_name, 0, 1) : '؟ ؟');
-    $userVote = optional($item->votes)->firstWhere('user_id', auth()->id());
+    $isOwner = ((int) ($item->created_by ?? 0)) === (int) auth()->id();
+    $initials = $item->user
+        ? mb_substr($item->user->first_name ?? '', 0, 1) . ' ' . mb_substr($item->user->last_name ?? '', 0, 1)
+        : '؟ ؟';
+
+    $selectedOptionId = (int) ($userVotesByPollId[$item->id] ?? 0);
     $isExpired = $item->expires_at && \Carbon\Carbon::parse($item->expires_at)->isPast();
     $isVotingDisabled = $isExpired || ($isSpecialized && $delegation);
+
+    $totalVotes = (int) ($pollTotals[$item->id] ?? 0);
+    $optionVotes = $pollOptionVotes[$item->id] ?? [];
 @endphp
 
 <div class="poll-wrapper {{ $isOwner ? 'poll-wrapper--self' : '' }}" id="poll-{{ $item->id }}">
@@ -48,7 +50,7 @@
                 @endif
                 <div class="poll-card__owner-info">
                     <span class="poll-card__name">{{ optional($item->user)->fullName() ?? 'حساب حذف شده' }}</span>
-                    <span class="poll-card__role">{{ $item->main_type == 0 ? 'انتخاب' : 'نظرسنجی' }}</span>
+                    <span class="poll-card__role">{{ (int) ($item->main_type ?? 0) === 0 ? 'انتخاب' : 'نظرسنجی' }}</span>
                 </div>
             </div>
 
@@ -57,24 +59,19 @@
                     <i class="fas fa-ellipsis-v"></i>
                 </button>
                 <div class="action-menu__list">
-                    <button type="button" class="action-menu__item" onclick="replyToMessage('poll-{{ $item->id }}', '', 'نظرسنجی: {!! $item->question !!}')">
-                        <i class="fas fa-reply"></i>
-                        پاسخ
+                    <button type="button" class="action-menu__item" onclick="replyToMessage('poll-{{ $item->id }}', '', 'نظرسنجی: {{ e($item->question) }}')">
+                        <i class="fas fa-reply"></i> پاسخ
                     </button>
-
                     @if($isOwner)
                         <button type="button" class="action-menu__item" onclick="showEditPollBox({{ $item->id }})">
-                            <i class="fas fa-edit"></i>
-                            ویرایش
+                            <i class="fas fa-edit"></i> ویرایش
                         </button>
-                        <button type="button" class="action-menu__item action-menu__item--danger" onclick="if(confirm('آیا مطمئن هستید که می‌خواهید این نظرسنجی را حذف کنید؟')){ window.location.href='{{ route('groups.poll.delete', [$group, $item->id]) }}'; }">
-                            <i class="fas fa-trash"></i>
-                            حذف
+                        <button type="button" class="action-menu__item action-menu__item--danger" onclick="deletePoll({{ $item->id }}, '{{ route('groups.poll.delete', [$group, $item->id]) }}')">
+                            <i class="fas fa-trash"></i> حذف
                         </button>
                     @else
                         <button type="button" class="action-menu__item action-menu__item--danger" onclick="reportMessage({{ $item->id }})">
-                            <i class="fas fa-flag"></i>
-                            گزارش
+                            <i class="fas fa-flag"></i> گزارش
                         </button>
                     @endif
                 </div>
@@ -83,7 +80,7 @@
 
         <div class="poll-card__question">
             <h3 class="poll-card__title">{{ $item->question }}</h3>
-            @if($item->description)
+            @if(!empty($item->description))
                 <p class="poll-card__description">{!! nl2br(e($item->description)) !!}</p>
             @endif
         </div>
@@ -91,44 +88,23 @@
         @if($isSpecialized)
             <section class="poll-card__delegation" data-skill-id="{{ $item->skill_id }}">
                 <button type="button" class="poll-card__delegation-btn" onclick="toggleSkillList({{ $item->id }})">
-                    <i class="fas fa-user-tie"></i>
-                    مشاهده متخصصین برای تفویض رأی
+                    <i class="fas fa-user-tie"></i> مشاهده متخصصین برای تفویض رأی
                 </button>
                 <span class="poll-card__delegation-status">
                     {{ $delegation ? 'رأی شما به متخصص تفویض شده است.' : 'می‌توانید رأی خود را به متخصص تفویض کنید.' }}
                 </span>
             </section>
+            <div id="skill-list-{{ $item->id }}" class="skill-list" style="display:none;">
+                <p class="text-muted">برای کاهش فشار صفحه، لیست متخصصین در بارگذاری اولیه نمایش داده نمی‌شود.</p>
+            </div>
         @endif
-
-        @php
-            // فقط رای‌های کاربرانی که status=1 دارند (عضو فعال) شمرده می‌شوند
-            $activeMemberIds = \App\Models\GroupUser::where('group_id', $group->id)
-                ->where('status', 1)
-                ->pluck('user_id')
-                ->toArray();
-            
-            $totalVotes = \App\Models\PollVote::where('poll_id', $item->id)
-                ->whereIn('user_id', $activeMemberIds)
-                ->count();
-            if ($isSpecialized) {
-                $delegationCount = \App\Models\Delegation::where('poll_id', $item->id)->count();
-                $totalVotes += $delegationCount;
-            }
-        @endphp
 
         <div class="poll-options" {{ $isVotingDisabled ? 'data-disabled=true' : '' }}>
             @foreach($item->options as $option)
                 @php
-                    $optionVotes = \App\Models\PollVote::where('poll_id', $item->id)
-                        ->where('option_id', $option->id)
-                        ->whereIn('user_id', $activeMemberIds)
-                        ->count();
-                    if ($isSpecialized) {
-                        $expertDelegations = \App\Models\Delegation::where('poll_id', $item->id)->where('expert_id', $option->user_id)->count();
-                        $optionVotes += $expertDelegations;
-                    }
-                    $percent = $totalVotes ? round(($optionVotes / $totalVotes) * 100) : 0;
-                    $isSelected = optional($userVote)->poll_option_id === $option->id;
+                    $ov = (int) ($optionVotes[$option->id] ?? 0);
+                    $percent = $totalVotes > 0 ? (int) round(($ov / $totalVotes) * 100) : 0;
+                    $isSelected = $selectedOptionId === (int) $option->id;
                 @endphp
                 <button type="button"
                         class="poll-option {{ $isSelected ? 'poll-option--selected voted' : '' }}"
@@ -152,52 +128,30 @@
             </span>
         </footer>
 
-        @if ($isSpecialized)
-            @php
-                $memberIds = $group->users()->pluck('users.id');
-                $specialGroupIds = \App\Models\Group::where('experience_id', $item->skill_id)->pluck('groups.id');
-                $specialityUsers = \App\Models\GroupUser::whereIn('user_id', $memberIds)
-                    ->whereIn('group_id', $specialGroupIds)
-                    ->with('user')
-                    ->get()
-                    ->unique('user_id');
-            @endphp
-            <div id="skill-list-{{ $item->id }}" class="skill-list">
-                <h3>لیست متخصصین این دسته</h3>
-                <table class="skill-list__table">
-                    <thead>
-                        <tr>
-                            <th>نام</th>
-                            <th>وضعیت</th>
-                            <th>عملیات</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($specialityUsers as $user)
-                            @php
-                                $specialUser = $user->user;
-                                $checkDelegation = \App\Models\Delegation::where('poll_id', $item->id)
-                                    ->where('expert_id', optional($specialUser)->id)
-                                    ->where('user_id', auth()->id())
-                                    ->first();
-                            @endphp
-                            @if ($specialUser && $specialUser->id !== auth()->id())
-                                <tr>
-                                    <td><a href="{{ route('profile.member.show', $specialUser) }}">{{ $specialUser->fullName() }}</a></td>
-                                    <td class="{{ $checkDelegation ? 'text-success' : 'text-danger' }}">
-                                        {{ $checkDelegation ? 'تفویض شده' : 'تفویض نشده' }}
-                                    </td>
-                                    <td>
-                                        <a href="{{ route('groups.delegation', [$item->id, $specialUser->id]) }}" class="skill-list__action">
-                                            {{ $checkDelegation ? 'برداشتن تفویض' : 'تفویض به این کاربر' }}
-                                        </a>
-                                    </td>
-                                </tr>
-                            @endif
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+        @php
+            $readBy = null;
+            if ($isOwner && isset($item->read_by)) {
+                if (is_string($item->read_by)) {
+                    $readBy = json_decode($item->read_by, true);
+                } else {
+                    $readBy = $item->read_by;
+                }
+            }
+            $readCount = is_array($readBy) ? count($readBy) : 0;
+        @endphp
+
+        @if($isOwner)
+        <div class="poll-read-receipt" style="font-size: 11px; color: #6b7280; margin-bottom: 6px; padding: 0 12px;">
+            @if($readCount > 0)
+            <span style="color: #10b981;">
+                <i class="fas fa-check-double"></i> {{ $readCount }} نفر دیده‌اند
+            </span>
+            @else
+            <span style="color: #9ca3af;">
+                <i class="fas fa-check"></i> ارسال شده
+            </span>
+            @endif
+        </div>
         @endif
 
         <div id="edit-poll-box-{{ $item->id }}" style="display: none;" class="post-edit-form">
@@ -210,4 +164,3 @@
         </div>
     </article>
 </div>
-

@@ -272,3 +272,21 @@
 - Config additions in `config/najm-hoda.php`:
   - orchestrator compensation fallback switch
   - capability/safety/cost/cooldown entries for `set_ticket_needs_review` and rollback actions.
+
+## Incremental Update (2026-02-21, P6-T05 Permissioning v2 Kickoff)
+- Added fine-grained delegation service:
+  - `app/Services/NajmHoda/Runtime/NajmHodaDelegatedPermissionService.php`
+  - supports principal types: `user`, `role`, `group`
+  - supports expiration, revoke, active-audit, and authorization checks
+- Added delegation runtime events:
+  - `najm_hoda.autonomy.delegation.granted`
+  - `najm_hoda.autonomy.delegation.revoked`
+  - `najm_hoda.autonomy.delegation.expired`
+  - `najm_hoda.autonomy.delegation.authorized`
+  - `najm_hoda.autonomy.delegation.denied`
+- Added operator commands:
+  - `app/Console/Commands/NajmHodaDelegationGrant.php`
+  - `app/Console/Commands/NajmHodaDelegationAudit.php`
+- Orchestrator integration:
+  - apply-mode delegation enforcement (toggle: `runtime.autonomy.permissioning_v2.enforce_apply_requires_delegation`)
+  - escalation path to human approval when delegation itself requires approval.

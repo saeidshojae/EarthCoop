@@ -10,6 +10,7 @@ class NajmHodaOrchestrate extends Command
     protected $signature = 'najm-hoda:orchestrate
         {--from-multi-goals : Build chain from multi-goals backlog/review}
         {--goal=* : Goal scope list for safety gate}
+        {--actor= : Actor user id for delegation checks}
         {--scope=global : Query scope for multi-goals source}
         {--window=24 : KPI window hours for multi-goals source}
         {--limit=2000 : Runtime event limit for multi-goals source}
@@ -35,6 +36,7 @@ class NajmHodaOrchestrate extends Command
             array_map(static fn ($g): string => trim((string) $g), (array) $this->option('goal')),
             static fn (string $g): bool => $g !== ''
         ));
+        $actor = is_numeric($this->option('actor')) ? (int) $this->option('actor') : null;
 
         $result = [];
         if ((bool) $this->option('from-multi-goals')) {
@@ -46,7 +48,7 @@ class NajmHodaOrchestrate extends Command
                 'scope' => $scope,
                 'window_hours' => $window,
                 'event_limit' => $limit,
-            ], $goals, $apply);
+            ], $goals, $apply, $actor);
         } else {
             $this->warn('No source selected. Use --from-multi-goals.');
             return self::SUCCESS;
@@ -64,4 +66,3 @@ class NajmHodaOrchestrate extends Command
         return self::SUCCESS;
     }
 }
-

@@ -1,542 +1,1084 @@
-@extends('layouts.unified')
-
-@section('title', 'چت پشتیبانی')
-<!-- Tailwind & Bootstrap CSS via Vite -->
-@vite(['resources/css/app.css', 'resources/js/app.js'])
-@section('content')
-<div class="container mx-auto flex flex-col lg:flex-row gap-8 p-6 md:p-8">
-    <!-- Sidebar -->
-    @include('partials.sidebar-unified')
-    
-    <!-- Main Content -->
-    <div class="flex-1 min-w-0">
-        <!-- هدر صفحه -->
-        <div class="mb-6">
-            <div class="flex items-center justify-between mb-4">
-                <div>
-                    <h1 class="text-2xl font-bold" style="color: var(--color-gentle-black);">
-                        <i class="fas fa-comments ml-2" style="color: var(--color-ocean-blue);"></i>
-                        چت پشتیبانی
-                    </h1>
-                    <p class="mt-1" style="color: var(--color-slate-gray);">
-                        گفت‌وگوی مستقیم با تیم پشتیبانی
-                    </p>
-                </div>
-                @if($chat->ticket_id)
-                    <a href="{{ route('user.tickets.show', $chat->ticket_id) }}" 
-                       class="inline-flex items-center px-4 py-2 text-sm font-semibold text-white rounded-lg transition-colors"
-                       style="background-color: var(--color-purple-600);">
-                        <i class="fas fa-ticket-alt ml-2"></i>
-                        مشاهده تیکت
-                    </a>
-                @endif
-            </div>
-
-            <!-- وضعیت چت -->
-            <div class="bg-white rounded-xl shadow-sm border p-4 mb-4" style="background-color: var(--color-pure-white); border-color: var(--color-gray-200);">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                        @if($chat->agent)
-                            <div class="flex items-center gap-2">
-                                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                    <i class="fas fa-user-tie text-blue-600"></i>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-semibold" style="color: var(--color-gentle-black);">پشتیبان: {{ $chat->agent->fullName() }}</p>
-                                    <p class="text-xs" style="color: var(--color-slate-gray);">در حال گفت‌وگو</p>
-                                </div>
-                            </div>
-                        @else
-                            <div class="flex items-center gap-2">
-                                <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
-                                    <i class="fas fa-clock text-yellow-600"></i>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-semibold" style="color: var(--color-gentle-black);">در انتظار پشتیبان</p>
-                                    <p class="text-xs" style="color: var(--color-slate-gray);">به زودی به شما اختصاص داده می‌شود</p>
-                                </div>
-                            </div>
-                        @endif
-                    </div>
-                    <div class="flex items-center gap-2">
-                        @if($chat->status === 'waiting')
-                            <span class="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">در انتظار</span>
-                        @elseif($chat->status === 'active')
-                            <span class="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">فعال</span>
-                        @elseif($chat->status === 'resolved')
-                            <span class="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">حل شده</span>
-                        @else
-                            <span class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">بسته شده</span>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- پنل چت -->
-        <div class="bg-white rounded-xl shadow-sm border flex flex-col" style="background-color: var(--color-pure-white); border-color: var(--color-gray-200); height: 600px;">
-            <!-- نوار ابزار -->
-            <div class="flex items-center justify-between p-4 border-b" style="border-color: var(--color-gray-200);">
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-headset" style="color: var(--color-ocean-blue);"></i>
-                    <span class="text-sm font-semibold" style="color: var(--color-gentle-black);">پشتیبانی آنلاین</span>
-                </div>
-                @if($chat->status !== 'closed' && $chat->status !== 'resolved')
-                    <div class="flex items-center gap-2">
-                        <button onclick="convertToTicket()" 
-                                class="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
-                            <i class="fas fa-ticket-alt ml-1"></i>
-                            تبدیل به تیکت
-                        </button>
-                        <button onclick="closeChat()" 
-                                class="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">
-                            <i class="fas fa-times ml-1"></i>
-                            بستن چت
-                        </button>
-                    </div>
-                @endif
-            </div>
-
-            <!-- نمایش پیام‌ها -->
-            <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-4" style="background-color: var(--color-gray-50);">
-                @forelse($chat->messages as $message)
-                    <div class="flex {{ $message->type === 'user' ? 'justify-end' : 'justify-start' }}">
-                        <div class="max-w-md rounded-lg p-3 {{ $message->type === 'user' ? 'bg-blue-600 text-white' : ($message->type === 'system' ? 'bg-gray-200 text-gray-700' : 'bg-white border') }}"
-                             style="{{ $message->type === 'agent' ? 'border-color: var(--color-gray-200);' : '' }}">
-                            @if($message->type !== 'system')
-                                <div class="text-xs mb-1 opacity-75">
-                                    {{ $message->user->fullName() }}
-                                </div>
-                            @endif
-                            <div class="text-sm whitespace-pre-wrap">{{ $message->message }}</div>
-                            @if($message->attachments && count($message->attachments) > 0)
-                                <div class="mt-2 space-y-1">
-                                    @foreach($message->attachments as $attachment)
-                                        <a href="{{ Storage::disk('public')->url($attachment['file_path']) }}" 
-                                           target="_blank"
-                                           class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-black bg-opacity-10 hover:bg-opacity-20 transition-colors">
-                                            <i class="fas fa-paperclip"></i>
-                                            {{ $attachment['file_name'] }}
-                                        </a>
-                                    @endforeach
-                                </div>
-                            @endif
-                            <div class="text-xs mt-1 opacity-75">
-                                {{ \Morilog\Jalali\Jalalian::fromCarbon($message->created_at)->format('H:i') }}
-                            </div>
-                        </div>
-                    </div>
-                @empty
-                    <div class="text-center text-gray-500 py-8">
-                        <i class="fas fa-comments text-4xl mb-2"></i>
-                        <p>هنوز پیامی ارسال نشده است</p>
-                        <p class="text-sm mt-1">پیام خود را در کادر پایین تایپ کنید</p>
-                    </div>
-                @endforelse
-            </div>
-
-            <!-- فرم ارسال پیام -->
-            @if($chat->status !== 'closed' && $chat->status !== 'resolved')
-                <div class="p-4 border-t" style="border-color: var(--color-gray-200);">
-                    <form id="chatForm" onsubmit="sendMessage(event)" class="flex items-end gap-2">
-                        @csrf
-                        <div class="flex-1">
-                            <textarea id="messageInput" 
-                                      rows="3"
-                                      placeholder="پیام خود را بنویسید..."
-                                      class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                                      style="border-color: var(--color-gray-300);"></textarea>
-                            <input type="file" 
-                                   id="attachmentsInput" 
-                                   multiple 
-                                   accept="image/*,.pdf,.doc,.docx,.txt,.zip,.rar"
-                                   class="mt-2 text-sm">
-                        </div>
-                        <button type="submit" 
-                                class="px-6 py-2 text-white rounded-lg font-semibold transition-colors hover:opacity-90"
-                                style="background-color: var(--color-ocean-blue);">
-                            <i class="fas fa-paper-plane ml-1"></i>
-                            ارسال
-                        </button>
-                    </form>
-                </div>
-            @else
-                <div class="p-4 border-t text-center text-gray-500" style="border-color: var(--color-gray-200);">
-                    <p>این چت بسته شده است</p>
-                    @if($chat->ticket_id)
-                        <a href="{{ route('user.tickets.show', $chat->ticket_id) }}" 
-                           class="text-blue-600 hover:underline mt-2 inline-block">
-                            مشاهده تیکت مرتبط
-                        </a>
-                    @endif
-                </div>
-            @endif
-        </div>
-    </div>
-</div>
-
-<!-- Modal تبدیل به تیکت -->
-<div id="convertTicketModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4" style="background-color: var(--color-pure-white);">
-        <h3 class="text-lg font-bold mb-4" style="color: var(--color-gentle-black);">تبدیل چت به تیکت</h3>
-        <form id="convertTicketForm" onsubmit="submitConvertTicket(event)">
-            @csrf
-            <div class="mb-4">
-                <label class="block text-sm font-semibold mb-2" style="color: var(--color-gentle-black);">موضوع تیکت</label>
-                <input type="text" 
-                       name="subject" 
-                       required
-                       class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                       style="border-color: var(--color-gray-300);">
-            </div>
-            <div class="mb-4">
-                <label class="block text-sm font-semibold mb-2" style="color: var(--color-gentle-black);">دسته</label>
-                <select name="category" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                        style="border-color: var(--color-gray-300);">
-                    <option value="general">عمومی</option>
-                    <option value="technical">مشکل فنی</option>
-                    <option value="account">حساب کاربری</option>
-                    <option value="payment">پرداخت</option>
-                </select>
-            </div>
-            <div class="mb-4">
-                <label class="block text-sm font-semibold mb-2" style="color: var(--color-gentle-black);">اولویت</label>
-                <select name="priority" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                        style="border-color: var(--color-gray-300);">
-                    <option value="normal">عادی</option>
-                    <option value="low">پایین</option>
-                    <option value="high">بالا</option>
-                </select>
-            </div>
-            <div class="flex items-center justify-end gap-2">
-                <button type="button" 
-                        onclick="closeConvertTicketModal()"
-                        class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-                    انصراف
-                </button>
-                <button type="submit" 
-                        class="px-4 py-2 text-white rounded-lg font-semibold transition-colors"
-                        style="background-color: var(--color-purple-600);">
-                    تبدیل
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-@push('scripts')
-<!-- Pusher & Echo for Real-time -->
-<script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
-<script>
-    // متغیرهای global
-    window.chatId = {{ $chat->id }};
-    window.userId = {{ auth()->id() }};
-    window.pusherChannel = null;
-    window.isPusherActive = false;
-    
-    // Initialize Pusher
-    const pusherKey = '{{ config("broadcasting.connections.pusher.key") }}';
-    const pusherCluster = '{{ config("broadcasting.connections.pusher.options.cluster") }}';
-    
-    // اگر Pusher تنظیم شده باشد
-    if (pusherKey && pusherKey !== 'null' && pusherKey !== '' && typeof Pusher !== 'undefined') {
-        try {
-            const pusher = new Pusher(pusherKey, {
-                cluster: pusherCluster || 'mt1',
-                encrypted: true,
-                authEndpoint: '/broadcasting/auth',
-                auth: {
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    }
-                }
-            });
-            
-            // Subscribe to support chat channel
-            window.pusherChannel = pusher.subscribe('private-support-chat.{{ $chat->id }}');
-            window.isPusherActive = true;
-            
-            // Listen for new messages
-            window.pusherChannel.bind('message.sent', function(data) {
-                console.log('New message received via Pusher:', data);
-                if (typeof addMessageToChat === 'function') {
-                    addMessageToChat(data);
-                }
-            });
-            
-            console.log('Pusher initialized successfully');
-        } catch (error) {
-            console.error('Error initializing Pusher:', error);
-            window.isPusherActive = false;
-        }
-    } else {
-        console.log('Pusher not configured, using manual refresh');
-        window.isPusherActive = false;
-    }
-</script>
-
-<script>
-    const chatId = window.chatId;
-    const userId = window.userId;
-    
-    // اسکرول به پایین
-    function scrollToBottom() {
-        const messagesDiv = document.getElementById('chatMessages');
-        if (messagesDiv) {
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
-    }
-    
-    scrollToBottom();
-
-    // اضافه کردن پیام به چت (برای real-time)
-    function addMessageToChat(data) {
-        const messagesDiv = document.getElementById('chatMessages');
-        if (!messagesDiv) return;
-        
-        // بررسی که آیا پیام قبلاً نمایش داده شده یا نه
-        const existingMessage = document.querySelector(`[data-message-id="${data.id}"]`);
-        if (existingMessage) {
-            return; // پیام قبلاً نمایش داده شده
-        }
-        
-        const isUserMessage = data.user_id === userId;
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `flex ${isUserMessage ? 'justify-end' : 'justify-start'}`;
-        messageDiv.setAttribute('data-message-id', data.id);
-        
-        const messageClass = isUserMessage 
-            ? 'bg-blue-600 text-white' 
-            : (data.type === 'system' ? 'bg-gray-200 text-gray-700' : 'bg-white border');
-        
-        let attachmentsHtml = '';
-        if (data.attachments && data.attachments.length > 0) {
-            attachmentsHtml = '<div class="mt-2 space-y-1">';
-            data.attachments.forEach(attachment => {
-                attachmentsHtml += `
-                    <a href="/storage/${attachment.file_path}" 
-                       target="_blank"
-                       class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-black bg-opacity-10 hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-paperclip"></i>
-                        ${attachment.file_name}
-                    </a>
-                `;
-            });
-            attachmentsHtml += '</div>';
-        }
-        
-        const time = new Date(data.created_at).toLocaleTimeString('fa-IR', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        });
-        
-        messageDiv.innerHTML = `
-            <div class="max-w-md rounded-lg p-3 ${messageClass}" 
-                 style="${!isUserMessage && data.type !== 'system' ? 'border-color: var(--color-gray-200);' : ''}">
-                ${data.type !== 'system' ? `
-                    <div class="text-xs mb-1 opacity-75">
-                        ${data.user.name}
-                    </div>
-                ` : ''}
-                <div class="text-sm whitespace-pre-wrap">${escapeHtml(data.message)}</div>
-                ${attachmentsHtml}
-                <div class="text-xs mt-1 opacity-75">
-                    ${time}
-                </div>
-            </div>
-        `;
-        
-        messagesDiv.appendChild(messageDiv);
-        scrollToBottom();
-    }
-    
-    // Escape HTML برای جلوگیری از XSS
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    // ارسال پیام
-    async function sendMessage(e) {
-        e.preventDefault();
-        
-        const messageInput = document.getElementById('messageInput');
-        const attachmentsInput = document.getElementById('attachmentsInput');
-        const formData = new FormData();
-        
-        formData.append('message', messageInput.value);
-        formData.append('_token', document.querySelector('input[name="_token"]').value);
-        
-        if (attachmentsInput.files.length > 0) {
-            for (let i = 0; i < attachmentsInput.files.length; i++) {
-                formData.append('attachments[]', attachmentsInput.files[i]);
-            }
-        }
-        
-        if (!messageInput.value.trim() && attachmentsInput.files.length === 0) {
-            return;
-        }
-        
-        try {
-            const response = await fetch(`/support-chat/${chatId}/message`, {
-                method: 'POST',
-                body: formData
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                messageInput.value = '';
-                attachmentsInput.value = '';
-                // اگر Pusher فعال نیست، پیام را مستقیم اضافه کن
-                if (!window.isPusherActive && data.message) {
-                    setTimeout(() => {
-                        if (typeof addMessageToChat === 'function') {
-                            const userData = data.message.user || {};
-                            addMessageToChat({
-                                id: data.message.id,
-                                support_chat_id: data.message.support_chat_id,
-                                user_id: data.message.user_id,
-                                type: data.message.type,
-                                message: data.message.message,
-                                attachments: data.message.attachments,
-                                created_at: data.message.created_at,
-                                user: {
-                                    id: userData.id || userId,
-                                    name: userData.name || (userData.first_name && userData.last_name ? userData.first_name + ' ' + userData.last_name : 'کاربر')
-                                }
-                            });
-                        }
-                    }, 500);
-                }
-            } else {
-                alert('خطا در ارسال پیام: ' + (data.error || 'خطای نامشخص'));
-            }
-        } catch (error) {
-            alert('خطا در ارسال پیام');
-            console.error(error);
-        }
-    }
-
-    // بارگذاری پیام‌های جدید (بدون refresh - فقط پیام‌های جدید را اضافه می‌کند)
-    let lastMessageId = null;
-    async function loadNewMessages() {
-        try {
-            const response = await fetch(`/support-chat/${chatId}/messages`);
-            const data = await response.json();
-            
-            if (data.success && data.messages && data.messages.length > 0) {
-                // پیدا کردن آخرین پیام موجود در صفحه
-                const existingMessages = document.querySelectorAll('[data-message-id]');
-                const existingIds = Array.from(existingMessages).map(el => parseInt(el.getAttribute('data-message-id')));
-                
-                // اضافه کردن فقط پیام‌های جدید
-                data.messages.forEach(message => {
-                    if (!existingIds.includes(message.id)) {
-                        if (typeof addMessageToChat === 'function') {
-                            addMessageToChat({
-                                id: message.id,
-                                support_chat_id: message.support_chat_id,
-                                user_id: message.user_id,
-                                type: message.type,
-                                message: message.message,
-                                attachments: message.attachments,
-                                created_at: message.created_at,
-                                user: message.user ? {
-                                    id: message.user.id,
-                                    name: message.user.name || (message.user.first_name + ' ' + message.user.last_name)
-                                } : { id: userId, name: 'کاربر' }
-                            });
-                        }
-                    }
-                });
-            }
-        } catch (error) {
-            console.error('Error loading messages:', error);
-        }
-    }
-
-    // تبدیل به تیکت
-    function convertToTicket() {
-        document.getElementById('convertTicketModal').classList.remove('hidden');
-    }
-
-    function closeConvertTicketModal() {
-        document.getElementById('convertTicketModal').classList.add('hidden');
-    }
-
-    async function submitConvertTicket(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(e.target);
-        
-        try {
-            const response = await fetch(`/support-chat/${chatId}/convert-to-ticket`, {
-                method: 'POST',
-                body: formData
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                alert('چت با موفقیت به تیکت تبدیل شد. کد پیگیری: ' + data.tracking_code);
-                window.location.href = `/tickets/${data.ticket_id}`;
-            } else {
-                alert('خطا در تبدیل چت به تیکت: ' + (data.error || 'خطای نامشخص'));
-            }
-        } catch (error) {
-            alert('خطا در تبدیل چت به تیکت');
-            console.error(error);
-        }
-    }
-
-    // بستن چت
-    async function closeChat() {
-        if (!confirm('آیا مطمئن هستید که می‌خواهید این چت را ببندید؟')) {
-            return;
-        }
-        
-        try {
-            const response = await fetch(`/support-chat/${chatId}/close`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
-                }
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('خطا در بستن چت: ' + (data.error || 'خطای نامشخص'));
-            }
-        } catch (error) {
-            alert('خطا در بستن چت');
-            console.error(error);
-        }
-    }
-
-    // Fallback: بارگذاری خودکار پیام‌های جدید هر 10 ثانیه (فقط اگر Pusher کار نمی‌کند)
-    // فقط پیام‌های جدید را اضافه می‌کند، نه refresh کامل
-    if (!window.isPusherActive) {
-        // اولین بار بعد از 2 ثانیه
-        setTimeout(() => {
-            loadNewMessages();
-        }, 2000);
-        
-        // سپس هر 10 ثانیه یکبار
-        setInterval(() => {
-            loadNewMessages();
-        }, 10000);
-    }
-</script>
-@endpush
-@endsection
-
-
-
-
-
+@extends('layouts.unified')
+
+
+
+@section('title', 'چت پشتیبانی')
+
+<!-- Tailwind & Bootstrap CSS via Vite -->
+
+@vite(['resources/css/app.css', 'resources/js/app.js'])
+
+@section('content')
+
+<div class="container mx-auto flex flex-col lg:flex-row gap-8 p-6 md:p-8">
+
+    <!-- Sidebar -->
+
+    @include('partials.sidebar-unified')
+
+    
+
+    <!-- Main Content -->
+
+    <div class="flex-1 min-w-0">
+
+        <!-- هدر صفحه -->
+
+        <div class="mb-6">
+
+            <div class="flex items-center justify-between mb-4">
+
+                <div>
+
+                    <h1 class="text-2xl font-bold" style="color: var(--color-gentle-black);">
+
+                        <i class="fas fa-comments ml-2" style="color: var(--color-ocean-blue);"></i>
+
+                        چت پشتیبانی
+
+                    </h1>
+
+                    <p class="mt-1" style="color: var(--color-slate-gray);">
+
+                        گفت‌وگوی مستقیم با تیم پشتیبانی
+
+                    </p>
+
+                </div>
+
+                @if($chat->ticket_id)
+
+                    <a href="{{ route('user.tickets.show', $chat->ticket_id) }}" 
+
+                       class="inline-flex items-center px-4 py-2 text-sm font-semibold text-white rounded-lg transition-colors"
+
+                       style="background-color: var(--color-purple-600);">
+
+                        <i class="fas fa-ticket-alt ml-2"></i>
+
+                        مشاهده تیکت
+
+                    </a>
+
+                @endif
+
+            </div>
+
+
+
+            <!-- وضعیت چت -->
+
+            <div class="bg-white rounded-xl shadow-sm border p-4 mb-4" style="background-color: var(--color-pure-white); border-color: var(--color-gray-200);">
+
+                <div class="flex items-center justify-between">
+
+                    <div class="flex items-center gap-4">
+
+                        @if($chat->agent)
+
+                            <div class="flex items-center gap-2">
+
+                                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+
+                                    <i class="fas fa-user-tie text-blue-600"></i>
+
+                                </div>
+
+                                <div>
+
+                                    <p class="text-sm font-semibold" style="color: var(--color-gentle-black);">پشتیبان: {{ $chat->agent->fullName() }}</p>
+
+                                    <p class="text-xs" style="color: var(--color-slate-gray);">در حال گفت‌وگو</p>
+
+                                </div>
+
+                            </div>
+
+                        @else
+
+                            <div class="flex items-center gap-2">
+
+                                <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+
+                                    <i class="fas fa-clock text-yellow-600"></i>
+
+                                </div>
+
+                                <div>
+
+                                    <p class="text-sm font-semibold" style="color: var(--color-gentle-black);">در انتظار پشتیبان</p>
+
+                                    <p class="text-xs" style="color: var(--color-slate-gray);">به زودی به شما اختصاص داده می‌شود</p>
+
+                                </div>
+
+                            </div>
+
+                        @endif
+
+                    </div>
+
+                    <div class="flex items-center gap-2">
+
+                        @if($chat->status === 'waiting')
+
+                            <span class="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">در انتظار</span>
+
+                        @elseif($chat->status === 'active')
+
+                            <span class="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">فعال</span>
+
+                        @elseif($chat->status === 'resolved')
+
+                            <span class="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">حل شده</span>
+
+                        @else
+
+                            <span class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">بسته شده</span>
+
+                        @endif
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- پنل چت -->
+
+        <div class="bg-white rounded-xl shadow-sm border flex flex-col" style="background-color: var(--color-pure-white); border-color: var(--color-gray-200); height: 600px;">
+
+            <!-- نوار ابزار -->
+
+            <div class="flex items-center justify-between p-4 border-b" style="border-color: var(--color-gray-200);">
+
+                <div class="flex items-center gap-2">
+
+                    <i class="fas fa-headset" style="color: var(--color-ocean-blue);"></i>
+
+                    <span class="text-sm font-semibold" style="color: var(--color-gentle-black);">پشتیبانی آنلاین</span>
+
+                </div>
+
+                @if($chat->status !== 'closed' && $chat->status !== 'resolved')
+
+                    <div class="flex items-center gap-2">
+
+                        <button onclick="convertToTicket()" 
+
+                                class="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
+
+                            <i class="fas fa-ticket-alt ml-1"></i>
+
+                            تبدیل به تیکت
+
+                        </button>
+
+                        <button onclick="closeChat()" 
+
+                                class="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">
+
+                            <i class="fas fa-times ml-1"></i>
+
+                            بستن چت
+
+                        </button>
+
+                    </div>
+
+                @endif
+
+            </div>
+
+
+
+            <!-- نمایش پیام‌ها -->
+
+            <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-4" style="background-color: var(--color-gray-50);">
+
+                @forelse($chat->messages as $message)
+
+                    <div class="flex {{ $message->type === 'user' ? 'justify-end' : 'justify-start' }}">
+
+                        <div class="max-w-md rounded-lg p-3 {{ $message->type === 'user' ? 'bg-blue-600 text-white' : ($message->type === 'system' ? 'bg-gray-200 text-gray-700' : 'bg-white border') }}"
+
+                             style="{{ $message->type === 'agent' ? 'border-color: var(--color-gray-200);' : '' }}">
+
+                            @if($message->type !== 'system')
+
+                                <div class="text-xs mb-1 opacity-75">
+
+                                    {{ $message->user->fullName() }}
+
+                                </div>
+
+                            @endif
+
+                            <div class="text-sm whitespace-pre-wrap">{{ $message->message }}</div>
+
+                            @if($message->attachments && count($message->attachments) > 0)
+
+                                <div class="mt-2 space-y-1">
+
+                                    @foreach($message->attachments as $attachment)
+
+                                        <a href="{{ Storage::disk('public')->url($attachment['file_path']) }}" 
+
+                                           target="_blank"
+
+                                           class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-black bg-opacity-10 hover:bg-opacity-20 transition-colors">
+
+                                            <i class="fas fa-paperclip"></i>
+
+                                            {{ $attachment['file_name'] }}
+
+                                        </a>
+
+                                    @endforeach
+
+                                </div>
+
+                            @endif
+
+                            <div class="text-xs mt-1 opacity-75">
+
+                                {{ \Morilog\Jalali\Jalalian::fromCarbon($message->created_at)->format('H:i') }}
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                @empty
+
+                    <div class="text-center text-gray-500 py-8">
+
+                        <i class="fas fa-comments text-4xl mb-2"></i>
+
+                        <p>هنوز پیامی ارسال نشده است</p>
+
+                        <p class="text-sm mt-1">پیام خود را در کادر پایین تایپ کنید</p>
+
+                    </div>
+
+                @endforelse
+
+            </div>
+
+
+
+            <!-- فرم ارسال پیام -->
+
+            @if($chat->status !== 'closed' && $chat->status !== 'resolved')
+
+                <div class="p-4 border-t" style="border-color: var(--color-gray-200);">
+
+                    <form id="chatForm" onsubmit="sendMessage(event)" class="flex items-end gap-2">
+
+                        @csrf
+
+                        <div class="flex-1">
+
+                            <textarea id="messageInput" 
+
+                                      rows="3"
+
+                                      placeholder="پیام خود را بنویسید..."
+
+                                      class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+
+                                      style="border-color: var(--color-gray-300);"></textarea>
+
+                            <input type="file" 
+
+                                   id="attachmentsInput" 
+
+                                   multiple 
+
+                                   accept="image/*,.pdf,.doc,.docx,.txt,.zip,.rar"
+
+                                   class="mt-2 text-sm">
+
+                        </div>
+
+                        <button type="submit" 
+
+                                class="px-6 py-2 text-white rounded-lg font-semibold transition-colors hover:opacity-90"
+
+                                style="background-color: var(--color-ocean-blue);">
+
+                            <i class="fas fa-paper-plane ml-1"></i>
+
+                            ارسال
+
+                        </button>
+
+                    </form>
+
+                </div>
+
+            @else
+
+                <div class="p-4 border-t text-center text-gray-500" style="border-color: var(--color-gray-200);">
+
+                    <p>این چت بسته شده است</p>
+
+                    @if($chat->ticket_id)
+
+                        <a href="{{ route('user.tickets.show', $chat->ticket_id) }}" 
+
+                           class="text-blue-600 hover:underline mt-2 inline-block">
+
+                            مشاهده تیکت مرتبط
+
+                        </a>
+
+                    @endif
+
+                </div>
+
+            @endif
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- Modal تبدیل به تیکت -->
+
+<div id="convertTicketModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+
+    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4" style="background-color: var(--color-pure-white);">
+
+        <h3 class="text-lg font-bold mb-4" style="color: var(--color-gentle-black);">تبدیل چت به تیکت</h3>
+
+        <form id="convertTicketForm" onsubmit="submitConvertTicket(event)">
+
+            @csrf
+
+            <div class="mb-4">
+
+                <label class="block text-sm font-semibold mb-2" style="color: var(--color-gentle-black);">موضوع تیکت</label>
+
+                <input type="text" 
+
+                       name="subject" 
+
+                       required
+
+                       class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+
+                       style="border-color: var(--color-gray-300);">
+
+            </div>
+
+            <div class="mb-4">
+
+                <label class="block text-sm font-semibold mb-2" style="color: var(--color-gentle-black);">دسته</label>
+
+                <select name="category" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+
+                        style="border-color: var(--color-gray-300);">
+
+                    <option value="general">عمومی</option>
+
+                    <option value="technical">مشکل فنی</option>
+
+                    <option value="account">حساب کاربری</option>
+
+                    <option value="payment">پرداخت</option>
+
+                </select>
+
+            </div>
+
+            <div class="mb-4">
+
+                <label class="block text-sm font-semibold mb-2" style="color: var(--color-gentle-black);">اولویت</label>
+
+                <select name="priority" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+
+                        style="border-color: var(--color-gray-300);">
+
+                    <option value="normal">عادی</option>
+
+                    <option value="low">پایین</option>
+
+                    <option value="high">بالا</option>
+
+                </select>
+
+            </div>
+
+            <div class="flex items-center justify-end gap-2">
+
+                <button type="button" 
+
+                        onclick="closeConvertTicketModal()"
+
+                        class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+
+                    انصراف
+
+                </button>
+
+                <button type="submit" 
+
+                        class="px-4 py-2 text-white rounded-lg font-semibold transition-colors"
+
+                        style="background-color: var(--color-purple-600);">
+
+                    تبدیل
+
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+
+@push('scripts')
+
+<!-- Pusher & Echo for Real-time -->
+
+<script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+
+<script>
+
+    // متغیرهای global
+
+    window.chatId = {{ $chat->id }};
+
+    window.userId = {{ auth()->id() }};
+
+    window.pusherChannel = null;
+
+    window.isPusherActive = false;
+
+    
+
+    // Initialize Pusher
+
+    const pusherKey = '{{ config("broadcasting.connections.pusher.key") }}';
+
+    const pusherCluster = '{{ config("broadcasting.connections.pusher.options.cluster") }}';
+
+    
+
+    // اگر Pusher تنظیم شده باشد
+
+    if (pusherKey && pusherKey !== 'null' && pusherKey !== '' && typeof Pusher !== 'undefined') {
+
+        try {
+
+            const pusher = new Pusher(pusherKey, {
+
+                cluster: pusherCluster || 'mt1',
+
+                encrypted: true,
+
+                authEndpoint: '/broadcasting/auth',
+
+                auth: {
+
+                    headers: {
+
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+
+                    }
+
+                }
+
+            });
+
+            
+
+            // Subscribe to support chat channel
+
+            window.pusherChannel = pusher.subscribe('private-support-chat.{{ $chat->id }}');
+
+            window.isPusherActive = true;
+
+            
+
+            // Listen for new messages
+
+            window.pusherChannel.bind('message.sent', function(data) {
+
+                console.log('New message received via Pusher:', data);
+
+                if (typeof addMessageToChat === 'function') {
+
+                    addMessageToChat(data);
+
+                }
+
+            });
+
+            
+
+            console.log('Pusher initialized successfully');
+
+        } catch (error) {
+
+            console.error('Error initializing Pusher:', error);
+
+            window.isPusherActive = false;
+
+        }
+
+    } else {
+
+        console.log('Pusher not configured, using manual refresh');
+
+        window.isPusherActive = false;
+
+    }
+
+</script>
+
+
+
+<script>
+
+    const chatId = window.chatId;
+
+    const userId = window.userId;
+
+    
+
+    // اسکرول به پایین
+
+    function scrollToBottom() {
+
+        const messagesDiv = document.getElementById('chatMessages');
+
+        if (messagesDiv) {
+
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+        }
+
+    }
+
+    
+
+    scrollToBottom();
+
+
+
+    // اضافه کردن پیام به چت (برای real-time)
+
+    function addMessageToChat(data) {
+
+        const messagesDiv = document.getElementById('chatMessages');
+
+        if (!messagesDiv) return;
+
+        
+
+        // بررسی که آیا پیام قبلاً نمایش داده شده یا نه
+
+        const existingMessage = document.querySelector(`[data-message-id="${data.id}"]`);
+
+        if (existingMessage) {
+
+            return; // پیام قبلاً نمایش داده شده
+
+        }
+
+        
+
+        const isUserMessage = data.user_id === userId;
+
+        const messageDiv = document.createElement('div');
+
+        messageDiv.className = `flex ${isUserMessage ? 'justify-end' : 'justify-start'}`;
+
+        messageDiv.setAttribute('data-message-id', data.id);
+
+        
+
+        const messageClass = isUserMessage 
+
+            ? 'bg-blue-600 text-white' 
+
+            : (data.type === 'system' ? 'bg-gray-200 text-gray-700' : 'bg-white border');
+
+        
+
+        let attachmentsHtml = '';
+
+        if (data.attachments && data.attachments.length > 0) {
+
+            attachmentsHtml = '<div class="mt-2 space-y-1">';
+
+            data.attachments.forEach(attachment => {
+
+                attachmentsHtml += `
+
+                    <a href="/storage/${attachment.file_path}" 
+
+                       target="_blank"
+
+                       class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-black bg-opacity-10 hover:bg-opacity-20 transition-colors">
+
+                        <i class="fas fa-paperclip"></i>
+
+                        ${attachment.file_name}
+
+                    </a>
+
+                `;
+
+            });
+
+            attachmentsHtml += '</div>';
+
+        }
+
+        
+
+        const time = new Date(data.created_at).toLocaleTimeString('fa-IR', { 
+
+            hour: '2-digit', 
+
+            minute: '2-digit' 
+
+        });
+
+        
+
+        messageDiv.innerHTML = `
+
+            <div class="max-w-md rounded-lg p-3 ${messageClass}" 
+
+                 style="${!isUserMessage && data.type !== 'system' ? 'border-color: var(--color-gray-200);' : ''}">
+
+                ${data.type !== 'system' ? `
+
+                    <div class="text-xs mb-1 opacity-75">
+
+                        ${data.user.name}
+
+                    </div>
+
+                ` : ''}
+
+                <div class="text-sm whitespace-pre-wrap">${escapeHtml(data.message)}</div>
+
+                ${attachmentsHtml}
+
+                <div class="text-xs mt-1 opacity-75">
+
+                    ${time}
+
+                </div>
+
+            </div>
+
+        `;
+
+        
+
+        messagesDiv.appendChild(messageDiv);
+
+        scrollToBottom();
+
+    }
+
+    
+
+    // Escape HTML برای جلوگیری از XSS
+
+    function escapeHtml(text) {
+
+        const div = document.createElement('div');
+
+        div.textContent = text;
+
+        return div.innerHTML;
+
+    }
+
+
+
+    // ارسال پیام
+
+    async function sendMessage(e) {
+
+        e.preventDefault();
+
+        
+
+        const messageInput = document.getElementById('messageInput');
+
+        const attachmentsInput = document.getElementById('attachmentsInput');
+
+        const formData = new FormData();
+
+        
+
+        formData.append('message', messageInput.value);
+
+        formData.append('_token', document.querySelector('input[name="_token"]').value);
+
+        
+
+        if (attachmentsInput.files.length > 0) {
+
+            for (let i = 0; i < attachmentsInput.files.length; i++) {
+
+                formData.append('attachments[]', attachmentsInput.files[i]);
+
+            }
+
+        }
+
+        
+
+        if (!messageInput.value.trim() && attachmentsInput.files.length === 0) {
+
+            return;
+
+        }
+
+        
+
+        try {
+
+            const response = await fetch(`/support-chat/${chatId}/message`, {
+
+                method: 'POST',
+
+                body: formData
+
+            });
+
+            
+
+            const data = await response.json();
+
+            
+
+            if (data.success) {
+
+                messageInput.value = '';
+
+                attachmentsInput.value = '';
+
+                // اگر Pusher فعال نیست، پیام را مستقیم اضافه کن
+
+                if (!window.isPusherActive && data.message) {
+
+                    setTimeout(() => {
+
+                        if (typeof addMessageToChat === 'function') {
+
+                            const userData = data.message.user || {};
+
+                            addMessageToChat({
+
+                                id: data.message.id,
+
+                                support_chat_id: data.message.support_chat_id,
+
+                                user_id: data.message.user_id,
+
+                                type: data.message.type,
+
+                                message: data.message.message,
+
+                                attachments: data.message.attachments,
+
+                                created_at: data.message.created_at,
+
+                                user: {
+
+                                    id: userData.id || userId,
+
+                                    name: userData.name || (userData.first_name && userData.last_name ? userData.first_name + ' ' + userData.last_name : 'کاربر')
+
+                                }
+
+                            });
+
+                        }
+
+                    }, 500);
+
+                }
+
+            } else {
+
+                alert('خطا در ارسال پیام: ' + (data.error || 'خطای نامشخص'));
+
+            }
+
+        } catch (error) {
+
+            alert('خطا در ارسال پیام');
+
+            console.error(error);
+
+        }
+
+    }
+
+
+
+    // بارگذاری پیام‌های جدید (بدون refresh - فقط پیام‌های جدید را اضافه می‌کند)
+
+    let lastMessageId = null;
+
+    async function loadNewMessages() {
+
+        try {
+
+            const response = await fetch(`/support-chat/${chatId}/messages`);
+
+            const data = await response.json();
+
+            
+
+            if (data.success && data.messages && data.messages.length > 0) {
+
+                // پیدا کردن آخرین پیام موجود در صفحه
+
+                const existingMessages = document.querySelectorAll('[data-message-id]');
+
+                const existingIds = Array.from(existingMessages).map(el => parseInt(el.getAttribute('data-message-id')));
+
+                
+
+                // اضافه کردن فقط پیام‌های جدید
+
+                data.messages.forEach(message => {
+
+                    if (!existingIds.includes(message.id)) {
+
+                        if (typeof addMessageToChat === 'function') {
+
+                            addMessageToChat({
+
+                                id: message.id,
+
+                                support_chat_id: message.support_chat_id,
+
+                                user_id: message.user_id,
+
+                                type: message.type,
+
+                                message: message.message,
+
+                                attachments: message.attachments,
+
+                                created_at: message.created_at,
+
+                                user: message.user ? {
+
+                                    id: message.user.id,
+
+                                    name: message.user.name || (message.user.first_name + ' ' + message.user.last_name)
+
+                                } : { id: userId, name: 'کاربر' }
+
+                            });
+
+                        }
+
+                    }
+
+                });
+
+            }
+
+        } catch (error) {
+
+            console.error('Error loading messages:', error);
+
+        }
+
+    }
+
+
+
+    // تبدیل به تیکت
+
+    function convertToTicket() {
+
+        document.getElementById('convertTicketModal').classList.remove('hidden');
+
+    }
+
+
+
+    function closeConvertTicketModal() {
+
+        document.getElementById('convertTicketModal').classList.add('hidden');
+
+    }
+
+
+
+    async function submitConvertTicket(e) {
+
+        e.preventDefault();
+
+        
+
+        const formData = new FormData(e.target);
+
+        
+
+        try {
+
+            const response = await fetch(`/support-chat/${chatId}/convert-to-ticket`, {
+
+                method: 'POST',
+
+                body: formData
+
+            });
+
+            
+
+            const data = await response.json();
+
+            
+
+            if (data.success) {
+
+                alert('چت با موفقیت به تیکت تبدیل شد. کد پیگیری: ' + data.tracking_code);
+
+                window.location.href = `/tickets/${data.ticket_id}`;
+
+            } else {
+
+                alert('خطا در تبدیل چت به تیکت: ' + (data.error || 'خطای نامشخص'));
+
+            }
+
+        } catch (error) {
+
+            alert('خطا در تبدیل چت به تیکت');
+
+            console.error(error);
+
+        }
+
+    }
+
+
+
+    // بستن چت
+
+    async function closeChat() {
+
+        if (!confirm('آیا مطمئن هستید که می‌خواهید این چت را ببندید؟')) {
+
+            return;
+
+        }
+
+        
+
+        try {
+
+            const response = await fetch(`/support-chat/${chatId}/close`, {
+
+                method: 'POST',
+
+                headers: {
+
+                    'Content-Type': 'application/json',
+
+                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+
+                }
+
+            });
+
+            
+
+            const data = await response.json();
+
+            
+
+            if (data.success) {
+
+                location.reload();
+
+            } else {
+
+                alert('خطا در بستن چت: ' + (data.error || 'خطای نامشخص'));
+
+            }
+
+        } catch (error) {
+
+            alert('خطا در بستن چت');
+
+            console.error(error);
+
+        }
+
+    }
+
+
+
+    // Fallback: بارگذاری خودکار پیام‌های جدید هر 10 ثانیه (فقط اگر Pusher کار نمی‌کند)
+
+    // فقط پیام‌های جدید را اضافه می‌کند، نه refresh کامل
+
+    if (!window.isPusherActive) {
+
+        // اولین بار بعد از 2 ثانیه
+
+        setTimeout(() => {
+
+            loadNewMessages();
+
+        }, 2000);
+
+        
+
+        // سپس هر 10 ثانیه یکبار
+
+        setInterval(() => {
+
+            loadNewMessages();
+
+        }, 10000);
+
+    }
+
+</script>
+
+@endpush
+
+@endsection
+
+
+
+
+
+
+
+
+
+
+

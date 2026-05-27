@@ -1,804 +1,1608 @@
-@extends('layouts.unified')
-
-@section('title', 'ایجاد پروژه جدید - نجم بهار')
-
-@section('content')
-<div class="container mx-auto px-4 py-8" dir="rtl">
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">ایجاد پروژه جدید</h1>
-        <p class="text-gray-600 mt-2">اطلاعات کامل پروژه را وارد کنید. تمام بخش‌های مشخص شده با * الزامی است.</p>
-    </div>
-
-    @if ($errors->any())
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-            <strong class="block">خطاهای موجود:</strong>
-            <ul class="list-disc pr-6 mt-2">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
-    <form method="POST" action="{{ route('najm-bahar.projects.store') }}" enctype="multipart/form-data" class="bg-white rounded-lg shadow">
-        @csrf
-
-        <!-- SECTION 1: IDENTITY -->
-        <div class="p-6 border-b border-gray-200">
-            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">1</span>
-                شناسایی پروژه
-            </h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">عنوان پروژه <span class="text-red-600">*</span></label>
-                    <input type="text" name="title" value="{{ old('title') }}" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                        required>
-                    @error('title') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">نوع پروژه <span class="text-red-600">*</span></label>
-                    <select name="project_type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        <option value="">انتخاب کنید</option>
-                        <option value="production" {{ old('project_type') === 'production' ? 'selected' : '' }}>تولیدی</option>
-                        <option value="service" {{ old('project_type') === 'service' ? 'selected' : '' }}>خدماتی</option>
-                        <option value="infrastructure" {{ old('project_type') === 'infrastructure' ? 'selected' : '' }}>زیرساخت</option>
-                        <option value="research" {{ old('project_type') === 'research' ? 'selected' : '' }}>تحقیقی</option>
-                        <option value="social" {{ old('project_type') === 'social' ? 'selected' : '' }}>اجتماعی</option>
-                    </select>
-                    @error('project_type') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">میزان دید پروژه <span class="text-red-600">*</span></label>
-                    <select name="project_visibility" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        <option value="">انتخاب کنید</option>
-                        <option value="public" {{ old('project_visibility') === 'public' ? 'selected' : '' }}>عمومی</option>
-                        <option value="private" {{ old('project_visibility') === 'private' ? 'selected' : '' }}>خصوصی</option>
-                    </select>
-                    @error('project_visibility') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">مرحله پروژه <span class="text-red-600">*</span></label>
-                    <select name="project_stage" id="project_stage" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        <option value="">انتخاب کنید</option>
-                        <option value="idea" {{ old('project_stage') === 'idea' ? 'selected' : '' }}>ایده</option>
-                        <option value="documented" {{ old('project_stage') === 'documented' ? 'selected' : '' }}>مستند‌شده</option>
-                        <option value="prototype" {{ old('project_stage') === 'prototype' ? 'selected' : '' }}>نمونه‌سازی</option>
-                        <option value="active" {{ old('project_stage') === 'active' ? 'selected' : '' }}>فعال</option>
-                    </select>
-                    @error('project_stage') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-            </div>
-        </div>
-
-        <!-- SECTION 2: MATURITY & CATEGORY -->
-        <div class="p-6 border-b border-gray-200">
-            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">2</span>
-                رسالت و دسته‌بندی
-            </h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">دسته‌بندی سطح ۱ <span class="text-red-600">*</span></label>
-                    <select name="category_level1_id" id="category_level1" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        <option value="">انتخاب کنید</option>
-                        @foreach($categories as $category)
-                            <option value="{{ $category->id }}" {{ old('category_level1_id') == $category->id ? 'selected' : '' }}>
-                                {{ $category->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('category_level1_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">دسته‌بندی سطح ۲</label>
-                    <select name="category_level2_id" id="category_level2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">انتخاب کنید</option>
-                    </select>
-                    @error('category_level2_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">دسته‌بندی سطح ۳</label>
-                    <select name="category_level3_id" id="category_level3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">انتخاب کنید</option>
-                    </select>
-                    @error('category_level3_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-            </div>
-
-            <div id="existing_assets_section" style="display: none;">
-                <label class="block text-sm font-medium text-gray-700 mb-2">دارایی‌های موجود</label>
-                <p class="text-xs text-gray-500 mb-2">توضیح دهید که چه دارایی‌های موجودی برای این پروژه وجود دارد</p>
-                <textarea name="existing_assets" rows="3" 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="مثلاً: تجهیزات، فضا، تیم متخصص، ...">{{ old('existing_assets') }}</textarea>
-                @error('existing_assets') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-            </div>
-        </div>
-
-        <!-- SECTION 3: PROBLEM & SOLUTION -->
-        <div class="p-6 border-b border-gray-200">
-            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">3</span>
-                مسئله و راه‌حل
-            </h2>
-
-            <div class="space-y-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">بیان مسئله <span class="text-red-600">*</span></label>
-                    <p class="text-xs text-gray-500 mb-2">به‌طور واضح توضیح دهید که چه مسئله‌ای را حل می‌کند</p>
-                    <textarea name="problem_statement" rows="4" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required>{{ old('problem_statement') }}</textarea>
-                    @error('problem_statement') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">توضیح راه‌حل <span class="text-red-600">*</span></label>
-                    <p class="text-xs text-gray-500 mb-2">چگونه این پروژه مسئله را حل می‌کند؟</p>
-                    <textarea name="solution_description" rows="4" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required>{{ old('solution_description') }}</textarea>
-                    @error('solution_description') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">پیشنهاد ارزش</label>
-                    <p class="text-xs text-gray-500 mb-2">مقدار و فوائد منحصر به‌فردی که این پروژه ارائه می‌دهد</p>
-                    <textarea name="value_proposition" rows="3" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="مثلاً: کاهش هزینه 30٪، بهبود کیفیت، ...">{{ old('value_proposition') }}</textarea>
-                    @error('value_proposition') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">بازار هدف <span class="text-red-600">*</span></label>
-                    <p class="text-xs text-gray-500 mb-2">مشخص کنید بازار هدف کیست</p>
-                    <select name="target_market" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        <option value="">انتخاب کنید</option>
-                        <option value="local" {{ old('target_market') === 'local' ? 'selected' : '' }}>محلی</option>
-                        <option value="professional" {{ old('target_market') === 'professional' ? 'selected' : '' }}>حرفه‌ای</option>
-                        <option value="general" {{ old('target_market') === 'general' ? 'selected' : '' }}>عمومی</option>
-                        <option value="external" {{ old('target_market') === 'external' ? 'selected' : '' }}>بین‌المللی</option>
-                    </select>
-                    @error('target_market') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-            </div>
-
-            <!-- Geographic Scope for Target Market -->
-            <div id="geographic-scope-section" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h3 class="text-sm font-bold text-blue-900 mb-4 flex items-center gap-2">
-                    <i class="fas fa-map-marker-alt"></i>
-                    محدوده جغرافیایی بازار هدف
-                </h3>
-                <p class="text-xs text-blue-800 mb-4">محدوده جغرافیایی مورد نظر برای پروژه را به‌صورت تفصیلی انتخاب کنید (اختیاری). این اطلاعات برای ارسال نوتیفیکیشن هدفمند به سرمایه‌گذاران استفاده می‌شود.</p>
-                
-                <div id="location-selects">
-                    <!-- قاره (سطح 1) -->
-                    <div class="level-container mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fas fa-globe" style="color: var(--color-ocean-blue);"></i> قاره:
-                        </label>
-                        <select id="geographic_continent_select" name="geographic_continent_id" class="location-select w-full px-3 py-2 border border-gray-300 rounded-md" data-level="1">
-                            <option value="">انتخاب کنید</option>
-                        </select>
-                        @error('geographic_continent_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    </div>
-                </div>
-
-                <!-- Geographic Path Display -->
-                <div id="geographic_path_display" class="mt-4 p-3 bg-white border border-blue-200 rounded text-sm text-gray-700" style="display: none;">
-                    <strong>مسیر انتخاب شده:</strong> <span id="path-text">نشده</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- SECTION 3.5: INVESTMENT METHOD SELECTION -->
-        <div class="p-6 border-b border-gray-200">
-            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">3.5</span>
-                انتخاب روش سرمایه‌گذاری
-            </h2>
-
-            <p class="text-sm text-gray-600 mb-6">یکی از دو روش زیر را انتخاب کنید. هر روش نیازمند اطلاعات متفاوتی است.</p>
-
-            <div class="space-y-4">
-                <label class="flex items-start gap-4 p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-blue-50 transition-colors" id="method-auction-label">
-                    <input type="radio" name="investment_method" value="auction_shares" 
-                        class="mt-1 w-5 h-5 text-blue-600 cursor-pointer" 
-                        {{ old('investment_method', 'capital_participation') === 'auction_shares' ? 'checked' : '' }}>
-                    <div class="flex-1">
-                        <h3 class="font-semibold text-gray-900">بازار سهام و مزایده</h3>
-                        <p class="text-sm text-gray-600 mt-1">پروژه دارای حداقل و حداکثر ارزش پایه است و سهام آن در مزایده‌های دوره‌ای فروخته می‌شود. سرمایه‌گذاران می‌توانند با خریداری سهام بخشی از مالکیت را کسب کنند.</p>
-                        <div class="mt-3 text-xs bg-blue-100 text-blue-900 p-2 rounded">
-                            <strong>نیازمند:</strong> حداقل ارزش، حداکثر ارزش، کل سهام، درصد سهام در مزایده
-                        </div>
-                    </div>
-                </label>
-
-                <label class="flex items-start gap-4 p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-green-50 transition-colors" id="method-participation-label">
-                    <input type="radio" name="investment_method" value="capital_participation" 
-                        class="mt-1 w-5 h-5 text-green-600 cursor-pointer" 
-                        {{ old('investment_method', 'capital_participation') === 'capital_participation' ? 'checked' : '' }}>
-                    <div class="flex-1">
-                        <h3 class="font-semibold text-gray-900">مشارکت سرمایه مستقیم</h3>
-                        <p class="text-sm text-gray-600 mt-1">سرمایه‌گذاران مبلغی تعیین‌شده سرمایه می‌گذارند و درصدی از سود پروژه را دریافت می‌کنند. بدون مکانیکس سهام، فقط سهم سود.</p>
-                        <div class="mt-3 text-xs bg-green-100 text-green-900 p-2 rounded">
-                            <strong>نیازمند:</strong> سرمایه مورد‌نیاز، درصد سود، مدت سرمایه‌گذاری
-                        </div>
-                    </div>
-                </label>
-            </div>
-
-            @error('investment_method') <span class="text-red-500 text-sm mt-2 block">{{ $message }}</span> @enderror
-        </div>
-
-        <!-- SECTION 4: VALUATION -->
-        <div class="p-6 border-b border-gray-200">
-            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">4</span>
-                ارزش‌گذاری و سرمایه
-            </h2>
-
-            <!-- Fields for Auction Method (bazare_sahame) -->
-            <div class="investment-fields investment-auction" style="display: none;">
-                <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h3 class="font-semibold text-blue-900 mb-3">فیلدهای روش بازار سهام</h3>
-                    <p class="text-sm text-blue-800">دو ارزش اصلی که پروژه را برای مزایده تعریف می‌کند:</p>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">حداقل ارزش پایه (گل) <span class="text-red-600">*</span></label>
-                        <p class="text-xs text-gray-500 mb-2">کمترین ارزش پروژه براساس دارایی‌ها و پتانسیل</p>
-                        <input type="number" name="base_value_min" value="{{ old('base_value_min') }}" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            min="1" step="1000">
-                        @error('base_value_min') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">حداکثر ارزش پایه (گل) <span class="text-red-600">*</span></label>
-                        <p class="text-xs text-gray-500 mb-2">بیشترین ارزش براساس سناریو بهینه</p>
-                        <input type="number" name="base_value_max" value="{{ old('base_value_max') }}" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            min="1" step="1000">
-                        @error('base_value_max') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    </div>
-                </div>
-            </div>
-
-            <!-- Fields for Participation Method (Mosharekat) -->
-            <div class="investment-fields investment-participation" style="display: none;">
-                <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <h3 class="font-semibold text-green-900 mb-3">فیلدهای روش مشارکت سرمایه</h3>
-                    <p class="text-sm text-green-800">اطلاعات سرمایه و سود برای سرمایه‌گذاران:</p>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">مبلغ سرمایه مورد نیاز (گل) <span class="text-red-600">*</span></label>
-                        <p class="text-xs text-gray-500 mb-2">سرمایه ای که برای شروع پروژه نیاز است</p>
-                        <input type="number" name="required_capital" value="{{ old('required_capital') }}" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            min="1" step="1000">
-                        @error('required_capital') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">درصد سود پیشنهادی <span class="text-red-600">*</span></label>
-                        <p class="text-xs text-gray-500 mb-2">درصد سود مورد انتظار برای سرمایه گذاران</p>
-                        <input type="number" name="profit_percentage" value="{{ old('profit_percentage') }}" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            min="0.01" max="100" step="0.01">
-                        @error('profit_percentage') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">مدت سرمایه گذاری (ماه) <span class="text-red-600">*</span></label>
-                        <p class="text-xs text-gray-500 mb-2">مدت زمان بازگشت سرمایه و سود</p>
-                        <input type="number" name="investment_duration_months" value="{{ old('investment_duration_months') }}" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            min="1">
-                        @error('investment_duration_months') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- SECTION 5: SHARE STRUCTURE (Only for Auction) -->
-        <div class="investment-fields investment-auction p-6 border-b border-gray-200" style="display: none;">
-            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">5</span>
-                ساختار سهام و مزایده
-            </h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">کل سهام <span class="text-red-600">*</span></label>
-                    <p class="text-xs text-gray-500 mb-2">تعداد سهام کل که کلاً می‌توان فروخت</p>
-                    <input type="number" name="total_shares" value="{{ old('total_shares', 100) }}" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        min="1">
-                    @error('total_shares') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">درصد سهام آغازین مزایده (%) <span class="text-red-600">*</span></label>
-                    <p class="text-xs text-gray-500 mb-2">چند درصد سهام در مزایده اول معرفی شود</p>
-                    <input type="number" name="initial_auction_percent" value="{{ old('initial_auction_percent', 30) }}" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        min="1" max="100" step="0.1">
-                    @error('initial_auction_percent') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">حداکثر مالکیت هر کاربر (%) <span class="text-red-600">*</span></label>
-                    <p class="text-xs text-gray-500 mb-2">یک سرمایه‌گذار حداکثر چند درصد می‌تواند مالک باشد</p>
-                    <input type="number" name="max_user_ownership_percent" value="{{ old('max_user_ownership_percent', 20) }}" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        min="0.1" max="100" step="0.1">
-                    @error('max_user_ownership_percent') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">دوره مزایده <span class="text-red-600">*</span></label>
-                    <p class="text-xs text-gray-500 mb-2">هر چند وقت یک بار میزایده‌های جدیدی برگزار شود</p>
-                    <select name="auction_period" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">انتخاب کنید</option>
-                        <option value="monthly" {{ old('auction_period') === 'monthly' ? 'selected' : '' }}>ماهیانه</option>
-                        <option value="quarterly" {{ old('auction_period') === 'quarterly' ? 'selected' : '' }}>فصلی</option>
-                        <option value="semi_annual" {{ old('auction_period') === 'semi_annual' ? 'selected' : '' }}>نیم‌ساله</option>
-                        <option value="annual" {{ old('auction_period') === 'annual' ? 'selected' : '' }}>سالانه</option>
-                    </select>
-                    @error('auction_period') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-            </div>
-        </div>
-
-        <!-- SECTION 6: RISK ASSESSMENT -->
-        <div class="p-6 border-b border-gray-200">
-            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">6</span>
-                ارزیابی ریسک‌ها
-            </h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">سطح ریسک <span class="text-red-600">*</span></label>
-                    <p class="text-xs text-gray-500 mb-2">ریسک کلی این پروژه را ارزیابی کنید</p>
-                    <select name="risk_level" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        <option value="">انتخاب کنید</option>
-                        <option value="low" {{ old('risk_level') === 'low' ? 'selected' : '' }}>کم</option>
-                        <option value="medium" {{ old('risk_level') === 'medium' ? 'selected' : '' }}>متوسط</option>
-                        <option value="high" {{ old('risk_level') === 'high' ? 'selected' : '' }}>زیاد</option>
-                    </select>
-                    @error('risk_level') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">نوع نظارت <span class="text-red-600">*</span></label>
-                    <p class="text-xs text-gray-500 mb-2">چگونه بر پروژه نظارت شود</p>
-                    <select name="oversight_type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        <option value="">انتخاب کنید</option>
-                        <option value="guild" {{ old('oversight_type') === 'guild' ? 'selected' : '' }}>نظارت در صنف</option>
-                        <option value="insurance" {{ old('oversight_type') === 'insurance' ? 'selected' : '' }}>بیمه</option>
-                        <option value="both" {{ old('oversight_type') === 'both' ? 'selected' : '' }}>هر دو</option>
-                        <option value="none" {{ old('oversight_type') === 'none' ? 'selected' : '' }}>بدون نظارت خاص</option>
-                    </select>
-                    @error('oversight_type') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">ریسک‌های اصلی</label>
-                <p class="text-xs text-gray-500 mb-2">مهم‌ترین ریسک‌های این پروژه را لیست کنید (هر کدام در یک خط)</p>
-                <textarea name="main_risks" rows="4" 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="ریسک ۱&#10;ریسک ۲&#10;ریسک ۳">{{ old('main_risks') }}</textarea>
-                @error('main_risks') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-            </div>
-        </div>
-
-        <!-- SECTION 7: REPORTING & COMMITMENTS -->
-        <div class="p-6 border-b border-gray-200">
-            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">7</span>
-                گزارش‌دهی و تعهدات
-            </h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">دوره گزارش‌دهی <span class="text-red-600">*</span></label>
-                    <p class="text-xs text-gray-500 mb-2">چگاه گزارش‌های پیشرفت ارائه شود</p>
-                    <select name="reporting_interval" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        <option value="">انتخاب کنید</option>
-                        <option value="monthly" {{ old('reporting_interval') === 'monthly' ? 'selected' : '' }}>ماهیانه</option>
-                        <option value="quarterly" {{ old('reporting_interval') === 'quarterly' ? 'selected' : '' }}>فصلی</option>
-                        <option value="semi_annual" {{ old('reporting_interval') === 'semi_annual' ? 'selected' : '' }}>نیم‌ساله</option>
-                        <option value="annual" {{ old('reporting_interval') === 'annual' ? 'selected' : '' }}>سالانه</option>
-                    </select>
-                    @error('reporting_interval') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">دامنه استفاده سرمایه</label>
-                    <input type="text" value="تنها برای پروژه" disabled
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
-                        title="این فیلد توسط سیستم تعیین می‌شود">
-                    <input type="hidden" name="fund_usage_scope" value="project_only">
-                    <p class="text-xs text-gray-500 mt-1">سرمایه تنها برای این پروژه قابل استفاده است</p>
-                </div>
-            </div>
-
-            <div class="border border-yellow-200 bg-yellow-50 rounded-md p-4 mb-6">
-                <label class="flex items-start gap-3">
-                    <input type="checkbox" name="accept_transparency" value="1" 
-                        {{ old('accept_transparency') ? 'checked' : '' }} 
-                        class="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                        required>
-                    <div>
-                        <span class="block text-sm font-medium text-gray-900">تعهد به شفاف‌سازی و گزارش‌دهی <span class="text-red-600">*</span></span>
-                        <p class="text-xs text-gray-600 mt-1">تا پایان سال مالی، برای موضوع گزارش جامع ارائه می‌دهم و از پروژه خود اطلاعات شفاف می‌دهم.</p>
-                    </div>
-                </label>
-                @error('accept_transparency') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-            </div>
-        </div>
-
-        <!-- SECTION 8: CONTINGENCY & FAILURE POLICY -->
-        <div class="p-6 border-b border-gray-200">
-            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">8</span>
-                سیاست شکست و ارزش‌گذاری
-            </h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">سیاست در صورت شکست <span class="text-red-600">*</span></label>
-                    <p class="text-xs text-gray-500 mb-2">اگر پروژه ناموفق شود چه اتفاقی می‌افتد</p>
-                    <select name="failure_policy" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        <option value="">انتخاب کنید</option>
-                        <option value="refund" {{ old('failure_policy') === 'refund' ? 'selected' : '' }}>بازپرداخت</option>
-                        <option value="asset_conversion" {{ old('failure_policy') === 'asset_conversion' ? 'selected' : '' }}>تبدیل به دارایی</option>
-                        <option value="vote" {{ old('failure_policy') === 'vote' ? 'selected' : '' }}>رای‌گیری بین سرمایه‌گذاران</option>
-                    </select>
-                    @error('failure_policy') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">راهبر تحدیث ارزش <span class="text-red-600">*</span></label>
-                    <p class="text-xs text-gray-500 mb-2">ارزش پروژه بر اساس چی تحدیث شود</p>
-                    <select name="value_update_trigger" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        <option value="">انتخاب کنید</option>
-                        <option value="stage_progress" {{ old('value_update_trigger') === 'stage_progress' ? 'selected' : '' }}>پیشرفت مراحل</option>
-                        <option value="oversight_approval" {{ old('value_update_trigger') === 'oversight_approval' ? 'selected' : '' }}>تایید نظارت</option>
-                    </select>
-                    @error('value_update_trigger') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-            </div>
-        </div>
-
-        <!-- SECTION 9: COMPLIANCE & RULES -->
-        <div class="p-6 border-b border-gray-200">
-            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">9</span>
-                تعهدات و قوانین
-            </h2>
-
-            <div class="border border-red-200 bg-red-50 rounded-md p-4">
-                <label class="flex items-start gap-3">
-                    <input type="checkbox" name="accept_rules" value="1" 
-                        {{ old('accept_rules') ? 'checked' : '' }} 
-                        class="mt-1 w-4 h-4 text-red-600 rounded focus:ring-2 focus:ring-red-500 cursor-pointer"
-                        required>
-                    <div>
-                        <span class="block text-sm font-medium text-gray-900">پذیرش شرایط و مقررات <span class="text-red-600">*</span></span>
-                        <p class="text-xs text-gray-600 mt-1">
-                            من تمام شرایط و مقررات نجم بهار را قرائت کرده‌ام و قبول می‌کنم. 
-                            <a href="#" class="text-blue-600 hover:underline">مقررات را ببینید</a>
-                        </p>
-                    </div>
-                </label>
-                @error('accept_rules') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-            </div>
-        </div>
-
-        <!-- SECTION 10: ATTACHMENTS & SUMMARY -->
-        <div class="p-6 border-b border-gray-200">
-            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">10</span>
-                خلاصه و پیوست‌ها
-            </h2>
-
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">خلاصه پروژه</label>
-                <p class="text-xs text-gray-500 mb-2">توضیح کوتاه پروژه (حداکثر ۵۰۰ کلمه)</p>
-                <textarea name="summary" rows="4" 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="یک خلاصه مختصر از پروژه">{{ old('summary') }}</textarea>
-                @error('summary') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-            </div>
-
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">توضیحات کامل</label>
-                <textarea name="description" rows="6" 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="توضیحات جزئی‌تر درباره پروژه">{{ old('description') }}</textarea>
-                @error('description') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">پیوست‌ها</label>
-                <p class="text-xs text-gray-500 mb-2">فرمت‌های مجاز: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG</p>
-                <input type="file" name="attachments[]" multiple 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                @error('attachments.*') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-            </div>
-        </div>
-
-        <!-- ACTIONS -->
-        <div class="p-6 bg-gray-50 border-t border-gray-200 flex gap-3">
-            <button type="submit" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md shadow">
-                ذخیره و ارسال برای تایید
-            </button>
-            <a href="{{ route('najm-bahar.projects.index') }}" class="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-md">
-                بازگشت
-            </a>
-        </div>
-    </form>
-</div>
-
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const level1 = document.getElementById('category_level1');
-    const level2 = document.getElementById('category_level2');
-    const level3 = document.getElementById('category_level3');
-    const projectStage = document.getElementById('project_stage');
-    const existingAssetsSection = document.getElementById('existing_assets_section');
-    const oldLevel2 = "{{ old('category_level2_id') }}";
-    const oldLevel3 = "{{ old('category_level3_id') }}";
-
-    // Toggle existing_assets field visibility
-    function toggleExistingAssets() {
-        const stage = projectStage.value;
-        if (stage === 'documented' || stage === 'prototype' || stage === 'active') {
-            existingAssetsSection.style.display = 'block';
-        } else {
-            existingAssetsSection.style.display = 'none';
-        }
-    }
-
-    projectStage.addEventListener('change', toggleExistingAssets);
-
-    // Category hierarchy loading
-    async function loadSubCategories(parentId, targetSelect, selectedId = '') {
-        targetSelect.innerHTML = '<option value="">در حال بارگذاری...</option>';
-        const url = new URL('{{ route('najm-bahar.projects.categories.sub') }}', window.location.origin);
-        url.searchParams.set('parent_id', parentId);
-        const response = await fetch(url);
-        const data = await response.json();
-        targetSelect.innerHTML = '<option value="">انتخاب کنید</option>';
-        data.forEach(item => {
-            const option = document.createElement('option');
-            option.value = item.id;
-            option.textContent = item.name;
-            if (selectedId && String(item.id) === String(selectedId)) {
-                option.selected = true;
-            }
-            targetSelect.appendChild(option);
-        });
-    }
-
-    level1.addEventListener('change', function () {
-        if (this.value) {
-            loadSubCategories(this.value, level2);
-            level3.innerHTML = '<option value="">انتخاب کنید</option>';
-        }
-    });
-
-    level2.addEventListener('change', function () {
-        if (this.value) {
-            loadSubCategories(this.value, level3);
-        }
-    });
-
-    // Initialize on page load
-    toggleExistingAssets();
-    if (level1.value) {
-        loadSubCategories(level1.value, level2, oldLevel2).then(() => {
-            if (oldLevel2) {
-                loadSubCategories(oldLevel2, level3, oldLevel3);
-            }
-        });
-    }
-
-    // Investment Method Toggle
-    const investmentRadios = document.querySelectorAll('input[name="investment_method"]');
-    const auctionFields = document.querySelectorAll('.investment-auction');
-    const participationFields = document.querySelectorAll('.investment-participation');
-
-    function updateMethodFields() {
-        const selectedMethod = document.querySelector('input[name="investment_method"]:checked').value;
-        
-        // Show/hide method-specific sections
-        auctionFields.forEach(field => {
-            field.style.display = selectedMethod === 'auction_shares' ? 'block' : 'none';
-        });
-        
-        participationFields.forEach(field => {
-            field.style.display = selectedMethod === 'capital_participation' ? 'block' : 'none';
-        });
-
-        // Update required fields based on method
-        updateRequiredFields(selectedMethod);
-    }
-
-    function updateRequiredFields(method) {
-        // Auction method
-        const auctionInputs = document.querySelectorAll('.investment-auction input, .investment-auction select');
-        auctionInputs.forEach(input => {
-            if (input.name === 'base_value_min' || input.name === 'base_value_max' || 
-                input.name === 'total_shares' || input.name === 'initial_auction_percent' || 
-                input.name === 'max_user_ownership_percent' || input.name === 'auction_period') {
-                input.required = (method === 'auction_shares');
-            }
-        });
-
-        // Participation method
-        const participationInputs = document.querySelectorAll('.investment-participation input, .investment-participation select');
-        participationInputs.forEach(input => {
-            if (input.name === 'required_capital' || input.name === 'profit_percentage' || 
-                input.name === 'investment_duration_months') {
-                input.required = (method === 'capital_participation');
-            }
-        });
-    }
-
-    // Event listeners for radio buttons
-    investmentRadios.forEach(radio => {
-        radio.addEventListener('change', updateMethodFields);
-    });
-
-    // Initialize method fields on page load
-    updateMethodFields();
-
-    // Geographic Location Selection
-    const geographicLevelLabels = ['قاره', 'کشور', 'استان', 'شهرستان', 'بخش', 'شهر / دهستان', 'منطقه / روستا', 'محله', 'خیابان', 'کوچه'];
-    const geographicLevelKeys = ['continent', 'country', 'province', 'county', 'section', 'city', 'region', 'neighborhood', 'street', 'alley'];
-    const geographicNameKeys = ['geographic_continent_id', 'geographic_country_id', 'geographic_province_id', 'geographic_county_id', 'geographic_section_id', 'geographic_city_id', 'geographic_rural_id', 'geographic_region_id', 'geographic_neighborhood_id', 'geographic_street_id', 'geographic_alley_id'];
-    let geographicPathParts = [];
-    let geographicPathValues = [];
-
-    // Initialize continent selector with default data
-    function initializeGeographicLocation() {
-        const continentSelect = document.getElementById('geographic_continent_select');
-        
-        // Load continents via AJAX
-        fetch('/api/geographic/continents')
-            .then(response => response.json())
-            .then(data => {
-                const defaultValue = data.length > 0 ? data[0].id : '';
-                continentSelect.innerHTML = '<option value="">انتخاب کنید</option>';
-                data.forEach(continent => {
-                    const option = document.createElement('option');
-                    option.value = continent.id;
-                    option.textContent = continent.name;
-                    if (continent.id == 4) option.selected = true; // Asia
-                    continentSelect.appendChild(option);
-                });
-            })
-            .catch(error => console.error('Error loading continents:', error));
-    }
-
-    // Handle geographic location selection (vanilla event delegation)
-    document.addEventListener('change', function (event) {
-        const target = event.target;
-        if (!target.classList.contains('location-select')) {
-            return;
-        }
-
-        const level = parseInt(target.getAttribute('data-level'), 10);
-        const value = target.value;
-
-        if (value) {
-            const text = target.options[target.selectedIndex].text;
-            geographicPathParts[level - 1] = text;
-            geographicPathValues[level - 1] = value;
-            geographicPathParts = geographicPathParts.slice(0, level);
-            geographicPathValues = geographicPathValues.slice(0, level);
-
-            // Store value in hidden fields
-            document.querySelector(`input[name="${geographicNameKeys[level - 1]}"]`)?.remove();
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = geographicNameKeys[level - 1];
-            input.value = value;
-            document.getElementById('location-selects')?.appendChild(input);
-
-            // Load next level if available
-            if (level < geographicLevelKeys.length) {
-                loadGeographicNextLevel(value, level + 1);
-            }
-        }
-
-        updateGeographicPathDisplay();
-    });
-
-    function loadGeographicNextLevel(parentId, levelIndex) {
-        const parentLevelKey = geographicLevelKeys[levelIndex - 2];
-        const levelName = geographicLevelLabels[levelIndex - 1];
-        const nextLevelKey = geographicLevelKeys[levelIndex - 1];
-
-        const endpoint = `/api/geographic/${parentLevelKey}/${parentId}/children`;
-        
-        fetch(endpoint)
-            .then(response => response.json())
-            .then(data => {
-                const container = document.getElementById('location-selects');
-                const existingDiv = document.querySelector(`.level-container[data-level="${levelIndex}"]`);
-                
-                if (existingDiv) {
-                    existingDiv.remove();
-                }
-                
-                if (data.length > 0) {
-                    const div = document.createElement('div');
-                    div.className = 'level-container mb-4';
-                    div.setAttribute('data-level', levelIndex);
-                    
-                    const label = document.createElement('label');
-                    label.className = 'block text-sm font-medium text-gray-700 mb-2';
-                    label.innerHTML = `${levelName}:`;
-                    
-                    const select = document.createElement('select');
-                    select.id = `geographic_${nextLevelKey}_select`;
-                    select.name = geographicNameKeys[levelIndex - 1];
-                    select.className = 'location-select w-full px-3 py-2 border border-gray-300 rounded-md';
-                    select.setAttribute('data-level', levelIndex);
-                    
-                    const emptyOption = document.createElement('option');
-                    emptyOption.value = '';
-                    emptyOption.textContent = 'انتخاب کنید';
-                    select.appendChild(emptyOption);
-                    
-                    data.forEach(item => {
-                        const option = document.createElement('option');
-                        option.value = item.id;
-                        option.textContent = item.name;
-                        select.appendChild(option);
-                    });
-                    
-                    div.appendChild(label);
-                    div.appendChild(select);
-                    container.appendChild(div);
-                }
-            })
-            .catch(error => console.error(`Error loading ${levelName}:`, error));
-    }
-
-    function updateGeographicPathDisplay() {
-        const display = document.getElementById('geographic_path_display');
-        const pathText = document.getElementById('path-text');
-        
-        if (geographicPathParts.length > 0) {
-            display.style.display = 'block';
-            pathText.textContent = geographicPathParts.join(' → ');
-        } else {
-            display.style.display = 'none';
-        }
-    }
-
-    // Initialize geographic location on page load
-    initializeGeographicLocation();
-});
-</script>
-@endpush
-@endsection
+@extends('layouts.unified')
+
+
+
+@section('title', 'ایجاد پروژه جدید - نجم بهار')
+
+
+
+@section('content')
+
+<div class="container mx-auto px-4 py-8" dir="rtl">
+
+    <div class="mb-8">
+
+        <h1 class="text-3xl font-bold text-gray-900">ایجاد پروژه جدید</h1>
+
+        <p class="text-gray-600 mt-2">اطلاعات کامل پروژه را وارد کنید. تمام بخش‌های مشخص شده با * الزامی است.</p>
+
+    </div>
+
+
+
+    @if ($errors->any())
+
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+
+            <strong class="block">خطاهای موجود:</strong>
+
+            <ul class="list-disc pr-6 mt-2">
+
+                @foreach ($errors->all() as $error)
+
+                    <li>{{ $error }}</li>
+
+                @endforeach
+
+            </ul>
+
+        </div>
+
+    @endif
+
+
+
+    <form method="POST" action="{{ route('najm-bahar.projects.store') }}" enctype="multipart/form-data" class="bg-white rounded-lg shadow">
+
+        @csrf
+
+
+
+        <!-- SECTION 1: IDENTITY -->
+
+        <div class="p-6 border-b border-gray-200">
+
+            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+
+                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">1</span>
+
+                شناسایی پروژه
+
+            </h2>
+
+
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">عنوان پروژه <span class="text-red-600">*</span></label>
+
+                    <input type="text" name="title" value="{{ old('title') }}" 
+
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+
+                        required>
+
+                    @error('title') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">نوع پروژه <span class="text-red-600">*</span></label>
+
+                    <select name="project_type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+
+                        <option value="">انتخاب کنید</option>
+
+                        <option value="production" {{ old('project_type') === 'production' ? 'selected' : '' }}>تولیدی</option>
+
+                        <option value="service" {{ old('project_type') === 'service' ? 'selected' : '' }}>خدماتی</option>
+
+                        <option value="infrastructure" {{ old('project_type') === 'infrastructure' ? 'selected' : '' }}>زیرساخت</option>
+
+                        <option value="research" {{ old('project_type') === 'research' ? 'selected' : '' }}>تحقیقی</option>
+
+                        <option value="social" {{ old('project_type') === 'social' ? 'selected' : '' }}>اجتماعی</option>
+
+                    </select>
+
+                    @error('project_type') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">میزان دید پروژه <span class="text-red-600">*</span></label>
+
+                    <select name="project_visibility" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+
+                        <option value="">انتخاب کنید</option>
+
+                        <option value="public" {{ old('project_visibility') === 'public' ? 'selected' : '' }}>عمومی</option>
+
+                        <option value="private" {{ old('project_visibility') === 'private' ? 'selected' : '' }}>خصوصی</option>
+
+                    </select>
+
+                    @error('project_visibility') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">مرحله پروژه <span class="text-red-600">*</span></label>
+
+                    <select name="project_stage" id="project_stage" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+
+                        <option value="">انتخاب کنید</option>
+
+                        <option value="idea" {{ old('project_stage') === 'idea' ? 'selected' : '' }}>ایده</option>
+
+                        <option value="documented" {{ old('project_stage') === 'documented' ? 'selected' : '' }}>مستند‌شده</option>
+
+                        <option value="prototype" {{ old('project_stage') === 'prototype' ? 'selected' : '' }}>نمونه‌سازی</option>
+
+                        <option value="active" {{ old('project_stage') === 'active' ? 'selected' : '' }}>فعال</option>
+
+                    </select>
+
+                    @error('project_stage') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- SECTION 2: MATURITY & CATEGORY -->
+
+        <div class="p-6 border-b border-gray-200">
+
+            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+
+                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">2</span>
+
+                رسالت و دسته‌بندی
+
+            </h2>
+
+
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">دسته‌بندی سطح ۱ <span class="text-red-600">*</span></label>
+
+                    <select name="category_level1_id" id="category_level1" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+
+                        <option value="">انتخاب کنید</option>
+
+                        @foreach($categories as $category)
+
+                            <option value="{{ $category->id }}" {{ old('category_level1_id') == $category->id ? 'selected' : '' }}>
+
+                                {{ $category->name }}
+
+                            </option>
+
+                        @endforeach
+
+                    </select>
+
+                    @error('category_level1_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">دسته‌بندی سطح ۲</label>
+
+                    <select name="category_level2_id" id="category_level2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+                        <option value="">انتخاب کنید</option>
+
+                    </select>
+
+                    @error('category_level2_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">دسته‌بندی سطح ۳</label>
+
+                    <select name="category_level3_id" id="category_level3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+                        <option value="">انتخاب کنید</option>
+
+                    </select>
+
+                    @error('category_level3_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+            </div>
+
+
+
+            <div id="existing_assets_section" style="display: none;">
+
+                <label class="block text-sm font-medium text-gray-700 mb-2">دارایی‌های موجود</label>
+
+                <p class="text-xs text-gray-500 mb-2">توضیح دهید که چه دارایی‌های موجودی برای این پروژه وجود دارد</p>
+
+                <textarea name="existing_assets" rows="3" 
+
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+                    placeholder="مثلاً: تجهیزات، فضا، تیم متخصص، ...">{{ old('existing_assets') }}</textarea>
+
+                @error('existing_assets') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+            </div>
+
+        </div>
+
+
+
+        <!-- SECTION 3: PROBLEM & SOLUTION -->
+
+        <div class="p-6 border-b border-gray-200">
+
+            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+
+                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">3</span>
+
+                مسئله و راه‌حل
+
+            </h2>
+
+
+
+            <div class="space-y-6">
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">بیان مسئله <span class="text-red-600">*</span></label>
+
+                    <p class="text-xs text-gray-500 mb-2">به‌طور واضح توضیح دهید که چه مسئله‌ای را حل می‌کند</p>
+
+                    <textarea name="problem_statement" rows="4" 
+
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+                        required>{{ old('problem_statement') }}</textarea>
+
+                    @error('problem_statement') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">توضیح راه‌حل <span class="text-red-600">*</span></label>
+
+                    <p class="text-xs text-gray-500 mb-2">چگونه این پروژه مسئله را حل می‌کند؟</p>
+
+                    <textarea name="solution_description" rows="4" 
+
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+                        required>{{ old('solution_description') }}</textarea>
+
+                    @error('solution_description') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">پیشنهاد ارزش</label>
+
+                    <p class="text-xs text-gray-500 mb-2">مقدار و فوائد منحصر به‌فردی که این پروژه ارائه می‌دهد</p>
+
+                    <textarea name="value_proposition" rows="3" 
+
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+                        placeholder="مثلاً: کاهش هزینه 30٪، بهبود کیفیت، ...">{{ old('value_proposition') }}</textarea>
+
+                    @error('value_proposition') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">بازار هدف <span class="text-red-600">*</span></label>
+
+                    <p class="text-xs text-gray-500 mb-2">مشخص کنید بازار هدف کیست</p>
+
+                    <select name="target_market" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+
+                        <option value="">انتخاب کنید</option>
+
+                        <option value="local" {{ old('target_market') === 'local' ? 'selected' : '' }}>محلی</option>
+
+                        <option value="professional" {{ old('target_market') === 'professional' ? 'selected' : '' }}>حرفه‌ای</option>
+
+                        <option value="general" {{ old('target_market') === 'general' ? 'selected' : '' }}>عمومی</option>
+
+                        <option value="external" {{ old('target_market') === 'external' ? 'selected' : '' }}>بین‌المللی</option>
+
+                    </select>
+
+                    @error('target_market') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+            </div>
+
+
+
+            <!-- Geographic Scope for Target Market -->
+
+            <div id="geographic-scope-section" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+
+                <h3 class="text-sm font-bold text-blue-900 mb-4 flex items-center gap-2">
+
+                    <i class="fas fa-map-marker-alt"></i>
+
+                    محدوده جغرافیایی بازار هدف
+
+                </h3>
+
+                <p class="text-xs text-blue-800 mb-4">محدوده جغرافیایی مورد نظر برای پروژه را به‌صورت تفصیلی انتخاب کنید (اختیاری). این اطلاعات برای ارسال نوتیفیکیشن هدفمند به سرمایه‌گذاران استفاده می‌شود.</p>
+
+                
+
+                <div id="location-selects">
+
+                    <!-- قاره (سطح 1) -->
+
+                    <div class="level-container mb-4">
+
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+
+                            <i class="fas fa-globe" style="color: var(--color-ocean-blue);"></i> قاره:
+
+                        </label>
+
+                        <select id="geographic_continent_select" name="geographic_continent_id" class="location-select w-full px-3 py-2 border border-gray-300 rounded-md" data-level="1">
+
+                            <option value="">انتخاب کنید</option>
+
+                        </select>
+
+                        @error('geographic_continent_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- Geographic Path Display -->
+
+                <div id="geographic_path_display" class="mt-4 p-3 bg-white border border-blue-200 rounded text-sm text-gray-700" style="display: none;">
+
+                    <strong>مسیر انتخاب شده:</strong> <span id="path-text">نشده</span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- SECTION 3.5: INVESTMENT METHOD SELECTION -->
+
+        <div class="p-6 border-b border-gray-200">
+
+            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+
+                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">3.5</span>
+
+                انتخاب روش سرمایه‌گذاری
+
+            </h2>
+
+
+
+            <p class="text-sm text-gray-600 mb-6">یکی از دو روش زیر را انتخاب کنید. هر روش نیازمند اطلاعات متفاوتی است.</p>
+
+
+
+            <div class="space-y-4">
+
+                <label class="flex items-start gap-4 p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-blue-50 transition-colors" id="method-auction-label">
+
+                    <input type="radio" name="investment_method" value="auction_shares" 
+
+                        class="mt-1 w-5 h-5 text-blue-600 cursor-pointer" 
+
+                        {{ old('investment_method', 'capital_participation') === 'auction_shares' ? 'checked' : '' }}>
+
+                    <div class="flex-1">
+
+                        <h3 class="font-semibold text-gray-900">بازار سهام و مزایده</h3>
+
+                        <p class="text-sm text-gray-600 mt-1">پروژه دارای حداقل و حداکثر ارزش پایه است و سهام آن در مزایده‌های دوره‌ای فروخته می‌شود. سرمایه‌گذاران می‌توانند با خریداری سهام بخشی از مالکیت را کسب کنند.</p>
+
+                        <div class="mt-3 text-xs bg-blue-100 text-blue-900 p-2 rounded">
+
+                            <strong>نیازمند:</strong> حداقل ارزش، حداکثر ارزش، کل سهام، درصد سهام در مزایده
+
+                        </div>
+
+                    </div>
+
+                </label>
+
+
+
+                <label class="flex items-start gap-4 p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-green-50 transition-colors" id="method-participation-label">
+
+                    <input type="radio" name="investment_method" value="capital_participation" 
+
+                        class="mt-1 w-5 h-5 text-green-600 cursor-pointer" 
+
+                        {{ old('investment_method', 'capital_participation') === 'capital_participation' ? 'checked' : '' }}>
+
+                    <div class="flex-1">
+
+                        <h3 class="font-semibold text-gray-900">مشارکت سرمایه مستقیم</h3>
+
+                        <p class="text-sm text-gray-600 mt-1">سرمایه‌گذاران مبلغی تعیین‌شده سرمایه می‌گذارند و درصدی از سود پروژه را دریافت می‌کنند. بدون مکانیکس سهام، فقط سهم سود.</p>
+
+                        <div class="mt-3 text-xs bg-green-100 text-green-900 p-2 rounded">
+
+                            <strong>نیازمند:</strong> سرمایه مورد‌نیاز، درصد سود، مدت سرمایه‌گذاری
+
+                        </div>
+
+                    </div>
+
+                </label>
+
+            </div>
+
+
+
+            @error('investment_method') <span class="text-red-500 text-sm mt-2 block">{{ $message }}</span> @enderror
+
+        </div>
+
+
+
+        <!-- SECTION 4: VALUATION -->
+
+        <div class="p-6 border-b border-gray-200">
+
+            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+
+                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">4</span>
+
+                ارزش‌گذاری و سرمایه
+
+            </h2>
+
+
+
+            <!-- Fields for Auction Method (bazare_sahame) -->
+
+            <div class="investment-fields investment-auction" style="display: none;">
+
+                <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+
+                    <h3 class="font-semibold text-blue-900 mb-3">فیلدهای روش بازار سهام</h3>
+
+                    <p class="text-sm text-blue-800">دو ارزش اصلی که پروژه را برای مزایده تعریف می‌کند:</p>
+
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    <div>
+
+                        <label class="block text-sm font-medium text-gray-700 mb-2">حداقل ارزش پایه (گل) <span class="text-red-600">*</span></label>
+
+                        <p class="text-xs text-gray-500 mb-2">کمترین ارزش پروژه براساس دارایی‌ها و پتانسیل</p>
+
+                        <input type="number" name="base_value_min" value="{{ old('base_value_min') }}" 
+
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+                            min="1" step="1000">
+
+                        @error('base_value_min') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                    </div>
+
+
+
+                    <div>
+
+                        <label class="block text-sm font-medium text-gray-700 mb-2">حداکثر ارزش پایه (گل) <span class="text-red-600">*</span></label>
+
+                        <p class="text-xs text-gray-500 mb-2">بیشترین ارزش براساس سناریو بهینه</p>
+
+                        <input type="number" name="base_value_max" value="{{ old('base_value_max') }}" 
+
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+                            min="1" step="1000">
+
+                        @error('base_value_max') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- Fields for Participation Method (Mosharekat) -->
+
+            <div class="investment-fields investment-participation" style="display: none;">
+
+                <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+
+                    <h3 class="font-semibold text-green-900 mb-3">فیلدهای روش مشارکت سرمایه</h3>
+
+                    <p class="text-sm text-green-800">اطلاعات سرمایه و سود برای سرمایه‌گذاران:</p>
+
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    <div>
+
+                        <label class="block text-sm font-medium text-gray-700 mb-2">مبلغ سرمایه مورد نیاز (گل) <span class="text-red-600">*</span></label>
+
+                        <p class="text-xs text-gray-500 mb-2">سرمایه ای که برای شروع پروژه نیاز است</p>
+
+                        <input type="number" name="required_capital" value="{{ old('required_capital') }}" 
+
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+                            min="1" step="1000">
+
+                        @error('required_capital') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                    </div>
+
+
+
+                    <div>
+
+                        <label class="block text-sm font-medium text-gray-700 mb-2">درصد سود پیشنهادی <span class="text-red-600">*</span></label>
+
+                        <p class="text-xs text-gray-500 mb-2">درصد سود مورد انتظار برای سرمایه گذاران</p>
+
+                        <input type="number" name="profit_percentage" value="{{ old('profit_percentage') }}" 
+
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+                            min="0.01" max="100" step="0.01">
+
+                        @error('profit_percentage') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                    </div>
+
+
+
+                    <div class="md:col-span-2">
+
+                        <label class="block text-sm font-medium text-gray-700 mb-2">مدت سرمایه گذاری (ماه) <span class="text-red-600">*</span></label>
+
+                        <p class="text-xs text-gray-500 mb-2">مدت زمان بازگشت سرمایه و سود</p>
+
+                        <input type="number" name="investment_duration_months" value="{{ old('investment_duration_months') }}" 
+
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+                            min="1">
+
+                        @error('investment_duration_months') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- SECTION 5: SHARE STRUCTURE (Only for Auction) -->
+
+        <div class="investment-fields investment-auction p-6 border-b border-gray-200" style="display: none;">
+
+            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+
+                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">5</span>
+
+                ساختار سهام و مزایده
+
+            </h2>
+
+
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">کل سهام <span class="text-red-600">*</span></label>
+
+                    <p class="text-xs text-gray-500 mb-2">تعداد سهام کل که کلاً می‌توان فروخت</p>
+
+                    <input type="number" name="total_shares" value="{{ old('total_shares', 100) }}" 
+
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+                        min="1">
+
+                    @error('total_shares') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">درصد سهام آغازین مزایده (%) <span class="text-red-600">*</span></label>
+
+                    <p class="text-xs text-gray-500 mb-2">چند درصد سهام در مزایده اول معرفی شود</p>
+
+                    <input type="number" name="initial_auction_percent" value="{{ old('initial_auction_percent', 30) }}" 
+
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+                        min="1" max="100" step="0.1">
+
+                    @error('initial_auction_percent') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">حداکثر مالکیت هر کاربر (%) <span class="text-red-600">*</span></label>
+
+                    <p class="text-xs text-gray-500 mb-2">یک سرمایه‌گذار حداکثر چند درصد می‌تواند مالک باشد</p>
+
+                    <input type="number" name="max_user_ownership_percent" value="{{ old('max_user_ownership_percent', 20) }}" 
+
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+                        min="0.1" max="100" step="0.1">
+
+                    @error('max_user_ownership_percent') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">دوره مزایده <span class="text-red-600">*</span></label>
+
+                    <p class="text-xs text-gray-500 mb-2">هر چند وقت یک بار میزایده‌های جدیدی برگزار شود</p>
+
+                    <select name="auction_period" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+                        <option value="">انتخاب کنید</option>
+
+                        <option value="monthly" {{ old('auction_period') === 'monthly' ? 'selected' : '' }}>ماهیانه</option>
+
+                        <option value="quarterly" {{ old('auction_period') === 'quarterly' ? 'selected' : '' }}>فصلی</option>
+
+                        <option value="semi_annual" {{ old('auction_period') === 'semi_annual' ? 'selected' : '' }}>نیم‌ساله</option>
+
+                        <option value="annual" {{ old('auction_period') === 'annual' ? 'selected' : '' }}>سالانه</option>
+
+                    </select>
+
+                    @error('auction_period') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- SECTION 6: RISK ASSESSMENT -->
+
+        <div class="p-6 border-b border-gray-200">
+
+            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+
+                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">6</span>
+
+                ارزیابی ریسک‌ها
+
+            </h2>
+
+
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">سطح ریسک <span class="text-red-600">*</span></label>
+
+                    <p class="text-xs text-gray-500 mb-2">ریسک کلی این پروژه را ارزیابی کنید</p>
+
+                    <select name="risk_level" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+
+                        <option value="">انتخاب کنید</option>
+
+                        <option value="low" {{ old('risk_level') === 'low' ? 'selected' : '' }}>کم</option>
+
+                        <option value="medium" {{ old('risk_level') === 'medium' ? 'selected' : '' }}>متوسط</option>
+
+                        <option value="high" {{ old('risk_level') === 'high' ? 'selected' : '' }}>زیاد</option>
+
+                    </select>
+
+                    @error('risk_level') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">نوع نظارت <span class="text-red-600">*</span></label>
+
+                    <p class="text-xs text-gray-500 mb-2">چگونه بر پروژه نظارت شود</p>
+
+                    <select name="oversight_type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+
+                        <option value="">انتخاب کنید</option>
+
+                        <option value="guild" {{ old('oversight_type') === 'guild' ? 'selected' : '' }}>نظارت در صنف</option>
+
+                        <option value="insurance" {{ old('oversight_type') === 'insurance' ? 'selected' : '' }}>بیمه</option>
+
+                        <option value="both" {{ old('oversight_type') === 'both' ? 'selected' : '' }}>هر دو</option>
+
+                        <option value="none" {{ old('oversight_type') === 'none' ? 'selected' : '' }}>بدون نظارت خاص</option>
+
+                    </select>
+
+                    @error('oversight_type') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+            </div>
+
+
+
+            <div>
+
+                <label class="block text-sm font-medium text-gray-700 mb-2">ریسک‌های اصلی</label>
+
+                <p class="text-xs text-gray-500 mb-2">مهم‌ترین ریسک‌های این پروژه را لیست کنید (هر کدام در یک خط)</p>
+
+                <textarea name="main_risks" rows="4" 
+
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+                    placeholder="ریسک ۱&#10;ریسک ۲&#10;ریسک ۳">{{ old('main_risks') }}</textarea>
+
+                @error('main_risks') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+            </div>
+
+        </div>
+
+
+
+        <!-- SECTION 7: REPORTING & COMMITMENTS -->
+
+        <div class="p-6 border-b border-gray-200">
+
+            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+
+                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">7</span>
+
+                گزارش‌دهی و تعهدات
+
+            </h2>
+
+
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">دوره گزارش‌دهی <span class="text-red-600">*</span></label>
+
+                    <p class="text-xs text-gray-500 mb-2">چگاه گزارش‌های پیشرفت ارائه شود</p>
+
+                    <select name="reporting_interval" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+
+                        <option value="">انتخاب کنید</option>
+
+                        <option value="monthly" {{ old('reporting_interval') === 'monthly' ? 'selected' : '' }}>ماهیانه</option>
+
+                        <option value="quarterly" {{ old('reporting_interval') === 'quarterly' ? 'selected' : '' }}>فصلی</option>
+
+                        <option value="semi_annual" {{ old('reporting_interval') === 'semi_annual' ? 'selected' : '' }}>نیم‌ساله</option>
+
+                        <option value="annual" {{ old('reporting_interval') === 'annual' ? 'selected' : '' }}>سالانه</option>
+
+                    </select>
+
+                    @error('reporting_interval') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">دامنه استفاده سرمایه</label>
+
+                    <input type="text" value="تنها برای پروژه" disabled
+
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+
+                        title="این فیلد توسط سیستم تعیین می‌شود">
+
+                    <input type="hidden" name="fund_usage_scope" value="project_only">
+
+                    <p class="text-xs text-gray-500 mt-1">سرمایه تنها برای این پروژه قابل استفاده است</p>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="border border-yellow-200 bg-yellow-50 rounded-md p-4 mb-6">
+
+                <label class="flex items-start gap-3">
+
+                    <input type="checkbox" name="accept_transparency" value="1" 
+
+                        {{ old('accept_transparency') ? 'checked' : '' }} 
+
+                        class="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+
+                        required>
+
+                    <div>
+
+                        <span class="block text-sm font-medium text-gray-900">تعهد به شفاف‌سازی و گزارش‌دهی <span class="text-red-600">*</span></span>
+
+                        <p class="text-xs text-gray-600 mt-1">تا پایان سال مالی، برای موضوع گزارش جامع ارائه می‌دهم و از پروژه خود اطلاعات شفاف می‌دهم.</p>
+
+                    </div>
+
+                </label>
+
+                @error('accept_transparency') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+            </div>
+
+        </div>
+
+
+
+        <!-- SECTION 8: CONTINGENCY & FAILURE POLICY -->
+
+        <div class="p-6 border-b border-gray-200">
+
+            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+
+                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">8</span>
+
+                سیاست شکست و ارزش‌گذاری
+
+            </h2>
+
+
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">سیاست در صورت شکست <span class="text-red-600">*</span></label>
+
+                    <p class="text-xs text-gray-500 mb-2">اگر پروژه ناموفق شود چه اتفاقی می‌افتد</p>
+
+                    <select name="failure_policy" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+
+                        <option value="">انتخاب کنید</option>
+
+                        <option value="refund" {{ old('failure_policy') === 'refund' ? 'selected' : '' }}>بازپرداخت</option>
+
+                        <option value="asset_conversion" {{ old('failure_policy') === 'asset_conversion' ? 'selected' : '' }}>تبدیل به دارایی</option>
+
+                        <option value="vote" {{ old('failure_policy') === 'vote' ? 'selected' : '' }}>رای‌گیری بین سرمایه‌گذاران</option>
+
+                    </select>
+
+                    @error('failure_policy') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+
+
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">راهبر تحدیث ارزش <span class="text-red-600">*</span></label>
+
+                    <p class="text-xs text-gray-500 mb-2">ارزش پروژه بر اساس چی تحدیث شود</p>
+
+                    <select name="value_update_trigger" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+
+                        <option value="">انتخاب کنید</option>
+
+                        <option value="stage_progress" {{ old('value_update_trigger') === 'stage_progress' ? 'selected' : '' }}>پیشرفت مراحل</option>
+
+                        <option value="oversight_approval" {{ old('value_update_trigger') === 'oversight_approval' ? 'selected' : '' }}>تایید نظارت</option>
+
+                    </select>
+
+                    @error('value_update_trigger') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- SECTION 9: COMPLIANCE & RULES -->
+
+        <div class="p-6 border-b border-gray-200">
+
+            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+
+                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">9</span>
+
+                تعهدات و قوانین
+
+            </h2>
+
+
+
+            <div class="border border-red-200 bg-red-50 rounded-md p-4">
+
+                <label class="flex items-start gap-3">
+
+                    <input type="checkbox" name="accept_rules" value="1" 
+
+                        {{ old('accept_rules') ? 'checked' : '' }} 
+
+                        class="mt-1 w-4 h-4 text-red-600 rounded focus:ring-2 focus:ring-red-500 cursor-pointer"
+
+                        required>
+
+                    <div>
+
+                        <span class="block text-sm font-medium text-gray-900">پذیرش شرایط و مقررات <span class="text-red-600">*</span></span>
+
+                        <p class="text-xs text-gray-600 mt-1">
+
+                            من تمام شرایط و مقررات نجم بهار را قرائت کرده‌ام و قبول می‌کنم. 
+
+                            <a href="#" class="text-blue-600 hover:underline">مقررات را ببینید</a>
+
+                        </p>
+
+                    </div>
+
+                </label>
+
+                @error('accept_rules') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+            </div>
+
+        </div>
+
+
+
+        <!-- SECTION 10: ATTACHMENTS & SUMMARY -->
+
+        <div class="p-6 border-b border-gray-200">
+
+            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+
+                <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">10</span>
+
+                خلاصه و پیوست‌ها
+
+            </h2>
+
+
+
+            <div class="mb-6">
+
+                <label class="block text-sm font-medium text-gray-700 mb-2">خلاصه پروژه</label>
+
+                <p class="text-xs text-gray-500 mb-2">توضیح کوتاه پروژه (حداکثر ۵۰۰ کلمه)</p>
+
+                <textarea name="summary" rows="4" 
+
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+                    placeholder="یک خلاصه مختصر از پروژه">{{ old('summary') }}</textarea>
+
+                @error('summary') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+            </div>
+
+
+
+            <div class="mb-6">
+
+                <label class="block text-sm font-medium text-gray-700 mb-2">توضیحات کامل</label>
+
+                <textarea name="description" rows="6" 
+
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+                    placeholder="توضیحات جزئی‌تر درباره پروژه">{{ old('description') }}</textarea>
+
+                @error('description') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+            </div>
+
+
+
+            <div>
+
+                <label class="block text-sm font-medium text-gray-700 mb-2">پیوست‌ها</label>
+
+                <p class="text-xs text-gray-500 mb-2">فرمت‌های مجاز: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG</p>
+
+                <input type="file" name="attachments[]" multiple 
+
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+                @error('attachments.*') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+            </div>
+
+        </div>
+
+
+
+        <!-- ACTIONS -->
+
+        <div class="p-6 bg-gray-50 border-t border-gray-200 flex gap-3">
+
+            <button type="submit" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md shadow">
+
+                ذخیره و ارسال برای تایید
+
+            </button>
+
+            <a href="{{ route('najm-bahar.projects.index') }}" class="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-md">
+
+                بازگشت
+
+            </a>
+
+        </div>
+
+    </form>
+
+</div>
+
+
+
+@push('scripts')
+
+<script>
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    const level1 = document.getElementById('category_level1');
+
+    const level2 = document.getElementById('category_level2');
+
+    const level3 = document.getElementById('category_level3');
+
+    const projectStage = document.getElementById('project_stage');
+
+    const existingAssetsSection = document.getElementById('existing_assets_section');
+
+    const oldLevel2 = "{{ old('category_level2_id') }}";
+
+    const oldLevel3 = "{{ old('category_level3_id') }}";
+
+
+
+    // Toggle existing_assets field visibility
+
+    function toggleExistingAssets() {
+
+        const stage = projectStage.value;
+
+        if (stage === 'documented' || stage === 'prototype' || stage === 'active') {
+
+            existingAssetsSection.style.display = 'block';
+
+        } else {
+
+            existingAssetsSection.style.display = 'none';
+
+        }
+
+    }
+
+
+
+    projectStage.addEventListener('change', toggleExistingAssets);
+
+
+
+    // Category hierarchy loading
+
+    async function loadSubCategories(parentId, targetSelect, selectedId = '') {
+
+        targetSelect.innerHTML = '<option value="">در حال بارگذاری...</option>';
+
+        const url = new URL('{{ route('najm-bahar.projects.categories.sub') }}', window.location.origin);
+
+        url.searchParams.set('parent_id', parentId);
+
+        const response = await fetch(url);
+
+        const data = await response.json();
+
+        targetSelect.innerHTML = '<option value="">انتخاب کنید</option>';
+
+        data.forEach(item => {
+
+            const option = document.createElement('option');
+
+            option.value = item.id;
+
+            option.textContent = item.name;
+
+            if (selectedId && String(item.id) === String(selectedId)) {
+
+                option.selected = true;
+
+            }
+
+            targetSelect.appendChild(option);
+
+        });
+
+    }
+
+
+
+    level1.addEventListener('change', function () {
+
+        if (this.value) {
+
+            loadSubCategories(this.value, level2);
+
+            level3.innerHTML = '<option value="">انتخاب کنید</option>';
+
+        }
+
+    });
+
+
+
+    level2.addEventListener('change', function () {
+
+        if (this.value) {
+
+            loadSubCategories(this.value, level3);
+
+        }
+
+    });
+
+
+
+    // Initialize on page load
+
+    toggleExistingAssets();
+
+    if (level1.value) {
+
+        loadSubCategories(level1.value, level2, oldLevel2).then(() => {
+
+            if (oldLevel2) {
+
+                loadSubCategories(oldLevel2, level3, oldLevel3);
+
+            }
+
+        });
+
+    }
+
+
+
+    // Investment Method Toggle
+
+    const investmentRadios = document.querySelectorAll('input[name="investment_method"]');
+
+    const auctionFields = document.querySelectorAll('.investment-auction');
+
+    const participationFields = document.querySelectorAll('.investment-participation');
+
+
+
+    function updateMethodFields() {
+
+        const selectedMethod = document.querySelector('input[name="investment_method"]:checked').value;
+
+        
+
+        // Show/hide method-specific sections
+
+        auctionFields.forEach(field => {
+
+            field.style.display = selectedMethod === 'auction_shares' ? 'block' : 'none';
+
+        });
+
+        
+
+        participationFields.forEach(field => {
+
+            field.style.display = selectedMethod === 'capital_participation' ? 'block' : 'none';
+
+        });
+
+
+
+        // Update required fields based on method
+
+        updateRequiredFields(selectedMethod);
+
+    }
+
+
+
+    function updateRequiredFields(method) {
+
+        // Auction method
+
+        const auctionInputs = document.querySelectorAll('.investment-auction input, .investment-auction select');
+
+        auctionInputs.forEach(input => {
+
+            if (input.name === 'base_value_min' || input.name === 'base_value_max' || 
+
+                input.name === 'total_shares' || input.name === 'initial_auction_percent' || 
+
+                input.name === 'max_user_ownership_percent' || input.name === 'auction_period') {
+
+                input.required = (method === 'auction_shares');
+
+            }
+
+        });
+
+
+
+        // Participation method
+
+        const participationInputs = document.querySelectorAll('.investment-participation input, .investment-participation select');
+
+        participationInputs.forEach(input => {
+
+            if (input.name === 'required_capital' || input.name === 'profit_percentage' || 
+
+                input.name === 'investment_duration_months') {
+
+                input.required = (method === 'capital_participation');
+
+            }
+
+        });
+
+    }
+
+
+
+    // Event listeners for radio buttons
+
+    investmentRadios.forEach(radio => {
+
+        radio.addEventListener('change', updateMethodFields);
+
+    });
+
+
+
+    // Initialize method fields on page load
+
+    updateMethodFields();
+
+
+
+    // Geographic Location Selection
+
+    const geographicLevelLabels = ['قاره', 'کشور', 'استان', 'شهرستان', 'بخش', 'شهر / دهستان', 'منطقه / روستا', 'محله', 'خیابان', 'کوچه'];
+
+    const geographicLevelKeys = ['continent', 'country', 'province', 'county', 'section', 'city', 'region', 'neighborhood', 'street', 'alley'];
+
+    const geographicNameKeys = ['geographic_continent_id', 'geographic_country_id', 'geographic_province_id', 'geographic_county_id', 'geographic_section_id', 'geographic_city_id', 'geographic_rural_id', 'geographic_region_id', 'geographic_neighborhood_id', 'geographic_street_id', 'geographic_alley_id'];
+
+    let geographicPathParts = [];
+
+    let geographicPathValues = [];
+
+
+
+    // Initialize continent selector with default data
+
+    function initializeGeographicLocation() {
+
+        const continentSelect = document.getElementById('geographic_continent_select');
+
+        
+
+        // Load continents via AJAX
+
+        fetch('/api/geographic/continents')
+
+            .then(response => response.json())
+
+            .then(data => {
+
+                const defaultValue = data.length > 0 ? data[0].id : '';
+
+                continentSelect.innerHTML = '<option value="">انتخاب کنید</option>';
+
+                data.forEach(continent => {
+
+                    const option = document.createElement('option');
+
+                    option.value = continent.id;
+
+                    option.textContent = continent.name;
+
+                    if (continent.id == 4) option.selected = true; // Asia
+
+                    continentSelect.appendChild(option);
+
+                });
+
+            })
+
+            .catch(error => console.error('Error loading continents:', error));
+
+    }
+
+
+
+    // Handle geographic location selection (vanilla event delegation)
+
+    document.addEventListener('change', function (event) {
+
+        const target = event.target;
+
+        if (!target.classList.contains('location-select')) {
+
+            return;
+
+        }
+
+
+
+        const level = parseInt(target.getAttribute('data-level'), 10);
+
+        const value = target.value;
+
+
+
+        if (value) {
+
+            const text = target.options[target.selectedIndex].text;
+
+            geographicPathParts[level - 1] = text;
+
+            geographicPathValues[level - 1] = value;
+
+            geographicPathParts = geographicPathParts.slice(0, level);
+
+            geographicPathValues = geographicPathValues.slice(0, level);
+
+
+
+            // Store value in hidden fields
+
+            document.querySelector(`input[name="${geographicNameKeys[level - 1]}"]`)?.remove();
+
+            const input = document.createElement('input');
+
+            input.type = 'hidden';
+
+            input.name = geographicNameKeys[level - 1];
+
+            input.value = value;
+
+            document.getElementById('location-selects')?.appendChild(input);
+
+
+
+            // Load next level if available
+
+            if (level < geographicLevelKeys.length) {
+
+                loadGeographicNextLevel(value, level + 1);
+
+            }
+
+        }
+
+
+
+        updateGeographicPathDisplay();
+
+    });
+
+
+
+    function loadGeographicNextLevel(parentId, levelIndex) {
+
+        const parentLevelKey = geographicLevelKeys[levelIndex - 2];
+
+        const levelName = geographicLevelLabels[levelIndex - 1];
+
+        const nextLevelKey = geographicLevelKeys[levelIndex - 1];
+
+
+
+        const endpoint = `/api/geographic/${parentLevelKey}/${parentId}/children`;
+
+        
+
+        fetch(endpoint)
+
+            .then(response => response.json())
+
+            .then(data => {
+
+                const container = document.getElementById('location-selects');
+
+                const existingDiv = document.querySelector(`.level-container[data-level="${levelIndex}"]`);
+
+                
+
+                if (existingDiv) {
+
+                    existingDiv.remove();
+
+                }
+
+                
+
+                if (data.length > 0) {
+
+                    const div = document.createElement('div');
+
+                    div.className = 'level-container mb-4';
+
+                    div.setAttribute('data-level', levelIndex);
+
+                    
+
+                    const label = document.createElement('label');
+
+                    label.className = 'block text-sm font-medium text-gray-700 mb-2';
+
+                    label.innerHTML = `${levelName}:`;
+
+                    
+
+                    const select = document.createElement('select');
+
+                    select.id = `geographic_${nextLevelKey}_select`;
+
+                    select.name = geographicNameKeys[levelIndex - 1];
+
+                    select.className = 'location-select w-full px-3 py-2 border border-gray-300 rounded-md';
+
+                    select.setAttribute('data-level', levelIndex);
+
+                    
+
+                    const emptyOption = document.createElement('option');
+
+                    emptyOption.value = '';
+
+                    emptyOption.textContent = 'انتخاب کنید';
+
+                    select.appendChild(emptyOption);
+
+                    
+
+                    data.forEach(item => {
+
+                        const option = document.createElement('option');
+
+                        option.value = item.id;
+
+                        option.textContent = item.name;
+
+                        select.appendChild(option);
+
+                    });
+
+                    
+
+                    div.appendChild(label);
+
+                    div.appendChild(select);
+
+                    container.appendChild(div);
+
+                }
+
+            })
+
+            .catch(error => console.error(`Error loading ${levelName}:`, error));
+
+    }
+
+
+
+    function updateGeographicPathDisplay() {
+
+        const display = document.getElementById('geographic_path_display');
+
+        const pathText = document.getElementById('path-text');
+
+        
+
+        if (geographicPathParts.length > 0) {
+
+            display.style.display = 'block';
+
+            pathText.textContent = geographicPathParts.join(' → ');
+
+        } else {
+
+            display.style.display = 'none';
+
+        }
+
+    }
+
+
+
+    // Initialize geographic location on page load
+
+    initializeGeographicLocation();
+
+});
+
+</script>
+
+@endpush
+
+@endsection
+

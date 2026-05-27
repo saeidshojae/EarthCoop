@@ -398,10 +398,12 @@ Route::middleware(Authenticate::class)->group(function () {
     
     Route::get('/groups/comment/{blog}', [CommentController::class, 'comment'])->name('groups.comment');
     Route::get('/api/comments/{blog}/messages', [CommentController::class, 'commentAPI']);
+    Route::get('/api/comments/{blog}/feed', [CommentController::class, 'commentsFeed']);
     // ارسال پست
     Route::post('/blog/send/{group}', [BlogController::class, 'store'])->middleware('group.chat.timing')->name('groups.blog.store');
     Route::delete('/blog/{blog}', [BlogController::class, 'destroy'])->name('groups.blog.destroy');
     Route::put('/blog/{blog}', [BlogController::class, 'update'])->name('groups.blog.update');
+    Route::post('/blog/{blog}/mark-read', [BlogController::class, 'markAsRead'])->name('blogs.mark-read');
 
     // نظرسنجی و رأی‌گیری
     Route::post('/poll/send/{group}', [PollController::class, 'store'])->middleware('group.chat.timing')->name('groups.poll.store');
@@ -409,6 +411,7 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::post('/poll/{group}/delete/{poll}', [PollController::class, 'delete'])->name('groups.poll.delete');
 
     Route::post('/polls/{poll}/vote', [PollController::class, 'vote'])->middleware('group.chat.timing')->name('poll.vote');
+    Route::post('/poll/{poll}/mark-read', [PollController::class, 'markAsRead'])->name('polls.mark-read');
 
     // ری‌اکت‌ها
     Route::post('/blogs/{blog}/react', [ReactionController::class, 'blogReact'])->name('blogs.react');
