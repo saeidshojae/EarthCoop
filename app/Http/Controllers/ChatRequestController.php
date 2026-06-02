@@ -199,4 +199,19 @@ class ChatRequestController extends Controller
 
         return response()->json($pendingRequests);
     }
+
+    /**
+     * API: Get pending chat request count for badge display
+     */
+    public function pendingCount()
+    {
+        $currentUser = request()->user();
+        $count = ChatRequest::where('receiver_id', $currentUser->id)
+            ->where('status', 'pending')
+            ->count();
+
+        return response()->json([
+            'pending_count' => $count,
+        ]);
+    }
 }
