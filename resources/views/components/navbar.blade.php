@@ -454,13 +454,17 @@
 
                         <div id="user-dropdown" class="absolute left-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg hidden">
 
-                            <a href="{{ route('profile.show') }}" class="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                            <a href="{{ route('profile.show') }}" class="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
 
                                 <i class="fas fa-user"></i>
 
-                                <span>{{ __('navigation.profile') ?? 'پروفایل' }}</span>
+                                <span>{{ __('navigation.profile') ?? 'پروفایل' }}</span>
 
-                            </a>
+                            </a>
+                            <a href="{{ route('chat-requests.index') }}" class="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                <i class="fas fa-comments"></i>
+                                <span>درخواست‌های چت</span>
+                            </a>
 
                             <a href="{{ route('wallet.index') }}" class="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
 
@@ -574,11 +578,14 @@
 
                     </a>
 
-                    <a href="{{ route('profile.show') }}" class="text-gray-700 dark:text-gray-300 hover:text-earth-green font-medium py-2">
+                    <a href="{{ route('profile.show') }}" class="text-gray-700 dark:text-gray-300 hover:text-earth-green font-medium py-2">
 
-                        <i class="fas fa-user me-2"></i>{{ __('navigation.profile') ?? 'پروفایل' }}
+                        <i class="fas fa-user me-2"></i>{{ __('navigation.profile') ?? 'پروفایل' }}
 
-                    </a>
+                    </a>
+                    <a href="{{ route('chat-requests.index') }}" class="text-gray-700 dark:text-gray-300 hover:text-earth-green font-medium py-2">
+                        <i class="fas fa-comments me-2"></i>درخواست‌های چت
+                    </a>
 
                     <hr>
 

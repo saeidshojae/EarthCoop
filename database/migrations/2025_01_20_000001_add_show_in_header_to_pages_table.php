@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('pages') || Schema::hasColumn('pages', 'show_in_header')) {
+            return;
+        }
+
         Schema::table('pages', function (Blueprint $table) {
             $table->boolean('show_in_header')->default(false)->after('is_published');
         });
@@ -21,6 +25,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (!Schema::hasTable('pages') || !Schema::hasColumn('pages', 'show_in_header')) {
+            return;
+        }
+
         Schema::table('pages', function (Blueprint $table) {
             $table->dropColumn('show_in_header');
         });

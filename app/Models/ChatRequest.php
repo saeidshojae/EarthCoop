@@ -13,7 +13,8 @@ class ChatRequest extends Model
         'status',
         'message',
         'group_id',
-        'request_to_group'
+        'request_to_group',
+        'private_conversation_id',
     ];
 
     public function sender(): BelongsTo
@@ -24,5 +25,10 @@ class ChatRequest extends Model
     public function receiver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'receiver_id');
+    }
+
+    public function privateConversation(): BelongsTo
+    {
+        return $this->belongsTo(PrivateConversation::class, 'private_conversation_id');
     }
 } 

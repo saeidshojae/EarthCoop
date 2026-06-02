@@ -89,7 +89,7 @@
     --transition-slow: 500ms ease-in-out;
 }
 
-/* ==================== ÙÙˆÙ†Øªâ€ŒÙ‡Ø§ ==================== */
+/* ==================== فونت ها ==================== */
 
 .font-vazirmatn {
     font-family: 'Vazirmatn', sans-serif;
@@ -99,14 +99,14 @@
     font-family: 'Poppins', sans-serif;
 }
 
-/* ØªÙ†Ø¸ÛŒÙ… ÙÙˆÙ†Øª Ù¾ÛŒØ´â€ŒÙØ±Ø¶ */
+/* تنظیم فونت پیشفرض */
 body {
     font-family: 'Vazirmatn', 'Poppins', sans-serif;
 }
 
-/* ==================== Utility Classes - Ø±Ù†Ú¯â€ŒÙ‡Ø§ ==================== */
+/* ==================== Utility Classes - رنگها ==================== */
 
-/* Ù¾Ø³â€ŒØ²Ù…ÛŒÙ†Ù‡ */
+/* پس زمینه */
 .bg-earth-green { background-color: var(--color-earth-green) !important; }
 .bg-ocean-blue { background-color: var(--color-ocean-blue) !important; }
 .bg-digital-gold { background-color: var(--color-digital-gold) !important; }
@@ -118,7 +118,7 @@ body {
 .bg-accent-peach { background-color: var(--color-accent-peach) !important; }
 .bg-accent-sky { background-color: var(--color-accent-sky) !important; }
 
-/* Ù…ØªÙ† */
+/* متن */
 .text-earth-green { color: var(--color-earth-green) !important; }
 .text-ocean-blue { color: var(--color-ocean-blue) !important; }
 .text-digital-gold { color: var(--color-digital-gold) !important; }

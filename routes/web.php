@@ -55,6 +55,7 @@ use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\EnsureEmailIsVerified;
 use App\Http\Controllers\ChatRequestController;
+use App\Http\Controllers\PrivateChatController;
 use App\Http\Controllers\ContactController;
 use App\Http\Middleware\UpdateLastSeenOnLogout;
 use Illuminate\Http\Request;
@@ -1133,10 +1134,22 @@ Route::post('/email/verify', [EmailVerificationController::class, 'verify'])->na
 Route::post('/email/verify/resend', [EmailVerificationController::class, 'resend'])->name('email.verification.resend');
 
 
-Route::post('/chat-requests/{user}', [ChatRequestController::class, 'send'])->name('chat-requests.send');
-Route::post('/chat-requests/{chatRequest}/accept', [ChatRequestController::class, 'accept'])->name('chat-requests.accept');
-Route::post('/chat-requests/{chatRequest}/reject', [ChatRequestController::class, 'reject'])->name('chat-requests.reject');
-Route::get('/chat/{group}', [ChatController::class, 'show'])->name('chat.show');
+Route::middleware(Authenticate::class)->group(function () {
+    Route::get('/chat-requests', [ChatRequestController::class, 'index'])->name('chat-requests.index');
+    Route::post('/chat-requests/{user}', [ChatRequestController::class, 'send'])->name('chat-requests.send');
+    Route::post('/chat-requests/{chatRequest}/accept', [ChatRequestController::class, 'accept'])->name('chat-requests.accept');
+    Route::post('/chat-requests/{chatRequest}/reject', [ChatRequestController::class, 'reject'])->name('chat-requests.reject');
+    
+    // Private Chat routes
+    Route::get('/private-chats/{conversation}', [PrivateChatController::class, 'show'])->name('private-chats.show');
+    Route::post('/private-chats/{conversation}/messages', [PrivateChatController::class, 'sendMessage'])->name('private-chats.send');
+    
+    // Private Chat API endpoints for AJAX/Real-time
+    Route::get('/private-chats/{conversation}/messages', [PrivateChatController::class, 'getMessages'])->name('private-chats.messages');
+    Route::get('/private-chats/{conversation}/info', [PrivateChatController::class, 'getConversationInfo'])->name('private-chats.info');
+    
+    Route::get('/chat/{group}', [ChatController::class, 'show'])->name('chat.show');
+});
 
 
 

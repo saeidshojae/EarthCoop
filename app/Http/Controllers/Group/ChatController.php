@@ -39,6 +39,10 @@ class ChatController extends Controller
         $groupUser = GroupUser::where('group_id', $group->id)
             ->where('user_id', auth()->id())
             ->first();
+
+        if (!$groupUser || (int) $groupUser->status !== 1) {
+            abort(403, 'Unauthorized');
+        }
         
         // تعیین نقش بر اساس location_level:
         // - سطح محله و پایین‌تر (neighborhood, street, alley) → فعال (role 1)

@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('pages') || Schema::hasColumn('pages', 'template')) {
+            return;
+        }
+
         Schema::table('pages', function (Blueprint $table) {
             $table->string('template')->nullable()->after('slug')->default('default');
             // template options: 'default', 'about', 'help', 'cooperation'
@@ -22,6 +26,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (!Schema::hasTable('pages') || !Schema::hasColumn('pages', 'template')) {
+            return;
+        }
+
         Schema::table('pages', function (Blueprint $table) {
             $table->dropColumn('template');
         });

@@ -230,13 +230,16 @@
 
                 @endif
 
-            @elseif($existingRequest->status === 'accepted')
-
-                <a href="{{ route('groups.chat', $existingRequest->group_id) }}" class="btn btn-success">
-
-                    <i class="fas fa-comments"></i> ورود به چت
-
-                </a>
+            @elseif($existingRequest->status === 'accepted')
+                @if($existingRequest->private_conversation_id)
+                    <a href="{{ route('private-chats.show', $existingRequest->private_conversation_id) }}" class="btn btn-success">
+                        <i class="fas fa-comments"></i> ورود به چت
+                    </a>
+                @elseif($existingRequest->group_id)
+                    <a href="{{ route('groups.chat', $existingRequest->group_id) }}" class="btn btn-success">
+                        <i class="fas fa-comments"></i> ورود به چت
+                    </a>
+                @endif
 
             @else
 
