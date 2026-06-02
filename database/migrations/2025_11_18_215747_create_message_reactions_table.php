@@ -8,29 +8,30 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     *
-     * @return void
      */
-    public function up()
+    public function up(): void
     {
         Schema::create('message_reactions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('message_id')->constrained()->onDelete('cascade');
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('reaction_type', 20)->default('like'); // like, love, laugh, angry, sad, etc.
+            
+            // Polymorphic message relationship
+            $table->morphs('message'); // message_id + message_type
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            
+            // Reaction emoji (👍, ❤️, 😂, 😮, 😢, 🔥, 👎)
+            $table->string('reaction_type', 10)->default('👍');
+            
             $table->timestamps();
             
-            // Prevent duplicate reactions from same user on same message
-            $table->unique(['message_id', 'user_id', 'reaction_type']);
+            // Prevent duplicate reactions: same user, same message, same reaction
+            $table->unique(['message_id', 'message_type', 'user_id', 'reaction_type'], 'message_reaction_unique');
         });
     }
 
     /**
      * Reverse the migrations.
-     *
-     * @return void
      */
-    public function down()
+    public function down(): void
     {
         Schema::dropIfExists('message_reactions');
     }

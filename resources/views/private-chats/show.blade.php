@@ -65,6 +65,135 @@
         margin-top: 0.25rem;
         opacity: 0.7;
     }
+    
+    /* Message Reactions */
+    .message-reactions-bar {
+        display: flex;
+        gap: 4px;
+        margin-top: 4px;
+        flex-wrap: wrap;
+    }
+    .message-reaction-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+        background: #f0f0f0;
+    }
+    .message-reaction-chip:hover {
+        border-color: #10b981;
+        background: #e8f5e9;
+    }
+    .message-reaction-chip.active {
+        border-color: #10b981;
+        background: #e8f5e9;
+    }
+    .message-reaction-chip .reaction-count {
+        font-size: 0.7rem;
+        color: #666;
+    }
+    .message-reactions-trigger {
+        position: relative;
+    }
+    .reaction-picker {
+        display: none;
+        position: absolute;
+        bottom: 100%;
+        right: 0;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        z-index: 100;
+        gap: 2px;
+    }
+    .reaction-picker.show {
+        display: flex;
+    }
+    .reaction-picker-btn {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 1.2rem;
+        border: none;
+        background: transparent;
+    }
+    .reaction-picker-btn:hover {
+        background: #f0f0f0;
+        transform: scale(1.2);
+    }
+    .message-actions-hover {
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        z-index: 50;
+    }
+    .message-bubble:hover .message-actions-hover {
+        display: flex;
+    }
+    .message-bubble.sent:hover .message-actions-hover {
+        right: 0;
+        left: auto;
+    }
+    .message-action-btn {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: none;
+        background: transparent;
+        font-size: 0.9rem;
+    }
+    .message-action-btn:hover {
+        background: #f0f0f0;
+    }
+    .message-reactions-summary {
+        display: flex;
+        gap: 4px;
+        margin-top: 4px;
+        flex-wrap: wrap;
+    }
+    .message-reaction-summary-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 1px solid #e5e7eb;
+        background: #f8f9fa;
+    }
+    .message-reaction-summary-chip:hover {
+        border-color: #10b981;
+        background: #e8f5e9;
+    }
+    .message-reaction-summary-chip.active {
+        border-color: #10b981;
+        background: #e8f5e9;
+    }
     .message-sender {
         font-weight: 600;
         margin-bottom: 0.25rem;
@@ -234,8 +363,50 @@
                             <div class="message-sender">{{ $message->sender->fullName() }}</div>
                         @endif
                         <div class="message-text">{{ $message->message }}</div>
-                        <div class="message-meta">
+                        
+                        <!-- Reactions Bar -->
+                        <div class="message-reactions-summary" data-message-reactions="{{ $message->id }}">
+                            @php
+                                $reactionSummary = $message->reactions->groupBy('reaction_type')->map(function($group) {
+                                    return [
+                                        'count' => $group->count(),
+                                        'users' => $group->pluck('user.full_name')->unique()->values()->toArray()
+                                    ];
+                                });
+                            @endphp
+                            @foreach($reactionSummary as $reactionType => $data)
+                                @if($data['count'] > 0)
+                                    <button class="message-reaction-summary-chip reaction-chip" 
+                                            data-message-id="{{ $message->id }}"
+                                            data-reaction="{{ $reactionType }}"
+                                            title="{{ implode(', ', $data['users']) }}">
+                                        <span class="reaction-emoji">{{ $reactionType }}</span>
+                                        <span class="reaction-count">{{ $data['count'] }}</span>
+                                    </button>
+                                @endif
+                            @endforeach
+                        </div>
+                        
+                        <div class="message-meta d-flex align-items-center gap-2">
                             {{ $message->created_at->format('H:i') }}
+                            <!-- Reaction Picker Trigger -->
+                            <div class="message-reactions-trigger">
+                                <button class="message-action-btn reaction-trigger-btn" 
+                                        data-message-id="{{ $message->id }}"
+                                        title="ری‌اکت">
+                                    <i class="far fa-smile"></i>
+                                </button>
+                                <div class="reaction-picker" data-picker-for="{{ $message->id }}">
+                                    @foreach(['👍', '❤️', '😂', '😮', '😢', '🔥', '👎'] as $reaction)
+                                        <button class="reaction-picker-btn" 
+                                                data-message-id="{{ $message->id }}"
+                                                data-reaction="{{ $reaction }}"
+                                                title="{{ $reaction }}">
+                                            {{ $reaction }}
+                                        </button>
+                                    @endforeach
+                                </div>
+                            </div>
                         </div>
                     </div>
                     @if($message->sender_id === auth()->id())
@@ -478,6 +649,129 @@ document.addEventListener('DOMContentLoaded', function() {
             chatForm.dispatchEvent(new Event('submit'));
         }
     });
+    
+    // ========== Message Reactions ==========
+    const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '👎'];
+    
+    // Toggle reaction picker visibility
+    document.addEventListener('click', function(e) {
+        // Reaction picker toggle
+        const triggerBtn = e.target.closest('.reaction-trigger-btn');
+        if (triggerBtn) {
+            e.stopPropagation();
+            const messageId = triggerBtn.dataset.messageId;
+            const picker = document.querySelector(`.reaction-picker[data-picker-for="${messageId}"]`);
+            
+            // Close all other pickers
+            document.querySelectorAll('.reaction-picker.show').forEach(p => {
+                if (p !== picker) p.classList.remove('show');
+            });
+            
+            picker.classList.toggle('show');
+            return;
+        }
+        
+        // Close picker when clicking outside
+        if (!e.target.closest('.reaction-picker') && !e.target.closest('.reaction-trigger-btn')) {
+            document.querySelectorAll('.reaction-picker.show').forEach(p => p.classList.remove('show'));
+        }
+    });
+    
+    // Reaction picker button click
+    document.addEventListener('click', function(e) {
+        const reactionBtn = e.target.closest('.reaction-picker-btn');
+        if (reactionBtn) {
+            e.stopPropagation();
+            const messageId = reactionBtn.dataset.messageId;
+            const reactionType = reactionBtn.dataset.reaction;
+            toggleReaction(messageId, reactionType);
+            
+            // Close picker
+            document.querySelectorAll('.reaction-picker.show').forEach(p => p.classList.remove('show'));
+            return;
+        }
+        
+        // Existing reaction chip click (toggle)
+        const chipBtn = e.target.closest('.reaction-chip');
+        if (chipBtn) {
+            const messageId = chipBtn.dataset.messageId;
+            const reactionType = chipBtn.dataset.reaction;
+            toggleReaction(messageId, reactionType);
+        }
+    });
+    
+    // Toggle reaction on message
+    function toggleReaction(messageId, reactionType) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        
+        // Check if user already has this reaction
+        const existingChip = document.querySelector(`.reaction-chip[data-message-id="${messageId}"][data-reaction="${reactionType}"]`);
+        const userHasReaction = existingChip !== null;
+        
+        fetch('{{ route('messages.reactions.store') }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                message_id: messageId,
+                reaction_type: reactionType
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateReactionUI(messageId, data.reactions);
+            }
+        })
+        .catch(error => {
+            console.error('Error toggling reaction:', error);
+        });
+    }
+    
+    // Update reaction UI for a message
+    function updateReactionUI(messageId, reactions) {
+        const container = document.querySelector(`.message-reactions-summary[data-message-reactions="${messageId}"]`);
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        if (Object.keys(reactions).length === 0) return;
+        
+        Object.entries(reactions).forEach(([reactionType, data]) => {
+            if (data.count > 0) {
+                const chip = document.createElement('button');
+                chip.className = 'message-reaction-summary-chip reaction-chip';
+                chip.dataset.messageId = messageId;
+                chip.dataset.reaction = reactionType;
+                chip.title = data.users.join(', ');
+                chip.innerHTML = `
+                    <span class="reaction-emoji">${reactionType}</span>
+                    <span class="reaction-count">${data.count}</span>
+                `;
+                container.appendChild(chip);
+            }
+        });
+    }
+    
+    // Update reaction UI for dynamically added messages
+    window.updateMessageReactions = function(messageEl, reactions) {
+        const messageId = messageEl.dataset.messageId;
+        let container = messageEl.querySelector('.message-reactions-summary');
+        
+        if (!container) {
+            // Create container if it doesn't exist (for AJAX added messages)
+            const metaEl = messageEl.querySelector('.message-meta');
+            container = document.createElement('div');
+            container.className = 'message-reactions-summary';
+            container.dataset.messageReactions = messageId;
+            metaEl.parentNode.insertBefore(container, metaEl);
+        }
+        
+        updateReactionUI(messageId, reactions || {});
+    };
 });
 </script>
 @endpush

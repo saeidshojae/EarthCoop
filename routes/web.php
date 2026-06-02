@@ -57,6 +57,7 @@ use App\Http\Middleware\EnsureEmailIsVerified;
 use App\Http\Controllers\ChatRequestController;
 use App\Http\Controllers\PrivateChatController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\MessageReactionController;
 use App\Http\Middleware\UpdateLastSeenOnLogout;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -1147,6 +1148,11 @@ Route::middleware(Authenticate::class)->group(function () {
     // Private Chat API endpoints for AJAX/Real-time
     Route::get('/private-chats/{conversation}/messages', [PrivateChatController::class, 'getMessages'])->name('private-chats.messages');
     Route::get('/private-chats/{conversation}/info', [PrivateChatController::class, 'getConversationInfo'])->name('private-chats.info');
+    
+    // Message Reaction routes
+    Route::post('/messages/reactions', [MessageReactionController::class, 'store'])->name('messages.reactions.store');
+    Route::delete('/messages/reactions', [MessageReactionController::class, 'destroy'])->name('messages.reactions.destroy');
+    Route::get('/messages/reactions', [MessageReactionController::class, 'index'])->name('messages.reactions.index');
     
     Route::get('/chat/{group}', [ChatController::class, 'show'])->name('chat.show');
 });
