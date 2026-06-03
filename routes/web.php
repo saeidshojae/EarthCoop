@@ -58,6 +58,7 @@ use App\Http\Controllers\ChatRequestController;
 use App\Http\Controllers\PrivateChatController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\MessageReactionController;
+use App\Http\Controllers\PrivateChatReportController;
 use App\Http\Middleware\UpdateLastSeenOnLogout;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -1153,6 +1154,13 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::post('/messages/reactions', [MessageReactionController::class, 'store'])->name('messages.reactions.store');
     Route::delete('/messages/reactions', [MessageReactionController::class, 'destroy'])->name('messages.reactions.destroy');
     Route::get('/messages/reactions', [MessageReactionController::class, 'index'])->name('messages.reactions.index');
+    
+    // Message Report routes
+    Route::post('/private-chats/messages/report', [PrivateChatReportController::class, 'store'])->name('private-chats.report');
+    Route::get('/admin/private-chat-reports', [PrivateChatReportController::class, 'index'])->name('admin.private-chat-reports');
+    Route::get('/admin/private-chat-reports/{id}', [PrivateChatReportController::class, 'show'])->name('admin.private-chat-reports.show');
+    Route::post('/admin/private-chat-reports/{id}/review', [PrivateChatReportController::class, 'review'])->name('admin.private-chat-reports.review');
+    Route::delete('/admin/private-chat-reports/{id}', [PrivateChatReportController::class, 'destroy'])->name('admin.private-chat-reports.destroy');
     
     Route::get('/chat/{group}', [ChatController::class, 'show'])->name('chat.show');
 });

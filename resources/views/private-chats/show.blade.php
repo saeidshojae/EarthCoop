@@ -194,7 +194,57 @@
         border-color: #10b981;
         background: #e8f5e9;
     }
-    .message-sender {
+    
+    /* Report Modal */
+    .report-modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .report-modal-overlay.show {
+        display: flex;
+    }
+    .report-modal {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        max-width: 500px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+    .report-modal h3 {
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    .report-reason-option {
+        display: block;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .report-reason-option:hover {
+        border-color: #10b981;
+        background: #f0fdf4;
+    }
+    .report-reason-option input[type="radio"] {
+        margin-left: 0.5rem;
+    }
+    .report-reason-option.selected {
+        border-color: #10b981;
+        background: #e8f5e9;
+    }
         font-weight: 600;
         margin-bottom: 0.25rem;
         font-size: 0.85rem;
@@ -407,6 +457,13 @@
                                     @endforeach
                                 </div>
                             </div>
+                            <!-- Report Button -->
+                            <button class="message-action-btn report-btn" 
+                                    data-message-id="{{ $message->id }}"
+                                    data-message-sender="{{ $message->sender_id }}"
+                                    title="گزارش پیام">
+                                <i class="fas fa-flag"></i>
+                            </button>
                         </div>
                     </div>
                     @if($message->sender_id === auth()->id())
@@ -458,6 +515,66 @@
                 </button>
             </div>
         </form>
+    </div>
+    
+    <!-- Report Modal -->
+    <div class="report-modal-overlay" id="report-modal">
+        <div class="report-modal">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="m-0">گزارش پیام</h3>
+                <button class="btn btn-sm btn-light" onclick="closeReportModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="report-form">
+                @csrf
+                <input type="hidden" name="message_id" id="report-message-id">
+                
+                <p class="text-muted small mb-3">لطفاً دلیل گزارش خود را انتخاب کنید:</p>
+                
+                <div class="report-reasons">
+                    <label class="report-reason-option">
+                        <input type="radio" name="reason" value="spam" required>
+                        اسپم و تبلیغات
+                    </label>
+                    <label class="report-reason-option">
+                        <input type="radio" name="reason" value="harassment">
+                        آزار و اذیت
+                    </label>
+                    <label class="report-reason-option">
+                        <input type="radio" name="reason" value="inappropriate_content">
+                        محتوای نامناسب
+                    </label>
+                    <label class="report-reason-option">
+                        <input type="radio" name="reason" value="abuse">
+                        توهین
+                    </label>
+                    <label class="report-reason-option">
+                        <input type="radio" name="reason" value="other">
+                        سایر
+                    </label>
+                </div>
+                
+                <div class="mt-3">
+                    <textarea name="description" class="form-control" rows="3" placeholder="توضیحات بیشتر (اختیاری)"></textarea>
+                </div>
+                
+                <div class="d-flex gap-2 mt-3">
+                    <button type="submit" class="btn btn-success flex-grow-1" id="report-submit-btn">
+                        <i class="fas fa-paper-plane"></i>
+                        ارسال گزارش
+                    </button>
+                    <button type="button" class="btn btn-light" onclick="closeReportModal()">
+                        انصراف
+                    </button>
+                </div>
+            </form>
+            
+            <div id="report-success" class="text-center mt-3" style="display: none;">
+                <i class="fas fa-check-circle text-success" style="font-size: 3rem;"></i>
+                <p class="mt-2 text-success">گزارش شما با موفقیت ثبت شد و توسط مدیریت بررسی خواهد شد.</p>
+            </div>
+        </div>
     </div>
 </div>
 @endsection
@@ -755,6 +872,106 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // ========== Message Report ==========
+    let currentReportMessageId = null;
+    let currentReportMessageSender = null;
+    
+    // Open report modal
+    document.addEventListener('click', function(e) {
+        const reportBtn = e.target.closest('.report-btn');
+        if (reportBtn) {
+            e.stopPropagation();
+            currentReportMessageId = reportBtn.dataset.messageId;
+            currentReportMessageSender = reportBtn.dataset.messageSender;
+            
+            // Prevent reporting own messages
+            if (currentReportMessageSender == currentUserId) {
+                alert('شما نمی‌توانید از پیام خود گزارش دهید');
+                return;
+            }
+            
+            document.getElementById('report-message-id').value = currentReportMessageId;
+            document.getElementById('report-modal').classList.add('show');
+            document.getElementById('report-form').style.display = 'block';
+            document.getElementById('report-success').style.display = 'none';
+            document.getElementById('report-form').reset();
+            document.querySelectorAll('.report-reason-option').forEach(o => o.classList.remove('selected'));
+        }
+    });
+    
+    // Close report modal
+    window.closeReportModal = function() {
+        document.getElementById('report-modal').classList.remove('show');
+    };
+    
+    // Report reason selection
+    document.addEventListener('click', function(e) {
+        const reasonOption = e.target.closest('.report-reason-option');
+        if (reasonOption) {
+            document.querySelectorAll('.report-reason-option').forEach(o => o.classList.remove('selected'));
+            reasonOption.classList.add('selected');
+            const radio = reasonOption.querySelector('input[type="radio"]');
+            if (radio) radio.checked = true;
+        }
+    });
+    
+    // Report form submission
+    document.getElementById('report-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const messageId = document.getElementById('report-message-id').value;
+        const reason = document.querySelector('input[name="reason"]:checked');
+        const description = document.querySelector('textarea[name="description"]').value;
+        
+        if (!reason) {
+            alert('لطفاً دلیل گزارش خود را انتخاب کنید');
+            return;
+        }
+        
+        const submitBtn = document.getElementById('report-submit-btn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> در حال ارسال...';
+        
+        fetch('{{ route('private-chats.report') }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                message_id: messageId,
+                reason: reason.value,
+                description: description
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('report-form').style.display = 'none';
+                document.getElementById('report-success').style.display = 'block';
+                setTimeout(closeReportModal, 2000);
+            } else {
+                alert(data.error || 'خطا در ارسال گزارش');
+            }
+        })
+        .catch(error => {
+            console.error('Error reporting message:', error);
+            alert('خطا در ارسال گزارش. لطفاً دوباره تلاش کنید.');
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> ارسال گزارش';
+        });
+    });
+    
+    // Close modal on overlay click
+    document.getElementById('report-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeReportModal();
+        }
+    });
     
     // Update reaction UI for dynamically added messages
     window.updateMessageReactions = function(messageEl, reactions) {
