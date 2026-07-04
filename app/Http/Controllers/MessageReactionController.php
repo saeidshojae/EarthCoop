@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\PrivateMessageReactionsUpdated;
 use App\Models\MessageReaction;
 use App\Models\PrivateMessage;
 use Illuminate\Http\Request;
@@ -36,29 +37,48 @@ class MessageReactionController extends Controller
             ], 403);
         }
 
-        // Upsert reaction
-        $reaction = MessageReaction::updateOrCreate(
-            [
-                'message_id' => $messageId,
-                'message_type' => PrivateMessage::class,
-                'user_id' => $user->id,
-            ],
-            ['reaction_type' => $reactionType]
-        );
+        $existingReaction = MessageReaction::where([
+            'message_id' => $messageId,
+            'message_type' => PrivateMessage::class,
+            'user_id' => $user->id,
+        ])->first();
 
-        // Get updated reaction summary
+        if ($existingReaction && $existingReaction->reaction_type === $reactionType) {
+            $existingReaction->delete();
+            $message->load('reactions.user');
+        } else {
+            if ($existingReaction) {
+                $existingReaction->reaction_type = $reactionType;
+                $existingReaction->save();
+                $message->load('reactions.user');
+            } else {
+                MessageReaction::create([
+                    'message_id' => $messageId,
+                    'message_type' => PrivateMessage::class,
+                    'user_id' => $user->id,
+                    'reaction_type' => $reactionType,
+                ]);
+                $message->load('reactions.user');
+            }
+        }
+
         $reactions = $message->reactions
             ->groupBy('reaction_type')
             ->map(fn($group) => [
                 'count' => $group->count(),
-                'users' => $group->pluck('user.full_name')->unique('full_name')->values()->toArray(),
+                'users' => $group->map(fn($reaction) => $reaction->user ? $reaction->user->fullName() : '')
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->toArray(),
             ])
             ->filter(fn($data) => $data['count'] > 0)
             ->toArray();
 
+        event(new PrivateMessageReactionsUpdated($message, $message->conversation, $reactions));
+
         return response()->json([
             'success' => true,
-            'reaction_id' => $reaction->id,
             'reactions' => $reactions,
         ]);
     }

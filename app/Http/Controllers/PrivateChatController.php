@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\PrivateMessageCreated;
 use App\Models\PrivateConversation;
 use App\Models\PrivateMessage;
 use Illuminate\Http\Request;
@@ -17,19 +18,32 @@ class PrivateChatController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        $conversation->load([
-            'users:id,first_name,last_name,avatar',
-            'messages' => function ($query) {
-                $query->with('sender:id,first_name,last_name,avatar')->orderBy('id');
-            },
-        ]);
+        $conversation->load('users:id,first_name,last_name,avatar');
+
+        $recentMessages = $conversation->messages()
+            ->with([
+                'sender:id,first_name,last_name,avatar',
+                'reactions.user:id,first_name,last_name,avatar',
+            ])
+            ->orderBy('id', 'desc')
+            ->limit(50)
+            ->get()
+            ->sortBy('id')
+            ->values();
+
+        $conversation->setRelation('messages', $recentMessages);
+
+        $hasMoreMessages = $conversation->messages()
+            ->where('id', '<', $recentMessages->first()?->id ?? 0)
+            ->exists();
 
         return view('private-chats.show', [
             'conversation' => $conversation,
+            'hasMoreMessages' => $hasMoreMessages,
         ]);
     }
 
-    public function sendMessage(Request $request, PrivateConversation $conversation): JsonResponse
+    public function sendMessage(Request $request, PrivateConversation $conversation)
     {
         $currentUserId = (int) auth()->id();
         $isParticipant = $conversation->users()->where('users.id', $currentUserId)->exists();
@@ -47,13 +61,24 @@ class PrivateChatController extends Controller
             'message' => $data['message'],
         ]);
 
-        // Load sender info for the response
-        $message->load('sender:id,first_name,last_name,avatar');
+        $message->load([
+            'sender:id,first_name,last_name,avatar',
+            'reactions.user:id,first_name,last_name,avatar',
+        ]);
 
-        return response()->json([
+        event(new PrivateMessageCreated($message, $conversation));
+
+        $payload = [
             'success' => true,
             'message' => $this->formatMessage($message),
-        ]);
+        ];
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json($payload);
+        }
+
+        return redirect()->route('private-chats.show', $conversation->id)
+            ->with('status', 'پیام شما ارسال شد.');
     }
 
     public function getMessages(Request $request, PrivateConversation $conversation): JsonResponse
@@ -65,20 +90,32 @@ class PrivateChatController extends Controller
         }
 
         $afterId = $request->input('after_id');
-        
+        $beforeId = $request->input('before_id');
+        $limit = min(100, max(1, (int) $request->input('limit', 50)));
+
         $query = $conversation->messages()
-            ->with('sender:id,first_name,last_name,avatar')
-            ->orderBy('id', 'asc');
+            ->with([
+                'sender:id,first_name,last_name,avatar',
+                'reactions.user:id,first_name,last_name,avatar',
+            ]);
 
         if ($afterId) {
-            $query->where('id', '>', $afterId);
+            $query->where('id', '>', $afterId)->orderBy('id', 'asc');
+        } elseif ($beforeId) {
+            $query->where('id', '<', $beforeId)->orderBy('id', 'desc');
+        } else {
+            $query->orderBy('id', 'asc');
         }
 
-        $messages = $query->limit(50)->get();
+        $messages = $query->limit($limit)->get();
+
+        if ($beforeId) {
+            $messages = $messages->sortBy('id')->values();
+        }
 
         return response()->json([
             'messages' => $messages->map(fn($m) => $this->formatMessage($m)),
-            'has_more' => $messages->count() >= 50,
+            'has_more' => $messages->count() >= $limit,
         ]);
     }
 
@@ -108,6 +145,24 @@ class PrivateChatController extends Controller
     private function formatMessage($message): array
     {
         $sender = $message->sender;
+        $reactionSummary = [];
+
+        if ($message->relationLoaded('reactions')) {
+            $reactionSummary = $message->reactions
+                ->groupBy('reaction_type')
+                ->map(function ($group) {
+                    return [
+                        'count' => $group->count(),
+                        'users' => $group->map(fn($reaction) => $reaction->user?->fullName() ?? '')
+                            ->filter()
+                            ->unique()
+                            ->values()
+                            ->toArray(),
+                    ];
+                })
+                ->toArray();
+        }
+
         return [
             'id' => $message->id,
             'message' => $message->message,
@@ -118,6 +173,7 @@ class PrivateChatController extends Controller
             ],
             'created_at' => $message->created_at,
             'created_at_relative' => $message->created_at->diffForHumans(),
+            'reaction_summary' => $reactionSummary,
         ];
     }
 }

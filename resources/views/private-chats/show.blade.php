@@ -245,10 +245,6 @@
         border-color: #10b981;
         background: #e8f5e9;
     }
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-        font-size: 0.85rem;
-    }
     .chat-input-area {
         border: 1px solid #e5e7eb;
         border-radius: 12px;
@@ -369,6 +365,12 @@
 
 @section('content')
 <div class="chat-container">
+    @if(session('status'))
+        <div class="alert alert-success" role="alert">
+            {{ session('status') }}
+        </div>
+    @endif
+
     <!-- Chat Header -->
     <div class="card mb-3" style="border-radius: 12px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
         <div class="card-body p-3">
@@ -398,6 +400,13 @@
 
     <!-- Messages Area -->
     <div class="card mb-3" style="border-radius: 12px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08); position: relative;">
+        @if(!empty($hasMoreMessages) && $hasMoreMessages)
+            <div class="text-center py-2">
+                <button type="button" class="btn btn-sm btn-light" id="load-older-messages-btn">
+                    بارگذاری پیام‌های قدیمی‌تر
+                </button>
+            </div>
+        @endif
         <div class="chat-messages" id="chat-messages">
             @forelse($conversation->messages as $message)
                 <div class="message-bubble {{ $message->sender_id === auth()->id() ? 'sent' : 'received' }}" 
@@ -420,7 +429,11 @@
                                 $reactionSummary = $message->reactions->groupBy('reaction_type')->map(function($group) {
                                     return [
                                         'count' => $group->count(),
-                                        'users' => $group->pluck('user.full_name')->unique()->values()->toArray()
+                                        'users' => $group->map(fn($reaction) => $reaction->user ? $reaction->user->fullName() : '')
+                                            ->filter()
+                                            ->unique()
+                                            ->values()
+                                            ->toArray(),
                                     ];
                                 });
                             @endphp
@@ -589,6 +602,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const typingIndicator = document.getElementById('typing-indicator');
     const newMessageIndicator = document.getElementById('new-message-indicator');
     const newMessageCount = document.getElementById('new-message-count');
+    const loadOlderMessagesBtn = document.getElementById('load-older-messages-btn');
     
     const conversationId = {{ $conversation->id }};
     const currentUserId = {{ auth()->id() }};
@@ -597,6 +611,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let newMessagesCount = 0;
     let isAtBottom = true;
     let pollingInterval = null;
+    let typingTimeout = null;
+    let loadingOlderMessages = false;
+    let echoChannel = null;
     
     // Scroll to bottom on load
     scrollToBottom();
@@ -657,13 +674,21 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Add message to chat UI
-    function addMessageToChat(messageData, isSent) {
+    function addMessageToChat(messageData, isSent, prepend = false) {
         // Remove empty chat message
         const emptyChat = chatMessages.querySelector('.empty-chat');
         if (emptyChat) {
             emptyChat.remove();
         }
         
+        const existingMessageEl = chatMessages.querySelector(`[data-message-id="${messageData.id}"]`);
+        if (existingMessageEl) {
+            if (messageData.reaction_summary) {
+                updateReactionUI(messageData.id, messageData.reaction_summary);
+            }
+            return;
+        }
+
         const messageEl = document.createElement('div');
         messageEl.className = `message-bubble ${isSent ? 'sent' : 'received'}`;
         messageEl.dataset.messageId = messageData.id;
@@ -672,32 +697,139 @@ document.addEventListener('DOMContentLoaded', function() {
         const avatarUrl = messageData.sender.avatar 
             ? `{{ asset('images/users') }}/${messageData.sender.avatar}` 
             : '{{ asset('images/default-avatar.png') }}';
+
+        const reactionSummaryHtml = buildReactionSummaryHtml(messageData.reaction_summary, messageData.id);
         
         messageEl.innerHTML = `
             ${!isSent ? `<img src="${avatarUrl}" alt="${messageData.sender.name}" class="message-avatar">` : ''}
             <div class="message-content">
                 ${!isSent ? `<div class="message-sender">${messageData.sender.name}</div>` : ''}
                 <div class="message-text">${escapeHtml(messageData.message)}</div>
-                <div class="message-meta">${formatTime(messageData.created_at)}</div>
+                ${reactionSummaryHtml}
+                <div class="message-meta d-flex align-items-center gap-2">
+                    ${formatTime(messageData.created_at)}
+                    <div class="message-reactions-trigger">
+                        <button class="message-action-btn reaction-trigger-btn" 
+                                data-message-id="${messageData.id}"
+                                title="ری‌اکت">
+                            <i class="far fa-smile"></i>
+                        </button>
+                        <div class="reaction-picker" data-picker-for="${messageData.id}">
+                            ${['👍', '❤️', '😂', '😮', '😢', '🔥', '👎'].map(reaction => `
+                                <button class="reaction-picker-btn" 
+                                        data-message-id="${messageData.id}"
+                                        data-reaction="${reaction}"
+                                        title="${reaction}">
+                                    ${reaction}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <button class="message-action-btn report-btn" 
+                            data-message-id="${messageData.id}"
+                            data-message-sender="${messageData.sender.id}"
+                            title="گزارش پیام">
+                        <i class="fas fa-flag"></i>
+                    </button>
+                </div>
             </div>
             ${isSent ? `<img src="${avatarUrl}" alt="${messageData.sender.name}" class="message-avatar">` : ''}
         `;
-        
-        chatMessages.appendChild(messageEl);
-        
-        // Auto scroll if at bottom
-        if (isAtBottom) {
-            scrollToBottom();
+
+        if (prepend) {
+            chatMessages.insertBefore(messageEl, chatMessages.firstChild);
         } else {
+            chatMessages.appendChild(messageEl);
+        }
+        
+        // Auto scroll if at bottom and message appended
+        if (!prepend && isAtBottom) {
+            scrollToBottom();
+        } else if (!prepend) {
             newMessagesCount++;
             newMessageCount.textContent = newMessagesCount;
             newMessageIndicator.classList.add('active');
         }
     }
     
+    function subscribeToPrivateChat() {
+        if (!window.Echo) {
+            startPolling();
+            return;
+        }
+
+        try {
+            echoChannel = window.Echo.private(`private-chat.${conversationId}`);
+
+            echoChannel.listen('.private-message.created', function(event) {
+                const msg = event.message;
+
+                if (!msg || !msg.id) {
+                    return;
+                }
+
+                addMessageToChat(msg, msg.sender.id === currentUserId);
+                lastMessageId = Math.max(lastMessageId, msg.id);
+            });
+
+            echoChannel.listen('.private-message.reactions.updated', function(event) {
+                if (!event || !event.message_id) {
+                    return;
+                }
+
+                updateReactionUI(event.message_id, event.reactions || {});
+            });
+
+            echoChannel.listenForWhisper('typing', function(payload) {
+                if (!payload || payload.user_id === currentUserId) {
+                    return;
+                }
+
+                typingIndicator.classList.add('active');
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(function() {
+                    typingIndicator.classList.remove('active');
+                }, 1400);
+            });
+
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+        } catch (error) {
+            console.warn('Echo subscription failed, falling back to polling.', error);
+            startPolling();
+        }
+    }
+
+    function buildReactionSummaryHtml(reactions = {}, messageId) {
+        const entries = Object.entries(reactions || {});
+        if (!entries.length) {
+            return '';
+        }
+
+        return `
+            <div class="message-reactions-summary" data-message-reactions="${messageId}">
+                ${entries.map(([reactionType, data]) => `
+                    <button class="message-reaction-summary-chip reaction-chip" 
+                            data-message-id="${messageId}"
+                            data-reaction="${reactionType}"
+                            title="${(data.users || []).join(', ')}">
+                        <span class="reaction-emoji">${reactionType}</span>
+                        <span class="reaction-count">${data.count}</span>
+                    </button>
+                `).join('')}
+            </div>
+        `;
+    }
+    
     // Poll for new messages
     function startPolling() {
         pollingInterval = setInterval(function() {
+            if (window.Echo && echoChannel) {
+                return;
+            }
+
             fetch(`{{ route('private-chats.messages', $conversation->id) }}?after_id=${lastMessageId}`, {
                 headers: {
                     'Accept': 'application/json',
@@ -721,8 +853,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000); // Poll every 3 seconds
     }
     
-    // Start polling
-    startPolling();
+    if (window.Echo) {
+        subscribeToPrivateChat();
+    } else {
+        startPolling();
+    }
+
+    if (loadOlderMessagesBtn) {
+        loadOlderMessagesBtn.addEventListener('click', function() {
+            loadOlderMessagesBtn.disabled = true;
+            loadOlderMessages();
+        });
+    }
     
     // Stop polling when leaving page
     window.addEventListener('beforeunload', function() {
@@ -753,10 +895,70 @@ document.addEventListener('DOMContentLoaded', function() {
         return div.innerHTML;
     }
     
+    function loadOlderMessages() {
+        if (loadingOlderMessages) {
+            return;
+        }
+
+        const firstMessage = chatMessages.querySelector('.message-bubble');
+        if (!firstMessage) {
+            loadOlderMessagesBtn.disabled = false;
+            return;
+        }
+
+        const beforeId = firstMessage.dataset.messageId;
+        if (!beforeId) {
+            loadOlderMessagesBtn.disabled = false;
+            return;
+        }
+
+        loadingOlderMessages = true;
+
+        fetch(`{{ route('private-chats.messages', $conversation->id) }}?before_id=${beforeId}&limit=50`, {
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.messages && data.messages.length > 0) {
+                data.messages.forEach(function(msg) {
+                    addMessageToChat(msg, msg.sender.id === currentUserId, true);
+                });
+            }
+
+            if (!data.has_more && loadOlderMessagesBtn) {
+                loadOlderMessagesBtn.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading older messages:', error);
+        })
+        .finally(() => {
+            loadingOlderMessages = false;
+            if (loadOlderMessagesBtn) {
+                loadOlderMessagesBtn.disabled = false;
+            }
+        });
+    }
+
     // Auto-resize textarea
     messageInput.addEventListener('input', function() {
         this.style.height = 'auto';
         this.style.height = (this.scrollHeight) + 'px';
+        
+        typingIndicator.classList.add('active');
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(function() {
+            typingIndicator.classList.remove('active');
+        }, 1200);
+
+        if (window.Echo && echoChannel) {
+            echoChannel.whisper('typing', {
+                user_id: currentUserId,
+            });
+        }
     });
     
     // Enter key to send (Shift+Enter for new line)
