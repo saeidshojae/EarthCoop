@@ -57,8 +57,6 @@
                                     </div>
                                 @elseif($requestItem->status === 'accepted' && $requestItem->private_conversation_id)
                                     <a href="{{ route('private-chats.show', $requestItem->private_conversation_id) }}" class="btn btn-primary btn-sm">ورود به چت</a>
-                                @elseif($requestItem->status === 'accepted' && $requestItem->group_id)
-                                    <a href="{{ route('groups.chat', $requestItem->group_id) }}" class="btn btn-primary btn-sm">ورود به چت</a>
                                 @endif
                             </div>
                             @if($requestItem->message)
@@ -85,8 +83,6 @@
                             @endif
                             @if($requestItem->status === 'accepted' && $requestItem->private_conversation_id)
                                 <a href="{{ route('private-chats.show', $requestItem->private_conversation_id) }}" class="btn btn-primary btn-sm mt-2">ورود به چت</a>
-                            @elseif($requestItem->status === 'accepted' && $requestItem->group_id)
-                                <a href="{{ route('groups.chat', $requestItem->group_id) }}" class="btn btn-primary btn-sm mt-2">ورود به چت</a>
                             @endif
                         </div>
                     @empty

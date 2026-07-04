@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\ChatRequest;
-use App\Models\Group;
 use App\Models\PrivateConversation;
 use App\Models\User;
 use App\Notifications\ChatRequestNotification;
@@ -52,10 +51,8 @@ class ChatRequestController extends Controller
 
         $input = $request->validate([
             'description' => 'required|string|max:5000',
-            'request_to_group' => 'nullable|integer|exists:groups,id',
         ]);
 
-        $requestToGroup = $input['request_to_group'] ?? null;
         $currentUser = auth()->user();
 
         if ((int) $currentUser->id === (int) $user->id) {
@@ -73,9 +70,10 @@ class ChatRequestController extends Controller
                 return redirect()->route('private-chats.show', $existingRequest->private_conversation_id);
             }
 
-            if ($existingRequest->status === 'accepted' && $existingRequest->group_id) {
-                // Backward compatibility for old accepted requests
-                return redirect()->route('groups.chat', $existingRequest->group_id);
+                if ($existingRequest->status === 'accepted' && ! $existingRequest->private_conversation_id) {
+                $conversation = $this->ensurePrivateConversationForRequest($existingRequest);
+
+                return redirect()->route('private-chats.show', $conversation->id);
             }
 
             if ($existingRequest->status === 'rejected') {
@@ -84,8 +82,6 @@ class ChatRequestController extends Controller
                     'receiver_id' => $user->id,
                     'message' => $input['description'],
                     'status' => 'pending',
-                    'request_to_group' => $requestToGroup,
-                    'group_id' => null,
                     'private_conversation_id' => null,
                 ]);
 
@@ -100,23 +96,14 @@ class ChatRequestController extends Controller
             'receiver_id' => $user->id,
             'message' => $input['description'],
             'status' => 'pending',
-            'request_to_group' => $requestToGroup,
         ]);
 
         // Send notification to receiver
         Notification::send($user, new ChatRequestNotification(
             $chatRequest->id,
             $currentUser->fullName(),
-            $input['description'],
-            $requestToGroup
+            $input['description']
         ));
-
-        if ($requestToGroup) {
-            $group = Group::find($requestToGroup);
-            if ($group) {
-                event(new \App\Events\ChatRequestToGroup($chatRequest, $group, $currentUser));
-            }
-        }
 
         return back()->with('success', 'Chat request sent');
     }
@@ -147,7 +134,6 @@ class ChatRequestController extends Controller
                 $chatRequest->update([
                     'status' => 'accepted',
                     'private_conversation_id' => $acceptedWithConversation->private_conversation_id,
-                    'group_id' => null,
                 ]);
 
                 return PrivateConversation::find($acceptedWithConversation->private_conversation_id);
@@ -160,7 +146,6 @@ class ChatRequestController extends Controller
 
             $chatRequest->update([
                 'private_conversation_id' => $conversation->id,
-                'group_id' => null,
             ]);
 
             return $conversation;
@@ -213,5 +198,31 @@ class ChatRequestController extends Controller
         return response()->json([
             'pending_count' => $count,
         ]);
+    }
+
+    private function ensurePrivateConversationForRequest(ChatRequest $chatRequest): PrivateConversation
+    {
+        if ($chatRequest->private_conversation_id) {
+            return $chatRequest->privateConversation()->firstOrFail();
+        }
+
+        $senderId = (int) $chatRequest->sender_id;
+        $receiverId = (int) $chatRequest->receiver_id;
+
+        $existingConversation = PrivateConversation::query()
+            ->whereHas('users', fn ($query) => $query->where('users.id', $senderId))
+            ->whereHas('users', fn ($query) => $query->where('users.id', $receiverId))
+            ->first();
+
+        if (! $existingConversation) {
+            $existingConversation = PrivateConversation::create(['status' => 'active']);
+            $existingConversation->users()->syncWithoutDetaching([$senderId, $receiverId]);
+        }
+
+        $chatRequest->update([
+            'private_conversation_id' => $existingConversation->id,
+        ]);
+
+        return $existingConversation;
     }
 }

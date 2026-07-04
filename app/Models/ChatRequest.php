@@ -12,8 +12,6 @@ class ChatRequest extends Model
         'receiver_id',
         'status',
         'message',
-        'group_id',
-        'request_to_group',
         'private_conversation_id',
     ];
 

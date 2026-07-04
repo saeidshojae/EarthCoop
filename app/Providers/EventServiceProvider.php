@@ -101,9 +101,6 @@ class EventServiceProvider extends ServiceProvider
                \App\Events\MessageReported::class => [
                    \App\Listeners\SendMessageReportedNotifications::class,
                ],
-               \App\Events\ChatRequestToGroup::class => [
-                   \App\Listeners\SendChatRequestToGroupNotifications::class,
-               ],
         \App\Events\BidLost::class => [
             \App\Listeners\SendBidLostNotifications::class,
         ],

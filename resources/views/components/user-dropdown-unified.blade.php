@@ -1,26 +1,50 @@
 {{-- User Dropdown Component - بر اساس طراحی Home --}}
 
-<div class="relative" x-data="{ 
-        userDropdownOpen: false,
-        pendingChatRequests: 0,
-        fetchChatRequests() {
-            fetch('{{ route('chat-requests.index') }}', {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+<div class="relative" 
+     x-data="userDropdownData()"
+     @click.away="userDropdownOpen = false"
+     x-init="init()">
+    
+    <script>
+        function userDropdownData() {
+            return {
+                userDropdownOpen: false,
+                pendingChatRequests: 0,
+                fetchChatRequests() {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+                    fetch('{{ route('chat-requests.pending-count') }}', {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': csrfToken
+                        },
+                        credentials: 'same-origin'
+                    })
+                    .then(response => {
+                        const contentType = response.headers.get('content-type') || '';
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}`);
+                        }
+                        if (!contentType.includes('application/json')) {
+                            throw new Error('Non-JSON response received');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.pending_count !== undefined) {
+                            this.pendingChatRequests = data.pending_count;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('درخواست چت بار نشد:', error);
+                    });
+                },
+                init() {
+                    this.fetchChatRequests();
                 }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.pending_count !== undefined) {
-                    this.pendingChatRequests = data.pending_count;
-                }
-            })
-            .catch(error => console.error('Error:', error));
+            };
         }
-    }" 
-    x-init="fetchChatRequests();"
-    x-on:click.away="userDropdownOpen = false">
+    </script>
 
     <button @click.stop="userDropdownOpen = !userDropdownOpen" 
             class="px-4 py-2 md:px-4 md:py-2 rounded-full md:rounded-full shadow-md transition duration-300 font-medium transform hover:scale-105 active:scale-100 flex items-center justify-center ripple user-dropdown-btn" 

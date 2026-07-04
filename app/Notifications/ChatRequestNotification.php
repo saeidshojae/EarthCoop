@@ -14,8 +14,7 @@ class ChatRequestNotification extends Notification implements ShouldQueue
     public function __construct(
         public int $chatRequestId,
         public string $senderName,
-        public string $message,
-        public ?string $requestToGroup = null
+        public string $message
     ) {
     }
 
@@ -52,7 +51,6 @@ class ChatRequestNotification extends Notification implements ShouldQueue
             'chat_request_id' => $this->chatRequestId,
             'sender_name' => $this->senderName,
             'message' => $this->message,
-            'request_to_group' => $this->requestToGroup,
             'url' => route('chat-requests.index'),
             'type' => 'chat_request',
         ];

@@ -10,11 +10,16 @@ return new class extends Migration
     {
         Schema::table('chat_requests', function (Blueprint $table) {
             if (!Schema::hasColumn('chat_requests', 'private_conversation_id')) {
-                $table->foreignId('private_conversation_id')
+                $column = $table->foreignId('private_conversation_id')
                     ->nullable()
                     ->constrained('private_conversations')
-                    ->nullOnDelete()
-                    ->after('group_id');
+                    ->nullOnDelete();
+
+                if (Schema::hasColumn('chat_requests', 'group_id')) {
+                    $column->after('group_id');
+                } else {
+                    $column->after('status');
+                }
             }
         });
     }
