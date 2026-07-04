@@ -178,7 +178,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
                 if (res.ok && (data.status === 'success' || !data.status)) {
                     // ✅ FIXED: Remove message from DOM smoothly
-                    const msgEl = document.getElementById(`msg-${messageId}`);
+                    const msgEl = document.getElementById(`msg-${id}`);
                     if (msgEl) {
                         msgEl.style.transition = 'opacity 0.3s';
                         msgEl.style.opacity = '0';
@@ -186,7 +186,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     }
                     // اگر این پیام reply تارگت بود، reply indicator را پاک کن
                     const parentInput = document.getElementById('parent_id');
-                    if (parentInput && parentInput.value == messageId) {
+                    if (parentInput && parentInput.value == id) {
                         if (typeof cancelReply === 'function') cancelReply();
                     }
                 } else {
@@ -238,6 +238,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
 <script>
 const groupId = {{ $group->id }};
+window.groupChatTransport = @json(config('group-chat.transport', 'auto'));
 const authUserId = {{ auth()->id() }};
 const yourRole = {{ $yourRole ?? 0 }};
 window.groupId = groupId;

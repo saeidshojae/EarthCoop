@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
 
 class UpdateLastSeen
@@ -17,7 +18,7 @@ class UpdateLastSeen
      */
     public function handle(Request $request, Closure $next)
     {
-        if (auth()->check()) {
+        if (auth()->check() && Schema::hasColumn('users', 'last_seen')) {
             $user = auth()->user();
             $user->last_seen = now();
             $user->save();

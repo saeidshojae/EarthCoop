@@ -36,6 +36,9 @@ return [
     'polling_min_interval_ms' => 1000,
     'polling_max_interval_ms' => 10000,
 
+    // Cache TTL for private channel auth membership checks.
+    'channel_auth_cache_ttl_seconds' => (int) env('GROUP_CHAT_CHANNEL_AUTH_CACHE_TTL_SECONDS', 30),
+
     // Feature toggles for staged rollout (non-breaking migration path).
     'features' => [
         'message_no_reload' => env('GROUP_CHAT_FEATURE_MESSAGE_NO_RELOAD', true),

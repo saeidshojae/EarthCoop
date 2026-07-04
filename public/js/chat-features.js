@@ -389,12 +389,18 @@
         });
     };
     
-    if (!groupId || !authUserId) {
-        console.warn('Chat features: groupId or authUserId not found');
+    if (!groupId) {
+        console.warn('Chat features: groupId not found');
         return;
+    }
+    const hasAuthUser = !!authUserId;
+    if (!hasAuthUser) {
+        console.warn('Chat features: authUserId not found, enabling limited mode for reactions/menus');
     }
 
     // ========== Typing Indicator ==========
+    const transportMode = String(window.groupChatTransport || 'auto').toLowerCase();
+    const typingEnabled = transportMode !== 'polling';
     let typingTimeout = null;
     let isTyping = false;
     const typingUsers = new Set();
@@ -406,7 +412,7 @@
     typingIndicator.style.display = 'none';
     typingIndicator.innerHTML = '<span>در حال تایپ...</span>';
     
-    if (messageInput) {
+    if (messageInput && typingEnabled) {
         const chatBox = document.getElementById('chat-box');
         if (chatBox) {
             chatBox.appendChild(typingIndicator);
@@ -433,6 +439,10 @@
     }
 
     function sendTypingStatus(typing) {
+        if (!typingEnabled) {
+            return;
+        }
+
         fetch(`/groups/${groupId}/typing`, {
             method: 'POST',
             headers: {
@@ -756,7 +766,7 @@
                 if (messageId && entry.target.querySelector('.message-bubble')) {
                     const messageBubble = entry.target.querySelector('.message-bubble');
                     const userId = messageBubble?.getAttribute('data-user-id') || messageBubble?.dataset?.userId;
-                    if (userId && userId != authUserId) {
+                    if (hasAuthUser && userId && userId != authUserId) {
                         markMessageAsRead(messageId);
                     }
                 }
@@ -833,13 +843,12 @@
         reactionBtn.onclick = (e) => {
             e.stopPropagation();
             e.preventDefault();
-            showReactionPicker(messageId, e.target.closest('.message-bubble'));
+            showReactionPicker(messageId, e.currentTarget.closest('.message-bubble'));
         };
     }
 
     function showReactionPicker(messageId, triggerElement) {
-        const reactions = ['like', 'love', 'laugh', 'wow', 'sad', 'angry'];
-        const emojis = { like: '👍', love: '❤️', laugh: '😂', wow: '😮', sad: '😢', angry: '😠' };
+        const reactions = ['👍', '❤️', '😂', '😮', '😢', '🔥', '👎'];
         
         // Remove existing picker if any
         const existingPicker = document.querySelector('.reaction-picker');
@@ -848,27 +857,21 @@
         }
 
         // Fallback برای پیدا کردن المان پیام
-        const targetElement = triggerElement || document.querySelector(`[data-message-id="${messageId}"]`);
+        const targetElement = triggerElement || document.querySelector(`.message-bubble[data-message-id="${messageId}"]`) || document.querySelector(`[data-message-id="${messageId}"]`);
         if (!targetElement) {
             return;
-        }
-
-        // اطمینان از این‌که ظرف پیام position: relative دارد تا picker به آن نسبی باشد
-        const container = targetElement.closest('.message-row') || targetElement;
-        if (container && getComputedStyle(container).position === 'static') {
-            container.style.position = 'relative';
         }
         
         const picker = document.createElement('div');
         picker.className = 'reaction-picker';
         picker.style.cssText = `
-            position: absolute;
+            position: fixed;
             background: white;
             border: 1px solid #ddd;
             border-radius: 12px;
             padding: 6px 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 1000;
+            z-index: 20000;
             display: flex;
             gap: 6px;
             align-items: center;
@@ -876,33 +879,39 @@
 
         reactions.forEach(reaction => {
             const btn = document.createElement('button');
-            btn.innerHTML = emojis[reaction];
+            btn.innerHTML = reaction;
             btn.style.cssText = 'font-size: 20px; border: none; background: none; cursor: pointer; padding: 2px;';
             btn.onclick = (e) => {
                 e.stopPropagation();
                 toggleReaction(messageId, reaction);
+                if (typeof window.closeAllActionMenus === 'function') {
+                    window.closeAllActionMenus();
+                } else {
+                    document.querySelectorAll('[data-action-menu].is-open').forEach(menu => {
+                        menu.classList.remove('is-open');
+                        menu.querySelector('.action-menu__toggle')?.setAttribute('aria-expanded', 'false');
+                    });
+                }
                 picker.remove();
             };
             picker.appendChild(btn);
         });
 
-        // اضافه کردن picker داخل ظرف پیام تا با اسکرول جابه‌جا شود
-        (container || document.body).appendChild(picker);
-        
+        // اضافه کردن picker به body تا زیر overflow منوها/کانتینرها پنهان نشود
+        document.body.appendChild(picker);
+
         // Position picker: بالای حباب پیام، با کنترل لبه‌های صفحه در موبایل
         const bubbleRect = targetElement.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
         const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
 
-        // محاسبه موقعیت افقی نسبت به container
-        let left = bubbleRect.left - containerRect.left + (bubbleRect.width / 2) - (picker.offsetWidth / 2);
+        let left = bubbleRect.left + (bubbleRect.width / 2) - (picker.offsetWidth / 2);
         // اطمینان از این‌که در موبایل/دسکتاپ از صفحه بیرون نزند
         const minLeft = 8;
-        const maxLeft = viewportWidth - picker.offsetWidth - 8 - containerRect.left;
+        const maxLeft = viewportWidth - picker.offsetWidth - 8;
         left = Math.min(Math.max(left, minLeft), maxLeft);
 
         picker.style.left = `${left}px`;
-        picker.style.bottom = `${containerRect.bottom - bubbleRect.top + 8}px`;
+        picker.style.top = `${Math.max(8, bubbleRect.top - picker.offsetHeight - 8)}px`;
 
         // بستن با کلیک بیرون
         setTimeout(() => {
@@ -979,13 +988,42 @@
 
     function getReactionEmoji(type) {
         const emojis = { like: '👍', love: '❤️', laugh: '😂', wow: '😮', sad: '😢', angry: '😠' };
-        return emojis[type] || '👍';
+        return emojis[type] || type || '👍';
     }
 
     // Initialize reactions for existing messages
     document.querySelectorAll('[data-message-id]').forEach(msg => {
         addReactionButton(msg);
     });
+
+    // Delegated fallback: ensures reaction picker works for server-rendered and dynamically inserted menus.
+    if (!document._messageReactionDelegatedBound) {
+        document._messageReactionDelegatedBound = true;
+        document.addEventListener('click', function(e) {
+            const reactionBtn = e.target.closest('.btn-reaction');
+            if (!reactionBtn) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof e.stopImmediatePropagation === 'function') {
+                e.stopImmediatePropagation();
+            }
+
+            const row = reactionBtn.closest('[id^="msg-"], [data-message-id], .message-row');
+            const bubble = row ? (row.querySelector('.message-bubble[data-message-id]') || row.querySelector('.message-bubble')) : null;
+
+            let messageId = bubble?.getAttribute('data-message-id') || row?.getAttribute('data-message-id') || null;
+            if (!messageId && row?.id && row.id.indexOf('msg-') === 0) {
+                messageId = row.id.substring(4);
+            }
+            if (!messageId) {
+                console.warn('Reaction picker: messageId not found for clicked reaction button');
+                return;
+            }
+
+            showReactionPicker(String(messageId), bubble || row || reactionBtn);
+        });
+    }
 
     // ========== Voice Message ==========
     // Voice recording is now handled by voice-recorder.js

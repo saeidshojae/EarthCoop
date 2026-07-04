@@ -11,7 +11,7 @@ class MessageReaction extends Model
 
     protected $fillable = [
         'message_id',
-        'messageable_type',
+        'message_type',
         'user_id',
         'reaction_type'
     ];

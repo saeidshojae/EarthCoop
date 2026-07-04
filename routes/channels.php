@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Cache;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,9 +31,26 @@ Broadcast::channel('support-chat.{chatId}', function ($user, $chatId) {
 });
 
 Broadcast::channel('group.{groupId}', function ($user, $groupId) {
-    return \App\Models\GroupUser::where('group_id', (int) $groupId)
-        ->where('user_id', (int) $user->id)
-        ->where('status', 1)
-        ->exists();
+    $groupId = (int) $groupId;
+    $userId = (int) $user->id;
+    $cacheKey = "group-channel-auth:{$groupId}:{$userId}";
+    $ttlSeconds = max(1, (int) config('group-chat.channel_auth_cache_ttl_seconds', 30));
+
+    return Cache::remember($cacheKey, now()->addSeconds($ttlSeconds), function () use ($groupId, $userId) {
+        return \App\Models\GroupUser::where('group_id', $groupId)
+            ->where('user_id', $userId)
+            ->where('status', 1)
+            ->exists();
+    });
+});
+
+Broadcast::channel('private-chat.{conversationId}', function ($user, $conversationId) {
+    $conversation = \App\Models\PrivateConversation::with('users')->find((int) $conversationId);
+
+    if (!$conversation) {
+        return false;
+    }
+
+    return $conversation->users->contains('id', $user->id);
 });
 

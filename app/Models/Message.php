@@ -19,6 +19,7 @@ class Message extends Model
         'file_type',
         'file_name',
         'voice_message',
+        'client_message_id',
         'edited', 
         'edited_by',
         'removed_by',

@@ -131,6 +131,31 @@ function getCsrfToken() {
     return metaTag.content;
 }
 
+function generateClientMessageId() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        return window.crypto.randomUUID();
+    }
+
+    return 'cmid_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+}
+
+function getOrCreateClientMessageIdInput(form) {
+    let input = form.querySelector('input[name="client_message_id"]');
+
+    if (!input) {
+        input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'client_message_id';
+        form.appendChild(input);
+    }
+
+    if (!input.value) {
+        input.value = generateClientMessageId();
+    }
+
+    return input;
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     console.log("Tabs script loaded ✅");
 
@@ -405,6 +430,48 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
+function positionActionMenu(menu) {
+    if (!menu) return;
+    const list = menu.querySelector('.action-menu__list');
+    if (!list) return;
+
+    menu.classList.remove('open-down');
+    const rect = list.getBoundingClientRect();
+    const viewportTop = 8;
+
+    // Default is opening upward. If there is not enough space above, flip downward.
+    if (rect.top < viewportTop) {
+        menu.classList.add('open-down');
+    }
+}
+
+function closeAllActionMenus() {
+    document.querySelectorAll('[data-action-menu].is-open').forEach(function(menu) {
+        menu.classList.remove('is-open');
+        menu.querySelector('.action-menu__toggle')?.setAttribute('aria-expanded', 'false');
+    });
+}
+
+window.closeAllActionMenus = closeAllActionMenus;
+
+if (!document._globalActionMenuDismissRegistered) {
+    document._globalActionMenuDismissRegistered = true;
+
+    // Close open action menus on any page click, except clicking the toggle itself.
+    document.addEventListener('click', function(event) {
+        if (event.target.closest('.action-menu__toggle')) {
+            return;
+        }
+        closeAllActionMenus();
+    }, true);
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeAllActionMenus();
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const menus = Array.from(document.querySelectorAll('[data-action-menu]'));
 
@@ -429,11 +496,18 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!isOpen) {
         menu.classList.add('is-open');
         toggle.setAttribute('aria-expanded', 'true');
+                requestAnimationFrame(() => positionActionMenu(menu));
       }
     });
 
     list?.querySelectorAll('button, a').forEach(item => {
-      item.addEventListener('click', () => closeAllMenus());
+            item.addEventListener('click', event => {
+                if (item.classList.contains('btn-reaction')) {
+                    event.stopPropagation();
+                    return;
+                }
+                closeAllMenus();
+            });
     });
   });
 
@@ -634,6 +708,308 @@ function openPollBox(){
             console.warn(...args);
         }
     };
+    const realtimeState = {
+        initialized: false,
+        connected: false,
+        usingFallback: false,
+        lastEventAt: 0,
+        fallbackDelayMs: 15000,
+        maxFallbackDelayMs: 120000,
+        messageTimer: null,
+        postTimer: null,
+        reconcileTimer: null
+    };
+
+    window.getGroupRealtimeState = function getGroupRealtimeState() {
+        return { ...realtimeState };
+    };
+
+    function markRealtimeHealthy() {
+        realtimeState.connected = true;
+        realtimeState.usingFallback = false;
+        realtimeState.lastEventAt = Date.now();
+        realtimeState.fallbackDelayMs = 15000;
+    }
+
+    function shouldPollFallback() {
+        if (!realtimeState.initialized) return true;
+        return realtimeState.usingFallback || !realtimeState.connected;
+    }
+
+    function getFeedElement() {
+        return document.getElementById('chat-box') || document.getElementById('group-feed');
+    }
+
+    function updateLastMessageCursor(messageId) {
+        const numericId = parseInt(messageId, 10);
+        if (numericId && (!lastMessageId || numericId > lastMessageId)) {
+            lastMessageId = numericId;
+        }
+    }
+
+    function updateLastPostCursor(postId) {
+        const numericId = parseInt(postId, 10);
+        if (numericId && numericId > lastPostId) {
+            lastPostId = numericId;
+        }
+    }
+
+    function appendRenderedFeedHtml(html, preferredId, type) {
+        if (!html) return false;
+        if (type === 'post' && preferredId && document.getElementById('blog-' + preferredId)) return false;
+        if (type === 'poll' && preferredId && document.getElementById('poll-' + preferredId)) return false;
+
+        const feedEl = getFeedElement();
+        if (!feedEl) return false;
+
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        const newEl = tmp.firstElementChild;
+        if (!newEl) return false;
+
+        feedEl.appendChild(newEl);
+        if (typeof window._initPostMenus === 'function') window._initPostMenus(newEl);
+        if (typeof window._initReactionButtons === 'function') window._initReactionButtons(newEl);
+        if (typeof addReactionButton === 'function') {
+            newEl.querySelectorAll?.('[data-message-id]').forEach(function(bubble) {
+                addReactionButton(bubble);
+            });
+        }
+        startPollCountdowns();
+        return true;
+    }
+
+    function replaceRenderedFeedHtml(selector, html) {
+        if (!selector || !html) return false;
+        const existing = document.querySelector(selector);
+        if (!existing) return false;
+
+        const wrapper = existing.closest('.post-wrapper, .poll-wrapper') || existing.parentElement || existing;
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        const newEl = tmp.firstElementChild;
+        if (!newEl) return false;
+
+        wrapper.replaceWith(newEl);
+        if (typeof window._initPostMenus === 'function') window._initPostMenus(newEl);
+        if (typeof window._initReactionButtons === 'function') window._initReactionButtons(newEl);
+        startPollCountdowns();
+        return true;
+    }
+
+    function fadeRemoveElement(element) {
+        if (!element) return;
+        element.style.transition = 'opacity 0.3s ease-out';
+        element.style.opacity = '0';
+        setTimeout(function() { element.remove(); }, 300);
+    }
+
+    function removeMessageDom(messageId) {
+        const msgRow = document.getElementById('msg-' + messageId);
+        if (msgRow) fadeRemoveElement(msgRow);
+        const parentInput = document.getElementById('parent_id');
+        if (parentInput && parentInput.value == messageId && typeof cancelReply === 'function') {
+            cancelReply();
+        }
+    }
+
+    function updateMessageContentDom(messageId, htmlContent, edited) {
+        const bubble = document.querySelector(`.message-bubble[data-message-id="${messageId}"]`);
+        if (!bubble) return false;
+        const contentEl = bubble.querySelector('.message-content');
+        if (contentEl) contentEl.innerHTML = htmlContent || '';
+        bubble.setAttribute('data-content-raw', (htmlContent || '').replace(/<[^>]*>/g, ''));
+        if (edited && !bubble.querySelector('.edited-icon')) {
+            const ts = bubble.querySelector('.message-timestamp');
+            if (ts) {
+                const badge = document.createElement('span');
+                badge.className = 'edited-icon';
+                badge.style.cssText = 'font-size:10px;color:#9ca3af;margin-left:4px;';
+                badge.textContent = '(ویرایش شده)';
+                ts.prepend(badge);
+            }
+        }
+        return true;
+    }
+
+    function updateMessageReactionsDom(messageId, reactions) {
+        const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (!messageElement) return false;
+        const emojis = { like: '👍', love: '❤️', laugh: '😂', wow: '😮', sad: '😢', angry: '😠' };
+        let reactionDisplay = messageElement.querySelector('.message-reactions');
+        if (!reactions || reactions.length === 0) {
+            if (reactionDisplay) reactionDisplay.remove();
+            return true;
+        }
+        if (!reactionDisplay) {
+            reactionDisplay = document.createElement('div');
+            reactionDisplay.className = 'message-reactions';
+            reactionDisplay.style.cssText = 'display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;';
+            const timestamp = messageElement.querySelector('.message-timestamp');
+            if (timestamp) {
+                const holder = timestamp.querySelector('div[style*="justify-content: center"]') || timestamp;
+                holder.appendChild(reactionDisplay);
+            } else {
+                messageElement.appendChild(reactionDisplay);
+            }
+        }
+        reactionDisplay.innerHTML = reactions.map(function(r) {
+            const type = r.type || r.reaction_type || '';
+            const count = r.count || 0;
+            const emoji = emojis[type] || type || '👍';
+            return `<span class="reaction-badge" style="background:#f0f0f0;padding:2px 6px;border-radius:12px;font-size:12px;cursor:pointer;" onclick="if(typeof toggleReaction === 'function') toggleReaction(${messageId}, '${type}')">${emoji} ${count}</span>`;
+        }).join('');
+        return true;
+    }
+
+    function removePostDom(postId) {
+        const el = document.getElementById('blog-' + postId);
+        fadeRemoveElement(el ? (el.closest('.post-wrapper') || el.parentElement || el) : null);
+    }
+
+    function removePollDom(pollId) {
+        const el = document.getElementById('poll-' + pollId) || document.querySelector(`[data-poll-id="${pollId}"]`);
+        fadeRemoveElement(el ? (el.closest('.poll-wrapper') || el) : null);
+    }
+
+    function applyMessageEvent(event) {
+        if (!event) return;
+        markRealtimeHealthy();
+        if (event.actor_id && event.actor_id === window.authUserId) return;
+
+        if (event.message) {
+            const message = event.message;
+            if (!message.id || document.getElementById('msg-' + message.id)) {
+                updateLastMessageCursor(message.id);
+                return;
+            }
+            appendMessage(message);
+            updateLastMessageCursor(message.id);
+            return;
+        }
+
+        const payload = event.payload || {};
+        const action = event.action || payload.action || '';
+        const messageId = payload.message_id || payload.id;
+        if (!messageId) return;
+
+        if (action === 'edit') {
+            updateMessageContentDom(messageId, payload.content || payload.message || '', payload.edited);
+        } else if (action === 'delete') {
+            removeMessageDom(messageId);
+        } else if (action === 'reaction') {
+            updateMessageReactionsDom(messageId, payload.reactions || []);
+        } else if (action === 'pin') {
+            document.dispatchEvent(new CustomEvent('group-message-pin-updated', { detail: payload }));
+        }
+    }
+
+    function applyFeedEvent(event) {
+        if (!event) return;
+        markRealtimeHealthy();
+        if (event.actor_id && event.actor_id === window.authUserId) return;
+
+        const payload = event.payload || {};
+        const action = event.action || payload.action || '';
+
+        if (action === 'post_created') {
+            const postId = payload.post_id || payload.id;
+            if (appendRenderedFeedHtml(payload.html, postId, 'post')) updateLastPostCursor(postId);
+            return;
+        }
+        if (action === 'post_updated') {
+            replaceRenderedFeedHtml('#blog-' + payload.post_id, payload.html);
+            updateLastPostCursor(payload.post_id);
+            return;
+        }
+        if (action === 'post_deleted') {
+            removePostDom(payload.post_id);
+            return;
+        }
+        if (action === 'post_reaction') {
+            const container = document.querySelector(`.reaction-buttons[data-post-id="${payload.post_id}"]`);
+            if (container) {
+                const like = container.querySelector('.like-count');
+                const dislike = container.querySelector('.dislike-count');
+                if (like) like.textContent = payload.likes ?? 0;
+                if (dislike) dislike.textContent = payload.dislikes ?? 0;
+            }
+            return;
+        }
+        if (action === 'poll_created') {
+            appendRenderedFeedHtml(payload.html, payload.poll_id, 'poll');
+            return;
+        }
+        if (action === 'poll_updated') {
+            replaceRenderedFeedHtml('#poll-' + payload.poll_id + ', [data-poll-id="' + payload.poll_id + '"]', payload.html);
+            return;
+        }
+        if (action === 'poll_deleted') {
+            removePollDom(payload.poll_id);
+        }
+    }
+
+    window.initGroupRealtimeListeners = function initGroupRealtimeListeners() {
+        if (realtimeState.initialized || !window.groupId || !window.Echo || typeof window.Echo.private !== 'function') {
+            return realtimeState.initialized;
+        }
+
+        try {
+            const channel = window.Echo.private(`group.${window.groupId}`);
+            channel
+                .subscribed(function() {
+                    markRealtimeHealthy();
+                })
+                .error(function(error) {
+                    console.warn('Realtime channel subscription error; polling fallback remains active.', error);
+                    realtimeState.connected = false;
+                    realtimeState.usingFallback = true;
+                })
+                .listen('.group.message.created', applyMessageEvent)
+                .listen('.group.message.updated', applyMessageEvent)
+                .listen('.group.feed.updated', applyFeedEvent)
+                .listen('.group.poll.updated', function(event) {
+                    markRealtimeHealthy();
+                    if (event && event.actor_id && event.actor_id === window.authUserId) return;
+                    const poll = (event && (event.poll || event.payload)) || {};
+                    if (poll.id || poll.poll_id) updatePollUI(poll);
+                })
+                .listen('.group.election.updated', function(event) {
+                    markRealtimeHealthy();
+                    document.dispatchEvent(new CustomEvent('group-election-updated', { detail: event || {} }));
+                });
+
+            realtimeState.initialized = true;
+            realtimeState.usingFallback = false;
+
+            if (window.Echo.connector && window.Echo.connector.pusher && window.Echo.connector.pusher.connection) {
+                const connection = window.Echo.connector.pusher.connection;
+                if (connection.state === 'connected') {
+                    markRealtimeHealthy();
+                }
+                connection.bind('connected', markRealtimeHealthy);
+                connection.bind('unavailable', function() {
+                    realtimeState.connected = false;
+                    realtimeState.usingFallback = true;
+                });
+                connection.bind('disconnected', function() {
+                    realtimeState.connected = false;
+                    realtimeState.usingFallback = true;
+                });
+                connection.bind('error', function() {
+                    realtimeState.connected = false;
+                    realtimeState.usingFallback = true;
+                });
+            }
+            return true;
+        } catch (error) {
+            console.warn('Realtime subscription failed; polling fallback remains active.', error);
+            realtimeState.initialized = false;
+            realtimeState.connected = false;
+            realtimeState.usingFallback = true;
+            return false;
+        }
+    };
     
     // تابع برای دریافت آخرین message ID از صفحه
     function getLastMessageId() {
@@ -695,9 +1071,13 @@ function openPollBox(){
                 pollingStarted = true;
                 pollLog('✅ Polling started after', attempts, 'attempts');
                 
-                // حالا polling را شروع کن - هر 1.5 ثانیه یکبار
+                // حالا polling را شروع کن - برای تجربه نزدیک‌تر به بلادرنگ
                 let _isPollingPending = false;
+                const messagePollIntervalMs = 1000;
                 pollingInterval = setInterval(function() {
+                    if (!shouldPollFallback()) {
+                        return;
+                    }
                     // اگر درخواست قبلی هنوز جواب نداده، skip کن
                     if (_isPollingPending) {
                         pollLog('⏭️ Skipping poll - previous request still pending');
@@ -911,9 +1291,9 @@ function openPollBox(){
                             // در صورت خطا، polling را ادامه بده (ممکن است مشکل موقتی باشد)
                         }
                     });
-                }, 3000); // هر 3 ثانیه یکبار
+                }, messagePollIntervalMs);
 
-                // ===== Posts polling - هر 5 ثانیه =====
+                // ===== Posts polling =====
                 var _isPostPollPending = false;
                 // مقدار اولیه lastPostId را از DOM بخوان
                 if (lastPostId === 0) {
@@ -924,6 +1304,7 @@ function openPollBox(){
                     });
                 }
                 setInterval(function() {
+                    if (!shouldPollFallback()) return;
                     if (_isPostPollPending) return;
                     if (!window.groupId) return;
                     // sync posts injected by current user's own form submit
@@ -989,14 +1370,16 @@ function openPollBox(){
                     })
                     .catch(function() {})
                     .finally(function() { _isPostPollPending = false; });
-                }, 5000);
+                }, 3000);
 
                 // ===== Reconcile check every 10s: ask server which visible posts were deleted =====
                 var _isReconcilePending = false;
                 setInterval(function() {
+                    if (!shouldPollFallback()) return;
                     if (_isReconcilePending || !window.groupId) return;
                     // collect all post IDs currently visible in DOM
-                    var visibleIds = [];
+                    var visibleIds = []; 
+
                     document.querySelectorAll('[id^="blog-"]').forEach(function(el) {
                         var pid = parseInt(el.id.replace('blog-', ''));
                         if (pid > 0) visibleIds.push(pid);
@@ -1052,9 +1435,18 @@ function openPollBox(){
                     if (m !== menu) m.classList.remove('is-open');
                 });
                 menu.classList.toggle('is-open', !isOpen);
+                if (!isOpen) {
+                    requestAnimationFrame(function() { positionActionMenu(menu); });
+                }
             });
             if (list) list.querySelectorAll('button, a').forEach(function(item) {
-                item.addEventListener('click', function() { menu.classList.remove('is-open'); });
+                item.addEventListener('click', function(e) {
+                    if (item.classList.contains('btn-reaction')) {
+                        e.stopPropagation();
+                        return;
+                    }
+                    menu.classList.remove('is-open');
+                });
             });
         });
         // Global outside-click: uses live querySelectorAll so covers all dynamically added menus
@@ -1156,10 +1548,26 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             const formData = new FormData(form);
-            const parentId = document.getElementById('parent_id').value;
-            
-            if (parentId) {
-                formData.append('parent_id', parentId);
+            const clientMessageIdInput = getOrCreateClientMessageIdInput(form);
+            formData.set('client_message_id', clientMessageIdInput.value);
+            const parentIdInput = document.getElementById('parent_id');
+            const replyContainer = document.getElementById('reply-indicator-container');
+            const parentId = parentIdInput ? String(parentIdInput.value || '').trim() : '';
+            const isReplyUiActive = !!(
+                replyContainer &&
+                replyContainer.style.display !== 'none' &&
+                replyContainer.innerHTML &&
+                replyContainer.innerHTML.trim() !== ''
+            );
+
+            // Safety guard: never send hidden/stale parent_id values.
+            if (parentId && isReplyUiActive) {
+                formData.set('parent_id', parentId);
+            } else {
+                formData.delete('parent_id');
+                if (parentIdInput) {
+                    parentIdInput.value = '';
+                }
             }
 
             // بررسی محتوای پیام قبل از ارسال
@@ -1319,6 +1727,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     }
                     form.reset();
+                    clientMessageIdInput.value = '';
                     
                     // Clear voice file input and preview
                     if (voiceFileInput) {
@@ -1378,11 +1787,28 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(function() {
             pollLog('🚀🚀🚀 ATTEMPTING TO START POLLING 🚀🚀🚀');
             pollLog('Group ID:', window.groupId);
+            pollLog('initGroupRealtimeListeners function exists:', typeof window.initGroupRealtimeListeners === 'function');
             pollLog('startPolling function exists:', typeof window.startPolling === 'function');
+
+            let realtimeInitResult = false;
+            if (typeof window.initGroupRealtimeListeners === 'function') {
+                realtimeInitResult = window.initGroupRealtimeListeners();
+                pollLog('Realtime init result:', realtimeInitResult);
+            }
             
             if (typeof window.startPolling === 'function') {
-                pollLog('✅ Calling window.startPolling()...');
-                window.startPolling();
+                if (shouldPollFallback()) {
+                    pollLog('✅ Starting polling because fallback is needed.');
+                    window.startPolling();
+                } else {
+                    pollLog('✅ Realtime healthy; polling deferred until fallback is needed.');
+                    setInterval(function() {
+                        if (shouldPollFallback()) {
+                            pollLog('⚠️ Realtime degraded; starting polling fallback.');
+                            window.startPolling();
+                        }
+                    }, 5000);
+                }
             } else {
                 console.error('❌❌❌ window.startPolling function NOT FOUND! ❌❌❌');
                 console.error('Available functions:', Object.keys(window).filter(k => typeof window[k] === 'function' && k.toLowerCase().includes('poll')));
@@ -1424,7 +1850,8 @@ function appendMessage(message) {
         return `<div class="message-reactions" style="display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap;">${reactions.map(r => {
             const type = r.type || r.reaction_type || '';
             const count = r.count || 0;
-            return `<span class="reaction-badge" style="background: #f0f0f0; padding: 2px 6px; border-radius: 12px; font-size: 12px; cursor: pointer;" onclick="if(typeof toggleReaction === 'function') toggleReaction(${messageId}, '${type}')">${emojis[type] || '👍'} ${count}</span>`;
+            const emoji = emojis[type] || type || '👍';
+            return `<span class="reaction-badge" style="background: #f0f0f0; padding: 2px 6px; border-radius: 12px; font-size: 12px; cursor: pointer;" onclick="if(typeof toggleReaction === 'function') toggleReaction(${messageId}, '${type}')">${emoji} ${count}</span>`;
         }).join('')}</div>`;
     }
     
@@ -1566,6 +1993,9 @@ function appendMessage(message) {
                     if (m !== menu) m.classList.remove('is-open');
                 });
                 menu.classList.toggle('is-open', !isOpen);
+                if (!isOpen) {
+                    requestAnimationFrame(() => positionActionMenu(menu));
+                }
             });
             
             // بستن منو هنگام کلیک روی دکمه‌های منو (به جز دکمه واکنش)
@@ -1766,6 +2196,8 @@ async function startRecording() {
                     const form = document.getElementById('chatForm');
                     if (form) {
                         const formData = new FormData(form);
+                        const clientMessageIdInput = getOrCreateClientMessageIdInput(form);
+                        formData.set('client_message_id', clientMessageIdInput.value);
                         // Add an empty message field to satisfy server validation
                         formData.append('message', '[پیام صوتی]');
                         
@@ -1802,6 +2234,7 @@ async function startRecording() {
                             if (responseData.status === 'success') {
                                 appendMessage(responseData.message);
                                 form.reset();
+                                clientMessageIdInput.value = '';
                             } else {
                                 alert('خطا در ارسال پیام صوتی: ' + (responseData.message || 'خطای ناشناخته'));
                             }
@@ -1870,32 +2303,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
         }, true); // استفاده از capture phase برای اجرای زودتر
-        
-        chatBoxEl.addEventListener('click', function(e) {
-            // اگر روی لینک کلیک شده، اجازه بده به پروفایل برود
-            if (e.target.closest('a.message-sender') || e.target.closest('.message-head__info a')) {
-                return; // اجازه بده لینک کار کند
-            }
-            
-            const bubble = e.target.closest('.message-bubble');
-            if (!bubble) return;
-            
-            if (e.target.closest('.reply-box')) return;
-            
-            // Try to find message ID from different possible parent elements
-            const messageRow = bubble.closest('.message-row');
-            const messageWrapper = bubble.closest('.message-wrapper');
-            const messageId = messageRow?.dataset?.messageId || 
-                             messageWrapper?.dataset?.messageId || 
-                             bubble.dataset?.messageId;
-            
-            if (messageId) {
-                const parentIdInput = document.getElementById('parent_id');
-                if (parentIdInput) {
-                    parentIdInput.value = messageId;
-                }
-            }
-        });
+
+        // NOTE: Do not auto-set parent_id by clicking message bubbles.
+        // Reply must only be initiated via explicit reply actions (btn-rep / replyToMessage)
+        // to prevent accidental threaded replies during reaction/menu interactions.
     }
 });
 

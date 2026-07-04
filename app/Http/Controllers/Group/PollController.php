@@ -83,13 +83,13 @@ class PollController extends Controller
             'option_id' => $request->option_id,
         ]);
 
-        $activeMemberIds = GroupUser::where('group_id', $poll->group_id)
+        $activeMemberIdsSubquery = GroupUser::query()
+            ->select('user_id')
             ->where('status', 1)
-            ->pluck('user_id')
-            ->toArray();
+            ->where('group_id', $poll->group_id);
 
         $voteCounts = PollVote::where('poll_id', $poll->id)
-            ->whereIn('user_id', $activeMemberIds)
+            ->whereIn('user_id', $activeMemberIdsSubquery)
             ->selectRaw('option_id, COUNT(*) as votes_count')
             ->groupBy('option_id')
             ->pluck('votes_count', 'option_id');

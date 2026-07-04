@@ -68,6 +68,7 @@ class MessageCreated implements ShouldBroadcastNow
 
         return [
             'group_id' => $this->group->id,
+            'actor_id' => $this->sender->id,
             'message' => $payload,
         ];
     }
