@@ -42,8 +42,8 @@ return [
 	'lang_arabic' => 'العربية',
 
 	// Hero Section
-	'hero_title' => 'سهامدار سیاره خود شوید',
-	'hero_title_highlight' => 'سیاره',
+	'hero_title' => 'سهامدار سرزمین خود شوید',
+	'hero_title_highlight' => 'سرزمین',
 	'hero_subtitle' => 'به یک تعاونی جهانی بپیوندید که برای آینده‌ای پایدار از طریق مالکیت جمعی و حاکمیت دموکراتیک تلاش می‌کند.',
 	'hero_cta_start' => 'شروع کنید',
 	'hero_cta_more' => 'بیشتر بدانید',

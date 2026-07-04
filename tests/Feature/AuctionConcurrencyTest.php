@@ -1,7 +1,7 @@
 <?php
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 use App\Models\User;
 use App\Modules\Stock\Models\Stock;
@@ -10,7 +10,7 @@ use App\Modules\Stock\Models\Bid;
 
 class AuctionConcurrencyTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     /** @test */
     public function settlement_never_oversells_available_shares()

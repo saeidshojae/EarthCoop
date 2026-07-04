@@ -402,59 +402,98 @@
         .stats-item:nth-child(3)::before { content: '\f0ac'; background-color: var(--color-digital-gold); }
 
         /* RTL specific adjustments for floating cards */
-        .hero-image-card-right {
-            position: absolute;
-            bottom: -8px;
-            left: -8px;
-            background-color: white;
-            padding: 1.25rem;
-            border-radius: 1.5rem;
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-            transform: rotate(-6deg);
-            transition: transform 0.5s;
-            -webkit-transform: rotate(-6deg);
-            -ms-transform: rotate(-6deg);
-        }
+/* ======================================== */
+/* کارت‌های شناور روی تصویر - نسخه اصلاح‌شده */
+/* ======================================== */
 
-        .hero-image-card-right:hover {
-            transform: rotate(0deg);
-            -webkit-transform: rotate(0deg);
-            -ms-transform: rotate(0deg);
-        }
+.hero-image-card-right {
+    position: absolute;
+    bottom: -6px;
+    left: -6px;
+    background-color: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 0.75rem;
+    border-radius: 1rem;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    display: flex;
+    align-items: center;
+    transform: rotate(-6deg);
+    transition: transform 0.5s;
+    -webkit-transform: rotate(-6deg);
+    -ms-transform: rotate(-6deg);
+    max-width: 200px;
+    z-index: 10;
+}
 
-        [dir="rtl"] .hero-image-card-right {
-            left: auto;
-            right: -8px;
-        }
+.hero-image-card-right:hover {
+    transform: rotate(0deg);
+    -webkit-transform: rotate(0deg);
+    -ms-transform: rotate(0deg);
+}
 
-        .hero-image-card-left {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background-color: white;
-            padding: 1.25rem;
-            border-radius: 1.5rem;
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-            transform: rotate(6deg);
-            transition: transform 0.5s;
-            -webkit-transform: rotate(6deg);
-            -ms-transform: rotate(6deg);
-        }
+[dir="rtl"] .hero-image-card-right {
+    left: auto;
+    right: -6px;
+}
 
-        .hero-image-card-left:hover {
-            transform: rotate(0deg);
-            -webkit-transform: rotate(0deg);
-            -ms-transform: rotate(0deg);
-        }
+.hero-image-card-left {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background-color: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 0.75rem;
+    border-radius: 1rem;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    display: flex;
+    align-items: center;
+    transform: rotate(6deg);
+    transition: transform 0.5s;
+    -webkit-transform: rotate(6deg);
+    -ms-transform: rotate(6deg);
+    max-width: 200px;
+    z-index: 10;
+}
 
-        [dir="rtl"] .hero-image-card-left {
-            right: auto;
-            left: -8px;
-        }
+.hero-image-card-left:hover {
+    transform: rotate(0deg);
+    -webkit-transform: rotate(0deg);
+    -ms-transform: rotate(0deg);
+}
+
+[dir="rtl"] .hero-image-card-left {
+    right: auto;
+    left: -6px;
+}
+
+/* Media Queries برای کارت‌ها در موبایل */
+@media (max-width: 640px) {
+    .hero-image-card-right,
+    .hero-image-card-left {
+        padding: 0.5rem;
+        max-width: 150px;
+        border-radius: 0.75rem;
+    }
+    
+    .hero-image-card-right .w-10,
+    .hero-image-card-left .w-10 {
+        width: 1.75rem;
+        height: 1.75rem;
+        font-size: 0.7rem;
+    }
+    
+    .hero-image-card-right .text-sm,
+    .hero-image-card-left .text-sm {
+        font-size: 0.65rem;
+    }
+    
+    .hero-image-card-right .text-xs,
+    .hero-image-card-left .text-xs {
+        font-size: 0.55rem;
+    }
+}
 
         /* Custom styling for new sections */
         .section-separator {
