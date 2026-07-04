@@ -1,9 +1,0 @@
-HTTP/1.1 419 unknown status
-Host: localhost:8000
-Connection: close
-X-Powered-By: PHP/8.2.12
-Cache-Control: no-cache, private
-Date: Mon, 29 Jun 2026 15:15:52 GMT
-Content-Type: application/json
-Set-Cookie: new_earth_coop_session=eyJpdiI6ImcwbnBtSzdnbFE5VkgvYWlPZlFsemc9PSIsInZhbHVlIjoidVVZWmNGRGtZeDBpRFBNVmxnMm1IOVV5bEFEVzVRVk41eElDcStZTW1XMWJlN2ZwYk8wVDJMdGNFVjk5RnZ3NkM1NkYrdFNtS2VNU0N1UGs3VTM0RmpaOFFacDIxZzAxcHkyL3VrQTJ6RnNkLzRiZ01GZ3B6QWF6TWZ3bFNkUzQiLCJtYWMiOiIzNjE0NTE5YjUwOTFkZTQ0MDhjN2U3ODJkYTg2MThjZThjMDA0ODVlNTc5MjFjNGJiMDRhYzQwMWEwMDA2MmQ4IiwidGFnIjoiIn0%3D; expires=Mon, 29 Jun 2026 17:15:52 GMT; Max-Age=7200; path=/; httponly; samesite=lax
-
