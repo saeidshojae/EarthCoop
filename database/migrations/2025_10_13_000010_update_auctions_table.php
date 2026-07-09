@@ -1,6 +1,7 @@
 <?php
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
@@ -12,19 +13,21 @@ return new class extends Migration {
             $table->bigInteger('lot_size')->default(1)->after('max_bid');
             $table->unsignedBigInteger('channel_id')->nullable()->after('lot_size');
             $table->timestamp('ends_at')->nullable()->after('end_time');
-            $table->enum('status', ['scheduled', 'running', 'settling', 'settled', 'canceled'])->default('scheduled')->change();
             
             $table->index(['status', 'ends_at']);
             $table->index(['type', 'status']);
         });
+
+        DB::statement("ALTER TABLE auctions MODIFY status ENUM('scheduled','running','settling','settled','canceled') DEFAULT 'scheduled'");
     }
     
     public function down() {
         Schema::table('auctions', function (Blueprint $table) {
-            $table->dropColumn(['type', 'min_bid', 'max_bid', 'lot_size', 'channel_id', 'ends_at']);
-            $table->enum('status', ['active', 'inactive'])->default('active')->change();
             $table->dropIndex(['status', 'ends_at']);
             $table->dropIndex(['type', 'status']);
+            $table->dropColumn(['type', 'min_bid', 'max_bid', 'lot_size', 'channel_id', 'ends_at']);
         });
+
+        DB::statement("ALTER TABLE auctions MODIFY status ENUM('active','inactive') DEFAULT 'active'");
     }
 };

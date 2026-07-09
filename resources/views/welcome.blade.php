@@ -795,10 +795,15 @@
             @csrf
             
             @php
-                $setting = \App\Models\Setting::find(1);
+                $invitationOnlyMode = false;
+
+                if (\Illuminate\Support\Facades\Schema::hasTable('setting')) {
+                    $setting = \App\Models\Setting::query()->find(1);
+                    $invitationOnlyMode = (int) data_get($setting, 'invation_status', 0) === 1;
+                }
             @endphp
             
-            @if($setting->invation_status == 1)
+            @if($invitationOnlyMode)
                 <!-- Invitation Code Section -->
                 <div class="mb-6">
                     <div class="bg-blue-50 border-r-4 border-ocean-blue p-4 rounded-lg mb-4">

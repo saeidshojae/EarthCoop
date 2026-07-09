@@ -9,6 +9,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (!Schema::hasTable('setting')) {
+            return;
+        }
+
         Schema::table('setting', function (Blueprint $table) {
             // نوع تخصیص اکتیو: percentage یا fixed_amount
             if (!Schema::hasColumn('setting', 'najm_bahar_initial_active_type')) {
@@ -61,6 +65,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (!Schema::hasTable('setting')) {
+            return;
+        }
+
         Schema::table('setting', function (Blueprint $table) {
             $columns = [
                 'najm_bahar_initial_active_type',

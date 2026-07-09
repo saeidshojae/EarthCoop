@@ -17,22 +17,30 @@ return new class extends Migration
             // اضافه کردن ستون‌های موردنیاز
             if (!Schema::hasColumn('groups', 'specialty_id')) {
                 $table->unsignedBigInteger('specialty_id')->nullable()->after('category');
-                $table->foreign('specialty_id')->references('id')->on('occupational_fields')->onDelete('set null');
+                if (Schema::hasTable('occupational_fields')) {
+                    $table->foreign('specialty_id')->references('id')->on('occupational_fields')->onDelete('set null');
+                }
             }
             if (!Schema::hasColumn('groups', 'experience_id')) {
                 $table->unsignedBigInteger('experience_id')->nullable()->after('specialty_id');
-                $table->foreign('experience_id')->references('id')->on('experience_fields')->onDelete('set null');
+                if (Schema::hasTable('experience_fields')) {
+                    $table->foreign('experience_id')->references('id')->on('experience_fields')->onDelete('set null');
+                }
             }
             if (!Schema::hasColumn('groups', 'age_group_id')) {
                 $table->unsignedBigInteger('age_group_id')->nullable()->after('experience_id');
-                $table->foreign('age_group_id')->references('id')->on('age_groups')->onDelete('set null');
+                if (Schema::hasTable('age_groups')) {
+                    $table->foreign('age_group_id')->references('id')->on('age_groups')->onDelete('set null');
+                }
             }
             if (!Schema::hasColumn('groups', 'location_level')) {
                 $table->string('location_level')->nullable()->after('location_id');
             }
             if (!Schema::hasColumn('groups', 'address_id')) {
                 $table->unsignedBigInteger('address_id')->nullable()->after('location_level');
-                $table->foreign('address_id')->references('id')->on('addresses')->onDelete('set null');
+                if (Schema::hasTable('addresses')) {
+                    $table->foreign('address_id')->references('id')->on('addresses')->onDelete('set null');
+                }
             }
             if (!Schema::hasColumn('groups', 'is_open')) {
                 $table->boolean('is_open')->default(true)->after('name');

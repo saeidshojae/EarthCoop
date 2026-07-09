@@ -155,7 +155,7 @@
         @endif
 
         <div id="edit-poll-box-{{ $item->id }}" style="display: none;" class="post-edit-form">
-            <form action="{{ route('groups.poll.update', [$group, $item->id]) }}" method="POST">
+            <form class="poll-edit-form" action="{{ route('groups.poll.update', [$group, $item->id]) }}" method="POST">
                 @csrf
                 @method('PUT')
                 <input type="text" name="question" value="{{ $item->question }}" class="form-control mb-2">

@@ -21,9 +21,6 @@ return new class extends Migration {
             if (!Schema::hasColumn('auctions', 'channel_id')) {
                 $table->unsignedBigInteger('channel_id')->nullable()->after('lot_size');
             }
-            // Indexes if missing
-            $table->index(['status', 'ends_at']);
-            $table->index(['type', 'status']);
         });
     }
 

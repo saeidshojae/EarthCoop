@@ -14,6 +14,10 @@ return new class extends Migration
      */
     public function up()
     {
+        if (!Schema::hasTable('reported_messages')) {
+            return;
+        }
+
         Schema::table('reported_messages', function (Blueprint $table) {
             // اضافه کردن group_id اگر وجود ندارد
             if (!Schema::hasColumn('reported_messages', 'group_id')) {
@@ -26,11 +30,21 @@ return new class extends Migration
             }
             
             // اضافه کردن فیلدهای جدید برای مدیریت مدیران گروه
-            $table->text('manager_note')->nullable()->after('admin_note');
-            $table->foreignId('reviewed_by_manager')->nullable()->after('manager_note')->constrained('users')->onDelete('set null');
-            $table->timestamp('reviewed_at')->nullable()->after('reviewed_by_manager');
-            $table->boolean('escalated_to_admin')->default(false)->after('reviewed_at');
-            $table->timestamp('escalated_at')->nullable()->after('escalated_to_admin');
+            if (!Schema::hasColumn('reported_messages', 'manager_note')) {
+                $table->text('manager_note')->nullable()->after('admin_note');
+            }
+            if (!Schema::hasColumn('reported_messages', 'reviewed_by_manager')) {
+                $table->foreignId('reviewed_by_manager')->nullable()->after('manager_note')->constrained('users')->onDelete('set null');
+            }
+            if (!Schema::hasColumn('reported_messages', 'reviewed_at')) {
+                $table->timestamp('reviewed_at')->nullable()->after('reviewed_by_manager');
+            }
+            if (!Schema::hasColumn('reported_messages', 'escalated_to_admin')) {
+                $table->boolean('escalated_to_admin')->default(false)->after('reviewed_at');
+            }
+            if (!Schema::hasColumn('reported_messages', 'escalated_at')) {
+                $table->timestamp('escalated_at')->nullable()->after('escalated_to_admin');
+            }
         });
         
         // تغییر نوع status از enum به string برای پشتیبانی از status های جدید
@@ -45,15 +59,29 @@ return new class extends Migration
      */
     public function down()
     {
+        if (!Schema::hasTable('reported_messages')) {
+            return;
+        }
+
         Schema::table('reported_messages', function (Blueprint $table) {
-            $table->dropForeign(['reviewed_by_manager']);
-            $table->dropColumn([
-                'manager_note',
-                'reviewed_by_manager',
-                'reviewed_at',
-                'escalated_to_admin',
-                'escalated_at'
-            ]);
+            if (Schema::hasColumn('reported_messages', 'reviewed_by_manager')) {
+                try {
+                    $table->dropForeign(['reviewed_by_manager']);
+                } catch (\Throwable $e) {
+                    // Ignore missing foreign key.
+                }
+            }
+
+            $toDrop = [];
+            foreach (['manager_note', 'reviewed_by_manager', 'reviewed_at', 'escalated_to_admin', 'escalated_at'] as $column) {
+                if (Schema::hasColumn('reported_messages', $column)) {
+                    $toDrop[] = $column;
+                }
+            }
+
+            if (!empty($toDrop)) {
+                $table->dropColumn($toDrop);
+            }
         });
     }
 };

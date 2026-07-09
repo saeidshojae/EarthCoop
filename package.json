@@ -3,7 +3,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "realtime": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-soketi.ps1"
   },
   "devDependencies": {
     "@popperjs/core": "^2.11.8",

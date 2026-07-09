@@ -13,10 +13,20 @@ return new class extends Migration
      */
     public function up()
     {
+        if (!Schema::hasTable('announcements')) {
+            return;
+        }
+
         Schema::table('announcements', function (Blueprint $table) {
-            $table->string('image')->nullable()->after('content');
-            $table->boolean('should_pin')->default(true)->after('image');
-            $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null')->after('should_pin');
+            if (!Schema::hasColumn('announcements', 'image')) {
+                $table->string('image')->nullable()->after('content');
+            }
+            if (!Schema::hasColumn('announcements', 'should_pin')) {
+                $table->boolean('should_pin')->default(true)->after('image');
+            }
+            if (!Schema::hasColumn('announcements', 'created_by')) {
+                $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null')->after('should_pin');
+            }
         });
     }
 
@@ -27,9 +37,29 @@ return new class extends Migration
      */
     public function down()
     {
+        if (!Schema::hasTable('announcements')) {
+            return;
+        }
+
         Schema::table('announcements', function (Blueprint $table) {
-            $table->dropForeign(['created_by']);
-            $table->dropColumn(['image', 'should_pin', 'created_by']);
+            if (Schema::hasColumn('announcements', 'created_by')) {
+                $table->dropForeign(['created_by']);
+            }
+
+            $toDrop = [];
+            if (Schema::hasColumn('announcements', 'image')) {
+                $toDrop[] = 'image';
+            }
+            if (Schema::hasColumn('announcements', 'should_pin')) {
+                $toDrop[] = 'should_pin';
+            }
+            if (Schema::hasColumn('announcements', 'created_by')) {
+                $toDrop[] = 'created_by';
+            }
+
+            if (!empty($toDrop)) {
+                $table->dropColumn($toDrop);
+            }
         });
     }
 };
