@@ -11,9 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('blogs', function (Blueprint $table) {
-            $table->json('read_by')->nullable()->after('file_type')->comment('JSON array of user_id => timestamp');
-        });
+        $targetTable = Schema::hasTable('blogs') ? 'blogs' : (Schema::hasTable('blog_posts') ? 'blog_posts' : null);
+        if ($targetTable === null) {
+            return;
+        }
+
+        if (!Schema::hasColumn($targetTable, 'read_by')) {
+            Schema::table($targetTable, function (Blueprint $table) use ($targetTable) {
+                $column = $table->json('read_by')->nullable()->comment('JSON array of user_id => timestamp');
+                if (Schema::hasColumn($targetTable, 'file_type')) {
+                    $column->after('file_type');
+                }
+            });
+        }
     }
 
     /**
@@ -21,8 +31,15 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('blogs', function (Blueprint $table) {
-            $table->dropColumn('read_by');
-        });
+        $targetTable = Schema::hasTable('blogs') ? 'blogs' : (Schema::hasTable('blog_posts') ? 'blog_posts' : null);
+        if ($targetTable === null) {
+            return;
+        }
+
+        if (Schema::hasColumn($targetTable, 'read_by')) {
+            Schema::table($targetTable, function (Blueprint $table) {
+                $table->dropColumn('read_by');
+            });
+        }
     }
 };

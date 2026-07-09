@@ -14,6 +14,10 @@ return new class extends Migration
      */
     public function up()
     {
+        if (!Schema::hasTable('addresses')) {
+            return;
+        }
+
         // Ensure addresses.id is primary key and auto-increment unsigned big integer
         $conn = DB::connection();
         $driver = $conn->getDriverName();

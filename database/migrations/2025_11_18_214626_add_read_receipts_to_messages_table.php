@@ -14,7 +14,9 @@ return new class extends Migration
     public function up()
     {
         Schema::table('messages', function (Blueprint $table) {
-            $table->json('read_by')->nullable()->after('removed_by')->comment('JSON array of user_id => timestamp');
+            if (!Schema::hasColumn('messages', 'read_by')) {
+                $table->json('read_by')->nullable()->comment('JSON array of user_id => timestamp');
+            }
         });
     }
 
@@ -26,7 +28,9 @@ return new class extends Migration
     public function down()
     {
         Schema::table('messages', function (Blueprint $table) {
-            $table->dropColumn('read_by');
+            if (Schema::hasColumn('messages', 'read_by')) {
+                $table->dropColumn('read_by');
+            }
         });
     }
 };

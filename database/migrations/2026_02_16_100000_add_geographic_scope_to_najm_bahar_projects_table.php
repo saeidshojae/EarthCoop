@@ -11,37 +11,37 @@ return new class extends Migration
     {
         Schema::table('najm_bahar_projects', function (Blueprint $table) {
             if (!Schema::hasColumn('najm_bahar_projects', 'geographic_continent_id')) {
-                $table->unsignedBigInteger('geographic_continent_id')->nullable()->after('category_level3_id');
+                $table->unsignedBigInteger('geographic_continent_id')->nullable();
             }
             if (!Schema::hasColumn('najm_bahar_projects', 'geographic_country_id')) {
-                $table->unsignedBigInteger('geographic_country_id')->nullable()->after('geographic_continent_id');
+                $table->unsignedBigInteger('geographic_country_id')->nullable();
             }
             if (!Schema::hasColumn('najm_bahar_projects', 'geographic_province_id')) {
-                $table->unsignedBigInteger('geographic_province_id')->nullable()->after('geographic_country_id');
+                $table->unsignedBigInteger('geographic_province_id')->nullable();
             }
             if (!Schema::hasColumn('najm_bahar_projects', 'geographic_county_id')) {
-                $table->unsignedBigInteger('geographic_county_id')->nullable()->after('geographic_province_id');
+                $table->unsignedBigInteger('geographic_county_id')->nullable();
             }
             if (!Schema::hasColumn('najm_bahar_projects', 'geographic_section_id')) {
-                $table->unsignedBigInteger('geographic_section_id')->nullable()->after('geographic_county_id');
+                $table->unsignedBigInteger('geographic_section_id')->nullable();
             }
             if (!Schema::hasColumn('najm_bahar_projects', 'geographic_city_id')) {
-                $table->unsignedBigInteger('geographic_city_id')->nullable()->after('geographic_section_id');
+                $table->unsignedBigInteger('geographic_city_id')->nullable();
             }
             if (!Schema::hasColumn('najm_bahar_projects', 'geographic_rural_id')) {
-                $table->unsignedBigInteger('geographic_rural_id')->nullable()->after('geographic_city_id');
+                $table->unsignedBigInteger('geographic_rural_id')->nullable();
             }
             if (!Schema::hasColumn('najm_bahar_projects', 'geographic_region_id')) {
-                $table->unsignedBigInteger('geographic_region_id')->nullable()->after('geographic_rural_id');
+                $table->unsignedBigInteger('geographic_region_id')->nullable();
             }
             if (!Schema::hasColumn('najm_bahar_projects', 'geographic_neighborhood_id')) {
-                $table->unsignedBigInteger('geographic_neighborhood_id')->nullable()->after('geographic_region_id');
+                $table->unsignedBigInteger('geographic_neighborhood_id')->nullable();
             }
             if (!Schema::hasColumn('najm_bahar_projects', 'geographic_street_id')) {
-                $table->unsignedBigInteger('geographic_street_id')->nullable()->after('geographic_neighborhood_id');
+                $table->unsignedBigInteger('geographic_street_id')->nullable();
             }
             if (!Schema::hasColumn('najm_bahar_projects', 'geographic_alley_id')) {
-                $table->unsignedBigInteger('geographic_alley_id')->nullable()->after('geographic_street_id');
+                $table->unsignedBigInteger('geographic_alley_id')->nullable();
             }
         });
 

@@ -1,7 +1,7 @@
 ﻿@extends('layouts.chat')
 
 @php
-$lastReadMessageId = isset($lastReadMessageId) ? $lastReadMessageId : (auth()->user()->last_read_message_id ?? 'null');
+$lastReadMessageId = $lastReadMessageId ?? null;
 @endphp
 
 @section('title', $group->name . ' - گفت‌وگوی گروه')
@@ -474,7 +474,7 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
 
 /* 1. Chat Container Spacing */
 #chat-box {
-    padding: 1.25rem !important;
+    padding: 0 1.25rem 1.25rem !important;
     gap: 0.6rem !important;
     display: flex;
     flex-direction: column;
@@ -493,9 +493,9 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
 /* Floating Scroll Button Fix - VISIBLE WHEN SCROLLING DOWN */
 .chat-scroll-btn {
     position: fixed !important;
-    bottom: 30px !important;
-    left: 30px !important;
-    right: auto !important;
+    bottom: 96px !important;
+    right: 24px !important;
+    left: auto !important;
     z-index: 9999 !important;
     width: 50px !important;
     height: 50px !important;
@@ -1497,6 +1497,67 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
         transform: rotate(360deg);
     }
 }
+
+/* Mobile-only layout guard: keep bubbles/cards inside viewport without touching chat logic */
+@media (max-width: 768px) {
+    #chat-box,
+    .chat-body {
+        overflow-x: hidden !important;
+    }
+
+    .message-row,
+    .post-wrapper,
+    .poll-wrapper {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .message-bubble,
+    .message-row .message-bubble,
+    .message-row.you .message-bubble,
+    .message-row.other .message-bubble {
+        min-width: 0 !important;
+        max-width: calc(100vw - 92px) !important;
+        width: auto !important;
+        box-sizing: border-box !important;
+    }
+
+    .message-content {
+        width: auto !important;
+        max-width: 100% !important;
+        display: block !important;
+    }
+
+    .message-bubble.message-bubble--voice,
+    .message-row.you .message-bubble.message-bubble--voice,
+    .message-row.other .message-bubble.message-bubble--voice {
+        min-width: min(240px, calc(100vw - 92px)) !important;
+    }
+
+    .message-row.you .voice-message-content,
+    .message-row.other .voice-message-content {
+        min-width: 165px !important;
+    }
+
+    .message-row.you .voice-player,
+    .message-row.other .voice-player {
+        min-width: 130px !important;
+    }
+
+    .post-card,
+    .poll-card,
+    .election-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+}
 </style>
 
 @endsection
@@ -1527,7 +1588,7 @@ $electionAvailable = ($election ?? null) && optional($groupSetting)->election_st
 $canParticipateElection = $electionAvailable && !$checkBlockElection && optional(auth()->user())->status == 1;
 @endphp
 <div id="group-chat-main-container"
-    class="container mx-auto max-w-7xl px-4 md:px-8 pt-3 md:pt-4 pb-8 space-y-6 md:space-y-10 group-chat-container"
+    class="container mx-auto max-w-7xl px-4 md:px-8 pt-0 pb-8 space-y-6 md:space-y-10 group-chat-container"
     style="direction: rtl;">
     <section
         class="bg-white border border-emerald-100 rounded-2xl md:rounded-3xl shadow-md relative overflow-hidden group-info-card"
@@ -1905,7 +1966,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             'poll')->first();
             @endphp
 
-            <div class="bg-white border border-emerald-100 rounded-3xl shadow-sm p-5 w-full">
+            <div class="chat-composer-shell bg-white border border-emerald-100 rounded-3xl shadow-sm p-5 w-full">
                 @if ($yourRole === 0 && $group->is_open == 0)
                 <p class="text-red-500">
                     شما مجاز به ارسال پیام در گروه نیستید.
@@ -2495,9 +2556,34 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
 
     // تابع برای به‌روزرسانی last_read_message_id
     let lastReadUpdateTimeout = null;
+    let currentLastReadMessageId = Number.isFinite(Number(LAST_READ_MESSAGE_ID)) ? Number(LAST_READ_MESSAGE_ID) : null;
+    window.lastReadMessageIdState = currentLastReadMessageId;
+
+    function setLastReadState(messageId, notify = true) {
+        const parsedId = Number(messageId);
+        if (!Number.isFinite(parsedId) || parsedId <= 0) return;
+
+        if (!Number.isFinite(currentLastReadMessageId) || parsedId > currentLastReadMessageId) {
+            currentLastReadMessageId = parsedId;
+            window.lastReadMessageIdState = parsedId;
+
+            if (notify) {
+                window.dispatchEvent(new CustomEvent('group-chat:last-read-updated', {
+                    detail: {
+                        messageId: parsedId
+                    }
+                }));
+            }
+        }
+    }
 
     function updateLastReadMessage(messageId) {
-        if (!messageId || messageId === LAST_READ_MESSAGE_ID) return;
+        const parsedId = Number(messageId);
+        if (!Number.isFinite(parsedId) || parsedId <= 0) return;
+        if (Number.isFinite(currentLastReadMessageId) && parsedId <= currentLastReadMessageId) return;
+
+        // Optimistic local update to immediately refresh unread visuals.
+        setLastReadState(parsedId, true);
 
         // Debounce: فقط آخرین پیام visible را به‌روزرسانی کن
         clearTimeout(lastReadUpdateTimeout);
@@ -2510,8 +2596,10 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({
-                    message_id: messageId
+                    message_id: parsedId
                 })
+            }).then((res) => {
+                if (!res.ok) throw new Error('updateLastReadMessage failed with status ' + res.status);
             }).catch(err => console.error('Error updating last read message:', err));
         }, 500); // 500ms debounce
     }
@@ -2606,31 +2694,47 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
 
             // Voice message
             let voiceMessageHTML = '';
-            if (messageData.voice_message) {
+            if (messageData.voice_message || messageData.voice_message_url) {
                 // Convert relative path to full URL if needed
-                let voiceUrl = messageData.voice_message;
-                if (!voiceUrl.startsWith('http://') && !voiceUrl.startsWith('https://')) {
-                    // Remove leading slash if exists
-                    voiceUrl = voiceUrl.startsWith('/') ? voiceUrl.substring(1) : voiceUrl;
-                    // Build full URL - encode each part separately to handle spaces
-                    const pathParts = voiceUrl.split('/');
-                    const encodedParts = pathParts.map(part => encodeURIComponent(part));
-                    voiceUrl = window.location.origin + '/storage/' + encodedParts.join('/');
+                let voiceUrl = messageData.voice_message_url || messageData.voice_message;
+                let voiceType = String(messageData.file_type || 'audio/webm').toLowerCase();
+                if (voiceType.includes('webm') || voiceType.includes('opus')) {
+                    voiceType = 'audio/webm';
+                } else if (voiceType.includes('ogg')) {
+                    voiceType = 'audio/ogg';
+                } else if (voiceType.includes('wav')) {
+                    voiceType = 'audio/wav';
+                } else if (voiceType.includes('mp3') || voiceType.includes('mpeg')) {
+                    voiceType = 'audio/mpeg';
+                } else if (!voiceType.startsWith('audio/')) {
+                    voiceType = 'audio/webm';
                 }
-                const voiceType = messageData.file_type || 'audio/webm';
+                if (!voiceUrl.startsWith('http://') && !voiceUrl.startsWith('https://')) {
+                    if (voiceUrl.startsWith('/messages/')) {
+                        // Dedicated voice stream endpoint; keep relative URL as-is.
+                    } else {
+                        // Remove leading slash if exists
+                        voiceUrl = voiceUrl.startsWith('/') ? voiceUrl.substring(1) : voiceUrl;
+                        // Build full URL - encode each part separately to handle spaces
+                        const pathParts = voiceUrl.split('/');
+                        const encodedParts = pathParts.map(part => encodeURIComponent(part));
+                        voiceUrl = window.location.origin + '/storage/' + encodedParts.join('/');
+                    }
+                }
                 voiceMessageHTML =
-                    `<div class="voice-message-container" style="margin-top: 12px; padding: 12px; background: ${isMine ? '#e3f2fd' : '#f5f5f5'}; border-radius: 12px; border: 1px solid ${isMine ? '#90caf9' : '#e0e0e0'}; direction: ltr;"><div style="display: flex; align-items: center; gap: 12px;"><div style="width: 40px; height: 40px; border-radius: 50%; background: ${isMine ? '#2196f3' : '#757575'}; display: flex; align-items: center; justify-content: center; color: white;"><i class="fas fa-microphone"></i></div><div style="flex: 1;"><div style="font-size: 12px; color: #666; margin-bottom: 4px;"><i class="fas fa-headphones"></i> پیام صوتی</div><audio controls style="width: 100%; height: 40px;" preload="metadata"><source src="${voiceUrl}" type="${voiceType}"><source src="${voiceUrl}" type="audio/webm"><source src="${voiceUrl}" type="audio/ogg"><source src="${voiceUrl}" type="audio/mpeg">مرورگر شما از پخش صدا پشتیبانی نمی‌کند.</audio></div></div></div>`;
+                    `<div class="voice-message-container" style="margin-top: 12px; padding: 12px; background: ${isMine ? '#e3f2fd' : '#f5f5f5'}; border-radius: 12px; border: 1px solid ${isMine ? '#90caf9' : '#e0e0e0'}; direction: ltr;"><div style="display: flex; align-items: center; gap: 12px;"><div style="width: 40px; height: 40px; border-radius: 50%; background: ${isMine ? '#2196f3' : '#757575'}; display: flex; align-items: center; justify-content: center; color: white;"><i class="fas fa-microphone"></i></div><div class="voice-message-content" style="flex: 1; min-width: 220px; width: 100%;"><div style="font-size: 12px; color: #666; margin-bottom: 4px;"><i class="fas fa-headphones"></i> پیام صوتی</div><audio class="voice-player" controls style="width: 100%;" preload="metadata" src="${voiceUrl}" type="${voiceType}">مرورگر شما از پخش صدا پشتیبانی نمی‌کند.</audio></div></div></div>`;
             }
 
+            const hasVoiceMessage = Boolean(messageData.voice_message || messageData.voice_message_url);
             messageHTML += `
-            <div class="message-bubble ${isMine ? 'you' : 'other'}" data-message-id="${messageData.id}" data-user-id="${messageData.user_id}" data-edit-url="/messages/${messageData.id}/edit" data-delete-url="/messages/${messageData.id}/delete" data-report-url="/messages/${messageData.id}/report" data-content-raw="${escapeHtml(stripHtml(messageContent))}">
+            <div class="message-bubble ${isMine ? 'you' : 'other'} ${hasVoiceMessage ? 'message-bubble--voice' : ''}" data-message-id="${messageData.id}" data-user-id="${messageData.user_id}" data-edit-url="/messages/${messageData.id}/edit" data-delete-url="/messages/${messageData.id}/delete" data-report-url="/messages/${messageData.id}/report" data-content-raw="${escapeHtml(stripHtml(messageContent))}">
                 <div class="message-head">
                     ${isMine ? 
                         // برای پیام‌های خود کاربر: سه نقطه در سمت چپ، نام در سمت راست
                         `<div class="action-menu message-action" data-action-menu>
                             <button type="button" class="action-menu__toggle"><i class="fas fa-ellipsis-v"></i></button>
                             <div class="action-menu__list">
-                                <button type="button" onclick="replyToMessage('${messageData.id}', '${escapeHtml(senderName)}', '${escapeHtml(messageContent.substring(0, 50))}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
+                                <button type="button" onclick="replyToMessageFromButton(this, '${messageData.id}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
                                 <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> واکنش</button>
                                 ${([2,3].includes(CURRENT_USER_ROLE)) ? `<button type="button" class="action-menu__item btn-pin" onclick="pinMessage('${messageData.id}')"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
                                 <button type="button" class="action-menu__item btn-edit"><i class="fas fa-edit"></i> ویرایش</button>
@@ -2648,7 +2752,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         <div class="action-menu message-action" data-action-menu>
                             <button type="button" class="action-menu__toggle"><i class="fas fa-ellipsis-v"></i></button>
                             <div class="action-menu__list">
-                                <button type="button" onclick="replyToMessage('${messageData.id}', '${escapeHtml(senderName)}', '${escapeHtml(messageContent.substring(0, 50))}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
+                                <button type="button" onclick="replyToMessageFromButton(this, '${messageData.id}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
                                 <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> واکنش</button>
                                 ${([2,3].includes(CURRENT_USER_ROLE)) ? `<button type="button" class="action-menu__item btn-pin" onclick="pinMessage('${messageData.id}')"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
                                 <button type="button" class="action-menu__item btn-report"><i class="fas fa-flag"></i> گزارش</button>
@@ -2949,69 +3053,9 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
         return escaped.replace(/\n/g, '<br>');
     }
 
-    // ذخیره اسکرول هنگام ترک صفحه
-    window.addEventListener('beforeunload', () => {
-        const lastVisibleId = getLastVisibleMessageId();
-        if (lastVisibleId) {
-            updateLastReadMessage(lastVisibleId);
-        }
-        sessionStorage.setItem(STORAGE_KEY, chatBox.scrollTop);
-    });
-
-    // به‌روزرسانی last_read_message_id هنگام scroll
-    let scrollTimeout = null;
-    let scrollSaveTimeout = null; // Timeout برای ذخیره موقعیت scroll
-
-    chatBox.addEventListener('scroll', () => {
-        // ذخیره موقعیت scroll با debounce برای بهبود performance
-        clearTimeout(scrollSaveTimeout);
-        scrollSaveTimeout = setTimeout(() => {
-            sessionStorage.setItem(STORAGE_KEY, chatBox.scrollTop);
-        }, 500); // 500ms debounce برای ذخیره موقعیت scroll
-
-        // به‌روزرسانی last_read_message_id با debounce
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => {
-            const lastVisibleId = getLastVisibleMessageId();
-            if (lastVisibleId) {
-                updateLastReadMessage(lastVisibleId);
-            }
-        }, 300); // 300ms debounce برای scroll
-    });
-
-    // استفاده از IntersectionObserver برای به‌روزرسانی دقیق‌تر
-    if ('IntersectionObserver' in window) {
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const messageId = entry.target.getAttribute('data-message-id');
-                    if (messageId) {
-                        const msgId = parseInt(messageId);
-                        if (!isNaN(msgId)) {
-                            // فقط پیام‌های دیگران را به‌روزرسانی کن
-                            const userId = entry.target.querySelector('.message-bubble')?.getAttribute(
-                                'data-user-id');
-                            if (userId && userId != '{{ auth()->id() }}') {
-                                updateLastReadMessage(msgId);
-                            }
-                        }
-                    }
-                }
-            });
-        }, {
-            root: chatBox,
-            rootMargin: '0px',
-            threshold: 0.5 // وقتی 50% پیام visible شد
-        });
-
-        // Observe همه پیام‌ها بعد از لود صفحه
-        window.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                const messages = chatBox.querySelectorAll('[data-message-id]');
-                messages.forEach(msg => observer.observe(msg));
-            }, 200);
-        });
-    }
+    // Legacy scroll/read listeners were removed.
+    // The unified manager at the end of this Blade handles scroll state,
+    // unread indicators, and debounced updates to avoid observer loops.
 
 
     (function() {
@@ -3910,6 +3954,15 @@ function closeAllModals() {
     .telegram-reply-indicator .reply-content {
         font-size: 0.8rem;
     }
+
+    /* Composer shell is useful on desktop, but on mobile chat form is fixed and this wrapper becomes an empty white block. */
+    .chat-composer-shell {
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+    }
 }
 
 /* بهبود responsive */
@@ -4470,70 +4523,356 @@ document.addEventListener('keydown', function(e) {
 
 </div>
 
-<!-- کد نهایی حفظ و بازیابی موقعیت اسکرول و مدیریت دکمه شناور -->
+<!-- مدیریت حرفه‌ای اسکرول چت: ورود اول از ابتدا، ورودهای بعدی از اولین پیام نخوانده -->
 <script>
 (function() {
     'use strict';
 
-    const STORAGE_KEY = 'pageScroll_{{ $group->id }}';
-    const restorationDelays = [0, 250, 700, 1400, 2600, 4200];
+    if (window.__groupChatScrollManagerInitialized) return;
+    window.__groupChatScrollManagerInitialized = true;
+
+    const groupId = {{ $group->id }};
+    const chatBox = document.getElementById('chat-box');
+    const btn = document.getElementById('scroll-toggle-btn');
+    const authUserIdForUnread = Number(window.authUserId || 0);
+    const scrollKey = 'chatScroll_' + groupId;
+    const initialLastReadMessageId = Number({{ $lastReadMessageId ?? 'null' }});
+    let unreadCount = 0;
+    let isRenderingUnreadIndicators = false;
+    let unreadRenderTimer = null;
+
     window.scrollPositionRestored = false;
 
-    function initUnifiedScroll() {
-        // Get button - check after DOM is ready
-        let btn = document.getElementById('scroll-toggle-btn');
-        if (!btn) {
-            setTimeout(initUnifiedScroll, 100);
+    if (!chatBox || !btn) {
+        window.scrollPositionRestored = true;
+        return;
+    }
+
+    btn.style.right = '24px';
+    btn.style.left = 'auto';
+    btn.style.bottom = '96px';
+
+    btn.innerHTML = '<i class="fas fa-arrow-down"></i>';
+
+    function getEffectiveLastReadMessageId() {
+        const liveValue = Number(window.lastReadMessageIdState);
+        if (Number.isFinite(liveValue) && liveValue > 0) return liveValue;
+
+        if (Number.isFinite(initialLastReadMessageId) && initialLastReadMessageId > 0) {
+            return initialLastReadMessageId;
+        }
+
+        return null;
+    }
+
+    function getMessageRows() {
+        // Keep backward compatibility: some messages may expose id on row, bubble, or wrapper.
+        const candidates = Array.from(chatBox.querySelectorAll('.message-row[data-message-id], [id^="msg-"][data-message-id], .message-bubble[data-message-id]'));
+        const unique = new Map();
+
+        candidates.forEach(function(node) {
+            const id = Number(node.getAttribute('data-message-id'));
+            if (!Number.isFinite(id)) return;
+            if (unique.has(id)) return;
+
+            // Prefer top-level row wrapper if available.
+            const wrapper = node.closest('.message-row[data-message-id]') || node.closest('[id^="msg-"][data-message-id]') || node;
+            unique.set(id, wrapper);
+        });
+
+        return Array.from(unique.values()).sort(function(a, b) {
+            const aid = Number(a.getAttribute('data-message-id'));
+            const bid = Number(b.getAttribute('data-message-id'));
+            return aid - bid;
+        });
+    }
+
+    function getMessageId(node) {
+        const id = Number(node?.getAttribute('data-message-id'));
+        return Number.isFinite(id) ? id : null;
+    }
+
+    function getMessageUserId(node) {
+        if (!node) return null;
+
+        const direct = Number(node.getAttribute('data-user-id'));
+        if (Number.isFinite(direct)) return direct;
+
+        const nested = node.querySelector('[data-user-id]');
+        if (!nested) return null;
+
+        const nestedId = Number(nested.getAttribute('data-user-id'));
+        return Number.isFinite(nestedId) ? nestedId : null;
+    }
+
+    function getMessageElementForDivider(node) {
+        if (!node) return null;
+        return node.closest('.message-row') || node.closest('[id^="msg-"]') || node;
+    }
+
+    function scrollNodeToTop(node) {
+        if (!node) return;
+        const top = node.offsetTop;
+        chatBox.scrollTop = Math.max(0, top - 12);
+    }
+
+    function focusUnreadTarget(node) {
+        if (!node) return;
+
+        // Layout can still expand after first paint (images/audio/fonts).
+        // Retry a few times so initial position lands on first unread reliably.
+        const delays = [0, 80, 220, 520, 1100, 1800];
+        delays.forEach(function(delay) {
+            setTimeout(function() {
+                if (!node.isConnected) return;
+
+                try {
+                    node.scrollIntoView({ block: 'start', inline: 'nearest', behavior: 'auto' });
+                } catch (e) {
+                    scrollNodeToTop(node);
+                    return;
+                }
+
+                chatBox.scrollTop = Math.max(0, chatBox.scrollTop - 12);
+            }, delay);
+        });
+    }
+
+    function findFirstUnreadMessage() {
+        const effectiveLastReadMessageId = getEffectiveLastReadMessageId();
+        if (!Number.isFinite(effectiveLastReadMessageId) || effectiveLastReadMessageId <= 0) {
+            return null;
+        }
+
+        const rows = getMessageRows();
+        for (const row of rows) {
+            const id = getMessageId(row);
+            const userId = getMessageUserId(row);
+            const isOwnMessage = authUserIdForUnread > 0 && userId === authUserIdForUnread;
+            if (id && id > effectiveLastReadMessageId && !isOwnMessage) {
+                return getMessageElementForDivider(row);
+            }
+        }
+
+        return null;
+    }
+
+    function getUnreadRows() {
+        const effectiveLastReadMessageId = getEffectiveLastReadMessageId();
+        if (!Number.isFinite(effectiveLastReadMessageId) || effectiveLastReadMessageId <= 0) {
+            return [];
+        }
+
+        return getMessageRows().filter(function(row) {
+            const id = getMessageId(row);
+            const userId = getMessageUserId(row);
+            const isOwnMessage = authUserIdForUnread > 0 && userId === authUserIdForUnread;
+            return Boolean(id && id > effectiveLastReadMessageId && !isOwnMessage);
+        });
+    }
+
+    function isNearBottom() {
+        const threshold = 72;
+        return (chatBox.scrollHeight - chatBox.clientHeight - chatBox.scrollTop) <= threshold;
+    }
+
+    function scrollToLatest(smooth) {
+        chatBox.scrollTo({
+            top: chatBox.scrollHeight,
+            behavior: smooth ? 'smooth' : 'auto'
+        });
+    }
+
+    function updateScrollButtonVisibility() {
+        const shouldShow = unreadCount > 0 || !isNearBottom();
+        btn.classList.toggle('visible', shouldShow);
+    }
+
+    function getLastVisibleMessageIdInViewport() {
+        const rows = getMessageRows();
+        if (!rows.length) return null;
+
+        const boxRect = chatBox.getBoundingClientRect();
+        for (let i = rows.length - 1; i >= 0; i--) {
+            const row = rows[i];
+            const rect = row.getBoundingClientRect();
+            const intersects = rect.bottom > boxRect.top && rect.top < boxRect.bottom;
+            if (!intersects) continue;
+
+            const id = getMessageId(row);
+            if (id) return id;
+        }
+
+        return null;
+    }
+
+    function getOrCreateUnreadBadge() {
+        let badge = document.getElementById('chat-unread-badge');
+        if (badge) return badge;
+
+        badge = document.createElement('span');
+        badge.id = 'chat-unread-badge';
+        badge.style.cssText = [
+            'position:absolute',
+            'top:-8px',
+            'left:-8px',
+            'min-width:20px',
+            'height:20px',
+            'padding:0 6px',
+            'border-radius:999px',
+            'background:#ef4444',
+            'color:#fff',
+            'font-size:11px',
+            'font-weight:700',
+            'display:none',
+            'align-items:center',
+            'justify-content:center',
+            'line-height:1',
+            'box-shadow:0 4px 10px rgba(0,0,0,.2)'
+        ].join(';');
+
+        btn.style.position = 'fixed';
+        btn.appendChild(badge);
+        return badge;
+    }
+
+    function removeUnreadDivider() {
+        const existing = document.getElementById('chat-unread-divider');
+        if (existing) existing.remove();
+    }
+
+    function upsertUnreadDivider(beforeRow, count) {
+        if (!beforeRow || !beforeRow.parentElement) {
+            removeUnreadDivider();
             return;
         }
 
-        let restored = false;
+        const anchorId = String(getMessageId(beforeRow) || '');
+        let divider = document.getElementById('chat-unread-divider');
 
-        function tryRestore() {
-            if (restored) return;
+        if (!divider) {
+            divider = document.createElement('div');
+            divider.id = 'chat-unread-divider';
+            divider.style.cssText = [
+                'display:flex',
+                'align-items:center',
+                'gap:10px',
+                'margin:10px 0 14px',
+                'color:#0f766e',
+                'font-size:12px',
+                'font-weight:700'
+            ].join(';');
+            divider.innerHTML = '<span style="flex:1;height:1px;background:rgba(15,118,110,.25)"></span><span class="chat-unread-divider__label"></span><span style="flex:1;height:1px;background:rgba(15,118,110,.25)"></span>';
+        }
 
-            const stored = parseInt(sessionStorage.getItem(STORAGE_KEY) || '0', 10);
-            if (stored > 0) {
-                window.scrollTo(0, stored);
-            }
+        const label = divider.querySelector('.chat-unread-divider__label');
+        if (label) {
+            label.textContent = 'پیام‌های خوانده‌نشده (' + count + ')';
+        }
 
-            if (stored <= 0 || Math.abs(window.scrollY - stored) <= 5) {
-                restored = true;
-                window.scrollPositionRestored = true;
+        divider.dataset.anchorId = anchorId;
+        divider.dataset.count = String(count);
+
+        if (divider.nextSibling !== beforeRow || divider.parentElement !== beforeRow.parentElement) {
+            beforeRow.parentElement.insertBefore(divider, beforeRow);
+        }
+    }
+
+    function renderUnreadIndicators() {
+        if (isRenderingUnreadIndicators) return;
+        isRenderingUnreadIndicators = true;
+
+        const badge = getOrCreateUnreadBadge();
+        const unreadRows = getUnreadRows();
+        unreadCount = unreadRows.length;
+
+        if (unreadCount > 0) {
+            badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+            badge.style.display = 'inline-flex';
+            upsertUnreadDivider(unreadRows[0], unreadCount);
+        } else {
+            badge.style.display = 'none';
+            removeUnreadDivider();
+        }
+
+        isRenderingUnreadIndicators = false;
+    }
+
+    function getLastMessageId() {
+        const rows = getMessageRows();
+        if (rows.length === 0) return null;
+        return getMessageId(rows[rows.length - 1]);
+    }
+
+    function restoreInitialPosition() {
+        const unreadTarget = findFirstUnreadMessage();
+        const effectiveLastReadMessageId = getEffectiveLastReadMessageId();
+        const hasReadBefore = Number.isFinite(effectiveLastReadMessageId) && effectiveLastReadMessageId > 0;
+        renderUnreadIndicators();
+
+        if (!hasReadBefore) {
+            // اولین ورود واقعی (بدون سابقه خواندن): از ابتدای پیام‌ها
+            removeUnreadDivider();
+            chatBox.scrollTop = 0;
+        } else if (unreadTarget) {
+            // کاربر قبلا پیام خوانده و unread دارد: باز شدن روی اولین پیام خوانده‌نشده
+            sessionStorage.removeItem(scrollKey);
+            focusUnreadTarget(unreadTarget);
+        } else {
+            // کاربر قبلا پیام‌ها را دیده و پیام نخوانده‌ای ندارد: مستقیم آخرین پیام
+            sessionStorage.removeItem(scrollKey);
+            removeUnreadDivider();
+            scrollToLatest(false);
+
+            const lastId = getLastMessageId();
+            if (lastId && typeof updateLastReadMessage === 'function') {
+                updateLastReadMessage(lastId);
             }
         }
 
-        restorationDelays.forEach(delay => setTimeout(tryRestore, delay));
+        window.scrollPositionRestored = true;
+        updateScrollButtonVisibility();
+    }
 
-        window.addEventListener('scroll', function() {
-            if (btn) {
-                btn.classList.toggle('visible', window.scrollY > 80);
-            }
+    // چند بار بازیابی را تکرار می‌کنیم تا بعد از mount شدن کامل DOM دقیق بنشیند.
+    [0, 220, 620, 1200, 2000].forEach(delay => setTimeout(restoreInitialPosition, delay));
 
-            if (window.scrollPositionRestored) {
-                clearTimeout(window.scTimer);
-                window.scTimer = setTimeout(() => {
-                    sessionStorage.setItem(STORAGE_KEY, window.scrollY);
-                }, 200);
+    let saveTimer = null;
+    chatBox.addEventListener('scroll', function() {
+        updateScrollButtonVisibility();
+
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(function() {
+            sessionStorage.setItem(scrollKey, String(chatBox.scrollTop));
+
+            const lastVisibleId = getLastVisibleMessageIdInViewport();
+            if (lastVisibleId && typeof updateLastReadMessage === 'function') {
+                updateLastReadMessage(lastVisibleId);
             }
+        }, 180);
+    }, { passive: true });
+
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        scrollToLatest(true);
+    });
+
+    if (typeof MutationObserver !== 'undefined') {
+        const observer = new MutationObserver(function() {
+            updateScrollButtonVisibility();
+
+            clearTimeout(unreadRenderTimer);
+            unreadRenderTimer = setTimeout(function() {
+                renderUnreadIndicators();
+            }, 80);
         });
-
-        if (btn) {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                window.scrollTo({
-                    top: 0,
-                    behavior: 'smooth'
-                });
-            });
-        }
+        observer.observe(chatBox, { childList: true, subtree: false });
     }
 
-    if (document.readyState === 'complete') {
-        initUnifiedScroll();
-    } else {
-        window.addEventListener('load', initUnifiedScroll);
-    }
+    window.addEventListener('group-chat:last-read-updated', function() {
+        renderUnreadIndicators();
+        updateScrollButtonVisibility();
+    });
 
     if (typeof addReactionButton === 'function') {
         document.querySelectorAll('.message-bubble').forEach(b => {

@@ -13,6 +13,10 @@ return new class extends Migration
      */
     public function up()
     {
+        if (!Schema::hasTable('announcements')) {
+            return;
+        }
+
         Schema::table('announcements', function (Blueprint $table) {
             if (!Schema::hasColumn('announcements', 'group_level')) {
                 $table->string('group_level')->nullable()->after('content')->comment('Level of group: global, country, province, county, section, city, rural, region, village, neighborhood, street, alley');
@@ -34,9 +38,17 @@ return new class extends Migration
      */
     public function down()
     {
+        if (!Schema::hasTable('announcements')) {
+            return;
+        }
+
         Schema::table('announcements', function (Blueprint $table) {
             if (Schema::hasColumn('announcements', 'group_level')) {
-                $table->dropIndex(['group_level']);
+                try {
+                    $table->dropIndex(['group_level']);
+                } catch (\Throwable $e) {
+                    // Ignore if index does not exist.
+                }
                 $table->dropColumn('group_level');
             }
         });

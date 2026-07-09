@@ -15,10 +15,10 @@ return new class extends Migration
     {
         Schema::table('messages', function (Blueprint $table) {
             if (!Schema::hasColumn('messages', 'thread_id')) {
-                $table->foreignId('thread_id')->nullable()->after('parent_id')->constrained('messages')->onDelete('cascade')->comment('Root message of the thread');
+                $table->foreignId('thread_id')->nullable()->constrained('messages')->onDelete('cascade')->comment('Root message of the thread');
             }
             if (!Schema::hasColumn('messages', 'reply_count')) {
-                $table->integer('reply_count')->default(0)->after('thread_id')->comment('Number of replies in thread');
+                $table->integer('reply_count')->default(0)->comment('Number of replies in thread');
             }
         });
     }
@@ -32,7 +32,11 @@ return new class extends Migration
     {
         Schema::table('messages', function (Blueprint $table) {
             if (Schema::hasColumn('messages', 'thread_id')) {
-                $table->dropForeign(['thread_id']);
+                try {
+                    $table->dropForeign(['thread_id']);
+                } catch (\Throwable $e) {
+                    // Ignore if foreign key does not exist.
+                }
                 $table->dropColumn('thread_id');
             }
             if (Schema::hasColumn('messages', 'reply_count')) {

@@ -14,6 +14,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('pages')) {
+            return;
+        }
+
         // Content in Farsi
         $farsiContent = '<p>&nbsp;</p>
 
@@ -81,24 +85,39 @@ return new class extends Migration
 <p>For answers to your questions, visit our <a href="/contact">contact page</a> or use the <a href="/help">help section</a>.</p>';
 
         // Update the usage guide page with proper content
+        $updateData = [
+            'title' => 'Usage Guide',
+            'content' => $englishContent,
+        ];
+
+        if (Schema::hasColumn('pages', 'content_translations')) {
+            $updateData['content_translations'] = json_encode([
+                'fa' => $farsiContent,
+            ]);
+        }
+        if (Schema::hasColumn('pages', 'meta_title')) {
+            $updateData['meta_title'] = 'Usage Guide - EarthCoop';
+        }
+        if (Schema::hasColumn('pages', 'meta_description')) {
+            $updateData['meta_description'] = 'Complete guide to get started with EarthCoop platform and learn about its features';
+        }
+        if (Schema::hasColumn('pages', 'meta_title_translations')) {
+            $updateData['meta_title_translations'] = json_encode([
+                'fa' => 'راهنمای استفاده - ارتکوپ',
+            ]);
+        }
+        if (Schema::hasColumn('pages', 'meta_description_translations')) {
+            $updateData['meta_description_translations'] = json_encode([
+                'fa' => 'راهنمای کامل برای شروع استفاده از پلتفرم ارتکوپ و آشنایی با ویژگی‌های آن',
+            ]);
+        }
+        if (Schema::hasColumn('pages', 'is_published')) {
+            $updateData['is_published'] = true;
+        }
+
         DB::table('pages')
             ->where('slug', 'rahnmay-astfadh')
-            ->update([
-                'title' => 'Usage Guide',
-                'content' => $englishContent,
-                'content_translations' => json_encode([
-                    'fa' => $farsiContent,
-                ]),
-                'meta_title' => 'Usage Guide - EarthCoop',
-                'meta_description' => 'Complete guide to get started with EarthCoop platform and learn about its features',
-                'meta_title_translations' => json_encode([
-                    'fa' => 'راهنمای استفاده - ارتکوپ',
-                ]),
-                'meta_description_translations' => json_encode([
-                    'fa' => 'راهنمای کامل برای شروع استفاده از پلتفرم ارتکوپ و آشنایی با ویژگی‌های آن',
-                ]),
-                'is_published' => true,
-            ]);
+            ->update($updateData);
     }
 
     /**
@@ -108,15 +127,24 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (!Schema::hasTable('pages')) {
+            return;
+        }
+
         // Revert to placeholder if needed
+        $rollbackData = [
+            'title' => 'Usage Guide',
+            'content' => 'Usage guide content will be here.',
+        ];
+
+        if (Schema::hasColumn('pages', 'content_translations')) {
+            $rollbackData['content_translations'] = json_encode([
+                'fa' => 'راهنمای استفاده محتوا در اینجا قرار خواهد گرفت.',
+            ]);
+        }
+
         DB::table('pages')
             ->where('slug', 'rahnmay-astfadh')
-            ->update([
-                'title' => 'Usage Guide',
-                'content' => 'Usage guide content will be here.',
-                'content_translations' => json_encode([
-                    'fa' => 'راهنمای استفاده محتوا در اینجا قرار خواهد گرفت.',
-                ]),
-            ]);
+            ->update($rollbackData);
     }
 };

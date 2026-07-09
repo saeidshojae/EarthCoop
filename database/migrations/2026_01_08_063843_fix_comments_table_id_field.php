@@ -14,6 +14,8 @@ return new class extends Migration
      */
     public function up()
     {
+        $blogTable = Schema::hasTable('blogs') ? 'blogs' : (Schema::hasTable('blog_posts') ? 'blog_posts' : null);
+
         // Check if comments table exists
         if (Schema::hasTable('comments')) {
             // Get current structure
@@ -42,7 +44,7 @@ return new class extends Migration
             Schema::create('comments', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-                $table->foreignId('blog_id')->constrained('blogs')->onDelete('cascade');
+                $table->unsignedBigInteger('blog_id');
                 $table->text('message');
                 $table->foreignId('parent_id')->nullable()->constrained('comments')->onDelete('cascade');
                 $table->timestamps();
@@ -51,6 +53,12 @@ return new class extends Migration
                 $table->index('blog_id');
                 $table->index('parent_id');
             });
+
+            if ($blogTable !== null) {
+                Schema::table('comments', function (Blueprint $table) use ($blogTable) {
+                    $table->foreign('blog_id')->references('id')->on($blogTable)->onDelete('cascade');
+                });
+            }
         }
     }
 

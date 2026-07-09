@@ -14,7 +14,9 @@ return new class extends Migration
     public function up()
     {
         Schema::table('tickets', function (Blueprint $table) {
-            $table->string('najm_conversation_id')->nullable()->after('tracking_code')->index();
+            if (!Schema::hasColumn('tickets', 'najm_conversation_id')) {
+                $table->string('najm_conversation_id')->nullable()->after('tracking_code')->index();
+            }
         });
     }
 
@@ -26,7 +28,9 @@ return new class extends Migration
     public function down()
     {
         Schema::table('tickets', function (Blueprint $table) {
-            $table->dropColumn('najm_conversation_id');
+            if (Schema::hasColumn('tickets', 'najm_conversation_id')) {
+                $table->dropColumn('najm_conversation_id');
+            }
         });
     }
 };
