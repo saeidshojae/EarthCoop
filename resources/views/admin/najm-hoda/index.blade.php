@@ -668,7 +668,32 @@
                     <i class="fas fa-list-check quick-link-icon"></i>
                     <span class="quick-link-text">برد مصوبات گروهی</span>
                 </a>
-                <a href="{{ route('admin.najm-hoda.settings') }}" class="quick-link-card">
+                <a href="{{ route('admin.najm-hoda.autonomy.governance.page') }}" class="quick-link-card">
+
+
+
+
+                    <i class="fas fa-shield-alt quick-link-icon"></i>
+
+
+
+
+                    <span class="quick-link-text">Governance / Autonomy</span>
+
+
+
+
+                    <span class="quick-link-badge success">Phase 6</span>
+
+
+
+
+                </a>
+
+
+
+
+                <a href="{{ route('admin.najm-hoda.settings') }}" class="quick-link-card">
                     <i class="fas fa-cog quick-link-icon"></i>
 
                     <span class="quick-link-text">تنظیمات</span>
