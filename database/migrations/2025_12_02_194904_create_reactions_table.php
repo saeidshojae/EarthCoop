@@ -13,12 +13,10 @@ return new class extends Migration
      */
     public function up()
     {
-        $blogTable = Schema::hasTable('blogs') ? 'blogs' : (Schema::hasTable('blog_posts') ? 'blog_posts' : null);
-
         if (!Schema::hasTable('reactions')) {
             Schema::create('reactions', function (Blueprint $table) {
                 $table->id();
-                $table->unsignedBigInteger('blog_id')->nullable();
+                $table->foreignId('blog_id')->nullable()->constrained('blogs')->onDelete('cascade');
                 $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
                 $table->unsignedBigInteger('comment_id')->nullable();
                 $table->tinyInteger('type')->default(0)->comment('0=dislike, 1=like');
@@ -33,17 +31,11 @@ return new class extends Migration
                 // Unique constraint: یک کاربر فقط یک reaction برای هر blog/comment
                 $table->unique(['user_id', 'blog_id', 'comment_id'], 'unique_user_reaction');
             });
-
-            if ($blogTable !== null) {
-                Schema::table('reactions', function (Blueprint $table) use ($blogTable) {
-                    $table->foreign('blog_id')->references('id')->on($blogTable)->onDelete('cascade');
-                });
-            }
         } else {
             // اگر جدول وجود دارد، فقط ستون‌های مفقود را اضافه کن
             Schema::table('reactions', function (Blueprint $table) {
                 if (!Schema::hasColumn('reactions', 'blog_id')) {
-                    $table->unsignedBigInteger('blog_id')->nullable()->after('id');
+                    $table->foreignId('blog_id')->nullable()->constrained('blogs')->onDelete('cascade')->after('id');
                 }
                 if (!Schema::hasColumn('reactions', 'user_id')) {
                     $table->foreignId('user_id')->constrained('users')->onDelete('cascade')->after('blog_id');
@@ -58,16 +50,6 @@ return new class extends Migration
                     $table->string('react_type')->nullable()->after('type');
                 }
             });
-
-            if ($blogTable !== null && Schema::hasColumn('reactions', 'blog_id')) {
-                try {
-                    Schema::table('reactions', function (Blueprint $table) use ($blogTable) {
-                        $table->foreign('blog_id')->references('id')->on($blogTable)->onDelete('cascade');
-                    });
-                } catch (\Throwable $e) {
-                    // Ignore if FK already exists.
-                }
-            }
 
             // Add indexes if they don't exist
             Schema::table('reactions', function (Blueprint $table) {

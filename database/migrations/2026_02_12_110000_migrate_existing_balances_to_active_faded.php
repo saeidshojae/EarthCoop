@@ -2,7 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
+use App\Models\Setting;
 
 return new class extends Migration
 {
@@ -13,18 +13,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasTable('najm_accounts')) {
-            return;
-        }
-
-        $activePercentage = 30;
-        if (Schema::hasTable('setting')) {
-            $settings = DB::table('setting')->first();
-            $activePercentage = (int) ($settings->najm_bahar_initial_active_percentage ?? 30);
-        } elseif (Schema::hasTable('settings')) {
-            $settings = DB::table('settings')->first();
-            $activePercentage = (int) ($settings->najm_bahar_initial_active_percentage ?? 30);
-        }
+        $settings = Setting::first();
+        $activePercentage = (int) ($settings->najm_bahar_initial_active_percentage ?? 30);
 
         // پیدا کردن حساب‌هایی که balance دارند اما active/faded صفر است
         DB::table('najm_accounts')
@@ -65,10 +55,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (!Schema::hasTable('najm_accounts')) {
-            return;
-        }
-
         // برگشت: تمام موجودی‌های active و faded را صفر می‌کنیم
         // (balance اصلی را نگه می‌داریم)
         DB::table('najm_accounts')->update([

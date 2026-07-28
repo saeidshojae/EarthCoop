@@ -24,8 +24,8 @@ return new class extends Migration
                 $table->unsignedBigInteger('group_id')->nullable();
                 $table->index('group_id');
             }
-            $table->timestamp('starts_at')->nullable();
-            $table->timestamp('ends_at')->nullable();
+            $table->timestamp('starts_at');
+            $table->timestamp('ends_at');
             $table->boolean('is_closed')->default(false); // آیا انتخابات بسته شده؟
             $table->timestamps();
         });

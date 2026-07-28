@@ -17,8 +17,6 @@ return new class extends Migration
             $table->string('category')->nullable();
             $table->text('question');
             $table->longText('answer')->nullable();
-            $table->timestamp('answered_at')->nullable();
-            $table->timestamp('notified_at')->nullable();
             $table->string('status')->default('new');
             $table->boolean('is_published')->default(false);
             $table->timestamps();
@@ -32,3 +30,6 @@ return new class extends Migration
         Schema::dropIfExists('faq_questions');
     }
 };
+
+
+
