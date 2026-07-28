@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up(): void
+    public function up()
     {
         Schema::create('najm_accounts', function (Blueprint $table) {
             $table->id();
@@ -15,15 +15,13 @@ return new class extends Migration
             $table->string('name')->nullable();
             $table->string('type')->default('user');
             $table->bigInteger('balance')->default(0);
-            $table->bigInteger('balance_faded')->default(0);
-            $table->bigInteger('balance_active')->default(0);
-            $table->longText('meta')->nullable();
+            $table->json('meta')->nullable();
             $table->tinyInteger('status')->default(1);
             $table->timestamps();
         });
     }
 
-    public function down(): void
+    public function down()
     {
         Schema::dropIfExists('najm_accounts');
     }
