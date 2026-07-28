@@ -1,0 +1,216 @@
+@extends('layouts.admin')
+
+@section('title', 'مدیریت حقوق نجم بهار')
+
+@section('content')
+<div class="container-fluid px-4 py-6" dir="rtl">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">
+                <i class="fas fa-coins ml-2"></i>
+                مدیریت قوانین پرداخت
+            </h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">تعریف قوانین حقوق مدیران، بازرسان و کارمندان پروژه‌ای</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{{ route('admin.najm-bahar.salary-runs.index') }}"
+               class="inline-flex items-center px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors">
+                <i class="fas fa-play ml-2"></i>
+                اجرای حقوق
+            </a>
+            <a href="{{ route('admin.najm-bahar.salaries.create') }}"
+               class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <i class="fas fa-plus ml-2"></i>
+                قانون جدید
+            </a>
+        </div>
+    </div>
+
+    @if(session('success'))
+        <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-200 px-4 py-3 rounded-lg mb-6">
+            <i class="fas fa-check-circle ml-2"></i>
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded-lg mb-6">
+            <i class="fas fa-exclamation-circle ml-2"></i>
+            {{ session('error') }}
+        </div>
+    @endif
+
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-6">
+        @php
+            $selectedGroupTypes = array_values(array_filter((array) request('group_types', [])));
+            $selectedLocationLevels = array_values(array_filter((array) request('location_levels', [])));
+        @endphp
+        <form method="GET" action="{{ route('admin.najm-bahar.salaries.index') }}" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">جستجو</label>
+                <input type="text" name="search" value="{{ request('search') }}"
+                       class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">نوع قانون</label>
+                <select name="rule_type" class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white">
+                    <option value="">همه</option>
+                    <option value="role" {{ request('rule_type') === 'role' ? 'selected' : '' }}>مدیر/بازرس</option>
+                    <option value="user" {{ request('rule_type') === 'user' ? 'selected' : '' }}>کارمند</option>
+                    <option value="project" {{ request('rule_type') === 'project' ? 'selected' : '' }}>پروژه‌ای</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">زمان‌بندی</label>
+                <select name="schedule_type" class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white">
+                    <option value="">همه</option>
+                    <option value="monthly" {{ request('schedule_type') === 'monthly' ? 'selected' : '' }}>ماهانه</option>
+                    <option value="interval" {{ request('schedule_type') === 'interval' ? 'selected' : '' }}>دوره‌ای</option>
+                    <option value="one_time" {{ request('schedule_type') === 'one_time' ? 'selected' : '' }}>یک‌باره</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">وضعیت</label>
+                <select name="status" class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white">
+                    <option value="">همه</option>
+                    <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>فعال</option>
+                    <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>غیرفعال</option>
+                </select>
+            </div>
+            <div class="md:col-span-4">
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">نوع گروه</label>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    @foreach($groupTypeOptions as $value => $label)
+                        <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                            <input type="checkbox" name="group_types[]" value="{{ $value }}" {{ in_array($value, $selectedGroupTypes, true) ? 'checked' : '' }}
+                                   class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+                            <span>{{ $label }}</span>
+                        </label>
+                    @endforeach
+                </div>
+            </div>
+            <div class="md:col-span-4">
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">سطح مکانی</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    @foreach($locationLevelOptions as $value => $label)
+                        <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                            <input type="checkbox" name="location_levels[]" value="{{ $value }}" {{ in_array($value, $selectedLocationLevels, true) ? 'checked' : '' }}
+                                   class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+                            <span>{{ $label }}</span>
+                        </label>
+                    @endforeach
+                </div>
+            </div>
+            <div class="md:col-span-4 flex items-center gap-3">
+                <button type="submit" class="inline-flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <i class="fas fa-search ml-2"></i>
+                    اعمال فیلتر
+                </button>
+                <a href="{{ route('admin.najm-bahar.salaries.index') }}" class="inline-flex items-center px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                    <i class="fas fa-redo ml-2"></i>
+                    پاک کردن
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-50 dark:bg-slate-700">
+                    <tr>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">عنوان</th>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">نوع</th>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">زمان‌بندی</th>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">مبلغ</th>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">وضعیت</th>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                    @forelse($rules as $rule)
+                        @php
+                            $meta = $rule->meta ?? [];
+                            $selectedGroupTypes = array_values(array_filter((array) data_get($meta, 'group_types', [])));
+                            $selectedLocationLevels = array_values(array_filter((array) data_get($meta, 'location_levels', [])));
+                            $hasGroupScope = (bool) $rule->group_id || !empty($selectedGroupTypes) || !empty($selectedLocationLevels);
+                        @endphp
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="font-semibold text-slate-900 dark:text-white">{{ $rule->name }}</div>
+                                <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    @if($rule->group_id) گروه: {{ $rule->group_id }} @endif
+                                    @if(!empty($selectedGroupTypes))
+                                        {{ $rule->group_id ? '|' : '' }} نوع گروه: {{ collect($selectedGroupTypes)->map(fn($type) => $groupTypeOptions[$type] ?? $type)->join('، ') }}
+                                    @endif
+                                    @if(!empty($selectedLocationLevels))
+                                        {{ ($rule->group_id || !empty($selectedGroupTypes)) ? '|' : '' }} سطح مکانی: {{ collect($selectedLocationLevels)->map(fn($level) => $locationLevelOptions[$level] ?? $level)->join('، ') }}
+                                    @endif
+                                    @if($rule->user_id) {{ $hasGroupScope ? '|' : '' }} کاربر: {{ $rule->user_id }} @endif
+                                    @if($rule->project_id) {{ ($hasGroupScope || $rule->user_id) ? '|' : '' }} پروژه: {{ $rule->project_id }} @endif
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">
+                                @if($rule->rule_type === 'role')
+                                    مدیر/بازرس
+                                @elseif($rule->rule_type === 'user')
+                                    کارمند
+                                @else
+                                    پروژه‌ای
+                                @endif
+                                @if($rule->role_code)
+                                    <span class="text-xs text-slate-500">(نقش {{ $rule->role_code }})</span>
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">
+                                @if($rule->schedule_type === 'monthly')
+                                    ماهانه
+                                @elseif($rule->schedule_type === 'interval')
+                                    دوره‌ای {{ $rule->interval_days }} روزه
+                                @else
+                                    یک‌باره
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">
+                                {{ \App\Helpers\BaharMoney::formatDecimalHtml($rule->amount_gol) }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $rule->is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                                    {{ $rule->is_active ? 'فعال' : 'غیرفعال' }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div class="flex items-center gap-2">
+                                    <a href="{{ route('admin.najm-bahar.salaries.edit', $rule) }}" class="text-blue-600 hover:text-blue-900 dark:text-blue-400">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <form action="{{ route('admin.najm-bahar.salaries.destroy', $rule) }}" method="POST" onsubmit="return confirm('آیا از حذف این قانون مطمئن هستید؟');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-red-600 hover:text-red-900 dark:text-red-400">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                                <i class="fas fa-inbox text-4xl mb-3 opacity-50"></i>
+                                <p>هیچ قانونی ثبت نشده است</p>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        @if($rules->hasPages())
+            <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+                {{ $rules->links() }}
+            </div>
+        @endif
+    </div>
+</div>
+@endsection
+

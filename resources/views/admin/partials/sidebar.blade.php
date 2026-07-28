@@ -65,22 +65,6 @@
                     @endif
                 </a>
             </li>
-            @php
-                $canNajmHodaAutonomyNav = auth()->check()
-                    && (
-                        auth()->user()->hasPermission('najm-hoda.autonomy.read')
-                        || auth()->user()->hasPermission('najm-hoda.manage-settings')
-                    );
-            @endphp
-            @if($canNajmHodaAutonomyNav)
-            <li>
-                <a href="{{ route('admin.najm-hoda.autonomy.governance.page') }}"
-                   class="flex items-center space-x-3 space-x-reverse px-4 py-2 mr-8 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('admin.najm-hoda.autonomy.*') ? 'bg-gray-700 text-white' : '' }}">
-                    <i class="fas fa-shield-alt w-4"></i>
-                    <span>Governance / Autonomy</span>
-                </a>
-            </li>
-            @endif
             @endhasPermission
 
             <!-- ========================================== -->
