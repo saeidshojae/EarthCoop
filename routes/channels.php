@@ -18,15 +18,15 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
 
-// Channel برای چت پشتیبانی
+// Channel Ø¨Ø±Ø§ÛŒ Ú†Øª Ù¾Ø´ØªÛŒØ¨Ø§Ù†ÛŒ
 Broadcast::channel('support-chat.{chatId}', function ($user, $chatId) {
     $chat = \App\Models\SupportChat::find($chatId);
-
+    
     if (!$chat) {
         return false;
     }
-
-    // کاربر یا پشتیبان می‌توانند به channel گوش دهند
+    
+    // Ú©Ø§Ø±Ø¨Ø± ÛŒØ§ Ù¾Ø´ØªÛŒØ¨Ø§Ù† Ù…ÛŒâ€ŒØªÙˆØ§Ù†Ù†Ø¯ Ø¨Ù‡ channel Ú¯ÙˆØ´ Ø¯Ù‡Ù†Ø¯
     return $chat->user_id === $user->id || $chat->agent_id === $user->id;
 });
 
@@ -53,3 +53,4 @@ Broadcast::channel('private-chat.{conversationId}', function ($user, $conversati
 
     return $conversation->users->contains('id', $user->id);
 });
+

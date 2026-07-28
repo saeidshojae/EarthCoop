@@ -5,7 +5,7 @@
 @section('page-description', 'تحلیل مالی حراج‌ها و فروش سهام')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset("vendor/persian-datepicker/persian-datepicker.min.css") }}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
 <style>
     .report-card {
         background: white;
@@ -197,8 +197,8 @@
 @endsection
 
 @push('scripts')
-<script src="{{ asset("vendor/persian-date/persian-date.min.js") }}"></script>
-<script src="{{ asset("vendor/persian-datepicker/persian-datepicker.min.js") }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/persian-date@1.0.6/dist/persian-date.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         if (typeof window.jQuery !== 'undefined' && typeof $.fn.persianDatepicker !== 'undefined') {

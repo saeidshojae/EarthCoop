@@ -45,8 +45,8 @@
 @endphp
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset("vendor/persian-datepicker/persian-datepicker.min.css") }}">
-    <script src="{{ asset("vendor/chart.js/chart.umd.min.js") }}@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         .chart-container {
             background: white;
@@ -559,8 +559,8 @@
 @endsection
 
 @push('scripts')
-    <script src="{{ asset("vendor/persian-date/persian-date.min.js") }}"></script>
-    <script src="{{ asset("vendor/persian-datepicker/persian-datepicker.min.js") }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/persian-date@1.0.6/dist/persian-date.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
     <script>
         (function () {
             document.addEventListener('DOMContentLoaded', function () {

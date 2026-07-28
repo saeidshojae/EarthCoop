@@ -346,7 +346,6 @@ Route::middleware(Authenticate::class)->group(function () {
     // چت گروهی
     Route::get('/groups/chat/{group}', [ChatController::class, 'chat'])->name('groups.chat');
     Route::get('/api/groups/{group}/messages', [ChatController::class, 'chatAPI']);
-    Route::get('/messages/{message}/voice', [MessageController::class, 'voice'])->name('groups.messages.voice');
     Route::get('/api/groups/{group}/posts/feed', [ChatController::class, 'postsFeed'])->name('groups.posts.feed');
     Route::post('/api/groups/{group}/posts/reconcile', [ChatController::class, 'postsReconcile'])->name('groups.posts.reconcile');
     
@@ -1146,7 +1145,6 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::post('/chat-requests/{chatRequest}/reject', [ChatRequestController::class, 'reject'])->name('chat-requests.reject');
     
     // Private Chat routes
-    Route::get('/private-chats', [PrivateChatController::class, 'index'])->name('private-chats.index');
     Route::get('/private-chats/{conversation}', [PrivateChatController::class, 'show'])->name('private-chats.show');
     Route::post('/private-chats/{conversation}/messages', [PrivateChatController::class, 'sendMessage'])->name('private-chats.send');
     

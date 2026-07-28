@@ -9,8 +9,7 @@
   "license": "MIT",
   "require": {
     "php": "^8.0.2",
-    "carbonphp/carbon-doctrine-types": "1.0",
-    "doctrine/dbal": "2.13",
+    "doctrine/dbal": "^4.3",
     "guzzlehttp/guzzle": "^7.2",
     "hekmatinasser/verta": "^8.5",
     "laravel/framework": "^9.19",
@@ -18,7 +17,7 @@
     "laravel/socialite": "^5.18",
     "laravel/tinker": "^2.7",
     "laravel/ui": "^4.6",
-    "maatwebsite/excel": "^1.1",
+    "maatwebsite/excel": "^3.1",
     "morilog/jalali": "^3.4",
     "phpoffice/phpword": "1.0",
     "pusher/pusher-php-server": "^7.2",

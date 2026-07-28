@@ -83,7 +83,6 @@ return [
     */
 
     'locale' => 'fa',
-
     /*
     |--------------------------------------------------------------------------
     | Application Fallback Locale
@@ -194,7 +193,7 @@ return [
         App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
-        App\Providers\NajmHodaServiceProvider::class, // نجم‌هدا
+        App\Providers\NajmHodaServiceProvider::class, // Ù†Ø¬Ù…â€ŒÙ‡Ø¯Ø§
 
     ],
 
@@ -214,3 +213,4 @@ return [
     ])->toArray(),
 
 ];
+

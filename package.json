@@ -3,8 +3,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "realtime": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-soketi.ps1"
+    "build": "vite build"
   },
   "devDependencies": {
     "@popperjs/core": "^2.11.8",
@@ -21,13 +20,10 @@
   },
   "dependencies": {
     "@ckeditor/ckeditor5-build-classic": "^41.4.2",
-    "alpinejs": "^3.14.0",
-    "ckeditor4": "^4.22.1",
     "jquery": "^3.7.1",
     "laravel-echo": "^2.3.0",
     "persian-datepicker": "^0.5.11",
     "pusher-js": "^8.4.0",
-    "select2": "^4.1.0-rc.0",
     "swiper": "^11.2.10"
   }
 }

@@ -5,7 +5,7 @@
 @section('page-description', 'ایجاد مقاله جدید برای وبلاگ')
 
 @push('styles')
-<link href="{{ asset("vendor/ckeditor/ckeditor.js") }}" rel="stylesheet">
+<link href="https://cdn.ckeditor.com/4.21.0/full/ckeditor.js" rel="stylesheet">
 <style>
     .blog-form-card {
         background: white;
@@ -470,7 +470,7 @@
 @endsection
 
 @push('scripts')
-<script src="{{ asset("vendor/ckeditor/ckeditor.js") }}"></script>
+<script src="https://cdn.ckeditor.com/4.21.0/full/ckeditor.js"></script>
 <script>
     // Initialize CKEditor
     CKEDITOR.replace('content', {

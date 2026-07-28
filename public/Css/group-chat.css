@@ -36,40 +36,9 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .unread-message {
-    animation: none !important;
-  }
-
-  .chat-scroll-btn,
-  .pin,
-  .action-menu__toggle,
-  .action-menu__item,
-  .chat-tool-btn,
-  .chat-submit-btn,
-  .poll-option,
-  .post-card,
-  .poll-card {
-    transition: none !important;
-  }
-}
-
 /* Smooth transition for unread message highlight removal */
 .message-wrapper {
   transition: background-color 0.3s ease;
-}
-
-.typing-indicator {
-  align-self: flex-start;
-  margin: 0.2rem 0.75rem 0.9rem;
-  padding: 0.4rem 0.75rem;
-  border-radius: 999px;
-  background: rgba(236, 253, 245, 0.9);
-  border: 1px solid rgba(16, 185, 129, 0.24);
-  color: #047857;
-  font-size: 0.78rem;
-  font-weight: 600;
-  direction: rtl;
 }
 
 /* Modal Shell Styles */
@@ -762,15 +731,6 @@
   color: #0f4c3a;
 }
 
-/* Guard against legacy rules that absolutely position every bubble button. */
-.message-bubble .action-menu__toggle,
-.message-bubble .action-menu__list .action-menu__item {
-  position: static !important;
-  top: auto !important;
-  left: auto !important;
-  right: auto !important;
-}
-
 .action-menu__list {
   position: absolute;
   top: auto;
@@ -785,7 +745,7 @@
   display: none;
   flex-direction: column;
   gap: 0.25rem;
-  z-index: 2000;
+  z-index: 50;
   overflow: hidden;
   max-height: min(60vh, 320px);
   overflow-y: auto;
@@ -1776,100 +1736,6 @@ audio {
   margin: 8px 0;
 }
 
-.voice-message-container {
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  overflow: visible;
-}
-
-.voice-message-container audio {
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  display: block;
-  box-sizing: border-box;
-}
-
-.voice-message-content {
-  min-width: 0 !important;
-  flex: 1 1 auto;
-}
-
-/* Incoming voice messages need a hard minimum width for native audio controls.
-   A legacy min-width:0 !important rule above can otherwise collapse the player and hide Play. */
-.message-row.other .voice-message-content {
-  min-width: 220px !important;
-}
-
-.message-row.other .voice-player {
-  min-width: 170px !important;
-}
-
-.voice-message-content > div:first-child {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  direction: rtl;
-  text-align: right;
-  white-space: normal;
-  overflow: visible;
-  line-height: 1.4;
-}
-
-.voice-message-content > div:first-child i {
-  flex-shrink: 0;
-}
-
-.voice-player {
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  display: block;
-  box-sizing: border-box;
-  direction: ltr;
-}
-
-@media screen and (min-width: 991px) {
-  .message-row.other .voice-player,
-  .message-row.you .voice-player {
-    min-width: 180px !important;
-  }
-}
-
-@media screen and (max-width: 768px) {
-  .voice-message-content {
-    min-width: 0 !important;
-  }
-
-  .voice-player {
-    min-width: 0 !important;
-  }
-
-  .message-row.other .message-bubble.message-bubble--voice {
-    min-width: min(250px, calc(100vw - 115px));
-    max-width: min(92%, 460px);
-  }
-
-  .message-row.other .voice-message-content {
-    min-width: 190px !important;
-  }
-
-  .message-row.other .voice-player {
-    min-width: 150px !important;
-  }
-}
-
-@media screen and (max-width: 420px) {
-  .message-row.other .voice-message-content {
-    min-width: 170px !important;
-  }
-
-  .message-row.other .voice-player {
-    min-width: 130px !important;
-  }
-}
-
 .message-row {
   display: flex;
   gap: 0.75rem;
@@ -2011,11 +1877,6 @@ audio {
   border-color: rgba(148, 163, 184, 0.18);
 }
 
-.message-row.other .message-bubble.message-bubble--voice {
-  max-width: min(78%, 560px);
-  min-width: min(300px, calc(100vw - 150px));
-}
-
 .message-row.you .message-bubble {
   background: linear-gradient(
     140deg,
@@ -2052,17 +1913,6 @@ audio {
   font-size: 0.9rem;
   line-height: 1.8;
   color: #111827;
-}
-
-.message-content .mention-link {
-  color: #0b61d8;
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.message-content .mention-link:hover {
-  color: #084aa8;
 }
 
 .menu-wrapper {
