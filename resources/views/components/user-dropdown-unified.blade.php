@@ -1,6 +1,6 @@
 {{-- User Dropdown Component - بر اساس طراحی Home --}}
 
-<div class="relative user-dropdown-root" 
+<div class="relative" 
      x-data="userDropdownData()"
      @click.away="userDropdownOpen = false"
      x-init="init()">
@@ -206,114 +206,144 @@
 </div>
 
 <script>
-    // Keep dropdown anchored to its own button in both desktop and mobile views.
+    // Fix dropdown positioning on mobile and prevent page shift
     document.addEventListener('DOMContentLoaded', function() {
-        const roots = document.querySelectorAll('.user-dropdown-root');
-        if (!roots.length) return;
-
-        function clearBodyScrollLock() {
-            document.body.style.overflowX = '';
-            document.body.style.position = '';
-            document.documentElement.style.overflowX = '';
-            document.body.classList.remove('dropdown-open');
-            document.documentElement.classList.remove('dropdown-open');
+        const dropdownContainer = document.querySelector('[x-data*="userDropdownOpen"]');
+        const dropdown = dropdownContainer?.querySelector('[x-show]');
+        const button = dropdownContainer?.querySelector('button');
+        
+        if (!dropdown || !button) return;
+        
+        // Function to check if dropdown is visible
+        function isDropdownVisible() {
+            const style = getComputedStyle(dropdown);
+            return style.display !== 'none' && 
+                   style.visibility !== 'hidden' && 
+                   dropdown.offsetParent !== null &&
+                   !dropdown.hasAttribute('x-cloak');
         }
-
-        roots.forEach(function(root) {
-            const dropdown = root.querySelector('.chat-user-dropdown');
-            const button = root.querySelector('.user-dropdown-btn');
-            if (!dropdown || !button) return;
-
-            function isDropdownVisible() {
-                const style = getComputedStyle(dropdown);
-                return style.display !== 'none' && style.visibility !== 'hidden' && !dropdown.hasAttribute('x-cloak');
-            }
-
-            function applyDesktopPosition() {
-                dropdown.style.position = 'absolute';
-                dropdown.style.right = '0';
-                dropdown.style.left = 'auto';
-                dropdown.style.top = '';
-                dropdown.style.width = '';
-                dropdown.style.maxWidth = '';
-                dropdown.style.maxHeight = '80vh';
-                clearBodyScrollLock();
-            }
-
-            function applyMobilePosition() {
-                const buttonRect = button.getBoundingClientRect();
-                const viewportWidth = window.innerWidth;
-                const viewportHeight = window.innerHeight;
-                const dropdownWidth = Math.min(280, viewportWidth - 16);
-                const dropdownLeft = Math.max(
-                    8,
-                    Math.min(buttonRect.right - dropdownWidth, viewportWidth - dropdownWidth - 8)
-                );
-                let topPos = buttonRect.bottom + 8;
-
-                dropdown.style.position = 'fixed';
-                dropdown.style.setProperty('left', dropdownLeft + 'px', 'important');
-                dropdown.style.setProperty('right', 'auto', 'important');
-                dropdown.style.top = topPos + 'px';
-                dropdown.style.width = dropdownWidth + 'px';
-                dropdown.style.maxWidth = dropdownWidth + 'px';
-
-                const dropdownHeight = dropdown.offsetHeight || 400;
-                if (topPos + dropdownHeight > viewportHeight) {
-                    topPos = buttonRect.top - dropdownHeight - 8;
-                    if (topPos < 8) {
-                        topPos = 8;
-                        dropdown.style.maxHeight = (viewportHeight - 16) + 'px';
-                    } else {
-                        dropdown.style.maxHeight = Math.min(400, viewportHeight - topPos - 8) + 'px';
-                    }
+        
+        // Function to fix positioning
+        function fixDropdownPosition() {
+            if (window.innerWidth <= 768) {
+                const isVisible = isDropdownVisible();
+                
+                if (isVisible) {
+                    // Get button position
+                    const buttonRect = button.getBoundingClientRect();
+                    const viewportWidth = window.innerWidth;
+                    const viewportHeight = window.innerHeight;
+                    const dropdownWidth = Math.min(280, viewportWidth - 16);
+                    
+                    // Calculate right position (distance from right edge)
+                    const rightPos = Math.max(8, viewportWidth - buttonRect.right);
+                    
+                    // Calculate top position (below button with small gap)
+                    let topPos = buttonRect.bottom + 8;
+                    
+                    // Set fixed position immediately
+                    dropdown.style.position = 'fixed';
+                    dropdown.style.right = rightPos + 'px';
+                    dropdown.style.left = 'auto';
                     dropdown.style.top = topPos + 'px';
+                    dropdown.style.width = dropdownWidth + 'px';
+                    dropdown.style.maxWidth = dropdownWidth + 'px';
+                    
+                    // After a short delay, check height and adjust if needed
+                    setTimeout(function() {
+                        const dropdownHeight = dropdown.offsetHeight || 400;
+                        if (topPos + dropdownHeight > viewportHeight) {
+                            // Position above button if it doesn't fit below
+                            topPos = buttonRect.top - dropdownHeight - 8;
+                            if (topPos < 8) {
+                                // If still doesn't fit, position at top with max height
+                                topPos = 8;
+                                dropdown.style.maxHeight = (viewportHeight - 16) + 'px';
+                            } else {
+                                dropdown.style.top = topPos + 'px';
+                            }
+                        } else {
+                            dropdown.style.maxHeight = Math.min(400, viewportHeight - topPos - 8) + 'px';
+                        }
+                    }, 10);
+                    
+                    // Prevent body horizontal scroll
+                    document.body.style.overflowX = 'hidden';
+                    document.body.style.position = 'relative';
+                    document.documentElement.style.overflowX = 'hidden';
+                    document.body.classList.add('dropdown-open');
+                    document.documentElement.classList.add('dropdown-open');
                 } else {
-                    dropdown.style.maxHeight = Math.min(400, viewportHeight - topPos - 8) + 'px';
+                    // Restore when closed
+                    document.body.style.overflowX = '';
+                    document.body.style.position = '';
+                    document.documentElement.style.overflowX = '';
+                    document.body.classList.remove('dropdown-open');
+                    document.documentElement.classList.remove('dropdown-open');
                 }
-
-                document.body.style.overflowX = 'hidden';
-                document.body.style.position = 'relative';
-                document.documentElement.style.overflowX = 'hidden';
-                document.body.classList.add('dropdown-open');
-                document.documentElement.classList.add('dropdown-open');
+            } else {
+                // Desktop: restore normal behavior
+                document.body.style.overflowX = '';
+                document.body.style.position = '';
+                document.documentElement.style.overflowX = '';
+                document.body.classList.remove('dropdown-open');
+                document.documentElement.classList.remove('dropdown-open');
             }
-
-            function updatePosition() {
-                if (!isDropdownVisible()) {
-                    clearBodyScrollLock();
-                    return;
+        }
+        
+        // Watch for Alpine.js state changes
+        if (window.Alpine) {
+            // Wait for Alpine to initialize
+            setTimeout(function() {
+                if (dropdownContainer.__x) {
+                    Alpine.effect(function() {
+                        const isOpen = dropdownContainer.__x.$data.userDropdownOpen;
+                        if (isOpen) {
+                            setTimeout(fixDropdownPosition, 50);
+                        } else {
+                            document.body.style.overflowX = '';
+                            document.body.style.position = '';
+                            document.documentElement.style.overflowX = '';
+                            document.body.classList.remove('dropdown-open');
+                            document.documentElement.classList.remove('dropdown-open');
+                        }
+                    });
                 }
-
-                if (window.innerWidth <= 768) {
-                    applyMobilePosition();
-                } else {
-                    applyDesktopPosition();
-                }
-            }
-
-            const observer = new MutationObserver(function() {
-                setTimeout(updatePosition, 10);
-            });
-
-            observer.observe(dropdown, {
-                attributes: true,
-                attributeFilter: ['style', 'class']
-            });
-
-            button.addEventListener('click', function() {
-                setTimeout(updatePosition, 0);
-            });
-
-            window.addEventListener('resize', function() {
-                setTimeout(updatePosition, 50);
-            });
-
-            window.addEventListener('scroll', function() {
-                if (window.innerWidth <= 768 && isDropdownVisible()) {
-                    updatePosition();
-                }
-            }, { passive: true });
+            }, 100);
+        }
+        
+        // Also watch for style and class changes
+        const observer = new MutationObserver(function() {
+            setTimeout(fixDropdownPosition, 10);
         });
+        
+        observer.observe(dropdown, {
+            attributes: true,
+            attributeFilter: ['style', 'class'],
+            childList: false,
+            subtree: false
+        });
+        
+        // Watch button clicks
+        button.addEventListener('click', function() {
+            setTimeout(fixDropdownPosition, 100);
+        });
+        
+        // Handle window resize
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(fixDropdownPosition, 100);
+        });
+        
+        // Handle scroll (close dropdown on scroll)
+        window.addEventListener('scroll', function() {
+            if (isDropdownVisible() && window.innerWidth <= 768) {
+                fixDropdownPosition();
+            }
+        });
+        
+        // Initial check after a short delay
+        setTimeout(fixDropdownPosition, 200);
     });
 </script>

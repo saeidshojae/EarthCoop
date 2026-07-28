@@ -119,23 +119,6 @@
                 <button data-ops-action="tick" class="ops-action px-3 py-2 bg-sky-700 text-white rounded hover:bg-sky-800">Run Shift Tick</button>
                 <button data-ops-action="deactivate" class="ops-action px-3 py-2 bg-gray-700 text-white rounded hover:bg-gray-800">Deactivate 24/7</button>
             </div>
-            <h4 class="font-medium mt-4 mb-2 text-sm">Shadow Rollout</h4>
-            <div class="grid grid-cols-1 gap-2">
-                <button data-rollout-action="evaluate" class="rollout-action px-3 py-2 bg-teal-700 text-white rounded hover:bg-teal-800">Evaluate Stage</button>
-                <button data-rollout-action="advance" class="rollout-action px-3 py-2 bg-emerald-800 text-white rounded hover:bg-emerald-900">Advance Stage</button>
-                <button data-rollout-action="fallback" class="rollout-action px-3 py-2 bg-amber-700 text-white rounded hover:bg-amber-800">Fallback to Shadow</button>
-            </div>
-            <h4 class="font-medium mt-4 mb-2 text-sm">Phase-6 Signoff</h4>
-            <div class="grid grid-cols-1 gap-2">
-                <select id="signoffDecision" class="border rounded px-2 py-2 text-sm">
-                    <option value="conditional_go">conditional_go</option>
-                    <option value="go">go</option>
-                    <option value="no_go">no_go</option>
-                </select>
-                <input id="signoffNote" type="text" class="border rounded px-2 py-2 text-sm" placeholder="Signoff note">
-                <button data-signoff-action="report" class="signoff-action px-3 py-2 bg-slate-700 text-white rounded hover:bg-slate-800">Generate Go/No-Go</button>
-                <button data-signoff-action="sign" class="signoff-action px-3 py-2 bg-green-800 text-white rounded hover:bg-green-900">Record Signoff</button>
-            </div>
         </div>
     </div>
 
@@ -194,8 +177,6 @@
     const delegationActiveTableBodyEl = document.getElementById('delegationActiveTableBody');
     const delegationDeniedReasonsEl = document.getElementById('delegationDeniedReasons');
     const delegationDeniedEventsEl = document.getElementById('delegationDeniedEvents');
-    const signoffDecisionEl = document.getElementById('signoffDecision');
-    const signoffNoteEl = document.getElementById('signoffNote');
     const approvalSearchEl = document.getElementById('approvalSearch');
     const approvalRiskFilterEl = document.getElementById('approvalRiskFilter');
     const approvalSlaFilterEl = document.getElementById('approvalSlaFilter');
@@ -217,9 +198,6 @@
     const evaluationRunUrl = @json(route('admin.najm-hoda.autonomy.evaluation.run'));
     const operationsStatusUrl = @json(route('admin.najm-hoda.autonomy.operations.status'));
     const operationsUpdateUrl = @json(route('admin.najm-hoda.autonomy.operations.update'));
-    const shadowRolloutUpdateUrl = @json(route('admin.najm-hoda.autonomy.shadow-rollout.update'));
-    const phase6SignoffReportUrl = @json(route('admin.najm-hoda.autonomy.phase6-signoff.report'));
-    const phase6SignoffUpdateUrl = @json(route('admin.najm-hoda.autonomy.phase6-signoff.update'));
     const approvalsDecisionUrlPattern = @json(route('admin.najm-hoda.autonomy.approvals.decision', ['approvalId' => '__APPROVAL_ID__']));
     const approvalsVetoUrlPattern = @json(route('admin.najm-hoda.autonomy.approvals.veto', ['approvalId' => '__APPROVAL_ID__']));
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -263,14 +241,6 @@
             btn.disabled = loading;
             btn.classList.toggle('opacity-60', loading);
         });
-        document.querySelectorAll('.rollout-action').forEach((btn) => {
-            btn.disabled = loading;
-            btn.classList.toggle('opacity-60', loading);
-        });
-        document.querySelectorAll('.signoff-action').forEach((btn) => {
-            btn.disabled = loading;
-            btn.classList.toggle('opacity-60', loading);
-        });
         if (loading) setOversightStatus('loading', 'Loading oversight data...');
     }
 
@@ -285,8 +255,6 @@
         const canCodeOps = canAbility('codeops_canary_write');
         const canEval = canAbility('evaluation_write');
         const canOps = canAbility('operations_write');
-        const canRollout = canAbility('shadow_rollout_write');
-        const canSignoff = canAbility('phase6_signoff_write');
 
         document.querySelectorAll('.control-action').forEach((btn) => {
             const action = btn.getAttribute('data-control-action');
@@ -310,16 +278,6 @@
             btn.disabled = oversightBusy || !canOps;
             btn.classList.toggle('opacity-60', btn.disabled);
             btn.title = canOps ? '' : 'Insufficient permission for 24/7 operations action';
-        });
-        document.querySelectorAll('.rollout-action').forEach((btn) => {
-            btn.disabled = oversightBusy || !canRollout;
-            btn.classList.toggle('opacity-60', btn.disabled);
-            btn.title = canRollout ? '' : 'Insufficient permission for rollout action';
-        });
-        document.querySelectorAll('.signoff-action').forEach((btn) => {
-            btn.disabled = oversightBusy || !canSignoff;
-            btn.classList.toggle('opacity-60', btn.disabled);
-            btn.title = canSignoff ? '' : 'Insufficient permission for signoff action';
         });
         evaluationRunBtn.disabled = oversightBusy || !canEval;
         evaluationRunBtn.classList.toggle('opacity-60', evaluationRunBtn.disabled);
@@ -493,8 +451,6 @@
         const codeops = snapshot?.codeops_canary || {};
         const evaluation = snapshot?.continuous_evaluation || {};
         const ops24 = snapshot?.operations_24x7 || {};
-        const rollout = snapshot?.shadow_rollout || {};
-        const signoff = snapshot?.phase6_signoff || {};
         const controls = snapshot?.controls || {};
         oversightPolicyHints = snapshot?.policy_hints || {};
         const state = controls?.state || {};
@@ -509,8 +465,6 @@
             oversightCard('CodeOps Canary', codeops.status || 'idle', `Phase: ${codeops.phase_percent ?? '-'}%`),
             oversightCard('Nightly Eval', evaluation.status || 'unknown', `Alerts: ${evaluation.alert_count ?? 0}`),
             oversightCard('Ops 24/7', ops24.status || 'inactive', `Last tick: ${ops24.last_tick_status || '-'}`),
-            oversightCard('Rollout Stage', rollout.stage || 'shadow', `Decision: ${rollout.last_decision || '-'}`),
-            oversightCard('Go/No-Go', signoff.last_decision || 'unknown', `Signed: ${signoff.last_signed_decision || '-'}`),
         ].join('');
 
         approvalsCache = Array.isArray(approvals.pending) ? approvals.pending : [];
@@ -817,73 +771,6 @@
         }
     }
 
-    async function handleRolloutAction(action) {
-        if (!action) return;
-        if (!canAbility('shadow_rollout_write')) return;
-
-        const payload = { action };
-        if (action === 'evaluate') {
-            payload.window_hours = Number(windowEl.value) || 24;
-        } else if (action === 'advance') {
-            payload.reason = 'advance_from_oversight_console';
-        } else if (action === 'fallback') {
-            payload.stage = 'shadow';
-            payload.reason = 'fallback_from_oversight_console';
-        }
-
-        setOversightBusy(true);
-        try {
-            await postJson(shadowRolloutUpdateUrl, payload);
-            setOversightStatus('success', `Shadow rollout action '${action}' executed.`);
-            sendTelemetry('shadow_rollout_action', { action });
-            await loadOversight();
-        } catch (err) {
-            setOversightStatus('error', `Shadow rollout action failed: ${err.message || 'unknown error'}`);
-            sendTelemetry('shadow_rollout_action_failed', { action, error: err.message || 'unknown_error' });
-            throw err;
-        } finally {
-            setOversightBusy(false);
-        }
-    }
-
-    async function handleSignoffAction(action) {
-        if (!action) return;
-        if (!canAbility('phase6_signoff_write')) return;
-
-        setOversightBusy(true);
-        try {
-            if (action === 'report') {
-                const query = new URLSearchParams({
-                    window_hours: String(Number(windowEl.value) || 24),
-                    history_limit: '20',
-                });
-                const res = await fetch(`${phase6SignoffReportUrl}?${query.toString()}`, {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                });
-                const data = await res.json();
-                if (!res.ok || !data?.success) {
-                    throw new Error(data?.message || `HTTP ${res.status}`);
-                }
-            } else if (action === 'sign') {
-                await postJson(phase6SignoffUpdateUrl, {
-                    decision: signoffDecisionEl.value || 'conditional_go',
-                    note: (signoffNoteEl.value || '').trim(),
-                    window_hours: Number(windowEl.value) || 24,
-                });
-            }
-
-            setOversightStatus('success', `Phase-6 signoff action '${action}' executed.`);
-            sendTelemetry('phase6_signoff_action', { action });
-            await loadOversight();
-        } catch (err) {
-            setOversightStatus('error', `Phase-6 signoff action failed: ${err.message || 'unknown error'}`);
-            sendTelemetry('phase6_signoff_action_failed', { action, error: err.message || 'unknown_error' });
-            throw err;
-        } finally {
-            setOversightBusy(false);
-        }
-    }
-
     refreshBtn.addEventListener('click', () => loadGovernance().catch(() => {}));
     windowEl.addEventListener('change', () => loadGovernance().catch(() => {}));
     oversightRefreshBtn.addEventListener('click', () => loadOversight().catch(() => {}));
@@ -943,18 +830,6 @@
         btn.addEventListener('click', () => {
             const action = btn.getAttribute('data-ops-action');
             handleOperationsAction(action).catch(() => {});
-        });
-    });
-    document.querySelectorAll('.rollout-action').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const action = btn.getAttribute('data-rollout-action');
-            handleRolloutAction(action).catch(() => {});
-        });
-    });
-    document.querySelectorAll('.signoff-action').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const action = btn.getAttribute('data-signoff-action');
-            handleSignoffAction(action).catch(() => {});
         });
     });
     evaluationRunBtn.addEventListener('click', () => handleRunEvaluation().catch(() => {}));

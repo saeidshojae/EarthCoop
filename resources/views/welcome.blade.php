@@ -17,7 +17,7 @@
 
     <!-- Fonts with preconnect for better performance -->
     <link rel="stylesheet" href="{{ asset('Css/fonts-local.css') }}">
-    <link rel="stylesheet" href="{{ asset("vendor/fontawesome/css/all.min.css") }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
     <!-- Dark Mode Styles -->
     <link rel="stylesheet" href="{{ asset('Css/dark-mode.css') }}">
