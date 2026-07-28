@@ -60,7 +60,7 @@ class BlogController extends Controller
         if ($request->expectsJson() || $request->wantsJson()) {
             return response()->json([
                 'status' => 'success',
-                'message' => 'پست با موفقیت ارسال شد.',
+                'message' => 'پست با موفقیت ویرایش شد.',
                 'post' => [
                     'id' => (int) $blog->id,
                     'html' => $payload['html'],
@@ -150,11 +150,6 @@ class BlogController extends Controller
 
         // Mark as read
         $blog->markAsRead($user->id);
-
-        $this->dispatchGroupEvent(new GroupFeedUpdated((int) $blog->group_id, 'post_read', [
-            'post_id' => (int) $blog->id,
-            'read_count' => (int) $blog->read_count,
-        ], (int) $user->id));
 
         return response()->json([
             'status' => 'success',

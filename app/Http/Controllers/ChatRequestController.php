@@ -16,17 +16,9 @@ class ChatRequestController extends Controller
     public function index(Request $request)
     {
         $currentUser = $request->user();
-        $section = strtolower((string) $request->query('section', $request->query('tab', 'requests')));
-        if (!in_array($section, ['requests', 'conversations'], true)) {
-            $section = 'requests';
-        }
-
-        $status = strtolower((string) $request->query('status', 'pending'));
-        if (!in_array($status, ['pending', 'accepted', 'rejected'], true)) {
-            $status = 'pending';
-        }
-        if (!in_array($status, ['pending', 'accepted', 'rejected'], true)) {
-            $status = 'pending';
+        $tab = strtolower((string) $request->query('tab', 'pending'));
+        if (!in_array($tab, ['pending', 'accepted', 'rejected'], true)) {
+            $tab = 'pending';
         }
 
         $receivedQuery = ChatRequest::query()
@@ -45,31 +37,10 @@ class ChatRequestController extends Controller
             'rejected' => (clone $receivedQuery)->where('status', 'rejected')->count(),
         ];
 
-        $received = (clone $receivedQuery)->where('status', $status)->get();
-        $sent = (clone $sentQuery)->where('status', $status)->get();
+        $received = (clone $receivedQuery)->where('status', $tab)->get();
+        $sent = (clone $sentQuery)->where('status', $tab)->get();
 
-        $conversations = PrivateConversation::whereHas('users', function ($query) use ($currentUser) {
-                $query->where('users.id', $currentUser->id);
-            })
-            ->with([
-                'users:id,first_name,last_name,avatar',
-                'messages' => function ($query) {
-                    $query->latest('id')->limit(1);
-                },
-            ])
-            ->get()
-            ->sortByDesc(function ($conversation) {
-                return $conversation->messages->first()?->created_at ?? now();
-            })
-            ->values();
-
-        $viewData = compact('section', 'status', 'counts', 'received', 'sent', 'conversations');
-
-        if ($request->ajax()) {
-            return view('chat-requests.partials.body', $viewData);
-        }
-
-        return view('chat-requests.index', $viewData);
+        return view('chat-requests.index', compact('tab', 'counts', 'received', 'sent'));
     }
 
     public function send(Request $request, User $user)

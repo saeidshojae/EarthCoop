@@ -24,6 +24,7 @@ use App\Models\PinnedMessage;
 use App\Models\ReportedMessage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 class ChatController extends Controller
 {
@@ -75,7 +76,7 @@ class ChatController extends Controller
             ->values()
             ->map(function ($item) {
                 if (isset($item->voice_message) && $item->voice_message) {
-                    $item->voice_message_url = $this->resolveVoiceMessageUrl($item->id, $item->voice_message);
+                    $item->voice_message = $this->resolveVoiceMessageUrl($item->voice_message);
                 }
                 return $item;
             });
@@ -541,7 +542,7 @@ class ChatController extends Controller
                     }
 
                     if (!empty($item->voice_message)) {
-                        $item->voice_message_url = $this->resolveVoiceMessageUrl($item->id, $item->voice_message);
+                        $item->voice_message = $this->resolveVoiceMessageUrl($item->voice_message);
                     }
 
                     $item->created_at = $item->created_at ? \Carbon\Carbon::parse($item->created_at)->format('H:i') : '';
@@ -788,14 +789,10 @@ class ChatController extends Controller
         ]);
     }
 
-    private function resolveVoiceMessageUrl(?int $messageId, ?string $voiceMessage): ?string
+    private function resolveVoiceMessageUrl(?string $voiceMessage): ?string
     {
         if (!$voiceMessage) {
             return null;
-        }
-
-        if ($messageId && $messageId > 0) {
-            return route('groups.messages.voice', ['message' => $messageId]);
         }
 
         if (str_starts_with($voiceMessage, 'http://') || str_starts_with($voiceMessage, 'https://')) {
@@ -803,12 +800,13 @@ class ChatController extends Controller
         }
 
         $path = ltrim($voiceMessage, '/');
+        if (!Storage::disk('public')->exists($path)) {
+            return null;
+        }
+
         $pathParts = explode('/', $path);
         $encodedParts = array_map('rawurlencode', $pathParts);
-        if (str_starts_with($path, 'storage/')) {
-            return '/' . implode('/', $encodedParts);
-        }
-        return '/storage/' . implode('/', $encodedParts);
+        return asset('storage/' . implode('/', $encodedParts));
     }
 
     public function delegation(Poll $poll, User $expert){
