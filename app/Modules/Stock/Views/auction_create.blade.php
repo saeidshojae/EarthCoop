@@ -10,7 +10,7 @@
 @section('title', 'ایجاد حراج جدید برای ' . $stockName . ' - ' . config('app.name', 'EarthCoop'))
 
 @push('styles')
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+    <link rel="stylesheet" href="{{ asset("vendor/persian-datepicker/persian-datepicker.min.css") }}">
     <style>
         .auction-shell {
             border-radius: 1.75rem;
@@ -220,8 +220,8 @@
 @endsection
 
 @push('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/persian-date@1.0.6/dist/persian-date.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+    <script src="{{ asset("vendor/persian-date/persian-date.min.js") }}"></script>
+    <script src="{{ asset("vendor/persian-datepicker/persian-datepicker.min.js") }}"></script>
     <script>
         (function () {
             document.addEventListener('DOMContentLoaded', function () {
