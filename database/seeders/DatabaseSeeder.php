@@ -8,55 +8,25 @@ class DatabaseSeeder extends Seeder
 {
     /**
      * Seed the application's database.
+     *
+     * @return void
      */
-    public function run(): void
+    public function run()
     {
-        $this->call([
+        // اضافه کردن سیدر LocationSeeder
+        $this->call(LocationsSeeder::class);
 
-            /*
-            |--------------------------------------------------------------------------
-            | Lookup Data
-            |--------------------------------------------------------------------------
-            */
+        // اضافه کردن سیدر StockSeeder
+        $this->call(StockSeeder::class);
 
-            AgeGroupsSeeder::class,
-            ContinentsSeeder::class,
-            CountriesSeeder::class,
-            ProvincesSeeder::class,
-            CountiesSeeder::class,
-            DistrictsSeeder::class,
-            CitiesSeeder::class,
-            RegionsSeeder::class,
-            NeighborhoodsSeeder::class,
-
-            OccupationalFieldsSeeder::class,
-            ExperienceFieldsSeeder::class,
-            
-            SettingSeeder::class,
-
-            PagesTableSeeder::class,
-
-            KnowledgeBaseSeeder::class,
-
-            EarthCoopBlogSeeder::class,
-            /*
-            |--------------------------------------------------------------------------
-            | Authorization
-            |--------------------------------------------------------------------------
-            */
-
-            RolePermissionSeeder::class,
-
-            /*
-            |--------------------------------------------------------------------------
-            | Core System
-            |--------------------------------------------------------------------------
-            */
-
-            StockSeeder::class,
-            NajmBaharSeeder::class,
-            NajmBaharProjectCategorySeeder::class,
-
-        ]);
+        // می‌توانید سایر سیدرها را نیز اینجا اضافه کنید
+        // \App\Models\User::factory(10)->create();
+        // \App\Models\User::factory()->create([
+        //     'name' => 'Test User',
+        //     'email' => 'test@example.com',
+        // ]);
+        // NajmBahar system accounts
+        $this->call(\Database\Seeders\NajmBaharSeeder::class);
+        $this->call(\Database\Seeders\NajmBaharProjectCategorySeeder::class);
     }
 }

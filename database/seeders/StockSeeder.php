@@ -42,7 +42,7 @@ class StockSeeder extends Seeder
             'base_price' => 100.00,
             'start_time' => now(),
             'end_time' => now()->addDays(7),
-            'status' => 'scheduled',
+            'status' => 'active',
             'info' => 'حراج نمونه برای سهام',
         ]);
 

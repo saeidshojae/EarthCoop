@@ -11,7 +11,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-class EarthCoopBlogSeeder extends Seeder
+class EnvironmentalBlogRefreshSeeder extends Seeder
 {
     /**
      * Run the database seeds.
@@ -22,8 +22,7 @@ class EarthCoopBlogSeeder extends Seeder
         $author = User::first();
         if (!$author) {
             $author = User::create([
-                'first_name' => 'تیم تولید محتوای',
-                'last_name' => 'EarthCoop',
+                'name' => 'تیم تولید محتوای ارثکوپ',
                 'email' => 'content@earthcoop.com',
                 'password' => bcrypt('password'),
                 'email_verified_at' => now(),

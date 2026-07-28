@@ -20,8 +20,7 @@ class KnowledgeBaseSeeder extends Seeder
         $author = User::first();
         if (!$author) {
             $author = User::create([
-                'first_name' => 'تیم پشتیبانی',
-                'last_name' => 'EarthCoop',
+                'name' => 'تیم پشتیبانی EarthCoop',
                 'email' => 'support@earthcoop.com',
                 'password' => bcrypt('password'),
                 'email_verified_at' => now()
