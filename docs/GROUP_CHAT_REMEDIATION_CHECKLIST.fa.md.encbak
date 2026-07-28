@@ -1,0 +1,141 @@
+# چک‌لیست اصلاح چت گروه (عملیاتی و قابل تحویل)
+
+تاریخ شروع: 2026-02-18  
+وضعیت کلی: `In Progress`  
+مالک: تیم فنی چت گروه  
+محدوده: فقط مسیر چت گروه، بدون تغییر رفتاری در نجم‌هدا مگر سازگار با آن
+
+## 1) اصول ایمنی (برای جلوگیری از خرابی نجم‌هدا)
+- [x] هیچ روت یا کنترلر `najm-hoda` تغییر داده نشود.
+- [x] تغییرات فقط در مسیرهای زیر باشد:
+  - `resources/views/groups/chat.blade.php`
+  - `public/js/group-chat.js`
+  - اسناد فنی `docs/`
+- [ ] بعد از هر اصلاح، صحت سینتکس فایل‌های تغییر کرده بررسی شود. (در حال حاضر `public/js/group-chat.js` پیش از این هم دارای مشکل encoding/کاراکتر نامعتبر است.)
+
+## 2) فهرست مشکلات، علت و راه اصلاح
+
+### A. Realtime واقعی کار نمی‌کند
+- وضعیت: [ ] انجام نشده
+- شدت: بحرانی
+- نشانه: رأی نظرسنجی/پیام فوری روی کلاینت‌های دیگر به‌موقع دیده نمی‌شود.
+- علت فنی:
+  - `BROADCAST_DRIVER=log` در `.env`
+  - کلیدهای `VITE_PUSHER_*` خالی، بنابراین Echo در فرانت فعال نمی‌شود.
+- راه اصلاح:
+  - پیکربندی broadcaster واقعی (Pusher/Reverb) و مقداردهی `VITE_PUSHER_*`.
+  - فعال‌سازی worker مناسب برای صف رویدادها.
+- معیار پذیرش:
+  - ارسال پیام در یک کلاینت، در کلاینت دوم بدون refresh زیر 1 ثانیه دیده شود.
+  - رأی نظرسنجی همزمان روی همه کلاینت‌ها آپدیت شود.
+
+### B. همزمانی websocket و polling (فشار مضاعف)
+- وضعیت: [x] اصلاح اولیه انجام شد
+- شدت: بحرانی
+- نشانه: درخواست‌های اضافی به `/api/groups/{id}/messages` حتی وقتی realtime فعال است.
+- علت فنی:
+  - در `public/js/group-chat.js` بعد از `initRealtimeMessages()`، `startPolling()` هم بدون شرط شروع می‌شود.
+- راه اصلاح:
+  - `initRealtimeMessages` مقدار بولی بازگرداند.
+  - `startPolling()` فقط وقتی websocket فعال/متصل نیست اجرا شود.
+- معیار پذیرش:
+  - در حالت websocket سالم، polling شروع نشود.
+  - در نبود websocket، polling با fallback فعال شود.
+
+### C. لود تکراری assets (Vite دوبار)
+- وضعیت: [x] انجام شد
+- شدت: بالا
+- نشانه: CSS/JS پایه دوبار بارگذاری می‌شود و زمان parse/execute بالا می‌رود.
+- علت فنی:
+  - `@vite(['resources/css/app.css', 'resources/js/app.js'])` هم در `layouts/chat` و هم در `groups/chat` موجود است.
+- راه اصلاح:
+  - حذف فراخوانی تکراری از `resources/views/groups/chat.blade.php`.
+- معیار پذیرش:
+  - هر bundle پایه فقط یک بار در صفحه چت بارگذاری شود.
+
+### D. سنگینی بیش‌ازحد صفحه چت
+- وضعیت: [ ] انجام نشده
+- شدت: بالا
+- نشانه: زمان لود اولیه بالا، TTI ضعیف.
+- علت فنی:
+  - `chat.blade.php` و `group-chat.js` بسیار بزرگ شده‌اند.
+  - اسکریپت‌های inline زیاد و منطق‌های پراکنده.
+- راه اصلاح:
+  - مرحله‌ای: استخراج scriptهای inline به فایل‌های جدا.
+  - بارگذاری تنبل (lazy) برای ماژول‌های غیر ضروری.
+- معیار پذیرش:
+  - کاهش محسوس زمان parse/execute در DevTools.
+
+### E. خرابی encoding (mojibake) در متن‌ها
+- وضعیت: [ ] انجام نشده
+- شدت: بالا
+- نشانه: نمایش کاراکترهای خراب مانند `Ã`, `Ø`, `Ù`, `ï¿½`.
+- علت فنی:
+  - فایل‌های UTF-8 آسیب دیده یا با encoding ناسازگار ذخیره شده‌اند.
+- راه اصلاح:
+  - اصلاح امن encoding با اسکریپت و بازبینی دستی رشته‌های کاربری.
+- معیار پذیرش:
+  - نبود رشته خراب در فایل‌های چت و نمایش درست فارسی.
+
+### F. N+1 در شمارش رأی نظرسنجی
+- وضعیت: [x] انجام شد
+- شدت: متوسط تا بالا
+- نشانه: در vote هر گزینه query جداگانه می‌گیرد.
+- علت فنی:
+  - `PollController@vote` برای هر option یک `count` مجزا می‌زند.
+- راه اصلاح:
+  - تجمیع شمارش با `group by option_id` در یک query.
+- معیار پذیرش:
+  - تعداد query رأی‌گیری ثابت و پایین بماند.
+
+## 3) برنامه اجرای مرحله فعلی (Current Sprint)
+- [x] ایجاد این چک‌لیست رسمی
+- [x] حذف لود تکراری Vite در صفحه چت
+- [x] شرطی‌سازی polling نسبت به websocket
+- [ ] ثبت نتیجه و تیک‌زدن موارد انجام‌شده
+
+## 4) لاگ تغییرات (Progress Log)
+- 2026-02-18: چک‌لیست رسمی ایجاد شد و محدوده امن تغییرات برای حفظ نجم‌هدا تعریف شد.
+- 2026-02-18: لود تکراری Vite در `resources/views/groups/chat.blade.php` حذف شد.
+- 2026-02-18: در `public/js/group-chat.js` شروع polling شرطی شد تا هنگام آماده بودن websocket، polling همزمان اجرا نشود.
+- 2026-02-18: در `app/Http/Controllers/Group/PollController.php` شمارش رأی گزینه‌ها از N+1 به query تجمیعی (`group by`) تبدیل شد.
+
+## 2026-02-18 - Step Update (Encoding Stabilization)
+- [x] `app/Http/Controllers/Group/MessageController.php`: removed remaining mojibake strings in API/user-facing texts.
+- [x] Replaced corrupted placeholders with safe fallback messages (`Voice message`, `Unknown user`, `members found`, rate-limit text).
+- [x] Verified syntax: `php -l app/Http/Controllers/Group/MessageController.php`.
+- [x] Verified chat JS syntax still valid: `node --check public/js/group-chat.js`.
+- [ ] Next: continue targeted cleanup in `public/js/group-chat.js` user-facing labels/messages.
+
+## 2026-02-18 - Step Update (Polling Throughput Hardening)
+- [x] public/js/group-chat.js: added pollingRequestInFlight guard to prevent overlapping polling requests.
+- [x] public/js/group-chat.js: optimized getLastMessageId() to avoid Math.max(...Set) spread on large sets.
+- [x] public/js/group-chat.js: replaced per-poll DOM scan for existing message IDs with enderedMessageIds cache (with safe fallback).
+- [x] public/js/group-chat.js: wired polling ajax eforeSend/complete to track in-flight state.
+- [x] Validation: 
+ode --check public/js/group-chat.js.
+- [ ] Next: measure API latency for send-message/send-audio/send-post/send-poll and optimize server path (MessageController, PollController, queue/broadcast config).
+
+## 2026-02-18 - Step Update (API Latency: Deferred Broadcasts)
+- [x] Added GROUP_CHAT_DEFER_BROADCASTS flag in config/group-chat.php (default: 	rue).
+- [x] MessageController@store: moved MessageCreated dispatch to after-response path.
+- [x] MessageController: moved UserMentioned dispatch to after-response path.
+- [x] BlogController (store/update/destroy): moved BlogCreated and GroupFeedUpdated dispatches to after-response path.
+- [x] PollController (store/vote/update/delete): moved PollCreated / GroupPollUpdated / GroupFeedUpdated dispatches to after-response path.
+- [x] Validation: php -l passed for all changed files.
+- [ ] Next: instrument real request timings for /messages/send, /blog/send/{group}, /poll/send/{group}, /polls/{poll}/vote to identify remaining DB/I/O hotspots.
+
+## 2026-02-18 - Step Update (Latency Instrumentation)
+- [x] Added middleware pp/Http/Middleware/GroupChatTiming.php to measure server processing time for chat write endpoints.
+- [x] Registered route middleware alias group.chat.timing in pp/Http/Kernel.php.
+- [x] Applied timing middleware to:
+  - POST /messages/send
+  - POST /blog/send/{group}
+  - POST /poll/send/{group}
+  - POST /polls/{poll}/vote
+- [x] Added config flags in config/group-chat.php:
+  - GROUP_CHAT_API_TIMING_ENABLED
+  - GROUP_CHAT_API_TIMING_LOG
+  - GROUP_CHAT_API_TIMING_SLOW_MS
+- [x] Response headers now include X-Chat-Server-Time-Ms and Server-Timing.
+- [ ] Next: capture 20+ real samples per endpoint and isolate p95 latency bottleneck (DB vs file upload vs rendering).
