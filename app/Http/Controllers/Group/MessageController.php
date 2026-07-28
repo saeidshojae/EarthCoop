@@ -16,7 +16,6 @@ use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-    use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class MessageController extends Controller
@@ -155,9 +154,9 @@ class MessageController extends Controller
             return response()->json(['An error occurred. Please try again.'], 422);
         }
 
-            if (! empty($messageText)) {
-                $messageText = $this->formatMessageHtmlWithMentions($messageText, $group);
-            }
+        if (! empty($messageText)) {
+            $messageText = nl2br(e($messageText));
+        }
 
         $clientMessageId = trim((string) $request->input('client_message_id', ''));
         if ($clientMessageId !== '') {
@@ -241,7 +240,7 @@ class MessageController extends Controller
             $voiceFileName = 'voice_' . time() . '_' . uniqid() . '.' . $originalExtension;
             $voiceFilePath = $voiceFile->storeAs('uploads/voice_messages', $voiceFileName, 'public');
             $messageData['voice_message'] = $voiceFilePath;
-            $messageData['file_type'] = $this->normalizeVoiceMimeType($mimeType, $originalExtension);
+            $messageData['file_type'] = $mimeType ?: 'audio/webm';
             $messageData['file_name'] = $voiceFile->getClientOriginalName() ?: 'voice_message.' . $originalExtension;
 
             if (empty($messageData['message'])) {
@@ -298,10 +297,14 @@ class MessageController extends Controller
             'sender' => $user->first_name . ' ' . $user->last_name,
             'parent_id' => $message->parent_id,
             'file_path' => $message->file_path,
-            'file_type' => $this->normalizeVoiceMimeType($message->file_type, pathinfo((string) ($message->file_name ?? ''), PATHINFO_EXTENSION)),
+            'file_type' => $message->file_type,
             'file_name' => $message->file_name,
-            'voice_message' => $message->voice_message ? $this->normalizeVoiceStoragePath($message->voice_message) : null,
-            'voice_message_url' => $message->voice_message ? route('groups.messages.voice', ['message' => $message->id]) : null,
+            'voice_message' => $message->voice_message ? (str_starts_with($message->voice_message, 'http') ? $message->voice_message : (function ($path) {
+                $path = ltrim($path, '/');
+                $pathParts = explode('/', $path);
+                $encodedParts = array_map('rawurlencode', $pathParts);
+                return asset('storage/' . implode('/', $encodedParts));
+            })($message->voice_message)) : null,
         ];
 
         if ($message->parent_id) {
@@ -341,98 +344,14 @@ class MessageController extends Controller
         return in_array($sqlState, ['23000', '23505'], true) || in_array($driverCode, [1062, 19, 2067], true);
     }
 
-    private function normalizeVoiceMimeType(?string $mimeType, ?string $extension = null): string
-    {
-        $mime = strtolower((string) $mimeType);
-        $ext = strtolower((string) ($extension ?? ''));
-
-        if (str_contains($mime, 'mpeg') || str_contains($mime, 'mp3') || $ext === 'mp3') {
-            return 'audio/mpeg';
-        }
-
-        if (str_contains($mime, 'wav') || $ext === 'wav') {
-            return 'audio/wav';
-        }
-
-        if (str_contains($mime, 'ogg') || str_contains($mime, 'opus') || in_array($ext, ['ogg', 'opus'], true)) {
-            return 'audio/ogg';
-        }
-
-        if (str_contains($mime, 'webm') || $ext === 'webm') {
-            return 'audio/webm';
-        }
-
-        if (str_starts_with($mime, 'audio/')) {
-            return $mime;
-        }
-
-        return 'audio/webm';
-    }
-
-    private function normalizeVoiceStoragePath(string $voiceMessage): string
-    {
-        if (str_starts_with($voiceMessage, 'http://') || str_starts_with($voiceMessage, 'https://')) {
-            return $voiceMessage;
-        }
-
-        $path = ltrim($voiceMessage, '/');
-
-        if (str_starts_with($path, 'storage/')) {
-            return '/' . $path;
-        }
-
-        return '/storage/' . $path;
-    }
-
-    public function voice(Request $request, Message $message)
-    {
-        $user = auth()->user();
-
-        if (! $message->group || ! $message->group->users()->whereKey($user->id)->exists()) {
-            abort(403, 'Unauthorized');
-        }
-
-        if (empty($message->voice_message)) {
-            abort(404);
-        }
-
-        $storagePath = ltrim((string) $message->voice_message, '/');
-        if (str_starts_with($storagePath, 'storage/')) {
-            $storagePath = substr($storagePath, strlen('storage/'));
-        }
-
-        if (! Storage::disk('public')->exists($storagePath)) {
-            abort(404);
-        }
-
-        $absolutePath = Storage::disk('public')->path($storagePath);
-        $contentLength = (string) (Storage::disk('public')->size($storagePath) ?: filesize($absolutePath));
-        $mimeType = $this->normalizeVoiceMimeType($message->file_type, pathinfo((string) ($message->file_name ?? ''), PATHINFO_EXTENSION));
-
-        // Prevent session-file lock from blocking concurrent polling/audio requests.
-        if ($request->hasSession()) {
-            $request->session()->save();
-        }
-        if (function_exists('session_write_close')) {
-            @session_write_close();
-        }
-
-        return response()->file($absolutePath, [
-            'Content-Type' => $mimeType,
-            'Content-Length' => $contentLength,
-            'Accept-Ranges' => 'bytes',
-            'Cache-Control' => 'private, max-age=3600',
-        ]);
-    }
-
     private function processMentions(string $messageText, Message $message, Group $group, User $user): void
     {
         if ($messageText === '') {
             return;
         }
 
-        preg_match_all('/@\[([0-9]+)\]|@([0-9]+)/u', $messageText, $matches, PREG_SET_ORDER);
-        if (empty($matches)) {
+        preg_match_all('/@([0-9]+)/', $messageText, $matches);
+        if (empty($matches[1])) {
             return;
         }
     }
@@ -497,20 +416,27 @@ class MessageController extends Controller
         $replies = $threadRoot->replies()
             ->with('user:id,first_name,last_name,avatar')
             ->get()
-            ->map(function($reply) {
-                return [
-                    'id' => $reply->id,
-                    'user_id' => $reply->user_id,
-                    'message' => $reply->message,
-                    'sender' => $reply->user->first_name . ' ' . $reply->user->last_name,
-                    'avatar' => $reply->user->avatar,
-                    'created_at' => $reply->created_at->format('Y-m-d H:i:s'),
-                    'file_path' => $reply->file_path,
-                    'file_type' => $this->normalizeVoiceMimeType($reply->file_type, pathinfo((string) ($reply->file_name ?? ''), PATHINFO_EXTENSION)),
-                    'voice_message' => $reply->voice_message ? $this->normalizeVoiceStoragePath($reply->voice_message) : null,
-                    'voice_message_url' => $reply->voice_message ? route('groups.messages.voice', ['message' => $reply->id]) : null,
-                ];
-            });
+->map(function($reply) {
+    $voiceMessage = $reply->voice_message;
+    if ($voiceMessage && !str_starts_with($voiceMessage, 'http')) {
+        $voicePath = ltrim($voiceMessage, '/');
+        // Encode each part of the path to handle spaces and special characters
+        $pathParts = explode('/', $voicePath);
+        $encodedParts = array_map('rawurlencode', $pathParts);
+        $voiceMessage = asset('storage/' . implode('/', $pathParts));
+    }
+    return [
+        'id' => $reply->id,
+        'user_id' => $reply->user_id,
+        'message' => $reply->message,
+        'sender' => $reply->user->first_name . ' ' . $reply->user->last_name,
+        'avatar' => $reply->user->avatar,
+        'created_at' => $reply->created_at->format('Y-m-d H:i:s'),
+        'file_path' => $reply->file_path,
+        'file_type' => $reply->file_type,
+        'voice_message' => $voiceMessage,
+    ];
+});
 
         return response()->json([
             'status' => 'success',
@@ -545,7 +471,7 @@ class MessageController extends Controller
             return response()->json(['An error occurred. Please try again.'], 403);
         }
 
-        $htmlContent = $this->formatMessageHtmlWithMentions((string) $request->input('content'), $message->group);
+        $htmlContent = nl2br(e($request->input('content')));
 
         $message->update([
             'message' => $htmlContent,
@@ -571,75 +497,6 @@ class MessageController extends Controller
             'edited' => true,
             'message_id' => (int) $message->id,
         ]);
-    }
-
-    private function formatMessageHtmlWithMentions(string $plainText, Group $group): string
-    {
-        $escaped = e($plainText);
-
-        preg_match_all('/@\[([0-9]+)\]|@([0-9]+)/u', $plainText, $matches, PREG_SET_ORDER);
-        $mentionIds = [];
-        foreach ($matches as $m) {
-            $id = isset($m[1]) && $m[1] !== '' ? (int) $m[1] : (int) ($m[2] ?? 0);
-            if ($id > 0) {
-                $mentionIds[] = $id;
-            }
-        }
-        $mentionIds = array_values(array_unique($mentionIds));
-
-        $mentionNameMap = [];
-        if (! empty($mentionIds)) {
-            $mentionNameMap = $group->users()
-                ->whereIn('users.id', $mentionIds)
-                ->get(['users.id', 'users.first_name', 'users.last_name'])
-                ->mapWithKeys(function ($u) {
-                    $name = trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? ''));
-                    return [(int) $u->id => $name !== '' ? $name : ('کاربر ' . (int) $u->id)];
-                })
-                ->toArray();
-        }
-
-        // First pass: known group members -> render display name.
-        foreach ($mentionNameMap as $mentionedUserId => $displayName) {
-            $replacement = '<a href="' . e(route('profile.member.show', $mentionedUserId)) . '" class="mention-link" data-mention-user-id="' . (int) $mentionedUserId . '">@' . e($displayName) . '</a>';
-            $tokenPattern = '@\\[' . preg_quote((string) $mentionedUserId, '/') . '\\]|@' . preg_quote((string) $mentionedUserId, '/') . '\\b';
-            $displayNamePattern = preg_quote(e($displayName), '/');
-
-            // Handle formatted mentions that carry both token and plain name (e.g. @[23] سعید شجاعی).
-            $escaped = preg_replace('/(?:' . $tokenPattern . ')\\s*' . $displayNamePattern . '/u', $replacement, $escaped);
-            // Handle token-only mentions.
-            $escaped = preg_replace('/(?:' . $tokenPattern . ')/u', $replacement, $escaped);
-
-            // Remove duplicated plain-text name that may appear right after the inserted link
-            // (e.g. generated input: @[23] سعید شجاعی -> <a>@سعیدشجاعی</a> سعید شجاعی).
-            $normalizedDisplay = preg_replace('/\s+/u', '', (string) $displayName);
-            if ($normalizedDisplay !== null && $normalizedDisplay !== '') {
-                $chars = preg_split('//u', $normalizedDisplay, -1, PREG_SPLIT_NO_EMPTY) ?: [];
-                if (! empty($chars)) {
-                    $spacedNamePattern = implode('\\s*', array_map(function ($char) {
-                        return preg_quote($char, '/');
-                    }, $chars));
-
-                    $escaped = preg_replace(
-                        '/(<a[^>]*class="mention-link"[^>]*data-mention-user-id="' . (int) $mentionedUserId . '"[^>]*>[^<]+<\\/a>)\\s*(?:' . $spacedNamePattern . ')/u',
-                        '$1',
-                        $escaped
-                    );
-                }
-            }
-        }
-
-        // Second pass: fallback for unknown IDs -> keep numeric mention but clickable.
-        $escaped = preg_replace_callback('/@\\[([0-9]+)\\]|@([0-9]+)\\b/u', function ($match) {
-            $mentionedUserId = isset($match[1]) && $match[1] !== '' ? (int) $match[1] : (int) ($match[2] ?? 0);
-            if ($mentionedUserId <= 0) {
-                return $match[0] ?? '';
-            }
-
-            return '<a href="' . e(route('profile.member.show', $mentionedUserId)) . '" class="mention-link" data-mention-user-id="' . $mentionedUserId . '">@' . $mentionedUserId . '</a>';
-        }, $escaped);
-
-        return nl2br($escaped);
     }
 
     public function delete(Request $request, Message $message)
@@ -926,19 +783,7 @@ class MessageController extends Controller
             return response()->json(['An error occurred. Please try again.'], 403);
         }
 
-        if ((int) $message->user_id !== (int) $user->id) {
-            $message->markAsRead((int) $user->id);
-            $message->refresh();
-        }
-
-        $readBy = $message->read_by;
-        if (is_string($readBy)) {
-            $readBy = json_decode($readBy, true);
-        }
-        if (!is_array($readBy)) {
-            $readBy = [];
-        }
-        $readCount = count($readBy);
+        $message->update(['read_at' => now()]);
 
         $this->dispatchGroupEvent(new GroupMessageUpdated(
             (int) $message->group_id,
@@ -946,8 +791,6 @@ class MessageController extends Controller
             [
                 'message_id' => (int) $message->id,
                 'read' => true,
-                'reader_id' => (int) $user->id,
-                'read_count' => (int) $readCount,
             ],
             (int) $user->id
         ));
@@ -960,10 +803,6 @@ class MessageController extends Controller
      */
     public function updateLastReadMessage(Request $request, Group $group)
     {
-        $validated = $request->validate([
-            'message_id' => 'nullable|integer|min:1',
-        ]);
-
         $user = auth()->user();
         $groupUserRole = GroupUser::where('group_id', $group->id)
             ->where('user_id', $user->id)
@@ -976,40 +815,9 @@ class MessageController extends Controller
             return response()->json(['An error occurred. Please try again.'], 403);
         }
 
-        $messageId = isset($validated['message_id']) ? (int) $validated['message_id'] : null;
-
-        if ($messageId !== null) {
-            $belongsToGroup = Message::where('group_id', $group->id)
-                ->where('id', $messageId)
-                ->exists();
-
-            if (! $belongsToGroup) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Invalid message id for this group.',
-                ], 422);
-            }
-        }
-
-        $groupUser = GroupUser::where('group_id', $group->id)
-            ->where('user_id', $user->id)
-            ->first();
-
-        if ($groupUser && $messageId !== null) {
-            $current = (int) ($groupUser->last_read_message_id ?? 0);
-            if ($messageId > $current) {
-                $groupUser->last_read_message_id = $messageId;
-                $groupUser->save();
-            }
-        }
-
         $group->update(['last_read_at' => now()]);
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Last read cursor updated.',
-            'last_read_message_id' => $groupUser?->last_read_message_id,
-        ]);
+        return response()->json(['status' => 'success', 'message' => 'Last read timestamp updated.']);
     }
 
     /**
@@ -1017,10 +825,6 @@ class MessageController extends Controller
      */
     public function typing(Request $request, Group $group)
     {
-        $validated = $request->validate([
-            'is_typing' => 'required|boolean',
-        ]);
-
         $user = auth()->user();
         $groupUserRole = GroupUser::where('group_id', $group->id)
             ->where('user_id', $user->id)
@@ -1037,7 +841,6 @@ class MessageController extends Controller
             [
                 'user_id' => (int) $user->id,
                 'user_name' => $user->first_name . ' ' . $user->last_name,
-                'is_typing' => (bool) $validated['is_typing'],
             ],
             (int) $user->id
         ));
@@ -1060,32 +863,24 @@ class MessageController extends Controller
             return response()->json(['An error occurred. Please try again.'], 403);
         }
 
-        $query = trim((string) $request->input('query', $request->input('q', '')));
-
-        $users = $group->users()
-            ->where('users.id', '!=', (int) $user->id)
-            ->where(function ($q) use ($query) {
-                if ($query === '') {
-                    return;
-                }
-                $q->where('users.first_name', 'like', '%' . $query . '%')
-                    ->orWhere('users.last_name', 'like', '%' . $query . '%')
-                    ->orWhere('users.national_id', 'like', '%' . $query . '%');
-            })
-            ->limit(10)
-            ->get(['users.id', 'users.first_name', 'users.last_name', 'users.avatar']);
-
-        $payload = $users->map(function ($u) {
-            return [
-                'id' => (int) $u->id,
-                'name' => trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')),
-                'avatar' => $u->avatar,
-            ];
-        })->values();
+        $query = $request->input('query', '');
+        $users = User::where(function ($q) use ($query) {
+            $q->where('first_name', 'like', '%' . $query . '%')
+              ->orWhere('last_name', 'like', '%' . $query . '%')
+              ->orWhere('national_id', 'like', '%' . $query . '%');
+        })
+        ->limit(10)
+        ->get(['id', 'first_name', 'last_name', 'avatar']);
 
         return response()->json([
             'status' => 'success',
-            'users' => $payload,
+            'users' => $users->map(function ($u) {
+                return [
+                    'id' => $u->id,
+                    'name' => $u->first_name . ' ' . $u->last_name,
+                    'avatar' => $u->avatar,
+                ];
+            })
         ]);
     }
 

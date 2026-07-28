@@ -10,28 +10,6 @@ use Illuminate\Http\JsonResponse;
 
 class PrivateChatController extends Controller
 {
-    public function index()
-    {
-        $currentUserId = (int) auth()->id();
-
-        $conversations = PrivateConversation::whereHas('users', function ($query) use ($currentUserId) {
-            $query->where('users.id', $currentUserId);
-        })
-        ->with([
-            'users:id,first_name,last_name,avatar',
-            'messages' => function ($query) {
-                $query->latest('id')->limit(1);
-            }
-        ])
-        ->get()
-        ->sortByDesc(function ($conversation) {
-            return $conversation->messages->first()?->created_at ?? now();
-        })
-        ->values();
-
-        return view('private-chats.index', compact('conversations'));
-    }
-
     public function show(PrivateConversation $conversation)
     {
         $currentUserId = (int) auth()->id();
