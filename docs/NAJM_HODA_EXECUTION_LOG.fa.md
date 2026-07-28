@@ -1,40 +1,41 @@
-﻿# لاگ اجرای برنامه تحول نجم هدا
+﻿# Ù„Ø§Ú¯ Ø§Ø¬Ø±Ø§ÛŒ Ø¨Ø±Ù†Ø§Ù…Ù‡ ØªØ­ÙˆÙ„ Ù†Ø¬Ù… Ù‡Ø¯Ø§
 
 ## 2026-02-19
 
-### انجام شد
-- ایجاد سند roadmap:
+### Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯
+- Ø§ÛŒØ¬Ø§Ø¯ Ø³Ù†Ø¯ roadmap:
   - `docs/NAJM_HODA_TRANSFORMATION_ROADMAP.fa.md`
-- ایجاد برنامه Sprint 1:
+- Ø§ÛŒØ¬Ø§Ø¯ Ø¨Ø±Ù†Ø§Ù…Ù‡ Sprint 1:
   - `docs/NAJM_HODA_SPRINT1_EXECUTION_PLAN.fa.md`
-- ایجاد ریزتسک های فاز 0:
+- Ø§ÛŒØ¬Ø§Ø¯ Ø±ÛŒØ²ØªØ³Ú© Ù‡Ø§ÛŒ ÙØ§Ø² 0:
   - `docs/NAJM_HODA_PHASE0_TASKS.fa.md`
-- شروع اجرای فاز 0 (Feature Flag Enforcement):
-  - گارد `NAJM_HODA_ENABLED` در API نجم هدا
-  - گارد `NAJM_HODA_ENABLED` در listener گروهی نجم هدا
-  - گارد `NAJM_HODA_ENABLED` در commandهای اصلی نجم هدا
-  - گارد `NAJM_HODA_ENABLED` در admin chat endpoint
-- اضافه شدن audit log برای مسیرهای blocked در حالت disabled
-- شروع ارزیابی mojibake و ثبت گزارش مرحله ای:
+- Ø´Ø±ÙˆØ¹ Ø§Ø¬Ø±Ø§ÛŒ ÙØ§Ø² 0 (Feature Flag Enforcement):
+  - Ú¯Ø§Ø±Ø¯ `NAJM_HODA_ENABLED` Ø¯Ø± API Ù†Ø¬Ù… Ù‡Ø¯Ø§
+  - Ú¯Ø§Ø±Ø¯ `NAJM_HODA_ENABLED` Ø¯Ø± listener Ú¯Ø±ÙˆÙ‡ÛŒ Ù†Ø¬Ù… Ù‡Ø¯Ø§
+  - Ú¯Ø§Ø±Ø¯ `NAJM_HODA_ENABLED` Ø¯Ø± commandÙ‡Ø§ÛŒ Ø§ØµÙ„ÛŒ Ù†Ø¬Ù… Ù‡Ø¯Ø§
+  - Ú¯Ø§Ø±Ø¯ `NAJM_HODA_ENABLED` Ø¯Ø± admin chat endpoint
+- Ø§Ø¶Ø§ÙÙ‡ Ø´Ø¯Ù† audit log Ø¨Ø±Ø§ÛŒ Ù…Ø³ÛŒØ±Ù‡Ø§ÛŒ blocked Ø¯Ø± Ø­Ø§Ù„Øª disabled
+- Ø´Ø±ÙˆØ¹ Ø§Ø±Ø²ÛŒØ§Ø¨ÛŒ mojibake Ùˆ Ø«Ø¨Øª Ú¯Ø²Ø§Ø±Ø´ Ù…Ø±Ø­Ù„Ù‡ Ø§ÛŒ:
   - `docs/NAJM_HODA_MOJIBAKE_ASSESSMENT_PHASE0.fa.md`
-- اصلاح هدفمند mojibake در مقادیر پیش فرض نام بات گروهی:
+- Ø§ØµÙ„Ø§Ø­ Ù‡Ø¯ÙÙ…Ù†Ø¯ mojibake Ø¯Ø± Ù…Ù‚Ø§Ø¯ÛŒØ± Ù¾ÛŒØ´ ÙØ±Ø¶ Ù†Ø§Ù… Ø¨Ø§Øª Ú¯Ø±ÙˆÙ‡ÛŒ:
   - `app/Services/NajmHoda/NajmHodaGroupAssistantService.php`
-- تکمیل بازطراحی مسیر تنظیمات Auto-Fixer:
-  - حذف وابستگی `saveAutoFixerSettings` به cache
-  - ذخیره تنظیمات در `.env` و اعمال runtime config
-  - حذف `rand()` از `testAutoFixer` و جایگزینی با تست واقعی بر پایه scan summary
-  - حذف وابستگی `cleanBackups` به cache و اتصال به config پایدار
+- ØªÚ©Ù…ÛŒÙ„ Ø¨Ø§Ø²Ø·Ø±Ø§Ø­ÛŒ Ù…Ø³ÛŒØ± ØªÙ†Ø¸ÛŒÙ…Ø§Øª Auto-Fixer:
+  - Ø­Ø°Ù ÙˆØ§Ø¨Ø³ØªÚ¯ÛŒ `saveAutoFixerSettings` Ø¨Ù‡ cache
+  - Ø°Ø®ÛŒØ±Ù‡ ØªÙ†Ø¸ÛŒÙ…Ø§Øª Ø¯Ø± `.env` Ùˆ Ø§Ø¹Ù…Ø§Ù„ runtime config
+  - Ø­Ø°Ù `rand()` Ø§Ø² `testAutoFixer` Ùˆ Ø¬Ø§ÛŒÚ¯Ø²ÛŒÙ†ÛŒ Ø¨Ø§ ØªØ³Øª ÙˆØ§Ù‚Ø¹ÛŒ Ø¨Ø± Ù¾Ø§ÛŒÙ‡ scan summary
+  - Ø­Ø°Ù ÙˆØ§Ø¨Ø³ØªÚ¯ÛŒ `cleanBackups` Ø¨Ù‡ cache Ùˆ Ø§ØªØµØ§Ù„ Ø¨Ù‡ config Ù¾Ø§ÛŒØ¯Ø§Ø±
 
-### راستی آزمایی
-- syntax check برای فایل های تغییر داده شده انجام شد و خطای syntax گزارش نشد.
+### Ø±Ø§Ø³ØªÛŒ Ø¢Ø²Ù…Ø§ÛŒÛŒ
+- syntax check Ø¨Ø±Ø§ÛŒ ÙØ§ÛŒÙ„ Ù‡Ø§ÛŒ ØªØºÛŒÛŒØ± Ø¯Ø§Ø¯Ù‡ Ø´Ø¯Ù‡ Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯ Ùˆ Ø®Ø·Ø§ÛŒ syntax Ú¯Ø²Ø§Ø±Ø´ Ù†Ø´Ø¯.
 
-### وضعیت فعلی
-- `P0-T01`: انجام شد (feature flag روی entrypointهای اصلی enforce شد)
-- `P0-T02`: انجام شد (disabled response استاندارد با کد `NAJM_HODA_DISABLED` اعمال شد)
-- `P0-T03`: انجام شد (پاکسازی mojibake در فایل های هسته ای تکمیل شد)
-- `P0-T04`: انجام شد (runtime config حساس پایدار شد)
-- `P0-T05`: انجام شد (لاگ blocked در مسیرهای اصلی افزوده شد)
-- `P0-T06`: انجام شد (smoke check مسیرهای کلیدی و syntax validation انجام شد)
+### ÙˆØ¶Ø¹ÛŒØª ÙØ¹Ù„ÛŒ
+- `P0-T01`: Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯ (feature flag Ø±ÙˆÛŒ entrypointÙ‡Ø§ÛŒ Ø§ØµÙ„ÛŒ enforce Ø´Ø¯)
+- `P0-T02`: Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯ (disabled response Ø§Ø³ØªØ§Ù†Ø¯Ø§Ø±Ø¯ Ø¨Ø§ Ú©Ø¯ `NAJM_HODA_DISABLED` Ø§Ø¹Ù…Ø§Ù„ Ø´Ø¯)
+- `P0-T03`: Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯ (Ù¾Ø§Ú©Ø³Ø§Ø²ÛŒ mojibake Ø¯Ø± ÙØ§ÛŒÙ„ Ù‡Ø§ÛŒ Ù‡Ø³ØªÙ‡ Ø§ÛŒ ØªÚ©Ù…ÛŒÙ„ Ø´Ø¯)
+- `P0-T04`: Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯ (runtime config Ø­Ø³Ø§Ø³ Ù¾Ø§ÛŒØ¯Ø§Ø± Ø´Ø¯)
+- `P0-T05`: Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯ (Ù„Ø§Ú¯ blocked Ø¯Ø± Ù…Ø³ÛŒØ±Ù‡Ø§ÛŒ Ø§ØµÙ„ÛŒ Ø§ÙØ²ÙˆØ¯Ù‡ Ø´Ø¯)
+- `P0-T06`: Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯ (smoke check Ù…Ø³ÛŒØ±Ù‡Ø§ÛŒ Ú©Ù„ÛŒØ¯ÛŒ Ùˆ syntax validation Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯)
+
 
 ### Update - P0-T03-COMPLETE-2026-02-19
 - [P0-T03-COMPLETE-2026-02-19] Targeted mojibake cleanup was finalized for 11 NajmHoda core files.
@@ -367,13 +368,11 @@
 - Added tests:
   - `tests/Feature/NajmHoda/OpsRetentionServiceTest.php`
   - validates summary trim + stale telemetry key pruning
-
 ### Update - PHASE4-KICKOFF-2026-02-20
 - Phase 3 task list is fully completed (`P3-T01` to `P3-T15`).
 - Started Phase 4 with a dedicated backlog document:
   - `docs/NAJM_HODA_PHASE4_TASKS.fa.md`
 - Marked `P4-T01` (Autonomous Goal Loop Skeleton) as `in_progress` to begin implementation.
-
 ### Update - PHASE4-AUTONOMOUS-GOAL-LOOP-SKELETON-COMPLETE-2026-02-20
 - Implemented autonomous goal loop skeleton service:
   - `app/Services/NajmHoda/Runtime/NajmHodaAutonomousGoalLoopService.php`
@@ -1093,18 +1092,18 @@
   - `tests/Feature/NajmHoda/NajmBaharPolicyEscalationLinkTest.php` now covers `support` and `content` policy-link paths.
 - Validation:
   - `php -l` passed for all touched files.
-  - `vendor\bin\phpunit tests/Feature/NajmHoda/NajmBaharPolicyEscalationLinkTest.php --colors=never`
+  - `vendor\\bin\\phpunit tests/Feature/NajmHoda/NajmBaharPolicyEscalationLinkTest.php --colors=never`
     - `OK (4 tests, 15 assertions)`
 
 ### Update - PHASE6-T01-AUTH-LIFECYCLE-CONTENT-FAILURE-CLOSURE-2026-02-21
 - Added framework-level auth lifecycle runtime capture:
   - listener: `app/Listeners/CaptureNajmHodaAuthLifecycle.php`
   - mapped in `app/Providers/EventServiceProvider.php` for:
-    - `Illuminate\Auth\Events\Login`
-    - `Illuminate\Auth\Events\Failed`
-    - `Illuminate\Auth\Events\Logout`
-    - `Illuminate\Auth\Events\Registered`
-    - `Illuminate\Auth\Events\PasswordReset`
+    - `Illuminate\\Auth\\Events\\Login`
+    - `Illuminate\\Auth\\Events\\Failed`
+    - `Illuminate\\Auth\\Events\\Logout`
+    - `Illuminate\\Auth\\Events\\Registered`
+    - `Illuminate\\Auth\\Events\\PasswordReset`
 - Added controller-level auth service emissions + policy-link ingestion:
   - `app/Http/Controllers/Auth/LoginController.php`
   - `app/Http/Controllers/Auth/GoogleController.php`
@@ -1118,8 +1117,8 @@
   - extended `tests/Feature/NajmHoda/NajmBaharPolicyEscalationLinkTest.php` with auth scenario.
 - Validation:
   - `php -l` passed for all touched files.
-  - `vendor\bin\phpunit tests/Feature/NajmHoda/AuthLifecycleInstrumentationTest.php --colors=never` => `OK (2 tests, 4 assertions)`
-  - `vendor\bin\phpunit tests/Feature/NajmHoda/NajmBaharPolicyEscalationLinkTest.php --colors=never` => `OK (5 tests, 17 assertions)`
+  - `vendor\\bin\\phpunit tests/Feature/NajmHoda/AuthLifecycleInstrumentationTest.php --colors=never` => `OK (2 tests, 4 assertions)`
+  - `vendor\\bin\\phpunit tests/Feature/NajmHoda/NajmBaharPolicyEscalationLinkTest.php --colors=never` => `OK (5 tests, 17 assertions)`
 - Phase impact:
   - closed the previously-tracked `auth lifecycle` and `content API-level failure-path` gaps in `P6-T01`.
   - next focus: KPI measurement to confirm critical-path coverage threshold `>=95%` and finalize onboarding standard for new modules.
@@ -1145,7 +1144,7 @@
   - `tests/Feature/NajmHoda/EventCoverageKpiServiceTest.php`
 - Validation:
   - `php -l` passed for all touched files
-  - `vendor\bin\phpunit tests/Feature/NajmHoda/EventCoverageKpiServiceTest.php --colors=never` => `OK (2 tests, 8 assertions)`
+  - `vendor\\bin\\phpunit tests/Feature/NajmHoda/EventCoverageKpiServiceTest.php --colors=never` => `OK (2 tests, 8 assertions)`
   - `php artisan help najm-hoda:coverage-kpi` => command available
   - `php artisan najm-hoda:coverage-kpi --window=24 --limit=500` with `NAJM_HODA_ENABLED=true` => snapshot table generated with breach visibility
 - Phase impact:
@@ -1171,8 +1170,8 @@
 - Added test:
   - `tests/Feature/NajmHoda/CoverageProbeCommandTest.php`
 - Validation:
-  - `vendor\bin\phpunit tests/Feature/NajmHoda/CoverageProbeCommandTest.php --colors=never` => `OK (1 test, 5 assertions)`
-  - `vendor\bin\phpunit tests/Feature/NajmHoda/EventCoverageKpiServiceTest.php --colors=never` => `OK (2 tests, 8 assertions)`
+  - `vendor\\bin\\phpunit tests/Feature/NajmHoda/CoverageProbeCommandTest.php --colors=never` => `OK (1 test, 5 assertions)`
+  - `vendor\\bin\\phpunit tests/Feature/NajmHoda/EventCoverageKpiServiceTest.php --colors=never` => `OK (2 tests, 8 assertions)`
   - `php artisan najm-hoda:coverage-kpi --window=24 --limit=5000 --probe` => all KPI statuses `ok`, families `5/5`.
 - Phase impact:
   - operationalized KPI attainment checks for `P6-T01` with deterministic in-process probing.
@@ -1199,7 +1198,7 @@
   - file: `tests/Feature/NajmHoda/EventCoverageKpiServiceTest.php`
   - added sustainment-focused test case.
 - Validation:
-  - `vendor\bin\phpunit tests/Feature/NajmHoda/EventCoverageKpiServiceTest.php --colors=never` => `OK (3 tests, 11 assertions)`
+  - `vendor\\bin\\phpunit tests/Feature/NajmHoda/EventCoverageKpiServiceTest.php --colors=never` => `OK (3 tests, 11 assertions)`
   - `php artisan najm-hoda:coverage-kpi --window=24 --limit=5000 --probe` => KPI `ok`, sustainment not met (expected for non-probe requirement)
   - `php artisan najm-hoda:coverage-kpi --window=24 --limit=5000 --require-sustained` => fails when real-window stability not yet achieved.
 - Phase impact:
@@ -1218,7 +1217,7 @@
 - Added test:
   - `tests/Feature/NajmHoda/OnboardingAuditCommandTest.php`
 - Validation:
-  - `vendor\bin\phpunit tests/Feature/NajmHoda/OnboardingAuditCommandTest.php --colors=never` => `OK (2 tests, 2 assertions)`
+  - `vendor\\bin\\phpunit tests/Feature/NajmHoda/OnboardingAuditCommandTest.php --colors=never` => `OK (2 tests, 2 assertions)`
   - `php artisan help najm-hoda:onboarding-audit` => command available
 - Phase impact:
   - line-30 `P6-T01` onboarding subtask is now `done`.
