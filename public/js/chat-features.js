@@ -5,20 +5,6 @@
     const groupId = window.groupId || null;
     const authUserId = window.authUserId || null;
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-    const typingDebug = Boolean(
-        window.__typingDebug ||
-        window.__groupChatDebug ||
-        (typeof window !== 'undefined' && window.localStorage && (
-            window.localStorage.getItem('__typingDebug') === '1' ||
-            window.localStorage.getItem('__groupChatDebug') === '1'
-        ))
-    );
-    const typingLog = (...args) => {
-        if (typingDebug) console.log('[typing]', ...args);
-    };
-    const typingWarn = (...args) => {
-        if (typingDebug) console.warn('[typing]', ...args);
-    };
     
     // تعریف توابع مدیریت اعضا در window scope قبل از return
     // ========== مدیریت اعضا ==========
@@ -430,28 +416,17 @@
         const chatBox = document.getElementById('chat-box');
         if (chatBox) {
             chatBox.appendChild(typingIndicator);
-            typingLog('Typing indicator placeholder attached to #chat-box');
         }
-
-        typingLog('Typing sender enabled', {
-            groupId,
-            authUserId,
-            transportMode,
-            typingEnabled,
-            hasMessageInput: true,
-        });
 
         messageInput.addEventListener('input', function() {
             if (!isTyping) {
                 isTyping = true;
-                typingLog('Input start -> send is_typing=true');
                 sendTypingStatus(true);
             }
             
             clearTimeout(typingTimeout);
             typingTimeout = setTimeout(() => {
                 isTyping = false;
-                typingLog('Input idle timeout -> send is_typing=false');
                 sendTypingStatus(false);
             }, 1000);
         });
@@ -459,34 +434,14 @@
         messageInput.addEventListener('blur', function() {
             clearTimeout(typingTimeout);
             isTyping = false;
-            typingLog('Editor blur -> send is_typing=false');
             sendTypingStatus(false);
-        });
-
-        const chatForm = document.getElementById('chatForm');
-        if (chatForm) {
-            chatForm.addEventListener('submit', function() {
-                clearTimeout(typingTimeout);
-                isTyping = false;
-                typingLog('Form submit -> send is_typing=false');
-                sendTypingStatus(false);
-            });
-        }
-    } else {
-        typingWarn('Typing sender disabled', {
-            transportMode,
-            typingEnabled,
-            hasMessageInput: Boolean(messageInput),
         });
     }
 
     function sendTypingStatus(typing) {
         if (!typingEnabled) {
-            typingWarn('sendTypingStatus skipped (typing disabled)', { typing, transportMode });
             return;
         }
-
-        typingLog('POST /groups/{group}/typing', { groupId, typing });
 
         fetch(`/groups/${groupId}/typing`, {
             method: 'POST',
@@ -496,21 +451,7 @@
                 'Accept': 'application/json'
             },
             body: JSON.stringify({ is_typing: typing })
-        })
-            .then(async (res) => {
-                if (!typingDebug) return;
-                let body = null;
-                try {
-                    body = await res.clone().json();
-                } catch (_) {
-                    body = null;
-                }
-                typingLog('Typing response', { status: res.status, ok: res.ok, body });
-            })
-            .catch(err => {
-                console.error('Typing error:', err);
-                typingWarn('Typing request failed', err?.message || err);
-            });
+        }).catch(err => console.error('Typing error:', err));
     }
 
     // ========== Mention Autocomplete ==========
@@ -530,17 +471,28 @@
             const ckEditor = window.CKEDITOR && window.CKEDITOR.instances && window.CKEDITOR.instances.message_editor;
             
             if (ckEditor) {
-                // CKEditor is used - rely on change/key events instead of raw keyCode mapping
-                ckEditor.on('change', function() {
-                    setTimeout(() => {
-                        checkMentionInCKEditor(ckEditor);
-                    }, 80);
-                });
-
-                ckEditor.on('key', function() {
-                    setTimeout(() => {
-                        checkMentionInCKEditor(ckEditor);
-                    }, 80);
+                // CKEditor is used - listen to key events
+                ckEditor.on('key', function(e) {
+                    const keyCode = e.data.keyCode;
+                    const char = String.fromCharCode(keyCode);
+                    
+                    // Check if @ was typed
+                    if (char === '@' || e.data.domEvent.$.key === '@') {
+                        setTimeout(() => {
+                            checkMentionInCKEditor(ckEditor);
+                        }, 100);
+                    } else {
+                        // Check for mention on any key after @
+                        const data = ckEditor.getData();
+                        const plainText = data.replace(/<[^>]*>/g, '');
+                        if (plainText.includes('@')) {
+                            setTimeout(() => {
+                                checkMentionInCKEditor(ckEditor);
+                            }, 100);
+                        } else {
+                            hideMentionDropdown();
+                        }
+                    }
                 });
                 
                 ckEditor.on('contentDom', function() {
@@ -566,13 +518,9 @@
             const data = ckEditor.getData();
             const plainText = data.replace(/<[^>]*>/g, '');
             const selection = ckEditor.getSelection();
-            const range = selection && selection.getRanges ? selection.getRanges()[0] : null;
+            const range = selection.getRanges()[0];
             
-            if (!range) {
-                const fallbackPos = plainText.length;
-                checkMentionInTextarea(plainText, fallbackPos);
-                return;
-            }
+            if (!range) return;
             
             // Get cursor position in plain text
             let cursorPos = 0;
@@ -584,7 +532,7 @@
                 }
             }
             
-            checkMentionInTextarea(plainText, cursorPos || plainText.length);
+            checkMentionInTextarea(plainText, cursorPos);
         } catch(err) {
             console.error('CKEditor mention check error:', err);
         }
@@ -690,7 +638,7 @@
                 direction: rtl;
                 min-width: 250px;
             `;
-            const inputContainer = textarea.closest('.chat-input__field') || textarea.closest('form') || textarea.parentElement;
+            const inputContainer = textarea.closest('.flex-fill') || textarea.parentElement;
             if (inputContainer) {
                 inputContainer.style.position = 'relative';
                 inputContainer.appendChild(mentionDropdown);
@@ -743,7 +691,7 @@
         // Debounce search
         clearTimeout(window.mentionSearchTimeout);
         window.mentionSearchTimeout = setTimeout(() => {
-            fetch(`/groups/${groupId}/mention-users?query=${encodeURIComponent(query || '')}`, {
+            fetch(`/groups/${groupId}/mention-users?q=${encodeURIComponent(query || '')}`, {
                 headers: {
                     'Accept': 'application/json'
                 }
@@ -752,10 +700,7 @@
                 if (!res.ok) throw new Error('Network error');
                 return res.json();
             })
-            .then(data => {
-                const users = Array.isArray(data)
-                    ? data
-                    : (Array.isArray(data?.users) ? data.users : []);
+            .then(users => {
                 if (Array.isArray(users)) {
                     showMentionDropdown(users);
                 }
@@ -1035,28 +980,14 @@
                 border-radius: 12px;
                 font-size: 12px;
                 cursor: pointer;
-            " onclick="toggleReaction(${messageId}, '${r.type || r.reaction_type || ''}')">
-                ${getReactionEmoji(r.type || r.reaction_type || '')} ${r.count || 0}
+            " onclick="toggleReaction(${messageId}, '${r.type}')">
+                ${getReactionEmoji(r.type)} ${r.count}
             </span>
         `).join('');
     }
 
     function getReactionEmoji(type) {
-        const emojis = {
-            like: '👍',
-            love: '❤️',
-            laugh: '😂',
-            wow: '😮',
-            sad: '😢',
-            angry: '😠',
-            '👍': '👍',
-            '❤️': '❤️',
-            '😂': '😂',
-            '😮': '😮',
-            '😢': '😢',
-            '🔥': '🔥',
-            '👎': '👎'
-        };
+        const emojis = { like: '👍', love: '❤️', laugh: '😂', wow: '😮', sad: '😢', angry: '😠' };
         return emojis[type] || type || '👍';
     }
 

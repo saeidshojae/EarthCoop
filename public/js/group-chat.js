@@ -1,9 +1,5 @@
-﻿// Add styles for chat features (inject once)
-const existingRuntimeStyle = document.getElementById('group-chat-runtime-style');
-const style = existingRuntimeStyle || document.createElement('style');
-if (!existingRuntimeStyle) {
-    style.id = 'group-chat-runtime-style';
-}
+﻿// Add styles for chat features
+const style = document.createElement('style');
 style.textContent = `
     .chat-search-box {
         position: fixed;
@@ -103,42 +99,21 @@ style.textContent = `
         background: #0056b3;
     }
 `;
-if (!existingRuntimeStyle) {
-    document.head.appendChild(style);
-}
-
-const groupChatDebug = Boolean(
-    window.__groupChatDebug ||
-    window.__chatPollingDebug ||
-    (typeof window !== 'undefined' && window.localStorage && (
-        window.localStorage.getItem('__groupChatDebug') === '1' ||
-        window.localStorage.getItem('__chatPollingDebug') === '1'
-    ))
-);
-const debugLog = (...args) => {
-    if (groupChatDebug) {
-        console.log(...args);
-    }
-};
-const debugWarn = (...args) => {
-    if (groupChatDebug) {
-        console.warn(...args);
-    }
-};
+document.head.appendChild(style);
 
 // ========== FORCE LOG - همیشه نمایش بده ==========
 // استفاده از alert برای اطمینان از نمایش
-if (groupChatDebug && typeof window !== 'undefined') {
-    debugLog('🔍🔍🔍 SCRIPT LOADED - VERSION 2024-12-19-v4 🔍🔍🔍');
-    debugLog('🔍 window.groupId:', typeof window.groupId !== 'undefined' ? window.groupId : 'NOT DEFINED YET');
-    debugLog('🔍 Current time:', new Date().toISOString());
+if (typeof window !== 'undefined') {
+    console.log('🔍🔍🔍 SCRIPT LOADED - VERSION 2024-12-19-v4 🔍🔍🔍');
+    console.log('🔍 window.groupId:', typeof window.groupId !== 'undefined' ? window.groupId : 'NOT DEFINED YET');
+    console.log('🔍 Current time:', new Date().toISOString());
     
     // تست: اگر بعد از 3 ثانیه console.log ها نمایش داده نشدند، alert نمایش بده
     setTimeout(function() {
         if (typeof window.groupId !== 'undefined') {
-            debugLog('✅✅✅ POLLING TEST: window.groupId is defined:', window.groupId);
+            console.log('✅✅✅ POLLING TEST: window.groupId is defined:', window.groupId);
         } else {
-            debugWarn('❌❌❌ POLLING TEST: window.groupId is NOT defined!');
+            console.error('❌❌❌ POLLING TEST: window.groupId is NOT defined!');
             // نمایش alert فقط برای debugging
             // alert('Polling Debug: window.groupId is NOT defined! Check console.');
         }
@@ -182,7 +157,7 @@ function getOrCreateClientMessageIdInput(form) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-    debugLog('Tabs script loaded ✅');
+    console.log("Tabs script loaded ✅");
 
     const tabs = document.querySelectorAll('.tab');
     const contents = document.querySelectorAll('.tab-content');
@@ -264,39 +239,6 @@ function submitVote(el) {
     });
 }
 
-window.deletePoll = async function(pollId, deleteUrl) {
-    if (!pollId || !deleteUrl) {
-        showErrorAlert('اطلاعات حذف نظرسنجی ناقص است.');
-        return;
-    }
-
-    if (!confirm('آیا از حذف این نظرسنجی مطمئن هستید؟')) {
-        return;
-    }
-
-    try {
-        const response = await fetch(deleteUrl, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': getCsrfToken(),
-                'Accept': 'application/json'
-            }
-        });
-
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || data.status !== 'success') {
-            showErrorAlert(data.message || 'حذف نظرسنجی با خطا مواجه شد.');
-            return;
-        }
-
-        removePollDom(pollId);
-        showSuccessAlert(data.message || 'نظرسنجی حذف شد.');
-    } catch (error) {
-        console.error('Delete poll failed:', error);
-        showErrorAlert('خطا در اتصال به سرور');
-    }
-};
-
 $(document).ready(function() {
   // Select2 برای options (نه manager_vote و inspector_vote که در election_modal مدیریت می‌شوند)
   if ($('#options').length && !$('#options').data('select2')) {
@@ -350,106 +292,6 @@ $(document).ready(function() {
 
   
 
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-    const pollForm = document.getElementById('pollForm');
-
-    if (pollForm && !pollForm.dataset.ajaxBound) {
-        pollForm.dataset.ajaxBound = 'true';
-        pollForm.addEventListener('submit', async function(event) {
-            event.preventDefault();
-
-            if (pollForm.dataset.submitting === 'true') {
-                return;
-            }
-            pollForm.dataset.submitting = 'true';
-
-            try {
-                const response = await fetch(pollForm.action, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': getCsrfToken(),
-                        'Accept': 'application/json'
-                    },
-                    body: new FormData(pollForm)
-                });
-
-                const data = await response.json().catch(() => ({}));
-                if (!response.ok || data.status !== 'success') {
-                    const validationErrors = data.errors ? Object.values(data.errors).flat().join('\n') : '';
-                    showErrorAlert([data.message || 'ارسال نظرسنجی با خطا مواجه شد.', validationErrors].filter(Boolean).join('\n'));
-                    return;
-                }
-
-                const poll = data.poll || {};
-                if (poll.html && poll.id) {
-                    appendRenderedFeedHtml(poll.html, poll.id, 'poll');
-                }
-
-                pollForm.reset();
-                const optionsContainer = document.getElementById('dynamic-inputs');
-                if (optionsContainer) {
-                    optionsContainer.innerHTML = '<input type="text" name="options[]" placeholder="گزینه ۱" class="modal-input mb-2" />';
-                }
-                if (typeof handlePollTypeChange === 'function') {
-                    handlePollTypeChange();
-                }
-                if (typeof cancelPollForm === 'function') {
-                    cancelPollForm();
-                }
-
-                showSuccessAlert(data.message || 'نظرسنجی با موفقیت ایجاد شد.');
-            } catch (error) {
-                console.error('Create poll failed:', error);
-                showErrorAlert('خطا در اتصال به سرور');
-            } finally {
-                pollForm.dataset.submitting = 'false';
-            }
-        });
-    }
-});
-
-document.addEventListener('submit', async function(event) {
-    const form = event.target;
-    if (!(form instanceof HTMLFormElement)) return;
-    if (!form.classList.contains('poll-edit-form')) return;
-
-    event.preventDefault();
-    if (form.dataset.submitting === 'true') {
-        return;
-    }
-    form.dataset.submitting = 'true';
-
-    try {
-        const response = await fetch(form.action, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': getCsrfToken(),
-                'Accept': 'application/json'
-            },
-            body: new FormData(form)
-        });
-
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || data.status !== 'success') {
-            const validationErrors = data.errors ? Object.values(data.errors).flat().join('\n') : '';
-            showErrorAlert([data.message || 'ویرایش نظرسنجی با خطا مواجه شد.', validationErrors].filter(Boolean).join('\n'));
-            return;
-        }
-
-        const poll = data.poll || {};
-        if (poll.id && poll.html) {
-            replaceRenderedFeedHtml('#poll-' + poll.id + ', [data-poll-id="' + poll.id + '"]', poll.html);
-        }
-
-        showSuccessAlert(data.message || 'نظرسنجی با موفقیت ویرایش شد.');
-    } catch (error) {
-        console.error('Edit poll failed:', error);
-        showErrorAlert('خطا در اتصال به سرور');
-    } finally {
-        form.dataset.submitting = 'false';
-    }
 });
 
 function openElectionBox(){
@@ -593,58 +435,14 @@ function positionActionMenu(menu) {
     const list = menu.querySelector('.action-menu__list');
     if (!list) return;
 
-    const margin = 8;
-    const chatBox = document.getElementById('chat-box');
-    const bounds = chatBox
-        ? chatBox.getBoundingClientRect()
-        : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
-
-    list.style.left = '';
-    list.style.right = '';
-    list.style.transform = '';
-    list.style.maxWidth = '';
-
     menu.classList.remove('open-down');
-    let rect = list.getBoundingClientRect();
-    const viewportTop = bounds.top + margin;
+    const rect = list.getBoundingClientRect();
+    const viewportTop = 8;
 
     // Default is opening upward. If there is not enough space above, flip downward.
     if (rect.top < viewportTop) {
         menu.classList.add('open-down');
-        rect = list.getBoundingClientRect();
     }
-
-    // Keep menu horizontally inside chat panel / viewport by applying a local translate.
-    let offsetX = 0;
-    const minLeft = bounds.left + margin;
-    const maxRight = bounds.right - margin;
-
-    if (rect.left < minLeft) {
-        offsetX += (minLeft - rect.left);
-    }
-    if (rect.right > maxRight) {
-        offsetX -= (rect.right - maxRight);
-    }
-
-    // If the menu itself is wider than available area, cap width so all actions stay visible.
-    const maxWidth = Math.max(160, maxRight - minLeft);
-    if (rect.width > maxWidth) {
-        list.style.maxWidth = `${Math.floor(maxWidth)}px`;
-        rect = list.getBoundingClientRect();
-        offsetX = 0;
-        if (rect.left < minLeft) offsetX += (minLeft - rect.left);
-        if (rect.right > maxRight) offsetX -= (rect.right - maxRight);
-    }
-
-    if (offsetX !== 0) {
-        list.style.transform = `translateX(${Math.round(offsetX)}px)`;
-    }
-}
-
-function repositionOpenActionMenus() {
-    document.querySelectorAll('[data-action-menu].is-open').forEach(function(menu) {
-        positionActionMenu(menu);
-    });
 }
 
 function closeAllActionMenus() {
@@ -672,12 +470,6 @@ if (!document._globalActionMenuDismissRegistered) {
             closeAllActionMenus();
         }
     });
-
-    if (!window._actionMenuRepositionBound) {
-        window._actionMenuRepositionBound = true;
-        window.addEventListener('resize', repositionOpenActionMenus);
-        document.addEventListener('scroll', repositionOpenActionMenus, true);
-    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -719,8 +511,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-    // Global click/escape dismissal is already registered once above.
-    // Keeping it single-source avoids duplicate handlers on long sessions.
+  document.addEventListener('click', event => {
+    const clickedInside = menus.some(menu => menu.contains(event.target));
+    if (!clickedInside) {
+      closeAllMenus();
+    }
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      closeAllMenus();
+    }
+  });
 });
 
 
@@ -895,7 +697,7 @@ function openPollBox(){
     let lastMessageId = null; // آخرین پیام ID برای دریافت فقط پیام‌های جدید
     let pollingInterval = null;
     let lastPostId = 0; // آخرین پست ID برای posts polling
-    const pollingDebug = groupChatDebug;
+    const pollingDebug = Boolean(window.__chatPollingDebug);
     const pollLog = (...args) => {
         if (pollingDebug) {
             console.log(...args);
@@ -938,18 +740,6 @@ function openPollBox(){
         return document.getElementById('chat-box') || document.getElementById('group-feed');
     }
 
-    function appendBeforeTypingIndicator(feedEl, node) {
-        if (!feedEl || !node) return;
-
-        const indicator = document.getElementById('group-typing-indicator');
-        if (indicator && indicator.parentElement === feedEl) {
-            feedEl.insertBefore(node, indicator);
-            return;
-        }
-
-        feedEl.appendChild(node);
-    }
-
     function updateLastMessageCursor(messageId) {
         const numericId = parseInt(messageId, 10);
         if (numericId && (!lastMessageId || numericId > lastMessageId)) {
@@ -977,7 +767,7 @@ function openPollBox(){
         const newEl = tmp.firstElementChild;
         if (!newEl) return false;
 
-        appendBeforeTypingIndicator(feedEl, newEl);
+        feedEl.appendChild(newEl);
         if (typeof window._initPostMenus === 'function') window._initPostMenus(newEl);
         if (typeof window._initReactionButtons === 'function') window._initReactionButtons(newEl);
         if (typeof addReactionButton === 'function') {
@@ -1045,21 +835,7 @@ function openPollBox(){
     function updateMessageReactionsDom(messageId, reactions) {
         const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
         if (!messageElement) return false;
-        const emojis = {
-            like: '👍',
-            love: '❤️',
-            laugh: '😂',
-            wow: '😮',
-            sad: '😢',
-            angry: '😠',
-            '👍': '👍',
-            '❤️': '❤️',
-            '😂': '😂',
-            '😮': '😮',
-            '😢': '😢',
-            '🔥': '🔥',
-            '👎': '👎'
-        };
+        const emojis = { like: '👍', love: '❤️', laugh: '😂', wow: '😮', sad: '😢', angry: '😠' };
         let reactionDisplay = messageElement.querySelector('.message-reactions');
         if (!reactions || reactions.length === 0) {
             if (reactionDisplay) reactionDisplay.remove();
@@ -1096,126 +872,9 @@ function openPollBox(){
         fadeRemoveElement(el ? (el.closest('.poll-wrapper') || el) : null);
     }
 
-    const remoteTypingUsers = new Map();
-    let typingClearTimer = null;
-
-    function getTypingIndicatorElement() {
-        const feed = getFeedElement();
-        if (!feed) return null;
-
-        let indicator = document.getElementById('group-typing-indicator');
-        if (!indicator) {
-            indicator = document.createElement('div');
-            indicator.id = 'group-typing-indicator';
-            indicator.className = 'typing-indicator';
-            indicator.style.display = 'none';
-            feed.appendChild(indicator);
-        }
-        return indicator;
-    }
-
-    function renderTypingIndicator() {
-        const indicator = getTypingIndicatorElement();
-        if (!indicator) return;
-
-        const feed = getFeedElement();
-        if (feed && indicator.parentElement === feed && feed.lastElementChild !== indicator) {
-            feed.appendChild(indicator);
-        }
-
-        const names = Array.from(remoteTypingUsers.values()).filter(Boolean);
-        if (names.length === 0) {
-            indicator.style.display = 'none';
-            indicator.textContent = '';
-            return;
-        }
-
-        let message = 'در حال تایپ...';
-        if (names.length === 1) {
-            message = `${names[0]} در حال تایپ...`;
-        } else if (names.length === 2) {
-            message = `${names[0]} و ${names[1]} در حال تایپ...`;
-        } else {
-            message = `${names[0]} و ${names.length - 1} نفر دیگر در حال تایپ...`;
-        }
-
-        indicator.textContent = message;
-        indicator.style.display = 'block';
-    }
-
-    function scheduleTypingCleanup() {
-        clearTimeout(typingClearTimer);
-        typingClearTimer = setTimeout(function() {
-            remoteTypingUsers.clear();
-            renderTypingIndicator();
-        }, 3000);
-    }
-
-    function updateMessageReadReceiptDom(messageId, readCount) {
-        if (!messageId) return false;
-        const bubble = document.querySelector(`.message-bubble[data-message-id="${messageId}"]`);
-        if (!bubble) return false;
-
-        const receipt = bubble.querySelector('.read-receipt span');
-        if (!receipt) return false;
-
-        const count = Number.isFinite(Number(readCount)) ? Number(readCount) : 0;
-        if (count > 0) {
-            receipt.style.color = '#10b981';
-            receipt.innerHTML = `<i class="fas fa-check-double"></i> ${count} نفر خوانده‌اند`;
-        } else {
-            receipt.style.color = '#9ca3af';
-            receipt.innerHTML = '<i class="fas fa-check"></i> ارسال شده';
-        }
-        return true;
-    }
-
-    function updatePostReadReceiptDom(postId, readCount) {
-        if (!postId) return false;
-        const post = document.getElementById('blog-' + postId);
-        if (!post) return false;
-
-        const receipt = post.querySelector('.post-read-receipt span');
-        if (!receipt) return false;
-
-        const count = Number.isFinite(Number(readCount)) ? Number(readCount) : 0;
-        if (count > 0) {
-            receipt.style.color = '#10b981';
-            receipt.innerHTML = `<i class="fas fa-check-double"></i> ${count} نفر دیده‌اند`;
-        } else {
-            receipt.style.color = '#9ca3af';
-            receipt.innerHTML = '<i class="fas fa-check"></i> ارسال شده';
-        }
-        return true;
-    }
-
-    function updatePollReadReceiptDom(pollId, readCount) {
-        if (!pollId) return false;
-        const poll = document.getElementById('poll-' + pollId);
-        if (!poll) return false;
-
-        const receipt = poll.querySelector('.poll-read-receipt span');
-        if (!receipt) return false;
-
-        const count = Number.isFinite(Number(readCount)) ? Number(readCount) : 0;
-        if (count > 0) {
-            receipt.style.color = '#10b981';
-            receipt.innerHTML = `<i class="fas fa-check-double"></i> ${count} نفر دیده‌اند`;
-        } else {
-            receipt.style.color = '#9ca3af';
-            receipt.innerHTML = '<i class="fas fa-check"></i> ارسال شده';
-        }
-        return true;
-    }
-
     function applyMessageEvent(event) {
         if (!event) return;
         markRealtimeHealthy();
-        debugLog('[typing] incoming group.message.updated', {
-            action: event.action || event?.payload?.action || null,
-            actor_id: event.actor_id || null,
-            payload: event.payload || null,
-        });
         if (event.actor_id && event.actor_id === window.authUserId) return;
 
         if (event.message) {
@@ -1231,39 +890,6 @@ function openPollBox(){
 
         const payload = event.payload || {};
         const action = event.action || payload.action || '';
-
-        if (action === 'typing') {
-            const typingUserId = payload.user_id || payload.id;
-            if (!typingUserId || typingUserId === window.authUserId) {
-                debugLog('[typing] ignored typing event', {
-                    reason: !typingUserId ? 'missing user id' : 'self actor',
-                    typingUserId,
-                    authUserId: window.authUserId,
-                });
-                return;
-            }
-
-            const isTyping = payload.is_typing !== false;
-            if (isTyping) {
-                remoteTypingUsers.set(typingUserId, payload.user_name || 'کاربر');
-                renderTypingIndicator();
-                scheduleTypingCleanup();
-                debugLog('[typing] show typing indicator', {
-                    typingUserId,
-                    user_name: payload.user_name || 'کاربر',
-                    users: Array.from(remoteTypingUsers.entries()),
-                });
-            } else {
-                remoteTypingUsers.delete(typingUserId);
-                renderTypingIndicator();
-                debugLog('[typing] hide typing for user', {
-                    typingUserId,
-                    users: Array.from(remoteTypingUsers.entries()),
-                });
-            }
-            return;
-        }
-
         const messageId = payload.message_id || payload.id;
         if (!messageId) return;
 
@@ -1273,8 +899,6 @@ function openPollBox(){
             removeMessageDom(messageId);
         } else if (action === 'reaction') {
             updateMessageReactionsDom(messageId, payload.reactions || []);
-        } else if (action === 'mark-read') {
-            updateMessageReadReceiptDom(messageId, payload.read_count || 0);
         } else if (action === 'pin') {
             document.dispatchEvent(new CustomEvent('group-message-pin-updated', { detail: payload }));
         }
@@ -1283,14 +907,10 @@ function openPollBox(){
     function applyFeedEvent(event) {
         if (!event) return;
         markRealtimeHealthy();
+        if (event.actor_id && event.actor_id === window.authUserId) return;
 
         const payload = event.payload || {};
         const action = event.action || payload.action || '';
-        const isCurrentActor = event.actor_id && event.actor_id === window.authUserId;
-
-        // Poll events are safe/idempotent to apply for all clients (including actor)
-        // so local UI does not get stale when optimistic updates diverge.
-        if (isCurrentActor && !String(action).startsWith('poll_')) return;
 
         if (action === 'post_created') {
             const postId = payload.post_id || payload.id;
@@ -1316,20 +936,12 @@ function openPollBox(){
             }
             return;
         }
-        if (action === 'post_read') {
-            updatePostReadReceiptDom(payload.post_id, payload.read_count || 0);
-            return;
-        }
         if (action === 'poll_created') {
             appendRenderedFeedHtml(payload.html, payload.poll_id, 'poll');
             return;
         }
         if (action === 'poll_updated') {
             replaceRenderedFeedHtml('#poll-' + payload.poll_id + ', [data-poll-id="' + payload.poll_id + '"]', payload.html);
-            return;
-        }
-        if (action === 'poll_read') {
-            updatePollReadReceiptDom(payload.poll_id, payload.read_count || 0);
             return;
         }
         if (action === 'poll_deleted') {
@@ -1358,6 +970,7 @@ function openPollBox(){
                 .listen('.group.feed.updated', applyFeedEvent)
                 .listen('.group.poll.updated', function(event) {
                     markRealtimeHealthy();
+                    if (event && event.actor_id && event.actor_id === window.authUserId) return;
                     const poll = (event && (event.poll || event.payload)) || {};
                     if (poll.id || poll.poll_id) updatePollUI(poll);
                 })
@@ -1579,12 +1192,12 @@ function openPollBox(){
                                         console.error('Error stack:', error.stack);
                                         console.error('Message data:', messageData);
                                         // نمایش alert برای debugging
-                                        debugWarn('Append message failed:', error.message);
+                                        alert('خطا در افزودن پیام: ' + error.message);
                                     }
                                 } else {
                                     console.error('❌❌❌ appendMessage function NOT FOUND!');
                                     console.error('Available functions:', Object.keys(window).filter(k => k.includes('append')));
-                                    debugWarn('appendMessage function not found during polling update');
+                                    alert('خطا: تابع appendMessage پیدا نشد!');
                                 }
                             });
                             
@@ -1836,7 +1449,22 @@ function openPollBox(){
                 });
             });
         });
-        // Global dismissal listeners are registered in one place earlier.
+        // Global outside-click: uses live querySelectorAll so covers all dynamically added menus
+        if (!document._postMenuOutsideClickRegistered) {
+            document._postMenuOutsideClickRegistered = true;
+            document.addEventListener('click', function(e) {
+                document.querySelectorAll('[data-action-menu].is-open').forEach(function(m) {
+                    if (!m.contains(e.target)) m.classList.remove('is-open');
+                });
+            });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    document.querySelectorAll('[data-action-menu].is-open').forEach(function(m) {
+                        m.classList.remove('is-open');
+                    });
+                }
+            });
+        }
     };
 
     // تابع مشترک برای راه‌اندازی دکمه‌های لایک/دیسلایک در عناصر تازه اضافه‌شده
@@ -1912,7 +1540,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (form) {
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
-            debugLog('[TIMING] JS T0 - form submit started:', Date.now());
+            console.log('[TIMING] JS T0 - form submit started:', Date.now());
             
             // Sync CKEditor قبل از خواندن محتوا
             for (var i in CKEDITOR.instances) {
@@ -2003,7 +1631,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // ====== OPTIMISTIC UPDATE: نمایش فوری پیام قبل از پاسخ سرور ======
-            debugLog('[TIMING] JS T1 - before optimistic update:', Date.now());
+            console.log('[TIMING] JS T1 - before optimistic update:', Date.now());
             const tempMsgId = 'temp_' + Date.now();
             const optimisticMsg = {
                 id: tempMsgId,
@@ -2015,7 +1643,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 parent_id: null
             };
             appendMessage(optimisticMsg);
-            debugLog('[TIMING] JS T2 - after appendMessage (message should be visible NOW):', Date.now());
+            console.log('[TIMING] JS T2 - after appendMessage (message should be visible NOW):', Date.now());
             // نمایش حالت «در حال ارسال» با کاهش شفافیت
             const tempMsgEl = document.getElementById('msg-' + tempMsgId);
             if (tempMsgEl) {
@@ -2032,7 +1660,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // ====== END OPTIMISTIC UPDATE ======
 
             try {
-                debugLog('[TIMING] JS T3 - before fetch (server request starting):', Date.now());
+                console.log('[TIMING] JS T3 - before fetch (server request starting):', Date.now());
                 
                 // بررسی اینکه parent_id هنوز معتبره (پیام مرجع هنوز در DOM هست)
                 const parentIdVal = document.getElementById('parent_id')?.value;
@@ -2061,7 +1689,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const responseData = await response.json();
                 const serverTime = response.headers.get('X-Chat-Server-Time-Ms');
-                debugLog('[TIMING] JS T4 - server responded:', Date.now(), 'status:', response.status, 'server_time_ms:', serverTime);
+                console.log('[TIMING] JS T4 - server responded:', Date.now(), 'status:', response.status, 'server_time_ms:', serverTime);
 
                 if (!response.ok) {
                     if (response.status === 422) {
@@ -2087,12 +1715,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (responseData.status === 'success') {
                     // حذف پیام موقت و جایگزینی با پیام واقعی از سرور
                     const tempElSuccess = document.getElementById('msg-' + tempMsgId);
-                    const nextSibling = tempElSuccess ? tempElSuccess.nextSibling : null;
-                    const realMessageRow = appendMessage(responseData.message);
-                    if (tempElSuccess && realMessageRow && realMessageRow.parentElement) {
-                        realMessageRow.parentElement.insertBefore(realMessageRow, nextSibling);
-                        tempElSuccess.remove();
-                    }
+                    if (tempElSuccess) tempElSuccess.remove();
+                    appendMessage(responseData.message);
                     // اسکرول به پایین بعد از دریافت پاسخ
                     const chatBoxFinal = document.getElementById('chat-box');
                     if (chatBoxFinal) chatBoxFinal.scrollTop = chatBoxFinal.scrollHeight;
@@ -2198,29 +1822,11 @@ function appendMessage(message) {
     const chatBox = document.getElementById('chat-box');
     if (!chatBox) return;
 
-    if (message && message.id) {
-        const existing = document.getElementById('msg-' + message.id);
-        if (existing) return existing;
-    }
-
     const isMine = message.user_id == authUserId;
     const senderName = message.sender || 'کاربر';
     const initials = senderName.split(' ').map(n => n.charAt(0)).join(' ').trim() || '؟';
     // محتوا از backend با <br> برای line breaks می‌آید، مستقیماً استفاده می‌کنیم
     const messageContent = message.message || '';
-
-    function renderMentionLinks(html) {
-        if (!html || typeof html !== 'string') return '';
-        if (/<a\b[^>]*class=["'][^"']*mention-link/i.test(html)) return html;
-        const withBracketMentions = html.replace(/(^|[\s>])@\[([0-9]+)\]/g, function(match, prefix, userId) {
-            return `${prefix}<a href="/profile-member/${userId}" class="mention-link" data-mention-user-id="${userId}">@${userId}</a>`;
-        });
-        return withBracketMentions.replace(/(^|[\s>])@([0-9]+)\b/g, function(match, prefix, userId) {
-            return `${prefix}<a href="/profile-member/${userId}" class="mention-link" data-mention-user-id="${userId}">@${userId}</a>`;
-        });
-    }
-
-    const messageContentHtml = renderMentionLinks(messageContent);
     const formattedTime = message.created_at || new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
     
     // Escape HTML helper
@@ -2240,21 +1846,7 @@ function appendMessage(message) {
     // Generate reactions HTML
     function generateReactionsHTML(messageId, reactions) {
         if (!reactions || reactions.length === 0) return '';
-        const emojis = {
-            like: '👍',
-            love: '❤️',
-            laugh: '😂',
-            wow: '😮',
-            sad: '😢',
-            angry: '😠',
-            '👍': '👍',
-            '❤️': '❤️',
-            '😂': '😂',
-            '😮': '😮',
-            '😢': '😢',
-            '🔥': '🔥',
-            '👎': '👎'
-        };
+        const emojis = { like: '👍', love: '❤️', laugh: '😂', wow: '😮', sad: '😢', angry: '😠' };
         return `<div class="message-reactions" style="display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap;">${reactions.map(r => {
             const type = r.type || r.reaction_type || '';
             const count = r.count || 0;
@@ -2283,51 +1875,30 @@ function appendMessage(message) {
     
     // Voice message
     let voiceMessageHTML = '';
-    if (message.voice_message || message.voice_message_url) {
-        // Prefer backend stream URL when available to avoid path/mime mismatches.
-        let voiceUrl = message.voice_message_url || message.voice_message;
+    if (message.voice_message) {
+        // Convert relative path to full URL if needed
+        let voiceUrl = message.voice_message;
         if (!voiceUrl.startsWith('http://') && !voiceUrl.startsWith('https://')) {
-            if (voiceUrl.startsWith('/messages/')) {
-                // Dedicated voice stream endpoint; keep relative URL as-is.
-            } else {
-                let normalizedPath = voiceUrl.startsWith('/') ? voiceUrl.substring(1) : voiceUrl;
-
-                // Avoid creating /storage/storage/... for already-prefixed paths.
-                if (normalizedPath.startsWith('storage/')) {
-                    normalizedPath = normalizedPath.substring('storage/'.length);
-                }
-
-                // Build full URL - encode each part separately to handle spaces.
-                const pathParts = normalizedPath.split('/');
-                const encodedParts = pathParts.map(part => encodeURIComponent(part));
-                voiceUrl = window.location.origin + '/storage/' + encodedParts.join('/');
-            }
+            // Remove leading slash if exists
+            voiceUrl = voiceUrl.startsWith('/') ? voiceUrl.substring(1) : voiceUrl;
+            // Build full URL - encode each part separately to handle spaces
+            const pathParts = voiceUrl.split('/');
+            const encodedParts = pathParts.map(part => encodeURIComponent(part));
+            voiceUrl = window.location.origin + '/storage/' + encodedParts.join('/');
         }
-        let voiceType = String(message.file_type || 'audio/webm').toLowerCase();
-        if (voiceType.includes('webm') || voiceType.includes('opus')) {
-            voiceType = 'audio/webm';
-        } else if (voiceType.includes('ogg')) {
-            voiceType = 'audio/ogg';
-        } else if (voiceType.includes('wav')) {
-            voiceType = 'audio/wav';
-        } else if (voiceType.includes('mp3') || voiceType.includes('mpeg')) {
-            voiceType = 'audio/mpeg';
-        } else if (!voiceType.startsWith('audio/')) {
-            voiceType = 'audio/webm';
-        }
-        voiceMessageHTML = `<div class="voice-message-container" style="margin-top: 12px; padding: 12px; background: ${isMine ? '#e3f2fd' : '#f5f5f5'}; border-radius: 12px; border: 1px solid ${isMine ? '#90caf9' : '#e0e0e0'}; direction: ltr;"><div style="display: flex; align-items: center; gap: 12px;"><div style="width: 40px; height: 40px; border-radius: 50%; background: ${isMine ? '#2196f3' : '#757575'}; display: flex; align-items: center; justify-content: center; color: white;"><i class="fas fa-microphone"></i></div><div class="voice-message-content" style="flex: 1; min-width: 220px; width: 100%;"><div style="font-size: 12px; color: #666; margin-bottom: 4px;"><i class="fas fa-headphones"></i> پیام صوتی</div><audio class="voice-player" controls style="width: 100%;" preload="metadata" src="${voiceUrl}" type="${voiceType}">مرورگر شما از پخش صدا پشتیبانی نمی‌کند.</audio></div></div></div>`;
+        const voiceType = message.file_type || 'audio/webm';
+        voiceMessageHTML = `<div class="voice-message-container" style="margin-top: 12px; padding: 12px; background: ${isMine ? '#e3f2fd' : '#f5f5f5'}; border-radius: 12px; border: 1px solid ${isMine ? '#90caf9' : '#e0e0e0'}; direction: ltr;"><div style="display: flex; align-items: center; gap: 12px;"><div style="width: 40px; height: 40px; border-radius: 50%; background: ${isMine ? '#2196f3' : '#757575'}; display: flex; align-items: center; justify-content: center; color: white;"><i class="fas fa-microphone"></i></div><div style="flex: 1;"><div style="font-size: 12px; color: #666; margin-bottom: 4px;"><i class="fas fa-headphones"></i> پیام صوتی</div><audio controls style="width: 100%; height: 40px;" preload="metadata"><source src="${voiceUrl}" type="${voiceType}"><source src="${voiceUrl}" type="audio/webm"><source src="${voiceUrl}" type="audio/ogg"><source src="${voiceUrl}" type="audio/mpeg">مرورگر شما از پخش صدا پشتیبانی نمی‌کند.</audio></div></div></div>`;
     }
     
-    const hasVoiceMessage = Boolean(message.voice_message || message.voice_message_url);
     messageHTML += `
-        <div class="message-bubble ${isMine ? 'you' : 'other'} ${hasVoiceMessage ? 'message-bubble--voice' : ''}" data-message-id="${message.id}" data-user-id="${message.user_id}" data-edit-url="/messages/${message.id}/edit" data-delete-url="/messages/${message.id}/delete" data-report-url="/messages/${message.id}/report" data-content-raw="${escapeHtml(stripHtml(messageContentHtml))}">
+        <div class="message-bubble ${isMine ? 'you' : 'other'}" data-message-id="${message.id}" data-user-id="${message.user_id}" data-edit-url="/messages/${message.id}/edit" data-delete-url="/messages/${message.id}/delete" data-report-url="/messages/${message.id}/report" data-content-raw="${escapeHtml(stripHtml(messageContent))}">
             <div class="message-head">
                 ${isMine ? 
                     // برای پیام‌های خود کاربر: سه نقطه در سمت چپ، نام در سمت راست
                     `<div class="action-menu message-action" data-action-menu>
                         <button type="button" class="action-menu__toggle"><i class="fas fa-ellipsis-v"></i></button>
                         <div class="action-menu__list">
-                            <button type="button" onclick="replyToMessageFromButton(this, '${message.id}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
+                            <button type="button" onclick="replyToMessage('${message.id}', '${escapeHtml(senderName)}', '${escapeHtml(messageContent.substring(0, 50))}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
                             <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> واکنش</button>
                             ${([2,3].includes(window.yourRole || 0)) ? `<button type="button" class="action-menu__item btn-pin" onclick="pinMessage('${message.id}')"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
                             <button type="button" class="action-menu__item btn-edit"><i class="fas fa-edit"></i> ویرایش</button>
@@ -2345,7 +1916,7 @@ function appendMessage(message) {
                     <div class="action-menu message-action" data-action-menu>
                         <button type="button" class="action-menu__toggle"><i class="fas fa-ellipsis-v"></i></button>
                         <div class="action-menu__list">
-                            <button type="button" onclick="replyToMessageFromButton(this, '${message.id}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
+                            <button type="button" onclick="replyToMessage('${message.id}', '${escapeHtml(senderName)}', '${escapeHtml(messageContent.substring(0, 50))}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
                             <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> واکنش</button>
                             ${([2,3].includes(window.yourRole || 0)) ? `<button type="button" class="action-menu__item btn-pin" onclick="pinMessage('${message.id}')"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
                             <button type="button" class="action-menu__item btn-report"><i class="fas fa-flag"></i> گزارش</button>
@@ -2355,7 +1926,7 @@ function appendMessage(message) {
                 }
             </div>
             ${replyPreviewHTML}
-            <p class="message-content">${messageContentHtml}</p>
+            <p class="message-content">${messageContent}</p>
             ${voiceMessageHTML}
             <div class="message-timestamp" style="display: flex !important; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; margin-left: -10px !important; margin-right: -10px !important; padding-left: 10px !important; padding-right: 10px !important; justify-content: space-between !important; float: none !important; text-align: left !important; direction: ltr !important;">
                 ${isMine ? '<div class="read-receipt" style="font-size: 10px; text-align: left; direction: ltr; margin-right: auto; margin-left: 0;"><span style="color: #9ca3af;"><i class="fas fa-check"></i> ارسال شده</span></div>' : ''}
@@ -2370,12 +1941,7 @@ function appendMessage(message) {
     `;
     
     messageRow.innerHTML = messageHTML;
-    const typingIndicator = document.getElementById('group-typing-indicator');
-    if (typingIndicator && typingIndicator.parentElement === chatBox) {
-        chatBox.insertBefore(messageRow, typingIndicator);
-    } else {
-        chatBox.appendChild(messageRow);
-    }
+    chatBox.appendChild(messageRow);
     
     // اضافه کردن Thread button به پیام جدید (مثل پیام‌های Blade-rendered)
     const newBubble = messageRow.querySelector('[data-message-id]');
@@ -2452,55 +2018,38 @@ function appendMessage(message) {
     // و کاربر خودش به پایین رفته باشد
     // در غیر این صورت، scroll restore خودش موقعیت را تنظیم می‌کند
     // این کد حذف شد چون با scroll restore تداخل دارد
-    return messageRow;
 }
 
 // ✅ NEW: Helper to update poll UI without page reload
 function updatePollUI(pollData) {
     try {
-        const pollId = pollData.id || pollData.poll_id;
-        const pollElement = document.getElementById(`poll-${pollId}`);
+        const pollElement = document.getElementById(`poll-${pollData.id}`);
         if (!pollElement) {
-            console.warn('Poll element not found:', pollId);
+            console.warn('Poll element not found:', pollData.id);
             return;
         }
-
-        const options = Array.isArray(pollData.options) ? pollData.options : [];
-        const optionsById = {};
-        options.forEach(function(option) {
-            optionsById[String(option.id)] = option;
-        });
-
-        pollElement.querySelectorAll('.poll-option[data-option-id]').forEach(function(optionButton) {
-            const optionId = optionButton.getAttribute('data-option-id');
-            const option = optionsById[String(optionId)];
-            if (!option) return;
-
-            const percent = Number.isFinite(Number(option.percent)) ? Number(option.percent) : 0;
-            const statEl = optionButton.querySelector('.poll-option__stat');
-            if (statEl) {
-                statEl.textContent = `${percent}%`;
-            }
-
-            const selectedOptionId = parseInt(pollData.user_option_id, 10);
-            const currentOptionId = parseInt(optionId, 10);
-            const isSelected = selectedOptionId && selectedOptionId === currentOptionId;
-            optionButton.classList.toggle('poll-option--selected', Boolean(isSelected));
-            optionButton.classList.toggle('voted', Boolean(isSelected));
-        });
-
-        const totalVotes = Number.isFinite(Number(pollData.total_votes))
-            ? Number(pollData.total_votes)
-            : options.reduce(function(sum, option) {
-                return sum + (Number.isFinite(Number(option.count)) ? Number(option.count) : 0);
-            }, 0);
-
-        const totalEl = pollElement.querySelector('.poll-card__total');
-        if (totalEl) {
-            totalEl.textContent = `تعداد رأی: ${totalVotes}`;
+        
+        // Update vote counts for each option
+        if (pollData.options && Array.isArray(pollData.options)) {
+            pollData.options.forEach(option => {
+                const optionEl = pollElement.querySelector(`[data-option-id="${option.id}"]`);
+                if (optionEl) {
+                    // Update vote count
+                    const countEl = optionEl.querySelector('.vote-count');
+                    if (countEl) {
+                        countEl.textContent = option.count || 0;
+                    }
+                    
+                    // Update percentage bar if exists
+                    const percentEl = optionEl.querySelector('.vote-percent');
+                    if (percentEl) {
+                        percentEl.style.width = `${option.percent || 0}%`;
+                    }
+                }
+            });
         }
-
-        console.log('Poll updated successfully:', pollId);
+        
+        console.log('Poll updated successfully:', pollData.id);
     } catch (error) {
         console.error('Error updating poll UI:', error);
     }
@@ -2762,16 +2311,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function replyToMessage(messageId, senderName, content) {
-    const sanitize = function(value) {
-        const div = document.createElement('div');
-        div.textContent = String(value || '');
-        return div.innerHTML;
-    };
-
-    const normalizedSender = String(senderName || 'کاربر').trim() || 'کاربر';
-    const contentAsText = String(content || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-    const previewText = contentAsText.substring(0, 120);
-
     // Find the reply indicator container
     const replyContainer = document.getElementById('reply-indicator-container');
     if (!replyContainer) {
@@ -2784,8 +2323,8 @@ function replyToMessage(messageId, senderName, content) {
         <div class="reply-info">
             <div class="reply-arrow"></div>
             <div style="flex: 1; min-width: 0;">
-                <div class="reply-sender-name">${sanitize(normalizedSender)}</div>
-                <div class="reply-content">${sanitize(previewText)}</div>
+                <div class="reply-sender-name">${senderName}</div>
+                <div class="reply-content">${content}</div>
             </div>
         </div>
         <button class="btn-cancel-reply" onclick="cancelReply()">
@@ -2806,33 +2345,6 @@ function replyToMessage(messageId, senderName, content) {
         chatForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 }
-
-function replyToMessageFromButton(button, fallbackMessageId) {
-    const bubble = button?.closest('.message-bubble');
-    const row = button?.closest('.message-row');
-    const messageId = String(
-        fallbackMessageId ||
-        bubble?.getAttribute('data-message-id') ||
-        row?.getAttribute('data-message-id') ||
-        ''
-    ).trim();
-
-    if (!messageId) {
-        console.warn('Reply failed: message id not found from button context.');
-        return;
-    }
-
-    const senderEl = bubble?.querySelector('.message-sender');
-    const senderName = (senderEl?.textContent || '').trim() || (bubble?.classList.contains('you') ? 'شما' : 'کاربر');
-    const rawContent =
-        bubble?.getAttribute('data-content-raw') ||
-        bubble?.querySelector('.message-content')?.textContent ||
-        '';
-
-    replyToMessage(messageId, senderName, rawContent);
-}
-
-window.replyToMessageFromButton = replyToMessageFromButton;
 
 function cancelReply() {
     // Hide reply indicator container
@@ -3352,28 +2864,13 @@ function submitReport() {
         observePostsAndPolls();
     }
     
-    // Re-observe after polling injects new content without monkey-patching DOM prototypes.
-    const feedRoot = document.getElementById('chat-box') || document.getElementById('group-feed') || document.body;
-    if (feedRoot && typeof MutationObserver !== 'undefined') {
-        const feedObserver = new MutationObserver(function(mutations) {
-            let needsObserve = false;
-            mutations.forEach(function(mutation) {
-                mutation.addedNodes.forEach(function(node) {
-                    if (!(node instanceof HTMLElement)) return;
-                    if (
-                        (node.id && (node.id.startsWith('blog-') || node.id.startsWith('poll-'))) ||
-                        node.querySelector?.('[id^="blog-"], [id^="poll-"]')
-                    ) {
-                        needsObserve = true;
-                    }
-                });
-            });
-
-            if (needsObserve) {
-                observePostsAndPolls();
-            }
-        });
-
-        feedObserver.observe(feedRoot, { childList: true, subtree: true });
-    }
+    // Re-observe after polling injects new content
+    const originalAppendChild = Element.prototype.appendChild;
+    Element.prototype.appendChild = function(child) {
+        const result = originalAppendChild.call(this, child);
+        if (child.nodeType === 1 && (child.id && (child.id.startsWith('blog-') || child.id.startsWith('poll-')))) {
+            setTimeout(observePostsAndPolls, 100);
+        }
+        return result;
+    };
 })();
