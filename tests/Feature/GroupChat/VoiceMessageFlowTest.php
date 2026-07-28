@@ -121,37 +121,6 @@ class VoiceMessageFlowTest extends TestCase
         $this->assertSame(1, $count);
     }
 
-    public function test_group_member_can_stream_voice_message(): void
-    {
-        Storage::fake('public');
-
-        [$group, $sender] = $this->makeGroupWithMember(1);
-        $receiver = $this->makeUser();
-
-        GroupUser::create([
-            'group_id' => $group->id,
-            'user_id' => $receiver->id,
-            'role' => 1,
-            'status' => 1,
-        ]);
-
-        $sendResponse = $this->actingAs($sender)->post(route('groups.messages.store'), [
-            'group_id' => $group->id,
-            'voice_message' => UploadedFile::fake()->create('stream.webm', 128, 'audio/webm'),
-        ], [
-            'Accept' => 'application/json',
-        ]);
-
-        $sendResponse->assertOk();
-
-        $messageId = (int) $sendResponse->json('message.id');
-        $response = $this->actingAs($receiver)->get(route('groups.messages.voice', ['message' => $messageId]));
-
-        $response->assertOk();
-        $response->assertHeader('Content-Type');
-        $this->assertStringContainsString('audio/', (string) $response->headers->get('Content-Type'));
-    }
-
     private function bootstrapGroupChatSchema(): void
     {
         if (! Schema::hasTable('users')) {

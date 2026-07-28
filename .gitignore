@@ -8,8 +8,6 @@
 Homestead.yaml
 Homestead.json
 .phpunit.result.cache
-.composer-cache/
-.npm-cache/
 /storage/logs/
 /storage/framework/cache/
 /storage/framework/sessions/
@@ -38,4 +36,3 @@ Thumbs.db
 
 # Web server logs
 /public/error_log
-.npm-cache-node18/
