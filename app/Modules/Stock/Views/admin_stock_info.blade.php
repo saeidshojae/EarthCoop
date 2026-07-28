@@ -5,7 +5,7 @@
 @section('page-description', 'مشاهده و مدیریت اطلاعات پایه سهام')
 
 @push('styles')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{{ asset("vendor/chart.js/chart.umd.min.js") }}@4.4.0/dist/chart.umd.min.js"></script>
 <style>
     .stock-management-card {
         background: white;

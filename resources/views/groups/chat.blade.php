@@ -1,43 +1,43 @@
-﻿@extends('layouts.chat')
+@extends('layouts.chat')
 
 @php
 $lastReadMessageId = $lastReadMessageId ?? null;
 @endphp
 
-@section('title', $group->name . ' - گفت‌وگوی گروه')
+@section('title', $group->name . ' - ???????? ????')
 
 @section('head-tag')
 
 <!-- Tailwind & Bootstrap CSS via Vite -->
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 <!-- Font Awesome -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
 
 <!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="{{ asset('vendor/jquery/jquery-3.7.1.min.js') }}"></script>
 
 <!-- Select2 -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<link href="{{ asset("vendor/select2/css/select2.min.css") }}" rel="stylesheet">
+<script src="{{ asset("vendor/select2/js/select2.min.js") }}"></script>
 <script>
-// مطمئن شو Select2 بعد از jQuery لود شده
+// ????? ?? Select2 ??? ?? jQuery ??? ???
 if (typeof jQuery !== 'undefined') {
     jQuery.fn.select2.defaults.set('language', {
         noResults: function() {
-            return "نتیجه‌ای یافت نشد";
+            return "???????? ???? ???";
         },
         searching: function() {
-            return "در حال جستجو...";
+            return "?? ??? ?????...";
         }
     });
 }
 </script>
 
-<script src="https://cdn.ckeditor.com/4.22.1/standard/ckeditor.js"></script>
+<script src="{{ asset("vendor/ckeditor/ckeditor.js") }}"></script>
 
 
 
-<!-- CSRF Token (برای Ajax) -->
+<!-- CSRF Token (???? Ajax) -->
 <meta name="csrf-token" content="{{ csrf_token() }}">
 
 
@@ -46,17 +46,17 @@ if (typeof jQuery !== 'undefined') {
 document.addEventListener("DOMContentLoaded", function() {
     const csrf = '{{ csrf_token() }}';
 
-    // Event listener برای لینک‌های پروفایل - باید اول اجرا شود
+    // Event listener ???? ???????? ??????? - ???? ??? ???? ???
     document.addEventListener('click', function(e) {
         const link = e.target.closest('a.message-sender');
         if (link && link.href && !link.href.includes('#')) {
-            // اجازه بده لینک کار کند - هیچ کاری نکن
-            // فقط مطمئن شو که event propagation متوقف نمی‌شود
+            // ????? ??? ???? ??? ??? - ??? ???? ???
+            // ??? ????? ?? ?? event propagation ????? ???????
             return true;
         }
-    }, true); // استفاده از capture phase برای اجرای زودتر
+    }, true); // ??????? ?? capture phase ???? ????? ?????
 
-    // تست: بررسی وجود لینک‌ها در DOM
+    // ???: ????? ???? ??????? ?? DOM
     setTimeout(function() {
         const links = document.querySelectorAll('a.message-sender');
         console.log('Found profile links:', links.length);
@@ -65,9 +65,9 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }, 500);
 
-    // Event delegation برای لینک‌های پروفایل - ساده و مستقیم
+    // Event delegation ???? ???????? ??????? - ???? ? ??????
     document.addEventListener('click', function(e) {
-        // بررسی اینکه آیا کلیک روی لینک پروفایل است
+        // ????? ????? ??? ???? ??? ???? ??????? ???
         const link = e.target.closest('a.message-sender');
         if (link) {
             const href = link.getAttribute('href');
@@ -81,7 +81,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 return false;
             }
         }
-    }, true); // استفاده از capture phase برای اجرای زودتر
+    }, true); // ??????? ?? capture phase ???? ????? ?????
 
     // Initialize click handlers for existing profile links
     setTimeout(function() {
@@ -97,11 +97,11 @@ document.addEventListener("DOMContentLoaded", function() {
                     console.log('Navigating to:', href);
                     window.location.href = href;
                 }
-            }, true); // استفاده از capture phase
+            }, true); // ??????? ?? capture phase
         });
     }, 100);
 
-    // --- Helpers: ایجاد/نمایش/مخفی‌کردن overlay ---
+    // --- Helpers: ?????/?????/????????? overlay ---
     function ensureOverlay() {
         let el = document.getElementById('global-loading');
         if (!el) {
@@ -117,7 +117,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const showOverlay = () => overlay.classList.add('show');
     const hideOverlay = () => overlay.classList.remove('show');
 
-    // کلیدکردن روی یک دکمه: حالت لودینگ محلی
+    // ???????? ??? ?? ????: ???? ?????? ????
     function setBtnLoading(btn, on = true) {
         if (!btn) return;
         if (on) {
@@ -129,7 +129,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
-    // پوشش‌دهنده‌ی عمومی برای fetch با چرخنده
+    // ???????????? ????? ???? fetch ?? ??????
     async function withSpinner(fn, {
         global = true,
         btn = null
@@ -156,10 +156,10 @@ document.addEventListener("DOMContentLoaded", function() {
         }
 
 
-        // حذف
+        // ???
         bubble.querySelector(".btn-delete")?.addEventListener("click", async (e) => {
             const btn = e.currentTarget;
-            if (!confirm("آیا از حذف پیام مطمئن هستید؟")) return;
+            if (!confirm("??? ?? ??? ???? ????? ??????")) return;
 
             await withSpinner(async () => {
                 const res = await fetch(deleteUrl, {
@@ -177,21 +177,21 @@ document.addEventListener("DOMContentLoaded", function() {
                 } catch (e) {}
 
                 if (res.ok && (data.status === 'success' || !data.status)) {
-                    // ✅ FIXED: Remove message from DOM smoothly
+                    // ? FIXED: Remove message from DOM smoothly
                     const msgEl = document.getElementById(`msg-${id}`);
                     if (msgEl) {
                         msgEl.style.transition = 'opacity 0.3s';
                         msgEl.style.opacity = '0';
                         setTimeout(() => msgEl.remove(), 300);
                     }
-                    // اگر این پیام reply تارگت بود، reply indicator را پاک کن
+                    // ??? ??? ???? reply ????? ???? reply indicator ?? ??? ??
                     const parentInput = document.getElementById('parent_id');
                     if (parentInput && parentInput.value == id) {
                         if (typeof cancelReply === 'function') cancelReply();
                     }
                 } else {
                     alert(data.message ||
-                        `خطا در حذف پیام (status ${res.status})`);
+                        `??? ?? ??? ???? (status ${res.status})`);
                 }
             }, {
                 global: true,
@@ -199,10 +199,10 @@ document.addEventListener("DOMContentLoaded", function() {
             });
         });
 
-        // گزارش
+        // ?????
         bubble.querySelector(".btn-report")?.addEventListener("click", async (e) => {
             const btn = e.currentTarget;
-            const reason = prompt("دلیل گزارش را وارد کنید:");
+            const reason = prompt("???? ????? ?? ???? ????:");
             if (!reason) return;
 
             await withSpinner(async () => {
@@ -223,8 +223,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 try {
                     data = await res.json();
                 } catch (e) {}
-                alert(data.message || (res.ok ? "گزارش ثبت شد" :
-                    `خطا در ثبت گزارش (status ${res.status})`));
+                alert(data.message || (res.ok ? "????? ??? ??" :
+                    `??? ?? ??? ????? (status ${res.status})`));
             }, {
                 global: true,
                 btn
@@ -252,8 +252,8 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
 <script src="{{ asset('js/voice-recorder.js') }}" defer></script>
 <script>
 // ===== Voice Optimistic Override =====
-// وقتی دکمه ارسال صوتی ظاهر شد، click رو intercept می‌کنم
-// تا بلافاصله modal بسته شه + placeholder نشون داده بشه
+// ???? ???? ????? ???? ???? ??? click ?? intercept ??????
+// ?? ???????? modal ???? ?? + placeholder ???? ???? ???
 (function() {
     const _observeForSendBtn = new MutationObserver(function(mutations) {
         mutations.forEach(function(m) {
@@ -262,53 +262,53 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
                 const btn = node.id === 'send-recording-btn' ? node
                           : node.querySelector && node.querySelector('#send-recording-btn');
                 if (!btn) return;
-                // capture phase: قبل از handler اصلی اجرا می‌شه
+                // capture phase: ??? ?? handler ???? ???? ?????
                 btn.addEventListener('click', function _voiceOptimistic(e) {
                     const blob = window.recordedAudioBlob;
                     if (!blob) return;
                     const blobUrl = URL.createObjectURL(blob);
                     const tempId = 'voice_temp_' + Date.now();
-                    // بستن modal از طریق کلیک دکمه لغو (یا مستقیم hide)
+                    // ???? modal ?? ???? ???? ???? ??? (?? ?????? hide)
                     const modal = document.getElementById('voice-recording-modal');
                     if (modal) {
                         modal.style.opacity = '0';
                         modal.style.transition = 'opacity 0.2s';
                         setTimeout(() => { modal.style.display = 'none'; modal.style.opacity = ''; }, 200);
                     }
-                    // نمایش پیام صوتی optimistic
+                    // ????? ???? ???? optimistic
                     if (typeof appendMessage === 'function') {
                         try {
                             appendMessage({
                                 id: tempId,
                                 user_id: window.authUserId || 0,
-                                message: '🎤 پیام صوتی',
+                                message: '?? ???? ????',
                                 created_at: new Date().toLocaleTimeString('fa-IR', {hour:'2-digit', minute:'2-digit'}),
-                                sender: 'شما',
+                                sender: '???',
                                 voice_message: blobUrl,
                                 file_type: blob.type || 'audio/webm',
                                 _isOptimistic: true
                             });
                         } catch(err) { console.warn('voice optimistic err:', err); }
                     }
-                    // بعد از موفقیت fetch اصلی، temp را جایگزین کن
+                    // ??? ?? ?????? fetch ????? temp ?? ??????? ??
                     const _origOnClick = btn._origOnClick;
                     window._voiceTempId = tempId;
                     window._voiceBlobUrl = blobUrl;
-                }, true); // capture=true → قبل از onclick اصلی
+                }, true); // capture=true ? ??? ?? onclick ????
                 _observeForSendBtn.disconnect();
             });
         });
     });
     _observeForSendBtn.observe(document.body, { childList: true, subtree: true });
 
-    // وقتی polling پیام صوتی واقعی رو دید، temp رو حذف کن
+    // ???? polling ???? ???? ????? ?? ???? temp ?? ??? ??
     const _origAppend = window.appendMessage;
     document.addEventListener('DOMContentLoaded', function() {
-        // override appendMessage تا اگر temp وجود دارد جایگزین کند
+        // override appendMessage ?? ??? temp ???? ???? ??????? ???
         if (typeof appendMessage === 'function') {
             const _origFn = appendMessage;
             window.appendMessage = function(msg) {
-                // اگر voice_message داره و temp در DOM هست، temp رو حذف کن
+                // ??? voice_message ???? ? temp ?? DOM ???? temp ?? ??? ??
                 if (msg && msg.voice_message && msg.id && !String(msg.id).startsWith('voice_temp_') && window._voiceTempId) {
                     const tempEl = document.getElementById('msg-' + window._voiceTempId);
                     if (tempEl) { tempEl.remove(); }
@@ -323,14 +323,14 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
 })();
 </script>
 
-<!-- کد حفظ موقعیت scroll به انتهای صفحه منتقل شد -->
+<!-- ?? ??? ?????? scroll ?? ?????? ???? ????? ?? -->
 <style>
-/* Collapsible Group Info Card برای موبایل */
+/* Collapsible Group Info Card ???? ?????? */
 .group-info-card [x-cloak] {
     display: none !important;
 }
 
-/* در موبایل: collapse-content مخفی است مگر اینکه expanded باشد */
+/* ?? ??????: collapse-content ???? ??? ??? ????? expanded ???? */
 .group-info-card .collapse-content {
     max-height: 0;
     overflow: hidden;
@@ -340,7 +340,7 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
     padding-bottom: 0;
 }
 
-/* بهبود ظاهر کارت در موبایل */
+/* ????? ???? ???? ?? ?????? */
 @media (max-width: 1023px) {
     .group-info-card {
         box-shadow: 0 2px 12px rgba(16, 185, 129, 0.1);
@@ -355,7 +355,7 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
     transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease-in, padding 0.3s ease-in;
 }
 
-/* در دسکتاپ: collapse-content باید مخفی بماند (نسخه جداگانه داریم) */
+/* ?? ??????: collapse-content ???? ???? ????? (???? ??????? ?????) */
 @media (min-width: 1024px) {
     .group-info-card .collapse-content {
         display: none !important;
@@ -684,7 +684,7 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
     z-index: 10
 }
 
-/* تمام‌صفحه */
+/* ????????? */
 .loading-overlay {
     position: fixed;
     inset: 0;
@@ -714,7 +714,7 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
     }
 }
 
-/* حالت دکمه درحال پردازش */
+/* ???? ???? ????? ?????? */
 .btn-loading {
     position: relative;
     pointer-events: none;
@@ -882,7 +882,7 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
     width: 100%;
 }
 
-/* تاریخ ارسال/ویرایش - شبیه تلگرام */
+/* ????? ?????/?????? - ???? ?????? */
 .message-timestamp {
     display: inline-flex;
     align-items: center;
@@ -925,10 +925,10 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
     font-size: 0.7rem;
 }
 
-/* ریپلای شبیه تلگرام */
+/* ?????? ???? ?????? */
 .reply-preview {
     border-left: 3px solid #3b82f6;
-    /* رنگ آبی تلگرامی */
+    /* ??? ??? ??????? */
     padding-left: 6px;
     margin-bottom: 4px;
     font-size: 0.8rem;
@@ -951,7 +951,7 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
     text-overflow: ellipsis;
 }
 
-/* منوی سه‌نقطه */
+/* ???? ??????? */
 .menu-wrapper {
     position: absolute;
     top: 4px;
@@ -961,12 +961,12 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
     left: .3rem;
 }
 
-/* برای دیگران */
+/* ???? ?????? */
 .menu-wrapper.left {
     right: .2rem;
 }
 
-/* برای خودم */
+/* ???? ???? */
 
 .menu-trigger {
     border: none;
@@ -1031,8 +1031,8 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
     max-width: 100% !important;
 }
 
-/* با layout جدید (chat layout) header اصلی حذف شده و header مینی کوچک است */
-/* padding-top در inline style تنظیم شده است */
+/* ?? layout ???? (chat layout) header ???? ??? ??? ? header ???? ???? ??? */
+/* padding-top ?? inline style ????? ??? ??? */
 
 
 @media screen and (min-width: 768px) {
@@ -1099,7 +1099,7 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
     height: auto;
 }
 
-/* سرچ‌باکس */
+/* ???????? */
 .gc-searchbar {
     position: relative;
     display: flex;
@@ -1230,7 +1230,7 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
     }
 }
 
-/* آیکن جستجو در هدر */
+/* ???? ????? ?? ??? */
 .btn-chat-icon {
     width: 36px;
     height: 36px;
@@ -1262,7 +1262,7 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
     animation: spin .8s linear infinite;
 }
 
-/* کانتینر سرچ زیر هدر */
+/* ??????? ??? ??? ??? */
 .chat-header {
     position: relative;
 }
@@ -1277,7 +1277,7 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
     width: min(560px, 92vw);
 }
 
-/* خود سرچ‌بار و دراپ‌داون (از کد قبلی‌ات) */
+/* ??? ??????? ? ????????? (?? ?? ???????) */
 .gc-searchbar {
     position: relative;
     display: flex;
@@ -1433,7 +1433,7 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
     margin-top: 8px;
     width: min(560px, 92vw);
     z-index: 2000;
-    /* از dropdown بالاتر باشه */
+    /* ?? dropdown ?????? ???? */
 }
 
 .btn-chat-icon {
@@ -1568,21 +1568,21 @@ $memberCount = $group->userCount();
 $guestCount = $group->guestsCount();
 $blogCount = \App\Models\Blog::where('group_id', $group->id)->count();
 $pollCount = $group->polls()->count();
-// از $yourRole که controller محاسبه کرده استفاده می‌کنیم
-// دیگر نیازی به کوئری users() در blade نیست
+// ?? $yourRole ?? controller ?????? ???? ??????? ???????
+// ???? ????? ?? ????? users() ?? blade ????
 $pivotUser = \App\Models\GroupUser::where('group_id', $group->id)->where('user_id', auth()->id())->first();
 $roleValue = $yourRole;
 
 $roleTitle = match($roleValue) {
-0 => 'ناظر',
-1 => 'فعال',
-2 => 'بازرس',
-3 => 'مدیر',
-4 => 'مهمان',
-5 => 'فعال ۲',
-default => 'عضو'
+0 => '????',
+1 => '????',
+2 => '?????',
+3 => '????',
+4 => '?????',
+5 => '???? ?',
+default => '???'
 };
-$membershipStatusLabel = (int)($pivotUser?->status ?? 0) === 1 ? 'فعال' : 'غیرفعال';
+$membershipStatusLabel = (int)($pivotUser?->status ?? 0) === 1 ? '????' : '???????';
 $checkBlockElection = \App\Models\Block::where('user_id', auth()->id())->where('position', 'election')->first();
 $electionAvailable = ($election ?? null) && optional($groupSetting)->election_status == 1;
 $canParticipateElection = $electionAvailable && !$checkBlockElection && optional(auth()->user())->status == 1;
@@ -1597,7 +1597,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             class="absolute inset-0 pointer-events-none bg-gradient-to-l from-emerald-50/50 via-transparent to-transparent">
         </div>
 
-        <!-- نسخه خلاصه برای موبایل -->
+        <!-- ???? ????? ???? ?????? -->
         <button @click="expanded = !expanded"
             class="lg:hidden w-full relative z-10 flex items-center justify-between gap-3 px-5 py-4 hover:bg-emerald-50/50 active:bg-emerald-50 transition-colors">
             <div class="flex items-center gap-4 flex-1 min-w-0">
@@ -1617,7 +1617,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                             class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-700 text-xs font-semibold">
                             <i class="fas fa-user-shield text-[10px]"></i>{{ $roleTitle }}
                         </span>
-                        <span class="text-xs text-slate-500 font-medium">{{ $memberCount }} عضو</span>
+                        <span class="text-xs text-slate-500 font-medium">{{ $memberCount }} ???</span>
                     </div>
                 </div>
             </div>
@@ -1628,7 +1628,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             </div>
         </button>
 
-        <!-- محتوای کامل - در موبایل با expand/collapse -->
+        <!-- ?????? ???? - ?? ?????? ?? expand/collapse -->
         <div class="relative z-10 px-5 py-5 collapse-content lg:hidden border-t border-emerald-100/60" x-show="expanded"
             x-cloak style="display: none;">
             <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -1656,11 +1656,11 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         </div>
                         <div class="flex flex-wrap items-center gap-3 text-sm text-slate-600">
                             <span class="inline-flex items-center gap-2">
-                                <i class="fas fa-users text-emerald-500"></i>{{ $memberCount }} عضو
+                                <i class="fas fa-users text-emerald-500"></i>{{ $memberCount }} ???
                             </span>
                             @if($guestCount > 0)
                             <span class="inline-flex items-center gap-2">
-                                <i class="fas fa-user-clock text-emerald-500"></i>{{ $guestCount }} مهمان
+                                <i class="fas fa-user-clock text-emerald-500"></i>{{ $guestCount }} ?????
                             </span>
                             @endif
                             @if($group->location_level)
@@ -1685,20 +1685,20 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition lg:hidden"
                         onclick="openGroupInfo()">
                         <i class="fas fa-layer-group"></i>
-                        پنل گروه
+                        ??? ????
                     </button>
                     @if(($yourRole ?? 0) !== 5)
                     <button type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500 text-white shadow-sm hover:bg-emerald-600 transition"
                         onclick="openBlogBox()">
                         <i class="far fa-pen-to-square"></i>
-                        ایجاد پست
+                        ????? ???
                     </button>
                     <button type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition"
                         onclick="openPollBox()">
                         <i class="fas fa-chart-simple"></i>
-                        ساخت نظرسنجی
+                        ???? ???????
                     </button>
                     @endif
                     @if($electionAvailable)
@@ -1706,7 +1706,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl {{ $canParticipateElection ? 'bg-indigo-500 text-white shadow-sm hover:bg-indigo-600 transition' : 'bg-slate-100 text-slate-500 cursor-not-allowed' }}"
                         @if($canParticipateElection) onclick="openElectionBox()" @else disabled @endif>
                         <i class="fas fa-vote-yea"></i>
-                        {{ $canParticipateElection ? 'شرکت در انتخابات' : 'انتخابات فعال' }}
+                        {{ $canParticipateElection ? '???? ?? ????????' : '???????? ????' }}
                     </button>
                     @endif
                     @if(in_array($yourRole ?? 0, [2,3]))
@@ -1714,21 +1714,21 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
                         onclick="openElection2Box()">
                         <i class="fas fa-ballot-check text-emerald-500"></i>
-                        افزودن انتخابات
+                        ?????? ????????
                     </button>
                     @endif
                     @if(($yourRole ?? 0) == 3)
                     <button type="button" id="manage-members-btn"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-blue-200 text-blue-600 hover:bg-blue-50 transition"
-                        onclick="if(typeof window.showManageMembersModal === 'function') { window.showManageMembersModal(); } else { console.error('showManageMembersModal not found'); alert('تابع مدیریت اعضا یافت نشد. لطفاً صفحه را رفرش کنید.'); }">
+                        onclick="if(typeof window.showManageMembersModal === 'function') { window.showManageMembersModal(); } else { console.error('showManageMembersModal not found'); alert('???? ?????? ???? ???? ???. ????? ???? ?? ???? ????.'); }">
                         <i class="fas fa-users-cog"></i>
-                        مدیریت اعضا
+                        ?????? ????
                     </button>
                     <button type="button" id="manage-reports-btn"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-orange-200 text-orange-600 hover:bg-orange-50 transition relative"
-                        onclick="if(typeof window.showManageReportsModal === 'function') { window.showManageReportsModal(); } else { console.error('showManageReportsModal not found'); alert('تابع مدیریت گزارش‌ها یافت نشد. لطفاً صفحه را رفرش کنید.'); }">
+                        onclick="if(typeof window.showManageReportsModal === 'function') { window.showManageReportsModal(); } else { console.error('showManageReportsModal not found'); alert('???? ?????? ???????? ???? ???. ????? ???? ?? ???? ????.'); }">
                         <i class="fas fa-flag"></i>
-                        گزارش‌ها
+                        ????????
                         <span id="reports-badge"
                             class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"
                             style="display: none;">0</span>
@@ -1738,36 +1738,36 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition"
                         onclick="showGroupSettingsModal()">
                         <i class="fas fa-cog"></i>
-                        تنظیمات
+                        ???????
                     </button>
                     <a href="{{ route('groups.logout', $group->id) }}"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-red-100 text-red-500 hover:bg-red-50 transition">
                         <i class="fas fa-door-open"></i>
-                        خروج از گروه
+                        ???? ?? ????
                     </a>
                 </div>
             </div>
             <div class="relative z-10 mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <div class="stat-chip">
-                    <span class="stat-chip__label">پیام‌های سنجاق‌شده</span>
+                    <span class="stat-chip__label">???????? ?????????</span>
                     <span class="stat-chip__value">{{ $pinnedMessages->count() }}</span>
                 </div>
                 <div class="stat-chip">
-                    <span class="stat-chip__label">پست‌ها</span>
+                    <span class="stat-chip__label">??????</span>
                     <span class="stat-chip__value">{{ $blogCount }}</span>
                 </div>
                 <div class="stat-chip">
-                    <span class="stat-chip__label">نظرسنجی‌ها</span>
+                    <span class="stat-chip__label">??????????</span>
                     <span class="stat-chip__value">{{ $pollCount }}</span>
                 </div>
                 <div class="stat-chip">
-                    <span class="stat-chip__label">آخرین فعالیت</span>
+                    <span class="stat-chip__label">????? ??????</span>
                     <span class="stat-chip__value">{{ verta($group->updated_at)->formatDifference() }}</span>
                 </div>
             </div>
         </div>
 
-        <!-- نسخه دسکتاپ - همیشه باز -->
+        <!-- ???? ?????? - ????? ??? -->
         <div class="hidden lg:block relative z-10 px-5 py-6">
             <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                 <div class="flex items-center gap-5">
@@ -1794,11 +1794,11 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         </div>
                         <div class="flex flex-wrap items-center gap-3 text-sm text-slate-600">
                             <span class="inline-flex items-center gap-2">
-                                <i class="fas fa-users text-emerald-500"></i>{{ $memberCount }} عضو
+                                <i class="fas fa-users text-emerald-500"></i>{{ $memberCount }} ???
                             </span>
                             @if($guestCount > 0)
                             <span class="inline-flex items-center gap-2">
-                                <i class="fas fa-user-clock text-emerald-500"></i>{{ $guestCount }} مهمان
+                                <i class="fas fa-user-clock text-emerald-500"></i>{{ $guestCount }} ?????
                             </span>
                             @endif
                             @if($group->location_level)
@@ -1823,20 +1823,20 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition lg:hidden"
                         onclick="openGroupInfo()">
                         <i class="fas fa-layer-group"></i>
-                        پنل گروه
+                        ??? ????
                     </button>
                     @if(($yourRole ?? 0) !== 5)
                     <button type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500 text-white shadow-sm hover:bg-emerald-600 transition"
                         onclick="openBlogBox()">
                         <i class="far fa-pen-to-square"></i>
-                        ایجاد پست
+                        ????? ???
                     </button>
                     <button type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition"
                         onclick="openPollBox()">
                         <i class="fas fa-chart-simple"></i>
-                        ساخت نظرسنجی
+                        ???? ???????
                     </button>
                     @endif
                     @if($electionAvailable)
@@ -1844,7 +1844,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl {{ $canParticipateElection ? 'bg-indigo-500 text-white shadow-sm hover:bg-indigo-600 transition' : 'bg-slate-100 text-slate-500 cursor-not-allowed' }}"
                         @if($canParticipateElection) onclick="openElectionBox()" @else disabled @endif>
                         <i class="fas fa-vote-yea"></i>
-                        {{ $canParticipateElection ? 'شرکت در انتخابات' : 'انتخابات فعال' }}
+                        {{ $canParticipateElection ? '???? ?? ????????' : '???????? ????' }}
                     </button>
                     @endif
                     @if(in_array($yourRole ?? 0, [2,3]))
@@ -1852,21 +1852,21 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
                         onclick="openElection2Box()">
                         <i class="fas fa-ballot-check text-emerald-500"></i>
-                        افزودن انتخابات
+                        ?????? ????????
                     </button>
                     @endif
                     @if(($yourRole ?? 0) == 3)
                     <button type="button" id="manage-members-btn"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-blue-200 text-blue-600 hover:bg-blue-50 transition"
-                        onclick="if(typeof window.showManageMembersModal === 'function') { window.showManageMembersModal(); } else { console.error('showManageMembersModal not found'); alert('تابع مدیریت اعضا یافت نشد. لطفاً صفحه را رفرش کنید.'); }">
+                        onclick="if(typeof window.showManageMembersModal === 'function') { window.showManageMembersModal(); } else { console.error('showManageMembersModal not found'); alert('???? ?????? ???? ???? ???. ????? ???? ?? ???? ????.'); }">
                         <i class="fas fa-users-cog"></i>
-                        مدیریت اعضا
+                        ?????? ????
                     </button>
                     <button type="button" id="manage-reports-btn"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-orange-200 text-orange-600 hover:bg-orange-50 transition relative"
-                        onclick="if(typeof window.showManageReportsModal === 'function') { window.showManageReportsModal(); } else { console.error('showManageReportsModal not found'); alert('تابع مدیریت گزارش‌ها یافت نشد. لطفاً صفحه را رفرش کنید.'); }">
+                        onclick="if(typeof window.showManageReportsModal === 'function') { window.showManageReportsModal(); } else { console.error('showManageReportsModal not found'); alert('???? ?????? ???????? ???? ???. ????? ???? ?? ???? ????.'); }">
                         <i class="fas fa-flag"></i>
-                        گزارش‌ها
+                        ????????
                         <span id="reports-badge"
                             class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"
                             style="display: none;">0</span>
@@ -1876,30 +1876,30 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition"
                         onclick="showGroupSettingsModal()">
                         <i class="fas fa-cog"></i>
-                        تنظیمات
+                        ???????
                     </button>
                     <a href="{{ route('groups.logout', $group->id) }}"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-red-100 text-red-500 hover:bg-red-50 transition">
                         <i class="fas fa-door-open"></i>
-                        خروج از گروه
+                        ???? ?? ????
                     </a>
                 </div>
             </div>
             <div class="relative z-10 mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <div class="stat-chip">
-                    <span class="stat-chip__label">پیام‌های سنجاق‌شده</span>
+                    <span class="stat-chip__label">???????? ?????????</span>
                     <span class="stat-chip__value">{{ $pinnedMessages->count() }}</span>
                 </div>
                 <div class="stat-chip">
-                    <span class="stat-chip__label">پست‌ها</span>
+                    <span class="stat-chip__label">??????</span>
                     <span class="stat-chip__value">{{ $blogCount }}</span>
                 </div>
                 <div class="stat-chip">
-                    <span class="stat-chip__label">نظرسنجی‌ها</span>
+                    <span class="stat-chip__label">??????????</span>
                     <span class="stat-chip__value">{{ $pollCount }}</span>
                 </div>
                 <div class="stat-chip">
-                    <span class="stat-chip__label">آخرین فعالیت</span>
+                    <span class="stat-chip__label">????? ??????</span>
                     <span class="stat-chip__value">{{ verta($group->updated_at)->formatDifference() }}</span>
                 </div>
             </div>
@@ -1925,7 +1925,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         <a class="pin" href="#msg-{{ $pinnedMessage->message->id }}"
                             style="flex: 1; padding-left: 45px; box-shadow: none; border-radius: 0.75rem;">
                             <div>
-                                <b style="color: #10b981; font-size: 0.85rem;">پیام سنجاق‌شده</b>
+                                <b style="color: #10b981; font-size: 0.85rem;">???? ?????????</b>
                                 <p style="font-size: 0.9rem; color: #475569;">{!!
                                     Str::limit(strip_tags($pinnedMessage->message->message), 120, '...') !!}</p>
                             </div>
@@ -1935,7 +1935,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         <button onclick="event.preventDefault(); unpinMessage('{{ $pinnedMessage->message->id }}')"
                             class="unpin-btn"
                             style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); border: none; background: #f1f5f9; cursor: pointer; color: #94a3b8; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
-                            title="حذف از حالت سنجاق">
+                            title="??? ?? ???? ?????">
                             <i class="fas fa-times" style="font-size: 0.9rem; color: inherit !important;"></i>
                         </button>
                         @endif
@@ -1969,14 +1969,14 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             <div class="chat-composer-shell bg-white border border-emerald-100 rounded-3xl shadow-sm p-5 w-full">
                 @if ($yourRole === 0 && $group->is_open == 0)
                 <p class="text-red-500">
-                    شما مجاز به ارسال پیام در گروه نیستید.
+                    ??? ???? ?? ????? ???? ?? ???? ??????.
                 </p>
                 @elseif (auth()->user()->status == 0 || auth()->user()->first_name == null || auth()->user()->last_name
                 == null)
                 <p class="text-amber-600">
-                    به دلیل کامل نبودن اطلاعات کاربری امکان ارسال پیام را ندارید، از
-                    <a href='{{ route('profile.edit') }}' class="text-emerald-600 underline">این قسمت</a>
-                    اقدام به وارد کردن اطلاعات کنید.
+                    ?? ???? ???? ????? ??????? ?????? ????? ????? ???? ?? ??????? ??
+                    <a href='{{ route('profile.edit') }}' class="text-emerald-600 underline">??? ????</a>
+                    ????? ?? ???? ???? ??????? ????.
                 </p>
                 @else
                 <form id="chatForm" class="chat-input telegram-style-input" method="POST"
@@ -1989,11 +1989,11 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                     @if ($checkBlockMessage != null)
                     <div
                         class="chat-block-message text-danger-emphasis bg-danger-subtle border border-danger-subtle rounded-4 px-3 py-3">
-                        شما از جانب مدیریت برای عملیات ارسال پیام مسدود شده‌اید، جهت رفع مسدودیت با مدیریت در ارتباط
-                        باشید.
+                        ??? ?? ???? ?????? ???? ?????? ????? ???? ????? ???????? ??? ??? ??????? ?? ?????? ?? ??????
+                        ?????.
                     </div>
                     @else
-                    <!-- Reply Indicator Container - شبیه تلگرام -->
+                    <!-- Reply Indicator Container - ???? ?????? -->
                     <div id="reply-indicator-container" class="telegram-reply-indicator" style="display: none;"></div>
 
                     <!-- Input Container -->
@@ -2006,28 +2006,28 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                             </button>
                             <div id="createMenu" style="display: none;" class="chat-tool-menu telegram-attach-menu">
                                 @if ($checkBlockPost != null)
-                                <span class="chat-tool-menu__item text-danger">شما برای عملیات ایجاد پست مسدود
-                                    شده‌اید</span>
+                                <span class="chat-tool-menu__item text-danger">??? ???? ?????? ????? ??? ?????
+                                    ???????</span>
                                 @else
                                 <button type="button" class="chat-tool-menu__item" id="create-post-btn">
                                     <i class="far fa-edit text-success"></i>
-                                    ایجاد پست
+                                    ????? ???
                                 </button>
                                 @endif
 
                                 @if ($checkBlockPoll != null)
-                                <span class="chat-tool-menu__item text-danger">شما برای عملیات ایجاد نظرسنجی مسدود
-                                    شده‌اید</span>
+                                <span class="chat-tool-menu__item text-danger">??? ???? ?????? ????? ??????? ?????
+                                    ???????</span>
                                 @else
                                 <button type="button" class="chat-tool-menu__item" id="create-poll-btn">
                                     <i class="fas fa-chart-simple text-success"></i>
-                                    ایجاد نظرسنجی
+                                    ????? ???????
                                 </button>
                                 @endif
 
                                 <button type="button" id="audio-upload-trigger" class="chat-tool-menu__item">
                                     <i class="fas fa-file-audio text-success"></i>
-                                    ارسال فایل صوتی
+                                    ????? ???? ????
                                 </button>
                             </div>
                         </div>
@@ -2035,18 +2035,18 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
 
                         <!-- Text Input -->
                         <div class="telegram-input-wrapper">
-                            <textarea class="telegram-textarea" name="message" placeholder="پیام خود را بنویسید..."
+                            <textarea class="telegram-textarea" name="message" placeholder="???? ??? ?? ???????..."
                                 id="message_editor" rows="1"></textarea>
                         </div>
 
                         <!-- Send Button -->
                         <div class="telegram-action-buttons">
                             <button type="button" id="voice-record-btn" class="telegram-action-btn telegram-voice-btn"
-                                title="ضبط صدا">
+                                title="??? ???">
                                 <i class="fas fa-microphone"></i>
                             </button>
                             <button type="submit" id="telegram-send-btn" class="telegram-action-btn telegram-send-btn"
-                                title="ارسال">
+                                title="?????">
                                 <i class="fas fa-paper-plane"></i>
                             </button>
                         </div>
@@ -2090,14 +2090,14 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
   ">
             <div
                 style="display:flex; align-items:center; justify-content:space-between; padding: .8rem 1rem; background:#f6f6f6;">
-                <strong id="catModalTitle" style="font-size:1rem">لیست پست‌ها</strong>
+                <strong id="catModalTitle" style="font-size:1rem">???? ??????</strong>
                 <button id="closeCatModal"
-                    style="border:none; background:transparent; font-size:1.2rem; line-height:1;">✖</button>
+                    style="border:none; background:transparent; font-size:1.2rem; line-height:1;">?</button>
             </div>
             <div id="catModalBody" style="padding: .6rem 1rem; overflow:auto; max-height: calc(80vh - 52px);">
-                <div id="catLoading" style="padding:1rem; text-align:center;">در حال بارگذاری...</div>
+                <div id="catLoading" style="padding:1rem; text-align:center;">?? ??? ????????...</div>
                 <ul id="catList" style="list-style:none; margin:0; padding:0; display:none;"></ul>
-                <div id="catEmpty" style="display:none; text-align:center; padding:1rem;">پستی در این دسته یافت نشد.
+                <div id="catEmpty" style="display:none; text-align:center; padding:1rem;">???? ?? ??? ???? ???? ???.
                 </div>
             </div>
         </div>
@@ -2115,7 +2115,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
     </script>
     <script>
     function showEditPollBox(pollId) {
-        // مثال: نمایش یک باکس ویرایش
+        // ????: ????? ?? ???? ??????
         const editBox = document.getElementById('edit-poll-box-' + pollId);
         if (!editBox) return;
         editBox.style.display = editBox.style.display === 'none' || editBox.style.display === '' ? 'block' : 'none';
@@ -2124,8 +2124,8 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
     <script>
     function confirmDelete(event, url) {
         event.preventDefault();
-        if (confirm('آیا مطمئن هستید که می‌خواهید این آیتم را حذف کنید؟')) {
-            window.location.href = url; // یا با AJAX حذف کن
+        if (confirm('??? ????? ????? ?? ????????? ??? ???? ?? ??? ?????')) {
+            window.location.href = url; // ?? ?? AJAX ??? ??
         }
     }
     </script>
@@ -2134,16 +2134,16 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
         <div class="edit-modal__backdrop"></div>
         <div class="edit-modal__panel" role="dialog" aria-modal="true" aria-labelledby="editModalTitle">
             <div class="edit-modal__header">
-                <h3 id="editModalTitle">ویرایش پیام</h3>
-                <button type="button" class="edit-close" aria-label="بستن">×</button>
+                <h3 id="editModalTitle">?????? ????</h3>
+                <button type="button" class="edit-close" aria-label="????">�</button>
             </div>
             <div class="edit-modal__body">
-                <textarea id="editText" rows="6" class="edit-textarea" placeholder="متن پیام..."></textarea>
+                <textarea id="editText" rows="6" class="edit-textarea" placeholder="??? ????..."></textarea>
             </div>
             <div class="edit-modal__footer">
-                <button type="button" class="btn btn-primary save-edit">ذخیره</button>
+                <button type="button" class="btn btn-primary save-edit">?????</button>
                 <button type="button" class="btn cancel-edit "
-                    style='    background-color: #c24545 !important;'>لغو</button>
+                    style='    background-color: #c24545 !important;'>???</button>
             </div>
         </div>
     </div>
@@ -2244,7 +2244,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
 
     <script>
     (function() {
-        // اگر CSRF را در <meta name="csrf-token" content="..."> داری:
+        // ??? CSRF ?? ?? <meta name="csrf-token" content="..."> ????:
         const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
             '{{ csrf_token() }}';
 
@@ -2255,12 +2255,12 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
         const btnClose = modal.querySelector('.edit-close');
         const backdrop = modal.querySelector('.edit-modal__backdrop');
 
-        // متغیرهای وضعیت جاری ویرایش
-        let currentBubble = null; // عنصر .message-bubble
-        let currentUrl = null; // آدرس PATCH
+        // ???????? ????? ???? ??????
+        let currentBubble = null; // ???? .message-bubble
+        let currentUrl = null; // ???? PATCH
         let currentId = null; // message-id
 
-        // هندلر کلیک روی "ویرایش"
+        // ????? ???? ??? "??????"
         document.addEventListener('click', function(e) {
             const editBtn = e.target.closest('.btn-edit');
             if (!editBtn) return;
@@ -2268,7 +2268,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             const bubble = editBtn.closest('.message-bubble');
             if (!bubble) return;
 
-            // بستن منوی عملیات قبل از باز کردن مدال
+            // ???? ???? ?????? ??? ?? ??? ???? ????
             const actionMenu = bubble.closest('.message-head')?.querySelector('[data-action-menu]');
             if (actionMenu) {
                 actionMenu.classList.remove('is-open');
@@ -2279,8 +2279,8 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             currentUrl = bubble.dataset.editUrl;
             currentId = bubble.dataset.messageId;
 
-            // متن فعلی برای پر کردن باکس:
-            // اول تلاش می‌کنیم از DOM (message-content) بخوانیم و HTML (مثل <br>) را به متن ساده با line break تبدیل کنیم
+            // ??? ???? ???? ?? ???? ????:
+            // ??? ???? ??????? ?? DOM (message-content) ??????? ? HTML (??? <br>) ?? ?? ??? ???? ?? line break ????? ????
             const contentEl = bubble.querySelector('.message-content');
             let raw = '';
             if (contentEl) {
@@ -2288,7 +2288,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                 raw = htmlToPlain(messageHtml);
             }
 
-            // اگر به هر دلیلی متن خالی بود، از data-content-raw استفاده کن (fallback)
+            // ??? ?? ?? ????? ??? ???? ???? ?? data-content-raw ??????? ?? (fallback)
             if (!raw && bubble.dataset.contentRaw) {
                 raw = bubble.dataset.contentRaw;
             }
@@ -2297,7 +2297,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             openModal();
         });
 
-        // ذخیره (ارسال PATCH)
+        // ????? (????? PATCH)
         btnSave.addEventListener('click', async function() {
             const newText = textarea.value.trim();
 
@@ -2306,7 +2306,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                 return;
             }
 
-            // چرخنده و دکمه
+            // ?????? ? ????
             const overlay = document.getElementById('global-loading');
             const showOverlay = () => overlay && overlay.classList.add('show');
             const hideOverlay = () => overlay && overlay.classList.remove('show');
@@ -2319,9 +2319,9 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                 showOverlay();
                 setBtnLoading(true);
 
-                // اگر روتت دقیقاً POST می‌پذیره (بدون شبیه‌سازی PATCH)، همین کافیه:
+                // ??? ???? ?????? POST ???????? (???? ????????? PATCH)? ???? ?????:
                 const res = await fetch(currentUrl, {
-                    method: 'POST', // مطابق کنترلرت
+                    method: 'POST', // ????? ???????
                     headers: {
                         'X-CSRF-TOKEN': csrf,
                         'Accept': 'application/json',
@@ -2333,7 +2333,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                     })
                 });
 
-                // خواندن response (یک بار)
+                // ?????? response (?? ???)
                 let responseData = null;
                 try {
                     const contentType = res.headers.get('content-type') || '';
@@ -2355,35 +2355,35 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                     console.log('Response data:', responseData);
                 } catch (parseError) {
                     console.error('Error parsing response:', parseError);
-                    alert('خطا در خواندن پاسخ سرور');
+                    alert('??? ?? ?????? ???? ????');
                     return;
                 }
 
-                // بررسی status response
+                // ????? status response
                 if (!res.ok) {
-                    // خطا در response
+                    // ??? ?? response
                     const errorMsg = responseData?.message || responseData?.error ||
-                        'خطا در ذخیره‌سازی.';
+                        '??? ?? ??????????.';
                     console.error('Response error:', errorMsg);
                     alert(errorMsg);
                     return;
                 }
 
-                // بررسی وجود currentBubble
+                // ????? ???? currentBubble
                 if (!currentBubble) {
                     console.error('currentBubble is null');
-                    alert('خطا: عنصر پیام پیدا نشد. لطفا صفحه را رفرش کنید.');
-                    // ✅ FIXED: No reload - let user refresh manually if needed
+                    alert('???: ???? ???? ???? ???. ???? ???? ?? ???? ????.');
+                    // ? FIXED: No reload - let user refresh manually if needed
                     closeModal();
                     return;
                 }
 
                 console.log('Current bubble found:', currentBubble);
 
-                // ذخیره کردن currentBubble قبل از بستن مودال (چون closeModal ممکن است آن را null کند)
+                // ????? ???? currentBubble ??? ?? ???? ????? (??? closeModal ???? ??? ?? ?? null ???)
                 const bubbleToUpdate = currentBubble;
 
-                // بستن منوی عملیات (اگر bubble هنوز در DOM است)
+                // ???? ???? ?????? (??? bubble ???? ?? DOM ???)
                 if (bubbleToUpdate && bubbleToUpdate.isConnected) {
                     try {
                         const actionMenu = bubbleToUpdate.closest('.message-head')?.querySelector(
@@ -2394,7 +2394,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                                 'aria-expanded', 'false');
                             console.log('Action menu closed');
                         }
-                        // همچنین بستن details menu در صورت وجود (برای سازگاری)
+                        // ?????? ???? details menu ?? ???? ???? (???? ???????)
                         const details = bubbleToUpdate.closest('details.menu-wrapper[open]');
                         if (details) {
                             details.removeAttribute('open');
@@ -2402,29 +2402,29 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         }
                     } catch (e) {
                         console.warn('Error closing menu:', e);
-                        // ادامه بده، این خطای جدی نیست
+                        // ????? ???? ??? ???? ??? ????
                     }
                 }
 
-                // بستن مودال
+                // ???? ?????
                 closeModal();
 
-                // استفاده از bubbleToUpdate برای به‌روزرسانی (نه currentBubble که ممکن است null شده باشد)
+                // ??????? ?? bubbleToUpdate ???? ??????????? (?? currentBubble ?? ???? ??? null ??? ????)
                 const finalBubble = bubbleToUpdate;
 
-                // بررسی format response و به‌روزرسانی محتوا
+                // ????? format response ? ??????????? ?????
                 let contentToUpdate = null;
                 if (responseData && responseData.content) {
                     contentToUpdate = responseData.content;
                     console.log('Using responseData.content:', contentToUpdate);
                 } else if (responseData && responseData.message && typeof responseData.message ===
                     'object' && responseData.message.content) {
-                    // اگر message یک object است و content دارد
+                    // ??? message ?? object ??? ? content ????
                     contentToUpdate = responseData.message.content;
                     console.log('Using responseData.message.content:', contentToUpdate);
                 } else if (responseData && responseData.message && typeof responseData.message ===
-                    'string' && responseData.message !== 'پیام با موفقیت ویرایش شد') {
-                    // اگر message یک string است (نه object) و پیام موفقیت نیست
+                    'string' && responseData.message !== '???? ?? ?????? ?????? ??') {
+                    // ??? message ?? string ??? (?? object) ? ???? ?????? ????
                     contentToUpdate = responseData.message;
                     console.log('Using responseData.message (string):', contentToUpdate);
                 }
@@ -2440,30 +2440,30 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         }
                         updateMessageContent(finalBubble, contentToUpdate, true);
                         console.log('Message updated successfully!');
-                        // موفق: هیچ reload لازم نیست
+                        // ????: ??? reload ???? ????
                     } catch (updateError) {
                         console.error('Error in updateMessageContent:', updateError);
                         console.error('Error stack:', updateError.stack);
-                        // ✅ FIXED: No reload - show error and close modal
+                        // ? FIXED: No reload - show error and close modal
                         if (updateError.message && (updateError.message.includes('null') || updateError
                                 .message.includes('not found') || updateError.message.includes(
                                     'not in DOM'))) {
                             console.warn('Critical error in updateMessageContent');
-                            alert('خطا در به‌روزرسانی پیام. لطفا دوباره تلاش کنید.');
+                            alert('??? ?? ??????????? ????. ???? ?????? ???? ????.');
                             closeModal();
                         } else {
-                            // برای خطاهای دیگر، فقط alert بده
+                            // ???? ?????? ????? ??? alert ???
                             console.warn('Non-critical error in updateMessageContent, not reloading');
-                            alert('خطا در به‌روزرسانی پیام: ' + updateError.message);
+                            alert('??? ?? ??????????? ????: ' + updateError.message);
                         }
                     }
                 } else {
                     console.warn('Unexpected response format:', responseData);
                     console.warn('Response keys:', Object.keys(responseData || {}));
-                    // اگر response درست نبود، سعی کن از message استفاده کن
+                    // ??? response ???? ????? ??? ?? ?? message ??????? ??
                     if (responseData && responseData.message && typeof responseData.message ===
-                        'string' && responseData.message !== 'پیام با موفقیت ویرایش شد') {
-                        // اگر message یک string است و پیام موفقیت نیست، از آن استفاده کن
+                        'string' && responseData.message !== '???? ?? ?????? ?????? ??') {
+                        // ??? message ?? string ??? ? ???? ?????? ????? ?? ?? ??????? ??
                         console.log('Trying to use responseData.message as content');
                         try {
                             if (!finalBubble || !finalBubble.isConnected) {
@@ -2473,14 +2473,14 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                             console.log('Message updated using responseData.message');
                         } catch (e) {
                             console.error('Failed to update using message:', e);
-                            // ✅ FIXED: No reload - show error message
-                            alert('خطا در به‌روزرسانی پیام. لطفا دوباره تلاش کنید.');
+                            // ? FIXED: No reload - show error message
+                            alert('??? ?? ??????????? ????. ???? ?????? ???? ????.');
                             closeModal();
                         }
                     } else {
-                        // ✅ FIXED: No reload - show error message
+                        // ? FIXED: No reload - show error message
                         console.error('No valid content found in response');
-                        alert('خطا در دریافت محتوای پیام. لطفا دوباره تلاش کنید.');
+                        alert('??? ?? ?????? ?????? ????. ???? ?????? ???? ????.');
                         closeModal();
                     }
                 }
@@ -2490,16 +2490,16 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                 console.error('Error stack:', err.stack);
                 console.error('Error name:', err.name);
                 console.error('Error message:', err.message);
-                // ✅ FIXED: No location.reload() - handle network errors gracefully
+                // ? FIXED: No location.reload() - handle network errors gracefully
                 if (err.name === 'TypeError' && (err.message.includes('fetch') || err.message.includes(
                         'network') || err.message.includes('Failed to fetch'))) {
                     console.warn('Network error detected');
-                    alert('خطا در اتصال به سرور. لطفاً اتصال اینترنت خود را بررسی کنید.');
+                    alert('??? ?? ????? ?? ????. ????? ????? ??????? ??? ?? ????? ????.');
                     closeModal();
                     return;
                 }
-                // برای سایر خطاها، فقط alert بده و مودال را ببند
-                alert('خطا در ویرایش پیام: ' + (err.message || 'خطای نامشخص'));
+                // ???? ???? ?????? ??? alert ??? ? ????? ?? ????
+                alert('??? ?? ?????? ????: ' + (err.message || '???? ??????'));
                 closeModal();
 
             } finally {
@@ -2509,7 +2509,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
         });
 
 
-        // بستن مودال
+        // ???? ?????
         [btnCancel, btnClose, backdrop].forEach(el => el.addEventListener('click', closeModal));
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
@@ -2518,7 +2518,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
         function openModal() {
             modal.classList.remove('hidden');
             textarea.focus();
-            // مکان‌نما آخر متن:
+            // ???????? ??? ???:
             const val = textarea.value;
             textarea.setSelectionRange(val.length, val.length);
         }
@@ -2549,12 +2549,12 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
         '{{ csrf_token() }}';
 
-    // جلوگیری از رفتار پیش‌فرض مرورگر
+    // ??????? ?? ????? ??????? ??????
     if ('scrollRestoration' in history) {
         history.scrollRestoration = 'manual';
     }
 
-    // تابع برای به‌روزرسانی last_read_message_id
+    // ???? ???? ??????????? last_read_message_id
     let lastReadUpdateTimeout = null;
     let currentLastReadMessageId = Number.isFinite(Number(LAST_READ_MESSAGE_ID)) ? Number(LAST_READ_MESSAGE_ID) : null;
     window.lastReadMessageIdState = currentLastReadMessageId;
@@ -2585,7 +2585,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
         // Optimistic local update to immediately refresh unread visuals.
         setLastReadState(parsedId, true);
 
-        // Debounce: فقط آخرین پیام visible را به‌روزرسانی کن
+        // Debounce: ??? ????? ???? visible ?? ??????????? ??
         clearTimeout(lastReadUpdateTimeout);
         lastReadUpdateTimeout = setTimeout(() => {
             fetch(UPDATE_LAST_READ_URL, {
@@ -2604,7 +2604,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
         }, 500); // 500ms debounce
     }
 
-    // تابع برای پیدا کردن آخرین پیام visible در viewport
+    // ???? ???? ???? ???? ????? ???? visible ?? viewport
     function getLastVisibleMessageId() {
         const messages = chatBox.querySelectorAll('[data-message-id]');
         let lastVisibleId = null;
@@ -2614,7 +2614,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             const rect = msg.getBoundingClientRect();
             const chatBoxRect = chatBox.getBoundingClientRect();
 
-            // بررسی اینکه آیا پیام در viewport قرار دارد
+            // ????? ????? ??? ???? ?? viewport ???? ????
             if (rect.top >= chatBoxRect.top && rect.bottom <= chatBoxRect.bottom) {
                 const messageId = parseInt(msg.getAttribute('data-message-id'));
                 if (messageId && !isNaN(messageId)) {
@@ -2627,7 +2627,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
         return lastVisibleId;
     }
 
-    // تابع برای ذخیره موقعیت قبل از submit فرم
+    // ???? ???? ????? ?????? ??? ?? submit ???
     function saveScrollPositionBeforeSubmit() {
         const lastVisibleId = getLastVisibleMessageId();
         if (lastVisibleId) {
@@ -2636,10 +2636,10 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
         sessionStorage.setItem(STORAGE_KEY, chatBox.scrollTop);
     }
 
-    // Event listener برای submit فرم در group-chat.js تعریف شده است
-    // این کد حذف شد تا از تداخل event listenerها جلوگیری شود
+    // Event listener ???? submit ??? ?? group-chat.js ????? ??? ???
+    // ??? ?? ??? ?? ?? ?? ????? event listener?? ??????? ???
 
-    // تابع برای اضافه کردن پیام جدید به chat بدون reload
+    // ???? ???? ????? ???? ???? ???? ?? chat ???? reload
     function addMessageToChat(messageData) {
         try {
             const chatBox = document.getElementById('chat-box');
@@ -2648,14 +2648,14 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                 return;
             }
 
-            // بررسی کن که پیام معتبر باشد و خالی نباشد
+            // ????? ?? ?? ???? ????? ???? ? ???? ?????
             if (!messageData.id || !messageData.message || (typeof messageData.message === 'string' && messageData
                     .message.trim() === '')) {
                 console.warn('Invalid or empty message data:', messageData);
                 return;
             }
 
-            // بررسی کن که آیا این پیام قبلاً اضافه شده یا نه
+            // ????? ?? ?? ??? ??? ???? ????? ????? ??? ?? ??
             const existingMessage = document.getElementById(`msg-${messageData.id}`);
             if (existingMessage) {
                 console.warn('Message already exists:', messageData.id);
@@ -2668,9 +2668,9 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             messageRow.setAttribute('data-message-id', messageData.id);
             messageRow.id = `msg-${messageData.id}`;
 
-            // ساخت HTML پیام
-            const senderName = messageData.sender || 'کاربر';
-            const initials = senderName.split(' ').map(n => n.charAt(0)).join(' ').trim() || '؟';
+            // ???? HTML ????
+            const senderName = messageData.sender || '?????';
+            const initials = senderName.split(' ').map(n => n.charAt(0)).join(' ').trim() || '?';
             const messageContent = messageData.message || '';
             const formattedTime = messageData.created_at || new Date().toLocaleTimeString('fa-IR', {
                 hour: '2-digit',
@@ -2679,7 +2679,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
 
             let messageHTML = '';
 
-            // آواتار (فقط برای پیام‌های دیگران)
+            // ?????? (??? ???? ???????? ??????)
             if (!isMine) {
                 messageHTML +=
                     `<a href="/profile/member/${messageData.user_id}" class="avatar-link"><span class="avatar"><span>${initials}</span></span></a>`;
@@ -2722,7 +2722,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                     }
                 }
                 voiceMessageHTML =
-                    `<div class="voice-message-container" style="margin-top: 12px; padding: 12px; background: ${isMine ? '#e3f2fd' : '#f5f5f5'}; border-radius: 12px; border: 1px solid ${isMine ? '#90caf9' : '#e0e0e0'}; direction: ltr;"><div style="display: flex; align-items: center; gap: 12px;"><div style="width: 40px; height: 40px; border-radius: 50%; background: ${isMine ? '#2196f3' : '#757575'}; display: flex; align-items: center; justify-content: center; color: white;"><i class="fas fa-microphone"></i></div><div class="voice-message-content" style="flex: 1; min-width: 220px; width: 100%;"><div style="font-size: 12px; color: #666; margin-bottom: 4px;"><i class="fas fa-headphones"></i> پیام صوتی</div><audio class="voice-player" controls style="width: 100%;" preload="metadata" src="${voiceUrl}" type="${voiceType}">مرورگر شما از پخش صدا پشتیبانی نمی‌کند.</audio></div></div></div>`;
+                    `<div class="voice-message-container" style="margin-top: 12px; padding: 12px; background: ${isMine ? '#e3f2fd' : '#f5f5f5'}; border-radius: 12px; border: 1px solid ${isMine ? '#90caf9' : '#e0e0e0'}; direction: ltr;"><div style="display: flex; align-items: center; gap: 12px;"><div style="width: 40px; height: 40px; border-radius: 50%; background: ${isMine ? '#2196f3' : '#757575'}; display: flex; align-items: center; justify-content: center; color: white;"><i class="fas fa-microphone"></i></div><div class="voice-message-content" style="flex: 1; min-width: 220px; width: 100%;"><div style="font-size: 12px; color: #666; margin-bottom: 4px;"><i class="fas fa-headphones"></i> ???? ????</div><audio class="voice-player" controls style="width: 100%;" preload="metadata" src="${voiceUrl}" type="${voiceType}">?????? ??? ?? ??? ??? ???????? ???????.</audio></div></div></div>`;
             }
 
             const hasVoiceMessage = Boolean(messageData.voice_message || messageData.voice_message_url);
@@ -2730,33 +2730,33 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             <div class="message-bubble ${isMine ? 'you' : 'other'} ${hasVoiceMessage ? 'message-bubble--voice' : ''}" data-message-id="${messageData.id}" data-user-id="${messageData.user_id}" data-edit-url="/messages/${messageData.id}/edit" data-delete-url="/messages/${messageData.id}/delete" data-report-url="/messages/${messageData.id}/report" data-content-raw="${escapeHtml(stripHtml(messageContent))}">
                 <div class="message-head">
                     ${isMine ? 
-                        // برای پیام‌های خود کاربر: سه نقطه در سمت چپ، نام در سمت راست
+                        // ???? ???????? ??? ?????: ?? ???? ?? ??? ??? ??? ?? ??? ????
                         `<div class="action-menu message-action" data-action-menu>
                             <button type="button" class="action-menu__toggle"><i class="fas fa-ellipsis-v"></i></button>
                             <div class="action-menu__list">
-                                <button type="button" onclick="replyToMessageFromButton(this, '${messageData.id}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
-                                <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> واکنش</button>
-                                ${([2,3].includes(CURRENT_USER_ROLE)) ? `<button type="button" class="action-menu__item btn-pin" onclick="pinMessage('${messageData.id}')"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
-                                <button type="button" class="action-menu__item btn-edit"><i class="fas fa-edit"></i> ویرایش</button>
-                                <button type="button" class="action-menu__item action-menu__item--danger btn-delete"><i class="fas fa-trash"></i> حذف</button>
-                                <div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" style="font-size: 0.7rem; opacity: 0.6; margin-left: 4px;"></i><span class="menu-meta-time__label">ارسال شده:</span><span class="menu-meta-time__value">${formattedTime}</span></div></div>
+                                <button type="button" onclick="replyToMessageFromButton(this, '${messageData.id}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> ????</button>
+                                <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> ?????</button>
+                                ${([2,3].includes(CURRENT_USER_ROLE)) ? `<button type="button" class="action-menu__item btn-pin" onclick="pinMessage('${messageData.id}')"><i class="fas fa-thumbtack"></i> ????? ????</button>` : ''}
+                                <button type="button" class="action-menu__item btn-edit"><i class="fas fa-edit"></i> ??????</button>
+                                <button type="button" class="action-menu__item action-menu__item--danger btn-delete"><i class="fas fa-trash"></i> ???</button>
+                                <div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" style="font-size: 0.7rem; opacity: 0.6; margin-left: 4px;"></i><span class="menu-meta-time__label">????? ???:</span><span class="menu-meta-time__value">${formattedTime}</span></div></div>
                             </div>
                         </div>
                         <div class="message-head__info">
-                            <span class="message-sender message-sender--self">شما</span>
+                            <span class="message-sender message-sender--self">???</span>
                         </div>` :
-                        // برای پیام‌های دیگران: نام کاربر در سمت چپ، سه نقطه در سمت راست
+                        // ???? ???????? ??????: ??? ????? ?? ??? ??? ?? ???? ?? ??? ????
                         `<div class="message-head__info">
                             <a href="/profile-member/${messageData.user_id}" class="message-sender" onclick="event.stopPropagation(); window.location.href='/profile-member/${messageData.user_id}'; return false;">${escapeHtml(senderName)}</a>
                         </div>
                         <div class="action-menu message-action" data-action-menu>
                             <button type="button" class="action-menu__toggle"><i class="fas fa-ellipsis-v"></i></button>
                             <div class="action-menu__list">
-                                <button type="button" onclick="replyToMessageFromButton(this, '${messageData.id}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
-                                <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> واکنش</button>
-                                ${([2,3].includes(CURRENT_USER_ROLE)) ? `<button type="button" class="action-menu__item btn-pin" onclick="pinMessage('${messageData.id}')"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
-                                <button type="button" class="action-menu__item btn-report"><i class="fas fa-flag"></i> گزارش</button>
-                                <div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" style="font-size: 0.7rem; opacity: 0.6; margin-left: 4px;"></i><span class="menu-meta-time__label">ارسال شده:</span><span class="menu-meta-time__value">${formattedTime}</span></div></div>
+                                <button type="button" onclick="replyToMessageFromButton(this, '${messageData.id}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> ????</button>
+                                <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> ?????</button>
+                                ${([2,3].includes(CURRENT_USER_ROLE)) ? `<button type="button" class="action-menu__item btn-pin" onclick="pinMessage('${messageData.id}')"><i class="fas fa-thumbtack"></i> ????? ????</button>` : ''}
+                                <button type="button" class="action-menu__item btn-report"><i class="fas fa-flag"></i> ?????</button>
+                                <div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" style="font-size: 0.7rem; opacity: 0.6; margin-left: 4px;"></i><span class="menu-meta-time__label">????? ???:</span><span class="menu-meta-time__value">${formattedTime}</span></div></div>
                             </div>
                         </div>`
                     }
@@ -2765,14 +2765,14 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                 <p class="message-content">${messageContent}</p>
                 <div class="message-timestamp"><span class="message-time">${formattedTime}</span></div>
                 ${voiceMessageHTML}
-                ${isMine ? '<div class="read-receipt" style="font-size: 10px; margin-top: 4px; text-align: left; direction: ltr;"><span style="color: #9ca3af;"><i class="fas fa-check"></i> ارسال شده</span></div>' : ''}
+                ${isMine ? '<div class="read-receipt" style="font-size: 10px; margin-top: 4px; text-align: left; direction: ltr;"><span style="color: #9ca3af;"><i class="fas fa-check"></i> ????? ???</span></div>' : ''}
             </div>
         `;
 
             messageRow.innerHTML = messageHTML;
             chatBox.appendChild(messageRow);
 
-            // اضافه کردن Thread button
+            // ????? ???? Thread button
             const newMsgBubble = messageRow.querySelector('[data-message-id]');
             if (newMsgBubble && typeof window.addThreadButton === 'function') {
                 window.addThreadButton(newMsgBubble);
@@ -2782,10 +2782,10 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             const profileLink = messageRow.querySelector('a.message-sender');
             if (profileLink) {
                 profileLink.addEventListener('click', function(e) {
-                    // اجازه بده لینک کار کند
+                    // ????? ??? ???? ??? ???
                     e.stopPropagation();
                     e.preventDefault();
-                    // اگر href وجود دارد، به آن برو
+                    // ??? href ???? ????? ?? ?? ???
                     const href = this.getAttribute('href');
                     if (href && !href.includes('#')) {
                         window.location.href = href;
@@ -2827,8 +2827,8 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
 
                 if (list) {
                     list.querySelectorAll('button, a').forEach(item => {
-                        // برای دکمه واکنش، event listener جداگانه اضافه نمی‌کنیم
-                        // چون addReactionButton خودش event handler اضافه می‌کند
+                        // ???? ???? ?????? event listener ??????? ????? ????????
+                        // ??? addReactionButton ???? event handler ????? ??????
                         if (item.classList.contains('btn-reaction')) {
                             return;
                         }
@@ -2842,7 +2842,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             }
         } catch (error) {
             console.error('Error in addMessageToChat:', error);
-            // ✅ FIXED: No location.reload() - gracefully handle error without disrupting user
+            // ? FIXED: No location.reload() - gracefully handle error without disrupting user
             console.warn('Could not add message to chat, but continuing without reload');
             // Don't reload - let the polling or next action recover the state
         }
@@ -2860,9 +2860,9 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
 
         if (!id) return;
 
-        // حذف
+        // ???
         bubble.querySelector(".btn-delete")?.addEventListener("click", async (e) => {
-            // بستن منوی عملیات
+            // ???? ???? ??????
             const actionMenu = bubble.closest('.message-head')?.querySelector('[data-action-menu]');
             if (actionMenu) {
                 actionMenu.classList.remove('is-open');
@@ -2870,7 +2870,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             }
 
             const btn = e.currentTarget;
-            if (!confirm("آیا از حذف پیام مطمئن هستید؟")) return;
+            if (!confirm("??? ?? ??? ???? ????? ??????")) return;
 
             try {
                 const res = await fetch(deleteUrl, {
@@ -2888,7 +2888,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                 } catch (e) {}
 
                 if (res.ok && (data.status === 'success' || !data.status)) {
-                    // ✅ FIXED: No location.reload() - remove message from DOM smoothly
+                    // ? FIXED: No location.reload() - remove message from DOM smoothly
                     const messageRow = bubble.closest('.message-row');
                     if (messageRow) {
                         messageRow.style.transition = 'opacity 0.3s ease-out';
@@ -2897,23 +2897,23 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                             messageRow.remove();
                         }, 300);
                     }
-                    // اگر این پیام reply تارگت بود، reply indicator را پاک کن
+                    // ??? ??? ???? reply ????? ???? reply indicator ?? ??? ??
                     const parentInput = document.getElementById('parent_id');
                     if (parentInput && parentInput.value == id) {
                         if (typeof cancelReply === 'function') cancelReply();
                     }
                 } else {
-                    alert(data.message || `خطا در حذف پیام (status ${res.status})`);
+                    alert(data.message || `??? ?? ??? ???? (status ${res.status})`);
                 }
             } catch (error) {
                 console.error('Error deleting message:', error);
-                alert('خطا در حذف پیام');
+                alert('??? ?? ??? ????');
             }
         });
 
-        // گزارش
+        // ?????
         bubble.querySelector(".btn-report")?.addEventListener("click", async (e) => {
-            // بستن منوی عملیات
+            // ???? ???? ??????
             const actionMenu = bubble.closest('.message-head')?.querySelector('[data-action-menu]');
             if (actionMenu) {
                 actionMenu.classList.remove('is-open');
@@ -2921,7 +2921,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             }
 
             const btn = e.currentTarget;
-            const reason = prompt("دلیل گزارش را وارد کنید:");
+            const reason = prompt("???? ????? ?? ???? ????:");
             if (!reason) return;
 
             try {
@@ -2942,16 +2942,16 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                 try {
                     data = await res.json();
                 } catch (e) {}
-                alert(data.message || (res.ok ? "گزارش ثبت شد" :
-                    `خطا در ثبت گزارش (status ${res.status})`));
+                alert(data.message || (res.ok ? "????? ??? ??" :
+                    `??? ?? ??? ????? (status ${res.status})`));
             } catch (error) {
                 console.error('Error reporting message:', error);
-                alert('خطا در ثبت گزارش');
+                alert('??? ?? ??? ?????');
             }
         });
     }
 
-    // تابع برای به‌روزرسانی محتوای پیام بعد از ویرایش
+    // ???? ???? ??????????? ?????? ???? ??? ?? ??????
     function updateMessageContent(messageBubble, newContent, isEdited) {
         try {
             if (!messageBubble) {
@@ -2967,44 +2967,44 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                 throw new Error('.message-content element not found');
             }
 
-            // پاک کردن محتوای قبلی (برای جلوگیری از تکرار)
-            // ابتدا همه child elements را حذف کن
+            // ??? ???? ?????? ???? (???? ??????? ?? ?????)
+            // ????? ??? child elements ?? ??? ??
             while (contentElement.firstChild) {
                 contentElement.removeChild(contentElement.firstChild);
             }
             contentElement.innerHTML = '';
 
-            // تبدیل محتوا به HTML با حفظ line breaks
-            // محتوا از backend به صورت plain text می‌آید (با \n برای line breaks)
-            // باید line breaks را به <br> تبدیل کنیم و HTML را escape کنیم
+            // ????? ????? ?? HTML ?? ??? line breaks
+            // ????? ?? backend ?? ???? plain text ?????? (?? \n ???? line breaks)
+            // ???? line breaks ?? ?? <br> ????? ???? ? HTML ?? escape ????
             let htmlContent = '';
 
-            // بررسی اینکه آیا محتوا HTML است یا نه
-            // اگر شامل تگ‌های HTML معتبر باشد (نه فقط < یا &)، HTML است
+            // ????? ????? ??? ????? HTML ??? ?? ??
+            // ??? ???? ?????? HTML ????? ???? (?? ??? < ?? &)? HTML ???
             const hasHtmlTags = /<[a-z][\s\S]*>/i.test(newContent);
 
             if (hasHtmlTags) {
-                // محتوا HTML است، مستقیماً استفاده کن (اما باید اطمینان حاصل کنیم که safe است)
+                // ????? HTML ???? ???????? ??????? ?? (??? ???? ??????? ???? ???? ?? safe ???)
                 htmlContent = newContent;
             } else {
-                // محتوا plain text است، escape کن و line breaks را به <br> تبدیل کن
+                // ????? plain text ???? escape ?? ? line breaks ?? ?? <br> ????? ??
                 htmlContent = nl2br(newContent);
             }
 
-            // به‌روزرسانی محتوا
+            // ??????????? ?????
             contentElement.innerHTML = htmlContent;
             console.log('Content updated in DOM');
 
-            // به‌روزرسانی data-content-raw (بدون HTML)
+            // ??????????? data-content-raw (???? HTML)
             const rawContent = stripHtml(htmlContent);
             messageBubble.setAttribute('data-content-raw', escapeHtml(rawContent));
             console.log('data-content-raw updated');
 
-            // اضافه کردن آیکون ویرایش شده
+            // ????? ???? ????? ?????? ???
             if (isEdited) {
                 const timestampElement = messageBubble.querySelector('.message-timestamp');
                 if (timestampElement) {
-                    // اگر آیکون ویرایش وجود ندارد، اضافه کن
+                    // ??? ????? ?????? ???? ?????? ????? ??
                     let editedIcon = timestampElement.querySelector('.message-edited');
                     if (!editedIcon) {
                         editedIcon = document.createElement('span');
@@ -3024,7 +3024,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
         } catch (error) {
             console.error('Error in updateMessageContent:', error);
             console.error('Error stack:', error.stack);
-            // خطا را throw کن تا caller بتواند آن را handle کند
+            // ??? ?? throw ?? ?? caller ?????? ?? ?? handle ???
             throw error;
         }
     }
@@ -3044,7 +3044,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
         return tmp.textContent || tmp.innerText || '';
     }
 
-    // تبدیل line breaks به <br> برای نمایش درست
+    // ????? line breaks ?? <br> ???? ????? ????
     function nl2br(text) {
         if (!text) return '';
         // Escape HTML first
@@ -3072,17 +3072,17 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             });
         }
 
-        // اول بسته باشه - اطمینان از اینکه modal مخفی است
+        // ??? ???? ???? - ??????? ?? ????? modal ???? ???
         $('#categoryBlogsModal').hide();
         $('#categoryBlogsOverlay').hide();
 
-        // بستن با کلیک یا Esc
+        // ???? ?? ???? ?? Esc
         $(document).on('click', '#closeCatModal, #categoryBlogsOverlay', closeCatModal);
         $(document).on('keydown', function(e) {
             if (e.key === 'Escape') closeCatModal();
         });
 
-        // باز کردن مدال
+        // ??? ???? ????
         document.querySelectorAll('.open-category-blogs').forEach(openCategory => {
             openCategory.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -3093,11 +3093,11 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
 
                 if (!ajaxUrl) return;
 
-                // ریست UI
+                // ???? UI
                 $('#catList').empty().hide();
                 $('#catEmpty').hide();
                 $('#catLoading').show();
-                $('#catModalTitle').text('در حال بارگذاری...');
+                $('#catModalTitle').text('?? ??? ????????...');
                 openCatModal();
 
                 $.ajax({
@@ -3116,8 +3116,8 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                     .done(function(res) {
                         try {
                             $('#catModalTitle').text(
-                                'دسته: ' +
-                                (res?.category?.name || '—') +
+                                '????: ' +
+                                (res?.category?.name || '�') +
                                 ' (' +
                                 (res?.count ?? 0) +
                                 ')'
@@ -3178,7 +3178,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
 
                                 const $go = $('<a/>', {
                                     href: item.url,
-                                    text: 'مشاهده'
+                                    text: '??????'
                                 }).css({
                                     padding: '.35rem .6rem',
                                     borderRadius: '8px',
@@ -3192,19 +3192,19 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         } catch (err) {
                             console.error('Parse/render error:', err);
                             $('#catLoading').hide();
-                            $('#catEmpty').show().text('خطا در پردازش داده‌ها.');
+                            $('#catEmpty').show().text('??? ?? ?????? ???????.');
                         }
                     })
                     .fail(function(xhr, status, err) {
                         console.error('AJAX fail:', status, err, xhr?.status, xhr
                             ?.responseText);
                         $('#catLoading').hide();
-                        $('#catEmpty').show().text('خطا در دریافت لیست پست‌ها.');
+                        $('#catEmpty').show().text('??? ?? ?????? ???? ??????.');
                     })
                     .always(function() {
                         if ($('#catLoading').is(':visible')) {
                             $('#catLoading').hide();
-                            $('#catEmpty').show().text('عدم دریافت پاسخ از سرور.');
+                            $('#catEmpty').show().text('??? ?????? ???? ?? ????.');
                         }
                     });
             });
@@ -3267,14 +3267,14 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
         });
 
         menu?.querySelectorAll('button').forEach(function(actionButton) {
-            // اگر دکمه onclick دارد (مثل openBlogBox, openPollBox)، منو را ببند اما event را متوقف نکن
+            // ??? ???? onclick ???? (??? openBlogBox, openPollBox)? ??? ?? ???? ??? event ?? ????? ???
             if (actionButton.onclick || actionButton.getAttribute('onclick')) {
                 actionButton.addEventListener('click', function(e) {
-                    // فقط منو را ببند، event را متوقف نکن تا onclick اجرا شود
+                    // ??? ??? ?? ????? event ?? ????? ??? ?? onclick ???? ???
                     toggleMenu(false);
                 });
             } else {
-                // برای دکمه‌های دیگر (مثل audio-upload-trigger) که event handler جداگانه دارند
+                // ???? ???????? ???? (??? audio-upload-trigger) ?? event handler ??????? ?????
                 actionButton.addEventListener('click', function() {
                     toggleMenu(false);
                 });
@@ -3294,9 +3294,9 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                 e.preventDefault();
                 e.stopPropagation();
                 toggleMenu(false);
-                // کمی تأخیر برای بستن منو قبل از باز کردن modal
+                // ??? ????? ???? ???? ??? ??? ?? ??? ???? modal
                 setTimeout(function() {
-                    // بررسی وجود تابع در scope global
+                    // ????? ???? ???? ?? scope global
                     if (typeof window.openBlogBox === 'function') {
                         window.openBlogBox();
                     } else if (typeof openBlogBox === 'function') {
@@ -3317,9 +3317,9 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                 e.preventDefault();
                 e.stopPropagation();
                 toggleMenu(false);
-                // کمی تأخیر برای بستن منو قبل از باز کردن modal
+                // ??? ????? ???? ???? ??? ??? ?? ??? ???? modal
                 setTimeout(function() {
-                    // بررسی وجود تابع در scope global
+                    // ????? ???? ???? ?? scope global
                     if (typeof window.openPollBox === 'function') {
                         window.openPollBox();
                     } else if (typeof openPollBox === 'function') {
@@ -3348,7 +3348,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
         postForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             var submitBtn = postForm.querySelector('button[type="submit"]');
-            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'در حال ارسال...'; }
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '?? ??? ?????...'; }
             // Sync CKEditor to textarea BEFORE capturing FormData
             if (window.CKEDITOR) {
                 Object.values(CKEDITOR.instances).forEach(function(ed) {
@@ -3369,7 +3369,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                 if (data.status === 'success' && data.post && data.post.html) {
                     // reset form and button FIRST
                     postForm.reset();
-                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'انتشار پست'; }
+                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '?????? ???'; }
                     // reset CKEditor instances inside the form
                     if (window.CKEDITOR) {
                         Object.values(CKEDITOR.instances).forEach(function(ed) {
@@ -3395,13 +3395,13 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         }
                     }
                 } else {
-                    alert(data.message || 'خطا در ارسال پست');
-                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'انتشار پست'; }
+                    alert(data.message || '??? ?? ????? ???');
+                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '?????? ???'; }
                 }
             } catch(err) {
                 console.error('Post submit error:', err);
-                alert('خطا در ارتباط با سرور');
-                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'انتشار پست'; }
+                alert('??? ?? ?????? ?? ????');
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '?????? ???'; }
             }
         });
     }
@@ -3532,9 +3532,9 @@ CKEDITOR.replace('post_editor', {
 
 
 
-// قبلاً اینجا CKEDITOR برای message_editor فعال می‌شد.
-// برای ساده‌سازی و حذف CKEditor از چت، این بخش غیرفعال شده است
-// و از textarea ساده استفاده می‌کنیم.
+// ????? ????? CKEDITOR ???? message_editor ???? ?????.
+// ???? ????????? ? ??? CKEditor ?? ??? ??? ??? ??????? ??? ???
+// ? ?? textarea ???? ??????? ???????.
 </script>
 @endpush
 
@@ -3692,12 +3692,12 @@ function closeAllModals() {
     position: relative;
 }
 
-/* حذف استایل‌های تکراری - reply-indicator دیگر لازم نیست */
+/* ??? ?????????? ?????? - reply-indicator ???? ???? ???? */
 .telegram-reply-indicator>.reply-indicator {
     display: none;
 }
 
-/* استایل مستقیم برای محتوای داخل telegram-reply-indicator */
+/* ?????? ?????? ???? ?????? ???? telegram-reply-indicator */
 .telegram-reply-indicator .reply-info {
     display: flex;
     align-items: center;
@@ -3934,7 +3934,7 @@ function closeAllModals() {
     color: #333;
 }
 
-/* حذف wrapper اضافی - محتوا مستقیماً در telegram-reply-indicator قرار می‌گیرد */
+/* ??? wrapper ????? - ????? ???????? ?? telegram-reply-indicator ???? ??????? */
 #electionRedirect {
     width: 100% !important;
     background-color: #fffce9;
@@ -3965,7 +3965,7 @@ function closeAllModals() {
     }
 }
 
-/* بهبود responsive */
+/* ????? responsive */
 @media (max-width: 767px) {
     .telegram-input-container {
         padding: 4px 6px;
@@ -4090,7 +4090,7 @@ function closeAllModals() {
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // --- باز/بسته‌شدن پنل ---
+    // --- ???/???????? ??? ---
     const wrap = document.getElementById('gc-search-wrap');
     const input = document.getElementById('gc-search-input');
     const btn = document.getElementById('btn-chat-search');
@@ -4133,7 +4133,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // هوک برای اسپینر آیکن/استاتوس
+    // ??? ???? ?????? ????/???????
     window.__setSearching = function(on) {
         statusEl.style.display = on ? 'flex' : 'none';
         btn.classList.toggle('searching', !!on);
@@ -4142,7 +4142,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (wrap.hidden) openSearch();
     };
 
-    // --- سرچ AJAX ---
+    // --- ??? AJAX ---
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
     const groupId = {{ $group->id }};
     const listEl = dd.querySelector('.gc-search-list');
@@ -4188,14 +4188,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const type = document.createElement('div');
             type.className = 'type';
-            type.textContent = it.type === 'message' ? 'پیام' : it.type === 'post' ? 'پست' : 'نظرسنجی';
+            type.textContent = it.type === 'message' ? '????' : it.type === 'post' ? '???' : '???????';
 
             const meta = document.createElement('div');
             meta.className = 'meta';
             const title = document.createElement('div');
             title.className = 'title';
-            title.textContent = it.title || (it.type === 'post' ? 'پست' : it.type === 'poll' ?
-                'نظرسنجی' : 'کاربر');
+            title.textContent = it.title || (it.type === 'post' ? '???' : it.type === 'poll' ?
+                '???????' : '?????');
             const snip = document.createElement('div');
             snip.className = 'snip';
             snip.innerHTML = it.snippet || '';
@@ -4227,7 +4227,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (loading) return;
         loading = true;
         window.__setSearching(true);
-        setStatus('در حال جستجو…');
+        setStatus('?? ??? ?????�');
         if (reset) {
             items = [];
             page = 1;
@@ -4251,7 +4251,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             if (!res.ok) {
-                // برای کمک به دیباگ
+                // ???? ??? ?? ?????
                 const txt = await res.text();
                 console.error('Search HTTP Error', res.status, txt);
                 throw new Error('HTTP ' + res.status);
@@ -4263,13 +4263,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             items = items.concat(newItems);
             renderList();
-            setStatus(newItems.length ? '' : (page === 1 ? 'چیزی پیدا نشد.' : ''));
+            setStatus(newItems.length ? '' : (page === 1 ? '???? ???? ???.' : ''));
             setMore(hasMore);
             openDD();
             window.__ensureSearchOpen();
         } catch (e) {
             console.error('Search fetch error', e);
-            setStatus('خطا در دریافت نتایج');
+            setStatus('??? ?? ?????? ?????');
             openDD();
             window.__ensureSearchOpen();
         } finally {
@@ -4308,13 +4308,13 @@ document.addEventListener('DOMContentLoaded', function() {
         fetchPage(false);
     });
 
-    // بستن dropdown با کلیک بیرون از سرچ‌بار
+    // ???? dropdown ?? ???? ????? ?? ???????
     document.addEventListener('click', (e) => {
         const box = e.target.closest('.gc-searchbar');
         if (!box) closeDD();
     });
 
-    // ناوبری کیبورد
+    // ?????? ??????
     input.addEventListener('keydown', (e) => {
         if (dd.hidden) return;
         const max = items.length - 1;
@@ -4339,7 +4339,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
 // Add pin/unpin functionality
 function pinMessage(messageId) {
-    if (!confirm('آیا مایل به سنجاق کردن این پیام هستید؟')) return;
+    if (!confirm('??? ???? ?? ????? ???? ??? ???? ??????')) return;
 
     fetch(`/groups/messages/${messageId}/pin`, {
             method: 'POST',
@@ -4351,31 +4351,31 @@ function pinMessage(messageId) {
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                // ✅ FIXED: No location.reload() - update DOM smoothly
+                // ? FIXED: No location.reload() - update DOM smoothly
                 const messageEl = document.getElementById(`msg-${id}`);
                 if (messageEl && !messageEl.querySelector('.pinned-badge')) {
                     const badge = document.createElement('span');
                     badge.className = 'pinned-badge';
-                    badge.textContent = '📌 سنجاق شده';
+                    badge.textContent = '?? ????? ???';
                     messageEl.appendChild(badge);
                 }
                 
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         icon: 'success',
-                        title: 'موفقیت‌آمیز',
-                        text: 'پیام با موفقیت سنجاق شد.',
+                        title: '???????????',
+                        text: '???? ?? ?????? ????? ??.',
                         timer: 1500,
                         showConfirmButton: false
                     });
                 } else {
-                    alert('پیام با موفقیت سنجاق شد.');
+                    alert('???? ?? ?????? ????? ??.');
                 }
             } else {
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         icon: 'error',
-                        title: 'خطا',
+                        title: '???',
                         text: data.message
                     });
                 } else {
@@ -4386,7 +4386,7 @@ function pinMessage(messageId) {
 }
 
 function unpinMessage(messageId) {
-    if (!confirm('آیا مایل به برداشتن این پیام از حالت سنجاق هستید؟')) return;
+    if (!confirm('??? ???? ?? ??????? ??? ???? ?? ???? ????? ??????')) return;
 
     fetch(`/groups/messages/${messageId}/unpin`, {
             method: 'POST',
@@ -4398,7 +4398,7 @@ function unpinMessage(messageId) {
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                // ✅ FIXED: No location.reload() - update DOM smoothly
+                // ? FIXED: No location.reload() - update DOM smoothly
                 const messageEl = document.getElementById(`msg-${id}`);
                 if (messageEl) {
                     const pinnedBadge = messageEl.querySelector('.pinned-badge');
@@ -4408,19 +4408,19 @@ function unpinMessage(messageId) {
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         icon: 'success',
-                        title: 'موفقیت‌آمیز',
-                        text: 'پیام از حالت سنجاق خارج شد.',
+                        title: '???????????',
+                        text: '???? ?? ???? ????? ???? ??.',
                         timer: 1500,
                         showConfirmButton: false
                     });
                 } else {
-                    alert('پیام از حالت سنجاق خارج شد.');
+                    alert('???? ?? ???? ????? ???? ??.');
                 }
             } else {
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         icon: 'error',
-                        title: 'خطا',
+                        title: '???',
                         text: data.message
                     });
                 } else {
@@ -4433,14 +4433,14 @@ function unpinMessage(messageId) {
 
 <script>
 document.addEventListener('click', function(e) {
-    // همه‌ی منوهای باز
+    // ????? ?????? ???
     document.querySelectorAll('details.menu-wrapper[open]').forEach(function(d) {
-        // اگر کلیک بیرون از همین منو بوده، ببند
+        // ??? ???? ????? ?? ???? ??? ????? ????
         if (!d.contains(e.target)) d.removeAttribute('open');
     });
 });
 
-// جلوگیری از بسته‌شدن هنگام کلیک داخل منو
+// ??????? ?? ???????? ????? ???? ???? ???
 document.addEventListener('click', function(e) {
     const dropdown = e.target.closest('.menu-dropdown');
     if (dropdown) {
@@ -4448,7 +4448,7 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// با ESC هم ببند
+// ?? ESC ?? ????
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         document.querySelectorAll('details.menu-wrapper[open]').forEach(d => d.removeAttribute('open'));
@@ -4456,22 +4456,22 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 
-{{-- Modal مدیریت اعضا - همیشه در DOM باشد اما فقط برای مدیران قابل مشاهده --}}
+{{-- Modal ?????? ???? - ????? ?? DOM ???? ??? ??? ???? ?????? ???? ?????? --}}
 <div id="manageMembersModal" class="modal-shell" style="display: none;" dir="rtl"
     onclick="handleModalClick(event, 'manageMembersModal')">
     <div class="modal-shell__dialog" onclick="event.stopPropagation()">
         <div class="modal-shell__header">
             <h3 class="modal-shell__title">
                 <i class="fas fa-users-cog me-2 text-blue-500"></i>
-                مدیریت اعضای گروه
+                ?????? ????? ????
             </h3>
-            <button type="button" class="modal-shell__close" onclick="closeManageMembersModal()">×</button>
+            <button type="button" class="modal-shell__close" onclick="closeManageMembersModal()">�</button>
         </div>
 
         <div class="modal-shell__form">
             <div id="members-loading" class="text-center py-8" style="display: none;">
                 <i class="fas fa-spinner fa-spin text-2xl text-blue-500"></i>
-                <p class="mt-2 text-slate-600">در حال بارگذاری...</p>
+                <p class="mt-2 text-slate-600">?? ??? ????????...</p>
             </div>
 
             <div id="members-error" class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-4"
@@ -4482,13 +4482,13 @@ document.addEventListener('keydown', function(e) {
 
             <div id="members-list"
                 style="max-height: 400px; overflow-y: auto; padding: 0.5rem 0; min-height: 100px; display: block; visibility: visible;">
-                <!-- لیست اعضا اینجا نمایش داده می‌شود -->
+                <!-- ???? ???? ????? ????? ???? ?????? -->
             </div>
         </div>
     </div>
 </div>
 
-{{-- Modal مدیریت گزارش‌ها --}}
+{{-- Modal ?????? ???????? --}}
 @if(($yourRole ?? 0) == 3)
 <div id="manageReportsModal" class="modal-shell" style="display: none;" dir="rtl"
     onclick="handleModalClick(event, 'manageReportsModal')">
@@ -4496,15 +4496,15 @@ document.addEventListener('keydown', function(e) {
         <div class="modal-shell__header">
             <h3 class="modal-shell__title">
                 <i class="fas fa-flag me-2 text-orange-500"></i>
-                مدیریت گزارش‌های پیام
+                ?????? ????????? ????
             </h3>
-            <button type="button" class="modal-shell__close" onclick="closeManageReportsModal()">×</button>
+            <button type="button" class="modal-shell__close" onclick="closeManageReportsModal()">�</button>
         </div>
 
         <div class="modal-shell__form">
             <div id="reports-loading" class="text-center py-8" style="display: none;">
                 <i class="fas fa-spinner fa-spin text-2xl text-orange-500"></i>
-                <p class="mt-2 text-slate-600">در حال بارگذاری...</p>
+                <p class="mt-2 text-slate-600">?? ??? ????????...</p>
             </div>
 
             <div id="reports-error" class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-4"
@@ -4514,7 +4514,7 @@ document.addEventListener('keydown', function(e) {
             </div>
 
             <div id="reports-list" class="space-y-3 max-h-96 overflow-y-auto">
-                <!-- لیست گزارش‌ها اینجا نمایش داده می‌شود -->
+                <!-- ???? ???????? ????? ????? ???? ?????? -->
             </div>
         </div>
     </div>
@@ -4523,7 +4523,7 @@ document.addEventListener('keydown', function(e) {
 
 </div>
 
-<!-- مدیریت حرفه‌ای اسکرول چت: ورود اول از ابتدا، ورودهای بعدی از اولین پیام نخوانده -->
+<!-- ?????? ??????? ?????? ??: ???? ??? ?? ?????? ??????? ???? ?? ????? ???? ??????? -->
 <script>
 (function() {
     'use strict';
@@ -4767,7 +4767,7 @@ document.addEventListener('keydown', function(e) {
 
         const label = divider.querySelector('.chat-unread-divider__label');
         if (label) {
-            label.textContent = 'پیام‌های خوانده‌نشده (' + count + ')';
+            label.textContent = '???????? ??????????? (' + count + ')';
         }
 
         divider.dataset.anchorId = anchorId;
@@ -4811,15 +4811,15 @@ document.addEventListener('keydown', function(e) {
         renderUnreadIndicators();
 
         if (!hasReadBefore) {
-            // اولین ورود واقعی (بدون سابقه خواندن): از ابتدای پیام‌ها
+            // ????? ???? ????? (???? ????? ??????): ?? ?????? ???????
             removeUnreadDivider();
             chatBox.scrollTop = 0;
         } else if (unreadTarget) {
-            // کاربر قبلا پیام خوانده و unread دارد: باز شدن روی اولین پیام خوانده‌نشده
+            // ????? ???? ???? ?????? ? unread ????: ??? ??? ??? ????? ???? ???????????
             sessionStorage.removeItem(scrollKey);
             focusUnreadTarget(unreadTarget);
         } else {
-            // کاربر قبلا پیام‌ها را دیده و پیام نخوانده‌ای ندارد: مستقیم آخرین پیام
+            // ????? ???? ??????? ?? ???? ? ???? ?????????? ?????: ?????? ????? ????
             sessionStorage.removeItem(scrollKey);
             removeUnreadDivider();
             scrollToLatest(false);
@@ -4834,7 +4834,7 @@ document.addEventListener('keydown', function(e) {
         updateScrollButtonVisibility();
     }
 
-    // چند بار بازیابی را تکرار می‌کنیم تا بعد از mount شدن کامل DOM دقیق بنشیند.
+    // ??? ??? ??????? ?? ????? ??????? ?? ??? ?? mount ??? ???? DOM ???? ??????.
     [0, 220, 620, 1200, 2000].forEach(delay => setTimeout(restoreInitialPosition, delay));
 
     let saveTimer = null;

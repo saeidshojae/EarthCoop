@@ -7,7 +7,7 @@
 
 
 <!-- Swiper -->
-<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-element-bundle.min.js"></script>
+<script src="{{ asset("vendor/swiper/swiper-element-bundle.min.js") }}"></script>
 
 
 <!-- Tailwind & Bootstrap CSS via Vite -->

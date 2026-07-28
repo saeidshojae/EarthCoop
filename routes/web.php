@@ -1146,6 +1146,7 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::post('/chat-requests/{chatRequest}/reject', [ChatRequestController::class, 'reject'])->name('chat-requests.reject');
     
     // Private Chat routes
+    Route::get('/private-chats', [PrivateChatController::class, 'index'])->name('private-chats.index');
     Route::get('/private-chats/{conversation}', [PrivateChatController::class, 'show'])->name('private-chats.show');
     Route::post('/private-chats/{conversation}/messages', [PrivateChatController::class, 'sendMessage'])->name('private-chats.send');
     
