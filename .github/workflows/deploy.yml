@@ -1,0 +1,50 @@
+name: FTP Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  ftp-deploy:
+    name: Deploy via FTP
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+
+    - name: Install Composer dependencies
+      run: composer install --no-dev --optimize-autoloader
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install NPM dependencies and build assets
+      run: |
+        npm ci
+        npm run build
+
+    - name: Sync files to cPanel via FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_HOST }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        server-dir: ${{ secrets.FTP_TARGET_DIR }}
+        exclude: |
+          **/.git*
+          **/.env
+          **/node_modules/**
+          **/vendor/**
+          **/tests/**
+          **/.github/**
+          storage/
