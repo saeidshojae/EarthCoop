@@ -124,7 +124,7 @@ class NajmHodaController extends Controller
             if (!(bool) ($response['success'] ?? false)) {
                 return response()->json([
                     'success' => false,
-                    'message' => (string) ($response['message'] ?? '???????? ????? ??? ???. ????? ?????? ???? ????.'),
+                    'message' => (string) ($response['message'] ??  'عملیات با خطا مواجه شد. لطفاً مجدداً تلاش کنید.'),
                     'agent' => (string) ($response['agent'] ?? 'system'),
                     'request_id' => (string) ($response['request_id'] ?? ''),
                     'response_time_ms' => (int) ($response['response_time_ms'] ?? 0),
@@ -136,7 +136,7 @@ class NajmHodaController extends Controller
                 'success' => true,
                 'message' => (string) ($response['message'] ?? ''),
                 'agent' => (string) ($response['agent'] ?? 'unknown'),
-                'agent_name' => (string) ($response['agent_name'] ?? '???????'),
+                'agent_name' => (string) ($response['agent_name'] ?? 'نجم هدا'),
                 'agent_icon' => (string) ($response['agent_icon'] ?? '??'),
                 'conversation_id' => $conversation->id,
                 'suggestions' => (array) ($response['suggestions'] ?? []),

@@ -1,5264 +1,0 @@
-﻿// Add styles for chat features
-
-const style = document.createElement('style');
-
-style.textContent = `
-
-    .chat-search-box {
-
-        position: fixed;
-
-        top: 50%;
-
-        left: 50%;
-
-        transform: translate(-50%, -50%);
-
-        background: white;
-
-        padding: 20px;
-
-        border-radius: 8px;
-
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-
-        z-index: 1000;
-
-        width: 80%;
-
-        max-width: 500px;
-
-    }
-
-
-
-    .search-header {
-
-        display: flex;
-
-        gap: 10px;
-
-        margin-bottom: 15px;
-
-    }
-
-
-
-    .search-header input {
-
-        flex: 1;
-
-        padding: 8px;
-
-        border: 1px solid #ddd;
-
-        border-radius: 4px;
-
-    }
-
-
-
-    .search-header button {
-
-        background: none;
-
-        border: none;
-
-        font-size: 20px;
-
-        cursor: pointer;
-
-    }
-
-
-
-    .search-results {
-
-        max-height: 300px;
-
-        overflow-y: auto;
-
-    }
-
-
-
-    .report-box {
-
-        position: fixed;
-
-        top: 50%;
-
-        left: 50%;
-
-        transform: translate(-50%, -50%);
-
-        background: white;
-
-        padding: 20px;
-
-        border-radius: 8px;
-
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-
-        z-index: 1000;
-
-        width: 80%;
-
-        max-width: 500px;
-
-    }
-
-
-
-    .report-header {
-
-        display: flex;
-
-        justify-content: space-between;
-
-        align-items: center;
-
-        margin-bottom: 15px;
-
-    }
-
-
-
-    .report-header button {
-
-        background: none;
-
-        border: none;
-
-        font-size: 20px;
-
-        cursor: pointer;
-
-    }
-
-
-
-    .report-content {
-
-        display: flex;
-
-        flex-direction: column;
-
-        gap: 15px;
-
-    }
-
-
-
-    .report-content select,
-
-    .report-content textarea {
-
-        padding: 8px;
-
-        border: 1px solid #ddd;
-
-        border-radius: 4px;
-
-    }
-
-
-
-    .report-content textarea {
-
-        min-height: 100px;
-
-        resize: vertical;
-
-    }
-
-
-
-    .report-content button {
-
-        background: #007bff;
-
-        color: white;
-
-        border: none;
-
-        padding: 10px;
-
-        border-radius: 4px;
-
-        cursor: pointer;
-
-    }
-
-
-
-    .report-content button:hover {
-
-        background: #0056b3;
-
-    }
-
-`;
-
-document.head.appendChild(style);
-
-
-
-
-
-// Helper function to get CSRF token safely
-
-function getCsrfToken() {
-
-    const metaTag = document.querySelector('meta[name="csrf-token"]');
-
-    if (!metaTag || !metaTag.content) {
-
-        console.error('CSRF token meta tag not found!');
-
-        return '';
-
-    }
-
-    return metaTag.content;
-
-}
-
-
-
-if (typeof window !== 'undefined' && !window.__chatPageUnloadBound) {
-
-    window.__chatPageUnloadBound = true;
-
-    window.__chatPageUnloading = false;
-
-    window.addEventListener('beforeunload', function () {
-
-        window.__chatPageUnloading = true;
-
-    });
-
-}
-
-
-
-async function safeReadJson(response) {
-
-    const text = await response.text();
-
-    if (!text) return {};
-
-
-
-    try {
-
-        return JSON.parse(text);
-
-    } catch (e) {
-
-        const start = text.indexOf('{');
-
-        const end = text.lastIndexOf('}');
-
-        if (start !== -1 && end !== -1 && end > start) {
-
-            try {
-
-                return JSON.parse(text.slice(start, end + 1));
-
-            } catch (_) {
-
-                // ignore
-
-            }
-
-        }
-
-        return { status: 'error', message: text.trim() || 'Invalid server response' };
-
-    }
-
-}
-
-
-
-// Chat runtime config helpers (non-breaking; defaults preserve current behavior)
-
-function getChatRuntimeConfig() {
-
-    const cfg = window.chatConfig || {};
-
-    return {
-
-        enabled: cfg.enabled !== false,
-
-        pollingIntervalMs: Number(cfg.pollingIntervalMs || 1800),
-
-        pollingMinIntervalMs: Number(cfg.pollingMinIntervalMs || 1000),
-
-        pollingMaxIntervalMs: Number(cfg.pollingMaxIntervalMs || 10000),
-
-    };
-
-}
-
-
-
-function resolvePollingIntervalMs() {
-
-    const cfg = getChatRuntimeConfig();
-
-    if (Number.isNaN(cfg.pollingIntervalMs)) {
-
-        return 1800;
-
-    }
-
-    return Math.max(cfg.pollingMinIntervalMs, Math.min(cfg.pollingMaxIntervalMs, cfg.pollingIntervalMs));
-
-}
-
-
-
-function isMessageRendered(messageId) {
-
-    if (!messageId) return false;
-
-    return !!document.querySelector(`[data-message-id="${messageId}"]`);
-
-}
-
-
-
-function getLastRenderedPostId() {
-
-    let maxId = 0;
-
-    document.querySelectorAll('[id^="blog-"]').forEach((el) => {
-
-        const id = Number(String(el.id || '').replace('blog-', ''));
-
-        if (!Number.isNaN(id) && id > maxId) {
-
-            maxId = id;
-
-        }
-
-    });
-
-    return maxId;
-
-}
-
-
-
-let postFeedSyncInFlight = false;
-
-async function syncPostFeed(groupId) {
-
-    if (!groupId || postFeedSyncInFlight) return;
-
-    postFeedSyncInFlight = true;
-
-    try {
-
-        const afterId = getLastRenderedPostId();
-
-        const response = await fetch(`/api/groups/${groupId}/posts/feed?after_id=${afterId}&limit=20`, {
-
-            method: 'GET',
-
-            headers: {
-
-                'Accept': 'application/json',
-
-                'X-Requested-With': 'XMLHttpRequest'
-
-            },
-
-            credentials: 'same-origin'
-
-        });
-
-
-
-        const data = await safeReadJson(response);
-
-        if (!response.ok || data?.status !== 'success' || !Array.isArray(data?.posts)) {
-
-            return;
-
-        }
-
-
-
-        data.posts.forEach((post) => {
-
-            if (!post?.id || !post?.html) return;
-
-            if (document.getElementById(`blog-${post.id}`)) return;
-
-            injectFeedHtml('post_created', post.html);
-
-        });
-
-    } catch (error) {
-
-        if (window.__chatPageUnloading || document.visibilityState === 'hidden') {
-
-            return;
-
-        }
-
-        console.warn('Post feed sync failed:', error);
-
-    } finally {
-
-        postFeedSyncInFlight = false;
-
-    }
-
-}
-
-
-
-let postReconcileInFlight = false;
-
-async function reconcileRenderedPosts(groupId) {
-
-    if (!groupId || postReconcileInFlight) return;
-
-
-
-    const renderedIds = Array.from(document.querySelectorAll('[id^="blog-"]'))
-
-        .map((el) => Number(String(el.id || '').replace('blog-', '')))
-
-        .filter((id) => !Number.isNaN(id) && id > 0)
-
-        .slice(0, 250);
-
-
-
-    if (!renderedIds.length) return;
-
-
-
-    postReconcileInFlight = true;
-
-    try {
-
-        const response = await fetch(`/api/groups/${groupId}/posts/reconcile`, {
-
-            method: 'POST',
-
-            headers: {
-
-                'Accept': 'application/json',
-
-                'Content-Type': 'application/json',
-
-                'X-Requested-With': 'XMLHttpRequest',
-
-                'X-CSRF-TOKEN': getCsrfToken()
-
-            },
-
-            credentials: 'same-origin',
-
-            body: JSON.stringify({ ids: renderedIds })
-
-        });
-
-
-
-        const data = await safeReadJson(response);
-
-        if (!response.ok || data?.status !== 'success' || !Array.isArray(data?.deleted_ids)) {
-
-            return;
-
-        }
-
-
-
-        data.deleted_ids.forEach((postId) => {
-
-            const postCard = document.getElementById(`blog-${postId}`);
-
-            const postWrapper = postCard ? (postCard.closest('.post-wrapper') || postCard) : null;
-
-            postWrapper?.remove();
-
-        });
-
-    } catch (error) {
-
-        if (window.__chatPageUnloading || document.visibilityState === 'hidden') {
-
-            return;
-
-        }
-
-        console.warn('Post reconcile failed:', error);
-
-    } finally {
-
-        postReconcileInFlight = false;
-
-    }
-
-}
-
-
-
-function initRealtimeMessages() {
-
-    const cfg = window.chatConfig || {};
-
-    const features = cfg.features || {};
-
-    const transport = String(cfg.transport || 'auto');
-
-    const realtimeEnabled = !!(features.realtimeMessages || features.realtimeReactions || features.realtimePosts || features.realtimePolls);
-
-    const websocketAllowed = transport === 'auto' || transport === 'websocket';
-
-
-
-    if (!realtimeEnabled || !websocketAllowed) return;
-
-    if (!window.groupId || !window.Echo || typeof window.Echo.private !== 'function') return;
-
-
-
-    const subscriptionKey = `group.${window.groupId}`;
-
-    if (window.__groupRealtimeSubscriptionKey === subscriptionKey) return;
-
-    window.__groupRealtimeSubscriptionKey = subscriptionKey;
-
-
-
-    try {
-
-        window.Echo.private(subscriptionKey)
-
-            .listen('.group.message.created', (eventData) => {
-
-                const message = eventData?.message || null;
-
-                if (!message || !message.id || isMessageRendered(message.id)) return;
-
-                if (typeof appendMessage === 'function') {
-
-                    appendMessage(message);
-
-                }
-
-            })
-
-            .listen('.group.message.updated', (eventData) => {
-
-                const action = eventData?.action || '';
-
-                const payload = eventData?.payload || {};
-
-                const messageId = payload?.message_id || null;
-
-
-
-                if (!messageId) return;
-
-
-
-                if (action === 'delete' || action === 'message_deleted') {
-
-                    const targets = new Set();
-
-                    document.querySelectorAll(`[data-message-id="${messageId}"]`).forEach((node) => {
-
-                        const row = node.closest('.message-row');
-
-                        targets.add(row || node);
-
-                    });
-
-                    targets.forEach((node) => {
-
-                        if (node && node.parentNode) {
-
-                            node.remove();
-
-                        }
-
-                    });
-
-
-
-                    if (typeof window.removePinnedListItem === 'function') {
-
-                        window.removePinnedListItem(messageId);
-
-                    }
-
-                    return;
-
-                }
-
-
-
-                if (action === 'reaction') {
-
-                    if (typeof window.updateMessageReactionsDisplay === 'function' && Array.isArray(payload.reactions)) {
-
-                        window.updateMessageReactionsDisplay(messageId, payload.reactions);
-
-                    }
-
-                    return;
-
-                }
-
-
-
-                if (action === 'pin') {
-
-                    if (typeof window.updatePinButtonsState === 'function') {
-
-                        window.updatePinButtonsState(messageId, !!payload.pinned);
-
-                    }
-
-                    if (payload.pinned === false && typeof window.removePinnedListItem === 'function') {
-
-                        window.removePinnedListItem(messageId);
-
-                    }
-
-                    if (typeof payload.pinned_count !== 'undefined') {
-
-                        if (typeof window.setPinnedCountAbsolute === 'function') {
-
-                            window.setPinnedCountAbsolute(payload.pinned_count);
-
-                        } else if (typeof window.updatePinnedCount === 'function') {
-
-                            window.updatePinnedCount(payload.pinned ? 1 : -1);
-
-                        }
-
-                    }
-
-                    return;
-
-                }
-
-            })
-
-            .listen('.group.poll.updated', (eventData) => {
-
-                const pollPayload = eventData?.poll || null;
-
-                const pollId = pollPayload?.id || null;
-
-                if (!pollPayload || !pollId) return;
-
-                applyPollVoteResponse(pollId, pollPayload);
-
-            })
-
-            .listen('.group.feed.updated', (eventData) => {
-
-                const evt = eventData || {};
-
-                const action = String(evt.action || '');
-
-                const postFeaturesEnabled = !!features.realtimePosts;
-
-                const pollFeaturesEnabled = !!features.realtimePolls;
-
-
-
-                if (action.startsWith('post_') && !postFeaturesEnabled) return;
-
-                if (action.startsWith('poll_') && !pollFeaturesEnabled) return;
-
-
-
-                applyGroupFeedUpdate(evt);
-
-            });
-
-    } catch (error) {
-
-        console.warn('Realtime subscription failed; polling remains active.', error);
-
-    }
-
-}
-
-
-
-function injectFeedHtml(action, html) {
-
-    if (!html) return null;
-
-    const chatBox = document.getElementById('chat-box');
-
-    if (!chatBox) return null;
-
-
-
-    const wrapper = document.createElement('div');
-
-    wrapper.innerHTML = html.trim();
-
-    const element = wrapper.firstElementChild;
-
-    if (!element) return null;
-
-
-
-    // Keep feed ordering consistent with current chat flow (newest at bottom)
-
-    chatBox.appendChild(element);
-
-    return element;
-
-}
-
-
-
-function replaceFeedItem(selector, html) {
-
-    if (!selector || !html) return false;
-
-    const current = document.querySelector(selector);
-
-    if (!current) return false;
-
-
-
-    const wrapper = document.createElement('div');
-
-    wrapper.innerHTML = html.trim();
-
-    const next = wrapper.firstElementChild;
-
-    if (!next) return false;
-
-
-
-    current.replaceWith(next);
-
-    return true;
-
-}
-
-
-
-function replacePostItem(postId, html) {
-
-    if (!postId || !html) return false;
-
-    const postCard = document.getElementById(`blog-${postId}`);
-
-    const currentWrapper = postCard ? (postCard.closest('.post-wrapper') || postCard) : null;
-
-    if (!currentWrapper) return false;
-
-
-
-    const wrapper = document.createElement('div');
-
-    wrapper.innerHTML = html.trim();
-
-    const next = wrapper.firstElementChild;
-
-    if (!next) return false;
-
-    currentWrapper.replaceWith(next);
-
-    return true;
-
-}
-
-
-
-function replacePollItem(pollId, html) {
-
-    if (!pollId || !html) return false;
-
-    const pollCard = document.getElementById(`poll-${pollId}`);
-
-    const currentWrapper = pollCard ? (pollCard.closest('.poll-wrapper') || pollCard) : null;
-
-    if (!currentWrapper) return false;
-
-
-
-    const wrapper = document.createElement('div');
-
-    wrapper.innerHTML = html.trim();
-
-    const next = wrapper.firstElementChild;
-
-    if (!next) return false;
-
-    currentWrapper.replaceWith(next);
-
-    return true;
-
-}
-
-
-
-function applyGroupFeedUpdate(eventData) {
-
-    const action = eventData?.action || '';
-
-    const payload = eventData?.payload || {};
-
-
-
-    if (!action) return;
-
-
-
-    if (action === 'post_created') {
-
-        const postId = payload?.post_id;
-
-        if (postId && document.getElementById(`blog-${postId}`)) return;
-
-        injectFeedHtml(action, payload?.html || '');
-
-        return;
-
-    }
-
-
-
-    if (action === 'post_updated') {
-
-        const postId = payload?.post_id;
-
-        if (!postId) return;
-
-        replacePostItem(postId, payload?.html || '');
-
-        return;
-
-    }
-
-
-
-    if (action === 'post_deleted') {
-
-        const postId = payload?.post_id;
-
-        if (!postId) return;
-
-        const postCard = document.getElementById(`blog-${postId}`);
-
-        const postWrapper = postCard ? (postCard.closest('.post-wrapper') || postCard) : null;
-
-        postWrapper?.remove();
-
-        return;
-
-    }
-
-
-
-    if (action === 'post_reaction') {
-
-        updatePostReactionUi(payload?.post_id, payload?.likes, payload?.dislikes);
-
-        return;
-
-    }
-
-
-
-    if (action === 'poll_created') {
-
-        const pollId = payload?.poll_id;
-
-        if (pollId && document.getElementById(`poll-${pollId}`)) return;
-
-        injectFeedHtml(action, payload?.html || '');
-
-        return;
-
-    }
-
-
-
-    if (action === 'poll_updated') {
-
-        const pollId = payload?.poll_id;
-
-        if (!pollId) return;
-
-        replacePollItem(pollId, payload?.html || '');
-
-        return;
-
-    }
-
-
-
-    if (action === 'poll_deleted') {
-
-        const pollId = payload?.poll_id;
-
-        if (!pollId) return;
-
-        const pollCard = document.getElementById(`poll-${pollId}`);
-
-        const pollWrapper = pollCard ? (pollCard.closest('.poll-wrapper') || pollCard) : null;
-
-        pollWrapper?.remove();
-
-    }
-
-}
-
-
-
-document.addEventListener('DOMContentLoaded', function () {
-
-    const tabs = document.querySelectorAll('.tab');
-
-    const contents = document.querySelectorAll('.tab-content');
-
-
-
-    tabs.forEach(tab => {
-
-      tab.addEventListener('click', () => {
-
-        tabs.forEach(t => t.classList.remove('active'));
-
-        contents.forEach(c => c.classList.remove('active'));
-
-
-
-        tab.classList.add('active');
-
-        const tabId = tab.getAttribute('data-tab');
-
-        const target = document.getElementById(tabId);
-
-        if (target) target.classList.add('active');
-
-      });
-
-    });
-
-  });
-
-
-
-function applyPollVoteResponse(pollId, payload) {
-
-    if (!payload || !Array.isArray(payload.options)) return false;
-
-
-
-    const wrapper = document.getElementById(`poll-${pollId}`) ||
-
-        document.querySelector(`.poll-option[data-poll-id="${pollId}"]`)?.closest('.poll-wrapper');
-
-
-
-    if (!wrapper) return false;
-
-
-
-    const optionsMap = new Map(payload.options.map((o) => [Number(o.id), o]));
-
-    const optionButtons = wrapper.querySelectorAll(`.poll-option[data-poll-id="${pollId}"]`);
-
-
-
-    optionButtons.forEach((btn) => {
-
-        const optionId = Number(btn.dataset.optionId);
-
-        const optionData = optionsMap.get(optionId);
-
-        const stat = btn.querySelector('.poll-option__stat');
-
-
-
-        if (optionData && stat) {
-
-            stat.textContent = `${Number(optionData.percent || 0)}%`;
-
-        }
-
-
-
-        const isSelected = optionId === Number(payload.user_option_id);
-
-        btn.classList.toggle('poll-option--selected', isSelected);
-
-        btn.classList.toggle('voted', isSelected);
-
-    });
-
-
-
-    const totalEl = wrapper.querySelector('.poll-card__total');
-
-    if (totalEl && typeof payload.total_votes !== 'undefined') {
-
-        const labelPrefix = (totalEl.textContent || '').split(':')[0] || 'Votes';
-
-        totalEl.textContent = `${labelPrefix}: ${Number(payload.total_votes)}`;
-
-    }
-
-
-
-    return true;
-
-}
-
-
-
-function submitVote(el) {
-
-    const pollId = $(el).data('poll-id');
-
-    const optionId = $(el).data('option-id');
-
-
-
-    if ($(el).hasClass('voted')) return;
-
-
-
-    // Ã˜Â°Ã˜Â®Ã›Å’Ã˜Â±Ã™â€¡ Ã™â€¦Ã™Ë†Ã™â€šÃ˜Â¹Ã›Å’Ã˜Âª scroll Ã™â€šÃ˜Â¨Ã™â€ž Ã˜Â§Ã˜Â² Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž
-
-    const chatBox = document.getElementById('chat-box');
-
-    if (chatBox) {
-
-        const scrollPosition = chatBox.scrollTop;
-
-        // Ã˜Â§Ã˜Â³Ã˜ÂªÃ™ÂÃ˜Â§Ã˜Â¯Ã™â€¡ Ã˜Â§Ã˜Â² window.groupId ÃšÂ©Ã™â€¡ Ã˜Â¯Ã˜Â± chat.blade.php Ã˜ÂªÃ˜Â¹Ã˜Â±Ã›Å’Ã™Â Ã˜Â´Ã˜Â¯Ã™â€¡
-
-        const groupId = window.groupId || (typeof GROUP_ID !== 'undefined' ? GROUP_ID : 'default');
-
-        const STORAGE_KEY = 'chatScroll_' + groupId;
-
-        sessionStorage.setItem(STORAGE_KEY, scrollPosition);
-
-        
-
-        // Ã™â€¡Ã™â€¦Ãšâ€ Ã™â€ Ã›Å’Ã™â€  Ã˜Â¢Ã˜Â®Ã˜Â±Ã›Å’Ã™â€  Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦ visible Ã˜Â±Ã˜Â§ Ã˜Â°Ã˜Â®Ã›Å’Ã˜Â±Ã™â€¡ ÃšÂ©Ã™â€ 
-
-        const messages = chatBox.querySelectorAll('[data-message-id]');
-
-        let lastVisibleId = null;
-
-        for (let i = messages.length - 1; i >= 0; i--) {
-
-            const msg = messages[i];
-
-            const rect = msg.getBoundingClientRect();
-
-            const chatBoxRect = chatBox.getBoundingClientRect();
-
-            if (rect.top >= chatBoxRect.top && rect.bottom <= chatBoxRect.bottom) {
-
-                const messageId = parseInt(msg.getAttribute('data-message-id'));
-
-                if (messageId && !isNaN(messageId)) {
-
-                    lastVisibleId = messageId;
-
-                    break;
-
-                }
-
-            }
-
-        }
-
-        if (lastVisibleId) {
-
-            sessionStorage.setItem('lastVisibleMessageId_' + groupId, lastVisibleId);
-
-        }
-
-    }
-
-
-
-    $.ajax({
-
-        url: `/polls/${pollId}/vote`,
-
-        method: 'POST',
-
-        headers: {
-
-            'X-CSRF-TOKEN': getCsrfToken()
-
-        },
-
-        data: {
-
-            option_id: optionId
-
-        },
-
-        success: function(data) {
-
-            if (data.status === 'success') {
-
-                const pollNoReloadEnabled = !!(window.chatConfig && window.chatConfig.features && window.chatConfig.features.pollNoReload);
-
-                const updatedInPlace = pollNoReloadEnabled && applyPollVoteResponse(pollId, data.poll || null);
-
-                if (!updatedInPlace) {
-
-                    console.warn('Poll vote accepted but in-place render skipped; waiting for sync.');
-
-                }
-
-            } else {
-
-              showErrorAlert(data.message || 'Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â«Ã˜Â¨Ã˜Âª Ã˜Â±Ã˜Â£Ã›Å’');
-
-            }
-
-        },
-
-        error: function(xhr, status, error) {
-
-            console.error('Ã¢ÂÅ’ Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â§Ã˜ÂªÃ˜ÂµÃ˜Â§Ã™â€ž:', error);
-
-            showErrorAlert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â§Ã˜ÂªÃ˜ÂµÃ˜Â§Ã™â€ž Ã˜Â¨Ã™â€¡ Ã˜Â³Ã˜Â±Ã™Ë†Ã˜Â±');
-
-        }
-
-    });
-
-}
-
-
-
-$(document).ready(function() {
-
-  // Select2 Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ options (Ã™â€ Ã™â€¡ manager_vote Ã™Ë† inspector_vote ÃšÂ©Ã™â€¡ Ã˜Â¯Ã˜Â± election_modal Ã™â€¦Ã˜Â¯Ã›Å’Ã˜Â±Ã›Å’Ã˜Âª Ã™â€¦Ã›Å’Ã¢â‚¬Å’Ã˜Â´Ã™Ë†Ã™â€ Ã˜Â¯)
-
-  if ($('#options').length && !$('#options').data('select2')) {
-
-    $('#options').select2({
-
-      placeholder: "Ã˜Â§Ã™â€ Ã˜ÂªÃ˜Â®Ã˜Â§Ã˜Â¨ ÃšÂ©Ã™â€ Ã›Å’Ã˜Â¯",
-
-      dir: "rtl",
-
-      tags: 'true'
-
-    });
-
-  }
-
-  
-
-  // Select2 Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ manager_vote Ã™Ë† inspector_vote Ã™ÂÃ™â€šÃ˜Â· Ã˜Â§ÃšÂ¯Ã˜Â± Ã˜Â¯Ã˜Â± election modal Ã™â€ Ã˜Â¨Ã˜Â§Ã˜Â´Ã™â€ Ã˜Â¯
-
-  // Ã›Å’Ã˜Â§ Ã˜Â§ÃšÂ¯Ã˜Â± Ã˜ÂªÃ˜Â§Ã˜Â¨Ã˜Â¹ updateElectionSelect2 Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯ Ã™â€ Ã˜Â¨Ã˜Â§Ã˜Â´Ã˜Â¯
-
-  if (!$('#electionVotingOverlay').length || typeof updateElectionSelect2 === 'undefined') {
-
-    if ($('#manager_vote').length && !$('#manager_vote').data('select2')) {
-
-  $('#manager_vote').select2({
-
-    multiple: true,
-
-    placeholder: "Ã˜Â§Ã™â€ Ã˜ÂªÃ˜Â®Ã˜Â§Ã˜Â¨ ÃšÂ©Ã™â€ Ã›Å’Ã˜Â¯",
-
-    dir: "rtl",
-
-  });
-
-    }
-
-    if ($('#inspector_vote').length && !$('#inspector_vote').data('select2')) {
-
-  $('#inspector_vote').select2({
-
-    multiple: true,
-
-    placeholder: "Ã˜Â§Ã™â€ Ã˜ÂªÃ˜Â®Ã˜Â§Ã˜Â¨ ÃšÂ©Ã™â€ Ã›Å’Ã˜Â¯",
-
-    dir: "rtl",
-
-  });
-
-    }
-
-  }
-
-
-
-  $('#electionForm').on('submit', function (e) {
-
-    const inspectorSelectedCount = $('#inspector_vote').val()?.length || 0;
-
-    const managerSelectedCount   = $('#manager_vote').val()?.length || 0;
-
-    if (inspectorSelectedCount > inspectorCount) {
-
-      e.preventDefault();
-
-      showWarningAlert(`Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã˜ÂªÃ˜Â¹Ã˜Â¯Ã˜Â§Ã˜Â¯ Ã˜Â¨Ã˜Â§Ã˜Â²Ã˜Â±Ã˜Â³ Ã˜Â¯Ã™â€šÃ›Å’Ã™â€šÃ˜Â§Ã™â€¹ ${inspectorCount} ÃšÂ¯Ã˜Â²Ã›Å’Ã™â€ Ã™â€¡ Ã˜Â§Ã™â€ Ã˜ÂªÃ˜Â®Ã˜Â§Ã˜Â¨ ÃšÂ©Ã™â€ Ã›Å’Ã˜Â¯.`);
-
-      return;
-
-    }
-
-  
-
-    if (managerSelectedCount > manageCount) {
-
-      e.preventDefault();
-
-      showWarningAlert(`Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã˜ÂªÃ˜Â¹Ã˜Â¯Ã˜Â§Ã˜Â¯ Ã™â€¦Ã˜Â¯Ã›Å’Ã˜Â± Ã˜Â¯Ã™â€šÃ›Å’Ã™â€šÃ˜Â§Ã™â€¹ ${manageCount} ÃšÂ¯Ã˜Â²Ã›Å’Ã™â€ Ã™â€¡ Ã˜Â§Ã™â€ Ã˜ÂªÃ˜Â®Ã˜Â§Ã˜Â¨ ÃšÂ©Ã™â€ Ã›Å’Ã˜Â¯.`);
-
-      return;
-
-    }
-
-  
-
-    // Ã™â€¡Ã™â€¦Ã™â€¡Ã¢â‚¬Å’Ãšâ€ Ã›Å’Ã˜Â² Ã˜Â§Ã™Ë†ÃšÂ©Ã›Å’ => Ã™ÂÃ˜Â±Ã™â€¦ Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã™â€¦Ã›Å’Ã¢â‚¬Å’Ã˜Â´Ã™â€¡
-
-  });
-
-  
-
-
-
-  
-
-
-
-});
-
-
-
-function openElectionBox(){
-
-  const overlay = document.getElementById('electionVotingOverlay');
-
-  if (overlay) {
-
-    // Move overlay to body if not already there
-
-    if (overlay.parentElement !== document.body) {
-
-      document.body.appendChild(overlay);
-
-    }
-
-    overlay.style.display = 'flex';
-
-    document.body.style.overflow = 'hidden';
-
-    // Scroll to top of overlay
-
-    overlay.scrollTop = 0;
-
-    
-
-    // Trigger event Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã˜Â¨Ã˜Â±Ã™Ë†Ã˜Â²Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ Ã›Å’ Select2 Ã˜Â¨Ã˜Â¹Ã˜Â¯ Ã˜Â§Ã˜Â² Ã˜Â¨Ã˜Â§Ã˜Â² Ã˜Â´Ã˜Â¯Ã™â€  Ã™â€¦Ã˜Â¯Ã˜Â§Ã™â€ž
-
-    setTimeout(function() {
-
-      if (typeof window.updateElectionSelect2 === 'function') {
-
-        window.updateElectionSelect2();
-
-      }
-
-      // Dispatch custom event Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã˜Â§Ã˜Â·Ã™â€žÃ˜Â§Ã˜Â¹ Ã˜Â³Ã˜Â§Ã›Å’Ã˜Â± ÃšÂ©Ã˜Â¯Ã™â€¡Ã˜Â§
-
-      try {
-
-        const event = new Event('electionModalOpened');
-
-        window.dispatchEvent(event);
-
-      } catch(e) {
-
-        // Fallback for older browsers
-
-        try {
-
-          var event = document.createEvent('Event');
-
-          event.initEvent('electionModalOpened', true, true);
-
-          window.dispatchEvent(event);
-
-        } catch(e2) {
-
-          console.error('Error dispatching event:', e2);
-
-        }
-
-      }
-
-    }, 600);
-
-  }
-
-  closeGroupInfo();
-
-}
-
-
-
-function closeElectionBox(){
-
-  const overlay = document.getElementById('electionVotingOverlay');
-
-  if (overlay) {
-
-    overlay.style.display = 'none';
-
-    document.body.style.overflow = '';
-
-  }
-
-}
-
-
-
-// Close election modal on Escape key
-
-document.addEventListener('keydown', function(e) {
-
-  if (e.key === 'Escape') {
-
-    const overlay = document.getElementById('electionVotingOverlay');
-
-    if (overlay && overlay.style.display === 'flex') {
-
-      closeElectionBox();
-
-    }
-
-  }
-
-});
-
-
-
-let postReactionDelegatedHandlerInstalled = false;
-
-function initPostReactionActions() {
-
-  if (postReactionDelegatedHandlerInstalled) return;
-
-  postReactionDelegatedHandlerInstalled = true;
-
-
-
-  document.addEventListener('click', function (event) {
-
-    const likeButton = event.target.closest('.reaction-buttons .btn-like');
-
-    const dislikeButton = event.target.closest('.reaction-buttons .btn-dislike');
-
-    const button = likeButton || dislikeButton;
-
-    if (!button) return;
-
-
-
-    const container = button.closest('.reaction-buttons');
-
-    const blogId = container?.dataset?.postId;
-
-    if (!container || !blogId) return;
-
-
-
-    event.preventDefault();
-
-    const reactionType = likeButton ? '1' : '0';
-
-    sendReaction(blogId, reactionType, container);
-
-  });
-
-}
-
-document.addEventListener('DOMContentLoaded', initPostReactionActions);
-
-
-
-  
-
-function sendReaction(blogId, type, container) {
-
-  $.ajax({
-
-    url: `/blogs/${blogId}/react`,
-
-    method: 'POST',
-
-    data: {
-
-      type: type,
-
-      _token: getCsrfToken()
-
-    },
-
-    success: function (data) {
-
-      if (data.status === 'success') {
-
-        updatePostReactionUi(blogId, data.likes, data.dislikes, type);
-
-      } else {
-
-        showErrorAlert(data.message || 'Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â«Ã˜Â¨Ã˜Âª Ã™Ë†Ã˜Â§ÃšÂ©Ã™â€ Ã˜Â´');
-
-      }
-
-    },
-
-    error: function () {
-
-      showErrorAlert('Ã¢ÂÅ’ Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â§Ã˜Â±Ã˜ÂªÃ˜Â¨Ã˜Â§Ã˜Â· Ã˜Â¨Ã˜Â§ Ã˜Â³Ã˜Â±Ã™Ë†Ã˜Â±');
-
-    }
-
-  });
-
-}
-
-
-
-function updatePostReactionUi(postId, likes, dislikes, activeType = null) {
-
-  const container = document.querySelector(`.reaction-buttons[data-post-id="${postId}"]`);
-
-  if (!container) return;
-
-
-
-  const likeCountEl = container.querySelector('.like-count');
-
-  const dislikeCountEl = container.querySelector('.dislike-count');
-
-  const likeBtn = container.querySelector('.btn-like');
-
-  const dislikeBtn = container.querySelector('.btn-dislike');
-
-
-
-  if (likeCountEl && typeof likes !== 'undefined') {
-
-    likeCountEl.textContent = String(likes);
-
-  }
-
-  if (dislikeCountEl && typeof dislikes !== 'undefined') {
-
-    dislikeCountEl.textContent = String(dislikes);
-
-  }
-
-
-
-  if (activeType === '1') {
-
-    likeBtn?.classList.add('active');
-
-    dislikeBtn?.classList.remove('active');
-
-  } else if (activeType === '0') {
-
-    dislikeBtn?.classList.add('active');
-
-    likeBtn?.classList.remove('active');
-
-  }
-
-}
-
-
-
-function isRichTextEmpty(html) {
-
-  if (html == null) return true;
-
-  const normalized = String(html)
-
-    .replace(/<br\s*\/?>/gi, ' ')
-
-    .replace(/<\/p>/gi, ' ')
-
-    .replace(/<[^>]+>/g, ' ')
-
-    .replace(/&nbsp;/gi, ' ')
-
-    .replace(/\s+/g, '')
-
-    .trim();
-
-  return normalized.length === 0;
-
-}
-
-
-
-function setButtonLoadingState(button, isLoading, loadingText) {
-
-  if (!button) return;
-
-
-
-  if (isLoading) {
-
-    if (!button.dataset.originalHtml) {
-
-      button.dataset.originalHtml = button.innerHTML;
-
-    }
-
-    button.disabled = true;
-
-    button.setAttribute('aria-busy', 'true');
-
-    button.innerHTML = `<i class="fas fa-spinner fa-spin" style="margin-left:6px;"></i>${loadingText || 'در حال ارسال...'}`;
-
-    return;
-
-  }
-
-
-
-  button.disabled = false;
-
-  button.removeAttribute('aria-busy');
-
-  if (button.dataset.originalHtml) {
-
-    button.innerHTML = button.dataset.originalHtml;
-
-  }
-
-}
-
-function wireFeedCreateForms() {
-
-    const postForm = document.getElementById('postForm');
-
-  if (postForm && !postForm.dataset.ajaxBound) {
-
-    postForm.dataset.ajaxBound = '1';
-
-    postForm.addEventListener('submit', async function (event) {
-
-      event.preventDefault();
-
-
-
-      const submitBtn = postForm.querySelector('button[type="submit"]');
-
-      if (submitBtn?.dataset.inFlight === '1') {
-
-        return;
-
-      }
-
-
-
-      let editorContent = '';
-
-      if (window.CKEDITOR?.instances?.post_editor) {
-
-        const postEditor = window.CKEDITOR.instances.post_editor;
-
-        postEditor.updateElement();
-
-        editorContent = postEditor.getData() || '';
-
-      } else {
-
-        editorContent = document.getElementById('post_editor')?.value || '';
-
-      }
-
-
-
-      if (isRichTextEmpty(editorContent)) {
-
-        showErrorAlert('متن پست الزامی است.');
-
-        return;
-
-      }
-
-
-
-      const formData = new FormData(postForm);
-
-      formData.set('content', editorContent);
-
-
-
-      try {
-
-        if (submitBtn) {
-
-          submitBtn.dataset.inFlight = '1';
-
-          setButtonLoadingState(submitBtn, true, 'در حال انتشار...');
-
-        }
-
-
-
-        const response = await fetch(postForm.action, {
-
-          method: 'POST',
-
-          headers: {
-
-            'Accept': 'application/json',
-
-            'X-Requested-With': 'XMLHttpRequest',
-
-            'X-CSRF-TOKEN': getCsrfToken()
-
-          },
-
-          body: formData,
-
-          credentials: 'same-origin'
-
-        });
-
-        const data = await safeReadJson(response);
-
-        if (!response.ok || data.status !== 'success') {
-
-          if (response.status === 422 && data?.errors) {
-
-            const messages = Object.values(data.errors).flat().join('\n');
-
-            throw new Error(messages || data.message || 'خطا در اعتبارسنجی پست');
-
-          }
-
-          throw new Error(data.message || 'خطا در ایجاد پست');
-
-        }
-
-
-
-        if (data?.post?.html) {
-
-          applyGroupFeedUpdate({
-
-            action: 'post_created',
-
-            payload: {
-
-              post_id: data.post.id,
-
-              html: data.post.html
-
-            }
-
-          });
-
-        }
-
-
-
-        postForm.reset();
-
-        if (window.CKEDITOR?.instances?.post_editor) {
-
-          window.CKEDITOR.instances.post_editor.setData('');
-
-        }
-
-        if (typeof window.cancelPostForm === 'function') {
-
-          window.cancelPostForm();
-
-        }
-
-      } catch (error) {
-
-        showErrorAlert(error.message || 'خطا در ایجاد پست');
-
-      } finally {
-
-        if (submitBtn) {
-
-          submitBtn.dataset.inFlight = '0';
-
-          setButtonLoadingState(submitBtn, false);
-
-        }
-
-      }
-
-    });
-
-  }
-
-
-
-  const pollForm = document.getElementById('pollForm');
-
-  if (pollForm && !pollForm.dataset.ajaxBound) {
-
-    pollForm.dataset.ajaxBound = '1';
-
-    pollForm.addEventListener('submit', async function (event) {
-
-      event.preventDefault();
-
-      const formData = new FormData(pollForm);
-
-
-
-      try {
-
-        const response = await fetch(pollForm.action, {
-
-          method: 'POST',
-
-          headers: {
-
-            'Accept': 'application/json',
-
-            'X-Requested-With': 'XMLHttpRequest',
-
-            'X-CSRF-TOKEN': getCsrfToken()
-
-          },
-
-          body: formData,
-
-          credentials: 'same-origin'
-
-        });
-
-        const data = await safeReadJson(response);
-
-        if (!response.ok || data.status !== 'success') {
-
-          throw new Error(data.message || 'Ø®Ø·Ø§ Ø¯Ø± Ø§ÛŒØ¬Ø§Ø¯ Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ');
-
-        }
-
-
-
-        if (data?.poll?.html) {
-
-          applyGroupFeedUpdate({
-
-            action: 'poll_created',
-
-            payload: {
-
-              poll_id: data.poll.id,
-
-              html: data.poll.html
-
-            }
-
-          });
-
-        }
-
-
-
-        pollForm.reset();
-
-        const pollType = document.getElementById('poll_type');
-
-        const specialtiesBox = document.getElementById('specialties_box');
-
-        if (pollType) pollType.value = '0';
-
-        if (specialtiesBox) specialtiesBox.style.display = 'none';
-
-        const optionsContainer = document.getElementById('dynamic-inputs');
-
-        if (optionsContainer) {
-
-          optionsContainer.innerHTML = '<input type="text" name="options[]" placeholder="Ú¯Ø²ÛŒÙ†Ù‡ 1" class="modal-input mb-2" />';
-
-        }
-
-        if (typeof window.cancelPollForm === 'function') {
-
-          window.cancelPollForm();
-
-        }
-
-      } catch (error) {
-
-        showErrorAlert(error.message || 'Ø®Ø·Ø§ Ø¯Ø± Ø§ÛŒØ¬Ø§Ø¯ Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ');
-
-      }
-
-    });
-
-  }
-
-
-
-  if (!document.body.dataset.pollEditAjaxBound) {
-
-    document.body.dataset.pollEditAjaxBound = '1';
-
-    document.addEventListener('submit', async function (event) {
-
-      const form = event.target.closest('.post-edit-form form[action*="/poll/"]');
-
-      if (!form) return;
-
-
-
-      event.preventDefault();
-
-      const formData = new FormData(form);
-
-
-
-      try {
-
-        const response = await fetch(form.action, {
-
-          method: 'POST',
-
-          headers: {
-
-            'Accept': 'application/json',
-
-            'X-Requested-With': 'XMLHttpRequest',
-
-            'X-CSRF-TOKEN': getCsrfToken()
-
-          },
-
-          body: formData,
-
-          credentials: 'same-origin'
-
-        });
-
-        const data = await safeReadJson(response);
-
-        if (!response.ok || data.status !== 'success') {
-
-          throw new Error(data.message || 'Ø®Ø·Ø§ Ø¯Ø± ÙˆÛŒØ±Ø§ÛŒØ´ Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ');
-
-        }
-
-
-
-        if (data?.poll?.html) {
-
-          applyGroupFeedUpdate({
-
-            action: 'poll_updated',
-
-            payload: {
-
-              poll_id: data.poll.id,
-
-              html: data.poll.html
-
-            }
-
-          });
-
-        }
-
-      } catch (error) {
-
-        showErrorAlert(error.message || 'Ø®Ø·Ø§ Ø¯Ø± ÙˆÛŒØ±Ø§ÛŒØ´ Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ');
-
-      }
-
-    });
-
-  }
-
-}
-
-document.addEventListener('DOMContentLoaded', wireFeedCreateForms);
-
-
-
-
-
-
-
-function openGroupInfo() {
-
-  const panel = document.getElementById('groupInfoPanel');
-
-  const backdrop = document.getElementById('groupInfoBackdrop');
-
-  if (!panel) return;
-
-
-
-  if (window.innerWidth < 1024) {
-
-    panel.classList.add('is-open');
-
-    if (backdrop) {
-
-      backdrop.classList.remove('hidden');
-
-      backdrop.classList.add('group-info-backdrop--visible');
-
-    }
-
-  }
-
-}
-
-
-
-function closeGroupInfo() {
-
-  const panel = document.getElementById('groupInfoPanel');
-
-  const backdrop = document.getElementById('groupInfoBackdrop');
-
-  if (!panel) return;
-
-
-
-  panel.classList.remove('is-open');
-
-  if (backdrop) {
-
-    backdrop.classList.add('hidden');
-
-    backdrop.classList.remove('group-info-backdrop--visible');
-
-  }
-
-}
-
-
-
-document.getElementById('groupInfoBackdrop')?.addEventListener('click', closeGroupInfo);
-
-window.addEventListener('resize', () => {
-
-  if (window.innerWidth >= 1024) {
-
-    closeGroupInfo();
-
-  }
-
-});
-
-document.addEventListener('keydown', (event) => {
-
-  if (event.key === 'Escape') {
-
-    closeGroupInfo();
-
-  }
-
-});
-
-
-
-document.addEventListener('DOMContentLoaded', () => {
-
-  const closeAllMenus = (except = null) => {
-
-    document.querySelectorAll('[data-action-menu]').forEach(menu => {
-
-      if (menu !== except) {
-
-        menu.classList.remove('is-open');
-
-        menu.querySelector('.action-menu__toggle')?.setAttribute('aria-expanded', 'false');
-
-      }
-
-    });
-
-  };
-
-
-
-  document.addEventListener('click', event => {
-
-    const toggle = event.target.closest('[data-action-menu] .action-menu__toggle');
-
-    if (toggle) {
-
-      const menu = toggle.closest('[data-action-menu]');
-
-      const isOpen = menu?.classList.contains('is-open');
-
-      closeAllMenus();
-
-      if (menu && !isOpen) {
-
-        menu.classList.add('is-open');
-
-        toggle.setAttribute('aria-expanded', 'true');
-
-      }
-
-      event.preventDefault();
-
-      event.stopPropagation();
-
-      return;
-
-    }
-
-
-
-    const clickedInMenuItem = event.target.closest('[data-action-menu] .action-menu__list button, [data-action-menu] .action-menu__list a');
-
-    if (clickedInMenuItem) {
-
-      closeAllMenus();
-
-      return;
-
-    }
-
-
-
-    const clickedInsideAnyMenu = event.target.closest('[data-action-menu]');
-
-    if (!clickedInsideAnyMenu) {
-
-      closeAllMenus();
-
-    }
-
-  });
-
-
-
-  document.addEventListener('keydown', event => {
-
-    if (event.key === 'Escape') {
-
-      closeAllMenus();
-
-    }
-
-  });
-
-});
-
-
-
-
-
-// Handle modal click - close if clicked outside dialog
-
-window.handleModalClick = function(event, modalId) {
-
-    // Ã˜Â§ÃšÂ¯Ã˜Â± Ã˜Â±Ã™Ë†Ã›Å’ Ã˜Â®Ã™Ë†Ã˜Â¯ dialog Ã›Å’Ã˜Â§ Ã˜Â¯Ã˜Â§Ã˜Â®Ã™â€ž dialog ÃšÂ©Ã™â€žÃ›Å’ÃšÂ© Ã˜Â´Ã˜Â¯Ã™â€¡Ã˜Å’ Ã™â€ Ã˜Â¨Ã˜Â§Ã›Å’Ã˜Â¯ Ã˜Â¨Ã˜Â³Ã˜ÂªÃ™â€¡ Ã˜Â´Ã™Ë†Ã˜Â¯
-
-    const dialog = event.currentTarget.querySelector('.modal-shell__dialog');
-
-    if (dialog && (event.target === dialog || dialog.contains(event.target))) {
-
-        return;
-
-    }
-
-    
-
-    // Ã˜Â§ÃšÂ¯Ã˜Â± Ã˜Â±Ã™Ë†Ã›Å’ backdrop Ã›Å’Ã˜Â§ Ã˜Â®Ã˜Â§Ã˜Â±Ã˜Â¬ Ã˜Â§Ã˜Â² dialog ÃšÂ©Ã™â€žÃ›Å’ÃšÂ© Ã˜Â´Ã˜Â¯Ã™â€¡Ã˜Å’ modal Ã˜Â±Ã˜Â§ Ã˜Â¨Ã˜Â¨Ã™â€ Ã˜Â¯
-
-    if (modalId === 'postFormBox') {
-
-        window.cancelPostForm();
-
-    } else if (modalId === 'pollOptionsBox') {
-
-        window.cancelPollForm();
-
-    } else if (modalId === 'manageMembersModal') {
-
-        if (typeof window.closeManageMembersModal === 'function') {
-
-            window.closeManageMembersModal();
-
-        }
-
-    } else if (modalId === 'manageReportsModal') {
-
-        if (typeof window.closeManageReportsModal === 'function') {
-
-            window.closeManageReportsModal();
-
-        }
-
-    } else if (modalId === 'groupSettingsModal') {
-
-        if (typeof window.closeGroupSettingsModal === 'function') {
-
-            window.closeGroupSettingsModal();
-
-        }
-
-    }
-
-};
-
-
-
-// Make functions available in global scope
-
-window.openBlogBox = function(){
-
-    // Ã˜Â­Ã˜Â°Ã™Â element #back Ã˜Â§ÃšÂ¯Ã˜Â± Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯ Ã˜Â¯Ã˜Â§Ã˜Â±Ã˜Â¯
-
-    const back = document.querySelector('#back');
-
-    if (back) {
-
-        back.style.display = 'none';
-
-    }
-
-    
-
-    const postFormBox = document.querySelector('#postFormBox');
-
-    if (postFormBox) {
-
-        postFormBox.style.display = 'flex';
-
-        postFormBox.style.setProperty('display', 'flex', 'important');
-
-    }
-
-};
-
-
-
-window.openPollBox = function(){
-
-    // Ã˜Â­Ã˜Â°Ã™Â element #back Ã˜Â§ÃšÂ¯Ã˜Â± Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯ Ã˜Â¯Ã˜Â§Ã˜Â±Ã˜Â¯
-
-    const back = document.querySelector('#back');
-
-    if (back) {
-
-        back.style.display = 'none';
-
-    }
-
-    
-
-    const pollOptionsBox = document.querySelector('#pollOptionsBox');
-
-    if (pollOptionsBox) {
-
-        pollOptionsBox.style.display = 'flex';
-
-        pollOptionsBox.style.setProperty('display', 'flex', 'important');
-
-    }
-
-};
-
-
-
-// Also keep them in local scope for backward compatibility
-
-function openBlogBox(){
-
-    window.openBlogBox();
-
-}
-
-
-
-function openPollBox(){
-
-    window.openPollBox();
-
-}
-
-
-
-  function openElection2Box(){
-
-    document.querySelector('#back').style='display: block'
-
-    document.querySelector('#electionOptionsBox').style='display: block'
-
-  }
-
-
-
-  
-
-  let openSkillListId = null;
-
-
-
-  function toggleSkillList(pollId) {
-
-      closeAllModals();
-
-  
-
-      const box = document.getElementById('skill-list-' + pollId);
-
-      const back = document.getElementById('back');
-
-
-
-
-
-      if (box && box.style.display !== 'flex') {
-
-          box.style.display = 'flex';
-
-          back.style.display = 'block';
-
-          openSkillListId = pollId;
-
-      } else {
-
-          openSkillListId = null;
-
-      }
-
-  }
-
-
-
-
-
-  
-
-  function closeSkill() {
-
-      document.querySelectorAll('.skill-list').forEach(el => el.style.display = 'none');
-
-      const back = document.getElementById('back');
-
-      if (back) back.style.display = 'none';
-
-      openSkillListId = null;
-
-  }
-
-  
-
-  // Ã˜Â¨Ã˜Â¹Ã˜Â¯ Ã˜Â§Ã˜Â² AJAX
-
-  function reapplySkillListState() {
-
-      if (openSkillListId !== null) {
-
-          const box = document.getElementById('skill-list-' + openSkillListId);
-
-          const back = document.getElementById('back');
-
-          if (box) {
-
-              box.style.display = 'flex';
-
-          }
-
-          if (back) {
-
-              back.style.display = 'block';
-
-          }
-
-      }
-
-  }
-
-  
-
-  
-
-  
-
-  // Make cancelPostForm available in global scope
-
-  window.cancelPostForm = function(){
-
-    const postFormBox = document.querySelector('#postFormBox');
-
-    if (postFormBox) {
-
-        postFormBox.style.display = 'none';
-
-        postFormBox.style.setProperty('display', 'none', 'important');
-
-    }
-
-    // Also try to hide #back if it exists
-
-    const back = document.querySelector('#back');
-
-    if (back) {
-
-        back.style.display = 'none';
-
-    }
-
-  };
-
-  
-
-  // Also keep it in local scope for backward compatibility
-
-  function cancelPostForm(){
-
-    window.cancelPostForm();
-
-  }
-
-
-
-  // Make cancelPollForm available in global scope
-
-  window.cancelPollForm = function(){
-
-    const pollOptionsBox = document.querySelector('#pollOptionsBox');
-
-    if (pollOptionsBox) {
-
-        pollOptionsBox.style.display = 'none';
-
-        pollOptionsBox.style.setProperty('display', 'none', 'important');
-
-    }
-
-    // Also try to hide #back if it exists
-
-    const back = document.querySelector('#back');
-
-    if (back) {
-
-        back.style.display = 'none';
-
-    }
-
-  };
-
-  
-
-  // Also keep it in local scope for backward compatibility
-
-  function cancelPollForm(){
-
-    window.cancelPollForm();
-
-  }
-
-  
-
-  function cancelelectionForm(){
-
-    document.querySelector('#back').style='display: none'
-
-    document.querySelector('#electionOptionsBox').style='display: none'
-
-  }
-
-  
-
-    // Ã˜Â§Ã›Å’Ã™â€  ÃšÂ©Ã˜Â¯ Ã˜Â­Ã˜Â°Ã™Â Ã˜Â´Ã˜Â¯ Ãšâ€ Ã™Ë†Ã™â€  Ã˜Â¨Ã˜Â§ Ã™â€¦Ã™â€ Ã˜Â·Ã™â€š Ã˜Â­Ã™ÂÃ˜Â¸ Ã™â€¦Ã™Ë†Ã™â€šÃ˜Â¹Ã›Å’Ã˜Âª scroll Ã˜Â¯Ã˜Â± chat.blade.php Ã˜ÂªÃ˜Â¯Ã˜Â§Ã˜Â®Ã™â€ž Ã˜Â¯Ã˜Â§Ã˜Â±Ã˜Â¯
-
-    // window.addEventListener('DOMContentLoaded', function () {
-
-    //     const chatBox = document.getElementById('chat-box');
-
-    //     chatBox.scrollTop = chatBox.scrollHeight;
-
-    // });
-
-    
-
-
-
-    // Ã˜ÂµÃ˜Â¨Ã˜Â± ÃšÂ©Ã™â€  Ã˜ÂªÃ˜Â§ scroll restore ÃšÂ©Ã˜Â§Ã™â€¦Ã™â€ž Ã˜Â´Ã™Ë†Ã˜Â¯ Ã™â€šÃ˜Â¨Ã™â€ž Ã˜Â§Ã˜Â² Ã˜Â´Ã˜Â±Ã™Ë†Ã˜Â¹ polling
-
-    // Ã˜Â§Ã›Å’Ã™â€  Ã™â€¦Ã™â€¡Ã™â€¦ Ã˜Â§Ã˜Â³Ã˜Âª Ãšâ€ Ã™Ë†Ã™â€  polling Ã™â€ Ã˜Â¨Ã˜Â§Ã›Å’Ã˜Â¯ Ã™â€¦Ã™Ë†Ã™â€šÃ˜Â¹Ã›Å’Ã˜Âª scroll Ã˜Â±Ã˜Â§ Ã˜ÂªÃ˜ÂºÃ›Å’Ã›Å’Ã˜Â± Ã˜Â¯Ã™â€¡Ã˜Â¯ Ã™â€šÃ˜Â¨Ã™â€ž Ã˜Â§Ã˜Â² Ã˜Â§Ã›Å’Ã™â€ ÃšÂ©Ã™â€¡ restore Ã˜Â´Ã™Ë†Ã˜Â¯
-
-    let pollingStarted = false;
-
-    let lastMessageId = null;
-
-    let renderedMessageIds = new Set(); // Ã˜Â¢Ã˜Â®Ã˜Â±Ã›Å’Ã™â€  Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦ ID Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã˜Â¯Ã˜Â±Ã›Å’Ã˜Â§Ã™ÂÃ˜Âª Ã™ÂÃ™â€šÃ˜Â· Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦Ã¢â‚¬Å’Ã™â€¡Ã˜Â§Ã›Å’ Ã˜Â¬Ã˜Â¯Ã›Å’Ã˜Â¯
-
-    let pollingInterval = null;
-
-        if (pollingDebug) {
-
-            console.warn(...args);
-
-        }
-
-    };
-
-    
-
-    // Ã˜ÂªÃ˜Â§Ã˜Â¨Ã˜Â¹ Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã˜Â¯Ã˜Â±Ã›Å’Ã˜Â§Ã™ÂÃ˜Âª Ã˜Â¢Ã˜Â®Ã˜Â±Ã›Å’Ã™â€  message ID Ã˜Â§Ã˜Â² Ã˜ÂµÃ™ÂÃ˜Â­Ã™â€¡
-
-    function getLastMessageId() {
-
-        if (renderedMessageIds && renderedMessageIds.size) {
-
-            return Math.max(...renderedMessageIds);
-
-        }
-
-
-
-        const chatBox = document.getElementById('chat-box');
-
-        if (!chatBox) {            return null;
-
-        }
-
-
-
-        const messages = chatBox.querySelectorAll('[data-message-id]');
-
-        if (messages.length === 0) {            return null;
-
-        }
-
-
-
-        let maxId = 0;
-
-        messages.forEach(msg => {
-
-            const msgId = parseInt(msg.getAttribute('data-message-id'));
-
-            if (msgId && !isNaN(msgId) && msgId > maxId) {
-
-                maxId = msgId;
-
-                if (renderedMessageIds) {
-
-                    renderedMessageIds.add(msgId);
-
-                }
-
-            }
-
-        });
-
-
-
-        return maxId > 0 ? maxId : null;
-
-    }
-
-    
-
-    // Ã˜ÂªÃ˜Â¹Ã˜Â±Ã›Å’Ã™Â startPolling Ã˜Â¯Ã˜Â± scope global Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã˜Â¯Ã˜Â³Ã˜ÂªÃ˜Â±Ã˜Â³Ã›Å’ Ã˜Â§Ã˜Â² DOMContentLoaded
-
-    window.startPolling = function startPolling() {
-
-        const runtimeConfig = getChatRuntimeConfig();
-
-        if (!runtimeConfig.enabled) {
-
-            return;
-
-        }
-
-
-
-        if (pollingStarted) {
-
-            return;
-
-        }
-
-        
-
-        // Ã˜Â¨Ã˜Â±Ã˜Â±Ã˜Â³Ã›Å’ Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯ groupId - Ã™ÂÃ™â€šÃ˜Â· Ã˜Â§Ã˜Â² window.groupId Ã˜Â§Ã˜Â³Ã˜ÂªÃ™ÂÃ˜Â§Ã˜Â¯Ã™â€¡ Ã™â€¦Ã›Å’Ã¢â‚¬Å’ÃšÂ©Ã™â€ Ã›Å’Ã™â€¦
-
-        if (typeof window.groupId === 'undefined' || !window.groupId) {
-
-            console.error('Ã¢ÂÅ’ window.groupId not found! Cannot start polling. window.groupId:', window.groupId);
-
-            return;
-
-        }
-
-        
-
-        const currentGroupId = window.groupId;
-
-        // Ã˜Â¯Ã˜Â±Ã›Å’Ã˜Â§Ã™ÂÃ˜Âª Ã˜Â¢Ã˜Â®Ã˜Â±Ã›Å’Ã™â€  message ID Ã˜Â§Ã˜Â² Ã˜ÂµÃ™ÂÃ˜Â­Ã™â€¡ Ã™ÂÃ˜Â¹Ã™â€žÃ›Å’
-
-        lastMessageId = getLastMessageId();
-
-        renderedMessageIds = new Set(Array.from(document.querySelectorAll('[data-message-id]')).map(el => parseInt(el.getAttribute('data-message-id'))).filter(id => !isNaN(id)));
-
-        // Ã˜Â¨Ã˜Â±Ã˜Â±Ã˜Â³Ã›Å’ ÃšÂ©Ã™â€  ÃšÂ©Ã™â€¡ Ã˜Â¢Ã›Å’Ã˜Â§ scroll restore Ã˜Â´Ã˜Â¯Ã™â€¡ Ã˜Â§Ã˜Â³Ã˜Âª
-
-        // Ã˜Â§ÃšÂ¯Ã˜Â± Ã˜Â¨Ã˜Â¹Ã˜Â¯ Ã˜Â§Ã˜Â² 5 Ã˜Â«Ã˜Â§Ã™â€ Ã›Å’Ã™â€¡ Ã™â€¡Ã™â€ Ã™Ë†Ã˜Â² restore Ã™â€ Ã˜Â´Ã˜Â¯Ã™â€¡Ã˜Å’ polling Ã˜Â±Ã˜Â§ Ã˜Â´Ã˜Â±Ã™Ë†Ã˜Â¹ ÃšÂ©Ã™â€ 
-
-        let attempts = 0;
-
-        const maxAttempts = 10;
-
-        const checkInterval = setInterval(function() {
-
-            attempts++;
-
-            if (window.scrollPositionRestored || attempts >= maxAttempts) {
-
-                clearInterval(checkInterval);
-
-                pollingStarted = true;
-
-                // Ã˜Â­Ã˜Â§Ã™â€žÃ˜Â§ polling Ã˜Â±Ã˜Â§ Ã˜Â´Ã˜Â±Ã™Ë†Ã˜Â¹ ÃšÂ©Ã™â€  - Ã™â€¡Ã˜Â± 1.5 Ã˜Â«Ã˜Â§Ã™â€ Ã›Å’Ã™â€¡ Ã›Å’ÃšÂ©Ã˜Â¨Ã˜Â§Ã˜Â±
-
-                const pollingIntervalMs = resolvePollingIntervalMs();
-
-                pollingInterval = setInterval(function() {
-
-                    // Ã˜Â¯Ã˜Â±Ã›Å’Ã˜Â§Ã™ÂÃ˜Âª groupId Ã˜Â§Ã˜Â² window
-
-                    if (typeof window.groupId === 'undefined' || !window.groupId) {
-
-                        console.error('Ã¢ÂÅ’ window.groupId not found during polling!');
-
-                        return;
-
-                    }
-
-                    
-
-                    const currentGroupId = window.groupId;
-
-                    syncPostFeed(currentGroupId);
-
-                    if (!window.__lastReconcileAt || Date.now() - window.__lastReconcileAt > 30000) {
-
-                        window.__lastReconcileAt = Date.now();
-
-                        reconcileRenderedPosts(currentGroupId);
-
-                    }
-
-                    
-
-                    // Ã˜Â¯Ã˜Â±Ã›Å’Ã˜Â§Ã™ÂÃ˜Âª Ã˜Â¢Ã˜Â®Ã˜Â±Ã›Å’Ã™â€  message ID Ã™â€šÃ˜Â¨Ã™â€ž Ã˜Â§Ã˜Â² Ã˜Â¯Ã˜Â±Ã˜Â®Ã™Ë†Ã˜Â§Ã˜Â³Ã˜Âª
-
-                    const currentLastId = getLastMessageId();
-
-                    const requestLastId = lastMessageId || currentLastId;
-
-                    // Ã˜Â¨Ã˜Â±Ã˜Â±Ã˜Â³Ã›Å’ Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯ jQuery
-
-                    if (typeof $ === 'undefined' || typeof $.ajax === 'undefined') {
-
-                        console.error('Ã¢ÂÅ’ jQuery not loaded! Cannot make AJAX request.');
-
-                        return;
-
-                    }
-
-                    
-
-                    $.ajax({
-
-                        url: '/api/groups/' + currentGroupId + '/messages',
-
-                        method: 'GET',
-
-                        data: {
-
-                            last_message_id: requestLastId
-
-                        },
-
-                        headers: {
-
-                            'Accept': 'application/json',
-
-                            'X-Requested-With': 'XMLHttpRequest',
-
-                            'Content-Type': 'application/json'
-
-                        },
-
-                        dataType: 'text',
-
-                        success: function(response) {
-
-                            let payload = response;
-
-                            if (typeof payload === 'string') {
-
-                                const sanitized = payload.replace(/^\uFEFF/, '').trim();
-
-                                try {
-
-                                    payload = sanitized ? JSON.parse(sanitized) : {};
-
-                                } catch (parseError) {
-
-                                    console.error('Polling JSON parse error:', parseError);
-
-                                    console.error('Raw polling response:', response);
-
-                                    return;
-
-                                }
-
-                            }
-
-
-
-                            // FORCE LOG - Ã™â€¡Ã™â€¦Ã›Å’Ã˜Â´Ã™â€¡ Ã™â€ Ã™â€¦Ã˜Â§Ã›Å’Ã˜Â´ Ã˜Â¨Ã˜Â¯Ã™â€¡
-
-                            // Store the current scroll position
-
-                            const chatBox = document.getElementById('chat-box');
-
-                            if (!chatBox) {
-
-                                console.error('Ã¢ÂÅ’ chat-box element not found!');
-
-                                return;
-
-                            }
-
-                            
-
-                            // Ã˜Â¨Ã˜Â±Ã˜Â±Ã˜Â³Ã›Å’ Ã˜Â¯Ã™â€šÃ›Å’Ã™â€šÃ¢â‚¬Å’Ã˜ÂªÃ˜Â± "Ã˜Â¯Ã˜Â± Ã™Â¾Ã˜Â§Ã›Å’Ã›Å’Ã™â€  Ã˜Â¨Ã™Ë†Ã˜Â¯Ã™â€ " - Ã™ÂÃ™â€šÃ˜Â· Ã˜Â§ÃšÂ¯Ã˜Â± ÃšÂ©Ã˜Â§Ã˜Â±Ã˜Â¨Ã˜Â± Ã™Ë†Ã˜Â§Ã™â€šÃ˜Â¹Ã˜Â§Ã™â€¹ Ã˜Â®Ã™Ë†Ã˜Â¯Ã˜Â´ Ã˜Â¨Ã™â€¡ Ã™Â¾Ã˜Â§Ã›Å’Ã›Å’Ã™â€  Ã˜Â±Ã™ÂÃ˜ÂªÃ™â€¡ Ã˜Â¨Ã˜Â§Ã˜Â´Ã˜Â¯
-
-                            const scrollBottom = chatBox.scrollHeight - chatBox.scrollTop;
-
-                            const threshold = 50;
-
-                            const isScrolledToBottom = scrollBottom <= chatBox.clientHeight + threshold;
-
-                            
-
-                            // Store the current edit form state if it exists
-
-                            const activeEditForm = document.querySelector('.edit-form[style*="display: block"]');
-
-                            const activeEditFormId = activeEditForm ? activeEditForm.id : null;
-
-                            const activeEditContent = activeEditForm ? document.getElementById(`edit-message-${activeEditFormId.split('-')[2]}`).value : null;
-
-                            
-
-                            // Parse JSON response
-
-                            let newMessages = [];
-
-                            if (payload && payload.messages && Array.isArray(payload.messages)) {
-
-                                // Ã™ÂÃ™â€šÃ˜Â· Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦Ã¢â‚¬Å’Ã™â€¡Ã˜Â§Ã›Å’ Ã˜Â¬Ã˜Â¯Ã›Å’Ã˜Â¯ Ã˜Â±Ã˜Â§ Ã™ÂÃ›Å’Ã™â€žÃ˜ÂªÃ˜Â± ÃšÂ©Ã™â€ 
-
-                                const existingMessageIds = new Set();
-
-                                document.querySelectorAll('[data-message-id]').forEach(msg => {
-
-                                    const msgId = parseInt(msg.getAttribute('data-message-id'));
-
-                                    if (msgId) {
-
-                                        existingMessageIds.add(msgId);
-
-                                    }
-
-                                });
-
-                                
-
-                                newMessages = payload.messages.filter(msg => {
-
-                                    return msg && msg.type === 'message' && msg.id && !existingMessageIds.has(msg.id);
-
-                                });
-
-                            } else {
-
-                            }
-
-                            
-
-                            // Append only new messages
-
-                            const hadNewMessages = newMessages.length > 0;
-
-                            if (hadNewMessages) {
-
-                            }
-
-                            
-
-                            newMessages.forEach(function(messageData, index) {
-
-                                if (messageData && messageData.id && renderedMessageIds) {
-
-                                    renderedMessageIds.add(messageData.id);
-
-                                }
-
-                                // Ã˜Â§Ã˜Â³Ã˜ÂªÃ™ÂÃ˜Â§Ã˜Â¯Ã™â€¡ Ã˜Â§Ã˜Â² Ã˜ÂªÃ˜Â§Ã˜Â¨Ã˜Â¹ appendMessage ÃšÂ©Ã™â€¡ Ã™â€šÃ˜Â¨Ã™â€žÃ˜Â§Ã™â€¹ Ã˜ÂªÃ˜Â¹Ã˜Â±Ã›Å’Ã™Â Ã˜Â´Ã˜Â¯Ã™â€¡
-
-                                if (typeof appendMessage === 'function') {
-
-                                    try {
-
-                                        appendMessage(messageData);
-
-                                        // Ã˜Â¨Ã™â€¡Ã¢â‚¬Å’Ã˜Â±Ã™Ë†Ã˜Â²Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ Ã›Å’ lastMessageId
-
-                                        if (messageData.id && (!lastMessageId || messageData.id > lastMessageId)) {
-
-                                            lastMessageId = messageData.id;
-
-                                        }
-
-                                    } catch (error) {
-
-                                        console.error('Ã¢ÂÅ’Ã¢ÂÅ’Ã¢ÂÅ’ CRITICAL ERROR adding message:', error);
-
-                                        console.error('Error stack:', error.stack);
-
-                                        console.error('Message data:', messageData);
-
-                                        // Ã™â€ Ã™â€¦Ã˜Â§Ã›Å’Ã˜Â´ alert Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ debugging
-
-                                        alert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â§Ã™ÂÃ˜Â²Ã™Ë†Ã˜Â¯Ã™â€  Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦: ' + error.message);
-
-                                    }
-
-                                } else {
-
-                                    console.error('Ã¢ÂÅ’Ã¢ÂÅ’Ã¢ÂÅ’ appendMessage function NOT FOUND!');
-
-                                    console.error('Available functions:', Object.keys(window).filter(k => k.includes('append')));
-
-                                    alert('Ã˜Â®Ã˜Â·Ã˜Â§: Ã˜ÂªÃ˜Â§Ã˜Â¨Ã˜Â¹ appendMessage Ã™Â¾Ã›Å’Ã˜Â¯Ã˜Â§ Ã™â€ Ã˜Â´Ã˜Â¯!');
-
-                                }
-
-                            });
-
-                            
-
-                            // Ã˜Â¨Ã™â€¡Ã¢â‚¬Å’Ã˜Â±Ã™Ë†Ã˜Â²Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ Ã›Å’ lastMessageId Ã˜Â§Ã˜Â² response
-
-                            if (payload.latest_message_id && (!lastMessageId || payload.latest_message_id > lastMessageId)) {
-
-                                lastMessageId = payload.latest_message_id;
-
-                            }
-
-                            
-
-                            reapplySkillListState();
-
-                            startPollCountdowns();
-
-
-
-                            // Restore the edit form state if it existed
-
-                            if (activeEditFormId && activeEditContent) {
-
-                                const editForm = document.getElementById(activeEditFormId);
-
-                                const editInput = document.getElementById(`edit-message-${activeEditFormId.split('-')[2]}`);
-
-                                if (editForm && editInput) {
-
-                                    editForm.style.display = 'block';
-
-                                    editInput.value = activeEditContent;
-
-                                    editInput.focus();
-
-                                }
-
-                            }
-
-
-
-                            // Scroll to bottom ONLY if:
-
-                            // 1. Scroll restore ÃšÂ©Ã˜Â§Ã™â€¦Ã™â€ž Ã˜Â´Ã˜Â¯Ã™â€¡ Ã˜Â§Ã˜Â³Ã˜Âª
-
-                            // 2. ÃšÂ©Ã˜Â§Ã˜Â±Ã˜Â¨Ã˜Â± Ã™Ë†Ã˜Â§Ã™â€šÃ˜Â¹Ã˜Â§Ã™â€¹ Ã˜Â®Ã™Ë†Ã˜Â¯Ã˜Â´ Ã˜Â¨Ã™â€¡ Ã™Â¾Ã˜Â§Ã›Å’Ã›Å’Ã™â€  Ã˜Â±Ã™ÂÃ˜ÂªÃ™â€¡ Ã˜Â¨Ã˜Â§Ã˜Â´Ã˜Â¯ (Ã™â€ Ã™â€¡ Ã˜Â¯Ã˜Â± Ã™â€žÃ™Ë†Ã˜Â¯ Ã˜Â§Ã™Ë†Ã™â€žÃ›Å’Ã™â€¡)
-
-                            // 3. Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦ Ã˜Â¬Ã˜Â¯Ã›Å’Ã˜Â¯ Ã˜Â§Ã˜Â¶Ã˜Â§Ã™ÂÃ™â€¡ Ã˜Â´Ã˜Â¯Ã™â€¡ Ã˜Â¨Ã˜Â§Ã˜Â´Ã˜Â¯
-
-                            if (window.scrollPositionRestored && isScrolledToBottom && hadNewMessages) {
-
-                                chatBox.scrollTop = chatBox.scrollHeight;
-
-                            }
-
-                        },
-
-                        error: function(xhr, status, error) {
-
-                            // Network churn (offline / network changed / tab hidden) should not flood console
-
-                            if (xhr && xhr.status === 0) {
-
-                                if (window.__chatPageUnloading || document.visibilityState === 'hidden' || !navigator.onLine) {
-
-                                    return;
-
-                                }
-
-                                if (String(error || '').toLowerCase().includes('network')) {
-
-                                    return;
-
-                                }
-
-                            }
-
-                            console.error('Ã¢ÂÅ’Ã¢ÂÅ’Ã¢ÂÅ’ POLLING ERROR Ã¢ÂÅ’Ã¢ÂÅ’Ã¢ÂÅ’');
-
-                            console.error('Status:', xhr.status);
-
-                            console.error('Status Text:', xhr.statusText);
-
-                            console.error('Error:', error);
-
-                            console.error('Response Text:', xhr.responseText);
-
-                            console.error('Response Headers:', xhr.getAllResponseHeaders());
-
-                            
-
-                            // Ã˜Â§ÃšÂ¯Ã˜Â± response text Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯ Ã˜Â¯Ã˜Â§Ã˜Â±Ã˜Â¯Ã˜Å’ Ã˜Â³Ã˜Â¹Ã›Å’ ÃšÂ©Ã™â€  parse ÃšÂ©Ã™â€ 
-
-                            if (xhr.responseText) {
-
-                                try {
-
-                                    const parsed = JSON.parse(xhr.responseText);
-
-                                    console.error('Parsed error response:', parsed);
-
-                                } catch (e) {
-
-                                    console.error('Could not parse error response as JSON');
-
-                                }
-
-                            }
-
-                            
-
-                            // Ã˜Â¯Ã˜Â± Ã˜ÂµÃ™Ë†Ã˜Â±Ã˜Âª Ã˜Â®Ã˜Â·Ã˜Â§Ã˜Å’ polling Ã˜Â±Ã˜Â§ Ã˜Â§Ã˜Â¯Ã˜Â§Ã™â€¦Ã™â€¡ Ã˜Â¨Ã˜Â¯Ã™â€¡ (Ã™â€¦Ã™â€¦ÃšÂ©Ã™â€  Ã˜Â§Ã˜Â³Ã˜Âª Ã™â€¦Ã˜Â´ÃšÂ©Ã™â€ž Ã™â€¦Ã™Ë†Ã™â€šÃ˜ÂªÃ›Å’ Ã˜Â¨Ã˜Â§Ã˜Â´Ã˜Â¯)
-
-                        }
-
-                    });
-
-                }, pollingIntervalMs);
-
-            }
-
-        }, 500); // Ã™â€¡Ã˜Â± 500ms Ãšâ€ ÃšÂ© ÃšÂ©Ã™â€ 
-
-    }
-
-    
-
-document.addEventListener('DOMContentLoaded', function() {
-
-    const chatBox = document.getElementById('chat-box');
-
-    const form = document.getElementById('chatForm');
-
-    const voiceFileInput = document.getElementById('voice-file-input');
-
-    const voiceFilePreview = document.getElementById('voice-file-preview');
-
-    const voiceFileName = document.getElementById('voice-file-name');
-
-    const voiceFileSize = document.getElementById('voice-file-size');
-
-    const voiceFileRemove = document.getElementById('voice-file-remove');
-
-
-
-    // Format file size helper
-
-    function formatFileSize(bytes) {
-
-        if (bytes === 0) return '0 Ã˜Â¨Ã˜Â§Ã›Å’Ã˜Âª';
-
-        const k = 1024;
-
-        const sizes = ['Ã˜Â¨Ã˜Â§Ã›Å’Ã˜Âª', 'ÃšÂ©Ã›Å’Ã™â€žÃ™Ë†Ã˜Â¨Ã˜Â§Ã›Å’Ã˜Âª', 'Ã™â€¦ÃšÂ¯Ã˜Â§Ã˜Â¨Ã˜Â§Ã›Å’Ã˜Âª', 'ÃšÂ¯Ã›Å’ÃšÂ¯Ã˜Â§Ã˜Â¨Ã˜Â§Ã›Å’Ã˜Âª'];
-
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-
-    }
-
-
-
-    const updateVoiceFilePreview = (file) => {
-
-        if (!voiceFilePreview) return;
-
-
-
-        if (file) {
-
-            if (voiceFileName) {
-
-                voiceFileName.textContent = file.name;
-
-            }
-
-            if (voiceFileSize) {
-
-                voiceFileSize.textContent = formatFileSize(file.size);
-
-            }
-
-            voiceFilePreview.style.display = 'flex';
-
-            voiceFilePreview.style.setProperty('display', 'flex', 'important');
-
-        } else {
-
-            voiceFilePreview.style.display = 'none';
-
-            voiceFilePreview.style.setProperty('display', 'none', 'important');
-
-            if (voiceFileName) voiceFileName.textContent = '';
-
-            if (voiceFileSize) voiceFileSize.textContent = '';
-
-        }
-
-    };
-
-
-
-    voiceFileInput?.addEventListener('change', () => {
-
-        updateVoiceFilePreview(voiceFileInput.files?.[0] || null);
-
-    });
-
-
-
-    voiceFileRemove?.addEventListener('click', (event) => {
-
-        event.preventDefault();
-
-        if (voiceFileInput) {
-
-            voiceFileInput.value = '';
-
-        }
-
-        updateVoiceFilePreview(null);
-
-    });
-
-
-
-    if (form) {
-
-        form.addEventListener('submit', async function(e) {
-
-            e.preventDefault();
-
-            
-
-            // Sync CKEditor Ã™â€šÃ˜Â¨Ã™â€ž Ã˜Â§Ã˜Â² Ã˜Â®Ã™Ë†Ã˜Â§Ã™â€ Ã˜Â¯Ã™â€  Ã™â€¦Ã˜Â­Ã˜ÂªÃ™Ë†Ã˜Â§
-
-            if (window.CKEDITOR && CKEDITOR.instances) {
-
-                for (var i in CKEDITOR.instances) {
-
-                    CKEDITOR.instances[i].updateElement();
-
-                }
-
-            }
-
-            
-
-            const formData = new FormData(form);
-
-            const parentId = document.getElementById('parent_id').value;
-
-            
-
-            if (parentId) {
-
-                formData.append('parent_id', parentId);
-
-            }
-
-
-
-            // Ã˜Â¨Ã˜Â±Ã˜Â±Ã˜Â³Ã›Å’ Ã™â€¦Ã˜Â­Ã˜ÂªÃ™Ë†Ã˜Â§Ã›Å’ Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦ Ã™â€šÃ˜Â¨Ã™â€ž Ã˜Â§Ã˜Â² Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž
-
-            const hasVoiceFile = voiceFileInput && voiceFileInput.files && voiceFileInput.files.length > 0;
-
-            const messageEditor = window.CKEDITOR?.instances?.['message_editor'] || null;
-
-            let messageText = '';
-
-            let messageHtml = '';
-
-            
-
-            if (messageEditor) {
-
-                messageHtml = messageEditor.getData().trim();
-
-                // Ã˜ÂªÃ˜Â¨Ã˜Â¯Ã›Å’Ã™â€ž HTML Ã˜Â¨Ã™â€¡ plain text Ã˜Â¨Ã˜Â§ Ã˜Â­Ã™ÂÃ˜Â¸ line breaks
-
-                const tempDiv = document.createElement('div');
-
-                tempDiv.innerHTML = messageHtml;
-
-                // Ã˜ÂªÃ˜Â¨Ã˜Â¯Ã›Å’Ã™â€ž <br> Ã™Ë† <p> Ã˜Â¨Ã™â€¡ line breaks
-
-                const brs = tempDiv.querySelectorAll('br');
-
-                brs.forEach(br => br.replaceWith('\n'));
-
-                const ps = tempDiv.querySelectorAll('p, div');
-
-                ps.forEach(p => {
-
-                    if (p.nextSibling) {
-
-                        p.appendChild(document.createTextNode('\n'));
-
-                    }
-
-                });
-
-                messageText = tempDiv.textContent || tempDiv.innerText || '';
-
-                messageText = messageText.trim();
-
-            } else {
-
-                const messageTextarea = document.getElementById('message_editor');
-
-                if (messageTextarea) {
-
-                    messageText = messageTextarea.value.trim();
-
-                }
-
-            }
-
-            
-
-            // Ã˜ÂªÃ™â€ Ã˜Â¸Ã›Å’Ã™â€¦ Ã™â€¦Ã˜Â­Ã˜ÂªÃ™Ë†Ã˜Â§ Ã˜Â¯Ã˜Â± formData (Ã˜Â§ÃšÂ¯Ã˜Â± CKEditor Ã˜Â§Ã˜Â³Ã˜ÂªÃ™ÂÃ˜Â§Ã˜Â¯Ã™â€¡ Ã™â€¦Ã›Å’Ã¢â‚¬Å’Ã˜Â´Ã™Ë†Ã˜Â¯Ã˜Å’ plain text Ã˜Â±Ã˜Â§ Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž ÃšÂ©Ã™â€ )
-
-            if (messageEditor && messageText) {
-
-                formData.set('message', messageText);
-
-            }
-
-
-
-            // Ã˜Â§ÃšÂ¯Ã˜Â± Ã™â€¡Ã™â€¦ Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦ Ã˜Â®Ã˜Â§Ã™â€žÃ›Å’ Ã˜Â§Ã˜Â³Ã˜Âª Ã™Ë† Ã™â€¡Ã™â€¦ Ã™ÂÃ˜Â§Ã›Å’Ã™â€ž Ã˜ÂµÃ™Ë†Ã˜ÂªÃ›Å’ Ã™â€ Ã›Å’Ã˜Â³Ã˜ÂªÃ˜Å’ Ã˜Â§Ã˜Â² Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã˜Â¬Ã™â€žÃ™Ë†ÃšÂ¯Ã›Å’Ã˜Â±Ã›Å’ ÃšÂ©Ã™â€ 
-
-            if (!messageText && !hasVoiceFile) {
-
-                alert('Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦ Ã™â€ Ã™â€¦Ã›Å’Ã¢â‚¬Å’Ã˜ÂªÃ™Ë†Ã˜Â§Ã™â€ Ã˜Â¯ Ã˜Â®Ã˜Â§Ã™â€žÃ›Å’ Ã˜Â¨Ã˜Â§Ã˜Â´Ã˜Â¯.');
-
-                e.stopPropagation();
-
-                e.stopImmediatePropagation();
-
-                return false;
-
-            }
-
-            
-
-            // Ã˜Â°Ã˜Â®Ã›Å’Ã˜Â±Ã™â€¡ Ã™â€¦Ã™Ë†Ã™â€šÃ˜Â¹Ã›Å’Ã˜Âª Ã™â€šÃ˜Â¨Ã™â€ž Ã˜Â§Ã˜Â² submit (Ã˜Â§ÃšÂ¯Ã˜Â± Ã˜ÂªÃ˜Â§Ã˜Â¨Ã˜Â¹ Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯ Ã˜Â¨Ã˜Â§Ã˜Â´Ã˜Â¯)
-
-            if (typeof saveScrollPositionBeforeSubmit === 'function') {
-
-                saveScrollPositionBeforeSubmit();
-
-            }
-
-
-
-            // Ã˜Â§ÃšÂ¯Ã˜Â± Ã™ÂÃ˜Â§Ã›Å’Ã™â€ž Ã˜ÂµÃ™Ë†Ã˜ÂªÃ›Å’ Ã˜Â§Ã™â€ Ã˜ÂªÃ˜Â®Ã˜Â§Ã˜Â¨ Ã˜Â´Ã˜Â¯Ã™â€¡ Ã™Ë† message Ã˜Â®Ã˜Â§Ã™â€žÃ›Å’ Ã˜Â§Ã˜Â³Ã˜ÂªÃ˜Å’ Ã›Å’ÃšÂ© Ã™â€¦Ã™â€šÃ˜Â¯Ã˜Â§Ã˜Â± Ã™Â¾Ã›Å’Ã˜Â´Ã¢â‚¬Å’Ã™ÂÃ˜Â±Ã˜Â¶ Ã˜Â§Ã˜Â¶Ã˜Â§Ã™ÂÃ™â€¡ ÃšÂ©Ã™â€ 
-
-            if (hasVoiceFile && !messageText) {
-
-                if (messageEditor) {
-
-                    messageEditor.setData('Ã°Å¸Å½Â¤ Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦ Ã˜ÂµÃ™Ë†Ã˜ÂªÃ›Å’');
-
-                } else {
-
-                    const messageTextarea = document.getElementById('message_editor');
-
-                    if (messageTextarea) {
-
-                        messageTextarea.value = 'Ã°Å¸Å½Â¤ Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦ Ã˜ÂµÃ™Ë†Ã˜ÂªÃ›Å’';
-
-                    }
-
-                }
-
-                formData.set('message', 'Ã°Å¸Å½Â¤ Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦ Ã˜ÂµÃ™Ë†Ã˜ÂªÃ›Å’');
-
-            }
-
-            
-
-            try {
-
-                const response = await fetch(form.action, {
-
-                    method: 'POST',
-
-                    headers: {
-
-                        'X-CSRF-TOKEN': getCsrfToken(),
-
-                        'Accept': 'application/json'
-
-                    },
-
-                    body: formData
-
-                });
-
-
-
-                const responseData = await safeReadJson(response);
-
-
-
-                if (!response.ok) {
-
-                    if (response.status === 422) {
-
-                        const errorMessage = responseData.message || 'Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â§Ã˜Â¹Ã˜ÂªÃ˜Â¨Ã˜Â§Ã˜Â±Ã˜Â³Ã™â€ Ã˜Â¬Ã›Å’ Ã˜Â¯Ã˜Â§Ã˜Â¯Ã™â€¡Ã¢â‚¬Å’Ã™â€¡Ã˜Â§';
-
-                        const errors = responseData.errors ? Object.values(responseData.errors).flat().join('\n') : '';
-
-                        alert(`${errorMessage}\n${errors}`);
-
-                        return; // Ã˜Â¬Ã™â€žÃ™Ë†ÃšÂ¯Ã›Å’Ã˜Â±Ã›Å’ Ã˜Â§Ã˜Â² Ã˜Â§Ã˜Â¯Ã˜Â§Ã™â€¦Ã™â€¡ Ã˜Â§Ã˜Â¬Ã˜Â±Ã˜Â§
-
-                    } else if (response.status === 500) {
-
-                        console.error('Server Error Details:', responseData);
-
-                        alert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â³Ã˜Â±Ã™Ë†Ã˜Â±. Ã™â€žÃ˜Â·Ã™ÂÃ˜Â§Ã™â€¹ Ã˜Â¯Ã™Ë†Ã˜Â¨Ã˜Â§Ã˜Â±Ã™â€¡ Ã˜ÂªÃ™â€žÃ˜Â§Ã˜Â´ ÃšÂ©Ã™â€ Ã›Å’Ã˜Â¯. Ã˜Â§ÃšÂ¯Ã˜Â± Ã™â€¦Ã˜Â´ÃšÂ©Ã™â€ž Ã˜Â§Ã˜Â¯Ã˜Â§Ã™â€¦Ã™â€¡ Ã˜Â¯Ã˜Â§Ã˜Â´Ã˜ÂªÃ˜Å’ Ã˜Â¨Ã˜Â§ Ã™Â¾Ã˜Â´Ã˜ÂªÃ›Å’Ã˜Â¨Ã˜Â§Ã™â€ Ã›Å’ Ã˜ÂªÃ™â€¦Ã˜Â§Ã˜Â³ Ã˜Â¨ÃšÂ¯Ã›Å’Ã˜Â±Ã›Å’Ã˜Â¯.');
-
-                        return; // Ã˜Â¬Ã™â€žÃ™Ë†ÃšÂ¯Ã›Å’Ã˜Â±Ã›Å’ Ã˜Â§Ã˜Â² Ã˜Â§Ã˜Â¯Ã˜Â§Ã™â€¦Ã™â€¡ Ã˜Â§Ã˜Â¬Ã˜Â±Ã˜Â§
-
-                    } else {
-
-                        throw new Error(`HTTP error! status: ${response.status}`);
-
-                    }
-
-                }
-
-                
-
-                if (responseData.status === 'success') {
-
-                    appendMessage(responseData.message);
-
-                    // Ã˜Â¨Ã™â€¡Ã¢â‚¬Å’Ã˜Â±Ã™Ë†Ã˜Â²Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ Ã›Å’ lastMessageId Ã˜Â¨Ã˜Â¹Ã˜Â¯ Ã˜Â§Ã˜Â² Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦
-
-                    if (responseData.message && responseData.message.id) {
-
-                        if (!lastMessageId || responseData.message.id > lastMessageId) {
-
-                            lastMessageId = responseData.message.id;
-
-                        }
-
-                    }
-
-                    form.reset();
-
-                    
-
-                    // Clear voice file input and preview
-
-                    if (voiceFileInput) {
-
-                        voiceFileInput.value = '';
-
-                    }
-
-                    updateVoiceFilePreview(null);
-
-                    
-
-                    // Clear CKEditor if exists
-
-                    const messageEditor = window.CKEDITOR?.instances?.['message_editor'] || null;
-
-                    if (messageEditor) {
-
-                        messageEditor.setData('');
-
-                    }
-
-                    
-
-                    // Clear parent_id after successful submission
-
-                    document.getElementById('parent_id').value = '';
-
-                    // Hide reply indicator
-
-                    const replyIndicator = document.querySelector('.reply-indicator');
-
-                    if (replyIndicator) {
-
-                        replyIndicator.remove();
-
-                    }
-
-                } else {
-
-                    alert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦: ' + (responseData.message || 'Ã˜Â®Ã˜Â·Ã˜Â§Ã›Å’ Ã™â€ Ã˜Â§Ã˜Â´Ã™â€ Ã˜Â§Ã˜Â®Ã˜ÂªÃ™â€¡'));
-
-                }
-
-            } catch (error) {
-
-                console.error('Error:', error);
-
-                if (error.message.includes('Failed to fetch')) {
-
-                    alert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â§Ã˜ÂªÃ˜ÂµÃ˜Â§Ã™â€ž Ã˜Â¨Ã™â€¡ Ã˜Â³Ã˜Â±Ã™Ë†Ã˜Â±. Ã™â€žÃ˜Â·Ã™ÂÃ˜Â§Ã™â€¹ Ã˜Â§Ã˜ÂªÃ˜ÂµÃ˜Â§Ã™â€ž Ã˜Â§Ã›Å’Ã™â€ Ã˜ÂªÃ˜Â±Ã™â€ Ã˜Âª Ã˜Â®Ã™Ë†Ã˜Â¯ Ã˜Â±Ã˜Â§ Ã˜Â¨Ã˜Â±Ã˜Â±Ã˜Â³Ã›Å’ ÃšÂ©Ã™â€ Ã›Å’Ã˜Â¯.');
-
-                } else {
-
-                    alert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦. Ã™â€žÃ˜Â·Ã™ÂÃ˜Â§Ã™â€¹ Ã˜Â¯Ã™Ë†Ã˜Â¨Ã˜Â§Ã˜Â±Ã™â€¡ Ã˜ÂªÃ™â€žÃ˜Â§Ã˜Â´ ÃšÂ©Ã™â€ Ã›Å’Ã˜Â¯.');
-
-                }
-
-            }
-
-        });
-
-    }
-
-    
-
-    initRealtimeMessages();
-
-
-
-    // ========== POLLING MECHANISM ==========
-
-    // Ã˜Â´Ã˜Â±Ã™Ë†Ã˜Â¹ polling Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã˜Â¯Ã˜Â±Ã›Å’Ã˜Â§Ã™ÂÃ˜Âª Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦Ã¢â‚¬Å’Ã™â€¡Ã˜Â§Ã›Å’ Ã˜Â¬Ã˜Â¯Ã›Å’Ã˜Â¯
-
-    // Ã˜Â¨Ã˜Â±Ã˜Â±Ã˜Â³Ã›Å’ Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯ window.groupId
-
-    if (typeof window.groupId === 'undefined') {
-
-        console.error('Ã¢ÂÅ’Ã¢ÂÅ’Ã¢ÂÅ’ window.groupId is NOT DEFINED! Ã¢ÂÅ’Ã¢ÂÅ’Ã¢ÂÅ’');
-
-        console.error('Available window properties:', Object.keys(window).filter(k => k.toLowerCase().includes('group')));
-
-        console.error('All window properties starting with "group":', Object.keys(window).filter(k => k.toLowerCase().includes('group')));
-
-    } else {
-
-        // Ã˜Â´Ã˜Â±Ã™Ë†Ã˜Â¹ polling Ã˜Â¨Ã˜Â¹Ã˜Â¯ Ã˜Â§Ã˜Â² 2 Ã˜Â«Ã˜Â§Ã™â€ Ã›Å’Ã™â€¡ Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã˜Â§Ã˜Â·Ã™â€¦Ã›Å’Ã™â€ Ã˜Â§Ã™â€  Ã˜Â§Ã˜Â² Ã™â€žÃ™Ë†Ã˜Â¯ ÃšÂ©Ã˜Â§Ã™â€¦Ã™â€ž
-
-        setTimeout(function() {
-
-            if (typeof window.startPolling === 'function') {
-
-                window.startPolling();
-
-            } else {
-
-                console.error('Ã¢ÂÅ’Ã¢ÂÅ’Ã¢ÂÅ’ window.startPolling function NOT FOUND! Ã¢ÂÅ’Ã¢ÂÅ’Ã¢ÂÅ’');
-
-                console.error('Available functions:', Object.keys(window).filter(k => typeof window[k] === 'function' && k.toLowerCase().includes('poll')));
-
-            }
-
-        }, 2000);
-
-    }
-
-    // ========== END POLLING MECHANISM ==========
-
-});
-
-
-
-function appendMessage(message) {
-
-    const chatBox = document.getElementById('chat-box');
-
-    if (!chatBox) return;
-
-    if (!message || !message.id) return;
-
-    if (isMessageRendered(message.id)) return;
-
-    if (renderedMessageIds) {
-
-        renderedMessageIds.add(message.id);
-
-    }
-
-
-
-    const isMine = message.user_id == authUserId;
-
-    const senderName = message.sender || 'ÃšÂ©Ã˜Â§Ã˜Â±Ã˜Â¨Ã˜Â±';
-
-    const initials = senderName.split(' ').map(n => n.charAt(0)).join(' ').trim() || 'Ã˜Å¸';
-
-    // Ã™â€¦Ã˜Â­Ã˜ÂªÃ™Ë†Ã˜Â§ Ã˜Â§Ã˜Â² backend Ã˜Â¨Ã˜Â§ <br> Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ line breaks Ã™â€¦Ã›Å’Ã¢â‚¬Å’Ã˜Â¢Ã›Å’Ã˜Â¯Ã˜Å’ Ã™â€¦Ã˜Â³Ã˜ÂªÃ™â€šÃ›Å’Ã™â€¦Ã˜Â§Ã™â€¹ Ã˜Â§Ã˜Â³Ã˜ÂªÃ™ÂÃ˜Â§Ã˜Â¯Ã™â€¡ Ã™â€¦Ã›Å’Ã¢â‚¬Å’ÃšÂ©Ã™â€ Ã›Å’Ã™â€¦
-
-    const messageContent = message.message || '';
-
-    const formattedTime = message.created_at || new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
-
-    const currentUserRole = typeof window.yourRole !== 'undefined' ? Number(window.yourRole) : 0;
-
-    const canPin = currentUserRole === 3 || isMine;
-
-    
-
-    // Escape HTML helper
-
-    function escapeHtml(text) {
-
-        const div = document.createElement('div');
-
-        div.textContent = text;
-
-        return div.innerHTML;
-
-    }
-
-    
-
-    // Strip HTML helper
-
-    function stripHtml(html) {
-
-        const tmp = document.createElement('DIV');
-
-        tmp.innerHTML = html;
-
-        return tmp.textContent || tmp.innerText || '';
-
-    }
-
-
-
-    // Format user content safely (escape + preserve line breaks)
-
-    function formatMessageContent(text) {
-
-        const escaped = escapeHtml(text || '');
-
-        return escaped.replace(/\n/g, '<br>');
-
-    }
-
-
-
-    const safeMessageHtml = formatMessageContent(messageContent);
-
-    
-
-    // Generate reactions HTML
-
-    function generateReactionsHTML(messageId, reactions) {
-
-        if (!reactions || reactions.length === 0) return '';
-
-        const emojis = { like: 'Ã°Å¸â€˜Â', love: 'Ã¢ÂÂ¤Ã¯Â¸Â', laugh: 'Ã°Å¸Ëœâ€š', wow: 'Ã°Å¸ËœÂ®', sad: 'Ã°Å¸ËœÂ¢', angry: 'Ã°Å¸ËœÂ ' };
-
-        return `<div class="message-reactions" style="display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap;">${reactions.map(r => {
-
-            const type = r.type || r.reaction_type || '';
-
-            const count = r.count || 0;
-
-            return `<span class="reaction-badge" style="background: #f0f0f0; padding: 2px 6px; border-radius: 12px; font-size: 12px; cursor: pointer;" onclick="if(typeof toggleReaction === 'function') toggleReaction(${messageId}, '${type}')">${emojis[type] || 'Ã°Å¸â€˜Â'} ${count}</span>`;
-
-        }).join('')}</div>`;
-
-    }
-
-    
-
-    const messageRow = document.createElement('div');
-
-    messageRow.className = `message-row ${isMine ? 'you' : 'other'}`;
-
-    messageRow.setAttribute('data-message-id', message.id);
-
-    messageRow.id = `msg-${message.id}`;
-
-    
-
-    let messageHTML = '';
-
-    
-
-    // Ã˜Â¢Ã™Ë†Ã˜Â§Ã˜ÂªÃ˜Â§Ã˜Â± (Ã™ÂÃ™â€šÃ˜Â· Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦Ã¢â‚¬Å’Ã™â€¡Ã˜Â§Ã›Å’ Ã˜Â¯Ã›Å’ÃšÂ¯Ã˜Â±Ã˜Â§Ã™â€ )
-
-    if (!isMine) {
-
-        messageHTML += `<a href="/profile/member/${message.user_id}" class="avatar-link"><span class="avatar"><span>${initials}</span></span></a>`;
-
-    }
-
-    
-
-    // Reply preview
-
-    let replyPreviewHTML = '';
-
-    if (message.parent_id && message.parent_sender && message.parent_content) {
-
-        replyPreviewHTML = `<div class="reply-preview"><div class="reply-sender">${escapeHtml(message.parent_sender)}</div><div class="reply-text">${escapeHtml(message.parent_content.substring(0, 80))}</div></div>`;
-
-    }
-
-    
-
-    // Voice message
-
-    let voiceMessageHTML = '';
-
-    if (message.voice_message) {
-
-        // Convert relative path to full URL if needed
-
-        let voiceUrl = message.voice_message;
-
-        if (!voiceUrl.startsWith('http://') && !voiceUrl.startsWith('https://')) {
-
-            // Remove leading slash if exists
-
-            voiceUrl = voiceUrl.startsWith('/') ? voiceUrl.substring(1) : voiceUrl;
-
-            // Build full URL - encode each part separately to handle spaces
-
-            const pathParts = voiceUrl.split('/');
-
-            const encodedParts = pathParts.map(part => encodeURIComponent(part));
-
-            voiceUrl = window.location.origin + '/storage/' + encodedParts.join('/');
-
-        }
-
-        const voiceType = message.file_type || 'audio/webm';
-
-        voiceMessageHTML = `<div class="voice-message-container" style="margin-top: 12px; padding: 12px; background: ${isMine ? '#e3f2fd' : '#f5f5f5'}; border-radius: 12px; border: 1px solid ${isMine ? '#90caf9' : '#e0e0e0'}; direction: ltr;"><div style="display: flex; align-items: center; gap: 12px;"><div style="width: 40px; height: 40px; border-radius: 50%; background: ${isMine ? '#2196f3' : '#757575'}; display: flex; align-items: center; justify-content: center; color: white;"><i class="fas fa-microphone"></i></div><div style="flex: 1;"><div style="font-size: 12px; color: #666; margin-bottom: 4px;"><i class="fas fa-headphones"></i> Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦ Ã˜ÂµÃ™Ë†Ã˜ÂªÃ›Å’</div><audio controls style="width: 100%; height: 40px;" preload="metadata"><source src="${voiceUrl}" type="${voiceType}"><source src="${voiceUrl}" type="audio/webm"><source src="${voiceUrl}" type="audio/ogg"><source src="${voiceUrl}" type="audio/mpeg">Ã™â€¦Ã˜Â±Ã™Ë†Ã˜Â±ÃšÂ¯Ã˜Â± Ã˜Â´Ã™â€¦Ã˜Â§ Ã˜Â§Ã˜Â² Ã™Â¾Ã˜Â®Ã˜Â´ Ã˜ÂµÃ˜Â¯Ã˜Â§ Ã™Â¾Ã˜Â´Ã˜ÂªÃ›Å’Ã˜Â¨Ã˜Â§Ã™â€ Ã›Å’ Ã™â€ Ã™â€¦Ã›Å’Ã¢â‚¬Å’ÃšÂ©Ã™â€ Ã˜Â¯.</audio></div></div></div>`;
-
-    }
-
-    
-
-    messageHTML += `
-
-        <div class="message-bubble ${isMine ? 'you' : 'other'}" data-message-id="${message.id}" data-user-id="${message.user_id}" data-edit-url="/messages/${message.id}/edit" data-delete-url="/messages/${message.id}/delete" data-report-url="/messages/${message.id}/report" data-content-raw="${escapeHtml(stripHtml(messageContent))}">
-
-            <div class="message-head">
-
-                ${isMine ? 
-
-                    // Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦Ã¢â‚¬Å’Ã™â€¡Ã˜Â§Ã›Å’ Ã˜Â®Ã™Ë†Ã˜Â¯ ÃšÂ©Ã˜Â§Ã˜Â±Ã˜Â¨Ã˜Â±: Ã˜Â³Ã™â€¡ Ã™â€ Ã™â€šÃ˜Â·Ã™â€¡ Ã˜Â¯Ã˜Â± Ã˜Â³Ã™â€¦Ã˜Âª Ãšâ€ Ã™Â¾Ã˜Å’ Ã™â€ Ã˜Â§Ã™â€¦ Ã˜Â¯Ã˜Â± Ã˜Â³Ã™â€¦Ã˜Âª Ã˜Â±Ã˜Â§Ã˜Â³Ã˜Âª
-
-                    `<div class="action-menu message-action" data-action-menu>
-
-                        <button type="button" class="action-menu__toggle"><i class="fas fa-ellipsis-v"></i></button>
-
-                        <div class="action-menu__list">
-
-                            <button type="button" onclick="replyToMessage('${message.id}', '${escapeHtml(senderName)}', '${escapeHtml(messageContent.substring(0, 50))}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> Ã™Â¾Ã˜Â§Ã˜Â³Ã˜Â®</button>
-
-                            <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> Ã™Ë†Ã˜Â§ÃšÂ©Ã™â€ Ã˜Â´</button>
-
-                            ${canPin ? `<button type="button" class="action-menu__item btn-pin" onclick="pinMessage('${message.id}')"><i class="fas fa-thumbtack"></i> Ã˜Â³Ã™â€ Ã˜Â¬Ã˜Â§Ã™â€š ÃšÂ©Ã˜Â±Ã˜Â¯Ã™â€ </button>` : ''}
-
-                            <button type="button" class="action-menu__item btn-edit"><i class="fas fa-edit"></i> Ã™Ë†Ã›Å’Ã˜Â±Ã˜Â§Ã›Å’Ã˜Â´</button>
-
-                            <button type="button" class="action-menu__item action-menu__item--danger btn-delete"><i class="fas fa-trash"></i> Ã˜Â­Ã˜Â°Ã™Â</button>
-
-                            <div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" style="font-size: 0.7rem; opacity: 0.6; margin-left: 4px;"></i><span class="menu-meta-time__label">Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã˜Â´Ã˜Â¯Ã™â€¡:</span><span class="menu-meta-time__value">${formattedTime}</span></div></div>
-
-                        </div>
-
-                    </div>
-
-                    <div class="message-head__info">
-
-                        <span class="message-sender message-sender--self">Ã˜Â´Ã™â€¦Ã˜Â§</span>
-
-                    </div>` :
-
-                    // Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦Ã¢â‚¬Å’Ã™â€¡Ã˜Â§Ã›Å’ Ã˜Â¯Ã›Å’ÃšÂ¯Ã˜Â±Ã˜Â§Ã™â€ : Ã™â€ Ã˜Â§Ã™â€¦ ÃšÂ©Ã˜Â§Ã˜Â±Ã˜Â¨Ã˜Â± Ã˜Â¯Ã˜Â± Ã˜Â³Ã™â€¦Ã˜Âª Ãšâ€ Ã™Â¾Ã˜Å’ Ã˜Â³Ã™â€¡ Ã™â€ Ã™â€šÃ˜Â·Ã™â€¡ Ã˜Â¯Ã˜Â± Ã˜Â³Ã™â€¦Ã˜Âª Ã˜Â±Ã˜Â§Ã˜Â³Ã˜Âª
-
-                    `<div class="message-head__info">
-
-                        <a href="/profile-member/${message.user_id}" class="message-sender" onclick="event.stopPropagation(); window.location.href='/profile-member/${message.user_id}'; return false;">${escapeHtml(senderName)}</a>
-
-                    </div>
-
-                    <div class="action-menu message-action" data-action-menu>
-
-                        <button type="button" class="action-menu__toggle"><i class="fas fa-ellipsis-v"></i></button>
-
-                        <div class="action-menu__list">
-
-                            <button type="button" onclick="replyToMessage('${message.id}', '${escapeHtml(senderName)}', '${escapeHtml(messageContent.substring(0, 50))}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> Ã™Â¾Ã˜Â§Ã˜Â³Ã˜Â®</button>
-
-                            <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> Ã™Ë†Ã˜Â§ÃšÂ©Ã™â€ Ã˜Â´</button>
-
-                            ${canPin ? `<button type="button" class="action-menu__item btn-pin" onclick="pinMessage('${message.id}')"><i class="fas fa-thumbtack"></i> Ã˜Â³Ã™â€ Ã˜Â¬Ã˜Â§Ã™â€š ÃšÂ©Ã˜Â±Ã˜Â¯Ã™â€ </button>` : ''}
-
-                            <button type="button" class="action-menu__item btn-report"><i class="fas fa-flag"></i> ÃšÂ¯Ã˜Â²Ã˜Â§Ã˜Â±Ã˜Â´</button>
-
-                            <div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" style="font-size: 0.7rem; opacity: 0.6; margin-left: 4px;"></i><span class="menu-meta-time__label">Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã˜Â´Ã˜Â¯Ã™â€¡:</span><span class="menu-meta-time__value">${formattedTime}</span></div></div>
-
-                        </div>
-
-                    </div>`
-
-                }
-
-            </div>
-
-            ${replyPreviewHTML}
-
-            <p class="message-content">${safeMessageHtml}</p>
-
-            ${voiceMessageHTML}
-
-            <div class="message-timestamp" style="display: flex !important; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; margin-left: -10px !important; margin-right: -10px !important; padding-left: 10px !important; padding-right: 10px !important; justify-content: space-between !important; float: none !important; text-align: left !important; direction: ltr !important;">
-
-                ${isMine ? '<div class="read-receipt" style="font-size: 10px; text-align: left; direction: ltr; margin-right: auto; margin-left: 0;"><span style="color: #9ca3af;"><i class="fas fa-check"></i> Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã˜Â´Ã˜Â¯Ã™â€¡</span></div>' : ''}
-
-                <div style="display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;">
-
-                    ${(message.reactions && message.reactions.length > 0) ? generateReactionsHTML(message.id, message.reactions) : ''}
-
-                </div>
-
-                <div style="display: flex; align-items: center; gap: 4px; margin-left: auto;">
-
-                    <span class="message-time">${formattedTime}</span>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    `;
-
-    
-
-    messageRow.innerHTML = messageHTML;
-
-    chatBox.appendChild(messageRow);
-
-    
-
-    // Initialize reaction button for this message
-
-    if (typeof addReactionButton === 'function') {
-
-        const messageBubble = messageRow.querySelector('.message-bubble');
-
-        if (messageBubble) {
-
-            addReactionButton(message.id);
-
-        }
-
-    }
-
-    
-
-    // Initialize click handler for profile link
-
-    const profileLink = messageRow.querySelector('a.message-sender');
-
-    if (profileLink) {
-
-        profileLink.addEventListener('click', function(e) {
-
-            // Ã˜Â§Ã˜Â¬Ã˜Â§Ã˜Â²Ã™â€¡ Ã˜Â¨Ã˜Â¯Ã™â€¡ Ã™â€žÃ›Å’Ã™â€ ÃšÂ© ÃšÂ©Ã˜Â§Ã˜Â± ÃšÂ©Ã™â€ Ã˜Â¯
-
-            e.stopPropagation();
-
-            e.preventDefault();
-
-            // Ã˜Â§ÃšÂ¯Ã˜Â± href Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯ Ã˜Â¯Ã˜Â§Ã˜Â±Ã˜Â¯Ã˜Å’ Ã˜Â¨Ã™â€¡ Ã˜Â¢Ã™â€  Ã˜Â¨Ã˜Â±Ã™Ë†
-
-            const href = this.getAttribute('href');
-
-            if (href && !href.includes('#')) {
-
-                window.location.href = href;
-
-            }
-
-        });
-
-    }
-
-    
-
-    // Initialize action menu handlers if function exists
-
-    if (typeof initializeMessageActions === 'function') {
-
-        initializeMessageActions(messageRow);
-
-    }
-
-    
-
-    // Initialize action menu toggle
-
-    const menu = messageRow.querySelector('[data-action-menu]');
-
-    if (menu) {
-
-        const toggle = menu.querySelector('.action-menu__toggle');
-
-        const list = menu.querySelector('.action-menu__list');
-
-        
-
-        if (toggle && list) {
-
-            toggle.addEventListener('click', function(event) {
-
-                event.preventDefault();
-
-                event.stopPropagation();
-
-                const isOpen = menu.classList.contains('is-open');
-
-                // Close all other menus
-
-                document.querySelectorAll('[data-action-menu].is-open').forEach(m => {
-
-                    if (m !== menu) m.classList.remove('is-open');
-
-                });
-
-                menu.classList.toggle('is-open', !isOpen);
-
-            });
-
-            
-
-            // Ã˜Â¨Ã˜Â³Ã˜ÂªÃ™â€  Ã™â€¦Ã™â€ Ã™Ë† Ã™â€¡Ã™â€ ÃšÂ¯Ã˜Â§Ã™â€¦ ÃšÂ©Ã™â€žÃ›Å’ÃšÂ© Ã˜Â±Ã™Ë†Ã›Å’ Ã˜Â¯ÃšÂ©Ã™â€¦Ã™â€¡Ã¢â‚¬Å’Ã™â€¡Ã˜Â§Ã›Å’ Ã™â€¦Ã™â€ Ã™Ë† (Ã˜Â¨Ã™â€¡ Ã˜Â¬Ã˜Â² Ã˜Â¯ÃšÂ©Ã™â€¦Ã™â€¡ Ã™Ë†Ã˜Â§ÃšÂ©Ã™â€ Ã˜Â´)
-
-            list.querySelectorAll('button, a').forEach(item => {
-
-                // Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã˜Â¯ÃšÂ©Ã™â€¦Ã™â€¡ Ã™Ë†Ã˜Â§ÃšÂ©Ã™â€ Ã˜Â´Ã˜Å’ event listener Ã˜Â¬Ã˜Â¯Ã˜Â§ÃšÂ¯Ã˜Â§Ã™â€ Ã™â€¡ Ã˜Â§Ã˜Â¶Ã˜Â§Ã™ÂÃ™â€¡ Ã™â€ Ã™â€¦Ã›Å’Ã¢â‚¬Å’ÃšÂ©Ã™â€ Ã›Å’Ã™â€¦
-
-                // Ãšâ€ Ã™Ë†Ã™â€  addReactionButton Ã˜Â®Ã™Ë†Ã˜Â¯Ã˜Â´ event handler Ã˜Â§Ã˜Â¶Ã˜Â§Ã™ÂÃ™â€¡ Ã™â€¦Ã›Å’Ã¢â‚¬Å’ÃšÂ©Ã™â€ Ã˜Â¯
-
-                if (item.classList.contains('btn-reaction')) {
-
-                    return;
-
-                }
-
-                
-
-                item.addEventListener('click', function(e) {
-
-                    menu.classList.remove('is-open');
-
-                    toggle?.setAttribute('aria-expanded', 'false');
-
-                });
-
-            });
-
-        }
-
-    }
-
-    
-
-    // Scroll to the bottom of the chat - Ã™ÂÃ™â€šÃ˜Â· Ã˜Â§ÃšÂ¯Ã˜Â± scroll restore ÃšÂ©Ã˜Â§Ã™â€¦Ã™â€ž Ã˜Â´Ã˜Â¯Ã™â€¡ Ã˜Â¨Ã˜Â§Ã˜Â´Ã˜Â¯
-
-    // Ã™Ë† ÃšÂ©Ã˜Â§Ã˜Â±Ã˜Â¨Ã˜Â± Ã˜Â®Ã™Ë†Ã˜Â¯Ã˜Â´ Ã˜Â¨Ã™â€¡ Ã™Â¾Ã˜Â§Ã›Å’Ã›Å’Ã™â€  Ã˜Â±Ã™ÂÃ˜ÂªÃ™â€¡ Ã˜Â¨Ã˜Â§Ã˜Â´Ã˜Â¯
-
-    // Ã˜Â¯Ã˜Â± Ã˜ÂºÃ›Å’Ã˜Â± Ã˜Â§Ã›Å’Ã™â€  Ã˜ÂµÃ™Ë†Ã˜Â±Ã˜ÂªÃ˜Å’ scroll restore Ã˜Â®Ã™Ë†Ã˜Â¯Ã˜Â´ Ã™â€¦Ã™Ë†Ã™â€šÃ˜Â¹Ã›Å’Ã˜Âª Ã˜Â±Ã˜Â§ Ã˜ÂªÃ™â€ Ã˜Â¸Ã›Å’Ã™â€¦ Ã™â€¦Ã›Å’Ã¢â‚¬Å’ÃšÂ©Ã™â€ Ã˜Â¯
-
-    // Ã˜Â§Ã›Å’Ã™â€  ÃšÂ©Ã˜Â¯ Ã˜Â­Ã˜Â°Ã™Â Ã˜Â´Ã˜Â¯ Ãšâ€ Ã™Ë†Ã™â€  Ã˜Â¨Ã˜Â§ scroll restore Ã˜ÂªÃ˜Â¯Ã˜Â§Ã˜Â®Ã™â€ž Ã˜Â¯Ã˜Â§Ã˜Â±Ã˜Â¯
-
-}
-
-
-
-function closeAllModals() {
-
-  closeElectionBox(); 
-
-  cancelPostForm();
-
-  cancelPollForm()
-
-  closeSkill()
-
-  cancelelectionForm()
-
-}
-
-
-
-function startPollCountdowns() {
-
-  document.querySelectorAll('.poll-timer').forEach(timer => {
-
-    if (timer.dataset.timerSet === "true") return;
-
-
-
-    const expiresAtStr = timer.getAttribute('data-expires');
-
-    if (!expiresAtStr) {
-
-      timer.innerText = 'Ã˜Â¨Ã˜Â¯Ã™Ë†Ã™â€  Ã˜Â²Ã™â€¦Ã˜Â§Ã™â€  Ã™Â¾Ã˜Â§Ã›Å’Ã˜Â§Ã™â€ ';
-
-      return;
-
-    }
-
-
-
-    const expiresAt = new Date(expiresAtStr);
-
-
-
-    function updateTimer() {
-
-      const now = new Date();
-
-      const diffMs = expiresAt - now;
-
-
-
-      if (isNaN(diffMs)) {
-
-        timer.innerText = 'Ã˜ÂªÃ˜Â§Ã˜Â±Ã›Å’Ã˜Â® Ã™â€ Ã˜Â§Ã™â€¦Ã˜Â¹Ã˜ÂªÃ˜Â¨Ã˜Â±';
-
-        return;
-
-      }
-
-
-
-      if (diffMs <= 0) {
-
-        timer.innerText = 'Ã™Â¾Ã˜Â§Ã›Å’Ã˜Â§Ã™â€  Ã›Å’Ã˜Â§Ã™ÂÃ˜ÂªÃ™â€¡';
-
-        return;
-
-      }
-
-
-
-      const totalSeconds = Math.floor(diffMs / 1000);
-
-      const hours = Math.floor(totalSeconds / 3600);
-
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-
-      const seconds = totalSeconds % 60;
-
-if (hours > 24) {
-
-    const days = Math.floor(hours / 24);
-
-    const remainingHours = hours % 24;
-
-
-
-    timer.innerText = `${days} Ã˜Â±Ã™Ë†Ã˜Â² ${remainingHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-} else {
-
-    timer.innerText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-}
-
-
-
-    }
-
-
-
-    updateTimer();
-
-    setInterval(updateTimer, 1000);
-
-
-
-    timer.dataset.timerSet = "true";
-
-  });
-
-}
-
-
-
-// Voice recording functionality
-
-let mediaRecorder;
-
-let audioChunks = [];
-
-let isRecording = false;
-
-
-
-// Wait for DOM to be fully loaded
-
-document.addEventListener('DOMContentLoaded', function() {
-
-    const voiceRecordBtn = document.getElementById('voice-record-btn');
-
-    const stopRecordingBtn = document.getElementById('stop-recording');
-
-
-
-    if (voiceRecordBtn) {
-
-        voiceRecordBtn.addEventListener('click', startRecording);
-
-    }
-
-
-
-    if (stopRecordingBtn) {
-
-        stopRecordingBtn.addEventListener('click', stopRecording);
-
-    }
-
-});
-
-
-
-async function startRecording() {
-
-    try {
-
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-        mediaRecorder = new MediaRecorder(stream);
-
-        audioChunks = [];
-
-        
-
-        
-
-        mediaRecorder.ondataavailable = (event) => {
-
-            audioChunks.push(event.data);
-
-        };
-
-        
-
-        mediaRecorder.onstop = async () => {
-
-            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-
-            const reader = new FileReader();
-
-            reader.readAsDataURL(audioBlob);
-
-            reader.onloadend = async () => {
-
-                const voiceMessageInput = document.getElementById('voice_message');
-
-                if (voiceMessageInput) {
-
-                    voiceMessageInput.value = reader.result;
-
-                    
-
-                    const form = document.getElementById('chatForm');
-
-                    if (form) {
-
-                        const formData = new FormData(form);
-
-                        // Add an empty message field to satisfy server validation
-
-                        formData.append('message', '[Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦ Ã˜ÂµÃ™Ë†Ã˜ÂªÃ›Å’]');
-
-                        
-
-                        try {
-
-                            const response = await fetch(form.action, {
-
-                                method: 'POST',
-
-                                headers: {
-
-                                    'X-CSRF-TOKEN': getCsrfToken(),
-
-                                    'Accept': 'application/json'
-
-                                },
-
-                                body: formData
-
-                            });
-
-
-
-                            const responseData = await safeReadJson(response);
-
-
-
-                            if (!response.ok) {
-
-                                if (response.status === 422) {
-
-                                    const errorMessage = responseData.message || 'Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â§Ã˜Â¹Ã˜ÂªÃ˜Â¨Ã˜Â§Ã˜Â±Ã˜Â³Ã™â€ Ã˜Â¬Ã›Å’ Ã˜Â¯Ã˜Â§Ã˜Â¯Ã™â€¡Ã¢â‚¬Å’Ã™â€¡Ã˜Â§';
-
-                                    const errors = responseData.errors ? Object.values(responseData.errors).flat().join('\n') : '';
-
-                                    alert(`${errorMessage}\n${errors}`);
-
-                                } else if (response.status === 500) {
-
-                                    console.error('Server Error Details:', responseData);
-
-                                    alert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â³Ã˜Â±Ã™Ë†Ã˜Â±. Ã™â€žÃ˜Â·Ã™ÂÃ˜Â§Ã™â€¹ Ã˜Â¯Ã™Ë†Ã˜Â¨Ã˜Â§Ã˜Â±Ã™â€¡ Ã˜ÂªÃ™â€žÃ˜Â§Ã˜Â´ ÃšÂ©Ã™â€ Ã›Å’Ã˜Â¯. Ã˜Â§ÃšÂ¯Ã˜Â± Ã™â€¦Ã˜Â´ÃšÂ©Ã™â€ž Ã˜Â§Ã˜Â¯Ã˜Â§Ã™â€¦Ã™â€¡ Ã˜Â¯Ã˜Â§Ã˜Â´Ã˜ÂªÃ˜Å’ Ã˜Â¨Ã˜Â§ Ã™Â¾Ã˜Â´Ã˜ÂªÃ›Å’Ã˜Â¨Ã˜Â§Ã™â€ Ã›Å’ Ã˜ÂªÃ™â€¦Ã˜Â§Ã˜Â³ Ã˜Â¨ÃšÂ¯Ã›Å’Ã˜Â±Ã›Å’Ã˜Â¯.');
-
-                                } else {
-
-                                    throw new Error(`HTTP error! status: ${response.status}`);
-
-                                }
-
-                            }
-
-                            
-
-                            if (responseData.status === 'success') {
-
-                                appendMessage(responseData.message);
-
-                                form.reset();
-
-                            } else {
-
-                                alert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦ Ã˜ÂµÃ™Ë†Ã˜ÂªÃ›Å’: ' + (responseData.message || 'Ã˜Â®Ã˜Â·Ã˜Â§Ã›Å’ Ã™â€ Ã˜Â§Ã˜Â´Ã™â€ Ã˜Â§Ã˜Â®Ã˜ÂªÃ™â€¡'));
-
-                            }
-
-                        } catch (error) {
-
-                            console.error('Error:', error);
-
-                            if (error.message.includes('Failed to fetch')) {
-
-                                alert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â§Ã˜ÂªÃ˜ÂµÃ˜Â§Ã™â€ž Ã˜Â¨Ã™â€¡ Ã˜Â³Ã˜Â±Ã™Ë†Ã˜Â±. Ã™â€žÃ˜Â·Ã™ÂÃ˜Â§Ã™â€¹ Ã˜Â§Ã˜ÂªÃ˜ÂµÃ˜Â§Ã™â€ž Ã˜Â§Ã›Å’Ã™â€ Ã˜ÂªÃ˜Â±Ã™â€ Ã˜Âª Ã˜Â®Ã™Ë†Ã˜Â¯ Ã˜Â±Ã˜Â§ Ã˜Â¨Ã˜Â±Ã˜Â±Ã˜Â³Ã›Å’ ÃšÂ©Ã™â€ Ã›Å’Ã˜Â¯.');
-
-                            } else {
-
-                                alert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦ Ã˜ÂµÃ™Ë†Ã˜ÂªÃ›Å’. Ã™â€žÃ˜Â·Ã™ÂÃ˜Â§Ã™â€¹ Ã˜Â¯Ã™Ë†Ã˜Â¨Ã˜Â§Ã˜Â±Ã™â€¡ Ã˜ÂªÃ™â€žÃ˜Â§Ã˜Â´ ÃšÂ©Ã™â€ Ã›Å’Ã˜Â¯.');
-
-                            }
-
-                        }
-
-                    }
-
-                }
-
-            };
-
-        };
-
-        
-
-        mediaRecorder.start();
-
-        isRecording = true;
-
-        
-
-        const voiceRecording = document.getElementById('voice-recording');
-
-        const voiceRecordBtn = document.getElementById('voice-record-btn');
-
-        
-
-        if (voiceRecording) {
-
-            voiceRecording.style.display = 'flex';
-
-        }
-
-        if (voiceRecordBtn) {
-
-            voiceRecordBtn.style.display = 'none';
-
-        }
-
-        
-
-    } catch (err) {
-
-        console.error('Error accessing microphone:', err);
-
-        alert('Ã˜Â¯Ã˜Â³Ã˜ÂªÃ˜Â±Ã˜Â³Ã›Å’ Ã˜Â¨Ã™â€¡ Ã™â€¦Ã›Å’ÃšÂ©Ã˜Â±Ã™Ë†Ã™ÂÃ™Ë†Ã™â€  Ã˜Â§Ã™â€¦ÃšÂ©Ã˜Â§Ã™â€ Ã¢â‚¬Å’Ã™Â¾Ã˜Â°Ã›Å’Ã˜Â± Ã™â€ Ã›Å’Ã˜Â³Ã˜Âª. Ã™â€žÃ˜Â·Ã™ÂÃ˜Â§Ã™â€¹ Ã˜Â¯Ã˜Â³Ã˜ÂªÃ˜Â±Ã˜Â³Ã›Å’ Ã˜Â±Ã˜Â§ Ã˜Â¨Ã˜Â±Ã˜Â±Ã˜Â³Ã›Å’ ÃšÂ©Ã™â€ Ã›Å’Ã˜Â¯.');
-
-    }
-
-}
-
-
-
-function stopRecording() {
-
-    if (isRecording && mediaRecorder) {
-
-        mediaRecorder.stop();
-
-        isRecording = false;
-
-        
-
-        // Stop all tracks
-
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
-
-        
-
-        // Hide recording UI
-
-        const voiceRecording = document.getElementById('voice-recording');
-
-        const voiceRecordBtn = document.getElementById('voice-record-btn');
-
-        
-
-        if (voiceRecording) {
-
-            voiceRecording.style.display = 'none';
-
-        }
-
-        if (voiceRecordBtn) {
-
-            voiceRecordBtn.style.display = 'block';
-
-        }
-
-    }
-
-}
-
-
-
-// Add click handler for reply (using event delegation for dynamic messages)
-
-document.addEventListener('DOMContentLoaded', function() {
-
-    const chatBoxEl = document.getElementById('chat-box');
-
-    if (chatBoxEl) {
-
-        // Event listener Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã™â€žÃ›Å’Ã™â€ ÃšÂ©Ã¢â‚¬Å’Ã™â€¡Ã˜Â§Ã›Å’ Ã™Â¾Ã˜Â±Ã™Ë†Ã™ÂÃ˜Â§Ã›Å’Ã™â€ž - Ã˜Â¨Ã˜Â§Ã›Å’Ã˜Â¯ Ã˜Â§Ã™Ë†Ã™â€ž Ã˜Â§Ã˜Â¬Ã˜Â±Ã˜Â§ Ã˜Â´Ã™Ë†Ã˜Â¯
-
-        chatBoxEl.addEventListener('click', function(e) {
-
-            const link = e.target.closest('a.message-sender');
-
-            if (link && link.href) {
-
-                // Ã˜Â§Ã˜Â¬Ã˜Â§Ã˜Â²Ã™â€¡ Ã˜Â¨Ã˜Â¯Ã™â€¡ Ã™â€žÃ›Å’Ã™â€ ÃšÂ© ÃšÂ©Ã˜Â§Ã˜Â± ÃšÂ©Ã™â€ Ã˜Â¯ - Ã™â€¡Ã›Å’Ãšâ€  ÃšÂ©Ã˜Â§Ã˜Â±Ã›Å’ Ã™â€ ÃšÂ©Ã™â€ 
-
-                return;
-
-            }
-
-        }, true); // Ã˜Â§Ã˜Â³Ã˜ÂªÃ™ÂÃ˜Â§Ã˜Â¯Ã™â€¡ Ã˜Â§Ã˜Â² capture phase Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã˜Â§Ã˜Â¬Ã˜Â±Ã˜Â§Ã›Å’ Ã˜Â²Ã™Ë†Ã˜Â¯Ã˜ÂªÃ˜Â±
-
-        
-
-        chatBoxEl.addEventListener('click', function(e) {
-
-            // Ã˜Â§ÃšÂ¯Ã˜Â± Ã˜Â±Ã™Ë†Ã›Å’ Ã™â€žÃ›Å’Ã™â€ ÃšÂ© ÃšÂ©Ã™â€žÃ›Å’ÃšÂ© Ã˜Â´Ã˜Â¯Ã™â€¡Ã˜Å’ Ã˜Â§Ã˜Â¬Ã˜Â§Ã˜Â²Ã™â€¡ Ã˜Â¨Ã˜Â¯Ã™â€¡ Ã˜Â¨Ã™â€¡ Ã™Â¾Ã˜Â±Ã™Ë†Ã™ÂÃ˜Â§Ã›Å’Ã™â€ž Ã˜Â¨Ã˜Â±Ã™Ë†Ã˜Â¯
-
-            if (e.target.closest('a.message-sender') || e.target.closest('.message-head__info a')) {
-
-                return; // Ã˜Â§Ã˜Â¬Ã˜Â§Ã˜Â²Ã™â€¡ Ã˜Â¨Ã˜Â¯Ã™â€¡ Ã™â€žÃ›Å’Ã™â€ ÃšÂ© ÃšÂ©Ã˜Â§Ã˜Â± ÃšÂ©Ã™â€ Ã˜Â¯
-
-            }
-
-            
-
-            const bubble = e.target.closest('.message-bubble');
-
-            if (!bubble) return;
-
-            
-
-            if (e.target.closest('.reply-box')) return;
-
-            
-
-            // Try to find message ID from different possible parent elements
-
-            const messageRow = bubble.closest('.message-row');
-
-            const messageWrapper = bubble.closest('.message-wrapper');
-
-            const messageId = messageRow?.dataset?.messageId || 
-
-                             messageWrapper?.dataset?.messageId || 
-
-                             bubble.dataset?.messageId;
-
-            
-
-            if (messageId) {
-
-                const parentIdInput = document.getElementById('parent_id');
-
-                if (parentIdInput) {
-
-                    parentIdInput.value = messageId;
-
-                }
-
-            }
-
-        });
-
-    }
-
-});
-
-
-
-function replyToMessage(messageId, senderName, content) {
-
-    // Find the reply indicator container
-
-    const replyContainer = document.getElementById('reply-indicator-container');
-
-    if (!replyContainer) {
-
-        console.error('Reply indicator container not found');
-
-        return;
-
-    }
-
-
-
-    // Create reply indicator content directly in container (Ã˜Â¨Ã˜Â¯Ã™Ë†Ã™â€  wrapper Ã˜Â§Ã˜Â¶Ã˜Â§Ã™ÂÃ›Å’)
-
-    replyContainer.innerHTML = `
-
-        <div class="reply-info">
-
-            <div class="reply-arrow"></div>
-
-            <div style="flex: 1; min-width: 0;">
-
-                <div class="reply-sender-name">${senderName}</div>
-
-                <div class="reply-content">${content}</div>
-
-            </div>
-
-        </div>
-
-        <button class="btn-cancel-reply" onclick="cancelReply()">
-
-            <i class="fas fa-times"></i>
-
-        </button>
-
-    `;
-
-    replyContainer.style.display = 'block';
-
-
-
-    // Set parent_id in form
-
-    const parentIdInput = document.getElementById('parent_id');
-
-    if (parentIdInput) {
-
-        parentIdInput.value = messageId;
-
-    }
-
-
-
-    // Scroll to input
-
-    const chatForm = document.getElementById('chatForm');
-
-    if (chatForm) {
-
-        chatForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-    }
-
-}
-
-
-
-function cancelReply() {
-
-    // Hide reply indicator container
-
-    const replyContainer = document.getElementById('reply-indicator-container');
-
-    if (replyContainer) {
-
-        replyContainer.innerHTML = '';
-
-        replyContainer.style.display = 'none';
-
-    }
-
-    
-
-    // Remove reply indicator (fallback for old code)
-
-    const replyIndicator = document.querySelector('.reply-indicator');
-
-    if (replyIndicator && replyIndicator.parentElement === document.body) {
-
-        replyIndicator.remove();
-
-    }
-
-
-
-    // Clear parent_id
-
-    const parentIdInput = document.getElementById('parent_id');
-
-    if (parentIdInput) {
-
-        parentIdInput.value = '';
-
-    }
-
-}
-
-
-
-// Add event listener for form submit to clear reply after sending
-
-const chatForm = document.getElementById('chatForm');
-
-if (chatForm) {
-
-    chatForm.addEventListener('submit', function() {
-
-        setTimeout(cancelReply, 100);
-
-    });
-
-}
-
-
-
-// // Add click handlers for file upload buttons
-
-// document.getElementById('file-upload').addEventListener('change', function(e) {
-
-//     if (this.files.length > 0) {
-
-//         document.getElementById('chatForm').submit();
-
-//     }
-
-// });
-
-
-
-function editMessage(messageId, currentContent) {
-
-    // Hide all other edit forms
-
-    document.querySelectorAll('.edit-form').forEach(form => {
-
-        form.style.display = 'none';
-
-    });
-
-    
-
-    // Show the edit form for this message
-
-    const editForm = document.getElementById(`edit-form-${messageId}`);
-
-    const editInput = document.getElementById(`edit-message-${messageId}`);
-
-    
-
-    if (editForm && editInput) {
-
-        editForm.style.display = 'block';
-
-        editInput.focus();
-
-    }
-
-}
-
-
-
-function cancelEdit(messageId) {
-
-    const editForm = document.getElementById(`edit-form-${messageId}`);
-
-    if (editForm) {
-
-        editForm.style.display = 'none';
-
-    }
-
-}
-
-
-
-
-
-function submitEdit(event, messageId) {
-
-    event.preventDefault();
-
-    
-
-
-
-    const newContent = document.getElementById(`edit-message-${messageId}`).value;
-
-    
-
-    $.ajax({
-
-        url: `/messages/${messageId}/edit`,
-
-        method: 'POST',
-
-        headers: {
-
-            'X-CSRF-TOKEN': getCsrfToken()
-
-        },
-
-        data: {
-
-            content: newContent
-
-        },
-
-        success: function(response) {
-
-            if (response.status === 'success') {
-
-                // Update the message content
-
-                const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
-
-                const messageContent = messageElement.querySelector('.message-bubble p');
-
-                if (messageContent) {
-
-                    messageContent.textContent = newContent;
-
-                }
-
-                
-
-                // Add edited badge if it doesn't exist
-
-                if (!messageElement.querySelector('.edited-badge')) {
-
-                    const editedBadge = document.createElement('span');
-
-                    editedBadge.className = 'edited-badge';
-
-                    editedBadge.textContent = 'Ã™Ë†Ã›Å’Ã˜Â±Ã˜Â§Ã›Å’Ã˜Â´ Ã˜Â´Ã˜Â¯Ã™â€¡';
-
-                    messageContent.parentNode.insertBefore(editedBadge, messageContent.nextSibling);
-
-                }
-
-                
-
-                // Hide the edit form
-
-                document.getElementById(`edit-form-${messageId}`).style.display = 'none';
-
-                
-
-                // Show success message
-
-                alert('Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦ Ã˜Â¨Ã˜Â§ Ã™â€¦Ã™Ë†Ã™ÂÃ™â€šÃ›Å’Ã˜Âª Ã™Ë†Ã›Å’Ã˜Â±Ã˜Â§Ã›Å’Ã˜Â´ Ã˜Â´Ã˜Â¯');
-
-            } else {
-
-                alert(response.message || 'Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã™Ë†Ã›Å’Ã˜Â±Ã˜Â§Ã›Å’Ã˜Â´ Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦');
-
-            }
-
-        },
-
-        error: function() {
-
-            alert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â§Ã˜Â±Ã˜ÂªÃ˜Â¨Ã˜Â§Ã˜Â· Ã˜Â¨Ã˜Â§ Ã˜Â³Ã˜Â±Ã™Ë†Ã˜Â±');
-
-        }
-
-    });
-
-}
-
-
-
-function reportMessage(messageId) {
-
-    const reason = prompt('Ã™â€žÃ˜Â·Ã™ÂÃ˜Â§Ã™â€¹ Ã˜Â¯Ã™â€žÃ›Å’Ã™â€ž ÃšÂ¯Ã˜Â²Ã˜Â§Ã˜Â±Ã˜Â´ Ã˜Â§Ã›Å’Ã™â€  Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦ Ã˜Â±Ã˜Â§ Ã™Ë†Ã˜Â§Ã˜Â±Ã˜Â¯ ÃšÂ©Ã™â€ Ã›Å’Ã˜Â¯:');
-
-    if (reason) {
-
-        fetch(`/groups/messages/${messageId}/report`, {
-
-            method: 'POST',
-
-            headers: {
-
-                'Content-Type': 'application/json',
-
-                'X-CSRF-TOKEN': getCsrfToken()
-
-            },
-
-            body: JSON.stringify({ reason })
-
-        })
-
-        .then(response => response.json())
-
-        .then(data => {
-
-            if (data.status === 'success') {
-
-                alert('Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦ Ã˜Â¨Ã˜Â§ Ã™â€¦Ã™Ë†Ã™ÂÃ™â€šÃ›Å’Ã˜Âª ÃšÂ¯Ã˜Â²Ã˜Â§Ã˜Â±Ã˜Â´ Ã˜Â´Ã˜Â¯.');
-
-            } else {
-
-                alert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± ÃšÂ¯Ã˜Â²Ã˜Â§Ã˜Â±Ã˜Â´ Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦.');
-
-            }
-
-        })
-
-        .catch(error => {
-
-            console.error('Error:', error);
-
-            alert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± ÃšÂ¯Ã˜Â²Ã˜Â§Ã˜Â±Ã˜Â´ Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦.');
-
-        });
-
-    }
-
-}
-
-
-
-function deletePost(postId) {
-
-    if (!confirm('Are you sure you want to delete this post?')) return;
-
-
-
-    fetch(`/blog/${postId}`, {
-
-        method: 'DELETE',
-
-        headers: {
-
-            'X-CSRF-TOKEN': getCsrfToken(),
-
-            'Accept': 'application/json',
-
-            'X-Requested-With': 'XMLHttpRequest'
-
-        },
-
-        credentials: 'same-origin'
-
-    })
-
-    .then(async (response) => {
-
-        const data = await safeReadJson(response);
-
-        if (!response.ok) {
-
-            throw new Error(data.message || 'Error deleting post');
-
-        }
-
-        // Some middlewares may return 200 with an empty/non-standard payload.
-
-        // In that case, deletion is already successful and we should not raise a false error.
-
-        if (data && data.status && data.status !== 'success') {
-
-            throw new Error(data.message || 'Error deleting post');
-
-        }
-
-
-
-        const postCard = document.getElementById(`blog-${postId}`);
-
-        const postWrapper = postCard ? (postCard.closest('.post-wrapper') || postCard) : null;
-
-        if (postWrapper) {
-
-            postWrapper.remove();
-
-        }
-
-    })
-
-    .catch((error) => {
-
-        console.error('Delete post error:', error);
-
-        alert(error.message || 'Error deleting post');
-
-    });
-
-}
-
-
-
-async function deletePoll(pollId, deleteUrl) {
-
-    if (!confirm('Ø¢ÛŒØ§ Ø§Ø² Ø­Ø°Ù Ø§ÛŒÙ† Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ Ù…Ø·Ù…Ø¦Ù† Ù‡Ø³ØªÛŒØ¯ØŸ')) return;
-
-    try {
-
-        const response = await fetch(deleteUrl, {
-
-            method: 'POST',
-
-            headers: {
-
-                'X-Requested-With': 'XMLHttpRequest',
-
-                'Accept': 'application/json',
-
-                'X-CSRF-TOKEN': getCsrfToken()
-
-            },
-
-            credentials: 'same-origin'
-
-        });
-
-
-
-        const data = await response.json().catch(() => ({}));
-
-        if (!response.ok || data.status !== 'success') {
-
-            throw new Error(data.message || 'Ø®Ø·Ø§ Ø¯Ø± Ø­Ø°Ù Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ');
-
-        }
-
-
-
-        const pollCard = document.getElementById(`poll-${pollId}`);
-
-        const pollWrapper = pollCard ? (pollCard.closest('.poll-wrapper') || pollCard) : null;
-
-        pollWrapper?.remove();
-
-    } catch (error) {
-
-        console.error('Delete poll error:', error);
-
-        showErrorAlert(error.message || 'Ø®Ø·Ø§ Ø¯Ø± Ø­Ø°Ù Ù†Ø¸Ø±Ø³Ù†Ø¬ÛŒ');
-
-    }
-
-}
-
-
-
-function editPost(postId, currentTitle, currentContent, currentCategoryId) {
-
-    // Hide all other edit forms
-
-    document.querySelectorAll('.post-edit-form').forEach(form => {
-
-        form.style.display = 'none';
-
-    });
-
-    
-
-    // Show the edit form for this post
-
-    const editForm = document.getElementById(`post-edit-form-${postId}`);
-
-    const titleInput = document.getElementById(`edit-post-title-${postId}`);
-
-    const contentInput = document.getElementById(`edit-post-content-${postId}`);
-
-    const categorySelect = document.getElementById(`edit-post-category-${postId}`);
-
-    
-
-    if (editForm && titleInput && contentInput && categorySelect) {
-
-        editForm.style.display = 'block';
-
-        titleInput.value = currentTitle;
-
-        contentInput.value = currentContent;
-
-        categorySelect.value = currentCategoryId;
-
-        titleInput.focus();
-
-    }
-
-}
-
-
-
-function cancelPostEdit(postId) {
-
-    const editForm = document.getElementById(`post-edit-form-${postId}`);
-
-    if (editForm) {
-
-        editForm.style.display = 'none';
-
-    }
-
-}
-
-
-
-async function submitPostEdit(event, postId) {
-
-    event.preventDefault();
-
-
-
-    const titleInput = document.getElementById(`edit-post-title-${postId}`);
-
-    const contentInput = document.getElementById(`edit-post-content-${postId}`);
-
-    const categorySelect = document.getElementById(`edit-post-category-${postId}`);
-
-
-
-    const title = titleInput?.value || '';
-
-    const content = contentInput?.value || '';
-
-    const categoryId = categorySelect?.value || '';
-
-
-
-    if (!title.trim() || !content.trim() || !categoryId) {
-
-        alert('Please complete all required fields.');
-
-        return;
-
-    }
-
-
-
-    try {
-
-        const response = await fetch(`/blog/${postId}`, {
-
-            method: 'PUT',
-
-            headers: {
-
-                'Content-Type': 'application/json',
-
-                'X-CSRF-TOKEN': getCsrfToken(),
-
-                'Accept': 'application/json',
-
-                'X-Requested-With': 'XMLHttpRequest'
-
-            },
-
-            body: JSON.stringify({
-
-                title: title,
-
-                content: content,
-
-                category_id: categoryId
-
-            })
-
-        });
-
-
-
-        const data = await response.json();
-
-
-
-        if (!response.ok) {
-
-            if (response.status === 422 && data?.errors) {
-
-                const messages = Object.values(data.errors).flat().join('\n');
-
-                alert(messages || 'Validation failed.');
-
-                return;
-
-            }
-
-            throw new Error(data.message || 'Error updating post');
-
-        }
-
-
-
-        if (data.status !== 'success') {
-
-            alert(data.message || 'Error updating post');
-
-            return;
-
-        }
-
-
-
-        const postCard = document.getElementById(`blog-${postId}`);
-
-        if (postCard) {
-
-            const titleEl = postCard.querySelector('.post-card__title');
-
-            const contentEl = postCard.querySelector('.post-card__content');
-
-            const categoryAnchor = postCard.querySelector('.post-card__category a.open-category-blogs');
-
-            const categoryWrap = postCard.querySelector('.post-card__category');
-
-            const categoryName = categorySelect.options?.[categorySelect.selectedIndex]?.text || '';
-
-
-
-            if (titleEl) {
-
-                titleEl.textContent = title;
-
-            } else if (title.trim()) {
-
-                const metaEl = postCard.querySelector('.post-card__meta');
-
-                if (metaEl) {
-
-                    const h3 = document.createElement('h3');
-
-                    h3.className = 'post-card__title';
-
-                    h3.textContent = title;
-
-                    postCard.insertBefore(h3, metaEl);
-
-                }
-
-            }
-
-
-
-            if (contentEl) {
-
-                contentEl.innerHTML = content;
-
-            }
-
-
-
-            if (categoryAnchor) {
-
-                categoryAnchor.textContent = categoryName;
-
-                categoryAnchor.dataset.url = `/categories/${categoryId}/blogs`;
-
-            } else if (categoryWrap) {
-
-                categoryWrap.innerHTML = `<i class="fas fa-folder-open"></i> ${categoryName}`;
-
-            }
-
-        }
-
-
-
-        const modalElement = document.getElementById(`editPostModal-${postId}`);
-
-        if (modalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-
-            const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
-
-            modalInstance.hide();
-
-        }
-
-    } catch (error) {
-
-        console.error('Error:', error);
-
-        alert(error.message || 'Server error');
-
-    }
-
-}
-
-
-
-function openChatSearch() {
-
-    const searchBox = document.createElement('div');
-
-    searchBox.className = 'chat-search-box';
-
-    searchBox.innerHTML = `
-
-        <div class="search-header">
-
-            <input type="text" id="chatSearchInput" placeholder="Ã˜Â¬Ã˜Â³Ã˜ÂªÃ˜Â¬Ã™Ë† Ã˜Â¯Ã˜Â± Ã™Â¾Ã›Å’Ã˜Â§Ã™â€¦Ã¢â‚¬Å’Ã™â€¡Ã˜Â§...">
-
-            <button onclick="closeChatSearch()">Ãƒâ€”</button>
-
-        </div>
-
-        <div id="searchResults" class="search-results"></div>
-
-    `;
-
-    document.body.appendChild(searchBox);
-
-    
-
-    const searchInput = document.getElementById('chatSearchInput');
-
-    searchInput.focus();
-
-    
-
-    let searchTimeout;
-
-    searchInput.addEventListener('input', function() {
-
-        clearTimeout(searchTimeout);
-
-        searchTimeout = setTimeout(() => {
-
-            const searchTerm = this.value.toLowerCase();
-
-            const messages = document.querySelectorAll('.message-wrapper');
-
-            const results = [];
-
-            const seenIds = new Set();
-
-            
-
-            messages.forEach(msg => {
-
-                const messageId = msg.getAttribute('data-message-id');
-
-                if (seenIds.has(messageId)) return;
-
-                seenIds.add(messageId);
-
-                
-
-                const content = msg.querySelector('.message-bubble p')?.textContent.toLowerCase() || '';
-
-                if (content.includes(searchTerm)) {
-
-                    results.push(msg);
-
-                }
-
-            });
-
-            
-
-            const resultsContainer = document.getElementById('searchResults');
-
-            resultsContainer.innerHTML = '';
-
-            
-
-            results.forEach(msg => {
-
-                const clone = msg.cloneNode(true);
-
-                clone.addEventListener('click', () => {
-
-                    msg.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-                    msg.style.backgroundColor = '#ffeb3b';
-
-                    setTimeout(() => msg.style.backgroundColor = '', 2000);
-
-                });
-
-                resultsContainer.appendChild(clone);
-
-            });
-
-        }, 300); // Ã˜ÂªÃ˜Â§Ã˜Â®Ã›Å’Ã˜Â± 300 Ã™â€¦Ã›Å’Ã™â€žÃ›Å’Ã¢â‚¬Å’Ã˜Â«Ã˜Â§Ã™â€ Ã›Å’Ã™â€¡ Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã˜Â¬Ã™â€žÃ™Ë†ÃšÂ¯Ã›Å’Ã˜Â±Ã›Å’ Ã˜Â§Ã˜Â² Ã˜Â¬Ã˜Â³Ã˜ÂªÃ˜Â¬Ã™Ë†Ã›Å’ Ã™â€¦ÃšÂ©Ã˜Â±Ã˜Â±
-
-    });
-
-}
-
-
-
-function closeChatSearch() {
-
-    const searchBox = document.querySelector('.chat-search-box');
-
-    if (searchBox) {
-
-        searchBox.remove();
-
-    }
-
-}
-
-
-
-function clearChatHistory() {
-
-    if (confirm('Ã˜Â¢Ã›Å’Ã˜Â§ Ã˜Â§Ã˜Â² Ã™Â¾Ã˜Â§ÃšÂ© ÃšÂ©Ã˜Â±Ã˜Â¯Ã™â€  Ã˜ÂªÃ˜Â§Ã˜Â±Ã›Å’Ã˜Â®Ãšâ€ Ã™â€¡ Ãšâ€ Ã˜Âª Ã˜Â§Ã˜Â·Ã™â€¦Ã›Å’Ã™â€ Ã˜Â§Ã™â€  Ã˜Â¯Ã˜Â§Ã˜Â±Ã›Å’Ã˜Â¯Ã˜Å¸')) {
-
-        fetch(`/api/groups/${groupId}/clear-history`, {
-
-            method: 'POST',
-
-            headers: {
-
-                'X-CSRF-TOKEN': getCsrfToken(),
-
-                'Accept': 'application/json'
-
-            }
-
-        })
-
-        .then(response => response.json())
-
-        .then(data => {
-
-            if (data.success) {
-
-                document.getElementById('chat-box').innerHTML = '';
-
-                alert('Ã˜ÂªÃ˜Â§Ã˜Â±Ã›Å’Ã˜Â®Ãšâ€ Ã™â€¡ Ãšâ€ Ã˜Âª Ã˜Â¨Ã˜Â§ Ã™â€¦Ã™Ë†Ã™ÂÃ™â€šÃ›Å’Ã˜Âª Ã™Â¾Ã˜Â§ÃšÂ© Ã˜Â´Ã˜Â¯');
-
-            } else {
-
-                alert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã™Â¾Ã˜Â§ÃšÂ© ÃšÂ©Ã˜Â±Ã˜Â¯Ã™â€  Ã˜ÂªÃ˜Â§Ã˜Â±Ã›Å’Ã˜Â®Ãšâ€ Ã™â€¡ Ãšâ€ Ã˜Âª');
-
-            }
-
-        })
-
-        .catch(error => {
-
-            console.error('Error:', error);
-
-            alert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã™Â¾Ã˜Â§ÃšÂ© ÃšÂ©Ã˜Â±Ã˜Â¯Ã™â€  Ã˜ÂªÃ˜Â§Ã˜Â±Ã›Å’Ã˜Â®Ãšâ€ Ã™â€¡ Ãšâ€ Ã˜Âª');
-
-        });
-
-    }
-
-}
-
-
-
-function deleteChat() {
-
-    if (confirm('Ã˜Â¢Ã›Å’Ã˜Â§ Ã˜Â§Ã˜Â² Ã˜Â­Ã˜Â°Ã™Â Ã˜Â§Ã›Å’Ã™â€  Ãšâ€ Ã˜Âª Ã˜Â§Ã˜Â·Ã™â€¦Ã›Å’Ã™â€ Ã˜Â§Ã™â€  Ã˜Â¯Ã˜Â§Ã˜Â±Ã›Å’Ã˜Â¯Ã˜Å¸ Ã˜Â§Ã›Å’Ã™â€  Ã˜Â¹Ã™â€¦Ã™â€ž Ã˜ÂºÃ›Å’Ã˜Â±Ã™â€šÃ˜Â§Ã˜Â¨Ã™â€ž Ã˜Â¨Ã˜Â§Ã˜Â²ÃšÂ¯Ã˜Â´Ã˜Âª Ã˜Â§Ã˜Â³Ã˜Âª.')) {
-
-        fetch(`/api/groups/${groupId}/delete`, {
-
-            method: 'POST',
-
-            headers: {
-
-                'X-CSRF-TOKEN': getCsrfToken(),
-
-                'Accept': 'application/json'
-
-            }
-
-        })
-
-        .then(response => response.json())
-
-        .then(data => {
-
-            if (data.success) {
-
-                window.location.href = '/groups';
-
-            } else {
-
-                alert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â­Ã˜Â°Ã™Â Ãšâ€ Ã˜Âª');
-
-            }
-
-        })
-
-        .catch(error => {
-
-            console.error('Error:', error);
-
-            alert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â­Ã˜Â°Ã™Â Ãšâ€ Ã˜Âª');
-
-        });
-
-    }
-
-}
-
-
-
-function reportUser() {
-
-    const reportBox = document.createElement('div');
-
-    reportBox.className = 'report-box';
-
-    reportBox.innerHTML = `
-
-        <div class="report-header">
-
-            <h3>ÃšÂ¯Ã˜Â²Ã˜Â§Ã˜Â±Ã˜Â´ ÃšÂ©Ã˜Â§Ã˜Â±Ã˜Â¨Ã˜Â±</h3>
-
-            <button onclick="closeReportBox()">Ãƒâ€”</button>
-
-        </div>
-
-        <div class="report-content">
-
-            <select id="reportReason">
-
-                <option value="spam">Ã˜Â§Ã˜Â³Ã™Â¾Ã™â€¦</option>
-
-                <option value="harassment">Ã˜Â¢Ã˜Â²Ã˜Â§Ã˜Â± Ã™Ë† Ã˜Â§Ã˜Â°Ã›Å’Ã˜Âª</option>
-
-                <option value="inappropriate">Ã™â€¦Ã˜Â­Ã˜ÂªÃ™Ë†Ã˜Â§ Ã™â€ Ã˜Â§Ã™â€¦Ã™â€ Ã˜Â§Ã˜Â³Ã˜Â¨</option>
-
-                <option value="other">Ã˜Â³Ã˜Â§Ã›Å’Ã˜Â±</option>
-
-            </select>
-
-            <textarea id="reportDescription" placeholder="Ã˜ÂªÃ™Ë†Ã˜Â¶Ã›Å’Ã˜Â­Ã˜Â§Ã˜Âª Ã˜Â¨Ã›Å’Ã˜Â´Ã˜ÂªÃ˜Â±..."></textarea>
-
-            <button onclick="submitReport()">Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž ÃšÂ¯Ã˜Â²Ã˜Â§Ã˜Â±Ã˜Â´</button>
-
-        </div>
-
-    `;
-
-    document.body.appendChild(reportBox);
-
-}
-
-
-
-function closeReportBox() {
-
-    const reportBox = document.querySelector('.report-box');
-
-    if (reportBox) {
-
-        reportBox.remove();
-
-    }
-
-}
-
-
-
-function submitReport() {
-
-    const reason = document.getElementById('reportReason').value;
-
-    const description = document.getElementById('reportDescription').value;
-
-    
-
-    fetch(`/api/groups/${groupId}/report`, {
-
-        method: 'POST',
-
-        headers: {
-
-            'X-CSRF-TOKEN': getCsrfToken(),
-
-            'Accept': 'application/json',
-
-            'Content-Type': 'application/json'
-
-        },
-
-        body: JSON.stringify({
-
-            reason: reason,
-
-            description: description
-
-        })
-
-    })
-
-    .then(response => response.json())
-
-    .then(data => {
-
-        if (data.success) {
-
-            alert('ÃšÂ¯Ã˜Â²Ã˜Â§Ã˜Â±Ã˜Â´ Ã˜Â¨Ã˜Â§ Ã™â€¦Ã™Ë†Ã™ÂÃ™â€šÃ›Å’Ã˜Âª Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã˜Â´Ã˜Â¯');
-
-            closeReportBox();
-
-        } else {
-
-            alert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž ÃšÂ¯Ã˜Â²Ã˜Â§Ã˜Â±Ã˜Â´');
-
-        }
-
-    })
-
-    .catch(error => {
-
-        console.error('Error:', error);
-
-        alert('Ã˜Â®Ã˜Â·Ã˜Â§ Ã˜Â¯Ã˜Â± Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž ÃšÂ¯Ã˜Â²Ã˜Â§Ã˜Â±Ã˜Â´');
-
-    });
-
-}
-
-
-
-
-
-
-
-
-
-
-

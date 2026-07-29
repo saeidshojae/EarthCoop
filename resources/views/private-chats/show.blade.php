@@ -2,8 +2,6 @@
 
 @section('title', 'چت خصوصی - ' . config('app.name', 'EarthCoop'))
 
-@vite(['resources/css/app.css', 'resources/js/app.js'])
-
 @push('styles')
 <style>
     .chat-container {

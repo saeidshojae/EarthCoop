@@ -1011,7 +1011,7 @@ class NajmHodaGroupAssistantService
             return [
                 'decision' => 'skipped',
                 'reason' => 'private_message_disabled',
-                'group_reply' => '????? ???? ????? ???? ??? ???? ??????? ???.',
+                'group_reply' => 'پیام خصوصی غیرفعال است.',
                 'context' => ['source' => 'group_policy'],
             ];
         }
@@ -1021,7 +1021,7 @@ class NajmHodaGroupAssistantService
             return [
                 'decision' => 'skipped',
                 'reason' => 'private_message_target_not_found',
-                'group_reply' => '??? ????? ???? ???? ???. ???? ??? ??? ?? ???? ???????.',
+                'group_reply' => 'هدف پیام خصوصی یافت نشد.',
                 'context' => ['source' => 'intent_parse'],
             ];
         }
@@ -1032,7 +1032,7 @@ class NajmHodaGroupAssistantService
             return [
                 'decision' => 'skipped',
                 'reason' => 'private_message_invalid_target',
-                'group_reply' => '????? ???? ????? ?? ??? ??? ??? ???? ????.',
+                'group_reply' => 'هدف پیام خصوصی نامعتبر است.',
                 'context' => ['target_user_id' => $target->id],
             ];
         }
@@ -1074,7 +1074,7 @@ class NajmHodaGroupAssistantService
                     return [
                         'decision' => 'executed',
                         'reason' => 'private_chat_request_sent',
-                        'group_reply' => "???? {$target->fullName()} ??????? ?????? ????? ????? ??.",
+                        'group_reply' => "درخواست چت خصوصی به {$target->fullName()} ارسال شد.",
                         'context' => [
                             'mode' => 'request',
                             'target_user_id' => $target->id,
@@ -1093,7 +1093,7 @@ class NajmHodaGroupAssistantService
                 return [
                     'decision' => 'executed',
                     'reason' => 'private_message_sent',
-                    'group_reply' => "???? ????? ???? {$target->fullName()} ????? ??.",
+                    'group_reply' => "پیام خصوصی به {$target->fullName()} ارسال شد.",
                     'context' => [
                         'mode' => 'direct',
                         'target_user_id' => $target->id,
@@ -1238,7 +1238,7 @@ class NajmHodaGroupAssistantService
             return [
                 'decision' => (string) ($actionPolicyCheck['decision'] ?? 'skipped'),
                 'reason' => (string) ($actionPolicyCheck['reason'] ?? 'action_policy_denied'),
-                'group_reply' => (string) ($actionPolicyCheck['group_reply'] ?? '????? ??? ????? ???? ????.'),
+                'group_reply' => (string) ($actionPolicyCheck['group_reply'] ?? 'دستور اکشن واضح نبود. لطفا با الگوی مشخص دستور بدهید (پست/نظرسنجی/کامنت/واکنش).'),
                 'context' => (array) ($actionPolicyCheck['context'] ?? []),
             ];
         }
@@ -2297,7 +2297,7 @@ class NajmHodaGroupAssistantService
             return [
                 'decision' => (string) ($moderationPolicyCheck['decision'] ?? 'skipped'),
                 'reason' => (string) ($moderationPolicyCheck['reason'] ?? 'moderation_policy_denied'),
-                'group_reply' => (string) ($moderationPolicyCheck['group_reply'] ?? '????? ??? ????? ???? ????.'),
+                'group_reply' => (string) ($moderationPolicyCheck['group_reply'] ?? 'پاکسازی خودکار پیام‌های بی‌ارتباط خاموش شد.'),
                 'context' => (array) ($moderationPolicyCheck['context'] ?? []),
             ];
         }

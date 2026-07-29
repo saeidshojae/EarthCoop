@@ -216,6 +216,14 @@ class PollController extends Controller
 
         $poll->markAsRead($user->id);
 
+        $groupId = (int) ($poll->group_id ?? 0);
+        if ($groupId > 0) {
+            $this->dispatchGroupEvent(new GroupFeedUpdated($groupId, 'poll_read', [
+                'poll_id' => (int) $poll->id,
+                'read_count' => (int) $poll->read_count,
+            ], (int) $user->id));
+        }
+
         return response()->json([
             'status' => 'success',
             'read_count' => $poll->read_count,

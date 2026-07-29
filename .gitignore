@@ -8,6 +8,8 @@
 Homestead.yaml
 Homestead.json
 .phpunit.result.cache
+.composer-cache/
+.npm-cache/
 /storage/logs/
 /storage/framework/cache/
 /storage/framework/sessions/
@@ -36,33 +38,4 @@ Thumbs.db
 
 # Web server logs
 /public/error_log
-
-# --------------------------------------------------
-# Additional ignores for this project (added by saeidshojae)
-# --------------------------------------------------
-
-# Backup and temporary files
-*.bak
-*.encbak
-*.encbak2
-*.pre_*_fix.bak
-*.pre_*_fix2.bak
-
-# Composer cache (local)
-.composer-cache/
-
-# Test and temporary PHP files
-test-*.php
-tmp_*.txt
-check-*.php
-inspect_*.php
-PENDING_MIGRATIONS.txt
-build.log
-
-# Local scripts not needed in repo
-/scripts/start-soketi.ps1
-*.py
-*.sql
-
-# Storage snapshots (local debug)
-/storage/backups/wip-snapshots/
+.npm-cache-node18/
