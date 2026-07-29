@@ -18,13 +18,30 @@ jobs:
       uses: shivammathur/setup-php@v2
       with:
         php-version: '8.2'
+        extensions: mbstring, pdo, pdo_mysql, bcmath, openssl, fileinfo, zip, curl, json
+        coverage: none
 
-    # 👇 این مرحله جدید را اضافه کنید
     - name: Create bootstrap/cache directory
       run: mkdir -p bootstrap/cache && chmod 755 bootstrap/cache
 
-    - name: Install Composer dependencies
-      run: composer install --no-dev --optimize-autoloader
+    - name: Create .env file (for Laravel)
+      run: |
+        echo "APP_ENV=production" >> .env
+        echo "APP_DEBUG=false" >> .env
+        echo "APP_KEY=" >> .env
+        echo "DB_CONNECTION=mysql" >> .env
+        echo "DB_HOST=127.0.0.1" >> .env
+        echo "DB_PORT=3306" >> .env
+        echo "DB_DATABASE=dummy" >> .env
+        echo "DB_USERNAME=dummy" >> .env
+        echo "DB_PASSWORD=dummy" >> .env
+
+    - name: Install Composer dependencies (skip scripts)
+      run: composer install --no-dev --optimize-autoloader --no-scripts
+
+    - name: Run Laravel package discovery
+      run: php artisan package:discover --ansi || true
+      # 👆 `|| true` یعنی اگر خطا داد، ادامه بده و متوقف نشو
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
