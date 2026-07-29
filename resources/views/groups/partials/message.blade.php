@@ -50,7 +50,7 @@
 
     @endif
 
-    <div class="message-bubble {{ $isMine ? 'you' : 'other' }}" data-message-id="{{ $item->id }}"
+    <div class="message-bubble {{ $isMine ? 'you' : 'other' }} {{ ((isset($item->voice_message_url) && $item->voice_message_url) || (isset($item->voice_message) && $item->voice_message)) ? 'message-bubble--voice' : '' }}" data-message-id="{{ $item->id }}"
 
         data-user-id="{{ $item->user_id }}" data-edit-url="{{ route('groups.messages.edit', $item->id) }}"
 
@@ -78,7 +78,7 @@
 
                     <button type="button"
 
-                        onclick="replyToMessage('{{ $item->id }}', @js($senderName), @js($rawContent))"
+                        onclick="replyToMessageFromButton(this, '{{ $item->id }}')"
 
                         class="action-menu__item btn-rep">
 
@@ -228,7 +228,7 @@
 
                     <button type="button"
 
-                        onclick="replyToMessage('{{ $item->id }}', @js($senderName), @js($rawContent))"
+                        onclick="replyToMessageFromButton(this, '{{ $item->id }}')"
 
                         class="action-menu__item btn-rep">
 
@@ -422,25 +422,39 @@
 
         {{-- متن پیام --}}
 
-        <p class="message-content">{!! nl2br(e($item->content ?? '')) !!}</p>
+        <p class="message-content">{!! $item->content ?? '' !!}</p>
 
         {{-- Voice Message --}}
 
-        @if(isset($item->voice_message) && $item->voice_message)
+        @if((isset($item->voice_message_url) && $item->voice_message_url) || (isset($item->voice_message) && $item->voice_message))
 
         @php
 
-        // Get voice message URL - handle both relative and absolute paths
+        // Prefer the dedicated stream endpoint when available.
 
-        $voicePath = $item->voice_message;
+        $voicePath = $item->voice_message_url ?? $item->voice_message;
 
         if (str_starts_with($voicePath, 'http')) {
 
         $voiceUrl = $voicePath;
 
+        } elseif (str_starts_with($voicePath, '/messages/')) {
+
+        $voiceUrl = $voicePath;
+
         } else {
 
-        $voiceUrl = asset('storage/' . ltrim($voicePath, '/'));
+        $normalizedVoicePath = ltrim($voicePath, '/');
+
+        if (str_starts_with($normalizedVoicePath, 'storage/')) {
+
+        $voiceUrl = '/' . $normalizedVoicePath;
+
+        } else {
+
+        $voiceUrl = '/storage/' . $normalizedVoicePath;
+
+        }
 
         }
 
@@ -516,7 +530,7 @@
 
                 </div>
 
-                <div style="flex: 1; min-width: 0;">
+                <div class="voice-message-content" style="flex: 1; min-width: 220px; width: 100%;">
 
                     <div style="font-size: 12px; color: #666; margin-bottom: 4px;">
 
@@ -524,15 +538,7 @@
 
                     </div>
 
-                    <audio controls style="width: 100%; height: 40px;" preload="metadata">
-
-                        <source src="{{ $voiceUrl }}" type="{{ $voiceType }}">
-
-                        <source src="{{ $voiceUrl }}" type="audio/webm">
-
-                        <source src="{{ $voiceUrl }}" type="audio/ogg">
-
-                        <source src="{{ $voiceUrl }}" type="audio/mpeg">
+                    <audio class="voice-player" controls style="width: 100%;" preload="metadata" src="{{ $voiceUrl }}" type="{{ $voiceType }}">
 
                         مرورگر شما از پخش صدا پشتیبانی نمی‌کند.
 
@@ -608,7 +614,21 @@
 
         }
 
-        $emojis = ['like' => '👍', 'love' => '❤️', 'laugh' => '😂', 'wow' => '😮', 'sad' => '😢', 'angry' => '😠'];
+        $emojis = [
+        'like' => '👍',
+        'love' => '❤️',
+        'laugh' => '😂',
+        'wow' => '😮',
+        'sad' => '😢',
+        'angry' => '😠',
+        '👍' => '👍',
+        '❤️' => '❤️',
+        '😂' => '😂',
+        '😮' => '😮',
+        '😢' => '😢',
+        '🔥' => '🔥',
+        '👎' => '👎'
+        ];
 
         $readBy = null;
 
@@ -673,6 +693,13 @@
                 <div class="message-reactions" style="display: flex; gap: 4px; flex-wrap: wrap;">
 
                     @foreach($reactions as $reaction)
+                    @php
+                    $reactionType = $reaction['type']
+                    ?? $reaction['reaction_type']
+                    ?? (is_object($reaction) ? ($reaction->type ?? $reaction->reaction_type ?? '') : '');
+                    $reactionCount = $reaction['count']
+                    ?? (is_object($reaction) ? ($reaction->count ?? 0) : 0);
+                    @endphp
 
                     <span class="reaction-badge" style="
 
@@ -688,11 +715,11 @@
 
                             "
 
-                        onclick="if(typeof toggleReaction === 'function') toggleReaction({{ $item->id }}, '{{ $reaction['type'] ?? $reaction->type ?? '' }}')">
+                        onclick="if(typeof toggleReaction === 'function') toggleReaction({{ $item->id }}, '{{ $reactionType }}')">
 
-                        {{ $emojis[$reaction['type'] ?? $reaction->type ?? ''] ?? '👍' }}
+                        {{ $emojis[$reactionType] ?? ($reactionType ?: '👍') }}
 
-                        {{ $reaction['count'] ?? $reaction->count ?? 0 }}
+                        {{ $reactionCount }}
 
                     </span>
 
