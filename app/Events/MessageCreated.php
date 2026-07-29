@@ -53,6 +53,7 @@ class MessageCreated implements ShouldBroadcastNow
             'file_type' => $this->message->file_type,
             'file_name' => $this->message->file_name,
             'voice_message' => $this->normalizeVoicePath($this->message->voice_message),
+            'voice_message_url' => $this->message->voice_message ? route('groups.messages.voice', ['message' => $this->message->id]) : null,
             'reactions' => [],
         ];
 
@@ -85,7 +86,10 @@ class MessageCreated implements ShouldBroadcastNow
 
         $path = ltrim($path, '/');
         $encoded = implode('/', array_map('rawurlencode', explode('/', $path)));
-        return asset('storage/' . $encoded);
+        if (Str::startsWith($path, 'storage/')) {
+            return '/' . $encoded;
+        }
+        return '/storage/' . $encoded;
     }
 
     private function resolveParentPreview(string $parentId): array
