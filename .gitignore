@@ -14,6 +14,20 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    # ==========================================
+    # مدیریت کش کامپوزر برای جلوگیری از خرابی vendor
+    # ==========================================
+    - name: Get Composer cache directory
+      id: composer-cache
+      run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+    - name: Cache Composer dependencies
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.composer-cache.outputs.dir }}
+        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+        restore-keys: ${{ runner.os }}-composer-
+
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
@@ -25,7 +39,7 @@ jobs:
       run: mkdir -p bootstrap/cache && chmod 755 bootstrap/cache
 
     # ==========================================
-    # مرحله ۱: نصب وابستگی‌های Composer
+    # مرحله ۱: نصب وابستگی‌های Composer (تضمین شده)
     # ==========================================
     - name: Install Composer dependencies
       run: |
@@ -36,7 +50,7 @@ jobs:
       run: php artisan package:discover --ansi || true
 
     # ==========================================
-    # مرحله ۲: ایجاد فایل .env و تولید APP_KEY (بعد از نصب وندور)
+    # مرحله ۲: ایجاد فایل .env و تولید کلید (اینجا 100% vendor وجود دارد)
     # ==========================================
     - name: Create .env file and generate key
       run: |
@@ -52,7 +66,7 @@ jobs:
         php artisan key:generate --force
 
     # ==========================================
-    # مرحله ۳: بیلد فایل‌های ظاهری (Frontend)
+    # مرحله ۳: بیلد فایل‌های ظاهری
     # ==========================================
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -66,7 +80,7 @@ jobs:
         npm run build
 
     # ==========================================
-    # مرحله ۴: ارسال فایل‌ها به هاست سی‌پنل
+    # مرحله ۴: ارسال فایل‌ها به هاست
     # ==========================================
     - name: Sync files to cPanel via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
