@@ -49,7 +49,10 @@
     <button @click.stop="userDropdownOpen = !userDropdownOpen" 
             class="px-4 py-2 md:px-4 md:py-2 rounded-full md:rounded-full shadow-md transition duration-300 font-medium transform hover:scale-105 active:scale-100 flex items-center justify-center ripple user-dropdown-btn" 
             style="background-color: var(--color-earth-green); color: var(--color-pure-white);"
-            :style="userDropdownOpen ? 'background-color: var(--color-earth-green) !important; color: var(--color-pure-white) !important;' : 'background-color: var(--color-earth-green) !important; color: var(--color-pure-white) !important;'">
+            :style="userDropdownOpen ? 'background-color: var(--color-earth-green) !important; color: var(--color-pure-white) !important;' : 'background-color: var(--color-earth-green) !important; color: var(--color-pure-white) !important;'"
+            aria-haspopup="true"
+            :aria-expanded="userDropdownOpen ? 'true' : 'false'"
+            aria-controls="user-dropdown-menu">
         @php
             $user = Auth::user();
             $hasAvatar = $user && $user->avatar;
@@ -72,7 +75,8 @@
            :class="{ 'rotate-180': userDropdownOpen }"></i>
     </button>
     
-    <div x-show="userDropdownOpen" 
+    <div id="user-dropdown-menu"
+         x-show="userDropdownOpen" 
          @click.stop
          x-transition:enter="transition ease-out duration-200" 
          x-transition:enter-start="opacity-0 scale-95" 
@@ -82,6 +86,8 @@
          x-transition:leave-end="opacity-0 scale-95" 
          class="absolute right-0 mt-2 w-72 md:w-80 bg-white rounded-lg shadow-xl py-2 z-[9999] text-right origin-top-right max-h-[calc(100vh-120px)] md:max-h-[80vh] overflow-y-auto chat-user-dropdown" 
          x-cloak
+         role="menu"
+         aria-label="منوی کاربر"
          style="display: none; background-color: var(--color-pure-white); scrollbar-width: thin; scrollbar-color: #10b981 #f3f4f6; right: 0 !important; left: auto !important; transform-origin: top right !important;"
          x-ref="dropdown">
         

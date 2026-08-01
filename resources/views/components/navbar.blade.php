@@ -196,7 +196,7 @@
             {{-- Desktop Actions --}}
             <div class="hidden lg:flex items-center gap-3">
                 {{-- Theme Toggle --}}
-                <div class="theme-toggle-navbar" onclick="toggleTheme()" title="{{ __('navigation.theme_toggle') ?? 'تغییر تم' }}" role="button" aria-label="تغییر تم">
+                <div class="theme-toggle-navbar" onclick="toggleTheme()" title="{{ __('navigation.theme_toggle') ?? 'تغییر تم' }}" role="button" aria-label="تغییر تم" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTheme();}">
                     <span class="theme-toggle-icon sun">☀️</span>
                     <span class="theme-toggle-icon moon">🌙</span>
                     <div class="theme-toggle-slider"></div>
@@ -284,7 +284,7 @@
             </div>
 
             {{-- Mobile Menu Button --}}
-            <button id="mobile-menu-toggle" class="lg:hidden hamburger-menu" aria-label="منوی اصلی" aria-expanded="false">
+            <button id="mobile-menu-toggle" class="lg:hidden hamburger-menu" aria-label="منوی اصلی" aria-expanded="false" aria-controls="mobile-menu">
                 <span></span>
                 <span></span>
                 <span></span>
@@ -351,7 +351,7 @@
                 {{-- Theme Toggle Mobile --}}
                 <div class="flex items-center justify-between py-2">
                     <span class="text-gray-700 dark:text-gray-300 font-medium">{{ __('navigation.theme_toggle') ?? 'تم' }}</span>
-                    <div class="theme-toggle-navbar" onclick="toggleTheme()" role="button" aria-label="تغییر تم">
+                    <div class="theme-toggle-navbar" onclick="toggleTheme()" role="button" aria-label="تغییر تم" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTheme();}">
                         <span class="theme-toggle-icon sun">☀️</span>
                         <span class="theme-toggle-icon moon">🌙</span>
                         <div class="theme-toggle-slider"></div>

@@ -92,7 +92,7 @@
         <div class="flex items-center gap-3 flex-shrink-0">
             {{-- Dark Mode Toggle - Desktop --}}
             <div class="hidden md:block">
-                <div class="theme-toggle" onclick="toggleTheme()" title="{{ __('navigation.theme_toggle') }}" style="margin: 0 0.5rem;">
+                <div class="theme-toggle" onclick="toggleTheme()" title="{{ __('navigation.theme_toggle') }}" role="button" aria-label="{{ __('navigation.theme_toggle') }}" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTheme();}" style="margin: 0 0.5rem;">
                     <span class="theme-toggle-icon sun">☀️</span>
                     <span class="theme-toggle-icon moon">🌙</span>
                     <div class="theme-toggle-slider"></div>
@@ -134,7 +134,9 @@
             <button @click="mobileMenuOpen = !mobileMenuOpen"
                     class="md:hidden text-gentle-black focus:outline-none flex items-center justify-center mobile-menu-button"
                     style="color: var(--color-gentle-black); width: 45px; height: 45px; flex-shrink: 0; position: relative;"
-                    aria-label="منوی اصلی">
+                    aria-label="منوی اصلی"
+                    :aria-expanded="mobileMenuOpen ? 'true' : 'false'"
+                    aria-controls="mobile-menu-unified">
                 <i class="fas fa-bars text-2xl mobile-menu-icon-bars" :class="{ 'hidden': mobileMenuOpen }"></i>
                 <i class="fas fa-times text-2xl mobile-menu-icon-times" :class="{ 'hidden': !mobileMenuOpen }" style="position: absolute;"></i>
             </button>
@@ -156,7 +158,8 @@
     </div>
 
     {{-- Mobile Menu --}}
-    <div x-show="mobileMenuOpen"
+    <div id="mobile-menu-unified"
+         x-show="mobileMenuOpen"
          @click.away="mobileMenuOpen = false"
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0 -translate-y-2"
@@ -208,7 +211,7 @@
             {{-- Dark Mode Toggle - Mobile --}}
             <div class="flex items-center justify-center w-full py-2">
                 <span class="text-sm mr-2">{{ __('navigation.footer_theme') }}:</span>
-                <div class="theme-toggle" onclick="toggleTheme()" title="{{ __('navigation.theme_toggle') }}">
+                <div class="theme-toggle" onclick="toggleTheme()" title="{{ __('navigation.theme_toggle') }}" role="button" aria-label="{{ __('navigation.theme_toggle') }}" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTheme();}">
                     <span class="theme-toggle-icon sun">☀️</span>
                     <span class="theme-toggle-icon moon">🌙</span>
                     <div class="theme-toggle-slider"></div>
