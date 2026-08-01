@@ -1,5 +1,4 @@
 # Laravel default
-/vendor/
 /node_modules/
 /public/storage
 /storage/*.key
@@ -16,7 +15,6 @@ Homestead.json
 /storage/framework/testing/
 /storage/framework/views/
 /bootstrap/cache/
-/public/build/
 /public/hot
 /public/mix-manifest.json
 .idea/
