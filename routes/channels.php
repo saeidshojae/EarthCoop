@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Broadcast;
-use Illuminate\Support\Facades\Cache;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,30 +17,23 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
 
-// Channel برای چت پشتیبانی
+// کانال برای چت پشتیبانی
 Broadcast::channel('support-chat.{chatId}', function ($user, $chatId) {
     $chat = \App\Models\SupportChat::find($chatId);
-
+    
     if (!$chat) {
         return false;
     }
-
+    
     // کاربر یا پشتیبان می‌توانند به channel گوش دهند
     return $chat->user_id === $user->id || $chat->agent_id === $user->id;
 });
 
 Broadcast::channel('group.{groupId}', function ($user, $groupId) {
-    $groupId = (int) $groupId;
-    $userId = (int) $user->id;
-    $cacheKey = "group-channel-auth:{$groupId}:{$userId}";
-    $ttlSeconds = max(1, (int) config('group-chat.channel_auth_cache_ttl_seconds', 30));
-
-    return Cache::remember($cacheKey, now()->addSeconds($ttlSeconds), function () use ($groupId, $userId) {
-        return \App\Models\GroupUser::where('group_id', $groupId)
-            ->where('user_id', $userId)
-            ->where('status', 1)
-            ->exists();
-    });
+    return \App\Models\GroupUser::where('group_id', (int) $groupId)
+        ->where('user_id', (int) $user->id)
+        ->where('status', 1)
+        ->exists();
 });
 
 Broadcast::channel('private-chat.{conversationId}', function ($user, $conversationId) {
