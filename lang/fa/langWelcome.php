@@ -5,7 +5,7 @@ return [
     'site_title' => 'EarthCoop - خانه‌ای برای همه؛ همکاری برای آینده',
     'tagline' => 'خانه‌ای برای همه؛ همکاری برای آینده',
     'nav_home' => 'خانه',
-    'nav_about' => 'درباره ارث کوپ',
+    'nav_about' => 'درباره ارثکوپ',
     'nav_guide' => 'راهنما',
     'nav_projects' => 'پروژه‌ها',
     'nav_stories' => 'داستان‌ها',
