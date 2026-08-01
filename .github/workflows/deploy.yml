@@ -24,6 +24,18 @@ jobs:
     - name: Create bootstrap/cache directory
       run: mkdir -p bootstrap/cache && chmod 755 bootstrap/cache
 
+    # ==========================================
+    # مرحله 1: نصب وابستگی‌های Composer (باید اول انجام شود)
+    # ==========================================
+    - name: Install Composer dependencies (skip scripts)
+      run: composer install --no-dev --optimize-autoloader --no-scripts
+
+    - name: Run Laravel package discovery
+      run: php artisan package:discover --ansi || true
+
+    # ==========================================
+    # مرحله 2: ایجاد فایل .env و تولید کلید (بعد از نصب وندور)
+    # ==========================================
     - name: Create .env file and generate key
       run: |
         echo "APP_ENV=production" >> .env
@@ -35,14 +47,7 @@ jobs:
         echo "DB_DATABASE=dummy" >> .env
         echo "DB_USERNAME=dummy" >> .env
         echo "DB_PASSWORD=dummy" >> .env
-        # تولید کلید اپلیکیشن برای جلوگیری از خطای APP_KEY
         php artisan key:generate --force
-
-    - name: Install Composer dependencies (skip scripts)
-      run: composer install --no-dev --optimize-autoloader --no-scripts
-
-    - name: Run Laravel package discovery
-      run: php artisan package:discover --ansi || true
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
