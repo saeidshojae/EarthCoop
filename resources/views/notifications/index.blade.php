@@ -3339,104 +3339,15 @@
 
     /* Fade-in animation */
 
-
-
-
-
-
-
-
-
     .fade-in-section {
-
-
-
-
-
-
-
-
-
-        opacity: 0;
-
-
-
-
-
-
-
-
-
-        transform: translateY(20px);
-
-
-
-
-
-
-
-
-
-        transition: opacity 0.6s ease-out, transform 0.6s ease-out;
-
-
-
-
-
-
-
-
-
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     .fade-in-section.is-visible {
-
-
-
-
-
-
-
-
-
         opacity: 1;
-
-
-
-
-
-
-
-
-
-        transform: translateY(0);
-
-
-
-
-
-
-
-
-
+        transform: none;
     }
 
 
@@ -3997,7 +3908,7 @@
 
 
 
-    <main class="flex-grow fade-in-section">
+    <main class="flex-grow">
 
 
 
