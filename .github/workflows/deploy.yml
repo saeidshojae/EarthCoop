@@ -21,9 +21,6 @@ jobs:
         extensions: mbstring, pdo, pdo_mysql, bcmath, openssl, fileinfo, zip, curl, json
         coverage: none
 
-    # ==========================================
-    # ایجاد پوشه‌های کش (برای جلوگیری از خطای Valid Cache Path)
-    # ==========================================
     - name: Create required cache directories
       run: |
         mkdir -p bootstrap/cache
@@ -33,18 +30,12 @@ jobs:
         chmod -R 775 bootstrap/cache
         chmod -R 775 storage/framework
 
-    # ==========================================
-    # مرحله 1: نصب وابستگی‌های Composer
-    # ==========================================
     - name: Install Composer dependencies
       run: composer install --no-dev --optimize-autoloader --no-scripts
 
     - name: Run Laravel package discovery
       run: php artisan package:discover --ansi || true
 
-    # ==========================================
-    # مرحله 2: ایجاد فایل .env و تولید کلید
-    # ==========================================
     - name: Create .env file and generate key
       run: |
         echo "APP_ENV=production" >> .env
@@ -75,7 +66,6 @@ jobs:
         server: ${{ secrets.FTP_HOST }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        protocol: sftp
         server-dir: /home3/btboeapy/public_html/
         dangerous-clean-slate: false
         exclude: |
