@@ -8,17 +8,18 @@
         $exclusiveGroups = $groups->where('type', 'exclusive');
     @endphp
 
-    <!-- Right Sidebar - Always visible, no toggle -->
-    <aside class="w-full lg:w-80 bg-white rounded-2xl shadow-lg p-6 flex-shrink-0 lg:sticky lg:top-24 h-fit border border-gray-200 transition-all duration-300 hover:shadow-xl"
+    <!-- Right Sidebar - Collapsible on mobile -->
+    <aside x-data="{ open: false }" @click.away="open = false" class="w-full lg:w-80 bg-white rounded-2xl shadow-lg p-4 lg:p-6 pb-0 lg:pb-6 flex-shrink-0 lg:sticky lg:top-24 h-fit border border-gray-200 transition-all duration-300 hover:shadow-xl"
            style="background-color: var(--color-pure-white);">
-        <div class="pb-4 mb-4 border-b border-gray-200">
-            <h2 class="text-2xl font-bold text-gentle-black flex items-center justify-between" style="color: var(--color-gentle-black);">
+        <button type="button" @click="open = !open" class="w-full text-left text-2xl font-bold text-gentle-black flex items-center justify-between gap-3 py-4 lg:py-3 border-b border-gray-200" style="color: var(--color-gentle-black);">
+            <div class="flex items-center gap-3">
                 <i class="fas fa-bars" style="color: var(--color-earth-green);"></i>
-                <span class="mr-3">منو</span>
-            </h2>
-        </div>
+                <span>منو</span>
+            </div>
+            <i class="lg:hidden" :class="open ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+        </button>
 
-        <nav>
+        <nav x-cloak :class="open ? 'block' : 'hidden lg:block'" class="lg:block overflow-hidden transition-all duration-200 ease-out lg:border-t lg:border-gray-200">
             <ul class="space-y-2">
                 <!-- Notifications -->
                 <li class="sidebar-menu-item">
@@ -28,6 +29,23 @@
                         <span class="flex-grow text-right mx-3">اعلان‌ها</span>
                         @if(auth()->user()->unreadNotifications->count() > 0)
                             <span class="badge text-white text-xs px-2 py-1 rounded-full font-bold badge-pulse" style="background-color: var(--color-red-tomato);">{{ auth()->user()->unreadNotifications->count() }}</span>
+                        @endif
+                    </a>
+                </li>
+
+                <!-- Chat Requests -->
+                @php
+                    $pendingChatRequestCount = \App\Models\ChatRequest::where('receiver_id', auth()->id())
+                        ->where('status', 'pending')
+                        ->count();
+                @endphp
+                <li class="sidebar-menu-item">
+                    <a href="{{ route('chat-requests.index') }}" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                        <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
+                        <i class="fas fa-comments" style="color: var(--color-ocean-blue);"></i>
+                        <span class="flex-grow text-right mx-3">درخواست‌های چت</span>
+                        @if($pendingChatRequestCount > 0)
+                            <span class="badge text-white text-xs px-2 py-1 rounded-full font-bold badge-pulse" style="background-color: var(--color-red-tomato);">{{ $pendingChatRequestCount }}</span>
                         @endif
                     </a>
                 </li>
@@ -187,7 +205,7 @@
             </ul>
         </nav>
 
-        <div class="mt-6 pt-4 border-t border-gray-200 text-center text-sm text-gray-500">
+        <div class="mt-6 pt-4 border-t border-gray-200 text-center text-sm text-gray-500 hidden lg:block">
             نسخه ۲.۱.۰ - EarthCoop
         </div>
     </aside>
