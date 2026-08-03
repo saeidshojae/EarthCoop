@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ get_direction() }}">
 <head>
     <meta charset="UTF-8">
@@ -8,7 +8,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'New Earth Coop')</title>
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/js/app.js'])
 
     <script defer src="{{ asset("vendor/alpinejs/cdn.min.js") }}"></script>
     <link rel="stylesheet" href="{{ asset("vendor/fontawesome/css/all.min.css") }}">

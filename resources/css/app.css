@@ -510,3 +510,99 @@
     outline-offset: var(--nb-focus-offset);
   }
 }
+
+/* Cross-browser viewport stability */
+@layer base {
+  html {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  img, svg, video, canvas {
+    max-width: 100%;
+  }
+}
+
+
+/* Welcome page: robust mobile CTA sections */
+@layer components {
+  .welcome-wide-cta {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .welcome-wide-cta__inner,
+  .welcome-wide-cta__title,
+  .welcome-wide-cta__text,
+  .welcome-wide-cta__actions,
+  .welcome-wide-cta__button {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .welcome-wide-cta__title,
+  .welcome-wide-cta__text,
+  .welcome-wide-cta__button {
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  @media (max-width: 639px) {
+    .welcome-wide-cta {
+      padding-top: 4rem !important;
+      padding-bottom: 4rem !important;
+    }
+
+    .welcome-wide-cta__inner {
+      width: 100% !important;
+      padding-inline: 1rem !important;
+      margin-inline: auto !important;
+    }
+
+    .welcome-wide-cta__title {
+      width: 100%;
+      margin-inline: auto;
+      margin-bottom: 1.5rem !important;
+      font-size: clamp(1.9rem, 9vw, 2.6rem) !important;
+      line-height: 1.35 !important;
+      letter-spacing: 0 !important;
+    }
+
+    .welcome-wide-cta__text {
+      width: 100%;
+      margin-inline: auto;
+      margin-bottom: 2rem !important;
+      padding-inline: .25rem;
+      font-size: clamp(1rem, 4.8vw, 1.25rem) !important;
+      line-height: 1.9 !important;
+    }
+
+    .welcome-wide-cta__actions {
+      width: 100%;
+      gap: 1rem !important;
+    }
+
+    .welcome-wide-cta__button {
+      width: 100%;
+      min-height: 3.75rem;
+      padding: .9rem 1rem !important;
+      border-radius: 1.25rem !important;
+      font-size: clamp(1rem, 4.7vw, 1.2rem) !important;
+      line-height: 1.6 !important;
+      white-space: normal !important;
+      text-align: center;
+    }
+  }
+}

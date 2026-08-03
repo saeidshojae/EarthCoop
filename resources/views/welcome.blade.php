@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ get_direction() }}">
 <head>
     <meta charset="UTF-8">
@@ -13,7 +13,7 @@
     <title>{{ __('langWelcome.site_title') }}</title>
 
     <!-- Tailwind & Bootstrap CSS via Vite -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/js/app.js'])
 
     <!-- Fonts with preconnect for better performance -->
     <link rel="stylesheet" href="{{ asset('Css/fonts-local.css') }}">
@@ -526,58 +526,7 @@
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
         }
-
-        /* فوری: تنظیم اندازه پایه برای Edge */
-        .edge-browser body,
-        .tailwind-fallback body {
-            font-size: 16px !important;
-            line-height: 1.5 !important;
-        }
-
-        .edge-browser .container,
-        .tailwind-fallback .container {
-            max-width: 1280px !important;
-            margin-left: auto !important;
-            margin-right: auto !important;
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
-        }
-
-        /* تنظیم اندازه فونت‌ها برای Edge */
-        .edge-browser h1,
-        .tailwind-fallback h1 {
-            font-size: 2.25rem !important;
-            line-height: 1.2 !important;
-        }
-
-        @media (min-width: 768px) {
-            .edge-browser h1,
-            .tailwind-fallback h1 {
-                font-size: 3.75rem !important;
-            }
-        }
-
-        @media (min-width: 1024px) {
-            .edge-browser h1,
-            .tailwind-fallback h1 {
-                font-size: 4.5rem !important;
-            }
-        }
-
-        .edge-browser p,
-        .tailwind-fallback p {
-            font-size: 1rem !important;
-            line-height: 1.5 !important;
-        }
-
-        /* جلوگیری از بزرگنمایی در Edge */
-        .edge-browser img,
-        .tailwind-fallback img {
-            max-width: 100% !important;
-            height: auto !important;
-        }
-
-        /* Fix for RTL direction in Edge */
+        /* Direction handling */
         [dir="rtl"] {
             direction: rtl;
             unicode-bidi: embed;
@@ -631,23 +580,23 @@
     </script>
 @endif
 
-<header class="bg-pure-white shadow-md py-4 px-6 md:px-8 sticky top-0 z-50">
+<header class="bg-pure-white shadow-md py-4 px-6 2xl:px-8 sticky top-0 z-50">
     <div class="container mx-auto flex justify-between items-center">
-        <div class="flex items-center space-x-3 md:space-x-reverse md:space-x-3 rtl:space-x-reverse rtl:space-x-3">
-            <a href="{{ route('welcome') }}" class="flex items-center space-x-3 md:space-x-reverse md:space-x-3 rtl:space-x-reverse rtl:space-x-3 hover:opacity-80 transition-opacity">
+        <div class="flex items-center space-x-3 2xl:space-x-reverse 2xl:space-x-3 rtl:space-x-reverse rtl:space-x-3">
+            <a href="{{ route('welcome') }}" class="flex items-center space-x-3 2xl:space-x-reverse 2xl:space-x-3 rtl:space-x-reverse rtl:space-x-3 hover:opacity-80 transition-opacity">
                 <svg width="45" height="45" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="animate-bounce-custom">
                     <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#10b981" opacity="0.8"/>
                     <path d="M12 2C10.5 4 8 6 8 9C8 12 12 14 12 14C12 14 16 12 16 9C16 6 13.5 4 12 2ZM12 14C12 14 10 16 10 18C10 20 12 22 12 22" fill="#047857"/>
                 </svg>
-                <span class="text-2xl md:text-3xl font-extrabold text-gentle-black font-vazirmatn">EarthCoop</span>
-                <span class="text-sm text-gray-500 hidden md:flex flex-col border-r-2 border-gray-200 pr-4 mr-4 font-vazirmatn leading-tight">
+                <span class="text-2xl 2xl:text-3xl font-extrabold text-gentle-black font-vazirmatn">EarthCoop</span>
+                <span class="text-sm text-gray-500 hidden 2xl:flex flex-col border-r-2 border-gray-200 pr-4 mr-4 font-vazirmatn leading-tight">
                     <span>{{ $taglineParts[0] ?? $tagline }}</span>
                     <span>{{ $taglineParts[1] ?? '' }}</span>
                 </span>
             </a>
         </div>
 
-        <nav class="hidden md:flex items-center gap-6 font-vazirmatn text-gentle-black">
+        <nav class="hidden 2xl:flex items-center gap-4 2xl:gap-5 font-vazirmatn text-gentle-black">
             <a href="{{ route('blog.index') }}" class="relative hover:text-earth-green transition duration-300 font-medium pb-1 group flex items-center gap-2">
                 <i class="fas fa-blog text-earth-green"></i>
                 <span>{{ __('navigation.blog') }}</span>
@@ -675,7 +624,7 @@
             </a>
         </nav>
 
-    <div class="hidden md:flex items-center space-x-4 rtl:space-x-reverse rtl:space-x-4">
+    <div class="hidden 2xl:flex items-center space-x-4 rtl:space-x-reverse rtl:space-x-4">
             <!-- Theme Toggle Button -->
             <div class="theme-toggle" onclick="toggleTheme()" title="{{ __('langWelcome.theme_toggle_title') }}" style="margin: 0 0.5rem;">
                 <span class="theme-toggle-icon sun">☀️</span>
@@ -705,15 +654,15 @@
             <a href="{{ route('invite') }}" class="bg-digital-gold text-pure-white px-6 py-2 rounded-full shadow-md hover:bg-opacity-90 transition duration-300 font-vazirmatn font-medium transform hover:scale-105">{{ __('langWelcome.btn_invite') }}</a>
         </div>
 
-        <div class="md:hidden flex items-center">
-            <button id="mobile-menu-button" class="hamburger-menu">
+        <div class="2xl:hidden flex items-center">
+            <button id="mobile-menu-button" class="hamburger-menu" type="button" aria-label="{{ __('navigation.open_menu') }}" aria-controls="mobile-menu" aria-expanded="false">
                 <span></span>
                 <span></span>
                 <span></span>
             </button>
         </div>
     </div>
-    <div id="mobile-menu" class="mobile-nav-menu hidden md:hidden">
+    <div id="mobile-menu" class="mobile-nav-menu hidden 2xl:hidden" aria-hidden="true">
         <nav class="flex flex-col items-center space-y-4 font-vazirmatn text-gentle-black py-4">
             <a href="{{ route('blog.index') }}" class="flex items-center gap-2 hover:text-earth-green transition duration-300 font-medium">
                 <i class="fas fa-blog text-earth-green"></i>
@@ -1005,8 +954,27 @@
 
         if (mobileMenuButton && mobileMenu) {
             mobileMenuButton.addEventListener('click', () => {
-                mobileMenu.classList.toggle('hidden');
-                mobileMenuButton.classList.toggle('open');
+                const isOpen = mobileMenu.classList.toggle('hidden') === false;
+                mobileMenuButton.classList.toggle('open', isOpen);
+                mobileMenuButton.setAttribute('aria-expanded', String(isOpen));
+                mobileMenu.setAttribute('aria-hidden', String(!isOpen));
+            });
+            mobileMenu.querySelectorAll('a').forEach((link) => {
+                link.addEventListener('click', () => {
+                    mobileMenu.classList.add('hidden');
+                    mobileMenuButton.classList.remove('open');
+                    mobileMenuButton.setAttribute('aria-expanded', 'false');
+                    mobileMenu.setAttribute('aria-hidden', 'true');
+                });
+            });
+
+            window.addEventListener('resize', () => {
+                if (window.innerWidth >= 768) {
+                    mobileMenu.classList.add('hidden');
+                    mobileMenuButton.classList.remove('open');
+                    mobileMenuButton.setAttribute('aria-expanded', 'false');
+                    mobileMenu.setAttribute('aria-hidden', 'true');
+                }
             });
         }
 
@@ -1040,45 +1008,6 @@
         @if($errors->any())
             openModal();
         @endif
-
-        // بررسی و اصلاح اندازه‌ها برای Edge
-        (function() {
-            var isEdge = /Edg/.test(navigator.userAgent) || /Edge/.test(navigator.userAgent);
-            
-            if (isEdge) {
-                // بررسی اینکه آیا Tailwind به درستی کار می‌کند
-                setTimeout(function() {
-                    var testElement = document.createElement('div');
-                    testElement.className = 'hidden';
-                    testElement.style.display = 'none';
-                    document.body.appendChild(testElement);
-                    
-                    var computedStyle = window.getComputedStyle(testElement);
-                    var tailwindWorks = computedStyle.display === 'none';
-                    
-                    document.body.removeChild(testElement);
-                    
-                    if (!tailwindWorks || document.documentElement.classList.contains('tailwind-fallback')) {
-                        // اعمال فوری استایل‌های fallback
-                        var style = document.createElement('style');
-                        style.id = 'edge-emergency-styles';
-                        style.textContent = `
-                            body { font-size: 16px !important; }
-                            .container { max-width: 1280px !important; margin: 0 auto !important; padding: 0 1rem !important; }
-                            h1 { font-size: 2.25rem !important; }
-                            @media (min-width: 768px) { h1 { font-size: 3.75rem !important; } }
-                            @media (min-width: 1024px) { h1 { font-size: 4.5rem !important; } }
-                            img { max-width: 100% !important; height: auto !important; }
-                        `;
-                        document.head.appendChild(style);
-                        // فقط در development لاگ کن
-                        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                            console.log('Edge: Emergency styles applied');
-                        }
-                    }
-                }, 500);
-            }
-        })();
 
         // Form validation
         const registrationForm = document.getElementById('registrationForm');
@@ -1115,5 +1044,6 @@
     });
 </script>
 
+    @include('components.pwa-install-prompt')
 </body>
 </html>

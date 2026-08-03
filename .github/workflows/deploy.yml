@@ -75,6 +75,7 @@ jobs:
         server: ${{ secrets.FTP_HOST }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
+        security: ftp-sftp
         server-dir: /home3/btboeapy/public_html/
         dangerous-clean-slate: false
         exclude: |

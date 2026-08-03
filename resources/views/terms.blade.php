@@ -1,1030 +1,6179 @@
-@extends('layouts.unified')
-
-
-
-@section('title', 'اساسنامه و شرایط استفاده - ' . config('app.name', 'EarthCoop'))
-
-<!-- Tailwind & Bootstrap CSS via Vite -->
-
-@vite(['resources/css/app.css', 'resources/js/app.js'])
-
-@push('styles')
-
-<style>
-
-    .terms-hero {
-
-        position: relative;
-
-        overflow: hidden;
-
-        background: linear-gradient(140deg, rgba(16, 185, 129, 0.15), rgba(59, 130, 246, 0.18));
-
-        border-radius: 1.75rem;
-
-        padding: 3rem 2.5rem;
-
-        box-shadow: 0 24px 60px rgba(14, 116, 144, 0.18);
-
-        border: 1px solid rgba(148, 163, 184, 0.25);
-
-    }
-
-
-
-    .terms-hero::before,
-
-    .terms-hero::after {
-
-        content: "";
-
-        position: absolute;
-
-        border-radius: 50%;
-
-        filter: blur(90px);
-
-        opacity: 0.7;
-
-    }
-
-
-
-    .terms-hero::before {
-
-        top: -160px;
-
-        left: -100px;
-
-        width: 320px;
-
-        height: 320px;
-
-        background: rgba(16, 185, 129, 0.5);
-
-    }
-
-
-
-    .terms-hero::after {
-
-        bottom: -160px;
-
-        right: -80px;
-
-        width: 280px;
-
-        height: 280px;
-
-        background: rgba(37, 99, 235, 0.45);
-
-    }
-
-
-
-    .terms-badge {
-
-        display: inline-flex;
-
-        align-items: center;
-
-        gap: 0.7rem;
-
-        background: rgba(255, 255, 255, 0.8);
-
-        border-radius: 999px;
-
-        padding: 0.55rem 1.5rem;
-
-        border: 1px solid rgba(16, 185, 129, 0.25);
-
-        backdrop-filter: blur(6px);
-
-        color: var(--color-dark-green);
-
-        font-weight: 600;
-
-    }
-
-
-
-    .accordion-wrapper {
-
-        border-radius: 1.5rem;
-
-        background: var(--color-pure-white);
-
-        border: 1px solid rgba(226, 232, 240, 0.8);
-
-        box-shadow: 0 25px 70px rgba(15, 23, 42, 0.08);
-
-    }
-
-
-
-    .accordion-item {
-
-        border-radius: 1.25rem;
-
-        border: 1px solid rgba(203, 213, 225, 0.6);
-
-        overflow: hidden;
-
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-
-    }
-
-
-
-    .accordion-item:hover {
-
-        transform: translateY(-3px);
-
-        box-shadow: 0 20px 45px rgba(148, 163, 184, 0.18);
-
-    }
-
-
-
-    .accordion-header-btn {
-
-        width: 100%;
-
-        display: flex;
-
-        justify-content: space-between;
-
-        align-items: center;
-
-        gap: 1rem;
-
-        padding: 1.5rem;
-
-        background: linear-gradient(120deg, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.96));
-
-        cursor: pointer;
-
-        transition: background 0.3s ease;
-
-    }
-
-
-
-    .accordion-header-btn:hover {
-
-        background: linear-gradient(120deg, rgba(238, 255, 248, 0.95), rgba(219, 234, 254, 0.95));
-
-    }
-
-
-
-    .accordion-icon {
-
-        width: 40px;
-
-        height: 40px;
-
-        border-radius: 999px;
-
-        display: inline-flex;
-
-        align-items: center;
-
-        justify-content: center;
-
-        font-size: 1.1rem;
-
-        color: var(--color-earth-green);
-
-        background: rgba(16, 185, 129, 0.18);
-
-    }
-
-
-
-    .accordion-content {
-
-        max-height: 0;
-
-        overflow: hidden;
-
-        transition: max-height 0.5s ease;
-
-        background: rgba(248, 250, 252, 0.85);
-
-    }
-
-
-
-    .accordion-content.active {
-
-        max-height: 5000px;
-
-    }
-
-
-
-    .nested-accordion-button {
-
-        width: 100%;
-
-        padding: 1.1rem 1.25rem;
-
-        display: flex;
-
-        justify-content: space-between;
-
-        align-items: center;
-
-        gap: 0.75rem;
-
-        background: rgba(248, 250, 252, 0.95);
-
-        border-radius: 1rem;
-
-        border: 1px solid rgba(203, 213, 225, 0.6);
-
-        cursor: pointer;
-
-        transition: background 0.3s ease;
-
-    }
-
-
-
-    .nested-accordion-button:hover {
-
-        background: rgba(219, 234, 254, 0.9);
-
-    }
-
-
-
-    .nested-content {
-
-        max-height: 0;
-
-        overflow: hidden;
-
-        transition: max-height 0.45s ease;
-
-    }
-
-
-
-    .nested-content.active {
-
-        max-height: 3000px;
-
-    }
-
-
-
-    .terms-action-card {
-
-        border-radius: 1.5rem;
-
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(37, 99, 235, 0.12));
-
-        border: 1px solid rgba(148, 163, 184, 0.25);
-
-        padding: 2.25rem;
-
-        box-shadow: 0 22px 55px rgba(37, 99, 235, 0.18);
-
-    }
-
-
-
-    .terms-action-card h3 {
-
-        font-size: 1.65rem;
-
-        font-weight: 800;
-
-        color: var(--color-dark-green);
-
-    }
-
-
-
-    .terms-cta {
-
-        display: inline-flex;
-
-        align-items: center;
-
-        gap: 0.75rem;
-
-        border-radius: 999px;
-
-        padding: 0.85rem 2.5rem;
-
-        font-weight: 700;
-
-        color: var(--color-pure-white);
-
-        background: linear-gradient(120deg, var(--color-earth-green), #047857);
-
-        box-shadow: 0 20px 32px rgba(5, 150, 105, 0.22);
-
-        transition: transform 0.25s ease, box-shadow 0.25s ease;
-
-    }
-
-
-
-    .terms-cta:hover {
-
-        transform: translateY(-3px);
-
-        box-shadow: 0 24px 40px rgba(5, 150, 105, 0.28);
-
-    }
-
-
-
-    .support-card {
-
-        border-radius: 1.25rem;
-
-        background: rgba(255, 255, 255, 0.9);
-
-        border: 1px solid rgba(226, 232, 240, 0.8);
-
-        box-shadow: 0 20px 45px rgba(148, 163, 184, 0.12);
-
-        padding: 1.75rem;
-
-    }
-
-
-
-    .floating-support {
-
-        position: fixed;
-
-        left: 1.5rem;
-
-        bottom: 1.5rem;
-
-        background: linear-gradient(135deg, var(--color-earth-green), #059669);
-
-        color: var(--color-pure-white);
-
-        width: 52px;
-
-        height: 52px;
-
-        border-radius: 50%;
-
-        display: flex;
-
-        align-items: center;
-
-        justify-content: center;
-
-        box-shadow: 0 18px 32px rgba(34, 197, 94, 0.35);
-
-        cursor: pointer;
-
-        opacity: 0;
-
-        transform: translateY(12px);
-
-        transition: opacity 0.3s ease, transform 0.3s ease;
-
-        z-index: 40;
-
-    }
-
-
-
-    .floating-support.visible {
-
-        opacity: 1;
-
-        transform: translateY(0);
-
-    }
-
-
-
-    .info-pill {
-
-        border-radius: 1rem;
-
-        padding: 1rem 1.25rem;
-
-        background: rgba(148, 163, 184, 0.12);
-
-        color: #475569;
-
-        font-weight: 600;
-
-    }
-
-
-
-    .fade-up {
-
-        opacity: 0;
-
-        transform: translateY(26px);
-
-        transition: opacity 0.6s ease, transform 0.6s ease;
-
-    }
-
-
-
-    .fade-up.visible {
-
-        opacity: 1;
-
-        transform: translateY(0);
-
-    }
-
-
-
-    @media (max-width: 768px) {
-
-        .terms-hero {
-
-            padding: 2.25rem 1.75rem;
-
-        }
-
-
-
-        .terms-action-card {
-
-            padding: 1.75rem;
-
-        }
-
-
-
-        .terms-cta {
-
-            width: 100%;
-
-            justify-content: center;
-
-        }
-
-    }
-
-</style>
-
-@endpush
-
-
-
-@section('content')
-
-@php
-
-    $terms = \App\Models\Term::with('childs')->whereNull('parent_id')->orderBy('id', 'asc')->get();
-
-    $setting = \App\Models\Setting::find(1);
-
-    $fingerRequired = $setting && $setting->finger_status == 1;
-
-    $termsAcceptedAt = auth()->check() ? auth()->user()->terms_accepted_at : null;
-
-@endphp
-
-
-
-<div class="bg-gradient-to-br from-slate-50 via-white to-slate-100 py-12 md:py-16">
-
-    <div class="container mx-auto px-5 md:px-10 max-w-6xl space-y-12">
-
-        <section class="terms-hero fade-up">
-
-            <div class="terms-badge">
-
-                <i class="fas fa-file-contract"></i>
-
-                مستند رسمی EarthCoop
-
-            </div>
-
-
-
-            <div class="mt-6 space-y-4">
-
-                <h1 class="text-3xl md:text-4xl lg:text-5xl font-black text-gentle-black leading-tight">
-
-                    اساسنامه و شرایط استفاده از سامانه ارث‌کوپ
-
-                </h1>
-
-                <p class="text-lg md:text-xl text-slate-700 max-w-3xl">
-
-                    این توافقنامه ارزش‌ها، مسئولیت‌ها و استانداردهای مشارکت در زیست‌بوم همکاری EarthCoop را مشخص می‌کند. لطفاً به دقت مطالعه نمایید.
-
-                </p>
-
-                <div class="flex flex-wrap items-center gap-3">
-
-                    <span class="info-pill flex items-center gap-2">
-
-                        <i class="fas fa-shield-alt text-earth-green"></i>
-
-                        حفاظت از حقوق و شفافیت اطلاعات
-
-                    </span>
-
-                    <span class="info-pill flex items-center gap-2">
-
-                        <i class="fas fa-users text-ocean-blue"></i>
-
-                        مشارکت مسئولانه در اقتصاد جمعی
-
-                    </span>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-
-        <section class="accordion-wrapper p-6 md:p-8 space-y-5 fade-up">
-
-            @if($terms->isNotEmpty())
-
-                @foreach($terms as $term)
-
-                    <article class="accordion-item" id="term-{{ $term->id }}">
-
-                        <button class="accordion-header-btn" type="button" onclick="toggleAccordion('accordion-{{ $term->id }}', this)">
-
-                            <div class="flex items-center gap-3 text-right">
-
-                                <span class="accordion-icon"><i class="fas fa-scroll"></i></span>
-
-                                <span class="text-lg md:text-xl font-bold text-gentle-black">{{ $term->title }}</span>
-
-                            </div>
-
-                            <i class="fas fa-chevron-down text-slate-500 transition-transform duration-300"></i>
-
-                        </button>
-
-
-
-                        <div class="accordion-content" id="accordion-{{ $term->id }}">
-
-                            <div class="p-6 md:p-7 space-y-5 text-slate-700 leading-relaxed bg-white/90">
-
-                                <div class="prose prose-lg max-w-none" style="direction: rtl; text-align: right;">
-
-                                    {!! $term->message !!}
-
-                                </div>
-
-
-
-                                @if($term->childs && $term->childs->isNotEmpty())
-
-                                    <div class="pt-5 border-t border-slate-200 space-y-3">
-
-                                        <h4 class="font-semibold text-slate-600 flex items-center gap-2">
-
-                                            <i class="fas fa-layer-group text-earth-green"></i>
-
-                                            بخش‌های تکمیلی
-
-                                        </h4>
-
-                                        @foreach($term->childs as $child)
-
-                                            <div class="space-y-3">
-
-                                                <button type="button" class="nested-accordion-button" onclick="toggleNested('nested-{{ $child->id }}', this)">
-
-                                                    <span class="text-base font-semibold text-gentle-black">{{ $child->title }}</span>
-
-                                                    <i class="fas fa-chevron-down text-slate-500 transition-transform duration-300"></i>
-
-                                                </button>
-
-                                                <div class="nested-content" id="nested-{{ $child->id }}">
-
-                                                    <div class="bg-white rounded-xl border border-slate-200/70 p-5 text-slate-600 leading-relaxed">
-
-                                                        <div class="prose max-w-none" style="direction: rtl; text-align: right;">
-
-                                                            {!! $child->message !!}
-
-                                                        </div>
-
-                                                    </div>
-
-                                                </div>
-
-                                            </div>
-
-                                        @endforeach
-
-                                    </div>
-
-                                @endif
-
-                            </div>
-
-                        </div>
-
-                    </article>
-
-                @endforeach
-
-            @else
-
-                <div class="text-center py-16">
-
-                    <i class="fas fa-info-circle text-5xl text-slate-300 mb-4"></i>
-
-                    <p class="text-lg text-slate-600">هنوز اساسنامه‌ای ثبت نشده است.</p>
-
-                </div>
-
-            @endif
-
-        </section>
-
-
-
-        <section class="terms-action-card fade-up text-center space-y-5">
-
-            <h3>مطالعه و پذیرش شرایط</h3>
-
-            <p class="text-slate-700 max-w-3xl mx-auto">
-
-                تایید این توافقنامه به معنای پذیرش کامل قوانین و چارچوب‌های همکاری EarthCoop است. بدون پذیرش این شرایط، امکان ادامه مراحل ثبت‌نام و استفاده از خدمات نجم بهار وجود نخواهد داشت.
-
-            </p>
-
-
-
-            @auth
-
-                @if($termsAcceptedAt)
-
-                    <div class="bg-white/90 border border-emerald-200 rounded-2xl p-6 space-y-4 text-slate-700">
-
-                        <div class="flex items-center justify-center gap-3 text-earth-green">
-
-                            <i class="fas fa-check-circle text-2xl"></i>
-
-                            <span class="font-extrabold text-lg">شما قبلاً اساسنامه را پذیرفته‌اید.</span>
-
-                        </div>
-
-                        <p class="text-sm">
-
-                            تاریخ پذیرش: <strong>{{ verta($termsAcceptedAt)->format('Y/m/d H:i') }}</strong>
-
-                        </p>
-
-                        <a href="{{ route('home') }}" class="terms-cta w-full md:w-auto justify-center">
-
-                            <i class="fas fa-home"></i>
-
-                            بازگشت به داشبورد
-
-                        </a>
-
-                    </div>
-
-                @else
-
-                    <form action="{{ route('terms.store') }}" method="POST" id="termsForm" enctype="multipart/form-data" class="space-y-5">
-
-                        @csrf
-
-                        @if($fingerRequired)
-
-                            <div class="bg-white/80 border border-slate-200 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center gap-4 text-right">
-
-                                <span class="text-sm font-semibold text-slate-600 flex items-center gap-2">
-
-                                    <i class="fas fa-fingerprint text-earth-green text-lg"></i>
-
-                                    بارگذاری تصویر امضای دیجیتال (الزامی)
-
-                                </span>
-
-                                <input type="file" name="finger" accept="image/png,image/jpeg,image/webp" required class="block w-full md:w-auto text-sm text-slate-600 border border-slate-300 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-earth-green">
-
-                            </div>
-
-                        @else
-
-                            <p class="text-sm text-slate-600 bg-white/80 border border-slate-200 rounded-2xl p-4">
-
-                                <i class="fas fa-fingerprint text-earth-green ml-2"></i>
-
-                                در حال حاضر، بارگذاری امضای دیجیتال الزامی نیست. در صورت فعال شدن، از همین بخش اعلام خواهد شد.
-
-                            </p>
-
-                        @endif
-
-
-
-                        <label class="flex items-center justify-center gap-3 bg-white/80 border border-slate-200 rounded-2xl px-5 py-4 cursor-pointer">
-
-                            <input type="checkbox" id="acceptTerms" class="w-6 h-6 text-earth-green border-slate-300 rounded focus:ring-2 focus:ring-earth-green" required>
-
-                            <span class="font-semibold text-slate-700">تمامی موارد فوق را مطالعه کرده‌ام و می‌پذیرم.</span>
-
-                        </label>
-
-
-
-                        <button type="submit" id="submitButton" disabled class="terms-cta disabled:opacity-60 disabled:cursor-not-allowed">
-
-                            <i class="fas fa-check-circle"></i>
-
-                            تایید و ادامه ثبت‌نام
-
-                        </button>
-
-                    </form>
-
-                @endif
-
-            @else
-
-                <div class="bg-white/90 border border-slate-200 rounded-2xl p-6 space-y-4">
-
-                    <p class="text-slate-700">
-
-                        برای تایید این توافقنامه و ادامه مراحل، ابتدا وارد حساب خود شوید یا ثبت‌نام کنید.
-
-                    </p>
-
-                    <div class="flex flex-col md:flex-row items-center justify-center gap-3">
-
-                        <a href="{{ route('login') }}" class="terms-cta w-full md:w-auto justify-center">
-
-                            <i class="fas fa-sign-in-alt"></i>
-
-                            ورود به حساب کاربری
-
-                        </a>
-
-                        <a href="{{ route('register.form') }}" class="terms-cta w-full md:w-auto justify-center" style="background: linear-gradient(120deg, var(--color-ocean-blue), #1d4ed8); box-shadow: 0 20px 32px rgba(59, 130, 246, 0.22);">
-
-                            <i class="fas fa-user-plus"></i>
-
-                            ثبت‌نام در EarthCoop
-
-                        </a>
-
-                    </div>
-
-                </div>
-
-            @endauth
-
-
-
-            <p class="text-xs text-slate-500 flex items-center justify-center gap-2">
-
-                <i class="fas fa-info-circle"></i>
-
-                آخرین به‌روزرسانی: <strong>{{ verta(($setting->updated_at ?? now()))->format('Y/m/d') }}</strong>
-
-            </p>
-
-        </section>
-
-
-
-        <section class="grid md:grid-cols-3 gap-6 fade-up">
-
-            <div class="support-card text-center space-y-3">
-
-                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-earth-green/15 text-earth-green mx-auto">
-
-                    <i class="fas fa-shield-alt text-2xl"></i>
-
-                </div>
-
-                <h4 class="font-bold text-gentle-black">حفاظت از حقوق اعضا</h4>
-
-                <p class="text-slate-600 text-sm">تمامی داده‌ها و تعاملات شما تحت قوانین شفاف و نظارت جمعی محافظت می‌شود.</p>
-
-            </div>
-
-            <div class="support-card text-center space-y-3">
-
-                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-ocean-blue/15 text-ocean-blue mx-auto">
-
-                    <i class="fas fa-handshake text-2xl"></i>
-
-                </div>
-
-                <h4 class="font-bold text-gentle-black">همکاری و مسئولیت مشترک</h4>
-
-                <p class="text-slate-600 text-sm">پایبندی به اصول اعتماد، شفافیت و همکاری، سنگ‌بنای جامعه EarthCoop است.</p>
-
-            </div>
-
-            <div class="support-card text-center space-y-3">
-
-                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-digital-gold/15 text-digital-gold mx-auto">
-
-                    <i class="fas fa-balance-scale text-2xl"></i>
-
-                </div>
-
-                <h4 class="font-bold text-gentle-black">عدالت و پاسخ‌گویی</h4>
-
-                <p class="text-slate-600 text-sm">همه اعضا در یک چارچوب عادلانه و برابر مشارکت می‌کنند و پاسخ‌گو هستند.</p>
-
-            </div>
-
-        </section>
-
-
-
-        <section class="support-card text-center fade-up">
-
-            <p class="text-slate-600">
-
-                <i class="fas fa-question-circle text-ocean-blue ml-2"></i>
-
-                اگر سوالی دارید یا نیاز به راهنمایی دارید، با <a href="mailto:support@earthcoop.org" class="text-earth-green font-bold underline">پشتیبانی EarthCoop</a> در ارتباط باشید.
-
-            </p>
-
-        </section>
-
-    </div>
-
-</div>
-
-
-
-<button type="button" class="floating-support" id="backToTop">
-
-    <i class="fas fa-arrow-up"></i>
-
-</button>
-
-@endsection
-
-
-
-@push('scripts')
-
-<script>
-
-    document.addEventListener('DOMContentLoaded', () => {
-
-        const backToTop = document.getElementById('backToTop');
-
-        const acceptTerms = document.getElementById('acceptTerms');
-
-        const submitButton = document.getElementById('submitButton');
-
-        const fadeItems = document.querySelectorAll('.fade-up');
-
-
-
-        window.toggleAccordion = (id, button) => {
-
-            const content = document.getElementById(id);
-
-            const icon = button.querySelector('.fa-chevron-down');
-
-            const isActive = content.classList.contains('active');
-
-
-
-            if (!isActive) {
-
-                content.classList.add('active');
-
-                content.style.maxHeight = content.scrollHeight + 'px';
-
-            } else {
-
-                content.classList.remove('active');
-
-                content.style.maxHeight = null;
-
-            }
-
-
-
-            icon.classList.toggle('rotate-180');
-
-        };
-
-
-
-        window.toggleNested = (id, button) => {
-
-            const content = document.getElementById(id);
-
-            const icon = button.querySelector('.fa-chevron-down');
-
-            const isActive = content.classList.contains('active');
-
-
-
-            if (!isActive) {
-
-                content.classList.add('active');
-
-                content.style.maxHeight = content.scrollHeight + 'px';
-
-            } else {
-
-                content.classList.remove('active');
-
-                content.style.maxHeight = null;
-
-            }
-
-
-
-            icon.classList.toggle('rotate-180');
-
-        };
-
-
-
-        if (acceptTerms && submitButton) {
-
-            acceptTerms.addEventListener('change', (event) => {
-
-                submitButton.disabled = !event.target.checked;
-
-            });
-
-        }
-
-
-
-        window.addEventListener('scroll', () => {
-
-            if (window.pageYOffset > 320) {
-
-                backToTop.classList.add('visible');
-
-            } else {
-
-                backToTop.classList.remove('visible');
-
-            }
-
-        });
-
-
-
-        backToTop.addEventListener('click', () => {
-
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-
-        });
-
-
-
-        const observer = new IntersectionObserver((entries) => {
-
-            entries.forEach(entry => {
-
-                if (entry.isIntersecting) {
-
-                    entry.target.classList.add('visible');
-
-                    observer.unobserve(entry.target);
-
-                }
-
-            });
-
-        }, { threshold: 0.15 });
-
-
-
-        fadeItems.forEach(item => observer.observe(item));
-
-    });
-
-</script>
-
-@endpush
-
-
-
+@extends('layouts.unified')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@section('title', 'اساسنامه و شرایط استفاده - ' . config('app.name', 'EarthCoop'))
+
+
+
+
+
+
+
+
+
+
+
+<!-- Tailwind & Bootstrap CSS via Vite -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@push('styles')
+
+
+
+
+
+
+
+
+
+
+
+<style>
+
+
+
+
+
+
+
+
+
+
+
+    .terms-hero {
+
+
+
+
+
+
+
+
+
+
+
+        position: relative;
+
+
+
+
+
+
+
+
+
+
+
+        overflow: hidden;
+
+
+
+
+
+
+
+
+
+
+
+        background: linear-gradient(140deg, rgba(16, 185, 129, 0.15), rgba(59, 130, 246, 0.18));
+
+
+
+
+
+
+
+
+
+
+
+        border-radius: 1.75rem;
+
+
+
+
+
+
+
+
+
+
+
+        padding: 3rem 2.5rem;
+
+
+
+
+
+
+
+
+
+
+
+        box-shadow: 0 24px 60px rgba(14, 116, 144, 0.18);
+
+
+
+
+
+
+
+
+
+
+
+        border: 1px solid rgba(148, 163, 184, 0.25);
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .terms-hero::before,
+
+
+
+
+
+
+
+
+
+
+
+    .terms-hero::after {
+
+
+
+
+
+
+
+
+
+
+
+        content: "";
+
+
+
+
+
+
+
+
+
+
+
+        position: absolute;
+
+
+
+
+
+
+
+
+
+
+
+        border-radius: 50%;
+
+
+
+
+
+
+
+
+
+
+
+        filter: blur(90px);
+
+
+
+
+
+
+
+
+
+
+
+        opacity: 0.7;
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .terms-hero::before {
+
+
+
+
+
+
+
+
+
+
+
+        top: -160px;
+
+
+
+
+
+
+
+
+
+
+
+        left: -100px;
+
+
+
+
+
+
+
+
+
+
+
+        width: 320px;
+
+
+
+
+
+
+
+
+
+
+
+        height: 320px;
+
+
+
+
+
+
+
+
+
+
+
+        background: rgba(16, 185, 129, 0.5);
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .terms-hero::after {
+
+
+
+
+
+
+
+
+
+
+
+        bottom: -160px;
+
+
+
+
+
+
+
+
+
+
+
+        right: -80px;
+
+
+
+
+
+
+
+
+
+
+
+        width: 280px;
+
+
+
+
+
+
+
+
+
+
+
+        height: 280px;
+
+
+
+
+
+
+
+
+
+
+
+        background: rgba(37, 99, 235, 0.45);
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .terms-badge {
+
+
+
+
+
+
+
+
+
+
+
+        display: inline-flex;
+
+
+
+
+
+
+
+
+
+
+
+        align-items: center;
+
+
+
+
+
+
+
+
+
+
+
+        gap: 0.7rem;
+
+
+
+
+
+
+
+
+
+
+
+        background: rgba(255, 255, 255, 0.8);
+
+
+
+
+
+
+
+
+
+
+
+        border-radius: 999px;
+
+
+
+
+
+
+
+
+
+
+
+        padding: 0.55rem 1.5rem;
+
+
+
+
+
+
+
+
+
+
+
+        border: 1px solid rgba(16, 185, 129, 0.25);
+
+
+
+
+
+
+
+
+
+
+
+        backdrop-filter: blur(6px);
+
+
+
+
+
+
+
+
+
+
+
+        color: var(--color-dark-green);
+
+
+
+
+
+
+
+
+
+
+
+        font-weight: 600;
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .accordion-wrapper {
+
+
+
+
+
+
+
+
+
+
+
+        border-radius: 1.5rem;
+
+
+
+
+
+
+
+
+
+
+
+        background: var(--color-pure-white);
+
+
+
+
+
+
+
+
+
+
+
+        border: 1px solid rgba(226, 232, 240, 0.8);
+
+
+
+
+
+
+
+
+
+
+
+        box-shadow: 0 25px 70px rgba(15, 23, 42, 0.08);
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .accordion-item {
+
+
+
+
+
+
+
+
+
+
+
+        border-radius: 1.25rem;
+
+
+
+
+
+
+
+
+
+
+
+        border: 1px solid rgba(203, 213, 225, 0.6);
+
+
+
+
+
+
+
+
+
+
+
+        overflow: hidden;
+
+
+
+
+
+
+
+
+
+
+
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .accordion-item:hover {
+
+
+
+
+
+
+
+
+
+
+
+        transform: translateY(-3px);
+
+
+
+
+
+
+
+
+
+
+
+        box-shadow: 0 20px 45px rgba(148, 163, 184, 0.18);
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .accordion-header-btn {
+
+
+
+
+
+
+
+
+
+
+
+        width: 100%;
+
+
+
+
+
+
+
+
+
+
+
+        display: flex;
+
+
+
+
+
+
+
+
+
+
+
+        justify-content: space-between;
+
+
+
+
+
+
+
+
+
+
+
+        align-items: center;
+
+
+
+
+
+
+
+
+
+
+
+        gap: 1rem;
+
+
+
+
+
+
+
+
+
+
+
+        padding: 1.5rem;
+
+
+
+
+
+
+
+
+
+
+
+        background: linear-gradient(120deg, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.96));
+
+
+
+
+
+
+
+
+
+
+
+        cursor: pointer;
+
+
+
+
+
+
+
+
+
+
+
+        transition: background 0.3s ease;
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .accordion-header-btn:hover {
+
+
+
+
+
+
+
+
+
+
+
+        background: linear-gradient(120deg, rgba(238, 255, 248, 0.95), rgba(219, 234, 254, 0.95));
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .accordion-icon {
+
+
+
+
+
+
+
+
+
+
+
+        width: 40px;
+
+
+
+
+
+
+
+
+
+
+
+        height: 40px;
+
+
+
+
+
+
+
+
+
+
+
+        border-radius: 999px;
+
+
+
+
+
+
+
+
+
+
+
+        display: inline-flex;
+
+
+
+
+
+
+
+
+
+
+
+        align-items: center;
+
+
+
+
+
+
+
+
+
+
+
+        justify-content: center;
+
+
+
+
+
+
+
+
+
+
+
+        font-size: 1.1rem;
+
+
+
+
+
+
+
+
+
+
+
+        color: var(--color-earth-green);
+
+
+
+
+
+
+
+
+
+
+
+        background: rgba(16, 185, 129, 0.18);
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .accordion-content {
+
+
+
+
+
+
+
+
+
+
+
+        max-height: 0;
+
+
+
+
+
+
+
+
+
+
+
+        overflow: hidden;
+
+
+
+
+
+
+
+
+
+
+
+        transition: max-height 0.5s ease;
+
+
+
+
+
+
+
+
+
+
+
+        background: rgba(248, 250, 252, 0.85);
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .accordion-content.active {
+
+
+
+
+
+
+
+
+
+
+
+        max-height: 5000px;
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .nested-accordion-button {
+
+
+
+
+
+
+
+
+
+
+
+        width: 100%;
+
+
+
+
+
+
+
+
+
+
+
+        padding: 1.1rem 1.25rem;
+
+
+
+
+
+
+
+
+
+
+
+        display: flex;
+
+
+
+
+
+
+
+
+
+
+
+        justify-content: space-between;
+
+
+
+
+
+
+
+
+
+
+
+        align-items: center;
+
+
+
+
+
+
+
+
+
+
+
+        gap: 0.75rem;
+
+
+
+
+
+
+
+
+
+
+
+        background: rgba(248, 250, 252, 0.95);
+
+
+
+
+
+
+
+
+
+
+
+        border-radius: 1rem;
+
+
+
+
+
+
+
+
+
+
+
+        border: 1px solid rgba(203, 213, 225, 0.6);
+
+
+
+
+
+
+
+
+
+
+
+        cursor: pointer;
+
+
+
+
+
+
+
+
+
+
+
+        transition: background 0.3s ease;
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .nested-accordion-button:hover {
+
+
+
+
+
+
+
+
+
+
+
+        background: rgba(219, 234, 254, 0.9);
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .nested-content {
+
+
+
+
+
+
+
+
+
+
+
+        max-height: 0;
+
+
+
+
+
+
+
+
+
+
+
+        overflow: hidden;
+
+
+
+
+
+
+
+
+
+
+
+        transition: max-height 0.45s ease;
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .nested-content.active {
+
+
+
+
+
+
+
+
+
+
+
+        max-height: 3000px;
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .terms-action-card {
+
+
+
+
+
+
+
+
+
+
+
+        border-radius: 1.5rem;
+
+
+
+
+
+
+
+
+
+
+
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(37, 99, 235, 0.12));
+
+
+
+
+
+
+
+
+
+
+
+        border: 1px solid rgba(148, 163, 184, 0.25);
+
+
+
+
+
+
+
+
+
+
+
+        padding: 2.25rem;
+
+
+
+
+
+
+
+
+
+
+
+        box-shadow: 0 22px 55px rgba(37, 99, 235, 0.18);
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .terms-action-card h3 {
+
+
+
+
+
+
+
+
+
+
+
+        font-size: 1.65rem;
+
+
+
+
+
+
+
+
+
+
+
+        font-weight: 800;
+
+
+
+
+
+
+
+
+
+
+
+        color: var(--color-dark-green);
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .terms-cta {
+
+
+
+
+
+
+
+
+
+
+
+        display: inline-flex;
+
+
+
+
+
+
+
+
+
+
+
+        align-items: center;
+
+
+
+
+
+
+
+
+
+
+
+        gap: 0.75rem;
+
+
+
+
+
+
+
+
+
+
+
+        border-radius: 999px;
+
+
+
+
+
+
+
+
+
+
+
+        padding: 0.85rem 2.5rem;
+
+
+
+
+
+
+
+
+
+
+
+        font-weight: 700;
+
+
+
+
+
+
+
+
+
+
+
+        color: var(--color-pure-white);
+
+
+
+
+
+
+
+
+
+
+
+        background: linear-gradient(120deg, var(--color-earth-green), #047857);
+
+
+
+
+
+
+
+
+
+
+
+        box-shadow: 0 20px 32px rgba(5, 150, 105, 0.22);
+
+
+
+
+
+
+
+
+
+
+
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .terms-cta:hover {
+
+
+
+
+
+
+
+
+
+
+
+        transform: translateY(-3px);
+
+
+
+
+
+
+
+
+
+
+
+        box-shadow: 0 24px 40px rgba(5, 150, 105, 0.28);
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .support-card {
+
+
+
+
+
+
+
+
+
+
+
+        border-radius: 1.25rem;
+
+
+
+
+
+
+
+
+
+
+
+        background: rgba(255, 255, 255, 0.9);
+
+
+
+
+
+
+
+
+
+
+
+        border: 1px solid rgba(226, 232, 240, 0.8);
+
+
+
+
+
+
+
+
+
+
+
+        box-shadow: 0 20px 45px rgba(148, 163, 184, 0.12);
+
+
+
+
+
+
+
+
+
+
+
+        padding: 1.75rem;
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .floating-support {
+
+
+
+
+
+
+
+
+
+
+
+        position: fixed;
+
+
+
+
+
+
+
+
+
+
+
+        left: 1.5rem;
+
+
+
+
+
+
+
+
+
+
+
+        bottom: 1.5rem;
+
+
+
+
+
+
+
+
+
+
+
+        background: linear-gradient(135deg, var(--color-earth-green), #059669);
+
+
+
+
+
+
+
+
+
+
+
+        color: var(--color-pure-white);
+
+
+
+
+
+
+
+
+
+
+
+        width: 52px;
+
+
+
+
+
+
+
+
+
+
+
+        height: 52px;
+
+
+
+
+
+
+
+
+
+
+
+        border-radius: 50%;
+
+
+
+
+
+
+
+
+
+
+
+        display: flex;
+
+
+
+
+
+
+
+
+
+
+
+        align-items: center;
+
+
+
+
+
+
+
+
+
+
+
+        justify-content: center;
+
+
+
+
+
+
+
+
+
+
+
+        box-shadow: 0 18px 32px rgba(34, 197, 94, 0.35);
+
+
+
+
+
+
+
+
+
+
+
+        cursor: pointer;
+
+
+
+
+
+
+
+
+
+
+
+        opacity: 0;
+
+
+
+
+
+
+
+
+
+
+
+        transform: translateY(12px);
+
+
+
+
+
+
+
+
+
+
+
+        transition: opacity 0.3s ease, transform 0.3s ease;
+
+
+
+
+
+
+
+
+
+
+
+        z-index: 40;
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .floating-support.visible {
+
+
+
+
+
+
+
+
+
+
+
+        opacity: 1;
+
+
+
+
+
+
+
+
+
+
+
+        transform: translateY(0);
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .info-pill {
+
+
+
+
+
+
+
+
+
+
+
+        border-radius: 1rem;
+
+
+
+
+
+
+
+
+
+
+
+        padding: 1rem 1.25rem;
+
+
+
+
+
+
+
+
+
+
+
+        background: rgba(148, 163, 184, 0.12);
+
+
+
+
+
+
+
+
+
+
+
+        color: #475569;
+
+
+
+
+
+
+
+
+
+
+
+        font-weight: 600;
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .fade-up {
+
+
+
+
+
+
+
+
+
+
+
+        opacity: 0;
+
+
+
+
+
+
+
+
+
+
+
+        transform: translateY(26px);
+
+
+
+
+
+
+
+
+
+
+
+        transition: opacity 0.6s ease, transform 0.6s ease;
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .fade-up.visible {
+
+
+
+
+
+
+
+
+
+
+
+        opacity: 1;
+
+
+
+
+
+
+
+
+
+
+
+        transform: translateY(0);
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    @media (max-width: 768px) {
+
+
+
+
+
+
+
+
+
+
+
+        .terms-hero {
+
+
+
+
+
+
+
+
+
+
+
+            padding: 2.25rem 1.75rem;
+
+
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        .terms-action-card {
+
+
+
+
+
+
+
+
+
+
+
+            padding: 1.75rem;
+
+
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        .terms-cta {
+
+
+
+
+
+
+
+
+
+
+
+            width: 100%;
+
+
+
+
+
+
+
+
+
+
+
+            justify-content: center;
+
+
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+</style>
+
+
+
+
+
+
+
+
+
+
+
+@endpush
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@section('content')
+
+
+
+
+
+
+
+
+
+
+
+@php
+
+
+
+
+
+
+
+
+
+
+
+    $terms = \App\Models\Term::with('childs')->whereNull('parent_id')->orderBy('id', 'asc')->get();
+
+
+
+
+
+
+
+
+
+
+
+    $setting = \App\Models\Setting::find(1);
+
+
+
+
+
+
+
+
+
+
+
+    $fingerRequired = $setting && $setting->finger_status == 1;
+
+
+
+
+
+
+
+
+
+
+
+    $termsAcceptedAt = auth()->check() ? auth()->user()->terms_accepted_at : null;
+
+
+
+
+
+
+
+
+
+
+
+@endphp
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="bg-gradient-to-br from-slate-50 via-white to-slate-100 py-12 md:py-16">
+
+
+
+
+
+
+
+
+
+
+
+    <div class="container mx-auto px-5 md:px-10 max-w-6xl space-y-12">
+
+
+
+
+
+
+
+
+
+
+
+        <section class="terms-hero fade-up">
+
+
+
+
+
+
+
+
+
+
+
+            <div class="terms-badge">
+
+
+
+
+
+
+
+
+
+
+
+                <i class="fas fa-file-contract"></i>
+
+
+
+
+
+
+
+
+
+
+
+                مستند رسمی EarthCoop
+
+
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            <div class="mt-6 space-y-4">
+
+
+
+
+
+
+
+
+
+
+
+                <h1 class="text-3xl md:text-4xl lg:text-5xl font-black text-gentle-black leading-tight">
+
+
+
+
+
+
+
+
+
+
+
+                    اساسنامه و شرایط استفاده از سامانه ارث‌کوپ
+
+
+
+
+
+
+
+
+
+
+
+                </h1>
+
+
+
+
+
+
+
+
+
+
+
+                <p class="text-lg md:text-xl text-slate-700 max-w-3xl">
+
+
+
+
+
+
+
+
+
+
+
+                    این توافقنامه ارزش‌ها، مسئولیت‌ها و استانداردهای مشارکت در زیست‌بوم همکاری EarthCoop را مشخص می‌کند. لطفاً به دقت مطالعه نمایید.
+
+
+
+
+
+
+
+
+
+
+
+                </p>
+
+
+
+
+
+
+
+
+
+
+
+                <div class="flex flex-wrap items-center gap-3">
+
+
+
+
+
+
+
+
+
+
+
+                    <span class="info-pill flex items-center gap-2">
+
+
+
+
+
+
+
+
+
+
+
+                        <i class="fas fa-shield-alt text-earth-green"></i>
+
+
+
+
+
+
+
+
+
+
+
+                        حفاظت از حقوق و شفافیت اطلاعات
+
+
+
+
+
+
+
+
+
+
+
+                    </span>
+
+
+
+
+
+
+
+
+
+
+
+                    <span class="info-pill flex items-center gap-2">
+
+
+
+
+
+
+
+
+
+
+
+                        <i class="fas fa-users text-ocean-blue"></i>
+
+
+
+
+
+
+
+
+
+
+
+                        مشارکت مسئولانه در اقتصاد جمعی
+
+
+
+
+
+
+
+
+
+
+
+                    </span>
+
+
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+
+
+        </section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        <section class="accordion-wrapper p-6 md:p-8 space-y-5 fade-up">
+
+
+
+
+
+
+
+
+
+
+
+            @if($terms->isNotEmpty())
+
+
+
+
+
+
+
+
+
+
+
+                @foreach($terms as $term)
+
+
+
+
+
+
+
+
+
+
+
+                    <article class="accordion-item" id="term-{{ $term->id }}">
+
+
+
+
+
+
+
+
+
+
+
+                        <button class="accordion-header-btn" type="button" onclick="toggleAccordion('accordion-{{ $term->id }}', this)">
+
+
+
+
+
+
+
+
+
+
+
+                            <div class="flex items-center gap-3 text-right">
+
+
+
+
+
+
+
+
+
+
+
+                                <span class="accordion-icon"><i class="fas fa-scroll"></i></span>
+
+
+
+
+
+
+
+
+
+
+
+                                <span class="text-lg md:text-xl font-bold text-gentle-black">{{ $term->title }}</span>
+
+
+
+
+
+
+
+
+
+
+
+                            </div>
+
+
+
+
+
+
+
+
+
+
+
+                            <i class="fas fa-chevron-down text-slate-500 transition-transform duration-300"></i>
+
+
+
+
+
+
+
+
+
+
+
+                        </button>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        <div class="accordion-content" id="accordion-{{ $term->id }}">
+
+
+
+
+
+
+
+
+
+
+
+                            <div class="p-6 md:p-7 space-y-5 text-slate-700 leading-relaxed bg-white/90">
+
+
+
+
+
+
+
+
+
+
+
+                                <div class="prose prose-lg max-w-none" style="direction: rtl; text-align: right;">
+
+
+
+
+
+
+
+
+
+
+
+                                    {!! $term->message !!}
+
+
+
+
+
+
+
+
+
+
+
+                                </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                @if($term->childs && $term->childs->isNotEmpty())
+
+
+
+
+
+
+
+
+
+
+
+                                    <div class="pt-5 border-t border-slate-200 space-y-3">
+
+
+
+
+
+
+
+
+
+
+
+                                        <h4 class="font-semibold text-slate-600 flex items-center gap-2">
+
+
+
+
+
+
+
+
+
+
+
+                                            <i class="fas fa-layer-group text-earth-green"></i>
+
+
+
+
+
+
+
+
+
+
+
+                                            بخش‌های تکمیلی
+
+
+
+
+
+
+
+
+
+
+
+                                        </h4>
+
+
+
+
+
+
+
+
+
+
+
+                                        @foreach($term->childs as $child)
+
+
+
+
+
+
+
+
+
+
+
+                                            <div class="space-y-3">
+
+
+
+
+
+
+
+
+
+
+
+                                                <button type="button" class="nested-accordion-button" onclick="toggleNested('nested-{{ $child->id }}', this)">
+
+
+
+
+
+
+
+
+
+
+
+                                                    <span class="text-base font-semibold text-gentle-black">{{ $child->title }}</span>
+
+
+
+
+
+
+
+
+
+
+
+                                                    <i class="fas fa-chevron-down text-slate-500 transition-transform duration-300"></i>
+
+
+
+
+
+
+
+
+
+
+
+                                                </button>
+
+
+
+
+
+
+
+
+
+
+
+                                                <div class="nested-content" id="nested-{{ $child->id }}">
+
+
+
+
+
+
+
+
+
+
+
+                                                    <div class="bg-white rounded-xl border border-slate-200/70 p-5 text-slate-600 leading-relaxed">
+
+
+
+
+
+
+
+
+
+
+
+                                                        <div class="prose max-w-none" style="direction: rtl; text-align: right;">
+
+
+
+
+
+
+
+
+
+
+
+                                                            {!! $child->message !!}
+
+
+
+
+
+
+
+
+
+
+
+                                                        </div>
+
+
+
+
+
+
+
+
+
+
+
+                                                    </div>
+
+
+
+
+
+
+
+
+
+
+
+                                                </div>
+
+
+
+
+
+
+
+
+
+
+
+                                            </div>
+
+
+
+
+
+
+
+
+
+
+
+                                        @endforeach
+
+
+
+
+
+
+
+
+
+
+
+                                    </div>
+
+
+
+
+
+
+
+
+
+
+
+                                @endif
+
+
+
+
+
+
+
+
+
+
+
+                            </div>
+
+
+
+
+
+
+
+
+
+
+
+                        </div>
+
+
+
+
+
+
+
+
+
+
+
+                    </article>
+
+
+
+
+
+
+
+
+
+
+
+                @endforeach
+
+
+
+
+
+
+
+
+
+
+
+            @else
+
+
+
+
+
+
+
+
+
+
+
+                <div class="text-center py-16">
+
+
+
+
+
+
+
+
+
+
+
+                    <i class="fas fa-info-circle text-5xl text-slate-300 mb-4"></i>
+
+
+
+
+
+
+
+
+
+
+
+                    <p class="text-lg text-slate-600">هنوز اساسنامه‌ای ثبت نشده است.</p>
+
+
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+
+
+            @endif
+
+
+
+
+
+
+
+
+
+
+
+        </section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        <section class="terms-action-card fade-up text-center space-y-5">
+
+
+
+
+
+
+
+
+
+
+
+            <h3>مطالعه و پذیرش شرایط</h3>
+
+
+
+
+
+
+
+
+
+
+
+            <p class="text-slate-700 max-w-3xl mx-auto">
+
+
+
+
+
+
+
+
+
+
+
+                تایید این توافقنامه به معنای پذیرش کامل قوانین و چارچوب‌های همکاری EarthCoop است. بدون پذیرش این شرایط، امکان ادامه مراحل ثبت‌نام و استفاده از خدمات نجم بهار وجود نخواهد داشت.
+
+
+
+
+
+
+
+
+
+
+
+            </p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            @auth
+
+
+
+
+
+
+
+
+
+
+
+                @if($termsAcceptedAt)
+
+
+
+
+
+
+
+
+
+
+
+                    <div class="bg-white/90 border border-emerald-200 rounded-2xl p-6 space-y-4 text-slate-700">
+
+
+
+
+
+
+
+
+
+
+
+                        <div class="flex items-center justify-center gap-3 text-earth-green">
+
+
+
+
+
+
+
+
+
+
+
+                            <i class="fas fa-check-circle text-2xl"></i>
+
+
+
+
+
+
+
+
+
+
+
+                            <span class="font-extrabold text-lg">شما قبلاً اساسنامه را پذیرفته‌اید.</span>
+
+
+
+
+
+
+
+
+
+
+
+                        </div>
+
+
+
+
+
+
+
+
+
+
+
+                        <p class="text-sm">
+
+
+
+
+
+
+
+
+
+
+
+                            تاریخ پذیرش: <strong>{{ verta($termsAcceptedAt)->format('Y/m/d H:i') }}</strong>
+
+
+
+
+
+
+
+
+
+
+
+                        </p>
+
+
+
+
+
+
+
+
+
+
+
+                        <a href="{{ route('home') }}" class="terms-cta w-full md:w-auto justify-center">
+
+
+
+
+
+
+
+
+
+
+
+                            <i class="fas fa-home"></i>
+
+
+
+
+
+
+
+
+
+
+
+                            بازگشت به داشبورد
+
+
+
+
+
+
+
+
+
+
+
+                        </a>
+
+
+
+
+
+
+
+
+
+
+
+                    </div>
+
+
+
+
+
+
+
+
+
+
+
+                @else
+
+
+
+
+
+
+
+
+
+
+
+                    <form action="{{ route('terms.store') }}" method="POST" id="termsForm" enctype="multipart/form-data" class="space-y-5">
+
+
+
+
+
+
+
+
+
+
+
+                        @csrf
+
+
+
+
+
+
+
+
+
+
+
+                        @if($fingerRequired)
+
+
+
+
+
+
+
+
+
+
+
+                            <div class="bg-white/80 border border-slate-200 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center gap-4 text-right">
+
+
+
+
+
+
+
+
+
+
+
+                                <span class="text-sm font-semibold text-slate-600 flex items-center gap-2">
+
+
+
+
+
+
+
+
+
+
+
+                                    <i class="fas fa-fingerprint text-earth-green text-lg"></i>
+
+
+
+
+
+
+
+
+
+
+
+                                    بارگذاری تصویر امضای دیجیتال (الزامی)
+
+
+
+
+
+
+
+
+
+
+
+                                </span>
+
+
+
+
+
+
+
+
+
+
+
+                                <input type="file" name="finger" accept="image/png,image/jpeg,image/webp" required class="block w-full md:w-auto text-sm text-slate-600 border border-slate-300 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-earth-green">
+
+
+
+
+
+
+
+
+
+
+
+                            </div>
+
+
+
+
+
+
+
+
+
+
+
+                        @else
+
+
+
+
+
+
+
+
+
+
+
+                            <p class="text-sm text-slate-600 bg-white/80 border border-slate-200 rounded-2xl p-4">
+
+
+
+
+
+
+
+
+
+
+
+                                <i class="fas fa-fingerprint text-earth-green ml-2"></i>
+
+
+
+
+
+
+
+
+
+
+
+                                در حال حاضر، بارگذاری امضای دیجیتال الزامی نیست. در صورت فعال شدن، از همین بخش اعلام خواهد شد.
+
+
+
+
+
+
+
+
+
+
+
+                            </p>
+
+
+
+
+
+
+
+
+
+
+
+                        @endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        <label class="flex items-center justify-center gap-3 bg-white/80 border border-slate-200 rounded-2xl px-5 py-4 cursor-pointer">
+
+
+
+
+
+
+
+
+
+
+
+                            <input type="checkbox" id="acceptTerms" class="w-6 h-6 text-earth-green border-slate-300 rounded focus:ring-2 focus:ring-earth-green" required>
+
+
+
+
+
+
+
+
+
+
+
+                            <span class="font-semibold text-slate-700">تمامی موارد فوق را مطالعه کرده‌ام و می‌پذیرم.</span>
+
+
+
+
+
+
+
+
+
+
+
+                        </label>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        <button type="submit" id="submitButton" disabled class="terms-cta disabled:opacity-60 disabled:cursor-not-allowed">
+
+
+
+
+
+
+
+
+
+
+
+                            <i class="fas fa-check-circle"></i>
+
+
+
+
+
+
+
+
+
+
+
+                            تایید و ادامه ثبت‌نام
+
+
+
+
+
+
+
+
+
+
+
+                        </button>
+
+
+
+
+
+
+
+
+
+
+
+                    </form>
+
+
+
+
+
+
+
+
+
+
+
+                @endif
+
+
+
+
+
+
+
+
+
+
+
+            @else
+
+
+
+
+
+
+
+
+
+
+
+                <div class="bg-white/90 border border-slate-200 rounded-2xl p-6 space-y-4">
+
+
+
+
+
+
+
+
+
+
+
+                    <p class="text-slate-700">
+
+
+
+
+
+
+
+
+
+
+
+                        برای تایید این توافقنامه و ادامه مراحل، ابتدا وارد حساب خود شوید یا ثبت‌نام کنید.
+
+
+
+
+
+
+
+
+
+
+
+                    </p>
+
+
+
+
+
+
+
+
+
+
+
+                    <div class="flex flex-col md:flex-row items-center justify-center gap-3">
+
+
+
+
+
+
+
+
+
+
+
+                        <a href="{{ route('login') }}" class="terms-cta w-full md:w-auto justify-center">
+
+
+
+
+
+
+
+
+
+
+
+                            <i class="fas fa-sign-in-alt"></i>
+
+
+
+
+
+
+
+
+
+
+
+                            ورود به حساب کاربری
+
+
+
+
+
+
+
+
+
+
+
+                        </a>
+
+
+
+
+
+
+
+
+
+
+
+                        <a href="{{ route('register.form') }}" class="terms-cta w-full md:w-auto justify-center" style="background: linear-gradient(120deg, var(--color-ocean-blue), #1d4ed8); box-shadow: 0 20px 32px rgba(59, 130, 246, 0.22);">
+
+
+
+
+
+
+
+
+
+
+
+                            <i class="fas fa-user-plus"></i>
+
+
+
+
+
+
+
+
+
+
+
+                            ثبت‌نام در EarthCoop
+
+
+
+
+
+
+
+
+
+
+
+                        </a>
+
+
+
+
+
+
+
+
+
+
+
+                    </div>
+
+
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+
+
+            @endauth
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            <p class="text-xs text-slate-500 flex items-center justify-center gap-2">
+
+
+
+
+
+
+
+
+
+
+
+                <i class="fas fa-info-circle"></i>
+
+
+
+
+
+
+
+
+
+
+
+                آخرین به‌روزرسانی: <strong>{{ verta(($setting->updated_at ?? now()))->format('Y/m/d') }}</strong>
+
+
+
+
+
+
+
+
+
+
+
+            </p>
+
+
+
+
+
+
+
+
+
+
+
+        </section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        <section class="grid md:grid-cols-3 gap-6 fade-up">
+
+
+
+
+
+
+
+
+
+
+
+            <div class="support-card text-center space-y-3">
+
+
+
+
+
+
+
+
+
+
+
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-earth-green/15 text-earth-green mx-auto">
+
+
+
+
+
+
+
+
+
+
+
+                    <i class="fas fa-shield-alt text-2xl"></i>
+
+
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+
+
+                <h4 class="font-bold text-gentle-black">حفاظت از حقوق اعضا</h4>
+
+
+
+
+
+
+
+
+
+
+
+                <p class="text-slate-600 text-sm">تمامی داده‌ها و تعاملات شما تحت قوانین شفاف و نظارت جمعی محافظت می‌شود.</p>
+
+
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+
+
+            <div class="support-card text-center space-y-3">
+
+
+
+
+
+
+
+
+
+
+
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-ocean-blue/15 text-ocean-blue mx-auto">
+
+
+
+
+
+
+
+
+
+
+
+                    <i class="fas fa-handshake text-2xl"></i>
+
+
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+
+
+                <h4 class="font-bold text-gentle-black">همکاری و مسئولیت مشترک</h4>
+
+
+
+
+
+
+
+
+
+
+
+                <p class="text-slate-600 text-sm">پایبندی به اصول اعتماد، شفافیت و همکاری، سنگ‌بنای جامعه EarthCoop است.</p>
+
+
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+
+
+            <div class="support-card text-center space-y-3">
+
+
+
+
+
+
+
+
+
+
+
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-digital-gold/15 text-digital-gold mx-auto">
+
+
+
+
+
+
+
+
+
+
+
+                    <i class="fas fa-balance-scale text-2xl"></i>
+
+
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+
+
+                <h4 class="font-bold text-gentle-black">عدالت و پاسخ‌گویی</h4>
+
+
+
+
+
+
+
+
+
+
+
+                <p class="text-slate-600 text-sm">همه اعضا در یک چارچوب عادلانه و برابر مشارکت می‌کنند و پاسخ‌گو هستند.</p>
+
+
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+
+
+        </section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        <section class="support-card text-center fade-up">
+
+
+
+
+
+
+
+
+
+
+
+            <p class="text-slate-600">
+
+
+
+
+
+
+
+
+
+
+
+                <i class="fas fa-question-circle text-ocean-blue ml-2"></i>
+
+
+
+
+
+
+
+
+
+
+
+                اگر سوالی دارید یا نیاز به راهنمایی دارید، با <a href="mailto:support@earthcoop.org" class="text-earth-green font-bold underline">پشتیبانی EarthCoop</a> در ارتباط باشید.
+
+
+
+
+
+
+
+
+
+
+
+            </p>
+
+
+
+
+
+
+
+
+
+
+
+        </section>
+
+
+
+
+
+
+
+
+
+
+
+    </div>
+
+
+
+
+
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<button type="button" class="floating-support" id="backToTop">
+
+
+
+
+
+
+
+
+
+
+
+    <i class="fas fa-arrow-up"></i>
+
+
+
+
+
+
+
+
+
+
+
+</button>
+
+
+
+
+
+
+
+
+
+
+
+@endsection
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@push('scripts')
+
+
+
+
+
+
+
+
+
+
+
+<script>
+
+
+
+
+
+
+
+
+
+
+
+    document.addEventListener('DOMContentLoaded', () => {
+
+
+
+
+
+
+
+
+
+
+
+        const backToTop = document.getElementById('backToTop');
+
+
+
+
+
+
+
+
+
+
+
+        const acceptTerms = document.getElementById('acceptTerms');
+
+
+
+
+
+
+
+
+
+
+
+        const submitButton = document.getElementById('submitButton');
+
+
+
+
+
+
+
+
+
+
+
+        const fadeItems = document.querySelectorAll('.fade-up');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        window.toggleAccordion = (id, button) => {
+
+
+
+
+
+
+
+
+
+
+
+            const content = document.getElementById(id);
+
+
+
+
+
+
+
+
+
+
+
+            const icon = button.querySelector('.fa-chevron-down');
+
+
+
+
+
+
+
+
+
+
+
+            const isActive = content.classList.contains('active');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            if (!isActive) {
+
+
+
+
+
+
+
+
+
+
+
+                content.classList.add('active');
+
+
+
+
+
+
+
+
+
+
+
+                content.style.maxHeight = content.scrollHeight + 'px';
+
+
+
+
+
+
+
+
+
+
+
+            } else {
+
+
+
+
+
+
+
+
+
+
+
+                content.classList.remove('active');
+
+
+
+
+
+
+
+
+
+
+
+                content.style.maxHeight = null;
+
+
+
+
+
+
+
+
+
+
+
+            }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            icon.classList.toggle('rotate-180');
+
+
+
+
+
+
+
+
+
+
+
+        };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        window.toggleNested = (id, button) => {
+
+
+
+
+
+
+
+
+
+
+
+            const content = document.getElementById(id);
+
+
+
+
+
+
+
+
+
+
+
+            const icon = button.querySelector('.fa-chevron-down');
+
+
+
+
+
+
+
+
+
+
+
+            const isActive = content.classList.contains('active');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            if (!isActive) {
+
+
+
+
+
+
+
+
+
+
+
+                content.classList.add('active');
+
+
+
+
+
+
+
+
+
+
+
+                content.style.maxHeight = content.scrollHeight + 'px';
+
+
+
+
+
+
+
+
+
+
+
+            } else {
+
+
+
+
+
+
+
+
+
+
+
+                content.classList.remove('active');
+
+
+
+
+
+
+
+
+
+
+
+                content.style.maxHeight = null;
+
+
+
+
+
+
+
+
+
+
+
+            }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            icon.classList.toggle('rotate-180');
+
+
+
+
+
+
+
+
+
+
+
+        };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        if (acceptTerms && submitButton) {
+
+
+
+
+
+
+
+
+
+
+
+            acceptTerms.addEventListener('change', (event) => {
+
+
+
+
+
+
+
+
+
+
+
+                submitButton.disabled = !event.target.checked;
+
+
+
+
+
+
+
+
+
+
+
+            });
+
+
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        window.addEventListener('scroll', () => {
+
+
+
+
+
+
+
+
+
+
+
+            if (window.pageYOffset > 320) {
+
+
+
+
+
+
+
+
+
+
+
+                backToTop.classList.add('visible');
+
+
+
+
+
+
+
+
+
+
+
+            } else {
+
+
+
+
+
+
+
+
+
+
+
+                backToTop.classList.remove('visible');
+
+
+
+
+
+
+
+
+
+
+
+            }
+
+
+
+
+
+
+
+
+
+
+
+        });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        backToTop.addEventListener('click', () => {
+
+
+
+
+
+
+
+
+
+
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+
+
+
+
+
+
+
+
+
+
+        });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        const observer = new IntersectionObserver((entries) => {
+
+
+
+
+
+
+
+
+
+
+
+            entries.forEach(entry => {
+
+
+
+
+
+
+
+
+
+
+
+                if (entry.isIntersecting) {
+
+
+
+
+
+
+
+
+
+
+
+                    entry.target.classList.add('visible');
+
+
+
+
+
+
+
+
+
+
+
+                    observer.unobserve(entry.target);
+
+
+
+
+
+
+
+
+
+
+
+                }
+
+
+
+
+
+
+
+
+
+
+
+            });
+
+
+
+
+
+
+
+
+
+
+
+        }, { threshold: 0.15 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        fadeItems.forEach(item => observer.observe(item));
+
+
+
+
+
+
+
+
+
+
+
+    });
+
+
+
+
+
+
+
+
+
+
+
+</script>
+
+
+
+
+
+
+
+
+
+
+
+@endpush
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

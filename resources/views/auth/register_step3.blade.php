@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -9,7 +9,7 @@
     <title>مرحله ۳ - اطلاعات مکانی</title>
 
     <!-- Vite CSS & JS -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/js/app.js'])
 
     <!-- Fonts -->
     <link rel="stylesheet" href="{{ asset('Css/fonts-local.css') }}">

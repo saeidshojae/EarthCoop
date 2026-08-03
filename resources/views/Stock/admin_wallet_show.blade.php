@@ -1,586 +1,2929 @@
-@extends('layouts.admin')
-
-
-
-@section('title', 'جزئیات کیف پول - ' . config('app.name', 'EarthCoop'))
-
-@section('page-title', 'جزئیات کیف پول')
-
-@section('page-description', 'مشاهده جزئیات کیف پول و تراکنش‌ها')
-
-<!-- Tailwind & Bootstrap CSS via Vite -->
-
-@vite(['resources/css/app.css', 'resources/js/app.js'])
-
-@push('styles')
-
-<style>
-
-    .wallet-detail-card {
-
-        background: white;
-
-        border-radius: 16px;
-
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-
-        padding: 2rem;
-
-        margin-bottom: 2rem;
-
-    }
-
-    
-
-    .wallet-detail-header {
-
-        display: flex;
-
-        justify-content: space-between;
-
-        align-items: center;
-
-        margin-bottom: 2rem;
-
-        padding-bottom: 1.5rem;
-
-        border-bottom: 2px solid #e5e7eb;
-
-        flex-wrap: wrap;
-
-        gap: 1rem;
-
-    }
-
-    
-
-    .wallet-info-grid {
-
-        display: grid;
-
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-
-        gap: 1.5rem;
-
-        margin-bottom: 2rem;
-
-    }
-
-    
-
-    .wallet-info-card {
-
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-
-        border-radius: 12px;
-
-        padding: 1.5rem;
-
-        color: white;
-
-        position: relative;
-
-        overflow: hidden;
-
-    }
-
-    
-
-    .wallet-info-card.success {
-
-        background: linear-gradient(135deg, #10b981 0%, #047857 100%);
-
-    }
-
-    
-
-    .wallet-info-card.warning {
-
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-
-    }
-
-    
-
-    .wallet-info-card.info {
-
-        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-
-    }
-
-    
-
-    .wallet-info-label {
-
-        font-size: 0.875rem;
-
-        opacity: 0.9;
-
-        margin-bottom: 0.5rem;
-
-    }
-
-    
-
-    .wallet-info-value {
-
-        font-size: 1.75rem;
-
-        font-weight: 800;
-
-    }
-
-    
-
-    .transaction-table {
-
-        width: 100%;
-
-        border-collapse: collapse;
-
-        margin-top: 1.5rem;
-
-    }
-
-    
-
-    .transaction-table thead {
-
-        background: #f9fafb;
-
-    }
-
-    
-
-    .transaction-table th {
-
-        padding: 1rem;
-
-        text-align: right;
-
-        font-weight: 600;
-
-        color: #1e293b;
-
-        font-size: 0.875rem;
-
-        border-bottom: 2px solid #e5e7eb;
-
-    }
-
-    
-
-    .transaction-table td {
-
-        padding: 1rem;
-
-        text-align: right;
-
-        color: #4b5563;
-
-        font-size: 0.875rem;
-
-        border-bottom: 1px solid #e5e7eb;
-
-    }
-
-    
-
-    .transaction-table tbody tr:hover {
-
-        background: #f9fafb;
-
-    }
-
-    
-
-    .transaction-badge {
-
-        padding: 0.375rem 0.75rem;
-
-        border-radius: 0.5rem;
-
-        font-size: 0.75rem;
-
-        font-weight: 600;
-
-    }
-
-    
-
-    .transaction-badge.credit {
-
-        background: #d1fae5;
-
-        color: #065f46;
-
-    }
-
-    
-
-    .transaction-badge.debit {
-
-        background: #fee2e2;
-
-        color: #991b1b;
-
-    }
-
-    
-
-    .transaction-badge.hold {
-
-        background: #fef3c7;
-
-        color: #92400e;
-
-    }
-
-    
-
-    .transaction-badge.release {
-
-        background: #dbeafe;
-
-        color: #1e40af;
-
-    }
-
-    
-
-    .transaction-badge.settlement {
-
-        background: #e9d5ff;
-
-        color: #6b21a8;
-
-    }
-
-    
-
-    @media (prefers-color-scheme: dark) {
-
-        .wallet-detail-card {
-
-            background: #1e293b !important;
-
-            color: #f1f5f9 !important;
-
-        }
-
-        
-
-        .wallet-detail-header {
-
-            border-bottom-color: #475569 !important;
-
-        }
-
-        
-
-        .transaction-table thead {
-
-            background: #334155 !important;
-
-        }
-
-        
-
-        .transaction-table th {
-
-            color: #f1f5f9 !important;
-
-            border-bottom-color: #475569 !important;
-
-        }
-
-        
-
-        .transaction-table td {
-
-            color: #cbd5e1 !important;
-
-            border-bottom-color: #475569 !important;
-
-        }
-
-        
-
-        .transaction-table tbody tr:hover {
-
-            background: #334155 !important;
-
-        }
-
-    }
-
-</style>
-
-@endpush
-
-
-
-@section('content')
-
-<div class="space-y-6" style="direction: rtl;">
-
-    <div class="wallet-detail-card">
-
-        <div class="wallet-detail-header">
-
-            <h3>
-
-                <i class="fas fa-wallet ml-2"></i>
-
-                جزئیات کیف پول
-
-            </h3>
-
-            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-
-                <a href="{{ route('admin.wallet.index') }}" style="padding: 0.75rem 1.5rem; background: #6b7280; color: white; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">
-
-                    <i class="fas fa-arrow-right ml-2"></i>
-
-                    بازگشت
-
-                </a>
-
-                <a href="{{ route('admin.users.show', $wallet->user_id) }}" style="padding: 0.75rem 1.5rem; background: #3b82f6; color: white; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">
-
-                    <i class="fas fa-user ml-2"></i>
-
-                    مشاهده کاربر
-
-                </a>
-
-            </div>
-
-        </div>
-
-        
-
-        <!-- اطلاعات کاربر -->
-
-        <div style="margin-bottom: 2rem; padding: 1.5rem; background: #f9fafb; border-radius: 12px;">
-
-            <h4 style="font-size: 1.125rem; font-weight: 700; margin-bottom: 1rem;">اطلاعات کاربر</h4>
-
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-
-                <div>
-
-                    <strong>نام:</strong> {{ ($wallet->user->first_name ?? '') . ' ' . ($wallet->user->last_name ?? '') }}
-
-                </div>
-
-                <div>
-
-                    <strong>ایمیل:</strong> {{ $wallet->user->email ?? '—' }}
-
-                </div>
-
-                <div>
-
-                    <strong>ID کاربر:</strong> #{{ $wallet->user_id }}
-
-                </div>
-
-            </div>
-
-        </div>
-
-        
-
-        <!-- آمار کیف پول -->
-
-        <div class="wallet-info-grid">
-
-            <div class="wallet-info-card success">
-
-                <div class="wallet-info-label">موجودی کل (ریال)</div>
-
-                <div class="wallet-info-value">{{ number_format($wallet->balance) }}</div>
-
-            </div>
-
-            
-
-            <div class="wallet-info-card warning">
-
-                <div class="wallet-info-label">مبلغ بلوکه شده (ریال)</div>
-
-                <div class="wallet-info-value">{{ number_format($wallet->held_amount) }}</div>
-
-            </div>
-
-            
-
-            <div class="wallet-info-card info">
-
-                <div class="wallet-info-label">موجودی قابل استفاده (ریال)</div>
-
-                <div class="wallet-info-value">{{ number_format($wallet->balance - $wallet->held_amount) }}</div>
-
-            </div>
-
-            
-
-            <div class="wallet-info-card">
-
-                <div class="wallet-info-label">واحد پول</div>
-
-                <div class="wallet-info-value">{{ $wallet->currency ?? 'IRR' }}</div>
-
-            </div>
-
-        </div>
-
-        
-
-        <!-- جدول تراکنش‌ها -->
-
-        <div>
-
-            <h4 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">
-
-                <i class="fas fa-list ml-2"></i>
-
-                تاریخچه تراکنش‌ها
-
-            </h4>
-
-            
-
-            @if($transactions->count() > 0)
-
-            <div style="overflow-x: auto;">
-
-                <table class="transaction-table">
-
-                    <thead>
-
-                        <tr>
-
-                            <th>ردیف</th>
-
-                            <th>نوع</th>
-
-                            <th>مبلغ (ریال)</th>
-
-                            <th>توضیحات</th>
-
-                            <th>تاریخ</th>
-
-                        </tr>
-
-                    </thead>
-
-                    <tbody>
-
-                        @foreach($transactions as $index => $transaction)
-
-                        <tr>
-
-                            <td><strong>{{ ($transactions->currentPage() - 1) * $transactions->perPage() + $index + 1 }}</strong></td>
-
-                            <td>
-
-                                @php
-
-                                    $typeLabels = [
-
-                                        'credit' => 'شارژ',
-
-                                        'debit' => 'کسر',
-
-                                        'hold' => 'بلوکه',
-
-                                        'release' => 'آزادسازی',
-
-                                        'settlement' => 'تسویه'
-
-                                    ];
-
-                                    $typeLabel = $typeLabels[$transaction->type] ?? $transaction->type;
-
-                                @endphp
-
-                                <span class="transaction-badge {{ $transaction->type }}">{{ $typeLabel }}</span>
-
-                            </td>
-
-                            <td><strong style="color: {{ $transaction->type === 'credit' ? '#10b981' : '#ef4444' }};">{{ number_format($transaction->amount) }}</strong></td>
-
-                            <td>{{ $transaction->description ?? '—' }}</td>
-
-                            <td>
-
-                                @php
-
-                                    $createdAt = $transaction->created_at instanceof \Carbon\Carbon 
-
-                                        ? $transaction->created_at 
-
-                                        : (is_string($transaction->created_at) && !empty(trim($transaction->created_at)) 
-
-                                            ? \Carbon\Carbon::parse($transaction->created_at) 
-
-                                            : null);
-
-                                @endphp
-
-                                @if($createdAt)
-
-                                    {{ \Morilog\Jalali\Jalalian::fromCarbon($createdAt)->format('Y/m/d H:i') }}
-
-                                @else
-
-                                    {{ $transaction->created_at ?? '—' }}
-
-                                @endif
-
-                            </td>
-
-                        </tr>
-
-                        @endforeach
-
-                    </tbody>
-
-                </table>
-
-            </div>
-
-            
-
-            <div style="margin-top: 2rem;">
-
-                {{ $transactions->links('pagination::bootstrap-5') }}
-
-            </div>
-
-            @else
-
-            <div style="text-align: center; padding: 3rem 1rem; background: #f9fafb; border-radius: 12px; border: 2px dashed #e5e7eb;">
-
-                <i class="fas fa-inbox" style="font-size: 4rem; color: #9ca3af; margin-bottom: 1rem;"></i>
-
-                <div style="font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem;">تراکنشی وجود ندارد</div>
-
-                <p style="color: #6b7280; font-size: 0.875rem;">هنوز هیچ تراکنشی برای این کیف پول ثبت نشده است.</p>
-
-            </div>
-
-            @endif
-
-        </div>
-
-    </div>
-
-</div>
-
-@endsection
-
-
-
+@extends('layouts.admin')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@section('title', 'جزئیات کیف پول - ' . config('app.name', 'EarthCoop'))
+
+
+
+
+
+
+
+
+
+@section('page-title', 'جزئیات کیف پول')
+
+
+
+
+
+
+
+
+
+@section('page-description', 'مشاهده جزئیات کیف پول و تراکنش‌ها')
+
+
+
+
+
+
+
+
+
+<!-- Tailwind & Bootstrap CSS via Vite -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@push('styles')
+
+
+
+
+
+
+
+
+
+<style>
+
+
+
+
+
+
+
+
+
+    .wallet-detail-card {
+
+
+
+
+
+
+
+
+
+        background: white;
+
+
+
+
+
+
+
+
+
+        border-radius: 16px;
+
+
+
+
+
+
+
+
+
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+
+
+
+
+
+
+
+
+
+        padding: 2rem;
+
+
+
+
+
+
+
+
+
+        margin-bottom: 2rem;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .wallet-detail-header {
+
+
+
+
+
+
+
+
+
+        display: flex;
+
+
+
+
+
+
+
+
+
+        justify-content: space-between;
+
+
+
+
+
+
+
+
+
+        align-items: center;
+
+
+
+
+
+
+
+
+
+        margin-bottom: 2rem;
+
+
+
+
+
+
+
+
+
+        padding-bottom: 1.5rem;
+
+
+
+
+
+
+
+
+
+        border-bottom: 2px solid #e5e7eb;
+
+
+
+
+
+
+
+
+
+        flex-wrap: wrap;
+
+
+
+
+
+
+
+
+
+        gap: 1rem;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .wallet-info-grid {
+
+
+
+
+
+
+
+
+
+        display: grid;
+
+
+
+
+
+
+
+
+
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+
+
+
+
+
+
+
+
+
+        gap: 1.5rem;
+
+
+
+
+
+
+
+
+
+        margin-bottom: 2rem;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .wallet-info-card {
+
+
+
+
+
+
+
+
+
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+
+
+
+
+
+
+
+
+        border-radius: 12px;
+
+
+
+
+
+
+
+
+
+        padding: 1.5rem;
+
+
+
+
+
+
+
+
+
+        color: white;
+
+
+
+
+
+
+
+
+
+        position: relative;
+
+
+
+
+
+
+
+
+
+        overflow: hidden;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .wallet-info-card.success {
+
+
+
+
+
+
+
+
+
+        background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .wallet-info-card.warning {
+
+
+
+
+
+
+
+
+
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .wallet-info-card.info {
+
+
+
+
+
+
+
+
+
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .wallet-info-label {
+
+
+
+
+
+
+
+
+
+        font-size: 0.875rem;
+
+
+
+
+
+
+
+
+
+        opacity: 0.9;
+
+
+
+
+
+
+
+
+
+        margin-bottom: 0.5rem;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .wallet-info-value {
+
+
+
+
+
+
+
+
+
+        font-size: 1.75rem;
+
+
+
+
+
+
+
+
+
+        font-weight: 800;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .transaction-table {
+
+
+
+
+
+
+
+
+
+        width: 100%;
+
+
+
+
+
+
+
+
+
+        border-collapse: collapse;
+
+
+
+
+
+
+
+
+
+        margin-top: 1.5rem;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .transaction-table thead {
+
+
+
+
+
+
+
+
+
+        background: #f9fafb;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .transaction-table th {
+
+
+
+
+
+
+
+
+
+        padding: 1rem;
+
+
+
+
+
+
+
+
+
+        text-align: right;
+
+
+
+
+
+
+
+
+
+        font-weight: 600;
+
+
+
+
+
+
+
+
+
+        color: #1e293b;
+
+
+
+
+
+
+
+
+
+        font-size: 0.875rem;
+
+
+
+
+
+
+
+
+
+        border-bottom: 2px solid #e5e7eb;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .transaction-table td {
+
+
+
+
+
+
+
+
+
+        padding: 1rem;
+
+
+
+
+
+
+
+
+
+        text-align: right;
+
+
+
+
+
+
+
+
+
+        color: #4b5563;
+
+
+
+
+
+
+
+
+
+        font-size: 0.875rem;
+
+
+
+
+
+
+
+
+
+        border-bottom: 1px solid #e5e7eb;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .transaction-table tbody tr:hover {
+
+
+
+
+
+
+
+
+
+        background: #f9fafb;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .transaction-badge {
+
+
+
+
+
+
+
+
+
+        padding: 0.375rem 0.75rem;
+
+
+
+
+
+
+
+
+
+        border-radius: 0.5rem;
+
+
+
+
+
+
+
+
+
+        font-size: 0.75rem;
+
+
+
+
+
+
+
+
+
+        font-weight: 600;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .transaction-badge.credit {
+
+
+
+
+
+
+
+
+
+        background: #d1fae5;
+
+
+
+
+
+
+
+
+
+        color: #065f46;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .transaction-badge.debit {
+
+
+
+
+
+
+
+
+
+        background: #fee2e2;
+
+
+
+
+
+
+
+
+
+        color: #991b1b;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .transaction-badge.hold {
+
+
+
+
+
+
+
+
+
+        background: #fef3c7;
+
+
+
+
+
+
+
+
+
+        color: #92400e;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .transaction-badge.release {
+
+
+
+
+
+
+
+
+
+        background: #dbeafe;
+
+
+
+
+
+
+
+
+
+        color: #1e40af;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .transaction-badge.settlement {
+
+
+
+
+
+
+
+
+
+        background: #e9d5ff;
+
+
+
+
+
+
+
+
+
+        color: #6b21a8;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    @media (prefers-color-scheme: dark) {
+
+
+
+
+
+
+
+
+
+        .wallet-detail-card {
+
+
+
+
+
+
+
+
+
+            background: #1e293b !important;
+
+
+
+
+
+
+
+
+
+            color: #f1f5f9 !important;
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        .wallet-detail-header {
+
+
+
+
+
+
+
+
+
+            border-bottom-color: #475569 !important;
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        .transaction-table thead {
+
+
+
+
+
+
+
+
+
+            background: #334155 !important;
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        .transaction-table th {
+
+
+
+
+
+
+
+
+
+            color: #f1f5f9 !important;
+
+
+
+
+
+
+
+
+
+            border-bottom-color: #475569 !important;
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        .transaction-table td {
+
+
+
+
+
+
+
+
+
+            color: #cbd5e1 !important;
+
+
+
+
+
+
+
+
+
+            border-bottom-color: #475569 !important;
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        .transaction-table tbody tr:hover {
+
+
+
+
+
+
+
+
+
+            background: #334155 !important;
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+</style>
+
+
+
+
+
+
+
+
+
+@endpush
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@section('content')
+
+
+
+
+
+
+
+
+
+<div class="space-y-6" style="direction: rtl;">
+
+
+
+
+
+
+
+
+
+    <div class="wallet-detail-card">
+
+
+
+
+
+
+
+
+
+        <div class="wallet-detail-header">
+
+
+
+
+
+
+
+
+
+            <h3>
+
+
+
+
+
+
+
+
+
+                <i class="fas fa-wallet ml-2"></i>
+
+
+
+
+
+
+
+
+
+                جزئیات کیف پول
+
+
+
+
+
+
+
+
+
+            </h3>
+
+
+
+
+
+
+
+
+
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+
+
+
+
+
+
+
+
+
+                <a href="{{ route('admin.wallet.index') }}" style="padding: 0.75rem 1.5rem; background: #6b7280; color: white; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">
+
+
+
+
+
+
+
+
+
+                    <i class="fas fa-arrow-right ml-2"></i>
+
+
+
+
+
+
+
+
+
+                    بازگشت
+
+
+
+
+
+
+
+
+
+                </a>
+
+
+
+
+
+
+
+
+
+                <a href="{{ route('admin.users.show', $wallet->user_id) }}" style="padding: 0.75rem 1.5rem; background: #3b82f6; color: white; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">
+
+
+
+
+
+
+
+
+
+                    <i class="fas fa-user ml-2"></i>
+
+
+
+
+
+
+
+
+
+                    مشاهده کاربر
+
+
+
+
+
+
+
+
+
+                </a>
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+        </div>
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        <!-- اطلاعات کاربر -->
+
+
+
+
+
+
+
+
+
+        <div style="margin-bottom: 2rem; padding: 1.5rem; background: #f9fafb; border-radius: 12px;">
+
+
+
+
+
+
+
+
+
+            <h4 style="font-size: 1.125rem; font-weight: 700; margin-bottom: 1rem;">اطلاعات کاربر</h4>
+
+
+
+
+
+
+
+
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+
+
+
+
+
+
+
+
+
+                <div>
+
+
+
+
+
+
+
+
+
+                    <strong>نام:</strong> {{ ($wallet->user->first_name ?? '') . ' ' . ($wallet->user->last_name ?? '') }}
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+                <div>
+
+
+
+
+
+
+
+
+
+                    <strong>ایمیل:</strong> {{ $wallet->user->email ?? '—' }}
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+                <div>
+
+
+
+
+
+
+
+
+
+                    <strong>ID کاربر:</strong> #{{ $wallet->user_id }}
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+        </div>
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        <!-- آمار کیف پول -->
+
+
+
+
+
+
+
+
+
+        <div class="wallet-info-grid">
+
+
+
+
+
+
+
+
+
+            <div class="wallet-info-card success">
+
+
+
+
+
+
+
+
+
+                <div class="wallet-info-label">موجودی کل (ریال)</div>
+
+
+
+
+
+
+
+
+
+                <div class="wallet-info-value">{{ number_format($wallet->balance) }}</div>
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+            
+
+
+
+
+
+
+
+
+
+            <div class="wallet-info-card warning">
+
+
+
+
+
+
+
+
+
+                <div class="wallet-info-label">مبلغ بلوکه شده (ریال)</div>
+
+
+
+
+
+
+
+
+
+                <div class="wallet-info-value">{{ number_format($wallet->held_amount) }}</div>
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+            
+
+
+
+
+
+
+
+
+
+            <div class="wallet-info-card info">
+
+
+
+
+
+
+
+
+
+                <div class="wallet-info-label">موجودی قابل استفاده (ریال)</div>
+
+
+
+
+
+
+
+
+
+                <div class="wallet-info-value">{{ number_format($wallet->balance - $wallet->held_amount) }}</div>
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+            
+
+
+
+
+
+
+
+
+
+            <div class="wallet-info-card">
+
+
+
+
+
+
+
+
+
+                <div class="wallet-info-label">واحد پول</div>
+
+
+
+
+
+
+
+
+
+                <div class="wallet-info-value">{{ $wallet->currency ?? 'IRR' }}</div>
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+        </div>
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        <!-- جدول تراکنش‌ها -->
+
+
+
+
+
+
+
+
+
+        <div>
+
+
+
+
+
+
+
+
+
+            <h4 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">
+
+
+
+
+
+
+
+
+
+                <i class="fas fa-list ml-2"></i>
+
+
+
+
+
+
+
+
+
+                تاریخچه تراکنش‌ها
+
+
+
+
+
+
+
+
+
+            </h4>
+
+
+
+
+
+
+
+
+
+            
+
+
+
+
+
+
+
+
+
+            @if($transactions->count() > 0)
+
+
+
+
+
+
+
+
+
+            <div style="overflow-x: auto;">
+
+
+
+
+
+
+
+
+
+                <table class="transaction-table">
+
+
+
+
+
+
+
+
+
+                    <thead>
+
+
+
+
+
+
+
+
+
+                        <tr>
+
+
+
+
+
+
+
+
+
+                            <th>ردیف</th>
+
+
+
+
+
+
+
+
+
+                            <th>نوع</th>
+
+
+
+
+
+
+
+
+
+                            <th>مبلغ (ریال)</th>
+
+
+
+
+
+
+
+
+
+                            <th>توضیحات</th>
+
+
+
+
+
+
+
+
+
+                            <th>تاریخ</th>
+
+
+
+
+
+
+
+
+
+                        </tr>
+
+
+
+
+
+
+
+
+
+                    </thead>
+
+
+
+
+
+
+
+
+
+                    <tbody>
+
+
+
+
+
+
+
+
+
+                        @foreach($transactions as $index => $transaction)
+
+
+
+
+
+
+
+
+
+                        <tr>
+
+
+
+
+
+
+
+
+
+                            <td><strong>{{ ($transactions->currentPage() - 1) * $transactions->perPage() + $index + 1 }}</strong></td>
+
+
+
+
+
+
+
+
+
+                            <td>
+
+
+
+
+
+
+
+
+
+                                @php
+
+
+
+
+
+
+
+
+
+                                    $typeLabels = [
+
+
+
+
+
+
+
+
+
+                                        'credit' => 'شارژ',
+
+
+
+
+
+
+
+
+
+                                        'debit' => 'کسر',
+
+
+
+
+
+
+
+
+
+                                        'hold' => 'بلوکه',
+
+
+
+
+
+
+
+
+
+                                        'release' => 'آزادسازی',
+
+
+
+
+
+
+
+
+
+                                        'settlement' => 'تسویه'
+
+
+
+
+
+
+
+
+
+                                    ];
+
+
+
+
+
+
+
+
+
+                                    $typeLabel = $typeLabels[$transaction->type] ?? $transaction->type;
+
+
+
+
+
+
+
+
+
+                                @endphp
+
+
+
+
+
+
+
+
+
+                                <span class="transaction-badge {{ $transaction->type }}">{{ $typeLabel }}</span>
+
+
+
+
+
+
+
+
+
+                            </td>
+
+
+
+
+
+
+
+
+
+                            <td><strong style="color: {{ $transaction->type === 'credit' ? '#10b981' : '#ef4444' }};">{{ number_format($transaction->amount) }}</strong></td>
+
+
+
+
+
+
+
+
+
+                            <td>{{ $transaction->description ?? '—' }}</td>
+
+
+
+
+
+
+
+
+
+                            <td>
+
+
+
+
+
+
+
+
+
+                                @php
+
+
+
+
+
+
+
+
+
+                                    $createdAt = $transaction->created_at instanceof \Carbon\Carbon 
+
+
+
+
+
+
+
+
+
+                                        ? $transaction->created_at 
+
+
+
+
+
+
+
+
+
+                                        : (is_string($transaction->created_at) && !empty(trim($transaction->created_at)) 
+
+
+
+
+
+
+
+
+
+                                            ? \Carbon\Carbon::parse($transaction->created_at) 
+
+
+
+
+
+
+
+
+
+                                            : null);
+
+
+
+
+
+
+
+
+
+                                @endphp
+
+
+
+
+
+
+
+
+
+                                @if($createdAt)
+
+
+
+
+
+
+
+
+
+                                    {{ \Morilog\Jalali\Jalalian::fromCarbon($createdAt)->format('Y/m/d H:i') }}
+
+
+
+
+
+
+
+
+
+                                @else
+
+
+
+
+
+
+
+
+
+                                    {{ $transaction->created_at ?? '—' }}
+
+
+
+
+
+
+
+
+
+                                @endif
+
+
+
+
+
+
+
+
+
+                            </td>
+
+
+
+
+
+
+
+
+
+                        </tr>
+
+
+
+
+
+
+
+
+
+                        @endforeach
+
+
+
+
+
+
+
+
+
+                    </tbody>
+
+
+
+
+
+
+
+
+
+                </table>
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+            
+
+
+
+
+
+
+
+
+
+            <div style="margin-top: 2rem;">
+
+
+
+
+
+
+
+
+
+                {{ $transactions->links('pagination::bootstrap-5') }}
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+            @else
+
+
+
+
+
+
+
+
+
+            <div style="text-align: center; padding: 3rem 1rem; background: #f9fafb; border-radius: 12px; border: 2px dashed #e5e7eb;">
+
+
+
+
+
+
+
+
+
+                <i class="fas fa-inbox" style="font-size: 4rem; color: #9ca3af; margin-bottom: 1rem;"></i>
+
+
+
+
+
+
+
+
+
+                <div style="font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem;">تراکنشی وجود ندارد</div>
+
+
+
+
+
+
+
+
+
+                <p style="color: #6b7280; font-size: 0.875rem;">هنوز هیچ تراکنشی برای این کیف پول ثبت نشده است.</p>
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+            @endif
+
+
+
+
+
+
+
+
+
+        </div>
+
+
+
+
+
+
+
+
+
+    </div>
+
+
+
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+@endsection
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

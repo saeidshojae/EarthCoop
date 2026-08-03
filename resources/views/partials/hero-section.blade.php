@@ -1,6 +1,5 @@
 <!-- Tailwind & Bootstrap CSS via Vite -->
 
-@vite(['resources/css/app.css', 'resources/js/app.js'])
 
 <!-- Hero Section - بخش قهرمان -->
 

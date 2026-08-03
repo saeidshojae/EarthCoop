@@ -3,11 +3,10 @@
    - Runtime caching: network-first for API (no caching for auth-protected routes), cache-first for static assets
    - Offline fallback for navigations
 */
-const PRECACHE = 'earthcoop-precache-v1';
-const RUNTIME = 'earthcoop-runtime-v1';
+const PRECACHE = 'earthcoop-precache-v3';
+const RUNTIME = 'earthcoop-runtime-v3';
 
 const PRECACHE_URLS = [
-  '/',
   '/offline.html',
   // Add built asset paths if you produce them to public/build (e.g., /build/assets/app.js)
 ];
@@ -59,8 +58,7 @@ self.addEventListener('fetch', event => {
         return networkResponse;
       } catch (err) {
         const cache = await caches.open(PRECACHE);
-        const cached = await cache.match('/');
-        return cached || (await cache.match('/offline.html'));
+        return (await cache.match('/offline.html')) || new Response('Offline', { status: 503 });
       }
     })());
     return;
@@ -82,16 +80,34 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Static assets: cache-first
-  if (['style', 'script', 'image', 'font'].includes(request.destination)) {
+  // CSS and JavaScript: network-first so a deployment is visible immediately.
+  if (['style', 'script'].includes(request.destination)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(RUNTIME);
+      try {
+        const networkResponse = await fetch(request);
+        if (networkResponse && networkResponse.ok) {
+          await cache.put(request, networkResponse.clone());
+        }
+        return networkResponse;
+      } catch (err) {
+        return (await cache.match(request)) || new Response(null, { status: 504, statusText: 'Gateway Timeout' });
+      }
+    })());
+    return;
+  }
+
+  // Images and fonts are content-addressed/static enough for cache-first.
+  if (['image', 'font'].includes(request.destination)) {
     event.respondWith((async () => {
       const cache = await caches.open(RUNTIME);
       const cached = await cache.match(request);
       if (cached) return cached;
       try {
         const networkResponse = await fetch(request);
-        // store a copy
-        cache.put(request, networkResponse.clone());
+        if (networkResponse && networkResponse.ok) {
+          await cache.put(request, networkResponse.clone());
+        }
         return networkResponse;
       } catch (err) {
         return cached || new Response(null, { status: 504, statusText: 'Gateway Timeout' });

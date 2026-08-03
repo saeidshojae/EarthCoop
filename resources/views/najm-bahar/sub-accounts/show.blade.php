@@ -1,932 +1,4659 @@
-@extends('layouts.unified')
-
-
-
-@section('title', 'جزئیات حساب فرعی - ' . config('app.name', 'EarthCoop'))
-
-@vite(['resources/css/app.css', 'resources/js/app.js'])
-
-
-
-@push('styles')
-
-<style>
-
-    .sub-account-detail-container {
-
-        direction: rtl;
-
-    }
-
-    
-
-    .detail-card {
-
-        background: var(--nb-color-white);
-
-        border-radius: var(--nb-radius-lg);
-
-        padding: var(--nb-space-8);
-
-        box-shadow: var(--nb-shadow-md);
-
-        border: 1px solid var(--nb-color-neutral-200);
-
-        margin-bottom: var(--nb-space-6);
-
-    }
-
-    
-
-    .balance-large {
-
-        font-size: var(--nb-font-size-5xl);
-
-        font-weight: var(--nb-font-weight-black);
-
-        color: var(--nb-color-earth-green);
-
-        margin: var(--nb-space-4) 0;
-
-    }
-
-
-
-    .account-subcard {
-
-        background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(249,250,251,0.95) 100%);
-
-        border: 1.5px solid var(--nb-color-neutral-200);
-
-        border-radius: var(--nb-radius-lg);
-
-        padding: var(--nb-space-5);
-
-        transition: all 0.2s ease;
-
-    }
-
-
-
-    .account-subcard:hover {
-
-        border-color: var(--nb-color-earth-green);
-
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
-
-        transform: translateY(-2px);
-
-    }
-
-
-
-    .account-subcard-label {
-
-        font-size: var(--nb-font-size-sm);
-
-        color: var(--nb-color-neutral-600);
-
-        font-weight: var(--nb-font-weight-medium);
-
-        margin-bottom: var(--nb-space-2);
-
-        display: flex;
-
-        align-items: center;
-
-        gap: 0.5rem;
-
-    }
-
-
-
-    .account-subcard-value {
-
-        font-size: var(--nb-font-size-xl);
-
-        font-weight: var(--nb-font-weight-bold);
-
-        color: var(--nb-color-gentle-black);
-
-    }
-
-
-
-    .nb-btn-warning {
-
-        background: #fef3c7;
-
-        color: var(--nb-color-gentle-black);
-
-        border: 1px solid #fcd34d;
-
-    }
-
-
-
-    .nb-btn-warning:hover:not(:disabled) {
-
-        background: #fde68a;
-
-        border-color: #f59e0b;
-
-    }
-
-
-
-    /* Transfer Tabs */
-
-    .transfer-tab {
-
-        background: transparent;
-
-        position: relative;
-
-    }
-
-
-
-    .transfer-tab.active {
-
-        color: var(--nb-color-earth-green) !important;
-
-        border-bottom-color: var(--nb-color-earth-green) !important;
-
-    }
-
-
-
-    .transfer-tab.active[data-tab="from"] {
-
-        color: var(--nb-color-red-tomato) !important;
-
-        border-bottom-color: var(--nb-color-red-tomato) !important;
-
-    }
-
-
-
-    .transfer-content {
-
-        animation: fadeIn 0.3s ease;
-
-    }
-
-
-
-    @keyframes fadeIn {
-
-        from {
-
-            opacity: 0;
-
-            transform: translateY(10px);
-
-        }
-
-        to {
-
-            opacity: 1;
-
-            transform: translateY(0);
-
-        }
-
-    }
-
-</style>
-
-@endpush
-
-
-
-@php
-
-$routePrefix = $routePrefix ?? 'najm-bahar';
-
-$routeParams = $routeParams ?? [];
-
-$isInactive = (int) ($subAccount->status ?? 1) !== 1;
-
-@endphp
-
-
-
-@section('content')
-
-<div class="bg-light-gray/60" style="background-color: var(--color-light-gray); min-height: 100vh;">
-
-    <!-- Hero Section -->
-
-    <div class="nb-page-container" style="max-width: var(--nb-container-max-width-xl);">
-
-        <section class="nb-hero">
-
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-
-                <div class="flex-1">
-
-                    <h1 class="text-3xl md:text-4xl font-extrabold text-white mb-3">
-
-                        <i class="fas fa-wallet ml-3" aria-hidden="true"></i>
-
-                        {{ $subAccount->name }}
-
-                    </h1>
-
-                    <p class="text-white/90 text-lg">جزئیات حساب فرعی {{ str_replace('-', '/', $subAccount->sub_account_code) }}</p>
-
-                    <div class="flex flex-wrap gap-2 mt-3">
-
-                        @if($isInactive)
-
-                            <span class="px-3 py-1 bg-red-500/20 text-white rounded-full text-sm font-semibold border border-white/30">
-
-                                <i class="fas fa-ban ml-1"></i>
-
-                                غیرفعال
-
-                            </span>
-
-                        @else
-
-                            <span class="px-3 py-1 bg-green-500/20 text-white rounded-full text-sm font-semibold border border-white/30">
-
-                                <i class="fas fa-check-circle ml-1"></i>
-
-                                فعال
-
-                            </span>
-
-                        @endif
-
-                    </div>
-
-                </div>
-
-                <div class="flex flex-col sm:flex-row gap-3">
-
-                    <a href="{{ route($routePrefix . '.sub-accounts.index', $routeParams) }}" 
-
-                       class="px-6 py-3 bg-white/20 backdrop-blur-sm text-white rounded-xl hover:bg-white/30 transition-all border border-white/30 text-center font-semibold">
-
-                        <i class="fas fa-arrow-right ml-2" aria-hidden="true"></i>
-
-                        بازگشت
-
-                    </a>
-
-                </div>
-
-            </div>
-
-        </section>
-
-    </div>
-
-
-
-    <!-- Main Content with Sidebar -->
-
-    <div class="nb-page-container py-8" style="max-width: var(--nb-container-max-width-xl);">
-
-        @if(session('success'))
-
-            <div class="bg-green-50 border-r-4 border-green-500 text-green-700 px-4 py-3 rounded-lg mb-6" role="alert" aria-live="polite">
-
-                <div class="flex items-center">
-
-                    <i class="fas fa-check-circle ml-3" aria-hidden="true"></i>
-
-                    <div>{{ session('success') }}</div>
-
-                </div>
-
-            </div>
-
-        @endif
-
-
-
-        @if(session('error'))
-
-            <div class="bg-red-50 border-r-4 border-red-500 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert" aria-live="assertive">
-
-                <div class="flex items-center">
-
-                    <i class="fas fa-exclamation-circle ml-3" aria-hidden="true"></i>
-
-                    <div>{{ session('error') }}</div>
-
-                </div>
-
-            </div>
-
-        @endif
-
-
-
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-            <!-- Sidebar -->
-
-            <aside class="lg:col-span-3">
-
-                @include('najm-bahar.partials.sidebar')
-
-            </aside>
-
-
-
-            <!-- Main Content -->
-
-            <main class="lg:col-span-9 sub-account-detail-container">
-
-                <!-- اطلاعات حساب -->
-
-                <div class="detail-card">
-
-                    <h2 class="text-xl font-bold text-gentle-black mb-6">
-
-                        <i class="fas fa-info-circle ml-2" style="color: var(--color-ocean-blue);"></i>
-
-                        اطلاعات حساب
-
-                    </h2>
-
-                    
-
-                    <!-- Subcards Grid -->
-
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-
-                        <!-- شماره حساب -->
-
-                        <div class="account-subcard">
-
-                            <div class="account-subcard-label">
-
-                                <i class="fas fa-hashtag text-ocean-blue"></i>
-
-                                شماره حساب
-
-                            </div>
-
-                            <div class="account-subcard-value font-mono text-ocean-blue">
-
-                                {{ str_replace('-', '/', $subAccount->sub_account_code) }}
-
-                            </div>
-
-                        </div>
-
-
-
-                        <!-- موجودی حساب -->
-
-                        <div class="account-subcard">
-
-                            <div class="account-subcard-label">
-
-                                <i class="fas fa-wallet text-digital-gold"></i>
-
-                                موجودی حساب
-
-                            </div>
-
-                            <div class="text-2xl font-black text-digital-gold">
-
-                                {{ \App\Helpers\BaharMoney::formatDecimalHtml($subAccount->balance) }}
-
-                            </div>
-
-                        </div>
-
-
-
-                        <!-- تاریخ ایجاد -->
-
-                        <div class="account-subcard">
-
-                            <div class="account-subcard-label">
-
-                                <i class="fas fa-calendar-alt text-slate-600"></i>
-
-                                تاریخ ایجاد
-
-                            </div>
-
-                            <div class="account-subcard-value text-base">
-
-                                {{ \Morilog\Jalali\Jalalian::fromCarbon($subAccount->created_at)->format('Y/m/d H:i') }}
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-
-                    <!-- Form ویرایش نام -->
-
-                    <form action="{{ route($routePrefix . '.sub-accounts.update', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST" class="border-t border-slate-200 pt-6">
-
-                        @csrf
-
-                        @method('PUT')
-
-                        <label for="sub_account_name" class="nb-label">ویرایش نام حساب فرعی</label>
-
-                        <div class="flex flex-col sm:flex-row gap-3">
-
-                            <input type="text" id="sub_account_name" name="name" value="{{ old('name', $subAccount->name) }}" class="flex-1 nb-input" required>
-
-                            <button type="submit" class="w-full sm:w-auto px-6 py-2 nb-btn nb-btn-primary">
-
-                                <i class="fas fa-pen ml-2" aria-hidden="true"></i>
-
-                                بروزرسانی نام
-
-                            </button>
-
-                        </div>
-
-                    </form>
-
-                </div>
-
-
-
-            <!-- انتقال وجه با تب -->
-
-            <div class="detail-card">
-
-                <div class="flex border-b border-slate-200 mb-6">
-
-                    <button type="button" 
-
-                            class="transfer-tab flex-1 px-6 py-3 font-semibold text-slate-700 border-b-2 border-transparent transition-all hover:text-earth-green"
-
-                            data-tab="to"
-
-                            onclick="switchTransferTab('to')">
-
-                        <i class="fas fa-arrow-down ml-2"></i>
-
-                        انتقال به حساب فرعی
-
-                    </button>
-
-                    <button type="button" 
-
-                            class="transfer-tab flex-1 px-6 py-3 font-semibold text-slate-700 border-b-2 border-transparent transition-all hover:text-red-tomato"
-
-                            data-tab="from"
-
-                            onclick="switchTransferTab('from')">
-
-                        <i class="fas fa-arrow-up ml-2"></i>
-
-                        انتقال از حساب فرعی
-
-                    </button>
-
-                </div>
-
-
-
-                <!-- تب انتقال به -->
-
-                <div id="transfer-to-tab" class="transfer-content">
-
-                    <p class="text-sm text-slate-600 mb-4">
-
-                        موجودی حساب اصلی: <strong>{{ \App\Helpers\BaharMoney::formatDecimalHtml($account->balance) }}</strong>
-
-                    </p>
-
-                    @if($isInactive)
-
-                        <p class="text-sm text-red-600 mb-4">این حساب غیرفعال است و امکان انتقال وجود ندارد.</p>
-
-                    @endif
-
-                    <form action="{{ route($routePrefix . '.sub-accounts.transfer-to', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST">
-
-                        @csrf
-
-                        <div class="mb-4">
-
-                            <label for="amount_to" class="nb-label">
-
-                                مبلغ (بهار.گل)
-
-                            </label>
-
-                            <input type="text" 
-
-                                   id="amount_to" 
-
-                                   name="amount" 
-
-                                   inputmode="decimal"
-
-                                   required
-
-                                   class="nb-input" 
-
-                                   placeholder="مثال: 10.30"
-
-                                   {{ $isInactive ? 'disabled' : '' }}>
-
-                        </div>
-
-                        <div class="mb-4">
-
-                            <label for="description_to" class="nb-label">
-
-                                توضیحات (اختیاری)
-
-                            </label>
-
-                            <textarea id="description_to" 
-
-                                      name="description" 
-
-                                      rows="2"
-
-                                      class="nb-input"
-
-                                      placeholder="توضیحات تراکنش" {{ $isInactive ? 'disabled' : '' }}></textarea>
-
-                        </div>
-
-                        <button type="submit" 
-
-                                class="w-full nb-btn nb-btn-primary" {{ $isInactive ? 'disabled' : '' }}>
-
-                            <i class="fas fa-arrow-down ml-2" aria-hidden="true"></i>
-
-                            انتقال به حساب فرعی
-
-                        </button>
-
-                    </form>
-
-                </div>
-
-
-
-                <!-- تب انتقال از -->
-
-                <div id="transfer-from-tab" class="transfer-content hidden">
-
-                    <p class="text-sm text-slate-600 mb-4">
-
-                        موجودی حساب فرعی: <strong>{{ \App\Helpers\BaharMoney::formatDecimalHtml($subAccount->balance) }}</strong>
-
-                    </p>
-
-                    @if($isInactive)
-
-                        <p class="text-sm text-red-600 mb-4">این حساب غیرفعال است و امکان انتقال وجود ندارد.</p>
-
-                    @endif
-
-                    <form action="{{ route($routePrefix . '.sub-accounts.transfer-from', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST">
-
-                        @csrf
-
-                        <div class="mb-4">
-
-                            <label for="amount_from" class="nb-label">
-
-                                مبلغ (بهار.گل)
-
-                            </label>
-
-                            <input type="text" 
-
-                                   id="amount_from" 
-
-                                   name="amount" 
-
-                                   inputmode="decimal"
-
-                                   required
-
-                                   class="nb-input"
-
-                                   placeholder="مثال: 10.30"
-
-                                   {{ $isInactive ? 'disabled' : '' }}>
-
-                        </div>
-
-                        <div class="mb-4">
-
-                            <label for="description_from" class="nb-label">
-
-                                توضیحات (اختیاری)
-
-                            </label>
-
-                            <textarea id="description_from" 
-
-                                      name="description" 
-
-                                      rows="2"
-
-                                      class="nb-input"
-
-                                      placeholder="توضیحات تراکنش" {{ $isInactive ? 'disabled' : '' }}></textarea>
-
-                        </div>
-
-                        <button type="submit" 
-
-                                class="w-full nb-btn nb-btn-primary" {{ $isInactive ? 'disabled' : '' }}>
-
-                            <i class="fas fa-arrow-up ml-2" aria-hidden="true"></i>
-
-                            انتقال از حساب فرعی
-
-                        </button>
-
-                    </form>
-
-                </div>
-
-            </div>
-
-
-
-            <!-- عملیات -->
-
-            <div class="detail-card">
-
-                <h3 class="text-lg font-bold text-gentle-black mb-4">
-
-                    <i class="fas fa-cog ml-2" style="color: var(--color-digital-gold);"></i>
-
-                    عملیات
-
-                </h3>
-
-                @if($isInactive)
-
-                    <form action="{{ route($routePrefix . '.sub-accounts.activate', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST" onsubmit="return confirm('آیا از فعال سازی این حساب فرعی اطمینان دارید؟');">
-
-                        @csrf
-
-                        <button type="submit" class="px-6 py-2 nb-btn nb-btn-primary">
-
-                            <i class="fas fa-check ml-2" aria-hidden="true"></i>
-
-                            فعال سازی حساب فرعی
-
-                        </button>
-
-                    </form>
-
-                @else
-
-                    <form action="{{ route($routePrefix . '.sub-accounts.deactivate', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST" onsubmit="return confirm('آیا از غیرفعال کردن این حساب فرعی اطمینان دارید؟');">
-
-                        @csrf
-
-                        <button type="submit" class="px-6 py-2 nb-btn nb-btn-warning">
-
-                            <i class="fas fa-ban ml-2" aria-hidden="true"></i>
-
-                            غیرفعال کردن حساب فرعی
-
-                        </button>
-
-                        <p class="mt-2 text-sm text-slate-500">
-
-                            با غیرفعال کردن، حساب بدون خالی شدن موجودی غیرفعال می شود و امکان فعال سازی مجدد دارد.
-
-                        </p>
-
-                    </form>
-
-
-
-                    <div class="border-t border-slate-200 mt-6 pt-5">
-
-                        <h4 class="text-sm font-semibold text-slate-700 mb-3">بستن حساب فرعی و انتقال موجودی</h4>
-
-                        <p class="text-sm text-slate-500 mb-4">
-
-                            با بستن حساب، موجودی به حساب اصلی یا حساب فرعی انتخابی منتقل می شود، موجودی صفر می شود و حساب غیرفعال خواهد شد.
-
-                        </p>
-
-                        <form action="{{ route($routePrefix . '.sub-accounts.close', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST" class="space-y-3" onsubmit="return confirm('آیا از بستن این حساب فرعی مطمئن هستید؟');">
-
-                            @csrf
-
-                            <div>
-
-                                <label class="nb-label">انتقال به</label>
-
-                                <div class="flex flex-wrap gap-4">
-
-                                    <label class="flex items-center gap-2 text-sm">
-
-                                        <input type="radio" name="destination" value="main" checked>
-
-                                        حساب اصلی
-
-                                    </label>
-
-                                    <label class="flex items-center gap-2 text-sm">
-
-                                        <input type="radio" name="destination" value="subaccount">
-
-                                        حساب فرعی دیگر
-
-                                    </label>
-
-                                </div>
-
-                            </div>
-
-                            <div id="destination_subaccount_field" class="hidden">
-
-                                <label for="destination_sub_account_id" class="nb-label">انتخاب حساب فرعی مقصد</label>
-
-                                <select id="destination_sub_account_id" name="destination_sub_account_id" class="nb-input">
-
-                                    <option value="">انتخاب حساب فرعی</option>
-
-                                    @foreach($otherSubAccounts as $otherSubAccount)
-
-                                        <option value="{{ $otherSubAccount->id }}">
-
-                                            {{ $otherSubAccount->name }} - {{ str_replace('-', '/', $otherSubAccount->sub_account_code) }}
-
-                                        </option>
-
-                                    @endforeach
-
-                                </select>
-
-                            </div>
-
-                            <div>
-
-                                <label for="close_description" class="nb-label">توضیحات (اختیاری)</label>
-
-                                <textarea id="close_description" name="description" rows="2" class="nb-input" placeholder="توضیحات بستن حساب"></textarea>
-
-                            </div>
-
-                            <button type="submit" class="w-full nb-btn nb-btn-danger">
-
-                                <i class="fas fa-lock ml-2" aria-hidden="true"></i>
-
-                                بستن حساب فرعی
-
-                            </button>
-
-                        </form>
-
-                    </div>
-
-                @endif
-
-            </div>
-
-            </main>
-
-        </div>
-
-    </div>
-
-</div>
-
-@endsection
-
-
-
-@push('scripts')
-
-<script>
-
-    // Switch between transfer tabs
-
-    function switchTransferTab(tabName) {
-
-        // Hide all tabs
-
-        document.querySelectorAll('.transfer-content').forEach(function(content) {
-
-            content.classList.add('hidden');
-
-        });
-
-
-
-        // Remove active class from all tab buttons
-
-        document.querySelectorAll('.transfer-tab').forEach(function(tab) {
-
-            tab.classList.remove('active');
-
-        });
-
-
-
-        // Show selected tab
-
-        if (tabName === 'to') {
-
-            document.getElementById('transfer-to-tab').classList.remove('hidden');
-
-            document.querySelector('.transfer-tab[data-tab="to"]').classList.add('active');
-
-        } else if (tabName === 'from') {
-
-            document.getElementById('transfer-from-tab').classList.remove('hidden');
-
-            document.querySelector('.transfer-tab[data-tab="from"]').classList.add('active');
-
-        }
-
-    }
-
-
-
-    document.addEventListener('DOMContentLoaded', function () {
-
-        // Initialize first tab as active
-
-        switchTransferTab('to');
-
-
-
-        // Handle destination field toggle for close account form
-
-        var destinationField = document.getElementById('destination_subaccount_field');
-
-        var destinationSelect = document.getElementById('destination_sub_account_id');
-
-        var destinationInputs = document.querySelectorAll('input[name="destination"]');
-
-
-
-        if (destinationField && destinationInputs.length) {
-
-            var toggleDestinationField = function () {
-
-                var selected = document.querySelector('input[name="destination"]:checked');
-
-                var isSubAccount = selected && selected.value === 'subaccount';
-
-                destinationField.classList.toggle('hidden', !isSubAccount);
-
-                if (destinationSelect) {
-
-                    if (isSubAccount) {
-
-                        destinationSelect.setAttribute('required', 'required');
-
-                    } else {
-
-                        destinationSelect.removeAttribute('required');
-
-                        destinationSelect.value = '';
-
-                    }
-
-                }
-
-            };
-
-
-
-            destinationInputs.forEach(function (input) {
-
-                input.addEventListener('change', toggleDestinationField);
-
-            });
-
-
-
-            toggleDestinationField();
-
-        }
-
-    });
-
-</script>
-
-@endpush
-
-
-
-
-
+@extends('layouts.unified')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@section('title', 'جزئیات حساب فرعی - ' . config('app.name', 'EarthCoop'))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@push('styles')
+
+
+
+
+
+
+
+
+
+<style>
+
+
+
+
+
+
+
+
+
+    .sub-account-detail-container {
+
+
+
+
+
+
+
+
+
+        direction: rtl;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .detail-card {
+
+
+
+
+
+
+
+
+
+        background: var(--nb-color-white);
+
+
+
+
+
+
+
+
+
+        border-radius: var(--nb-radius-lg);
+
+
+
+
+
+
+
+
+
+        padding: var(--nb-space-8);
+
+
+
+
+
+
+
+
+
+        box-shadow: var(--nb-shadow-md);
+
+
+
+
+
+
+
+
+
+        border: 1px solid var(--nb-color-neutral-200);
+
+
+
+
+
+
+
+
+
+        margin-bottom: var(--nb-space-6);
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .balance-large {
+
+
+
+
+
+
+
+
+
+        font-size: var(--nb-font-size-5xl);
+
+
+
+
+
+
+
+
+
+        font-weight: var(--nb-font-weight-black);
+
+
+
+
+
+
+
+
+
+        color: var(--nb-color-earth-green);
+
+
+
+
+
+
+
+
+
+        margin: var(--nb-space-4) 0;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .account-subcard {
+
+
+
+
+
+
+
+
+
+        background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(249,250,251,0.95) 100%);
+
+
+
+
+
+
+
+
+
+        border: 1.5px solid var(--nb-color-neutral-200);
+
+
+
+
+
+
+
+
+
+        border-radius: var(--nb-radius-lg);
+
+
+
+
+
+
+
+
+
+        padding: var(--nb-space-5);
+
+
+
+
+
+
+
+
+
+        transition: all 0.2s ease;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .account-subcard:hover {
+
+
+
+
+
+
+
+
+
+        border-color: var(--nb-color-earth-green);
+
+
+
+
+
+
+
+
+
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+
+
+
+
+
+
+
+
+
+        transform: translateY(-2px);
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .account-subcard-label {
+
+
+
+
+
+
+
+
+
+        font-size: var(--nb-font-size-sm);
+
+
+
+
+
+
+
+
+
+        color: var(--nb-color-neutral-600);
+
+
+
+
+
+
+
+
+
+        font-weight: var(--nb-font-weight-medium);
+
+
+
+
+
+
+
+
+
+        margin-bottom: var(--nb-space-2);
+
+
+
+
+
+
+
+
+
+        display: flex;
+
+
+
+
+
+
+
+
+
+        align-items: center;
+
+
+
+
+
+
+
+
+
+        gap: 0.5rem;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .account-subcard-value {
+
+
+
+
+
+
+
+
+
+        font-size: var(--nb-font-size-xl);
+
+
+
+
+
+
+
+
+
+        font-weight: var(--nb-font-weight-bold);
+
+
+
+
+
+
+
+
+
+        color: var(--nb-color-gentle-black);
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .nb-btn-warning {
+
+
+
+
+
+
+
+
+
+        background: #fef3c7;
+
+
+
+
+
+
+
+
+
+        color: var(--nb-color-gentle-black);
+
+
+
+
+
+
+
+
+
+        border: 1px solid #fcd34d;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .nb-btn-warning:hover:not(:disabled) {
+
+
+
+
+
+
+
+
+
+        background: #fde68a;
+
+
+
+
+
+
+
+
+
+        border-color: #f59e0b;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /* Transfer Tabs */
+
+
+
+
+
+
+
+
+
+    .transfer-tab {
+
+
+
+
+
+
+
+
+
+        background: transparent;
+
+
+
+
+
+
+
+
+
+        position: relative;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .transfer-tab.active {
+
+
+
+
+
+
+
+
+
+        color: var(--nb-color-earth-green) !important;
+
+
+
+
+
+
+
+
+
+        border-bottom-color: var(--nb-color-earth-green) !important;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .transfer-tab.active[data-tab="from"] {
+
+
+
+
+
+
+
+
+
+        color: var(--nb-color-red-tomato) !important;
+
+
+
+
+
+
+
+
+
+        border-bottom-color: var(--nb-color-red-tomato) !important;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    .transfer-content {
+
+
+
+
+
+
+
+
+
+        animation: fadeIn 0.3s ease;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    @keyframes fadeIn {
+
+
+
+
+
+
+
+
+
+        from {
+
+
+
+
+
+
+
+
+
+            opacity: 0;
+
+
+
+
+
+
+
+
+
+            transform: translateY(10px);
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+        to {
+
+
+
+
+
+
+
+
+
+            opacity: 1;
+
+
+
+
+
+
+
+
+
+            transform: translateY(0);
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+</style>
+
+
+
+
+
+
+
+
+
+@endpush
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@php
+
+
+
+
+
+
+
+
+
+$routePrefix = $routePrefix ?? 'najm-bahar';
+
+
+
+
+
+
+
+
+
+$routeParams = $routeParams ?? [];
+
+
+
+
+
+
+
+
+
+$isInactive = (int) ($subAccount->status ?? 1) !== 1;
+
+
+
+
+
+
+
+
+
+@endphp
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@section('content')
+
+
+
+
+
+
+
+
+
+<div class="bg-light-gray/60" style="background-color: var(--color-light-gray); min-height: 100vh;">
+
+
+
+
+
+
+
+
+
+    <!-- Hero Section -->
+
+
+
+
+
+
+
+
+
+    <div class="nb-page-container" style="max-width: var(--nb-container-max-width-xl);">
+
+
+
+
+
+
+
+
+
+        <section class="nb-hero">
+
+
+
+
+
+
+
+
+
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+
+
+
+
+
+
+
+
+                <div class="flex-1">
+
+
+
+
+
+
+
+
+
+                    <h1 class="text-3xl md:text-4xl font-extrabold text-white mb-3">
+
+
+
+
+
+
+
+
+
+                        <i class="fas fa-wallet ml-3" aria-hidden="true"></i>
+
+
+
+
+
+
+
+
+
+                        {{ $subAccount->name }}
+
+
+
+
+
+
+
+
+
+                    </h1>
+
+
+
+
+
+
+
+
+
+                    <p class="text-white/90 text-lg">جزئیات حساب فرعی {{ str_replace('-', '/', $subAccount->sub_account_code) }}</p>
+
+
+
+
+
+
+
+
+
+                    <div class="flex flex-wrap gap-2 mt-3">
+
+
+
+
+
+
+
+
+
+                        @if($isInactive)
+
+
+
+
+
+
+
+
+
+                            <span class="px-3 py-1 bg-red-500/20 text-white rounded-full text-sm font-semibold border border-white/30">
+
+
+
+
+
+
+
+
+
+                                <i class="fas fa-ban ml-1"></i>
+
+
+
+
+
+
+
+
+
+                                غیرفعال
+
+
+
+
+
+
+
+
+
+                            </span>
+
+
+
+
+
+
+
+
+
+                        @else
+
+
+
+
+
+
+
+
+
+                            <span class="px-3 py-1 bg-green-500/20 text-white rounded-full text-sm font-semibold border border-white/30">
+
+
+
+
+
+
+
+
+
+                                <i class="fas fa-check-circle ml-1"></i>
+
+
+
+
+
+
+
+
+
+                                فعال
+
+
+
+
+
+
+
+
+
+                            </span>
+
+
+
+
+
+
+
+
+
+                        @endif
+
+
+
+
+
+
+
+
+
+                    </div>
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+                <div class="flex flex-col sm:flex-row gap-3">
+
+
+
+
+
+
+
+
+
+                    <a href="{{ route($routePrefix . '.sub-accounts.index', $routeParams) }}" 
+
+
+
+
+
+
+
+
+
+                       class="px-6 py-3 bg-white/20 backdrop-blur-sm text-white rounded-xl hover:bg-white/30 transition-all border border-white/30 text-center font-semibold">
+
+
+
+
+
+
+
+
+
+                        <i class="fas fa-arrow-right ml-2" aria-hidden="true"></i>
+
+
+
+
+
+
+
+
+
+                        بازگشت
+
+
+
+
+
+
+
+
+
+                    </a>
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+        </section>
+
+
+
+
+
+
+
+
+
+    </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <!-- Main Content with Sidebar -->
+
+
+
+
+
+
+
+
+
+    <div class="nb-page-container py-8" style="max-width: var(--nb-container-max-width-xl);">
+
+
+
+
+
+
+
+
+
+        @if(session('success'))
+
+
+
+
+
+
+
+
+
+            <div class="bg-green-50 border-r-4 border-green-500 text-green-700 px-4 py-3 rounded-lg mb-6" role="alert" aria-live="polite">
+
+
+
+
+
+
+
+
+
+                <div class="flex items-center">
+
+
+
+
+
+
+
+
+
+                    <i class="fas fa-check-circle ml-3" aria-hidden="true"></i>
+
+
+
+
+
+
+
+
+
+                    <div>{{ session('success') }}</div>
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+        @endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        @if(session('error'))
+
+
+
+
+
+
+
+
+
+            <div class="bg-red-50 border-r-4 border-red-500 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert" aria-live="assertive">
+
+
+
+
+
+
+
+
+
+                <div class="flex items-center">
+
+
+
+
+
+
+
+
+
+                    <i class="fas fa-exclamation-circle ml-3" aria-hidden="true"></i>
+
+
+
+
+
+
+
+
+
+                    <div>{{ session('error') }}</div>
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+        @endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+
+
+
+
+
+
+
+
+            <!-- Sidebar -->
+
+
+
+
+
+
+
+
+
+            <aside class="lg:col-span-3">
+
+
+
+
+
+
+
+
+
+                @include('najm-bahar.partials.sidebar')
+
+
+
+
+
+
+
+
+
+            </aside>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            <!-- Main Content -->
+
+
+
+
+
+
+
+
+
+            <main class="lg:col-span-9 sub-account-detail-container">
+
+
+
+
+
+
+
+
+
+                <!-- اطلاعات حساب -->
+
+
+
+
+
+
+
+
+
+                <div class="detail-card">
+
+
+
+
+
+
+
+
+
+                    <h2 class="text-xl font-bold text-gentle-black mb-6">
+
+
+
+
+
+
+
+
+
+                        <i class="fas fa-info-circle ml-2" style="color: var(--color-ocean-blue);"></i>
+
+
+
+
+
+
+
+
+
+                        اطلاعات حساب
+
+
+
+
+
+
+
+
+
+                    </h2>
+
+
+
+
+
+
+
+
+
+                    
+
+
+
+
+
+
+
+
+
+                    <!-- Subcards Grid -->
+
+
+
+
+
+
+
+
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+
+
+
+
+
+
+
+
+
+                        <!-- شماره حساب -->
+
+
+
+
+
+
+
+
+
+                        <div class="account-subcard">
+
+
+
+
+
+
+
+
+
+                            <div class="account-subcard-label">
+
+
+
+
+
+
+
+
+
+                                <i class="fas fa-hashtag text-ocean-blue"></i>
+
+
+
+
+
+
+
+
+
+                                شماره حساب
+
+
+
+
+
+
+
+
+
+                            </div>
+
+
+
+
+
+
+
+
+
+                            <div class="account-subcard-value font-mono text-ocean-blue">
+
+
+
+
+
+
+
+
+
+                                {{ str_replace('-', '/', $subAccount->sub_account_code) }}
+
+
+
+
+
+
+
+
+
+                            </div>
+
+
+
+
+
+
+
+
+
+                        </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        <!-- موجودی حساب -->
+
+
+
+
+
+
+
+
+
+                        <div class="account-subcard">
+
+
+
+
+
+
+
+
+
+                            <div class="account-subcard-label">
+
+
+
+
+
+
+
+
+
+                                <i class="fas fa-wallet text-digital-gold"></i>
+
+
+
+
+
+
+
+
+
+                                موجودی حساب
+
+
+
+
+
+
+
+
+
+                            </div>
+
+
+
+
+
+
+
+
+
+                            <div class="text-2xl font-black text-digital-gold">
+
+
+
+
+
+
+
+
+
+                                {{ \App\Helpers\BaharMoney::formatDecimalHtml($subAccount->balance) }}
+
+
+
+
+
+
+
+
+
+                            </div>
+
+
+
+
+
+
+
+
+
+                        </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        <!-- تاریخ ایجاد -->
+
+
+
+
+
+
+
+
+
+                        <div class="account-subcard">
+
+
+
+
+
+
+
+
+
+                            <div class="account-subcard-label">
+
+
+
+
+
+
+
+
+
+                                <i class="fas fa-calendar-alt text-slate-600"></i>
+
+
+
+
+
+
+
+
+
+                                تاریخ ایجاد
+
+
+
+
+
+
+
+
+
+                            </div>
+
+
+
+
+
+
+
+
+
+                            <div class="account-subcard-value text-base">
+
+
+
+
+
+
+
+
+
+                                {{ \Morilog\Jalali\Jalalian::fromCarbon($subAccount->created_at)->format('Y/m/d H:i') }}
+
+
+
+
+
+
+
+
+
+                            </div>
+
+
+
+
+
+
+
+
+
+                        </div>
+
+
+
+
+
+
+
+
+
+                    </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                    <!-- Form ویرایش نام -->
+
+
+
+
+
+
+
+
+
+                    <form action="{{ route($routePrefix . '.sub-accounts.update', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST" class="border-t border-slate-200 pt-6">
+
+
+
+
+
+
+
+
+
+                        @csrf
+
+
+
+
+
+
+
+
+
+                        @method('PUT')
+
+
+
+
+
+
+
+
+
+                        <label for="sub_account_name" class="nb-label">ویرایش نام حساب فرعی</label>
+
+
+
+
+
+
+
+
+
+                        <div class="flex flex-col sm:flex-row gap-3">
+
+
+
+
+
+
+
+
+
+                            <input type="text" id="sub_account_name" name="name" value="{{ old('name', $subAccount->name) }}" class="flex-1 nb-input" required>
+
+
+
+
+
+
+
+
+
+                            <button type="submit" class="w-full sm:w-auto px-6 py-2 nb-btn nb-btn-primary">
+
+
+
+
+
+
+
+
+
+                                <i class="fas fa-pen ml-2" aria-hidden="true"></i>
+
+
+
+
+
+
+
+
+
+                                بروزرسانی نام
+
+
+
+
+
+
+
+
+
+                            </button>
+
+
+
+
+
+
+
+
+
+                        </div>
+
+
+
+
+
+
+
+
+
+                    </form>
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            <!-- انتقال وجه با تب -->
+
+
+
+
+
+
+
+
+
+            <div class="detail-card">
+
+
+
+
+
+
+
+
+
+                <div class="flex border-b border-slate-200 mb-6">
+
+
+
+
+
+
+
+
+
+                    <button type="button" 
+
+
+
+
+
+
+
+
+
+                            class="transfer-tab flex-1 px-6 py-3 font-semibold text-slate-700 border-b-2 border-transparent transition-all hover:text-earth-green"
+
+
+
+
+
+
+
+
+
+                            data-tab="to"
+
+
+
+
+
+
+
+
+
+                            onclick="switchTransferTab('to')">
+
+
+
+
+
+
+
+
+
+                        <i class="fas fa-arrow-down ml-2"></i>
+
+
+
+
+
+
+
+
+
+                        انتقال به حساب فرعی
+
+
+
+
+
+
+
+
+
+                    </button>
+
+
+
+
+
+
+
+
+
+                    <button type="button" 
+
+
+
+
+
+
+
+
+
+                            class="transfer-tab flex-1 px-6 py-3 font-semibold text-slate-700 border-b-2 border-transparent transition-all hover:text-red-tomato"
+
+
+
+
+
+
+
+
+
+                            data-tab="from"
+
+
+
+
+
+
+
+
+
+                            onclick="switchTransferTab('from')">
+
+
+
+
+
+
+
+
+
+                        <i class="fas fa-arrow-up ml-2"></i>
+
+
+
+
+
+
+
+
+
+                        انتقال از حساب فرعی
+
+
+
+
+
+
+
+
+
+                    </button>
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                <!-- تب انتقال به -->
+
+
+
+
+
+
+
+
+
+                <div id="transfer-to-tab" class="transfer-content">
+
+
+
+
+
+
+
+
+
+                    <p class="text-sm text-slate-600 mb-4">
+
+
+
+
+
+
+
+
+
+                        موجودی حساب اصلی: <strong>{{ \App\Helpers\BaharMoney::formatDecimalHtml($account->balance) }}</strong>
+
+
+
+
+
+
+
+
+
+                    </p>
+
+
+
+
+
+
+
+
+
+                    @if($isInactive)
+
+
+
+
+
+
+
+
+
+                        <p class="text-sm text-red-600 mb-4">این حساب غیرفعال است و امکان انتقال وجود ندارد.</p>
+
+
+
+
+
+
+
+
+
+                    @endif
+
+
+
+
+
+
+
+
+
+                    <form action="{{ route($routePrefix . '.sub-accounts.transfer-to', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST">
+
+
+
+
+
+
+
+
+
+                        @csrf
+
+
+
+
+
+
+
+
+
+                        <div class="mb-4">
+
+
+
+
+
+
+
+
+
+                            <label for="amount_to" class="nb-label">
+
+
+
+
+
+
+
+
+
+                                مبلغ (بهار.گل)
+
+
+
+
+
+
+
+
+
+                            </label>
+
+
+
+
+
+
+
+
+
+                            <input type="text" 
+
+
+
+
+
+
+
+
+
+                                   id="amount_to" 
+
+
+
+
+
+
+
+
+
+                                   name="amount" 
+
+
+
+
+
+
+
+
+
+                                   inputmode="decimal"
+
+
+
+
+
+
+
+
+
+                                   required
+
+
+
+
+
+
+
+
+
+                                   class="nb-input" 
+
+
+
+
+
+
+
+
+
+                                   placeholder="مثال: 10.30"
+
+
+
+
+
+
+
+
+
+                                   {{ $isInactive ? 'disabled' : '' }}>
+
+
+
+
+
+
+
+
+
+                        </div>
+
+
+
+
+
+
+
+
+
+                        <div class="mb-4">
+
+
+
+
+
+
+
+
+
+                            <label for="description_to" class="nb-label">
+
+
+
+
+
+
+
+
+
+                                توضیحات (اختیاری)
+
+
+
+
+
+
+
+
+
+                            </label>
+
+
+
+
+
+
+
+
+
+                            <textarea id="description_to" 
+
+
+
+
+
+
+
+
+
+                                      name="description" 
+
+
+
+
+
+
+
+
+
+                                      rows="2"
+
+
+
+
+
+
+
+
+
+                                      class="nb-input"
+
+
+
+
+
+
+
+
+
+                                      placeholder="توضیحات تراکنش" {{ $isInactive ? 'disabled' : '' }}></textarea>
+
+
+
+
+
+
+
+
+
+                        </div>
+
+
+
+
+
+
+
+
+
+                        <button type="submit" 
+
+
+
+
+
+
+
+
+
+                                class="w-full nb-btn nb-btn-primary" {{ $isInactive ? 'disabled' : '' }}>
+
+
+
+
+
+
+
+
+
+                            <i class="fas fa-arrow-down ml-2" aria-hidden="true"></i>
+
+
+
+
+
+
+
+
+
+                            انتقال به حساب فرعی
+
+
+
+
+
+
+
+
+
+                        </button>
+
+
+
+
+
+
+
+
+
+                    </form>
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                <!-- تب انتقال از -->
+
+
+
+
+
+
+
+
+
+                <div id="transfer-from-tab" class="transfer-content hidden">
+
+
+
+
+
+
+
+
+
+                    <p class="text-sm text-slate-600 mb-4">
+
+
+
+
+
+
+
+
+
+                        موجودی حساب فرعی: <strong>{{ \App\Helpers\BaharMoney::formatDecimalHtml($subAccount->balance) }}</strong>
+
+
+
+
+
+
+
+
+
+                    </p>
+
+
+
+
+
+
+
+
+
+                    @if($isInactive)
+
+
+
+
+
+
+
+
+
+                        <p class="text-sm text-red-600 mb-4">این حساب غیرفعال است و امکان انتقال وجود ندارد.</p>
+
+
+
+
+
+
+
+
+
+                    @endif
+
+
+
+
+
+
+
+
+
+                    <form action="{{ route($routePrefix . '.sub-accounts.transfer-from', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST">
+
+
+
+
+
+
+
+
+
+                        @csrf
+
+
+
+
+
+
+
+
+
+                        <div class="mb-4">
+
+
+
+
+
+
+
+
+
+                            <label for="amount_from" class="nb-label">
+
+
+
+
+
+
+
+
+
+                                مبلغ (بهار.گل)
+
+
+
+
+
+
+
+
+
+                            </label>
+
+
+
+
+
+
+
+
+
+                            <input type="text" 
+
+
+
+
+
+
+
+
+
+                                   id="amount_from" 
+
+
+
+
+
+
+
+
+
+                                   name="amount" 
+
+
+
+
+
+
+
+
+
+                                   inputmode="decimal"
+
+
+
+
+
+
+
+
+
+                                   required
+
+
+
+
+
+
+
+
+
+                                   class="nb-input"
+
+
+
+
+
+
+
+
+
+                                   placeholder="مثال: 10.30"
+
+
+
+
+
+
+
+
+
+                                   {{ $isInactive ? 'disabled' : '' }}>
+
+
+
+
+
+
+
+
+
+                        </div>
+
+
+
+
+
+
+
+
+
+                        <div class="mb-4">
+
+
+
+
+
+
+
+
+
+                            <label for="description_from" class="nb-label">
+
+
+
+
+
+
+
+
+
+                                توضیحات (اختیاری)
+
+
+
+
+
+
+
+
+
+                            </label>
+
+
+
+
+
+
+
+
+
+                            <textarea id="description_from" 
+
+
+
+
+
+
+
+
+
+                                      name="description" 
+
+
+
+
+
+
+
+
+
+                                      rows="2"
+
+
+
+
+
+
+
+
+
+                                      class="nb-input"
+
+
+
+
+
+
+
+
+
+                                      placeholder="توضیحات تراکنش" {{ $isInactive ? 'disabled' : '' }}></textarea>
+
+
+
+
+
+
+
+
+
+                        </div>
+
+
+
+
+
+
+
+
+
+                        <button type="submit" 
+
+
+
+
+
+
+
+
+
+                                class="w-full nb-btn nb-btn-primary" {{ $isInactive ? 'disabled' : '' }}>
+
+
+
+
+
+
+
+
+
+                            <i class="fas fa-arrow-up ml-2" aria-hidden="true"></i>
+
+
+
+
+
+
+
+
+
+                            انتقال از حساب فرعی
+
+
+
+
+
+
+
+
+
+                        </button>
+
+
+
+
+
+
+
+
+
+                    </form>
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            <!-- عملیات -->
+
+
+
+
+
+
+
+
+
+            <div class="detail-card">
+
+
+
+
+
+
+
+
+
+                <h3 class="text-lg font-bold text-gentle-black mb-4">
+
+
+
+
+
+
+
+
+
+                    <i class="fas fa-cog ml-2" style="color: var(--color-digital-gold);"></i>
+
+
+
+
+
+
+
+
+
+                    عملیات
+
+
+
+
+
+
+
+
+
+                </h3>
+
+
+
+
+
+
+
+
+
+                @if($isInactive)
+
+
+
+
+
+
+
+
+
+                    <form action="{{ route($routePrefix . '.sub-accounts.activate', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST" onsubmit="return confirm('آیا از فعال سازی این حساب فرعی اطمینان دارید؟');">
+
+
+
+
+
+
+
+
+
+                        @csrf
+
+
+
+
+
+
+
+
+
+                        <button type="submit" class="px-6 py-2 nb-btn nb-btn-primary">
+
+
+
+
+
+
+
+
+
+                            <i class="fas fa-check ml-2" aria-hidden="true"></i>
+
+
+
+
+
+
+
+
+
+                            فعال سازی حساب فرعی
+
+
+
+
+
+
+
+
+
+                        </button>
+
+
+
+
+
+
+
+
+
+                    </form>
+
+
+
+
+
+
+
+
+
+                @else
+
+
+
+
+
+
+
+
+
+                    <form action="{{ route($routePrefix . '.sub-accounts.deactivate', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST" onsubmit="return confirm('آیا از غیرفعال کردن این حساب فرعی اطمینان دارید؟');">
+
+
+
+
+
+
+
+
+
+                        @csrf
+
+
+
+
+
+
+
+
+
+                        <button type="submit" class="px-6 py-2 nb-btn nb-btn-warning">
+
+
+
+
+
+
+
+
+
+                            <i class="fas fa-ban ml-2" aria-hidden="true"></i>
+
+
+
+
+
+
+
+
+
+                            غیرفعال کردن حساب فرعی
+
+
+
+
+
+
+
+
+
+                        </button>
+
+
+
+
+
+
+
+
+
+                        <p class="mt-2 text-sm text-slate-500">
+
+
+
+
+
+
+
+
+
+                            با غیرفعال کردن، حساب بدون خالی شدن موجودی غیرفعال می شود و امکان فعال سازی مجدد دارد.
+
+
+
+
+
+
+
+
+
+                        </p>
+
+
+
+
+
+
+
+
+
+                    </form>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                    <div class="border-t border-slate-200 mt-6 pt-5">
+
+
+
+
+
+
+
+
+
+                        <h4 class="text-sm font-semibold text-slate-700 mb-3">بستن حساب فرعی و انتقال موجودی</h4>
+
+
+
+
+
+
+
+
+
+                        <p class="text-sm text-slate-500 mb-4">
+
+
+
+
+
+
+
+
+
+                            با بستن حساب، موجودی به حساب اصلی یا حساب فرعی انتخابی منتقل می شود، موجودی صفر می شود و حساب غیرفعال خواهد شد.
+
+
+
+
+
+
+
+
+
+                        </p>
+
+
+
+
+
+
+
+
+
+                        <form action="{{ route($routePrefix . '.sub-accounts.close', array_merge($routeParams, ['subAccount' => $subAccount])) }}" method="POST" class="space-y-3" onsubmit="return confirm('آیا از بستن این حساب فرعی مطمئن هستید؟');">
+
+
+
+
+
+
+
+
+
+                            @csrf
+
+
+
+
+
+
+
+
+
+                            <div>
+
+
+
+
+
+
+
+
+
+                                <label class="nb-label">انتقال به</label>
+
+
+
+
+
+
+
+
+
+                                <div class="flex flex-wrap gap-4">
+
+
+
+
+
+
+
+
+
+                                    <label class="flex items-center gap-2 text-sm">
+
+
+
+
+
+
+
+
+
+                                        <input type="radio" name="destination" value="main" checked>
+
+
+
+
+
+
+
+
+
+                                        حساب اصلی
+
+
+
+
+
+
+
+
+
+                                    </label>
+
+
+
+
+
+
+
+
+
+                                    <label class="flex items-center gap-2 text-sm">
+
+
+
+
+
+
+
+
+
+                                        <input type="radio" name="destination" value="subaccount">
+
+
+
+
+
+
+
+
+
+                                        حساب فرعی دیگر
+
+
+
+
+
+
+
+
+
+                                    </label>
+
+
+
+
+
+
+
+
+
+                                </div>
+
+
+
+
+
+
+
+
+
+                            </div>
+
+
+
+
+
+
+
+
+
+                            <div id="destination_subaccount_field" class="hidden">
+
+
+
+
+
+
+
+
+
+                                <label for="destination_sub_account_id" class="nb-label">انتخاب حساب فرعی مقصد</label>
+
+
+
+
+
+
+
+
+
+                                <select id="destination_sub_account_id" name="destination_sub_account_id" class="nb-input">
+
+
+
+
+
+
+
+
+
+                                    <option value="">انتخاب حساب فرعی</option>
+
+
+
+
+
+
+
+
+
+                                    @foreach($otherSubAccounts as $otherSubAccount)
+
+
+
+
+
+
+
+
+
+                                        <option value="{{ $otherSubAccount->id }}">
+
+
+
+
+
+
+
+
+
+                                            {{ $otherSubAccount->name }} - {{ str_replace('-', '/', $otherSubAccount->sub_account_code) }}
+
+
+
+
+
+
+
+
+
+                                        </option>
+
+
+
+
+
+
+
+
+
+                                    @endforeach
+
+
+
+
+
+
+
+
+
+                                </select>
+
+
+
+
+
+
+
+
+
+                            </div>
+
+
+
+
+
+
+
+
+
+                            <div>
+
+
+
+
+
+
+
+
+
+                                <label for="close_description" class="nb-label">توضیحات (اختیاری)</label>
+
+
+
+
+
+
+
+
+
+                                <textarea id="close_description" name="description" rows="2" class="nb-input" placeholder="توضیحات بستن حساب"></textarea>
+
+
+
+
+
+
+
+
+
+                            </div>
+
+
+
+
+
+
+
+
+
+                            <button type="submit" class="w-full nb-btn nb-btn-danger">
+
+
+
+
+
+
+
+
+
+                                <i class="fas fa-lock ml-2" aria-hidden="true"></i>
+
+
+
+
+
+
+
+
+
+                                بستن حساب فرعی
+
+
+
+
+
+
+
+
+
+                            </button>
+
+
+
+
+
+
+
+
+
+                        </form>
+
+
+
+
+
+
+
+
+
+                    </div>
+
+
+
+
+
+
+
+
+
+                @endif
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+            </main>
+
+
+
+
+
+
+
+
+
+        </div>
+
+
+
+
+
+
+
+
+
+    </div>
+
+
+
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+@endsection
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@push('scripts')
+
+
+
+
+
+
+
+
+
+<script>
+
+
+
+
+
+
+
+
+
+    // Switch between transfer tabs
+
+
+
+
+
+
+
+
+
+    function switchTransferTab(tabName) {
+
+
+
+
+
+
+
+
+
+        // Hide all tabs
+
+
+
+
+
+
+
+
+
+        document.querySelectorAll('.transfer-content').forEach(function(content) {
+
+
+
+
+
+
+
+
+
+            content.classList.add('hidden');
+
+
+
+
+
+
+
+
+
+        });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // Remove active class from all tab buttons
+
+
+
+
+
+
+
+
+
+        document.querySelectorAll('.transfer-tab').forEach(function(tab) {
+
+
+
+
+
+
+
+
+
+            tab.classList.remove('active');
+
+
+
+
+
+
+
+
+
+        });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // Show selected tab
+
+
+
+
+
+
+
+
+
+        if (tabName === 'to') {
+
+
+
+
+
+
+
+
+
+            document.getElementById('transfer-to-tab').classList.remove('hidden');
+
+
+
+
+
+
+
+
+
+            document.querySelector('.transfer-tab[data-tab="to"]').classList.add('active');
+
+
+
+
+
+
+
+
+
+        } else if (tabName === 'from') {
+
+
+
+
+
+
+
+
+
+            document.getElementById('transfer-from-tab').classList.remove('hidden');
+
+
+
+
+
+
+
+
+
+            document.querySelector('.transfer-tab[data-tab="from"]').classList.add('active');
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    document.addEventListener('DOMContentLoaded', function () {
+
+
+
+
+
+
+
+
+
+        // Initialize first tab as active
+
+
+
+
+
+
+
+
+
+        switchTransferTab('to');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // Handle destination field toggle for close account form
+
+
+
+
+
+
+
+
+
+        var destinationField = document.getElementById('destination_subaccount_field');
+
+
+
+
+
+
+
+
+
+        var destinationSelect = document.getElementById('destination_sub_account_id');
+
+
+
+
+
+
+
+
+
+        var destinationInputs = document.querySelectorAll('input[name="destination"]');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        if (destinationField && destinationInputs.length) {
+
+
+
+
+
+
+
+
+
+            var toggleDestinationField = function () {
+
+
+
+
+
+
+
+
+
+                var selected = document.querySelector('input[name="destination"]:checked');
+
+
+
+
+
+
+
+
+
+                var isSubAccount = selected && selected.value === 'subaccount';
+
+
+
+
+
+
+
+
+
+                destinationField.classList.toggle('hidden', !isSubAccount);
+
+
+
+
+
+
+
+
+
+                if (destinationSelect) {
+
+
+
+
+
+
+
+
+
+                    if (isSubAccount) {
+
+
+
+
+
+
+
+
+
+                        destinationSelect.setAttribute('required', 'required');
+
+
+
+
+
+
+
+
+
+                    } else {
+
+
+
+
+
+
+
+
+
+                        destinationSelect.removeAttribute('required');
+
+
+
+
+
+
+
+
+
+                        destinationSelect.value = '';
+
+
+
+
+
+
+
+
+
+                    }
+
+
+
+
+
+
+
+
+
+                }
+
+
+
+
+
+
+
+
+
+            };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            destinationInputs.forEach(function (input) {
+
+
+
+
+
+
+
+
+
+                input.addEventListener('change', toggleDestinationField);
+
+
+
+
+
+
+
+
+
+            });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            toggleDestinationField();
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+    });
+
+
+
+
+
+
+
+
+
+</script>
+
+
+
+
+
+
+
+
+
+@endpush
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -15,7 +15,7 @@
     <meta name="keywords" content="@yield('meta_keywords', 'cooperative, community, earth, sustainability')">
     <!-- ========== Core CSS Files ========== -->
     <!-- Bootstrap & Tailwind CSS via Vite -->
-    @vite(['resources/css/app.css', 'resources/sass/app.scss', 'resources/js/app.js'])
+    @vite(['resources/js/app.js'])
     <!-- Custom Fonts -->
     <link rel="stylesheet" href="{{ asset('Css/fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('Css/fonts-local.css') }}">
@@ -64,26 +64,7 @@
                 padding: 1rem 0;
             }
         }
-        /* Edge Browser Compatibility Fixes - همان اصلاحات صفحه welcome */
-        .edge-browser body,
-        .tailwind-fallback body {
-            font-size: 16px !important;
-            line-height: 1.5 !important;
-        }
-        .edge-browser .container,
-        .tailwind-fallback .container {
-            max-width: 1280px !important;
-            margin-left: auto !important;
-            margin-right: auto !important;
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
-        }
-        .edge-browser img,
-        .tailwind-fallback img {
-            max-width: 100% !important;
-            height: auto !important;
-        }
-    </style>
+</style>
 </head>
 <body class="font-vazirmatn">
     <div id="app">
@@ -131,7 +112,6 @@
     </div>
     <!-- ========== Core JavaScript Files ========== -->
     <!-- Bootstrap JS -->
-    @vite(['resources/js/app.js'])
     <!-- Page Specific Scripts -->
     @stack('scripts')
     @yield('scripts')

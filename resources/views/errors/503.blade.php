@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -8,7 +8,7 @@
     <title>زمان اجرا به پایان رسید - EarthCoop</title>
     <!-- Tailwind CSS -->
     <!-- Vite CSS & JS -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/js/app.js'])
     <!-- FontAwesome -->
     <link rel="stylesheet" href="{{ asset("vendor/fontawesome/css/all.min.css") }}">
     <!-- Fonts -->

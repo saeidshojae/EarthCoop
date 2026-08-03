@@ -1,9 +1,8 @@
-﻿@extends('layouts.unified')
+@extends('layouts.unified')
 
 @section('title', __('navigation.footer_my_groups') . ' - ' . config('app.name', 'EarthCoop'))
 
 <!-- Tailwind & Bootstrap CSS via Vite -->
-@vite(['resources/css/app.css', 'resources/js/app.js'])
 
 @push('styles')
 <style>

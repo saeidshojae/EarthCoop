@@ -1,674 +1,3369 @@
-@extends('layouts.admin')
-
-
-
-@section('title', 'مدیریت کیف سهام - ' . config('app.name', 'EarthCoop'))
-
-@section('page-title', 'مدیریت کیف سهام')
-
-@section('page-description', 'مشاهده و مدیریت سهام‌های کاربران')
-
-<!-- Tailwind & Bootstrap CSS via Vite -->
-
-@vite(['resources/css/app.css', 'resources/js/app.js'])
-
-@push('styles')
-
-<style>
-
-    .holdings-management-card {
-
-        background: white;
-
-        border-radius: 16px;
-
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-
-        padding: 2rem;
-
-        margin-bottom: 2rem;
-
-    }
-
-    
-
-    .holdings-header {
-
-        display: flex;
-
-        justify-content: space-between;
-
-        align-items: center;
-
-        margin-bottom: 2rem;
-
-        padding-bottom: 1.5rem;
-
-        border-bottom: 2px solid #e5e7eb;
-
-        flex-wrap: wrap;
-
-        gap: 1rem;
-
-    }
-
-    
-
-    .holdings-header h3 {
-
-        font-size: 1.5rem;
-
-        font-weight: 700;
-
-        color: #1e293b;
-
-    }
-
-    
-
-    .holdings-stats-grid {
-
-        display: grid;
-
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-
-        gap: 1.5rem;
-
-        margin-bottom: 2rem;
-
-    }
-
-    
-
-    .holdings-stat-card {
-
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-
-        border-radius: 12px;
-
-        padding: 1.5rem;
-
-        color: white;
-
-        position: relative;
-
-        overflow: hidden;
-
-    }
-
-    
-
-    .holdings-stat-card.success {
-
-        background: linear-gradient(135deg, #10b981 0%, #047857 100%);
-
-    }
-
-    
-
-    .holdings-stat-card.info {
-
-        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-
-    }
-
-    
-
-    .holdings-stat-card.warning {
-
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-
-    }
-
-    
-
-    .holdings-stat-label {
-
-        font-size: 0.875rem;
-
-        opacity: 0.9;
-
-        margin-bottom: 0.5rem;
-
-    }
-
-    
-
-    .holdings-stat-value {
-
-        font-size: 1.75rem;
-
-        font-weight: 800;
-
-    }
-
-    
-
-    .holdings-filters {
-
-        background: #f9fafb;
-
-        border-radius: 12px;
-
-        padding: 1.5rem;
-
-        margin-bottom: 2rem;
-
-    }
-
-    
-
-    .holdings-table {
-
-        width: 100%;
-
-        border-collapse: collapse;
-
-        margin-top: 1.5rem;
-
-    }
-
-    
-
-    .holdings-table thead {
-
-        background: #f9fafb;
-
-    }
-
-    
-
-    .holdings-table th {
-
-        padding: 1rem;
-
-        text-align: right;
-
-        font-weight: 600;
-
-        color: #1e293b;
-
-        font-size: 0.875rem;
-
-        border-bottom: 2px solid #e5e7eb;
-
-    }
-
-    
-
-    .holdings-table td {
-
-        padding: 1rem;
-
-        text-align: right;
-
-        color: #4b5563;
-
-        font-size: 0.875rem;
-
-        border-bottom: 1px solid #e5e7eb;
-
-    }
-
-    
-
-    .holdings-table tbody tr:hover {
-
-        background: #f9fafb;
-
-    }
-
-    
-
-    .holdings-action-btn {
-
-        padding: 0.5rem 1rem;
-
-        border-radius: 0.5rem;
-
-        text-decoration: none;
-
-        font-size: 0.875rem;
-
-        font-weight: 600;
-
-        display: inline-flex;
-
-        align-items: center;
-
-        gap: 0.5rem;
-
-        transition: all 0.2s;
-
-    }
-
-    
-
-    .holdings-action-btn.primary {
-
-        background: #3b82f6;
-
-        color: white;
-
-    }
-
-    
-
-    .holdings-action-btn.primary:hover {
-
-        background: #2563eb;
-
-        transform: translateY(-1px);
-
-    }
-
-    
-
-    @media (prefers-color-scheme: dark) {
-
-        .holdings-management-card {
-
-            background: #1e293b !important;
-
-            color: #f1f5f9 !important;
-
-        }
-
-        
-
-        .holdings-header {
-
-            border-bottom-color: #475569 !important;
-
-        }
-
-        
-
-        .holdings-header h3 {
-
-            color: #f1f5f9 !important;
-
-        }
-
-        
-
-        .holdings-filters {
-
-            background: #334155 !important;
-
-        }
-
-        
-
-        .holdings-table thead {
-
-            background: #334155 !important;
-
-        }
-
-        
-
-        .holdings-table th {
-
-            color: #f1f5f9 !important;
-
-            border-bottom-color: #475569 !important;
-
-        }
-
-        
-
-        .holdings-table td {
-
-            color: #cbd5e1 !important;
-
-            border-bottom-color: #475569 !important;
-
-        }
-
-        
-
-        .holdings-table tbody tr:hover {
-
-            background: #334155 !important;
-
-        }
-
-    }
-
-</style>
-
-@endpush
-
-
-
-@section('content')
-
-<div class="space-y-6" style="direction: rtl;">
-
-    <div class="holdings-management-card">
-
-        <div class="holdings-header">
-
-            <h3>
-
-                <i class="fas fa-briefcase ml-2"></i>
-
-                مدیریت کیف سهام
-
-            </h3>
-
-            <a href="{{ route('admin.dashboard') }}" class="holdings-action-btn" style="background: #6b7280; color: white;">
-
-                <i class="fas fa-arrow-right ml-2"></i>
-
-                بازگشت
-
-            </a>
-
-        </div>
-
-        
-
-        <!-- آمار کلی -->
-
-        @if(isset($stats))
-
-        <div class="holdings-stats-grid">
-
-            <div class="holdings-stat-card success">
-
-                <div class="holdings-stat-label">تعداد کل holdings</div>
-
-                <div class="holdings-stat-value">{{ number_format($stats['total_holdings']) }}</div>
-
-            </div>
-
-            
-
-            <div class="holdings-stat-card info">
-
-                <div class="holdings-stat-label">تعداد سهامداران</div>
-
-                <div class="holdings-stat-value">{{ number_format($stats['total_shareholders']) }}</div>
-
-            </div>
-
-            
-
-            <div class="holdings-stat-card warning">
-
-                <div class="holdings-stat-label">کل سهام توزیع شده</div>
-
-                <div class="holdings-stat-value">{{ number_format($stats['total_shares']) }} <span style="font-size: 0.875rem; opacity: 0.8;">سهم</span></div>
-
-            </div>
-
-            
-
-            <div class="holdings-stat-card">
-
-                <div class="holdings-stat-label">کل تراکنش‌ها</div>
-
-                <div class="holdings-stat-value">{{ number_format($stats['total_transactions']) }}</div>
-
-            </div>
-
-            
-
-            <div class="holdings-stat-card success">
-
-                <div class="holdings-stat-label">تراکنش‌های امروز</div>
-
-                <div class="holdings-stat-value">{{ number_format($stats['today_transactions']) }}</div>
-
-            </div>
-
-        </div>
-
-        @endif
-
-        
-
-        <!-- فیلترها -->
-
-        <div class="holdings-filters">
-
-            <form method="GET" action="{{ route('admin.holdings.index') }}" class="space-y-4">
-
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-
-                    <div>
-
-                        <label class="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">جستجو</label>
-
-                        <input type="text" 
-
-                               name="search" 
-
-                               value="{{ request('search') }}" 
-
-                               placeholder="نام، ایمیل..."
-
-                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-
-                    </div>
-
-                    
-
-                    <div>
-
-                        <label class="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">کاربر</label>
-
-                        <input type="number" 
-
-                               name="user_id" 
-
-                               value="{{ request('user_id') }}" 
-
-                               placeholder="ID کاربر"
-
-                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-
-                    </div>
-
-                    
-
-                    <div>
-
-                        <label class="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">سهام</label>
-
-                        <input type="number" 
-
-                               name="stock_id" 
-
-                               value="{{ request('stock_id') }}" 
-
-                               placeholder="ID سهام"
-
-                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-
-                    </div>
-
-                    
-
-                    <div>
-
-                        <label class="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">حداقل تعداد</label>
-
-                        <input type="number" 
-
-                               name="quantity_min" 
-
-                               value="{{ request('quantity_min') }}" 
-
-                               placeholder="0"
-
-                               min="0"
-
-                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-
-                    </div>
-
-                    
-
-                    <div>
-
-                        <label class="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">حداکثر تعداد</label>
-
-                        <input type="number" 
-
-                               name="quantity_max" 
-
-                               value="{{ request('quantity_max') }}" 
-
-                               placeholder="0"
-
-                               min="0"
-
-                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-
-                    </div>
-
-                </div>
-
-                
-
-                <div style="display: flex; gap: 1rem;">
-
-                    <button type="submit" class="holdings-action-btn primary">
-
-                        <i class="fas fa-search ml-2"></i>
-
-                        جستجو
-
-                    </button>
-
-                    <a href="{{ route('admin.holdings.index') }}" class="holdings-action-btn" style="background: #6b7280; color: white;">
-
-                        <i class="fas fa-times ml-2"></i>
-
-                        پاک کردن
-
-                    </a>
-
-                </div>
-
-            </form>
-
-        </div>
-
-        
-
-        <!-- جدول holdings -->
-
-        @if($holdings->count() > 0)
-
-        <div style="overflow-x: auto;">
-
-            <table class="holdings-table">
-
-                <thead>
-
-                    <tr>
-
-                        <th>ردیف</th>
-
-                        <th>کاربر</th>
-
-                        <th>نام</th>
-
-                        <th>ایمیل</th>
-
-                        <th>سهام</th>
-
-                        <th>تعداد سهم</th>
-
-                        <th>ارزش (تومان)</th>
-
-                        <th>عملیات</th>
-
-                    </tr>
-
-                </thead>
-
-                <tbody>
-
-                    @foreach($holdings as $index => $holding)
-
-                    <tr>
-
-                        <td><strong>{{ ($holdings->currentPage() - 1) * $holdings->perPage() + $index + 1 }}</strong></td>
-
-                        <td>
-
-                            <a href="{{ route('admin.users.show', $holding->user_id) }}" style="color: #3b82f6; text-decoration: none;">
-
-                                #{{ $holding->user_id }}
-
-                            </a>
-
-                        </td>
-
-                        <td><strong>{{ ($holding->user->first_name ?? '') . ' ' . ($holding->user->last_name ?? '') }}</strong></td>
-
-                        <td>{{ $holding->user->email ?? '—' }}</td>
-
-                        <td><strong>#{{ $holding->stock_id }}</strong></td>
-
-                        <td><strong style="color: #10b981;">{{ number_format($holding->quantity) }}</strong> <span style="font-size: 0.75rem; color: #6b7280;">سهم</span></td>
-
-                        <td><strong>{{ number_format($holding->quantity * ($holding->stock->base_share_price ?? 0)) }}</strong></td>
-
-                        <td>
-
-                            <a href="{{ route('admin.holdings.show', $holding->id) }}" class="holdings-action-btn primary">
-
-                                <i class="fas fa-eye"></i>
-
-                                مشاهده
-
-                            </a>
-
-                        </td>
-
-                    </tr>
-
-                    @endforeach
-
-                </tbody>
-
-            </table>
-
-        </div>
-
-        
-
-        <div style="margin-top: 2rem;">
-
-            {{ $holdings->links('pagination::bootstrap-5') }}
-
-        </div>
-
-        @else
-
-        <div style="text-align: center; padding: 3rem 1rem; background: #f9fafb; border-radius: 12px; border: 2px dashed #e5e7eb;">
-
-            <i class="fas fa-inbox" style="font-size: 4rem; color: #9ca3af; margin-bottom: 1rem;"></i>
-
-            <div style="font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem;">holding یافت نشد</div>
-
-            <p style="color: #6b7280; font-size: 0.875rem;">هیچ holding با فیلترهای انتخاب شده یافت نشد.</p>
-
-        </div>
-
-        @endif
-
-    </div>
-
-</div>
-
-@endsection
-
-
-
+@extends('layouts.admin')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@section('title', 'مدیریت کیف سهام - ' . config('app.name', 'EarthCoop'))
+
+
+
+
+
+
+
+
+
+@section('page-title', 'مدیریت کیف سهام')
+
+
+
+
+
+
+
+
+
+@section('page-description', 'مشاهده و مدیریت سهام‌های کاربران')
+
+
+
+
+
+
+
+
+
+<!-- Tailwind & Bootstrap CSS via Vite -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@push('styles')
+
+
+
+
+
+
+
+
+
+<style>
+
+
+
+
+
+
+
+
+
+    .holdings-management-card {
+
+
+
+
+
+
+
+
+
+        background: white;
+
+
+
+
+
+
+
+
+
+        border-radius: 16px;
+
+
+
+
+
+
+
+
+
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+
+
+
+
+
+
+
+
+
+        padding: 2rem;
+
+
+
+
+
+
+
+
+
+        margin-bottom: 2rem;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .holdings-header {
+
+
+
+
+
+
+
+
+
+        display: flex;
+
+
+
+
+
+
+
+
+
+        justify-content: space-between;
+
+
+
+
+
+
+
+
+
+        align-items: center;
+
+
+
+
+
+
+
+
+
+        margin-bottom: 2rem;
+
+
+
+
+
+
+
+
+
+        padding-bottom: 1.5rem;
+
+
+
+
+
+
+
+
+
+        border-bottom: 2px solid #e5e7eb;
+
+
+
+
+
+
+
+
+
+        flex-wrap: wrap;
+
+
+
+
+
+
+
+
+
+        gap: 1rem;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .holdings-header h3 {
+
+
+
+
+
+
+
+
+
+        font-size: 1.5rem;
+
+
+
+
+
+
+
+
+
+        font-weight: 700;
+
+
+
+
+
+
+
+
+
+        color: #1e293b;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .holdings-stats-grid {
+
+
+
+
+
+
+
+
+
+        display: grid;
+
+
+
+
+
+
+
+
+
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+
+
+
+
+
+
+
+
+
+        gap: 1.5rem;
+
+
+
+
+
+
+
+
+
+        margin-bottom: 2rem;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .holdings-stat-card {
+
+
+
+
+
+
+
+
+
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+
+
+
+
+
+
+
+
+        border-radius: 12px;
+
+
+
+
+
+
+
+
+
+        padding: 1.5rem;
+
+
+
+
+
+
+
+
+
+        color: white;
+
+
+
+
+
+
+
+
+
+        position: relative;
+
+
+
+
+
+
+
+
+
+        overflow: hidden;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .holdings-stat-card.success {
+
+
+
+
+
+
+
+
+
+        background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .holdings-stat-card.info {
+
+
+
+
+
+
+
+
+
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .holdings-stat-card.warning {
+
+
+
+
+
+
+
+
+
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .holdings-stat-label {
+
+
+
+
+
+
+
+
+
+        font-size: 0.875rem;
+
+
+
+
+
+
+
+
+
+        opacity: 0.9;
+
+
+
+
+
+
+
+
+
+        margin-bottom: 0.5rem;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .holdings-stat-value {
+
+
+
+
+
+
+
+
+
+        font-size: 1.75rem;
+
+
+
+
+
+
+
+
+
+        font-weight: 800;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .holdings-filters {
+
+
+
+
+
+
+
+
+
+        background: #f9fafb;
+
+
+
+
+
+
+
+
+
+        border-radius: 12px;
+
+
+
+
+
+
+
+
+
+        padding: 1.5rem;
+
+
+
+
+
+
+
+
+
+        margin-bottom: 2rem;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .holdings-table {
+
+
+
+
+
+
+
+
+
+        width: 100%;
+
+
+
+
+
+
+
+
+
+        border-collapse: collapse;
+
+
+
+
+
+
+
+
+
+        margin-top: 1.5rem;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .holdings-table thead {
+
+
+
+
+
+
+
+
+
+        background: #f9fafb;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .holdings-table th {
+
+
+
+
+
+
+
+
+
+        padding: 1rem;
+
+
+
+
+
+
+
+
+
+        text-align: right;
+
+
+
+
+
+
+
+
+
+        font-weight: 600;
+
+
+
+
+
+
+
+
+
+        color: #1e293b;
+
+
+
+
+
+
+
+
+
+        font-size: 0.875rem;
+
+
+
+
+
+
+
+
+
+        border-bottom: 2px solid #e5e7eb;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .holdings-table td {
+
+
+
+
+
+
+
+
+
+        padding: 1rem;
+
+
+
+
+
+
+
+
+
+        text-align: right;
+
+
+
+
+
+
+
+
+
+        color: #4b5563;
+
+
+
+
+
+
+
+
+
+        font-size: 0.875rem;
+
+
+
+
+
+
+
+
+
+        border-bottom: 1px solid #e5e7eb;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .holdings-table tbody tr:hover {
+
+
+
+
+
+
+
+
+
+        background: #f9fafb;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .holdings-action-btn {
+
+
+
+
+
+
+
+
+
+        padding: 0.5rem 1rem;
+
+
+
+
+
+
+
+
+
+        border-radius: 0.5rem;
+
+
+
+
+
+
+
+
+
+        text-decoration: none;
+
+
+
+
+
+
+
+
+
+        font-size: 0.875rem;
+
+
+
+
+
+
+
+
+
+        font-weight: 600;
+
+
+
+
+
+
+
+
+
+        display: inline-flex;
+
+
+
+
+
+
+
+
+
+        align-items: center;
+
+
+
+
+
+
+
+
+
+        gap: 0.5rem;
+
+
+
+
+
+
+
+
+
+        transition: all 0.2s;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .holdings-action-btn.primary {
+
+
+
+
+
+
+
+
+
+        background: #3b82f6;
+
+
+
+
+
+
+
+
+
+        color: white;
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    .holdings-action-btn.primary:hover {
+
+
+
+
+
+
+
+
+
+        background: #2563eb;
+
+
+
+
+
+
+
+
+
+        transform: translateY(-1px);
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+    @media (prefers-color-scheme: dark) {
+
+
+
+
+
+
+
+
+
+        .holdings-management-card {
+
+
+
+
+
+
+
+
+
+            background: #1e293b !important;
+
+
+
+
+
+
+
+
+
+            color: #f1f5f9 !important;
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        .holdings-header {
+
+
+
+
+
+
+
+
+
+            border-bottom-color: #475569 !important;
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        .holdings-header h3 {
+
+
+
+
+
+
+
+
+
+            color: #f1f5f9 !important;
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        .holdings-filters {
+
+
+
+
+
+
+
+
+
+            background: #334155 !important;
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        .holdings-table thead {
+
+
+
+
+
+
+
+
+
+            background: #334155 !important;
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        .holdings-table th {
+
+
+
+
+
+
+
+
+
+            color: #f1f5f9 !important;
+
+
+
+
+
+
+
+
+
+            border-bottom-color: #475569 !important;
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        .holdings-table td {
+
+
+
+
+
+
+
+
+
+            color: #cbd5e1 !important;
+
+
+
+
+
+
+
+
+
+            border-bottom-color: #475569 !important;
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        .holdings-table tbody tr:hover {
+
+
+
+
+
+
+
+
+
+            background: #334155 !important;
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+</style>
+
+
+
+
+
+
+
+
+
+@endpush
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@section('content')
+
+
+
+
+
+
+
+
+
+<div class="space-y-6" style="direction: rtl;">
+
+
+
+
+
+
+
+
+
+    <div class="holdings-management-card">
+
+
+
+
+
+
+
+
+
+        <div class="holdings-header">
+
+
+
+
+
+
+
+
+
+            <h3>
+
+
+
+
+
+
+
+
+
+                <i class="fas fa-briefcase ml-2"></i>
+
+
+
+
+
+
+
+
+
+                مدیریت کیف سهام
+
+
+
+
+
+
+
+
+
+            </h3>
+
+
+
+
+
+
+
+
+
+            <a href="{{ route('admin.dashboard') }}" class="holdings-action-btn" style="background: #6b7280; color: white;">
+
+
+
+
+
+
+
+
+
+                <i class="fas fa-arrow-right ml-2"></i>
+
+
+
+
+
+
+
+
+
+                بازگشت
+
+
+
+
+
+
+
+
+
+            </a>
+
+
+
+
+
+
+
+
+
+        </div>
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        <!-- آمار کلی -->
+
+
+
+
+
+
+
+
+
+        @if(isset($stats))
+
+
+
+
+
+
+
+
+
+        <div class="holdings-stats-grid">
+
+
+
+
+
+
+
+
+
+            <div class="holdings-stat-card success">
+
+
+
+
+
+
+
+
+
+                <div class="holdings-stat-label">تعداد کل holdings</div>
+
+
+
+
+
+
+
+
+
+                <div class="holdings-stat-value">{{ number_format($stats['total_holdings']) }}</div>
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+            
+
+
+
+
+
+
+
+
+
+            <div class="holdings-stat-card info">
+
+
+
+
+
+
+
+
+
+                <div class="holdings-stat-label">تعداد سهامداران</div>
+
+
+
+
+
+
+
+
+
+                <div class="holdings-stat-value">{{ number_format($stats['total_shareholders']) }}</div>
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+            
+
+
+
+
+
+
+
+
+
+            <div class="holdings-stat-card warning">
+
+
+
+
+
+
+
+
+
+                <div class="holdings-stat-label">کل سهام توزیع شده</div>
+
+
+
+
+
+
+
+
+
+                <div class="holdings-stat-value">{{ number_format($stats['total_shares']) }} <span style="font-size: 0.875rem; opacity: 0.8;">سهم</span></div>
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+            
+
+
+
+
+
+
+
+
+
+            <div class="holdings-stat-card">
+
+
+
+
+
+
+
+
+
+                <div class="holdings-stat-label">کل تراکنش‌ها</div>
+
+
+
+
+
+
+
+
+
+                <div class="holdings-stat-value">{{ number_format($stats['total_transactions']) }}</div>
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+            
+
+
+
+
+
+
+
+
+
+            <div class="holdings-stat-card success">
+
+
+
+
+
+
+
+
+
+                <div class="holdings-stat-label">تراکنش‌های امروز</div>
+
+
+
+
+
+
+
+
+
+                <div class="holdings-stat-value">{{ number_format($stats['today_transactions']) }}</div>
+
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+        </div>
+
+
+
+
+
+
+
+
+
+        @endif
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        <!-- فیلترها -->
+
+
+
+
+
+
+
+
+
+        <div class="holdings-filters">
+
+
+
+
+
+
+
+
+
+            <form method="GET" action="{{ route('admin.holdings.index') }}" class="space-y-4">
+
+
+
+
+
+
+
+
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+
+
+
+
+
+
+
+
+
+                    <div>
+
+
+
+
+
+
+
+
+
+                        <label class="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">جستجو</label>
+
+
+
+
+
+
+
+
+
+                        <input type="text" 
+
+
+
+
+
+
+
+
+
+                               name="search" 
+
+
+
+
+
+
+
+
+
+                               value="{{ request('search') }}" 
+
+
+
+
+
+
+
+
+
+                               placeholder="نام، ایمیل..."
+
+
+
+
+
+
+
+
+
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+
+
+
+
+
+
+
+
+
+                    </div>
+
+
+
+
+
+
+
+
+
+                    
+
+
+
+
+
+
+
+
+
+                    <div>
+
+
+
+
+
+
+
+
+
+                        <label class="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">کاربر</label>
+
+
+
+
+
+
+
+
+
+                        <input type="number" 
+
+
+
+
+
+
+
+
+
+                               name="user_id" 
+
+
+
+
+
+
+
+
+
+                               value="{{ request('user_id') }}" 
+
+
+
+
+
+
+
+
+
+                               placeholder="ID کاربر"
+
+
+
+
+
+
+
+
+
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+
+
+
+
+
+
+
+
+
+                    </div>
+
+
+
+
+
+
+
+
+
+                    
+
+
+
+
+
+
+
+
+
+                    <div>
+
+
+
+
+
+
+
+
+
+                        <label class="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">سهام</label>
+
+
+
+
+
+
+
+
+
+                        <input type="number" 
+
+
+
+
+
+
+
+
+
+                               name="stock_id" 
+
+
+
+
+
+
+
+
+
+                               value="{{ request('stock_id') }}" 
+
+
+
+
+
+
+
+
+
+                               placeholder="ID سهام"
+
+
+
+
+
+
+
+
+
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+
+
+
+
+
+
+
+
+
+                    </div>
+
+
+
+
+
+
+
+
+
+                    
+
+
+
+
+
+
+
+
+
+                    <div>
+
+
+
+
+
+
+
+
+
+                        <label class="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">حداقل تعداد</label>
+
+
+
+
+
+
+
+
+
+                        <input type="number" 
+
+
+
+
+
+
+
+
+
+                               name="quantity_min" 
+
+
+
+
+
+
+
+
+
+                               value="{{ request('quantity_min') }}" 
+
+
+
+
+
+
+
+
+
+                               placeholder="0"
+
+
+
+
+
+
+
+
+
+                               min="0"
+
+
+
+
+
+
+
+
+
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+
+
+
+
+
+
+
+
+
+                    </div>
+
+
+
+
+
+
+
+
+
+                    
+
+
+
+
+
+
+
+
+
+                    <div>
+
+
+
+
+
+
+
+
+
+                        <label class="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">حداکثر تعداد</label>
+
+
+
+
+
+
+
+
+
+                        <input type="number" 
+
+
+
+
+
+
+
+
+
+                               name="quantity_max" 
+
+
+
+
+
+
+
+
+
+                               value="{{ request('quantity_max') }}" 
+
+
+
+
+
+
+
+
+
+                               placeholder="0"
+
+
+
+
+
+
+
+
+
+                               min="0"
+
+
+
+
+
+
+
+
+
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+
+
+
+
+
+
+
+
+
+                    </div>
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+                
+
+
+
+
+
+
+
+
+
+                <div style="display: flex; gap: 1rem;">
+
+
+
+
+
+
+
+
+
+                    <button type="submit" class="holdings-action-btn primary">
+
+
+
+
+
+
+
+
+
+                        <i class="fas fa-search ml-2"></i>
+
+
+
+
+
+
+
+
+
+                        جستجو
+
+
+
+
+
+
+
+
+
+                    </button>
+
+
+
+
+
+
+
+
+
+                    <a href="{{ route('admin.holdings.index') }}" class="holdings-action-btn" style="background: #6b7280; color: white;">
+
+
+
+
+
+
+
+
+
+                        <i class="fas fa-times ml-2"></i>
+
+
+
+
+
+
+
+
+
+                        پاک کردن
+
+
+
+
+
+
+
+
+
+                    </a>
+
+
+
+
+
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+            </form>
+
+
+
+
+
+
+
+
+
+        </div>
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        <!-- جدول holdings -->
+
+
+
+
+
+
+
+
+
+        @if($holdings->count() > 0)
+
+
+
+
+
+
+
+
+
+        <div style="overflow-x: auto;">
+
+
+
+
+
+
+
+
+
+            <table class="holdings-table">
+
+
+
+
+
+
+
+
+
+                <thead>
+
+
+
+
+
+
+
+
+
+                    <tr>
+
+
+
+
+
+
+
+
+
+                        <th>ردیف</th>
+
+
+
+
+
+
+
+
+
+                        <th>کاربر</th>
+
+
+
+
+
+
+
+
+
+                        <th>نام</th>
+
+
+
+
+
+
+
+
+
+                        <th>ایمیل</th>
+
+
+
+
+
+
+
+
+
+                        <th>سهام</th>
+
+
+
+
+
+
+
+
+
+                        <th>تعداد سهم</th>
+
+
+
+
+
+
+
+
+
+                        <th>ارزش (تومان)</th>
+
+
+
+
+
+
+
+
+
+                        <th>عملیات</th>
+
+
+
+
+
+
+
+
+
+                    </tr>
+
+
+
+
+
+
+
+
+
+                </thead>
+
+
+
+
+
+
+
+
+
+                <tbody>
+
+
+
+
+
+
+
+
+
+                    @foreach($holdings as $index => $holding)
+
+
+
+
+
+
+
+
+
+                    <tr>
+
+
+
+
+
+
+
+
+
+                        <td><strong>{{ ($holdings->currentPage() - 1) * $holdings->perPage() + $index + 1 }}</strong></td>
+
+
+
+
+
+
+
+
+
+                        <td>
+
+
+
+
+
+
+
+
+
+                            <a href="{{ route('admin.users.show', $holding->user_id) }}" style="color: #3b82f6; text-decoration: none;">
+
+
+
+
+
+
+
+
+
+                                #{{ $holding->user_id }}
+
+
+
+
+
+
+
+
+
+                            </a>
+
+
+
+
+
+
+
+
+
+                        </td>
+
+
+
+
+
+
+
+
+
+                        <td><strong>{{ ($holding->user->first_name ?? '') . ' ' . ($holding->user->last_name ?? '') }}</strong></td>
+
+
+
+
+
+
+
+
+
+                        <td>{{ $holding->user->email ?? '—' }}</td>
+
+
+
+
+
+
+
+
+
+                        <td><strong>#{{ $holding->stock_id }}</strong></td>
+
+
+
+
+
+
+
+
+
+                        <td><strong style="color: #10b981;">{{ number_format($holding->quantity) }}</strong> <span style="font-size: 0.75rem; color: #6b7280;">سهم</span></td>
+
+
+
+
+
+
+
+
+
+                        <td><strong>{{ number_format($holding->quantity * ($holding->stock->base_share_price ?? 0)) }}</strong></td>
+
+
+
+
+
+
+
+
+
+                        <td>
+
+
+
+
+
+
+
+
+
+                            <a href="{{ route('admin.holdings.show', $holding->id) }}" class="holdings-action-btn primary">
+
+
+
+
+
+
+
+
+
+                                <i class="fas fa-eye"></i>
+
+
+
+
+
+
+
+
+
+                                مشاهده
+
+
+
+
+
+
+
+
+
+                            </a>
+
+
+
+
+
+
+
+
+
+                        </td>
+
+
+
+
+
+
+
+
+
+                    </tr>
+
+
+
+
+
+
+
+
+
+                    @endforeach
+
+
+
+
+
+
+
+
+
+                </tbody>
+
+
+
+
+
+
+
+
+
+            </table>
+
+
+
+
+
+
+
+
+
+        </div>
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+        <div style="margin-top: 2rem;">
+
+
+
+
+
+
+
+
+
+            {{ $holdings->links('pagination::bootstrap-5') }}
+
+
+
+
+
+
+
+
+
+        </div>
+
+
+
+
+
+
+
+
+
+        @else
+
+
+
+
+
+
+
+
+
+        <div style="text-align: center; padding: 3rem 1rem; background: #f9fafb; border-radius: 12px; border: 2px dashed #e5e7eb;">
+
+
+
+
+
+
+
+
+
+            <i class="fas fa-inbox" style="font-size: 4rem; color: #9ca3af; margin-bottom: 1rem;"></i>
+
+
+
+
+
+
+
+
+
+            <div style="font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem;">holding یافت نشد</div>
+
+
+
+
+
+
+
+
+
+            <p style="color: #6b7280; font-size: 0.875rem;">هیچ holding با فیلترهای انتخاب شده یافت نشد.</p>
+
+
+
+
+
+
+
+
+
+        </div>
+
+
+
+
+
+
+
+
+
+        @endif
+
+
+
+
+
+
+
+
+
+    </div>
+
+
+
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+@endsection
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
