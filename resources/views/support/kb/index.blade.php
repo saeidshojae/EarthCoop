@@ -57,7 +57,7 @@
 
 
 
-<div class="flex" dir="rtl">
+<div class="flex flex-col lg:flex-row" dir="rtl">
 
 
 
@@ -87,7 +87,7 @@
 
 
 
-    <div class="flex-1 min-h-screen bg-[var(--color-soft-warm)] dark:bg-slate-900 p-6">
+    <div class="w-full min-w-0 flex-1 min-h-screen bg-[var(--color-soft-warm)] dark:bg-slate-900 p-4 sm:p-6">
 
 
 
@@ -1978,7 +1978,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 @endsection
-
 
 
 
