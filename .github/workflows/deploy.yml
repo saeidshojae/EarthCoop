@@ -16,7 +16,7 @@ jobs:
   ftp-deploy:
     name: Deploy via FTP
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
 
     steps:
     - name: Checkout code
@@ -86,7 +86,9 @@ jobs:
         port: 21
         server-dir: ./
         security: strict
-        timeout: 120000
+        timeout: 300000
+        log-level: minimal
+        state-name: .ftp-deploy-sync-state.json
         dangerous-clean-slate: false
         exclude: |
           **/.git*
@@ -96,6 +98,7 @@ jobs:
           **/.env
           **/.env.*
           **/node_modules/**
+          **/vendor/**
           **/tests/**
           **/.github/**
           storage/**
