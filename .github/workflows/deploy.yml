@@ -5,10 +5,18 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: production-ftp-deploy
+  cancel-in-progress: false
+
 jobs:
   ftp-deploy:
     name: Deploy via FTP
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
     - name: Checkout code
@@ -31,12 +39,9 @@ jobs:
         chmod -R 775 storage/framework
 
     - name: Install Composer dependencies
-      run: composer install --no-dev --optimize-autoloader --no-scripts
+      run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts
 
-    - name: Run Laravel package discovery
-      run: php artisan package:discover --ansi || true
-
-    - name: Create .env file and generate key
+    - name: Create CI environment file
       run: |
         echo "APP_ENV=production" >> .env
         echo "APP_DEBUG=false" >> .env
@@ -49,10 +54,13 @@ jobs:
         echo "DB_PASSWORD=dummy" >> .env
         php artisan key:generate --force
 
+    - name: Run Laravel package discovery
+      run: php artisan package:discover --ansi
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20'
         cache: 'npm'
 
     - name: Install NPM dependencies and build assets
@@ -60,18 +68,36 @@ jobs:
         npm ci
         npm run build
 
+    - name: Validate FTP deployment secrets
+      env:
+        FTP_HOST: ${{ secrets.FTP_HOST }}
+        FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+        FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+      run: |
+        test -n "$FTP_HOST" || { echo "FTP_HOST secret is missing"; exit 1; }
+        test -n "$FTP_USERNAME" || { echo "FTP_USERNAME secret is missing"; exit 1; }
+        test -n "$FTP_PASSWORD" || { echo "FTP_PASSWORD secret is missing"; exit 1; }
+
     - name: Sync files to cPanel via FTP
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      uses: SamKirkland/FTP-Deploy-Action@v4.4.0
       with:
         server: ${{ secrets.FTP_HOST }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        server-dir: /home3/btboeapy/public_html/
+        protocol: ftps
+        port: 21
+        server-dir: ./
+        security: strict
+        timeout: 120000
         dangerous-clean-slate: false
         exclude: |
           **/.git*
+          **/.git*/**
+          .env
+          .env.*
+          **/.env
+          **/.env.*
           **/node_modules/**
           **/tests/**
-          **/vendor/**
           **/.github/**
-          storage/
+          storage/**
