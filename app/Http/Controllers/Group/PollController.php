@@ -194,12 +194,36 @@ class PollController extends Controller
     }
     private function dispatchGroupEvent(object $event): void
     {
-        if ((bool) config('group-chat.defer_broadcasts', true)) {
-            dispatch(static fn () => event($event))->afterResponse();
+        if (! (bool) config('group-chat.enabled', true)) {
             return;
         }
 
-        event($event);
+        if (strtolower((string) config('group-chat.transport', 'auto')) === 'polling') {
+            return;
+        }
+
+        if ((bool) config('group-chat.defer_broadcasts', true)) {
+            dispatch(static function () use ($event): void {
+                try {
+                    event($event);
+                } catch (\Throwable $exception) {
+                    \Illuminate\Support\Facades\Log::warning('group_chat_broadcast_failed', [
+                        'event' => get_class($event),
+                        'message' => $exception->getMessage(),
+                    ]);
+                }
+            })->afterResponse();
+            return;
+        }
+
+        try {
+            event($event);
+        } catch (\Throwable $exception) {
+            \Illuminate\Support\Facades\Log::warning('group_chat_broadcast_failed', [
+                'event' => get_class($event),
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
 
     /**

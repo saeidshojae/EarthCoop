@@ -1913,10 +1913,14 @@ document.addEventListener('DOMContentLoaded', function() {
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
             debugLog('[TIMING] JS T0 - form submit started:', Date.now());
-            
+
+            const ckeditor = window.CKEDITOR;
+
             // Sync CKEditor قبل از خواندن محتوا
-            for (var i in CKEDITOR.instances) {
-                CKEDITOR.instances[i].updateElement();
+            if (ckeditor && ckeditor.instances) {
+                for (const instance of Object.values(ckeditor.instances)) {
+                    instance.updateElement();
+                }
             }
             
             const formData = new FormData(form);
@@ -1944,7 +1948,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // بررسی محتوای پیام قبل از ارسال
             const hasVoiceFile = voiceFileInput && voiceFileInput.files && voiceFileInput.files.length > 0;
-            const messageEditor = CKEDITOR.instances['message_editor'];
+            const messageEditor = ckeditor?.instances?.message_editor || null;
             let messageText = '';
             let messageHtml = '';
             
@@ -2112,9 +2116,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     updateVoiceFilePreview(null);
                     
                     // Clear CKEditor if exists
-                    const messageEditor = CKEDITOR.instances['message_editor'];
-                    if (messageEditor) {
-                        messageEditor.setData('');
+                    const activeMessageEditor = ckeditor?.instances?.message_editor || null;
+                    if (activeMessageEditor) {
+                        activeMessageEditor.setData('');
                     }
                     
                     // Clear parent_id after successful submission
