@@ -115,6 +115,37 @@
         min-width: 0;
     }
 
+    .notification-content-link {
+        display: block;
+        color: inherit;
+        text-decoration: none;
+        border-radius: 10px;
+        padding: 0.2rem 0.35rem;
+        margin: -0.2rem -0.35rem;
+    }
+
+    .notification-content-link:focus-visible {
+        outline: 3px solid rgba(59, 130, 246, 0.25);
+        outline-offset: 3px;
+    }
+
+    .notification-content-link .notification-title::after {
+        content: '\f060';
+        font-family: 'Font Awesome 5 Free';
+        font-weight: 900;
+        display: inline-block;
+        margin-right: 0.45rem;
+        color: var(--color-ocean-blue);
+        font-size: 0.72rem;
+        opacity: 0.65;
+        transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .notification-content-link:hover .notification-title::after {
+        transform: translateX(-3px);
+        opacity: 1;
+    }
+
     .notification-category {
         display: inline-block;
         font-size: 0.7rem;
@@ -895,7 +926,11 @@
                             </div>
 
                             <!-- Content -->
-                            <div class="notification-content">
+                            @if($notificationDestinations[$notification->id] ?? null)
+                                <a href="{{ route('notifications.open', $notification->id) }}" class="notification-content notification-content-link">
+                            @else
+                                <div class="notification-content">
+                            @endif
                                 @php
                                     $notifType = $notification->data['type'] ?? 'other';
                                     $categoryMap = [
@@ -940,7 +975,11 @@
                                     <span>•</span>
                                     <span>{{ $notification->created_at->format('Y/m/d H:i') }}</span>
                                 </div>
-                            </div>
+                            @if($notificationDestinations[$notification->id] ?? null)
+                                </a>
+                            @else
+                                </div>
+                            @endif
 
                             <!-- Actions - Always horizontal -->
                             <div class="notification-actions">

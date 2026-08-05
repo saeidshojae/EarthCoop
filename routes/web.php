@@ -214,10 +214,11 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread');
     Route::get('/notifications/latest', [NotificationController::class, 'latest'])->name('notifications.latest');
-    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.readAll');
-    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.delete');
     Route::delete('/notifications/clear-read', [NotificationController::class, 'deleteAllRead'])->name('notifications.clearRead');
+    Route::get('/notifications/{id}/open', [NotificationController::class, 'open'])->whereUuid('id')->name('notifications.open');
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->whereUuid('id')->name('notifications.read');
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->whereUuid('id')->name('notifications.delete');
     
     // Notification Settings
     Route::get('/notifications/settings', [\App\Http\Controllers\NotificationSettingsController::class, 'index'])->name('notifications.settings');

@@ -90,8 +90,13 @@ class NotificationController extends Controller
         }
         
         $notifications = $query->paginate(20);
+        $notificationDestinations = $notifications->getCollection()
+            ->mapWithKeys(fn (DatabaseNotification $notification) => [
+                $notification->id => $this->resolveDestination($notification, $request),
+            ])
+            ->all();
 
-        return view('notifications.index', compact('notifications'));
+        return view('notifications.index', compact('notifications', 'notificationDestinations'));
     }
 
     // Return unread notifications count (JSON)
@@ -117,6 +122,21 @@ class NotificationController extends Controller
         return back()->with('success', 'اعلان خوانده شد.');
     }
 
+    // Mark a notification as read and take the user to its internal destination.
+    public function open(Request $request, string $id)
+    {
+        $notification = Auth::user()->notifications()->findOrFail($id);
+        $destination = $this->resolveDestination($notification, $request);
+
+        if (is_null($notification->read_at)) {
+            $notification->markAsRead();
+        }
+
+        return $destination
+            ? redirect()->to($destination)
+            : redirect()->route('notifications.index');
+    }
+
     // Mark all notifications as read
     public function markAllAsRead()
     {
@@ -136,7 +156,44 @@ class NotificationController extends Controller
     // Delete all read notifications
     public function deleteAllRead()
     {
-        Auth::user()->readNotifications()->delete();
+        Auth::user()->notifications()->whereNotNull('read_at')->delete();
         return back()->with('success', 'اعلان‌های خوانده شده حذف شد.');
+    }
+
+    private function resolveDestination(DatabaseNotification $notification, Request $request): ?string
+    {
+        $data = $notification->data;
+        $candidate = $data['url'] ?? $data['action_url'] ?? $data['link'] ?? null;
+
+        if (!$candidate && in_array($data['type'] ?? null, ['chat_request', 'group.chat.request'], true)) {
+            $candidate = route('chat-requests.index');
+        }
+
+        if (!is_string($candidate) || trim($candidate) === '') {
+            return null;
+        }
+
+        $candidate = trim($candidate);
+        if (str_starts_with($candidate, '/') && !str_starts_with($candidate, '//')) {
+            return $candidate;
+        }
+
+        $parts = parse_url($candidate);
+        if ($parts === false || !isset($parts['host'])) {
+            return '/' . ltrim($candidate, '/');
+        }
+
+        if (!in_array(strtolower($parts['scheme'] ?? ''), ['http', 'https'], true)) {
+            return null;
+        }
+
+        $allowedHosts = array_filter([
+            $request->getHost(),
+            parse_url((string) config('app.url'), PHP_URL_HOST),
+        ]);
+
+        return in_array(strtolower($parts['host']), array_map('strtolower', $allowedHosts), true)
+            ? $candidate
+            : null;
     }
 }
