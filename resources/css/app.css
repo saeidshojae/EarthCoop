@@ -65,30 +65,248 @@
   .animate-fade-in {
     animation: fade-in 0.5s ease-out;
   }
-  @keyframes flip-coin {
-    0% { transform: rotateY(0deg); }
-    100% { transform: rotateY(360deg); }
+  /* --- WELCOME: BAHAR COIN --- */
+  .bahar-coin {
+    display: grid;
+    width: clamp(10rem, 20vw, 14.375rem);
+    max-width: calc(100vw - 2rem);
+    margin-inline: auto;
+    justify-items: center;
+    isolation: isolate;
   }
-  .animate-flip-coin {
-    animation: flip-coin 4s infinite ease-in-out;
+  .bahar-coin__float {
+    width: 100%;
+    animation: bahar-coin-float 4.8s ease-in-out infinite;
+    will-change: transform;
   }
-  .coin-flip-wrapper {
+  .bahar-coin__scene {
+    width: 100%;
+    aspect-ratio: 1;
+    perspective: 1100px;
+    -webkit-perspective: 1100px;
+  }
+  .bahar-coin__rotor {
     position: relative;
-    transform-style: preserve-3d;
-  }
-  .coin-face {
-    position: absolute;
     width: 100%;
     height: 100%;
-    border-radius: 50%;
-    background-size: cover;
-    background-position: center;
-    backface-visibility: hidden;
-    box-shadow: 0 15px 40px rgba(245, 158, 11, 0.4), inset 0 0 15px rgba(255, 255, 255, 0.5);
-    border: 4px solid var(--color-digital-gold);
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+    animation: bahar-coin-rotate 7s linear infinite;
+    will-change: transform;
   }
-  .coin-back {
-    transform: rotateY(180deg);
+  .bahar-coin__edge {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+    pointer-events: none;
+  }
+  .bahar-coin__edge-layer {
+    position: absolute;
+    inset: 0;
+    display: block;
+    border: 1px solid rgba(91, 55, 4, 0.3);
+    border-radius: 50%;
+    -webkit-mask-image: var(--bahar-coin-mask);
+    mask-image: var(--bahar-coin-mask);
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    background:
+      repeating-linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.14) 0 1px,
+        rgba(82, 48, 4, 0.12) 1px 3px
+      ),
+      linear-gradient(
+        180deg,
+        #f1d36b 0%,
+        #d5a62a 24%,
+        #a96f0b 48%,
+        #6f4707 74%,
+        #d5a62a 100%
+      );
+    box-shadow: inset 0 0 2px rgba(255, 239, 170, 0.28);
+  }
+  .bahar-coin__edge-layer:nth-child(1) { transform: translateZ(-8px); }
+  .bahar-coin__edge-layer:nth-child(2) { transform: translateZ(-7px); }
+  .bahar-coin__edge-layer:nth-child(3) { transform: translateZ(-6px); }
+  .bahar-coin__edge-layer:nth-child(4) { transform: translateZ(-5px); }
+  .bahar-coin__edge-layer:nth-child(5) { transform: translateZ(-4px); }
+  .bahar-coin__edge-layer:nth-child(6) { transform: translateZ(-3px); }
+  .bahar-coin__edge-layer:nth-child(7) { transform: translateZ(-2px); }
+  .bahar-coin__edge-layer:nth-child(8) { transform: translateZ(-1px); }
+  .bahar-coin__edge-layer:nth-child(9) { transform: translateZ(0); }
+  .bahar-coin__edge-layer:nth-child(10) { transform: translateZ(1px); }
+  .bahar-coin__edge-layer:nth-child(11) { transform: translateZ(2px); }
+  .bahar-coin__edge-layer:nth-child(12) { transform: translateZ(3px); }
+  .bahar-coin__edge-layer:nth-child(13) { transform: translateZ(4px); }
+  .bahar-coin__edge-layer:nth-child(14) { transform: translateZ(5px); }
+  .bahar-coin__edge-layer:nth-child(15) { transform: translateZ(6px); }
+  .bahar-coin__edge-layer:nth-child(16) { transform: translateZ(7px); }
+  .bahar-coin__edge-layer:nth-child(17) { transform: translateZ(8px); }
+  .bahar-coin__face {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    user-select: none;
+    pointer-events: none;
+  }
+  .bahar-coin__face--front {
+    transform: translateZ(9px);
+  }
+  .bahar-coin__face--back {
+    transform-origin: 50% 0;
+    transform: rotateY(180deg) translateZ(9px) scale(0.95);
+  }
+  .bahar-coin__shadow {
+    display: block;
+    width: 72%;
+    height: 0.875rem;
+    margin-top: 0.875rem;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(15, 23, 42, 0.28) 0%, rgba(15, 23, 42, 0.12) 42%, transparent 72%);
+    filter: blur(2px);
+    transform: scaleX(0.92);
+  }
+  body.dark-mode .bahar-coin__shadow,
+  .dark .bahar-coin__shadow {
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.2) 44%, transparent 72%);
+  }
+  @keyframes bahar-coin-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  @keyframes bahar-coin-rotate {
+    from { transform: rotateY(0deg); }
+    to { transform: rotateY(360deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bahar-coin__float {
+      animation: none;
+    }
+    .bahar-coin__rotor {
+      animation: none;
+      transform: rotateY(-18deg);
+    }
+  }
+
+  /* --- WELCOME: 3D EARTH GLOBE --- */
+  .earth-globe {
+    display: grid;
+    width: clamp(11.25rem, 24vw, 15.5rem);
+    max-width: calc(100vw - 2rem);
+    margin-inline: auto;
+    justify-items: center;
+    isolation: isolate;
+  }
+  .earth-globe__float {
+    width: 100%;
+    animation: earth-globe-float 5.5s ease-in-out infinite;
+    will-change: transform;
+  }
+  .earth-globe__sphere {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: 50%;
+    background: #075c9b;
+    box-shadow:
+      0 0 0 1px rgba(119, 214, 255, 0.48),
+      0 0 28px rgba(46, 169, 255, 0.28),
+      inset -28px -14px 42px rgba(1, 20, 48, 0.82),
+      inset 16px 10px 24px rgba(155, 232, 255, 0.24);
+    transform: translateZ(0);
+  }
+  .earth-globe__map {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    background-position: 0 center;
+    background-repeat: repeat-x;
+    background-size: 200% 100%;
+    animation: earth-globe-spin 20s linear infinite;
+    will-change: background-position;
+  }
+  .earth-globe__clouds {
+    position: absolute;
+    inset: 4%;
+    z-index: 2;
+    border-radius: 50%;
+    background:
+      radial-gradient(ellipse at 18% 28%, rgba(255,255,255,.5) 0 3%, transparent 9%),
+      radial-gradient(ellipse at 64% 22%, rgba(255,255,255,.4) 0 4%, transparent 11%),
+      radial-gradient(ellipse at 78% 62%, rgba(255,255,255,.38) 0 3%, transparent 10%),
+      radial-gradient(ellipse at 35% 72%, rgba(255,255,255,.3) 0 4%, transparent 12%);
+    background-size: 72% 100%;
+    opacity: 0.72;
+    animation: earth-globe-clouds 28s linear infinite;
+    pointer-events: none;
+  }
+  .earth-globe__light {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 29% 24%, rgba(255,255,255,.58) 0 4%, rgba(255,255,255,.14) 18%, transparent 38%),
+      linear-gradient(100deg, transparent 38%, rgba(1,17,42,.12) 58%, rgba(1,12,32,.78) 100%);
+    pointer-events: none;
+  }
+  .earth-globe__atmosphere {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    border: 2px solid rgba(136, 225, 255, 0.52);
+    border-radius: 50%;
+    box-shadow:
+      inset 0 0 12px rgba(139, 227, 255, 0.5),
+      0 0 18px rgba(45, 183, 255, 0.34);
+    pointer-events: none;
+  }
+  .earth-globe__shadow {
+    display: block;
+    width: 68%;
+    height: 1rem;
+    margin-top: 1rem;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(8, 33, 64, 0.3) 0%, rgba(8, 33, 64, 0.14) 42%, transparent 72%);
+    filter: blur(3px);
+    transform: scaleX(0.9);
+  }
+  body.dark-mode .earth-globe__shadow,
+  .dark .earth-globe__shadow {
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.56) 0%, rgba(0, 0, 0, 0.22) 44%, transparent 72%);
+  }
+  @keyframes earth-globe-spin {
+    from { background-position: 0 center; }
+    to { background-position: 200% center; }
+  }
+  @keyframes earth-globe-clouds {
+    from { background-position: 0 0; }
+    to { background-position: 144% 0; }
+  }
+  @keyframes earth-globe-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-7px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .earth-globe__float,
+    .earth-globe__map,
+    .earth-globe__clouds {
+      animation: none;
+    }
   }
 
   /* --- HAMBURGER MENU --- */

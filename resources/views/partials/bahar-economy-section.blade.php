@@ -47,97 +47,59 @@
 
 
 
-        <div class="w-full flex justify-center mb-8">
-
-
-
-
-
-
-
-
-
-            <div class="coin-flip-wrapper w-[180px] h-[180px] animate-bounce-custom animate-flip-coin">
-
-
-
-
-
-
-
-
-
-                <div class="coin-face coin-front"
-
-
-
-
-
-
-
-
-
-                     style="background-image: url('https://i.postimg.cc/KYjDR6V9/coin.png');">
-
-
-
-
-
-
-
-
-
+        <figure class="bahar-coin mb-8" role="img" aria-label="سکه یک‌بهاری EarthCoop، با نمای رو و پشت">
+            <div class="bahar-coin__float" aria-hidden="true">
+                <div class="bahar-coin__scene">
+                    <div class="bahar-coin__rotor">
+                        <div
+                            class="bahar-coin__edge"
+                            style="--bahar-coin-mask: url('{{ asset('images/bahar/coin-front.webp') }}')"
+                            aria-hidden="true"
+                        >
+                            <span class="bahar-coin__edge-layer"></span>
+                            <span class="bahar-coin__edge-layer"></span>
+                            <span class="bahar-coin__edge-layer"></span>
+                            <span class="bahar-coin__edge-layer"></span>
+                            <span class="bahar-coin__edge-layer"></span>
+                            <span class="bahar-coin__edge-layer"></span>
+                            <span class="bahar-coin__edge-layer"></span>
+                            <span class="bahar-coin__edge-layer"></span>
+                            <span class="bahar-coin__edge-layer"></span>
+                            <span class="bahar-coin__edge-layer"></span>
+                            <span class="bahar-coin__edge-layer"></span>
+                            <span class="bahar-coin__edge-layer"></span>
+                            <span class="bahar-coin__edge-layer"></span>
+                            <span class="bahar-coin__edge-layer"></span>
+                            <span class="bahar-coin__edge-layer"></span>
+                            <span class="bahar-coin__edge-layer"></span>
+                            <span class="bahar-coin__edge-layer"></span>
+                        </div>
+                        <img
+                            class="bahar-coin__face bahar-coin__face--front"
+                            src="{{ asset('images/bahar/coin-front.webp') }}"
+                            width="1254"
+                            height="1254"
+                            alt=""
+                            loading="eager"
+                            fetchpriority="high"
+                            decoding="async"
+                            draggable="false"
+                        >
+                        <img
+                            class="bahar-coin__face bahar-coin__face--back"
+                            src="{{ asset('images/bahar/coin-back.webp') }}"
+                            width="1254"
+                            height="1254"
+                            alt=""
+                            loading="eager"
+                            decoding="async"
+                            draggable="false"
+                        >
+                    </div>
                 </div>
-
-
-
-
-
-
-
-
-
-                <div class="coin-face coin-back"
-
-
-
-
-
-
-
-
-
-                     style="background-image: url('https://i.postimg.cc/KYjDR6V9/coin.png');">
-
-
-
-
-
-
-
-
-
-                </div>
-
-
-
-
-
-
-
-
-
             </div>
-
-
-
-
-
-
-
-
-
-        </div>
+            <span class="bahar-coin__shadow" aria-hidden="true"></span>
+        </figure>
 
 
 
@@ -568,9 +530,6 @@
 
 
 </section>
-
-
-
 
 
 

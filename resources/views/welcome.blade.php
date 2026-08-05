@@ -134,37 +134,6 @@
             animation: fade-in 0.5s ease-out;
         }
 
-        /* Coin flip animation */
-        @keyframes flip-coin {
-            0% { transform: rotateY(0deg); }
-            100% { transform: rotateY(360deg); }
-        }
-
-        .animate-flip-coin {
-            animation: flip-coin 4s infinite ease-in-out;
-        }
-
-        .coin-flip-wrapper {
-            position: relative;
-            transform-style: preserve-3d;
-        }
-
-        .coin-face {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            background-size: cover;
-            background-position: center;
-            backface-visibility: hidden;
-            box-shadow: 0 15px 40px rgba(245, 158, 11, 0.4), inset 0 0 15px rgba(255, 255, 255, 0.5);
-            border: 4px solid var(--color-digital-gold);
-        }
-
-        .coin-back {
-            transform: rotateY(180deg);
-        }
-
         /* Smooth scroll animations */
         .fade-in-section {
             opacity: 0;
@@ -285,78 +254,6 @@
                 content: none;
             }
         }
-
-        /* Globe and its elements */
-        .globe-container {
-            position: relative;
-            width: 100%;
-            height: 200px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            perspective: 1000px;
-        }
-
-        .globe {
-            width: 150px;
-            height: 150px;
-            background: linear-gradient(135deg, #10b981 0%, #3b82f6 50%, #059669 100%);
-            border-radius: 50%;
-            box-shadow: 0 0 60px rgba(59, 130, 246, 0.4), inset 0 0 20px rgba(255, 255, 255, 0.3);
-            position: relative;
-            animation: rotate 60s linear infinite;
-            transform-style: preserve-3d;
-        }
-
-        /* Fallback for browsers that don't support preserve-3d */
-        @supports not (transform-style: preserve-3d) {
-            .globe {
-                transform-style: flat;
-            }
-            .globe-dots {
-                transform-style: flat;
-            }
-        }
-
-        .globe::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at 30% 30%, transparent 50%, rgba(16, 185, 129, 0.15) 100%);
-            border-radius: 50%;
-            z-index: 1;
-        }
-
-        .globe-dots {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            transform-style: preserve-3d;
-            z-index: 2;
-        }
-
-        .globe-dot {
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            background-color: var(--color-earth-green);
-            border-radius: 50%;
-            transform: translate(-50%, -50%) translateZ(75px);
-            box-shadow: 0 0 10px var(--color-earth-green), 0 0 15px rgba(255, 255, 255, 0.5);
-            animation: pulse 1.5s infinite alternate ease-in-out;
-        }
-
-        .globe-dot:nth-child(1) { top: 20%; left: 30%; background-color: var(--color-earth-green); }
-        .globe-dot:nth-child(2) { top: 40%; left: 70%; background-color: var(--color-ocean-blue); animation-delay: 0.3s; }
-        .globe-dot:nth-child(3) { top: 60%; left: 20%; background-color: var(--color-digital-gold); animation-delay: 0.6s; }
-        .globe-dot:nth-child(4) { top: 75%; left: 60%; background-color: var(--color-earth-green); animation-delay: 0.9s; }
-        .globe-dot:nth-child(5) { top: 30%; left: 50%; background-color: var(--color-ocean-blue); animation-delay: 1.2s; }
-        .globe-dot:nth-child(6) { top: 55%; left: 90%; background-color: var(--color-digital-gold); animation-delay: 1.5s; }
-        .globe-dot:nth-child(7) { top: 10%; left: 60%; background-color: var(--color-earth-green); animation-delay: 1.8s; }
 
         /* Stats item styling for RTL */
         .stats-item {

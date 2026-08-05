@@ -127,127 +127,20 @@
 
 
 
-        <div class="globe-container mb-16">
-
-
-
-
-
-
-
-
-
-            <div class="globe">
-
-
-
-
-
-
-
-
-
-                <div class="globe-dots">
-
-
-
-
-
-
-
-
-
-                    <div class="globe-dot"></div>
-
-
-
-
-
-
-
-
-
-                    <div class="globe-dot"></div>
-
-
-
-
-
-
-
-
-
-                    <div class="globe-dot"></div>
-
-
-
-
-
-
-
-
-
-                    <div class="globe-dot"></div>
-
-
-
-
-
-
-
-
-
-                    <div class="globe-dot"></div>
-
-
-
-
-
-
-
-
-
-                    <div class="globe-dot"></div>
-
-
-
-
-
-
-
-
-
-                    <div class="globe-dot"></div>
-
-
-
-
-
-
-
-
-
+        <figure class="earth-globe mb-16" role="img" aria-label="کره زمین در حال چرخش، نماد شبکه جهانی EarthCoop">
+            <div class="earth-globe__float" aria-hidden="true">
+                <div class="earth-globe__sphere">
+                    <div
+                        class="earth-globe__map"
+                        style="background-image: url('{{ asset('images/globe/earth-texture.svg') }}')"
+                    ></div>
+                    <div class="earth-globe__clouds"></div>
+                    <div class="earth-globe__light"></div>
+                    <div class="earth-globe__atmosphere"></div>
                 </div>
-
-
-
-
-
-
-
-
-
             </div>
-
-
-
-
-
-
-
-
-
-        </div>
+            <span class="earth-globe__shadow" aria-hidden="true"></span>
+        </figure>
 
 
 
@@ -588,8 +481,6 @@
 
 
 </section>
-
-
 
 
 
