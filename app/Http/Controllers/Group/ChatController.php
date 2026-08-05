@@ -63,6 +63,7 @@ class ChatController extends Controller
         }
         
         $lastReadMessageId = $groupUser ? $groupUser->last_read_message_id : null;
+        $unreadContentCounts = $this->countUnreadContent($group, (int) auth()->id());
         \Log::info('ChatController@chat T1 (after groupUser): ' . round((microtime(true)-$t0)*1000) . 'ms');
 
         $messages = $group->messages()
@@ -106,7 +107,7 @@ class ChatController extends Controller
         $elections = $elections->reverse()->values();
 
         $polls = $group->polls()
-            ->select('id', 'group_id', 'question','expires_at',  'created_at', 'type as real_type', 'main_type', 'created_by', 'skill_id', DB::raw("'poll' as type"))
+            ->select('id', 'group_id', 'question','expires_at',  'created_at', 'type as real_type', 'main_type', 'created_by', 'skill_id', 'read_by', DB::raw("'poll' as type"))
             ->with([
                 'user:id,first_name,last_name,avatar',
                 'skill:id,name',
@@ -403,8 +404,53 @@ class ChatController extends Controller
             'managersSorted' => $managersSorted,
             'inspectorsSorted' => $inspectorsSorted,
             'lastReadMessageId' => $lastReadMessageId,
+            'unreadContentCounts' => $unreadContentCounts,
             'postGroupUsersMap' => $postGroupUsersMap
         ]);
+    }
+
+    public function unreadCount(Group $group)
+    {
+        $isMember = GroupUser::where('group_id', $group->id)
+            ->where('user_id', auth()->id())
+            ->where('status', 1)
+            ->exists();
+
+        if (!$isMember) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Access denied.',
+            ], 403);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'unread' => $this->countUnreadContent($group, (int) auth()->id()),
+        ]);
+    }
+
+    private function countUnreadContent(Group $group, int $userId): array
+    {
+        $countUnread = static function ($query, string $authorColumn) use ($userId): int {
+            return $query
+                ->where($authorColumn, '!=', $userId)
+                ->where(function ($query) use ($userId) {
+                    $query->whereNull('read_by')
+                        ->orWhereJsonDoesntContainKey('read_by->' . $userId);
+                })
+                ->count();
+        };
+
+        $messages = $countUnread($group->messages(), 'user_id');
+        $posts = $countUnread($group->blogs(), 'user_id');
+        $polls = $countUnread($group->polls(), 'created_by');
+
+        return [
+            'total' => $messages + $posts + $polls,
+            'messages' => $messages,
+            'posts' => $posts,
+            'polls' => $polls,
+        ];
     }
 
     public function chatAPI(Group $group, Request $request){
@@ -453,7 +499,7 @@ class ChatController extends Controller
             
             if ($page === 1) {
                 $posts = $group->blogs()
-                    ->select('id', 'user_id', 'title', 'img', 'content', 'file_type', 'category_id', 'created_at', 'group_id', DB::raw("'post' as type"))
+                    ->select('id', 'user_id', 'title', 'img', 'content', 'file_type', 'category_id', 'created_at', 'group_id', 'read_by', DB::raw("'post' as type"))
                     ->orderBy('created_at', 'asc')
                     ->get();
                 
@@ -463,7 +509,7 @@ class ChatController extends Controller
                     ->get() : collect();
                 
                 $polls = $group->polls()
-                    ->select('id', 'group_id', 'question', 'expires_at', 'created_by', 'created_at', 'type as real_type', 'main_type', 'skill_id', DB::raw("'poll' as type"))
+                    ->select('id', 'group_id', 'question', 'expires_at', 'created_by', 'created_at', 'type as real_type', 'main_type', 'skill_id', 'read_by', DB::raw("'poll' as type"))
                     ->orderBy('created_at', 'asc')
                     ->get();
                 

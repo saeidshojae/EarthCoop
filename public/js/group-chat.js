@@ -2270,6 +2270,11 @@ function appendMessage(message) {
     const messageRow = document.createElement('div');
     messageRow.className = `message-row ${isMine ? 'you' : 'other'}`;
     messageRow.setAttribute('data-message-id', message.id);
+    messageRow.setAttribute('data-feed-item', 'true');
+    messageRow.setAttribute('data-feed-type', 'message');
+    messageRow.setAttribute('data-feed-id', message.id);
+    messageRow.setAttribute('data-feed-author-id', message.user_id);
+    messageRow.setAttribute('data-feed-unread', isMine ? '0' : '1');
     messageRow.id = `msg-${message.id}`;
     
     let messageHTML = '';
@@ -3307,7 +3312,8 @@ function submitReport() {
                 
                 // Mark blog post as read
                 if (element.id.startsWith('blog-') && !markedAsRead.has('blog-' + postId)) {
-                    markedAsRead.add('blog-' + postId);
+                    const key = 'blog-' + postId;
+                    markedAsRead.add(key);
                     fetch(`/blog/${postId}/mark-read`, {
                         method: 'POST',
                         headers: {
@@ -3316,12 +3322,19 @@ function submitReport() {
                             'X-CSRF-TOKEN': csrfToken,
                             'X-Requested-With': 'XMLHttpRequest'
                         }
-                    }).catch(() => {});
+                    }).then(response => {
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        element.dataset.feedUnread = '0';
+                        window.dispatchEvent(new CustomEvent('group-feed:read-state-changed'));
+                    }).catch(() => {
+                        markedAsRead.delete(key);
+                    });
                 }
                 
                 // Mark poll as read
                 if (element.id.startsWith('poll-') && !markedAsRead.has('poll-' + pollId)) {
-                    markedAsRead.add('poll-' + pollId);
+                    const key = 'poll-' + pollId;
+                    markedAsRead.add(key);
                     fetch(`/poll/${pollId}/mark-read`, {
                         method: 'POST',
                         headers: {
@@ -3330,7 +3343,13 @@ function submitReport() {
                             'X-CSRF-TOKEN': csrfToken,
                             'X-Requested-With': 'XMLHttpRequest'
                         }
-                    }).catch(() => {});
+                    }).then(response => {
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        element.dataset.feedUnread = '0';
+                        window.dispatchEvent(new CustomEvent('group-feed:read-state-changed'));
+                    }).catch(() => {
+                        markedAsRead.delete(key);
+                    });
                 }
             }
         });

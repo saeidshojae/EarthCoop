@@ -1,5 +1,9 @@
 <div class="message-row {{ $item->user_id === auth()->id() ? 'you' : 'other' }}" data-message-id="{{ $item->id }}"
 
+    data-feed-item="true" data-feed-type="message" data-feed-id="{{ $item->id }}"
+
+    data-feed-author-id="{{ $item->user_id }}" data-feed-unread="{{ (int) $item->user_id !== (int) auth()->id() && !$item->isReadBy((int) auth()->id()) ? '1' : '0' }}"
+
     id="msg-{{ $item->id }}">
 
     @php

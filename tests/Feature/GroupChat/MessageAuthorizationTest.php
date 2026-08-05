@@ -4,7 +4,9 @@ namespace Tests\Feature\GroupChat;
 
 use App\Models\Group;
 use App\Models\GroupUser;
+use App\Models\Blog;
 use App\Models\Message;
+use App\Models\Poll;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Database\Schema\Blueprint;
@@ -112,6 +114,41 @@ class MessageAuthorizationTest extends TestCase
         } elseif (! Schema::hasColumn('messages', 'client_message_id')) {
             Schema::table('messages', function (Blueprint $table) {
                 $table->string('client_message_id', 100)->nullable();
+            });
+        }
+
+        if (! Schema::hasTable('blogs')) {
+            Schema::create('blogs', function (Blueprint $table) {
+                $table->id();
+                $table->string('title');
+                $table->text('content');
+                $table->string('img')->nullable();
+                $table->unsignedBigInteger('user_id');
+                $table->unsignedBigInteger('group_id');
+                $table->unsignedBigInteger('category_id');
+                $table->string('file_type')->nullable();
+                $table->json('read_by')->nullable();
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
+
+        if (! Schema::hasTable('polls')) {
+            Schema::create('polls', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('group_id');
+                $table->unsignedBigInteger('created_by');
+                $table->unsignedBigInteger('skill_id')->nullable();
+                $table->string('question');
+                $table->boolean('is_multiple')->default(false);
+                $table->boolean('is_anonymous')->default(false);
+                $table->boolean('is_active')->default(true);
+                $table->boolean('show_results')->default(true);
+                $table->integer('type')->default(0);
+                $table->integer('main_type')->default(0);
+                $table->json('read_by')->nullable();
+                $table->timestamp('expires_at')->nullable();
+                $table->timestamps();
             });
         }
     }
@@ -245,6 +282,67 @@ class MessageAuthorizationTest extends TestCase
             'client_message_id' => $clientMessageId,
             'message' => 'retry-safe message',
         ]);
+    }
+
+    public function test_unread_count_includes_all_group_content_and_excludes_own_items(): void
+    {
+        [$group, $viewer] = $this->makeGroupWithMember(1);
+        $sender = $this->makeUser();
+        GroupUser::create([
+            'group_id' => $group->id,
+            'user_id' => $sender->id,
+            'role' => 1,
+            'status' => 1,
+        ]);
+
+        $this->makeMessage($group, $sender, ['message' => 'plain']);
+        $this->makeMessage($group, $sender, ['message' => 'voice', 'voice_message' => 'voice.webm']);
+        $this->makeMessage($group, $sender, ['message' => 'file', 'file_path' => 'uploads/file.mp3', 'file_type' => 'audio/mpeg']);
+        $this->makeMessage($group, $sender, [
+            'message' => 'already read',
+            'read_by' => [$viewer->id => now()->toIso8601String()],
+        ]);
+        $this->makeMessage($group, $viewer, ['message' => 'own message']);
+
+        Blog::create([
+            'group_id' => $group->id,
+            'user_id' => $sender->id,
+            'category_id' => 1,
+            'title' => 'Unread post',
+            'content' => 'Post body',
+        ]);
+        Blog::create([
+            'group_id' => $group->id,
+            'user_id' => $viewer->id,
+            'category_id' => 1,
+            'title' => 'Own post',
+            'content' => 'Post body',
+        ]);
+
+        Poll::create([
+            'group_id' => $group->id,
+            'created_by' => $sender->id,
+            'question' => 'Unread poll?',
+            'type' => 0,
+            'main_type' => 1,
+            'expires_at' => now()->addDay(),
+        ]);
+        Poll::create([
+            'group_id' => $group->id,
+            'created_by' => $viewer->id,
+            'question' => 'Own poll?',
+            'type' => 0,
+            'main_type' => 1,
+            'expires_at' => now()->addDay(),
+        ]);
+
+        $this->actingAs($viewer)
+            ->getJson(route('groups.unread-count', $group))
+            ->assertOk()
+            ->assertJsonPath('unread.total', 5)
+            ->assertJsonPath('unread.messages', 3)
+            ->assertJsonPath('unread.posts', 1)
+            ->assertJsonPath('unread.polls', 1);
     }
 
     private function makeUser(): User

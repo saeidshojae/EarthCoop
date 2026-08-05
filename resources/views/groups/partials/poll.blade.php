@@ -22,7 +22,9 @@
     $optionVotes = $pollOptionVotes[$item->id] ?? [];
 @endphp
 
-<div class="poll-wrapper {{ $isOwner ? 'poll-wrapper--self' : '' }}" id="poll-{{ $item->id }}">
+<div class="poll-wrapper {{ $isOwner ? 'poll-wrapper--self' : '' }}" id="poll-{{ $item->id }}"
+    data-feed-item="true" data-feed-type="poll" data-feed-id="{{ $item->id }}"
+    data-feed-author-id="{{ $item->created_by }}" data-feed-unread="{{ !$isOwner && !$item->isReadBy((int) auth()->id()) ? '1' : '0' }}">
     <article class="poll-card {{ $isSpecialized ? 'poll-card--specialized' : 'poll-card--general' }}">
         <header class="poll-card__hero" style="background: {{ $backgroundColor }}; color: {{ $textColor }};">
             <div class="poll-card__context">

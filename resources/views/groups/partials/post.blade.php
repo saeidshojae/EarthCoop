@@ -53,7 +53,9 @@
 
 <div class="post-wrapper {{ $isOwner ? 'post-wrapper--self' : '' }}">
 
-    <div class="post-card {{ optional($groupUserPost)->role === 3 ? 'post-card--manager' : '' }}" id="blog-{{ $item->id }}">
+    <div class="post-card {{ optional($groupUserPost)->role === 3 ? 'post-card--manager' : '' }}" id="blog-{{ $item->id }}"
+        data-feed-item="true" data-feed-type="post" data-feed-id="{{ $item->id }}"
+        data-feed-author-id="{{ $ownerId }}" data-feed-unread="{{ !$isOwner && !$item->isReadBy((int) auth()->id()) ? '1' : '0' }}">
 
         <div class="post-card__header">
 

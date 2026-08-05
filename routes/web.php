@@ -345,6 +345,7 @@ Route::middleware(Authenticate::class)->group(function () {
 
     // چت گروهی
     Route::get('/groups/chat/{group}', [ChatController::class, 'chat'])->name('groups.chat');
+    Route::get('/api/groups/{group}/unread-count', [ChatController::class, 'unreadCount'])->name('groups.unread-count');
     Route::get('/api/groups/{group}/messages', [ChatController::class, 'chatAPI']);
     Route::get('/messages/{message}/voice', [MessageController::class, 'voice'])->name('groups.messages.voice');
     Route::get('/api/groups/{group}/posts/feed', [ChatController::class, 'postsFeed'])->name('groups.posts.feed');

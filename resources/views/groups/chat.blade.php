@@ -32,7 +32,7 @@ if (typeof jQuery !== 'undefined') {
 }
 </script>
 
-<script src="https://cdn.ckeditor.com/4.22.1/standard/ckeditor.js"></script>
+<script src="{{ asset('vendor/ckeditor/ckeditor.js') }}"></script>
 
 
 
@@ -298,7 +298,15 @@ const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
             });
         });
     });
-    _observeForSendBtn.observe(document.body, { childList: true, subtree: true });
+    function observeForVoiceSendButton() {
+        _observeForSendBtn.observe(document.body, { childList: true, subtree: true });
+    }
+
+    if (document.body) {
+        observeForVoiceSendButton();
+    } else {
+        document.addEventListener('DOMContentLoaded', observeForVoiceSendButton, { once: true });
+    }
 
     // وقتی polling پیام صوتی واقعی رو دید، temp رو حذف کن
     const _origAppend = window.appendMessage;
@@ -3485,49 +3493,51 @@ if (!installCkeditorChatConfig()) {
     }, 50);
 }
 
-CKEDITOR.replace('post_editor', {
-    filebrowserUploadUrl: "{{ route('admin.pages.upload') }}?_token={{ csrf_token() }}",
-    filebrowserUploadMethod: 'form',
-    language: 'fa',
-    height: 400,
-    removePlugins: 'uploadimage',
-    removeButtons: '',
-    toolbarGroups: [{
-            name: 'basicstyles',
-            groups: ['basicstyles', 'cleanup']
-        },
-        {
-            name: 'paragraph',
-            groups: ['list', 'indent', 'blocks', 'align']
-        },
-        {
-            name: 'styles'
-        },
-        {
-            name: 'colors'
-        },
-        {
-            name: 'insert'
-        },
-        {
-            name: 'tools'
-        },
-        {
-            name: 'editing'
-        },
-        {
-            name: 'document',
-            groups: ['mode', 'document']
-        },
-        {
-            name: 'clipboard',
-            groups: ['clipboard', 'undo']
-        },
-        {
-            name: 'links'
-        }
-    ]
-});
+if (window.CKEDITOR && document.getElementById('post_editor')) {
+    CKEDITOR.replace('post_editor', {
+        filebrowserUploadUrl: "{{ route('admin.pages.upload') }}?_token={{ csrf_token() }}",
+        filebrowserUploadMethod: 'form',
+        language: 'fa',
+        height: 400,
+        removePlugins: 'uploadimage',
+        removeButtons: '',
+        toolbarGroups: [{
+                name: 'basicstyles',
+                groups: ['basicstyles', 'cleanup']
+            },
+            {
+                name: 'paragraph',
+                groups: ['list', 'indent', 'blocks', 'align']
+            },
+            {
+                name: 'styles'
+            },
+            {
+                name: 'colors'
+            },
+            {
+                name: 'insert'
+            },
+            {
+                name: 'tools'
+            },
+            {
+                name: 'editing'
+            },
+            {
+                name: 'document',
+                groups: ['mode', 'document']
+            },
+            {
+                name: 'clipboard',
+                groups: ['clipboard', 'undo']
+            },
+            {
+                name: 'links'
+            }
+        ]
+    });
+}
 
 
 
@@ -4536,9 +4546,11 @@ document.addEventListener('keydown', function(e) {
     const authUserIdForUnread = Number(window.authUserId || 0);
     const scrollKey = 'chatScroll_' + groupId;
     const initialLastReadMessageId = Number({{ $lastReadMessageId ?? 'null' }});
-    let unreadCount = 0;
+    const unreadCountUrl = @json(route('groups.unread-count', $group));
+    let unreadCount = Number(@json($unreadContentCounts['total'] ?? 0));
     let isRenderingUnreadIndicators = false;
     let unreadRenderTimer = null;
+    let unreadRefreshTimer = null;
 
     window.scrollPositionRestored = false;
 
@@ -4584,6 +4596,10 @@ document.addEventListener('keydown', function(e) {
             const bid = Number(b.getAttribute('data-message-id'));
             return aid - bid;
         });
+    }
+
+    function getFeedRows() {
+        return Array.from(chatBox.querySelectorAll('[data-feed-item="true"]'));
     }
 
     function getMessageId(node) {
@@ -4638,17 +4654,11 @@ document.addEventListener('keydown', function(e) {
     }
 
     function findFirstUnreadMessage() {
-        const effectiveLastReadMessageId = getEffectiveLastReadMessageId();
-        if (!Number.isFinite(effectiveLastReadMessageId) || effectiveLastReadMessageId <= 0) {
-            return null;
-        }
-
-        const rows = getMessageRows();
+        const rows = getFeedRows();
         for (const row of rows) {
-            const id = getMessageId(row);
-            const userId = getMessageUserId(row);
-            const isOwnMessage = authUserIdForUnread > 0 && userId === authUserIdForUnread;
-            if (id && id > effectiveLastReadMessageId && !isOwnMessage) {
+            const authorId = Number(row.dataset.feedAuthorId || 0);
+            const isOwnContent = authUserIdForUnread > 0 && authorId === authUserIdForUnread;
+            if (row.dataset.feedUnread === '1' && !isOwnContent) {
                 return getMessageElementForDivider(row);
             }
         }
@@ -4657,16 +4667,10 @@ document.addEventListener('keydown', function(e) {
     }
 
     function getUnreadRows() {
-        const effectiveLastReadMessageId = getEffectiveLastReadMessageId();
-        if (!Number.isFinite(effectiveLastReadMessageId) || effectiveLastReadMessageId <= 0) {
-            return [];
-        }
-
-        return getMessageRows().filter(function(row) {
-            const id = getMessageId(row);
-            const userId = getMessageUserId(row);
-            const isOwnMessage = authUserIdForUnread > 0 && userId === authUserIdForUnread;
-            return Boolean(id && id > effectiveLastReadMessageId && !isOwnMessage);
+        return getFeedRows().filter(function(row) {
+            const authorId = Number(row.dataset.feedAuthorId || 0);
+            const isOwnContent = authUserIdForUnread > 0 && authorId === authUserIdForUnread;
+            return row.dataset.feedUnread === '1' && !isOwnContent;
         });
     }
 
@@ -4783,7 +4787,6 @@ document.addEventListener('keydown', function(e) {
 
         const badge = getOrCreateUnreadBadge();
         const unreadRows = getUnreadRows();
-        unreadCount = unreadRows.length;
 
         if (unreadCount > 0) {
             badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
@@ -4795,6 +4798,33 @@ document.addEventListener('keydown', function(e) {
         }
 
         isRenderingUnreadIndicators = false;
+    }
+
+    async function refreshUnreadCount() {
+        try {
+            const response = await fetch(unreadCountUrl, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            if (!response.ok) return;
+
+            const data = await response.json();
+            const total = Number(data?.unread?.total);
+            if (Number.isFinite(total) && total >= 0) {
+                unreadCount = total;
+                renderUnreadIndicators();
+                updateScrollButtonVisibility();
+            }
+        } catch (error) {
+            // Polling and realtime continue; retry on the next scheduled refresh.
+        }
+    }
+
+    function scheduleUnreadRefresh(delay = 120) {
+        clearTimeout(unreadRefreshTimer);
+        unreadRefreshTimer = setTimeout(refreshUnreadCount, delay);
     }
 
     function getLastMessageId() {
@@ -4857,13 +4887,23 @@ document.addEventListener('keydown', function(e) {
     });
 
     if (typeof MutationObserver !== 'undefined') {
-        const observer = new MutationObserver(function() {
+        const observer = new MutationObserver(function(mutations) {
             updateScrollButtonVisibility();
 
             clearTimeout(unreadRenderTimer);
             unreadRenderTimer = setTimeout(function() {
                 renderUnreadIndicators();
             }, 80);
+
+            const feedChanged = mutations.some(function(mutation) {
+                return Array.from(mutation.addedNodes).some(function(node) {
+                    return node instanceof HTMLElement && (
+                        node.matches?.('[data-feed-item="true"]') ||
+                        node.querySelector?.('[data-feed-item="true"]')
+                    );
+                });
+            });
+            if (feedChanged) scheduleUnreadRefresh();
         });
         observer.observe(chatBox, { childList: true, subtree: false });
     }
@@ -4872,6 +4912,13 @@ document.addEventListener('keydown', function(e) {
         renderUnreadIndicators();
         updateScrollButtonVisibility();
     });
+
+    window.addEventListener('group-feed:read-state-changed', function() {
+        scheduleUnreadRefresh(50);
+    });
+
+    setTimeout(refreshUnreadCount, 250);
+    setInterval(refreshUnreadCount, 15000);
 
     if (typeof addReactionButton === 'function') {
         document.querySelectorAll('.message-bubble').forEach(b => {

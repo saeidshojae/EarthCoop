@@ -789,11 +789,18 @@
         for (const id of Array.from(_markReadQueue)) {
             _markReadQueue.delete(id);
             try {
-                await fetch(`/messages/${id}/mark-read`, {
+                const response = await fetch(`/messages/${id}/mark-read`, {
                     method: 'POST',
                     headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
                 });
-            } catch (e) { /* ignore */ }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const messageRow = document.querySelector(`[data-feed-type="message"][data-feed-id="${id}"]`);
+                if (messageRow) messageRow.dataset.feedUnread = '0';
+                window.dispatchEvent(new CustomEvent('group-feed:read-state-changed'));
+            } catch (e) {
+                _markedReadIds.delete(String(id));
+            }
         }
         _markReadBusy = false;
         // اگر هنوز آیتم باقی مونده (در حین flush اضافه شدن)
