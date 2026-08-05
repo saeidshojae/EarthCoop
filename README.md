@@ -1,27 +1,27 @@
 <p align="center">
-  <a href="https://github.com/MoDarK-MK/NewEarthCoop" target="_blank">
-    <img src="https://img.shields.io/github/v/release/MoDarK-MK/NewEarthCoop?style=flat-square&color=4CAF50" alt="Latest Release">
+  <a href="https://github.com/saeidshojae/EarthCoop" target="_blank">
+    <img src="https://img.shields.io/github/v/release/saeidshojae/EarthCoop?style=flat-square&color=4CAF50" alt="Latest Release">
   </a>
-  <a href="https://github.com/MoDarK-MK/NewEarthCoop/blob/main/LICENSE" target="_blank">
+  <a href="https://github.com/saeidshojae/EarthCoop/blob/main/LICENSE" target="_blank">
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
   </a>
-  <a href="https://github.com/MoDarK-MK/NewEarthCoop/stargazers" target="_blank">
-    <img src="https://img.shields.io/github/stars/MoDarK-MK/NewEarthCoop?style=flat-square" alt="Stars">
+  <a href="https://github.com/saeidshojae/EarthCoop/stargazers" target="_blank">
+    <img src="https://img.shields.io/github/stars/saeidshojae/EarthCoop?style=flat-square" alt="Stars">
   </a>
-  <a href="https://github.com/MoDarK-MK/NewEarthCoop/network/members" target="_blank">
-    <img src="https://img.shields.io/github/forks/MoDarK-MK/NewEarthCoop?style=flat-square" alt="Forks">
+  <a href="https://github.com/saeidshojae/EarthCoop/network/members" target="_blank">
+    <img src="https://img.shields.io/github/forks/saeidshojae/EarthCoop?style=flat-square" alt="Forks">
   </a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/MoDarK-MK/NewEarthCoop/issues" target="_blank">
-    <img src="https://img.shields.io/github/issues/MoDarK-MK/NewEarthCoop?style=flat-square&color=ff6b6b" alt="Open Issues">
+  <a href="https://github.com/saeidshojae/EarthCoop/issues" target="_blank">
+    <img src="https://img.shields.io/github/issues/saeidshojae/EarthCoop?style=flat-square&color=ff6b6b" alt="Open Issues">
   </a>
-  <a href="https://github.com/MoDarK-MK/NewEarthCoop/pulls" target="_blank">
-    <img src="https://img.shields.io/github/issues-pr/MoDarK-MK/NewEarthCoop?style=flat-square&color=4CAF50" alt="Pull Requests">
+  <a href="https://github.com/saeidshojae/EarthCoop/pulls" target="_blank">
+    <img src="https://img.shields.io/github/issues-pr/saeidshojae/EarthCoop?style=flat-square&color=4CAF50" alt="Pull Requests">
   </a>
-  <a href="https://github.com/MoDarK-MK/NewEarthCoop/commits/main" target="_blank">
-    <img src="https://img.shields.io/github/last-commit/MoDarK-MK/NewEarthCoop?style=flat-square" alt="Last Commit">
+  <a href="https://github.com/saeidshojae/EarthCoop/commits/main" target="_blank">
+    <img src="https://img.shields.io/github/last-commit/saeidshojae/EarthCoop?style=flat-square" alt="Last Commit">
   </a>
 </p>
 
@@ -35,9 +35,9 @@
 
 ---
 
-# 🌍 NewEarthCoop - Economic & Social Cooperation Platform
+# 🌍 EarthCoop - Economic & Social Cooperation Platform
 
-**NewEarthCoop** is a comprehensive and innovative platform for economic and social cooperation at local to global levels. This platform intelligently groups users based on personal characteristics and geographic locations, providing diverse tools for solving shared problems and executing collaborative projects.
+**EarthCoop** is a comprehensive and innovative platform for economic and social cooperation at local to global levels. This platform intelligently groups users based on personal characteristics and geographic locations, providing diverse tools for solving shared problems and executing collaborative projects.
 
 ## 🎯 Key Features
 
@@ -111,7 +111,7 @@ MySQL 8.0
 ## 📦 Project Structure
 
 ```
-NewEarthCoop/
+EarthCoop/
 ├── app/
 │   ├── Http/
 │   │   ├── Controllers/
@@ -166,8 +166,8 @@ NewEarthCoop/
 1. **Clone the Repository**
 
 ```bash
-git clone https://github.com/MoDarK-MK/NewEarthCoop.git
-cd NewEarthCoop
+git clone https://github.com/saeidshojae/EarthCoop.git
+cd EarthCoop
 ```
 
 2. **Install PHP Dependencies**
@@ -249,7 +249,7 @@ AI_PROVIDER=openrouter
 AI_API_KEY=your_openrouter_key_here
 AI_MODEL=openai/gpt-4o-mini
 OPENROUTER_SITE_URL=https://your-domain.example
-OPENROUTER_APP_NAME=NewEarthCoop
+OPENROUTER_APP_NAME=EarthCoop
 ```
 
 ### NajmHoda Health Check
@@ -417,7 +417,7 @@ If you encounter a problem, please:
 
 ## 🎉 Conclusion
 
-NewEarthCoop represents a modern approach to economic and social cooperation in the digital age. We are committed to creating a fairer and more collaborative world.
+EarthCoop represents a modern approach to economic and social cooperation in the digital age. We are committed to creating a fairer and more collaborative world.
 
 ---
 
@@ -426,8 +426,5 @@ NewEarthCoop represents a modern approach to economic and social cooperation in 
 </p>
 
 <p align="center">
-  <a href="https://github.com/saeidshojae/NewEarthCoop">⭐ Star us on GitHub!</a>
+  <a href="https://github.com/saeidshojae/EarthCoop">⭐ Star us on GitHub!</a>
 </p>
-#   N e w E a r t h C o o p N e w 
- 
- 
