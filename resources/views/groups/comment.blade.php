@@ -6557,6 +6557,114 @@
 
 
 
+  /* Keep the comment composer compact and independent from global button/editor styles. */
+  .comment-form-section {
+    width: min(100%, 760px);
+    margin-inline: auto;
+  }
+
+  .comment-form-section #commentForm {
+    display: grid;
+    gap: 0.875rem;
+    min-width: 0;
+  }
+
+  .comment-form-section .comment-form__editor {
+    min-width: 0;
+    margin-bottom: 0;
+  }
+
+  .comment-form-section .comment-form__editor textarea {
+    box-sizing: border-box;
+    min-height: 140px;
+    max-height: 260px;
+    background-color: #f8fafc;
+    color: #111827;
+    border: 1.5px solid #d1d5db;
+  }
+
+  .comment-form-section .comment-form__editor #cke_message_editor {
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: hidden;
+    border: 1.5px solid #d1d5db !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+  }
+
+  .comment-form-section .comment-form__editor #cke_message_editor:focus-within {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12) !important;
+  }
+
+  .comment-form-section .comment-form__editor .cke_inner {
+    width: 100% !important;
+    background: #f8fafc !important;
+  }
+
+  .comment-form-section .comment-form__editor .cke_contents {
+    width: 100% !important;
+    height: 140px !important;
+    min-height: 140px !important;
+    max-height: 220px !important;
+    background: #f8fafc !important;
+  }
+
+  .comment-form-section .comment-form__actions {
+    justify-content: flex-start;
+    gap: 0.75rem;
+  }
+
+  .comment-form-section .comment-form__submit {
+    min-width: 148px;
+    min-height: 46px;
+    justify-content: center;
+    padding: 0.75rem 1.5rem !important;
+    background-color: #059669 !important;
+    background-image: linear-gradient(135deg, #10b981 0%, #047857 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid #047857 !important;
+    opacity: 1;
+    font-weight: 700;
+    box-shadow: 0 5px 14px rgba(5, 150, 105, 0.24) !important;
+  }
+
+  .comment-form-section .comment-form__submit i {
+    color: inherit !important;
+  }
+
+  .comment-form-section .comment-form__submit:hover:not(:disabled) {
+    background-color: #047857 !important;
+    background-image: linear-gradient(135deg, #059669 0%, #065f46 100%) !important;
+  }
+
+  .comment-form-section .comment-form__submit:focus-visible {
+    outline: 3px solid rgba(16, 185, 129, 0.28);
+    outline-offset: 3px;
+  }
+
+  .comment-form-section .comment-form__submit:disabled {
+    opacity: 0.68;
+  }
+
+  @media (max-width: 640px) {
+    .comment-form-section .comment-form__editor textarea,
+    .comment-form-section .comment-form__editor .cke_contents {
+      min-height: 130px !important;
+      height: 130px !important;
+    }
+
+    .comment-form-section .comment-form__actions,
+    .comment-form-section .comment-form__submit {
+      width: 100%;
+    }
+
+    .comment-form-section .comment-form__submit {
+      min-height: 48px;
+    }
+  }
+
   /* Global Options Menu */
 
 

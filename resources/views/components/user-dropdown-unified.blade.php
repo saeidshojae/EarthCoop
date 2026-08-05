@@ -217,18 +217,11 @@
         const roots = document.querySelectorAll('.user-dropdown-root');
         if (!roots.length) return;
 
-        function clearBodyScrollLock() {
-            document.body.style.overflowX = '';
-            document.body.style.position = '';
-            document.documentElement.style.overflowX = '';
-            document.body.classList.remove('dropdown-open');
-            document.documentElement.classList.remove('dropdown-open');
-        }
-
         roots.forEach(function(root) {
             const dropdown = root.querySelector('.chat-user-dropdown');
             const button = root.querySelector('.user-dropdown-btn');
             if (!dropdown || !button) return;
+            let positionFrame = null;
 
             function isDropdownVisible() {
                 const style = getComputedStyle(dropdown);
@@ -237,13 +230,12 @@
 
             function applyDesktopPosition() {
                 dropdown.style.position = 'absolute';
-                dropdown.style.right = '0';
-                dropdown.style.left = 'auto';
+                dropdown.style.removeProperty('left');
+                dropdown.style.setProperty('right', '0', 'important');
                 dropdown.style.top = '';
                 dropdown.style.width = '';
                 dropdown.style.maxWidth = '';
                 dropdown.style.maxHeight = '80vh';
-                clearBodyScrollLock();
             }
 
             function applyMobilePosition() {
@@ -278,18 +270,10 @@
                     dropdown.style.maxHeight = Math.min(400, viewportHeight - topPos - 8) + 'px';
                 }
 
-                document.body.style.overflowX = 'hidden';
-                document.body.style.position = 'relative';
-                document.documentElement.style.overflowX = 'hidden';
-                document.body.classList.add('dropdown-open');
-                document.documentElement.classList.add('dropdown-open');
             }
 
             function updatePosition() {
-                if (!isDropdownVisible()) {
-                    clearBodyScrollLock();
-                    return;
-                }
+                if (!isDropdownVisible()) return;
 
                 if (window.innerWidth <= 768) {
                     applyMobilePosition();
@@ -298,26 +282,28 @@
                 }
             }
 
-            const observer = new MutationObserver(function() {
-                setTimeout(updatePosition, 10);
-            });
+            function schedulePositionUpdate() {
+                if (positionFrame !== null) {
+                    cancelAnimationFrame(positionFrame);
+                }
 
-            observer.observe(dropdown, {
-                attributes: true,
-                attributeFilter: ['style', 'class']
-            });
+                positionFrame = requestAnimationFrame(function() {
+                    positionFrame = null;
+                    updatePosition();
+                });
+            }
 
             button.addEventListener('click', function() {
-                setTimeout(updatePosition, 0);
+                schedulePositionUpdate();
             });
 
             window.addEventListener('resize', function() {
-                setTimeout(updatePosition, 50);
+                if (isDropdownVisible()) schedulePositionUpdate();
             });
 
             window.addEventListener('scroll', function() {
                 if (window.innerWidth <= 768 && isDropdownVisible()) {
-                    updatePosition();
+                    schedulePositionUpdate();
                 }
             }, { passive: true });
         });

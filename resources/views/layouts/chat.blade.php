@@ -466,48 +466,6 @@
         });
 
         // =============================================================
-        // اصلاح موقعیت dropdown کاربر (RTL)
-        // =============================================================
-        function fixUserDropdownPosition() {
-            const dropdowns = document.querySelectorAll('.chat-user-dropdown');
-            dropdowns.forEach(dropdown => {
-                dropdown.style.right = '0';
-                dropdown.style.left = 'auto';
-                dropdown.style.transformOrigin = 'top right';
-                if (window.innerWidth <= 768) {
-                    dropdown.style.maxWidth = 'calc(100vw - 1rem)';
-                    dropdown.style.right = '0.5rem';
-                } else {
-                    dropdown.style.right = '0';
-                }
-            });
-        }
-
-        document.addEventListener('DOMContentLoaded', fixUserDropdownPosition);
-        window.addEventListener('resize', fixUserDropdownPosition);
-
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-                    const target = mutation.target;
-                    if (target.classList.contains('chat-user-dropdown')) {
-                        setTimeout(fixUserDropdownPosition, 10);
-                    }
-                }
-            });
-        });
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const dropdowns = document.querySelectorAll('.chat-user-dropdown');
-            dropdowns.forEach(dropdown => {
-                observer.observe(dropdown, {
-                    attributes: true,
-                    attributeFilter: ['style', 'class']
-                });
-            });
-        });
-
-        // =============================================================
         // کنترل هدر محوشونده با Intersection Observer
         // =============================================================
         document.addEventListener('DOMContentLoaded', function() {
