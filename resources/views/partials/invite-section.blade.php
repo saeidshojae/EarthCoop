@@ -27,7 +27,7 @@
 
 
 
-<section class="welcome-wide-cta relative py-20 md:py-32 bg-gradient-to-br from-earth-green to-ocean-blue text-pure-white text-center fade-in-section">
+<section class="welcome-wide-cta relative py-20 md:py-32 bg-gradient-to-br from-earth-green via-ocean-blue to-purple-700 text-pure-white text-center fade-in-section">
 
 
 
@@ -37,7 +37,7 @@
 
 
 
-    <div class="absolute inset-0 bg-black/50 z-0"></div>
+    <div class="absolute inset-0 bg-black/25 z-0"></div>
 
 
 
@@ -57,7 +57,7 @@
 
 
 
-        <h2 class="welcome-wide-cta__title text-4xl md:text-5xl lg:text-6xl font-extrabold font-vazirmatn mb-8 leading-tight animate-pulse">
+        <h2 class="welcome-wide-cta__title text-4xl md:text-5xl lg:text-6xl font-extrabold font-vazirmatn mb-8 leading-tight animate-pulse-light">
 
 
 
@@ -208,7 +208,6 @@
 
 
 </section>
-
 
 
 
