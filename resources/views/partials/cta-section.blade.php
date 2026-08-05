@@ -17,7 +17,7 @@
 
 
 
-<!-- Final Call to Action - بخش نهایی دعوت به عمل -->
+<!-- Final Call to Action -->
 
 
 
@@ -67,7 +67,7 @@
 
 
 
-            آماده‌اید بخشی از راه‌حل باشید؟
+            {{ __('langWelcome.cta_title') }}
 
 
 
@@ -97,7 +97,7 @@
 
 
 
-            امروز به EarthCoop بپیوندید و به بازیگری کلیدی در شکل‌دهی آینده‌ای پایدار و عادلانه‌تر برای همه تبدیل شوید.
+            {{ __('langWelcome.cta_text') }}
 
 
 
@@ -137,7 +137,7 @@
 
 
 
-                ماموریت ما را کشف کنید <i class="fas fa-question-circle mr-3 group-hover:text-purple-700 transition-colors duration-300"></i>
+                {{ __('langWelcome.cta_discover_mission') }} <i class="fas fa-question-circle mr-3 group-hover:text-purple-700 transition-colors duration-300"></i>
 
 
 
@@ -167,7 +167,7 @@
 
 
 
-                اکنون به EarthCoop بپیوندید <i class="fas fa-hand-holding-seedling mr-3"></i>
+                {{ __('langWelcome.cta_join_now') }} <i class="fas fa-hand-holding-seedling mr-3"></i>
 
 
 

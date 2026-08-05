@@ -117,27 +117,7 @@
 
 
 
-            <p class="text-gray-400 text-sm font-vazirmatn">
-
-
-
-
-
-
-
-
-
-                یک تعاونی جهانی که افراد را توانمند می‌سازد تا به صورت جمعی آینده‌ای پایدار را از طریق مالکیت مشترک و اصول دموکراتیک بسازند.
-
-
-
-
-
-
-
-
-
-            </p>
+            <p class="text-gray-400 text-sm font-vazirmatn">{{ __('langWelcome.footer_about_text') }}</p>
 
 
 
@@ -227,7 +207,7 @@
 
 
 
-            <h3 class="text-lg font-semibold mb-4 text-earth-green font-vazirmatn">لینک‌های سریع</h3>
+            <h3 class="text-lg font-semibold mb-4 text-earth-green font-vazirmatn">{{ __('langWelcome.footer_quick_links') }}</h3>
 
 
 
@@ -247,7 +227,7 @@
 
 
 
-                <li><a href="{{ route('welcome') }}" class="text-gray-400 hover:text-pure-white transition duration-300">خانه</a></li>
+                <li><a href="{{ route('welcome') }}" class="text-gray-400 hover:text-pure-white transition duration-300">{{ __('langWelcome.footer_home') }}</a></li>
 
 
 
@@ -257,7 +237,7 @@
 
 
 
-                <li><a href="#about" class="text-gray-400 hover:text-pure-white transition duration-300">درباره ما</a></li>
+                <li><a href="#about" class="text-gray-400 hover:text-pure-white transition duration-300">{{ __('langWelcome.footer_about') }}</a></li>
 
 
 
@@ -267,7 +247,7 @@
 
 
 
-                <li><a href="#network" class="text-gray-400 hover:text-pure-white transition duration-300">شبکه ما</a></li>
+                <li><a href="#network" class="text-gray-400 hover:text-pure-white transition duration-300">{{ __('langWelcome.footer_network') }}</a></li>
 
 
 
@@ -277,7 +257,7 @@
 
 
 
-                <li><a href="#projects" class="text-gray-400 hover:text-pure-white transition duration-300">پروژه‌ها</a></li>
+                <li><a href="#projects" class="text-gray-400 hover:text-pure-white transition duration-300">{{ __('langWelcome.footer_projects') }}</a></li>
 
 
 
@@ -287,7 +267,7 @@
 
 
 
-                <li><a href="#bahar" class="text-gray-400 hover:text-pure-white transition duration-300">اقتصاد بهار</a></li>
+                <li><a href="#bahar" class="text-gray-400 hover:text-pure-white transition duration-300">{{ __('langWelcome.footer_bahar') }}</a></li>
 
 
 
@@ -297,7 +277,7 @@
 
 
 
-                <li><a href="{{ route('pages.show', 'faq') }}" class="text-gray-400 hover:text-pure-white transition duration-300">سوالات متداول</a></li>
+                <li><a href="{{ route('pages.show', 'faq') }}" class="text-gray-400 hover:text-pure-white transition duration-300">{{ __('langWelcome.footer_faq') }}</a></li>
 
 
 
@@ -307,7 +287,7 @@
 
 
 
-                <li><a href="{{ route('pages.show', 'contact') }}" class="text-gray-400 hover:text-pure-white transition duration-300">تماس با ما</a></li>
+                <li><a href="{{ route('pages.show', 'contact') }}" class="text-gray-400 hover:text-pure-white transition duration-300">{{ __('langWelcome.footer_contact') }}</a></li>
 
 
 
@@ -357,7 +337,7 @@
 
 
 
-            <h3 class="text-lg font-semibold mb-4 text-ocean-blue font-vazirmatn">پشتیبانی</h3>
+            <h3 class="text-lg font-semibold mb-4 text-ocean-blue font-vazirmatn">{{ __('langWelcome.footer_support') }}</h3>
 
 
 
@@ -377,7 +357,7 @@
 
 
 
-                <li><a href="{{ route('pages.show', 'faq') }}" class="text-gray-400 hover:text-pure-white transition duration-300">سوالات متداول</a></li>
+                <li><a href="{{ route('pages.show', 'faq') }}" class="text-gray-400 hover:text-pure-white transition duration-300">{{ __('langWelcome.footer_faq') }}</a></li>
 
 
 
@@ -387,7 +367,7 @@
 
 
 
-                <li><a href="{{ route('terms') }}" class="text-gray-400 hover:text-pure-white transition duration-300">شرایط خدمات</a></li>
+                <li><a href="{{ route('terms') }}" class="text-gray-400 hover:text-pure-white transition duration-300">{{ __('langWelcome.footer_terms') }}</a></li>
 
 
 
@@ -397,7 +377,7 @@
 
 
 
-                <li><a href="#" class="text-gray-400 hover:text-pure-white transition duration-300">حریم خصوصی</a></li>
+                <li><a href="#" class="text-gray-400 hover:text-pure-white transition duration-300">{{ __('langWelcome.footer_privacy') }}</a></li>
 
 
 
@@ -407,7 +387,7 @@
 
 
 
-                <li><a href="{{ route('pages.show', 'contact') }}" class="text-gray-400 hover:text-pure-white transition duration-300">تماس با ما</a></li>
+                <li><a href="{{ route('pages.show', 'contact') }}" class="text-gray-400 hover:text-pure-white transition duration-300">{{ __('langWelcome.footer_contact') }}</a></li>
 
 
 
@@ -459,7 +439,7 @@
 
 
 
-            <h3 class="text-lg font-semibold mb-4 text-digital-gold font-vazirmatn">در تماس باشید</h3>
+            <h3 class="text-lg font-semibold mb-4 text-digital-gold font-vazirmatn">{{ __('langWelcome.footer_stay_connected') }}</h3>
 
 
 
@@ -469,7 +449,7 @@
 
 
 
-            <p class="text-gray-400 mb-2 font-vazirmatn"><i class="fas fa-map-marker-alt ml-2"></i> دفتر مرکزی جهانی، EarthCoop</p>
+            <p class="text-gray-400 mb-2 font-vazirmatn"><i class="fas fa-map-marker-alt ml-2"></i> {{ __('langWelcome.footer_global_office') }}</p>
 
 
 
@@ -529,7 +509,7 @@
 
 
 
-        &copy; {{ date('Y') }} EarthCoop. تمامی حقوق محفوظ است.
+        &copy; {{ date('Y') }} EarthCoop. {{ __('langWelcome.footer_rights') }}
 
 
 
