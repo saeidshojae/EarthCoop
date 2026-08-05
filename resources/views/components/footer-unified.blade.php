@@ -1,7 +1,7 @@
 {{-- Unified Footer Component - بر اساس طراحی Home --}}
 <footer class="bg-gentle-black text-white mt-auto py-8" style="background-color: var(--color-gentle-black);">
     <div class="container mx-auto px-4">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
             {{-- About Section --}}
             <div>
                 <h3 class="text-xl font-bold mb-4 text-earth-green">
@@ -72,6 +72,12 @@
                 </ul>
             </div>
 
+            {{-- Documents --}}
+            @include('components.footer-docs-links', [
+                'headingClass' => 'text-xl font-bold mb-4 text-earth-green',
+                'linkClass' => 'text-gray-300 hover:text-earth-green transition duration-300',
+                'footerDocsId' => 'footer-unified-foundational-docs',
+            ])
             {{-- Social Media --}}
             <div>
                 <h3 class="text-xl font-bold mb-4 text-earth-green">

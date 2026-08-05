@@ -14,7 +14,6 @@ if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.select2) {
 	window.jQuery = $;
 }
 
-console.log("Application initialized successfully");
 
 // PWA registration and user-visible install prompt.
 if ('serviceWorker' in navigator && window.isSecureContext) {

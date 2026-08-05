@@ -343,7 +343,6 @@ const NajmBahar = {
             });
         }, 1000);
         
-        console.log('Najm Bahar utilities initialized');
     }
 };
 

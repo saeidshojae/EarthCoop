@@ -71,7 +71,7 @@
 
 <footer class="footer-universal">
     <div class="container mx-auto px-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-8">
             {{-- ستون ۱: درباره --}}
             <div>
                 <div class="flex items-center gap-2 mb-4">
@@ -162,6 +162,12 @@
                 </ul>
             </div>
 
+            {{-- Documents --}}
+            @include('components.footer-docs-links', [
+                'headingClass' => 'text-lg font-bold mb-4 text-white',
+                'linkClass' => 'text-sm hover:text-earth-green transition',
+                'footerDocsId' => 'footer-universal-foundational-docs',
+            ])
             {{-- ستون ۴: تماس --}}
             <div>
                 <h3 class="text-lg font-bold mb-4 text-white">{{ __('footer.contact') ?? 'تماس با ما' }}</h3>

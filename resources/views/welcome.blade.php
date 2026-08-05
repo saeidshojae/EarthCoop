@@ -610,6 +610,7 @@
     @include('partials.governance-section')
     @include('partials.network-section')
     @include('partials.how-it-works-section')
+    @include('partials.docs-section')
     @include('partials.bahar-economy-section')
     @include('partials.projects-section')
     @include('partials.invite-section')
