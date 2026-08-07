@@ -12,13 +12,35 @@ Required before any merge or production autonomy change:
 
 ```bash
 composer validate --no-check-publish
-composer audit --no-dev
-php artisan test tests/Feature/NajmHoda
+composer audit --no-dev --abandoned=report
+php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda
 ```
 
-The hardening branch CI is configured to run the Najm Hoda feature suite before deployment. Deployment remains restricted to `main`.
+The hardening branch has two permanent blocking workflows:
 
-Current observation: there has not yet been a GitHub Actions run for `agent/najm-hoda-hardening`; therefore CI behavior is not yet empirically proven.
+- **Najm Hoda Hardening CI** — clean Composer install, Composer validation, blocking production advisory audit, migrations, user-import boundary tests, and the full Najm Hoda regression suite.
+- **Najm Hoda Production Readiness Gate** — clean database/environment bootstrap, two controlled GameDay dry-run cycles, evidence capture, and `najm-hoda:production-readiness --window=24 --strict`.
+
+Deployment remains restricted to `main`.
+
+### Verified CI evidence
+
+On 2026-08-07, the strict readiness gate completed successfully with:
+
+- decision: `GO`;
+- blockers: `0`;
+- warnings: `0`;
+- governance: `OK`;
+- drift: `OK`;
+- runbooks: `OK`;
+- approvals: `OK` (`pending=0`, `overdue=0`);
+- GameDay: `2/2` cycles passed, pass rate `1.0`;
+- evidence: `6` audit traces and `44` runtime events;
+- rollback plan: ready.
+
+The same branch state also passed the full hardening CI, including the Composer security advisory gate, migrations, boundary tests, and Najm Hoda regression tests.
+
+This proves the software-level release gate in a clean CI environment. It does **not** replace target-server verification.
 
 ## 2. Production readiness command
 
@@ -46,7 +68,7 @@ The command evaluates the existing `NajmHodaProductionReadinessService`, includi
 - decision/policy drift;
 - active rollback runbooks;
 - pending and overdue approvals;
-- recent Game Day cycles and pass rate;
+- recent GameDay cycles and pass rate;
 - compliance/evidence integrity and event/audit volume.
 
 ## 3. Environment checks that GitHub cannot prove
@@ -68,6 +90,8 @@ These must be verified on the actual server:
 - approval backlog is operationally monitored
 - `NAJM_HODA_PERMISSIONING_V2_ENFORCE_APPLY=true` for any environment where apply is allowed
 
+Never print secrets while collecting this evidence.
+
 ## 4. Decision policy
 
 ### GO
@@ -84,14 +108,22 @@ Any readiness blocker, failed Najm Hoda tests, unverified scheduler/queue state 
 
 ## 5. Current hardening-branch assessment
 
-Code-level posture has improved substantially, but the branch has not yet been executed by GitHub Actions and no production-server snapshot has been collected. Therefore the present evidence supports **CONDITIONAL GO for continued hardening/testing only**, not a GO for full production autonomy.
+The branch now has **verified CI-level GO**: both the hardening test/security workflow and the strict production-readiness workflow pass on a clean environment, with zero readiness blockers and zero warnings.
 
-## 6. Next evidence to collect
+This is sufficient evidence that the branch is software-release ready for the next deployment-validation stage. It is **not yet a claim of full production autonomy readiness**, because GitHub Actions cannot prove the live server's scheduler, queue workers, persistent cache, provider credentials, production configuration, or real operational evidence stream.
 
-1. Run the branch workflow and inspect test failures.
-2. Run `najm-hoda:production-readiness --window=24 --json` on the target server.
+Therefore:
+
+- **software / CI release posture: GO**;
+- **full live production autonomy: pending target-server verification**.
+
+## 6. Next evidence to collect on the target server
+
+1. Confirm production config values without exposing secrets.
+2. Run migrations/status checks and verify database connectivity.
 3. Capture `php artisan schedule:list` and verify the system cron that invokes Laravel scheduler.
 4. Verify queue worker/process manager state.
-5. Verify production config values without exposing secrets.
-6. Run at least the required Game Day cycles and preserve their evidence.
-7. Re-run readiness and compare the final decision before any autonomy expansion.
+5. Verify persistent cache/Redis and runtime event storage.
+6. Run the required controlled GameDay cycles in the approved production/staging procedure.
+7. Run `najm-hoda:production-readiness --window=24 --json` and then `--strict` on the target environment.
+8. Preserve the final evidence hash and GO/NO-GO decision before any autonomy expansion.
