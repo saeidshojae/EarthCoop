@@ -20,9 +20,9 @@ This gives us a stable regression baseline before changing dependency versions.
 
 ## Current Composer audit evidence
 
-The remediation stream has reduced the production Composer audit from **56 advisories affecting 11 packages** to **3 advisories affecting 1 package** after the Laravel 11 dependency baseline was resolved.
+The remediation stream has reduced the production Composer audit from **56 advisories affecting 11 packages** to **0 security vulnerability advisories** after resolving the Laravel 12 dependency baseline.
 
-The audit remains informational until the supported Laravel target is finalized and the remaining advisories are reviewed.
+The Laravel 12 resolver selected `laravel/framework 12.65.0`, `nunomaduro/collision 8.9.5`, and `phpunit/phpunit 11.5.56`, completed a clean install, and reported no production security advisories.
 
 ## Active remediation status
 
@@ -33,13 +33,14 @@ Completed or verified on the hardening branch:
 - PHPExcel removal and PhpSpreadsheet migration with import regression coverage;
 - Symfony and phpseclib compatible security updates;
 - Laravel 9 -> 10 upgrade with full CI green;
-- Laravel 10 -> 11 dependency resolution to `laravel/framework 11.55.0`, with Sanctum 4, Collision 8 and PHPUnit 10 aligned.
+- Laravel 10 -> 11 upgrade with full CI green;
+- Laravel 11 -> 12 dependency resolution to `laravel/framework 12.65.0`, with Collision 8.9.5 and PHPUnit 11.5.56 aligned and production Composer audit clean.
 
 No dependency lock file is hand-edited.
 
 ## Deferred compatibility cleanup — Najm Bahar PSR-4
 
-During the clean Laravel 11 install, Composer reported PSR-4 autoload warnings for three Najm Bahar API controllers because the filesystem path uses `app/Http/Controllers/API/...` while the declared namespace uses `App\\Http\\Controllers\\Api`.
+During clean framework installs, Composer reported PSR-4 autoload warnings for three Najm Bahar API controllers because the filesystem path uses `app/Http/Controllers/API/...` while the declared namespace uses `App\\Http\\Controllers\\Api`.
 
 Affected controllers:
 
@@ -47,7 +48,7 @@ Affected controllers:
 - `NajmBaharSubAccountController`
 - `NajmBaharTransactionController`
 
-Status: **deferred, non-blocking for the Laravel 11 dependency resolution, but must be corrected before production readiness is considered complete.**
+Status: **deferred, non-blocking for framework dependency resolution, but must be corrected before production readiness is considered complete.**
 
 Planned remediation:
 
@@ -79,22 +80,22 @@ Status: **remediated and full-CI verified** on the patched 2.9 line.
 
 ## Priority 1 — Laravel framework security line
 
-The dedicated framework upgrade stream has progressed from Laravel 9 to Laravel 10 with full CI green, and Laravel 11 dependencies have now resolved cleanly to `laravel/framework 11.55.0`.
+Laravel 9 -> 10 and Laravel 10 -> 11 are full-CI verified. Laravel 12 dependencies are now resolved and clean-installed at `laravel/framework 12.65.0` with a zero-advisory production Composer audit.
 
-Next gates:
+Current gate:
 
-1. run the complete hardening CI suite on the committed Laravel 11 lockfile;
+1. run the complete hardening CI suite on the committed Laravel 12 lockfile;
 2. fix any application-level compatibility regressions surfaced by migrations/import/tests;
-3. only after Laravel 11 is green, evaluate and perform the supported Laravel 12 upgrade;
-4. re-run Composer audit and make remaining unaccepted high-severity findings release-blocking.
+3. after Laravel 12 is green, enforce the Composer security release gate;
+4. complete deferred Najm Bahar PSR-4 cleanup before final production readiness.
 
 ## Priority 2 — Symfony transitive components
 
-Status: **substantially remediated** through compatible updates and the Laravel framework upgrade stream. Symfony 7 components are present in the Laravel 11 baseline.
+Status: **substantially remediated** through compatible updates and the Laravel framework upgrade stream. Symfony 7 components are present in the Laravel 12 baseline.
 
 ## Priority 2 — phpseclib
 
-Status: **remediated within the compatible 3.x line** (`3.0.56` in the Laravel 11 resolved baseline).
+Status: **remediated within the compatible 3.x line** (`3.0.56` in the Laravel 12 resolved baseline).
 
 ## Abandoned packages
 
@@ -109,16 +110,16 @@ Status: **remediated within the compatible 3.x line** (`3.0.56` in the Laravel 1
 - migrations: blocking
 - Composer audit: reporting only
 
-### Phase B — after framework upgrade verification
+### Phase B — after Laravel 12 full-CI verification
 
-Make high-severity **new/unaccepted** advisories release-blocking while maintaining an explicit, reviewed baseline for any unresolved legacy findings.
+Make Composer production security advisories release-blocking. The current Laravel 12 resolved baseline reports zero advisories, so the desired steady state is a clean audit rather than an accepted-vulnerability baseline.
 
 ### Phase C — production autonomy candidate
 
 Production release should require:
 
 - green Najm Hoda CI;
-- no unreviewed high-severity Composer advisories;
+- zero unreviewed Composer security advisories;
 - no abandoned active parser handling untrusted uploads;
 - Najm Bahar PSR-4 autoload warnings resolved;
 - `php artisan najm-hoda:production-readiness --strict` => GO;
@@ -131,8 +132,8 @@ Production release should require:
 3. PHPExcel -> PhpSpreadsheet migration. **Done.**
 4. Symfony/phpseclib compatible remediation. **Done.**
 5. Laravel 9 -> 10. **Done + full CI green.**
-6. Laravel 10 -> 11. **Dependency baseline committed; full CI verification next.**
-7. Laravel 11 -> 12 after Laravel 11 is green.
+6. Laravel 10 -> 11. **Done + full CI green.**
+7. Laravel 11 -> 12. **Dependency baseline committed at 12.65.0; full CI verification in progress.**
 8. Najm Bahar PSR-4 casing cleanup before final production readiness.
 9. Turn Composer security policy from report-only into an enforced release gate.
 
