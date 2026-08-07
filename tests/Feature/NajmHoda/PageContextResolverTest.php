@@ -30,7 +30,7 @@ class PageContextResolverTest extends TestCase
         $this->assertNull($resolved['route_name']);
         $this->assertSame('groups', $resolved['module']);
         $this->assertSame('group', $resolved['resource_type']);
-        $this->assertSame(42, $resolved['resource_id']);
+        $this->assertNull($resolved['resource_id']);
         $this->assertNull($resolved['resource']);
         $this->assertArrayNotHasKey('page_title', $resolved);
         $this->assertArrayNotHasKey('path', $resolved);
@@ -54,6 +54,7 @@ class PageContextResolverTest extends TestCase
         ]);
 
         $this->assertSame('group', $resolved['resource_type']);
+        $this->assertSame($group->id, $resolved['resource_id']);
         $this->assertSame($group->id, $resolved['resource']['id']);
         $this->assertSame('public', $resolved['resource']['viewer_relation']);
         $this->assertTrue($resolved['resource']['is_open']);
@@ -78,7 +79,7 @@ class PageContextResolverTest extends TestCase
             ],
         ]);
 
-        $this->assertSame($group->id, $resolved['resource_id']);
+        $this->assertNull($resolved['resource_id']);
         $this->assertNull($resolved['resource']);
     }
 
@@ -107,6 +108,7 @@ class PageContextResolverTest extends TestCase
             ],
         ]);
 
+        $this->assertSame($group->id, $resolved['resource_id']);
         $this->assertSame('member', $resolved['resource']['viewer_relation']);
         $this->assertSame('2', $resolved['resource']['viewer_group_role']);
         $this->assertFalse($resolved['resource']['is_open']);
@@ -131,6 +133,7 @@ class PageContextResolverTest extends TestCase
         ]);
 
         $this->assertSame('najm_bahar_project', $resolved['resource_type']);
+        $this->assertSame($project->id, $resolved['resource_id']);
         $this->assertSame($project->id, $resolved['resource']['id']);
         $this->assertSame('public', $resolved['resource']['viewer_relation']);
         $this->assertSame('public', $resolved['resource']['project_visibility']);
@@ -156,7 +159,7 @@ class PageContextResolverTest extends TestCase
             ],
         ]);
 
-        $this->assertSame($project->id, $resolved['resource_id']);
+        $this->assertNull($resolved['resource_id']);
         $this->assertNull($resolved['resource']);
     }
 
@@ -176,6 +179,7 @@ class PageContextResolverTest extends TestCase
             ],
         ]);
 
+        $this->assertSame($project->id, $resolved['resource_id']);
         $this->assertSame('owner', $resolved['resource']['viewer_relation']);
         $this->assertSame('private', $resolved['resource']['project_visibility']);
         $this->assertSame('draft', $resolved['resource']['status']);
