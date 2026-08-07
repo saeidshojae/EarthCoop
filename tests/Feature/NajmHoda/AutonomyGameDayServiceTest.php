@@ -68,11 +68,20 @@ class AutonomyGameDayServiceTest extends TestCase
         $alerting = new NajmHodaGovernanceAlertingService($bus, $metrics, $approval, app(NotificationService::class));
         $service = new NajmHodaAutonomyGameDayService($bus, $control, $goalLoop, $audit, $alerting);
 
+        $approvalKey = 'najm_hoda:autonomy:approval:requests';
+        $existingApprovals = [[
+            'id' => 'existing-approval',
+            'status' => 'approved',
+            'action' => 'existing_action',
+        ]];
+        Cache::put($approvalKey, $existingApprovals, now()->addHour());
+
         $report = $service->run([], true);
 
         $this->assertSame('pass', (string) ($report['status'] ?? 'fail'));
         $this->assertSame(4, (int) ($report['scenario_count'] ?? 0));
         $this->assertGreaterThanOrEqual(4, (int) ($report['passed_count'] ?? 0));
+        $this->assertSame($existingApprovals, Cache::get($approvalKey));
 
         $history = $service->history(10);
         $this->assertNotEmpty($history);
@@ -80,5 +89,41 @@ class AutonomyGameDayServiceTest extends TestCase
 
         $event = $bus->recent('najm_hoda.autonomy.gameday.completed', 1);
         $this->assertNotEmpty($event);
+    }
+
+    public function test_gameday_does_not_leave_synthetic_approval_state_when_none_existed(): void
+    {
+        $bus = new InMemoryRuntimeEventBus(600);
+        $control = new NajmHodaAutonomyControlService($bus);
+        $audit = new NajmHodaAutonomyAuditService($bus);
+        $registry = new NajmHodaCapabilityRegistry($bus);
+        $safety = new NajmHodaAutonomySafetyGate($bus);
+        $observability = new NajmHodaObservabilityGraphService($bus);
+        $recommendations = new NajmHodaProactiveRecommendationService($bus);
+        $executor = new NajmHodaOperatorActionExecutorV2($bus, null, $control);
+        $approval = new NajmHodaAutonomyApprovalService($bus, app(NotificationService::class));
+        $goalLoop = new NajmHodaAutonomousGoalLoopService(
+            $bus,
+            $observability,
+            $recommendations,
+            $executor,
+            $control,
+            $audit,
+            $registry,
+            $safety,
+            $approval
+        );
+
+        $metrics = new NajmHodaGovernanceMetricsAggregatorService($bus, new NajmHodaGovernanceKpiCatalogService());
+        $alerting = new NajmHodaGovernanceAlertingService($bus, $metrics, $approval, app(NotificationService::class));
+        $service = new NajmHodaAutonomyGameDayService($bus, $control, $goalLoop, $audit, $alerting);
+
+        $approvalKey = 'najm_hoda:autonomy:approval:requests';
+        Cache::forget($approvalKey);
+
+        $report = $service->run([], true);
+
+        $this->assertSame('pass', (string) ($report['status'] ?? 'fail'));
+        $this->assertFalse(Cache::has($approvalKey));
     }
 }
