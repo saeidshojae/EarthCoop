@@ -104,13 +104,15 @@ class NajmHodaExecutionService
             return $context;
         }
 
-        // Ignore any user-provided apply flag. Apply authority comes exclusively
-        // from the server-created authority object.
+        // Ignore all browser-provided identity/apply claims. Runtime authority
+        // is the single source of truth for the action actor and apply permission.
         $context['trusted_apply_request'] = $authority->allowApply;
         $context['runtime_authority_source'] = $authority->source;
 
         if ($authority->actorId !== null) {
             $context['user_id'] = $authority->actorId;
+        } else {
+            unset($context['user_id']);
         }
 
         return $context;
