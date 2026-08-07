@@ -7,14 +7,16 @@ Branch: `agent/najm-hoda-hardening`
 
 The current `composer.json` contains 21 ignored Composer security advisory IDs.
 
-Initial mapping shows:
+Current mapping:
 
 - 20 advisories are associated with the legacy `phpoffice/phpexcel` 1.8.x line.
 - 1 advisory (`PKSA-8qx3-n5y5-vvnd`) affects `laravel/framework` versions including the Laravel 9 line used by EarthCoop.
 
-The PHPExcel exposure appears to be introduced by the direct dependency `maatwebsite/excel:^1.1`. Laravel Excel 1.1 is a legacy package generation and depends on `phpoffice/phpexcel ~1.8.0`.
+The PHPExcel exposure is introduced by the direct dependency `maatwebsite/excel:^1.1`. Laravel Excel 1.1 is a legacy package generation and depends on `phpoffice/phpexcel ~1.8.0`.
 
-Repository code search did not find direct application usage of `Maatwebsite\\Excel` or `Excel::`. This makes `maatwebsite/excel:^1.1` a strong candidate for an unused legacy dependency, but this must be verified against dynamic/service-provider usage and production behavior before removal.
+A deeper repository scan corrected the initial assumption that Laravel Excel might be unused. It is actively used by the admin user-import flow in `App\Http\Controllers\Admin\UserController` via the legacy `Excel::load(...)` API.
+
+Therefore, `maatwebsite/excel:^1.1` must **not** be removed directly. The safe remediation path is a tested migration of the user import capability to a maintained implementation based on PhpSpreadsheet / a current Laravel Excel generation.
 
 ## Current Composer configuration
 
@@ -22,6 +24,7 @@ The project directly requires:
 
 - `laravel/framework:^9.19`
 - `maatwebsite/excel:^1.1`
+- `phpoffice/phpword:1.0`
 - other application dependencies
 
 Composer audit currently has `block-insecure` disabled and an explicit ignore list with 21 advisory IDs.
@@ -34,7 +37,7 @@ Composer audit currently has `block-insecure` disabled and an explicit ignore li
 
 Risk disposition: **requires framework-level review**.
 
-The advisory affects Laravel framework release lines that include Laravel 9. Because EarthCoop is still on Laravel 9, this cannot be resolved safely by deleting an ignore entry alone. The correct remediation path is to determine the exact locked Laravel version, identify whether a patched release exists within a compatible upgrade path, and test the application before changing production dependencies.
+The advisory affects Laravel framework release lines that include Laravel 9. Because EarthCoop is still on Laravel 9, this cannot be resolved safely by deleting an ignore entry alone. The correct remediation path is to determine the exact locked Laravel version, identify a patched compatible release or framework-upgrade path, and run regression tests before changing production dependencies.
 
 ### Group B — PHPExcel legacy chain
 
@@ -46,7 +49,7 @@ The following ignored advisories map to `phpoffice/phpexcel` 1.8.x:
 - `PKSA-2vt6-y6jz-crs9`
 - `PKSA-j343-tkpg-k39h`
 - `PKSA-1p4c-ysfb-v9ph`
-- `PKSA-gn6r-3fbg-vpq7`
+- `PKSA-gn6r-3fbg-rpq7`
 - `PKSA-b7bk-6mnf-vvf4`
 - `PKSA-xzzd-fyzv-1nm2`
 - `PKSA-yb2q-9cbc-scfr`
@@ -61,34 +64,79 @@ The following ignored advisories map to `phpoffice/phpexcel` 1.8.x:
 - `PKSA-xj88-cdcs-bgkr`
 - `PKSA-81dj-mb26-861s`
 
-Risk disposition: **high-priority legacy dependency cleanup candidate**.
+> Note: the repository currently lists `PKSA-gn6r-3fbg-rpq7` as `PKSA-gn6r-3fbg-rpq7`/equivalent audit identifier; preserve the actual Composer identifier when remediation is applied.
 
-`maatwebsite/excel` 1.1 belongs to the old Laravel Excel generation and pulls PHPExcel 1.8.x. Modern Laravel Excel uses PhpSpreadsheet instead.
+Risk disposition: **high-priority active legacy dependency migration**.
+
+`maatwebsite/excel` 1.1 belongs to the old Laravel Excel generation and pulls PHPExcel 1.8.x. Current Laravel Excel releases use PhpSpreadsheet instead of PHPExcel.
 
 ## Repository usage assessment
 
-Code search performed for:
+### Confirmed active use
 
-- `Maatwebsite\\Excel`
-- `Excel::`
-- PHPExcel-specific application usage
+`App\Http\Controllers\Admin\UserController` imports the facade:
 
-No direct application references were found in the repository search results.
+```php
+use Maatwebsite\Excel\Facades\Excel;
+```
 
-Interpretation:
+The admin user import action validates `xlsx`, `xls`, and `csv` uploads and then calls:
 
-- This does **not** prove the package is unused.
-- It does make removal/migration substantially more promising.
-- Before changing Composer dependencies, verify service provider configuration, aliases, queued jobs, console commands, views, exports/imports, and any runtime/dynamic class resolution.
+```php
+$data = Excel::load($file)->get();
+```
+
+This route is exposed in the admin users route group:
+
+- `GET /admin/.../users/import` -> import form
+- `POST /admin/.../users/import` -> import execution
+
+The import functionality is therefore operational application behavior, not an unused Composer artifact.
+
+### Export behavior
+
+The user export path does **not** require Laravel Excel. `exportUsers()` builds a UTF-8 CSV stream directly with PHP `fputcsv()` and returns it as a download.
+
+That means the legacy package appears to have a narrow responsibility: **reading uploaded spreadsheet/CSV files for admin user import**.
+
+This is favorable for migration because the security-sensitive legacy dependency can likely be replaced without redesigning all reporting/export code.
+
+## Migration implications
+
+The current import uses the old `Excel::load()` API. Modern Laravel Excel no longer supports this API. A current implementation must use an explicit import object or collection/array import flow.
+
+The migration must preserve at least:
+
+- accepted formats: `xlsx`, `xls`, `csv`
+- existing validation rules
+- header/column interpretation
+- duplicate-user behavior
+- row-level error collection
+- success/skip counters
+- Persian/UTF-8 handling
+- current admin-facing success/error messages
+- transaction/partial-import semantics currently implemented by the controller
 
 ## Recommended remediation order
 
-1. Confirm whether Laravel Excel is actually used by EarthCoop.
-2. If unused, remove `maatwebsite/excel:^1.1` in the hardening branch and regenerate the lock file, then run the full relevant test suite.
-3. If used, inventory all import/export entry points and migrate them to a maintained Laravel Excel 3.x-compatible implementation rather than retaining PHPExcel.
-4. Re-run `composer audit` after the PHPExcel chain is removed/migrated.
-5. Handle the Laravel framework advisory independently, using an explicit framework upgrade plan and regression tests.
-6. Only remove advisory ignore IDs after the underlying vulnerable dependency/version is actually gone or patched.
+1. Add regression coverage around the existing admin user-import behavior before changing the spreadsheet library.
+2. Extract spreadsheet parsing from `UserController` behind a small application service so controller business rules are not coupled to a specific library API.
+3. Replace the legacy `Excel::load()` parser with a maintained implementation using a current Laravel Excel generation or PhpSpreadsheet directly.
+4. Update `composer.json` and regenerate `composer.lock` in the hardening branch only.
+5. Run import regression tests for CSV/XLSX and the Najm Hoda CI suite.
+6. Run `composer audit` and confirm the PHPExcel advisory group disappears.
+7. Remove only the PHPExcel advisory ignore IDs that are no longer applicable.
+8. Handle the Laravel framework advisory independently in a separate commit/sprint.
+
+## Why direct removal is rejected
+
+Directly removing `maatwebsite/excel` would break `UserController::import()` because the controller has a hard dependency on `Maatwebsite\Excel\Facades\Excel` and the legacy `Excel::load()` method.
+
+This was discovered during the second-pass usage scan. The original audit statement suggesting likely unused status is superseded by this finding.
+
+## Tooling limitation observed during this audit
+
+The connected GitHub API can safely read and write the hardening branch, but the local execution environment used for this review currently cannot access GitHub/Packagist over the network and does not have GitHub CLI available. Therefore `composer.lock` must not be hand-edited. Dependency version changes should only be committed when Composer can regenerate the lock file deterministically (for example through an appropriate CI/manual workflow or another environment with Composer network access).
 
 ## Safety constraints for this sprint
 
@@ -96,8 +144,9 @@ Interpretation:
 - Do not change the current production `vendor` deployment decision as part of this audit.
 - Do not delete Composer advisory ignores merely to make audit output green.
 - Do not upgrade Laravel and Excel dependencies in the same commit.
+- Do not hand-edit `composer.lock` to simulate a Composer resolution.
 - Each dependency change must have its own testable commit and rollback point.
 
-## Next audit task
+## Next implementation task
 
-Verify whether `maatwebsite/excel` is truly unused by checking providers/aliases and export/import-related application code. If confirmed unused, prepare a dedicated dependency-removal commit on the hardening branch, without touching `main`.
+Create regression coverage and a parser boundary for the admin user import flow while keeping the current dependency and behavior intact. Once that seam is in place, migrate the parser implementation and Composer dependency in a separate commit.
