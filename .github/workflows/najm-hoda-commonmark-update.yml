@@ -1,0 +1,63 @@
+name: Najm Hoda CommonMark Update
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/najm-hoda-hardening
+    paths:
+      - 'docs/NAJM_HODA_COMMONMARK_UPDATE_TRIGGER.md'
+
+permissions:
+  contents: write
+
+jobs:
+  update-commonmark:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout hardening branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/najm-hoda-hardening
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo, pdo_mysql, bcmath, openssl, fileinfo, zip, curl, json
+          coverage: none
+
+      - name: Create required cache directories
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache storage/framework/sessions
+          chmod -R 775 bootstrap/cache storage/framework
+
+      - name: Inspect CommonMark dependency chain
+        run: |
+          composer why league/commonmark || true
+          composer show league/commonmark || true
+
+      - name: Resolve CommonMark security update with Composer
+        env:
+          COMPOSER_PROCESS_TIMEOUT: 0
+          COMPOSER_NO_INTERACTION: 1
+          COMPOSER_NO_AUDIT: 1
+        run: |
+          composer update league/commonmark --with-all-dependencies --no-interaction --no-progress --no-scripts
+          composer show league/commonmark
+          composer audit --no-dev || true
+
+      - name: Commit Composer-generated lockfile
+        run: |
+          if git diff --quiet -- composer.lock composer.json; then
+            echo "Composer produced no CommonMark dependency changes."
+            exit 0
+          fi
+
+          git config user.name "najm-hoda-hardening-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add composer.lock composer.json
+          git commit -m "security: update CommonMark dependency line"
+          git push origin HEAD:agent/najm-hoda-hardening
