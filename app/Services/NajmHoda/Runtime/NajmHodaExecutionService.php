@@ -2,6 +2,8 @@
 
 namespace App\Services\NajmHoda\Runtime;
 
+use App\Models\User;
+use App\Services\NajmHoda\Context\NajmHodaPageContextResolver;
 use App\Services\NajmHoda\NajmHodaInteractionBoundaryService;
 use App\Services\NajmHoda\NajmHodaOrchestrator;
 use Illuminate\Support\Str;
@@ -12,9 +14,11 @@ class NajmHodaExecutionService
     public function __construct(
         protected NajmHodaInteractionBoundaryService $interactionBoundary,
         protected NajmHodaCrossModuleCapabilityOrchestratorService $actionOrchestrator,
-        protected ?NajmHodaResourceAuthorizationService $resourceAuthorization = null
+        protected ?NajmHodaResourceAuthorizationService $resourceAuthorization = null,
+        protected ?NajmHodaPageContextResolver $pageContextResolver = null
     ) {
         $this->resourceAuthorization = $this->resourceAuthorization ?? new NajmHodaResourceAuthorizationService();
+        $this->pageContextResolver = $this->pageContextResolver ?? new NajmHodaPageContextResolver();
     }
 
     public function executeChat(NajmHodaOrchestrator $orchestrator, string $message, array $context = []): array
@@ -80,7 +84,9 @@ class NajmHodaExecutionService
 
     /**
      * Strip all browser-forgeable execution controls unless trusted server code
-     * supplies a real NajmHodaRuntimeActionAuthority object.
+     * supplies a real NajmHodaRuntimeActionAuthority object. For ordinary chat,
+     * browser context is reduced to an allow-listed page hint and then resolved
+     * server-side before it can reach the model/orchestrator.
      *
      * @param array<string, mixed> $context
      * @return array<string, mixed>
@@ -88,24 +94,33 @@ class NajmHodaExecutionService
     protected function sanitizeActionContext(array $context): array
     {
         $authority = $context['runtime_action_authority'] ?? null;
+        $browserPage = is_array($context['page'] ?? null) ? $context['page'] : [];
+        $actorId = isset($context['user_id']) && is_numeric($context['user_id'])
+            ? (int) $context['user_id']
+            : null;
+        $user = $actorId ? User::query()->find($actorId) : null;
+        $pageContext = $this->pageContextResolver->resolve($user, ['page' => $browserPage]);
 
         if (!$authority instanceof NajmHodaRuntimeActionAuthority) {
-            foreach ([
-                'requested_action',
-                'capability_action',
-                'action_input',
-                'action_priority',
-                'action_reason',
-                'goals',
-                'trusted_apply_request',
-                'runtime_action_authority',
-            ] as $key) {
-                unset($context[$key]);
+            $safe = [
+                'page_context' => $pageContext,
+                'user_id' => $actorId,
+                'user_is_admin' => (bool) ($context['user_is_admin'] ?? false),
+            ];
+
+            if (isset($context['conversation'])) {
+                $safe['conversation'] = $context['conversation'];
             }
 
-            return $context;
+            if (isset($context['force_agent']) && is_string($context['force_agent'])) {
+                $safe['force_agent'] = $context['force_agent'];
+            }
+
+            return $safe;
         }
 
+        unset($context['page']);
+        $context['page_context'] = $pageContext;
         $context['trusted_apply_request'] = $authority->allowApply;
         $context['runtime_authority_source'] = $authority->source;
 
