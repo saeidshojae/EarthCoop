@@ -10,9 +10,8 @@ use Illuminate\Support\Facades\Validator;
 
 /**
  * کنترلر API برای تبدیل مکالمات نجم‌هدا به تیکت
- * 
- * این endpoint توسط سرویس خارجی نجم‌هدا فراخوانی می‌شود
- * برای تبدیل مکالماتی که نیاز به دخالت اپراتور دارند به تیکت پشتیبانی
+ *
+ * این endpoint توسط سرویس خارجی نجم‌هدا فراخوانی می‌شود.
  */
 class NajmHodaEscalationController extends Controller
 {
@@ -23,46 +22,27 @@ class NajmHodaEscalationController extends Controller
         $this->integrationService = $integrationService;
     }
 
-    /**
-     * تبدیل مکالمه به تیکت
-     * 
-     * POST /api/najm-hoda/escalate
-     * 
-     * Headers:
-     *   X-NAJM-HODA-TOKEN: <token from .env>
-     * 
-     * Body (JSON):
-     * {
-     *   "conversation_id": "string",
-     *   "transcript": "string",
-     *   "user_email": "optional email",
-     *   "user_id": "optional integer",
-     *   "reason": "optional string",
-     *   "metadata": {}
-     * }
-     */
     public function escalate(Request $request)
     {
-        // بررسی توکن
-        $token = $request->header('X-NAJM-HODA-TOKEN');
-        $expectedToken = env('NAJM_HODA_TOKEN');
-        
-        if (!$expectedToken || $token !== $expectedToken) {
-            Log::warning('Najm Hoda escalation attempt with invalid token', [
+        $token = (string) $request->header('X-NAJM-HODA-TOKEN', '');
+        $expectedToken = (string) config('najm-hoda.integration.escalation_token', env('NAJM_HODA_TOKEN', ''));
+
+        // Fail closed. Use constant-time comparison and never log any part of a secret.
+        if ($expectedToken === '' || $token === '' || !hash_equals($expectedToken, $token)) {
+            Log::warning('Najm Hoda escalation authentication failed', [
                 'ip' => $request->ip(),
-                'provided_token' => substr($token ?? '', 0, 10) . '...',
+                'user_agent' => mb_substr((string) $request->userAgent(), 0, 200),
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized',
             ], 401);
         }
 
-        // اعتبارسنجی داده‌ها
         $validator = Validator::make($request->all(), [
             'conversation_id' => 'required|string|max:255',
-            'transcript' => 'required|string|min:10',
+            'transcript' => 'required|string|min:10|max:50000',
             'user_email' => 'nullable|email|max:255',
             'user_id' => 'nullable|integer|exists:users,id',
             'reason' => 'nullable|string|max:255',
@@ -83,8 +63,7 @@ class NajmHodaEscalationController extends Controller
         }
 
         try {
-            // تبدیل به تیکت
-            $ticket = $this->integrationService->handleEscalation($request->all());
+            $ticket = $this->integrationService->handleEscalation($validator->validated());
 
             Log::info('Najm Hoda conversation escalated to ticket', [
                 'conversation_id' => $request->conversation_id,
@@ -104,7 +83,6 @@ class NajmHodaEscalationController extends Controller
                     'created_at' => $ticket->created_at->toIso8601String(),
                 ],
             ], 201);
-
         } catch (\Exception $e) {
             Log::error('خطا در تبدیل مکالمه نجم‌هدا به تیکت', [
                 'conversation_id' => $request->conversation_id,
@@ -120,7 +98,3 @@ class NajmHodaEscalationController extends Controller
         }
     }
 }
-
-
-
-

@@ -75,10 +75,16 @@ class NajmHodaGovernanceMetricsAggregatorService
         $driftEvents = 0;
         $approvalRequested = [];
         $approvalLatencies = [];
+        $gamedayRunIds = $this->collectGameDayRunIds($events);
 
         foreach ($events as $entry) {
             $name = (string) ($entry['event'] ?? '');
             $payload = is_array($entry['payload'] ?? null) ? $entry['payload'] : [];
+            $runId = (string) ($payload['run_id'] ?? '');
+
+            if ($runId !== '' && isset($gamedayRunIds[$runId]) && str_starts_with($name, 'najm_hoda.autonomy.executor.')) {
+                continue;
+            }
 
             if ($name === 'najm_hoda.autonomy.executor.executed') {
                 $executed++;
@@ -124,8 +130,8 @@ class NajmHodaGovernanceMetricsAggregatorService
 
         $executedTotal = $executed + $failed;
         $successRate = $executedTotal > 0 ? round($executed / $executedTotal, 4) : 1.0;
-        $coverageDenominator = max(1, $executed + $failed + $skipped);
-        $coverageRate = round($executed / $coverageDenominator, 4);
+        $coverageDenominator = $executed + $failed + $skipped;
+        $coverageRate = $coverageDenominator > 0 ? round($executed / $coverageDenominator, 4) : null;
         $approvalLatency = !empty($approvalLatencies) ? round(array_sum($approvalLatencies) / count($approvalLatencies), 2) : 0.0;
         $policyDriftRate = $coverageDenominator > 0 ? round($driftEvents / $coverageDenominator, 4) : 0.0;
 
@@ -145,11 +151,34 @@ class NajmHodaGovernanceMetricsAggregatorService
                 'skipped' => $skipped,
                 'drift_events' => $driftEvents,
                 'approval_decisions' => count($approvalLatencies),
+                'excluded_gameday_runs' => count($gamedayRunIds),
             ],
         ];
     }
 
-    protected function resolveUserSatisfactionRatio(int $windowHours): float
+    /**
+     * @param array<int, array<string, mixed>> $events
+     * @return array<string, true>
+     */
+    protected function collectGameDayRunIds(array $events): array
+    {
+        $runIds = [];
+        foreach ($events as $entry) {
+            if ((string) ($entry['event'] ?? '') !== 'najm_hoda.autonomy.gameday.run_tagged') {
+                continue;
+            }
+
+            $payload = is_array($entry['payload'] ?? null) ? $entry['payload'] : [];
+            $runId = trim((string) ($payload['run_id'] ?? ''));
+            if ($runId !== '') {
+                $runIds[$runId] = true;
+            }
+        }
+
+        return $runIds;
+    }
+
+    protected function resolveUserSatisfactionRatio(int $windowHours): ?float
     {
         try {
             $since = now()->subHours($windowHours);
@@ -157,11 +186,11 @@ class NajmHodaGovernanceMetricsAggregatorService
                 ->where('created_at', '>=', $since)
                 ->avg('rating');
             if ($avgRating === null) {
-                return 0.0;
+                return null;
             }
             return round(max(0.0, min(1.0, ((float) $avgRating) / 5.0)), 4);
         } catch (\Throwable) {
-            return 0.0;
+            return null;
         }
     }
 
