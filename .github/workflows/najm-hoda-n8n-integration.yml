@@ -96,6 +96,9 @@ jobs:
             tests/Feature/NajmHoda/N8nCallbackVerifierTest.php \
             tests/Feature/NajmHoda/N8nCallbackEndpointTest.php
 
+      - name: Run n8n GameDay scenarios
+        run: vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda/N8nIntegrationGameDayTest.php
+
       - name: Run Najm Hoda regression tests
         run: vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda
 
