@@ -77,6 +77,7 @@ jobs:
           FILESYSTEM_DISK=local
           NAJM_HODA_MOCK_MODE=true
           NAJM_HODA_N8N_ENABLED=false
+          NAJM_HODA_N8N_CALLBACK_HTTP_ENABLED=false
           EOF
           php artisan key:generate --force
 
@@ -92,7 +93,8 @@ jobs:
         run: |
           vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/NajmHoda/N8nGatewayTest.php \
-            tests/Feature/NajmHoda/N8nCallbackVerifierTest.php
+            tests/Feature/NajmHoda/N8nCallbackVerifierTest.php \
+            tests/Feature/NajmHoda/N8nCallbackEndpointTest.php
 
       - name: Run Najm Hoda regression tests
         run: vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda
@@ -101,10 +103,13 @@ jobs:
         run: |
           ! grep -R "'apply' =>\|=> 'apply'" config/najm-hoda-n8n.php
           grep -F "NAJM_HODA_N8N_ENABLED', false" config/najm-hoda-n8n.php
+          grep -F "NAJM_HODA_N8N_CALLBACK_HTTP_ENABLED', false" config/najm-hoda-n8n.php
           grep -F "hash_hmac('sha256'" app/Services/NajmHoda/Integrations/N8n/N8nGateway.php
           grep -F "hash_equals" app/Services/NajmHoda/Integrations/N8n/N8nCallbackVerifier.php
           grep -F "Cache::add" app/Services/NajmHoda/Integrations/N8n/N8nCallbackVerifier.php
-          ! grep -R "N8nCallbackVerifier" routes app/Http/Controllers 2>/dev/null
+          grep -F "callback_require_persistent_cache" app/Services/NajmHoda/Integrations/N8n/N8nCallbackIngestor.php
+          grep -F "throttle:najm-hoda-n8n-callback" routes/najm-hoda-n8n.php
+          ! grep -Ei "CapabilityRegistry|ExecutionService|ActionExecutor|GoalLoop|dispatch\(" app/Services/NajmHoda/Integrations/N8n/N8nCallbackIngestor.php app/Http/Controllers/NajmHoda/N8nCallbackController.php
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
