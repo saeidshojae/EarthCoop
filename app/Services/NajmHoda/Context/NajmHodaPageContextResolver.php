@@ -5,6 +5,8 @@ namespace App\Services\NajmHoda\Context;
 use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\User;
+use App\Modules\NajmBahar\Models\Project;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 /**
@@ -44,12 +46,63 @@ class NajmHodaPageContextResolver
             return $resolved;
         }
 
+        if ($this->looksLikeProjectContext($routeName, $resourceType)) {
+            $resolved['resource_type'] = 'najm_bahar_project';
+            $resolved['resource'] = $this->resolveProject($user, $resourceId);
+            return $resolved;
+        }
+
         if ($this->looksLikeGroupContext($module, $resourceType)) {
             $resolved['resource_type'] = 'group';
             $resolved['resource'] = $this->resolveGroup($user, $resourceId);
         }
 
         return $resolved;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    protected function resolveProject(User $user, int $projectId): ?array
+    {
+        $project = Project::query()
+            ->select([
+                'id',
+                'owner_type',
+                'owner_id',
+                'project_type',
+                'project_visibility',
+                'project_stage',
+                'investment_method',
+                'status',
+                'risk_level',
+                'target_market',
+            ])
+            ->find($projectId);
+
+        if (!$project || !Gate::forUser($user)->allows('view', $project)) {
+            return null;
+        }
+
+        $viewerRelation = 'authorized';
+        if ($project->owner_type === User::class && (int) $project->owner_id === (int) $user->id) {
+            $viewerRelation = 'owner';
+        } elseif ($project->status === 'approved' && $project->project_visibility === 'public') {
+            $viewerRelation = 'public';
+        }
+
+        return [
+            'type' => 'najm_bahar_project',
+            'id' => (int) $project->id,
+            'project_type' => $this->cleanToken($project->project_type, 40),
+            'project_visibility' => $this->cleanToken($project->project_visibility, 20),
+            'project_stage' => $this->cleanToken($project->project_stage, 30),
+            'investment_method' => $this->cleanToken($project->investment_method, 40),
+            'status' => $this->cleanToken($project->status, 30),
+            'risk_level' => $this->cleanToken($project->risk_level, 20),
+            'target_market' => $this->cleanToken($project->target_market, 30),
+            'viewer_relation' => $viewerRelation,
+        ];
     }
 
     /**
@@ -93,6 +146,15 @@ class NajmHodaPageContextResolver
                 ? mb_substr((string) $membership->role, 0, 20)
                 : null,
         ];
+    }
+
+    protected function looksLikeProjectContext(?string $routeName, ?string $resourceType): bool
+    {
+        if (in_array($resourceType, ['project', 'najm_bahar_project'], true)) {
+            return true;
+        }
+
+        return is_string($routeName) && Str::startsWith($routeName, 'najm-bahar.projects.');
     }
 
     protected function looksLikeGroupContext(?string $module, ?string $resourceType): bool
