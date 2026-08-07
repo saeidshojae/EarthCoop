@@ -38,4 +38,25 @@ class GovernanceMetricsAggregatorServiceTest extends TestCase
         $this->assertSame(0.5, (float) data_get($snapshot, 'metrics.autonomy_coverage_rate'));
         $this->assertSame('breach', (string) data_get($snapshot, 'evaluation.auto_action_success_rate.status'));
     }
+
+    public function test_missing_operational_samples_are_reported_as_no_data_not_breaches(): void
+    {
+        config([
+            'cache.default' => 'array',
+            'najm-hoda.runtime.autonomy.governance.window_hours' => 24,
+            'najm-hoda.runtime.autonomy.governance.event_limit' => 500,
+        ]);
+
+        $service = new NajmHodaGovernanceMetricsAggregatorService(
+            new InMemoryRuntimeEventBus(500),
+            new NajmHodaGovernanceKpiCatalogService()
+        );
+
+        $snapshot = $service->snapshot(24);
+
+        $this->assertNull(data_get($snapshot, 'metrics.autonomy_coverage_rate'));
+        $this->assertNull(data_get($snapshot, 'metrics.user_satisfaction_score'));
+        $this->assertSame('no_data', (string) data_get($snapshot, 'evaluation.autonomy_coverage_rate.status'));
+        $this->assertSame('no_data', (string) data_get($snapshot, 'evaluation.user_satisfaction_score.status'));
+    }
 }
