@@ -71,6 +71,9 @@ class N8nGateway
         if (!in_array($mode, ['read_only', 'propose_only'], true)) {
             throw new InvalidArgumentException('n8n workflow is not allow-listed for milestone 1.');
         }
+        if (!$this->runtimeControls()->workflowEnabled($workflow)) {
+            throw new RuntimeException('n8n workflow is paused by runtime control.');
+        }
 
         $requestId = (string) Str::uuid();
         $correlationId = $correlationId ?: $requestId;
