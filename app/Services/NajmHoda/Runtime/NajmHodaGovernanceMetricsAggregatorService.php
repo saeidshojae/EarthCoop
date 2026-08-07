@@ -124,8 +124,8 @@ class NajmHodaGovernanceMetricsAggregatorService
 
         $executedTotal = $executed + $failed;
         $successRate = $executedTotal > 0 ? round($executed / $executedTotal, 4) : 1.0;
-        $coverageDenominator = max(1, $executed + $failed + $skipped);
-        $coverageRate = round($executed / $coverageDenominator, 4);
+        $coverageDenominator = $executed + $failed + $skipped;
+        $coverageRate = $coverageDenominator > 0 ? round($executed / $coverageDenominator, 4) : null;
         $approvalLatency = !empty($approvalLatencies) ? round(array_sum($approvalLatencies) / count($approvalLatencies), 2) : 0.0;
         $policyDriftRate = $coverageDenominator > 0 ? round($driftEvents / $coverageDenominator, 4) : 0.0;
 
@@ -149,7 +149,7 @@ class NajmHodaGovernanceMetricsAggregatorService
         ];
     }
 
-    protected function resolveUserSatisfactionRatio(int $windowHours): float
+    protected function resolveUserSatisfactionRatio(int $windowHours): ?float
     {
         try {
             $since = now()->subHours($windowHours);
@@ -157,11 +157,11 @@ class NajmHodaGovernanceMetricsAggregatorService
                 ->where('created_at', '>=', $since)
                 ->avg('rating');
             if ($avgRating === null) {
-                return 0.0;
+                return null;
             }
             return round(max(0.0, min(1.0, ((float) $avgRating) / 5.0)), 4);
         } catch (\Throwable) {
-            return 0.0;
+            return null;
         }
     }
 
