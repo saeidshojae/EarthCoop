@@ -53,6 +53,9 @@ jobs:
           chmod -R 775 bootstrap/cache
           chmod -R 775 storage/framework
 
+      - name: Remove tracked legacy vendor tree
+        run: rm -rf vendor
+
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
 
