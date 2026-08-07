@@ -8,6 +8,8 @@ return [
     'shared_secret' => env('NAJM_HODA_N8N_SHARED_SECRET'),
     'timeout_seconds' => (int) env('NAJM_HODA_N8N_TIMEOUT_SECONDS', 8),
     'max_payload_bytes' => (int) env('NAJM_HODA_N8N_MAX_PAYLOAD_BYTES', 32768),
+    'callback_max_clock_skew_seconds' => (int) env('NAJM_HODA_N8N_CALLBACK_MAX_SKEW_SECONDS', 300),
+    'callback_replay_ttl_seconds' => (int) env('NAJM_HODA_N8N_CALLBACK_REPLAY_TTL_SECONDS', 900),
 
     // Milestone 1 is deliberately read-only/propose-only. Apply-capable workflows
     // must not be added here until approval, permissioning and GameDay evidence exist.
