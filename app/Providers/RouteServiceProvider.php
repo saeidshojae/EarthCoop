@@ -33,6 +33,10 @@ class RouteServiceProvider extends ServiceProvider
                 ->prefix('api')
                 ->group(base_path('routes/api.php'));
 
+            Route::middleware('api')
+                ->prefix('api')
+                ->group(base_path('routes/najm-hoda-n8n.php'));
+
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
                 
@@ -58,6 +62,10 @@ class RouteServiceProvider extends ServiceProvider
 
         RateLimiter::for('najm-hoda-autonomy-write', function (Request $request) {
             return Limit::perMinute(20)->by('nh-write:' . ($request->user()?->id ?: $request->ip()));
+        });
+
+        RateLimiter::for('najm-hoda-n8n-callback', function (Request $request) {
+            return Limit::perMinute(30)->by('nh-n8n-callback:' . $request->ip());
         });
     }
 }
