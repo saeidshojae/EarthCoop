@@ -38,15 +38,10 @@
 
     
 
-    <!-- Persian Datepicker -->
 
-    <script src="{{ asset("vendor/jquery/jquery.min.js") }}"></script>
 
-    <script src="{{ asset("vendor/persian-date/persian-date.min.js") }}"></script>
 
-    <script src="https://unpkg.com/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
 
-    <link rel="stylesheet" href="https://unpkg.com/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
 
     
 

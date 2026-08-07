@@ -145,6 +145,7 @@
                             <div class="relative">
                                 <input
                                     id="start_time_visible"
+                                    data-alt="start_time"
                                     type="text"
                                     name="start_time_visible"
                                     value="{{ old('start_time_visible', $startVisible) }}"
@@ -164,6 +165,7 @@
                             <div class="relative">
                                 <input
                                     id="end_time_visible"
+                                    data-alt="end_time"
                                     type="text"
                                     name="end_time_visible"
                                     value="{{ old('end_time_visible', $endVisible) }}"
