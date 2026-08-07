@@ -115,12 +115,15 @@ class NajmHodaDelegatedPermissionService
     }
 
     /**
+     * Authorization must be derived from authoritative server-side identity data.
+     * Context may carry approval state, but it can never prove role/group membership.
+     *
      * @return array<string, mixed>
      */
     public function authorize(?int $actorId, string $action, string $scope = 'global', array $context = []): array
     {
         if (!(bool) config('najm-hoda.runtime.autonomy.permissioning_v2.enabled', true)) {
-            return ['allowed' => true, 'reason' => 'permissioning_disabled'];
+            return ['allowed' => false, 'reason' => 'permissioning_disabled_fail_closed'];
         }
 
         if ($actorId === null || $actorId <= 0) {
@@ -129,7 +132,7 @@ class NajmHodaDelegatedPermissionService
 
         $this->expireDelegations();
         $scope = trim($scope) === '' ? 'global' : trim($scope);
-        $delegations = $this->activeDelegationsFor($actorId, $action, $scope, $context);
+        $delegations = $this->activeDelegationsFor($actorId, $action, $scope);
         if (empty($delegations)) {
             $this->eventBus->emit('najm_hoda.autonomy.delegation.denied', [
                 'actor_id' => $actorId,
@@ -190,7 +193,7 @@ class NajmHodaDelegatedPermissionService
     /**
      * @return array<int, array<string, mixed>>
      */
-    protected function activeDelegationsFor(int $actorId, string $action, string $scope, array $context = []): array
+    protected function activeDelegationsFor(int $actorId, string $action, string $scope): array
     {
         $result = [];
         foreach ($this->all() as $item) {
@@ -206,7 +209,7 @@ class NajmHodaDelegatedPermissionService
                 continue;
             }
 
-            if ($this->matchesPrincipal($actorId, $item, $context)) {
+            if ($this->matchesPrincipal($actorId, $item)) {
                 $result[] = $item;
             }
         }
@@ -215,9 +218,12 @@ class NajmHodaDelegatedPermissionService
     }
 
     /**
+     * Principal matching intentionally ignores caller-provided role/group claims.
+     * Membership is verified against persisted user relations only.
+     *
      * @param array<string, mixed> $delegation
      */
-    protected function matchesPrincipal(int $actorId, array $delegation, array $context = []): bool
+    protected function matchesPrincipal(int $actorId, array $delegation): bool
     {
         $type = (string) ($delegation['principal_type'] ?? '');
         $id = (string) ($delegation['principal_id'] ?? '');
@@ -226,46 +232,30 @@ class NajmHodaDelegatedPermissionService
             return (string) $actorId === $id;
         }
 
-        if ($type === 'role') {
-            if ($this->matchesRoleContext($id, $context)) {
-                return true;
+        try {
+            $user = User::query()->find($actorId);
+            if ($user === null) {
+                return false;
             }
 
-            try {
-                $user = User::query()->find($actorId);
-                if ($user === null) {
-                    return false;
-                }
-
+            if ($type === 'role') {
                 if (is_numeric($id) && $user->roles()->where('id', (int) $id)->exists()) {
                     return true;
                 }
 
-                return $user->roles()->where('slug', $id)->exists() || $user->roles()->where('name', $id)->exists();
-            } catch (\Throwable) {
-                return false;
-            }
-        }
-
-        if ($type === 'group') {
-            if ($this->matchesGroupContext($id, $context)) {
-                return true;
+                return $user->roles()->where('slug', $id)->exists()
+                    || $user->roles()->where('name', $id)->exists();
             }
 
-            try {
-                $user = User::query()->find($actorId);
-                if ($user === null) {
-                    return false;
-                }
-
+            if ($type === 'group') {
                 if (!is_numeric($id)) {
                     return false;
                 }
 
                 return $user->groups()->where('groups.id', (int) $id)->exists();
-            } catch (\Throwable) {
-                return false;
             }
+        } catch (\Throwable) {
+            return false;
         }
 
         return false;
@@ -338,99 +328,5 @@ class NajmHodaDelegatedPermissionService
     {
         $ttl = max(60, (int) config('najm-hoda.runtime.autonomy.permissioning_v2.retention_minutes', 10080));
         Cache::put($this->delegationsKey, $data, now()->addMinutes($ttl));
-    }
-
-    /**
-     * @param array<string, mixed> $context
-     */
-    protected function matchesRoleContext(string $roleReference, array $context): bool
-    {
-        if ($roleReference === '') {
-            return false;
-        }
-
-        $normalizedRef = mb_strtolower(trim($roleReference));
-        $candidates = $this->extractContextValues($context, [
-            'role',
-            'roles',
-            'role_id',
-            'role_ids',
-            'role_slug',
-            'role_slugs',
-            'actor_roles',
-        ]);
-
-        foreach ($candidates as $candidate) {
-            if (mb_strtolower(trim($candidate)) === $normalizedRef) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * @param array<string, mixed> $context
-     */
-    protected function matchesGroupContext(string $groupReference, array $context): bool
-    {
-        if ($groupReference === '') {
-            return false;
-        }
-
-        $normalizedRef = trim($groupReference);
-        $candidates = $this->extractContextValues($context, [
-            'group_id',
-            'group_ids',
-            'target_group_id',
-            'target_group_ids',
-            'scope_group_id',
-            'scope_group_ids',
-        ]);
-
-        foreach ($candidates as $candidate) {
-            if (trim($candidate) === $normalizedRef) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * @param array<string, mixed> $context
-     * @param array<int, string> $keys
-     * @return array<int, string>
-     */
-    protected function extractContextValues(array $context, array $keys): array
-    {
-        $values = [];
-        foreach ($keys as $key) {
-            if (!array_key_exists($key, $context)) {
-                continue;
-            }
-
-            $raw = $context[$key];
-            if (is_scalar($raw) && trim((string) $raw) !== '') {
-                $values[] = (string) $raw;
-                continue;
-            }
-
-            if (!is_array($raw)) {
-                continue;
-            }
-
-            foreach ($raw as $item) {
-                if (!is_scalar($item)) {
-                    continue;
-                }
-                $item = trim((string) $item);
-                if ($item !== '') {
-                    $values[] = $item;
-                }
-            }
-        }
-
-        return array_values(array_unique($values));
     }
 }
