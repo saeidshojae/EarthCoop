@@ -36,6 +36,7 @@ jobs:
       - name: Apply Laravel 12 compatible constraints
         run: |
           composer require laravel/framework:^12.0 --no-update --no-interaction
+          composer require --dev nunomaduro/collision:^8.9.5 phpunit/phpunit:^11.5.50 --no-update --no-interaction
 
       - name: Resolve Laravel 12 dependency graph
         run: composer update --with-all-dependencies --no-interaction --prefer-dist --no-progress --no-install --no-scripts
