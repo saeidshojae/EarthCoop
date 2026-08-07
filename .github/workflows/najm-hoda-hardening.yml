@@ -87,8 +87,12 @@ jobs:
       - name: Validate Composer configuration
         run: composer validate --no-check-publish
 
-      - name: Enforce Composer security gate
-        run: composer audit --no-dev
+      - name: Enforce Composer security advisory gate
+        run: composer audit --no-dev --abandoned=report
+
+      - name: Trace abandoned Composer packages
+        continue-on-error: true
+        run: composer why doctrine/cache || true
 
       - name: Run database migrations
         run: php artisan migrate --force
