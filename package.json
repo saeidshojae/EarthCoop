@@ -20,14 +20,13 @@
     "vite": "^4.5.14"
   },
   "dependencies": {
-    "@ckeditor/ckeditor5-build-classic": "^41.4.2",
     "alpinejs": "^3.14.0",
     "ckeditor4": "^4.22.1",
     "jquery": "^3.7.1",
     "laravel-echo": "^2.3.0",
-    "persian-datepicker": "^0.5.11",
+    "persian-datepicker": "1.2.0",
     "pusher-js": "^8.4.0",
     "select2": "^4.1.0-rc.0",
-    "swiper": "^11.2.10"
+    "swiper": "14.0.7"
   }
 }
