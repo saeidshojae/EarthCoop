@@ -22,7 +22,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '20.20.2'
           cache: npm
 
       - name: Install frontend dependencies
@@ -30,6 +30,19 @@ jobs:
 
       - name: Apply non-breaking production audit fixes
         run: npm audit fix --omit=dev || true
+
+      - name: Capture safe package metadata
+        run: |
+          cp package.json /tmp/package.json.safe
+          cp package-lock.json /tmp/package-lock.json.safe
+
+      - name: Restore full dependency tree for build validation
+        run: npm install --include=dev --ignore-scripts=false
+
+      - name: Restore safe package metadata
+        run: |
+          cp /tmp/package.json.safe package.json
+          cp /tmp/package-lock.json.safe package-lock.json
 
       - name: Build production assets
         run: npm run build
@@ -44,12 +57,12 @@ jobs:
           console.log('COUNTS', JSON.stringify(counts));
           for (const [name,v] of Object.entries(data.vulnerabilities || {})) {
             if (['critical','high'].includes(v.severity)) {
-              console.log('VULN', JSON.stringify({name,severity:v.severity,direct:!!v.isDirect,fixAvailable:v.fixAvailable,via:(v.via||[]).map(x=>typeof x==='string'?x:(x.name||name)).slice(0,6)}));
+              console.log('VULN', JSON.stringify({name,severity:v.severity,direct:!!v.isDirect,fixAvailable:v.fixAvailable,via:(v.via||[]).map(x=>typeof x==='string'?x:(x.name||name)).slice(0,8)}));
             }
           }
           NODE
 
-      - name: Commit safe lockfile changes
+      - name: Commit safe package metadata
         run: |
           if git diff --quiet -- package.json package-lock.json; then
             echo 'No safe npm audit changes to commit.'
