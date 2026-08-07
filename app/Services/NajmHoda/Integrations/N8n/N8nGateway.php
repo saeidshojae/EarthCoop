@@ -68,7 +68,8 @@ class N8nGateway
     {
         $this->assertConfigured();
 
-        $mode = config("najm-hoda-n8n.allowed_workflows.{$workflow}");
+        $allowedWorkflows = config('najm-hoda-n8n.allowed_workflows', []);
+        $mode = is_array($allowedWorkflows) ? ($allowedWorkflows[$workflow] ?? null) : null;
         if (!in_array($mode, ['read_only', 'propose_only'], true)) {
             throw new InvalidArgumentException('n8n workflow is not allow-listed for milestone 1.');
         }
