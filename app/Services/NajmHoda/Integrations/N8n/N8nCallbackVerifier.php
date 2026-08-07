@@ -9,16 +9,18 @@ use RuntimeException;
 
 class N8nCallbackVerifier
 {
-    public function __construct(protected RuntimeEventBus $events)
-    {
+    public function __construct(
+        protected RuntimeEventBus $events,
+        protected N8nWorkflowContractValidator $contracts,
+    ) {
     }
 
     /**
      * Validate and normalize a signed callback from n8n.
      *
-     * This class deliberately does not expose an HTTP route and does not execute
-     * any capability. It only verifies authenticity/freshness/idempotency and
-     * records a normalized audit event.
+     * This class deliberately does not execute any capability. It only verifies
+     * authenticity/freshness/idempotency, validates the workflow result contract,
+     * and records a normalized audit event.
      *
      * @param array<string, string|null> $headers
      * @return array<string, mixed>
@@ -77,6 +79,9 @@ class N8nCallbackVerifier
             throw new InvalidArgumentException('n8n callback identifiers are incomplete.');
         }
 
+        $rawResult = is_array($decoded['result'] ?? null) ? $decoded['result'] : [];
+        $result = $this->contracts->validateResult($workflow, $status, $rawResult);
+
         $ttl = max($skew, (int) config('najm-hoda-n8n.callback_replay_ttl_seconds', 900));
         $replayKey = 'najm_hoda:n8n:callback:' . hash('sha256', $requestId . '|' . $remoteRunId . '|' . $status);
         if (!Cache::add($replayKey, true, now()->addSeconds($ttl))) {
@@ -101,7 +106,7 @@ class N8nCallbackVerifier
             'mode' => $mode,
             'status' => $status,
             'remote_run_id' => $remoteRunId,
-            'result' => is_array($decoded['result'] ?? null) ? $decoded['result'] : [],
+            'result' => $result,
         ];
 
         $this->events->emit('najm_hoda.integration.n8n.callback_verified', [
