@@ -87,8 +87,7 @@ jobs:
       - name: Validate Composer configuration
         run: composer validate --no-check-publish
 
-      - name: Report Composer security status
-        continue-on-error: true
+      - name: Enforce Composer security gate
         run: composer audit --no-dev
 
       - name: Run database migrations
