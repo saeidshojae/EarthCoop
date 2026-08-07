@@ -89,6 +89,9 @@ jobs:
       - name: Run database migrations
         run: php artisan migrate --force
 
+      - name: Compile Blade views
+        run: php artisan view:cache
+
       - name: Run n8n integration security tests
         run: |
           vendor/bin/phpunit --configuration phpunit.xml.dist \
