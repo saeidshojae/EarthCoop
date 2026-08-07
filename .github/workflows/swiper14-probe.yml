@@ -1,0 +1,56 @@
+name: Swiper 14 Migration Probe
+
+on:
+  push:
+    branches:
+      - agent/frontend-swiper14-probe
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: agent/frontend-swiper14-probe
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.20.2'
+          cache: npm
+
+      - name: Install baseline dependencies
+        run: npm ci
+
+      - name: Upgrade Swiper to 14.0.7
+        run: npm install swiper@14.0.7 --save-exact
+
+      - name: Build production assets
+        run: npm run build
+
+      - name: Audit production dependencies
+        run: |
+          npm audit --omit=dev --json > npm-audit-production.json || true
+          node - <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('npm-audit-production.json', 'utf8'));
+          const counts = data.metadata?.vulnerabilities || {};
+          console.log('COUNTS', JSON.stringify(counts));
+          const swiper = data.vulnerabilities?.swiper;
+          console.log('SWIPER_VULNERABILITY', JSON.stringify(swiper || null));
+          NODE
+
+      - name: Commit probe package metadata
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json package-lock.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'security: probe Swiper 14.0.7'
+          git push origin HEAD:agent/frontend-swiper14-probe
