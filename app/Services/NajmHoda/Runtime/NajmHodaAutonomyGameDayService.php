@@ -168,6 +168,13 @@ class NajmHodaAutonomyGameDayService
         $result = $this->goalLoopService->run(['improve_user_experience'], true, 60);
 
         $runId = (string) ($result['run_id'] ?? '');
+        if ($runId !== '') {
+            $this->eventBus->emit('najm_hoda.autonomy.gameday.run_tagged', [
+                'run_id' => $runId,
+                'scenario' => 'replay_consistency',
+            ]);
+        }
+
         $replay = $runId !== '' ? $this->auditService->replay($runId) : ['success' => false];
         $planCount = count((array) ($result['plan'] ?? []));
         $replayPlanCount = count((array) ($replay['plan'] ?? []));
