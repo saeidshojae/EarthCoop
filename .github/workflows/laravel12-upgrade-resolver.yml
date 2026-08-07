@@ -1,0 +1,59 @@
+name: Laravel 12 Upgrade Resolver
+
+on:
+  push:
+    branches:
+      - agent/najm-hoda-hardening
+    paths:
+      - 'docs/LARAVEL12_UPGRADE_TRIGGER.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/najm-hoda-hardening
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, zip, gd, pdo_mysql
+          coverage: none
+
+      - name: Prepare Laravel writable directories
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache storage/framework/sessions
+          chmod -R 775 bootstrap/cache storage/framework
+
+      - name: Remove tracked legacy vendor tree
+        run: rm -rf vendor
+
+      - name: Apply Laravel 12 compatible constraints
+        run: |
+          composer require laravel/framework:^12.0 --no-update --no-interaction
+
+      - name: Resolve Laravel 12 dependency graph
+        run: composer update --with-all-dependencies --no-interaction --prefer-dist --no-progress --no-install --no-scripts
+
+      - name: Clean-install resolved dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Audit production dependencies
+        run: composer audit --no-dev --format=summary || true
+
+      - name: Commit Composer-generated upgrade
+        run: |
+          if git diff --quiet -- composer.json composer.lock; then
+            echo 'No dependency changes produced.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add composer.json composer.lock
+          git commit -m 'upgrade: resolve Laravel 12 dependency baseline'
+          git push origin HEAD:agent/najm-hoda-hardening
