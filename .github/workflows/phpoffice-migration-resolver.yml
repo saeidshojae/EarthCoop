@@ -2,6 +2,11 @@ name: PhpSpreadsheet Migration Resolver
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - agent/najm-hoda-hardening
+    paths:
+      - docs/PHPSPREADSHEET_RESOLVER_TRIGGER.md
 
 permissions:
   contents: write
