@@ -10,7 +10,6 @@
   "require": {
     "php": "^8.0.2",
     "carbonphp/carbon-doctrine-types": "1.0",
-    "doctrine/dbal": "^3.0",
     "guzzlehttp/guzzle": "^7.2",
     "hekmatinasser/verta": "^8.5",
     "laravel/framework": "^12.0",
