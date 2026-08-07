@@ -33,14 +33,12 @@ function pageContext() {
     const pathParts = window.location.pathname.split('/').filter(Boolean);
     const numericPart = [...pathParts].reverse().find((part) => /^\d+$/.test(part));
 
+    // Keep browser-supplied context deliberately narrow. Free-form page text/title/path
+    // is not promoted into model context; resource details can later be resolved server-side.
     return {
         route_name: widget?.dataset?.routeName || body?.dataset?.routeName || null,
         module: widget?.dataset?.module || body?.dataset?.module || pathParts[0] || 'home',
-        resource_type: body?.dataset?.resourceType || null,
         resource_id: body?.dataset?.resourceId || numericPart || null,
-        page_title: document.title || null,
-        path: window.location.pathname,
-        locale: document.documentElement.lang || null,
     };
 }
 
