@@ -1,18 +1,21 @@
-name: Najm Hoda Production Readiness Probe
+name: Najm Hoda Production Readiness Gate
 
 on:
   push:
     branches:
       - agent/najm-hoda-hardening
-    paths:
-      - 'docs/NAJM_HODA_READINESS_PROBE_TRIGGER.md'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: najm-hoda-readiness-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  probe:
+  readiness:
+    name: Najm Hoda Strict Production Readiness
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -31,9 +34,11 @@ jobs:
           --health-retries=10
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: shivammathur/setup-php@v2
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
           extensions: mbstring, pdo, pdo_mysql, bcmath, openssl, fileinfo, zip, curl, json
@@ -50,7 +55,7 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
 
-      - name: Create probe environment
+      - name: Create readiness environment
         run: |
           cat > .env <<'EOF'
           APP_NAME=EarthCoop
@@ -96,5 +101,5 @@ jobs:
       - name: Capture readiness report
         run: php artisan najm-hoda:production-readiness --window=24 --json || true
 
-      - name: Exercise strict readiness gate
+      - name: Enforce strict production readiness gate
         run: php artisan najm-hoda:production-readiness --window=24 --strict
