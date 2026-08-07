@@ -21,7 +21,7 @@ class N8nGateway
     /** @return array<string, mixed> */
     public function health(): array
     {
-        $this->assertConfigured();
+        $this->assertConfigured(false);
 
         $requestId = (string) Str::uuid();
         $started = microtime(true);
@@ -64,7 +64,7 @@ class N8nGateway
      */
     public function dispatch(string $workflow, array $payload, ?string $actorId = null, ?string $correlationId = null): array
     {
-        $this->assertConfigured();
+        $this->assertConfigured(true);
 
         $allowedWorkflows = config('najm-hoda-n8n.allowed_workflows', []);
         $mode = is_array($allowedWorkflows) ? ($allowedWorkflows[$workflow] ?? null) : null;
@@ -170,13 +170,13 @@ class N8nGateway
             ]);
     }
 
-    protected function assertConfigured(): void
+    protected function assertConfigured(bool $requireOutboundEnabled): void
     {
         if (!config('najm-hoda-n8n.enabled', false)) {
             throw new RuntimeException('n8n integration is disabled.');
         }
 
-        if (!$this->runtimeControls()->outboundEnabled()) {
+        if ($requireOutboundEnabled && !$this->runtimeControls()->outboundEnabled()) {
             throw new RuntimeException('n8n outbound integration is paused by runtime control.');
         }
 
