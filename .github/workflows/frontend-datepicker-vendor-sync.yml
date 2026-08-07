@@ -1,0 +1,84 @@
+name: Frontend Datepicker Vendor Sync
+
+on:
+  push:
+    branches:
+      - agent/frontend-runtime-security
+    paths:
+      - .github/workflows/frontend-datepicker-vendor-sync.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: agent/frontend-runtime-security
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.20.2'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Promote Persian date runtime package
+        run: npm install persian-date@1.1.0 --save-exact
+
+      - name: Sync tracked runtime assets
+        run: |
+          mkdir -p public/vendor/persian-date public/vendor/persian-datepicker
+          cp node_modules/persian-date/dist/persian-date.min.js public/vendor/persian-date/persian-date.min.js
+          cp node_modules/persian-datepicker/dist/js/persian-datepicker.min.js public/vendor/persian-datepicker/persian-datepicker.min.js
+          cp node_modules/persian-datepicker/dist/css/persian-datepicker.min.css public/vendor/persian-datepicker/persian-datepicker.min.css
+
+      - name: Repair user auction datepicker bindings
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('app/Modules/Stock/Views/auction_create.blade.php')
+          s = p.read_text()
+          replacements = {
+              'id="start_time_visible"\n                                    type="text"': 'id="start_time_visible"\n                                    data-alt="start_time"\n                                    type="text"',
+              'id="end_time_visible"\n                                    type="text"': 'id="end_time_visible"\n                                    data-alt="end_time"\n                                    type="text"',
+          }
+          for old, new in replacements.items():
+              if old not in s:
+                  raise SystemExit(f'Expected datepicker input pattern not found: {old}')
+              s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+
+      - name: Validate vendored assets and bindings
+        run: |
+          cmp public/vendor/persian-date/persian-date.min.js node_modules/persian-date/dist/persian-date.min.js
+          cmp public/vendor/persian-datepicker/persian-datepicker.min.js node_modules/persian-datepicker/dist/js/persian-datepicker.min.js
+          cmp public/vendor/persian-datepicker/persian-datepicker.min.css node_modules/persian-datepicker/dist/css/persian-datepicker.min.css
+          grep -F 'data-alt="start_time"' app/Modules/Stock/Views/auction_create.blade.php
+          grep -F 'data-alt="end_time"' app/Modules/Stock/Views/auction_create.blade.php
+
+      - name: Build and audit
+        run: |
+          npm run build
+          npm audit --omit=dev --audit-level=low
+
+      - name: Commit synced runtime assets
+        run: |
+          if git diff --quiet; then
+            echo 'No changes to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json package-lock.json public/vendor/persian-date public/vendor/persian-datepicker app/Modules/Stock/Views/auction_create.blade.php
+          git commit -m 'fix: track Persian datepicker runtime assets'
+          git push origin HEAD:agent/frontend-runtime-security
