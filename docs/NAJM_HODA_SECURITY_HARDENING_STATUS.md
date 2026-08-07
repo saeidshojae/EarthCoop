@@ -93,9 +93,28 @@ This pattern should be extended to group, financial, content and admin capabilit
 - apply requests remain propose when delegation enforcement is unavailable;
 - ticket owner and ticket assignee pass resource authorization;
 - unrelated users fail ticket resource authorization;
-- resource authorization denial stops the runtime before orchestration.
+- resource authorization denial stops the runtime before orchestration;
+- GameDay restores pre-existing approval state and cannot leave synthetic overdue approvals behind;
+- GameDay executor traffic is tagged and excluded from operational governance KPIs without removing audit/evidence events;
+- governance distinguishes missing samples (`no_data`) from real KPI breaches.
 
-## Remaining security work before production autonomy
+## Verified automated security / readiness closure
+
+On 2026-08-07 the hardening branch demonstrated a clean automated software-level posture:
+
+- Composer configuration validation passes;
+- production Composer advisory audit is blocking and passes;
+- the unused Doctrine DBAL / abandoned Doctrine Cache dependency chain has been removed;
+- clean database migrations pass;
+- user-import boundary tests pass;
+- the full Najm Hoda regression suite passes;
+- two controlled GameDay cycles pass all scenarios;
+- strict production-readiness returns `GO` with `0` blockers and `0` warnings;
+- deployment is now gated by both the safety/regression/security job and the strict readiness job before FTP can start.
+
+This is CI/software-release evidence, not proof of the target server's live operational configuration.
+
+## Remaining security work before expanding production autonomy
 
 1. Add explicit authorization factories/services that are the only code allowed to mint runtime action authority.
 2. Add CSRF/session/Sanctum route review for all Najm Hoda mutation endpoints.
@@ -103,4 +122,4 @@ This pattern should be extended to group, financial, content and admin capabilit
 4. Define and test stricter authorization for any future financial, content-publish and admin capabilities before they can become executable.
 5. Upgrade external escalation authentication from static token to HMAC + timestamp/replay protection if it remains externally exposed.
 6. Add audit events for rejected forged action controls and resource authorization denials without logging sensitive payloads.
-7. Run the full Najm Hoda suite in CI against the branch and inspect failures before any merge.
+7. Verify target-server production configuration, scheduler, queue workers, persistent cache, provider credentials and runtime evidence before enabling or expanding live autonomous apply.
