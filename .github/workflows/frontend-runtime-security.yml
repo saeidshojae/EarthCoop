@@ -28,10 +28,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Reject legacy Swiper asset references
+      - name: Reject legacy frontend asset references
         run: |
           if grep -RIn --exclude-dir=node_modules --exclude-dir=vendor 'vendor/swiper/swiper-element-bundle.min.js' resources app; then
             echo 'Legacy vendored Swiper reference detected. Use the Vite-managed swiper/element/bundle entrypoint instead.'
+            exit 1
+          fi
+          if grep -RIn 'unpkg.com/persian-datepicker' resources/views app/Modules; then
+            echo 'External Persian Datepicker CDN reference detected. Use the tracked local runtime asset instead.'
+            exit 1
+          fi
+          if grep -Eq 'vendor/(jquery/jquery|min\.js|persian-date/persian-date|persian-datepicker/persian-datepicker)' resources/views/auth/register_step1.blade.php; then
+            echo 'Registration step 1 must not load unused Persian datepicker runtime assets.'
             exit 1
           fi
 
