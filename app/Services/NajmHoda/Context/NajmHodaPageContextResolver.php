@@ -12,7 +12,8 @@ use Illuminate\Support\Str;
  *
  * Browser values are never treated as authority. Resource details are resolved
  * from the database and are only returned when the authenticated viewer may
- * already see that resource.
+ * already see that resource. Free-form resource text is deliberately excluded
+ * from model context at this trust boundary.
  */
 class NajmHodaPageContextResolver
 {
@@ -57,7 +58,7 @@ class NajmHodaPageContextResolver
     protected function resolveGroup(User $user, int $groupId): ?array
     {
         $group = Group::query()
-            ->select(['id', 'name', 'group_type', 'location_level', 'is_open'])
+            ->select(['id', 'group_type', 'location_level', 'is_open'])
             ->find($groupId);
 
         if (!$group) {
@@ -82,14 +83,15 @@ class NajmHodaPageContextResolver
         return [
             'type' => 'group',
             'id' => (int) $group->id,
-            'name' => $this->cleanLabel($group->name, 160),
-            'group_type' => $this->cleanLabel($group->group_type, 80),
-            'location_level' => $this->cleanLabel($group->location_level, 80),
+            'group_type' => $this->cleanToken($group->group_type, 80),
+            'location_level' => $this->cleanToken($group->location_level, 80),
             'is_open' => (bool) $group->is_open,
             'viewer_relation' => $isAdmin
                 ? 'admin'
                 : ($membership ? 'member' : 'public'),
-            'viewer_group_role' => $membership ? (string) $membership->role : null,
+            'viewer_group_role' => $membership && is_scalar($membership->role)
+                ? mb_substr((string) $membership->role, 0, 20)
+                : null,
         ];
     }
 
@@ -118,27 +120,15 @@ class NajmHodaPageContextResolver
 
     protected function cleanToken(mixed $value, int $maxLength): ?string
     {
-        if (!is_string($value)) {
+        if (!is_scalar($value)) {
             return null;
         }
 
-        $value = trim($value);
+        $value = trim((string) $value);
         if ($value === '' || !preg_match('/^[A-Za-z0-9._:-]+$/', $value)) {
             return null;
         }
 
         return mb_substr($value, 0, $maxLength);
-    }
-
-    protected function cleanLabel(mixed $value, int $maxLength): ?string
-    {
-        if (!is_scalar($value)) {
-            return null;
-        }
-
-        $value = preg_replace('/[\x00-\x1F\x7F]/u', ' ', (string) $value) ?? '';
-        $value = trim(preg_replace('/\s+/u', ' ', $value) ?? '');
-
-        return $value === '' ? null : mb_substr($value, 0, $maxLength);
     }
 }
