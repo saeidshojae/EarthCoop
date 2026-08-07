@@ -92,7 +92,7 @@ jobs:
         run: php artisan migrate --force
 
       - name: Run user import boundary tests
-        run: vendor/bin/phpunit --configuration phpunit.xml.dist tests/Unit/UserImport
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Unit/UserImport
 
       - name: Run Najm Hoda regression tests
-        run: vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda
