@@ -1,0 +1,64 @@
+name: Frontend Runtime Remediation Combined Probe
+
+on:
+  push:
+    branches:
+      - agent/frontend-runtime-remediation-combined
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: agent/frontend-runtime-remediation-combined
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.20.2'
+          cache: npm
+
+      - name: Install baseline dependencies
+        run: npm ci
+
+      - name: Apply tested runtime remediations
+        run: |
+          npm install persian-datepicker@1.2.0 --save-exact
+          npm uninstall @ckeditor/ckeditor5-build-classic
+          npm install swiper@14.0.7 --save-exact
+
+      - name: Build production assets
+        run: npm run build
+
+      - name: Audit production dependencies
+        run: |
+          npm audit --omit=dev --json > npm-audit-production.json || true
+          node - <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('npm-audit-production.json', 'utf8'));
+          const counts = data.metadata?.vulnerabilities || {};
+          console.log('COUNTS', JSON.stringify(counts));
+          for (const [name,v] of Object.entries(data.vulnerabilities || {})) {
+            if (['critical','high'].includes(v.severity)) {
+              console.log('VULN', JSON.stringify({name,severity:v.severity,direct:!!v.isDirect,fixAvailable:v.fixAvailable,via:(v.via||[]).map(x=>typeof x==='string'?x:(x.name||name)).slice(0,8)}));
+            }
+          }
+          if ((counts.critical || 0) > 0 || (counts.high || 0) > 0) process.exitCode = 1;
+          NODE
+
+      - name: Commit combined package metadata
+        if: success()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json package-lock.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'security: combine frontend runtime dependency remediations'
+          git push origin HEAD:agent/frontend-runtime-remediation-combined
