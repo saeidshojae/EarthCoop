@@ -28,6 +28,6 @@
     "persian-datepicker": "^0.5.11",
     "pusher-js": "^8.4.0",
     "select2": "^4.1.0-rc.0",
-    "swiper": "^11.2.10"
+    "swiper": "14.0.7"
   }
 }
