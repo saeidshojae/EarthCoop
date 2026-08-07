@@ -65,7 +65,7 @@ jobs:
           DB_DATABASE=newearthcoop
           DB_USERNAME=root
           DB_PASSWORD=
-          CACHE_DRIVER=array
+          CACHE_DRIVER=file
           SESSION_DRIVER=array
           QUEUE_CONNECTION=sync
           MAIL_MAILER=array
@@ -76,12 +76,22 @@ jobs:
           NAJM_HODA_RUNTIME_EVENT_BUS_DRIVER=database
           EOF
           php artisan key:generate --force
+          php artisan cache:clear
 
       - name: Run migrations
         run: php artisan migrate --force
 
       - name: Verify readiness command is registered
         run: php artisan list | grep -F 'najm-hoda:production-readiness'
+
+      - name: Run controlled GameDay cycle one
+        run: php artisan najm-hoda:gameday --dry-run
+
+      - name: Run controlled GameDay cycle two
+        run: php artisan najm-hoda:gameday --dry-run
+
+      - name: Show GameDay evidence
+        run: php artisan najm-hoda:gameday --history=5
 
       - name: Capture readiness report
         run: php artisan najm-hoda:production-readiness --window=24 --json || true
