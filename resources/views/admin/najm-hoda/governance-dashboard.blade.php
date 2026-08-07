@@ -1,176 +1,125 @@
 @extends('layouts.admin')
 
-@section('title', 'Governance Dashboard - ' . config('app.name', 'EarthCoop'))
-@section('page-title', 'Najm Hoda Governance Dashboard')
-@section('page-description', 'Governance KPIs, autonomy controls, and oversight explainability')
+@section('title', 'حکمرانی خودمختار نجم هُدی - ' . config('app.name', 'EarthCoop'))
+@section('page-title', 'حکمرانی خودمختار نجم هُدی')
+@section('page-description', 'نظارت، کنترل، ارزیابی و مدیریت ایمن عملکرد خودمختار نجم هُدی')
 
 @section('content')
-<div class="space-y-6" style="direction: rtl;">
-    <div class="flex items-center justify-between">
-        <h2 class="text-2xl font-bold text-gray-800">Najm Hoda Governance Dashboard</h2>
+<div class="space-y-6" dir="rtl">
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
+        <div class="font-bold mb-1"><i class="fas fa-info-circle ml-1"></i> راهنمای این صفحه</div>
+        <p class="mb-0">این صفحه برای مشاهده و کنترل سطح خودمختاری نجم هُدی است. اگر درباره یک کنترل مطمئن نیستید، ابتدا فقط «تازه‌سازی وضعیت» را بزنید. کنترل توقف اضطراری و تغییر مرحله انتشار فقط هنگام رخداد عملیاتی یا پس از بررسی وضعیت استفاده شوند.</p>
+    </div>
+
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800">داشبورد حکمرانی و نظارت</h2>
+            <p class="text-sm text-gray-500 mt-1">نمای فارسیِ وضعیت، تأییدها، کنترل‌های اضطراری و مراحل فعال‌سازی خودمختاری</p>
+        </div>
         <div class="flex items-center gap-2">
+            <label for="windowHours" class="text-sm text-gray-600">بازه بررسی:</label>
             <select id="windowHours" class="border rounded px-2 py-1">
-                <option value="1">1h</option>
-                <option value="6">6h</option>
-                <option value="24" selected>24h</option>
-                <option value="72">72h</option>
+                <option value="1">۱ ساعت</option>
+                <option value="6">۶ ساعت</option>
+                <option value="24" selected>۲۴ ساعت</option>
+                <option value="72">۷۲ ساعت</option>
             </select>
-            <button id="governanceRefresh" class="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700">Refresh</button>
+            <button id="governanceRefresh" class="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700">تازه‌سازی وضعیت</button>
         </div>
     </div>
 
-    <div id="governanceSummary" class="grid grid-cols-1 md:grid-cols-4 gap-4"></div>
+    <div id="pageStatus" class="hidden text-sm px-3 py-2 rounded"></div>
+    <div id="governanceSummary" class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4"></div>
 
     <div class="bg-white border rounded-lg p-4">
-        <h3 class="font-semibold mb-3">KPI / SLO Status</h3>
+        <div class="flex items-center justify-between mb-3">
+            <div>
+                <h3 class="font-semibold">شاخص‌های سلامت و اهداف خدمت</h3>
+                <p class="text-xs text-gray-500 mt-1">KPI و SLO معیارهای فنی هستند؛ وضعیت «مناسب» یعنی در محدوده هدف و «نقض» یعنی نیازمند بررسی.</p>
+            </div>
+        </div>
         <div class="overflow-auto">
             <table class="min-w-full text-sm">
-                <thead>
-                    <tr class="bg-gray-100 text-right">
-                        <th class="p-2">Metric</th>
-                        <th class="p-2">Value</th>
-                        <th class="p-2">Target</th>
-                        <th class="p-2">Status</th>
-                    </tr>
-                </thead>
+                <thead><tr class="bg-gray-100 text-right"><th class="p-2">شاخص</th><th class="p-2">مقدار</th><th class="p-2">هدف</th><th class="p-2">وضعیت</th></tr></thead>
                 <tbody id="governanceTableBody"></tbody>
             </table>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div class="bg-white border rounded-lg p-4 lg:col-span-2">
-            <div class="flex items-center justify-between mb-3">
-                <h3 class="font-semibold">Autonomy Oversight Console</h3>
-                <div class="flex items-center gap-2">
-                    <button id="evaluationRun" class="px-3 py-1.5 bg-purple-700 text-white rounded hover:bg-purple-800">Run Nightly Eval</button>
-                    <button id="oversightRefresh" class="px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700">Refresh Oversight</button>
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div class="bg-white border rounded-lg p-4 xl:col-span-2">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div>
+                    <h3 class="font-semibold">درخواست‌های نیازمند تأیید انسانی</h3>
+                    <p class="text-xs text-gray-500 mt-1">عملیات حساس قبل از اجرا در این فهرست منتظر تصمیم مدیر می‌مانند.</p>
+                </div>
+                <div class="flex gap-2">
+                    <button id="evaluationRun" class="px-3 py-1.5 bg-purple-700 text-white rounded hover:bg-purple-800">ارزیابی آزمایشی</button>
+                    <button id="oversightRefresh" class="px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700">تازه‌سازی نظارت</button>
                 </div>
             </div>
-            <div id="oversightStatus" class="hidden mb-3 text-sm px-3 py-2 rounded"></div>
-            <div id="oversightSummary" class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4"></div>
+            <div id="oversightSummary" class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-4"></div>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
-                <input id="approvalSearch" type="text" class="border rounded px-2 py-1" placeholder="Search action / id">
+                <input id="approvalSearch" type="text" class="border rounded px-2 py-1" placeholder="جستجو در عملیات یا شناسه">
                 <select id="approvalRiskFilter" class="border rounded px-2 py-1">
-                    <option value="">All risk levels</option>
-                    <option value="low">low</option>
-                    <option value="medium">medium</option>
-                    <option value="high">high</option>
-                    <option value="critical">critical</option>
-                    <option value="unknown">unknown</option>
+                    <option value="">همه سطح‌های ریسک</option><option value="low">کم</option><option value="medium">متوسط</option><option value="high">زیاد</option><option value="critical">بحرانی</option><option value="unknown">نامشخص</option>
                 </select>
                 <select id="approvalSlaFilter" class="border rounded px-2 py-1">
-                    <option value="">All SLA states</option>
-                    <option value="within_sla">within_sla</option>
-                    <option value="overdue">overdue</option>
+                    <option value="">همه وضعیت‌های زمان پاسخ</option><option value="within_sla">در مهلت</option><option value="overdue">از مهلت گذشته</option>
                 </select>
-                <select id="approvalPageSize" class="border rounded px-2 py-1">
-                    <option value="5">5 / page</option>
-                    <option value="10" selected>10 / page</option>
-                    <option value="20">20 / page</option>
-                    <option value="50">50 / page</option>
-                </select>
+                <select id="approvalPageSize" class="border rounded px-2 py-1"><option value="5">۵ مورد</option><option value="10" selected>۱۰ مورد</option><option value="20">۲۰ مورد</option><option value="50">۵۰ مورد</option></select>
             </div>
             <div class="overflow-auto">
                 <table class="min-w-full text-sm">
-                    <thead>
-                        <tr class="bg-gray-100 text-right">
-                            <th class="p-2">Approval ID</th>
-                            <th class="p-2">Action</th>
-                            <th class="p-2">Risk</th>
-                            <th class="p-2">SLA</th>
-                            <th class="p-2">Actions</th>
-                        </tr>
-                    </thead>
+                    <thead><tr class="bg-gray-100 text-right"><th class="p-2">شناسه</th><th class="p-2">عملیات</th><th class="p-2">ریسک</th><th class="p-2">مهلت</th><th class="p-2">تصمیم مدیر</th></tr></thead>
                     <tbody id="approvalTableBody"></tbody>
                 </table>
             </div>
-            <div class="flex items-center justify-between mt-3">
-                <div id="approvalPaginationMeta" class="text-xs text-gray-500">-</div>
-                <div class="flex items-center gap-2">
-                    <button id="approvalPrevPage" class="px-2 py-1 border rounded text-sm">Prev</button>
-                    <span id="approvalPageIndicator" class="text-sm text-gray-700">1 / 1</span>
-                    <button id="approvalNextPage" class="px-2 py-1 border rounded text-sm">Next</button>
-                </div>
-            </div>
+            <div class="flex items-center justify-between mt-3"><div id="approvalPaginationMeta" class="text-xs text-gray-500">-</div><div class="flex items-center gap-2"><button id="approvalPrevPage" class="px-2 py-1 border rounded text-sm">قبلی</button><span id="approvalPageIndicator" class="text-sm">۱ / ۱</span><button id="approvalNextPage" class="px-2 py-1 border rounded text-sm">بعدی</button></div></div>
         </div>
 
         <div class="bg-white border rounded-lg p-4">
-            <h3 class="font-semibold mb-3">Override Controls</h3>
-            <div id="controlStateBox" class="text-sm text-gray-700 space-y-2 mb-4"></div>
-            <div class="grid grid-cols-1 gap-2">
-                <button data-control-action="pause" class="control-action px-3 py-2 bg-amber-600 text-white rounded hover:bg-amber-700">Pause 30m</button>
-                <button data-control-action="resume" class="control-action px-3 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700">Resume</button>
-                <button data-control-action="activate_kill_switch" class="control-action px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700">Activate Kill Switch (15m)</button>
-                <button data-control-action="deactivate_kill_switch" class="control-action px-3 py-2 bg-green-700 text-white rounded hover:bg-green-800">Deactivate Kill Switch</button>
-                <button data-control-action="set_override" class="control-action px-3 py-2 bg-slate-700 text-white rounded hover:bg-slate-800">Force Propose Mode</button>
-                <button data-control-action="clear_override" class="control-action px-3 py-2 bg-gray-700 text-white rounded hover:bg-gray-800">Clear Override</button>
-            </div>
-            <h4 class="font-medium mt-4 mb-2 text-sm">CodeOps Canary</h4>
-            <div class="grid grid-cols-1 gap-2">
-                <button data-codeops-action="start" class="codeops-action px-3 py-2 bg-blue-700 text-white rounded hover:bg-blue-800">Start Canary</button>
-                <button data-codeops-action="promote" class="codeops-action px-3 py-2 bg-indigo-700 text-white rounded hover:bg-indigo-800">Promote Canary</button>
-                <button data-codeops-action="evaluate" class="codeops-action px-3 py-2 bg-cyan-700 text-white rounded hover:bg-cyan-800">Evaluate Canary</button>
-                <button data-codeops-action="rollback" class="codeops-action px-3 py-2 bg-rose-700 text-white rounded hover:bg-rose-800">Rollback Canary</button>
-            </div>
-            <h4 class="font-medium mt-4 mb-2 text-sm">24/7 Operations</h4>
-            <div class="grid grid-cols-1 gap-2">
-                <button data-ops-action="activate" class="ops-action px-3 py-2 bg-emerald-700 text-white rounded hover:bg-emerald-800">Activate Night Shift</button>
-                <button data-ops-action="tick" class="ops-action px-3 py-2 bg-sky-700 text-white rounded hover:bg-sky-800">Run Shift Tick</button>
-                <button data-ops-action="deactivate" class="ops-action px-3 py-2 bg-gray-700 text-white rounded hover:bg-gray-800">Deactivate 24/7</button>
-            </div>
-            <h4 class="font-medium mt-4 mb-2 text-sm">Shadow Rollout</h4>
-            <div class="grid grid-cols-1 gap-2">
-                <button data-rollout-action="evaluate" class="rollout-action px-3 py-2 bg-teal-700 text-white rounded hover:bg-teal-800">Evaluate Stage</button>
-                <button data-rollout-action="advance" class="rollout-action px-3 py-2 bg-emerald-800 text-white rounded hover:bg-emerald-900">Advance Stage</button>
-                <button data-rollout-action="fallback" class="rollout-action px-3 py-2 bg-amber-700 text-white rounded hover:bg-amber-800">Fallback to Shadow</button>
-            </div>
-            <h4 class="font-medium mt-4 mb-2 text-sm">Phase-6 Signoff</h4>
-            <div class="grid grid-cols-1 gap-2">
-                <select id="signoffDecision" class="border rounded px-2 py-2 text-sm">
-                    <option value="conditional_go">conditional_go</option>
-                    <option value="go">go</option>
-                    <option value="no_go">no_go</option>
-                </select>
-                <input id="signoffNote" type="text" class="border rounded px-2 py-2 text-sm" placeholder="Signoff note">
-                <button data-signoff-action="report" class="signoff-action px-3 py-2 bg-slate-700 text-white rounded hover:bg-slate-800">Generate Go/No-Go</button>
-                <button data-signoff-action="sign" class="signoff-action px-3 py-2 bg-green-800 text-white rounded hover:bg-green-900">Record Signoff</button>
+            <h3 class="font-semibold mb-1">کنترل‌های ایمنی و خودمختاری</h3>
+            <p class="text-xs text-gray-500 mb-3">این کنترل‌ها مستقیماً رفتار اجرایی نجم هُدی را محدود می‌کنند.</p>
+            <div id="controlStateBox" class="text-sm text-gray-700 space-y-2 mb-4 bg-gray-50 border rounded p-3"></div>
+
+            <div class="space-y-4">
+                <div><h4 class="font-medium text-sm mb-1">توقف و حالت اضطراری</h4><p class="text-xs text-gray-500 mb-2">برای توقف موقت خودمختاری یا قطع فوری عملیات پرریسک.</p><div class="grid gap-2">
+                    <button data-control-action="pause" class="control-action px-3 py-2 bg-amber-600 text-white rounded">توقف خودمختاری برای ۳۰ دقیقه</button>
+                    <button data-control-action="resume" class="control-action px-3 py-2 bg-emerald-600 text-white rounded">ازسرگیری خودمختاری</button>
+                    <button data-control-action="activate_kill_switch" class="control-action px-3 py-2 bg-red-700 text-white rounded">فعال‌کردن توقف اضطراری برای ۱۵ دقیقه</button>
+                    <button data-control-action="deactivate_kill_switch" class="control-action px-3 py-2 bg-green-700 text-white rounded">غیرفعال‌کردن توقف اضطراری</button>
+                </div></div>
+
+                <div><h4 class="font-medium text-sm mb-1">محدودکردن به حالت پیشنهاد</h4><p class="text-xs text-gray-500 mb-2">در این حالت نجم هُدی پیشنهاد می‌دهد اما اقدام خودکار انجام نمی‌دهد.</p><div class="grid gap-2">
+                    <button data-control-action="set_override" class="control-action px-3 py-2 bg-slate-700 text-white rounded">اجبار به حالت «فقط پیشنهاد»</button>
+                    <button data-control-action="clear_override" class="control-action px-3 py-2 bg-gray-700 text-white rounded">حذف محدودیت موقت</button>
+                </div></div>
+
+                <div><h4 class="font-medium text-sm mb-1">آزمایش امن تغییرات کد</h4><p class="text-xs text-gray-500 mb-2">Canary یعنی تغییرات ابتدا روی درصد کمی اجرا و سپس مرحله‌ای گسترش داده می‌شوند.</p><div class="grid gap-2">
+                    <button data-codeops-action="start" class="codeops-action px-3 py-2 bg-blue-700 text-white rounded">شروع آزمایش مرحله‌ای</button><button data-codeops-action="promote" class="codeops-action px-3 py-2 bg-indigo-700 text-white rounded">گسترش به مرحله بعد</button><button data-codeops-action="evaluate" class="codeops-action px-3 py-2 bg-cyan-700 text-white rounded">ارزیابی مرحله فعلی</button><button data-codeops-action="rollback" class="codeops-action px-3 py-2 bg-rose-700 text-white rounded">بازگشت تغییرات آزمایشی</button>
+                </div></div>
+
+                <div><h4 class="font-medium text-sm mb-1">عملیات شبانه‌روزی</h4><p class="text-xs text-gray-500 mb-2">فعال‌سازی خودمختاری عملیاتی در بازه‌های کنترل‌شده.</p><div class="grid gap-2">
+                    <button data-ops-action="activate" class="ops-action px-3 py-2 bg-emerald-700 text-white rounded">فعال‌کردن شیفت شب</button><button data-ops-action="tick" class="ops-action px-3 py-2 bg-sky-700 text-white rounded">اجرای یک چرخه عملیاتی دستی</button><button data-ops-action="deactivate" class="ops-action px-3 py-2 bg-gray-700 text-white rounded">غیرفعال‌کردن عملیات ۲۴/۷</button>
+                </div></div>
+
+                <div><h4 class="font-medium text-sm mb-1">انتشار تدریجی خودمختاری</h4><p class="text-xs text-gray-500 mb-2">Shadow ابتدا فقط تصمیم‌ها را مشاهده می‌کند؛ مراحل بعدی به‌تدریج اختیار واقعی می‌دهند.</p><div class="grid gap-2">
+                    <button data-rollout-action="evaluate" class="rollout-action px-3 py-2 bg-teal-700 text-white rounded">ارزیابی مرحله فعلی</button><button data-rollout-action="advance" class="rollout-action px-3 py-2 bg-emerald-800 text-white rounded">رفتن به مرحله بعد</button><button data-rollout-action="fallback" class="rollout-action px-3 py-2 bg-amber-700 text-white rounded">بازگشت به حالت سایه</button>
+                </div></div>
+
+                <div><h4 class="font-medium text-sm mb-1">تأیید نهایی مرحله ششم</h4><p class="text-xs text-gray-500 mb-2">Go یعنی آماده، Conditional Go یعنی آماده با شرط، و No-Go یعنی فعلاً متوقف.</p><div class="grid gap-2">
+                    <select id="signoffDecision" class="border rounded px-2 py-2 text-sm"><option value="conditional_go">آماده با شرط</option><option value="go">آماده برای ادامه</option><option value="no_go">فعلاً متوقف شود</option></select>
+                    <input id="signoffNote" type="text" class="border rounded px-2 py-2 text-sm" placeholder="یادداشت تصمیم مدیر">
+                    <button data-signoff-action="report" class="signoff-action px-3 py-2 bg-slate-700 text-white rounded">ساخت گزارش آمادگی</button><button data-signoff-action="sign" class="signoff-action px-3 py-2 bg-green-800 text-white rounded">ثبت تصمیم نهایی</button>
+                </div></div>
             </div>
         </div>
     </div>
 
-    <div class="bg-white border rounded-lg p-4">
-        <h3 class="font-semibold mb-3">Explainability Recommendations</h3>
-        <div id="oversightRecommendations" class="space-y-2 text-sm"></div>
-    </div>
-
-    <div class="bg-white border rounded-lg p-4">
-        <h3 class="font-semibold mb-3">Delegation Explainability</h3>
-        <div id="delegationSummary" class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4"></div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div>
-                <h4 class="text-sm font-medium mb-2">Recent Active Delegations</h4>
-                <div class="overflow-auto">
-                    <table class="min-w-full text-xs">
-                        <thead>
-                            <tr class="bg-gray-100 text-right">
-                                <th class="p-2">Principal</th>
-                                <th class="p-2">Action</th>
-                                <th class="p-2">Scope</th>
-                                <th class="p-2">Expiry</th>
-                            </tr>
-                        </thead>
-                        <tbody id="delegationActiveTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-            <div>
-                <h4 class="text-sm font-medium mb-2">Delegation Denied Reasons</h4>
-                <div id="delegationDeniedReasons" class="space-y-2 text-sm mb-3"></div>
-                <h4 class="text-sm font-medium mb-2">Recent Denied Events</h4>
-                <div id="delegationDeniedEvents" class="space-y-2 text-xs"></div>
-            </div>
-        </div>
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div class="bg-white border rounded-lg p-4"><h3 class="font-semibold mb-3">پیشنهادهای نظارتی</h3><div id="oversightRecommendations" class="space-y-2 text-sm"></div></div>
+        <div class="bg-white border rounded-lg p-4"><h3 class="font-semibold mb-3">تفویض اختیار</h3><p class="text-xs text-gray-500 mb-3">نمایش اختیارهای فعال و مواردی که به دلیل سیاست‌های ایمنی رد شده‌اند.</p><div id="delegationSummary" class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4"></div><div class="overflow-auto"><table class="min-w-full text-xs"><thead><tr class="bg-gray-100 text-right"><th class="p-2">واگذارکننده</th><th class="p-2">عملیات</th><th class="p-2">دامنه</th><th class="p-2">انقضا</th></tr></thead><tbody id="delegationActiveTableBody"></tbody></table></div><div class="mt-4"><h4 class="text-sm font-medium mb-2">دلایل رد تفویض</h4><div id="delegationDeniedReasons" class="space-y-2 text-sm"></div></div></div>
     </div>
 </div>
 @endsection
@@ -178,789 +127,88 @@
 @push('scripts')
 <script>
 (() => {
-    const summaryEl = document.getElementById('governanceSummary');
-    const tableBody = document.getElementById('governanceTableBody');
-    const refreshBtn = document.getElementById('governanceRefresh');
-    const windowEl = document.getElementById('windowHours');
+    const $ = (id) => document.getElementById(id);
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const urls = {
+        baseline: @json(route('admin.najm-hoda.autonomy.governance.baseline')),
+        snapshot: @json(route('admin.najm-hoda.autonomy.governance.snapshot')),
+        costs: @json(route('admin.najm-hoda.autonomy.costs.status')),
+        oversight: @json(route('admin.najm-hoda.autonomy.oversight.console')),
+        controls: @json(route('admin.najm-hoda.autonomy.controls')),
+        controlsUpdate: @json(route('admin.najm-hoda.autonomy.controls.update')),
+        codeopsUpdate: @json(route('admin.najm-hoda.autonomy.codeops.canary.update')),
+        evaluationRun: @json(route('admin.najm-hoda.autonomy.evaluation.run')),
+        operationsUpdate: @json(route('admin.najm-hoda.autonomy.operations.update')),
+        rolloutUpdate: @json(route('admin.najm-hoda.autonomy.shadow-rollout.update')),
+        signoffReport: @json(route('admin.najm-hoda.autonomy.phase6-signoff.report')),
+        signoffUpdate: @json(route('admin.najm-hoda.autonomy.phase6-signoff.update')),
+        approvalDecision: @json(route('admin.najm-hoda.autonomy.approvals.decision', ['approvalId' => '__ID__'])),
+        approvalVeto: @json(route('admin.najm-hoda.autonomy.approvals.veto', ['approvalId' => '__ID__'])),
+    };
+    let policy = {}, page = 1, pager = null, busy = false;
 
-    const oversightRefreshBtn = document.getElementById('oversightRefresh');
-    const evaluationRunBtn = document.getElementById('evaluationRun');
-    const oversightSummaryEl = document.getElementById('oversightSummary');
-    const oversightStatusEl = document.getElementById('oversightStatus');
-    const approvalTableBody = document.getElementById('approvalTableBody');
-    const oversightRecommendationsEl = document.getElementById('oversightRecommendations');
-    const controlStateBox = document.getElementById('controlStateBox');
-    const delegationSummaryEl = document.getElementById('delegationSummary');
-    const delegationActiveTableBodyEl = document.getElementById('delegationActiveTableBody');
-    const delegationDeniedReasonsEl = document.getElementById('delegationDeniedReasons');
-    const delegationDeniedEventsEl = document.getElementById('delegationDeniedEvents');
-    const signoffDecisionEl = document.getElementById('signoffDecision');
-    const signoffNoteEl = document.getElementById('signoffNote');
-    const approvalSearchEl = document.getElementById('approvalSearch');
-    const approvalRiskFilterEl = document.getElementById('approvalRiskFilter');
-    const approvalSlaFilterEl = document.getElementById('approvalSlaFilter');
-    const approvalPageSizeEl = document.getElementById('approvalPageSize');
-    const approvalPrevPageBtn = document.getElementById('approvalPrevPage');
-    const approvalNextPageBtn = document.getElementById('approvalNextPage');
-    const approvalPageIndicatorEl = document.getElementById('approvalPageIndicator');
-    const approvalPaginationMetaEl = document.getElementById('approvalPaginationMeta');
+    const riskFa = {low:'کم',medium:'متوسط',high:'زیاد',critical:'بحرانی',unknown:'نامشخص'};
+    const statusFa = {ok:'مناسب',warning:'هشدار',breach:'نقض',no_data:'بدون داده',active:'فعال',inactive:'غیرفعال',paused:'متوقف',idle:'آماده‌به‌کار',shadow:'سایه',limited_live:'اجرای محدود',supervised_live:'اجرای تحت نظارت',autonomous_live:'اجرای خودمختار',go:'آماده',conditional_go:'آماده با شرط',no_go:'متوقف',unknown:'نامشخص'};
+    const actionFa = {pause:'توقف موقت',resume:'ازسرگیری',activate_kill_switch:'فعال‌کردن توقف اضطراری',deactivate_kill_switch:'لغو توقف اضطراری',set_override:'اجبار به حالت پیشنهاد',clear_override:'حذف محدودیت',start:'شروع',promote:'گسترش مرحله',evaluate:'ارزیابی',rollback:'بازگشت',activate:'فعال‌سازی',deactivate:'غیرفعال‌سازی',tick:'چرخه دستی',advance:'مرحله بعد',fallback:'بازگشت به سایه',report:'گزارش',sign:'ثبت تصمیم'};
+    const fa = (v, map) => map?.[String(v)] || String(v ?? '-');
+    const fmt = (v) => v === null || v === undefined ? '-' : (typeof v === 'number' ? String(Math.round(v * 10000) / 10000) : String(v));
+    const can = (k) => Boolean(policy?.ability?.[k]);
 
-    const baselineUrl = @json(route('admin.najm-hoda.autonomy.governance.baseline'));
-    const snapshotUrl = @json(route('admin.najm-hoda.autonomy.governance.snapshot'));
-    const costsUrl = @json(route('admin.najm-hoda.autonomy.costs.status'));
-    const oversightUrl = @json(route('admin.najm-hoda.autonomy.oversight.console'));
-    const oversightTelemetryUrl = @json(route('admin.najm-hoda.autonomy.oversight.telemetry'));
-    const controlsUrl = @json(route('admin.najm-hoda.autonomy.controls'));
-    const controlsUpdateUrl = @json(route('admin.najm-hoda.autonomy.controls.update'));
-    const codeOpsCanaryUrl = @json(route('admin.najm-hoda.autonomy.codeops.canary'));
-    const codeOpsCanaryUpdateUrl = @json(route('admin.najm-hoda.autonomy.codeops.canary.update'));
-    const evaluationRunUrl = @json(route('admin.najm-hoda.autonomy.evaluation.run'));
-    const operationsStatusUrl = @json(route('admin.najm-hoda.autonomy.operations.status'));
-    const operationsUpdateUrl = @json(route('admin.najm-hoda.autonomy.operations.update'));
-    const shadowRolloutUpdateUrl = @json(route('admin.najm-hoda.autonomy.shadow-rollout.update'));
-    const phase6SignoffReportUrl = @json(route('admin.najm-hoda.autonomy.phase6-signoff.report'));
-    const phase6SignoffUpdateUrl = @json(route('admin.najm-hoda.autonomy.phase6-signoff.update'));
-    const approvalsDecisionUrlPattern = @json(route('admin.najm-hoda.autonomy.approvals.decision', ['approvalId' => '__APPROVAL_ID__']));
-    const approvalsVetoUrlPattern = @json(route('admin.najm-hoda.autonomy.approvals.veto', ['approvalId' => '__APPROVAL_ID__']));
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    let oversightBusy = false;
-    let approvalsCache = [];
-    let approvalPagination = null;
-    let approvalPage = 1;
-    let oversightPolicyHints = {};
+    function setStatus(type, msg) {
+        const el = $('pageStatus');
+        if (!msg) { el.className='hidden'; el.textContent=''; return; }
+        const cls = type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200';
+        el.className = `text-sm px-3 py-2 rounded ${cls}`; el.textContent = msg;
+    }
+    function card(title, value, hint='') { return `<div class="bg-white border rounded-lg p-4"><div class="text-xs text-gray-500">${title}</div><div class="text-xl font-bold mt-1">${value}</div><div class="text-xs text-gray-400 mt-1">${hint}</div></div>`; }
+    function badge(v) { const s=String(v||'no_data'); const cls=s==='ok'?'bg-emerald-100 text-emerald-800':s==='warning'?'bg-amber-100 text-amber-800':s==='breach'?'bg-red-100 text-red-800':'bg-gray-100 text-gray-700'; return `<span class="px-2 py-1 rounded text-xs ${cls}">${fa(s,statusFa)}</span>`; }
+    async function getJson(url) { const r=await fetch(url,{headers:{'X-Requested-With':'XMLHttpRequest'}}); const d=await r.json().catch(()=>({})); if(!r.ok||d?.success===false) throw new Error(d?.message||d?.reason||`HTTP ${r.status}`); return d; }
+    async function postJson(url,payload) { const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':csrf},body:JSON.stringify(payload||{})}); const d=await r.json().catch(()=>({})); if(!r.ok||!d?.success) throw new Error(d?.message||d?.reason||`HTTP ${r.status}`); return d; }
 
-    function setOversightStatus(type, message) {
-        if (!message) {
-            oversightStatusEl.className = 'hidden mb-3 text-sm px-3 py-2 rounded';
-            oversightStatusEl.textContent = '';
-            return;
-        }
-
-        const palette = {
-            loading: 'bg-blue-50 text-blue-700 border border-blue-200',
-            success: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-            error: 'bg-red-50 text-red-700 border border-red-200',
-        };
-        oversightStatusEl.className = `mb-3 text-sm px-3 py-2 rounded ${palette[type] || palette.loading}`;
-        oversightStatusEl.textContent = message;
+    function renderGovernance(baseline,snapshot,costs) {
+        const metrics=snapshot?.metrics||{}, evals=snapshot?.evaluation||{};
+        const states=Object.values(evals).map(x=>x?.status||'no_data');
+        $('governanceSummary').innerHTML=[card('رویدادهای بررسی‌شده',snapshot?.event_count??0),card('موارد نقض',states.filter(x=>x==='breach').length),card('هشدارها',states.filter(x=>x==='warning').length),card('موفقیت اقدام خودکار',fmt(metrics.auto_action_success_rate??0)),card('هزینه روزانه هوش مصنوعی',fmt(costs?.daily_total??0),`بودجه: ${fmt(costs?.daily_budget??0)}`)].join('');
+        const keys=Object.keys(baseline||{}); $('governanceTableBody').innerHTML=keys.length?keys.map(k=>{const b=baseline[k]||{},e=evals[k]||{};const min=b.target_min!==undefined?`حداقل ${fmt(b.target_min)}`:'';const max=b.target_max!==undefined?`حداکثر ${fmt(b.target_max)}`:'';return `<tr class="border-b"><td class="p-2">${b.label||k}</td><td class="p-2">${fmt(metrics[k])}</td><td class="p-2">${[min,max].filter(Boolean).join(' / ')||'-'}</td><td class="p-2">${badge(e.status)}</td></tr>`;}).join(''):'<tr><td colspan="4" class="p-3 text-gray-500">داده‌ای ثبت نشده است.</td></tr>';
     }
 
-    function setOversightBusy(loading) {
-        oversightBusy = loading;
-        oversightRefreshBtn.disabled = loading;
-        oversightRefreshBtn.classList.toggle('opacity-60', loading);
-        evaluationRunBtn.disabled = loading || !canAbility('evaluation_write');
-        evaluationRunBtn.classList.toggle('opacity-60', evaluationRunBtn.disabled);
-        document.querySelectorAll('.control-action, .approval-action').forEach((btn) => {
-            btn.disabled = loading;
-            btn.classList.toggle('opacity-60', loading);
-        });
-        document.querySelectorAll('.codeops-action').forEach((btn) => {
-            btn.disabled = loading;
-            btn.classList.toggle('opacity-60', loading);
-        });
-        document.querySelectorAll('.ops-action').forEach((btn) => {
-            btn.disabled = loading;
-            btn.classList.toggle('opacity-60', loading);
-        });
-        document.querySelectorAll('.rollout-action').forEach((btn) => {
-            btn.disabled = loading;
-            btn.classList.toggle('opacity-60', loading);
-        });
-        document.querySelectorAll('.signoff-action').forEach((btn) => {
-            btn.disabled = loading;
-            btn.classList.toggle('opacity-60', loading);
-        });
-        if (loading) setOversightStatus('loading', 'Loading oversight data...');
+    function renderOversight(s) {
+        policy=s?.policy_hints||{}; const a=s?.approvals||{}, d=s?.delegation||{}, audit=s?.audit||{}, ev=s?.events||{}, c=s?.controls||{}, code=s?.codeops_canary||{}, op=s?.operations_24x7||{}, roll=s?.shadow_rollout||{}, sign=s?.phase6_signoff||{};
+        $('oversightSummary').innerHTML=[card('در انتظار تأیید',a.pending_count??0),card('از مهلت گذشته',a.overdue_count??0),card('تفویض فعال',d.active_count??0),card('اجرای ناموفق',audit.failed_count??0,`رویدادها: ${ev.recent_count??0}`),card('مرحله انتشار',fa(roll.stage||'shadow',statusFa))].join('');
+        $('controlStateBox').innerHTML=`<div><strong>وضعیت خودمختاری:</strong> ${fa(c?.state?.status||'-',statusFa)}</div><div><strong>توقف اضطراری:</strong> ${c?.kill_switch?.active?'فعال':'غیرفعال'}</div><div><strong>حالت اجباری:</strong> ${c?.override?.force_mode==='propose'?'فقط پیشنهاد':(c?.override?.force_mode||'ندارد')}</div><div><strong>آزمایش کد:</strong> ${fa(code?.status||'idle',statusFa)}</div><div><strong>عملیات ۲۴/۷:</strong> ${fa(op?.status||'inactive',statusFa)}</div><div><strong>تصمیم نهایی:</strong> ${fa(sign?.last_decision||'unknown',statusFa)}</div>`;
+        renderApprovals(a.pending||[],a.pagination||null);
+        const rec=s?.recommended_actions||[]; $('oversightRecommendations').innerHTML=rec.length?rec.map(x=>`<div class="border rounded p-3 bg-gray-50"><div class="font-medium">${x?.type||'پیشنهاد'}</div><div class="text-gray-600 mt-1">${x?.reason||'-'}</div><div class="mt-1"><strong>اقدام پیشنهادی:</strong> ${x?.action||'-'}</div></div>`).join(''):'<div class="text-gray-500">در حال حاضر پیشنهاد نظارتی خاصی وجود ندارد.</div>';
+        const es=d?.event_summary||{}; $('delegationSummary').innerHTML=[card('نیازمند تأیید',d.require_approval_count??0),card('نزدیک انقضا',d.expiring_soon_count??0),card('رد شده',es.denied??0),card('مجاز شده',es.authorized??0)].join('');
+        const active=d?.recent_active||[]; $('delegationActiveTableBody').innerHTML=active.length?active.map(x=>`<tr class="border-b"><td class="p-2">${x.principal_type||'-'}:${x.principal_id||'-'}</td><td class="p-2">${x.action||'-'}</td><td class="p-2">${x.scope||'global'}</td><td class="p-2">${x.expires_at||'-'}</td></tr>`).join(''):'<tr><td colspan="4" class="p-2 text-gray-500">تفویض فعالی وجود ندارد.</td></tr>';
+        const reasons=Object.entries(es?.denied_reasons||{}); $('delegationDeniedReasons').innerHTML=reasons.length?reasons.map(([r,n])=>`<div class="flex justify-between border rounded p-2"><span>${r}</span><span>${n}</span></div>`).join(''):'<div class="text-gray-500">مورد ردشده‌ای ثبت نشده است.</div>';
+        applyPermissions();
     }
 
-    function canAbility(key) {
-        return Boolean(oversightPolicyHints?.ability?.[key]);
+    function renderApprovals(rows,p) {
+        pager=p||{current_page:1,last_page:1,total:rows.length,from:rows.length?1:0,to:rows.length}; page=Number(pager.current_page||1); $('approvalPaginationMeta').textContent=`${pager.total||0} مورد (${pager.from||0} تا ${pager.to||0})`; $('approvalPageIndicator').textContent=`${page} / ${pager.last_page||1}`; $('approvalPrevPage').disabled=page<=1||busy; $('approvalNextPage').disabled=page>=Number(pager.last_page||1)||busy;
+        $('approvalTableBody').innerHTML=rows.length?rows.map(r=>{const id=r?.id||'',sla=r?.sla_status==='overdue'?'از مهلت گذشته':'در مهلت';return `<tr class="border-b"><td class="p-2 font-mono text-xs">${id}</td><td class="p-2">${r?.action||'-'}</td><td class="p-2">${fa(r?.risk||'unknown',riskFa)}</td><td class="p-2">${sla}</td><td class="p-2"><div class="flex flex-wrap gap-1"><button data-id="${id}" data-mode="approve" class="approval-action px-2 py-1 bg-emerald-600 text-white rounded text-xs">تأیید</button><button data-id="${id}" data-mode="reject" class="approval-action px-2 py-1 bg-amber-600 text-white rounded text-xs">رد</button><button data-id="${id}" data-mode="veto" class="approval-action px-2 py-1 bg-red-600 text-white rounded text-xs">وتوی فوری</button></div></td></tr>`;}).join(''):'<tr><td colspan="5" class="p-3 text-gray-500">درخواستی با فیلتر فعلی وجود ندارد.</td></tr>';
     }
 
-    function applyPolicyHintsToControls() {
-        const canControls = canAbility('controls_update');
-        const canKillSwitch = canAbility('controls_kill_switch');
-        const canOverride = canAbility('controls_override');
-        const canCodeOps = canAbility('codeops_canary_write');
-        const canEval = canAbility('evaluation_write');
-        const canOps = canAbility('operations_write');
-        const canRollout = canAbility('shadow_rollout_write');
-        const canSignoff = canAbility('phase6_signoff_write');
-
-        document.querySelectorAll('.control-action').forEach((btn) => {
-            const action = btn.getAttribute('data-control-action');
-            let allowed = canControls;
-            if (action === 'activate_kill_switch' || action === 'deactivate_kill_switch') {
-                allowed = canKillSwitch;
-            } else if (action === 'set_override' || action === 'clear_override') {
-                allowed = canOverride;
-            }
-            btn.disabled = oversightBusy || !allowed;
-            btn.classList.toggle('opacity-60', btn.disabled);
-            btn.title = allowed ? '' : 'Insufficient permission for this action';
-        });
-
-        document.querySelectorAll('.codeops-action').forEach((btn) => {
-            btn.disabled = oversightBusy || !canCodeOps;
-            btn.classList.toggle('opacity-60', btn.disabled);
-            btn.title = canCodeOps ? '' : 'Insufficient permission for codeops canary action';
-        });
-        document.querySelectorAll('.ops-action').forEach((btn) => {
-            btn.disabled = oversightBusy || !canOps;
-            btn.classList.toggle('opacity-60', btn.disabled);
-            btn.title = canOps ? '' : 'Insufficient permission for 24/7 operations action';
-        });
-        document.querySelectorAll('.rollout-action').forEach((btn) => {
-            btn.disabled = oversightBusy || !canRollout;
-            btn.classList.toggle('opacity-60', btn.disabled);
-            btn.title = canRollout ? '' : 'Insufficient permission for rollout action';
-        });
-        document.querySelectorAll('.signoff-action').forEach((btn) => {
-            btn.disabled = oversightBusy || !canSignoff;
-            btn.classList.toggle('opacity-60', btn.disabled);
-            btn.title = canSignoff ? '' : 'Insufficient permission for signoff action';
-        });
-        evaluationRunBtn.disabled = oversightBusy || !canEval;
-        evaluationRunBtn.classList.toggle('opacity-60', evaluationRunBtn.disabled);
-        evaluationRunBtn.title = canEval ? '' : 'Insufficient permission for evaluation run';
+    function applyPermissions() {
+        const rules={'.control-action':'controls_update','.codeops-action':'codeops_canary_write','.ops-action':'operations_write','.rollout-action':'shadow_rollout_write','.signoff-action':'phase6_signoff_write'}; Object.entries(rules).forEach(([sel,key])=>document.querySelectorAll(sel).forEach(b=>{b.disabled=busy||!can(key);b.classList.toggle('opacity-50',b.disabled);b.title=can(key)?'':'شما مجوز این عملیات را ندارید.';})); $('evaluationRun').disabled=busy||!can('evaluation_write');
+        document.querySelectorAll('.approval-action').forEach(b=>{const m=b.dataset.mode,key=m==='approve'?'approval_approve':m==='reject'?'approval_reject':'approval_veto';b.disabled=busy||!can(key);b.classList.toggle('opacity-50',b.disabled);});
     }
+    function setBusy(v){busy=v; applyPermissions();}
 
-    function card(title, value, hint = '') {
-        return `
-            <div class="bg-white border rounded-lg p-4">
-                <div class="text-xs text-gray-500 mb-1">${title}</div>
-                <div class="text-xl font-bold text-gray-800">${value}</div>
-                <div class="text-xs text-gray-400 mt-1">${hint}</div>
-            </div>
-        `;
-    }
+    async function loadGovernance(){const w=Math.max(1,Math.min(168,Number($('windowHours').value)||24));const [b,s,c]=await Promise.all([getJson(urls.baseline),getJson(`${urls.snapshot}?window_hours=${w}`),getJson(urls.costs)]);renderGovernance(b.baseline||{},s.snapshot||{},c.status||{});}
+    async function loadOversight(){setBusy(true);setStatus('info','در حال دریافت وضعیت نظارتی...');try{const q=new URLSearchParams({limit:'200',approval_page:String(page),approval_page_size:String(Number($('approvalPageSize').value)||10),approval_risk:$('approvalRiskFilter').value||'',approval_sla:$('approvalSlaFilter').value||'',approval_q:($('approvalSearch').value||'').trim(),approval_sort_by:'requested_at',approval_sort_dir:'desc'});const d=await getJson(`${urls.oversight}?${q}`);renderOversight(d.snapshot||{});setStatus('success','اطلاعات نظارتی به‌روز شد.');setTimeout(()=>setStatus('', ''),1800);}catch(e){setStatus('error',`دریافت اطلاعات ناموفق بود: ${e.message}`);}finally{setBusy(false);}}
 
-    function fmt(v) {
-        if (v === null || v === undefined) return '-';
-        if (typeof v === 'number') return v.toFixed(4).replace(/\.?0+$/, '');
-        return String(v);
-    }
+    async function approvalAction(id,mode){if(!id)return;let url,payload;if(mode==='approve'){url=urls.approvalDecision.replace('__ID__',id);payload={decision:'approve'};}else if(mode==='reject'){const reason=prompt('دلیل رد را بنویسید:');if(!reason?.trim())return;url=urls.approvalDecision.replace('__ID__',id);payload={decision:'reject',reason};}else{const reason=prompt('دلیل وتو را بنویسید (اختیاری):')||'veto_by_operator';url=urls.approvalVeto.replace('__ID__',id);payload={reason};}try{setBusy(true);await postJson(url,payload);setStatus('success','تصمیم ثبت شد.');await loadOversight();}catch(e){setStatus('error',`ثبت تصمیم ناموفق بود: ${e.message}`);}finally{setBusy(false);}}
+    async function controlAction(action){const p={action,reason:`${action}_from_fa_governance`};if(action==='pause')p.minutes=30;if(action==='activate_kill_switch')p.minutes=15;if(action==='set_override'){p.force_mode='propose';p.allow_apply_low_risk=false;}try{setBusy(true);await postJson(urls.controlsUpdate,p);setStatus('success',`${fa(action,actionFa)} انجام شد.`);await loadOversight();}catch(e){setStatus('error',`عملیات ناموفق بود: ${e.message}`);}finally{setBusy(false);}}
+    async function codeopsAction(action){const p={action,auto_rollback:true,reason:`${action}_from_fa_governance`};if(action==='start')p.phases=[5,25,50,100];try{setBusy(true);await postJson(urls.codeopsUpdate,p);setStatus('success',`${fa(action,actionFa)} انجام شد.`);await loadOversight();}catch(e){setStatus('error',`عملیات آزمایش کد ناموفق بود: ${e.message}`);}finally{setBusy(false);}}
+    async function opsAction(action){const p={action,reason:`${action}_from_fa_governance`};if(action==='activate')p.mode='night_only';if(action==='tick'){p.manual=true;p.window_hours=Number($('windowHours').value)||24;}try{setBusy(true);await postJson(urls.operationsUpdate,p);setStatus('success',`${fa(action,actionFa)} انجام شد.`);await loadOversight();}catch(e){setStatus('error',`عملیات ناموفق بود: ${e.message}`);}finally{setBusy(false);}}
+    async function rolloutAction(action){const p={action,reason:`${action}_from_fa_governance`};if(action==='evaluate')p.window_hours=Number($('windowHours').value)||24;if(action==='fallback')p.stage='shadow';try{setBusy(true);await postJson(urls.rolloutUpdate,p);setStatus('success',`${fa(action,actionFa)} انجام شد.`);await loadOversight();}catch(e){setStatus('error',`تغییر مرحله ناموفق بود: ${e.message}`);}finally{setBusy(false);}}
+    async function signoffAction(action){try{setBusy(true);if(action==='report'){await getJson(`${urls.signoffReport}?window_hours=${Number($('windowHours').value)||24}&history_limit=20`);}else{await postJson(urls.signoffUpdate,{decision:$('signoffDecision').value||'conditional_go',note:($('signoffNote').value||'').trim(),window_hours:Number($('windowHours').value)||24});}setStatus('success',action==='report'?'گزارش آمادگی ساخته شد.':'تصمیم نهایی ثبت شد.');await loadOversight();}catch(e){setStatus('error',`عملیات ناموفق بود: ${e.message}`);}finally{setBusy(false);}}
 
-    function statusBadge(status) {
-        const map = {
-            ok: 'bg-emerald-100 text-emerald-800',
-            warning: 'bg-amber-100 text-amber-800',
-            breach: 'bg-red-100 text-red-800',
-            no_data: 'bg-gray-100 text-gray-700',
-        };
-        const cls = map[status] || map.no_data;
-        return `<span class="px-2 py-1 rounded text-xs ${cls}">${status || 'no_data'}</span>`;
-    }
-
-    function postJson(url, payload) {
-        return fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': csrfToken,
-            },
-            body: JSON.stringify(payload || {}),
-        }).then(async (res) => {
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok || !data?.success) {
-                const msg = data?.message || data?.error || data?.reason || `HTTP ${res.status}`;
-                throw new Error(msg);
-            }
-            return data;
-        });
-    }
-
-    function sendTelemetry(eventName, metadata = {}) {
-        if (!eventName) return;
-        postJson(oversightTelemetryUrl, {
-            event: eventName,
-            metadata,
-        }).catch(() => {});
-    }
-
-    function renderSummary(snapshot, costs) {
-        const metrics = snapshot?.metrics || {};
-        const evals = snapshot?.evaluation || {};
-        const allStatuses = Object.values(evals).map((x) => x?.status || 'no_data');
-        const breachCount = allStatuses.filter((x) => x === 'breach').length;
-        const warningCount = allStatuses.filter((x) => x === 'warning').length;
-        const dailyCost = fmt(costs?.daily_total ?? 0);
-        const dailyBudget = fmt(costs?.daily_budget ?? 0);
-
-        summaryEl.innerHTML = [
-            card('Event Count', snapshot?.event_count ?? 0),
-            card('Breach', breachCount),
-            card('Warning', warningCount),
-            card('Auto Success', fmt(metrics.auto_action_success_rate ?? 0)),
-            card('Daily AI Cost', dailyCost, `Budget: ${dailyBudget}`),
-        ].join('');
-    }
-
-    function renderTable(baseline, snapshot) {
-        const metrics = snapshot?.metrics || {};
-        const evals = snapshot?.evaluation || {};
-        const keys = Object.keys(baseline || {});
-        if (!keys.length) {
-            tableBody.innerHTML = `<tr><td class="p-2 text-gray-500" colspan="4">No data available.</td></tr>`;
-            return;
-        }
-
-        tableBody.innerHTML = keys.map((key) => {
-            const b = baseline[key] || {};
-            const e = evals[key] || {};
-            const value = metrics[key];
-            const targetMin = b.target_min !== undefined ? `>= ${fmt(b.target_min)}` : '';
-            const targetMax = b.target_max !== undefined ? `<= ${fmt(b.target_max)}` : '';
-            const target = [targetMin, targetMax].filter(Boolean).join(' / ') || '-';
-            return `
-                <tr class="border-b">
-                    <td class="p-2">${b.label || key}</td>
-                    <td class="p-2">${fmt(value)}</td>
-                    <td class="p-2">${target}</td>
-                    <td class="p-2">${statusBadge(e.status)}</td>
-                </tr>
-            `;
-        }).join('');
-    }
-
-    function oversightCard(title, value, hint = '') {
-        return `
-            <div class="border rounded p-3 bg-gray-50">
-                <div class="text-xs text-gray-500 mb-1">${title}</div>
-                <div class="text-lg font-semibold text-gray-800">${value}</div>
-                <div class="text-xs text-gray-400 mt-1">${hint}</div>
-            </div>
-        `;
-    }
-
-    function renderApprovalRows() {
-        const rows = Array.isArray(approvalsCache) ? approvalsCache : [];
-        const pager = approvalPagination || {
-            current_page: 1,
-            last_page: 1,
-            total: rows.length,
-            from: rows.length ? 1 : 0,
-            to: rows.length,
-        };
-        approvalPage = Number(pager.current_page || 1);
-        const pageCount = Number(pager.last_page || 1);
-
-        approvalPaginationMetaEl.textContent = `${pager.total || 0} approvals matched (${pager.from || 0}-${pager.to || 0})`;
-        approvalPageIndicatorEl.textContent = `${approvalPage} / ${pageCount}`;
-        approvalPrevPageBtn.disabled = approvalPage <= 1 || oversightBusy;
-        approvalNextPageBtn.disabled = approvalPage >= pageCount || oversightBusy;
-
-        if (!rows.length) {
-            approvalTableBody.innerHTML = `<tr><td class="p-2 text-gray-500" colspan="5">No approvals for current filter.</td></tr>`;
-            return;
-        }
-
-        const canApprove = canAbility('approval_approve');
-        const canReject = canAbility('approval_reject');
-        const canVeto = canAbility('approval_veto');
-
-        approvalTableBody.innerHTML = rows.map((row) => {
-            const id = row?.id || '';
-            const slaStatus = row?.sla_status || 'within_sla';
-            const badge = slaStatus === 'overdue'
-                ? '<span class="px-2 py-1 rounded text-xs bg-red-100 text-red-800">overdue</span>'
-                : '<span class="px-2 py-1 rounded text-xs bg-emerald-100 text-emerald-800">within_sla</span>';
-            return `
-                <tr class="border-b">
-                    <td class="p-2 font-mono text-xs">${id}</td>
-                    <td class="p-2">${row?.action || '-'}</td>
-                    <td class="p-2">${row?.risk || '-'}</td>
-                    <td class="p-2">${badge}</td>
-                    <td class="p-2">
-                        <div class="flex flex-wrap gap-1">
-                            <button class="approval-action px-2 py-1 bg-emerald-600 text-white rounded text-xs ${canApprove ? '' : 'opacity-60'}" ${canApprove ? '' : 'disabled title="Insufficient permission"'} data-id="${id}" data-mode="approve">Approve</button>
-                            <button class="approval-action px-2 py-1 bg-amber-600 text-white rounded text-xs ${canReject ? '' : 'opacity-60'}" ${canReject ? '' : 'disabled title="Insufficient permission"'} data-id="${id}" data-mode="reject">Reject</button>
-                            <button class="approval-action px-2 py-1 bg-red-600 text-white rounded text-xs ${canVeto ? '' : 'opacity-60'}" ${canVeto ? '' : 'disabled title="Insufficient permission"'} data-id="${id}" data-mode="veto">Veto</button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    }
-
-    function renderOversight(snapshot) {
-        const approvals = snapshot?.approvals || {};
-        const delegation = snapshot?.delegation || {};
-        const audit = snapshot?.audit || {};
-        const events = snapshot?.events || {};
-        const codeops = snapshot?.codeops_canary || {};
-        const evaluation = snapshot?.continuous_evaluation || {};
-        const ops24 = snapshot?.operations_24x7 || {};
-        const rollout = snapshot?.shadow_rollout || {};
-        const signoff = snapshot?.phase6_signoff || {};
-        const controls = snapshot?.controls || {};
-        oversightPolicyHints = snapshot?.policy_hints || {};
-        const state = controls?.state || {};
-        const kill = controls?.kill_switch || {};
-        const override = controls?.override || {};
-
-        oversightSummaryEl.innerHTML = [
-            oversightCard('Pending approvals', approvals.pending_count ?? 0),
-            oversightCard('Overdue approvals', approvals.overdue_count ?? 0),
-            oversightCard('Active delegations', delegation.active_count ?? 0),
-            oversightCard('Failed runs', audit.failed_count ?? 0, `Events: ${events.recent_count ?? 0}`),
-            oversightCard('CodeOps Canary', codeops.status || 'idle', `Phase: ${codeops.phase_percent ?? '-'}%`),
-            oversightCard('Nightly Eval', evaluation.status || 'unknown', `Alerts: ${evaluation.alert_count ?? 0}`),
-            oversightCard('Ops 24/7', ops24.status || 'inactive', `Last tick: ${ops24.last_tick_status || '-'}`),
-            oversightCard('Rollout Stage', rollout.stage || 'shadow', `Decision: ${rollout.last_decision || '-'}`),
-            oversightCard('Go/No-Go', signoff.last_decision || 'unknown', `Signed: ${signoff.last_signed_decision || '-'}`),
-        ].join('');
-
-        approvalsCache = Array.isArray(approvals.pending) ? approvals.pending : [];
-        approvalPagination = approvals.pagination || null;
-        renderApprovalRows();
-
-        const recommendations = snapshot?.recommended_actions || [];
-        if (!recommendations.length) {
-            oversightRecommendationsEl.innerHTML = `<div class="text-gray-500">No recommendation.</div>`;
-        } else {
-            oversightRecommendationsEl.innerHTML = recommendations.map((item) => `
-                <div class="border rounded p-3 bg-gray-50">
-                    <div class="flex items-center justify-between">
-                        <div class="font-medium text-gray-800">${item?.type || 'unknown'}</div>
-                        <span class="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">${item?.priority || 'low'}</span>
-                    </div>
-                    <div class="text-gray-600 mt-1">${item?.reason || '-'}</div>
-                    <div class="text-gray-800 mt-1"><strong>Action:</strong> ${item?.action || '-'}</div>
-                </div>
-            `).join('');
-        }
-
-        controlStateBox.innerHTML = `
-            <div><strong>Status:</strong> ${state?.status || '-'}</div>
-            <div><strong>Kill switch:</strong> ${(kill?.active ? 'active' : 'inactive')}</div>
-            <div><strong>Override mode:</strong> ${override?.force_mode || 'none'}</div>
-            <div><strong>Allow low-risk apply:</strong> ${override?.allow_apply_low_risk === true ? 'true' : 'false'}</div>
-            <div class="mt-2 text-xs text-gray-500"><strong>Policy hints:</strong> read=${canAbility('oversight_read')}, write=${canAbility('controls_update')}</div>
-        `;
-        applyPolicyHintsToControls();
-
-        const delegationEventSummary = delegation?.event_summary || {};
-        delegationSummaryEl.innerHTML = [
-            oversightCard('Require Approval', delegation.require_approval_count ?? 0),
-            oversightCard('Expiring <=6h', delegation.expiring_soon_count ?? 0),
-            oversightCard('Delegation Denied', delegationEventSummary.denied ?? 0),
-            oversightCard('Delegation Authorized', delegationEventSummary.authorized ?? 0),
-        ].join('');
-
-        const activeRows = Array.isArray(delegation.recent_active) ? delegation.recent_active : [];
-        if (!activeRows.length) {
-            delegationActiveTableBodyEl.innerHTML = `<tr><td class="p-2 text-gray-500" colspan="4">No active delegation.</td></tr>`;
-        } else {
-            delegationActiveTableBodyEl.innerHTML = activeRows.map((row) => `
-                <tr class="border-b">
-                    <td class="p-2">${row.principal_type || '-'}:${row.principal_id || '-'}</td>
-                    <td class="p-2">${row.action || '-'}</td>
-                    <td class="p-2">${row.scope || 'global'}</td>
-                    <td class="p-2">${row.expires_at || '-'}</td>
-                </tr>
-            `).join('');
-        }
-
-        const deniedReasons = delegationEventSummary?.denied_reasons || {};
-        const deniedReasonEntries = Object.entries(deniedReasons);
-        if (!deniedReasonEntries.length) {
-            delegationDeniedReasonsEl.innerHTML = `<div class="text-gray-500">No denied reason recorded.</div>`;
-        } else {
-            delegationDeniedReasonsEl.innerHTML = deniedReasonEntries.map(([reason, count]) => `
-                <div class="border rounded p-2 bg-gray-50 flex items-center justify-between">
-                    <span class="text-gray-700">${reason}</span>
-                    <span class="px-2 py-0.5 rounded bg-red-100 text-red-700 text-xs">${count}</span>
-                </div>
-            `).join('');
-        }
-
-        const deniedEvents = Array.isArray(delegationEventSummary?.recent_denied) ? delegationEventSummary.recent_denied : [];
-        if (!deniedEvents.length) {
-            delegationDeniedEventsEl.innerHTML = `<div class="text-gray-500">No recent denied event.</div>`;
-        } else {
-            delegationDeniedEventsEl.innerHTML = deniedEvents.map((evt) => `
-                <div class="border rounded p-2 bg-white">
-                    <div><strong>Actor:</strong> ${evt.actor_id ?? '-'}</div>
-                    <div><strong>Action:</strong> ${evt.action || '-'}</div>
-                    <div><strong>Scope:</strong> ${evt.scope || 'global'}</div>
-                    <div><strong>Reason:</strong> ${evt.reason || 'unknown'}</div>
-                </div>
-            `).join('');
-        }
-    }
-
-    async function loadGovernance() {
-        const w = Math.max(1, Math.min(168, Number(windowEl.value) || 24));
-        const [bRes, sRes] = await Promise.all([
-            fetch(baselineUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } }),
-            fetch(`${snapshotUrl}?window_hours=${w}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } }),
-        ]);
-        const bData = await bRes.json();
-        const sData = await sRes.json();
-        const cRes = await fetch(costsUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-        const cData = await cRes.json();
-        if (!bData?.success || !sData?.success) throw new Error('governance_load_failed');
-
-        renderSummary(sData.snapshot || {}, cData?.status || {});
-        renderTable(bData.baseline || {}, sData.snapshot || {});
-    }
-
-    async function loadOversight() {
-        setOversightBusy(true);
-        try {
-            const query = new URLSearchParams({
-                limit: '200',
-                approval_page: String(Math.max(1, approvalPage)),
-                approval_page_size: String(Math.max(5, Number(approvalPageSizeEl.value) || 10)),
-                approval_risk: (approvalRiskFilterEl.value || '').trim(),
-                approval_sla: (approvalSlaFilterEl.value || '').trim(),
-                approval_q: (approvalSearchEl.value || '').trim(),
-                approval_sort_by: 'requested_at',
-                approval_sort_dir: 'desc',
-            });
-            const res = await fetch(`${oversightUrl}?${query.toString()}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-            const data = await res.json();
-            if (!data?.success) throw new Error('oversight_load_failed');
-            renderOversight(data.snapshot || {});
-            setOversightStatus('success', 'Oversight data updated.');
-            sendTelemetry('oversight_refresh_success', {
-                page: approvalPage,
-                page_size: Number(approvalPageSizeEl.value) || 10,
-                risk: approvalRiskFilterEl.value || '',
-                sla: approvalSlaFilterEl.value || '',
-                q: (approvalSearchEl.value || '').trim(),
-            });
-            setTimeout(() => setOversightStatus('', ''), 1500);
-        } catch (err) {
-            setOversightStatus('error', `Oversight load failed: ${err.message || 'unknown error'}`);
-            sendTelemetry('oversight_refresh_failed', {
-                error: err.message || 'unknown_error',
-            });
-            throw err;
-        } finally {
-            setOversightBusy(false);
-        }
-    }
-
-    async function handleApprovalAction(id, mode) {
-        if (!id || !mode) return;
-        if (mode === 'approve' && !canAbility('approval_approve')) return;
-        if (mode === 'reject' && !canAbility('approval_reject')) return;
-        if (mode === 'veto' && !canAbility('approval_veto')) return;
-
-        let url = '';
-        let payload = {};
-
-        if (mode === 'approve') {
-            url = approvalsDecisionUrlPattern.replace('__APPROVAL_ID__', id);
-            payload = { decision: 'approve' };
-        } else if (mode === 'reject') {
-            const reason = prompt('Reject reason:');
-            if (!reason || !reason.trim()) return;
-            url = approvalsDecisionUrlPattern.replace('__APPROVAL_ID__', id);
-            payload = { decision: 'reject', reason };
-        } else {
-            const reason = prompt('Veto reason (optional):') || 'veto_by_operator';
-            url = approvalsVetoUrlPattern.replace('__APPROVAL_ID__', id);
-            payload = { reason };
-        }
-
-        setOversightBusy(true);
-        try {
-            await postJson(url, payload);
-            setOversightStatus('success', `Approval action '${mode}' executed.`);
-            sendTelemetry('approval_action', { mode, approval_id: id });
-            await loadOversight();
-        } catch (err) {
-            setOversightStatus('error', `Approval action failed: ${err.message || 'unknown error'}`);
-            sendTelemetry('approval_action_failed', { mode, approval_id: id, error: err.message || 'unknown_error' });
-            throw err;
-        } finally {
-            setOversightBusy(false);
-        }
-    }
-
-    async function handleControlAction(action) {
-        if (!action) return;
-        if (!canAbility('controls_update')) return;
-        if ((action === 'activate_kill_switch' || action === 'deactivate_kill_switch') && !canAbility('controls_kill_switch')) return;
-        if ((action === 'set_override' || action === 'clear_override') && !canAbility('controls_override')) return;
-
-        const payload = { action };
-
-        if (action === 'pause') {
-            payload.minutes = 30;
-            payload.reason = 'pause_from_oversight_console';
-        } else if (action === 'activate_kill_switch') {
-            payload.minutes = 15;
-            payload.reason = 'kill_switch_from_oversight_console';
-        } else if (action === 'set_override') {
-            payload.force_mode = 'propose';
-            payload.allow_apply_low_risk = false;
-            payload.reason = 'force_propose_from_oversight_console';
-        } else if (action === 'clear_override') {
-            payload.reason = 'clear_override_from_oversight_console';
-        } else {
-            payload.reason = `${action}_from_oversight_console`;
-        }
-
-        setOversightBusy(true);
-        try {
-            await postJson(controlsUpdateUrl, payload);
-            const controlsRes = await fetch(controlsUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-            const controlsData = await controlsRes.json().catch(() => ({}));
-            if (controlsData?.success) {
-                renderOversight({
-                    controls: {
-                        state: controlsData.state || {},
-                        kill_switch: controlsData.kill_switch || {},
-                        override: controlsData.override || {},
-                    },
-                    approvals: { pending: [], pending_count: 0, overdue_count: 0 },
-                    delegation: { active_count: 0 },
-                    audit: { failed_count: 0 },
-                    events: { recent_count: 0 },
-                    recommended_actions: [],
-                });
-            }
-            setOversightStatus('success', `Control action '${action}' executed.`);
-            sendTelemetry('control_action', { action });
-            await loadOversight();
-        } catch (err) {
-            setOversightStatus('error', `Control action failed: ${err.message || 'unknown error'}`);
-            sendTelemetry('control_action_failed', { action, error: err.message || 'unknown_error' });
-            throw err;
-        } finally {
-            setOversightBusy(false);
-        }
-    }
-
-    async function handleCodeOpsCanaryAction(action) {
-        if (!action) return;
-        if (!canAbility('codeops_canary_write')) return;
-
-        const payload = { action, auto_rollback: true };
-        if (action === 'start') {
-            payload.phases = [5, 25, 50, 100];
-            payload.reason = 'start_from_oversight_console';
-        } else if (action === 'promote') {
-            payload.reason = 'promote_from_oversight_console';
-        } else if (action === 'evaluate') {
-            payload.reason = 'evaluate_from_oversight_console';
-        } else if (action === 'rollback') {
-            payload.reason = 'rollback_from_oversight_console';
-        }
-
-        setOversightBusy(true);
-        try {
-            await postJson(codeOpsCanaryUpdateUrl, payload);
-            setOversightStatus('success', `CodeOps canary action '${action}' executed.`);
-            sendTelemetry('codeops_canary_action', { action });
-            await loadOversight();
-        } catch (err) {
-            setOversightStatus('error', `CodeOps canary action failed: ${err.message || 'unknown error'}`);
-            sendTelemetry('codeops_canary_action_failed', { action, error: err.message || 'unknown_error' });
-            throw err;
-        } finally {
-            setOversightBusy(false);
-        }
-    }
-
-    async function handleRunEvaluation() {
-        if (!canAbility('evaluation_write')) return;
-        setOversightBusy(true);
-        try {
-            await postJson(evaluationRunUrl, { dry_run: true, window_hours: Number(windowEl.value) || 24 });
-            setOversightStatus('success', 'Nightly evaluation executed (dry-run).');
-            sendTelemetry('evaluation_run', { dry_run: true });
-            await loadOversight();
-        } catch (err) {
-            setOversightStatus('error', `Evaluation run failed: ${err.message || 'unknown error'}`);
-            sendTelemetry('evaluation_run_failed', { error: err.message || 'unknown_error' });
-            throw err;
-        } finally {
-            setOversightBusy(false);
-        }
-    }
-
-    async function handleOperationsAction(action) {
-        if (!action) return;
-        if (!canAbility('operations_write')) return;
-
-        const payload = { action };
-        if (action === 'activate') {
-            payload.mode = 'night_only';
-            payload.reason = 'activate_from_oversight_console';
-        } else if (action === 'deactivate') {
-            payload.reason = 'deactivate_from_oversight_console';
-        } else if (action === 'tick') {
-            payload.manual = true;
-            payload.window_hours = Number(windowEl.value) || 24;
-            payload.reason = 'manual_tick_from_oversight_console';
-        }
-
-        setOversightBusy(true);
-        try {
-            await postJson(operationsUpdateUrl, payload);
-            setOversightStatus('success', `24/7 operations action '${action}' executed.`);
-            sendTelemetry('operations_action', { action });
-            await loadOversight();
-        } catch (err) {
-            setOversightStatus('error', `24/7 operations action failed: ${err.message || 'unknown error'}`);
-            sendTelemetry('operations_action_failed', { action, error: err.message || 'unknown_error' });
-            throw err;
-        } finally {
-            setOversightBusy(false);
-        }
-    }
-
-    async function handleRolloutAction(action) {
-        if (!action) return;
-        if (!canAbility('shadow_rollout_write')) return;
-
-        const payload = { action };
-        if (action === 'evaluate') {
-            payload.window_hours = Number(windowEl.value) || 24;
-        } else if (action === 'advance') {
-            payload.reason = 'advance_from_oversight_console';
-        } else if (action === 'fallback') {
-            payload.stage = 'shadow';
-            payload.reason = 'fallback_from_oversight_console';
-        }
-
-        setOversightBusy(true);
-        try {
-            await postJson(shadowRolloutUpdateUrl, payload);
-            setOversightStatus('success', `Shadow rollout action '${action}' executed.`);
-            sendTelemetry('shadow_rollout_action', { action });
-            await loadOversight();
-        } catch (err) {
-            setOversightStatus('error', `Shadow rollout action failed: ${err.message || 'unknown error'}`);
-            sendTelemetry('shadow_rollout_action_failed', { action, error: err.message || 'unknown_error' });
-            throw err;
-        } finally {
-            setOversightBusy(false);
-        }
-    }
-
-    async function handleSignoffAction(action) {
-        if (!action) return;
-        if (!canAbility('phase6_signoff_write')) return;
-
-        setOversightBusy(true);
-        try {
-            if (action === 'report') {
-                const query = new URLSearchParams({
-                    window_hours: String(Number(windowEl.value) || 24),
-                    history_limit: '20',
-                });
-                const res = await fetch(`${phase6SignoffReportUrl}?${query.toString()}`, {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                });
-                const data = await res.json();
-                if (!res.ok || !data?.success) {
-                    throw new Error(data?.message || `HTTP ${res.status}`);
-                }
-            } else if (action === 'sign') {
-                await postJson(phase6SignoffUpdateUrl, {
-                    decision: signoffDecisionEl.value || 'conditional_go',
-                    note: (signoffNoteEl.value || '').trim(),
-                    window_hours: Number(windowEl.value) || 24,
-                });
-            }
-
-            setOversightStatus('success', `Phase-6 signoff action '${action}' executed.`);
-            sendTelemetry('phase6_signoff_action', { action });
-            await loadOversight();
-        } catch (err) {
-            setOversightStatus('error', `Phase-6 signoff action failed: ${err.message || 'unknown error'}`);
-            sendTelemetry('phase6_signoff_action_failed', { action, error: err.message || 'unknown_error' });
-            throw err;
-        } finally {
-            setOversightBusy(false);
-        }
-    }
-
-    refreshBtn.addEventListener('click', () => loadGovernance().catch(() => {}));
-    windowEl.addEventListener('change', () => loadGovernance().catch(() => {}));
-    oversightRefreshBtn.addEventListener('click', () => loadOversight().catch(() => {}));
-    approvalSearchEl.addEventListener('input', () => {
-        approvalPage = 1;
-        sendTelemetry('approval_filter_changed', { field: 'q' });
-        loadOversight().catch(() => {});
-    });
-    approvalRiskFilterEl.addEventListener('change', () => {
-        approvalPage = 1;
-        sendTelemetry('approval_filter_changed', { field: 'risk', value: approvalRiskFilterEl.value || '' });
-        loadOversight().catch(() => {});
-    });
-    approvalSlaFilterEl.addEventListener('change', () => {
-        approvalPage = 1;
-        sendTelemetry('approval_filter_changed', { field: 'sla', value: approvalSlaFilterEl.value || '' });
-        loadOversight().catch(() => {});
-    });
-    approvalPageSizeEl.addEventListener('change', () => {
-        approvalPage = 1;
-        sendTelemetry('approval_page_size_changed', { value: Number(approvalPageSizeEl.value) || 10 });
-        loadOversight().catch(() => {});
-    });
-    approvalPrevPageBtn.addEventListener('click', () => {
-        approvalPage = Math.max(1, approvalPage - 1);
-        sendTelemetry('approval_page_changed', { page: approvalPage });
-        loadOversight().catch(() => {});
-    });
-    approvalNextPageBtn.addEventListener('click', () => {
-        approvalPage += 1;
-        sendTelemetry('approval_page_changed', { page: approvalPage });
-        loadOversight().catch(() => {});
-    });
-
-    approvalTableBody.addEventListener('click', (e) => {
-        const target = e.target.closest('.approval-action');
-        if (!target) return;
-        const id = target.getAttribute('data-id');
-        const mode = target.getAttribute('data-mode');
-        handleApprovalAction(id, mode).catch(() => {});
-    });
-
-    document.querySelectorAll('.control-action').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const action = btn.getAttribute('data-control-action');
-            handleControlAction(action).catch(() => {});
-        });
-    });
-
-    document.querySelectorAll('.codeops-action').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const action = btn.getAttribute('data-codeops-action');
-            handleCodeOpsCanaryAction(action).catch(() => {});
-        });
-    });
-    document.querySelectorAll('.ops-action').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const action = btn.getAttribute('data-ops-action');
-            handleOperationsAction(action).catch(() => {});
-        });
-    });
-    document.querySelectorAll('.rollout-action').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const action = btn.getAttribute('data-rollout-action');
-            handleRolloutAction(action).catch(() => {});
-        });
-    });
-    document.querySelectorAll('.signoff-action').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const action = btn.getAttribute('data-signoff-action');
-            handleSignoffAction(action).catch(() => {});
-        });
-    });
-    evaluationRunBtn.addEventListener('click', () => handleRunEvaluation().catch(() => {}));
-
-    loadGovernance().catch(() => {});
-    loadOversight().catch(() => {});
+    $('governanceRefresh').onclick=()=>Promise.all([loadGovernance(),loadOversight()]).catch(()=>{}); $('oversightRefresh').onclick=()=>loadOversight(); $('windowHours').onchange=()=>Promise.all([loadGovernance(),loadOversight()]); $('evaluationRun').onclick=async()=>{try{setBusy(true);await postJson(urls.evaluationRun,{dry_run:true,window_hours:Number($('windowHours').value)||24});setStatus('success','ارزیابی آزمایشی انجام شد؛ تغییری اعمال نشد.');await loadOversight();}catch(e){setStatus('error',`ارزیابی ناموفق بود: ${e.message}`);}finally{setBusy(false);}};
+    $('approvalTableBody').onclick=e=>{const b=e.target.closest('.approval-action');if(b)approvalAction(b.dataset.id,b.dataset.mode);}; document.querySelectorAll('.control-action').forEach(b=>b.onclick=()=>controlAction(b.dataset.controlAction)); document.querySelectorAll('.codeops-action').forEach(b=>b.onclick=()=>codeopsAction(b.dataset.codeopsAction)); document.querySelectorAll('.ops-action').forEach(b=>b.onclick=()=>opsAction(b.dataset.opsAction)); document.querySelectorAll('.rollout-action').forEach(b=>b.onclick=()=>rolloutAction(b.dataset.rolloutAction)); document.querySelectorAll('.signoff-action').forEach(b=>b.onclick=()=>signoffAction(b.dataset.signoffAction));
+    let searchTimer=null; $('approvalSearch').oninput=()=>{clearTimeout(searchTimer);page=1;searchTimer=setTimeout(loadOversight,350);}; $('approvalRiskFilter').onchange=$('approvalSlaFilter').onchange=$('approvalPageSize').onchange=()=>{page=1;loadOversight();}; $('approvalPrevPage').onclick=()=>{page=Math.max(1,page-1);loadOversight();}; $('approvalNextPage').onclick=()=>{page+=1;loadOversight();};
+    loadGovernance().catch(e=>setStatus('error',`بارگذاری شاخص‌ها ناموفق بود: ${e.message}`)); loadOversight();
 })();
 </script>
 @endpush
