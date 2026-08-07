@@ -94,7 +94,8 @@ jobs:
           vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/NajmHoda/N8nGatewayTest.php \
             tests/Feature/NajmHoda/N8nCallbackVerifierTest.php \
-            tests/Feature/NajmHoda/N8nCallbackEndpointTest.php
+            tests/Feature/NajmHoda/N8nCallbackEndpointTest.php \
+            tests/Feature/NajmHoda/N8nAdminManagementTest.php
 
       - name: Run n8n GameDay scenarios
         run: vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda/N8nIntegrationGameDayTest.php
@@ -102,7 +103,7 @@ jobs:
       - name: Run Najm Hoda regression tests
         run: vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda
 
-      - name: Guard milestone-1 autonomy boundary
+      - name: Guard n8n autonomy and admin boundary
         run: |
           ! grep -R "'apply' =>\|=> 'apply'" config/najm-hoda-n8n.php
           grep -F "NAJM_HODA_N8N_ENABLED', false" config/najm-hoda-n8n.php
@@ -112,6 +113,9 @@ jobs:
           grep -F "Cache::add" app/Services/NajmHoda/Integrations/N8n/N8nCallbackVerifier.php
           grep -F "callback_require_persistent_cache" app/Services/NajmHoda/Integrations/N8n/N8nCallbackIngestor.php
           grep -F "throttle:najm-hoda-n8n-callback" routes/najm-hoda-n8n.php
+          grep -F "AdminMiddleware::class" app/Providers/RouteServiceProvider.php
+          grep -F "permission:najm-hoda.manage-settings" routes/najm-hoda-admin-n8n.php
+          ! grep -Ei "shared_secret|NAJM_HODA_N8N_SHARED_SECRET" resources/views/admin/najm-hoda/n8n/index.blade.php app/Http/Controllers/Admin/NajmHodaN8nController.php
           ! grep -Ei "CapabilityRegistry|ExecutionService|ActionExecutor|GoalLoop|dispatch\(" app/Services/NajmHoda/Integrations/N8n/N8nCallbackIngestor.php app/Http/Controllers/NajmHoda/N8nCallbackController.php
 
       - name: Setup Node.js
