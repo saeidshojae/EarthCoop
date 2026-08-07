@@ -12,6 +12,8 @@ on:
       - resources/css/**
       - resources/views/**
       - app/Modules/**/Views/**
+      - public/vendor/persian-date/**
+      - public/vendor/persian-datepicker/**
       - vite.config.*
   workflow_dispatch:
 
@@ -41,6 +43,14 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Verify tracked Persian date runtime assets
+        run: |
+          cmp public/vendor/persian-date/persian-date.min.js node_modules/persian-date/dist/persian-date.min.js
+          cmp public/vendor/persian-datepicker/persian-datepicker.min.js node_modules/persian-datepicker/dist/js/persian-datepicker.min.js
+          cmp public/vendor/persian-datepicker/persian-datepicker.min.css node_modules/persian-datepicker/dist/css/persian-datepicker.min.css
+          grep -F 'data-alt="start_time"' app/Modules/Stock/Views/auction_create.blade.php
+          grep -F 'data-alt="end_time"' app/Modules/Stock/Views/auction_create.blade.php
 
       - name: Build production assets
         run: npm run build
