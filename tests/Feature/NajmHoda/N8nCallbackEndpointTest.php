@@ -47,23 +47,13 @@ class N8nCallbackEndpointTest extends TestCase
         ];
         [$body, $server] = $this->signedRequest($payload, 'req-endpoint-1');
 
-        $response = $this->call(
-            'POST',
-            '/api/internal/najm-hoda/n8n/callback',
-            [],
-            [],
-            [],
-            $server,
-            $body,
-        );
-
-        $response->assertStatus(202)
-            ->assertJson([
-                'accepted' => true,
-                'request_id' => 'req-endpoint-1',
-                'correlation_id' => 'corr-endpoint-1',
-                'status' => 'completed',
-            ]);
+        $response = $this->call('POST', '/api/internal/najm-hoda/n8n/callback', [], [], [], $server, $body);
+        $response->assertStatus(202)->assertJson([
+            'accepted' => true,
+            'request_id' => 'req-endpoint-1',
+            'correlation_id' => 'corr-endpoint-1',
+            'status' => 'completed',
+        ]);
 
         $receipt = DB::table('najm_hoda_n8n_callbacks')->where('request_id', 'req-endpoint-1')->first();
         $this->assertNotNull($receipt);
@@ -79,9 +69,7 @@ class N8nCallbackEndpointTest extends TestCase
         $server['HTTP_X_NAJMHODA_SIGNATURE'] = 'sha256=' . str_repeat('0', 64);
 
         $this->call('POST', '/api/internal/najm-hoda/n8n/callback', [], [], [], $server, $body)
-            ->assertStatus(422)
-            ->assertJson(['accepted' => false, 'error' => 'invalid_callback']);
-
+            ->assertStatus(422)->assertJson(['accepted' => false, 'error' => 'invalid_callback']);
         $this->assertDatabaseCount('najm_hoda_n8n_callbacks', 0);
     }
 
@@ -91,9 +79,7 @@ class N8nCallbackEndpointTest extends TestCase
         [$body, $server] = $this->signedRequest($this->basePayload(), 'req-endpoint-disabled');
 
         $this->call('POST', '/api/internal/najm-hoda/n8n/callback', [], [], [], $server, $body)
-            ->assertStatus(503)
-            ->assertJson(['accepted' => false, 'error' => 'callback_unavailable']);
-
+            ->assertStatus(503)->assertJson(['accepted' => false, 'error' => 'callback_unavailable']);
         $this->assertDatabaseCount('najm_hoda_n8n_callbacks', 0);
     }
 
@@ -106,9 +92,7 @@ class N8nCallbackEndpointTest extends TestCase
         [$body, $server] = $this->signedRequest($this->basePayload(), 'req-endpoint-cache');
 
         $this->call('POST', '/api/internal/najm-hoda/n8n/callback', [], [], [], $server, $body)
-            ->assertStatus(503)
-            ->assertJson(['accepted' => false, 'error' => 'callback_unavailable']);
-
+            ->assertStatus(503)->assertJson(['accepted' => false, 'error' => 'callback_unavailable']);
         $this->assertDatabaseCount('najm_hoda_n8n_callbacks', 0);
     }
 
@@ -122,7 +106,11 @@ class N8nCallbackEndpointTest extends TestCase
             'status' => 'completed',
             'correlation_id' => 'corr-endpoint-health',
             'run_id' => 'run-endpoint-health',
-            'result' => ['ok' => true],
+            'result' => [
+                'healthy' => true,
+                'observed_at' => now()->toIso8601String(),
+                'checks' => ['n8n.webhook' => true],
+            ],
         ];
     }
 
@@ -134,12 +122,7 @@ class N8nCallbackEndpointTest extends TestCase
     {
         $body = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
         $timestamp = time();
-        $signaturePayload = implode('.', [
-            (string) $timestamp,
-            $requestId,
-            'callback',
-            hash('sha256', $body),
-        ]);
+        $signaturePayload = implode('.', [(string) $timestamp, $requestId, 'callback', hash('sha256', $body)]);
         $signature = hash_hmac('sha256', $signaturePayload, $this->secret);
 
         return [$body, [
