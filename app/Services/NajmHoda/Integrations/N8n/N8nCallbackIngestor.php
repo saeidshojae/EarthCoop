@@ -12,6 +12,7 @@ class N8nCallbackIngestor
     public function __construct(
         protected N8nCallbackVerifier $verifier,
         protected RuntimeEventBus $events,
+        protected N8nRuntimeControlService $controls,
     ) {
     }
 
@@ -85,6 +86,10 @@ class N8nCallbackIngestor
     {
         if (!config('najm-hoda-n8n.callback_http_enabled', false)) {
             throw new RuntimeException('n8n callback HTTP ingress is disabled.');
+        }
+
+        if (!$this->controls->callbackIngressEnabled()) {
+            throw new RuntimeException('n8n callback HTTP ingress is paused by runtime control.');
         }
 
         if (!config('najm-hoda-n8n.callback_require_persistent_cache', true)) {
