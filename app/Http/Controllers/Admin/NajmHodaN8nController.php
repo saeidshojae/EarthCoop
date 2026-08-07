@@ -17,6 +17,15 @@ class NajmHodaN8nController extends Controller
     {
         $report = $readiness->report();
         $receipts = DB::table('najm_hoda_n8n_callbacks')
+            ->select([
+                'request_id',
+                'correlation_id',
+                'workflow',
+                'mode',
+                'status',
+                'remote_run_id',
+                'received_at',
+            ])
             ->orderByDesc('received_at')
             ->paginate(25);
 
@@ -57,8 +66,8 @@ class NajmHodaN8nController extends Controller
                 : 'n8n پاسخ سالم نداد یا در دسترس نیست.';
 
             return back()->with(($health['healthy'] ?? false) ? 'success' : 'warning', $message);
-        } catch (RuntimeException $exception) {
-            return back()->with('warning', $exception->getMessage());
+        } catch (RuntimeException) {
+            return back()->with('warning', 'Health check در وضعیت فعلی قابل اجرا نیست. تنظیمات و runtime controls را بررسی کنید.');
         }
     }
 }
