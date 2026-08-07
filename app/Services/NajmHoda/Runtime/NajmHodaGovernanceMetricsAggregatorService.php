@@ -75,10 +75,16 @@ class NajmHodaGovernanceMetricsAggregatorService
         $driftEvents = 0;
         $approvalRequested = [];
         $approvalLatencies = [];
+        $gamedayRunIds = $this->collectGameDayRunIds($events);
 
         foreach ($events as $entry) {
             $name = (string) ($entry['event'] ?? '');
             $payload = is_array($entry['payload'] ?? null) ? $entry['payload'] : [];
+            $runId = (string) ($payload['run_id'] ?? '');
+
+            if ($runId !== '' && isset($gamedayRunIds[$runId]) && str_starts_with($name, 'najm_hoda.autonomy.executor.')) {
+                continue;
+            }
 
             if ($name === 'najm_hoda.autonomy.executor.executed') {
                 $executed++;
@@ -145,8 +151,31 @@ class NajmHodaGovernanceMetricsAggregatorService
                 'skipped' => $skipped,
                 'drift_events' => $driftEvents,
                 'approval_decisions' => count($approvalLatencies),
+                'excluded_gameday_runs' => count($gamedayRunIds),
             ],
         ];
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $events
+     * @return array<string, true>
+     */
+    protected function collectGameDayRunIds(array $events): array
+    {
+        $runIds = [];
+        foreach ($events as $entry) {
+            if ((string) ($entry['event'] ?? '') !== 'najm_hoda.autonomy.gameday.run_tagged') {
+                continue;
+            }
+
+            $payload = is_array($entry['payload'] ?? null) ? $entry['payload'] : [];
+            $runId = trim((string) ($payload['run_id'] ?? ''));
+            if ($runId !== '') {
+                $runIds[$runId] = true;
+            }
+        }
+
+        return $runIds;
     }
 
     protected function resolveUserSatisfactionRatio(int $windowHours): ?float
