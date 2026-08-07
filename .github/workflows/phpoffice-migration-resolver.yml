@@ -25,6 +25,11 @@ jobs:
           extensions: mbstring, xml, zip, gd
           coverage: none
 
+      - name: Prepare Laravel writable directories
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache storage/framework/sessions
+          chmod -R 775 bootstrap/cache storage/framework
+
       - name: Install current dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
