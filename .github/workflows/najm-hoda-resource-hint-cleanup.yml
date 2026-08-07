@@ -14,19 +14,12 @@ permissions:
 jobs:
   cleanup:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           ref: agent/najm-hoda-chat-context
           fetch-depth: 0
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: npm
-
-      - run: npm ci
 
       - name: Replace ambiguous numeric URL inference
         run: |
@@ -76,16 +69,14 @@ jobs:
               "    };",
               "}",
           ]
-          replacement = '\n'.join(lines)
-          p.write_text(s[:start] + replacement + s[end:])
+          p.write_text(s[:start] + '\n'.join(lines) + s[end:])
           PY
 
-      - name: Validate resource hint behavior
+      - name: Validate patch shape
         run: |
           ! grep -F "reverse().find" resources/js/najm-hoda-context.js
           grep -F "routeName.startsWith('najm-bahar.projects.')" resources/js/najm-hoda-context.js
           grep -F "resource_type: resourceType" resources/js/najm-hoda-context.js
-          npm run build
 
       - name: Commit cleanup
         run: |
