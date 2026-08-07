@@ -29,13 +29,28 @@ The runtime Capability Registry, Safety Gate, executor rules and existing delega
 
 For authorized runtime actions, the actor ID comes from the server authority object. If the authority represents a system action with no actor ID, a user-supplied `user_id` is removed.
 
-### 4. Conversation write IDOR defense
+### 4. Conversation IDOR protection
 
-The chat endpoint currently resolves `conversation_id` by ID without ownership scoping before saving the user message. A model-level defense was added to `ConversationMessage`: authenticated user-role messages cannot be created for a conversation owned by another user.
+Conversation ownership is now enforced at the database query boundary for chat continuation, history retrieval, archive and delete operations. Foreign and nonexistent conversation IDs return the same not-found behavior, reducing both unauthorized access and object-existence leakage.
 
-This is defense-in-depth. The controller should also be changed to query the conversation by both `id` and authenticated `user_id` when that file can be safely edited/rebased against concurrent work.
+A second defense remains in `ConversationMessage`: authenticated user-role messages cannot be created for a conversation owned by another user.
 
-### 5. Secure-by-default blocker still open
+Conversation listing filters are also validated and `per_page` is capped at 50 to prevent unbounded client-controlled pagination.
+
+### 5. External escalation endpoint hardening
+
+The external Najm Hoda escalation endpoint now:
+
+- fails closed when the shared secret is missing;
+- uses `hash_equals` for constant-time secret comparison;
+- never logs any portion of the provided secret;
+- passes only validated input to the integration service;
+- caps transcript size at 50,000 characters;
+- remains protected by the existing route rate limit.
+
+Longer term, HMAC-signed requests with timestamp/replay protection are preferable to a static shared bearer secret.
+
+### 6. Secure-by-default blocker still open
 
 `najm-hoda.runtime.autonomy.permissioning_v2.enforce_apply_requires_delegation` currently defaults to `false`.
 
@@ -56,10 +71,10 @@ Before full autonomy, the code/config default should also become fail-closed (`t
 
 ## Remaining security work before production autonomy
 
-1. Owner-scope `conversation_id` directly in `NajmHodaController` in addition to the model guard.
-2. Make delegation enforcement fail-closed by default.
-3. Add explicit authorization factories/services that are the only code allowed to mint runtime action authority.
-4. Add CSRF/session/Sanctum route review for all Najm Hoda mutation endpoints.
-5. Add per-capability authorization tests (ticket, group, financial, content and admin scopes).
+1. Make delegation enforcement fail-closed by default.
+2. Add explicit authorization factories/services that are the only code allowed to mint runtime action authority.
+3. Add CSRF/session/Sanctum route review for all Najm Hoda mutation endpoints.
+4. Add per-capability authorization tests (ticket, group, financial, content and admin scopes).
+5. Upgrade the external escalation authentication from static token to HMAC + timestamp/replay protection if it remains externally exposed.
 6. Add audit event for rejected forged action controls without logging sensitive payloads.
 7. Run the full Najm Hoda suite in CI against the branch and inspect failures before any merge.
