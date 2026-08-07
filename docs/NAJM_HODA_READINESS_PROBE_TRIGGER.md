@@ -6,6 +6,8 @@ Probe 1 correctly returned NO-GO with three blockers: governance misclassified m
 
 Probe 2 was infrastructure-only: the file-cache path was incomplete, so Laravel could not clear the cache before migrations/GameDay began.
 
-Probe 3 keeps readiness thresholds unchanged, includes the required `storage/framework/cache/data` directory, uses persistent local file cache across Artisan processes, and runs two controlled GameDay `--dry-run` cycles before exercising the strict gate again.
+Probe 3 proved GameDay and compliance evidence readiness with two successful controlled cycles, but exposed two test-isolation defects: synthetic overdue approvals remained in the operational approval cache and GameDay executor events polluted governance KPI coverage.
+
+Probe 4 keeps all readiness thresholds unchanged. GameDay now restores approval state after drills, and its replay goal-loop run is explicitly tagged so governance KPIs can exclude synthetic executor traffic while audit and compliance evidence remain intact.
 
 The purpose remains diagnostic: prove readiness with legitimate evidence rather than weakening the gate for CI.
