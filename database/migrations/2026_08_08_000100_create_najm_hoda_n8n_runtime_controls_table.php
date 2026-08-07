@@ -12,11 +12,15 @@ return new class extends Migration
             $table->id();
             $table->boolean('outbound_enabled')->default(true);
             $table->boolean('callback_ingress_enabled')->default(true);
+            $table->json('disabled_workflows')->nullable();
+            $table->timestamp('secret_rotation_verified_at')->nullable();
+            $table->unsignedBigInteger('secret_rotation_verified_by')->nullable();
             $table->string('reason', 500)->nullable();
             $table->unsignedBigInteger('updated_by')->nullable();
             $table->timestamps();
 
             $table->foreign('updated_by')->references('id')->on('users')->nullOnDelete();
+            $table->foreign('secret_rotation_verified_by')->references('id')->on('users')->nullOnDelete();
         });
     }
 
