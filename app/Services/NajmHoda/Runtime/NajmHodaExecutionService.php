@@ -21,6 +21,7 @@ class NajmHodaExecutionService
         $start = microtime(true);
 
         try {
+            $context = $this->sanitizeActionContext($context);
             $boundary = $this->interactionBoundary->classify($message, $context);
             $mode = (string) ($boundary['mode'] ?? 'answer');
 
@@ -76,6 +77,46 @@ class NajmHodaExecutionService
     }
 
     /**
+     * Strip all browser-forgeable execution controls unless trusted server code
+     * supplies a real NajmHodaRuntimeActionAuthority object.
+     *
+     * @param array<string, mixed> $context
+     * @return array<string, mixed>
+     */
+    protected function sanitizeActionContext(array $context): array
+    {
+        $authority = $context['runtime_action_authority'] ?? null;
+
+        if (!$authority instanceof NajmHodaRuntimeActionAuthority) {
+            foreach ([
+                'requested_action',
+                'capability_action',
+                'action_input',
+                'action_priority',
+                'action_reason',
+                'goals',
+                'trusted_apply_request',
+                'runtime_action_authority',
+            ] as $key) {
+                unset($context[$key]);
+            }
+
+            return $context;
+        }
+
+        // Ignore any user-provided apply flag. Apply authority comes exclusively
+        // from the server-created authority object.
+        $context['trusted_apply_request'] = $authority->allowApply;
+        $context['runtime_authority_source'] = $authority->source;
+
+        if ($authority->actorId !== null) {
+            $context['user_id'] = $authority->actorId;
+        }
+
+        return $context;
+    }
+
+    /**
      * Explicit actions never execute through the legacy chat orchestrator.
      * They enter the capability/safety/delegation/executor runtime instead.
      *
@@ -88,9 +129,6 @@ class NajmHodaExecutionService
         $action = (string) ($boundary['action'] ?? '');
         $input = is_array($boundary['input'] ?? null) ? $boundary['input'] : [];
         $goals = array_values(array_filter(array_map('strval', (array) ($context['goals'] ?? []))));
-
-        // Chat-originated actions default to propose mode. Applying a change
-        // requires an explicit trusted caller flag in addition to all runtime gates.
         $apply = (bool) ($context['trusted_apply_request'] ?? false);
         $actorId = isset($context['user_id']) ? (int) $context['user_id'] : null;
 
