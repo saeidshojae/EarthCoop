@@ -1,0 +1,50 @@
+name: PhpSpreadsheet Migration Resolver
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/najm-hoda-hardening
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, zip, gd
+          coverage: none
+
+      - name: Install current dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Show legacy Excel dependency chain
+        run: |
+          composer why maatwebsite/excel || true
+          composer why phpoffice/phpexcel || true
+
+      - name: Replace legacy Laravel Excel with PhpSpreadsheet
+        run: |
+          composer remove maatwebsite/excel --no-update
+          composer require phpoffice/phpspreadsheet:^1.30 --no-update
+          composer update phpoffice/phpspreadsheet maatwebsite/excel phpoffice/phpexcel --with-all-dependencies --no-interaction --prefer-dist --no-progress
+
+      - name: Audit resolved dependencies
+        run: composer audit --format=summary || true
+
+      - name: Commit resolver result
+        run: |
+          if git diff --quiet -- composer.json composer.lock; then
+            echo 'No dependency changes produced.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add composer.json composer.lock
+          git commit -m 'security: replace PHPExcel dependency with PhpSpreadsheet'
+          git push origin HEAD:agent/najm-hoda-hardening
