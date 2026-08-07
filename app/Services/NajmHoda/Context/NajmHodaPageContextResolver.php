@@ -38,7 +38,7 @@ class NajmHodaPageContextResolver
             'route_name' => $routeName,
             'module' => $module,
             'resource_type' => $resourceType,
-            'resource_id' => $resourceId,
+            'resource_id' => null,
             'resource' => null,
         ];
 
@@ -48,13 +48,21 @@ class NajmHodaPageContextResolver
 
         if ($this->looksLikeProjectContext($routeName, $resourceType)) {
             $resolved['resource_type'] = 'najm_bahar_project';
-            $resolved['resource'] = $this->resolveProject($user, $resourceId);
+            $resource = $this->resolveProject($user, $resourceId);
+            if ($resource !== null) {
+                $resolved['resource_id'] = $resourceId;
+                $resolved['resource'] = $resource;
+            }
             return $resolved;
         }
 
         if ($this->looksLikeGroupContext($module, $resourceType)) {
             $resolved['resource_type'] = 'group';
-            $resolved['resource'] = $this->resolveGroup($user, $resourceId);
+            $resource = $this->resolveGroup($user, $resourceId);
+            if ($resource !== null) {
+                $resolved['resource_id'] = $resourceId;
+                $resolved['resource'] = $resource;
+            }
         }
 
         return $resolved;
