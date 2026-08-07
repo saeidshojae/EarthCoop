@@ -1,0 +1,62 @@
+name: Security Patch Resolver
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/najm-hoda-hardening
+    paths:
+      - docs/SECURITY_PATCH_RESOLVER_TRIGGER.md
+
+permissions:
+  contents: write
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/najm-hoda-hardening
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, zip, gd, pdo_mysql
+          coverage: none
+
+      - name: Prepare Laravel writable directories
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache storage/framework/sessions
+          chmod -R 775 bootstrap/cache storage/framework
+
+      - name: Install current dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Show vulnerable dependency parents
+        run: |
+          composer why phpseclib/phpseclib || true
+          composer why symfony/http-foundation || true
+          composer why symfony/mailer || true
+          composer why symfony/mime || true
+          composer why symfony/polyfill-intl-idn || true
+          composer why symfony/routing || true
+
+      - name: Resolve targeted patched versions
+        run: |
+          composer update phpseclib/phpseclib symfony/http-foundation symfony/mailer symfony/mime symfony/polyfill-intl-idn symfony/routing --with-all-dependencies --no-interaction --prefer-dist --no-progress
+
+      - name: Audit production dependencies
+        run: composer audit --no-dev --format=summary || true
+
+      - name: Commit Composer-generated lock changes
+        run: |
+          if git diff --quiet -- composer.json composer.lock; then
+            echo 'No dependency changes produced.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add composer.json composer.lock
+          git commit -m 'security: patch Symfony and phpseclib dependencies'
+          git push origin HEAD:agent/najm-hoda-hardening
