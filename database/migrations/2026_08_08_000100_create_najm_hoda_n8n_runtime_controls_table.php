@@ -19,8 +19,10 @@ return new class extends Migration
             $table->unsignedBigInteger('updated_by')->nullable();
             $table->timestamps();
 
-            $table->foreign('updated_by')->references('id')->on('users')->nullOnDelete();
-            $table->foreign('secret_rotation_verified_by')->references('id')->on('users')->nullOnDelete();
+            $table->foreign('updated_by', 'nh_n8n_ctrl_updated_by_fk')
+                ->references('id')->on('users')->nullOnDelete();
+            $table->foreign('secret_rotation_verified_by', 'nh_n8n_ctrl_secret_by_fk')
+                ->references('id')->on('users')->nullOnDelete();
         });
     }
 
