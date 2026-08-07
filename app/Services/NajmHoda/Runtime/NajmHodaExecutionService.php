@@ -96,9 +96,12 @@ class NajmHodaExecutionService
     {
         $authority = $context['runtime_action_authority'] ?? null;
         $browserPage = is_array($context['page'] ?? null) ? $context['page'] : [];
-        $actorId = isset($context['user_id']) && is_numeric($context['user_id'])
+        $contextActorId = isset($context['user_id']) && is_numeric($context['user_id'])
             ? (int) $context['user_id']
             : null;
+        $actorId = $authority instanceof NajmHodaRuntimeActionAuthority
+            ? $authority->actorId
+            : $contextActorId;
         $user = $actorId ? User::query()->find($actorId) : null;
         $pageContext = $this->pageContextResolver->resolve($user, ['page' => $browserPage]);
         [$conversationMeta, $conversationHistory] = $this->resolveConversationContext(
@@ -136,8 +139,8 @@ class NajmHodaExecutionService
             $context['conversation_history'] = $conversationHistory;
         }
 
-        if ($authority->actorId !== null) {
-            $context['user_id'] = $authority->actorId;
+        if ($actorId !== null) {
+            $context['user_id'] = $actorId;
         } else {
             unset($context['user_id']);
         }
