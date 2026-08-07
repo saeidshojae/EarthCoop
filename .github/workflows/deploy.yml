@@ -66,6 +66,9 @@ jobs:
     - name: Report Composer security status
       run: composer audit --no-dev
 
+    - name: Run user import boundary tests
+      run: vendor/bin/phpunit --configuration phpunit.xml.dist tests/Unit/UserImport
+
     - name: Run Najm Hoda regression tests
       run: vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda
 
