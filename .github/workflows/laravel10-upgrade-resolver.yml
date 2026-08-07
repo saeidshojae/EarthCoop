@@ -37,8 +37,16 @@ jobs:
         run: |
           composer require laravel/framework:^10.0 laravel/sanctum:^3.2 doctrine/dbal:^3.0 spatie/laravel-ignition:^2.0 --no-update --no-interaction
 
-      - name: Resolve Laravel 10 dependency graph
-        run: composer update --with-all-dependencies --no-interaction --prefer-dist --no-progress
+      - name: Resolve Laravel 10 dependency graph without mutating vendor
+        run: composer update --with-all-dependencies --no-install --no-interaction --prefer-dist --no-progress
+
+      - name: Install Laravel 10 dependencies from a clean vendor tree
+        run: |
+          rm -rf vendor
+          composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Verify Laravel 10 application boot
+        run: php artisan --version
 
       - name: Audit production dependencies
         run: composer audit --no-dev --format=summary || true
