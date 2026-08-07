@@ -36,6 +36,7 @@ jobs:
       - name: Apply Laravel 11 compatible constraints
         run: |
           composer require laravel/framework:^11.0 laravel/sanctum:^4.0 laravel/tinker:^2.9 --no-update --no-interaction
+          composer require --dev nunomaduro/collision:^8.1 --no-update --no-interaction
 
       - name: Resolve Laravel 11 dependency graph
         run: composer update --with-all-dependencies --no-interaction --prefer-dist --no-progress --no-install
