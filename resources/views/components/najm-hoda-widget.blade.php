@@ -1,5 +1,7 @@
 {{-- Widget چت نجم‌هدا --}}
-<div id="najm-hoda-widget" class="najm-hoda-widget" style="display: block;">
+<div id="najm-hoda-widget" class="najm-hoda-widget" style="display: block;"
+     data-route-name="{{ request()->route()?->getName() ?? '' }}"
+     data-module="{{ request()->segment(1) ?? 'home' }}">
     {{-- دکمه باز/بسته کردن --}}
     <button id="najm-hoda-toggle" class="najm-hoda-toggle-btn" title="چت با نجم‌هدا">
         <i class="fas fa-robot"></i>
@@ -285,18 +287,22 @@
     word-break: break-word;
 }
 
-.najm-hoda-message-content p:last-child {
-    margin-bottom: 0;
+.najm-hoda-message-meta {
+    font-size: 10px;
+    opacity: 0.7;
+    margin-top: 6px;
 }
 
 .najm-hoda-typing {
     padding: 0 20px;
-    display: flex;
+    background: #f8f9fa;
 }
 
 .najm-hoda-typing-indicator {
-    background: white;
+    display: flex;
+    gap: 6px;
     padding: 14px 18px;
+    background: white;
     border-radius: 20px 20px 6px 20px;
     display: inline-flex;
     gap: 6px;
@@ -917,7 +923,7 @@
         formatMessage(content) {
             return content
                 .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+                .replace(/\*([^*]+)\*\*/g, '<em>$1</em>')
                 .replace(/\n/g, '<br>');
         },
 

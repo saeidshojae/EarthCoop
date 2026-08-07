@@ -20,8 +20,9 @@ class ProjectPolicy
             return true;
         }
 
-        // پروژه‌های تایید شده عمومی قابل مشاهده هستند
-        if ($project->status === 'approved' && $project->project_type === 'public') {
+        // پروژه‌های تایید شده با visibility عمومی قابل مشاهده هستند.
+        // project_type نوع فعالیت (production/service/...) است و public/private نیست.
+        if ($project->status === 'approved' && $project->project_visibility === 'public') {
             return true;
         }
 
