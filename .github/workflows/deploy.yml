@@ -60,7 +60,27 @@ jobs:
 
     - name: Create test environment
       run: |
-        cp .env.example .env
+        cat > .env <<'EOF'
+        APP_NAME=EarthCoop
+        APP_ENV=testing
+        APP_KEY=
+        APP_DEBUG=true
+        APP_URL=http://localhost
+        LOG_CHANNEL=stack
+        DB_CONNECTION=mysql
+        DB_HOST=127.0.0.1
+        DB_PORT=3306
+        DB_DATABASE=newearthcoop
+        DB_USERNAME=root
+        DB_PASSWORD=
+        CACHE_DRIVER=array
+        SESSION_DRIVER=array
+        QUEUE_CONNECTION=sync
+        MAIL_MAILER=array
+        BROADCAST_DRIVER=log
+        FILESYSTEM_DISK=local
+        NAJM_HODA_MOCK_MODE=true
+        EOF
         php artisan key:generate --force
 
     - name: Validate Composer configuration
@@ -68,6 +88,9 @@ jobs:
 
     - name: Enforce Composer security advisory gate
       run: composer audit --no-dev --abandoned=report
+
+    - name: Run database migrations
+      run: php artisan migrate --force
 
     - name: Run user import boundary tests
       run: vendor/bin/phpunit --configuration phpunit.xml.dist tests/Unit/UserImport
