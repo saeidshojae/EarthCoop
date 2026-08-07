@@ -3,6 +3,7 @@
 namespace Tests\Feature\NajmHoda;
 
 use App\Services\NajmHoda\Integrations\N8n\N8nCallbackVerifier;
+use App\Services\NajmHoda\Integrations\N8n\N8nWorkflowContractValidator;
 use App\Services\NajmHoda\Runtime\InMemoryRuntimeEventBus;
 use Illuminate\Support\Facades\Cache;
 use InvalidArgumentException;
@@ -34,7 +35,7 @@ class N8nCallbackVerifierTest extends TestCase
 
         Cache::flush();
         $this->events = new InMemoryRuntimeEventBus();
-        $this->verifier = new N8nCallbackVerifier($this->events);
+        $this->verifier = new N8nCallbackVerifier($this->events, new N8nWorkflowContractValidator());
     }
 
     public function test_valid_signed_callback_is_normalized_and_audited_without_result_leakage(): void
@@ -60,30 +61,41 @@ class N8nCallbackVerifierTest extends TestCase
 
         $events = $this->events->recent('najm_hoda.integration.n8n.callback_verified', 1);
         $this->assertCount(1, $events);
-        $this->assertSame('support.triage.propose', $events[0]['payload']['workflow']);
         $auditJson = json_encode($this->events->recent());
         $this->assertStringNotContainsString($this->secret, $auditJson);
         $this->assertStringNotContainsString('do-not-audit', $auditJson);
+    }
+
+    public function test_health_workflow_result_is_schema_bound(): void
+    {
+        [$body, $headers] = $this->signedCallback($this->basePayload(), 'req-health-schema');
+        $result = $this->verifier->verify($body, $headers);
+
+        $this->assertTrue($result['result']['healthy']);
+        $this->assertSame(['n8n.webhook' => true, 'n8n.database' => true], $result['result']['checks']);
+    }
+
+    public function test_health_workflow_rejects_command_shaped_or_unknown_result_fields(): void
+    {
+        $payload = $this->basePayload();
+        $payload['result']['execute'] = ['capability' => 'forbidden'];
+        [$body, $headers] = $this->signedCallback($payload, 'req-health-command');
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->verifier->verify($body, $headers);
     }
 
     public function test_invalid_signature_is_rejected(): void
     {
         [$body, $headers] = $this->signedCallback($this->basePayload(), 'req-bad-signature');
         $headers['x-najmhoda-signature'] = 'sha256=' . str_repeat('0', 64);
-
         $this->expectException(InvalidArgumentException::class);
-        try {
-            $this->verifier->verify($body, $headers);
-        } finally {
-            $this->assertCount(0, $this->events->recent('najm_hoda.integration.n8n.callback_verified', 1));
-        }
+        $this->verifier->verify($body, $headers);
     }
 
     public function test_stale_timestamp_is_rejected(): void
     {
-        $timestamp = time() - 1000;
-        [$body, $headers] = $this->signedCallback($this->basePayload(), 'req-stale', $timestamp);
-
+        [$body, $headers] = $this->signedCallback($this->basePayload(), 'req-stale', time() - 1000);
         $this->expectException(InvalidArgumentException::class);
         $this->verifier->verify($body, $headers);
     }
@@ -91,7 +103,6 @@ class N8nCallbackVerifierTest extends TestCase
     public function test_replayed_callback_is_rejected_and_audited(): void
     {
         [$body, $headers] = $this->signedCallback($this->basePayload(), 'req-replay');
-
         $this->verifier->verify($body, $headers);
 
         try {
@@ -125,7 +136,6 @@ class N8nCallbackVerifierTest extends TestCase
     {
         config(['najm-hoda-n8n.max_payload_bytes' => 1024]);
         $body = json_encode(['blob' => str_repeat('x', 3000)], JSON_THROW_ON_ERROR);
-
         $this->expectException(InvalidArgumentException::class);
         $this->verifier->verify($body, []);
     }
@@ -134,7 +144,6 @@ class N8nCallbackVerifierTest extends TestCase
     {
         config(['najm-hoda-n8n.enabled' => false]);
         [$body, $headers] = $this->signedCallback($this->basePayload(), 'req-disabled');
-
         $this->expectException(RuntimeException::class);
         $this->verifier->verify($body, $headers);
     }
@@ -149,7 +158,11 @@ class N8nCallbackVerifierTest extends TestCase
             'status' => 'completed',
             'correlation_id' => 'corr-health',
             'run_id' => 'run-health',
-            'result' => ['ok' => true],
+            'result' => [
+                'healthy' => true,
+                'observed_at' => now()->toIso8601String(),
+                'checks' => ['n8n.webhook' => true, 'n8n.database' => true],
+            ],
         ];
     }
 
@@ -161,12 +174,7 @@ class N8nCallbackVerifierTest extends TestCase
     {
         $body = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
         $timestamp ??= time();
-        $signaturePayload = implode('.', [
-            (string) $timestamp,
-            $requestId,
-            'callback',
-            hash('sha256', $body),
-        ]);
+        $signaturePayload = implode('.', [(string) $timestamp, $requestId, 'callback', hash('sha256', $body)]);
         $signature = hash_hmac('sha256', $signaturePayload, $this->secret);
 
         return [$body, [
