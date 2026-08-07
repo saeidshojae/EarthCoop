@@ -96,7 +96,7 @@ class PageContextResolverTest extends TestCase
             'user_id' => $viewer->id,
             'role' => 2,
             'status' => 1,
-            'expired' => false,
+            'expired' => null,
         ]);
 
         $resolved = (new NajmHodaPageContextResolver())->resolve($viewer, [
