@@ -63,6 +63,9 @@ jobs:
     - name: Validate Composer configuration
       run: composer validate --no-check-publish
 
+    - name: Report Composer security status
+      run: composer audit --no-dev
+
     - name: Run Najm Hoda regression tests
       run: vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda
 
