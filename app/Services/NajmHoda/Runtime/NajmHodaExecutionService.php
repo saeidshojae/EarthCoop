@@ -11,8 +11,10 @@ class NajmHodaExecutionService
 {
     public function __construct(
         protected NajmHodaInteractionBoundaryService $interactionBoundary,
-        protected NajmHodaCrossModuleCapabilityOrchestratorService $actionOrchestrator
+        protected NajmHodaCrossModuleCapabilityOrchestratorService $actionOrchestrator,
+        protected ?NajmHodaResourceAuthorizationService $resourceAuthorization = null
     ) {
+        $this->resourceAuthorization = $this->resourceAuthorization ?? new NajmHodaResourceAuthorizationService();
     }
 
     public function executeChat(NajmHodaOrchestrator $orchestrator, string $message, array $context = []): array
@@ -104,8 +106,6 @@ class NajmHodaExecutionService
             return $context;
         }
 
-        // Ignore all browser-provided identity/apply claims. Runtime authority
-        // is the single source of truth for the action actor and apply permission.
         $context['trusted_apply_request'] = $authority->allowApply;
         $context['runtime_authority_source'] = $authority->source;
 
@@ -120,7 +120,8 @@ class NajmHodaExecutionService
 
     /**
      * Explicit actions never execute through the legacy chat orchestrator.
-     * They enter the capability/safety/delegation/executor runtime instead.
+     * They enter resource authorization and then the capability/safety/
+     * delegation/executor runtime.
      *
      * @param array<string, mixed> $boundary
      * @param array<string, mixed> $context
@@ -133,6 +134,15 @@ class NajmHodaExecutionService
         $goals = array_values(array_filter(array_map('strval', (array) ($context['goals'] ?? []))));
         $apply = (bool) ($context['trusted_apply_request'] ?? false);
         $actorId = isset($context['user_id']) ? (int) $context['user_id'] : null;
+
+        $resourceCheck = $this->resourceAuthorization->authorize($actorId, $action, $input);
+        if (!(bool) ($resourceCheck['allowed'] ?? false)) {
+            return $this->actionResponse([
+                'executed' => false,
+                'status' => 'blocked',
+                'reason' => (string) ($resourceCheck['reason'] ?? 'resource_authorization_denied'),
+            ], $boundary, $requestId, $start);
+        }
 
         $result = $this->actionOrchestrator->orchestrate([[
             'action' => $action,
