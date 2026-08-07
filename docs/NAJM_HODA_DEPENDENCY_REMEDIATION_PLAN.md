@@ -24,6 +24,14 @@ The same CI run reports **56 security advisories affecting 11 packages** and two
 
 The audit is currently informational so dependency remediation can proceed without hiding test failures. It must not stay informational indefinitely for production release.
 
+## Active remediation status
+
+The first controlled dependency remediation has started for `guzzlehttp/guzzle` and `guzzlehttp/psr7`.
+
+A dedicated GitHub Actions updater resolves these packages with Composer on a clean PHP 8.2 runner, commits only Composer-generated dependency files to the hardening branch when resolution changes them, and then the normal hardening CI re-runs against the generated lock file.
+
+No dependency lock file is hand-edited.
+
 ## Priority 0 — active high-risk legacy import chain
 
 ### `maatwebsite/excel:^1.1` -> `phpoffice/phpexcel`
@@ -64,7 +72,7 @@ Remediation approach:
 - run the complete CI suite;
 - specifically smoke-test Najm Hoda provider HTTP calls and external integration calls.
 
-This is likely the best first dependency update because it may remove several advisories without a framework-major migration.
+This is the first live dependency-remediation target because it may remove several advisories without a framework-major migration.
 
 ## Priority 1 — Markdown parser
 
@@ -150,7 +158,7 @@ Production release should require:
 
 ## Recommended execution order
 
-1. Guzzle/PSR-7 compatible update.
+1. Guzzle/PSR-7 compatible update. **In progress.**
 2. Re-run audit + all CI tests.
 3. CommonMark parent/dependency update if resolvable independently.
 4. PHPExcel -> maintained spreadsheet parser migration.
