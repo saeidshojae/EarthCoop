@@ -58,11 +58,13 @@ jobs:
 
       - name: Create test environment
         run: |
-          cp .env.example .env
-          php artisan key:generate --force
-          cat >> .env <<'EOF'
+          cat > .env <<'EOF'
+          APP_NAME=EarthCoop
           APP_ENV=testing
+          APP_KEY=
           APP_DEBUG=true
+          APP_URL=http://localhost
+          LOG_CHANNEL=stack
           DB_CONNECTION=mysql
           DB_HOST=127.0.0.1
           DB_PORT=3306
@@ -72,8 +74,12 @@ jobs:
           CACHE_DRIVER=array
           SESSION_DRIVER=array
           QUEUE_CONNECTION=sync
+          MAIL_MAILER=array
+          BROADCAST_DRIVER=log
+          FILESYSTEM_DISK=local
           NAJM_HODA_MOCK_MODE=true
           EOF
+          php artisan key:generate --force
 
       - name: Validate Composer configuration
         run: composer validate --no-check-publish
