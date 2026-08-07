@@ -3,48 +3,45 @@
 Status: Planned workstream. Not part of the current execution-boundary change.
 Branch: `agent/najm-hoda-hardening`
 
+## Current discovery
+
+The backend is not actually stateless. `API/NajmHodaController` already:
+
+- finds or creates a `Conversation` for chat;
+- persists user messages and assistant messages;
+- exposes an API to list the authenticated user's conversations;
+- exposes an API to retrieve a conversation with ordered messages;
+- supports archive and soft-delete style status changes.
+
+Therefore the immediate continuity problem is likely in the global widget/front-end flow: it is not restoring/selecting the prior `conversation_id`, and it does not currently expose the existing conversation-list/history APIs to the user.
+
+This is good news: the first memory milestone should reuse and harden the existing persistence layer rather than introduce duplicate conversation tables.
+
 ## Why this belongs in the architecture
 
-The global Najm Hoda widget currently behaves primarily as a stateless chat surface. Closing and reopening the widget should not erase the user's useful conversational continuity, and Najm Hoda should be able to understand the page/module context in which a question is asked.
+Closing and reopening the widget should not erase useful conversational continuity, and Najm Hoda should be able to understand the page/module context in which a question is asked.
 
 This work should be implemented after the execution boundary is stabilized so that remembered conversation/context cannot accidentally bypass capability, safety, approval, or execution controls.
 
-## Workstream A — Conversation Memory & Archive
+## Workstream A — Conversation Continuity & Archive
 
-Goals:
+Immediate goals:
 
-- Persist chat conversations per authenticated user.
-- Allow the user to view, reopen, search, and optionally delete/archive prior conversations.
-- Restore recent conversation context when a conversation is reopened.
-- Keep raw conversation history separate from long-term derived user memory.
-- Introduce retention/privacy controls before using conversation history for personalization.
+- inspect the global widget implementation and how it manages `conversation_id`;
+- restore an active/recent conversation when the widget is reopened, or let the user explicitly choose a previous conversation;
+- add a user-visible conversation/history panel using the existing list/show/archive/delete APIs;
+- ensure every conversation returned to the widget belongs to the authenticated user;
+- add pagination and appropriate empty/loading/error states;
+- preserve agent metadata where useful.
 
-Suggested data model:
+Backend hardening follow-ups:
 
-- `najm_hoda_conversations`
-  - id
-  - user_id
-  - title
-  - status
-  - started_at
-  - last_message_at
-- `najm_hoda_messages`
-  - id
-  - conversation_id
-  - role
-  - agent
-  - content
-  - metadata
-  - created_at
-- optional later: `najm_hoda_user_memory`
-  - user_id
-  - memory_type
-  - fact/value
-  - confidence
-  - source_conversation_id
-  - reviewed/expired flags
+- verify conversation ownership in `getOrCreateConversation`, not only in show/delete/archive endpoints;
+- verify guest behavior and authenticated-user transition behavior;
+- define conversation retention policy;
+- add tests for cross-user access and conversation-id tampering.
 
-Important constraint: long-term memory should not simply copy every chat message. It should store only useful, bounded, reviewable derived context.
+Important distinction: persisted conversation history is not the same as long-term user memory.
 
 ## Workstream B — Page / Module Context Awareness
 
@@ -56,8 +53,7 @@ The widget should send structured page context with each message, for example:
   "module": "groups",
   "resource_type": "group",
   "resource_id": 123,
-  "page_title": "...",
-  "user_permissions": ["..."]
+  "page_title": "..."
 }
 ```
 
@@ -66,30 +62,34 @@ Najm Hoda can then answer questions such as "این بخش چیست؟" or "چط�
 Security constraints:
 
 - Page context is informational input, not authorization.
-- Resource IDs from the browser must be re-authorized server-side.
+- Resource IDs supplied by the browser must be re-authorized/re-resolved server-side.
 - The widget must never infer permission to mutate a resource merely because the user is viewing its page.
+- Do not trust browser-supplied permission arrays as authority.
 - Any action request still passes through Capability Registry -> Safety -> Delegation/Approval -> Executor.
 
-## Workstream C — User Understanding / Personalization
+## Workstream C — Long-term User Understanding / Personalization
 
-Only after persistent conversation and privacy controls exist:
+Only after conversation continuity and privacy controls exist, introduce a separate, bounded derived-memory layer. Possible uses:
 
-- summarize recurring goals/preferences relevant to EarthCoop usage;
+- summarize recurring EarthCoop-related goals or preferences;
 - remember preferred language and support style where appropriate;
 - use prior resolved issues to avoid repetitive support;
 - build bounded user context for better recommendations.
 
-Avoid opaque profiling. Derived memory should have provenance, confidence, retention, and a deletion path.
+Do not simply send all historical messages to the model. Long-term memory should be compact, provenance-aware, confidence-scored, reviewable/expirable, and deletable.
+
+Avoid opaque profiling. Sensitive inference should not be part of this layer.
 
 ## Integration order
 
 1. Stabilize Interaction / Execution Boundary.
-2. Persist conversations and messages.
-3. Add user-visible conversation archive.
-4. Add structured page/module context.
-5. Add context retrieval into Agent prompts.
-6. Add carefully scoped long-term derived memory.
-7. Add privacy/retention controls and tests.
+2. Audit the existing Conversation / ConversationMessage model, routes, ownership checks, and widget code.
+3. Connect the widget to existing conversation list/show APIs and persist/restore `conversation_id`.
+4. Add user-visible archive/history controls.
+5. Add structured page/module context.
+6. Add context retrieval into Agent prompts with token/recency limits.
+7. Add carefully scoped long-term derived memory.
+8. Add privacy/retention/deletion controls and security tests.
 
 ## Non-negotiable boundary
 
