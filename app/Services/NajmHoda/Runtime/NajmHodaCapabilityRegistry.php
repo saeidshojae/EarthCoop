@@ -97,12 +97,23 @@ class NajmHodaCapabilityRegistry
         }
 
         $allowApplyLowRisk = (bool) config('najm-hoda.runtime.autonomy.allow_apply_low_risk', false);
+        $permissioningEnabled = (bool) config('najm-hoda.runtime.autonomy.permissioning_v2.enabled', true);
+        $delegationEnforced = (bool) config(
+            'najm-hoda.runtime.autonomy.permissioning_v2.enforce_apply_requires_delegation',
+            true
+        );
         $risk = (string) ($contract['risk'] ?? 'low');
         $defaultMode = (string) ($contract['mode'] ?? 'propose');
-        $mode = $defaultMode;
-        if ($applyRequested && $allowApplyLowRisk && $risk === 'low') {
-            $mode = 'apply';
-        }
+
+        // Fail closed: an apply request can only become apply when permissioning
+        // is enabled and delegation enforcement is explicitly active.
+        $canApply = $applyRequested
+            && $allowApplyLowRisk
+            && $risk === 'low'
+            && $permissioningEnabled
+            && $delegationEnforced;
+
+        $mode = $canApply ? 'apply' : 'propose';
 
         $planned = [
             'priority' => $priority,
@@ -122,6 +133,8 @@ class NajmHodaCapabilityRegistry
             'contract_version' => (int) ($contract['version'] ?? 1),
             'risk' => $risk,
             'mode' => $mode,
+            'apply_requested' => $applyRequested,
+            'delegation_enforced' => $delegationEnforced,
         ]);
 
         return $planned;
