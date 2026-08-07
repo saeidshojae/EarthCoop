@@ -8,6 +8,7 @@ class NajmHodaAutonomyGameDayService
 {
     protected string $lastReportKey = 'najm_hoda:autonomy:gameday:last_report';
     protected string $historyKey = 'najm_hoda:autonomy:gameday:history';
+    protected string $approvalRequestsKey = 'najm_hoda:autonomy:approval:requests';
 
     public function __construct(
         protected RuntimeEventBus $eventBus,
@@ -28,41 +29,47 @@ class NajmHodaAutonomyGameDayService
             'state' => $this->controlService->state(),
             'kill_switch' => $this->controlService->killSwitchState(),
             'override' => $this->controlService->override(),
+            'approval_requests' => Cache::get($this->approvalRequestsKey),
+            'approval_requests_present' => Cache::has($this->approvalRequestsKey),
         ];
 
-        $scenarios = [
-            'kill_switch_blocks_goal_loop',
-            'pause_blocks_goal_loop',
-            'replay_consistency',
-            'approval_sla_alert_guard',
-        ];
+        try {
+            $scenarios = [
+                'kill_switch_blocks_goal_loop',
+                'pause_blocks_goal_loop',
+                'replay_consistency',
+                'approval_sla_alert_guard',
+            ];
 
-        $scenarioFilter = array_values(array_unique(array_filter(array_map(
-            static fn ($v): string => trim((string) $v),
-            $scenarioFilter
-        ), static fn (string $v): bool => $v !== '')));
+            $scenarioFilter = array_values(array_unique(array_filter(array_map(
+                static fn ($v): string => trim((string) $v),
+                $scenarioFilter
+            ), static fn (string $v): bool => $v !== '')));
 
-        if (!empty($scenarioFilter)) {
-            $scenarios = array_values(array_filter($scenarios, static fn (string $item): bool => in_array($item, $scenarioFilter, true)));
+            if (!empty($scenarioFilter)) {
+                $scenarios = array_values(array_filter($scenarios, static fn (string $item): bool => in_array($item, $scenarioFilter, true)));
+            }
+
+            $results = [];
+            foreach ($scenarios as $scenario) {
+                $results[] = $this->runScenario($scenario, $dryRun);
+            }
+
+            $failed = count(array_filter($results, static fn (array $item): bool => !(bool) ($item['passed'] ?? false)));
+            $report = [
+                'generated_at' => now()->toIso8601String(),
+                'dry_run' => $dryRun,
+                'scenario_count' => count($results),
+                'passed_count' => count($results) - $failed,
+                'failed_count' => $failed,
+                'status' => $failed === 0 ? 'pass' : 'fail',
+                'results' => $results,
+            ];
+        } finally {
+            $this->restoreControlState($initial);
+            $this->restoreApprovalState($initial);
         }
 
-        $results = [];
-        foreach ($scenarios as $scenario) {
-            $results[] = $this->runScenario($scenario, $dryRun);
-        }
-
-        $failed = count(array_filter($results, static fn (array $item): bool => !(bool) ($item['passed'] ?? false)));
-        $report = [
-            'generated_at' => now()->toIso8601String(),
-            'dry_run' => $dryRun,
-            'scenario_count' => count($results),
-            'passed_count' => count($results) - $failed,
-            'failed_count' => $failed,
-            'status' => $failed === 0 ? 'pass' : 'fail',
-            'results' => $results,
-        ];
-
-        $this->restoreControlState($initial);
         $this->storeReport($report);
 
         $this->eventBus->emit('najm_hoda.autonomy.gameday.completed', [
@@ -185,7 +192,7 @@ class NajmHodaAutonomyGameDayService
      */
     protected function scenarioApprovalSlaAlertGuard(bool $dryRun): array
     {
-        $requests = Cache::get('najm_hoda:autonomy:approval:requests', []);
+        $requests = Cache::get($this->approvalRequestsKey, []);
         if (!is_array($requests)) {
             $requests = [];
         }
@@ -204,7 +211,7 @@ class NajmHodaAutonomyGameDayService
             'context' => [],
             'plan_item' => [],
         ]);
-        Cache::put('najm_hoda:autonomy:approval:requests', $requests, now()->addHours(2));
+        Cache::put($this->approvalRequestsKey, $requests, now()->addHours(2));
 
         $alerting = $this->alertingService->evaluateAndAlert(24, $dryRun);
         $alerts = is_array($alerting['alerts'] ?? null) ? $alerting['alerts'] : [];
@@ -280,6 +287,24 @@ class NajmHodaAutonomyGameDayService
                 isset($override['reason']) ? (string) $override['reason'] : 'restore_override'
             );
         }
+    }
+
+    /**
+     * @param array<string, mixed> $initial
+     */
+    protected function restoreApprovalState(array $initial): void
+    {
+        if ((bool) ($initial['approval_requests_present'] ?? false)) {
+            $ttlMinutes = max(60, (int) config('najm-hoda.runtime.autonomy.human_escalation.retention_minutes', 10080));
+            Cache::put(
+                $this->approvalRequestsKey,
+                is_array($initial['approval_requests'] ?? null) ? $initial['approval_requests'] : [],
+                now()->addMinutes($ttlMinutes)
+            );
+            return;
+        }
+
+        Cache::forget($this->approvalRequestsKey);
     }
 
     /**
