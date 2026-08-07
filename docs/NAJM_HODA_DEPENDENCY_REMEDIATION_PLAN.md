@@ -20,119 +20,86 @@ This gives us a stable regression baseline before changing dependency versions.
 
 ## Current Composer audit evidence
 
-The same CI run reports **56 security advisories affecting 11 packages** and two abandoned packages.
+The remediation stream has reduced the production Composer audit from **56 advisories affecting 11 packages** to **3 advisories affecting 1 package** after the Laravel 11 dependency baseline was resolved.
 
-The audit is currently informational so dependency remediation can proceed without hiding test failures. It must not stay informational indefinitely for production release.
+The audit remains informational until the supported Laravel target is finalized and the remaining advisories are reviewed.
 
 ## Active remediation status
 
-The first controlled dependency remediation has started for `guzzlehttp/guzzle` and `guzzlehttp/psr7`.
+Completed or verified on the hardening branch:
 
-A dedicated GitHub Actions updater resolves these packages with Composer on a clean PHP 8.2 runner, commits only Composer-generated dependency files to the hardening branch when resolution changes them, and then the normal hardening CI re-runs against the generated lock file.
+- Guzzle / PSR-7 compatible security update;
+- CommonMark update to the patched line;
+- PHPExcel removal and PhpSpreadsheet migration with import regression coverage;
+- Symfony and phpseclib compatible security updates;
+- Laravel 9 -> 10 upgrade with full CI green;
+- Laravel 10 -> 11 dependency resolution to `laravel/framework 11.55.0`, with Sanctum 4, Collision 8 and PHPUnit 10 aligned.
 
 No dependency lock file is hand-edited.
+
+## Deferred compatibility cleanup — Najm Bahar PSR-4
+
+During the clean Laravel 11 install, Composer reported PSR-4 autoload warnings for three Najm Bahar API controllers because the filesystem path uses `app/Http/Controllers/API/...` while the declared namespace uses `App\\Http\\Controllers\\Api`.
+
+Affected controllers:
+
+- `NajmBaharController`
+- `NajmBaharSubAccountController`
+- `NajmBaharTransactionController`
+
+Status: **deferred, non-blocking for the Laravel 11 dependency resolution, but must be corrected before production readiness is considered complete.**
+
+Planned remediation:
+
+1. choose one canonical casing (`Api` or `API`) consistent with project conventions and PSR-4;
+2. align directory names, namespaces and all imports/routes atomically;
+3. run Composer autoload validation;
+4. run Najm Bahar route/controller smoke tests;
+5. rerun the full hardening CI suite.
+
+Do not mix this cleanup into an unrelated feature change.
 
 ## Priority 0 — active high-risk legacy import chain
 
 ### `maatwebsite/excel:^1.1` -> `phpoffice/phpexcel`
 
-Status: active application dependency; cannot be removed blindly.
-
-Why it is high priority:
-
-- abandoned package chain;
-- multiple high-severity advisories;
-- XLSX parsing advisories include XXE / XML scanner bypass classes;
-- the package processes administrator-uploaded spreadsheet files.
-
-Remediation:
-
-1. keep the existing `UserImportSpreadsheetReader` boundary and regression tests;
-2. migrate spreadsheet parsing to maintained PhpSpreadsheet/current Laravel Excel;
-3. regenerate `composer.lock` with Composer, never by hand;
-4. rerun import tests and full Najm Hoda CI;
-5. remove obsolete PHPExcel advisory ignores only after the package disappears from the lock file.
-
-This migration should be isolated from framework upgrades.
+Status: **remediated.** PHPExcel and the legacy Laravel Excel package have been removed from the active dependency graph and spreadsheet parsing now runs through PhpSpreadsheet behind a compatibility bridge. User-import regression tests and full CI have passed on the migrated path.
 
 ## Priority 1 — HTTP client and protocol stack
 
-### `guzzlehttp/guzzle`
+### `guzzlehttp/guzzle` / `guzzlehttp/psr7`
 
-`composer.json` allows `^7.2`, while current audit output reports vulnerabilities fixed in newer 7.x releases, including a high-severity noncanonical-host bypass and multiple cookie/proxy/header issues.
-
-### `guzzlehttp/psr7`
-
-Audit output includes URI host-validation and CRLF-related advisories.
-
-Remediation approach:
-
-- prefer a compatible patch/minor update inside the existing Guzzle 7 major line;
-- update Guzzle + PSR-7 together through Composer dependency resolution;
-- run the complete CI suite;
-- specifically smoke-test Najm Hoda provider HTTP calls and external integration calls.
-
-This is the first live dependency-remediation target because it may remove several advisories without a framework-major migration.
+Status: **remediated and full-CI verified.**
 
 ## Priority 1 — Markdown parser
 
 ### `league/commonmark`
 
-Audit reports multiple newly published 2026 advisories, including several high-severity denial-of-service cases and unsafe-link/raw-HTML bypasses in affected versions below 2.9.0.
-
-This package is transitive in the current application dependency graph.
-
-Remediation approach:
-
-- identify the parent package constraining CommonMark;
-- resolve to a maintained version >= the patched line where compatible;
-- review any user-controlled Markdown/rendering surfaces before production.
-
-Because these advisories were published on 2026-08-06, they should be treated as current high-priority findings rather than legacy noise.
+Status: **remediated and full-CI verified** on the patched 2.9 line.
 
 ## Priority 1 — Laravel framework security line
 
-### `laravel/framework:^9.19`
+The dedicated framework upgrade stream has progressed from Laravel 9 to Laravel 10 with full CI green, and Laravel 11 dependencies have now resolved cleanly to `laravel/framework 11.55.0`.
 
-Laravel 9 is an old framework major and current audit output includes security advisories affecting the installed line, including file-validation and email/CRLF classes.
+Next gates:
 
-Remediation must be split into two questions:
-
-1. Is there a patched release available within the currently permitted Laravel 9 dependency graph for each advisory?
-2. Which findings require moving to a newer supported Laravel major?
-
-Do not combine a Laravel-major migration with the Excel parser migration.
+1. run the complete hardening CI suite on the committed Laravel 11 lockfile;
+2. fix any application-level compatibility regressions surfaced by migrations/import/tests;
+3. only after Laravel 11 is green, evaluate and perform the supported Laravel 12 upgrade;
+4. re-run Composer audit and make remaining unaccepted high-severity findings release-blocking.
 
 ## Priority 2 — Symfony transitive components
 
-Current audit output includes findings in:
-
-- `symfony/http-foundation`
-- `symfony/mailer`
-- `symfony/mime`
-- `symfony/polyfill-intl-idn`
-- `symfony/routing`
-
-Most are transitive through Laravel and related packages. Resolve them through Composer as part of the framework/dependency refresh, not by pinning individual Symfony components against Laravel's supported dependency constraints.
+Status: **substantially remediated** through compatible updates and the Laravel framework upgrade stream. Symfony 7 components are present in the Laravel 11 baseline.
 
 ## Priority 2 — phpseclib
 
-Audit output includes several 2026 advisories, including high-severity ASN.1/OID and AES-CBC issues plus SSRF-related certificate-validation behavior.
-
-Remediation:
-
-- determine which direct/transitive package introduces phpseclib;
-- upgrade the parent dependency or phpseclib within compatible constraints;
-- identify whether EarthCoop actively exercises SSH/X.509/crypto paths before release.
+Status: **remediated within the compatible 3.x line** (`3.0.56` in the Laravel 11 resolved baseline).
 
 ## Abandoned packages
 
-CI reports:
-
-- `phpoffice/phpexcel` — replacement: `phpoffice/phpspreadsheet`
-- `doctrine/cache` — no direct replacement indicated by Composer
-
-`phpoffice/phpexcel` is an active security migration target. `doctrine/cache` should be traced to its parent dependency before removal decisions.
+- `phpoffice/phpexcel` — **removed**; replaced by `phpoffice/phpspreadsheet`.
+- `doctrine/cache` — still reported abandoned and must be traced to its parent dependency before a removal decision.
 
 ## Release-gate progression
 
@@ -142,9 +109,9 @@ CI reports:
 - migrations: blocking
 - Composer audit: reporting only
 
-### Phase B — after first dependency remediation pass
+### Phase B — after framework upgrade verification
 
-Make high-severity **new/unaccepted** advisories release-blocking while maintaining an explicit, reviewed baseline for unresolved legacy findings.
+Make high-severity **new/unaccepted** advisories release-blocking while maintaining an explicit, reviewed baseline for any unresolved legacy findings.
 
 ### Phase C — production autonomy candidate
 
@@ -153,18 +120,21 @@ Production release should require:
 - green Najm Hoda CI;
 - no unreviewed high-severity Composer advisories;
 - no abandoned active parser handling untrusted uploads;
+- Najm Bahar PSR-4 autoload warnings resolved;
 - `php artisan najm-hoda:production-readiness --strict` => GO;
 - server evidence for scheduler, queue, cache/Redis, migrations and runtime event storage.
 
 ## Recommended execution order
 
-1. Guzzle/PSR-7 compatible update. **In progress.**
-2. Re-run audit + all CI tests.
-3. CommonMark parent/dependency update if resolvable independently.
-4. PHPExcel -> maintained spreadsheet parser migration.
-5. Laravel/framework + Symfony security refresh as a dedicated upgrade stream.
-6. phpseclib parent-chain remediation.
-7. Turn Composer security policy from report-only into an enforced release gate.
+1. Guzzle/PSR-7 compatible update. **Done.**
+2. CommonMark update. **Done.**
+3. PHPExcel -> PhpSpreadsheet migration. **Done.**
+4. Symfony/phpseclib compatible remediation. **Done.**
+5. Laravel 9 -> 10. **Done + full CI green.**
+6. Laravel 10 -> 11. **Dependency baseline committed; full CI verification next.**
+7. Laravel 11 -> 12 after Laravel 11 is green.
+8. Najm Bahar PSR-4 casing cleanup before final production readiness.
+9. Turn Composer security policy from report-only into an enforced release gate.
 
 ## Safety rule
 
