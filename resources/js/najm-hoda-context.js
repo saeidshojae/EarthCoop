@@ -31,14 +31,38 @@ function pageContext() {
     const widget = document.getElementById('najm-hoda-widget');
     const body = document.body;
     const pathParts = window.location.pathname.split('/').filter(Boolean);
-    const numericPart = [...pathParts].reverse().find((part) => /^\d+$/.test(part));
+    const routeName = widget?.dataset?.routeName || body?.dataset?.routeName || null;
+    const module = widget?.dataset?.module || body?.dataset?.module || pathParts[0] || 'home';
+
+    let resourceType = body?.dataset?.resourceType || null;
+    let resourceId = body?.dataset?.resourceId || null;
+
+    // Never treat an arbitrary numeric URL segment as a resource ID. Only infer IDs
+    // from route families that the server resolver explicitly supports; authorization
+    // is still performed server-side before the ID/resource is exposed to the model.
+    if (!resourceId && typeof routeName === 'string' && routeName.startsWith('najm-bahar.projects.')) {
+        const projectIndex = pathParts.indexOf('projects');
+        const candidate = projectIndex >= 0 ? pathParts[projectIndex + 1] : null;
+        if (candidate && /^\d+$/.test(candidate)) {
+            resourceType = 'najm_bahar_project';
+            resourceId = candidate;
+        }
+    } else if (!resourceId && ['group', 'groups'].includes(String(module).toLowerCase())) {
+        const groupIndex = pathParts.findIndex((part) => ['group', 'groups'].includes(part.toLowerCase()));
+        const candidate = groupIndex >= 0 ? pathParts[groupIndex + 1] : null;
+        if (candidate && /^\d+$/.test(candidate)) {
+            resourceType = 'group';
+            resourceId = candidate;
+        }
+    }
 
     // Keep browser-supplied context deliberately narrow. Free-form page text/title/path
-    // is not promoted into model context; resource details can later be resolved server-side.
+    // is not promoted into model context; resource details are re-resolved server-side.
     return {
-        route_name: widget?.dataset?.routeName || body?.dataset?.routeName || null,
-        module: widget?.dataset?.module || body?.dataset?.module || pathParts[0] || 'home',
-        resource_id: body?.dataset?.resourceId || numericPart || null,
+        route_name: routeName,
+        module,
+        resource_type: resourceType,
+        resource_id: resourceId,
     };
 }
 
