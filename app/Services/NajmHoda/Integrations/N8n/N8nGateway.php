@@ -14,7 +14,7 @@ class N8nGateway
 {
     public function __construct(
         protected RuntimeEventBus $events,
-        protected N8nRuntimeControlService $controls,
+        protected ?N8nRuntimeControlService $controls = null,
     ) {
     }
 
@@ -176,7 +176,7 @@ class N8nGateway
             throw new RuntimeException('n8n integration is disabled.');
         }
 
-        if (!$this->controls->outboundEnabled()) {
+        if (!$this->runtimeControls()->outboundEnabled()) {
             throw new RuntimeException('n8n outbound integration is paused by runtime control.');
         }
 
@@ -187,6 +187,11 @@ class N8nGateway
         if (trim((string) config('najm-hoda-n8n.shared_secret')) === '') {
             throw new RuntimeException('n8n shared secret is not configured.');
         }
+    }
+
+    protected function runtimeControls(): N8nRuntimeControlService
+    {
+        return $this->controls ??= app(N8nRuntimeControlService::class);
     }
 
     protected function url(?string $path): string
