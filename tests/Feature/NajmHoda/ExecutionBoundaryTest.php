@@ -6,6 +6,7 @@ use App\Services\NajmHoda\NajmHodaInteractionBoundaryService;
 use App\Services\NajmHoda\NajmHodaOrchestrator;
 use App\Services\NajmHoda\Runtime\NajmHodaCrossModuleCapabilityOrchestratorService;
 use App\Services\NajmHoda\Runtime\NajmHodaExecutionService;
+use App\Services\NajmHoda\Runtime\NajmHodaResourceAuthorizationService;
 use App\Services\NajmHoda\Runtime\NajmHodaRuntimeActionAuthority;
 use Mockery;
 use Tests\TestCase;
@@ -30,7 +31,7 @@ class ExecutionBoundaryTest extends TestCase
             'agent' => 'steward',
         ]);
 
-        $service = new NajmHodaExecutionService($boundary, $runtime);
+        $service = $this->service($boundary, $runtime);
         $result = $service->executeChat($legacy, 'چطور این صفحه کار می‌کند؟');
 
         $this->assertTrue($result['success']);
@@ -63,7 +64,7 @@ class ExecutionBoundaryTest extends TestCase
             'agent' => 'steward',
         ]);
 
-        $service = new NajmHodaExecutionService($boundary, $runtime);
+        $service = $this->service($boundary, $runtime);
         $result = $service->executeChat($legacy, 'این کار را اجرا کن', [
             'user_id' => 7,
             'requested_action' => 'set_ticket_needs_review',
@@ -108,7 +109,7 @@ class ExecutionBoundaryTest extends TestCase
         $legacy = Mockery::mock(NajmHodaOrchestrator::class);
         $legacy->shouldNotReceive('route');
 
-        $service = new NajmHodaExecutionService($boundary, $runtime);
+        $service = $this->service($boundary, $runtime);
         $result = $service->executeChat($legacy, 'این تیکت را علامت بزن', [
             'requested_action' => 'set_ticket_needs_review',
             'action_input' => ['ticket_id' => 42],
@@ -147,7 +148,7 @@ class ExecutionBoundaryTest extends TestCase
         $legacy = Mockery::mock(NajmHodaOrchestrator::class);
         $legacy->shouldNotReceive('route');
 
-        $service = new NajmHodaExecutionService($boundary, $runtime);
+        $service = $this->service($boundary, $runtime);
         $result = $service->executeChat($legacy, 'اجرا کن', [
             'requested_action' => 'set_ticket_needs_review',
             'action_input' => ['ticket_id' => 42],
@@ -186,7 +187,7 @@ class ExecutionBoundaryTest extends TestCase
         $legacy = Mockery::mock(NajmHodaOrchestrator::class);
         $legacy->shouldNotReceive('route');
 
-        $service = new NajmHodaExecutionService($boundary, $runtime);
+        $service = $this->service($boundary, $runtime);
         $result = $service->executeChat($legacy, 'اجرا کن', [
             'requested_action' => 'set_ticket_needs_review',
             'action_input' => ['ticket_id' => 42],
@@ -195,6 +196,37 @@ class ExecutionBoundaryTest extends TestCase
 
         $this->assertTrue($result['success']);
         $this->assertSame('executed', $result['action_status']);
+    }
+
+    public function test_resource_authorization_denial_stops_runtime(): void
+    {
+        $boundary = Mockery::mock(NajmHodaInteractionBoundaryService::class);
+        $boundary->shouldReceive('classify')->once()->andReturn([
+            'mode' => 'action',
+            'action' => 'set_ticket_needs_review',
+            'input' => ['ticket_id' => 99],
+        ]);
+
+        $runtime = Mockery::mock(NajmHodaCrossModuleCapabilityOrchestratorService::class);
+        $runtime->shouldNotReceive('orchestrate');
+
+        $resource = Mockery::mock(NajmHodaResourceAuthorizationService::class);
+        $resource->shouldReceive('authorize')->once()->with(7, 'set_ticket_needs_review', ['ticket_id' => 99])
+            ->andReturn(['allowed' => false, 'reason' => 'resource_not_accessible']);
+
+        $legacy = Mockery::mock(NajmHodaOrchestrator::class);
+        $legacy->shouldNotReceive('route');
+
+        $service = new NajmHodaExecutionService($boundary, $runtime, $resource);
+        $result = $service->executeChat($legacy, 'این تیکت را تغییر بده', [
+            'requested_action' => 'set_ticket_needs_review',
+            'action_input' => ['ticket_id' => 99],
+            'runtime_action_authority' => NajmHodaRuntimeActionAuthority::apply(7),
+        ]);
+
+        $this->assertFalse($result['success']);
+        $this->assertSame('blocked', $result['action_status']);
+        $this->assertSame('resource_not_accessible', $result['action_reason']);
     }
 
     public function test_blocked_authorized_action_never_reaches_legacy_or_runtime_orchestrator(): void
@@ -211,7 +243,7 @@ class ExecutionBoundaryTest extends TestCase
         $legacy = Mockery::mock(NajmHodaOrchestrator::class);
         $legacy->shouldNotReceive('route');
 
-        $service = new NajmHodaExecutionService($boundary, $runtime);
+        $service = $this->service($boundary, $runtime);
         $result = $service->executeChat($legacy, 'همه چیز را حذف کن', [
             'requested_action' => 'delete_everything',
             'runtime_action_authority' => NajmHodaRuntimeActionAuthority::propose(7),
@@ -220,5 +252,18 @@ class ExecutionBoundaryTest extends TestCase
         $this->assertFalse($result['success']);
         $this->assertSame('blocked', $result['action_status']);
         $this->assertSame('unknown_action_contract', $result['action_reason']);
+    }
+
+    protected function service(
+        NajmHodaInteractionBoundaryService $boundary,
+        NajmHodaCrossModuleCapabilityOrchestratorService $runtime
+    ): NajmHodaExecutionService {
+        $resource = Mockery::mock(NajmHodaResourceAuthorizationService::class);
+        $resource->shouldReceive('authorize')->zeroOrMoreTimes()->andReturn([
+            'allowed' => true,
+            'reason' => 'test_authorized',
+        ]);
+
+        return new NajmHodaExecutionService($boundary, $runtime, $resource);
     }
 }
