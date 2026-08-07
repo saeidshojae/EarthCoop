@@ -12,4 +12,5 @@ Route::middleware('permission:najm-hoda.view-dashboard')->group(function (): voi
 
 Route::middleware(['permission:najm-hoda.manage-settings', 'throttle:najm-hoda-autonomy-write'])->group(function (): void {
     Route::post('/controls', [NajmHodaN8nController::class, 'updateControls'])->name('controls.update');
+    Route::post('/secret-rotation/verify', [NajmHodaN8nController::class, 'markSecretRotation'])->name('secret-rotation.verify');
 });
