@@ -9,12 +9,13 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use RuntimeException;
-use Throwable;
 
 class N8nGateway
 {
-    public function __construct(protected RuntimeEventBus $events)
-    {
+    public function __construct(
+        protected RuntimeEventBus $events,
+        protected N8nRuntimeControlService $controls,
+    ) {
     }
 
     /** @return array<string, mixed> */
@@ -44,7 +45,7 @@ class N8nGateway
                 'status_code' => $response->status(),
                 'request_id' => $requestId,
             ];
-        } catch (ConnectionException $exception) {
+        } catch (ConnectionException) {
             $this->events->emit('najm_hoda.integration.n8n.health_failed', [
                 'request_id' => $requestId,
                 'correlation_id' => $requestId,
@@ -58,9 +59,6 @@ class N8nGateway
     }
 
     /**
-     * Dispatch a read-only/propose-only workflow. This method intentionally has no
-     * apply-capable mode in milestone 1.
-     *
      * @param array<string, mixed> $payload
      * @return array<string, mixed>
      */
@@ -176,6 +174,10 @@ class N8nGateway
     {
         if (!config('najm-hoda-n8n.enabled', false)) {
             throw new RuntimeException('n8n integration is disabled.');
+        }
+
+        if (!$this->controls->outboundEnabled()) {
+            throw new RuntimeException('n8n outbound integration is paused by runtime control.');
         }
 
         if (trim((string) config('najm-hoda-n8n.base_url')) === '') {
