@@ -19,7 +19,6 @@ class ProductionReadinessAuditServiceTest extends TestCase
     {
         $from = $this->account('HARDEN-FROM', 100);
         $to = $this->account('HARDEN-TO', 50);
-
         $transaction = $this->completedTransaction($from, $to, 25);
         $this->balancedLedger($transaction, $from, $to, 25);
 
@@ -100,12 +99,10 @@ class ProductionReadinessAuditServiceTest extends TestCase
             $transactions[] = $transaction;
             $this->balancedLedger($transaction, $from, $to, $amount);
 
-            DB::table('najm_transactions')
-                ->where('id', $transaction->id)
-                ->update([
-                    'metadata' => json_encode(['idempotency_key' => 'same-request-key']),
-                    'idempotency_key' => null,
-                ]);
+            DB::table('najm_transactions')->where('id', $transaction->id)->update([
+                'metadata' => json_encode(['idempotency_key' => 'same-request-key']),
+                'idempotency_key' => null,
+            ]);
         }
 
         $result = app(ProductionReadinessAuditService::class)->run();
@@ -114,17 +111,13 @@ class ProductionReadinessAuditServiceTest extends TestCase
         $this->assertCount(1, $result['idempotency_failures']);
         $this->assertSame('duplicate_idempotency_key', $result['idempotency_failures'][0]['issue']);
         $this->assertSame('same-request-key', $result['idempotency_failures'][0]['idempotency_key']);
-        $this->assertSame(
-            array_map(fn (NajmTransaction $transaction) => (int) $transaction->id, $transactions),
-            $result['idempotency_failures'][0]['transaction_ids']
-        );
+        $this->assertSame(array_map(fn (NajmTransaction $transaction) => (int) $transaction->id, $transactions), $result['idempotency_failures'][0]['transaction_ids']);
     }
 
     public function test_failed_transaction_with_ledger_effects_fails_recovery_audit(): void
     {
         $from = $this->account('HARDEN-RECOVERY-FROM', 100);
         $to = $this->account('HARDEN-RECOVERY-TO', 50);
-
         $transaction = NajmTransaction::create([
             'from_account_id' => $from->id,
             'to_account_id' => $to->id,
@@ -133,7 +126,6 @@ class ProductionReadinessAuditServiceTest extends TestCase
             'status' => 'failed',
             'description' => 'Partial failure fixture',
         ]);
-
         LedgerEntry::create([
             'transaction_id' => $transaction->id,
             'account_id' => $from->id,
@@ -187,10 +179,10 @@ class ProductionReadinessAuditServiceTest extends TestCase
         $this->assertSame(4, $result['operational_failures'][0]['attempts']);
     }
 
-    public function test_scheduled_transaction_without_placeholder_fails_operational_audit(): void
+    public function test_scheduled_transaction_with_dangling_placeholder_reference_fails_operational_audit(): void
     {
-        ScheduledTransaction::create([
-            'transaction_id' => null,
+        $scheduled = ScheduledTransaction::create([
+            'transaction_id' => 999999999,
             'execute_at' => now()->addMinute(),
             'status' => 'pending',
             'attempts' => 0,
@@ -200,7 +192,9 @@ class ProductionReadinessAuditServiceTest extends TestCase
         $result = app(ProductionReadinessAuditService::class)->run();
 
         $this->assertFalse($result['ok']);
-        $this->assertSame('scheduled_transaction_missing_placeholder', $result['operational_failures'][0]['issue']);
+        $this->assertSame('scheduled_transaction_placeholder_not_found', $result['operational_failures'][0]['issue']);
+        $this->assertSame((int) $scheduled->id, $result['operational_failures'][0]['scheduled_transaction_id']);
+        $this->assertSame(999999999, $result['operational_failures'][0]['transaction_id']);
     }
 
     private function completedTransaction(Account $from, Account $to, int $amount): NajmTransaction
