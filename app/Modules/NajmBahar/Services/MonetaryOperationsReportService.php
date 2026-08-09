@@ -34,6 +34,7 @@ class MonetaryOperationsReportService
             ]);
 
         $payments = PublicExecutionPaymentInstruction::query()
+            ->with('plan:id,group_id')
             ->whereIn('status', ['failed', 'dead_letter'])
             ->orderByRaw("CASE WHEN status = 'dead_letter' THEN 0 ELSE 1 END")
             ->orderByDesc('failed_at')
@@ -47,13 +48,14 @@ class MonetaryOperationsReportService
                 'last_failure_at' => optional($payment->failed_at)->toIso8601String(),
                 'error' => $payment->failure_reason,
                 'group_id' => (int) optional($payment->plan)->group_id,
-                'reference_id' => (int) $payment->payment_instruction_id,
+                'reference_id' => (int) $payment->plan_id,
                 'operator_action' => $payment->status === 'dead_letter'
                     ? 'recover_dead_letter_then_retry'
                     : 'retry_failed',
             ]);
 
         $reversals = PublicExecutionReversalRequest::query()
+            ->with('paymentInstruction.plan:id,group_id')
             ->whereIn('status', ['failed', 'dead_letter'])
             ->orderByRaw("CASE WHEN status = 'dead_letter' THEN 0 ELSE 1 END")
             ->orderByDesc('failed_at')
@@ -76,10 +78,17 @@ class MonetaryOperationsReportService
         return $outbox
             ->concat($payments)
             ->concat($reversals)
-            ->sortBy([
-                fn (array $item) => $item['status'] === 'dead_letter' ? 0 : 1,
-                fn (array $item) => $item['last_failure_at'] ? -strtotime($item['last_failure_at']) : PHP_INT_MAX,
-            ])
+            ->sort(function (array $a, array $b) {
+                $aPriority = $a['status'] === 'dead_letter' ? 0 : 1;
+                $bPriority = $b['status'] === 'dead_letter' ? 0 : 1;
+                if ($aPriority !== $bPriority) {
+                    return $aPriority <=> $bPriority;
+                }
+
+                $aTime = $a['last_failure_at'] ? strtotime($a['last_failure_at']) : 0;
+                $bTime = $b['last_failure_at'] ? strtotime($b['last_failure_at']) : 0;
+                return $bTime <=> $aTime;
+            })
             ->take($limit)
             ->values();
     }
