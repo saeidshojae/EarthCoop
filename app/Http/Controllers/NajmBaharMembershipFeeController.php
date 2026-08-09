@@ -63,10 +63,6 @@ class NajmBaharMembershipFeeController extends Controller
         $canPayFromDim = $mainDim >= $total;
         $canPayFromActive = (int) $wallet['active'] >= $total;
 
-        // Compatibility with the existing wallet modal: pick an active-funded
-        // sub-account when possible, while the new backend may also pay directly
-        // from main active or activate main dim. This keeps the old modal working
-        // until its explicit Dim/Active selector is refactored.
         $defaultSubAccount = $subAccounts->first(fn ($sub) => (int) ($sub->balance_active ?? 0) >= $total)
             ?? $subAccounts->first();
         $defaultSubActive = (int) ($defaultSubAccount?->balance_active ?? 0);
@@ -79,22 +75,17 @@ class NajmBaharMembershipFeeController extends Controller
             'has_paid' => $hasPaid,
             'total_fee' => $total,
             'total_fee_formatted' => BaharMoney::formatDecimal($total),
-
-            // Canonical wallet totals.
             'balance_dim' => (int) $wallet['dim'],
             'balance_dim_formatted' => BaharMoney::formatDecimal((int) $wallet['dim']),
             'balance_active' => (int) $wallet['active'],
             'balance_active_formatted' => BaharMoney::formatDecimal((int) $wallet['active']),
             'wallet_total' => (int) $wallet['total'],
             'wallet_total_formatted' => BaharMoney::formatDecimal((int) $wallet['total']),
-
-            // Explicit Release A payment-source capabilities.
             'can_pay_from_dim' => $canPayFromDim,
             'can_pay_from_active' => $canPayFromActive,
             'default_payment_source' => $canPayFromDim ? 'dim' : 'active',
+            'payment_source_required' => true,
             'policy_version_id' => $this->monetaryPolicy->versionId(),
-
-            // Legacy modal compatibility keys; remove after Blade refactor.
             'has_enough_balance' => $hasEnoughBalance,
             'requires_sub_account' => $requiresSubAccount,
             'main_active_balance' => $mainActive,
@@ -112,7 +103,6 @@ class NajmBaharMembershipFeeController extends Controller
             'transfer_to_url' => $defaultSubAccount
                 ? route('najm-bahar.sub-accounts.transfer-to', ['subAccount' => $defaultSubAccount->id])
                 : null,
-
             'sub_accounts' => $subAccounts->map(fn ($sub) => [
                 'id' => $sub->id,
                 'code' => $sub->sub_account_code,
@@ -150,8 +140,11 @@ class NajmBaharMembershipFeeController extends Controller
     public function pay(Request $request)
     {
         $validated = $request->validate([
-            'payment_source' => 'nullable|in:dim,active',
+            'payment_source' => 'required|in:dim,active',
             'sub_account_id' => 'nullable|integer',
+        ], [
+            'payment_source.required' => 'منبع پرداخت حق عضویت را مشخص کنید.',
+            'payment_source.in' => 'منبع پرداخت حق عضویت معتبر نیست.',
         ]);
 
         $user = Auth::user();
@@ -168,9 +161,7 @@ class NajmBaharMembershipFeeController extends Controller
         $total = $operationsAmount + $insuranceAmount + $burnAmount;
         $currentYear = $this->membershipPaymentYear($user);
         $policyVersionId = $this->monetaryPolicy->versionId();
-
-        $paymentSource = $validated['payment_source']
-            ?? ((int) ($account->balance_faded ?? 0) >= $total ? 'dim' : 'active');
+        $paymentSource = $validated['payment_source'];
 
         try {
             DB::transaction(function () use (
@@ -217,8 +208,6 @@ class NajmBaharMembershipFeeController extends Controller
                         $this->accountService->ensureSubAccountAccount($subAccount);
                         $sourceAccountNumber = $subAccount->sub_account_code;
                     } elseif ((int) ($account->balance_active ?? 0) < $total) {
-                        // Backward-compatible modal submissions may omit the
-                        // selected sub-account. Choose an eligible active child.
                         $subAccount = SubAccount::where('account_id', $account->id)
                             ->where('status', 1)
                             ->where('balance_active', '>=', $total)
