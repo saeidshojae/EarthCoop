@@ -11,17 +11,21 @@ class PublicExecutionReversalRequest extends Model
 
     protected $fillable = [
         'payment_instruction_id', 'created_by', 'approved_by', 'cancelled_by',
-        'amount_gol', 'status', 'idempotency_key', 'reason', 'evidence', 'metadata',
-        'approved_at', 'cancelled_at', 'cancellation_reason', 'executed_at',
+        'amount_gol', 'status', 'attempts', 'last_attempt_at', 'failed_at', 'last_error',
+        'idempotency_key', 'reason', 'evidence', 'metadata', 'approved_at',
+        'cancelled_at', 'cancellation_reason', 'executed_at',
     ];
 
     protected $casts = [
         'amount_gol' => 'integer',
+        'attempts' => 'integer',
         'evidence' => 'array',
         'metadata' => 'array',
         'approved_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'executed_at' => 'datetime',
+        'last_attempt_at' => 'datetime',
+        'failed_at' => 'datetime',
     ];
 
     public function paymentInstruction()
