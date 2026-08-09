@@ -22,8 +22,8 @@ Baseline: `agent/najm-hoda-chat-context`
 - Treasury funds now have required reserve and committed-liability fields.
 - Interfund transfers are auditable, idempotent and cannot spend protected reserve/commitments.
 - Annual membership fee can be paid from dim or active money.
-- Membership split (operations/insurance/burn) is now resolved through `MonetaryPolicyService` and records `policy_version_id`, while legacy Settings remain a fallback only.
-- Membership info now reports aggregate wallet active/dim totals via `AccountBalanceService`.
+- Membership split (operations/insurance/burn) is resolved through `MonetaryPolicyService` and records `policy_version_id`, while legacy Settings remain a fallback only.
+- Membership info reports aggregate wallet active/dim totals via `AccountBalanceService`.
 - Dim membership payment activates exactly the fee amount before distributing active Bahar to treasury funds.
 - Membership payment is idempotent per member/year and preserves historical legacy split recognition.
 - Read-only account invariant audit identifies local-vs-legacy-aggregate balance semantics and sub-account mirror drift.
@@ -34,7 +34,7 @@ Baseline: `agent/najm-hoda-chat-context`
 - The old referral bonus no longer transfers the new member's dim money; referral now routes to configurable participation reputation only.
 - Architecture test prevents new direct balance mutations outside an explicit transitional financial boundary.
 - `NajmBaharController` no longer mutates financial balances directly; its legacy repair delegates to `MonetaryService`.
-- Dashboard/wallet controllers now prepare canonical aggregate wallet totals for the UI.
+- Dashboard/wallet controllers prepare canonical aggregate wallet totals for the UI.
 - `BalanceNormalizationService` provides deterministic normalization of cached total fields only.
 - `najm-bahar:normalize-balances` is dry-run by default and requires explicit `--apply`; it never alters active/dim buckets.
 - Monetary primitives include auditable/idempotent dim cancellation and active destruction.
@@ -42,12 +42,16 @@ Baseline: `agent/najm-hoda-chat-context`
 - Retirement cancels remaining dim only up to the constitutional 10,000-Bahar membership footprint.
 - The complementary amount is destroyed first from the Money Destruction Fund, then from the Idle Tax Fund.
 - Any uncovered remainder becomes `MonetaryRetirementLiability` owed by the EarthCoop monetary system; the estate is not liable.
-- Retirement liabilities can now be settled later, partially or fully, as protected treasury surplus becomes available.
+- Retirement liabilities can be settled later, partially or fully, as protected treasury surplus becomes available.
+- `najm-bahar:settle-retirement-liabilities` provides an operational batch path for retrying outstanding liabilities.
 - Liability settlement preserves the same destruction order and updates the parent retirement atomically.
 - Member active wealth is explicitly preserved for inheritance/estate handling outside the retirement monetary footprint.
 - Legacy dim above the constitutional footprint is preserved rather than confiscated by retirement.
+- Read-only idle-capital observation foundation exists; it never moves money or charges tax.
+- Internal Main↔Sub reshuffling does not reset the idle-observation clock; external active use does.
+- Idle observation snapshots can be persisted for policy review through `najm-bahar:observe-idle-capital --record`.
 
-## Tests added
+## Tests added/expanded
 
 - `NajmBaharConstitutionTest`
 - `InitialMembershipCreditTest`
@@ -56,7 +60,7 @@ Baseline: `agent/najm-hoda-chat-context`
 - `MonetaryPolicyServiceTest`
 - `HistoricalLedgerBackfillTest`
 - `TreasuryServiceTest`
-- `MembershipFeePaymentTest`
+- `MembershipFeePaymentTest` (including versioned 5/4/3 allocation example)
 - `AccountInvariantServiceTest`
 - `AccountBalanceServiceTest`
 - `BalanceNormalizationServiceTest`
@@ -65,6 +69,7 @@ Baseline: `agent/najm-hoda-chat-context`
 - `SafeTransactionBindingTest`
 - `MembershipRetirementServiceTest`
 - `RetirementLiabilitySettlementServiceTest`
+- `IdleCapitalObservationServiceTest`
 - `NajmBaharFinancialMutationBoundaryTest`
 
 ## Important bugs/legacy behavior closed in new live paths
@@ -83,8 +88,10 @@ Commands:
 - `najm-bahar:audit-balances` — read-only invariant inventory.
 - `najm-bahar:plan-balance-normalization` — read-only detailed plan.
 - `najm-bahar:normalize-balances` — dry-run by default; `--apply` explicitly writes cached totals only.
+- `najm-bahar:settle-retirement-liabilities` — retry outstanding system retirement liabilities against current protected treasury surplus.
+- `najm-bahar:observe-idle-capital` — read-only idle-capital observation; `--record` stores snapshots and still charges no tax.
 
-Before production migration, remaining aggregate-reading UI/services must move to `AccountBalanceService` so displays do not assume old aggregate `main.balance` semantics.
+Before production normalization, remaining Blade readers must consume the canonical `walletBalance` data instead of assuming old aggregate `main.balance` semantics.
 
 ## Retirement model
 
@@ -101,21 +108,33 @@ For a member retirement:
 
 Retirement is idempotent per member.
 
+## Idle-capital observation status
+
+Release A intentionally stops before automatic idle-tax collection. The current observation model is conservative and reviewable:
+
+- only Active money is considered;
+- internal account reshuffling does not count as circulation;
+- recent external active outflow resets the observation clock;
+- policy can define observation period and exempt balance;
+- output is only a candidate amount/snapshot;
+- no tax collection or automatic debit exists in this layer.
+
+This gives us real data to validate the future tax formula before a collection mechanism is enabled.
+
 ## Known transitional debt
 
 - Blade wallet/dashboard views still need a focused refactor to consume the prepared canonical `walletBalance` data everywhere instead of directly reading legacy account totals.
 - Wallet membership UI still needs an explicit dim/active source selector even though the backend already supports it.
 - `TransactionService` and `SubAccountService` still contain legacy direct balance mutation internals behind safe adapters; the allowlist must continue shrinking.
-- Idle-money classification is intentionally not charging tax yet. The next step is a reviewable assessment layer before any policy-driven collection exists.
+- A real idle-tax collection formula, exemptions, cadence and rate remain intentionally unimplemented until the observation data and policy are approved.
 
 ## Next Release A work
 
 1. Refactor wallet/dashboard Blade readers to canonical aggregate balance data.
-2. Build reviewable idle-money assessment/classification (no automatic tax collection initially).
-3. Add policy-controlled idle-tax collection only after assessment rules and exemptions are approved.
-4. Add a batch/command path for settling outstanding retirement liabilities from future treasury liquidity.
-5. Shrink safe adapters by migrating remaining legacy transfer methods.
-6. Expand true-concurrency tests.
-7. Add explicit UI source selection for annual membership fee.
+2. Add tests/command coverage for operational observation and liability settlement commands.
+3. Shrink safe adapters by migrating remaining legacy transfer methods.
+4. Expand true-concurrency tests.
+5. Add explicit UI source selection for annual membership fee.
+6. Review idle-observation data model before any tax collection feature is introduced.
 
 No merge into `main` is intended from this branch at this stage.
