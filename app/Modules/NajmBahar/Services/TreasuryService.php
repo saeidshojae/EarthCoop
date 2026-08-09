@@ -2,6 +2,7 @@
 
 namespace App\Modules\NajmBahar\Services;
 
+use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\TreasuryFund;
 use App\Modules\NajmBahar\Models\TreasuryTransfer;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,7 @@ class TreasuryService
 
     public function __construct(
         private readonly AccountService $accountService,
-        private readonly TransactionService $transactionService
+        private readonly InternalSubAccountTransferService $internalSubAccountTransferService
     ) {
     }
 
@@ -137,11 +138,20 @@ class TreasuryService
                 throw new \RuntimeException('Treasury transfer would violate reserve or committed-liability protection.');
             }
 
-            $transaction = $this->transactionService->transfer(
-                $from->account->account_number,
-                $to->account->account_number,
+            $fromSubAccount = SubAccount::where('sub_account_code', $from->account->account_number)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $toSubAccount = SubAccount::where('sub_account_code', $to->account->account_number)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $transaction = $this->internalSubAccountTransferService->transfer(
+                $fromSubAccount,
+                $toSubAccount,
                 $amount,
+                'active',
                 $reason,
+                'treasury-transfer-' . $idempotencyKey,
                 array_merge($meta, [
                     'type' => 'interfund_transfer',
                     'from_fund' => $fromCode,
@@ -149,10 +159,8 @@ class TreasuryService
                     'authorized_by' => $authorizedBy,
                     'policy_reference' => $policyReference,
                     'system_operation' => true,
-                ]),
-                'treasury-transfer-' . $idempotencyKey,
-                'active',
-                'interfund_transfer'
+                    'treasury_operation' => true,
+                ])
             );
 
             return TreasuryTransfer::create([
