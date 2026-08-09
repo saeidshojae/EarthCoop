@@ -20,8 +20,10 @@ class PublicExecutionPaymentService
             if ($lockedInstruction->status === 'executed') {
                 return $lockedInstruction;
             }
-            if ($lockedInstruction->status !== 'pending') {
-                throw new \RuntimeException('Public execution payment instruction is not pending execution.');
+            if ($lockedInstruction->status !== 'approved'
+                || ! $lockedInstruction->approved_by
+                || ! $lockedInstruction->approved_at) {
+                throw new \RuntimeException('Public execution payment requires a distinct recorded second approval before execution.');
             }
 
             $amount = (int) $lockedInstruction->amount_gol;
@@ -88,6 +90,7 @@ class PublicExecutionPaymentService
                 'execution_authorization_id' => (int) $lockedInstruction->authorization_id,
                 'execution_account_id' => (int) $source->id,
                 'payee_account_id' => (int) $payee->id,
+                'approved_by' => (int) $lockedInstruction->approved_by,
                 'amount_gol' => $amount,
                 'system_operation' => true,
             ];
