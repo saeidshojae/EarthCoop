@@ -7,6 +7,7 @@ use App\Models\NajmBaharAgreement;
 use App\Models\User;
 use App\Models\UserExperience;
 use App\Models\Address;
+use App\Modules\NajmBahar\Policy\NajmBaharConstitution;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\TransactionService;
 use App\Modules\NajmBahar\Services\FeeService;
@@ -88,7 +89,7 @@ class NajmBaharController extends Controller
                     'حساب نجم بهار ' . $user->fullName()
                 );
 
-                // 2. واریز اولیه با تقسیم اکتیو/کمرنگ بر اساس تنظیمات
+                // 2. اعتبار اولیه عضویت همیشه دقیقاً ۱۰٬۰۰۰ بهار و ۱۰۰٪ کمرنگ است.
                 $this->ensureInitialFundingAndMembershipFee($user, $userAccount);
 
                 // حذف کسر خودکار حق عضویت - کاربر باید خودش با زدن دکمه پرداخت کند
@@ -174,7 +175,7 @@ class NajmBaharController extends Controller
         $settings = Setting::firstNajmBaharSettings();
         $userCount = User::count();
         $userThreshold = (int) ($settings?->najm_bahar_user_threshold ?? 1111111);
-        $initialAmount = (int) ($settings?->najm_bahar_initial_amount ?? BaharMoney::toGolFromBahar(10000));
+        $initialAmount = NajmBaharConstitution::initialMembershipGol();
         $isThresholdMet = $userCount >= $userThreshold;
         $remainingUsers = max(0, $userThreshold - $userCount);
         $totalMinted = $userCount * $initialAmount;
@@ -253,9 +254,7 @@ class NajmBaharController extends Controller
 
     private function getInitialAmount(): int
     {
-        $settings = Setting::firstNajmBaharSettings();
-
-        return (int) ($settings?->najm_bahar_initial_amount ?? BaharMoney::toGolFromBahar(10000));
+        return NajmBaharConstitution::initialMembershipGol();
     }
 
     private function ensureInitialFundingAndMembershipFee(User $user, $account): void
@@ -265,32 +264,21 @@ class NajmBaharController extends Controller
             ->exists();
 
         if (! $hasInitialFunding) {
-            $settings = Setting::firstNajmBaharSettings();
             $initialAmount = $this->getInitialAmount();
-            
-            // دریافت تنظیمات اکتیو/فیدد
-            $activeType = $settings?->najm_bahar_initial_active_type ?? 'percentage';
-            $activePercentage = (int) ($settings?->najm_bahar_initial_active_percentage ?? 30);
-            $activeFixedAmount = (int) ($settings?->najm_bahar_initial_active_fixed_amount ?? 0);
+            $activeAmount = NajmBaharConstitution::initialActiveGol();
+            $fadedAmount = NajmBaharConstitution::initialDimGol();
 
-            // محاسبه مقادیر برای metadata
-            if ($activeType === 'fixed_amount') {
-                $activeAmount = min($activeFixedAmount, $initialAmount);
-            } else {
-                $activeAmount = intval(($initialAmount * $activePercentage) / 100);
-            }
-            $fadedAmount = $initialAmount - $activeAmount;
-
-            // واریز اولیه با تقسیم موجودی
+            // قانون اساسی پول: تمام اعتبار اولیه در وضعیت کمرنگ ایجاد می‌شود.
             $updatedAccount = $this->transactionService->depositInitialFunding(
                 $account->account_number,
                 $initialAmount,
-                $activePercentage,
-                $activeFixedAmount,
-                $activeType
+                NajmBaharConstitution::INITIAL_ACTIVE_PERCENTAGE,
+                0,
+                'percentage'
             );
 
-            // ثبت تراکنش برای auditing و idempotency
+            // ثبت تراکنش برای auditing و idempotency.
+            // در گام بعدی Release A خود creation نیز به ledger event درجه‌یک تبدیل می‌شود.
             NajmTransaction::create([
                 'from_account_id' => null,
                 'to_account_id' => $updatedAccount->id,
@@ -301,31 +289,24 @@ class NajmBaharController extends Controller
                     'type' => 'initial_funding',
                     'user_id' => $user->id,
                     'system_operation' => true,
-                    'active_type' => $activeType,
-                    'active_percentage' => $activePercentage,
-                    'active_fixed_amount' => $activeFixedAmount,
+                    'constitutional_rule' => 'initial_membership_credit',
+                    'active_type' => 'percentage',
+                    'active_percentage' => NajmBaharConstitution::INITIAL_ACTIVE_PERCENTAGE,
+                    'active_fixed_amount' => 0,
                     'active_amount' => $activeAmount,
                     'faded_amount' => $fadedAmount,
                 ],
-                'description' => 'واریز اولیه جهت افتتاح حساب نجم بهار',
+                'description' => 'واریز اعتبار اولیه عضویت نجم بهار - ۱۰۰٪ کمرنگ',
             ]);
         } elseif (intval($account->balance) > 0
             && intval($account->balance_active) === 0
             && intval($account->balance_faded) === 0
         ) {
-            $settings = Setting::firstNajmBaharSettings();
-            $activeType = $settings?->najm_bahar_initial_active_type ?? 'percentage';
-            $activePercentage = (int) ($settings?->najm_bahar_initial_active_percentage ?? 30);
-            $activeFixedAmount = (int) ($settings?->najm_bahar_initial_active_fixed_amount ?? 0);
-
+            // اصلاح حساب legacy که فقط balance داشته است: هیچ بخشی از اعتبار اولیه
+            // بدون یک رویداد activation معتبر نباید فعال فرض شود.
             $initialAmount = intval($account->balance);
-            if ($activeType === 'fixed_amount') {
-                $activeAmount = min($activeFixedAmount, $initialAmount);
-            } else {
-                $activeAmount = intval(($initialAmount * $activePercentage) / 100);
-            }
-            $account->balance_active = $activeAmount;
-            $account->balance_faded = $initialAmount - $activeAmount;
+            $account->balance_active = 0;
+            $account->balance_faded = $initialAmount;
             $account->save();
         }
 
@@ -334,6 +315,7 @@ class NajmBaharController extends Controller
         //     $this->distributeMembershipFee($account->account_number, $user->id);
         // }
     }
+
     private function distributeMembershipFee(string $fromAccountNumber, int $userId): int
     {
         $settings = Setting::firstNajmBaharSettings();
