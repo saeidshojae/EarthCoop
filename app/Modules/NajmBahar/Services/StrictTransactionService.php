@@ -24,6 +24,23 @@ class StrictTransactionService extends SafeTransactionService
         string $balanceType = 'balance',
         ?string $transactionType = null
     ): NajmTransaction {
+        // The constitutional Dim rule is stronger than the Release D generic
+        // actor fallback retirement. Delegate faded transfers first so the
+        // stable domain prohibition from SafeTransactionService remains the
+        // externally observable contract for every economic actor type.
+        if ($balanceType === 'faded') {
+            return parent::transfer(
+                $fromAccountNumber,
+                $toAccountNumber,
+                $amount,
+                $description,
+                $meta,
+                $idempotencyKey,
+                $balanceType,
+                $transactionType
+            );
+        }
+
         $from = $fromAccountNumber
             ? Account::where('account_number', $fromAccountNumber)->first()
             : null;
