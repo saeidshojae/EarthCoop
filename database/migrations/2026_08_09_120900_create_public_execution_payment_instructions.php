@@ -12,8 +12,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('plan_id')->constrained('governance_public_contribution_plans')->cascadeOnDelete();
             $table->foreignId('authorization_id')->constrained('governance_public_execution_authorizations')->cascadeOnDelete();
-            $table->foreignId('execution_account_id')->constrained('najm_bahar_accounts')->restrictOnDelete();
-            $table->foreignId('payee_account_id')->constrained('najm_bahar_accounts')->restrictOnDelete();
+            $table->foreignId('execution_account_id')->constrained('najm_accounts')->restrictOnDelete();
+            $table->foreignId('payee_account_id')->constrained('najm_accounts')->restrictOnDelete();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->unsignedBigInteger('amount_gol');
             $table->string('status', 30)->default('pending');
