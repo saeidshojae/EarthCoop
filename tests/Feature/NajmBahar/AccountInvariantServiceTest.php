@@ -93,4 +93,79 @@ class AccountInvariantServiceTest extends TestCase
         $this->assertSame(50, (int) $sub->fresh()->balance);
         $this->assertSame(40, (int) Account::where('account_number', $sub->sub_account_code)->value('balance'));
     }
+
+    public function test_it_reconciles_only_the_subaccount_mirror_without_rewriting_parent_semantics(): void
+    {
+        $main = Account::create([
+            'account_number' => 'AUDIT-MAIN-003',
+            'name' => 'Main',
+            'type' => 'user',
+            'balance' => 1_000,
+            'balance_active' => 400,
+            'balance_faded' => 100,
+        ]);
+
+        $sub = SubAccount::create([
+            'account_id' => $main->id,
+            'sub_account_code' => 'AUDIT-MAIN-003-001',
+            'name' => 'Child',
+            'balance' => 999,
+            'balance_active' => 300,
+            'balance_faded' => 200,
+            'status' => 1,
+        ]);
+
+        $mirror = Account::create([
+            'account_number' => $sub->sub_account_code,
+            'name' => 'Child mirror',
+            'type' => 'subaccount',
+            'balance' => 1,
+            'balance_active' => 1,
+            'balance_faded' => 0,
+            'committed_dim' => 77,
+        ]);
+
+        $result = app(AccountInvariantService::class)->reconcileSubAccountMirror($sub);
+
+        $this->assertSame(300, $result['active']);
+        $this->assertSame(200, $result['dim']);
+        $this->assertSame(500, $result['total']);
+
+        $this->assertSame(500, (int) $sub->fresh()->balance);
+        $this->assertSame(300, (int) $mirror->fresh()->balance_active);
+        $this->assertSame(200, (int) $mirror->fresh()->balance_faded);
+        $this->assertSame(0, (int) $mirror->fresh()->committed_dim);
+        $this->assertSame(500, (int) $mirror->fresh()->balance);
+
+        // Parent balance semantics remain untouched during this migration step.
+        $this->assertSame(1_000, (int) $main->fresh()->balance);
+        $this->assertSame([], app(AccountInvariantService::class)->audit($main)['mirror_drift']);
+    }
+
+    public function test_reconcile_refuses_to_invent_a_missing_mirror_account(): void
+    {
+        $main = Account::create([
+            'account_number' => 'AUDIT-MAIN-004',
+            'name' => 'Main',
+            'type' => 'user',
+            'balance' => 0,
+            'balance_active' => 0,
+            'balance_faded' => 0,
+        ]);
+
+        $sub = SubAccount::create([
+            'account_id' => $main->id,
+            'sub_account_code' => 'AUDIT-MAIN-004-001',
+            'name' => 'Child',
+            'balance' => 0,
+            'balance_active' => 0,
+            'balance_faded' => 0,
+            'status' => 1,
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Sub-account mirror account is missing.');
+
+        app(AccountInvariantService::class)->reconcileSubAccountMirror($sub);
+    }
 }
