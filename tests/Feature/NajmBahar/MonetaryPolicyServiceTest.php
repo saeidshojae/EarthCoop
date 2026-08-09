@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\NajmBahar;
 
+use App\Helpers\BaharMoney;
 use App\Modules\NajmBahar\Models\MonetaryPolicyVersion;
 use App\Modules\NajmBahar\Services\MonetaryPolicyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -67,5 +68,17 @@ class MonetaryPolicyServiceTest extends TestCase
 
         $this->assertSame('legacy_settings', $policy['source']);
         $this->assertNull($policy['version_id']);
+    }
+
+    public function test_fallback_membership_policy_is_nonzero_and_idle_collection_is_disabled(): void
+    {
+        $policy = app(MonetaryPolicyService::class)->current();
+
+        $this->assertSame(BaharMoney::toGolFromBahar(12), data_get($policy, 'parameters.membership_fee_gol'));
+        $this->assertSame(BaharMoney::toGolFromBahar(6), data_get($policy, 'parameters.membership_operations_gol'));
+        $this->assertSame(BaharMoney::toGolFromBahar(3), data_get($policy, 'parameters.membership_insurance_gol'));
+        $this->assertSame(BaharMoney::toGolFromBahar(3), data_get($policy, 'parameters.membership_burn_gol'));
+        $this->assertFalse((bool) data_get($policy, 'parameters.idle_tax_enabled'));
+        $this->assertSame(0, (int) data_get($policy, 'parameters.idle_tax_rate_bps'));
     }
 }
