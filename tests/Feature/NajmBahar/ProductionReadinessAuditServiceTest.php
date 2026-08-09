@@ -7,6 +7,7 @@ use App\Modules\NajmBahar\Models\LedgerEntry;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use App\Modules\NajmBahar\Services\ProductionReadinessAuditService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ProductionReadinessAuditServiceTest extends TestCase
@@ -79,10 +80,11 @@ class ProductionReadinessAuditServiceTest extends TestCase
         $this->assertSame('debit_entry_does_not_match_transaction', $result['ledger_failures'][0]['issue']);
     }
 
-    public function test_duplicate_idempotency_key_fails_readiness_audit(): void
+    public function test_historical_duplicate_metadata_idempotency_key_fails_readiness_audit(): void
     {
         $from = $this->account('HARDEN-IDEM-FROM', 100);
         $to = $this->account('HARDEN-IDEM-TO', 50);
+        $transactions = [];
 
         foreach ([10, 15] as $amount) {
             $transaction = NajmTransaction::create([
@@ -91,10 +93,17 @@ class ProductionReadinessAuditServiceTest extends TestCase
                 'amount' => $amount,
                 'type' => 'immediate',
                 'status' => 'completed',
-                'metadata' => ['idempotency_key' => 'same-request-key'],
-                'description' => 'Duplicate idempotency fixture',
+                'description' => 'Historical duplicate idempotency fixture',
             ]);
+            $transactions[] = $transaction;
             $this->balancedLedger($transaction, $from, $to, $amount);
+
+            DB::table('najm_transactions')
+                ->where('id', $transaction->id)
+                ->update([
+                    'metadata' => json_encode(['idempotency_key' => 'same-request-key']),
+                    'idempotency_key' => null,
+                ]);
         }
 
         $result = app(ProductionReadinessAuditService::class)->run();
@@ -103,7 +112,10 @@ class ProductionReadinessAuditServiceTest extends TestCase
         $this->assertCount(1, $result['idempotency_failures']);
         $this->assertSame('duplicate_idempotency_key', $result['idempotency_failures'][0]['issue']);
         $this->assertSame('same-request-key', $result['idempotency_failures'][0]['idempotency_key']);
-        $this->assertCount(2, $result['idempotency_failures'][0]['transaction_ids']);
+        $this->assertSame(
+            array_map(fn (NajmTransaction $transaction) => (int) $transaction->id, $transactions),
+            $result['idempotency_failures'][0]['transaction_ids']
+        );
     }
 
     public function test_failed_transaction_with_ledger_effects_fails_recovery_audit(): void
