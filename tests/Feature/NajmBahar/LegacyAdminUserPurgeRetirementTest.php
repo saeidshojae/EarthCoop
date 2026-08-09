@@ -14,11 +14,11 @@ class LegacyAdminUserPurgeRetirementTest extends TestCase
         $this->assertStringNotContainsString('purgeNajmBaharAccounts', $source);
         $this->assertStringNotContainsString('decrementSystemSubAccountBalance', $source);
         $this->assertStringContainsString(
-            'Admin user deletion must use SafeUserController and MembershipRemovalService.',
+            'Direct admin user deletion is retired. Resolve the safe admin controller boundary.',
             $source
         );
         $this->assertStringContainsString(
-            'Bulk admin user deletion must use SafeUserController and MembershipRemovalService.',
+            'Direct admin bulk deletion is retired. Resolve the safe admin controller boundary.',
             $source
         );
     }
