@@ -12,11 +12,6 @@ class NajmBaharFinancialMutationBoundaryTest extends TestCase
     /**
      * Transitional allowlist. The goal is to shrink this list to the dedicated
      * monetary/transaction persistence boundary as Release A progresses.
-     *
-     * NajmBaharController is temporarily listed only because it still contains
-     * one historical unbucketed-balance repair path. The equivalent repair now
-     * exists in MonetaryService and this controller exception must disappear as
-     * part of account-semantics normalization.
      */
     private const ALLOWED_MUTATION_FILES = [
         'app/Modules/NajmBahar/Services/MonetaryService.php',
@@ -24,7 +19,6 @@ class NajmBaharFinancialMutationBoundaryTest extends TestCase
         'app/Modules/NajmBahar/Services/SubAccountService.php',
         'app/Modules/NajmBahar/Services/AccountService.php',
         'app/Console/Commands/FixCorruptedBalances.php',
-        'app/Http/Controllers/NajmBaharController.php',
     ];
 
     public function test_direct_balance_mutations_are_confined_to_known_financial_boundaries(): void
