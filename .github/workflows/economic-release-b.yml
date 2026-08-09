@@ -101,6 +101,9 @@ jobs:
           set -o pipefail
           php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Governance 2>&1 | tee storage/logs/release-b-governance.txt
 
+      - name: Run Najm Hoda read-only Bahar health bridge gate
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda/NajmBaharHealthBridgeTest.php
+
       - name: Upload Governance diagnostics
         if: always()
         uses: actions/upload-artifact@v4
