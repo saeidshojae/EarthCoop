@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use App\Modules\NajmBahar\Models\ScheduledTransaction;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use App\Modules\NajmBahar\Models\Account;
-use App\Modules\NajmBahar\Services\SubAccountService;
+use App\Modules\NajmBahar\Services\ScheduledSubAccountTransferExecutor;
 use App\Modules\NajmBahar\Services\TransactionService;
 use App\Models\User;
 use App\Services\NotificationService;
@@ -42,22 +42,13 @@ class NajmBaharProcessScheduled extends Command
                         $toSubAccountId = $payload['to_sub_account_id'] ?? null;
                         $amount = isset($payload['amount']) ? intval($payload['amount']) : 0;
                         $description = $payload['description'] ?? null;
-                        $moneyState = $payload['money_state']
-                            ?? ($payload['metadata']['money_state'] ?? 'faded');
                         $meta = $payload['metadata'] ?? [];
 
                         if (! $fromSubAccountId || ! $toSubAccountId || $amount <= 0) {
                             throw new \RuntimeException('Invalid scheduled sub-account payload');
                         }
 
-                        app(SubAccountService::class)->transferBetweenSubAccounts(
-                            $fromSubAccountId,
-                            $toSubAccountId,
-                            $amount,
-                            $description,
-                            $moneyState,
-                            $item->transaction_id
-                        );
+                        $tx = app(ScheduledSubAccountTransferExecutor::class)->execute($item);
 
                         if (!empty($meta['group_id'])) {
                             $group = \App\Models\Group::find($meta['group_id']);
@@ -71,6 +62,7 @@ class NajmBaharProcessScheduled extends Command
                                     'direction' => 'subaccount_transfer',
                                     'description' => $description ?? 'انتقال زمان بندی شده اجرا شد',
                                     'meta' => [
+                                        'transaction_id' => $tx->id,
                                         'from_sub_account_id' => $fromSubAccountId,
                                         'to_sub_account_id' => $toSubAccountId,
                                         'from_sub_account_code' => $meta['from_sub_account_code'] ?? null,
@@ -89,6 +81,7 @@ class NajmBaharProcessScheduled extends Command
                                 'direction' => 'subaccount_transfer',
                                 'description' => $description ?? 'انتقال زمان بندی شده اجرا شد',
                                 'meta' => [
+                                    'transaction_id' => $tx->id,
                                     'from_sub_account_id' => $fromSubAccountId,
                                     'to_sub_account_id' => $toSubAccountId,
                                     'from_sub_account_code' => $meta['from_sub_account_code'] ?? null,
@@ -143,7 +136,7 @@ class NajmBaharProcessScheduled extends Command
                             }
                         }
                     }
-                    
+
                     if ($to) {
                         $toAccount = Account::where('account_number', $to)->first();
                         if ($toAccount && $toAccount->user_id) {
