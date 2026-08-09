@@ -58,12 +58,14 @@ class PublicContributionService
                 'eligible_count' => $eligibleCount,
                 'base_amount_gol' => $baseAmount,
                 'remainder_gol' => $remainder,
+                'committed_total_gol' => 0,
                 'due_at' => $dueAt,
                 'opened_at' => now(),
                 'metadata' => [
                     'allocation_rule' => 'equal_integer_gol_with_deterministic_remainder',
                     'remainder_rule' => 'one_extra_gol_to_first_members_in_snapshot_order',
                     'automatic_debit' => false,
+                    'activation_on_commitment' => false,
                 ],
             ]);
 
@@ -150,12 +152,22 @@ class PublicContributionService
                 throw new \RuntimeException('Public contribution obligation is not available for Dim commitment.');
             }
 
+            $plan = PublicContributionPlan::whereKey($locked->plan_id)->lockForUpdate()->firstOrFail();
+            if ($plan->status !== 'open') {
+                throw new \RuntimeException('Public contribution plan is not accepting new commitments.');
+            }
+
             $account = app(AccountService::class)->getMainAccountForUser((int) $user->id);
             if (! $account) {
                 throw new \RuntimeException('Member has no Najm Bahar main account.');
             }
 
             $amount = (int) $locked->amount_gol;
+            $newCommittedTotal = (int) $plan->committed_total_gol + $amount;
+            if ($newCommittedTotal > (int) $plan->total_required_gol) {
+                throw new \RuntimeException('Public contribution commitments would exceed approved capital.');
+            }
+
             $transaction = app(DimCommitmentService::class)->commit(
                 $account,
                 $amount,
@@ -178,6 +190,13 @@ class PublicContributionService
                 'metadata' => $metadata,
             ]);
 
+            $fullyCommitted = $newCommittedTotal === (int) $plan->total_required_gol;
+            $plan->update([
+                'committed_total_gol' => $newCommittedTotal,
+                'status' => $fullyCommitted ? 'fully_committed' : 'open',
+                'fully_committed_at' => $fullyCommitted ? now() : null,
+            ]);
+
             return $locked->fresh();
         }, 3);
     }
@@ -196,12 +215,22 @@ class PublicContributionService
                 throw new \RuntimeException('Only an unpaid committed obligation may release Dim.');
             }
 
+            $plan = PublicContributionPlan::whereKey($locked->plan_id)->lockForUpdate()->firstOrFail();
+            if (! in_array($plan->status, ['open', 'fully_committed'], true)) {
+                throw new \RuntimeException('Public contribution plan does not allow commitment release.');
+            }
+
             $account = app(AccountService::class)->getMainAccountForUser((int) $user->id);
             if (! $account) {
                 throw new \RuntimeException('Member has no Najm Bahar main account.');
             }
 
             $amount = (int) $locked->committed_gol;
+            $newCommittedTotal = (int) $plan->committed_total_gol - $amount;
+            if ($newCommittedTotal < 0) {
+                throw new \RuntimeException('Public contribution commitment total cannot become negative.');
+            }
+
             $transaction = app(DimCommitmentService::class)->release(
                 $account,
                 $amount,
@@ -221,6 +250,12 @@ class PublicContributionService
                 'status' => 'pending',
                 'committed_at' => null,
                 'metadata' => $metadata,
+            ]);
+
+            $plan->update([
+                'committed_total_gol' => $newCommittedTotal,
+                'status' => 'open',
+                'fully_committed_at' => null,
             ]);
 
             return $locked->fresh();
