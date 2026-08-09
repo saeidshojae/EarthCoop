@@ -15,11 +15,7 @@ class MonetaryService
         $idempotencyKey = 'membership-issuance-' . $userId;
 
         return DB::transaction(function () use ($account, $userId, $idempotencyKey) {
-            $existing = NajmTransaction::where('metadata->idempotency_key', $idempotencyKey)
-                ->lockForUpdate()
-                ->first();
-
-            if ($existing) {
+            if ($existing = $this->findExistingEvent($idempotencyKey)) {
                 return ['transaction' => $existing, 'amount' => (int) $existing->amount, 'applied' => false];
             }
 
@@ -75,11 +71,7 @@ class MonetaryService
         }
 
         return DB::transaction(function () use ($account, $requestedAmount, $reason, $metadata, $idempotencyKey, $allowPartial) {
-            $existing = NajmTransaction::where('metadata->idempotency_key', $idempotencyKey)
-                ->lockForUpdate()
-                ->first();
-
-            if ($existing) {
+            if ($existing = $this->findExistingEvent($idempotencyKey)) {
                 return ['transaction' => $existing, 'amount' => (int) $existing->amount, 'applied' => false];
             }
 
@@ -137,10 +129,7 @@ class MonetaryService
         }
 
         return DB::transaction(function () use ($account, $requestedAmount, $reason, $metadata, $idempotencyKey, $allowPartial) {
-            $existing = NajmTransaction::where('metadata->idempotency_key', $idempotencyKey)
-                ->lockForUpdate()
-                ->first();
-            if ($existing) {
+            if ($existing = $this->findExistingEvent($idempotencyKey)) {
                 return ['transaction' => $existing, 'amount' => (int) $existing->amount, 'applied' => false];
             }
 
@@ -194,10 +183,7 @@ class MonetaryService
         }
 
         return DB::transaction(function () use ($account, $requestedAmount, $reason, $metadata, $idempotencyKey, $allowPartial) {
-            $existing = NajmTransaction::where('metadata->idempotency_key', $idempotencyKey)
-                ->lockForUpdate()
-                ->first();
-            if ($existing) {
+            if ($existing = $this->findExistingEvent($idempotencyKey)) {
                 return ['transaction' => $existing, 'amount' => (int) $existing->amount, 'applied' => false];
             }
 
@@ -284,6 +270,14 @@ class MonetaryService
 
             return true;
         });
+    }
+
+    private function findExistingEvent(string $idempotencyKey): ?NajmTransaction
+    {
+        return NajmTransaction::query()
+            ->where('metadata->idempotency_key', $idempotencyKey)
+            ->lockForUpdate()
+            ->first();
     }
 
     private function syncSubAccountMirror(Account $account): void
