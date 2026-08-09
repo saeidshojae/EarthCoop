@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Setting;
 use App\Models\UserPoint;
 use App\Models\UserPointTransaction;
 use App\Modules\NajmBahar\Services\AccountService;
+use App\Modules\NajmBahar\Services\MonetaryPolicyService;
 use App\Modules\NajmBahar\Services\MonetaryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,24 +16,25 @@ class ReputationConversionController extends Controller
 {
     protected $accountService;
     protected $monetaryService;
+    protected $monetaryPolicyService;
 
     public function __construct(
         AccountService $accountService,
-        MonetaryService $monetaryService
+        MonetaryService $monetaryService,
+        MonetaryPolicyService $monetaryPolicyService
     ) {
         $this->accountService = $accountService;
         $this->monetaryService = $monetaryService;
+        $this->monetaryPolicyService = $monetaryPolicyService;
     }
 
-    /**
-     * API: دریافت اطلاعات امتیازات قابل نقد
-     */
     public function getInfo()
     {
         $user = Auth::user();
-        $settings = Setting::firstNajmBaharSettings();
+        $policy = $this->monetaryPolicyService->current();
+        $enabled = (bool) data_get($policy, 'parameters.reputation_conversion_enabled', false);
 
-        if (!$settings->reputation_conversion_enabled) {
+        if (!$enabled) {
             return response()->json(['error' => 'تبدیل امتیاز به پول فعلاً غیرفعال است'], 403);
         }
 
@@ -55,7 +56,7 @@ class ReputationConversionController extends Controller
             ->where('delta', '>', 0)
             ->sum('delta');
 
-        $ratio = (int) ($settings->reputation_to_gol_ratio ?? 100);
+        $ratio = max(1, (int) data_get($policy, 'parameters.reputation_to_gol_ratio', 100));
         $hasEnoughFaded = $account->balance_faded >= intval($uncashedPoints / $ratio);
 
         return response()->json([
@@ -64,6 +65,8 @@ class ReputationConversionController extends Controller
             'cashed_points' => $cashedPoints,
             'conversion_ratio' => $ratio,
             'conversion_ratio_text' => "هر {$ratio} امتیاز = 1 گل",
+            'policy_version' => $policy['version'],
+            'policy_source' => $policy['source'],
             'balance_faded' => $account->balance_faded,
             'balance_faded_formatted' => \App\Helpers\BaharMoney::formatDecimal($account->balance_faded),
             'balance_active' => $account->balance_active,
@@ -73,9 +76,6 @@ class ReputationConversionController extends Controller
         ]);
     }
 
-    /**
-     * نقد کردن مقدار مشخصی از امتیازات
-     */
     public function convert(Request $request)
     {
         $request->validate([
@@ -84,9 +84,10 @@ class ReputationConversionController extends Controller
 
         $user = Auth::user();
         $pointsToConvert = $request->points;
-        $settings = Setting::firstNajmBaharSettings();
+        $policy = $this->monetaryPolicyService->current();
+        $enabled = (bool) data_get($policy, 'parameters.reputation_conversion_enabled', false);
 
-        if (!$settings->reputation_conversion_enabled) {
+        if (!$enabled) {
             return back()->with('error', 'تبدیل امتیاز به پول فعلاً غیرفعال است');
         }
 
@@ -95,10 +96,19 @@ class ReputationConversionController extends Controller
             return back()->with('error', 'حساب نجم بهار یافت نشد');
         }
 
-        $ratio = (int) ($settings->reputation_to_gol_ratio ?? 100);
+        $ratio = max(1, (int) data_get($policy, 'parameters.reputation_to_gol_ratio', 100));
+        $policyVersionId = $policy['version_id'];
+        $policyVersion = $policy['version'];
 
         try {
-            DB::transaction(function () use ($user, $account, $pointsToConvert, $ratio) {
+            DB::transaction(function () use (
+                $user,
+                $account,
+                $pointsToConvert,
+                $ratio,
+                $policyVersionId,
+                $policyVersion
+            ) {
                 $uncashedTransactions = UserPointTransaction::where('user_id', $user->id)
                     ->where('is_cashed', false)
                     ->where('delta', '>', 0)
@@ -148,6 +158,8 @@ class ReputationConversionController extends Controller
                         'user_id' => $user->id,
                         'points_converted' => $pointsToConvert,
                         'ratio' => $ratio,
+                        'policy_version_id' => $policyVersionId,
+                        'policy_version' => $policyVersion,
                     ],
                     $idempotencyKey,
                     false
@@ -158,6 +170,7 @@ class ReputationConversionController extends Controller
                     'points' => $pointsToConvert,
                     'amount_gol' => $amountInGol,
                     'ratio' => $ratio,
+                    'policy_version_id' => $policyVersionId,
                 ]);
             });
 
