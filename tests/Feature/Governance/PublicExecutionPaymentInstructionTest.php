@@ -14,6 +14,7 @@ use App\Modules\Governance\Services\PublicExecutionAuthorizationService;
 use App\Modules\Governance\Services\PublicExecutionBridge;
 use App\Modules\Governance\Services\PublicExecutionPaymentApprovalService;
 use App\Modules\Governance\Services\PublicExecutionPaymentInstructionService;
+use App\Modules\Governance\Services\PublicExecutionReversalRequestService;
 use App\Modules\Governance\Services\ResolutionEconomicBridge;
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\Transaction;
@@ -98,6 +99,46 @@ class PublicExecutionPaymentInstructionTest extends TestCase
             Transaction::count(),
             'A duplicate worker using a stale instruction instance must not move money twice.'
         );
+
+        $transactionsBeforeReversalRequest = Transaction::count();
+        $reversals = app(PublicExecutionReversalRequestService::class);
+        $reversal = $reversals->create(
+            $executed->fresh(),
+            3,
+            'بازپرداخت بخشی به دلیل کاهش دامنه قرارداد',
+            $manager,
+            'public-reversal:payment:' . $executed->id . ':1',
+            ['settlement_reference' => 'REV-001']
+        );
+        $this->assertSame('pending_approval', $reversal->status);
+        $this->assertTrue((bool) ($reversal->metadata['governance_request_only'] ?? false));
+        $this->assertSame($transactionsBeforeReversalRequest, Transaction::count(), 'Creating a reversal request must never undo money automatically.');
+        $this->assertSame(4, (int) $executionAccount->fresh()->balance_active);
+        $this->assertSame(6, (int) $payeeAccount->fresh()->balance_active);
+
+        try {
+            $reversals->approve($reversal->fresh(), $manager);
+            $this->fail('Reversal request creator approved their own request.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('cannot approve', strtolower($e->getMessage()));
+        }
+
+        $approvedReversal = $reversals->approve($reversal->fresh(), $inspector);
+        $this->assertSame('approved', $approvedReversal->status);
+        $this->assertSame($transactionsBeforeReversalRequest, Transaction::count(), 'Approval of a reversal request must still not move money.');
+
+        try {
+            $reversals->create(
+                $executed->fresh(),
+                4,
+                'درخواست معکوس بیش از ظرفیت باقی‌مانده',
+                $manager,
+                'public-reversal:payment:' . $executed->id . ':2'
+            );
+            $this->fail('Reversal requests exceeded the original payment amount.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('exceed', strtolower($e->getMessage()));
+        }
     }
 
     public function test_unexecuted_payment_instruction_can_be_cancelled_and_releases_reserved_capacity(): void
