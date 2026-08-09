@@ -12,6 +12,8 @@ use Throwable;
 
 class GovernanceExecutionOutboxConsumer
 {
+    public const MAX_ATTEMPTS = 5;
+
     public function consume(EconomicAction $action): EconomicAction
     {
         try {
@@ -24,12 +26,25 @@ class GovernanceExecutionOutboxConsumer
                     return $lockedAction;
                 }
 
+                if ($lockedAction->status === 'dead_letter') {
+                    throw new \RuntimeException('Governance economic action is dead-lettered and requires explicit operator recovery.');
+                }
+
                 if ($lockedAction->action_type !== PublicExecutionBridge::PUBLIC_PROJECT_EXECUTION_AUTHORIZED) {
                     throw new \RuntimeException('Najm Bahar consumer cannot execute this governance action type.');
                 }
 
                 if (! in_array($lockedAction->status, ['pending', 'failed'], true)) {
                     throw new \RuntimeException('Governance economic action is not available for consumption.');
+                }
+
+                if ((int) $lockedAction->attempts >= self::MAX_ATTEMPTS) {
+                    $lockedAction->update([
+                        'status' => 'dead_letter',
+                        'failure_reason' => $lockedAction->failure_reason ?: 'Maximum execution attempts exhausted.',
+                        'failed_at' => $lockedAction->failed_at ?: now(),
+                    ]);
+                    throw new \RuntimeException('Governance economic action exhausted its retry budget.');
                 }
 
                 $payload = (array) ($lockedAction->payload ?? []);
@@ -39,9 +54,10 @@ class GovernanceExecutionOutboxConsumer
                     throw new \RuntimeException('Execution outbox payload is incomplete.');
                 }
 
+                $attemptNumber = (int) $lockedAction->attempts + 1;
                 $lockedAction->update([
                     'status' => 'processing',
-                    'attempts' => (int) $lockedAction->attempts + 1,
+                    'attempts' => $attemptNumber,
                     'claimed_at' => now(),
                     'failure_reason' => null,
                     'failed_at' => null,
@@ -109,6 +125,7 @@ class GovernanceExecutionOutboxConsumer
                             'execution_authorization_id' => (int) $authorization->id,
                             'resolution_id' => (int) $plan->resolution_id,
                             'group_id' => (int) $plan->group_id,
+                            'outbox_attempt' => $attemptNumber,
                         ]
                     );
                     $transactionIds[] = (int) $transaction->id;
@@ -157,6 +174,7 @@ class GovernanceExecutionOutboxConsumer
                         'execution_account_id' => (int) $executionAccount->id,
                         'settled_total_gol' => (int) $plan->total_required_gol,
                         'settlement_transaction_ids' => $transactionIds,
+                        'attempt' => $attemptNumber,
                     ],
                     'completed_at' => now(),
                     'failure_reason' => null,
@@ -168,13 +186,14 @@ class GovernanceExecutionOutboxConsumer
         } catch (Throwable $e) {
             DB::transaction(function () use ($action, $e) {
                 $failedAction = EconomicAction::whereKey($action->id)->lockForUpdate()->first();
-                if (! $failedAction || $failedAction->status === 'completed') {
+                if (! $failedAction || in_array($failedAction->status, ['completed', 'dead_letter'], true)) {
                     return;
                 }
 
+                $attempts = (int) $failedAction->attempts + 1;
                 $failedAction->update([
-                    'status' => 'failed',
-                    'attempts' => (int) $failedAction->attempts + 1,
+                    'status' => $attempts >= self::MAX_ATTEMPTS ? 'dead_letter' : 'failed',
+                    'attempts' => $attempts,
                     'failure_reason' => mb_substr($e->getMessage(), 0, 2000),
                     'failed_at' => now(),
                 ]);
@@ -182,5 +201,26 @@ class GovernanceExecutionOutboxConsumer
 
             throw $e;
         }
+    }
+
+    public function recoverDeadLetter(EconomicAction $action): EconomicAction
+    {
+        return DB::transaction(function () use ($action) {
+            $locked = EconomicAction::whereKey($action->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== 'dead_letter') {
+                throw new \RuntimeException('Only dead-lettered governance actions may be recovered.');
+            }
+
+            $locked->update([
+                'status' => 'failed',
+                'attempts' => 0,
+                'claimed_at' => null,
+                'completed_at' => null,
+                'failed_at' => null,
+                'failure_reason' => null,
+            ]);
+
+            return $locked->fresh();
+        }, 3);
     }
 }
