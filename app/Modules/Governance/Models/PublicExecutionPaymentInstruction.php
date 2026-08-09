@@ -12,8 +12,9 @@ class PublicExecutionPaymentInstruction extends Model
 
     protected $fillable = [
         'plan_id', 'authorization_id', 'execution_account_id', 'payee_account_id',
-        'created_by', 'amount_gol', 'status', 'idempotency_key', 'purpose',
-        'evidence', 'metadata', 'approved_at', 'executed_at',
+        'created_by', 'approved_by', 'cancelled_by', 'amount_gol', 'status',
+        'idempotency_key', 'purpose', 'evidence', 'metadata', 'approved_at',
+        'cancelled_at', 'cancellation_reason', 'executed_at',
     ];
 
     protected $casts = [
@@ -21,6 +22,7 @@ class PublicExecutionPaymentInstruction extends Model
         'evidence' => 'array',
         'metadata' => 'array',
         'approved_at' => 'datetime',
+        'cancelled_at' => 'datetime',
         'executed_at' => 'datetime',
     ];
 
@@ -29,4 +31,6 @@ class PublicExecutionPaymentInstruction extends Model
     public function executionAccount() { return $this->belongsTo(Account::class, 'execution_account_id'); }
     public function payeeAccount() { return $this->belongsTo(Account::class, 'payee_account_id'); }
     public function creator() { return $this->belongsTo(User::class, 'created_by'); }
+    public function approver() { return $this->belongsTo(User::class, 'approved_by'); }
+    public function canceller() { return $this->belongsTo(User::class, 'cancelled_by'); }
 }
