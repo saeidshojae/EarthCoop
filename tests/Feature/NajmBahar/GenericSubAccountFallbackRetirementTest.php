@@ -44,7 +44,7 @@ class GenericSubAccountFallbackRetirementTest extends TestCase
             );
             $this->fail('Generic TransactionService unexpectedly executed a SubAccount ↔ SubAccount transfer.');
         } catch (\RuntimeException $exception) {
-            $this->assertStringContainsString('canonical SubAccountService boundary', $exception->getMessage());
+            $this->assertStringContainsString('explicit canonical executor', $exception->getMessage());
         }
 
         $this->assertSame((int) $fromBefore['balance'], (int) $from->fresh()->balance);
