@@ -17,6 +17,7 @@ use App\Modules\Governance\Services\ResolutionEconomicBridge;
 use App\Modules\NajmBahar\Models\Transaction;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\GovernanceExecutionOutboxConsumer;
+use App\Modules\NajmBahar\Services\PublicExecutionPaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -24,7 +25,7 @@ class PublicExecutionPaymentInstructionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_explicit_payment_instruction_records_payee_without_moving_money(): void
+    public function test_explicit_payment_instruction_records_payee_then_najm_bahar_executes_it_once(): void
     {
         $group = Group::create([
             'name' => 'مجمع دستور پرداخت عمومی',
@@ -95,8 +96,8 @@ class PublicExecutionPaymentInstructionTest extends TestCase
 
         $payeeAccount = app(AccountService::class)->createMainAccountForUser($contractor->id);
         $transactionsBeforeInstruction = Transaction::count();
-        $service = app(PublicExecutionPaymentInstructionService::class);
-        $instruction = $service->create(
+        $instructionService = app(PublicExecutionPaymentInstructionService::class);
+        $instruction = $instructionService->create(
             $plan->fresh(),
             $payeeAccount,
             6,
@@ -105,7 +106,7 @@ class PublicExecutionPaymentInstructionTest extends TestCase
             'public-payment-instruction:plan:' . $plan->id . ':contractor:' . $contractor->id . ':1',
             ['contract_reference' => 'CONTRACT-001']
         );
-        $same = $service->create(
+        $same = $instructionService->create(
             $plan->fresh(),
             $payeeAccount,
             6,
@@ -116,6 +117,7 @@ class PublicExecutionPaymentInstructionTest extends TestCase
         );
 
         $executionAccountId = (int) ($plan->fresh()->metadata['execution_account_id'] ?? 0);
+        $executionAccount = \App\Modules\NajmBahar\Models\Account::findOrFail($executionAccountId);
         $this->assertSame($instruction->id, $same->id);
         $this->assertSame('pending', $instruction->status);
         $this->assertSame($executionAccountId, (int) $instruction->execution_account_id);
@@ -124,5 +126,20 @@ class PublicExecutionPaymentInstructionTest extends TestCase
         $this->assertTrue((bool) ($instruction->metadata['governance_instruction_only'] ?? false));
         $this->assertSame($transactionsBeforeInstruction, Transaction::count(), 'Creating a payment instruction must never move money.');
         $this->assertSame(0, (int) $payeeAccount->fresh()->balance_active);
+        $this->assertSame(10, (int) $executionAccount->fresh()->balance_active);
+
+        $paymentService = app(PublicExecutionPaymentService::class);
+        $executed = $paymentService->execute($instruction);
+
+        $this->assertSame('executed', $executed->status);
+        $this->assertNotNull($executed->executed_at);
+        $this->assertSame(4, (int) $executionAccount->fresh()->balance_active);
+        $this->assertSame(6, (int) $payeeAccount->fresh()->balance_active);
+        $this->assertSame($transactionsBeforeInstruction + 1, Transaction::count());
+
+        $paymentService->execute($executed->fresh());
+        $this->assertSame(4, (int) $executionAccount->fresh()->balance_active);
+        $this->assertSame(6, (int) $payeeAccount->fresh()->balance_active);
+        $this->assertSame($transactionsBeforeInstruction + 1, Transaction::count(), 'Retrying an executed payment instruction must not move money twice.');
     }
 }
