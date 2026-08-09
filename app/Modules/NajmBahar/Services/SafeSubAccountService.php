@@ -9,10 +9,11 @@ use Illuminate\Support\Str;
 /**
  * Transitional adapter around the legacy SubAccountService.
  *
- * Only the unsafe Main ↔ Sub mutations are overridden here. Other behavior
- * remains inherited until it is migrated deliberately. This lets Release A
- * correct monetary-state preservation without rewriting the entire service in
- * one high-risk change.
+ * Unsafe Main ↔ Sub mutations are routed through the canonical internal
+ * transfer service. Release C additionally reconciles the Account mirror of
+ * every touched SubAccount through AccountInvariantService so all active code
+ * paths share one mirror invariant while the rest of the legacy service is
+ * migrated incrementally.
  */
 class SafeSubAccountService extends SubAccountService
 {
@@ -34,6 +35,8 @@ class SafeSubAccountService extends SubAccountService
             $description ?? 'انتقال از حساب اصلی به حساب فرعی',
             $this->idempotencyKey('main-to-sub', $main, $sub, $amount, $moneyState)
         );
+
+        app(AccountInvariantService::class)->reconcileSubAccountMirror($sub->fresh());
     }
 
     public function transferFromSubAccount(
@@ -54,6 +57,8 @@ class SafeSubAccountService extends SubAccountService
             $description ?? 'انتقال از حساب فرعی به حساب اصلی',
             $this->idempotencyKey('sub-to-main', $main, $sub, $amount, $moneyState)
         );
+
+        app(AccountInvariantService::class)->reconcileSubAccountMirror($sub->fresh());
     }
 
     private function idempotencyKey(
