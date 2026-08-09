@@ -2,6 +2,7 @@
 
 namespace App\Modules\NajmBahar\Services;
 
+use App\Helpers\BaharMoney;
 use App\Models\Setting;
 use App\Modules\NajmBahar\Models\MonetaryPolicyVersion;
 
@@ -34,10 +35,15 @@ class MonetaryPolicyService
                 'auto_activation_enabled' => (bool) ($settings?->najm_bahar_auto_activation_enabled ?? false),
                 'auto_activation_period' => (string) ($settings?->najm_bahar_auto_activation_period ?? 'monthly'),
                 'auto_activation_amount_gol' => (int) ($settings?->najm_bahar_auto_activation_amount ?? 0),
-                'membership_fee_gol' => (int) ($settings?->najm_bahar_membership_fee ?? 0),
-                'membership_operations_gol' => (int) ($settings?->najm_bahar_membership_fee_membership_amount ?? 0),
-                'membership_insurance_gol' => (int) ($settings?->najm_bahar_membership_fee_insurance_amount ?? 0),
-                'membership_burn_gol' => (int) ($settings?->najm_bahar_membership_fee_burn_amount ?? 0),
+                'membership_fee_gol' => (int) ($settings?->najm_bahar_membership_fee ?? BaharMoney::toGolFromBahar(12)),
+                'membership_operations_gol' => (int) ($settings?->najm_bahar_membership_fee_membership_amount ?? BaharMoney::toGolFromBahar(6)),
+                'membership_insurance_gol' => (int) ($settings?->najm_bahar_membership_fee_insurance_amount ?? BaharMoney::toGolFromBahar(3)),
+                'membership_burn_gol' => (int) ($settings?->najm_bahar_membership_fee_burn_amount ?? BaharMoney::toGolFromBahar(3)),
+                // Observation only. No collection is enabled by these values.
+                'idle_observation_period_days' => 180,
+                'idle_observation_exempt_balance_gol' => 0,
+                'idle_tax_enabled' => false,
+                'idle_tax_rate_bps' => 0,
             ],
         ];
     }
