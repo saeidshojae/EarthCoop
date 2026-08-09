@@ -3,6 +3,7 @@
 namespace App\Modules\NajmBahar\Services;
 
 use App\Modules\NajmBahar\Models\TreasuryFund;
+use App\Modules\NajmBahar\Models\TreasuryTransfer;
 use Illuminate\Support\Facades\DB;
 
 class TreasuryService
@@ -12,14 +13,12 @@ class TreasuryService
     public const MONEY_DESTRUCTION = 'money_destruction';
     public const IDLE_TAX = 'idle_tax';
 
-    public function __construct(private readonly AccountService $accountService)
-    {
+    public function __construct(
+        private readonly AccountService $accountService,
+        private readonly TransactionService $transactionService
+    ) {
     }
 
-    /**
-     * Register the constitutional/system treasury funds against their actual
-     * Najm Bahar accounts. This does not move or mint any money.
-     */
     public function ensureDefaultFunds(): array
     {
         return DB::transaction(function () {
@@ -83,5 +82,90 @@ class TreasuryService
         $this->ensureDefaultFunds();
 
         return TreasuryFund::with('account')->where('code', $code)->firstOrFail();
+    }
+
+    /**
+     * Move active Bahar between system funds without touching protected reserves.
+     * The operation is idempotent and leaves a dedicated treasury audit record.
+     */
+    public function transferSurplus(
+        string $fromCode,
+        string $toCode,
+        int $amount,
+        string $reason,
+        string $idempotencyKey,
+        ?int $authorizedBy = null,
+        ?string $policyReference = null,
+        array $meta = []
+    ): TreasuryTransfer {
+        if ($amount <= 0) {
+            throw new \InvalidArgumentException('Treasury transfer amount must be positive.');
+        }
+
+        if ($fromCode === $toCode) {
+            throw new \InvalidArgumentException('Treasury source and destination funds must differ.');
+        }
+
+        return DB::transaction(function () use (
+            $fromCode,
+            $toCode,
+            $amount,
+            $reason,
+            $idempotencyKey,
+            $authorizedBy,
+            $policyReference,
+            $meta
+        ) {
+            $existing = TreasuryTransfer::where('idempotency_key', $idempotencyKey)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing) {
+                return $existing;
+            }
+
+            $this->ensureDefaultFunds();
+
+            $from = TreasuryFund::with('account')->where('code', $fromCode)->lockForUpdate()->firstOrFail();
+            $to = TreasuryFund::with('account')->where('code', $toCode)->lockForUpdate()->firstOrFail();
+
+            if (! $from->is_active || ! $to->is_active) {
+                throw new \RuntimeException('Treasury fund is inactive.');
+            }
+
+            if ($from->availableSurplus() < $amount) {
+                throw new \RuntimeException('Treasury transfer would violate reserve or committed-liability protection.');
+            }
+
+            $transaction = $this->transactionService->transfer(
+                $from->account->account_number,
+                $to->account->account_number,
+                $amount,
+                $reason,
+                array_merge($meta, [
+                    'type' => 'interfund_transfer',
+                    'from_fund' => $fromCode,
+                    'to_fund' => $toCode,
+                    'authorized_by' => $authorizedBy,
+                    'policy_reference' => $policyReference,
+                    'system_operation' => true,
+                ]),
+                'treasury-transfer-' . $idempotencyKey,
+                'active',
+                'interfund_transfer'
+            );
+
+            return TreasuryTransfer::create([
+                'from_fund_id' => $from->id,
+                'to_fund_id' => $to->id,
+                'transaction_id' => $transaction->id,
+                'authorized_by' => $authorizedBy,
+                'amount' => $amount,
+                'reason' => $reason,
+                'policy_reference' => $policyReference,
+                'idempotency_key' => $idempotencyKey,
+                'meta' => $meta,
+            ]);
+        });
     }
 }
