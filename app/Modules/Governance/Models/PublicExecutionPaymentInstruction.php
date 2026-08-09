@@ -13,15 +13,19 @@ class PublicExecutionPaymentInstruction extends Model
     protected $fillable = [
         'plan_id', 'authorization_id', 'execution_account_id', 'payee_account_id',
         'created_by', 'approved_by', 'cancelled_by', 'amount_gol', 'status',
+        'attempts', 'last_attempt_at', 'failed_at', 'failure_reason',
         'idempotency_key', 'purpose', 'evidence', 'metadata', 'approved_at',
         'cancelled_at', 'cancellation_reason', 'executed_at',
     ];
 
     protected $casts = [
         'amount_gol' => 'integer',
+        'attempts' => 'integer',
         'evidence' => 'array',
         'metadata' => 'array',
         'approved_at' => 'datetime',
+        'last_attempt_at' => 'datetime',
+        'failed_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'executed_at' => 'datetime',
     ];
