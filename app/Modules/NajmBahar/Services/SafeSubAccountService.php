@@ -22,8 +22,8 @@ use Illuminate\Support\Str;
  *
  * Immediate Active transfers between different owners are routed through the
  * canonical TransactionService policy/locking/idempotency path. Scheduled
- * transfers retain the legacy placeholder-transaction compatibility contract,
- * but must pass the same effective-owner policy before any mutation occurs.
+ * placeholder completion is intentionally not exposed here anymore; only
+ * ScheduledSubAccountTransferExecutor may complete an existing transaction ID.
  */
 class SafeSubAccountService extends SubAccountService
 {
@@ -79,6 +79,10 @@ class SafeSubAccountService extends SubAccountService
         string $moneyState = 'faded',
         ?int $transactionId = null
     ): ?NajmTransaction {
+        if ($transactionId !== null) {
+            throw new \RuntimeException('Existing transaction IDs may only be completed by ScheduledSubAccountTransferExecutor.');
+        }
+
         $from = SubAccount::findOrFail($fromSubAccountId);
         $to = SubAccount::findOrFail($toSubAccountId);
         $sameOwner = (int) $from->account_id === (int) $to->account_id;
@@ -96,26 +100,24 @@ class SafeSubAccountService extends SubAccountService
             $transactions = app(TransactionService::class);
             $transactions->assertEffectiveOwnerTransferAllowed($fromMirror, $toMirror);
 
-            if ($transactionId === null) {
-                return $transactions->transfer(
-                    $fromMirror->account_number,
-                    $toMirror->account_number,
-                    $amount,
-                    $description ?? 'انتقال فعال بین حساب‌های فرعی مستقل',
-                    [
-                        'transfer_type' => 'subaccount',
-                        'from_sub_account_id' => $from->id,
-                        'to_sub_account_id' => $to->id,
-                        'from_sub_account_code' => $from->sub_account_code,
-                        'to_sub_account_code' => $to->sub_account_code,
-                        'money_state' => 'active',
-                        'routed_by' => 'safe_sub_account_service',
-                    ],
-                    $this->crossOwnerIdempotencyKey($from, $to, $amount),
-                    'active',
-                    'subaccount_transfer'
-                );
-            }
+            return $transactions->transfer(
+                $fromMirror->account_number,
+                $toMirror->account_number,
+                $amount,
+                $description ?? 'انتقال فعال بین حساب‌های فرعی مستقل',
+                [
+                    'transfer_type' => 'subaccount',
+                    'from_sub_account_id' => $from->id,
+                    'to_sub_account_id' => $to->id,
+                    'from_sub_account_code' => $from->sub_account_code,
+                    'to_sub_account_code' => $to->sub_account_code,
+                    'money_state' => 'active',
+                    'routed_by' => 'safe_sub_account_service',
+                ],
+                $this->crossOwnerIdempotencyKey($from, $to, $amount),
+                'active',
+                'subaccount_transfer'
+            );
         }
 
         $transaction = parent::transferBetweenSubAccounts(
@@ -124,7 +126,7 @@ class SafeSubAccountService extends SubAccountService
             $amount,
             $description,
             $moneyState,
-            $transactionId
+            null
         );
 
         $invariants = app(AccountInvariantService::class);
