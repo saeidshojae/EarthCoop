@@ -95,11 +95,12 @@ jobs:
       - name: Run database migrations
         run: php artisan migrate --force
 
-      - name: Run production readiness and upgrade safety gates
+      - name: Run production readiness, upgrade and idempotency gates
         run: |
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/NajmBahar/ProductionReadinessAuditServiceTest.php \
-            tests/Feature/NajmBahar/ProductionUpgradeSafetyTest.php
+            tests/Feature/NajmBahar/ProductionUpgradeSafetyTest.php \
+            tests/Feature/NajmBahar/TransactionIdempotencyHardeningTest.php
           php artisan najm-bahar:production-readiness --json
 
       - name: Re-run Release D cleanup gate
