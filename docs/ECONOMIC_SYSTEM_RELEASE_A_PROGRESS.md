@@ -71,7 +71,7 @@ Release A is an isolated constitutional-money hardening branch. Nothing from thi
 - Membership-fee UI still needs an explicit dim/active source selector even though backend support is complete.
 - Legacy `TransactionService` / `SubAccountService` internals remain behind safe adapters and should be migrated incrementally so the direct-mutation allowlist can shrink further.
 - True concurrent transfer/activation/settlement tests still need expansion.
-- Idle-tax *collection* is intentionally not implemented yet; only reviewable observation exists until rate, exemptions, cadence, and exact amount×duration policy are approved.
+- Idle-tax collection is intentionally not implemented yet; only reviewable observation exists until rate, exemptions, cadence, and exact amount×duration policy are approved.
 
 ## Next
 
