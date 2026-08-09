@@ -16,6 +16,7 @@ class NajmBaharFinancialMutationBoundaryTest extends TestCase
     private const ALLOWED_MUTATION_FILES = [
         'app/Modules/NajmBahar/Services/MonetaryService.php',
         'app/Modules/NajmBahar/Services/TransactionService.php',
+        'app/Modules/NajmBahar/Services/InternalAccountTransferService.php',
         'app/Modules/NajmBahar/Services/SubAccountService.php',
         'app/Modules/NajmBahar/Services/AccountService.php',
         'app/Console/Commands/FixCorruptedBalances.php',
@@ -48,7 +49,8 @@ class NajmBaharFinancialMutationBoundaryTest extends TestCase
                     continue;
                 }
 
-                if (! preg_match('/->balance(?:_active|_faded)?\s*=|->(?:increment|decrement)\(\s*[\'\"]balance(?:_active|_faded)?[\'\"]/', $contents)) {
+                // Match actual writes, not comparisons such as `balance_active === 0`.
+                if (! preg_match('/->balance(?:_active|_faded)?\s*=(?!=)|->(?:increment|decrement)\(\s*[\'\"]balance(?:_active|_faded)?[\'\"]/', $contents)) {
                     continue;
                 }
 
