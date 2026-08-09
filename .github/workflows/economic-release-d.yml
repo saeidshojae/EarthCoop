@@ -101,6 +101,7 @@ jobs:
             tests/Feature/NajmBahar/MembershipRemovalServiceTest.php \
             tests/Feature/NajmBahar/LegacySubAccountMutationRetirementTest.php \
             tests/Feature/NajmBahar/GenericSubAccountFallbackRetirementTest.php \
+            tests/Feature/NajmBahar/LegacyAdminUserPurgeRetirementTest.php \
             tests/Feature/NajmBahar/SafeTransactionServiceInvariantTest.php \
             tests/Feature/NajmBahar/SafeSubAccountServiceInvariantTest.php
 
