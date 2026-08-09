@@ -9,6 +9,10 @@ use Illuminate\Support\Collection;
 
 class MonetaryOperationsReportService
 {
+    public const HEALTHY = 'healthy';
+    public const WARNING = 'warning';
+    public const CRITICAL = 'critical';
+
     public function problemItems(int $limit = 100): Collection
     {
         $limit = max(1, min($limit, 500));
@@ -19,7 +23,7 @@ class MonetaryOperationsReportService
             ->orderByDesc('failed_at')
             ->limit($limit)
             ->get()
-            ->map(fn (EconomicAction $action) => [
+            ->map(fn (EconomicAction $action) => $this->withSeverity([
                 'kind' => 'execution_outbox',
                 'id' => (int) $action->id,
                 'status' => $action->status,
@@ -31,7 +35,7 @@ class MonetaryOperationsReportService
                 'operator_action' => $action->status === 'dead_letter'
                     ? 'recover_dead_letter_then_retry'
                     : 'retry_failed',
-            ]);
+            ]));
 
         $payments = PublicExecutionPaymentInstruction::query()
             ->with('plan:id,group_id')
@@ -40,7 +44,7 @@ class MonetaryOperationsReportService
             ->orderByDesc('failed_at')
             ->limit($limit)
             ->get()
-            ->map(fn (PublicExecutionPaymentInstruction $payment) => [
+            ->map(fn (PublicExecutionPaymentInstruction $payment) => $this->withSeverity([
                 'kind' => 'contractor_payment',
                 'id' => (int) $payment->id,
                 'status' => $payment->status,
@@ -52,7 +56,7 @@ class MonetaryOperationsReportService
                 'operator_action' => $payment->status === 'dead_letter'
                     ? 'recover_dead_letter_then_retry'
                     : 'retry_failed',
-            ]);
+            ]));
 
         $reversals = PublicExecutionReversalRequest::query()
             ->with('paymentInstruction.plan:id,group_id')
@@ -61,7 +65,7 @@ class MonetaryOperationsReportService
             ->orderByDesc('failed_at')
             ->limit($limit)
             ->get()
-            ->map(fn (PublicExecutionReversalRequest $reversal) => [
+            ->map(fn (PublicExecutionReversalRequest $reversal) => $this->withSeverity([
                 'kind' => 'payment_reversal',
                 'id' => (int) $reversal->id,
                 'status' => $reversal->status,
@@ -73,14 +77,15 @@ class MonetaryOperationsReportService
                 'operator_action' => $reversal->status === 'dead_letter'
                     ? 'recover_dead_letter_then_retry'
                     : 'retry_failed',
-            ]);
+            ]));
 
         return $outbox
             ->concat($payments)
             ->concat($reversals)
             ->sort(function (array $a, array $b) {
-                $aPriority = $a['status'] === 'dead_letter' ? 0 : 1;
-                $bPriority = $b['status'] === 'dead_letter' ? 0 : 1;
+                $severityPriority = [self::CRITICAL => 0, self::WARNING => 1];
+                $aPriority = $severityPriority[$a['severity']] ?? 2;
+                $bPriority = $severityPriority[$b['severity']] ?? 2;
                 if ($aPriority !== $bPriority) {
                     return $aPriority <=> $bPriority;
                 }
@@ -109,5 +114,31 @@ class MonetaryOperationsReportService
                 'dead_letter' => PublicExecutionReversalRequest::where('status', 'dead_letter')->count(),
             ],
         ];
+    }
+
+    public function health(): array
+    {
+        $summary = $this->summary();
+        $failed = (int) collect($summary)->sum(fn (array $counts) => (int) $counts['failed']);
+        $deadLetter = (int) collect($summary)->sum(fn (array $counts) => (int) $counts['dead_letter']);
+        $severity = $deadLetter > 0 ? self::CRITICAL : ($failed > 0 ? self::WARNING : self::HEALTHY);
+
+        return [
+            'severity' => $severity,
+            'exit_code' => match ($severity) {
+                self::CRITICAL => 2,
+                self::WARNING => 1,
+                default => 0,
+            },
+            'failed' => $failed,
+            'dead_letter' => $deadLetter,
+            'requires_operator_attention' => $deadLetter > 0,
+        ];
+    }
+
+    private function withSeverity(array $item): array
+    {
+        $item['severity'] = $item['status'] === 'dead_letter' ? self::CRITICAL : self::WARNING;
+        return $item;
     }
 }
