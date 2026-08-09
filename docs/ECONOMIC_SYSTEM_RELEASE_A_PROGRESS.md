@@ -25,6 +25,12 @@ Baseline: `agent/najm-hoda-chat-context`
 - Dim membership payment activates exactly the fee amount before distributing active Bahar to treasury funds.
 - Membership payment is idempotent per member/year and preserves historical legacy split recognition.
 - Read-only account invariant audit identifies local-vs-legacy-aggregate balance semantics and sub-account mirror drift.
+- Canonical balance semantics are now explicit in `AccountBalanceService`: each Account row is local; wallet totals are derived from main + child sub-accounts.
+- Main ↔ Sub transfers have a ledger-backed canonical implementation that preserves active/dim state.
+- A transitional `SafeSubAccountService` binding routes live Main ↔ Sub flows away from the legacy faded→active bug.
+- A transitional `SafeTransactionService` binding intercepts own Main ↔ Sub transfers while leaving other mature transaction flows on the legacy core.
+- Read-only `najm-bahar:plan-balance-normalization` reports exactly which stored balances would change before any normalization write is allowed.
+- Architecture test prevents new direct balance mutations outside an explicit transitional financial boundary.
 
 ## Tests added
 
@@ -37,27 +43,49 @@ Baseline: `agent/najm-hoda-chat-context`
 - `TreasuryServiceTest`
 - `MembershipFeePaymentTest`
 - `AccountInvariantServiceTest`
+- `AccountBalanceServiceTest`
+- `InternalAccountTransferServiceTest`
+- `SafeSubAccountBindingTest`
+- `SafeTransactionBindingTest`
+- `NajmBaharFinancialMutationBoundaryTest`
+
+## Important bug closed in new live paths
+
+The legacy `SubAccountService` credited faded money returned from a sub-account into the main account's active bucket. The safe adapter now routes Main ↔ Sub flows through `InternalAccountTransferService`, so moving dim money between a member's own accounts cannot activate it.
 
 ## Current blocker before retirement/burn
 
-Legacy account semantics are not yet uniform. Main account `balance` has historically represented either:
+Historical account rows are still not normalized. Main account `balance` has represented either:
 
 - the local balance (`balance_active + balance_faded`), or
 - an aggregate balance that also includes child sub-accounts.
 
-Retirement/burn must not be implemented until these semantics are normalized, otherwise a member's remaining dim entitlement can be double-counted or under-counted.
+New live Main ↔ Sub paths now use canonical local semantics, but existing stored rows and aggregate-reading UI/services must be migrated before a data-changing normalization command is introduced.
 
-The `najm-bahar:audit-balances` command is intentionally read-only and exists to inventory this state before a data-changing normalization migration is approved.
+Retirement/burn must wait until this normalization is complete; otherwise a member's remaining dim entitlement can be double-counted or under-counted.
+
+The following commands are deliberately read-only safeguards:
+
+- `najm-bahar:audit-balances`
+- `najm-bahar:plan-balance-normalization`
+
+## Known transitional debt
+
+`NajmBaharController` still contains one inline historical unbucketed-balance repair assignment. The equivalent method now exists in `MonetaryService`; the controller is temporarily named in the architecture allowlist until that large legacy controller can be safely patched/refactored. No new controller-level financial mutations are permitted.
+
+The wallet membership UI also still needs a focused refactor to expose the backend's explicit `dim` / `active` source choice cleanly.
 
 ## Next Release A work
 
-1. Inventory all reads/writes of `Account.balance` and define one canonical meaning.
-2. Normalize main/sub-account balance semantics and remove mirror drift safely.
-3. Refactor remaining direct financial mutations behind transaction/monetary services.
-4. Add retirement/cancellation/burn foundation after account semantics are canonical.
-5. Add idle-money classification/tax foundation.
-6. Add policy-versioned membership fee allocation instead of legacy mutable settings.
-7. Refactor wallet/dashboard UI for explicit dim/active membership source selection.
-8. Expand financial invariant and true-concurrency tests.
+1. Migrate all aggregate balance readers to `AccountBalanceService`.
+2. Add a reviewed normalization apply-command only after readers are canonical.
+3. Synchronize historical SubAccount ↔ Account mirrors and local totals.
+4. Remove the temporary controller mutation allowlist entry.
+5. Shrink the safe adapters by migrating remaining legacy transfer methods.
+6. Implement retirement/cancellation/burn once account semantics are canonical.
+7. Add idle-money classification/tax foundation.
+8. Add policy-versioned membership fee allocation instead of legacy mutable settings.
+9. Refactor wallet/dashboard UI for explicit dim/active membership source selection.
+10. Expand true-concurrency tests.
 
 No merge into `main` is intended from this branch at this stage.
