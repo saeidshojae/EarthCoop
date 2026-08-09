@@ -56,7 +56,7 @@ return new class extends Migration
             $table->json('member_ids');
             $table->timestamps();
 
-            $table->unique(['snapshot_id', 'chunk_index']);
+            $table->unique(['snapshot_id', 'chunk_index'], 'gov_elig_snapshot_chunk_unique');
         });
 
         Schema::table('governance_resolutions', function (Blueprint $table) {
