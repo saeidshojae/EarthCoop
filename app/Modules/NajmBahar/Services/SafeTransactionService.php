@@ -40,15 +40,17 @@ class SafeTransactionService extends TransactionService
                 $internal = $this->resolveInternalOwnTransfer($from, $to);
                 if ($internal) {
                     [$direction, $main, $sub] = $internal;
-                    $key = $idempotencyKey ?? implode('-', [
-                        'safe-internal-transfer',
-                        $direction,
-                        $main->id,
-                        $sub->id,
-                        $balanceType,
-                        $amount,
-                        now()->format('YmdHisv'),
-                    ]);
+                    $key = $idempotencyKey
+                        ?? request()?->header('Idempotency-Key')
+                        ?? implode('-', [
+                            'safe-internal-transfer',
+                            $direction,
+                            $main->id,
+                            $sub->id,
+                            $balanceType,
+                            $amount,
+                            bin2hex(random_bytes(12)),
+                        ]);
 
                     $internalService = app(InternalAccountTransferService::class);
                     $metadata = array_merge($meta, [
@@ -82,33 +84,6 @@ class SafeTransactionService extends TransactionService
         }
 
         if ($balanceType === 'faded') {
-            // Legacy onboarding used to transfer 10 dim Bahar from the new member
-            // to the referrer. The constitutional model awards participation
-            // points instead; suppress the monetary transfer while retaining an
-            // auditable record until the legacy controller is fully removed.
-            if (($meta['type'] ?? null) === 'referral_bonus') {
-                $key = $idempotencyKey ?? 'suppressed-referral-dim-' . sha1((string) $fromAccountNumber . '|' . $toAccountNumber . '|' . $amount);
-                $existing = NajmTransaction::where('metadata->idempotency_key', $key)->first();
-                if ($existing) {
-                    return $existing;
-                }
-
-                return NajmTransaction::create([
-                    'from_account_id' => Account::where('account_number', $fromAccountNumber)->value('id'),
-                    'to_account_id' => Account::where('account_number', $toAccountNumber)->value('id'),
-                    'amount' => 0,
-                    'type' => 'adjustment',
-                    'status' => 'completed',
-                    'metadata' => array_merge($meta, [
-                        'idempotency_key' => $key,
-                        'monetary_event' => 'legacy_dim_transfer_suppressed',
-                        'requested_amount_gol' => $amount,
-                        'replacement_model' => 'participation_points_then_activate_own_dim',
-                    ]),
-                    'description' => 'مسیر قدیمی پاداش معرفی بدون انتقال پول کمرنگ متوقف شد',
-                ]);
-            }
-
             throw new \RuntimeException('پول کمرنگ قابل انتقال بین اشخاص یا نهادهای مستقل نیست. ابتدا باید از یک مسیر مجاز فعال شود.');
         }
 
