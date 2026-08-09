@@ -1,6 +1,7 @@
 <?php
 namespace App\Modules\Stock\Models;
 
+use App\Modules\Stock\Settlement\SettlementEligibilityPolicy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,6 +12,10 @@ class Auction extends Model
     
     protected $fillable = [
         'stock_id',
+        'market_type',
+        'supply_source',
+        'settlement_channel',
+        'quote_unit',
         'shares_count',
         'base_price',
         'start_time',
@@ -50,6 +55,22 @@ class Auction extends Model
     public function activeBids(): HasMany
     {
         return $this->hasMany(Bid::class)->where('status', 'active');
+    }
+
+    /**
+     * Fail closed unless issuer/market/supply/channel are explicitly
+     * classified and permitted by the Stock × Najm Bahar boundary.
+     */
+    public function assertSettlementEligible(?SettlementEligibilityPolicy $policy = null): void
+    {
+        $policy ??= app(SettlementEligibilityPolicy::class);
+
+        $policy->assertAllowed(
+            (string) ($this->stock?->issuer_type ?? ''),
+            (string) ($this->market_type ?? ''),
+            (string) ($this->supply_source ?? ''),
+            (string) ($this->settlement_channel ?? ''),
+        );
     }
     
     public function scopeRunning($query)
