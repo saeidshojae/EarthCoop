@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Setting;
 use App\Modules\NajmBahar\Models\Account;
+use App\Modules\NajmBahar\Services\MonetaryPolicyService;
 use App\Modules\NajmBahar\Services\MonetaryService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -12,23 +12,25 @@ class NajmBaharActivateFaded extends Command
 {
     protected $signature = 'najm-bahar:activate-faded
                             {--dry-run : نمایش عملیات بدون اعمال تغییرات}
-                            {--amount= : مقدار فعال‌سازی به بهار (اختیاری - از تنظیمات خوانده می‌شود)}';
+                            {--amount= : مقدار فعال‌سازی به بهار (اختیاری - فقط برای اجرای دستی)}';
 
     protected $description = 'فعال‌سازی دوره‌ای موجودی کمرنگ - تبدیل مقداری از موجودی فیدد به اکتیو';
 
-    public function handle(MonetaryService $monetaryService)
-    {
-        $settings = Setting::firstNajmBaharSettings();
+    public function handle(
+        MonetaryService $monetaryService,
+        MonetaryPolicyService $monetaryPolicyService
+    ) {
+        $policy = $monetaryPolicyService->current();
+        $enabled = (bool) data_get($policy, 'parameters.auto_activation_enabled', false);
 
-        if (!$settings || !$settings->najm_bahar_auto_activation_enabled) {
+        if (!$enabled) {
             $this->warn('⚠️ فعال‌سازی خودکار غیرفعال است.');
-            $this->info('💡 برای فعال‌سازی به: تنظیمات نجم بهار > فعال‌سازی خودکار دوره‌ای');
             return Command::FAILURE;
         }
 
         $activationAmount = $this->option('amount') !== null
             ? $this->parseBaharToGol((string) $this->option('amount'))
-            : (int) ($settings->najm_bahar_auto_activation_amount ?? 0);
+            : (int) data_get($policy, 'parameters.auto_activation_amount_gol', 0);
 
         if ($activationAmount <= 0) {
             $this->error('❌ مقدار فعال‌سازی باید بیشتر از صفر باشد.');
@@ -36,11 +38,14 @@ class NajmBaharActivateFaded extends Command
         }
 
         $isDryRun = (bool) $this->option('dry-run');
-        $period = (string) ($settings->najm_bahar_auto_activation_period ?? 'monthly');
+        $period = (string) data_get($policy, 'parameters.auto_activation_period', 'monthly');
         $periodKey = $this->periodKey($period);
+        $policyVersionId = $policy['version_id'];
+        $policyVersion = $policy['version'];
 
         $this->info("🔄 شروع فعال‌سازی دوره‌ای ({$period})");
         $this->info('💰 مقدار فعال‌سازی: ' . number_format($activationAmount / 100, 2) . ' بهار');
+        $this->info('📜 منبع سیاست: ' . $policy['source'] . ($policyVersion ? " / v{$policyVersion}" : ''));
 
         if ($isDryRun) {
             $this->warn('⚡ حالت Dry Run - تغییرات اعمال نمی‌شود');
@@ -77,6 +82,8 @@ class NajmBaharActivateFaded extends Command
                             'period' => $period,
                             'period_key' => $periodKey,
                             'system_operation' => true,
+                            'policy_version_id' => $policyVersionId,
+                            'policy_version' => $policyVersion,
                         ],
                         'auto-activation-' . $periodKey . '-account-' . $account->id,
                         true
@@ -92,6 +99,7 @@ class NajmBaharActivateFaded extends Command
                             'amount' => $result['amount'],
                             'period' => $period,
                             'period_key' => $periodKey,
+                            'policy_version_id' => $policyVersionId,
                         ]);
                     } else {
                         $alreadyAppliedCount++;
@@ -134,9 +142,6 @@ class NajmBaharActivateFaded extends Command
         };
     }
 
-    /**
-     * Parse a user-supplied Bahar amount without floating-point arithmetic.
-     */
     private function parseBaharToGol(string $value): int
     {
         $value = trim($value);
