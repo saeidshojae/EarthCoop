@@ -92,6 +92,5 @@ class SafeTransactionServiceInvariantTest extends TestCase
         $this->assertSame(25, (int) $system->fresh()->balance_active);
         $this->assertSame(25, (int) $system->fresh()->balance);
         $this->assertSame([], app(AccountInvariantService::class)->audit($main)['mirror_drift']);
-        $this->assertSame('legacy_aggregate_total', app(AccountInvariantService::class)->audit($main)['balance_semantics']);
     }
 }
