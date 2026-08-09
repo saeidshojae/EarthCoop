@@ -2,6 +2,8 @@
 
 namespace App\Modules\NajmBahar\Services;
 
+use App\Models\Setting;
+use App\Models\User;
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
@@ -14,6 +16,11 @@ use Illuminate\Support\Facades\DB;
  * TransactionService. Own Main ↔ Sub movements are routed to the canonical
  * internal service so Account.balance remains local and money state is never
  * changed as a side effect of moving between a member's own accounts.
+ *
+ * Release C also resolves the effective owner of sub-account mirrors through
+ * their parent account. This closes the legacy policy gap where sub-account
+ * Account rows have no user_id and could therefore bypass the pre-threshold
+ * cross-member transfer lock.
  *
  * Dim money is not spendable/transferable between economic actors. It may only
  * move between the same owner's accounts or be consumed by explicit monetary
@@ -31,67 +38,73 @@ class SafeTransactionService extends TransactionService
         string $balanceType = 'balance',
         ?string $transactionType = null
     ): NajmTransaction {
+        $from = $fromAccountNumber
+            ? Account::where('account_number', $fromAccountNumber)->first()
+            : null;
+        $to = Account::where('account_number', $toAccountNumber)->first();
+
+        if ($from && $to) {
+            $this->assertEffectiveOwnerTransferAllowed($from, $to, $meta);
+        }
+
         if ($fromAccountNumber
             && in_array($balanceType, ['active', 'faded'], true)
-            && $amount > 0) {
-            $from = Account::where('account_number', $fromAccountNumber)->first();
-            $to = Account::where('account_number', $toAccountNumber)->first();
-
-            if ($from && $to) {
-                $internal = $this->resolveInternalOwnTransfer($from, $to);
-                if ($internal) {
-                    [$direction, $main, $sub] = $internal;
-                    $requestKey = request()?->header('Idempotency-Key');
-                    $key = $idempotencyKey;
-                    if (! $key && is_string($requestKey) && trim($requestKey) !== '') {
-                        $key = implode('-', [
-                            'safe-internal-transfer',
-                            $direction,
-                            $main->id,
-                            $sub->id,
-                            $balanceType,
-                            $amount,
-                            hash('sha256', trim($requestKey)),
-                        ]);
-                    }
-                    $key ??= implode('-', [
+            && $amount > 0
+            && $from
+            && $to) {
+            $internal = $this->resolveInternalOwnTransfer($from, $to);
+            if ($internal) {
+                [$direction, $main, $sub] = $internal;
+                $requestKey = request()?->header('Idempotency-Key');
+                $key = $idempotencyKey;
+                if (! $key && is_string($requestKey) && trim($requestKey) !== '') {
+                    $key = implode('-', [
                         'safe-internal-transfer',
                         $direction,
                         $main->id,
                         $sub->id,
                         $balanceType,
                         $amount,
-                        bin2hex(random_bytes(12)),
+                        hash('sha256', trim($requestKey)),
                     ]);
+                }
+                $key ??= implode('-', [
+                    'safe-internal-transfer',
+                    $direction,
+                    $main->id,
+                    $sub->id,
+                    $balanceType,
+                    $amount,
+                    bin2hex(random_bytes(12)),
+                ]);
 
-                    $internalService = app(InternalAccountTransferService::class);
-                    $metadata = array_merge($meta, [
-                        'requested_transaction_type' => $transactionType,
-                        'routed_by' => 'safe_transaction_service',
-                    ]);
+                $internalService = app(InternalAccountTransferService::class);
+                $metadata = array_merge($meta, [
+                    'requested_transaction_type' => $transactionType,
+                    'routed_by' => 'safe_transaction_service',
+                ]);
 
-                    if ($direction === 'main_to_sub') {
-                        return $internalService->mainToSub(
-                            $main,
-                            $sub,
-                            $amount,
-                            $balanceType,
-                            $description ?? 'انتقال داخلی به حساب فرعی',
-                            $key,
-                            $metadata
-                        );
-                    }
-
-                    return $internalService->subToMain(
-                        $sub,
+                if ($direction === 'main_to_sub') {
+                    return $internalService->mainToSub(
                         $main,
+                        $sub,
                         $amount,
                         $balanceType,
-                        $description ?? 'انتقال داخلی به حساب اصلی',
+                        $description ?? 'انتقال داخلی به حساب فرعی',
                         $key,
                         $metadata
                     );
                 }
+
+                return $internalService->subToMain(
+                    $sub,
+                    $main,
+                    $amount,
+                    $balanceType,
+                    $description ?? 'انتقال داخلی به حساب اصلی',
+                    $key,
+                    $metadata
+                );
             }
         }
 
@@ -120,10 +133,6 @@ class SafeTransactionService extends TransactionService
                 $transactionType
             );
 
-            // Release C migration boundary: legacy fallback transfers may still
-            // mutate both the SubAccount row and its Account mirror. Reconcile
-            // every involved child through the single canonical invariant
-            // service before the outer transaction commits.
             $subAccounts = collect([$fromAccountNumber, $toAccountNumber])
                 ->filter()
                 ->unique()
@@ -137,6 +146,52 @@ class SafeTransactionService extends TransactionService
 
             return $transaction;
         });
+    }
+
+    /**
+     * Enforce the cross-member transfer gate using effective ownership rather
+     * than Account.user_id alone. Sub-account mirrors inherit the owner of their
+     * parent main account. System/legal-entity policy remains with the existing
+     * TransactionService rules.
+     */
+    public function assertEffectiveOwnerTransferAllowed(Account $from, Account $to, array $meta = []): void
+    {
+        if ((bool) ($meta['system_operation'] ?? false)) {
+            return;
+        }
+
+        $fromOwner = $this->effectiveUserId($from);
+        $toOwner = $this->effectiveUserId($to);
+
+        if (! $fromOwner || ! $toOwner || $fromOwner === $toOwner) {
+            return;
+        }
+
+        $setting = Setting::first();
+        $threshold = (int) ($setting?->najm_bahar_user_threshold ?? 1111111);
+
+        if (User::count() < $threshold) {
+            throw new \RuntimeException('همه تراکنشهای بین کاربران قفله. تبادل در خود حساب بین اصلی و فرعی و بالعکس و همچنین کلیه تراکنشهای سیستمی مثل واریز و برداشت برای سیستم بازه.');
+        }
+    }
+
+    private function effectiveUserId(Account $account): ?int
+    {
+        if ($account->user_id) {
+            return (int) $account->user_id;
+        }
+
+        if ($account->type !== 'subaccount') {
+            return null;
+        }
+
+        $sub = SubAccount::where('sub_account_code', $account->account_number)->first();
+        if (! $sub) {
+            return null;
+        }
+
+        $parent = Account::find($sub->account_id);
+        return $parent?->user_id ? (int) $parent->user_id : null;
     }
 
     private function resolveInternalOwnTransfer(Account $from, Account $to): ?array
