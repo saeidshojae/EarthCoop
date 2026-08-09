@@ -50,7 +50,8 @@ jobs:
           mkdir -p storage/framework/views
           mkdir -p storage/framework/cache
           mkdir -p storage/framework/sessions
-          chmod -R 775 bootstrap/cache storage/framework
+          mkdir -p storage/logs
+          chmod -R 775 bootstrap/cache storage/framework storage/logs
 
       - name: Remove tracked legacy vendor tree
         run: rm -rf vendor
@@ -90,7 +91,31 @@ jobs:
         run: php artisan migrate --force
 
       - name: Run Najm Bahar Release A tests
-        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmBahar tests/Unit/NajmBahar
+        shell: bash
+        run: |
+          set -o pipefail
+          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmBahar tests/Unit/NajmBahar 2>&1 | tee storage/logs/release-a-phpunit.txt
+
+      - name: Upload Release A PHPUnit diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-a-phpunit-output
+          path: storage/logs/release-a-phpunit.txt
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Run financial architecture guards
-        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Architecture/NajmBaharFinancialMutationBoundaryTest.php
+        shell: bash
+        run: |
+          set -o pipefail
+          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Architecture/NajmBaharFinancialMutationBoundaryTest.php 2>&1 | tee storage/logs/release-a-architecture.txt
+
+      - name: Upload architecture diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-a-architecture-output
+          path: storage/logs/release-a-architecture.txt
+          if-no-files-found: ignore
+          retention-days: 7
