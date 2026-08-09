@@ -25,12 +25,19 @@ Baseline: `agent/najm-hoda-chat-context`
 - Dim membership payment activates exactly the fee amount before distributing active Bahar to treasury funds.
 - Membership payment is idempotent per member/year and preserves historical legacy split recognition.
 - Read-only account invariant audit identifies local-vs-legacy-aggregate balance semantics and sub-account mirror drift.
-- Canonical balance semantics are now explicit in `AccountBalanceService`: each Account row is local; wallet totals are derived from main + child sub-accounts.
+- Canonical balance semantics are explicit in `AccountBalanceService`: each Account row is local; wallet totals are derived from main + child sub-accounts.
 - Main ↔ Sub transfers have a ledger-backed canonical implementation that preserves active/dim state.
-- A transitional `SafeSubAccountService` binding routes live Main ↔ Sub flows away from the legacy faded→active bug.
-- A transitional `SafeTransactionService` binding intercepts own Main ↔ Sub transfers while leaving other mature transaction flows on the legacy core.
-- Read-only `najm-bahar:plan-balance-normalization` reports exactly which stored balances would change before any normalization write is allowed.
+- `SafeSubAccountService` and `SafeTransactionService` route live own-account transfers away from legacy aggregate semantics and the faded→active bug.
 - Architecture test prevents new direct balance mutations outside an explicit transitional financial boundary.
+- `BalanceNormalizationService` provides deterministic normalization of cached total fields only.
+- `najm-bahar:normalize-balances` is dry-run by default and requires explicit `--apply`; it never alters active/dim buckets.
+- Monetary primitives now include auditable/idempotent dim cancellation and active destruction.
+- Membership retirement foundation is implemented for death, exit and removal.
+- Retirement cancels remaining dim only up to the constitutional 10,000-Bahar membership footprint.
+- The complementary amount is destroyed first from the Money Destruction Fund, then from the Idle Tax Fund.
+- Any uncovered remainder becomes `MonetaryRetirementLiability` owed by the EarthCoop monetary system; the estate is not liable.
+- Member active wealth is explicitly preserved for inheritance/estate handling outside the retirement monetary footprint.
+- Legacy dim above the constitutional footprint is preserved rather than confiscated by retirement.
 
 ## Tests added
 
@@ -44,48 +51,61 @@ Baseline: `agent/najm-hoda-chat-context`
 - `MembershipFeePaymentTest`
 - `AccountInvariantServiceTest`
 - `AccountBalanceServiceTest`
+- `BalanceNormalizationServiceTest`
 - `InternalAccountTransferServiceTest`
 - `SafeSubAccountBindingTest`
 - `SafeTransactionBindingTest`
+- `MembershipRetirementServiceTest`
 - `NajmBaharFinancialMutationBoundaryTest`
 
 ## Important bug closed in new live paths
 
-The legacy `SubAccountService` credited faded money returned from a sub-account into the main account's active bucket. The safe adapter now routes Main ↔ Sub flows through `InternalAccountTransferService`, so moving dim money between a member's own accounts cannot activate it.
+The legacy `SubAccountService` credited faded money returned from a sub-account into the main account's active bucket. Live Main ↔ Sub flows now go through `InternalAccountTransferService`, so moving dim money between a member's own accounts cannot activate it.
 
-## Current blocker before retirement/burn
+## Normalization status
 
-Historical account rows are still not normalized. Main account `balance` has represented either:
+Canonical semantics are now defined and new live internal transfers preserve them. Historical rows can be normalized safely because the normalization operation only rewrites cached `balance` totals to local `balance_active + balance_faded`; it does not move, create, activate, cancel or destroy money.
 
-- the local balance (`balance_active + balance_faded`), or
-- an aggregate balance that also includes child sub-accounts.
+Commands:
 
-New live Main ↔ Sub paths now use canonical local semantics, but existing stored rows and aggregate-reading UI/services must be migrated before a data-changing normalization command is introduced.
+- `najm-bahar:audit-balances` — read-only invariant inventory.
+- `najm-bahar:plan-balance-normalization` — read-only detailed plan.
+- `najm-bahar:normalize-balances` — dry-run by default; `--apply` explicitly writes cached totals only.
 
-Retirement/burn must wait until this normalization is complete; otherwise a member's remaining dim entitlement can be double-counted or under-counted.
+Before production migration, aggregate-reading UI/services still need to be moved to `AccountBalanceService` so displays do not assume old aggregate `main.balance` semantics.
 
-The following commands are deliberately read-only safeguards:
+## Retirement model now implemented
 
-- `najm-bahar:audit-balances`
-- `najm-bahar:plan-balance-normalization`
+For a member retirement:
+
+1. Determine canonical wallet dim total from main + sub-accounts.
+2. Cancel at most 10,000 Bahar of dim membership footprint.
+3. Compute `10,000 Bahar - dim_cancelled`.
+4. Destroy that amount from Money Destruction Fund available surplus.
+5. If needed, destroy the remainder from Idle Tax Fund available surplus.
+6. Record any remaining shortage as a system monetary retirement liability.
+7. Never debit the member's active wealth or estate assets.
+
+Retirement is idempotent per member.
 
 ## Known transitional debt
 
-`NajmBaharController` still contains one inline historical unbucketed-balance repair assignment. The equivalent method now exists in `MonetaryService`; the controller is temporarily named in the architecture allowlist until that large legacy controller can be safely patched/refactored. No new controller-level financial mutations are permitted.
+`NajmBaharController` still contains one inline historical unbucketed-balance repair assignment. The equivalent method exists in `MonetaryService`; the controller is temporarily named in the architecture allowlist until that legacy controller can be safely patched/refactored. No new controller-level financial mutations are permitted.
 
-The wallet membership UI also still needs a focused refactor to expose the backend's explicit `dim` / `active` source choice cleanly.
+The wallet membership UI still needs a focused refactor to expose the backend's explicit `dim` / `active` source choice cleanly.
+
+Some aggregate readers still use legacy `Account.balance` and must move to `AccountBalanceService` before normalization is run against production data.
 
 ## Next Release A work
 
-1. Migrate all aggregate balance readers to `AccountBalanceService`.
-2. Add a reviewed normalization apply-command only after readers are canonical.
-3. Synchronize historical SubAccount ↔ Account mirrors and local totals.
-4. Remove the temporary controller mutation allowlist entry.
-5. Shrink the safe adapters by migrating remaining legacy transfer methods.
-6. Implement retirement/cancellation/burn once account semantics are canonical.
-7. Add idle-money classification/tax foundation.
-8. Add policy-versioned membership fee allocation instead of legacy mutable settings.
-9. Refactor wallet/dashboard UI for explicit dim/active membership source selection.
-10. Expand true-concurrency tests.
+1. Migrate aggregate balance readers/UI to `AccountBalanceService`.
+2. Remove the temporary controller mutation allowlist entry.
+3. Add retirement-liability settlement flow when treasury liquidity later becomes available.
+4. Add idle-money classification/tax foundation.
+5. Add policy-versioned membership fee allocation instead of legacy mutable settings.
+6. Refactor wallet/dashboard UI for explicit dim/active membership source selection.
+7. Restrict external transfers of dim money to constitutional allowed uses/internal account movement.
+8. Shrink safe adapters by migrating remaining legacy transfer methods.
+9. Expand true-concurrency tests.
 
 No merge into `main` is intended from this branch at this stage.
