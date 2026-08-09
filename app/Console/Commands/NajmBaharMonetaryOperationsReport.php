@@ -21,6 +21,7 @@ class NajmBaharMonetaryOperationsReport extends Command
 
         if ($this->option('json')) {
             $this->line(json_encode([
+                'generated_at' => now()->toIso8601String(),
                 'summary' => $summary,
                 'items' => $items->all(),
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
@@ -59,6 +60,9 @@ class NajmBaharMonetaryOperationsReport extends Command
                 mb_strimwidth((string) ($item['error'] ?? ''), 0, 100, '…'),
             ])->all()
         );
+
+        $this->newLine();
+        $this->line('Recovery remains explicit; this report never retries or recovers money-moving operations by itself.');
 
         return self::SUCCESS;
     }
