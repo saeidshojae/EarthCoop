@@ -12,12 +12,19 @@ class PublicContributionPlan extends Model
     protected $fillable = [
         'economic_action_id', 'resolution_id', 'group_id', 'eligibility_snapshot_id',
         'status', 'total_required_gol', 'eligible_count', 'base_amount_gol',
-        'remainder_gol', 'due_at', 'opened_at', 'closed_at', 'metadata',
+        'remainder_gol', 'committed_total_gol', 'due_at', 'opened_at',
+        'fully_committed_at', 'closed_at', 'metadata',
     ];
 
     protected $casts = [
+        'total_required_gol' => 'integer',
+        'eligible_count' => 'integer',
+        'base_amount_gol' => 'integer',
+        'remainder_gol' => 'integer',
+        'committed_total_gol' => 'integer',
         'due_at' => 'datetime',
         'opened_at' => 'datetime',
+        'fully_committed_at' => 'datetime',
         'closed_at' => 'datetime',
         'metadata' => 'array',
     ];
