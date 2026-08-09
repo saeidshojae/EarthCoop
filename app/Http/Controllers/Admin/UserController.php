@@ -4,14 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Modules\NajmBahar\Models\Account as NajmAccount;
-use App\Modules\NajmBahar\Models\SubAccount as NajmSubAccount;
-use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
-use App\Modules\NajmBahar\Models\LedgerEntry as NajmLedgerEntry;
-use App\Modules\NajmBahar\Services\AccountService as NajmAccountService;
 use App\Models\Setting;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Validator;
@@ -466,9 +460,7 @@ class UserController extends Controller
     
     public function destroy(User $user)
     {
-        throw new \RuntimeException(
-            'Admin user deletion must use SafeUserController and MembershipRemovalService.'
-        );
+        throw new \LogicException('Direct admin user deletion is retired. Resolve the safe admin controller boundary.');
     }
 
     // تغییر وضعیت کاربر
@@ -508,9 +500,7 @@ class UserController extends Controller
                 return back()->with('success', count($userIds) . ' کاربر تعلیق شدند');
             
             case 'delete':
-                throw new \RuntimeException(
-                    'Bulk admin user deletion must use SafeUserController and MembershipRemovalService.'
-                );
+                throw new \LogicException('Direct admin bulk deletion is retired. Resolve the safe admin controller boundary.');
             
             case 'export':
                 return $this->exportUsers($userIds);
