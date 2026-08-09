@@ -84,6 +84,8 @@ class AutonomousGoalLoopTest extends TestCase
     {
         config([
             'najm-hoda.runtime.autonomy.allow_apply_low_risk' => true,
+            'najm-hoda.runtime.autonomy.permissioning_v2.enabled' => true,
+            'najm-hoda.runtime.autonomy.permissioning_v2.enforce_apply_requires_delegation' => true,
             'najm-hoda.runtime.autonomy.human_escalation.enabled' => true,
             'najm-hoda.runtime.autonomy.human_escalation.require_approval_for_apply_mode' => true,
             'najm-hoda.runtime.autonomy.human_escalation.notify_admins' => false,
