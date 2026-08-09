@@ -122,6 +122,23 @@ class SafeTransactionService extends TransactionService
             );
         }
 
+        if ($from
+            && $to
+            && in_array($from->type, ['user', 'legal_entity'], true)
+            && $to->type === 'system'
+            && $balanceType === 'active'
+            && (bool) ($meta['system_operation'] ?? false)) {
+            return app(MainAccountSystemTransferService::class)->transfer(
+                $from,
+                $to,
+                $amount,
+                $description,
+                $meta,
+                $idempotencyKey,
+                $transactionType
+            );
+        }
+
         // Constitutional Dim non-transferability is the stronger rule and must
         // take precedence over the temporary cross-member threshold lock. Keep
         // this check before threshold validation so legacy callers receive the
