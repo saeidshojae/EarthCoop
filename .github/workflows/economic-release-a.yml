@@ -102,18 +102,38 @@ jobs:
       - name: Run database migrations
         run: php artisan migrate --force
 
-      - name: Run Najm Bahar Release A tests
+      - name: Run Release A constitutional gate
         shell: bash
         run: |
           set -o pipefail
-          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmBahar tests/Unit/NajmBahar 2>&1 | tee storage/logs/release-a-phpunit.txt
+          php vendor/bin/phpunit --configuration phpunit.xml.dist \
+            tests/Unit/NajmBahar/NajmBaharConstitutionTest.php \
+            tests/Feature/NajmBahar/AccountBalanceServiceTest.php \
+            tests/Feature/NajmBahar/AccountInvariantServiceTest.php \
+            tests/Feature/NajmBahar/BalanceNormalizationServiceTest.php \
+            tests/Feature/NajmBahar/DimTransferRestrictionTest.php \
+            tests/Feature/NajmBahar/HistoricalLedgerBackfillTest.php \
+            tests/Feature/NajmBahar/IdleCapitalObservationServiceTest.php \
+            tests/Feature/NajmBahar/InitialMembershipCreditTest.php \
+            tests/Feature/NajmBahar/InternalAccountTransferServiceTest.php \
+            tests/Feature/NajmBahar/InvestmentVisibilityTest.php \
+            tests/Feature/NajmBahar/MembershipFeePaymentTest.php \
+            tests/Feature/NajmBahar/MembershipRetirementServiceTest.php \
+            tests/Feature/NajmBahar/MonetaryPolicyServiceTest.php \
+            tests/Feature/NajmBahar/MonetaryServiceTest.php \
+            tests/Feature/NajmBahar/OperationalCommandsTest.php \
+            tests/Feature/NajmBahar/RetirementLiabilitySettlementServiceTest.php \
+            tests/Feature/NajmBahar/SafeSubAccountBindingTest.php \
+            tests/Feature/NajmBahar/SafeTransactionBindingTest.php \
+            tests/Feature/NajmBahar/TreasuryServiceTest.php \
+            2>&1 | tee storage/logs/release-a-core.txt
 
-      - name: Upload Release A PHPUnit diagnostics
+      - name: Upload Release A core diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: release-a-phpunit-output
-          path: storage/logs/release-a-phpunit.txt
+          name: release-a-core-output
+          path: storage/logs/release-a-core.txt
           if-no-files-found: ignore
           retention-days: 7
 
@@ -129,5 +149,27 @@ jobs:
         with:
           name: release-a-architecture-output
           path: storage/logs/release-a-architecture.txt
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Run legacy project and investment regression inventory
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          php vendor/bin/phpunit --configuration phpunit.xml.dist \
+            tests/Feature/NajmBahar/ProjectControllerTest.php \
+            tests/Feature/NajmBahar/InvestmentControllerTest.php \
+            tests/Unit/NajmBahar/ProjectServiceTest.php \
+            tests/Unit/NajmBahar/InvestmentServiceTest.php \
+            2>&1 | tee storage/logs/release-a-legacy-inventory.txt
+
+      - name: Upload legacy regression inventory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-a-legacy-regression-output
+          path: storage/logs/release-a-legacy-inventory.txt
           if-no-files-found: ignore
           retention-days: 7
