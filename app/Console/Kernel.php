@@ -44,22 +44,15 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\SendAuctionReminders::class,
     ];
 
-    /**
-     * Define the application's command schedule.
-     *
-     * @param  \Illuminate\Console\Scheduling\Schedule  $schedule
-     * @return void
-     */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
-        
         // Close expired auctions every minute
         $schedule->command('auctions:close')->everyMinute();
-        
-        // Send election reminders every 12 hours
-        $schedule->command('elections:send-reminders')->everyTwelveHours();
-        
+
+        // Laravel 12 no longer exposes everyTwelveHours(); twiceDaily preserves
+        // the intended 12-hour cadence without relying on a removed macro.
+        $schedule->command('elections:send-reminders')->twiceDaily(0, 12);
+
         // Send auction reminders every hour
         $schedule->command('auctions:send-reminders')->hourly();
 
@@ -90,11 +83,6 @@ class Kernel extends ConsoleKernel
         $schedule->command('najm-hoda:coverage-kpi --window=24 --limit=5000 --require-sustained')->dailyAt('02:00');
     }
 
-    /**
-     * Register the commands for the application.
-     *
-     * @return void
-     */
     protected function commands()
     {
         $this->load(__DIR__.'/Commands');

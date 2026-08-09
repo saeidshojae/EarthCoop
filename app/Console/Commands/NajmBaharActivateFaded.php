@@ -2,100 +2,107 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Setting;
 use App\Modules\NajmBahar\Models\Account;
+use App\Modules\NajmBahar\Services\MonetaryPolicyService;
+use App\Modules\NajmBahar\Services\MonetaryService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class NajmBaharActivateFaded extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'najm-bahar:activate-faded 
+    protected $signature = 'najm-bahar:activate-faded
                             {--dry-run : نمایش عملیات بدون اعمال تغییرات}
-                            {--amount= : مقدار فعال‌سازی (اختیاری - از تنظیمات خوانده می‌شود)}';
+                            {--amount= : مقدار فعال‌سازی به بهار (اختیاری - فقط برای اجرای دستی)}';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'فعال‌سازی دوره‌ای موجودی کمرنگ - تبدیل مقداری از موجودی فیدد به اکتیو';
 
-    /**
-     * Execute the console command.
-     *
-     * @return int
-     */
-    public function handle()
-    {
-        $settings = Setting::first();
-        
-        // بررسی فعال بودن قابلیت
-        if (!$settings || !$settings->najm_bahar_auto_activation_enabled) {
+    public function handle(
+        MonetaryService $monetaryService,
+        MonetaryPolicyService $monetaryPolicyService
+    ) {
+        $policy = $monetaryPolicyService->current();
+        $enabled = (bool) data_get($policy, 'parameters.auto_activation_enabled', false);
+
+        if (!$enabled) {
             $this->warn('⚠️ فعال‌سازی خودکار غیرفعال است.');
-            $this->info('💡 برای فعال‌سازی به: تنظیمات نجم بهار > فعال‌سازی خودکار دوره‌ای');
             return Command::FAILURE;
         }
 
-        // دریافت مقدار فعال‌سازی
-        $activationAmount = $this->option('amount') 
-            ? (int) ($this->option('amount') * 100) // تبدیل به گل
-            : (int) ($settings->najm_bahar_auto_activation_amount ?? 0);
+        $activationAmount = $this->option('amount') !== null
+            ? $this->parseBaharToGol((string) $this->option('amount'))
+            : (int) data_get($policy, 'parameters.auto_activation_amount_gol', 0);
 
         if ($activationAmount <= 0) {
             $this->error('❌ مقدار فعال‌سازی باید بیشتر از صفر باشد.');
             return Command::FAILURE;
         }
 
-        $isDryRun = $this->option('dry-run');
-        $period = $settings->najm_bahar_auto_activation_period ?? 'monthly';
+        $isDryRun = (bool) $this->option('dry-run');
+        $period = (string) data_get($policy, 'parameters.auto_activation_period', 'monthly');
+        $periodKey = $this->periodKey($period);
+        $policyVersionId = $policy['version_id'];
+        $policyVersion = $policy['version'];
 
         $this->info("🔄 شروع فعال‌سازی دوره‌ای ({$period})");
-        $this->info("💰 مقدار فعال‌سازی: " . number_format($activationAmount / 100, 2) . " بهار");
-        
+        $this->info('💰 مقدار فعال‌سازی: ' . number_format($activationAmount / 100, 2) . ' بهار');
+        $this->info('📜 منبع سیاست: ' . $policy['source'] . ($policyVersion ? " / v{$policyVersion}" : ''));
+
         if ($isDryRun) {
             $this->warn('⚡ حالت Dry Run - تغییرات اعمال نمی‌شود');
         }
 
-        // دریافت حساب‌های کاربران با موجودی کمرنگ
         $accounts = Account::where('type', 'user')
             ->where('balance_faded', '>', 0)
             ->get();
 
-        $this->info("📊 تعداد حساب‌ها: " . $accounts->count());
+        $this->info('📊 تعداد حساب‌ها: ' . $accounts->count());
 
         $successCount = 0;
         $totalActivated = 0;
+        $alreadyAppliedCount = 0;
 
         $progressBar = $this->output->createProgressBar($accounts->count());
         $progressBar->start();
 
         foreach ($accounts as $account) {
             try {
+                $amountToActivate = min($activationAmount, (int) $account->balance_faded);
+
                 if ($isDryRun) {
-                    // حالت نمایش
-                    $amountToActivate = min($activationAmount, $account->balance_faded);
                     $totalActivated += $amountToActivate;
                     $successCount++;
                 } else {
-                    // اعمال تغییرات
-                    $activated = $this->activateFadedBalance($account, $activationAmount);
-                    if ($activated > 0) {
-                        $totalActivated += $activated;
+                    $result = $monetaryService->activateDim(
+                        $account,
+                        $activationAmount,
+                        "فعال‌سازی خودکار دوره‌ای ({$periodKey})",
+                        [
+                            'type' => 'automatic_activation',
+                            'user_id' => $account->user_id,
+                            'period' => $period,
+                            'period_key' => $periodKey,
+                            'system_operation' => true,
+                            'policy_version_id' => $policyVersionId,
+                            'policy_version' => $policyVersion,
+                        ],
+                        'auto-activation-' . $periodKey . '-account-' . $account->id,
+                        true
+                    );
+
+                    if ($result['applied']) {
+                        $totalActivated += $result['amount'];
                         $successCount++;
-                        
-                        // ثبت لاگ
+
                         Log::info('NajmBahar: Faded balance activated', [
                             'account_number' => $account->account_number,
                             'user_id' => $account->user_id,
-                            'amount' => $activated,
+                            'amount' => $result['amount'],
                             'period' => $period,
+                            'period_key' => $periodKey,
+                            'policy_version_id' => $policyVersionId,
                         ]);
+                    } else {
+                        $alreadyAppliedCount++;
                     }
                 }
             } catch (\Exception $e) {
@@ -111,9 +118,11 @@ class NajmBaharActivateFaded extends Command
         $progressBar->finish();
         $this->newLine(2);
 
-        // نمایش نتایج
-        $this->info("✅ تعداد حساب‌های پردازش شده: {$successCount}");
-        $this->info("💵 مجموع مبلغ فعال‌شده: " . number_format($totalActivated / 100, 2) . " بهار");
+        $this->info("✅ تعداد حساب‌های فعال‌شده: {$successCount}");
+        if (!$isDryRun && $alreadyAppliedCount > 0) {
+            $this->info("↩️ تعداد حساب‌های قبلاً پردازش‌شده در این دوره: {$alreadyAppliedCount}");
+        }
+        $this->info('💵 مجموع مبلغ فعال‌شده: ' . number_format($totalActivated / 100, 2) . ' بهار');
 
         if ($isDryRun) {
             $this->warn('⚠️ این فقط یک پیش‌نمایش بود. برای اعمال تغییرات، دستور را بدون --dry-run اجرا کنید.');
@@ -124,32 +133,25 @@ class NajmBaharActivateFaded extends Command
         return Command::SUCCESS;
     }
 
-    /**
-     * تبدیل موجودی کمرنگ به فعال
-     *
-     * @param Account $account
-     * @param int $amount مقدار به واحد گل
-     * @return int مقدار فعال‌شده
-     */
-    private function activateFadedBalance(Account $account, int $amount): int
+    private function periodKey(string $period): string
     {
-        return DB::transaction(function () use ($account, $amount) {
-            $account = Account::where('id', $account->id)->lockForUpdate()->first();
+        return match ($period) {
+            'yearly' => now()->format('Y'),
+            'quarterly' => now()->format('Y') . '-Q' . (int) ceil(((int) now()->format('n')) / 3),
+            default => now()->format('Y-m'),
+        };
+    }
 
-            if ($account->balance_faded <= 0) {
-                return 0;
-            }
+    private function parseBaharToGol(string $value): int
+    {
+        $value = trim($value);
+        if (!preg_match('/^\d+(?:\.\d{1,2})?$/', $value)) {
+            throw new \InvalidArgumentException('مقدار بهار نامعتبر است. حداکثر دو رقم اعشار مجاز است.');
+        }
 
-            // محاسبه مقدار قابل فعال‌سازی
-            $amountToActivate = min($amount, $account->balance_faded);
+        [$whole, $fraction] = array_pad(explode('.', $value, 2), 2, '');
+        $fraction = str_pad($fraction, 2, '0');
 
-            // بروزرسانی موجودی‌ها
-            $account->balance_faded -= $amountToActivate;
-            $account->balance_active += $amountToActivate;
-            // balance کل تغییر نمی‌کند
-            $account->save();
-
-            return $amountToActivate;
-        });
+        return ((int) $whole * 100) + (int) substr($fraction, 0, 2);
     }
 }
