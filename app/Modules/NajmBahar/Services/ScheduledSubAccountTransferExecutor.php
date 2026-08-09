@@ -109,8 +109,10 @@ class ScheduledSubAccountTransferExecutor
             $to->save();
 
             $invariants = app(AccountInvariantService::class);
-            $fromMirror = $invariants->reconcileSubAccountMirror($from->fresh());
-            $toMirror = $invariants->reconcileSubAccountMirror($to->fresh());
+            $invariants->reconcileSubAccountMirror($from->fresh());
+            $invariants->reconcileSubAccountMirror($to->fresh());
+            $fromMirror->refresh();
+            $toMirror->refresh();
 
             $meta = array_merge((array) ($transaction->metadata ?? []), [
                 'transfer_type' => 'subaccount',
