@@ -9,6 +9,7 @@ class Transaction extends Model
     protected $table = 'najm_transactions';
     protected $fillable = [
         'tracking_number',
+        'idempotency_key',
         'from_account_id',
         'to_account_id',
         'amount',
@@ -32,12 +33,21 @@ class Transaction extends Model
         parent::boot();
 
         static::creating(function ($transaction) {
-            if (!$transaction->tracking_number) {
+            if (! $transaction->idempotency_key) {
+                $metadata = is_array($transaction->metadata) ? $transaction->metadata : [];
+                $key = $metadata['idempotency_key'] ?? null;
+
+                if (is_string($key) && trim($key) !== '') {
+                    $transaction->idempotency_key = mb_substr(trim($key), 0, 191);
+                }
+            }
+
+            if (! $transaction->tracking_number) {
                 // Generate unique tracking number: TRX-{date}-{random}
                 do {
                     $tracking_number = 'TRX-' . date('YmdHis') . '-' . random_int(10000, 99999);
                 } while (self::where('tracking_number', $tracking_number)->exists());
-                
+
                 $transaction->tracking_number = $tracking_number;
             }
         });
