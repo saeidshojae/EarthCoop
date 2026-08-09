@@ -4,6 +4,7 @@ namespace App\Modules\NajmBahar\Services;
 
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\SubAccount;
+use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use Illuminate\Support\Str;
 
 /**
@@ -14,6 +15,10 @@ use Illuminate\Support\Str;
  * every touched SubAccount through AccountInvariantService so all active code
  * paths share one mirror invariant while the rest of the legacy service is
  * migrated incrementally.
+ *
+ * Dim is constitutional non-transferable money between independent actors.
+ * Therefore a faded transfer between sub-accounts is only valid while both
+ * sub-accounts belong to the same parent account.
  */
 class SafeSubAccountService extends SubAccountService
 {
@@ -59,6 +64,37 @@ class SafeSubAccountService extends SubAccountService
         );
 
         app(AccountInvariantService::class)->reconcileSubAccountMirror($sub->fresh());
+    }
+
+    public function transferBetweenSubAccounts(
+        int $fromSubAccountId,
+        int $toSubAccountId,
+        int $amount,
+        string $description = null,
+        string $moneyState = 'faded',
+        ?int $transactionId = null
+    ): ?NajmTransaction {
+        $from = SubAccount::findOrFail($fromSubAccountId);
+        $to = SubAccount::findOrFail($toSubAccountId);
+
+        if ($moneyState === 'faded' && (int) $from->account_id !== (int) $to->account_id) {
+            throw new \RuntimeException('پول کمرنگ قابل انتقال بین اشخاص یا نهادهای مستقل نیست.');
+        }
+
+        $transaction = parent::transferBetweenSubAccounts(
+            $fromSubAccountId,
+            $toSubAccountId,
+            $amount,
+            $description,
+            $moneyState,
+            $transactionId
+        );
+
+        $invariants = app(AccountInvariantService::class);
+        $invariants->reconcileSubAccountMirror($from->fresh());
+        $invariants->reconcileSubAccountMirror($to->fresh());
+
+        return $transaction;
     }
 
     private function idempotencyKey(
