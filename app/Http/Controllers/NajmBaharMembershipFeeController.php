@@ -3,12 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\BaharMoney;
-use App\Models\Setting;
 use App\Models\User;
 use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
+use App\Modules\NajmBahar\Services\AccountBalanceService;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\FeeService;
+use App\Modules\NajmBahar\Services\MonetaryPolicyService;
 use App\Modules\NajmBahar\Services\MonetaryService;
 use App\Modules\NajmBahar\Services\TransactionService;
 use App\Modules\NajmBahar\Services\TreasuryService;
@@ -22,8 +23,10 @@ class NajmBaharMembershipFeeController extends Controller
     public function __construct(
         protected TransactionService $transactionService,
         protected AccountService $accountService,
+        protected AccountBalanceService $balanceService,
         protected FeeService $feeService,
         protected MonetaryService $monetaryService,
+        protected MonetaryPolicyService $monetaryPolicy,
         protected TreasuryService $treasuryService
     ) {
     }
@@ -37,9 +40,8 @@ class NajmBaharMembershipFeeController extends Controller
             return response()->json(['error' => 'حساب نجم بهار یافت نشد'], 404);
         }
 
-        $settings = Setting::firstNajmBaharSettings();
-        $membershipFee = $this->feeService->getMembershipFee();
         $hasPaid = $this->hasPaidCurrentYearMembershipFee($user->id, $account->id);
+        $wallet = $this->balanceService->aggregate($account);
 
         $membershipDate = $user->created_at;
         $currentYear = now()->year;
@@ -48,14 +50,13 @@ class NajmBaharMembershipFeeController extends Controller
             $nextAnniversary->addYear();
         }
 
-        [$operationsAmount, $insuranceAmount, $burnAmount] = $this->membershipSplit($settings);
+        [$operationsAmount, $insuranceAmount, $burnAmount] = $this->membershipSplit();
         $total = $operationsAmount + $insuranceAmount + $burnAmount;
 
         $subAccounts = SubAccount::where('account_id', $account->id)
             ->where('status', 1)
             ->orderBy('created_at')
             ->get();
-        $defaultSubAccount = $subAccounts->first();
 
         $funds = $this->treasuryService->ensureDefaultFunds();
 
@@ -63,14 +64,14 @@ class NajmBaharMembershipFeeController extends Controller
             'has_paid' => $hasPaid,
             'total_fee' => $total,
             'total_fee_formatted' => BaharMoney::formatDecimal($total),
-            'balance_dim' => (int) ($account->balance_faded ?? 0),
-            'balance_dim_formatted' => BaharMoney::formatDecimal((int) ($account->balance_faded ?? 0)),
-            'balance_active' => (int) ($account->balance_active ?? 0),
-            'balance_active_formatted' => BaharMoney::formatDecimal((int) ($account->balance_active ?? 0)),
+            'balance_dim' => (int) $wallet['dim'],
+            'balance_dim_formatted' => BaharMoney::formatDecimal((int) $wallet['dim']),
+            'balance_active' => (int) $wallet['active'],
+            'balance_active_formatted' => BaharMoney::formatDecimal((int) $wallet['active']),
             'can_pay_from_dim' => (int) ($account->balance_faded ?? 0) >= $total,
-            'can_pay_from_active' => (int) ($account->balance_active ?? 0) >= $total
-                || $subAccounts->contains(fn ($sub) => (int) ($sub->balance_active ?? 0) >= $total),
+            'can_pay_from_active' => (int) $wallet['active'] >= $total,
             'default_payment_source' => (int) ($account->balance_faded ?? 0) >= $total ? 'dim' : 'active',
+            'policy_version_id' => $this->monetaryPolicy->versionId(),
             'sub_accounts' => $subAccounts->map(fn ($sub) => [
                 'id' => $sub->id,
                 'code' => $sub->sub_account_code,
@@ -122,10 +123,10 @@ class NajmBaharMembershipFeeController extends Controller
             return back()->with('error', 'شما برای سال جاری حق عضویت سالانه را پرداخت کرده‌اید');
         }
 
-        $settings = Setting::firstNajmBaharSettings();
-        [$operationsAmount, $insuranceAmount, $burnAmount] = $this->membershipSplit($settings);
+        [$operationsAmount, $insuranceAmount, $burnAmount] = $this->membershipSplit();
         $total = $operationsAmount + $insuranceAmount + $burnAmount;
         $currentYear = $this->membershipPaymentYear($user);
+        $policyVersionId = $this->monetaryPolicy->versionId();
 
         $paymentSource = $validated['payment_source']
             ?? ((int) ($account->balance_faded ?? 0) >= $total ? 'dim' : 'active');
@@ -140,7 +141,8 @@ class NajmBaharMembershipFeeController extends Controller
                 $total,
                 $operationsAmount,
                 $insuranceAmount,
-                $burnAmount
+                $burnAmount,
+                $policyVersionId
             ) {
                 $sourceAccountNumber = $account->account_number;
 
@@ -153,6 +155,7 @@ class NajmBaharMembershipFeeController extends Controller
                             'type' => 'membership_fee_activation',
                             'user_id' => $user->id,
                             'payment_year' => $currentYear,
+                            'policy_version_id' => $policyVersionId,
                         ],
                         'membership-fee-activation-' . $user->id . '-' . $currentYear,
                         false
@@ -184,7 +187,8 @@ class NajmBaharMembershipFeeController extends Controller
                     $operationsAmount,
                     $insuranceAmount,
                     $burnAmount,
-                    $paymentSource
+                    $paymentSource,
+                    $policyVersionId
                 );
             });
 
@@ -208,9 +212,10 @@ class NajmBaharMembershipFeeController extends Controller
         int $operationsAmount,
         int $insuranceAmount,
         int $burnAmount,
-        string $paymentSource
+        string $paymentSource,
+        ?int $policyVersionId
     ): int {
-        $membershipFee = $this->feeService->getMembershipFee();
+        $membershipFee = $this->membershipFeeAmount();
         $total = $operationsAmount + $insuranceAmount + $burnAmount;
         $funds = $this->treasuryService->ensureDefaultFunds();
 
@@ -229,6 +234,7 @@ class NajmBaharMembershipFeeController extends Controller
                 'user_id' => $userId,
                 'split_total' => $total,
                 'membership_fee' => $membershipFee,
+                'policy_version_id' => $policyVersionId,
             ]);
         }
 
@@ -250,6 +256,7 @@ class NajmBaharMembershipFeeController extends Controller
                     'system_operation' => true,
                     'payment_source' => $paymentSource,
                     'payment_year' => $paymentYear,
+                    'policy_version_id' => $policyVersionId,
                 ],
                 'membership-fee-' . $userId . '-' . $suffix . '-' . $paymentYear,
                 'active',
@@ -260,13 +267,19 @@ class NajmBaharMembershipFeeController extends Controller
         return $membershipFee;
     }
 
-    private function membershipSplit(?Setting $settings): array
+    private function membershipSplit(): array
     {
         return [
-            (int) ($settings?->najm_bahar_membership_fee_membership_amount ?? BaharMoney::toGolFromBahar(6)),
-            (int) ($settings?->najm_bahar_membership_fee_insurance_amount ?? BaharMoney::toGolFromBahar(3)),
-            (int) ($settings?->najm_bahar_membership_fee_burn_amount ?? BaharMoney::toGolFromBahar(3)),
+            max(0, (int) $this->monetaryPolicy->parameter('membership_operations_gol', BaharMoney::toGolFromBahar(6))),
+            max(0, (int) $this->monetaryPolicy->parameter('membership_insurance_gol', BaharMoney::toGolFromBahar(3))),
+            max(0, (int) $this->monetaryPolicy->parameter('membership_burn_gol', BaharMoney::toGolFromBahar(3))),
         ];
+    }
+
+    private function membershipFeeAmount(): int
+    {
+        $policyAmount = (int) $this->monetaryPolicy->parameter('membership_fee_gol', 0);
+        return $policyAmount > 0 ? $policyAmount : $this->feeService->getMembershipFee();
     }
 
     private function membershipPaymentYear(User $user): int
@@ -297,7 +310,6 @@ class NajmBaharMembershipFeeController extends Controller
             ->values()
             ->toArray();
 
-        // Legacy split names remain valid for already-paid historical years.
         $legacy = ['membership', 'insurance', 'burn'];
         sort($expected);
         sort($legacy);
