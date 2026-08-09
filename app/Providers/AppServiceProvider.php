@@ -6,6 +6,8 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Admin\SafeUserController;
+use App\Http\Controllers\Admin\UserController;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use App\Modules\NajmBahar\Services\SubAccountService;
 use App\Modules\NajmBahar\Services\SafeSubAccountService;
@@ -33,6 +35,11 @@ class AppServiceProvider extends ServiceProvider
         // removed once the legacy services themselves are fully normalized.
         $this->app->bind(SubAccountService::class, SafeSubAccountService::class);
         $this->app->bind(TransactionService::class, SafeTransactionService::class);
+
+        // Release C transition: the legacy admin controller still contains the
+        // pre-constitution purge implementation. Keep its routes stable while
+        // making that purge unreachable for single/bulk membership removal.
+        $this->app->bind(UserController::class, SafeUserController::class);
     }
 
     public function boot()
