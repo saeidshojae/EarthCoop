@@ -25,6 +25,10 @@ use Illuminate\Support\Facades\DB;
  * Dim money is not spendable/transferable between economic actors. It may only
  * move between the same owner's accounts or be consumed by explicit monetary
  * operations such as activation, membership payment, or retirement.
+ *
+ * Release D retires the generic SubAccount ↔ SubAccount fallback entirely.
+ * Those transfers must enter through SubAccountService and its canonical
+ * executors so direct callers cannot reactivate legacy balance mutation.
  */
 class SafeTransactionService extends TransactionService
 {
@@ -102,6 +106,15 @@ class SafeTransactionService extends TransactionService
                     $metadata
                 );
             }
+        }
+
+        if ($from
+            && $to
+            && $from->type === 'subaccount'
+            && $to->type === 'subaccount') {
+            throw new \RuntimeException(
+                'Sub-account to sub-account transfers must use the canonical SubAccountService boundary.'
+            );
         }
 
         if ($from
