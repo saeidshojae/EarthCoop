@@ -68,7 +68,7 @@ class MonetaryOperationsReportService
                 'attempts' => (int) $reversal->attempts,
                 'last_failure_at' => optional($reversal->failed_at)->toIso8601String(),
                 'error' => $reversal->last_error,
-                'group_id' => (int) optional(optional($reversal->paymentInstruction)->plan)->group_id,
+                'group_id' => (int) optional($reversal->paymentInstruction?->plan)->group_id,
                 'reference_id' => (int) $reversal->payment_instruction_id,
                 'operator_action' => $reversal->status === 'dead_letter'
                     ? 'recover_dead_letter_then_retry'
