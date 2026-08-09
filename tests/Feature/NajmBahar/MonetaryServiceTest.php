@@ -136,4 +136,43 @@ class MonetaryServiceTest extends TestCase
         $this->assertSame($available, (int) $account->balance);
         $this->assertSame(1, Transaction::where('metadata->idempotency_key', $key)->count());
     }
+
+    public function test_failed_non_partial_activation_leaves_balances_and_ledger_unchanged(): void
+    {
+        $user = User::factory()->create();
+        $available = BaharMoney::toGolFromBahar(4);
+        $account = Account::create([
+            'account_number' => '9100000004',
+            'user_id' => $user->id,
+            'name' => 'Insufficient Dim Account',
+            'type' => 'user',
+            'balance' => $available,
+            'balance_active' => 0,
+            'balance_faded' => $available,
+        ]);
+
+        $beforeTransactions = Transaction::count();
+        $beforeLedger = LedgerEntry::count();
+
+        try {
+            app(MonetaryService::class)->activateDim(
+                $account,
+                BaharMoney::toGolFromBahar(10),
+                'must fail atomically',
+                ['type' => 'atomic_failure_test'],
+                'atomic-failure-' . $user->id,
+                false
+            );
+            $this->fail('Expected insufficient dim funds exception was not thrown.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('Insufficient', $exception->getMessage());
+        }
+
+        $account->refresh();
+        $this->assertSame($available, (int) $account->balance);
+        $this->assertSame($available, (int) $account->balance_faded);
+        $this->assertSame(0, (int) $account->balance_active);
+        $this->assertSame($beforeTransactions, Transaction::count());
+        $this->assertSame($beforeLedger, LedgerEntry::count());
+    }
 }
