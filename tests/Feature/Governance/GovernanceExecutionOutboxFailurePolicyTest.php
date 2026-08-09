@@ -8,6 +8,7 @@ use App\Modules\Governance\Models\Proposal;
 use App\Modules\Governance\Models\Resolution;
 use App\Modules\Governance\Services\PublicExecutionBridge;
 use App\Modules\NajmBahar\Services\GovernanceExecutionOutboxConsumer;
+use App\Modules\NajmBahar\Services\MonetaryOperationsReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -82,6 +83,14 @@ class GovernanceExecutionOutboxFailurePolicyTest extends TestCase
 
         $this->assertSame('dead_letter', $action->fresh()->status);
         $this->assertSame($attemptsBeforeBlockedRetry, (int) $action->fresh()->attempts);
+
+        $report = app(MonetaryOperationsReportService::class);
+        $this->assertSame(1, $report->summary()['execution_outbox']['dead_letter']);
+        $item = $report->problemItems()->firstWhere('kind', 'execution_outbox');
+        $this->assertNotNull($item);
+        $this->assertSame((int) $action->id, $item['id']);
+        $this->assertSame('dead_letter', $item['status']);
+        $this->assertSame('recover_dead_letter_then_retry', $item['operator_action']);
     }
 
     public function test_dead_letter_requires_explicit_recovery_before_becoming_retryable(): void
