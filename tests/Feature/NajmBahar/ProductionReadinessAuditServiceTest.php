@@ -4,6 +4,7 @@ namespace Tests\Feature\NajmBahar;
 
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\LedgerEntry;
+use App\Modules\NajmBahar\Models\ScheduledTransaction;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use App\Modules\NajmBahar\Services\ProductionReadinessAuditService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,6 +30,7 @@ class ProductionReadinessAuditServiceTest extends TestCase
         $this->assertSame([], $result['ledger_failures']);
         $this->assertSame([], $result['idempotency_failures']);
         $this->assertSame([], $result['recovery_failures']);
+        $this->assertSame([], $result['operational_failures']);
         $this->assertSame(2, $result['accounts_checked']);
         $this->assertSame(1, $result['completed_transactions_checked']);
     }
@@ -148,6 +150,59 @@ class ProductionReadinessAuditServiceTest extends TestCase
         $this->assertSame(1, $result['recovery_failures'][0]['ledger_entry_count']);
     }
 
+    public function test_overdue_pending_scheduled_transaction_fails_operational_audit(): void
+    {
+        $placeholder = $this->pendingPlaceholder();
+        $scheduled = ScheduledTransaction::create([
+            'transaction_id' => $placeholder->id,
+            'execute_at' => now()->subMinute(),
+            'status' => 'pending',
+            'attempts' => 0,
+            'payload' => [],
+        ]);
+
+        $result = app(ProductionReadinessAuditService::class)->run();
+
+        $this->assertFalse($result['ok']);
+        $this->assertCount(1, $result['operational_failures']);
+        $this->assertSame('scheduled_transaction_overdue', $result['operational_failures'][0]['issue']);
+        $this->assertSame((int) $scheduled->id, $result['operational_failures'][0]['scheduled_transaction_id']);
+    }
+
+    public function test_failed_scheduled_transaction_reports_attempts_for_operator_review(): void
+    {
+        $placeholder = $this->pendingPlaceholder('failed');
+        ScheduledTransaction::create([
+            'transaction_id' => $placeholder->id,
+            'execute_at' => now()->subMinutes(5),
+            'status' => 'failed',
+            'attempts' => 4,
+            'payload' => [],
+        ]);
+
+        $result = app(ProductionReadinessAuditService::class)->run();
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame('failed_scheduled_transaction_requires_operator_review', $result['operational_failures'][0]['issue']);
+        $this->assertSame(4, $result['operational_failures'][0]['attempts']);
+    }
+
+    public function test_scheduled_transaction_without_placeholder_fails_operational_audit(): void
+    {
+        ScheduledTransaction::create([
+            'transaction_id' => null,
+            'execute_at' => now()->addMinute(),
+            'status' => 'pending',
+            'attempts' => 0,
+            'payload' => [],
+        ]);
+
+        $result = app(ProductionReadinessAuditService::class)->run();
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame('scheduled_transaction_missing_placeholder', $result['operational_failures'][0]['issue']);
+    }
+
     private function completedTransaction(Account $from, Account $to, int $amount): NajmTransaction
     {
         return NajmTransaction::create([
@@ -157,6 +212,18 @@ class ProductionReadinessAuditServiceTest extends TestCase
             'type' => 'immediate',
             'status' => 'completed',
             'description' => 'Hardening completed transaction fixture',
+        ]);
+    }
+
+    private function pendingPlaceholder(string $status = 'pending'): NajmTransaction
+    {
+        return NajmTransaction::create([
+            'from_account_id' => null,
+            'to_account_id' => null,
+            'amount' => 0,
+            'type' => 'scheduled',
+            'status' => $status,
+            'description' => 'Scheduled readiness placeholder fixture',
         ]);
     }
 
