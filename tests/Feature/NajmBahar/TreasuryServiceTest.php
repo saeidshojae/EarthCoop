@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\NajmBahar;
 
+use App\Models\User;
 use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\TreasuryFund;
 use App\Modules\NajmBahar\Models\TreasuryTransfer;
@@ -52,6 +53,7 @@ class TreasuryServiceTest extends TestCase
         $treasury = app(TreasuryService::class);
         $source = $treasury->get(TreasuryService::IDLE_TAX);
         $destination = $treasury->get(TreasuryService::OPERATIONS_SALARY);
+        $authorizer = User::factory()->create();
 
         $this->setActiveBalance($source, 1_000);
         $source->required_reserve = 300;
@@ -64,11 +66,12 @@ class TreasuryServiceTest extends TestCase
             400,
             'Cover approved operations shortfall',
             'tax-to-operations-2026-01',
-            1,
+            $authorizer->id,
             'treasury-policy-v1'
         );
 
         $this->assertSame(400, (int) $transfer->amount);
+        $this->assertSame($authorizer->id, (int) $transfer->authorized_by);
         $this->assertSame(1, TreasuryTransfer::count());
         $this->assertSame(600, (int) $source->account->fresh()->balance_active);
         $this->assertSame(400, (int) $destination->account->fresh()->balance_active);
@@ -79,7 +82,7 @@ class TreasuryServiceTest extends TestCase
             400,
             'Cover approved operations shortfall',
             'tax-to-operations-2026-01',
-            1,
+            $authorizer->id,
             'treasury-policy-v1'
         );
 
