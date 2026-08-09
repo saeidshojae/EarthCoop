@@ -36,7 +36,11 @@ class InvestmentController extends Controller
             'sort_order' => $request->input('sort_order', 'desc'),
         ];
 
-        $projects = $this->projectService->getApprovedProjects($filters);
+        // Investment catalogue is public-facing. Approved private projects must
+        // never leak into it, regardless of how ProjectService is reused elsewhere.
+        $projects = $this->projectService->getApprovedProjects($filters)
+            ->where('project_visibility', 'public')
+            ->values();
         
         $categories = ProjectCategory::active()
             ->level(1)
@@ -52,6 +56,8 @@ class InvestmentController extends Controller
      */
     public function show(Project $project)
     {
+        $this->authorize('view', $project);
+
         if ($project->status !== 'approved') {
             return redirect()
                 ->route('najm-bahar.investments.index')
@@ -78,6 +84,10 @@ class InvestmentController extends Controller
      */
     public function store(Request $request, Project $project)
     {
+        // Authorization is enforced before validating/accepting investment input so
+        // an outsider cannot probe or invest in an approved-but-private project.
+        $this->authorize('view', $project);
+
         $validated = $request->validate([
             'amount' => 'required|integer|min:1',
             'notes' => 'nullable|string|max:500',
