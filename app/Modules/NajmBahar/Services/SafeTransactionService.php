@@ -5,6 +5,7 @@ namespace App\Modules\NajmBahar\Services;
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Transitional adapter around TransactionService.
@@ -98,7 +99,7 @@ class SafeTransactionService extends TransactionService
             throw new \RuntimeException('پول کمرنگ قابل انتقال بین اشخاص یا نهادهای مستقل نیست. ابتدا باید از یک مسیر مجاز فعال شود.');
         }
 
-        return parent::transfer(
+        return DB::transaction(function () use (
             $fromAccountNumber,
             $toAccountNumber,
             $amount,
@@ -107,7 +108,35 @@ class SafeTransactionService extends TransactionService
             $idempotencyKey,
             $balanceType,
             $transactionType
-        );
+        ) {
+            $transaction = parent::transfer(
+                $fromAccountNumber,
+                $toAccountNumber,
+                $amount,
+                $description,
+                $meta,
+                $idempotencyKey,
+                $balanceType,
+                $transactionType
+            );
+
+            // Release C migration boundary: legacy fallback transfers may still
+            // mutate both the SubAccount row and its Account mirror. Reconcile
+            // every involved child through the single canonical invariant
+            // service before the outer transaction commits.
+            $subAccounts = collect([$fromAccountNumber, $toAccountNumber])
+                ->filter()
+                ->unique()
+                ->map(fn (string $accountNumber) => SubAccount::where('sub_account_code', $accountNumber)->first())
+                ->filter();
+
+            $invariants = app(AccountInvariantService::class);
+            foreach ($subAccounts as $subAccount) {
+                $invariants->reconcileSubAccountMirror($subAccount);
+            }
+
+            return $transaction;
+        });
     }
 
     private function resolveInternalOwnTransfer(Account $from, Account $to): ?array
