@@ -7,41 +7,30 @@ use App\Models\NajmBaharAgreement;
 use App\Models\User;
 use App\Models\UserExperience;
 use App\Models\Address;
+use App\Models\InvitationCode;
+use App\Models\Setting;
 use App\Modules\NajmBahar\Policy\NajmBaharConstitution;
+use App\Modules\NajmBahar\Services\AccountBalanceService;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\TransactionService;
 use App\Modules\NajmBahar\Services\MonetaryService;
-use App\Modules\NajmBahar\Services\FeeService;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
-use App\Models\InvitationCode;
-use App\Models\Setting;
-use App\Helpers\BaharMoney;
+use App\Services\ReputationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class NajmBaharController extends Controller
 {
-    protected $accountService;
-    protected $transactionService;
-    protected $monetaryService;
-    protected $feeService;
-
     public function __construct(
-        AccountService $accountService,
-        TransactionService $transactionService,
-        MonetaryService $monetaryService,
-        FeeService $feeService
+        protected AccountService $accountService,
+        protected AccountBalanceService $balanceService,
+        protected TransactionService $transactionService,
+        protected MonetaryService $monetaryService,
+        protected ReputationService $reputationService,
     ) {
-        $this->accountService = $accountService;
-        $this->transactionService = $transactionService;
-        $this->monetaryService = $monetaryService;
-        $this->feeService = $feeService;
     }
 
-    /**
-     * نمایش صفحه توافقنامه نجم بهار
-     */
     public function showAgreement()
     {
         $user = auth()->user();
@@ -63,9 +52,6 @@ class NajmBaharController extends Controller
         return view('najm-bahar.agreement', compact('agreements', 'isProfileComplete'));
     }
 
-    /**
-     * پردازش تایید توافقنامه و ایجاد حساب مالی
-     */
     public function processAgreement(Request $request)
     {
         $request->validate([
@@ -89,12 +75,8 @@ class NajmBaharController extends Controller
                     'حساب نجم بهار ' . $user->fullName()
                 );
 
-                $this->ensureInitialFundingAndMembershipFee($user, $userAccount);
-
-                // حق عضویت برداشت خودکار ندارد؛ کاربر خودش منبع پرداخت را انتخاب می‌کند.
-                // $membershipFee = $this->distributeMembershipFee($userAccount->account_number, $user->id);
-
-                $this->processReferralBonus($user, $userAccount);
+                $this->ensureInitialFunding($user, $userAccount);
+                $this->processReferralParticipation($user);
 
                 $user->update([
                     'najm_bahar_agreement_accepted_at' => now()
@@ -108,7 +90,6 @@ class NajmBaharController extends Controller
 
             return redirect()->route('najm-bahar.dashboard')
                 ->with('success', 'حساب نجم بهار شما با موفقیت ایجاد شد! برای فعالسازی کامل، حق عضویت سالانه را پرداخت کنید.');
-
         } catch (\Exception $e) {
             Log::error('NajmBahar account creation failed', [
                 'user_id' => $user->id,
@@ -122,36 +103,33 @@ class NajmBaharController extends Controller
     }
 
     /**
-     * پردازش پاداش معرف
+     * Referral is participation, not a transfer of the new member's dim money.
+     * The reputation rule remains configurable; conversion later activates the
+     * referrer's own constitutional dim balance through MonetaryService.
      */
-    protected function processReferralBonus(User $user, $userAccount)
+    protected function processReferralParticipation(User $user): void
     {
         $invitationCheck = InvitationCode::where('used_by', $user->id)->first();
-
-        if ($invitationCheck && $invitationCheck->user_id != 171) {
-            $referrerAccount = $this->accountService->getMainAccountForUser($invitationCheck->user_id);
-
-            if ($referrerAccount) {
-                $bonusAmount = BaharMoney::toGolFromBahar(10);
-                $bonusIdempotencyKey = 'referral-bonus-' . $user->id;
-
-                $this->transactionService->transfer(
-                    $userAccount->account_number,
-                    $referrerAccount->account_number,
-                    $bonusAmount,
-                    'پاداش معرف - انتقال ۱۰ بهار جهت ریزمجموعه شدن کاربر جدید',
-                    [
-                        'type' => 'referral_bonus',
-                        'referrer_id' => $invitationCheck->user_id,
-                        'new_user_id' => $user->id,
-                        'system_operation' => true,
-                    ],
-                    $bonusIdempotencyKey,
-                    'faded',
-                    'referral_bonus'
-                );
-            }
+        if (! $invitationCheck || (int) $invitationCheck->user_id === 171) {
+            return;
         }
+
+        $referrer = User::find($invitationCheck->user_id);
+        if (! $referrer) {
+            return;
+        }
+
+        $this->reputationService->applyAction(
+            $referrer,
+            'invite_member',
+            [
+                'new_user_id' => $user->id,
+                'invitation_code_id' => $invitationCheck->id,
+                'economic_rule' => 'participation_points_only_no_dim_transfer',
+            ],
+            $invitationCheck->id,
+            'najm_bahar_membership'
+        );
     }
 
     public function dashboard()
@@ -159,12 +137,13 @@ class NajmBaharController extends Controller
         $user = auth()->user();
         $account = $this->accountService->getMainAccountForUser($user->id);
 
-        if (!$account) {
+        if (! $account) {
             return redirect()->route('najm-bahar.agreement')
                 ->with('info', 'ابتدا باید حساب نجم بهار خود را ایجاد کنید.');
         }
 
-        $this->ensureInitialFundingAndMembershipFee($user, $account);
+        $this->ensureInitialFunding($user, $account);
+        $walletBalance = $this->balanceService->aggregate($account);
 
         $settings = Setting::firstNajmBaharSettings();
         $userCount = User::count();
@@ -188,6 +167,7 @@ class NajmBaharController extends Controller
 
         return view('najm-bahar.dashboard', compact(
             'account',
+            'walletBalance',
             'userCount',
             'userThreshold',
             'isThresholdMet',
@@ -204,12 +184,13 @@ class NajmBaharController extends Controller
         $user = auth()->user();
         $account = $this->accountService->getMainAccountForUser($user->id);
 
-        if (!$account) {
+        if (! $account) {
             return redirect()->route('najm-bahar.agreement')
                 ->with('info', 'ابتدا باید حساب نجم بهار خود را ایجاد کنید.');
         }
 
-        $this->ensureInitialFundingAndMembershipFee($user, $account);
+        $this->ensureInitialFunding($user, $account);
+        $walletBalance = $this->balanceService->aggregate($account);
 
         $recentTransactions = $this->transactionService->getUserTransactions($user->id, 10);
         $accountIds = $this->transactionService->getUserAccountIds($user->id);
@@ -230,6 +211,7 @@ class NajmBaharController extends Controller
 
         return view('najm-bahar.wallet', compact(
             'account',
+            'walletBalance',
             'recentTransactions',
             'accountIds',
             'totalPoints',
@@ -239,7 +221,7 @@ class NajmBaharController extends Controller
         ));
     }
 
-    private function ensureInitialFundingAndMembershipFee(User $user, $account): void
+    private function ensureInitialFunding(User $user, $account): void
     {
         $hasInitialFunding = NajmTransaction::where('to_account_id', $account->id)
             ->where('metadata->type', 'initial_funding')
@@ -247,116 +229,13 @@ class NajmBaharController extends Controller
 
         if (! $hasInitialFunding) {
             $this->monetaryService->issueMembershipCredit($account, $user->id);
-        } elseif (intval($account->balance) > 0
-            && intval($account->balance_active) === 0
-            && intval($account->balance_faded) === 0
-        ) {
-            // Legacy repair only. Existing historical issuance is not re-minted.
-            $initialAmount = intval($account->balance);
-            $account->balance_active = 0;
-            $account->balance_faded = $initialAmount;
-            $account->save();
+            return;
         }
 
-        // حق عضویت برداشت خودکار ندارد.
-        // if (! $this->hasCompleteMembershipFeeSplits($account->id)) {
-        //     $this->distributeMembershipFee($account->account_number, $user->id);
-        // }
-    }
-
-    private function distributeMembershipFee(string $fromAccountNumber, int $userId): int
-    {
-        $settings = Setting::firstNajmBaharSettings();
-        $systemAccount = $this->accountService->getSystemAccount();
-        $this->accountService->ensureDefaultSystemSubAccounts($systemAccount);
-
-        $membershipFee = $this->feeService->getMembershipFee();
-
-        $membershipAccount = $settings?->najm_bahar_membership_fee_account ?? '0000000000-001';
-        $insuranceAccount = $settings?->najm_bahar_membership_fee_insurance_account ?? '0000000000-002';
-        $burnAccount = $settings?->najm_bahar_membership_fee_burn_account ?? '0000000000-000';
-
-        $membershipAmount = (int) ($settings?->najm_bahar_membership_fee_membership_amount ?? BaharMoney::toGolFromBahar(6));
-        $insuranceAmount = (int) ($settings?->najm_bahar_membership_fee_insurance_amount ?? BaharMoney::toGolFromBahar(3));
-        $burnAmount = (int) ($settings?->najm_bahar_membership_fee_burn_amount ?? BaharMoney::toGolFromBahar(3));
-
-        $total = $membershipAmount + $insuranceAmount + $burnAmount;
-
-        if ($total <= 0 || $total !== $membershipFee) {
-            Log::warning('NajmBahar membership split mismatch; falling back to membership account.', [
-                'user_id' => $userId,
-                'split_total' => $total,
-                'membership_fee' => $membershipFee,
-            ]);
-
-            $this->transactionService->transfer(
-                $fromAccountNumber,
-                $membershipAccount,
-                $membershipFee,
-                'پرداخت حق عضویت سالانه EarthCoop',
-                ['type' => 'membership_fee', 'user_id' => $userId, 'split' => 'membership', 'system_operation' => true],
-                'membership-fee-' . $userId . '-membership',
-                'faded',
-                'membership_fee'
-            );
-
-            return $membershipFee;
+        if ((int) $account->balance > 0
+            && (int) $account->balance_active === 0
+            && (int) $account->balance_faded === 0) {
+            $this->monetaryService->repairLegacyUnbucketedBalance($account);
         }
-
-        $transfers = [
-            [$membershipAccount, $membershipAmount, 'membership'],
-            [$insuranceAccount, $insuranceAmount, 'insurance'],
-            [$burnAccount, $burnAmount, 'burn'],
-        ];
-
-        foreach ($transfers as [$targetAccount, $amount, $suffix]) {
-            if ($amount <= 0) {
-                continue;
-            }
-
-            $this->transactionService->transfer(
-                $fromAccountNumber,
-                $targetAccount,
-                $amount,
-                'پرداخت حق عضویت سالانه EarthCoop',
-                ['type' => 'membership_fee', 'user_id' => $userId, 'split' => $suffix, 'system_operation' => true],
-                'membership-fee-' . $userId . '-' . $suffix,
-                'faded',
-                'membership_fee'
-            );
-        }
-
-        return $total;
-    }
-
-    private function hasCompleteMembershipFeeSplits(int $accountId): bool
-    {
-        $settings = Setting::firstNajmBaharSettings();
-        $membershipAmount = (int) ($settings?->najm_bahar_membership_fee_membership_amount ?? BaharMoney::toGolFromBahar(6));
-        $insuranceAmount = (int) ($settings?->najm_bahar_membership_fee_insurance_amount ?? BaharMoney::toGolFromBahar(3));
-        $burnAmount = (int) ($settings?->najm_bahar_membership_fee_burn_amount ?? BaharMoney::toGolFromBahar(3));
-
-        $checks = [
-            ['membership', $membershipAmount],
-            ['insurance', $insuranceAmount],
-            ['burn', $burnAmount],
-        ];
-
-        foreach ($checks as [$split, $amount]) {
-            if ($amount <= 0) {
-                continue;
-            }
-
-            $exists = NajmTransaction::where('from_account_id', $accountId)
-                ->where('metadata->type', 'membership_fee')
-                ->where('metadata->split', $split)
-                ->exists();
-
-            if (! $exists) {
-                return false;
-            }
-        }
-
-        return true;
     }
 }
