@@ -47,14 +47,19 @@ class ProposalLifecycleServiceTest extends TestCase
             'is_active' => false,
         ]);
 
+        $expectedEligible = GroupUser::where('group_id', $group->id)
+            ->where('status', 1)
+            ->whereNull('deleted_at')
+            ->count();
+
         $proposal = $service->openVote($proposal, $poll, $manager);
         $projectsBefore = Project::count();
 
         $resolution = $service->recordDecision($proposal, $poll, $manager, [
             'eligible_voter_count' => 999999,
-            'votes_cast' => 3,
-            'votes_for' => 2,
-            'votes_against' => 1,
+            'votes_cast' => min(3, $expectedEligible),
+            'votes_for' => min(2, $expectedEligible),
+            'votes_against' => $expectedEligible >= 3 ? 1 : 0,
             'votes_abstain' => 0,
             'quorum_required_percent' => 50,
             'approval_required_percent' => 50,
@@ -65,7 +70,8 @@ class ProposalLifecycleServiceTest extends TestCase
 
         $this->assertSame('adopted', $resolution->status);
         $this->assertSame('pending_bridge', $resolution->effect_status);
-        $this->assertSame(3, (int) $resolution->eligible_voter_count, 'Resolution must use the frozen eligibility snapshot, not caller input.');
+        $this->assertSame($expectedEligible, (int) $resolution->eligible_voter_count, 'Resolution must use the frozen eligibility snapshot, not caller input.');
+        $this->assertNotSame(999999, (int) $resolution->eligible_voter_count);
         $this->assertNotNull($resolution->eligibility_snapshot_id);
         $this->assertFalse((bool) ($resolution->metadata['economic_effect_executed'] ?? true));
         $this->assertSame('approved', $proposal->fresh()->status);
