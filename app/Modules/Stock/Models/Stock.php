@@ -9,6 +9,8 @@ class Stock extends Model
     protected $table = 'stocks';
     
     protected $fillable = [
+        'issuer_type',       // earthcoop | project; null means unclassified legacy stock
+        'issuer_id',         // optional issuer reference (projects/organizations in later slices)
         'startup_valuation', // ارزش پایه استارتاپ
         'total_shares',      // تعداد کل سهام
         'base_share_price',  // ارزش پایه هر سهم
@@ -17,6 +19,7 @@ class Stock extends Model
     ];
     
     protected $casts = [
+        'issuer_id' => 'integer',
         'startup_valuation' => 'decimal:2',
         'base_share_price' => 'decimal:2',
         'total_shares' => 'integer',
