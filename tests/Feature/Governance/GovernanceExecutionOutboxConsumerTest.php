@@ -23,7 +23,7 @@ class GovernanceExecutionOutboxConsumerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_najm_bahar_consumes_execution_outbox_once_and_settles_committed_dim_as_active(): void
+    public function test_najm_bahar_consumes_execution_outbox_once_and_serializes_duplicate_worker_attempts(): void
     {
         [$resolution, $snapshot, $manager] = $this->resolution(10);
         $contributions = app(PublicContributionService::class);
@@ -55,6 +55,10 @@ class GovernanceExecutionOutboxConsumerTest extends TestCase
         $action = app(PublicExecutionBridge::class)->enqueue($authorization);
         $transactionsBeforeConsumption = Transaction::count();
 
+        $staleWorkerCopy = $action->replicate();
+        $staleWorkerCopy->id = $action->id;
+        $staleWorkerCopy->exists = true;
+
         $consumer = app(GovernanceExecutionOutboxConsumer::class);
         $completed = $consumer->consume($action);
 
@@ -84,17 +88,14 @@ class GovernanceExecutionOutboxConsumerTest extends TestCase
             $this->assertSame(100 - (int) $obligation->amount_gol, (int) $memberAccount->balance);
         }
 
-        $this->assertSame(
-            $transactionsBeforeConsumption + $memberIds->count(),
-            Transaction::count(),
-            'Exactly one settlement transaction must be created per committed obligation.'
-        );
+        $expectedTransactions = $transactionsBeforeConsumption + $memberIds->count();
+        $this->assertSame($expectedTransactions, Transaction::count());
 
-        $consumer->consume($completed->fresh());
+        $consumer->consume($staleWorkerCopy);
         $this->assertSame(
-            $transactionsBeforeConsumption + $memberIds->count(),
+            $expectedTransactions,
             Transaction::count(),
-            'Retrying a completed outbox action must not move money again.'
+            'A duplicate worker using a stale outbox instance must observe the locked completed state and never settle twice.'
         );
         $this->assertSame(10, (int) $executionAccount->fresh()->balance_active);
     }
