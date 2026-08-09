@@ -9,10 +9,14 @@ use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 /**
  * Transitional adapter around TransactionService.
  *
- * Existing non-internal transfers keep the mature locking/idempotency behavior
- * in TransactionService. Own Main ↔ Sub movements are routed to the canonical
+ * Existing active transfers keep the mature locking/idempotency behavior in
+ * TransactionService. Own Main ↔ Sub movements are routed to the canonical
  * internal service so Account.balance remains local and money state is never
  * changed as a side effect of moving between a member's own accounts.
+ *
+ * Dim money is not spendable/transferable between economic actors. It may only
+ * move between the same owner's accounts or be consumed by explicit monetary
+ * operations such as activation, membership payment, or retirement.
  */
 class SafeTransactionService extends TransactionService
 {
@@ -75,6 +79,37 @@ class SafeTransactionService extends TransactionService
                     );
                 }
             }
+        }
+
+        if ($balanceType === 'faded') {
+            // Legacy onboarding used to transfer 10 dim Bahar from the new member
+            // to the referrer. The constitutional model awards participation
+            // points instead; suppress the monetary transfer while retaining an
+            // auditable record until the legacy controller is fully removed.
+            if (($meta['type'] ?? null) === 'referral_bonus') {
+                $key = $idempotencyKey ?? 'suppressed-referral-dim-' . sha1((string) $fromAccountNumber . '|' . $toAccountNumber . '|' . $amount);
+                $existing = NajmTransaction::where('metadata->idempotency_key', $key)->first();
+                if ($existing) {
+                    return $existing;
+                }
+
+                return NajmTransaction::create([
+                    'from_account_id' => Account::where('account_number', $fromAccountNumber)->value('id'),
+                    'to_account_id' => Account::where('account_number', $toAccountNumber)->value('id'),
+                    'amount' => 0,
+                    'type' => 'adjustment',
+                    'status' => 'completed',
+                    'metadata' => array_merge($meta, [
+                        'idempotency_key' => $key,
+                        'monetary_event' => 'legacy_dim_transfer_suppressed',
+                        'requested_amount_gol' => $amount,
+                        'replacement_model' => 'participation_points_then_activate_own_dim',
+                    ]),
+                    'description' => 'مسیر قدیمی پاداش معرفی بدون انتقال پول کمرنگ متوقف شد',
+                ]);
+            }
+
+            throw new \RuntimeException('پول کمرنگ قابل انتقال بین اشخاص یا نهادهای مستقل نیست. ابتدا باید از یک مسیر مجاز فعال شود.');
         }
 
         return parent::transfer(
