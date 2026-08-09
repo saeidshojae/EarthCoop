@@ -5,6 +5,7 @@ namespace Tests\Feature\NajmBahar;
 use App\Helpers\BaharMoney;
 use App\Models\User;
 use App\Modules\NajmBahar\Models\Account;
+use App\Modules\NajmBahar\Models\LedgerEntry;
 use App\Modules\NajmBahar\Models\Transaction;
 use App\Modules\NajmBahar\Policy\NajmBaharConstitution;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,8 +41,17 @@ class InitialMembershipCreditTest extends TestCase
             ->firstOrFail();
 
         $this->assertSame($expected, (int) $initialFunding->amount);
+        $this->assertSame('money_created', data_get($initialFunding->metadata, 'monetary_event'));
+        $this->assertSame('membership', data_get($initialFunding->metadata, 'issuance_reason'));
+        $this->assertSame('membership-issuance-' . $user->id, data_get($initialFunding->metadata, 'idempotency_key'));
         $this->assertSame(0, (int) data_get($initialFunding->metadata, 'active_amount'));
         $this->assertSame($expected, (int) data_get($initialFunding->metadata, 'faded_amount'));
+
+        $ledger = LedgerEntry::where('transaction_id', $initialFunding->id)->firstOrFail();
+        $this->assertSame($account->id, (int) $ledger->account_id);
+        $this->assertSame($expected, (int) $ledger->amount);
+        $this->assertSame('credit', $ledger->entry_type);
+        $this->assertSame('faded', data_get($ledger->meta, 'balance_bucket'));
     }
 
     public function test_reopening_dashboard_does_not_issue_membership_credit_twice(): void
@@ -65,6 +75,9 @@ class InitialMembershipCreditTest extends TestCase
         $this->assertSame($before, (int) $account->balance);
         $this->assertSame(1, Transaction::where('to_account_id', $account->id)
             ->where('metadata->type', 'initial_funding')
+            ->count());
+        $this->assertSame(1, LedgerEntry::where('account_id', $account->id)
+            ->where('meta->monetary_event', 'money_created')
             ->count());
     }
 }
