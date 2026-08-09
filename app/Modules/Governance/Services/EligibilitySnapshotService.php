@@ -23,6 +23,7 @@ class EligibilitySnapshotService
                 'membership_status' => 1,
                 'deleted_at' => null,
                 'captured_from' => 'group_user',
+                'ordering' => 'user_id_asc',
             ];
 
             $snapshot = EligibilitySnapshot::create([
@@ -40,16 +41,17 @@ class EligibilitySnapshotService
             $chunkIndex = 0;
 
             DB::table('group_user')
-                ->select(['id', 'user_id'])
+                ->select(['user_id'])
                 ->where('group_id', $group->id)
                 ->where('status', 1)
                 ->whereNull('deleted_at')
-                ->orderBy('id')
                 ->chunkById($chunkSize, function ($rows) use ($snapshot, &$hash, &$eligibleCount, &$chunkIndex) {
-                    $memberIds = [];
-                    foreach ($rows as $row) {
-                        $userId = (int) $row->user_id;
-                        $memberIds[] = $userId;
+                    $memberIds = $rows->pluck('user_id')->map(fn ($id) => (int) $id)->values()->all();
+                    if ($memberIds === []) {
+                        return;
+                    }
+
+                    foreach ($memberIds as $userId) {
                         hash_update($hash, $userId . "\n");
                     }
 
@@ -57,10 +59,12 @@ class EligibilitySnapshotService
                         'snapshot_id' => $snapshot->id,
                         'chunk_index' => $chunkIndex++,
                         'member_count' => count($memberIds),
+                        'first_user_id' => $memberIds[0],
+                        'last_user_id' => $memberIds[array_key_last($memberIds)],
                         'member_ids' => $memberIds,
                     ]);
                     $eligibleCount += count($memberIds);
-                }, 'id');
+                }, 'user_id', 'user_id');
 
             $snapshot->update([
                 'status' => 'finalized',
@@ -76,12 +80,40 @@ class EligibilitySnapshotService
 
     public function contains(EligibilitySnapshot $snapshot, int $userId): bool
     {
+        return $this->memberPosition($snapshot, $userId) !== null;
+    }
+
+    /**
+     * Return the zero-based position of a member inside the immutable cohort.
+     * The range columns narrow lookup to one candidate chunk; prefix count is
+     * computed in SQL so callers never load the full assembly snapshot.
+     */
+    public function memberPosition(EligibilitySnapshot $snapshot, int $userId): ?int
+    {
         if ($snapshot->status !== 'finalized') {
-            return false;
+            return null;
         }
 
-        return $snapshot->chunks()
-            ->get(['member_ids'])
-            ->contains(fn (EligibilitySnapshotChunk $chunk) => in_array($userId, array_map('intval', $chunk->member_ids ?? []), true));
+        $chunk = EligibilitySnapshotChunk::where('snapshot_id', $snapshot->id)
+            ->where('first_user_id', '<=', $userId)
+            ->where('last_user_id', '>=', $userId)
+            ->orderBy('chunk_index')
+            ->first();
+
+        if (! $chunk) {
+            return null;
+        }
+
+        $ids = array_map('intval', $chunk->member_ids ?? []);
+        $localPosition = array_search($userId, $ids, true);
+        if ($localPosition === false) {
+            return null;
+        }
+
+        $prefixCount = (int) EligibilitySnapshotChunk::where('snapshot_id', $snapshot->id)
+            ->where('chunk_index', '<', $chunk->chunk_index)
+            ->sum('member_count');
+
+        return $prefixCount + (int) $localPosition;
     }
 }

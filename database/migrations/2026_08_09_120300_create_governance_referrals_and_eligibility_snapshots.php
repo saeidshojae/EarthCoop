@@ -53,10 +53,13 @@ return new class extends Migration
             $table->foreignId('snapshot_id')->constrained('governance_eligibility_snapshots')->cascadeOnDelete();
             $table->unsignedInteger('chunk_index');
             $table->unsignedInteger('member_count');
+            $table->unsignedBigInteger('first_user_id')->nullable();
+            $table->unsignedBigInteger('last_user_id')->nullable();
             $table->json('member_ids');
             $table->timestamps();
 
             $table->unique(['snapshot_id', 'chunk_index'], 'gov_elig_snapshot_chunk_unique');
+            $table->index(['snapshot_id', 'first_user_id', 'last_user_id'], 'gov_elig_snapshot_range_idx');
         });
 
         Schema::table('governance_resolutions', function (Blueprint $table) {
