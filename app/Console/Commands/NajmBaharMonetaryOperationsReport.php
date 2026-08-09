@@ -9,7 +9,8 @@ class NajmBaharMonetaryOperationsReport extends Command
 {
     protected $signature = 'najm-bahar:monetary-operations-report
         {--limit=100 : Maximum problem items to display}
-        {--json : Emit machine-readable JSON instead of tables}';
+        {--json : Emit machine-readable JSON instead of tables}
+        {--health-exit-code : Exit 0 when healthy, 1 on warning, and 2 on critical dead-letter state}';
 
     protected $description = 'Report failed and dead-letter Governance/Najm Bahar monetary operations requiring operator attention.';
 
@@ -17,18 +18,26 @@ class NajmBaharMonetaryOperationsReport extends Command
     {
         $limit = max(1, min((int) $this->option('limit'), 500));
         $summary = $report->summary();
+        $health = $report->health();
         $items = $report->problemItems($limit);
 
         if ($this->option('json')) {
             $this->line(json_encode([
                 'generated_at' => now()->toIso8601String(),
+                'health' => $health,
                 'summary' => $summary,
                 'items' => $items->all(),
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-            return self::SUCCESS;
+            return $this->option('health-exit-code') ? (int) $health['exit_code'] : self::SUCCESS;
         }
 
         $this->info('Najm Bahar monetary operations requiring attention');
+        $this->line(sprintf(
+            'Health: %s | failed=%d | dead_letter=%d',
+            strtoupper((string) $health['severity']),
+            (int) $health['failed'],
+            (int) $health['dead_letter']
+        ));
         $this->newLine();
         $this->table(
             ['Kind', 'Failed', 'Dead-letter'],
@@ -42,13 +51,14 @@ class NajmBaharMonetaryOperationsReport extends Command
         if ($items->isEmpty()) {
             $this->newLine();
             $this->info('No failed or dead-letter monetary operations found.');
-            return self::SUCCESS;
+            return $this->option('health-exit-code') ? (int) $health['exit_code'] : self::SUCCESS;
         }
 
         $this->newLine();
         $this->table(
-            ['Kind', 'ID', 'Status', 'Attempts', 'Group', 'Reference', 'Last failure', 'Operator action', 'Error'],
+            ['Severity', 'Kind', 'ID', 'Status', 'Attempts', 'Group', 'Reference', 'Last failure', 'Operator action', 'Error'],
             $items->map(fn (array $item) => [
+                $item['severity'],
                 $item['kind'],
                 $item['id'],
                 $item['status'],
@@ -64,6 +74,6 @@ class NajmBaharMonetaryOperationsReport extends Command
         $this->newLine();
         $this->line('Recovery remains explicit; this report never retries or recovers money-moving operations by itself.');
 
-        return self::SUCCESS;
+        return $this->option('health-exit-code') ? (int) $health['exit_code'] : self::SUCCESS;
     }
 }
