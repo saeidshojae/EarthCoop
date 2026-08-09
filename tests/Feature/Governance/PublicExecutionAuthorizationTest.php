@@ -11,6 +11,7 @@ use App\Modules\Governance\Models\Resolution;
 use App\Modules\Governance\Services\EligibilitySnapshotService;
 use App\Modules\Governance\Services\PublicContributionService;
 use App\Modules\Governance\Services\PublicExecutionAuthorizationService;
+use App\Modules\Governance\Services\PublicExecutionBridge;
 use App\Modules\Governance\Services\ResolutionEconomicBridge;
 use App\Modules\NajmBahar\Models\Transaction;
 use App\Modules\NajmBahar\Services\AccountService;
@@ -67,6 +68,17 @@ class PublicExecutionAuthorizationTest extends TestCase
         $this->assertTrue((bool) ($plan->fresh()->metadata['execution_authorized'] ?? false));
         $this->assertFalse((bool) ($plan->fresh()->metadata['monetary_execution_started'] ?? true));
         $this->assertSame($transactionsBeforeAuthorization, Transaction::count(), 'Governance authorization must not move or activate money.');
+
+        $bridge = app(PublicExecutionBridge::class);
+        $action = $bridge->enqueue($authorization);
+        $sameAction = $bridge->enqueue($authorization->fresh());
+
+        $this->assertSame($action->id, $sameAction->id, 'Execution outbox enqueue must be idempotent.');
+        $this->assertSame(PublicExecutionBridge::PUBLIC_PROJECT_EXECUTION_AUTHORIZED, $action->action_type);
+        $this->assertSame('pending', $action->status);
+        $this->assertSame('execution_queued', $plan->fresh()->status);
+        $this->assertFalse((bool) ($plan->fresh()->metadata['monetary_execution_started'] ?? true));
+        $this->assertSame($transactionsBeforeAuthorization, Transaction::count(), 'Queuing execution must still not move or activate money.');
     }
 
     private function resolution(int $capitalGol): array
