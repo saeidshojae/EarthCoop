@@ -24,15 +24,18 @@ class PublicExecutionBridge
             $plan = PublicContributionPlan::whereKey($lockedAuthorization->plan_id)
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            $key = 'public-execution:authorization:' . $lockedAuthorization->id;
+            $existing = EconomicAction::where('idempotency_key', $key)
+                ->lockForUpdate()
+                ->first();
+            if ($existing) {
+                return $existing;
+            }
+
             if ($plan->status !== 'execution_authorized'
                 || (int) $plan->committed_total_gol !== (int) $plan->total_required_gol) {
                 throw new \RuntimeException('Execution bridge requires an authorized fully committed plan.');
-            }
-
-            $key = 'public-execution:authorization:' . $lockedAuthorization->id;
-            $existing = EconomicAction::where('idempotency_key', $key)->first();
-            if ($existing) {
-                return $existing;
             }
 
             $action = EconomicAction::create([
