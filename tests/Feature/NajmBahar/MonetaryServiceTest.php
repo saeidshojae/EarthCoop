@@ -6,6 +6,7 @@ use App\Helpers\BaharMoney;
 use App\Models\User;
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\LedgerEntry;
+use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\Transaction;
 use App\Modules\NajmBahar\Services\MonetaryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -174,5 +175,71 @@ class MonetaryServiceTest extends TestCase
         $this->assertSame(0, (int) $account->balance_active);
         $this->assertSame($beforeTransactions, Transaction::count());
         $this->assertSame($beforeLedger, LedgerEntry::count());
+    }
+
+    public function test_activation_on_subaccount_mirror_reconciles_child_through_invariant_service(): void
+    {
+        $parent = Account::create([
+            'account_number' => '9100000010',
+            'name' => 'Mirror parent',
+            'type' => 'user',
+            'balance' => 100,
+            'balance_active' => 0,
+            'balance_faded' => 0,
+        ]);
+
+        $sub = SubAccount::create([
+            'account_id' => $parent->id,
+            'sub_account_code' => '9100000010-001',
+            'name' => 'Mirror child',
+            'balance' => 100,
+            'balance_active' => 0,
+            'balance_faded' => 100,
+            'status' => 1,
+        ]);
+
+        $mirror = Account::create([
+            'account_number' => $sub->sub_account_code,
+            'name' => 'Mirror account',
+            'type' => 'subaccount',
+            'balance' => 100,
+            'balance_active' => 0,
+            'balance_faded' => 100,
+            'committed_dim' => 12,
+        ]);
+
+        $service = app(MonetaryService::class);
+        $first = $service->activateDim(
+            $mirror,
+            25,
+            'sub-account mirror activation',
+            ['type' => 'release_c_mirror_activation'],
+            'release-c-mirror-activation-1',
+            false
+        );
+        $second = $service->activateDim(
+            $mirror,
+            25,
+            'sub-account mirror activation replay',
+            ['type' => 'release_c_mirror_activation'],
+            'release-c-mirror-activation-1',
+            false
+        );
+
+        $this->assertTrue($first['applied']);
+        $this->assertFalse($second['applied']);
+        $this->assertSame((int) $first['transaction']->id, (int) $second['transaction']->id);
+        $this->assertSame(2, LedgerEntry::where('transaction_id', $first['transaction']->id)->count());
+
+        $mirror->refresh();
+        $sub->refresh();
+
+        $this->assertSame(25, (int) $mirror->balance_active);
+        $this->assertSame(75, (int) $mirror->balance_faded);
+        $this->assertSame(0, (int) $mirror->committed_dim);
+        $this->assertSame(100, (int) $mirror->balance);
+        $this->assertSame(25, (int) $sub->balance_active);
+        $this->assertSame(75, (int) $sub->balance_faded);
+        $this->assertSame(100, (int) $sub->balance);
     }
 }
