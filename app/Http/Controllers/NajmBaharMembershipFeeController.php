@@ -58,20 +58,61 @@ class NajmBaharMembershipFeeController extends Controller
             ->orderBy('created_at')
             ->get();
 
+        $mainActive = (int) ($account->balance_active ?? 0);
+        $mainDim = (int) ($account->balance_faded ?? 0);
+        $canPayFromDim = $mainDim >= $total;
+        $canPayFromActive = (int) $wallet['active'] >= $total;
+
+        // Compatibility with the existing wallet modal: pick an active-funded
+        // sub-account when possible, while the new backend may also pay directly
+        // from main active or activate main dim. This keeps the old modal working
+        // until its explicit Dim/Active selector is refactored.
+        $defaultSubAccount = $subAccounts->first(fn ($sub) => (int) ($sub->balance_active ?? 0) >= $total)
+            ?? $subAccounts->first();
+        $defaultSubActive = (int) ($defaultSubAccount?->balance_active ?? 0);
+        $hasEnoughBalance = $canPayFromDim || $mainActive >= $total || $defaultSubActive >= $total;
+        $requiresSubAccount = ! $canPayFromDim && $mainActive < $total && $defaultSubAccount === null;
+
         $funds = $this->treasuryService->ensureDefaultFunds();
 
         return response()->json([
             'has_paid' => $hasPaid,
             'total_fee' => $total,
             'total_fee_formatted' => BaharMoney::formatDecimal($total),
+
+            // Canonical wallet totals.
             'balance_dim' => (int) $wallet['dim'],
             'balance_dim_formatted' => BaharMoney::formatDecimal((int) $wallet['dim']),
             'balance_active' => (int) $wallet['active'],
             'balance_active_formatted' => BaharMoney::formatDecimal((int) $wallet['active']),
-            'can_pay_from_dim' => (int) ($account->balance_faded ?? 0) >= $total,
-            'can_pay_from_active' => (int) $wallet['active'] >= $total,
-            'default_payment_source' => (int) ($account->balance_faded ?? 0) >= $total ? 'dim' : 'active',
+            'wallet_total' => (int) $wallet['total'],
+            'wallet_total_formatted' => BaharMoney::formatDecimal((int) $wallet['total']),
+
+            // Explicit Release A payment-source capabilities.
+            'can_pay_from_dim' => $canPayFromDim,
+            'can_pay_from_active' => $canPayFromActive,
+            'default_payment_source' => $canPayFromDim ? 'dim' : 'active',
             'policy_version_id' => $this->monetaryPolicy->versionId(),
+
+            // Legacy modal compatibility keys; remove after Blade refactor.
+            'has_enough_balance' => $hasEnoughBalance,
+            'requires_sub_account' => $requiresSubAccount,
+            'main_active_balance' => $mainActive,
+            'main_active_formatted' => BaharMoney::formatDecimal($mainActive),
+            'sub_account' => $defaultSubAccount ? [
+                'id' => $defaultSubAccount->id,
+                'code' => $defaultSubAccount->sub_account_code,
+                'name' => $defaultSubAccount->name,
+                'balance_active' => $defaultSubActive,
+                'balance_active_formatted' => BaharMoney::formatDecimal($defaultSubActive),
+            ] : null,
+            'create_subaccount_url' => route('najm-bahar.sub-accounts.create'),
+            'create_subaccount_store_url' => route('najm-bahar.sub-accounts.store'),
+            'transfer_url' => route('najm-bahar.transfer'),
+            'transfer_to_url' => $defaultSubAccount
+                ? route('najm-bahar.sub-accounts.transfer-to', ['subAccount' => $defaultSubAccount->id])
+                : null,
+
             'sub_accounts' => $subAccounts->map(fn ($sub) => [
                 'id' => $sub->id,
                 'code' => $sub->sub_account_code,
@@ -176,7 +217,20 @@ class NajmBaharMembershipFeeController extends Controller
                         $this->accountService->ensureSubAccountAccount($subAccount);
                         $sourceAccountNumber = $subAccount->sub_account_code;
                     } elseif ((int) ($account->balance_active ?? 0) < $total) {
-                        throw new \RuntimeException('موجودی فعال برای پرداخت حق عضویت کافی نیست.');
+                        // Backward-compatible modal submissions may omit the
+                        // selected sub-account. Choose an eligible active child.
+                        $subAccount = SubAccount::where('account_id', $account->id)
+                            ->where('status', 1)
+                            ->where('balance_active', '>=', $total)
+                            ->orderBy('created_at')
+                            ->first();
+
+                        if (! $subAccount) {
+                            throw new \RuntimeException('موجودی فعال برای پرداخت حق عضویت کافی نیست.');
+                        }
+
+                        $this->accountService->ensureSubAccountAccount($subAccount);
+                        $sourceAccountNumber = $subAccount->sub_account_code;
                     }
                 }
 
