@@ -4,6 +4,7 @@ namespace App\Modules\NajmBahar\Services;
 
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\SubAccount;
+use Illuminate\Support\Str;
 
 /**
  * Transitional adapter around the legacy SubAccountService.
@@ -31,7 +32,7 @@ class SafeSubAccountService extends SubAccountService
             $amount,
             $moneyState,
             $description ?? 'انتقال از حساب اصلی به حساب فرعی',
-            $this->idempotencyKey('main-to-sub', $main, $sub, $amount, $moneyState, $description)
+            $this->idempotencyKey('main-to-sub', $main, $sub, $amount, $moneyState)
         );
     }
 
@@ -51,7 +52,7 @@ class SafeSubAccountService extends SubAccountService
             $amount,
             $moneyState,
             $description ?? 'انتقال از حساب فرعی به حساب اصلی',
-            $this->idempotencyKey('sub-to-main', $main, $sub, $amount, $moneyState, $description)
+            $this->idempotencyKey('sub-to-main', $main, $sub, $amount, $moneyState)
         );
     }
 
@@ -60,13 +61,22 @@ class SafeSubAccountService extends SubAccountService
         Account $main,
         SubAccount $sub,
         int $amount,
-        string $moneyState,
-        ?string $description
+        string $moneyState
     ): string {
-        // UI actions do not currently supply a request id. Use a high-entropy
-        // operation key so the canonical service has an idempotency boundary;
-        // API/controller request-id propagation will replace this during the
-        // concurrency hardening pass.
+        $requestKey = request()?->header('Idempotency-Key');
+        if (is_string($requestKey) && trim($requestKey) !== '') {
+            return implode('-', [
+                'internal',
+                $direction,
+                $main->id,
+                $sub->id,
+                $moneyState,
+                hash('sha256', trim($requestKey)),
+            ]);
+        }
+
+        // A fresh operation without a caller-provided retry key is intentionally
+        // unique. HTTP/API clients should send Idempotency-Key for retry safety.
         return implode('-', [
             'internal',
             $direction,
@@ -74,8 +84,7 @@ class SafeSubAccountService extends SubAccountService
             $sub->id,
             $moneyState,
             $amount,
-            now()->format('YmdHisv'),
-            substr(hash('sha256', (string) $description . microtime(true) . random_int(1, PHP_INT_MAX)), 0, 16),
+            (string) Str::uuid(),
         ]);
     }
 }
