@@ -24,4 +24,5 @@ class AgendaItem extends Model
     public function proposal() { return $this->belongsTo(Proposal::class); }
     public function group() { return $this->belongsTo(Group::class); }
     public function addedBy() { return $this->belongsTo(User::class, 'added_by'); }
+    public function referrals() { return $this->hasMany(ProposalReferral::class, 'agenda_item_id'); }
 }

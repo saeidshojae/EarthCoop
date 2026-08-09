@@ -12,7 +12,7 @@ class Resolution extends Model
     protected $table = 'governance_resolutions';
 
     protected $fillable = [
-        'proposal_id', 'group_id', 'poll_id', 'adopted_by', 'type', 'status',
+        'proposal_id', 'group_id', 'poll_id', 'eligibility_snapshot_id', 'adopted_by', 'type', 'status',
         'effect_status', 'quorum_required_percent', 'approval_required_percent',
         'eligible_voter_count', 'votes_cast', 'votes_for', 'votes_against',
         'votes_abstain', 'financial_effect', 'metadata', 'effective_at', 'adopted_at',
@@ -30,5 +30,6 @@ class Resolution extends Model
     public function proposal() { return $this->belongsTo(Proposal::class); }
     public function group() { return $this->belongsTo(Group::class); }
     public function poll() { return $this->belongsTo(Poll::class); }
+    public function eligibilitySnapshot() { return $this->belongsTo(EligibilitySnapshot::class, 'eligibility_snapshot_id'); }
     public function adopter() { return $this->belongsTo(User::class, 'adopted_by'); }
 }

@@ -27,5 +27,6 @@ class Proposal extends Model
     public function creator() { return $this->belongsTo(User::class, 'created_by'); }
     public function supports() { return $this->hasMany(ProposalSupport::class); }
     public function agendaItems() { return $this->hasMany(AgendaItem::class); }
+    public function referrals() { return $this->hasMany(ProposalReferral::class); }
     public function resolutions() { return $this->hasMany(Resolution::class); }
 }

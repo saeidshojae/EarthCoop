@@ -7,6 +7,7 @@ use App\Models\GroupUser;
 use App\Models\Poll;
 use App\Models\User;
 use App\Modules\Governance\Models\AgendaItem;
+use App\Modules\Governance\Models\EligibilitySnapshot;
 use App\Modules\Governance\Models\Proposal;
 use App\Modules\Governance\Models\ProposalSupport;
 use App\Modules\Governance\Models\Resolution;
@@ -121,6 +122,20 @@ class ProposalLifecycleService
                 throw new \RuntimeException('Agenda item not found for proposal.');
             }
 
+            if ($agenda->professional_referral_required) {
+                $completedReferral = $agenda->referrals()->where('status', 'completed')->latest('id')->first();
+                if (! $completedReferral) {
+                    throw new \RuntimeException('Required professional referral must complete before the proposal can become assessable.');
+                }
+
+                $assessmentMetadata['professional_referral'] = [
+                    'referral_id' => (int) $completedReferral->id,
+                    'target_group_id' => (int) $completedReferral->target_group_id,
+                    'assessment' => $completedReferral->assessment,
+                    'completed_at' => optional($completedReferral->completed_at)?->toIso8601String(),
+                ];
+            }
+
             $agenda->update([
                 'status' => 'ready_for_vote',
                 'metadata' => array_merge((array) ($agenda->metadata ?? []), ['assessment' => $assessmentMetadata]),
@@ -141,8 +156,11 @@ class ProposalLifecycleService
             throw new \RuntimeException('Poll must belong to the same assembly as the proposal.');
         }
 
+        $snapshot = app(EligibilitySnapshotService::class)->capture($proposal->group, $poll, $actor);
+
         $metadata = (array) ($proposal->metadata ?? []);
         $metadata['decision_poll_id'] = $poll->id;
+        $metadata['eligibility_snapshot_id'] = $snapshot->id;
         $proposal->update(['status' => 'voting', 'metadata' => $metadata]);
 
         return $proposal->fresh();
@@ -166,7 +184,17 @@ class ProposalLifecycleService
             throw new \RuntimeException('Decision poll must be closed or expired before recording a resolution.');
         }
 
-        $eligible = max(0, (int) ($result['eligible_voter_count'] ?? 0));
+        $snapshotId = (int) (($proposal->metadata ?? [])['eligibility_snapshot_id'] ?? 0);
+        $snapshot = EligibilitySnapshot::whereKey($snapshotId)
+            ->where('group_id', $proposal->group_id)
+            ->where('poll_id', $poll->id)
+            ->where('status', 'finalized')
+            ->first();
+        if (! $snapshot) {
+            throw new \RuntimeException('A finalized eligibility snapshot from vote opening is required.');
+        }
+
+        $eligible = (int) $snapshot->eligible_count;
         $cast = max(0, (int) ($result['votes_cast'] ?? 0));
         $for = max(0, (int) ($result['votes_for'] ?? 0));
         $against = max(0, (int) ($result['votes_against'] ?? 0));
@@ -183,11 +211,12 @@ class ProposalLifecycleService
         $approvalPercent = $decisiveVotes > 0 ? ($for / $decisiveVotes) * 100 : 0;
         $adopted = $quorumPercent >= $quorumRequired && $approvalPercent >= $approvalRequired;
 
-        return DB::transaction(function () use ($proposal, $poll, $actor, $eligible, $cast, $for, $against, $abstain, $quorumRequired, $approvalRequired, $quorumPercent, $approvalPercent, $adopted, $financialEffect) {
+        return DB::transaction(function () use ($proposal, $poll, $snapshot, $actor, $eligible, $cast, $for, $against, $abstain, $quorumRequired, $approvalRequired, $quorumPercent, $approvalPercent, $adopted, $financialEffect) {
             $resolution = Resolution::create([
                 'proposal_id' => $proposal->id,
                 'group_id' => $proposal->group_id,
                 'poll_id' => $poll->id,
+                'eligibility_snapshot_id' => $snapshot->id,
                 'adopted_by' => $actor->id,
                 'type' => $proposal->type,
                 'status' => $adopted ? 'adopted' : 'rejected',
@@ -203,6 +232,7 @@ class ProposalLifecycleService
                 'metadata' => [
                     'quorum_percent' => round($quorumPercent, 4),
                     'approval_percent' => round($approvalPercent, 4),
+                    'eligibility_fingerprint' => $snapshot->membership_fingerprint,
                     'economic_effect_executed' => false,
                 ],
                 'adopted_at' => $adopted ? now() : null,

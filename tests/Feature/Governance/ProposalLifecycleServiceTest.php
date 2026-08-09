@@ -6,7 +6,6 @@ use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\Poll;
 use App\Models\User;
-use App\Modules\Governance\Models\Resolution;
 use App\Modules\Governance\Services\ProposalLifecycleService;
 use App\Modules\NajmBahar\Models\Project;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,8 +34,8 @@ class ProposalLifecycleServiceTest extends TestCase
         $this->assertSame('supported', $proposal->status);
         $this->assertSame(2, (int) $proposal->support_count);
 
-        $agenda = $service->placeOnAgenda($proposal, $manager, true, 'نیازمند بررسی مجمع تخصصی مرتبط');
-        $this->assertSame('referral_pending', $agenda->status);
+        $agenda = $service->placeOnAgenda($proposal, $manager, false);
+        $this->assertSame('scheduled', $agenda->status);
 
         $proposal = $service->markAssessable($proposal->fresh(), $manager, ['valuation_ready' => true]);
         $this->assertSame('ready_for_vote', $proposal->status);
@@ -52,7 +51,7 @@ class ProposalLifecycleServiceTest extends TestCase
         $projectsBefore = Project::count();
 
         $resolution = $service->recordDecision($proposal, $poll, $manager, [
-            'eligible_voter_count' => 3,
+            'eligible_voter_count' => 999999,
             'votes_cast' => 3,
             'votes_for' => 2,
             'votes_against' => 1,
@@ -66,6 +65,8 @@ class ProposalLifecycleServiceTest extends TestCase
 
         $this->assertSame('adopted', $resolution->status);
         $this->assertSame('pending_bridge', $resolution->effect_status);
+        $this->assertSame(3, (int) $resolution->eligible_voter_count, 'Resolution must use the frozen eligibility snapshot, not caller input.');
+        $this->assertNotNull($resolution->eligibility_snapshot_id);
         $this->assertFalse((bool) ($resolution->metadata['economic_effect_executed'] ?? true));
         $this->assertSame('approved', $proposal->fresh()->status);
         $this->assertSame($projectsBefore, Project::count(), 'Governance resolution must not create an economic project directly.');
