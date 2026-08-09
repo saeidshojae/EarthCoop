@@ -5,6 +5,7 @@ namespace Tests\Feature\NajmBahar;
 use App\Helpers\BaharMoney;
 use App\Models\User;
 use App\Modules\NajmBahar\Models\LedgerEntry;
+use App\Modules\NajmBahar\Models\MonetaryPolicyVersion;
 use App\Modules\NajmBahar\Models\Transaction;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\MonetaryService;
@@ -79,6 +80,36 @@ class MembershipFeePaymentTest extends TestCase
 
         $this->assertSame($balanceAfterFirst, (int) $account->fresh()->balance);
         $this->assertSame(3, Transaction::where('metadata->type', 'membership_fee')->count());
+    }
+
+    public function test_versioned_policy_controls_membership_allocation_and_is_recorded(): void
+    {
+        $policy = MonetaryPolicyVersion::create([
+            'version' => 77,
+            'status' => 'active',
+            'effective_from' => now()->subMinute(),
+            'parameters' => [
+                'membership_fee_gol' => BaharMoney::toGolFromBahar(12),
+                'membership_operations_gol' => BaharMoney::toGolFromBahar(5),
+                'membership_insurance_gol' => BaharMoney::toGolFromBahar(4),
+                'membership_burn_gol' => BaharMoney::toGolFromBahar(3),
+            ],
+        ]);
+
+        [$user] = $this->memberWithCredit();
+
+        $this->actingAs($user)
+            ->post(route('najm-bahar.membership-fee.pay'), ['payment_source' => 'dim'])
+            ->assertRedirect(route('najm-bahar.dashboard'));
+
+        $splits = Transaction::where('metadata->type', 'membership_fee')
+            ->get()
+            ->keyBy(fn ($tx) => $tx->metadata['split'] ?? '');
+
+        $this->assertSame(BaharMoney::toGolFromBahar(5), (int) $splits['operations_salary']->amount);
+        $this->assertSame(BaharMoney::toGolFromBahar(4), (int) $splits['central_insurance']->amount);
+        $this->assertSame(BaharMoney::toGolFromBahar(3), (int) $splits['money_destruction']->amount);
+        $this->assertSame($policy->id, (int) ($splits['operations_salary']->metadata['policy_version_id'] ?? 0));
     }
 
     private function memberWithCredit(): array
