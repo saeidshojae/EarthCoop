@@ -93,4 +93,61 @@ class SafeTransactionServiceInvariantTest extends TestCase
         $this->assertSame(25, (int) $system->fresh()->balance);
         $this->assertSame([], app(AccountInvariantService::class)->audit($main)['mirror_drift']);
     }
+
+    public function test_authorized_active_main_account_system_spend_is_canonical_and_idempotent(): void
+    {
+        $service = app(TransactionService::class);
+        $this->assertInstanceOf(SafeTransactionService::class, $service);
+
+        $main = Account::create([
+            'account_number' => 'SAFE-MAIN-002',
+            'name' => 'Member main',
+            'type' => 'user',
+            'balance' => 140,
+            'balance_active' => 100,
+            'balance_faded' => 30,
+            'committed_dim' => 10,
+        ]);
+
+        $system = Account::create([
+            'account_number' => '0000000000-902',
+            'name' => 'Membership treasury',
+            'type' => 'system',
+            'balance' => 0,
+            'balance_active' => 0,
+            'balance_faded' => 0,
+            'committed_dim' => 0,
+        ]);
+
+        $first = $service->transfer(
+            $main->account_number,
+            $system->account_number,
+            25,
+            'Release C canonical membership-style spend',
+            ['system_operation' => true, 'type' => 'membership_fee'],
+            'safe-main-system-invariant-1',
+            'active',
+            'membership_fee'
+        );
+        $second = $service->transfer(
+            $main->account_number,
+            $system->account_number,
+            25,
+            'Release C canonical membership-style spend replay',
+            ['system_operation' => true, 'type' => 'membership_fee'],
+            'safe-main-system-invariant-1',
+            'active',
+            'membership_fee'
+        );
+
+        $this->assertSame((int) $first->id, (int) $second->id);
+        $this->assertSame('main_account_system_transfer_service', $first->metadata['routed_by'] ?? null);
+        $this->assertSame(2, LedgerEntry::where('transaction_id', $first->id)->count());
+        $this->assertSame(75, (int) $main->fresh()->balance_active);
+        $this->assertSame(30, (int) $main->fresh()->balance_faded);
+        $this->assertSame(10, (int) $main->fresh()->committed_dim);
+        $this->assertSame(115, (int) $main->fresh()->balance);
+        $this->assertSame(25, (int) $system->fresh()->balance_active);
+        $this->assertSame(25, (int) $system->fresh()->balance);
+    }
 }
