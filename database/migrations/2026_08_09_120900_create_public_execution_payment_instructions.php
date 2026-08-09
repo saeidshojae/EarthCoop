@@ -19,7 +19,7 @@ return new class extends Migration
             $table->unsignedBigInteger('cancelled_by')->nullable();
             $table->unsignedBigInteger('amount_gol');
             $table->string('status', 30)->default('pending_approval');
-            $table->string('idempotency_key', 191)->unique();
+            $table->string('idempotency_key', 191);
             $table->text('purpose');
             $table->json('evidence')->nullable();
             $table->json('metadata')->nullable();
@@ -44,6 +44,7 @@ return new class extends Migration
             $table->foreign('cancelled_by', 'gov_pay_canceller_fk')
                 ->references('id')->on('users')->nullOnDelete();
 
+            $table->unique('idempotency_key', 'gov_pay_idem_uq');
             $table->index(['plan_id', 'status'], 'gov_pay_plan_status_idx');
             $table->index(['payee_account_id', 'status'], 'gov_pay_payee_status_idx');
         });
