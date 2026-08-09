@@ -4,7 +4,6 @@ namespace App\Modules\NajmBahar\Services;
 
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\LedgerEntry;
-use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use App\Modules\NajmBahar\Policy\NajmBaharConstitution;
 use Illuminate\Support\Facades\DB;
@@ -339,18 +338,6 @@ class MonetaryService
 
     private function syncSubAccountMirror(Account $account): void
     {
-        if ($account->type !== 'subaccount') {
-            return;
-        }
-
-        $sub = SubAccount::where('sub_account_code', $account->account_number)->lockForUpdate()->first();
-        if (! $sub) {
-            return;
-        }
-
-        $sub->balance_active = (int) ($account->balance_active ?? 0);
-        $sub->balance_faded = (int) ($account->balance_faded ?? 0);
-        $sub->balance = (int) $sub->balance_active + (int) $sub->balance_faded;
-        $sub->save();
+        app(AccountInvariantService::class)->reconcileSubAccountFromMirror($account);
     }
 }
