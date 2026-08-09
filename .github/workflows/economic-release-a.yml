@@ -44,6 +44,12 @@ jobs:
           extensions: mbstring, pdo, pdo_mysql, bcmath, openssl, fileinfo, zip, curl, json
           coverage: none
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
       - name: Prepare Laravel writable directories
         run: |
           mkdir -p bootstrap/cache
@@ -58,6 +64,12 @@ jobs:
 
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Install frontend dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build Vite assets
+        run: npm run build
 
       - name: Create test environment
         run: |
