@@ -3,6 +3,7 @@
 namespace App\Modules\NajmBahar\Services;
 
 use App\Modules\NajmBahar\Models\LedgerEntry;
+use App\Modules\NajmBahar\Models\ScheduledTransaction;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 
 class ProductionReadinessAuditService
@@ -24,18 +25,21 @@ class ProductionReadinessAuditService
 
         $idempotencyFailures = $this->auditDuplicateIdempotencyKeys();
         $recoveryFailures = $this->auditNonCompletedLedgerEffects();
+        $operationalFailures = $this->auditScheduledOperations();
 
         return [
             'ok' => $accountFailures->isEmpty()
                 && $ledgerFailures->isEmpty()
                 && $idempotencyFailures->isEmpty()
-                && $recoveryFailures->isEmpty(),
+                && $recoveryFailures->isEmpty()
+                && $operationalFailures->isEmpty(),
             'accounts_checked' => $accountAudits->count(),
             'account_failures' => $accountFailures->all(),
             'completed_transactions_checked' => $completedTransactions->count(),
             'ledger_failures' => $ledgerFailures->all(),
             'idempotency_failures' => $idempotencyFailures->all(),
             'recovery_failures' => $recoveryFailures->all(),
+            'operational_failures' => $operationalFailures->all(),
         ];
     }
 
@@ -150,6 +154,50 @@ class ProductionReadinessAuditService
                 'issue' => 'non_completed_transaction_has_ledger_effects',
             ])
             ->values();
+    }
+
+    private function auditScheduledOperations()
+    {
+        return ScheduledTransaction::query()
+            ->orderBy('id')
+            ->get()
+            ->map(function (ScheduledTransaction $scheduled) {
+                if (! $scheduled->transaction_id) {
+                    return $this->scheduledFailure($scheduled, 'scheduled_transaction_missing_placeholder');
+                }
+
+                $placeholder = NajmTransaction::query()->find($scheduled->transaction_id);
+                if (! $placeholder) {
+                    return $this->scheduledFailure($scheduled, 'scheduled_transaction_placeholder_not_found');
+                }
+
+                if ($scheduled->status === 'failed') {
+                    return $this->scheduledFailure($scheduled, 'failed_scheduled_transaction_requires_operator_review');
+                }
+
+                if ($scheduled->status === 'pending'
+                    && $scheduled->execute_at
+                    && $scheduled->execute_at->isPast()
+                    && $placeholder->status !== 'completed') {
+                    return $this->scheduledFailure($scheduled, 'scheduled_transaction_overdue');
+                }
+
+                return null;
+            })
+            ->filter()
+            ->values();
+    }
+
+    private function scheduledFailure(ScheduledTransaction $scheduled, string $issue): array
+    {
+        return [
+            'scheduled_transaction_id' => (int) $scheduled->id,
+            'transaction_id' => $scheduled->transaction_id ? (int) $scheduled->transaction_id : null,
+            'status' => $scheduled->status,
+            'attempts' => (int) ($scheduled->attempts ?? 0),
+            'execute_at' => $scheduled->execute_at?->toIso8601String(),
+            'issue' => $issue,
+        ];
     }
 
     private function failure(NajmTransaction $transaction, string $issue): array
