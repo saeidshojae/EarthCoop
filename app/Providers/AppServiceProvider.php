@@ -12,7 +12,7 @@ use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use App\Modules\NajmBahar\Services\SubAccountService;
 use App\Modules\NajmBahar\Services\SafeSubAccountService;
 use App\Modules\NajmBahar\Services\TransactionService;
-use App\Modules\NajmBahar\Services\SafeTransactionService;
+use App\Modules\NajmBahar\Services\StrictTransactionService;
 use App\Observers\NajmBaharTransactionObserver;
 use App\Models\Group;
 use App\Observers\GroupObserver;
@@ -29,18 +29,16 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register()
     {
-        // Release A/C transition: preserve public service contracts while routing
-        // unsafe legacy Main ↔ Sub mutations through canonical ledger-backed
-        // implementations. SafeTransactionService also reconciles any child
-        // touched by a remaining legacy fallback through AccountInvariantService
-        // before the outer transaction commits. These bindings can disappear
-        // only after the legacy services themselves are fully normalized.
+        // Release A-D transition: preserve public service contracts while routing
+        // monetary mutations through explicit canonical boundaries. The strict
+        // transaction adapter keeps system compatibility but fails closed for
+        // any generic main economic-actor transfer that has no canonical route.
         $this->app->bind(SubAccountService::class, SafeSubAccountService::class);
-        $this->app->bind(TransactionService::class, SafeTransactionService::class);
+        $this->app->bind(TransactionService::class, StrictTransactionService::class);
 
-        // Release C transition: the legacy admin controller still contains the
-        // pre-constitution purge implementation. Keep its routes stable while
-        // making that purge unreachable for single/bulk membership removal.
+        // Release C/D transition: admin removal routes through the lifecycle-safe
+        // controller. The destructive legacy purge implementation was physically
+        // retired in Release D.
         $this->app->bind(UserController::class, SafeUserController::class);
     }
 

@@ -23,7 +23,8 @@ class InternalSubAccountTransferService
         int $amount,
         string $moneyState,
         ?string $description = null,
-        ?string $idempotencyKey = null
+        ?string $idempotencyKey = null,
+        array $meta = []
     ): NajmTransaction {
         if ($amount <= 0) {
             throw new \InvalidArgumentException('Amount must be positive');
@@ -37,7 +38,7 @@ class InternalSubAccountTransferService
             throw new \RuntimeException('Internal sub-account transfer requires the same owner.');
         }
 
-        return DB::transaction(function () use ($from, $to, $amount, $moneyState, $description, $idempotencyKey) {
+        return DB::transaction(function () use ($from, $to, $amount, $moneyState, $description, $idempotencyKey, $meta) {
             if ($idempotencyKey) {
                 $existing = NajmTransaction::where('metadata->idempotency_key', $idempotencyKey)->first();
                 if ($existing) {
@@ -86,7 +87,7 @@ class InternalSubAccountTransferService
             $sourceMirror = $invariants->reconcileSubAccountMirror($source->fresh());
             $destinationMirror = $invariants->reconcileSubAccountMirror($destination->fresh());
 
-            $metadata = [
+            $metadata = array_merge($meta, [
                 'transfer_type' => 'subaccount',
                 'from_sub_account_id' => (int) $source->id,
                 'to_sub_account_id' => (int) $destination->id,
@@ -95,7 +96,7 @@ class InternalSubAccountTransferService
                 'money_state' => $moneyState,
                 'balance_type' => $moneyState,
                 'routed_by' => 'internal_sub_account_transfer_service',
-            ];
+            ]);
             if ($idempotencyKey) {
                 $metadata['idempotency_key'] = $idempotencyKey;
             }

@@ -4,14 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Modules\NajmBahar\Models\Account as NajmAccount;
-use App\Modules\NajmBahar\Models\SubAccount as NajmSubAccount;
-use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
-use App\Modules\NajmBahar\Models\LedgerEntry as NajmLedgerEntry;
-use App\Modules\NajmBahar\Services\AccountService as NajmAccountService;
 use App\Models\Setting;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Validator;
@@ -466,9 +460,7 @@ class UserController extends Controller
     
     public function destroy(User $user)
     {
-        $this->purgeNajmBaharAccounts([$user->id]);
-        $user->delete();
-        return back()->with('success', 'کاربر با موفقیت حذف شد');
+        throw new \LogicException('Direct admin user deletion is retired. Resolve the safe admin controller boundary.');
     }
 
     // تغییر وضعیت کاربر
@@ -508,139 +500,11 @@ class UserController extends Controller
                 return back()->with('success', count($userIds) . ' کاربر تعلیق شدند');
             
             case 'delete':
-                $this->purgeNajmBaharAccounts($userIds);
-                User::whereIn('id', $userIds)->delete();
-                return back()->with('success', count($userIds) . ' کاربر حذف شدند');
+                throw new \LogicException('Direct admin bulk deletion is retired. Resolve the safe admin controller boundary.');
             
             case 'export':
                 return $this->exportUsers($userIds);
         }
-    }
-
-    private function purgeNajmBaharAccounts(array $userIds): void
-    {
-        if (empty($userIds)) {
-            return;
-        }
-
-        DB::transaction(function () use ($userIds) {
-            $settings = Setting::firstNajmBaharSettings();
-            $membershipAccountCode = $settings?->najm_bahar_membership_fee_account ?? '0000000000-001';
-            $insuranceAccountCode = $settings?->najm_bahar_membership_fee_insurance_account ?? '0000000000-002';
-            $burnAccountCode = $settings?->najm_bahar_membership_fee_burn_account ?? '0000000000-000';
-
-            $accountService = app(NajmAccountService::class);
-            $systemAccount = $accountService->getSystemAccount();
-            $accountService->ensureDefaultSystemSubAccounts($systemAccount);
-
-            foreach ($userIds as $userId) {
-                $mainAccount = NajmAccount::where('user_id', $userId)->first();
-                if (! $mainAccount) {
-                    continue;
-                }
-
-                $subAccounts = NajmSubAccount::where('account_id', $mainAccount->id)->get();
-
-                $currentTotal = intval($mainAccount->balance_active ?? 0) + intval($mainAccount->balance_faded ?? 0);
-                foreach ($subAccounts as $subAccount) {
-                    $currentTotal += intval($subAccount->balance_active ?? 0) + intval($subAccount->balance_faded ?? 0);
-                }
-
-                $initialFunding = (int) NajmTransaction::where('metadata->type', 'initial_funding')
-                    ->where('metadata->user_id', $userId)
-                    ->sum('amount');
-
-                $membershipTransactions = NajmTransaction::where('metadata->type', 'membership_fee')
-                    ->where('metadata->user_id', $userId)
-                    ->get();
-
-                $membershipSums = [
-                    'membership' => 0,
-                    'insurance' => 0,
-                    'burn' => 0,
-                ];
-
-                foreach ($membershipTransactions as $tx) {
-                    $split = $tx->metadata['split'] ?? null;
-                    if ($split && isset($membershipSums[$split])) {
-                        $membershipSums[$split] += (int) $tx->amount;
-                    }
-                }
-
-                $membershipTotal = array_sum($membershipSums);
-
-                $this->decrementSystemSubAccountBalance($membershipAccountCode, $membershipSums['membership']);
-                $this->decrementSystemSubAccountBalance($insuranceAccountCode, $membershipSums['insurance']);
-                $this->decrementSystemSubAccountBalance($burnAccountCode, $membershipSums['burn']);
-
-                $burnDifference = max($initialFunding - $currentTotal - $membershipTotal, 0);
-                if ($burnDifference > 0) {
-                    $this->decrementSystemSubAccountBalance($burnAccountCode, $burnDifference);
-                }
-
-                $mainAccount->balance = 0;
-                $mainAccount->balance_active = 0;
-                $mainAccount->balance_faded = 0;
-                $mainAccount->status = 0;
-                $mainAccount->user_id = null;
-                $mainAccount->save();
-
-                foreach ($subAccounts as $subAccount) {
-                    $subAccount->balance = 0;
-                    $subAccount->balance_active = 0;
-                    $subAccount->balance_faded = 0;
-                    $subAccount->status = 0;
-                    $subAccount->save();
-
-                    NajmAccount::where('account_number', $subAccount->sub_account_code)->update([
-                        'balance' => 0,
-                        'balance_active' => 0,
-                        'balance_faded' => 0,
-                        'status' => 0,
-                    ]);
-                }
-            }
-        });
-    }
-
-    private function decrementSystemSubAccountBalance(string $subAccountCode, int $amount): void
-    {
-        if ($amount <= 0) {
-            return;
-        }
-
-        $subAccount = NajmSubAccount::where('sub_account_code', $subAccountCode)->first();
-        if (! $subAccount) {
-            return;
-        }
-
-        $activeBalance = intval($subAccount->balance_active ?? 0);
-        $fadedBalance = intval($subAccount->balance_faded ?? 0);
-        $remaining = $amount;
-
-        $activeDeduct = min($activeBalance, $remaining);
-        $subAccount->balance_active = $activeBalance - $activeDeduct;
-        $remaining -= $activeDeduct;
-
-        if ($remaining > 0) {
-            $fadedDeduct = min($fadedBalance, $remaining);
-            $subAccount->balance_faded = $fadedBalance - $fadedDeduct;
-            $remaining -= $fadedDeduct;
-        }
-
-        if ($remaining > 0) {
-            $subAccount->balance_faded = intval($subAccount->balance_faded ?? 0) - $remaining;
-            $remaining = 0;
-        }
-
-        $subAccount->balance = intval($subAccount->balance_active ?? 0) + intval($subAccount->balance_faded ?? 0);
-        $subAccount->save();
-
-        NajmAccount::where('account_number', $subAccount->sub_account_code)->update([
-            'balance' => $subAccount->balance,
-            'balance_active' => intval($subAccount->balance_active ?? 0),
-            'balance_faded' => intval($subAccount->balance_faded ?? 0),
-        ]);
     }
 
     // Export به Excel

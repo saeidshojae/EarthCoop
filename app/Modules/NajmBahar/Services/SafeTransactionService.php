@@ -25,6 +25,10 @@ use Illuminate\Support\Facades\DB;
  * Dim money is not spendable/transferable between economic actors. It may only
  * move between the same owner's accounts or be consumed by explicit monetary
  * operations such as activation, membership payment, or retirement.
+ *
+ * Release D retires the generic SubAccount ↔ SubAccount fallback entirely.
+ * Member, cross-owner, scheduled and treasury inter-fund child movements now
+ * all use explicit canonical executors before they can reach the legacy base.
  */
 class SafeTransactionService extends TransactionService
 {
@@ -102,6 +106,15 @@ class SafeTransactionService extends TransactionService
                     $metadata
                 );
             }
+        }
+
+        if ($from
+            && $to
+            && $from->type === 'subaccount'
+            && $to->type === 'subaccount') {
+            throw new \RuntimeException(
+                'Sub-account to sub-account transfers must use an explicit canonical executor.'
+            );
         }
 
         if ($from
