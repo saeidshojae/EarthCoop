@@ -6,6 +6,8 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Admin\SafeUserController;
+use App\Http\Controllers\Admin\UserController;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use App\Modules\NajmBahar\Services\SubAccountService;
 use App\Modules\NajmBahar\Services\SafeSubAccountService;
@@ -27,12 +29,19 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register()
     {
-        // Release A transition: preserve public service contracts while routing
-        // unsafe legacy Main ↔ Sub balance mutations through canonical ledger-
-        // backed implementations. These bindings are transitional and can be
-        // removed once the legacy services themselves are fully normalized.
+        // Release A/C transition: preserve public service contracts while routing
+        // unsafe legacy Main ↔ Sub mutations through canonical ledger-backed
+        // implementations. SafeTransactionService also reconciles any child
+        // touched by a remaining legacy fallback through AccountInvariantService
+        // before the outer transaction commits. These bindings can disappear
+        // only after the legacy services themselves are fully normalized.
         $this->app->bind(SubAccountService::class, SafeSubAccountService::class);
         $this->app->bind(TransactionService::class, SafeTransactionService::class);
+
+        // Release C transition: the legacy admin controller still contains the
+        // pre-constitution purge implementation. Keep its routes stable while
+        // making that purge unreachable for single/bulk membership removal.
+        $this->app->bind(UserController::class, SafeUserController::class);
     }
 
     public function boot()

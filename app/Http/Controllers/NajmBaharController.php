@@ -191,6 +191,7 @@ class NajmBaharController extends Controller
 
         $this->ensureInitialFunding($user, $account);
         $walletBalance = $this->balanceService->aggregate($account);
+        $this->applyCanonicalWalletBalancesToViewAccount($account, $walletBalance);
 
         $recentTransactions = $this->transactionService->getUserTransactions($user->id, 10);
         $accountIds = $this->transactionService->getUserAccountIds($user->id);
@@ -219,6 +220,17 @@ class NajmBaharController extends Controller
             'cashedPoints',
             'uncashedPoints'
         ));
+    }
+
+    private function applyCanonicalWalletBalancesToViewAccount($account, array $walletBalance): void
+    {
+        // Compatibility boundary for the legacy Blade. These assignments only
+        // affect the in-memory model used for rendering; nothing is persisted.
+        // They make all legacy `$account->balance*` reads display the canonical
+        // aggregate wallet, including active child/sub-account balances.
+        $account->setAttribute('balance', (int) $walletBalance['total']);
+        $account->setAttribute('balance_active', (int) $walletBalance['active']);
+        $account->setAttribute('balance_faded', (int) $walletBalance['dim']);
     }
 
     private function ensureInitialFunding(User $user, $account): void

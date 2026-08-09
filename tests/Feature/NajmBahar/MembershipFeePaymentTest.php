@@ -17,7 +17,7 @@ class MembershipFeePaymentTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_membership_info_exposes_canonical_and_legacy_modal_fields_without_charging_money(): void
+    public function test_membership_info_exposes_canonical_payment_source_capabilities_without_charging_money(): void
     {
         [$user, $account] = $this->memberWithCredit();
         $before = (int) $account->balance;
@@ -26,6 +26,7 @@ class MembershipFeePaymentTest extends TestCase
             ->getJson(route('najm-bahar.membership-fee.info'))
             ->assertOk()
             ->assertJsonPath('default_payment_source', 'dim')
+            ->assertJsonPath('payment_source_required', true)
             ->assertJsonPath('can_pay_from_dim', true)
             ->assertJsonPath('has_enough_balance', true)
             ->assertJsonStructure([
@@ -43,6 +44,22 @@ class MembershipFeePaymentTest extends TestCase
         $this->assertSame(BaharMoney::toGolFromBahar(10_000), (int) $response->json('wallet_total'));
         $this->assertSame($before, (int) $account->fresh()->balance);
         $this->assertSame(0, Transaction::where('metadata->type', 'membership_fee')->count());
+    }
+
+    public function test_membership_payment_requires_explicit_dim_or_active_source(): void
+    {
+        [$user, $account] = $this->memberWithCredit();
+        $before = (int) $account->balance;
+
+        $this->actingAs($user)
+            ->from(route('najm-bahar.wallet'))
+            ->post(route('najm-bahar.membership-fee.pay'), [])
+            ->assertRedirect(route('najm-bahar.wallet'))
+            ->assertSessionHasErrors('payment_source');
+
+        $this->assertSame($before, (int) $account->fresh()->balance);
+        $this->assertSame(0, Transaction::where('metadata->type', 'membership_fee')->count());
+        $this->assertSame(0, Transaction::where('metadata->type', 'membership_fee_activation')->count());
     }
 
     public function test_member_can_pay_annual_fee_from_dim_money_by_activating_exactly_the_fee(): void

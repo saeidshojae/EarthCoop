@@ -4,6 +4,7 @@ import "bootstrap";
 import "./bootstrap";
 import $ from "jquery";
 import "./najm-bahar.js";
+import "./najm-bahar-membership-source.js";
 import "./najm-hoda-context.js";
 import { register } from "swiper/element/bundle";
 

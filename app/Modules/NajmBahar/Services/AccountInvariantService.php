@@ -5,6 +5,7 @@ namespace App\Modules\NajmBahar\Services;
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\SubAccount;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class AccountInvariantService
 {
@@ -80,6 +81,106 @@ class AccountInvariantService
             'mirror_drift' => $mirrorDrift,
             'is_clean' => $balanceSemantics !== 'inconsistent' && $mirrorDrift === [],
         ];
+    }
+
+    /**
+     * Repair only the canonical SubAccount <-> Account mirror invariant.
+     *
+     * This deliberately does not rewrite the parent account balance because
+     * legacy parents may still use aggregate-total semantics during Release C.
+     */
+    public function reconcileSubAccountMirror(SubAccount $subAccount): array
+    {
+        return DB::transaction(function () use ($subAccount) {
+            $lockedSub = SubAccount::query()
+                ->whereKey($subAccount->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $mirror = Account::query()
+                ->where('account_number', $lockedSub->sub_account_code)
+                ->where('type', 'subaccount')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $mirror) {
+                throw new \RuntimeException('Sub-account mirror account is missing.');
+            }
+
+            $active = (int) ($lockedSub->balance_active ?? 0);
+            $dim = (int) ($lockedSub->balance_faded ?? 0);
+            $total = $active + $dim;
+
+            $lockedSub->balance = $total;
+            $lockedSub->save();
+
+            $mirror->balance_active = $active;
+            $mirror->balance_faded = $dim;
+            $mirror->committed_dim = 0;
+            $mirror->balance = $total;
+            $mirror->save();
+
+            return [
+                'sub_account_id' => (int) $lockedSub->id,
+                'mirror_account_id' => (int) $mirror->id,
+                'active' => $active,
+                'dim' => $dim,
+                'total' => $total,
+            ];
+        });
+    }
+
+    /**
+     * Transitional reverse reconciliation for monetary operations that still
+     * receive the Account mirror as their mutation target.
+     *
+     * This is intentionally narrow: only an existing `subaccount` Account can
+     * drive its matching SubAccount row. It never creates a missing child and
+     * never changes the parent account semantics.
+     */
+    public function reconcileSubAccountFromMirror(Account $account): ?array
+    {
+        if ($account->type !== 'subaccount') {
+            return null;
+        }
+
+        return DB::transaction(function () use ($account) {
+            $mirror = Account::query()
+                ->whereKey($account->id)
+                ->where('type', 'subaccount')
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $sub = SubAccount::query()
+                ->where('sub_account_code', $mirror->account_number)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $sub) {
+                return null;
+            }
+
+            $active = (int) ($mirror->balance_active ?? 0);
+            $dim = (int) ($mirror->balance_faded ?? 0);
+            $total = $active + $dim;
+
+            $mirror->committed_dim = 0;
+            $mirror->balance = $total;
+            $mirror->save();
+
+            $sub->balance_active = $active;
+            $sub->balance_faded = $dim;
+            $sub->balance = $total;
+            $sub->save();
+
+            return [
+                'sub_account_id' => (int) $sub->id,
+                'mirror_account_id' => (int) $mirror->id,
+                'active' => $active,
+                'dim' => $dim,
+                'total' => $total,
+            ];
+        });
     }
 
     public function auditAllMainAccounts(): Collection
