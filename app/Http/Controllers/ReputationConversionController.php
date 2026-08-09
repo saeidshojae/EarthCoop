@@ -6,7 +6,7 @@ use App\Models\Setting;
 use App\Models\UserPoint;
 use App\Models\UserPointTransaction;
 use App\Modules\NajmBahar\Services\AccountService;
-use App\Modules\NajmBahar\Services\TransactionService;
+use App\Modules\NajmBahar\Services\MonetaryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,14 +15,14 @@ use Illuminate\Support\Facades\Log;
 class ReputationConversionController extends Controller
 {
     protected $accountService;
-    protected $transactionService;
+    protected $monetaryService;
 
     public function __construct(
         AccountService $accountService,
-        TransactionService $transactionService
+        MonetaryService $monetaryService
     ) {
         $this->accountService = $accountService;
-        $this->transactionService = $transactionService;
+        $this->monetaryService = $monetaryService;
     }
 
     /**
@@ -33,7 +33,6 @@ class ReputationConversionController extends Controller
         $user = Auth::user();
         $settings = Setting::firstNajmBaharSettings();
 
-        // بررسی فعال بودن تبدیل امتیاز
         if (!$settings->reputation_conversion_enabled) {
             return response()->json(['error' => 'تبدیل امتیاز به پول فعلاً غیرفعال است'], 403);
         }
@@ -43,26 +42,20 @@ class ReputationConversionController extends Controller
             return response()->json(['error' => 'حساب نجم بهار یافت نشد'], 404);
         }
 
-        // دریافت مجموع امتیازات
         $userPoint = UserPoint::where('user_id', $user->id)->first();
         $totalPoints = $userPoint ? $userPoint->points : 0;
 
-        // امتیازات نقد شده (با delta مثبت)
         $cashedPoints = UserPointTransaction::where('user_id', $user->id)
             ->where('is_cashed', true)
             ->where('delta', '>', 0)
             ->sum('delta');
 
-        // امتیازات قابل نقد (پررنگ)
         $uncashedPoints = UserPointTransaction::where('user_id', $user->id)
             ->where('is_cashed', false)
             ->where('delta', '>', 0)
             ->sum('delta');
 
-        // نسبت تبدیل
         $ratio = (int) ($settings->reputation_to_gol_ratio ?? 100);
-
-        // محاسبه موجودی فیدد کافی
         $hasEnoughFaded = $account->balance_faded >= intval($uncashedPoints / $ratio);
 
         return response()->json([
@@ -91,10 +84,8 @@ class ReputationConversionController extends Controller
 
         $user = Auth::user();
         $pointsToConvert = $request->points;
-
         $settings = Setting::firstNajmBaharSettings();
 
-        // بررسی فعال بودن
         if (!$settings->reputation_conversion_enabled) {
             return back()->with('error', 'تبدیل امتیاز به پول فعلاً غیرفعال است');
         }
@@ -104,16 +95,15 @@ class ReputationConversionController extends Controller
             return back()->with('error', 'حساب نجم بهار یافت نشد');
         }
 
-        // نسبت تبدیل
         $ratio = (int) ($settings->reputation_to_gol_ratio ?? 100);
 
         try {
             DB::transaction(function () use ($user, $account, $pointsToConvert, $ratio) {
-                // دریافت امتیازات نقد نشده
                 $uncashedTransactions = UserPointTransaction::where('user_id', $user->id)
                     ->where('is_cashed', false)
                     ->where('delta', '>', 0)
                     ->orderBy('created_at', 'asc')
+                    ->lockForUpdate()
                     ->get();
 
                 $availablePoints = $uncashedTransactions->sum('delta');
@@ -122,19 +112,16 @@ class ReputationConversionController extends Controller
                     throw new \Exception("امتیازات قابل نقد کافی نیست. امتیاز قابل نقد: {$availablePoints}");
                 }
 
-                // محاسبه مبلغ تبدیل (به گل)
                 $amountInGol = intval($pointsToConvert / $ratio);
 
                 if ($amountInGol <= 0) {
                     throw new \Exception("امتیازات وارد شده برای تبدیل کافی نیست. حداقل {$ratio} امتیاز نیاز است.");
                 }
 
-                // بررسی موجودی faded کافی
                 if ($account->balance_faded < $amountInGol) {
                     throw new \Exception('موجودی کمرنگ شما برای تبدیل کافی نیست');
                 }
 
-                // علامت‌گذاری تراکنش‌ها به عنوان نقد شده
                 $remaining = $pointsToConvert;
                 foreach ($uncashedTransactions as $tx) {
                     if ($remaining <= 0) {
@@ -150,30 +137,21 @@ class ReputationConversionController extends Controller
                     $remaining -= $toMark;
                 }
 
-                // تبدیل faded به active
-                $account->balance_faded -= $amountInGol;
-                $account->balance_active += $amountInGol;
-                $account->save();
+                $idempotencyKey = 'reputation-conversion-' . $user->id . '-' . now()->format('YmdHisv');
 
-                // ثبت تراکنش برای auditing
-                \App\Modules\NajmBahar\Models\Transaction::create([
-                    'from_account_id' => $account->id,
-                    'to_account_id' => $account->id,
-                    'amount' => $amountInGol,
-                    'balance_type' => 'conversion',
-                    'description' => "تبدیل {$pointsToConvert} امتیاز به پول فعال",
-                    'transaction_type' => 'reputation_conversion',
-                    'idempotency_key' => 'reputation-conversion-' . $user->id . '-' . now()->timestamp,
-                    'metadata' => [
+                $this->monetaryService->activateDim(
+                    $account,
+                    $amountInGol,
+                    "تبدیل {$pointsToConvert} امتیاز به پول فعال",
+                    [
                         'type' => 'reputation_conversion',
                         'user_id' => $user->id,
                         'points_converted' => $pointsToConvert,
                         'ratio' => $ratio,
-                        'amount_gol' => $amountInGol,
-                        'from_balance_type' => 'faded',
-                        'to_balance_type' => 'active',
                     ],
-                ]);
+                    $idempotencyKey,
+                    false
+                );
 
                 Log::info('Reputation converted to active money', [
                     'user_id' => $user->id,
