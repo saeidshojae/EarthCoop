@@ -79,10 +79,6 @@ class SafeSubAccountService extends SubAccountService
         string $moneyState = 'faded',
         ?int $transactionId = null
     ): ?NajmTransaction {
-        if ($transactionId !== null) {
-            throw new \RuntimeException('Existing transaction IDs may only be completed by ScheduledSubAccountTransferExecutor.');
-        }
-
         $from = SubAccount::findOrFail($fromSubAccountId);
         $to = SubAccount::findOrFail($toSubAccountId);
         $sameOwner = (int) $from->account_id === (int) $to->account_id;
@@ -100,24 +96,30 @@ class SafeSubAccountService extends SubAccountService
             $transactions = app(TransactionService::class);
             $transactions->assertEffectiveOwnerTransferAllowed($fromMirror, $toMirror);
 
-            return $transactions->transfer(
-                $fromMirror->account_number,
-                $toMirror->account_number,
-                $amount,
-                $description ?? 'انتقال فعال بین حساب‌های فرعی مستقل',
-                [
-                    'transfer_type' => 'subaccount',
-                    'from_sub_account_id' => $from->id,
-                    'to_sub_account_id' => $to->id,
-                    'from_sub_account_code' => $from->sub_account_code,
-                    'to_sub_account_code' => $to->sub_account_code,
-                    'money_state' => 'active',
-                    'routed_by' => 'safe_sub_account_service',
-                ],
-                $this->crossOwnerIdempotencyKey($from, $to, $amount),
-                'active',
-                'subaccount_transfer'
-            );
+            if ($transactionId === null) {
+                return $transactions->transfer(
+                    $fromMirror->account_number,
+                    $toMirror->account_number,
+                    $amount,
+                    $description ?? 'انتقال فعال بین حساب‌های فرعی مستقل',
+                    [
+                        'transfer_type' => 'subaccount',
+                        'from_sub_account_id' => $from->id,
+                        'to_sub_account_id' => $to->id,
+                        'from_sub_account_code' => $from->sub_account_code,
+                        'to_sub_account_code' => $to->sub_account_code,
+                        'money_state' => 'active',
+                        'routed_by' => 'safe_sub_account_service',
+                    ],
+                    $this->crossOwnerIdempotencyKey($from, $to, $amount),
+                    'active',
+                    'subaccount_transfer'
+                );
+            }
+        }
+
+        if ($transactionId !== null) {
+            throw new \RuntimeException('Existing transaction IDs may only be completed by ScheduledSubAccountTransferExecutor.');
         }
 
         $transaction = parent::transferBetweenSubAccounts(
