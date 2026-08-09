@@ -7,6 +7,8 @@ use App\Modules\Governance\Models\EconomicAction;
 use App\Modules\Governance\Models\EligibilitySnapshot;
 use App\Modules\Governance\Models\PublicContributionObligation;
 use App\Modules\Governance\Models\PublicContributionPlan;
+use App\Modules\NajmBahar\Services\AccountService;
+use App\Modules\NajmBahar\Services\DimCommitmentService;
 use Illuminate\Support\Facades\DB;
 
 class PublicContributionService
@@ -123,6 +125,7 @@ class PublicContributionService
                 'user_id' => $user->id,
                 'amount_gol' => $amount,
                 'paid_gol' => 0,
+                'committed_gol' => 0,
                 'status' => 'pending',
                 'due_at' => $plan->due_at,
                 'metadata' => [
@@ -130,6 +133,97 @@ class PublicContributionService
                     'automatic_debit' => false,
                 ],
             ]);
+        }, 3);
+    }
+
+    public function commitDim(PublicContributionObligation $obligation, User $user): PublicContributionObligation
+    {
+        return DB::transaction(function () use ($obligation, $user) {
+            $locked = PublicContributionObligation::whereKey($obligation->id)->lockForUpdate()->firstOrFail();
+            if ((int) $locked->user_id !== (int) $user->id) {
+                throw new \RuntimeException('Only the obligated member may commit Dim for this obligation.');
+            }
+            if ($locked->status === 'committed' && (int) $locked->committed_gol === (int) $locked->amount_gol) {
+                return $locked;
+            }
+            if ($locked->status !== 'pending' || (int) $locked->paid_gol !== 0 || (int) $locked->committed_gol !== 0) {
+                throw new \RuntimeException('Public contribution obligation is not available for Dim commitment.');
+            }
+
+            $account = app(AccountService::class)->getMainAccountForUser((int) $user->id);
+            if (! $account) {
+                throw new \RuntimeException('Member has no Najm Bahar main account.');
+            }
+
+            $amount = (int) $locked->amount_gol;
+            $transaction = app(DimCommitmentService::class)->commit(
+                $account,
+                $amount,
+                'Commit Dim for public contribution obligation #' . $locked->id,
+                'public-contribution:obligation:' . $locked->id . ':dim-commit',
+                [
+                    'public_contribution_obligation_id' => (int) $locked->id,
+                    'public_contribution_plan_id' => (int) $locked->plan_id,
+                    'user_id' => (int) $user->id,
+                ]
+            );
+
+            $metadata = (array) ($locked->metadata ?? []);
+            $metadata['dim_commitment_transaction_id'] = (int) $transaction->id;
+            $metadata['automatic_debit'] = false;
+            $locked->update([
+                'committed_gol' => $amount,
+                'status' => 'committed',
+                'committed_at' => now(),
+                'metadata' => $metadata,
+            ]);
+
+            return $locked->fresh();
+        }, 3);
+    }
+
+    public function releaseDim(PublicContributionObligation $obligation, User $user): PublicContributionObligation
+    {
+        return DB::transaction(function () use ($obligation, $user) {
+            $locked = PublicContributionObligation::whereKey($obligation->id)->lockForUpdate()->firstOrFail();
+            if ((int) $locked->user_id !== (int) $user->id) {
+                throw new \RuntimeException('Only the obligated member may release this Dim commitment.');
+            }
+            if ($locked->status === 'pending' && (int) $locked->committed_gol === 0) {
+                return $locked;
+            }
+            if ($locked->status !== 'committed' || (int) $locked->paid_gol !== 0) {
+                throw new \RuntimeException('Only an unpaid committed obligation may release Dim.');
+            }
+
+            $account = app(AccountService::class)->getMainAccountForUser((int) $user->id);
+            if (! $account) {
+                throw new \RuntimeException('Member has no Najm Bahar main account.');
+            }
+
+            $amount = (int) $locked->committed_gol;
+            $transaction = app(DimCommitmentService::class)->release(
+                $account,
+                $amount,
+                'Release Dim for public contribution obligation #' . $locked->id,
+                'public-contribution:obligation:' . $locked->id . ':dim-release',
+                [
+                    'public_contribution_obligation_id' => (int) $locked->id,
+                    'public_contribution_plan_id' => (int) $locked->plan_id,
+                    'user_id' => (int) $user->id,
+                ]
+            );
+
+            $metadata = (array) ($locked->metadata ?? []);
+            $metadata['dim_release_transaction_id'] = (int) $transaction->id;
+            $locked->update([
+                'committed_gol' => 0,
+                'status' => 'pending',
+                'committed_at' => null,
+                'metadata' => $metadata,
+            ]);
+
+            return $locked->fresh();
         }, 3);
     }
 }
