@@ -103,6 +103,7 @@ jobs:
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/NajmBahar/SafeTransactionServiceInvariantTest.php \
             tests/Feature/NajmBahar/SafeSubAccountServiceInvariantTest.php \
+            tests/Feature/NajmBahar/InternalSubAccountTransferServiceTest.php \
             tests/Feature/NajmBahar/ScheduledSubAccountTransferExecutorTest.php
 
       - name: Re-run Release B Governance gate
