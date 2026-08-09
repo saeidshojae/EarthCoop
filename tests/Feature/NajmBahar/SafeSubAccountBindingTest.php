@@ -3,6 +3,7 @@
 namespace Tests\Feature\NajmBahar;
 
 use App\Models\User;
+use App\Modules\NajmBahar\Models\Transaction;
 use App\Modules\NajmBahar\Services\AccountBalanceService;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\MonetaryService;
@@ -45,5 +46,29 @@ class SafeSubAccountBindingTest extends TestCase
         $this->assertSame(1_000_000, $aggregate['dim']);
         $this->assertSame(0, $aggregate['active']);
         $this->assertSame(1_000_000, $aggregate['total']);
+    }
+
+    public function test_retried_internal_transfer_with_same_request_key_moves_money_once(): void
+    {
+        $service = app(SubAccountService::class);
+        $user = User::factory()->create();
+        $accounts = app(AccountService::class);
+        $main = $accounts->createMainAccountForUser($user->id, 'Member');
+        app(MonetaryService::class)->issueMembershipCredit($main, $user->id);
+        $sub = $service->createSubAccount($main->id, 'Child');
+
+        request()->headers->set('Idempotency-Key', 'retry-safe-transfer-001');
+
+        $service->transferToSubAccount($main->id, $sub->id, 500, 'Retry-safe move', 'faded');
+        $service->transferToSubAccount($main->id, $sub->id, 500, 'Retry-safe move', 'faded');
+
+        $main->refresh();
+        $sub->refresh();
+        $aggregate = app(AccountBalanceService::class)->aggregate($main);
+
+        $this->assertSame(500, (int) $sub->balance_faded);
+        $this->assertSame(999_500, (int) $main->balance_faded);
+        $this->assertSame(1_000_000, $aggregate['dim']);
+        $this->assertSame(1, Transaction::where('metadata->type', 'internal_account_transfer')->count());
     }
 }
