@@ -5,6 +5,7 @@ namespace App\Modules\NajmBahar\Services;
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\SubAccount;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class AccountInvariantService
 {
@@ -80,6 +81,53 @@ class AccountInvariantService
             'mirror_drift' => $mirrorDrift,
             'is_clean' => $balanceSemantics !== 'inconsistent' && $mirrorDrift === [],
         ];
+    }
+
+    /**
+     * Repair only the canonical SubAccount <-> Account mirror invariant.
+     *
+     * This deliberately does not rewrite the parent account balance because
+     * legacy parents may still use aggregate-total semantics during Release C.
+     */
+    public function reconcileSubAccountMirror(SubAccount $subAccount): array
+    {
+        return DB::transaction(function () use ($subAccount) {
+            $lockedSub = SubAccount::query()
+                ->whereKey($subAccount->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $mirror = Account::query()
+                ->where('account_number', $lockedSub->sub_account_code)
+                ->where('type', 'subaccount')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $mirror) {
+                throw new \RuntimeException('Sub-account mirror account is missing.');
+            }
+
+            $active = (int) ($lockedSub->balance_active ?? 0);
+            $dim = (int) ($lockedSub->balance_faded ?? 0);
+            $total = $active + $dim;
+
+            $lockedSub->balance = $total;
+            $lockedSub->save();
+
+            $mirror->balance_active = $active;
+            $mirror->balance_faded = $dim;
+            $mirror->committed_dim = 0;
+            $mirror->balance = $total;
+            $mirror->save();
+
+            return [
+                'sub_account_id' => (int) $lockedSub->id,
+                'mirror_account_id' => (int) $mirror->id,
+                'active' => $active,
+                'dim' => $dim,
+                'total' => $total,
+            ];
+        });
     }
 
     public function auditAllMainAccounts(): Collection
