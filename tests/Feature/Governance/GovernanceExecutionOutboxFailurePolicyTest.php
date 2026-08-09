@@ -86,10 +86,14 @@ class GovernanceExecutionOutboxFailurePolicyTest extends TestCase
 
         $report = app(MonetaryOperationsReportService::class);
         $this->assertSame(1, $report->summary()['execution_outbox']['dead_letter']);
+        $this->assertSame(MonetaryOperationsReportService::CRITICAL, $report->health()['severity']);
+        $this->assertSame(2, $report->health()['exit_code']);
+        $this->assertTrue($report->health()['requires_operator_attention']);
         $item = $report->problemItems()->firstWhere('kind', 'execution_outbox');
         $this->assertNotNull($item);
         $this->assertSame((int) $action->id, $item['id']);
         $this->assertSame('dead_letter', $item['status']);
+        $this->assertSame(MonetaryOperationsReportService::CRITICAL, $item['severity']);
         $this->assertSame('recover_dead_letter_then_retry', $item['operator_action']);
     }
 
@@ -136,5 +140,20 @@ class GovernanceExecutionOutboxFailurePolicyTest extends TestCase
         $report = app(MonetaryOperationsReportService::class);
         $this->assertSame(1, $report->summary()['execution_outbox']['failed']);
         $this->assertSame(0, $report->summary()['execution_outbox']['dead_letter']);
+        $this->assertSame(MonetaryOperationsReportService::WARNING, $report->health()['severity']);
+        $this->assertSame(1, $report->health()['exit_code']);
+        $this->assertFalse($report->health()['requires_operator_attention']);
+        $this->assertSame(MonetaryOperationsReportService::WARNING, $report->problemItems()->first()['severity']);
+    }
+
+    public function test_empty_monetary_operations_report_is_healthy(): void
+    {
+        $health = app(MonetaryOperationsReportService::class)->health();
+
+        $this->assertSame(MonetaryOperationsReportService::HEALTHY, $health['severity']);
+        $this->assertSame(0, $health['exit_code']);
+        $this->assertSame(0, $health['failed']);
+        $this->assertSame(0, $health['dead_letter']);
+        $this->assertFalse($health['requires_operator_attention']);
     }
 }
