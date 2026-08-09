@@ -103,4 +103,19 @@ class MembershipRetirementServiceTest extends TestCase
         $this->assertSame($first->id, $second->id);
         $this->assertSame(0, (int) $main->fresh()->balance_faded);
     }
+
+    public function test_dim_above_constitutional_footprint_is_not_confiscated_by_retirement(): void
+    {
+        $user = User::factory()->create();
+        $main = app(AccountService::class)->createMainAccountForUser($user->id, 'Legacy Member');
+        $main->balance_faded = 1_200_000;
+        $main->balance = 1_200_000;
+        $main->save();
+
+        $retirement = app(MembershipRetirementService::class)->retire($user->id, 'exit');
+
+        $this->assertSame(1_000_000, (int) $retirement->dim_cancelled);
+        $this->assertSame(200_000, (int) $main->fresh()->balance_faded);
+        $this->assertSame(200_000, (int) ($retirement->metadata['dim_above_constitutional_footprint_preserved'] ?? 0));
+    }
 }
