@@ -10,20 +10,9 @@ use Illuminate\Support\Str;
 /**
  * Transitional adapter around the legacy SubAccountService.
  *
- * Unsafe Main ↔ Sub mutations are routed through the canonical internal
- * transfer service. Release C additionally reconciles the Account mirror of
- * every touched SubAccount through AccountInvariantService so all active code
- * paths share one mirror invariant while the rest of the legacy service is
- * migrated incrementally.
- *
- * Dim is constitutional non-transferable money between independent actors.
- * Therefore a faded transfer between sub-accounts is only valid while both
- * sub-accounts belong to the same parent account.
- *
- * Immediate Active transfers between different owners are routed through the
- * canonical TransactionService policy/locking/idempotency path. Scheduled
- * placeholder completion is intentionally not exposed here anymore; only
- * ScheduledSubAccountTransferExecutor may complete an existing transaction ID.
+ * All active money-moving paths are routed through canonical services. The
+ * inherited service remains only for non-monetary CRUD compatibility while
+ * Release C removes the remaining dead legacy mutation helpers.
  */
 class SafeSubAccountService extends SubAccountService
 {
@@ -96,46 +85,42 @@ class SafeSubAccountService extends SubAccountService
             $transactions = app(TransactionService::class);
             $transactions->assertEffectiveOwnerTransferAllowed($fromMirror, $toMirror);
 
-            if ($transactionId === null) {
-                return $transactions->transfer(
-                    $fromMirror->account_number,
-                    $toMirror->account_number,
-                    $amount,
-                    $description ?? 'انتقال فعال بین حساب‌های فرعی مستقل',
-                    [
-                        'transfer_type' => 'subaccount',
-                        'from_sub_account_id' => $from->id,
-                        'to_sub_account_id' => $to->id,
-                        'from_sub_account_code' => $from->sub_account_code,
-                        'to_sub_account_code' => $to->sub_account_code,
-                        'money_state' => 'active',
-                        'routed_by' => 'safe_sub_account_service',
-                    ],
-                    $this->crossOwnerIdempotencyKey($from, $to, $amount),
-                    'active',
-                    'subaccount_transfer'
-                );
+            if ($transactionId !== null) {
+                throw new \RuntimeException('Existing transaction IDs may only be completed by ScheduledSubAccountTransferExecutor.');
             }
+
+            return $transactions->transfer(
+                $fromMirror->account_number,
+                $toMirror->account_number,
+                $amount,
+                $description ?? 'انتقال فعال بین حساب‌های فرعی مستقل',
+                [
+                    'transfer_type' => 'subaccount',
+                    'from_sub_account_id' => $from->id,
+                    'to_sub_account_id' => $to->id,
+                    'from_sub_account_code' => $from->sub_account_code,
+                    'to_sub_account_code' => $to->sub_account_code,
+                    'money_state' => 'active',
+                    'routed_by' => 'safe_sub_account_service',
+                ],
+                $this->crossOwnerIdempotencyKey($from, $to, $amount),
+                'active',
+                'subaccount_transfer'
+            );
         }
 
         if ($transactionId !== null) {
             throw new \RuntimeException('Existing transaction IDs may only be completed by ScheduledSubAccountTransferExecutor.');
         }
 
-        $transaction = parent::transferBetweenSubAccounts(
-            $fromSubAccountId,
-            $toSubAccountId,
+        return app(InternalSubAccountTransferService::class)->transfer(
+            $from,
+            $to,
             $amount,
-            $description,
             $moneyState,
-            null
+            $description ?? 'انتقال داخلی بین حساب‌های فرعی',
+            $this->sameOwnerIdempotencyKey($from, $to, $amount, $moneyState)
         );
-
-        $invariants = app(AccountInvariantService::class);
-        $invariants->reconcileSubAccountMirror($from->fresh());
-        $invariants->reconcileSubAccountMirror($to->fresh());
-
-        return $transaction;
     }
 
     private function crossOwnerIdempotencyKey(SubAccount $from, SubAccount $to, int $amount): string
@@ -155,6 +140,30 @@ class SafeSubAccountService extends SubAccountService
             'cross-owner-subaccount-active',
             $from->id,
             $to->id,
+            $amount,
+            (string) Str::uuid(),
+        ]);
+    }
+
+    private function sameOwnerIdempotencyKey(SubAccount $from, SubAccount $to, int $amount, string $moneyState): string
+    {
+        $requestKey = request()?->header('Idempotency-Key');
+        if (is_string($requestKey) && trim($requestKey) !== '') {
+            return implode('-', [
+                'same-owner-subaccount',
+                $from->id,
+                $to->id,
+                $moneyState,
+                $amount,
+                hash('sha256', trim($requestKey)),
+            ]);
+        }
+
+        return implode('-', [
+            'same-owner-subaccount',
+            $from->id,
+            $to->id,
+            $moneyState,
             $amount,
             (string) Str::uuid(),
         ]);
