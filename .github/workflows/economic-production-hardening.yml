@@ -100,7 +100,8 @@ jobs:
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/NajmBahar/ProductionReadinessAuditServiceTest.php \
             tests/Feature/NajmBahar/ProductionUpgradeSafetyTest.php \
-            tests/Feature/NajmBahar/TransactionIdempotencyHardeningTest.php
+            tests/Feature/NajmBahar/TransactionIdempotencyHardeningTest.php \
+            tests/Feature/NajmBahar/FinancialIdempotencyReplayServiceTest.php
           php artisan najm-bahar:production-readiness --json
 
       - name: Re-run Release D cleanup gate
