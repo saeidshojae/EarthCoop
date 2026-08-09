@@ -3,138 +3,81 @@
 Branch: `agent/economic-system-release-a`
 Baseline: `agent/najm-hoda-chat-context`
 
-## Completed P0 foundations
+Release A is an isolated constitutional-money hardening branch. Nothing from this branch is intended to merge directly to `main` until normalization, tests, and review are complete.
 
-- Constitutional initial membership credit: exactly 10,000 Bahar (1,000,000 Gol).
-- Initial membership credit is always 100% dim and 0% active.
-- Initial membership issuance is ledger-backed and idempotent for new onboarding.
-- Monetary activation is centralized in `MonetaryService`.
-- Dim → Active activation preserves total supply and writes debit/credit bucket ledger entries.
-- Reputation conversion now uses the monetary activation service.
-- Automatic activation now uses the monetary activation service.
-- Automatic activation is idempotent per account and policy period.
-- Automatic activation is scheduled daily; policy period controls whether it applies monthly/quarterly/yearly.
-- Monetary policy version storage and effective-policy resolver added, with legacy Settings fallback.
-- Reputation conversion and automatic activation record monetary policy provenance.
-- Investment catalogue/show/store enforce project visibility policy.
-- Historical ledger backfill command added; default mode is read-only and `--apply` never changes balances.
-- Treasury registry formalizes Operations/Salary, Central Insurance, Money Destruction and Idle Tax funds.
-- Treasury funds now have required reserve and committed-liability fields.
-- Interfund transfers are auditable, idempotent and cannot spend protected reserve/commitments.
-- Annual membership fee can be paid from dim or active money.
-- Membership split (operations/insurance/burn) is resolved through `MonetaryPolicyService` and records `policy_version_id`, while legacy Settings remain a fallback only.
-- Membership info reports aggregate wallet active/dim totals via `AccountBalanceService`.
-- Dim membership payment activates exactly the fee amount before distributing active Bahar to treasury funds.
-- Membership payment is idempotent per member/year and preserves historical legacy split recognition.
-- Read-only account invariant audit identifies local-vs-legacy-aggregate balance semantics and sub-account mirror drift.
-- Canonical balance semantics are explicit in `AccountBalanceService`: each Account row is local; wallet totals are derived from main + child sub-accounts.
-- Main ↔ Sub transfers have a ledger-backed canonical implementation that preserves active/dim state.
-- `SafeSubAccountService` and `SafeTransactionService` route live own-account transfers away from legacy aggregate semantics and the faded→active bug.
-- Person-to-person transfer of dim money is blocked at the safe transaction boundary.
-- The old referral bonus no longer transfers the new member's dim money; referral now routes to configurable participation reputation only.
-- Architecture test prevents new direct balance mutations outside an explicit transitional financial boundary.
-- `NajmBaharController` no longer mutates financial balances directly; its legacy repair delegates to `MonetaryService`.
-- Dashboard/wallet controllers prepare canonical aggregate wallet totals for the UI.
-- `BalanceNormalizationService` provides deterministic normalization of cached total fields only.
-- `najm-bahar:normalize-balances` is dry-run by default and requires explicit `--apply`; it never alters active/dim buckets.
-- Monetary primitives include auditable/idempotent dim cancellation and active destruction.
-- Membership retirement foundation is implemented for death, exit and removal.
-- Retirement cancels remaining dim only up to the constitutional 10,000-Bahar membership footprint.
-- The complementary amount is destroyed first from the Money Destruction Fund, then from the Idle Tax Fund.
-- Any uncovered remainder becomes `MonetaryRetirementLiability` owed by the EarthCoop monetary system; the estate is not liable.
-- Retirement liabilities can be settled later, partially or fully, as protected treasury surplus becomes available.
-- `najm-bahar:settle-retirement-liabilities` provides an operational batch path for retrying outstanding liabilities.
-- Liability settlement preserves the same destruction order and updates the parent retirement atomically.
-- Member active wealth is explicitly preserved for inheritance/estate handling outside the retirement monetary footprint.
-- Legacy dim above the constitutional footprint is preserved rather than confiscated by retirement.
-- Read-only idle-capital observation foundation exists; it never moves money or charges tax.
-- Internal Main↔Sub reshuffling does not reset the idle-observation clock; external active use does.
-- Idle observation snapshots can be persisted for policy review through `najm-bahar:observe-idle-capital --record`.
+## Completed foundations
 
-## Tests added/expanded
+- Constitutional initial membership credit: exactly 10,000 Bahar (1,000,000 Gol), always 100% dim at issuance.
+- Membership issuance is ledger-backed and idempotent.
+- Dim → Active activation is centralized and supply-conserving.
+- Reputation conversion and scheduled auto-activation use the same monetary activation path.
+- Auto-activation is idempotent per account/policy period.
+- Monetary policy versioning exists with legacy Settings fallback.
+- Investment visibility policy is enforced on catalogue/show/store paths.
+- Historical ledger backfill is read-only by default and never changes balances.
+- Treasury registry formalizes Operations/Salary, Central Insurance, Money Destruction, and Idle Tax funds.
+- Treasury reserves/commitments protect interfund surplus transfers.
+- Membership fee can be paid from dim or active money.
+- Membership allocation is resolved through `MonetaryPolicyService` and records `policy_version_id`.
+- Account semantics are canonical: every Account row stores local active+dim only; wallet totals are derived from main + child sub-accounts.
+- Main ↔ Sub transfers have a ledger-backed canonical implementation that preserves money state.
+- Live Main↔Sub paths are routed through safe adapters away from legacy faded→active/aggregate bugs.
+- Person-to-person dim transfer is blocked.
+- Referral no longer transfers the new member's dim money; invitation now creates configurable participation reputation only.
+- `NajmBaharController` no longer writes financial balances directly.
+- Balance normalization is deterministic and only repairs cached `balance` totals; active/dim buckets are untouched.
+- Membership retirement is implemented for death, exit, and removal.
+- Retirement removes exactly the constitutional 10,000-Bahar footprint while preserving estate active wealth/assets.
+- Destruction order is Money Destruction Fund → Idle Tax Fund.
+- Any shortage becomes a monetary-system liability, never estate/member debt.
+- Retirement liabilities can be settled later, partially or fully, as treasury surplus becomes available.
+- Idle-capital observation exists as a read-only policy-review layer; it never charges tax or moves funds.
+- Internal Main↔Sub reshuffling does not count as economic circulation in idle observation.
+
+## Operational commands
+
+- `najm-bahar:audit-balances` — read-only invariant inventory.
+- `najm-bahar:plan-balance-normalization` — read-only detailed normalization plan.
+- `najm-bahar:normalize-balances` — dry-run by default; `--apply` only rewrites cached local totals.
+- `najm-bahar:settle-retirement-liabilities` — retries outstanding retirement-system liabilities against protected treasury surplus.
+- `najm-bahar:observe-idle-capital` — read-only idle-capital observation; `--record` persists snapshots and still charges no tax.
+
+## Key tests
 
 - `NajmBaharConstitutionTest`
 - `InitialMembershipCreditTest`
-- `InvestmentVisibilityTest`
 - `MonetaryServiceTest`
 - `MonetaryPolicyServiceTest`
 - `HistoricalLedgerBackfillTest`
 - `TreasuryServiceTest`
-- `MembershipFeePaymentTest` (including versioned 5/4/3 allocation example)
+- `MembershipFeePaymentTest` including a versioned 5/4/3 allocation example
 - `AccountInvariantServiceTest`
 - `AccountBalanceServiceTest`
 - `BalanceNormalizationServiceTest`
 - `InternalAccountTransferServiceTest`
 - `SafeSubAccountBindingTest`
 - `SafeTransactionBindingTest`
+- `DimTransferRestrictionTest`
 - `MembershipRetirementServiceTest`
 - `RetirementLiabilitySettlementServiceTest`
 - `IdleCapitalObservationServiceTest`
 - `OperationalCommandsTest`
+- `InvestmentVisibilityTest`
 - `NajmBaharFinancialMutationBoundaryTest`
 
-## Important bugs/legacy behavior closed in new live paths
+## Remaining Release A debt
 
-1. The legacy `SubAccountService` credited faded money returned from a sub-account into the main account's active bucket. Live Main ↔ Sub flows now preserve money state.
-2. External/person-to-person dim transfer is blocked; dim is not ordinary circulating money.
-3. Referral no longer takes 10 dim Bahar from the new member and gives it to the referrer. Invitation is participation reputation; conversion later activates the referrer's own dim balance.
-4. Controller-level historical balance repair no longer writes balances directly.
+- Blade wallet/dashboard views still need a focused refactor to consume prepared canonical `walletBalance` data instead of direct legacy balance reads.
+- Membership-fee UI still needs an explicit dim/active source selector even though backend support is complete.
+- Legacy `TransactionService` / `SubAccountService` internals remain behind safe adapters and should be migrated incrementally so the direct-mutation allowlist can shrink further.
+- True concurrent transfer/activation/settlement tests still need expansion.
+- Idle-tax *collection* is intentionally not implemented yet; only reviewable observation exists until rate, exemptions, cadence, and exact amount×duration policy are approved.
 
-## Normalization status
+## Next
 
-Canonical semantics are defined and new live internal transfers preserve them. Historical rows can be normalized safely because the normalization operation only rewrites cached `balance` totals to local `balance_active + balance_faded`; it does not move, create, activate, cancel or destroy money.
-
-Commands:
-
-- `najm-bahar:audit-balances` — read-only invariant inventory.
-- `najm-bahar:plan-balance-normalization` — read-only detailed plan.
-- `najm-bahar:normalize-balances` — dry-run by default; `--apply` explicitly writes cached totals only.
-- `najm-bahar:settle-retirement-liabilities` — retry outstanding system retirement liabilities against current protected treasury surplus.
-- `najm-bahar:observe-idle-capital` — read-only idle-capital observation; `--record` stores snapshots and still charges no tax.
-
-Before production normalization, remaining Blade readers must consume the canonical `walletBalance` data instead of assuming old aggregate `main.balance` semantics.
-
-## Retirement model
-
-For a member retirement:
-
-1. Determine canonical wallet dim total from main + sub-accounts.
-2. Cancel at most 10,000 Bahar of dim membership footprint.
-3. Compute `10,000 Bahar - dim_cancelled`.
-4. Destroy that amount from Money Destruction Fund available surplus.
-5. If needed, destroy the remainder from Idle Tax Fund available surplus.
-6. Record any remaining shortage as a system monetary retirement liability.
-7. Never debit the member's active wealth or estate assets.
-8. If treasury liquidity arrives later, settle the outstanding system liability in the same fund order without touching the estate.
-
-Retirement is idempotent per member.
-
-## Idle-capital observation status
-
-Release A intentionally stops before automatic idle-tax collection. The current observation model is conservative and reviewable:
-
-- only Active money is considered;
-- internal account reshuffling does not count as circulation;
-- recent external active outflow resets the observation clock;
-- policy can define observation period and exempt balance;
-- output is only a candidate amount/snapshot;
-- no tax collection or automatic debit exists in this layer.
-
-This gives us real data to validate the future tax formula before a collection mechanism is enabled.
-
-## Known transitional debt
-
-- Blade wallet/dashboard views still need a focused refactor to consume the prepared canonical `walletBalance` data everywhere instead of directly reading legacy account totals.
-- Wallet membership UI still needs an explicit dim/active source selector even though the backend already supports it.
-- `TransactionService` and `SubAccountService` still contain legacy direct balance mutation internals behind safe adapters; the allowlist must continue shrinking.
-- A real idle-tax collection formula, exemptions, cadence and rate remain intentionally unimplemented until the observation data and policy are approved.
-
-## Next Release A work
-
-1. Refactor wallet/dashboard Blade readers to canonical aggregate balance data.
+1. Refactor wallet/dashboard Blade readers and membership source selector.
 2. Shrink safe adapters by migrating remaining legacy transfer methods.
-3. Expand true-concurrency tests.
-4. Add explicit UI source selection for annual membership fee.
-5. Review idle-observation data model before any tax collection feature is introduced.
+3. Expand real concurrency/failure tests.
+4. Review actual idle-observation outputs before designing collection.
 
 No merge into `main` is intended from this branch at this stage.
