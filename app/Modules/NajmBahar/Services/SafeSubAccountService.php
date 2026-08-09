@@ -71,6 +71,7 @@ class SafeSubAccountService extends SubAccountService
                 $main->id,
                 $sub->id,
                 $moneyState,
+                $amount,
                 hash('sha256', trim($requestKey)),
             ]);
         }
