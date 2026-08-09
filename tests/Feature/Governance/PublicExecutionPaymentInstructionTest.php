@@ -144,6 +144,76 @@ class PublicExecutionPaymentInstructionTest extends TestCase
         }
     }
 
+    public function test_failed_payment_is_bounded_dead_lettered_and_requires_explicit_recovery(): void
+    {
+        [$plan, $manager, $inspector, $contractor] = $this->executedPlan(10);
+        $payeeAccount = app(AccountService::class)->createMainAccountForUser($contractor->id);
+        $instruction = app(PublicExecutionPaymentInstructionService::class)->create(
+            $plan->fresh(),
+            $payeeAccount,
+            6,
+            'پرداخت دارای شکست عملیاتی کنترل‌شده',
+            $manager,
+            'public-payment-failure-test:' . $plan->id,
+            ['contract_reference' => 'CONTRACT-FAILURE']
+        );
+        $approved = app(PublicExecutionPaymentApprovalService::class)->approve($instruction, $inspector);
+
+        $executionAccount = Account::findOrFail((int) $approved->execution_account_id);
+        $executionAccount->balance_active = 0;
+        $executionAccount->balance = (int) ($executionAccount->balance_faded ?? 0)
+            + (int) ($executionAccount->committed_dim ?? 0);
+        $executionAccount->save();
+
+        $transactionsBeforeFailures = Transaction::count();
+        $payments = app(PublicExecutionPaymentService::class);
+
+        for ($attempt = 1; $attempt <= PublicExecutionPaymentService::MAX_ATTEMPTS; $attempt++) {
+            try {
+                $payments->execute($approved->fresh(), $attempt > 1);
+                $this->fail('Insufficient execution-account payment unexpectedly succeeded.');
+            } catch (\RuntimeException $e) {
+                $this->assertStringContainsString('insufficient active bahar', strtolower($e->getMessage()));
+            }
+
+            $fresh = $approved->fresh();
+            $this->assertSame($attempt, (int) $fresh->attempts);
+            $this->assertSame(
+                $attempt === PublicExecutionPaymentService::MAX_ATTEMPTS ? 'dead_letter' : 'failed',
+                $fresh->status
+            );
+            $this->assertNotNull($fresh->failed_at);
+            $this->assertTrue((bool) ($fresh->metadata['operator_attention_required'] ?? false));
+            $this->assertSame($transactionsBeforeFailures, Transaction::count());
+            $this->assertSame(0, (int) $payeeAccount->fresh()->balance_active);
+        }
+
+        try {
+            $payments->execute($approved->fresh(), true);
+            $this->fail('Dead-letter payment retried without explicit recovery.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('dead-letter', strtolower($e->getMessage()));
+        }
+
+        $recovered = $payments->recoverDeadLetter($approved->fresh());
+        $this->assertSame('failed', $recovered->status);
+        $this->assertSame(0, (int) $recovered->attempts);
+
+        $executionAccount->refresh();
+        $executionAccount->balance_active = 10;
+        $executionAccount->balance = 10
+            + (int) ($executionAccount->balance_faded ?? 0)
+            + (int) ($executionAccount->committed_dim ?? 0);
+        $executionAccount->save();
+
+        $executed = $payments->execute($recovered, true);
+        $this->assertSame('executed', $executed->status);
+        $this->assertSame(1, (int) $executed->attempts);
+        $this->assertFalse((bool) ($executed->metadata['operator_attention_required'] ?? true));
+        $this->assertSame(6, (int) $payeeAccount->fresh()->balance_active);
+        $this->assertSame($transactionsBeforeFailures + 1, Transaction::count());
+    }
+
     private function executedPlan(int $capitalGol): array
     {
         $group = Group::create([
