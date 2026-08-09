@@ -30,8 +30,22 @@ class InternalSubAccountTransferServiceTest extends TestCase
         $before = app(AccountBalanceService::class)->aggregate($main->fresh());
         $service = app(InternalSubAccountTransferService::class);
 
-        $first = $service->transfer($from, $to, 125, 'Canonical child move', 'faded-key-test');
-        $second = $service->transfer($from->fresh(), $to->fresh(), 125, 'Canonical child move', 'faded-key-test');
+        $first = $service->transfer(
+            $from,
+            $to,
+            125,
+            'faded',
+            'Canonical child move',
+            'faded-key-test'
+        );
+        $second = $service->transfer(
+            $from->fresh(),
+            $to->fresh(),
+            125,
+            'faded',
+            'Canonical child move',
+            'faded-key-test'
+        );
 
         $after = app(AccountBalanceService::class)->aggregate($main->fresh());
 
