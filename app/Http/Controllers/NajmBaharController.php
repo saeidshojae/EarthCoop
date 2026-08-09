@@ -10,6 +10,7 @@ use App\Models\Address;
 use App\Modules\NajmBahar\Policy\NajmBaharConstitution;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\TransactionService;
+use App\Modules\NajmBahar\Services\MonetaryService;
 use App\Modules\NajmBahar\Services\FeeService;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use App\Models\InvitationCode;
@@ -23,15 +24,18 @@ class NajmBaharController extends Controller
 {
     protected $accountService;
     protected $transactionService;
+    protected $monetaryService;
     protected $feeService;
 
     public function __construct(
         AccountService $accountService,
         TransactionService $transactionService,
+        MonetaryService $monetaryService,
         FeeService $feeService
     ) {
         $this->accountService = $accountService;
         $this->transactionService = $transactionService;
+        $this->monetaryService = $monetaryService;
         $this->feeService = $feeService;
     }
 
@@ -41,14 +45,12 @@ class NajmBaharController extends Controller
     public function showAgreement()
     {
         $user = auth()->user();
-        
-        // بررسی اینکه آیا کاربر قبلاً حساب نجم بهار دارد یا نه
+
         if ($this->accountService->hasMainAccount($user->id)) {
             return redirect()->route('najm-bahar.dashboard')
                 ->with('info', 'شما قبلاً حساب نجم بهار دارید.');
         }
 
-        // دریافت توافقنامه‌های نجم بهار
         $agreements = NajmBaharAgreement::whereNull('parent_id')
             ->with('descendants')
             ->orderBy('order')
@@ -74,8 +76,7 @@ class NajmBaharController extends Controller
         ]);
 
         $user = auth()->user();
-        
-        // بررسی مجدد اینکه آیا کاربر قبلاً حساب دارد
+
         if ($this->accountService->hasMainAccount($user->id)) {
             return redirect()->route('najm-bahar.dashboard')
                 ->with('info', 'شما قبلاً حساب نجم بهار دارید.');
@@ -83,22 +84,18 @@ class NajmBaharController extends Controller
 
         try {
             DB::transaction(function () use ($user) {
-                // 1. ایجاد حساب اصلی کاربر
                 $userAccount = $this->accountService->createMainAccountForUser(
                     $user->id,
                     'حساب نجم بهار ' . $user->fullName()
                 );
 
-                // 2. اعتبار اولیه عضویت همیشه دقیقاً ۱۰٬۰۰۰ بهار و ۱۰۰٪ کمرنگ است.
                 $this->ensureInitialFundingAndMembershipFee($user, $userAccount);
 
-                // حذف کسر خودکار حق عضویت - کاربر باید خودش با زدن دکمه پرداخت کند
+                // حق عضویت برداشت خودکار ندارد؛ کاربر خودش منبع پرداخت را انتخاب می‌کند.
                 // $membershipFee = $this->distributeMembershipFee($userAccount->account_number, $user->id);
 
-                // 3. پاداش معرف (در صورت وجود)
                 $this->processReferralBonus($user, $userAccount);
 
-                // 4. ثبت تاریخ پذیرش توافقنامه
                 $user->update([
                     'najm_bahar_agreement_accepted_at' => now()
                 ]);
@@ -130,14 +127,14 @@ class NajmBaharController extends Controller
     protected function processReferralBonus(User $user, $userAccount)
     {
         $invitationCheck = InvitationCode::where('used_by', $user->id)->first();
-        
-        if ($invitationCheck && $invitationCheck->user_id != 171) { // 171 = حساب سیستم
+
+        if ($invitationCheck && $invitationCheck->user_id != 171) {
             $referrerAccount = $this->accountService->getMainAccountForUser($invitationCheck->user_id);
-            
+
             if ($referrerAccount) {
-                $bonusAmount = BaharMoney::toGolFromBahar(10); // 10 بهار پاداش معرف
+                $bonusAmount = BaharMoney::toGolFromBahar(10);
                 $bonusIdempotencyKey = 'referral-bonus-' . $user->id;
-                
+
                 $this->transactionService->transfer(
                     $userAccount->account_number,
                     $referrerAccount->account_number,
@@ -157,14 +154,11 @@ class NajmBaharController extends Controller
         }
     }
 
-    /**
-     * نمایش داشبورد نجم بهار
-     */
     public function dashboard()
     {
         $user = auth()->user();
         $account = $this->accountService->getMainAccountForUser($user->id);
-        
+
         if (!$account) {
             return redirect()->route('najm-bahar.agreement')
                 ->with('info', 'ابتدا باید حساب نجم بهار خود را ایجاد کنید.');
@@ -205,14 +199,11 @@ class NajmBaharController extends Controller
         ));
     }
 
-    /**
-     * نمایش کیف پول نجم بهار
-     */
     public function wallet()
     {
         $user = auth()->user();
         $account = $this->accountService->getMainAccountForUser($user->id);
-        
+
         if (!$account) {
             return redirect()->route('najm-bahar.agreement')
                 ->with('info', 'ابتدا باید حساب نجم بهار خود را ایجاد کنید.');
@@ -220,22 +211,18 @@ class NajmBaharController extends Controller
 
         $this->ensureInitialFundingAndMembershipFee($user, $account);
 
-        // دریافت تراکنش‌های اخیر
         $recentTransactions = $this->transactionService->getUserTransactions($user->id, 10);
         $accountIds = $this->transactionService->getUserAccountIds($user->id);
 
-        // دریافت امتیازات کاربر
         $userPoint = \App\Models\UserPoint::where('user_id', $user->id)->first();
         $totalPoints = $userPoint ? $userPoint->points : 0;
         $userLevel = $userPoint ? $userPoint->level : 'Bronze';
 
-        // امتیازات نقد شده
         $cashedPoints = \App\Models\UserPointTransaction::where('user_id', $user->id)
             ->where('is_cashed', true)
             ->where('delta', '>', 0)
             ->sum('delta');
 
-        // امتیازات قابل نقد
         $uncashedPoints = \App\Models\UserPointTransaction::where('user_id', $user->id)
             ->where('is_cashed', false)
             ->where('delta', '>', 0)
@@ -252,11 +239,6 @@ class NajmBaharController extends Controller
         ));
     }
 
-    private function getInitialAmount(): int
-    {
-        return NajmBaharConstitution::initialMembershipGol();
-    }
-
     private function ensureInitialFundingAndMembershipFee(User $user, $account): void
     {
         $hasInitialFunding = NajmTransaction::where('to_account_id', $account->id)
@@ -264,53 +246,19 @@ class NajmBaharController extends Controller
             ->exists();
 
         if (! $hasInitialFunding) {
-            $initialAmount = $this->getInitialAmount();
-            $activeAmount = NajmBaharConstitution::initialActiveGol();
-            $fadedAmount = NajmBaharConstitution::initialDimGol();
-
-            // قانون اساسی پول: تمام اعتبار اولیه در وضعیت کمرنگ ایجاد می‌شود.
-            $updatedAccount = $this->transactionService->depositInitialFunding(
-                $account->account_number,
-                $initialAmount,
-                NajmBaharConstitution::INITIAL_ACTIVE_PERCENTAGE,
-                0,
-                'percentage'
-            );
-
-            // ثبت تراکنش برای auditing و idempotency.
-            // در گام بعدی Release A خود creation نیز به ledger event درجه‌یک تبدیل می‌شود.
-            NajmTransaction::create([
-                'from_account_id' => null,
-                'to_account_id' => $updatedAccount->id,
-                'amount' => $initialAmount,
-                'type' => 'immediate',
-                'status' => 'completed',
-                'metadata' => [
-                    'type' => 'initial_funding',
-                    'user_id' => $user->id,
-                    'system_operation' => true,
-                    'constitutional_rule' => 'initial_membership_credit',
-                    'active_type' => 'percentage',
-                    'active_percentage' => NajmBaharConstitution::INITIAL_ACTIVE_PERCENTAGE,
-                    'active_fixed_amount' => 0,
-                    'active_amount' => $activeAmount,
-                    'faded_amount' => $fadedAmount,
-                ],
-                'description' => 'واریز اعتبار اولیه عضویت نجم بهار - ۱۰۰٪ کمرنگ',
-            ]);
+            $this->monetaryService->issueMembershipCredit($account, $user->id);
         } elseif (intval($account->balance) > 0
             && intval($account->balance_active) === 0
             && intval($account->balance_faded) === 0
         ) {
-            // اصلاح حساب legacy که فقط balance داشته است: هیچ بخشی از اعتبار اولیه
-            // بدون یک رویداد activation معتبر نباید فعال فرض شود.
+            // Legacy repair only. Existing historical issuance is not re-minted.
             $initialAmount = intval($account->balance);
             $account->balance_active = 0;
             $account->balance_faded = $initialAmount;
             $account->save();
         }
 
-        // حذف پرداخت خودکار حق عضویت - کاربر باید خودش پرداخت کند
+        // حق عضویت برداشت خودکار ندارد.
         // if (! $this->hasCompleteMembershipFeeSplits($account->id)) {
         //     $this->distributeMembershipFee($account->account_number, $user->id);
         // }
