@@ -10,12 +10,16 @@ class PublicContributionObligation extends Model
     protected $table = 'governance_public_contribution_obligations';
 
     protected $fillable = [
-        'plan_id', 'user_id', 'amount_gol', 'paid_gol', 'status',
-        'due_at', 'paid_at', 'metadata',
+        'plan_id', 'user_id', 'amount_gol', 'paid_gol', 'committed_gol', 'status',
+        'due_at', 'committed_at', 'paid_at', 'metadata',
     ];
 
     protected $casts = [
+        'amount_gol' => 'integer',
+        'paid_gol' => 'integer',
+        'committed_gol' => 'integer',
         'due_at' => 'datetime',
+        'committed_at' => 'datetime',
         'paid_at' => 'datetime',
         'metadata' => 'array',
     ];
