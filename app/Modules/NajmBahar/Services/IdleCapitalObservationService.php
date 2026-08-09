@@ -2,6 +2,7 @@
 
 namespace App\Modules\NajmBahar\Services;
 
+use App\Modules\NajmBahar\Models\IdleMoneyAssessment;
 use App\Modules\NajmBahar\Models\LedgerEntry;
 use Carbon\CarbonInterface;
 
@@ -72,5 +73,30 @@ class IdleCapitalObservationService
             'is_idle_candidate' => $isCandidate,
             'assessment_only' => true,
         ];
+    }
+
+    public function recordUser(int $userId, ?CarbonInterface $asOf = null): IdleMoneyAssessment
+    {
+        $observation = $this->observeUser($userId, $asOf);
+
+        return IdleMoneyAssessment::create([
+            'user_id' => $observation['user_id'],
+            'account_id' => $observation['account_id'],
+            'policy_version_id' => $observation['policy_version_id'],
+            'as_of' => $observation['as_of'],
+            'idle_period_days' => $observation['observation_period_days'],
+            'active_balance_gol' => $observation['active_balance_gol'],
+            'exempt_balance_gol' => $observation['exempt_balance_gol'],
+            'taxable_candidate_gol' => $observation['idle_candidate_gol'],
+            'last_external_active_outflow_at' => $observation['last_external_active_outflow_at'],
+            'idle_since' => $observation['candidate_since'],
+            'status' => $observation['is_idle_candidate'] ? 'idle_candidate' : 'not_idle',
+            'metadata' => [
+                'assessment_only' => true,
+                'tax_charged' => false,
+                'internal_transfers_do_not_reset_idle_clock' => true,
+                'classification_model' => 'whole-active-wallet-conservative-v1',
+            ],
+        ]);
     }
 }
