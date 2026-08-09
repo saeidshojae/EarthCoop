@@ -76,41 +76,27 @@ class SafeSubAccountService extends SubAccountService
             throw new \RuntimeException('پول کمرنگ قابل انتقال بین اشخاص یا نهادهای مستقل نیست.');
         }
 
-        $accountService = app(AccountService::class);
-        $fromMirror = $accountService->ensureSubAccountAccount($from);
-        $toMirror = $accountService->ensureSubAccountAccount($to);
-
-        if (! $sameOwner && $moneyState === 'active') {
-            /** @var SafeTransactionService $transactions */
-            $transactions = app(TransactionService::class);
-            $transactions->assertEffectiveOwnerTransferAllowed($fromMirror, $toMirror);
-
-            if ($transactionId !== null) {
-                throw new \RuntimeException('Existing transaction IDs may only be completed by ScheduledSubAccountTransferExecutor.');
+        if ($transactionId !== null) {
+            if (! $sameOwner && $moneyState === 'active') {
+                $accountService = app(AccountService::class);
+                $fromMirror = $accountService->ensureSubAccountAccount($from);
+                $toMirror = $accountService->ensureSubAccountAccount($to);
+                /** @var SafeTransactionService $policy */
+                $policy = app(TransactionService::class);
+                $policy->assertEffectiveOwnerTransferAllowed($fromMirror, $toMirror);
             }
 
-            return $transactions->transfer(
-                $fromMirror->account_number,
-                $toMirror->account_number,
-                $amount,
-                $description ?? 'انتقال فعال بین حساب‌های فرعی مستقل',
-                [
-                    'transfer_type' => 'subaccount',
-                    'from_sub_account_id' => $from->id,
-                    'to_sub_account_id' => $to->id,
-                    'from_sub_account_code' => $from->sub_account_code,
-                    'to_sub_account_code' => $to->sub_account_code,
-                    'money_state' => 'active',
-                    'routed_by' => 'safe_sub_account_service',
-                ],
-                $this->crossOwnerIdempotencyKey($from, $to, $amount),
-                'active',
-                'subaccount_transfer'
-            );
+            throw new \RuntimeException('Existing transaction IDs may only be completed by ScheduledSubAccountTransferExecutor.');
         }
 
-        if ($transactionId !== null) {
-            throw new \RuntimeException('Existing transaction IDs may only be completed by ScheduledSubAccountTransferExecutor.');
+        if (! $sameOwner && $moneyState === 'active') {
+            return app(CrossOwnerActiveSubAccountTransferService::class)->transfer(
+                $from,
+                $to,
+                $amount,
+                $description ?? 'انتقال فعال بین حساب‌های فرعی مستقل',
+                $this->crossOwnerIdempotencyKey($from, $to, $amount)
+            );
         }
 
         return app(InternalSubAccountTransferService::class)->transfer(
