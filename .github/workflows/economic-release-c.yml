@@ -104,7 +104,8 @@ jobs:
             tests/Feature/NajmBahar/SafeTransactionServiceInvariantTest.php \
             tests/Feature/NajmBahar/SafeSubAccountServiceInvariantTest.php \
             tests/Feature/NajmBahar/InternalSubAccountTransferServiceTest.php \
-            tests/Feature/NajmBahar/ScheduledSubAccountTransferExecutorTest.php
+            tests/Feature/NajmBahar/ScheduledSubAccountTransferExecutorTest.php \
+            tests/Feature/NajmBahar/LegacySubAccountMutationRetirementTest.php
 
       - name: Re-run Release B Governance gate
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Governance
