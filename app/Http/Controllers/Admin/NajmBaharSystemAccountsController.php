@@ -183,11 +183,7 @@ class NajmBaharSystemAccountsController extends Controller
         $subAccounts = SubAccount::where('account_id', $systemAccount->id)->get();
 
         foreach ($subAccounts as $subAccount) {
-            $account = $accountService->ensureSubAccountAccount($subAccount);
-            if ($subAccount->balance !== $account->balance) {
-                $subAccount->balance = $account->balance;
-                $subAccount->save();
-            }
+            $accountService->syncSubAccountFromAccount($subAccount);
         }
     }
 

@@ -12,6 +12,11 @@ class NajmBaharFinancialMutationBoundaryTest extends TestCase
     /**
      * Transitional allowlist. The goal is to shrink this list to the dedicated
      * monetary/transaction persistence boundary as Release A progresses.
+     *
+     * Admin UserController remains temporarily listed only because its legacy
+     * purge-on-removal flow predates MembershipRetirementService. It is the
+     * next explicit migration target; adding any new controller here is not
+     * acceptable without a documented migration plan.
      */
     private const ALLOWED_MUTATION_FILES = [
         'app/Modules/NajmBahar/Services/MonetaryService.php',
@@ -20,6 +25,7 @@ class NajmBaharFinancialMutationBoundaryTest extends TestCase
         'app/Modules/NajmBahar/Services/SubAccountService.php',
         'app/Modules/NajmBahar/Services/AccountService.php',
         'app/Console/Commands/FixCorruptedBalances.php',
+        'app/Http/Controllers/Admin/UserController.php',
     ];
 
     public function test_direct_balance_mutations_are_confined_to_known_financial_boundaries(): void

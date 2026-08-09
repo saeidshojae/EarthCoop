@@ -10,23 +10,18 @@ class NajmBaharSyncSubAccountBalances extends Command
 {
     protected $signature = 'najm-bahar:sync-subaccount-balances';
 
-    protected $description = 'Sync NajmBahar subaccount balances from their account records.';
+    protected $description = 'Sync legacy NajmBahar subaccount mirrors from canonical account records.';
 
     public function handle(AccountService $accountService): int
     {
         $systemAccount = $accountService->getSystemAccount();
-
         $subAccounts = SubAccount::where('account_id', $systemAccount->id)->get();
 
         foreach ($subAccounts as $subAccount) {
-            $account = $accountService->ensureSubAccountAccount($subAccount);
-            if ($subAccount->balance !== $account->balance) {
-                $subAccount->balance = $account->balance;
-                $subAccount->save();
-            }
+            $accountService->syncSubAccountFromAccount($subAccount);
         }
 
-        $this->info('Subaccount balances synced.');
+        $this->info('Subaccount mirrors synced through AccountService.');
 
         return self::SUCCESS;
     }

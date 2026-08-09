@@ -157,6 +157,37 @@ class AccountService
         return $account;
     }
 
+    /**
+     * Synchronize the legacy SubAccount mirror from its canonical Account row.
+     *
+     * Controllers and commands must not write financial balances directly.
+     * This compatibility bridge stays inside the approved account persistence
+     * boundary until the duplicate SubAccount balance columns can be retired.
+     */
+    public function syncSubAccountFromAccount(SubAccount $subAccount): SubAccount
+    {
+        $account = Account::where('account_number', $subAccount->sub_account_code)->first();
+
+        if (! $account) {
+            $account = $this->ensureSubAccountAccount($subAccount);
+        }
+
+        $active = (int) ($account->balance_active ?? 0);
+        $dim = (int) ($account->balance_faded ?? 0);
+        $localTotal = $active + $dim;
+
+        if ((int) ($subAccount->balance_active ?? 0) !== $active
+            || (int) ($subAccount->balance_faded ?? 0) !== $dim
+            || (int) $subAccount->balance !== $localTotal) {
+            $subAccount->balance_active = $active;
+            $subAccount->balance_faded = $dim;
+            $subAccount->balance = $localTotal;
+            $subAccount->save();
+        }
+
+        return $subAccount->fresh();
+    }
+
     public function getSystemSubAccountByCode(string $subAccountCode): ?SubAccount
     {
         $systemAccount = $this->getSystemAccount();
