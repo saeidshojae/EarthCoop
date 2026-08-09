@@ -70,12 +70,15 @@ class PublicExecutionPaymentInstructionService
             if ((int) $executionAccount->id === (int) $lockedPayee->id) {
                 throw new \RuntimeException('Public execution payee must be distinct from the execution account.');
             }
+            if ($lockedPayee->type === 'subaccount') {
+                throw new \RuntimeException('Public execution payee must use a canonical main or legal-entity account.');
+            }
 
-            $reservedByPendingInstructions = (int) PublicExecutionPaymentInstruction::where('plan_id', $lockedPlan->id)
-                ->whereIn('status', ['pending', 'approved'])
+            $reservedByOpenInstructions = (int) PublicExecutionPaymentInstruction::where('plan_id', $lockedPlan->id)
+                ->whereIn('status', ['pending_approval', 'approved'])
                 ->lockForUpdate()
                 ->sum('amount_gol');
-            $availableForInstruction = (int) ($executionAccount->balance_active ?? 0) - $reservedByPendingInstructions;
+            $availableForInstruction = (int) ($executionAccount->balance_active ?? 0) - $reservedByOpenInstructions;
             if ($availableForInstruction < $amountGol) {
                 throw new \RuntimeException('Execution account has insufficient unreserved Active Bahar for the payment instruction.');
             }
@@ -87,7 +90,7 @@ class PublicExecutionPaymentInstructionService
                 'payee_account_id' => $lockedPayee->id,
                 'created_by' => $actor->id,
                 'amount_gol' => $amountGol,
-                'status' => 'pending',
+                'status' => 'pending_approval',
                 'idempotency_key' => $idempotencyKey,
                 'purpose' => trim($purpose),
                 'evidence' => $evidence,
@@ -96,6 +99,7 @@ class PublicExecutionPaymentInstructionService
                     'automatic_payment' => false,
                     'governance_instruction_only' => true,
                     'payment_requires_najm_bahar_execution' => true,
+                    'second_approval_required' => true,
                     'resolution_id' => (int) $lockedPlan->resolution_id,
                     'group_id' => (int) $lockedPlan->group_id,
                 ],
