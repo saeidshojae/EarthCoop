@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\NajmBahar;
 
+use App\Http\Controllers\Admin\SafeUserController;
+use App\Http\Controllers\Admin\UserController;
 use App\Models\User;
 use App\Modules\NajmBahar\Models\MembershipRetirement;
 use App\Modules\NajmBahar\Services\AccountService;
@@ -12,6 +14,11 @@ use Tests\TestCase;
 class MembershipRemovalServiceTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_admin_user_routes_resolve_to_estate_safe_controller(): void
+    {
+        $this->assertInstanceOf(SafeUserController::class, app(UserController::class));
+    }
 
     public function test_admin_removal_retires_membership_without_deleting_identity_or_active_estate_wealth(): void
     {
