@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use App\Modules\NajmBahar\Services\SubAccountService;
 use App\Modules\NajmBahar\Services\SafeSubAccountService;
+use App\Modules\NajmBahar\Services\TransactionService;
+use App\Modules\NajmBahar\Services\SafeTransactionService;
 use App\Observers\NajmBaharTransactionObserver;
 use App\Models\Group;
 use App\Observers\GroupObserver;
@@ -25,11 +27,12 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register()
     {
-        // Release A transition: callers typed against the legacy service now
-        // receive a safe adapter for Main ↔ Sub account movements. The adapter
-        // preserves active/dim state and writes canonical ledger entries while
-        // the remaining legacy methods are migrated incrementally.
+        // Release A transition: preserve public service contracts while routing
+        // unsafe legacy Main ↔ Sub balance mutations through canonical ledger-
+        // backed implementations. These bindings are transitional and can be
+        // removed once the legacy services themselves are fully normalized.
         $this->app->bind(SubAccountService::class, SafeSubAccountService::class);
+        $this->app->bind(TransactionService::class, SafeTransactionService::class);
     }
 
     public function boot()
