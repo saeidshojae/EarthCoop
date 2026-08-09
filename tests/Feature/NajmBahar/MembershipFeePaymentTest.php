@@ -17,6 +17,34 @@ class MembershipFeePaymentTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_membership_info_exposes_canonical_and_legacy_modal_fields_without_charging_money(): void
+    {
+        [$user, $account] = $this->memberWithCredit();
+        $before = (int) $account->balance;
+
+        $response = $this->actingAs($user)
+            ->getJson(route('najm-bahar.membership-fee.info'))
+            ->assertOk()
+            ->assertJsonPath('default_payment_source', 'dim')
+            ->assertJsonPath('can_pay_from_dim', true)
+            ->assertJsonPath('has_enough_balance', true)
+            ->assertJsonStructure([
+                'balance_dim',
+                'balance_active',
+                'wallet_total',
+                'sub_accounts',
+                'sub_account',
+                'main_active_balance',
+                'create_subaccount_url',
+                'transfer_url',
+                'breakdown',
+            ]);
+
+        $this->assertSame(BaharMoney::toGolFromBahar(10_000), (int) $response->json('wallet_total'));
+        $this->assertSame($before, (int) $account->fresh()->balance);
+        $this->assertSame(0, Transaction::where('metadata->type', 'membership_fee')->count());
+    }
+
     public function test_member_can_pay_annual_fee_from_dim_money_by_activating_exactly_the_fee(): void
     {
         [$user, $account] = $this->memberWithCredit();
