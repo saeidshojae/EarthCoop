@@ -26,9 +26,9 @@ use Illuminate\Support\Facades\DB;
  * move between the same owner's accounts or be consumed by explicit monetary
  * operations such as activation, membership payment, or retirement.
  *
- * Release D retires the generic member SubAccount ↔ SubAccount fallback.
- * Explicit system operations such as treasury inter-fund movement remain a
- * compatibility exception until they receive their own canonical executor.
+ * Release D retires the generic SubAccount ↔ SubAccount fallback entirely.
+ * Member, cross-owner, scheduled and treasury inter-fund child movements now
+ * all use explicit canonical executors before they can reach the legacy base.
  */
 class SafeTransactionService extends TransactionService
 {
@@ -111,10 +111,9 @@ class SafeTransactionService extends TransactionService
         if ($from
             && $to
             && $from->type === 'subaccount'
-            && $to->type === 'subaccount'
-            && ! (bool) ($meta['system_operation'] ?? false)) {
+            && $to->type === 'subaccount') {
             throw new \RuntimeException(
-                'Sub-account to sub-account transfers must use the canonical SubAccountService boundary.'
+                'Sub-account to sub-account transfers must use an explicit canonical executor.'
             );
         }
 
