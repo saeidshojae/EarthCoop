@@ -70,8 +70,14 @@ class PublicExecutionPaymentInstructionService
             if ((int) $executionAccount->id === (int) $lockedPayee->id) {
                 throw new \RuntimeException('Public execution payee must be distinct from the execution account.');
             }
-            if ((int) ($executionAccount->balance_active ?? 0) < $amountGol) {
-                throw new \RuntimeException('Execution account has insufficient Active Bahar for the payment instruction.');
+
+            $reservedByPendingInstructions = (int) PublicExecutionPaymentInstruction::where('plan_id', $lockedPlan->id)
+                ->whereIn('status', ['pending', 'approved'])
+                ->lockForUpdate()
+                ->sum('amount_gol');
+            $availableForInstruction = (int) ($executionAccount->balance_active ?? 0) - $reservedByPendingInstructions;
+            if ($availableForInstruction < $amountGol) {
+                throw new \RuntimeException('Execution account has insufficient unreserved Active Bahar for the payment instruction.');
             }
 
             return PublicExecutionPaymentInstruction::create([
