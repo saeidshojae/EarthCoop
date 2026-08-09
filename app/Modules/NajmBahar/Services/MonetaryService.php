@@ -20,11 +20,7 @@ class MonetaryService
                 ->first();
 
             if ($existing) {
-                return [
-                    'transaction' => $existing,
-                    'amount' => (int) $existing->amount,
-                    'applied' => false,
-                ];
+                return ['transaction' => $existing, 'amount' => (int) $existing->amount, 'applied' => false];
             }
 
             $locked = Account::whereKey($account->id)->lockForUpdate()->firstOrFail();
@@ -54,23 +50,13 @@ class MonetaryService
                 'constitution_version' => NajmBaharConstitution::VERSION,
             ];
 
-            $transaction = NajmTransaction::create([
-                'from_account_id' => null,
-                'to_account_id' => $locked->id,
-                'amount' => $amount,
-                'type' => 'adjustment',
-                'status' => 'completed',
-                'metadata' => $metadata,
-                'description' => 'صدور اعتبار اولیه عضویت نجم بهار - ۱۰٬۰۰۰ بهار کمرنگ',
-            ]);
-
-            LedgerEntry::create([
-                'transaction_id' => $transaction->id,
-                'account_id' => $locked->id,
-                'amount' => $amount,
-                'entry_type' => 'credit',
-                'meta' => array_merge($metadata, ['balance_bucket' => 'faded']),
-            ]);
+            $transaction = app(MonetaryEventRecorder::class)->creditFromSystem(
+                $locked,
+                $amount,
+                'faded',
+                'صدور اعتبار اولیه عضویت نجم بهار - ۱۰٬۰۰۰ بهار کمرنگ',
+                $metadata
+            );
 
             return ['transaction' => $transaction, 'amount' => $amount, 'applied' => true];
         });
@@ -103,13 +89,11 @@ class MonetaryService
             if ($available <= 0) {
                 throw new \RuntimeException('No dim balance is available for activation.');
             }
-
             if (! $allowPartial && $available < $requestedAmount) {
                 throw new \RuntimeException('Insufficient dim funds for activation.');
             }
 
             $amount = $allowPartial ? min($requestedAmount, $available) : $requestedAmount;
-
             $locked->balance_faded = $available - $amount;
             $locked->balance_active = (int) ($locked->balance_active ?? 0) + $amount;
             $locked->balance = (int) $locked->balance_faded + (int) $locked->balance_active;
@@ -126,30 +110,14 @@ class MonetaryService
                 'amount_gol' => $amount,
             ]);
 
-            $transaction = NajmTransaction::create([
-                'from_account_id' => $locked->id,
-                'to_account_id' => $locked->id,
-                'amount' => $amount,
-                'type' => 'adjustment',
-                'status' => 'completed',
-                'metadata' => $eventMetadata,
-                'description' => $reason,
-            ]);
-
-            LedgerEntry::create([
-                'transaction_id' => $transaction->id,
-                'account_id' => $locked->id,
-                'amount' => -$amount,
-                'entry_type' => 'debit',
-                'meta' => array_merge($eventMetadata, ['balance_bucket' => 'faded']),
-            ]);
-            LedgerEntry::create([
-                'transaction_id' => $transaction->id,
-                'account_id' => $locked->id,
-                'amount' => $amount,
-                'entry_type' => 'credit',
-                'meta' => array_merge($eventMetadata, ['balance_bucket' => 'active']),
-            ]);
+            $transaction = app(MonetaryEventRecorder::class)->convertBucket(
+                $locked,
+                $amount,
+                'faded',
+                'active',
+                $reason,
+                $eventMetadata
+            );
 
             return ['transaction' => $transaction, 'amount' => $amount, 'applied' => true];
         });
@@ -200,22 +168,13 @@ class MonetaryService
                 'system_operation' => true,
             ]);
 
-            $transaction = NajmTransaction::create([
-                'from_account_id' => $locked->id,
-                'to_account_id' => null,
-                'amount' => $amount,
-                'type' => 'adjustment',
-                'status' => 'completed',
-                'metadata' => $eventMetadata,
-                'description' => $reason,
-            ]);
-            LedgerEntry::create([
-                'transaction_id' => $transaction->id,
-                'account_id' => $locked->id,
-                'amount' => -$amount,
-                'entry_type' => 'debit',
-                'meta' => $eventMetadata,
-            ]);
+            $transaction = app(MonetaryEventRecorder::class)->debitToSystem(
+                $locked,
+                $amount,
+                'faded',
+                $reason,
+                $eventMetadata
+            );
 
             return ['transaction' => $transaction, 'amount' => $amount, 'applied' => true];
         });
@@ -266,22 +225,13 @@ class MonetaryService
                 'system_operation' => true,
             ]);
 
-            $transaction = NajmTransaction::create([
-                'from_account_id' => $locked->id,
-                'to_account_id' => null,
-                'amount' => $amount,
-                'type' => 'adjustment',
-                'status' => 'completed',
-                'metadata' => $eventMetadata,
-                'description' => $reason,
-            ]);
-            LedgerEntry::create([
-                'transaction_id' => $transaction->id,
-                'account_id' => $locked->id,
-                'amount' => -$amount,
-                'entry_type' => 'debit',
-                'meta' => $eventMetadata,
-            ]);
+            $transaction = app(MonetaryEventRecorder::class)->debitToSystem(
+                $locked,
+                $amount,
+                'active',
+                $reason,
+                $eventMetadata
+            );
 
             return ['transaction' => $transaction, 'amount' => $amount, 'applied' => true];
         });
