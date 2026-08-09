@@ -19,6 +19,11 @@ use Illuminate\Support\Str;
  * Dim is constitutional non-transferable money between independent actors.
  * Therefore a faded transfer between sub-accounts is only valid while both
  * sub-accounts belong to the same parent account.
+ *
+ * Immediate Active transfers between different owners are routed through the
+ * canonical TransactionService policy/locking/idempotency path. Scheduled
+ * transfers retain the legacy placeholder-transaction compatibility contract,
+ * but must pass the same effective-owner policy before any mutation occurs.
  */
 class SafeSubAccountService extends SubAccountService
 {
@@ -76,9 +81,41 @@ class SafeSubAccountService extends SubAccountService
     ): ?NajmTransaction {
         $from = SubAccount::findOrFail($fromSubAccountId);
         $to = SubAccount::findOrFail($toSubAccountId);
+        $sameOwner = (int) $from->account_id === (int) $to->account_id;
 
-        if ($moneyState === 'faded' && (int) $from->account_id !== (int) $to->account_id) {
+        if ($moneyState === 'faded' && ! $sameOwner) {
             throw new \RuntimeException('پول کمرنگ قابل انتقال بین اشخاص یا نهادهای مستقل نیست.');
+        }
+
+        $accountService = app(AccountService::class);
+        $fromMirror = $accountService->ensureSubAccountAccount($from);
+        $toMirror = $accountService->ensureSubAccountAccount($to);
+
+        if (! $sameOwner && $moneyState === 'active') {
+            /** @var SafeTransactionService $transactions */
+            $transactions = app(TransactionService::class);
+            $transactions->assertEffectiveOwnerTransferAllowed($fromMirror, $toMirror);
+
+            if ($transactionId === null) {
+                return $transactions->transfer(
+                    $fromMirror->account_number,
+                    $toMirror->account_number,
+                    $amount,
+                    $description ?? 'انتقال فعال بین حساب‌های فرعی مستقل',
+                    [
+                        'transfer_type' => 'subaccount',
+                        'from_sub_account_id' => $from->id,
+                        'to_sub_account_id' => $to->id,
+                        'from_sub_account_code' => $from->sub_account_code,
+                        'to_sub_account_code' => $to->sub_account_code,
+                        'money_state' => 'active',
+                        'routed_by' => 'safe_sub_account_service',
+                    ],
+                    $this->crossOwnerIdempotencyKey($from, $to, $amount),
+                    'active',
+                    'subaccount_transfer'
+                );
+            }
         }
 
         $transaction = parent::transferBetweenSubAccounts(
@@ -95,6 +132,28 @@ class SafeSubAccountService extends SubAccountService
         $invariants->reconcileSubAccountMirror($to->fresh());
 
         return $transaction;
+    }
+
+    private function crossOwnerIdempotencyKey(SubAccount $from, SubAccount $to, int $amount): string
+    {
+        $requestKey = request()?->header('Idempotency-Key');
+        if (is_string($requestKey) && trim($requestKey) !== '') {
+            return implode('-', [
+                'cross-owner-subaccount-active',
+                $from->id,
+                $to->id,
+                $amount,
+                hash('sha256', trim($requestKey)),
+            ]);
+        }
+
+        return implode('-', [
+            'cross-owner-subaccount-active',
+            $from->id,
+            $to->id,
+            $amount,
+            (string) Str::uuid(),
+        ]);
     }
 
     private function idempotencyKey(
@@ -117,8 +176,6 @@ class SafeSubAccountService extends SubAccountService
             ]);
         }
 
-        // A fresh operation without a caller-provided retry key is intentionally
-        // unique. HTTP/API clients should send Idempotency-Key for retry safety.
         return implode('-', [
             'internal',
             $direction,
