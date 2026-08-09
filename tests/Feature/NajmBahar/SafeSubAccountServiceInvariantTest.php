@@ -57,4 +57,63 @@ class SafeSubAccountServiceInvariantTest extends TestCase
         $this->assertSame((int) $sub->balance, (int) $mirror->balance);
         $this->assertSame(0, (int) $mirror->committed_dim);
     }
+
+    public function test_dim_can_move_between_subaccounts_of_same_owner_without_changing_aggregate_wealth(): void
+    {
+        $user = User::factory()->create();
+        $accounts = app(AccountService::class);
+        $main = $accounts->createMainAccountForUser($user->id, 'Member');
+        app(MonetaryService::class)->issueMembershipCredit($main, $user->id);
+
+        $service = app(SubAccountService::class);
+        $from = $service->createSubAccount($main->id, 'From');
+        $to = $service->createSubAccount($main->id, 'To');
+        $service->transferToSubAccount($main->id, $from->id, 400, 'Seed child', 'faded');
+
+        $before = app(AccountBalanceService::class)->aggregate($main->fresh());
+        $service->transferBetweenSubAccounts($from->id, $to->id, 150, 'Internal child move', 'faded');
+        $after = app(AccountBalanceService::class)->aggregate($main->fresh());
+
+        $this->assertSame($before['total'], $after['total']);
+        $this->assertSame($before['dim'], $after['dim']);
+        $this->assertSame(250, (int) $from->fresh()->balance_faded);
+        $this->assertSame(150, (int) $to->fresh()->balance_faded);
+        $this->assertSame(
+            (int) $from->fresh()->balance_faded,
+            (int) Account::where('account_number', $from->sub_account_code)->value('balance_faded')
+        );
+        $this->assertSame(
+            (int) $to->fresh()->balance_faded,
+            (int) Account::where('account_number', $to->sub_account_code)->value('balance_faded')
+        );
+    }
+
+    public function test_dim_transfer_between_subaccounts_of_independent_owners_is_rejected_without_mutation(): void
+    {
+        $firstUser = User::factory()->create();
+        $secondUser = User::factory()->create();
+        $accounts = app(AccountService::class);
+        $firstMain = $accounts->createMainAccountForUser($firstUser->id, 'First');
+        $secondMain = $accounts->createMainAccountForUser($secondUser->id, 'Second');
+        app(MonetaryService::class)->issueMembershipCredit($firstMain, $firstUser->id);
+        app(MonetaryService::class)->issueMembershipCredit($secondMain, $secondUser->id);
+
+        $service = app(SubAccountService::class);
+        $from = $service->createSubAccount($firstMain->id, 'First child');
+        $to = $service->createSubAccount($secondMain->id, 'Second child');
+        $service->transferToSubAccount($firstMain->id, $from->id, 300, 'Seed source', 'faded');
+
+        $fromBefore = $from->fresh()->toArray();
+        $toBefore = $to->fresh()->toArray();
+
+        try {
+            $service->transferBetweenSubAccounts($from->id, $to->id, 100, 'Forbidden dim transfer', 'faded');
+            $this->fail('Inter-owner Dim transfer unexpectedly succeeded.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('پول کمرنگ', $exception->getMessage());
+        }
+
+        $this->assertSame((int) $fromBefore['balance_faded'], (int) $from->fresh()->balance_faded);
+        $this->assertSame((int) $toBefore['balance_faded'], (int) $to->fresh()->balance_faded);
+    }
 }
