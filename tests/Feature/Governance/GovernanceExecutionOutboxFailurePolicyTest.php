@@ -132,5 +132,9 @@ class GovernanceExecutionOutboxFailurePolicyTest extends TestCase
         $this->assertSame(0, (int) $recovered->attempts);
         $this->assertNull($recovered->failure_reason);
         $this->assertNull($recovered->failed_at);
+
+        $report = app(MonetaryOperationsReportService::class);
+        $this->assertSame(1, $report->summary()['execution_outbox']['failed']);
+        $this->assertSame(0, $report->summary()['execution_outbox']['dead_letter']);
     }
 }
