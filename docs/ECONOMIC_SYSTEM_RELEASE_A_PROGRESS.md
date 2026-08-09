@@ -70,6 +70,7 @@ Baseline: `agent/najm-hoda-chat-context`
 - `MembershipRetirementServiceTest`
 - `RetirementLiabilitySettlementServiceTest`
 - `IdleCapitalObservationServiceTest`
+- `OperationalCommandsTest`
 - `NajmBaharFinancialMutationBoundaryTest`
 
 ## Important bugs/legacy behavior closed in new live paths
@@ -131,10 +132,9 @@ This gives us real data to validate the future tax formula before a collection m
 ## Next Release A work
 
 1. Refactor wallet/dashboard Blade readers to canonical aggregate balance data.
-2. Add tests/command coverage for operational observation and liability settlement commands.
-3. Shrink safe adapters by migrating remaining legacy transfer methods.
-4. Expand true-concurrency tests.
-5. Add explicit UI source selection for annual membership fee.
-6. Review idle-observation data model before any tax collection feature is introduced.
+2. Shrink safe adapters by migrating remaining legacy transfer methods.
+3. Expand true-concurrency tests.
+4. Add explicit UI source selection for annual membership fee.
+5. Review idle-observation data model before any tax collection feature is introduced.
 
 No merge into `main` is intended from this branch at this stage.
