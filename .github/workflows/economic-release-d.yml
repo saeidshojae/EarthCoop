@@ -100,6 +100,7 @@ jobs:
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/NajmBahar/MembershipRemovalServiceTest.php \
             tests/Feature/NajmBahar/LegacySubAccountMutationRetirementTest.php \
+            tests/Feature/NajmBahar/GenericSubAccountFallbackRetirementTest.php \
             tests/Feature/NajmBahar/SafeTransactionServiceInvariantTest.php \
             tests/Feature/NajmBahar/SafeSubAccountServiceInvariantTest.php
 
