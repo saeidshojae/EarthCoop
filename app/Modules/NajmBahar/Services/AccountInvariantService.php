@@ -8,17 +8,12 @@ use Illuminate\Support\Collection;
 
 class AccountInvariantService
 {
-    /**
-     * Audit a main account without changing any financial value.
-     *
-     * Legacy Najm Bahar has used `balance` in two meanings: sometimes the
-     * account-local total, sometimes the aggregate including child subaccounts.
-     * This audit makes that ambiguity explicit before normalization.
-     */
     public function audit(Account $account): array
     {
         $ownActive = (int) ($account->balance_active ?? 0);
-        $ownDim = (int) ($account->balance_faded ?? 0);
+        $ownAvailableDim = (int) ($account->balance_faded ?? 0);
+        $ownCommittedDim = (int) ($account->committed_dim ?? 0);
+        $ownDim = $ownAvailableDim + $ownCommittedDim;
         $ownTotal = $ownActive + $ownDim;
 
         $children = SubAccount::where('account_id', $account->id)->get();
@@ -51,7 +46,8 @@ class AccountInvariantService
             if ((int) $sub->balance !== $subTotal
                 || (int) $mirror->balance !== $subTotal
                 || (int) ($mirror->balance_active ?? 0) !== (int) ($sub->balance_active ?? 0)
-                || (int) ($mirror->balance_faded ?? 0) !== (int) ($sub->balance_faded ?? 0)) {
+                || (int) ($mirror->balance_faded ?? 0) !== (int) ($sub->balance_faded ?? 0)
+                || (int) ($mirror->committed_dim ?? 0) !== 0) {
                 $mirrorDrift[] = [
                     'sub_account_id' => $sub->id,
                     'code' => $sub->sub_account_code,
@@ -61,6 +57,7 @@ class AccountInvariantService
                     'mirror_total' => (int) $mirror->balance,
                     'mirror_active' => (int) ($mirror->balance_active ?? 0),
                     'mirror_dim' => (int) ($mirror->balance_faded ?? 0),
+                    'mirror_committed_dim' => (int) ($mirror->committed_dim ?? 0),
                 ];
             }
         }
@@ -71,6 +68,8 @@ class AccountInvariantService
             'type' => $account->type,
             'stored_balance' => $stored,
             'own_active' => $ownActive,
+            'own_dim_available' => $ownAvailableDim,
+            'own_dim_committed' => $ownCommittedDim,
             'own_dim' => $ownDim,
             'own_total' => $ownTotal,
             'child_active' => $childActive,

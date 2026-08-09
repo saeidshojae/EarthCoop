@@ -14,3 +14,10 @@ Artisan::command('inspire', function () {
 Schedule::command('najm-bahar:activate-faded')
     ->dailyAt('02:30')
     ->withoutOverlapping();
+
+// Retry only already-failed monetary operations that are due under the bounded
+// backoff policy. Dead-letter recovery is intentionally never scheduled and
+// remains an explicit operator action after reviewing the monetary report.
+Schedule::command('najm-bahar:retry-failed-monetary-operations --limit=20')
+    ->everyFiveMinutes()
+    ->withoutOverlapping();

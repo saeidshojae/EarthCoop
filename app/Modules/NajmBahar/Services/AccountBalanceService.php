@@ -8,20 +8,23 @@ use App\Modules\NajmBahar\Models\SubAccount;
 class AccountBalanceService
 {
     /**
-     * Canonical rule for Release A:
-     * - an Account row represents only its own local active/dim buckets;
-     * - wallet/owner totals are derived by aggregating the main account and its
-     *   child sub-accounts;
-     * - `Account.balance` is transitional legacy data and MUST NOT be used to
-     *   calculate economic ownership while normalization is in progress.
+     * Canonical Release B rule:
+     * - balance_faded is available Dim;
+     * - committed_dim is reserved/committed Dim;
+     * - neither commitment nor release changes total monetary ownership;
+     * - Account.balance remains the local sum of active + available Dim + committed Dim.
      */
     public function local(Account $account): array
     {
         $active = (int) ($account->balance_active ?? 0);
-        $dim = (int) ($account->balance_faded ?? 0);
+        $availableDim = (int) ($account->balance_faded ?? 0);
+        $committedDim = (int) ($account->committed_dim ?? 0);
+        $dim = $availableDim + $committedDim;
 
         return [
             'active' => $active,
+            'dim_available' => $availableDim,
+            'dim_committed' => $committedDim,
             'dim' => $dim,
             'total' => $active + $dim,
         ];
@@ -40,6 +43,8 @@ class AccountBalanceService
 
         return [
             'active' => $main['active'] + $subActive,
+            'dim_available' => $main['dim_available'] + $subDim,
+            'dim_committed' => $main['dim_committed'],
             'dim' => $main['dim'] + $subDim,
             'total' => $main['total'] + $subActive + $subDim,
             'main' => $main,
