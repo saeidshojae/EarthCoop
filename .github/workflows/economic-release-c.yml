@@ -98,6 +98,9 @@ jobs:
       - name: Run Release C membership-removal gate
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmBahar/MembershipRemovalServiceTest.php tests/Feature/NajmBahar/MembershipRetirementServiceTest.php
 
+      - name: Run Release C canonical transaction adapter gate
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmBahar/SafeTransactionServiceInvariantTest.php
+
       - name: Re-run Release B Governance gate
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Governance
 
