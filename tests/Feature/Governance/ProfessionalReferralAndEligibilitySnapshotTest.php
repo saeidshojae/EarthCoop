@@ -93,26 +93,38 @@ class ProfessionalReferralAndEligibilitySnapshotTest extends TestCase
             'question' => 'تصویب شود؟',
             'is_active' => false,
         ]);
+
+        $expectedEligible = GroupUser::where('group_id', $group->id)
+            ->where('status', 1)
+            ->whereNull('deleted_at')
+            ->count();
+
         $proposal = $lifecycle->openVote($proposal, $poll, $manager);
 
         $snapshot = EligibilitySnapshot::findOrFail((int) $proposal->metadata['eligibility_snapshot_id']);
-        $this->assertSame(3, (int) $snapshot->eligible_count);
+        $this->assertSame($expectedEligible, (int) $snapshot->eligible_count);
         $fingerprint = $snapshot->membership_fingerprint;
 
         GroupUser::where('group_id', $group->id)->where('user_id', $member->id)->update(['status' => 0]);
         $lateMember = User::factory()->create();
         GroupUser::create(['group_id' => $group->id, 'user_id' => $lateMember->id, 'role' => 1, 'status' => 1]);
 
+        $currentEligibleAfterMembershipChange = GroupUser::where('group_id', $group->id)
+            ->where('status', 1)
+            ->whereNull('deleted_at')
+            ->count();
+        $this->assertSame($expectedEligible, $currentEligibleAfterMembershipChange, 'Fixture swaps one voter for another while keeping cohort size equal.');
+
         $resolution = $lifecycle->recordDecision($proposal->fresh(), $poll, $manager, [
-            'votes_cast' => 3,
-            'votes_for' => 2,
-            'votes_against' => 1,
+            'votes_cast' => min(3, $expectedEligible),
+            'votes_for' => min(2, $expectedEligible),
+            'votes_against' => $expectedEligible >= 3 ? 1 : 0,
             'votes_abstain' => 0,
             'quorum_required_percent' => 50,
             'approval_required_percent' => 50,
         ]);
 
-        $this->assertSame(3, (int) $resolution->eligible_voter_count);
+        $this->assertSame($expectedEligible, (int) $resolution->eligible_voter_count);
         $this->assertSame($snapshot->id, (int) $resolution->eligibility_snapshot_id);
         $this->assertSame($fingerprint, $resolution->metadata['eligibility_fingerprint']);
         $this->assertSame($fingerprint, $snapshot->fresh()->membership_fingerprint);
