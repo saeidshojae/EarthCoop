@@ -6,15 +6,9 @@ use App\Models\Group;
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\Transaction;
-use App\Modules\NajmBahar\Services\TransactionService;
-use Illuminate\Support\Facades\DB;
 
 class AccountService
 {
-    /**
-     * Create a main account for user without altering legacy Najm implementation.
-     * Returns created Account model.
-     */
     public function createMainAccountForUser(int $userId, string $name = 'NajmBahar Account'): Account
     {
         $accountNumber = AccountNumberService::makeMainAccountNumberForUser($userId);
@@ -28,27 +22,18 @@ class AccountService
         ]);
     }
 
-    /**
-     * Check if user has a main account
-     */
     public function hasMainAccount(int $userId): bool
     {
         $accountNumber = AccountNumberService::makeMainAccountNumberForUser($userId);
         return Account::where('account_number', $accountNumber)->exists();
     }
 
-    /**
-     * Get main account for user
-     */
     public function getMainAccountForUser(int $userId): ?Account
     {
         $accountNumber = AccountNumberService::makeMainAccountNumberForUser($userId);
         return Account::where('account_number', $accountNumber)->first();
     }
 
-    /**
-     * Get system account
-     */
     public function getSystemAccount(): Account
     {
         $systemNumber = AccountNumberService::makeSystemAccountNumber();
@@ -102,14 +87,15 @@ class AccountService
     }
 
     /**
-     * Ensure system account has the default three subaccounts.
+     * Ensure system account has the default treasury sub-accounts.
      */
     public function ensureDefaultSystemSubAccounts(Account $systemAccount): void
     {
         $defaults = [
-            1 => 'حساب حق عضویت ارثکوپ',
-            2 => 'حساب بیمه پایه همگانی',
-            0 => 'حساب امحای پول',
+            1 => 'صندوق حقوق و هزینه‌های EarthCoop',
+            2 => 'صندوق بیمه مرکزی',
+            0 => 'صندوق امحای پول',
+            3 => 'صندوق مالیات پول راکد',
         ];
 
         foreach ($defaults as $index => $name) {
@@ -151,14 +137,12 @@ class AccountService
             $account->save();
         }
 
-        // SubAccount is the source of truth; always recompute its total first.
         $subTotal = intval($subAccount->balance_active ?? 0) + intval($subAccount->balance_faded ?? 0);
         if ((int) $subAccount->balance !== $subTotal) {
             $subAccount->balance = $subTotal;
             $subAccount->save();
         }
 
-        // Keep Account mirror in sync with SubAccount to avoid negative drift.
         $accountNeedsUpdate = (int) $account->balance !== (int) $subAccount->balance
             || (int) ($account->balance_active ?? 0) !== (int) ($subAccount->balance_active ?? 0)
             || (int) ($account->balance_faded ?? 0) !== (int) ($subAccount->balance_faded ?? 0);
@@ -183,13 +167,8 @@ class AccountService
             ->first();
     }
 
-    /**
-     * Create a simple immediate transaction between accounts.
-     * This is a skeleton; business rules (fees, checks) must be implemented.
-     */
     public function createTransaction(array $payload): Transaction
     {
-        // for now, use simple create; production should call TransactionService->transfer for atomic operations
         return Transaction::create($payload);
     }
 }
