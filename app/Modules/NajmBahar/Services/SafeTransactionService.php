@@ -43,10 +43,6 @@ class SafeTransactionService extends TransactionService
             : null;
         $to = Account::where('account_number', $toAccountNumber)->first();
 
-        if ($from && $to) {
-            $this->assertEffectiveOwnerTransferAllowed($from, $to, $meta);
-        }
-
         if ($fromAccountNumber
             && in_array($balanceType, ['active', 'faded'], true)
             && $amount > 0
@@ -108,8 +104,16 @@ class SafeTransactionService extends TransactionService
             }
         }
 
+        // Constitutional Dim non-transferability is the stronger rule and must
+        // take precedence over the temporary cross-member threshold lock. Keep
+        // this check before threshold validation so legacy callers receive the
+        // stable domain error and cannot reinterpret Dim as merely time-locked.
         if ($balanceType === 'faded') {
             throw new \RuntimeException('پول کمرنگ قابل انتقال بین اشخاص یا نهادهای مستقل نیست. ابتدا باید از یک مسیر مجاز فعال شود.');
+        }
+
+        if ($from && $to) {
+            $this->assertEffectiveOwnerTransferAllowed($from, $to, $meta);
         }
 
         return DB::transaction(function () use (
