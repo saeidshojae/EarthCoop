@@ -75,6 +75,11 @@ class TreasuryServiceTest extends TestCase
         $this->assertSame(1, TreasuryTransfer::count());
         $this->assertSame(600, (int) $source->account->fresh()->balance_active);
         $this->assertSame(400, (int) $destination->account->fresh()->balance_active);
+        $this->assertSame('internal_sub_account_transfer_service', $transfer->transaction->metadata['routed_by'] ?? null);
+        $this->assertSame('interfund_transfer', $transfer->transaction->metadata['type'] ?? null);
+        $this->assertSame(TreasuryService::IDLE_TAX, $transfer->transaction->metadata['from_fund'] ?? null);
+        $this->assertSame(TreasuryService::OPERATIONS_SALARY, $transfer->transaction->metadata['to_fund'] ?? null);
+        $this->assertTrue((bool) ($transfer->transaction->metadata['treasury_operation'] ?? false));
 
         $replay = $treasury->transferSurplus(
             TreasuryService::IDLE_TAX,
