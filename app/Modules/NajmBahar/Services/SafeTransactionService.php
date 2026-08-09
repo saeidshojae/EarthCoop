@@ -40,17 +40,28 @@ class SafeTransactionService extends TransactionService
                 $internal = $this->resolveInternalOwnTransfer($from, $to);
                 if ($internal) {
                     [$direction, $main, $sub] = $internal;
-                    $key = $idempotencyKey
-                        ?? request()?->header('Idempotency-Key')
-                        ?? implode('-', [
+                    $requestKey = request()?->header('Idempotency-Key');
+                    $key = $idempotencyKey;
+                    if (! $key && is_string($requestKey) && trim($requestKey) !== '') {
+                        $key = implode('-', [
                             'safe-internal-transfer',
                             $direction,
                             $main->id,
                             $sub->id,
                             $balanceType,
                             $amount,
-                            bin2hex(random_bytes(12)),
+                            hash('sha256', trim($requestKey)),
                         ]);
+                    }
+                    $key ??= implode('-', [
+                        'safe-internal-transfer',
+                        $direction,
+                        $main->id,
+                        $sub->id,
+                        $balanceType,
+                        $amount,
+                        bin2hex(random_bytes(12)),
+                    ]);
 
                     $internalService = app(InternalAccountTransferService::class);
                     $metadata = array_merge($meta, [
