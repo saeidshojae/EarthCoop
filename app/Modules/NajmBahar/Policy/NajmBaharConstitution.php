@@ -6,6 +6,8 @@ use App\Helpers\BaharMoney;
 
 final class NajmBaharConstitution
 {
+    public const VERSION = '1.0';
+
     /**
      * Each valid member receives exactly 10,000 Bahar of membership-originated
      * monetary capacity. This is a constitutional rule, not an admin setting.
