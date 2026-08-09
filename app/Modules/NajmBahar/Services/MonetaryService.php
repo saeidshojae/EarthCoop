@@ -10,12 +10,6 @@ use Illuminate\Support\Facades\DB;
 
 class MonetaryService
 {
-    /**
-     * Issue the one-time constitutional membership credit.
-     *
-     * The issuance is always exactly 10,000 Bahar and always enters the
-     * economy as dim money. Replays are idempotent and do not mint twice.
-     */
     public function issueMembershipCredit(Account $account, int $userId): array
     {
         $idempotencyKey = 'membership-issuance-' . $userId;
@@ -88,11 +82,6 @@ class MonetaryService
         });
     }
 
-    /**
-     * Activate existing dim money without changing total monetary supply.
-     *
-     * @return array{transaction:NajmTransaction, amount:int, applied:bool}
-     */
     public function activateDim(
         Account $account,
         int $requestedAmount,
@@ -188,6 +177,61 @@ class MonetaryService
                 'amount' => $amount,
                 'applied' => true,
             ];
+        });
+    }
+
+    /**
+     * Transitional repair for historical accounts that have a non-zero total
+     * balance but no active/dim bucket information. No new money is created.
+     * The full historical balance is classified as dim until a legitimate
+     * activation event proves otherwise.
+     */
+    public function repairLegacyUnbucketedBalance(Account $account): bool
+    {
+        return DB::transaction(function () use ($account) {
+            $locked = Account::whereKey($account->id)->lockForUpdate()->firstOrFail();
+
+            if ((int) $locked->balance <= 0
+                || (int) ($locked->balance_active ?? 0) !== 0
+                || (int) ($locked->balance_faded ?? 0) !== 0) {
+                return false;
+            }
+
+            $amount = (int) $locked->balance;
+            $locked->balance_active = 0;
+            $locked->balance_faded = $amount;
+            $locked->save();
+
+            $metadata = [
+                'type' => 'legacy_balance_classification',
+                'monetary_event' => 'historical_balance_classified',
+                'amount_gol' => $amount,
+                'to_balance_type' => 'faded',
+                'system_operation' => true,
+            ];
+
+            $transaction = NajmTransaction::create([
+                'from_account_id' => $locked->id,
+                'to_account_id' => $locked->id,
+                'amount' => $amount,
+                'type' => 'adjustment',
+                'status' => 'completed',
+                'metadata' => $metadata,
+                'description' => 'طبقه‌بندی موجودی legacy بدون bucket به‌عنوان پول کمرنگ',
+            ]);
+
+            LedgerEntry::create([
+                'transaction_id' => $transaction->id,
+                'account_id' => $locked->id,
+                'amount' => 0,
+                'entry_type' => 'credit',
+                'meta' => array_merge($metadata, [
+                    'balance_bucket' => 'faded',
+                    'classification_only' => true,
+                ]),
+            ]);
+
+            return true;
         });
     }
 }
