@@ -91,7 +91,8 @@ class CrossOwnerActiveSubAccountTransferService
                 'to_sub_account_code' => (string) $destination->sub_account_code,
                 'money_state' => 'active',
                 'balance_type' => 'active',
-                'routed_by' => 'cross_owner_active_sub_account_transfer_service',
+                'routed_by' => 'safe_sub_account_service',
+                'executor' => 'cross_owner_active_sub_account_transfer_service',
             ];
             if ($idempotencyKey) {
                 $metadata['idempotency_key'] = $idempotencyKey;
