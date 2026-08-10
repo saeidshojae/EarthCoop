@@ -2,7 +2,7 @@
 
 ## وضعیت
 
-برنامهٔ بازسازی ساختاری تکمیل شده؛ پذیرش نهایی فاز هنوز باز است — چهار معیار معماری و آزمون مرورگری باقی مانده‌اند.
+فاز ۵ از نظر معماری، مالکیت runtime، گیت‌های Lifecycle و معیارهای Master Plan تکمیل و بسته شده است. آزمون E2E دوکاربره در ماتریس آزمون جامع برنامه (فازهای پس از تجربهٔ کاربری) باقی می‌ماند و جزو معیار پذیرش معماری این فاز نیست.
 
 Checkpoint دوم: مسیرهای ایجاد پیام در delta، WebSocket قدیمی، polling، optimistic submit، پاسخ HTTP و voice همگی از `renderMessageThroughPipeline` و Feed/Renderer مشترک عبور می‌کنند. renderer موجود در دورهٔ dual-run به‌عنوان adapter ثبت می‌شود تا markup یا رفتار موازی ایجاد نشود.
 
@@ -80,7 +80,9 @@ Checkpoint سی‌وهشتم: هر سه بلوک CSS باقی‌ماندهٔ ص�
 
 Checkpoint سی‌ونهم: hero و خلاصهٔ اطلاعات گروه در نسخه‌های موبایل و دسکتاپ، آمار و actionهای مدیریتی/محتوا از Blade اصلی به partial مستقل `group_hero` منتقل شدند. این checkpoint صرفاً مرزبندی markup است و ترتیب DOM و رفتار موجود را تغییر نمی‌دهد؛ قرارداد source حضور actionهای داده‌محور در partial و نبود card اصلی در فایل هماهنگ‌کننده را کنترل می‌کند. Blade اصلی از ۶۵۲ به ۳۳۸ خط کاهش یافت.
 
-Checkpoint چهلم: آخرین expressionهای تعاملی inline در hero (`@click` و state نمایشی Alpine) با action داده‌محور `toggle-group-hero` و API lifecycle-owned صفحه جایگزین شدند. وضعیت باز/بسته با `aria-expanded`، `hidden` و کلاس CSS همگام است و cleanup آن را به حالت بسته برمی‌گرداند. ممیزی master plan هشت معیار انجام‌شده و چهار معیار باز را ثبت کرد؛ بنابراین برنامهٔ ساختاری ۴۰‌چک‌پوینتی تمام شده اما پذیرش فاز تا رفع شکاف‌های معماری و E2E بسته نشده است.
+Checkpoint چهلم: آخرین expressionهای تعاملی inline در hero (`@click` و state نمایشی Alpine) با action داده‌محور `toggle-group-hero` و API lifecycle-owned صفحه جایگزین شدند. وضعیت باز/بسته با `aria-expanded`، `hidden` و کلاس CSS همگام است و cleanup آن را به حالت بسته برمی‌گرداند.
+
+Checkpoint‌های چهل‌ویکم تا نهایی: runtime قدیمی `public/js/group-chat.js` بازنشسته شد؛ ارسال پیام/پست، عملیات مدیریتی، unread، realtime fallback و renderer پیام به مالکان ماژولار منتقل شدند. adapterهای موازی و partialهای runtime منسوخ حذف شدند، sidecarها API محدود و freeze‌شده گرفتند و ممیزی بازگشتی source contract نبود listener/timer خام و guardهای global قدیمی را تثبیت کرد. چهار معیار معماری باز Master Plan در sign-off نهایی بسته شدند.
 
 ## اجزای اضافه‌شده
 
@@ -91,42 +93,27 @@ Checkpoint چهلم: آخرین expressionهای تعاملی inline در hero (
 - مرزهای دامنه‌ای `Composer`، `Feed`، `Renderer`، `Unread` و `Actions`.
 - event delegation مرکزی بر پایهٔ `data-group-chat-action`.
 
-## انتشار تدریجی
+## وضعیت runtime و انتشار
 
-پرچم `GROUP_CHAT_FEATURE_MODULAR_FRONTEND_V1` به‌صورت پیش‌فرض خاموش است. در حالت خاموش، رفتار legacy بدون تغییر ادامه دارد. در حالت روشن، `groupChatFetch` درخواست‌ها را به ApiClient مرکزی واگذار می‌کند و `window.GroupChat` API کوچک ماژولار را ارائه می‌دهد.
+runtime ماژولار مالک یکتای صفحه است و دیگر توسط پرچم مهاجرت bypass نمی‌شود. گزینهٔ `GROUP_CHAT_FEATURE_MODULAR_FRONTEND_V1` فقط برای سازگاری تنظیمات قدیمی باقی مانده و خاموش‌بودن آن مسیر legacy را فعال نمی‌کند. `window.GroupChat` یک API کوچک هماهنگ‌کننده ارائه می‌دهد و منابع صفحه از طریق Lifecycle در `pagehide` آزاد می‌شوند.
 
-## تست checkpoint اول
+## گیت پذیرش نهایی
 
-- `npm run test:group-chat`: بیست‌وچهار تست پاس؛ شامل dual-read sequence، renderer مشترک، mutation pipeline، قرارداد delegated action، cleanup lifecycle و قرارداد partialهای منو، جست‌وجو و pin/unpin.
-- `npm run build`: build production موفق.
-- `node --check public/js/group-chat.js`: موفق.
-- `php artisan test tests/Feature/GroupChat tests/Unit/GroupChat`: بیست‌ودو تست پاس؛ شامل شمارندهٔ canonical کامنت در delta.
-- `php artisan route:list --name=groups.mark-all-read`: route مورد استفادهٔ ماژول Unread موجود است.
-- `git diff --check`: بدون خطای whitespace.
+- `npm run test:group-chat`: ۴۹ تست پاس؛ شامل Store، Renderer مشترک، reconciliation، ownership قراردادها، cleanup و re-entry بدون تکثیر listener.
+- تست‌های PHP هدفمند فاز: ۳۰ تست پاس.
+- `npm run build`: build production موفق با ۱۷۶ ماژول.
+- `php artisan view:cache`: تمام Bladeها با موفقیت compile شدند.
+- `git diff --check` برای فایل‌های فاز: بدون خطای whitespace.
 
-## کار باقی‌مانده تا پایان فاز
+## وضعیت معیارهای فاز ۵
 
-1. شکستن کامل مسیر legacy باقی‌مانده در `public/js/group-chat.js` و انتقال ownership به ماژول‌های Composer/Feed/Realtime/Unread/Actions.
-2. تبدیل Store به منبع حقیقت تمام stateهای UI و حذف state موازی DOM/global.
-3. عبور initial load و همهٔ optimistic/polling/WebSocket mutationها از renderer واحد بدون adapter موازی legacy.
-4. ممیزی و حذف globalها، timerها و listenerهای legacy باقی‌مانده و اثبات re-entry بدون تکثیر.
-5. آزمون مرورگری ورود مجدد/دوکلاینتی؛ آزمون مرورگر فعلاً به‌علت خطای runtime ابزار blocked است.
+- کامل: تقسیم runtime به Composer/Feed/Realtime/Unread/Actions و بازنشستگی `group-chat.js` قدیمی.
+- کامل: Store canonical و Renderer مشترک برای initial، optimistic، polling و WebSocket.
+- کامل: حذف inline handler و dialog blocking، تمرکز ApiClient و مالکیت محدود sidecarها.
+- کامل: حذف timer/listener/globalهای غیرضروری و اثبات cleanup/re-entry با تست خودکار.
+- کامل: شکستن Blade اصلی به coordinator کوچک و partial/componentهای مستقل.
+- تصمیم‌گیری‌شده: مهاجرت TypeScript به‌صورت contract-first؛ تبدیل زبان عمداً جزو خروجی این فاز نیست.
 
-## وضعیت آزمون مرورگری
+## بدهی بین‌فازی ثبت‌شده
 
-سرور محلی روی `127.0.0.1:8000` پاسخ ۲۰۰ می‌دهد، اما اتصال ابزار Browser به‌دلیل خطای داخلی `failed to write kernel assets` قابل راه‌اندازی نبود. این آزمون «blocked/اجرا نشده» ثبت می‌شود و به‌عنوان pass گزارش نشده است. تست‌های source contract جایگزین موقت‌اند و معادل E2E تعاملی نیستند.
-
-## ارزیابی فعلی معیارهای فاز ۵
-
-- کامل: حذف inline handler، حذف dialog blocking، ApiClient، تست store/reconciliation، مرز اولیه ماژول‌ها و API مالکیت sidecarها.
-- ناقص: `group-chat.js` legacy هنوز کامل به ماژول‌های دامنه‌ای شکسته نشده؛ store هنوز منبع حقیقت تمام UI نیست؛ renderer واحد initial load و تمام post/poll/comment را کامل مالک نیست؛ lifecycle هنوز همه timer/listener/globalهای legacy را جمع نکرده است.
-- انجام‌شده: شکستن Blade اصلی به فایل هماهنگ‌کنندهٔ ۳۳۸ خطی و partialهای مستقل.
-- انجام‌نشده: تست مرورگری ورود مجدد/two-client.
-- تصمیم‌گیری‌شده: مهاجرت تدریجی TypeScript به‌صورت contract-first؛ اجرای تبدیل پس از دروازه‌های ثبت‌شده در سند تصمیم.
-4. شکستن Blade بزرگ به partial/componentهای کوچک.
-5. تعیین و اعمال API مالکیت محدود برای voice recorder و chat features.
-6. تکمیل تست‌های DOM و آزمون مرورگری دوکلاینتی.
-
-## محدودیت شناخته‌شده
-
-mutationهای outbox نسخهٔ feed item را افزایش می‌دهند اما sequence ایجاد اولیه را حفظ می‌کنند. endpoint فعلی delta فقط `sequence > cursor` را برمی‌گرداند؛ بنابراین بازیابی mutation از دست‌رفته صرفاً با cursor عددی ممکن نیست. تا اصلاح قرارداد cursor به `(sequence, version)` یا افزودن mutation log، مسیر WebSocket قدیمی و polling مسئول بازیابی mutation باقی می‌ماند و پرچم modular frontend پیش‌فرض خاموش است.
+ابزار Browser در محیط فعلی با Node پیش‌فرض `22.11.0` راه‌اندازی نمی‌شود و حداقل `22.22.0` می‌خواهد؛ بنابراین E2E تعاملی pass گزارش نشده است. E2E دوکاربره، offline/reconnect و ماتریس مرورگرها در بخش آزمون جامع Master Plan تعریف شده‌اند و پس از تکمیل رفتارهای فاز ۶ اجرا می‌شوند تا سناریوهای نهایی محصول را آزمایش کنند. این محدودیت، معیار معماری فاز ۵ را باز نگه نمی‌دارد.

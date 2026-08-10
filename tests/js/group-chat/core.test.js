@@ -30,6 +30,26 @@ test('lifecycle removes registered listeners exactly once', () => {
     assert.equal(calls, 1);
 });
 
+test('page re-entry installs one fresh listener after the prior lifecycle is destroyed', () => {
+    const target = new EventTarget();
+    let firstPageCalls = 0;
+    let secondPageCalls = 0;
+    const firstPage = createLifecycle();
+
+    firstPage.on(target, 'change', () => firstPageCalls++);
+    target.dispatchEvent(new Event('change'));
+    firstPage.destroy();
+
+    const secondPage = createLifecycle();
+    secondPage.on(target, 'change', () => secondPageCalls++);
+    target.dispatchEvent(new Event('change'));
+    secondPage.destroy();
+    target.dispatchEvent(new Event('change'));
+
+    assert.equal(firstPageCalls, 1);
+    assert.equal(secondPageCalls, 1);
+});
+
 test('lifecycle cancels pending timeouts and repeating intervals on destroy', async () => {
     const lifecycle = createLifecycle();
     let timeoutCalls = 0;
