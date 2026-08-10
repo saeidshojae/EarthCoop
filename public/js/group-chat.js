@@ -3104,64 +3104,6 @@ async function submitPostEdit(event, postId) {
     }
 }
 
-function openChatSearch() {
-    const searchBox = document.createElement('div');
-    searchBox.className = 'chat-search-box';
-    searchBox.innerHTML = `
-        <div class="search-header">
-            <input type="text" id="chatSearchInput" placeholder="جستجو در پیام‌ها...">
-            <button type="button" data-legacy-chat-action="close-search">×</button>
-        </div>
-        <div id="searchResults" class="search-results"></div>
-    `;
-    document.body.appendChild(searchBox);
-    
-    const searchInput = document.getElementById('chatSearchInput');
-    searchInput.focus();
-    
-    let searchTimeout;
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            const searchTerm = this.value.toLowerCase();
-            const messages = document.querySelectorAll('.message-wrapper');
-            const results = [];
-            const seenIds = new Set();
-            
-            messages.forEach(msg => {
-                const messageId = msg.getAttribute('data-message-id');
-                if (seenIds.has(messageId)) return;
-                seenIds.add(messageId);
-                
-                const content = msg.querySelector('.message-bubble p')?.textContent.toLowerCase() || '';
-                if (content.includes(searchTerm)) {
-                    results.push(msg);
-                }
-            });
-            
-            const resultsContainer = document.getElementById('searchResults');
-            resultsContainer.innerHTML = '';
-            
-            results.forEach(msg => {
-                const clone = msg.cloneNode(true);
-                clone.addEventListener('click', () => {
-                    msg.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    msg.style.backgroundColor = '#ffeb3b';
-                    setTimeout(() => msg.style.backgroundColor = '', 2000);
-                });
-                resultsContainer.appendChild(clone);
-            });
-        }, 300); // تاخیر 300 میلی‌ثانیه برای جلوگیری از جستجوی مکرر
-    });
-}
-
-function closeChatSearch() {
-    const searchBox = document.querySelector('.chat-search-box');
-    if (searchBox) {
-        searchBox.remove();
-    }
-}
-
 async function clearChatHistory() {
     if (await groupChatConfirm('آیا از پاک کردن تاریخچه چت اطمینان دارید؟', { confirmText: 'پاک کردن' })) {
         fetch(`/api/groups/${groupId}/clear-history`, {

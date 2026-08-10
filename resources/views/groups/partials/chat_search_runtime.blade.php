@@ -35,6 +35,13 @@
         wrap.hidden ? openSearch() : closeSearch();
     }
 
+    window.GroupChatSearch = Object.freeze({ open: openSearch, close: closeSearch, toggle: toggleSearch });
+    lifecycle.add(() => {
+        closeSearch();
+        if (window.GroupChatSearch) delete window.GroupChatSearch;
+        window.__groupChatSearchInitialized = false;
+    });
+
     lifecycle.on(btn, 'click', (e) => {
         e.stopPropagation();
         toggleSearch();

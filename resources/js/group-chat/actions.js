@@ -3,7 +3,6 @@ const legacyActionTargets = {
     pin: ['pinMessage', ({ target }) => [target.dataset.messageId]],
     reaction: ['toggleReaction', ({ target }) => [target.dataset.messageId, target.dataset.reactionType]],
     'cancel-reply': ['cancelReply'],
-    'close-search': ['closeChatSearch'],
     'close-report': ['closeReportBox'],
     'submit-report': ['submitReport'],
     'open-blog': ['openBlogBox'],
@@ -15,7 +14,6 @@ const legacyActionTargets = {
     'group-settings': ['showGroupSettingsModal'],
     unpin: ['unpinMessage', ({ target }) => [target.dataset.messageId]],
     'close-election': ['closeElectionBox'],
-    'open-chat-search': ['openChatSearch'],
     'clear-chat': ['clearChatHistory'],
     'delete-chat': ['deleteChat'],
     'report-user': ['reportUser'],
@@ -52,6 +50,14 @@ function invokePageChrome(action, context) {
     const handler = method && window.GroupChatPageChrome?.[method];
     if (typeof handler !== 'function') return false;
     handler(...(action === 'edit-poll' ? [Number(context.target.dataset.pollId)] : []));
+    return true;
+}
+
+function invokeSearch(action) {
+    const method = action === 'open-chat-search' ? 'open' : action === 'close-search' ? 'close' : null;
+    const handler = method && window.GroupChatSearch?.[method];
+    if (typeof handler !== 'function') return false;
+    handler();
     return true;
 }
 
@@ -141,7 +147,7 @@ export function createActions({ lifecycle, root = document }) {
         const context = { event, target };
         const handler = handlers.get(action);
         const ownedHandler = action === 'open-group-info' ? openGroupInfo : action === 'close-group-info' ? closeGroupInfo : null;
-        const handled = handler ? handler(context) !== false : ownedHandler ? (ownedHandler(), true) : invokePageChrome(action, context) || invokeGlobal(action, context);
+        const handled = handler ? handler(context) !== false : ownedHandler ? (ownedHandler(), true) : invokePageChrome(action, context) || invokeSearch(action) || invokeGlobal(action, context);
         if (!handled && action !== 'modal-backdrop' && action !== 'close-modal') return;
         event.preventDefault();
         if (action === 'modal-backdrop' || action === 'close-modal') {

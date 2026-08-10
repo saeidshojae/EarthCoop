@@ -153,6 +153,10 @@ test('chat search runtime is loaded through its dedicated partial', () => {
     assert.doesNotMatch(blade, /function fetchPage\(reset = false\)/);
     assert.match(search, /function fetchPage\(reset = false\)/);
     assert.match(search, /gc-search-wrap/);
+    assert.match(search, /window\.GroupChatSearch = Object\.freeze/);
+    assert.match(search, /delete window\.GroupChatSearch/);
+    assert.match(readFileSync('resources/js/group-chat/actions.js', 'utf8'), /window\.GroupChatSearch\?\.\[method\]/);
+    assert.doesNotMatch(readFileSync('public/js/group-chat.js', 'utf8'), /function (?:openChatSearch|closeChatSearch)\(/);
     assert.match(search, /window\.__groupChatSearchInitialized/);
     assert.match(search, /lifecycle\.on\(input, 'input'/);
     assert.match(search, /lifecycle\.on\(listEl, 'click'/);
