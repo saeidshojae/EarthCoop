@@ -62,6 +62,8 @@ Checkpoint بیست‌ونهم: delegation مرکزی action menu به `.message
 
 Checkpoint سی‌ام: delete/report پیام در هر سه تولیدکنندهٔ DOM به قرارداد یکسان `data-group-chat-action` و `data-message-id` منتقل شد. handler اولیهٔ `DOMContentLoaded` در Blade، تعریف `initializeMessageActions` و فراخوانی‌های per-message آن در هر دو renderer حذف شدند؛ edit همچنان از delegation سند و reply/pin از bridge داده‌ای موجود عبور می‌کنند. این تغییر ۲۴۷ خط fallback تکراری را حذف کرد و Blade اصلی از ۳۷۱۲ به ۳۴۷۲ خط کاهش یافت.
 
+Checkpoint سی‌ویکم: runtime ویرایش پیام از Blade اصلی به partial مستقل `message_edit_runtime` منتقل شد. بازکردن modal، submit ویرایش، بستن با دکمه/backdrop و Escape همگی زیر مالکیت `GroupChatLifecycle` قرار گرفتند و cleanup، وضعیت modal و guard راه‌اندازی را بازنشانی می‌کند. قرارداد source از بازگشت listenerهای مستقیم جلوگیری می‌کند و Blade اصلی به ۳۱۷۵ خط کاهش یافت.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.

@@ -18,6 +18,7 @@ const files = [
     'resources/views/groups/partials/chat_search_runtime.blade.php',
     'resources/views/groups/partials/pin_runtime.blade.php',
     'resources/views/groups/partials/scroll_unread_runtime.blade.php',
+    'resources/views/groups/partials/message_edit_runtime.blade.php',
     'resources/views/groups/partials/composer_actions_runtime.blade.php',
     'resources/views/groups/partials/post_submission_runtime.blade.php',
 ];
@@ -247,4 +248,21 @@ test('post menus and reactions use lifecycle-owned event delegation', () => {
     assert.doesNotMatch(groupChat, /_menuInit|_reactionInit/);
     assert.doesNotMatch(groupChat, /messageRow\.querySelector\('\[data-action-menu\]'\)/);
     assert.doesNotMatch(blade, /messageRow\.querySelector\('\[data-action-menu\]'\)/);
+});
+
+test('message edit runtime is extracted and lifecycle-owned', () => {
+    const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
+    const runtime = readFileSync('resources/views/groups/partials/message_edit_runtime.blade.php', 'utf8');
+
+    assert.match(blade, /@include\('groups\.partials\.message_edit_runtime'\)/);
+    assert.doesNotMatch(blade, /const modal = document\.getElementById\('editModal'\)/);
+    assert.match(runtime, /function initializeMessageEditRuntime\(\)/);
+    assert.match(runtime, /window\.__groupChatMessageEditInitialized/);
+    assert.match(runtime, /lifecycle\.on\(document, 'click'/);
+    assert.match(runtime, /lifecycle\.on\(btnSave, 'click'/);
+    assert.match(runtime, /lifecycle\.on\(document, 'keydown'/);
+    assert.match(runtime, /lifecycle\.add\(function\(\)/);
+    assert.equal((runtime.match(/\.addEventListener\(/g) || []).length, 1);
+    assert.match(runtime, /document\.addEventListener\('DOMContentLoaded', initializeMessageEditRuntime, \{ once: true \}\)/);
+    assert.doesNotMatch(runtime, /btnSave\.addEventListener/);
 });
