@@ -44,6 +44,8 @@ Checkpoint بیستم: runtime سنجاق/برداشتن سنجاق پیام ا�
 
 Checkpoint بیست‌ویکم: مدیر یکپارچهٔ اسکرول، بازیابی موقعیت و نشانگرهای خوانده‌نشده از Blade اصلی به `groups/partials/scroll_unread_runtime.blade.php` منتقل شد. رفتار runtime در این checkpoint عمداً ثابت ماند؛ قراردادهای source اکنون include مستقل، خروج کامل پیاده‌سازی از Blade اصلی و مالکیت polling و MutationObserver توسط lifecycle صفحه را کنترل می‌کنند. Blade اصلی با این استخراج از ۴۳۶۶ به ۳۹۶۳ خط کاهش یافت.
 
+Checkpoint بیست‌ودوم: runtime تعاملات composer شامل auto-resize، منوی ساخت محتوا، انتخاب فایل صوتی و بازکردن فرم‌های پست و نظرسنجی از Blade اصلی به `groups/partials/composer_actions_runtime.blade.php` منتقل شد. رفتار legacy در این checkpoint عمداً تغییر نکرد و تست قرارداد، include مستقل و مالکیت کد توسط partial جدید را تثبیت می‌کند. شمارش واقعی Blade اصلی در ابتدای checkpoint برابر ۳۹۶۵ خط بود و پس از استخراج به ۳۸۴۲ خط کاهش یافت.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.

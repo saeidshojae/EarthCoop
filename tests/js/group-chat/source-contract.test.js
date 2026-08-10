@@ -18,6 +18,7 @@ const files = [
     'resources/views/groups/partials/chat_search_runtime.blade.php',
     'resources/views/groups/partials/pin_runtime.blade.php',
     'resources/views/groups/partials/scroll_unread_runtime.blade.php',
+    'resources/views/groups/partials/composer_actions_runtime.blade.php',
 ];
 
 test('group chat templates and runtime do not contain inline event handlers', () => {
@@ -163,4 +164,16 @@ test('scroll and unread runtime is loaded through its dedicated partial', () => 
     assert.match(runtime, /function initializeGroupChatScrollManager\(/);
     assert.match(runtime, /function restoreInitialPosition\(/);
     assert.match(runtime, /function renderUnreadIndicators\(/);
+});
+
+test('composer actions runtime is loaded through its dedicated partial', () => {
+    const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
+    const runtime = readFileSync('resources/views/groups/partials/composer_actions_runtime.blade.php', 'utf8');
+
+    assert.match(blade, /@include\('groups\.partials\.composer_actions_runtime'\)/);
+    assert.doesNotMatch(blade, /const plusButton = document\.getElementById\('chatCreateToggle'\)/);
+    assert.match(runtime, /const plusButton = document\.getElementById\('chatCreateToggle'\)/);
+    assert.match(runtime, /const audioUploadTrigger = document\.getElementById\('audio-upload-trigger'\)/);
+    assert.match(runtime, /const createPostBtn = document\.getElementById\('create-post-btn'\)/);
+    assert.match(runtime, /const createPollBtn = document\.getElementById\('create-poll-btn'\)/);
 });
