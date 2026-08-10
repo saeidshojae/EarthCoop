@@ -15,9 +15,7 @@ const files = [
     'resources/views/groups/partials/header.blade.php',
     'resources/views/groups/partials/group_info_panel.blade.php',
     'resources/views/groups/partials/group_hero.blade.php',
-    'resources/views/groups/partials/action_menu_dismissal.blade.php',
     'resources/views/groups/partials/chat_search_runtime.blade.php',
-    'resources/views/groups/partials/pin_runtime.blade.php',
     'resources/views/groups/partials/scroll_unread_runtime.blade.php',
     'resources/views/groups/partials/message_edit_runtime.blade.php',
     'resources/views/groups/partials/ckeditor_runtime.blade.php',
@@ -150,14 +148,14 @@ test('private mention and voice state are not exposed as window globals', () => 
     assert.match(voice, /getBlob:\s*\(\) => recordedAudioBlob \|\| null/);
 });
 
-test('action-menu dismissal is extracted and lifecycle-owned', () => {
+test('action-menu dismissal is exclusively lifecycle-owned by Actions', () => {
     const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
-    const partial = readFileSync('resources/views/groups/partials/action_menu_dismissal.blade.php', 'utf8');
+    const actions = readFileSync('resources/js/group-chat/actions.js', 'utf8');
 
-    assert.match(blade, /@include\('groups\.partials\.action_menu_dismissal'\)/);
-    assert.match(partial, /lifecycle\.on\(document, 'click'/);
-    assert.match(partial, /lifecycle\.on\(document, 'keydown'/);
-    assert.doesNotMatch(partial, /document\.addEventListener/);
+    assert.doesNotMatch(blade, /action_menu_dismissal/);
+    assert.match(actions, /lifecycle\.on\(root, 'click'/);
+    assert.match(actions, /lifecycle\.on\(root, 'keydown'/);
+    assert.match(actions, /const closeAll = \(\) =>/);
 });
 
 test('chat search runtime is loaded through its dedicated partial', () => {
@@ -179,16 +177,15 @@ test('chat search runtime is loaded through its dedicated partial', () => {
     assert.doesNotMatch(search, /\.addEventListener\(/);
 });
 
-test('pin runtime is extracted and targets the requested message id', () => {
+test('pin operations are owned by modular Actions and ApiClient', () => {
     const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
-    const pin = readFileSync('resources/views/groups/partials/pin_runtime.blade.php', 'utf8');
+    const operations = readFileSync('resources/js/group-chat/operations.js', 'utf8');
 
-    assert.match(blade, /@include\('groups\.partials\.pin_runtime'\)/);
-    assert.doesNotMatch(blade, /function pinMessage\(/);
-    assert.match(pin, /function pinMessage\(messageId\)/);
-    assert.match(pin, /function unpinMessage\(messageId\)/);
-    assert.equal((pin.match(/`msg-\$\{messageId\}`/g) || []).length, 2);
-    assert.doesNotMatch(pin, /`msg-\$\{id\}`/);
+    assert.doesNotMatch(blade, /pin_runtime/);
+    assert.match(operations, /register\('pin', togglePin\(true\)\)/);
+    assert.match(operations, /register\('unpin', togglePin\(false\)\)/);
+    assert.match(operations, /api\.json\(`\/groups\/messages\/\$\{id\}\/\$\{pinned \? 'pin' : 'unpin'\}`/);
+    assert.match(operations, /pinnedMessages:/);
 });
 
 test('scroll and unread runtime is loaded through its dedicated partial', () => {

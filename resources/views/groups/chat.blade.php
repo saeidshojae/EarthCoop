@@ -321,9 +321,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
 @include('groups.partials.styles.auxiliary_styles')
 @include('groups.partials.chat_search_runtime')
 
-@include('groups.partials.pin_runtime')
 
-@include('groups.partials.action_menu_dismissal')
 
 @include('groups.partials.management_modals')
 

@@ -7,6 +7,30 @@ export function createOperations({ api, store, feed, actions, lifecycle, groupId
         void handler(context);
         return true;
     });
+    const setPinned = (id, pinned) => {
+        const row = document.getElementById(`msg-${id}`);
+        if (!row) return;
+        row.querySelector('.pinned-badge')?.remove();
+        if (!pinned) return;
+        const badge = document.createElement('span');
+        badge.className = 'pinned-badge';
+        badge.textContent = '📌 سنجاق شده';
+        row.appendChild(badge);
+    };
+    const togglePin = (pinned) => async ({ target }) => {
+        const id = Number(target.dataset.messageId);
+        const question = pinned ? 'آیا مایل به سنجاق کردن این پیام هستید؟' : 'آیا مایل به برداشتن سنجاق این پیام هستید؟';
+        if (!await confirm(question)) return;
+        try {
+            const data = await api.json(`/groups/messages/${id}/${pinned ? 'pin' : 'unpin'}`, { method: 'POST' });
+            if (!ok(data)) return toast(data.message || 'خطا در تغییر وضعیت سنجاق', 'error');
+            setPinned(id, pinned);
+            store.setState(state => ({ pinnedMessages: { ...(state.pinnedMessages || {}), [id]: pinned } }));
+            toast(pinned ? 'پیام با موفقیت سنجاق شد.' : 'سنجاق پیام برداشته شد.', 'success');
+        } catch (error) { toast(error.message || 'خطا در ارتباط با سرور', 'error'); }
+    };
+    register('pin', togglePin(true));
+    register('unpin', togglePin(false));
 
     register('delete-message', async ({ target }) => {
         const id = Number(target.dataset.messageId);

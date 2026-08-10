@@ -1,10 +1,8 @@
 const legacyActionTargets = {
-    pin: ['pinMessage', ({ target }) => [target.dataset.messageId]],
     reaction: ['toggleReaction', ({ target }) => [target.dataset.messageId, target.dataset.reactionType]],
     'manage-members': ['showManageMembersModal'],
     'manage-reports': ['showManageReportsModal'],
     'group-settings': ['showGroupSettingsModal'],
-    unpin: ['unpinMessage', ({ target }) => [target.dataset.messageId]],
     'show-thread': ['showThread', ({ target }) => [Number(target.dataset.messageId)]],
     'comment-menu': ['openGlobalMenu', ({ event, target }) => [event, Number(target.dataset.commentId)]],
     'comment-reaction': ['reactToComment', ({ target }) => [target.dataset.reactionType, Number(target.dataset.commentId)]],
