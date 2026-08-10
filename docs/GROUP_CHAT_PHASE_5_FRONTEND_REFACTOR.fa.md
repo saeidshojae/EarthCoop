@@ -52,6 +52,8 @@ Checkpoint بیست‌وچهارم: runtime ارسال AJAX پست از Blade ا
 
 Checkpoint بیست‌وپنجم: مسیر موفق ارسال پست به bridge محدود و immutable با نام `GroupChatFeedBridge` متصل شد. این bridge همان `applyFeedItemThroughPipeline` را در حالت modular یا legacy فراخوانی می‌کند و cursor داخلی polling را به‌روز نگه می‌دارد. در نتیجه runtime فرم دیگر `appendChild`، `_initPostMenus`، `_initReactionButtons` یا `_lastKnownPostId` را مستقیماً استفاده نمی‌کند و ایجاد پست مانند websocket/delta از boundary واحد feed/renderer عبور می‌کند.
 
+Checkpoint بیست‌وششم: شاخه‌های create، update و delete در fallback polling پست‌ها نیز به `GroupChatFeedBridge` منتقل شدند. ساختن element موقت، `appendChild`/`replaceWith` و راه‌اندازی مستقیم menu/reaction از حلقهٔ polling حذف شد؛ global موازی `_lastKnownPostId` نیز کامل کنار رفت و cursor فقط از create موفق pipeline یا `latest_post_id` سرور به‌روزرسانی می‌شود. قرارداد source هر سه عملیات polling و حذف global قدیمی را تثبیت می‌کند.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.

@@ -1495,6 +1495,9 @@ function openPollBox(){
             }
             return applied;
         },
+        mutate(contentType, operation, payload, source = 'local') {
+            return applyFeedItemThroughPipeline(contentType, operation, payload, source);
+        },
     });
 
     const remoteTypingUsers = new Map();
@@ -2030,10 +2033,6 @@ function openPollBox(){
                     if (!shouldPollFallback()) return;
                     if (_isPostPollPending) return;
                     if (!window.groupId) return;
-                    // sync posts injected by current user's own form submit
-                    if (window._lastKnownPostId && window._lastKnownPostId > lastPostId) {
-                        lastPostId = window._lastKnownPostId;
-                    }
                     _isPostPollPending = true;
                     fetch('/api/groups/' + window.groupId + '/posts/feed?after_id=' + lastPostId, {
                         headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
@@ -2041,53 +2040,25 @@ function openPollBox(){
                     .then(function(r) { return r.ok ? r.json() : null; })
                     .then(function(data) {
                         if (!data) return;
-                        var chatBox = document.getElementById('chat-box');
                         // Handle new posts
-                        if (chatBox && data.posts && data.posts.length) {
+                        if (data.posts && data.posts.length) {
                             data.posts.forEach(function(p) {
-                                if (!p.html || document.getElementById('blog-' + p.id)) return;
-                                var tmp = document.createElement('div');
-                                tmp.innerHTML = p.html;
-                                var el = tmp.firstElementChild;
-                                if (el) {
-                                    chatBox.appendChild(el);
-                                    if (typeof window._initPostMenus === 'function') window._initPostMenus(el);
-                                    if (typeof window._initReactionButtons === 'function') window._initReactionButtons(el);
-                                }
-                                if (p.id > lastPostId) lastPostId = p.id;
+                                if (!p.html) return;
+                                window.GroupChatFeedBridge.create('post', p, 'polling-fallback');
                             });
                         }
-                        if (data.latest_post_id > lastPostId) lastPostId = data.latest_post_id;
+                        updateLastPostCursor(data.latest_post_id);
                         // Handle deleted posts
                         if (data.deleted_post_ids && data.deleted_post_ids.length) {
                             data.deleted_post_ids.forEach(function(pid) {
-                                var el = document.getElementById('blog-' + pid);
-                                // remove outer post-wrapper too
-                                var toRemove = el ? (el.closest('.post-wrapper') || el.parentElement || el) : null;
-                                if (toRemove) {
-                                    toRemove.style.transition = 'opacity 0.3s';
-                                    toRemove.style.opacity = '0';
-                                    setTimeout(function() { toRemove.remove(); }, 300);
-                                }
+                                window.GroupChatFeedBridge.mutate('post', 'delete', { id: pid }, 'polling-fallback');
                             });
                         }
                         // Handle updated posts
                         if (data.updated_posts && data.updated_posts.length) {
                             data.updated_posts.forEach(function(p) {
                                 if (!p.html) return;
-                                var existing = document.getElementById('blog-' + p.id);
-                                if (existing) {
-                                    // post-card is inside post-wrapper; replace the outer wrapper
-                                    var wrapper = existing.closest('.post-wrapper') || existing.parentElement || existing;
-                                    var tmp = document.createElement('div');
-                                    tmp.innerHTML = p.html;
-                                    var newEl = tmp.firstElementChild;
-                                    if (newEl) {
-                                        wrapper.replaceWith(newEl);
-                                        if (typeof window._initPostMenus === 'function') window._initPostMenus(newEl);
-                                        if (typeof window._initReactionButtons === 'function') window._initReactionButtons(newEl);
-                                    }
-                                }
+                                window.GroupChatFeedBridge.mutate('post', 'update', p, 'polling-fallback');
                             });
                         }
                     })

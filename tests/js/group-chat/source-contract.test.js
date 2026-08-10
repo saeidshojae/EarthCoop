@@ -211,4 +211,9 @@ test('post submission runtime is extracted without patching openBlogBox', () => 
     assert.match(groupChat, /window\.GroupChatFeedBridge\s*=\s*Object\.freeze/);
     assert.match(groupChat, /applyFeedItemThroughPipeline\(contentType, 'create', payload, source\)/);
     assert.match(groupChat, /updateLastPostCursor\(payload\?\.post_id \|\| payload\?\.content_id \|\| payload\?\.id\)/);
+    assert.match(groupChat, /mutate\(contentType, operation, payload, source = 'local'\)/);
+    assert.match(groupChat, /GroupChatFeedBridge\.create\('post', p, 'polling-fallback'\)/);
+    assert.match(groupChat, /GroupChatFeedBridge\.mutate\('post', 'delete', \{ id: pid \}, 'polling-fallback'\)/);
+    assert.match(groupChat, /GroupChatFeedBridge\.mutate\('post', 'update', p, 'polling-fallback'\)/);
+    assert.doesNotMatch(groupChat, /_lastKnownPostId/);
 });
