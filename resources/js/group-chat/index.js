@@ -73,6 +73,8 @@ if (window.__groupChatModularFrontend && window.groupId) {
         },
     };
 
+    app.feed.hydrate('initial');
+
     lifecycle.on(window, 'online', () => store.setState({ connection: 'connecting' }));
     lifecycle.on(window, 'offline', () => store.setState({ connection: 'offline' }));
     window.GroupChat = app;

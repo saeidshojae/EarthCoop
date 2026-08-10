@@ -99,6 +99,21 @@ test('feed routes all sources through a registered renderer', () => {
     feed.apply([{ id: 2, content_type: 'message' }], 'delta');
     assert.deepEqual(sources, ['polling', 'delta']);
     assert.equal(store.getState().feedVersion, 2);
+    assert.deepEqual(store.getState().feed['message:1'], { id: 1, content_type: 'message' });
+});
+
+test('initial Blade feed is hydrated through renderer into canonical store', () => {
+    const nodes = [
+        { dataset: { feedId: '11', feedType: 'message', feedAuthorId: '3', feedUnread: '1' }, id: 'msg-11' },
+        { dataset: { feedId: '9', feedType: 'poll', feedUnread: '0' }, id: 'poll-9' },
+    ];
+    const renderer = createRenderer({ root: { querySelectorAll: () => nodes } });
+    const store = createStore();
+    const entries = createFeed({ store, renderer }).hydrate();
+
+    assert.equal(entries.length, 2);
+    assert.equal(store.getState().feed['message:11'].unread, true);
+    assert.equal(store.getState().feed['poll:9'].unread, false);
 });
 
 test('feed routes normalized mutations through the same renderer boundary', () => {
@@ -113,6 +128,7 @@ test('feed routes normalized mutations through the same renderer boundary', () =
     assert.equal(feed.mutate({ content_type: 'message', content_id: 42, action: 'edit' }, 'websocket'), 1);
     assert.deepEqual(mutations, [[42, 'websocket']]);
     assert.equal(store.getState().feedVersion, 4);
+    assert.equal(store.getState().feed['message:42'].action, 'edit');
 });
 
 test('feed uses the same boundary for post creation and poll updates', () => {

@@ -1,5 +1,5 @@
 export function createStore(initialState = {}) {
-    let state = Object.freeze({ ...initialState });
+    let state = Object.freeze({ feed: Object.freeze({}), ...initialState });
     const subscribers = new Set();
 
     return {

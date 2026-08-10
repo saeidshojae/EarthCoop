@@ -20,9 +20,27 @@ export function createRenderer({ root, renderers = {} } = {}) {
         return typeof handler === 'function' ? handler(item, { ...context, action }) : false;
     };
 
+    const hydrate = (context = {}) => {
+        if (!root) return [];
+        return Array.from(root.querySelectorAll('[data-feed-item]')).map(node => {
+            const item = {
+                id: node.dataset.feedId || node.dataset.messageId || (node.id || '').replace(/^[^-]+-/, ''),
+                content_type: node.dataset.feedType || (node.id.startsWith('blog-') ? 'post' : node.id.startsWith('poll-') ? 'poll' : 'message'),
+                user_id: node.dataset.feedAuthorId || null,
+                unread: node.dataset.feedUnread === '1',
+            };
+            const adapter = registry.get(item.content_type);
+            if (adapter && typeof adapter !== 'function' && typeof adapter.hydrate === 'function') {
+                adapter.hydrate(item, node, context);
+            }
+            return { item, node };
+        });
+    };
+
     return {
         render,
         mutate,
+        hydrate,
         register(type, renderer) {
             registry.set(type, renderer);
             return () => registry.delete(type);
