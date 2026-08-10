@@ -2,7 +2,7 @@
 
 ## وضعیت
 
-در حال اجرا — checkpoint اول: هستهٔ ماژولار و مسیر مهاجرت تدریجی تکمیل شده است.
+برنامهٔ بازسازی ساختاری تکمیل شده؛ پذیرش نهایی فاز هنوز باز است — چهار معیار معماری و آزمون مرورگری باقی مانده‌اند.
 
 Checkpoint دوم: مسیرهای ایجاد پیام در delta، WebSocket قدیمی، polling، optimistic submit، پاسخ HTTP و voice همگی از `renderMessageThroughPipeline` و Feed/Renderer مشترک عبور می‌کنند. renderer موجود در دورهٔ dual-run به‌عنوان adapter ثبت می‌شود تا markup یا رفتار موازی ایجاد نشود.
 
@@ -80,6 +80,8 @@ Checkpoint سی‌وهشتم: هر سه بلوک CSS باقی‌ماندهٔ ص�
 
 Checkpoint سی‌ونهم: hero و خلاصهٔ اطلاعات گروه در نسخه‌های موبایل و دسکتاپ، آمار و actionهای مدیریتی/محتوا از Blade اصلی به partial مستقل `group_hero` منتقل شدند. این checkpoint صرفاً مرزبندی markup است و ترتیب DOM و رفتار موجود را تغییر نمی‌دهد؛ قرارداد source حضور actionهای داده‌محور در partial و نبود card اصلی در فایل هماهنگ‌کننده را کنترل می‌کند. Blade اصلی از ۶۵۲ به ۳۳۸ خط کاهش یافت.
 
+Checkpoint چهلم: آخرین expressionهای تعاملی inline در hero (`@click` و state نمایشی Alpine) با action داده‌محور `toggle-group-hero` و API lifecycle-owned صفحه جایگزین شدند. وضعیت باز/بسته با `aria-expanded`، `hidden` و کلاس CSS همگام است و cleanup آن را به حالت بسته برمی‌گرداند. ممیزی master plan هشت معیار انجام‌شده و چهار معیار باز را ثبت کرد؛ بنابراین برنامهٔ ساختاری ۴۰‌چک‌پوینتی تمام شده اما پذیرش فاز تا رفع شکاف‌های معماری و E2E بسته نشده است.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.
@@ -104,8 +106,11 @@ Checkpoint سی‌ونهم: hero و خلاصهٔ اطلاعات گروه در ن
 
 ## کار باقی‌مانده تا پایان فاز
 
-1. ادامهٔ شکستن Blade بزرگ به partial/componentهای کوچک‌تر.
-2. آزمون مرورگری ورود مجدد/دوکلاینتی؛ آزمون مرورگر فعلاً به‌علت خطای runtime ابزار blocked است.
+1. شکستن کامل مسیر legacy باقی‌مانده در `public/js/group-chat.js` و انتقال ownership به ماژول‌های Composer/Feed/Realtime/Unread/Actions.
+2. تبدیل Store به منبع حقیقت تمام stateهای UI و حذف state موازی DOM/global.
+3. عبور initial load و همهٔ optimistic/polling/WebSocket mutationها از renderer واحد بدون adapter موازی legacy.
+4. ممیزی و حذف globalها، timerها و listenerهای legacy باقی‌مانده و اثبات re-entry بدون تکثیر.
+5. آزمون مرورگری ورود مجدد/دوکلاینتی؛ آزمون مرورگر فعلاً به‌علت خطای runtime ابزار blocked است.
 
 ## وضعیت آزمون مرورگری
 
@@ -114,8 +119,9 @@ Checkpoint سی‌ونهم: hero و خلاصهٔ اطلاعات گروه در ن
 ## ارزیابی فعلی معیارهای فاز ۵
 
 - کامل: حذف inline handler، حذف dialog blocking، ApiClient، تست store/reconciliation، مرز اولیه ماژول‌ها و API مالکیت sidecarها.
-- ناقص: store هنوز منبع حقیقت تمام UI نیست؛ renderer واحد هنوز post/poll/comment را کامل مالک نیست؛ lifecycle هنوز همه timer/listenerهای legacy را جمع نکرده است.
-- انجام‌نشده: شکستن کامل Blade بزرگ و تست مرورگری ورود مجدد/two-client.
+- ناقص: `group-chat.js` legacy هنوز کامل به ماژول‌های دامنه‌ای شکسته نشده؛ store هنوز منبع حقیقت تمام UI نیست؛ renderer واحد initial load و تمام post/poll/comment را کامل مالک نیست؛ lifecycle هنوز همه timer/listener/globalهای legacy را جمع نکرده است.
+- انجام‌شده: شکستن Blade اصلی به فایل هماهنگ‌کنندهٔ ۳۳۸ خطی و partialهای مستقل.
+- انجام‌نشده: تست مرورگری ورود مجدد/two-client.
 - تصمیم‌گیری‌شده: مهاجرت تدریجی TypeScript به‌صورت contract-first؛ اجرای تبدیل پس از دروازه‌های ثبت‌شده در سند تصمیم.
 4. شکستن Blade بزرگ به partial/componentهای کوچک.
 5. تعیین و اعمال API مالکیت محدود برای voice recorder و chat features.

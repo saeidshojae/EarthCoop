@@ -367,4 +367,9 @@ test('group hero markup is loaded through its dedicated partial', () => {
     assert.match(hero, /data-chat-page-action="open-group-info"/);
     assert.match(hero, /data-chat-page-action="open-blog"/);
     assert.match(hero, /data-chat-page-action="open-poll"/);
+    assert.match(hero, /data-group-chat-action="toggle-group-hero"/);
+    assert.match(hero, /aria-expanded="false"/);
+    assert.doesNotMatch(hero, /(?:@click|x-data|x-show|x-cloak|:class)=?/);
+    assert.match(readFileSync('resources/views/groups/partials/page_chrome_runtime.blade.php', 'utf8'), /toggleGroupHero\(\)/);
+    assert.match(readFileSync('public/js/group-chat.js', 'utf8'), /GroupChatPageChrome\.toggleGroupHero\(\)/);
 });

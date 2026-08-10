@@ -159,18 +159,18 @@
 
 ## فاز 5 — بازسازی فرانت‌اند و کاهش پیچیدگی
 
-- [ ] تمام inline handlerهای `onclick` حذف و event delegation جایگزین شود.
-- [ ] `alert()` و `confirm()` با toast/dialog غیرمسدودکننده جایگزین شوند.
-- [ ] `chat.blade.php` به layout و partial/componentهای کوچک تقسیم شود.
+- [x] تمام inline handlerهای `onclick` حذف و event delegation جایگزین شود.
+- [x] `alert()` و `confirm()` با toast/dialog غیرمسدودکننده جایگزین شوند.
+- [x] `chat.blade.php` به layout و partial/componentهای کوچک تقسیم شود.
 - [ ] `group-chat.js` به ماژول‌های Composer، Feed، Realtime، Unread و Actions تقسیم شود.
-- [ ] `chat-features.js` و `voice-recorder.js` مالکیت مشخص و API کوچک داشته باشند.
-- [ ] ApiClient مرکزی CSRF، JSON parsing، timeout، error mapping و retry را مدیریت کند.
+- [x] `chat-features.js` و `voice-recorder.js` مالکیت مشخص و API کوچک داشته باشند.
+- [x] ApiClient مرکزی CSRF، JSON parsing، timeout، error mapping و retry را مدیریت کند.
 - [ ] state store واحد منبع حقیقت UI باشد.
 - [ ] renderer واحد برای initial load، optimistic item، polling و WebSocket استفاده شود.
-- [ ] lifecycle برای ثبت/حذف listener و timer در navigation تعریف شود.
+- [x] lifecycle برای ثبت/حذف listener و timer در navigation تعریف شود.
 - [ ] تمام timerهای تکراری، listenerهای چندباره و globalهای غیرضروری حذف شوند.
-- [ ] migration تدریجی به TypeScript برای قراردادهای feed و API ارزیابی شود.
-- [ ] تست واحد برای reducer/store و event reconciliation نوشته شود.
+- [x] migration تدریجی به TypeScript برای قراردادهای feed و API ارزیابی شود.
+- [x] تست واحد برای reducer/store و event reconciliation نوشته شود.
 
 **معیار پذیرش فاز 5:** هر عملیات فقط یک handler، یک مسیر API و یک مسیر render داشته باشد و ورود مجدد به صفحه listener یا timer تکراری نسازد.
 

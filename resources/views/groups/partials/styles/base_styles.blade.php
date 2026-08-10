@@ -1,6 +1,6 @@
 <style>
 /* Collapsible Group Info Card برای موبایل */
-.group-info-card [x-cloak] {
+.group-info-card [data-group-hero-content][hidden] {
     display: none !important;
 }
 
@@ -21,7 +21,7 @@
     }
 }
 
-.group-info-card [x-show="expanded"].collapse-content {
+.group-info-card .collapse-content.is-expanded {
     max-height: 5000px;
     opacity: 1;
     padding-top: 1.25rem;

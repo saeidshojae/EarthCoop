@@ -12,6 +12,19 @@ function initializeGroupChatPageChrome() {
         if (backdrop) backdrop.style.display = visible ? 'block' : 'none';
     }
 
+    function setGroupHeroExpanded(expanded) {
+        const hero = document.querySelector('[data-group-hero]');
+        const trigger = hero?.querySelector('[data-group-chat-action="toggle-group-hero"]');
+        const content = hero?.querySelector('[data-group-hero-content]');
+        const chevron = hero?.querySelector('[data-group-hero-chevron]');
+        if (!hero || !trigger || !content) return;
+
+        trigger.setAttribute('aria-expanded', String(expanded));
+        content.hidden = !expanded;
+        content.classList.toggle('is-expanded', expanded);
+        chevron?.classList.toggle('rotate-180', expanded);
+    }
+
     window.GroupChatPageChrome = Object.freeze({
         openGroupEdit() {
             setGroupEditVisible(true);
@@ -25,6 +38,10 @@ function initializeGroupChatPageChrome() {
             editBox.style.display = editBox.style.display === 'none' || editBox.style.display === ''
                 ? 'block'
                 : 'none';
+        },
+        toggleGroupHero() {
+            const trigger = document.querySelector('[data-group-chat-action="toggle-group-hero"]');
+            setGroupHeroExpanded(trigger?.getAttribute('aria-expanded') !== 'true');
         }
     });
 
@@ -39,6 +56,7 @@ function initializeGroupChatPageChrome() {
 
     lifecycle.add(function() {
         setGroupEditVisible(false);
+        setGroupHeroExpanded(false);
         document.querySelectorAll('[id^="edit-poll-box-"]').forEach(editBox => {
             editBox.style.display = 'none';
         });

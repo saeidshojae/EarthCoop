@@ -298,6 +298,8 @@ document.addEventListener('click', function handleDelegatedLegacyChatAction(even
         window.GroupChatPageChrome.openGroupEdit();
     } else if (action === 'cancel-group-edit' && window.GroupChatPageChrome) {
         window.GroupChatPageChrome.cancelGroupEdit();
+    } else if (action === 'toggle-group-hero' && window.GroupChatPageChrome) {
+        window.GroupChatPageChrome.toggleGroupHero();
     } else if (action === 'open-chat-search' && typeof window.openChatSearch === 'function') {
         window.openChatSearch();
     } else if (action === 'clear-chat' && typeof window.clearChatHistory === 'function') {

@@ -1,12 +1,12 @@
     <section
         class="bg-white border border-emerald-100 rounded-2xl md:rounded-3xl shadow-md relative overflow-hidden group-info-card"
-        x-data="{ expanded: false }">
+        data-group-hero>
         <div
             class="absolute inset-0 pointer-events-none bg-gradient-to-l from-emerald-50/50 via-transparent to-transparent">
         </div>
 
         <!-- نسخه خلاصه برای موبایل -->
-        <button @click="expanded = !expanded"
+        <button type="button" data-group-chat-action="toggle-group-hero" aria-expanded="false"
             class="lg:hidden w-full relative z-10 flex items-center justify-between gap-3 px-5 py-4 hover:bg-emerald-50/50 active:bg-emerald-50 transition-colors">
             <div class="flex items-center gap-4 flex-1 min-w-0">
                 <div
@@ -32,13 +32,13 @@
             <div
                 class="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 transition-colors ml-2">
                 <i class="fas fa-chevron-down text-emerald-600 text-xs transition-transform duration-300"
-                    :class="{ 'rotate-180': expanded }"></i>
+                    data-group-hero-chevron></i>
             </div>
         </button>
 
         <!-- محتوای کامل - در موبایل با expand/collapse -->
-        <div class="relative z-10 px-5 py-5 collapse-content lg:hidden border-t border-emerald-100/60" x-show="expanded"
-            x-cloak style="display: none;">
+        <div class="relative z-10 px-5 py-5 collapse-content lg:hidden border-t border-emerald-100/60"
+            data-group-hero-content hidden>
             <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                 <div class="flex items-center gap-4">
                     <div
