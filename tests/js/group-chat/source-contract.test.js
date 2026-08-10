@@ -447,6 +447,23 @@ test('post menus and reactions use lifecycle-owned event delegation', () => {
     assert.doesNotMatch(blade, /messageRow\.querySelector\('\[data-action-menu\]'\)/);
 });
 
+test('post editing uses plain text, closes its backdrop, and keeps metadata last', () => {
+    const post = readFileSync('resources/views/groups/partials/post.blade.php', 'utf8');
+    const operations = readFileSync('resources/js/group-chat/operations.js', 'utf8');
+    const styles = readFileSync('resources/views/groups/partials/styles/base_styles.blade.php', 'utf8');
+
+    assert.match(post, /editablePostContent = html_entity_decode/);
+    assert.match(post, /trim\(strip_tags\(\$editablePostContent\)\)/);
+    assert.match(post, /post-edit-modal__close/);
+    assert.match(post, /post-edit-modal__dismiss/);
+    assert.ok(post.indexOf('post-card__comments--cta') < post.indexOf('post-card__footer content-meta-line'));
+    assert.match(styles, /\.post-edit-modal__close \{[\s\S]*?color: #64748b !important/);
+    assert.match(styles, /\.post-edit-modal__close:hover,[\s\S]*?color: #1f2937 !important/);
+    assert.match(styles, /\.post-edit-modal__dismiss \{[\s\S]*?color: #64748b !important/);
+    assert.match(operations, /await closePostEditModal\(id\);[\s\S]*?feed\.mutate/);
+    assert.match(operations, /document\.querySelectorAll\('\.modal-backdrop'\)\.forEach\(element => element\.remove\(\)\)/);
+});
+
 test('message edit runtime is extracted and lifecycle-owned', () => {
     const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
     const runtime = readFileSync('resources/views/groups/partials/message_edit_runtime.blade.php', 'utf8');

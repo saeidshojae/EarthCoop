@@ -113,6 +113,45 @@ export function createOperations({ api, store, feed, actions, lifecycle, groupId
         } catch (error) { toast(error.message || 'خطا در حذف چت', 'error'); }
     });
 
+    const closePostEditModal = id => new Promise(resolve => {
+        const modal = document.getElementById(`editPostModal-${id}`);
+        const cleanup = () => {
+            modal?.classList.remove('show');
+            if (modal) {
+                modal.style.display = 'none';
+                modal.setAttribute('aria-hidden', 'true');
+            }
+            document.querySelectorAll('.modal-backdrop').forEach(element => element.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
+        };
+        if (!modal) {
+            cleanup();
+            resolve();
+            return;
+        }
+        const instance = window.bootstrap?.Modal?.getOrCreateInstance?.(modal);
+        if (!instance) {
+            cleanup();
+            resolve();
+            return;
+        }
+        let settled = false;
+        let timeoutId;
+        const finish = () => {
+            if (settled) return;
+            settled = true;
+            modal.removeEventListener('hidden.bs.modal', finish);
+            if (timeoutId) lifecycle.clearTimeout(timeoutId);
+            cleanup();
+            resolve();
+        };
+        lifecycle.on(modal, 'hidden.bs.modal', finish, { once: true });
+        timeoutId = lifecycle.timeout(finish, 500);
+        instance.hide();
+    });
+
     lifecycle.on(document, 'submit', async event => {
         const form = event.target.closest?.('[data-post-edit-form]');
         if (!form) return;
@@ -128,7 +167,7 @@ export function createOperations({ api, store, feed, actions, lifecycle, groupId
                 body: JSON.stringify({ title, content, category_id: categoryId }),
             });
             if (!ok(data)) return toast(data.message || 'خطا در ویرایش پست', 'error');
-            window.bootstrap?.Modal?.getInstance(document.getElementById(`editPostModal-${id}`))?.hide();
+            await closePostEditModal(id);
             const post = data.post?.html ? { ...data.post, id: data.post.id || id } : data.blog;
             if (post) feed.mutate({ ...post, content_type: 'post', id, action: 'update' }, 'local-post-edit');
             toast('پست با موفقیت ویرایش شد', 'success');

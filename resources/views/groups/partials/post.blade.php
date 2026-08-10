@@ -271,6 +271,11 @@
 
         </div>
 
+        <a href="{{ route('groups.comment', $item) }}" class="post-card__comments post-card__comments--cta">
+            <i class="fas fa-comment-dots"></i>
+            نظر دهید ({{ $item->comments_count ?? 0 }})
+        </a>
+
         <div class="post-card__footer content-meta-line">
 
             @php
@@ -324,14 +329,6 @@
             </div>
             @endif
 
-            <a href="{{ route('groups.comment', $item) }}" class="post-card__comments">
-
-                <i class="fas fa-comment-dots"></i>
-
-                نظر دهید ({{ $item->comments_count ?? 0 }})
-
-            </a>
-
         </div>
 
         @if($isOwner)
@@ -348,7 +345,7 @@
 
                                 <h5 class="modal-title" id="editPostModalLabel-{{ $item->id }}">ویرایش پست</h5>
 
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+                                <button type="button" class="btn-close post-edit-modal__close" data-bs-dismiss="modal" aria-label="بستن" title="بستن">×</button>
 
                             </div>
 
@@ -366,7 +363,13 @@
 
                                     <label class="form-label">متن پست</label>
 
-                                    <textarea class="form-control" rows="4" id="edit-post-content-{{ $item->id }}" data-post-edit-content>{{ $item->content }}</textarea>
+                                    @php
+                                        $editablePostContent = html_entity_decode((string) $item->content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                                        $editablePostContent = preg_replace('/<br\s*\/?>/iu', "\n", $editablePostContent);
+                                        $editablePostContent = preg_replace('/<\/p\s*>/iu', "\n", $editablePostContent);
+                                        $editablePostContent = trim(strip_tags($editablePostContent));
+                                    @endphp
+                                    <textarea class="form-control" rows="4" id="edit-post-content-{{ $item->id }}" data-post-edit-content>{{ $editablePostContent }}</textarea>
 
                                 </div>
 
@@ -394,7 +397,7 @@
 
                                 <button type="submit" class="btn btn-primary">ذخیره تغییرات</button>
 
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+                                <button type="button" class="btn btn-secondary post-edit-modal__dismiss" data-bs-dismiss="modal">بستن</button>
 
                             </div>
 
