@@ -176,4 +176,13 @@ test('composer actions runtime is loaded through its dedicated partial', () => {
     assert.match(runtime, /const audioUploadTrigger = document\.getElementById\('audio-upload-trigger'\)/);
     assert.match(runtime, /const createPostBtn = document\.getElementById\('create-post-btn'\)/);
     assert.match(runtime, /const createPollBtn = document\.getElementById\('create-poll-btn'\)/);
+    assert.match(runtime, /window\.__groupChatComposerActionsInitialized/);
+    assert.match(runtime, /lifecycle\.on\(textarea, 'input'/);
+    assert.match(runtime, /lifecycle\.on\(document, 'click'/);
+    assert.match(runtime, /lifecycle\.on\(document, 'keydown'/);
+    assert.equal((runtime.match(/\.addEventListener\(/g) || []).length, 1);
+    assert.match(runtime, /document\.addEventListener\('DOMContentLoaded', initializeComposerActionsRuntime, \{ once: true \}\)/);
+    assert.equal((runtime.match(/lifecycle\.timeout\(/g) || []).length, 2);
+    assert.doesNotMatch(runtime, /(^|[^.])setTimeout\(/m);
+    assert.match(runtime, /lifecycle\.add\(function\(\)/);
 });

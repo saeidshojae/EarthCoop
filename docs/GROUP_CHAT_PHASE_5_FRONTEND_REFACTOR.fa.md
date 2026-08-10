@@ -46,6 +46,8 @@ Checkpoint بیست‌ویکم: مدیر یکپارچهٔ اسکرول، باز�
 
 Checkpoint بیست‌ودوم: runtime تعاملات composer شامل auto-resize، منوی ساخت محتوا، انتخاب فایل صوتی و بازکردن فرم‌های پست و نظرسنجی از Blade اصلی به `groups/partials/composer_actions_runtime.blade.php` منتقل شد. رفتار legacy در این checkpoint عمداً تغییر نکرد و تست قرارداد، include مستقل و مالکیت کد توسط partial جدید را تثبیت می‌کند. شمارش واقعی Blade اصلی در ابتدای checkpoint برابر ۳۹۶۵ خط بود و پس از استخراج به ۳۸۴۲ خط کاهش یافت.
 
+Checkpoint بیست‌وسوم: listenerهای textarea، منوی composer، document، انتخاب فایل و دکمه‌های ساخت پست/نظرسنجی و همچنین دو timeout تأخیری به مالکیت `GroupChatLifecycle` منتقل شدند. guard راه‌اندازی تکراری و cleanup برای آزادسازی وضعیت و کلاس textarea اضافه شد. تنها listener مستقیم باقی‌مانده bootstrap یک‌بارهٔ `DOMContentLoaded` است، چون lifecycle توسط ماژول Vite پس از parse ساخته می‌شود؛ قرارداد تست این استثنا را دقیقاً به یک listener با `{ once: true }` محدود می‌کند.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.

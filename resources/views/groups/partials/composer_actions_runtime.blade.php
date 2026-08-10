@@ -1,5 +1,9 @@
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    function initializeComposerActionsRuntime() {
+        const lifecycle = window.GroupChatLifecycle;
+        if (!lifecycle || lifecycle.destroyed || window.__groupChatComposerActionsInitialized) return;
+        window.__groupChatComposerActionsInitialized = true;
+
         const plusButton = document.getElementById('chatCreateToggle');
         const menu = document.getElementById('createMenu');
         const triggerWrapper = plusButton?.closest('.telegram-attach-btn-wrapper');
@@ -14,7 +18,7 @@
                     textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
                 }
             }
-            textarea.addEventListener('input', autoResize);
+            lifecycle.on(textarea, 'input', autoResize);
             textarea.classList.add('ckeditor-initialized');
         }
 
@@ -30,13 +34,15 @@
             menu.style.display = shouldShow ? 'block' : 'none';
         };
 
-        plusButton?.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleMenu();
-        });
+        if (plusButton) {
+            lifecycle.on(plusButton, 'click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleMenu();
+            });
+        }
 
-        document.addEventListener('click', function(e) {
+        lifecycle.on(document, 'click', function(e) {
             if (!menu) {
                 return;
             }
@@ -47,7 +53,7 @@
             }
         });
 
-        document.addEventListener('keydown', function(e) {
+        lifecycle.on(document, 'keydown', function(e) {
             if (e.key === 'Escape') {
                 toggleMenu(false);
             }
@@ -56,33 +62,35 @@
         menu?.querySelectorAll('button').forEach(function(actionButton) {
             // اگر دکمه onclick دارد (مثل openBlogBox, openPollBox)، منو را ببند اما event را متوقف نکن
             if (actionButton.onclick || actionButton.getAttribute('onclick')) {
-                actionButton.addEventListener('click', function(e) {
+                lifecycle.on(actionButton, 'click', function() {
                     // فقط منو را ببند، event را متوقف نکن تا onclick اجرا شود
                     toggleMenu(false);
                 });
             } else {
                 // برای دکمه‌های دیگر (مثل audio-upload-trigger) که event handler جداگانه دارند
-                actionButton.addEventListener('click', function() {
+                lifecycle.on(actionButton, 'click', function() {
                     toggleMenu(false);
                 });
             }
         });
 
-        audioUploadTrigger?.addEventListener('click', function(e) {
-            e.preventDefault();
-            toggleMenu(false);
-            voiceFileInput?.click();
-        });
+        if (audioUploadTrigger) {
+            lifecycle.on(audioUploadTrigger, 'click', function(e) {
+                e.preventDefault();
+                toggleMenu(false);
+                voiceFileInput?.click();
+            });
+        }
 
         // Handle create post button
         const createPostBtn = document.getElementById('create-post-btn');
         if (createPostBtn) {
-            createPostBtn.addEventListener('click', function(e) {
+            lifecycle.on(createPostBtn, 'click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 toggleMenu(false);
                 // کمی تأخیر برای بستن منو قبل از باز کردن modal
-                setTimeout(function() {
+                lifecycle.timeout(function() {
                     // بررسی وجود تابع در scope global
                     if (typeof window.openBlogBox === 'function') {
                         window.openBlogBox();
@@ -100,12 +108,12 @@
         // Handle create poll button
         const createPollBtn = document.getElementById('create-poll-btn');
         if (createPollBtn) {
-            createPollBtn.addEventListener('click', function(e) {
+            lifecycle.on(createPollBtn, 'click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 toggleMenu(false);
                 // کمی تأخیر برای بستن منو قبل از باز کردن modal
-                setTimeout(function() {
+                lifecycle.timeout(function() {
                     // بررسی وجود تابع در scope global
                     if (typeof window.openPollBox === 'function') {
                         window.openPollBox();
@@ -120,5 +128,16 @@
             });
         }
 
-    });
+        lifecycle.add(function() {
+            window.__groupChatComposerActionsInitialized = false;
+            textarea?.classList.remove('ckeditor-initialized');
+            toggleMenu(false);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeComposerActionsRuntime, { once: true });
+    } else {
+        initializeComposerActionsRuntime();
+    }
     </script>
