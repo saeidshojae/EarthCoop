@@ -597,14 +597,26 @@
     font-weight: 500;
     line-height: 1;
     opacity: 1 !important;
+    position: absolute !important;
+    left: 16px !important;
+    right: auto !important;
+    top: 50%;
+    margin: 0 !important;
+    z-index: 2;
+    transform: translateY(-50%);
     transition: color .18s ease, background-color .18s ease, transform .18s ease;
+}
+
+.post-edit-modal__header {
+    position: relative;
+    padding-left: 58px !important;
 }
 
 .post-edit-modal__close:hover,
 .post-edit-modal__close:focus-visible {
     background: rgba(51, 65, 85, .18) !important;
     color: #1f2937 !important;
-    transform: scale(1.05);
+    transform: translateY(-50%) scale(1.05);
 }
 
 .post-edit-modal__dismiss {

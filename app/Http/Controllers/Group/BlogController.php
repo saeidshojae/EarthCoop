@@ -116,7 +116,11 @@ class BlogController extends Controller
         }
 
         $validated = $request->validated();
-        $validated['content'] = $sanitizer->sanitize($validated['content']);
+        $submittedContent = (string) $validated['content'];
+        if ($submittedContent === strip_tags($submittedContent)) {
+            $submittedContent = nl2br(e($submittedContent), false);
+        }
+        $validated['content'] = $sanitizer->sanitize($submittedContent);
 
         $blog->update($validated);
         $blog->forceFill(['edited_at' => now()])->save();

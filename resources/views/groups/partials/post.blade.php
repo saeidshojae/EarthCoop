@@ -341,7 +341,7 @@
 
                         <form data-post-edit-form data-post-id="{{ $item->id }}">
 
-                            <div class="modal-header">
+                            <div class="modal-header post-edit-modal__header">
 
                                 <h5 class="modal-title" id="editPostModalLabel-{{ $item->id }}">ویرایش پست</h5>
 

@@ -451,6 +451,7 @@ test('post editing uses plain text, closes its backdrop, and keeps metadata last
     const post = readFileSync('resources/views/groups/partials/post.blade.php', 'utf8');
     const operations = readFileSync('resources/js/group-chat/operations.js', 'utf8');
     const styles = readFileSync('resources/views/groups/partials/styles/base_styles.blade.php', 'utf8');
+    const controller = readFileSync('app/Http/Controllers/Group/BlogController.php', 'utf8');
 
     assert.match(post, /editablePostContent = html_entity_decode/);
     assert.match(post, /trim\(strip_tags\(\$editablePostContent\)\)/);
@@ -460,6 +461,8 @@ test('post editing uses plain text, closes its backdrop, and keeps metadata last
     assert.match(styles, /\.post-edit-modal__close \{[\s\S]*?color: #64748b !important/);
     assert.match(styles, /\.post-edit-modal__close:hover,[\s\S]*?color: #1f2937 !important/);
     assert.match(styles, /\.post-edit-modal__dismiss \{[\s\S]*?color: #64748b !important/);
+    assert.match(styles, /\.post-edit-modal__close \{[\s\S]*?position: absolute !important;[\s\S]*?left: 16px !important;[\s\S]*?right: auto !important/);
+    assert.match(controller, /if \(\$submittedContent === strip_tags\(\$submittedContent\)\)[\s\S]*?nl2br\(e\(\$submittedContent\), false\)/);
     assert.match(operations, /await closePostEditModal\(id\);[\s\S]*?feed\.mutate/);
     assert.match(operations, /document\.querySelectorAll\('\.modal-backdrop'\)\.forEach\(element => element\.remove\(\)\)/);
 });
