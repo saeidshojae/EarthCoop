@@ -53,7 +53,34 @@ function invokeSearch(action) {
 
 export function createActions({ lifecycle, root = document }) {
     const handlers = new Map();
-    let postReactionHandler = null;
+
+    const reactToPost = async (blogId, type, container) => {
+        const api = window.GroupChat?.api;
+        if (!api) return false;
+        try {
+            const data = await api.json(`/blogs/${blogId}/react`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type }),
+            });
+            if (data?.status && data.status !== 'success') {
+                window.GroupChatFeedback?.toast(data.message || 'خطا در ثبت واکنش', { type: 'error' });
+                return false;
+            }
+            container.querySelector('.like-count')?.replaceChildren(String(data.likes ?? 0));
+            container.querySelector('.dislike-count')?.replaceChildren(String(data.dislikes ?? 0));
+            const likeButton = container.querySelector('.btn-like');
+            const dislikeButton = container.querySelector('.btn-dislike');
+            const activeButton = type === '1' ? likeButton : dislikeButton;
+            const inactiveButton = type === '1' ? dislikeButton : likeButton;
+            activeButton?.classList.toggle('active');
+            inactiveButton?.classList.remove('active');
+            return true;
+        } catch {
+            window.GroupChatFeedback?.toast('❌ خطا در ارتباط با سرور', { type: 'error' });
+            return false;
+        }
+    };
 
     const positionMenu = menu => {
         const list = menu?.querySelector('.action-menu__list');
@@ -105,10 +132,10 @@ export function createActions({ lifecycle, root = document }) {
 
     lifecycle.on(root, 'click', event => {
         const reactionButton = event.target.closest?.('.reaction-buttons .btn-like, .reaction-buttons .btn-dislike');
-        if (reactionButton && postReactionHandler) {
+        if (reactionButton) {
             const container = reactionButton.closest('.reaction-buttons');
             if (container?.dataset.postId) {
-                postReactionHandler(container.dataset.postId, reactionButton.classList.contains('btn-like') ? '1' : '0', container);
+                void reactToPost(container.dataset.postId, reactionButton.classList.contains('btn-like') ? '1' : '0', container);
             }
             return;
         }
@@ -163,12 +190,10 @@ export function createActions({ lifecycle, root = document }) {
             handlers.set(name, handler);
             return () => handlers.delete(name);
         },
-        setPostReactionHandler(handler) { postReactionHandler = handler; },
         closeAllActionMenus: closeAll,
         closeGroupInfo,
         destroy() {
             handlers.clear();
-            postReactionHandler = null;
             closeAll();
         },
     };

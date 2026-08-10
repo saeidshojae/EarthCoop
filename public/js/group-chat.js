@@ -214,54 +214,6 @@ legacyLifecycle.on(document, 'DOMContentLoaded', function () {
     });
   });
 
-function sendReaction(blogId, type, container) {
-  $.ajax({
-    url: `/blogs/${blogId}/react`,
-    method: 'POST',
-    data: {
-      type: type,
-      _token: getCsrfToken()
-    },
-    success: function (data) {
-      if (data.status === 'success') {
-        // بروزرسانی تعداد لایک/دیسلایک
-        $(container).find('.like-count').text(data.likes);
-        $(container).find('.dislike-count').text(data.dislikes);
-
-        // تغییر کلاس‌ برای حالت فعال یا غیرفعال
-        const likeBtn = $(container).find('.btn-like');
-        const dislikeBtn = $(container).find('.btn-dislike');
-
-        if (type === '1') {
-          likeBtn.toggleClass('active');
-          dislikeBtn.removeClass('active');
-        } else {
-          dislikeBtn.toggleClass('active');
-          likeBtn.removeClass('active');
-        }
-      } else {
-        showErrorAlert(data.message || 'خطا در ثبت واکنش');
-      }
-    },
-    error: function () {
-      showErrorAlert('❌ خطا در ارتباط با سرور');
-    }
-  });
-}
-
-
-
-const registerLegacyPostReaction = () => {
-    if (!window.GroupChat?.actions) return false;
-    window.GroupChat.actions.setPostReactionHandler(sendReaction);
-    return true;
-};
-if (!registerLegacyPostReaction()) {
-    window.GroupChatLifecycle?.on(document, 'group-chat:ready', registerLegacyPostReaction, { once: true });
-}
-
-
-  
   let openSkillListId = null;
 
   function toggleSkillList(pollId) {

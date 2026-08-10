@@ -263,7 +263,9 @@ test('post menus and reactions use lifecycle-owned event delegation', () => {
     assert.match(actions, /\.reaction-buttons \.btn-like, \.reaction-buttons \.btn-dislike/);
     assert.match(actions, /event\.target\.closest\?\.\('\.action-menu__toggle'\)/);
     assert.match(actions, /menuAction && !menuAction\.classList\.contains\('btn-reaction'\)/);
-    assert.match(groupChat, /setPostReactionHandler\(sendReaction\)/);
+    assert.match(actions, /const reactToPost = async/);
+    assert.match(actions, /api\.json\(`\/blogs\/\$\{blogId\}\/react`/);
+    assert.doesNotMatch(groupChat, /function sendReaction|setPostReactionHandler/);
     assert.match(features, /GroupChat\?\.actions\?\.closeAllActionMenus/);
     assert.doesNotMatch(groupChat, /window\.closeAllActionMenus|__groupChatPostInteractionsDelegated/);
     assert.doesNotMatch(groupChat, /_initPostMenus/);
