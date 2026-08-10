@@ -64,6 +64,8 @@ Checkpoint سی‌ام: delete/report پیام در هر سه تولیدکنند
 
 Checkpoint سی‌ویکم: runtime ویرایش پیام از Blade اصلی به partial مستقل `message_edit_runtime` منتقل شد. بازکردن modal، submit ویرایش، بستن با دکمه/backdrop و Escape همگی زیر مالکیت `GroupChatLifecycle` قرار گرفتند و cleanup، وضعیت modal و guard راه‌اندازی را بازنشانی می‌کند. قرارداد source از بازگشت listenerهای مستقیم جلوگیری می‌کند و Blade اصلی به ۳۱۷۵ خط کاهش یافت.
 
+Checkpoint سی‌ودوم: تنظیم و راه‌اندازی CKEditor پست از Blade اصلی به partial مستقل `ckeditor_runtime` منتقل شد. polling انتظار برای بارگذاری CKEditor اکنون تحت مالکیت Lifecycle است، پس از موفقیت صریحاً متوقف می‌شود و راه‌اندازی editor با بررسی instance موجود idempotent است. cleanup نمونهٔ متعلق به صفحه و guard را آزاد می‌کند و قرارداد source از بازگشت interval خام جلوگیری می‌کند. Blade اصلی به ۳۰۸۲ خط کاهش یافت.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.

@@ -19,6 +19,7 @@ const files = [
     'resources/views/groups/partials/pin_runtime.blade.php',
     'resources/views/groups/partials/scroll_unread_runtime.blade.php',
     'resources/views/groups/partials/message_edit_runtime.blade.php',
+    'resources/views/groups/partials/ckeditor_runtime.blade.php',
     'resources/views/groups/partials/composer_actions_runtime.blade.php',
     'resources/views/groups/partials/post_submission_runtime.blade.php',
 ];
@@ -265,4 +266,21 @@ test('message edit runtime is extracted and lifecycle-owned', () => {
     assert.equal((runtime.match(/\.addEventListener\(/g) || []).length, 1);
     assert.match(runtime, /document\.addEventListener\('DOMContentLoaded', initializeMessageEditRuntime, \{ once: true \}\)/);
     assert.doesNotMatch(runtime, /btnSave\.addEventListener/);
+});
+
+test('ckeditor runtime is extracted and lifecycle-owned', () => {
+    const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
+    const runtime = readFileSync('resources/views/groups/partials/ckeditor_runtime.blade.php', 'utf8');
+
+    assert.match(blade, /@include\('groups\.partials\.ckeditor_runtime'\)/);
+    assert.doesNotMatch(blade, /function installCkeditorChatConfig\(/);
+    assert.match(runtime, /function initializeGroupChatCkeditorRuntime\(\)/);
+    assert.match(runtime, /window\.__groupChatCkeditorInitialized/);
+    assert.match(runtime, /lifecycle\.interval\(function\(\)/);
+    assert.match(runtime, /lifecycle\.clearInterval\(ckeditorWait\)/);
+    assert.match(runtime, /ckeditor\.instances\?\.post_editor/);
+    assert.match(runtime, /instance\.destroy\(true\)/);
+    assert.match(runtime, /lifecycle\.add\(function\(\)/);
+    assert.doesNotMatch(runtime, /(^|[^.])setInterval\(/m);
+    assert.equal((runtime.match(/\.addEventListener\(/g) || []).length, 1);
 });
