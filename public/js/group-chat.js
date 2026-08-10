@@ -385,61 +385,6 @@ async function groupChatFetch(input, init = {}) {
         ? feedBridge.create(type, payload, source)
         : feedBridge.mutate(type, action, payload, source);
 
-    const remoteTypingUsers = new Map();
-    let typingClearTimer = null;
-
-    function getTypingIndicatorElement() {
-        const feed = getFeedElement();
-        if (!feed) return null;
-
-        let indicator = document.getElementById('group-typing-indicator');
-        if (!indicator) {
-            indicator = document.createElement('div');
-            indicator.id = 'group-typing-indicator';
-            indicator.className = 'typing-indicator';
-            indicator.style.display = 'none';
-            feed.appendChild(indicator);
-        }
-        return indicator;
-    }
-
-    function renderTypingIndicator() {
-        const indicator = getTypingIndicatorElement();
-        if (!indicator) return;
-
-        const feed = getFeedElement();
-        if (feed && indicator.parentElement === feed && feed.lastElementChild !== indicator) {
-            feed.appendChild(indicator);
-        }
-
-        const names = Array.from(remoteTypingUsers.values()).filter(Boolean);
-        if (names.length === 0) {
-            indicator.style.display = 'none';
-            indicator.textContent = '';
-            return;
-        }
-
-        let message = 'در حال تایپ...';
-        if (names.length === 1) {
-            message = `${names[0]} در حال تایپ...`;
-        } else if (names.length === 2) {
-            message = `${names[0]} و ${names[1]} در حال تایپ...`;
-        } else {
-            message = `${names[0]} و ${names.length - 1} نفر دیگر در حال تایپ...`;
-        }
-
-        indicator.textContent = message;
-        indicator.style.display = 'block';
-    }
-
-    function scheduleTypingCleanup() {
-        legacyLifecycle.clearTimeout(typingClearTimer);
-        typingClearTimer = legacyLifecycle.timeout(function() {
-            remoteTypingUsers.clear();
-            renderTypingIndicator();
-        }, 3000);
-    }
-
     function applyMessageEvent(event) {
         if (!event) return;
         markRealtimeHealthy();
@@ -465,34 +410,7 @@ async function groupChatFetch(input, init = {}) {
         const action = event.action || payload.action || '';
 
         if (action === 'typing') {
-            const typingUserId = payload.user_id || payload.id;
-            if (!typingUserId || typingUserId === window.authUserId) {
-                debugLog('[typing] ignored typing event', {
-                    reason: !typingUserId ? 'missing user id' : 'self actor',
-                    typingUserId,
-                    authUserId: window.authUserId,
-                });
-                return;
-            }
-
-            const isTyping = payload.is_typing !== false;
-            if (isTyping) {
-                remoteTypingUsers.set(typingUserId, payload.user_name || 'کاربر');
-                renderTypingIndicator();
-                scheduleTypingCleanup();
-                debugLog('[typing] show typing indicator', {
-                    typingUserId,
-                    user_name: payload.user_name || 'کاربر',
-                    users: Array.from(remoteTypingUsers.entries()),
-                });
-            } else {
-                remoteTypingUsers.delete(typingUserId);
-                renderTypingIndicator();
-                debugLog('[typing] hide typing for user', {
-                    typingUserId,
-                    users: Array.from(remoteTypingUsers.entries()),
-                });
-            }
+            window.GroupChat?.typing?.apply(payload);
             return;
         }
 

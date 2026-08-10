@@ -13,6 +13,7 @@ import { createElections } from './elections.js';
 import { createTabs } from './tabs.js';
 import { createSkillLists } from './skill-lists.js';
 import { installLegacyRenderers } from './legacy-renderers.js';
+import { createTyping } from './typing.js';
 
 if (!window.GroupChatFeedback) {
     window.GroupChatFeedback = createFeedback();
@@ -61,6 +62,7 @@ if (window.groupId) {
     app.tabs = createTabs({ store, lifecycle });
     app.skillLists = createSkillLists({ actions, store, lifecycle });
     app.installLegacyRenderers = callbacks => installLegacyRenderers({ app, callbacks });
+    app.typing = createTyping({ store, lifecycle, authUserId: window.authUserId });
 
     app.feed.hydrate('initial');
 

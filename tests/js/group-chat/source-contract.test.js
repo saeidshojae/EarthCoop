@@ -507,6 +507,19 @@ test('poll skill-list UI is modular and store-backed', () => {
     assert.doesNotMatch(legacy, /function (?:toggleSkillList|closeSkill|reapplySkillListState)\(/);
 });
 
+test('typing indicator is store-backed and lifecycle-owned', () => {
+    const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
+    const typing = readFileSync('resources/js/group-chat/typing.js', 'utf8');
+    const legacy = readFileSync('public/js/group-chat.js', 'utf8');
+
+    assert.match(index, /createTyping\(\{ store, lifecycle, authUserId:/);
+    assert.match(typing, /typingUsers/);
+    assert.match(typing, /store\.subscribe/);
+    assert.match(typing, /lifecycle\.timeout\(clear, 3000\)/);
+    assert.match(legacy, /GroupChat\?\.typing\?\.apply\(payload\)/);
+    assert.doesNotMatch(legacy, /remoteTypingUsers|typingClearTimer|function renderTypingIndicator/);
+});
+
 test('legacy group runtime has no active raw page listeners or timers', () => {
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8').replace(/^\s*\/\/.*$/gm, '');
 
