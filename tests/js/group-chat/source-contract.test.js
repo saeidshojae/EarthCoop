@@ -21,6 +21,8 @@ const files = [
     'resources/views/groups/partials/message_edit_runtime.blade.php',
     'resources/views/groups/partials/ckeditor_runtime.blade.php',
     'resources/views/groups/partials/legacy_message_runtime.blade.php',
+    'resources/views/groups/partials/page_chrome_runtime.blade.php',
+    'resources/views/groups/modals/group_edit_form.blade.php',
     'resources/views/groups/partials/composer_actions_runtime.blade.php',
     'resources/views/groups/partials/post_submission_runtime.blade.php',
 ];
@@ -314,4 +316,22 @@ test('legacy message runtime is loaded through its dedicated partial', () => {
     assert.match(runtime, /activeRequest\.abort\(\)/);
     assert.doesNotMatch(runtime, /\$\(document\)\.on/);
     assert.doesNotMatch(runtime, /openCategory\.addEventListener/);
+});
+
+test('page chrome runtime owns group edit and one-shot page effects', () => {
+    const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
+    const runtime = readFileSync('resources/views/groups/partials/page_chrome_runtime.blade.php', 'utf8');
+    const groupEdit = readFileSync('resources/views/groups/modals/group_edit_form.blade.php', 'utf8');
+    const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
+
+    assert.match(blade, /@include\('groups\.partials\.page_chrome_runtime'\)/);
+    assert.doesNotMatch(blade, /function openGroupEdit\(/);
+    assert.doesNotMatch(blade, /function cancelGroupEdit\(/);
+    assert.match(runtime, /window\.GroupChatPageChrome = Object\.freeze/);
+    assert.match(runtime, /lifecycle\.on\(window, 'load'/);
+    assert.match(runtime, /delete window\.GroupChatPageChrome/);
+    assert.match(groupEdit, /data-group-chat-action="cancel-group-edit"/);
+    assert.doesNotMatch(groupEdit, /onclick=/);
+    assert.match(groupChat, /GroupChatPageChrome\.openGroupEdit\(\)/);
+    assert.match(groupChat, /GroupChatPageChrome\.cancelGroupEdit\(\)/);
 });

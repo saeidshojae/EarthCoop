@@ -72,6 +72,8 @@ Checkpoint سی‌وچهارم: Lifecycle قابلیت لغو صریح timeout �
 
 Checkpoint سی‌وپنجم: listenerهای jQuery سراسری و listener عنصربه‌عنصر triggerهای modal پست‌های دسته‌بندی به click/keydown delegation زیر مالکیت Lifecycle منتقل شدند. درخواست AJAX فعال پیش از درخواست بعدی و هنگام cleanup لغو می‌شود؛ modal، قفل scroll بدنه و guard نیز در teardown بازنشانی می‌شوند. قرارداد source بازگشت `$(document).on` و listenerهای per-trigger را ممنوع می‌کند.
 
+Checkpoint سی‌وششم: کنترل فرم ویرایش گروه از globalهای آزاد `openGroupEdit`/`cancelGroupEdit` به API محدود و immutable با نام `GroupChatPageChrome` منتقل شد و دکمهٔ لغو باقی‌مانده از `onclick` به action داده‌محور تغییر کرد. اعلان موفقیت session، اسکرول اولیهٔ pinned messages و cleanup فرم نیز تحت Lifecycle قرار گرفتند؛ تعریف تکراری و ناقص `closeAllModals` از Blade حذف و پیاده‌سازی اصلی runtime حفظ شد. Blade اصلی به ۲۵۳۳ خط کاهش یافت.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.

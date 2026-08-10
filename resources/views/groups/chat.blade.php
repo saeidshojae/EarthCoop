@@ -1982,38 +1982,11 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
 </div>
 @endif
 
-@if (session()->has('success'))
-<script>
-window.addEventListener('load', function () {
-    window.groupChatNotify(@json(session()->get('success')), 'success');
-}, { once: true });
-</script>
-@endif
+@include('groups.partials.page_chrome_runtime')
 
 @push('scripts')
 @include('groups.partials.ckeditor_runtime')
 @endpush
-
-<script>
-const elementPin = document.querySelector(".pinned-messages");
-if (elementPin) elementPin.scrollTop = elementPin.scrollHeight;
-
-function openGroupEdit() {
-    document.getElementById('groupEditFormBox').style.display = 'block';
-    document.getElementById('back').style.display = 'block';
-}
-
-function cancelGroupEdit() {
-    document.getElementById('groupEditFormBox').style.display = 'none';
-    document.getElementById('back').style.display = 'none';
-}
-
-function closeAllModals() {
-    document.getElementById('groupEditFormBox').style.display = 'none';
-    document.getElementById('back').style.display = 'none';
-    // ... existing modal close code ...
-}
-</script>
 
 <style>
 .recording-indicator {

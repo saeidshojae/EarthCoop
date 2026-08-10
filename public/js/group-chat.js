@@ -294,8 +294,10 @@ document.addEventListener('click', function handleDelegatedLegacyChatAction(even
         window.closeElectionBox();
     } else if (action === 'close-group-info' && typeof window.closeGroupInfo === 'function') {
         window.closeGroupInfo();
-    } else if (action === 'open-group-edit' && typeof window.openGroupEdit === 'function') {
-        window.openGroupEdit();
+    } else if (action === 'open-group-edit' && window.GroupChatPageChrome) {
+        window.GroupChatPageChrome.openGroupEdit();
+    } else if (action === 'cancel-group-edit' && window.GroupChatPageChrome) {
+        window.GroupChatPageChrome.cancelGroupEdit();
     } else if (action === 'open-chat-search' && typeof window.openChatSearch === 'function') {
         window.openChatSearch();
     } else if (action === 'clear-chat' && typeof window.clearChatHistory === 'function') {

@@ -42,10 +42,10 @@
 
             <button type="submit" class="btn btn-primary flex-grow-1">ذخیره تغییرات</button>
 
-            <button type="button" class="btn btn-secondary" onclick="cancelGroupEdit()" style='    background-color: red !important;'>لغو</button>
+            <button type="button" class="btn btn-secondary" data-group-chat-action="cancel-group-edit" style='    background-color: red !important;'>لغو</button>
 
         </div>
 
     </form>
 
-</div> 
+</div>
