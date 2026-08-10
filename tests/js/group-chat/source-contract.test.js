@@ -389,6 +389,9 @@ test('all declarative chat actions use the lifecycle-owned modular dispatcher', 
     assert.match(index, /const pageActions = createActions\(\{ lifecycle: pageLifecycle \}\)/);
     assert.ok(index.indexOf('const pageActions') < index.indexOf('if (window.groupId)'));
     assert.doesNotMatch(groupChat, /handleDelegatedLegacyChatAction/);
+    assert.doesNotMatch(groupChat, /function (?:openGroupInfo|closeGroupInfo)\(/);
+    assert.match(actions, /const openGroupInfo = \(\) =>/);
+    assert.match(actions, /const closeGroupInfo = \(\) =>/);
 });
 
 test('canonical modular runtime is not bypassed by the migration feature flag', () => {

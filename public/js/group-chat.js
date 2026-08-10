@@ -549,7 +549,7 @@ function openElectionBox(){
       }
     }, 600);
   }
-  closeGroupInfo();
+  window.GroupChat?.actions?.closeGroupInfo();
 }
 
 function closeElectionBox(){
@@ -606,44 +606,6 @@ function sendReaction(blogId, type, container) {
 }
 
 
-
-function openGroupInfo() {
-  const panel = document.getElementById('groupInfoPanel');
-  const backdrop = document.getElementById('groupInfoBackdrop');
-  if (!panel) return;
-
-  if (window.innerWidth < 1024) {
-    panel.classList.add('is-open');
-    if (backdrop) {
-      backdrop.classList.remove('hidden');
-      backdrop.classList.add('group-info-backdrop--visible');
-    }
-  }
-}
-
-function closeGroupInfo() {
-  const panel = document.getElementById('groupInfoPanel');
-  const backdrop = document.getElementById('groupInfoBackdrop');
-  if (!panel) return;
-
-  panel.classList.remove('is-open');
-  if (backdrop) {
-    backdrop.classList.add('hidden');
-    backdrop.classList.remove('group-info-backdrop--visible');
-  }
-}
-
-document.getElementById('groupInfoBackdrop')?.addEventListener('click', closeGroupInfo);
-window.addEventListener('resize', () => {
-  if (window.innerWidth >= 1024) {
-    closeGroupInfo();
-  }
-});
-document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') {
-    closeGroupInfo();
-  }
-});
 
 const registerLegacyPostReaction = () => {
     if (!window.GroupChat?.actions) return false;

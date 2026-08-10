@@ -6,7 +6,6 @@ const legacyActionTargets = {
     'close-search': ['closeChatSearch'],
     'close-report': ['closeReportBox'],
     'submit-report': ['submitReport'],
-    'open-group-info': ['openGroupInfo'],
     'open-blog': ['openBlogBox'],
     'open-poll': ['openPollBox'],
     'open-election': ['openElectionBox'],
@@ -16,7 +15,6 @@ const legacyActionTargets = {
     'group-settings': ['showGroupSettingsModal'],
     unpin: ['unpinMessage', ({ target }) => [target.dataset.messageId]],
     'close-election': ['closeElectionBox'],
-    'close-group-info': ['closeGroupInfo'],
     'open-chat-search': ['openChatSearch'],
     'clear-chat': ['clearChatHistory'],
     'delete-chat': ['deleteChat'],
@@ -93,6 +91,21 @@ export function createActions({ lifecycle, root = document }) {
         menu.querySelector('.action-menu__toggle')?.setAttribute('aria-expanded', 'false');
     });
     const reposition = () => root.querySelectorAll('[data-action-menu].is-open').forEach(positionMenu);
+    const closeGroupInfo = () => {
+        const panel = document.getElementById('groupInfoPanel');
+        const backdrop = document.getElementById('groupInfoBackdrop');
+        panel?.classList.remove('is-open');
+        backdrop?.classList.add('hidden');
+        backdrop?.classList.remove('group-info-backdrop--visible');
+    };
+    const openGroupInfo = () => {
+        const panel = document.getElementById('groupInfoPanel');
+        const backdrop = document.getElementById('groupInfoBackdrop');
+        if (!panel || window.innerWidth >= 1024) return;
+        panel.classList.add('is-open');
+        backdrop?.classList.remove('hidden');
+        backdrop?.classList.add('group-info-backdrop--visible');
+    };
 
     lifecycle.on(root, 'click', event => {
         const reactionButton = event.target.closest?.('.reaction-buttons .btn-like, .reaction-buttons .btn-dislike');
@@ -127,7 +140,8 @@ export function createActions({ lifecycle, root = document }) {
         if (action === 'modal-backdrop' && event.target !== target) return;
         const context = { event, target };
         const handler = handlers.get(action);
-        const handled = handler ? handler(context) !== false : invokePageChrome(action, context) || invokeGlobal(action, context);
+        const ownedHandler = action === 'open-group-info' ? openGroupInfo : action === 'close-group-info' ? closeGroupInfo : null;
+        const handled = handler ? handler(context) !== false : ownedHandler ? (ownedHandler(), true) : invokePageChrome(action, context) || invokeGlobal(action, context);
         if (!handled && action !== 'modal-backdrop' && action !== 'close-modal') return;
         event.preventDefault();
         if (action === 'modal-backdrop' || action === 'close-modal') {
@@ -137,8 +151,15 @@ export function createActions({ lifecycle, root = document }) {
             if (typeof close === 'function') close();
         }
     });
-    lifecycle.on(root, 'keydown', event => { if (event.key === 'Escape') closeAll(); });
-    lifecycle.on(window, 'resize', reposition);
+    lifecycle.on(root, 'keydown', event => {
+        if (event.key !== 'Escape') return;
+        closeAll();
+        closeGroupInfo();
+    });
+    lifecycle.on(window, 'resize', () => {
+        reposition();
+        if (window.innerWidth >= 1024) closeGroupInfo();
+    });
     lifecycle.on(root, 'scroll', reposition, true);
 
     return {
@@ -148,6 +169,7 @@ export function createActions({ lifecycle, root = document }) {
         },
         setPostReactionHandler(handler) { postReactionHandler = handler; },
         closeAllActionMenus: closeAll,
+        closeGroupInfo,
         destroy() {
             handlers.clear();
             postReactionHandler = null;
