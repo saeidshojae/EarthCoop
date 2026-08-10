@@ -456,7 +456,7 @@
 .content-meta-line {
     display: flex !important;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap !important;
     gap: 6px;
     direction: rtl !important;
     justify-content: flex-start !important;
@@ -464,14 +464,31 @@
 }
 
 .content-meta-line .message-primary-meta,
-.content-meta-line > .content-meta-time { order: 1; margin: 0 !important; }
+.content-meta-line > .content-meta-time { order: 1; flex: 0 0 auto; margin: 0 !important; }
 .content-meta-line .message-edit-status,
-.content-meta-line > .content-edit-status { order: 2; white-space: nowrap; }
+.content-meta-line > .content-edit-status { order: 2; flex: 0 0 auto; white-space: nowrap; }
 .content-meta-line .message-reactions-slot,
 .content-meta-line > .content-reactions-slot,
-.content-meta-line > .reaction-buttons { order: 3; flex: 0 1 auto !important; margin: 0 !important; }
+.content-meta-line > .reaction-buttons {
+    order: 3;
+    flex: 1 1 auto !important;
+    min-width: 0;
+    margin: 0 !important;
+    justify-content: center;
+}
+.content-meta-line .message-reactions {
+    display: flex !important;
+    flex-wrap: wrap;
+    justify-content: center;
+    min-width: 0;
+}
 .content-meta-line > .read-receipt,
-.content-meta-line > .content-read-receipt { order: 4; margin-inline-start: auto !important; white-space: nowrap; }
+.content-meta-line > .content-read-receipt {
+    order: 4;
+    flex: 0 0 auto;
+    margin: 0 !important;
+    white-space: nowrap;
+}
 .content-meta-line > .post-card__comments,
 .content-meta-line > .poll-card__status { order: 5; flex-basis: 100%; }
 

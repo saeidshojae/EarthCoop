@@ -149,10 +149,13 @@ test('all group content uses the same rtl metadata order', () => {
     assert.match(post, /content-edit-status/);
     assert.match(poll, /content-edit-status/);
     assert.match(styles, /direction: rtl !important/);
-    assert.match(styles, /content-meta-time \{ order: 1/);
-    assert.match(styles, /content-edit-status \{ order: 2/);
-    assert.match(styles, /reaction-buttons \{ order: 3/);
-    assert.match(styles, /content-read-receipt \{ order: 4/);
+    assert.match(styles, /content-meta-time \{[\s\S]*?order: 1/);
+    assert.match(styles, /content-edit-status \{[\s\S]*?order: 2/);
+    assert.match(styles, /reaction-buttons \{[\s\S]*?order: 3/);
+    assert.match(styles, /content-read-receipt \{[\s\S]*?order: 4/);
+    assert.match(styles, /flex-wrap: nowrap !important/);
+    assert.match(styles, /flex: 1 1 auto !important/);
+    assert.match(styles, /content-read-receipt \{[\s\S]*?flex: 0 0 auto/);
 });
 
 test('realtime runtime is pinned and starts without package downloads', () => {
