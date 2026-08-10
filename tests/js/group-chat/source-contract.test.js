@@ -281,6 +281,10 @@ test('voice controls keep icons centered and message edits avoid the global over
     assert.match(styles, /#voice-recording-modal button > i \{[\s\S]*?width: 1em !important;[\s\S]*?height: 1em !important;[\s\S]*?transform-origin: 50% 50% !important/);
     assert.match(styles, /#voice-recording-modal #send-recording-btn > \.fa-spinner \{[\s\S]*?voice-recorder-spin/);
     assert.doesNotMatch(editRuntime, /global-loading|showOverlay\(|hideOverlay\(/);
+    assert.match(styles, /@keyframes message-edit-button-spin \{[\s\S]*?translateY\(-50%\) rotate\(360deg\)/);
+    assert.match(editRuntime, /updateMessageContent\(bubbleToUpdate, optimisticContent, true\);[\s\S]*?closeModal\(\);[\s\S]*?await fetch\(requestUrl/);
+    assert.match(editRuntime, /if \(!editCommitted && bubbleToUpdate\?\.isConnected\)[\s\S]*?previousContent/);
+    assert.match(editRuntime, /if \(editPending\)[\s\S]*?ویرایش قبلی هنوز در حال همگام‌سازی است/);
 });
 
 test('private mention and voice state are not exposed as window globals', () => {

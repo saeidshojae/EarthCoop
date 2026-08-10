@@ -23,6 +23,7 @@
         let currentBubble = null; // عنصر .message-bubble
         let currentUrl = null; // آدرس PATCH
         let currentId = null; // message-id
+        let editPending = false;
         const updateMessageContent = (messageBubble, content, isEdited) => {
             const id = Number(messageBubble?.dataset.messageId);
             if (!Number.isFinite(id)) throw new Error('Message bubble not found in DOM');
@@ -37,6 +38,10 @@
         lifecycle.on(document, 'click', function(e) {
             const editBtn = e.target.closest('.btn-edit');
             if (!editBtn) return;
+            if (editPending) {
+                window.GroupChatFeedback?.toast('ویرایش قبلی هنوز در حال همگام‌سازی است.', { type: 'info' });
+                return;
+            }
 
             const bubble = editBtn.closest('.message-bubble');
             if (!bubble) return;
@@ -85,11 +90,29 @@
                 btnSave.classList.toggle('btn-loading', on);
             };
 
+            const bubbleToUpdate = currentBubble;
+            const requestUrl = currentUrl;
+            const contentNode = bubbleToUpdate.querySelector('.message-content');
+            const previousContent = contentNode?.innerHTML ?? '';
+            const previouslyEdited = Boolean(bubbleToUpdate.querySelector('.message-edit-status'));
+            const optimisticContent = newText
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;')
+                .replace(/\r?\n/g, '<br>');
+            let editCommitted = false;
+
+            editPending = true;
+            updateMessageContent(bubbleToUpdate, optimisticContent, true);
+            closeModal();
+
             try {
                 setBtnLoading(true);
 
                 // اگر روتت دقیقاً POST می‌پذیره (بدون شبیه‌سازی PATCH)، همین کافیه:
-                const res = await fetch(currentUrl, {
+                const res = await fetch(requestUrl, {
                     method: 'POST', // مطابق کنترلرت
                     headers: {
                         'X-CSRF-TOKEN': csrf,
@@ -139,8 +162,10 @@
                     return;
                 }
 
+                editCommitted = true;
+
                 // بررسی وجود currentBubble
-                if (!currentBubble) {
+                if (!bubbleToUpdate) {
                     console.error('currentBubble is null');
                     window.GroupChatFeedback?.toast('خطا: عنصر پیام پیدا نشد. لطفا صفحه را رفرش کنید.', { type: 'error' });
                     // ✅ FIXED: No reload - let user refresh manually if needed
@@ -151,8 +176,6 @@
                 console.log('Current bubble found:', currentBubble);
 
                 // ذخیره کردن currentBubble قبل از بستن مودال (چون closeModal ممکن است آن را null کند)
-                const bubbleToUpdate = currentBubble;
-
                 // بستن منوی عملیات (اگر bubble هنوز در DOM است)
                 if (bubbleToUpdate && bubbleToUpdate.isConnected) {
                     try {
@@ -273,6 +296,11 @@
                 closeModal();
 
             } finally {
+                if (!editCommitted && bubbleToUpdate?.isConnected) {
+                    updateMessageContent(bubbleToUpdate, previousContent, previouslyEdited);
+                    if (!previouslyEdited) bubbleToUpdate.querySelector('.message-edit-status')?.remove();
+                }
+                editPending = false;
                 setBtnLoading(false);
             }
         });

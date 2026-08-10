@@ -447,6 +447,25 @@
     animation: spin .8s linear infinite;
 }
 
+.save-edit.btn-loading {
+    padding-inline-start: 2rem !important;
+}
+
+.save-edit.btn-loading::after {
+    inset-inline-start: .65rem;
+    right: auto;
+    top: 50%;
+    box-sizing: border-box;
+    transform: translateY(-50%) rotate(0deg);
+    transform-origin: 50% 50%;
+    animation: message-edit-button-spin .8s linear infinite;
+}
+
+@keyframes message-edit-button-spin {
+    from { transform: translateY(-50%) rotate(0deg); }
+    to { transform: translateY(-50%) rotate(360deg); }
+}
+
 .menu-item {
     width: 100%;
     display: flex;
