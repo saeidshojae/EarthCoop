@@ -107,6 +107,7 @@ if (!existingRuntimeStyle) {
     document.head.appendChild(style);
 }
 
+const legacyLifecycle = window.GroupChatLifecycle;
 const groupChatDebug = Boolean(
     window.__groupChatDebug ||
     window.__chatPollingDebug ||
@@ -147,7 +148,7 @@ if (groupChatDebug && typeof window !== 'undefined') {
     debugLog('🔍 Current time:', new Date().toISOString());
     
     // تست: اگر بعد از 3 ثانیه console.log ها نمایش داده نشدند، alert نمایش بده
-    setTimeout(function() {
+    legacyLifecycle.timeout(function() {
         if (typeof window.groupId !== 'undefined') {
             debugLog('✅✅✅ POLLING TEST: window.groupId is defined:', window.groupId);
         } else {
@@ -194,65 +195,18 @@ function getOrCreateClientMessageIdInput(form) {
     return input;
 }
 
-function groupChatRequestId() {
-    return generateClientMessageId().replace(/^cmid_/, 'req_');
-}
-
 async function groupChatFetch(input, init = {}) {
-    if (window.GroupChat?.api) {
-        return window.GroupChat.api.request(input, init);
-    }
-
-    const options = { ...init };
-    const method = String(options.method || 'GET').toUpperCase();
-    const headers = new Headers(options.headers || {});
-    const requestId = headers.get('X-Request-ID') || groupChatRequestId();
-    headers.set('X-Request-ID', requestId);
-    headers.set('Accept', headers.get('Accept') || 'application/json');
-
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && !headers.has('Idempotency-Key')) {
-        headers.set('Idempotency-Key', groupChatRequestId().replace(/^req_/, 'idem_'));
-    }
-    options.headers = headers;
-
-    const timeoutMs = Number(window.__groupChatRequestTimeoutMs || 15000);
-    const controller = new AbortController();
-    const upstreamSignal = options.signal;
-    if (upstreamSignal) {
-        upstreamSignal.addEventListener('abort', () => controller.abort(upstreamSignal.reason), { once: true });
-    }
-    options.signal = controller.signal;
-
-    let lastError;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-        const timer = window.setTimeout(() => controller.abort('timeout'), timeoutMs);
-        try {
-            const response = await window.fetch(input, options);
-            window.clearTimeout(timer);
-            if (attempt === 0 && response.status >= 500) {
-                await new Promise(resolve => window.setTimeout(resolve, 250));
-                continue;
-            }
-            return response;
-        } catch (error) {
-            window.clearTimeout(timer);
-            lastError = error;
-            if (controller.signal.aborted || attempt > 0) throw error;
-            await new Promise(resolve => window.setTimeout(resolve, 250));
-        }
-    }
-
-    throw lastError || new Error('Request failed');
+    if (!window.GroupChat?.api) throw new Error('GroupChat ApiClient is not ready');
+    return window.GroupChat.api.request(input, init);
 }
-
-document.addEventListener('DOMContentLoaded', function () {
+legacyLifecycle.on(document, 'DOMContentLoaded', function () {
     debugLog('Tabs script loaded ✅');
 
     const tabs = document.querySelectorAll('.tab');
     const contents = document.querySelectorAll('.tab-content');
 
     tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
+      legacyLifecycle.on(tab, 'click', () => {
         tabs.forEach(t => t.classList.remove('active'));
         contents.forEach(c => c.classList.remove('active'));
 
@@ -601,7 +555,7 @@ if (!registerLegacyPostReaction()) {
         if (!element) return;
         element.style.transition = 'opacity 0.3s ease-out';
         element.style.opacity = '0';
-        setTimeout(function() { element.remove(); }, 300);
+        legacyLifecycle.timeout(function() { element.remove(); }, 300);
     }
 
     function removeMessageDom(messageId) {
@@ -867,8 +821,8 @@ if (!registerLegacyPostReaction()) {
     }
 
     function scheduleTypingCleanup() {
-        clearTimeout(typingClearTimer);
-        typingClearTimer = setTimeout(function() {
+        legacyLifecycle.clearTimeout(typingClearTimer);
+        typingClearTimer = legacyLifecycle.timeout(function() {
             remoteTypingUsers.clear();
             renderTypingIndicator();
         }, 3000);
@@ -1430,7 +1384,7 @@ if (!registerLegacyPostReaction()) {
         realtimeLifecycle.timeout(waitForScrollRestore, 500); // هر 500ms چک کن
     }
 
-document.addEventListener('DOMContentLoaded', function() {
+legacyLifecycle.on(document, 'DOMContentLoaded', function() {
     const chatBox = document.getElementById('chat-box');
     const form = document.getElementById('chatForm');
     const voiceFileInput = document.getElementById('voice-file-input');
@@ -1468,11 +1422,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    voiceFileInput?.addEventListener('change', () => {
+    if (voiceFileInput) legacyLifecycle.on(voiceFileInput, 'change', () => {
         updateVoiceFilePreview(voiceFileInput.files?.[0] || null);
     });
 
-    voiceFileRemove?.addEventListener('click', (event) => {
+    if (voiceFileRemove) legacyLifecycle.on(voiceFileRemove, 'click', (event) => {
         event.preventDefault();
         if (voiceFileInput) {
             voiceFileInput.value = '';
@@ -1481,7 +1435,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     if (form) {
-        form.addEventListener('submit', async function(e) {
+        legacyLifecycle.on(form, 'submit', async function(e) {
             e.preventDefault();
             debugLog('[TIMING] JS T0 - form submit started:', Date.now());
 
@@ -2100,7 +2054,7 @@ if (hours > 24) {
     }
 
     if (updateTimer()) {
-      intervalId = lifecycle?.interval(updateTimer, 1000) ?? setInterval(updateTimer, 1000);
+      intervalId = lifecycle.interval(updateTimer, 1000);
       timer.dataset.timerSet = "true";
     }
   });
@@ -2112,16 +2066,16 @@ let audioChunks = [];
 let isRecording = false;
 
 // Wait for DOM to be fully loaded
-document.addEventListener('DOMContentLoaded', function() {
+legacyLifecycle.on(document, 'DOMContentLoaded', function() {
     const voiceRecordBtn = document.getElementById('voice-record-btn');
     const stopRecordingBtn = document.getElementById('stop-recording');
 
     if (voiceRecordBtn) {
-        voiceRecordBtn.addEventListener('click', startRecording);
+        legacyLifecycle.on(voiceRecordBtn, 'click', startRecording);
     }
 
     if (stopRecordingBtn) {
-        stopRecordingBtn.addEventListener('click', stopRecording);
+        legacyLifecycle.on(stopRecordingBtn, 'click', stopRecording);
     }
 });
 
@@ -2243,16 +2197,6 @@ function stopRecording() {
     }
 }
 
-// Add click handler for reply (using event delegation for dynamic messages)
-document.addEventListener('DOMContentLoaded', function() {
-    const chatBoxEl = document.getElementById('chat-box');
-    if (chatBoxEl) {
-        // NOTE: Do not auto-set parent_id by clicking message bubbles.
-        // Reply must only be initiated via explicit reply actions (btn-rep / replyToMessage)
-        // to prevent accidental threaded replies during reaction/menu interactions.
-    }
-});
-
 function replyToMessage(messageId, senderName, content) {
     const sanitize = function(value) {
         const div = document.createElement('div');
@@ -2350,8 +2294,8 @@ function cancelReply() {
 // Add event listener for form submit to clear reply after sending
 const chatForm = document.getElementById('chatForm');
 if (chatForm) {
-    chatForm.addEventListener('submit', function() {
-        setTimeout(cancelReply, 100);
+    legacyLifecycle.on(chatForm, 'submit', function() {
+        legacyLifecycle.timeout(cancelReply, 100);
     });
 }
 
@@ -2606,7 +2550,7 @@ async function submitPostEdit(event, postId) {
                 }
             }
             // Fallback: force-remove backdrop & restore body
-            setTimeout(function() {
+            legacyLifecycle.timeout(function() {
                 document.querySelectorAll('.modal-backdrop').forEach(function(el) { el.remove(); });
                 document.body.classList.remove('modal-open');
                 document.body.style.removeProperty('overflow');
@@ -2812,15 +2756,16 @@ function submitReport() {
     
     // Initial observation
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', observePostsAndPolls);
+        legacyLifecycle.on(document, 'DOMContentLoaded', observePostsAndPolls, { once: true });
     } else {
         observePostsAndPolls();
     }
     
     // Re-observe after polling injects new content without monkey-patching DOM prototypes.
     const feedRoot = document.getElementById('chat-box') || document.getElementById('group-feed') || document.body;
+    let feedObserver = null;
     if (feedRoot && typeof MutationObserver !== 'undefined') {
-        const feedObserver = new MutationObserver(function(mutations) {
+        feedObserver = new MutationObserver(function(mutations) {
             let needsObserve = false;
             mutations.forEach(function(mutation) {
                 mutation.addedNodes.forEach(function(node) {
@@ -2841,4 +2786,8 @@ function submitReport() {
 
         feedObserver.observe(feedRoot, { childList: true, subtree: true });
     }
+    legacyLifecycle.add(() => {
+        observer.disconnect();
+        feedObserver?.disconnect();
+    });
 })();

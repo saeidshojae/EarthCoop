@@ -114,7 +114,7 @@ test('poll countdown and voice recorder release their owned resources', () => {
     const runtime = readFileSync('public/js/group-chat.js', 'utf8');
     const voice = readFileSync('public/js/voice-recorder.js', 'utf8');
 
-    assert.match(runtime, /lifecycle\?\.interval\(updateTimer, 1000\)/);
+    assert.match(runtime, /lifecycle\.interval\(updateTimer, 1000\)/);
     assert.match(runtime, /lifecycle\?\.clearInterval\(intervalId\)/);
     assert.match(runtime, /timer\.dataset\.timerSet = 'complete'/);
     assert.match(voice, /recordingTimer\s*=\s*createOwnedInterval/);
@@ -443,4 +443,14 @@ test('election page state and actions are lifecycle-owned', () => {
     assert.doesNotMatch(actions, /'open-election': \['openElectionBox'\]|'close-election': \['closeElectionBox'/);
     assert.doesNotMatch(groupChat, /function (?:openElectionBox|closeElectionBox|openElection2Box)\(/);
     assert.doesNotMatch(groupChat, /\$\('#electionForm'\)\.on/);
+});
+
+test('legacy group runtime has no active raw page listeners or timers', () => {
+    const groupChat = readFileSync('public/js/group-chat.js', 'utf8').replace(/^\s*\/\/.*$/gm, '');
+
+    assert.doesNotMatch(groupChat, /\.addEventListener\(/);
+    assert.doesNotMatch(groupChat, /(^|[^.\w])set(?:Timeout|Interval)\(/m);
+    assert.doesNotMatch(groupChat, /(^|[^.\w])clear(?:Timeout|Interval)\(/m);
+    assert.match(groupChat, /legacyLifecycle\.on\(form, 'submit'/);
+    assert.match(groupChat, /legacyLifecycle\.add\(\(\) => \{/);
 });
