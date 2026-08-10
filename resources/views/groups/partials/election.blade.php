@@ -24,7 +24,7 @@
 
     @if($checkBlockElection == null AND auth()->user()->status == 1)
 
-    <input type="button" value="شرکت در انتخابات" class="btn btn-warning" style="width: 100%;     background-color: #0068ff;" onclick="openElectionBox()">
+    <input type="button" value="شرکت در انتخابات" class="btn btn-warning" style="width: 100%;     background-color: #0068ff;" data-chat-page-action="open-election">
 
     @else
 

@@ -47,7 +47,7 @@
 
 
 
-    <img src="{{ asset('images/blogs/' . $blog->img) }}" alt="">
+    <img src="{{ $blog->media_url }}" alt="">
 
 
 
@@ -397,7 +397,7 @@
 
 
 
-                <button class="btn-like" style="border:none;margin-bottom:0" onclick='sendReaction(1)'>
+                <button type="button" class="btn-like" style="border:none;margin-bottom:0" data-comment-page-action="reaction" data-reaction-type="1">
 
 
 
@@ -437,7 +437,7 @@
 
 
 
-                <button class="btn-dislike" style="border:none;margin-bottom:0" onclick='sendReaction(0)'>
+                <button type="button" class="btn-dislike" style="border:none;margin-bottom:0" data-comment-page-action="reaction" data-reaction-type="0">
 
 
 
@@ -589,7 +589,20 @@
 
 @endforeach
 
-
+@once
+<script>
+document.addEventListener('click', function handleCommentPageAction(event) {
+    const target = event.target.closest?.('[data-comment-page-action]');
+    if (!target) return;
+    event.preventDefault();
+    if (target.dataset.commentPageAction === 'reaction' && typeof window.sendReaction === 'function') {
+        window.sendReaction(Number(target.dataset.reactionType));
+    } else if (target.dataset.commentPageAction === 'cancel-reply' && typeof window.cancelReply === 'function') {
+        window.cancelReply();
+    }
+});
+</script>
+@endonce
 
 
 

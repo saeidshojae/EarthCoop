@@ -90,7 +90,7 @@
 
       <div class="comment-item__menu">
 
-        <button type="button" class="comment-item__menu-btn" onclick="openGlobalMenu(event, {{ $item->id }})" aria-label="گزینه‌ها">
+        <button type="button" class="comment-item__menu-btn" data-chat-page-action="comment-menu" data-comment-id="{{ $item->id }}" aria-label="گزینه‌ها">
 
           <i class="fas fa-ellipsis-v"></i>
 
@@ -210,7 +210,7 @@
 
                 id="like-btn-{{ $item->id }}"
 
-                onclick="reactToComment('like', {{ $item->id }})">
+                data-chat-page-action="comment-reaction" data-reaction-type="like" data-comment-id="{{ $item->id }}">
 
           <i class="fas fa-thumbs-up"></i>
 
@@ -224,7 +224,7 @@
 
                 id="dislike-btn-{{ $item->id }}"
 
-                onclick="reactToComment('dislike', {{ $item->id }})">
+                data-chat-page-action="comment-reaction" data-reaction-type="dislike" data-comment-id="{{ $item->id }}">
 
           <i class="fas fa-thumbs-down"></i>
 

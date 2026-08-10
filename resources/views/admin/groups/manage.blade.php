@@ -3158,7 +3158,7 @@
 
 
 
-                                            <img src="{{ asset('images/blogs/' . $blog->img) }}" 
+                                            <img src="{{ $blog->media_url }}"
 
 
 

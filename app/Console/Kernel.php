@@ -56,6 +56,9 @@ class Kernel extends ConsoleKernel
         
         // Close expired auctions every minute
         $schedule->command('auctions:close')->everyMinute();
+
+        // Transactional outbox dispatcher; queue workers publish independently from HTTP requests.
+        $schedule->command('group-chat:dispatch-outbox --limit=500')->everyMinute()->withoutOverlapping();
         
         // Send election reminders every 12 hours
         $schedule->command('elections:send-reminders')->everyTwelveHours();

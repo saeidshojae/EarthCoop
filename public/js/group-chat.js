@@ -125,6 +125,19 @@ const debugWarn = (...args) => {
         console.warn(...args);
     }
 };
+const groupChatNotify = (message, type = 'info') => {
+    if (window.GroupChatFeedback?.toast) return window.GroupChatFeedback.toast(message, { type });
+    console[type === 'error' ? 'error' : 'info'](message);
+};
+const groupChatConfirm = (message, options = {}) => window.GroupChatFeedback?.confirm
+    ? window.GroupChatFeedback.confirm(message, options)
+    : Promise.resolve(false);
+const groupChatPrompt = (message, options = {}) => window.GroupChatFeedback?.prompt
+    ? window.GroupChatFeedback.prompt(message, options)
+    : Promise.resolve(null);
+window.groupChatNotify = groupChatNotify;
+window.groupChatConfirm = groupChatConfirm;
+window.groupChatPrompt = groupChatPrompt;
 
 // ========== FORCE LOG - همیشه نمایش بده ==========
 // استفاده از alert برای اطمینان از نمایش
@@ -140,7 +153,7 @@ if (groupChatDebug && typeof window !== 'undefined') {
         } else {
             debugWarn('❌❌❌ POLLING TEST: window.groupId is NOT defined!');
             // نمایش alert فقط برای debugging
-            // alert('Polling Debug: window.groupId is NOT defined! Check console.');
+            // Debug output is intentionally console-only.
         }
     }, 3000);
 }
@@ -180,6 +193,153 @@ function getOrCreateClientMessageIdInput(form) {
 
     return input;
 }
+
+function groupChatRequestId() {
+    return generateClientMessageId().replace(/^cmid_/, 'req_');
+}
+
+async function groupChatFetch(input, init = {}) {
+    if (window.__groupChatModularFrontend && window.GroupChat?.api) {
+        return window.GroupChat.api.request(input, init);
+    }
+
+    const options = { ...init };
+    const method = String(options.method || 'GET').toUpperCase();
+    const headers = new Headers(options.headers || {});
+    const requestId = headers.get('X-Request-ID') || groupChatRequestId();
+    headers.set('X-Request-ID', requestId);
+    headers.set('Accept', headers.get('Accept') || 'application/json');
+
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && !headers.has('Idempotency-Key')) {
+        headers.set('Idempotency-Key', groupChatRequestId().replace(/^req_/, 'idem_'));
+    }
+    options.headers = headers;
+
+    const timeoutMs = Number(window.__groupChatRequestTimeoutMs || 15000);
+    const controller = new AbortController();
+    const upstreamSignal = options.signal;
+    if (upstreamSignal) {
+        upstreamSignal.addEventListener('abort', () => controller.abort(upstreamSignal.reason), { once: true });
+    }
+    options.signal = controller.signal;
+
+    let lastError;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+        const timer = window.setTimeout(() => controller.abort('timeout'), timeoutMs);
+        try {
+            const response = await window.fetch(input, options);
+            window.clearTimeout(timer);
+            if (attempt === 0 && response.status >= 500) {
+                await new Promise(resolve => window.setTimeout(resolve, 250));
+                continue;
+            }
+            return response;
+        } catch (error) {
+            window.clearTimeout(timer);
+            lastError = error;
+            if (controller.signal.aborted || attempt > 0) throw error;
+            await new Promise(resolve => window.setTimeout(resolve, 250));
+        }
+    }
+
+    throw lastError || new Error('Request failed');
+}
+
+// Delegated bridge for legacy-rendered controls. This keeps dynamically inserted
+// messages functional while inline handlers are removed incrementally.
+document.addEventListener('click', function handleDelegatedLegacyChatAction(event) {
+    const target = event.target.closest?.('[data-legacy-chat-action], [data-chat-page-action]');
+    if (!target) return;
+    const action = target.dataset.legacyChatAction || target.dataset.chatPageAction;
+    const messageId = target.dataset.messageId;
+    const reactionType = target.dataset.reactionType;
+
+    if (action === 'profile') return;
+    if (action === 'modal-backdrop' && event.target !== target) return;
+    event.preventDefault();
+
+    if (action === 'reply' && typeof window.replyToMessageFromButton === 'function') {
+        window.replyToMessageFromButton(target, messageId);
+    } else if (action === 'pin' && typeof window.pinMessage === 'function') {
+        window.pinMessage(messageId);
+    } else if (action === 'reaction' && typeof window.toggleReaction === 'function') {
+        window.toggleReaction(messageId, reactionType);
+    } else if (action === 'cancel-reply' && typeof window.cancelReply === 'function') {
+        window.cancelReply();
+    } else if (action === 'close-search' && typeof window.closeChatSearch === 'function') {
+        window.closeChatSearch();
+    } else if (action === 'close-report' && typeof window.closeReportBox === 'function') {
+        window.closeReportBox();
+    } else if (action === 'submit-report' && typeof window.submitReport === 'function') {
+        window.submitReport();
+    } else if (action === 'open-group-info' && typeof window.openGroupInfo === 'function') {
+        window.openGroupInfo();
+    } else if (action === 'open-blog' && typeof window.openBlogBox === 'function') {
+        window.openBlogBox();
+    } else if (action === 'open-poll' && typeof window.openPollBox === 'function') {
+        window.openPollBox();
+    } else if (action === 'open-election' && typeof window.openElectionBox === 'function') {
+        window.openElectionBox();
+    } else if (action === 'open-election-admin' && typeof window.openElection2Box === 'function') {
+        window.openElection2Box();
+    } else if (action === 'manage-members' && typeof window.showManageMembersModal === 'function') {
+        window.showManageMembersModal();
+    } else if (action === 'manage-reports' && typeof window.showManageReportsModal === 'function') {
+        window.showManageReportsModal();
+    } else if (action === 'group-settings' && typeof window.showGroupSettingsModal === 'function') {
+        window.showGroupSettingsModal();
+    } else if (action === 'unpin' && typeof window.unpinMessage === 'function') {
+        window.unpinMessage(target.dataset.messageId);
+    } else if (action === 'close-election' && typeof window.closeElectionBox === 'function') {
+        window.closeElectionBox();
+    } else if (action === 'close-group-info' && typeof window.closeGroupInfo === 'function') {
+        window.closeGroupInfo();
+    } else if (action === 'open-group-edit' && typeof window.openGroupEdit === 'function') {
+        window.openGroupEdit();
+    } else if (action === 'open-chat-search' && typeof window.openChatSearch === 'function') {
+        window.openChatSearch();
+    } else if (action === 'clear-chat' && typeof window.clearChatHistory === 'function') {
+        window.clearChatHistory();
+    } else if (action === 'delete-chat' && typeof window.deleteChat === 'function') {
+        window.deleteChat();
+    } else if (action === 'report-user' && typeof window.reportUser === 'function') {
+        window.reportUser();
+    } else if (action === 'reply-content' && typeof window.replyToMessage === 'function') {
+        window.replyToMessage(target.dataset.replyTarget, '', target.dataset.replyText || '');
+    } else if (action === 'edit-poll' && typeof window.showEditPollBox === 'function') {
+        window.showEditPollBox(Number(target.dataset.pollId));
+    } else if (action === 'delete-poll' && typeof window.deletePoll === 'function') {
+        window.deletePoll(Number(target.dataset.pollId), target.dataset.deleteUrl);
+    } else if (action === 'report-message' && typeof window.reportMessage === 'function') {
+        window.reportMessage(Number(target.dataset.messageId));
+    } else if (action === 'delete-message' && typeof window.deleteMessage === 'function') {
+        window.deleteMessage(Number(target.dataset.messageId));
+    } else if (action === 'toggle-skill-list' && typeof window.toggleSkillList === 'function') {
+        window.toggleSkillList(Number(target.dataset.pollId));
+    } else if (action === 'submit-vote' && typeof window.submitVote === 'function') {
+        window.submitVote(target);
+    } else if (action === 'delete-post' && typeof window.deletePost === 'function') {
+        window.deletePost(Number(target.dataset.postId));
+    } else if (action === 'show-thread' && typeof window.showThread === 'function') {
+        window.showThread(Number(target.dataset.messageId));
+    } else if (action === 'cancel-add-guests' && typeof window.cancelAddGuests === 'function') {
+        window.cancelAddGuests();
+    } else if (action === 'cancel-manager-chat' && typeof window.cancelManagerChat === 'function') {
+        window.cancelManagerChat();
+    } else if (action === 'comment-menu' && typeof window.openGlobalMenu === 'function') {
+        window.openGlobalMenu(event, Number(target.dataset.commentId));
+    } else if (action === 'comment-reaction' && typeof window.reactToComment === 'function') {
+        window.reactToComment(target.dataset.reactionType, Number(target.dataset.commentId));
+    } else if (action === 'modal-backdrop' || action === 'close-modal') {
+        const modalId = target.dataset.modalId;
+        const close = modalId === 'manageMembersModal'
+            ? window.closeManageMembersModal
+            : window.closeManageReportsModal;
+        if (typeof close === 'function') close();
+    } else if (target.dataset.chatPageAction) {
+        console.error('Group chat page action is unavailable:', action);
+    }
+});
 
 document.addEventListener('DOMContentLoaded', function () {
     debugLog('Tabs script loaded ✅');
@@ -270,7 +430,7 @@ window.deletePoll = async function(pollId, deleteUrl) {
         return;
     }
 
-    if (!confirm('آیا از حذف این نظرسنجی مطمئن هستید؟')) {
+    if (!await groupChatConfirm('آیا از حذف این نظرسنجی مطمئن هستید؟', { confirmText: 'حذف' })) {
         return;
     }
 
@@ -366,7 +526,7 @@ document.addEventListener('DOMContentLoaded', function() {
             pollForm.dataset.submitting = 'true';
 
             try {
-                const response = await fetch(pollForm.action, {
+                const response = await groupChatFetch(pollForm.action, {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': getCsrfToken(),
@@ -422,7 +582,7 @@ document.addEventListener('submit', async function(event) {
     form.dataset.submitting = 'true';
 
     try {
-        const response = await fetch(form.action, {
+        const response = await groupChatFetch(form.action, {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': getCsrfToken(),
@@ -906,6 +1066,7 @@ function openPollBox(){
             console.warn(...args);
         }
     };
+    const realtimeLifecycle = window.GroupChatLifecycle;
     const realtimeState = {
         initialized: false,
         connected: false,
@@ -915,7 +1076,13 @@ function openPollBox(){
         maxFallbackDelayMs: 120000,
         messageTimer: null,
         postTimer: null,
-        reconcileTimer: null
+        reconcileTimer: null,
+        fallbackMonitorTimer: null,
+        lastSequence: Number(window.localStorage?.getItem('group-feed-sequence:' + window.groupId) || 0),
+        syncingDelta: false,
+        seenEventIds: new Set(),
+        connectionStatus: 'connecting',
+        deltaRetryMs: 1000
     };
 
     window.getGroupRealtimeState = function getGroupRealtimeState() {
@@ -927,12 +1094,121 @@ function openPollBox(){
         realtimeState.usingFallback = false;
         realtimeState.lastEventAt = Date.now();
         realtimeState.fallbackDelayMs = 15000;
+        realtimeState.deltaRetryMs = 1000;
+        setConnectionStatus('online');
     }
 
     function shouldPollFallback() {
+        if (document.hidden || navigator.onLine === false) return false;
         if (!realtimeState.initialized) return true;
         return realtimeState.usingFallback || !realtimeState.connected;
     }
+
+    function setConnectionStatus(status) {
+        realtimeState.connectionStatus = status;
+        if (window.__groupChatModularFrontend && window.GroupChat?.store) {
+            window.GroupChat.store.setState({ connection: status });
+        }
+        let indicator = document.getElementById('group-connection-status');
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'group-connection-status';
+            indicator.setAttribute('role', 'status');
+            indicator.setAttribute('aria-live', 'polite');
+            indicator.style.cssText = 'position:fixed;bottom:12px;left:12px;z-index:1000;padding:6px 10px;border-radius:14px;font-size:12px;background:#374151;color:#fff;';
+            document.body.appendChild(indicator);
+        }
+        indicator.textContent = status === 'online' ? 'آنلاین' : (status === 'offline' ? 'آفلاین' : 'در حال اتصال');
+        indicator.dataset.status = status;
+    }
+
+    function rememberRealtimeEvent(eventId) {
+        if (!eventId) return true;
+        if (realtimeState.seenEventIds.has(eventId)) return false;
+        realtimeState.seenEventIds.add(eventId);
+        if (realtimeState.seenEventIds.size > 1000) {
+            realtimeState.seenEventIds.delete(realtimeState.seenEventIds.values().next().value);
+        }
+        return true;
+    }
+
+    function applyDeltaEvent(event) {
+        if (!event) return;
+        if (window.__groupChatModularFrontend && window.GroupChat?.reconciler) {
+            const decision = window.GroupChat.reconciler.inspect(event);
+            if (decision.action === 'ignore') return;
+            if (decision.action === 'sync') {
+                realtimeState.usingFallback = true;
+                return;
+            }
+        } else if (!rememberRealtimeEvent(event.event_id)) return;
+        const payload = event.payload || {};
+        const contentType = payload.content_type;
+        if (['message', 'file', 'voice'].includes(contentType)) {
+            if (!document.getElementById('msg-' + payload.content_id)) renderMessageThroughPipeline({ id: payload.content_id, ...payload }, 'delta');
+            updateLastMessageCursor(payload.content_id);
+        } else if (['post', 'poll', 'comment'].includes(contentType)) {
+            const applied = applyFeedItemThroughPipeline(contentType, 'create', payload, 'delta');
+            if (!applied) realtimeState.usingFallback = true;
+        } else {
+            realtimeState.usingFallback = true;
+        }
+        realtimeState.lastSequence = Math.max(realtimeState.lastSequence, Number(event.sequence || 0));
+        window.GroupChat?.reconciler?.advance(realtimeState.lastSequence);
+        window.localStorage?.setItem('group-feed-sequence:' + window.groupId, String(realtimeState.lastSequence));
+    }
+
+    async function syncGroupDelta() {
+        if (realtimeState.syncingDelta || !window.groupId || navigator.onLine === false) return;
+        realtimeState.syncingDelta = true;
+        try {
+            let hasMore = true;
+            while (hasMore) {
+                const response = await groupChatFetch(`/api/groups/${window.groupId}/feed/delta?after_sequence=${realtimeState.lastSequence}&limit=100`);
+                if (response.status === 409) return;
+                if (!response.ok) throw new Error('Delta sync failed: ' + response.status);
+                const data = await response.json();
+                (data.events || []).forEach(applyDeltaEvent);
+                hasMore = Boolean(data.has_more) && (data.events || []).length > 0;
+            }
+        } catch (error) {
+            realtimeState.usingFallback = true;
+            debugWarn('Delta sync failed; fallback enabled.', error);
+            if (!document.hidden && navigator.onLine !== false) {
+                const jitter = Math.floor(Math.random() * Math.max(250, realtimeState.deltaRetryMs * 0.25));
+                realtimeLifecycle.timeout(syncGroupDelta, realtimeState.deltaRetryMs + jitter);
+                realtimeState.deltaRetryMs = Math.min(30000, realtimeState.deltaRetryMs * 2);
+            }
+        } finally {
+            realtimeState.syncingDelta = false;
+        }
+    }
+
+    function applyRealtimeEnvelope(event) {
+        if (!event) return;
+        if (window.__groupChatModularFrontend && window.GroupChat?.reconciler) {
+            const decision = window.GroupChat.reconciler.inspect(event, { commit: false });
+            if (decision.action === 'ignore') return;
+            if (decision.action === 'sync') {
+                syncGroupDelta();
+                return;
+            }
+        } else if (event.event_id && realtimeState.seenEventIds.has(event.event_id)) return;
+        const sequence = Number(event.sequence || 0);
+        if (sequence > realtimeState.lastSequence + 1) {
+            syncGroupDelta();
+            return;
+        }
+        // Fetch canonical DTO even for an in-order notification.
+        syncGroupDelta();
+    }
+
+    realtimeLifecycle.on(window, 'online', function() { setConnectionStatus('connecting'); syncGroupDelta(); });
+    realtimeLifecycle.on(window, 'offline', function() { realtimeState.connected = false; realtimeState.usingFallback = false; setConnectionStatus('offline'); });
+    realtimeLifecycle.on(document, 'visibilitychange', function() {
+        if (!document.hidden && navigator.onLine !== false) syncGroupDelta();
+    });
+    setConnectionStatus(navigator.onLine === false ? 'offline' : 'connecting');
 
     function getFeedElement() {
         return document.getElementById('chat-box') || document.getElementById('group-feed');
@@ -1081,9 +1357,39 @@ function openPollBox(){
             const type = r.type || r.reaction_type || '';
             const count = r.count || 0;
             const emoji = emojis[type] || type || '👍';
-            return `<span class="reaction-badge" style="background:#f0f0f0;padding:2px 6px;border-radius:12px;font-size:12px;cursor:pointer;" onclick="if(typeof toggleReaction === 'function') toggleReaction(${messageId}, '${type}')">${emoji} ${count}</span>`;
+            return `<button type="button" class="reaction-badge" style="background:#f0f0f0;padding:2px 6px;border:0;border-radius:12px;font-size:12px;cursor:pointer;" data-legacy-chat-action="reaction" data-message-id="${messageId}" data-reaction-type="${type}">${emoji} ${count}</button>`;
         }).join('');
         return true;
+    }
+
+    window.GroupChatLegacyMessageMutations = {
+        edit(item) {
+            return updateMessageContentDom(item.content_id || item.message_id || item.id, item.content || item.message || '', item.edited !== false);
+        },
+        delete(item) {
+            removeMessageDom(item.content_id || item.message_id || item.id);
+            return true;
+        },
+        reaction(item) {
+            return updateMessageReactionsDom(item.content_id || item.message_id || item.id, item.reactions || []);
+        },
+        'mark-read'(item) {
+            return updateMessageReadReceiptDom(item.content_id || item.message_id || item.id, item.read_count || 0);
+        }
+    };
+
+    function mutateMessageThroughPipeline(action, payload, source) {
+        const item = {
+            ...(payload || {}),
+            action,
+            content_type: 'message',
+            content_id: payload?.content_id || payload?.message_id || payload?.id
+        };
+        if (window.__groupChatModularFrontend && window.GroupChat?.feed) {
+            return window.GroupChat.feed.mutate(item, source);
+        }
+        const adapter = window.GroupChatLegacyMessageMutations[action];
+        return typeof adapter === 'function' ? adapter(item) : false;
     }
 
     function removePostDom(postId) {
@@ -1094,6 +1400,91 @@ function openPollBox(){
     function removePollDom(pollId) {
         const el = document.getElementById('poll-' + pollId) || document.querySelector(`[data-poll-id="${pollId}"]`);
         fadeRemoveElement(el ? (el.closest('.poll-wrapper') || el) : null);
+    }
+
+    window.GroupChatLegacyFeedRenderers = {
+        post: {
+            render(item) {
+                return appendRenderedFeedHtml(item.html, item.content_id || item.post_id || item.id, 'post');
+            },
+            update(item) {
+                const id = item.content_id || item.post_id || item.id;
+                return replaceRenderedFeedHtml('#blog-' + id, item.html);
+            },
+            delete(item) {
+                removePostDom(item.content_id || item.post_id || item.id);
+                return true;
+            },
+            reaction(item) {
+                const id = item.content_id || item.post_id || item.id;
+                const container = document.querySelector(`.reaction-buttons[data-post-id="${id}"]`);
+                if (!container) return false;
+                const like = container.querySelector('.like-count');
+                const dislike = container.querySelector('.dislike-count');
+                if (like) like.textContent = item.likes ?? 0;
+                if (dislike) dislike.textContent = item.dislikes ?? 0;
+                return true;
+            },
+            read(item) {
+                return updatePostReadReceiptDom(item.content_id || item.post_id || item.id, item.read_count || 0);
+            },
+        },
+        poll: {
+            render(item) {
+                return appendRenderedFeedHtml(item.html, item.content_id || item.poll_id || item.id, 'poll');
+            },
+            update(item) {
+                const id = item.content_id || item.poll_id || item.id;
+                return replaceRenderedFeedHtml('#poll-' + id + ', [data-poll-id="' + id + '"]', item.html);
+            },
+            delete(item) {
+                removePollDom(item.content_id || item.poll_id || item.id);
+                return true;
+            },
+            read(item) {
+                return updatePollReadReceiptDom(item.content_id || item.poll_id || item.id, item.read_count || 0);
+            },
+        },
+        comment: {
+            render(item) {
+                const postId = item.blog_id || item.post_id;
+                const link = postId ? document.querySelector(`#blog-${postId} .post-card__comments`) : null;
+                if (link && Number.isFinite(Number(item.comments_count))) {
+                    link.replaceChildren();
+                    const icon = document.createElement('i');
+                    icon.className = 'fas fa-comment-dots';
+                    link.append(icon, document.createTextNode(` نظر دهید (${Number(item.comments_count)})`));
+                }
+                document.dispatchEvent(new CustomEvent('group-comment-updated', { detail: item }));
+                return Boolean(link);
+            },
+            update(item) {
+                document.dispatchEvent(new CustomEvent('group-comment-updated', { detail: item }));
+                return true;
+            },
+            delete(item) {
+                document.dispatchEvent(new CustomEvent('group-comment-updated', { detail: item }));
+                return true;
+            },
+            reaction(item) {
+                document.dispatchEvent(new CustomEvent('group-comment-updated', { detail: item }));
+                return true;
+            },
+        },
+    };
+
+    function applyFeedItemThroughPipeline(contentType, operation, payload, source) {
+        const contentId = payload?.content_id || payload?.[contentType + '_id'] || payload?.id;
+        const item = { ...(payload || {}), content_type: contentType, content_id: contentId, action: operation };
+        const adapter = window.GroupChatLegacyFeedRenderers?.[contentType];
+        if (window.__groupChatModularFrontend && window.GroupChat?.feed) {
+            return operation === 'create'
+                ? window.GroupChat.feed.apply([item], source)[0] || false
+                : window.GroupChat.feed.mutate(item, source);
+        }
+        return operation === 'create'
+            ? adapter?.render?.(item, { source }) || false
+            : adapter?.[operation]?.(item, { source }) || false;
     }
 
     const remoteTypingUsers = new Map();
@@ -1224,7 +1615,7 @@ function openPollBox(){
                 updateLastMessageCursor(message.id);
                 return;
             }
-            appendMessage(message);
+            renderMessageThroughPipeline(message, 'websocket-legacy');
             updateLastMessageCursor(message.id);
             return;
         }
@@ -1267,14 +1658,8 @@ function openPollBox(){
         const messageId = payload.message_id || payload.id;
         if (!messageId) return;
 
-        if (action === 'edit') {
-            updateMessageContentDom(messageId, payload.content || payload.message || '', payload.edited);
-        } else if (action === 'delete') {
-            removeMessageDom(messageId);
-        } else if (action === 'reaction') {
-            updateMessageReactionsDom(messageId, payload.reactions || []);
-        } else if (action === 'mark-read') {
-            updateMessageReadReceiptDom(messageId, payload.read_count || 0);
+        if (['edit', 'delete', 'reaction', 'mark-read'].includes(action)) {
+            mutateMessageThroughPipeline(action, { ...payload, message_id: messageId }, 'websocket-legacy');
         } else if (action === 'pin') {
             document.dispatchEvent(new CustomEvent('group-message-pin-updated', { detail: payload }));
         }
@@ -1292,49 +1677,12 @@ function openPollBox(){
         // so local UI does not get stale when optimistic updates diverge.
         if (isCurrentActor && !String(action).startsWith('poll_')) return;
 
-        if (action === 'post_created') {
-            const postId = payload.post_id || payload.id;
-            if (appendRenderedFeedHtml(payload.html, postId, 'post')) updateLastPostCursor(postId);
-            return;
-        }
-        if (action === 'post_updated') {
-            replaceRenderedFeedHtml('#blog-' + payload.post_id, payload.html);
-            updateLastPostCursor(payload.post_id);
-            return;
-        }
-        if (action === 'post_deleted') {
-            removePostDom(payload.post_id);
-            return;
-        }
-        if (action === 'post_reaction') {
-            const container = document.querySelector(`.reaction-buttons[data-post-id="${payload.post_id}"]`);
-            if (container) {
-                const like = container.querySelector('.like-count');
-                const dislike = container.querySelector('.dislike-count');
-                if (like) like.textContent = payload.likes ?? 0;
-                if (dislike) dislike.textContent = payload.dislikes ?? 0;
-            }
-            return;
-        }
-        if (action === 'post_read') {
-            updatePostReadReceiptDom(payload.post_id, payload.read_count || 0);
-            return;
-        }
-        if (action === 'poll_created') {
-            appendRenderedFeedHtml(payload.html, payload.poll_id, 'poll');
-            return;
-        }
-        if (action === 'poll_updated') {
-            replaceRenderedFeedHtml('#poll-' + payload.poll_id + ', [data-poll-id="' + payload.poll_id + '"]', payload.html);
-            return;
-        }
-        if (action === 'poll_read') {
-            updatePollReadReceiptDom(payload.poll_id, payload.read_count || 0);
-            return;
-        }
-        if (action === 'poll_deleted') {
-            removePollDom(payload.poll_id);
-        }
+        const match = /^(post|poll|comment)_(created|updated|deleted|reaction|read)$/.exec(action);
+        if (!match) return;
+        const contentType = match[1];
+        const operation = { created: 'create', updated: 'update', deleted: 'delete' }[match[2]] || match[2];
+        const applied = applyFeedItemThroughPipeline(contentType, operation, payload, 'websocket-legacy');
+        if (applied && contentType === 'post') updateLastPostCursor(payload.post_id || payload.content_id || payload.id);
     }
 
     window.initGroupRealtimeListeners = function initGroupRealtimeListeners() {
@@ -1346,16 +1694,19 @@ function openPollBox(){
             const channel = window.Echo.private(`group.${window.groupId}`);
             channel
                 .subscribed(function() {
-                    markRealtimeHealthy();
+                    setConnectionStatus('connecting');
+                    syncGroupDelta().finally(markRealtimeHealthy);
                 })
                 .error(function(error) {
                     console.warn('Realtime channel subscription error; polling fallback remains active.', error);
                     realtimeState.connected = false;
                     realtimeState.usingFallback = true;
+                    setConnectionStatus(navigator.onLine === false ? 'offline' : 'connecting');
                 })
                 .listen('.group.message.created', applyMessageEvent)
                 .listen('.group.message.updated', applyMessageEvent)
                 .listen('.group.feed.updated', applyFeedEvent)
+                .listen('.group.realtime.event', applyRealtimeEnvelope)
                 .listen('.group.poll.updated', function(event) {
                     markRealtimeHealthy();
                     const poll = (event && (event.poll || event.payload)) || {};
@@ -1382,6 +1733,7 @@ function openPollBox(){
                 connection.bind('disconnected', function() {
                     realtimeState.connected = false;
                     realtimeState.usingFallback = true;
+                    setConnectionStatus(navigator.onLine === false ? 'offline' : 'connecting');
                 });
                 connection.bind('error', function() {
                     realtimeState.connected = false;
@@ -1451,17 +1803,16 @@ function openPollBox(){
         // اگر بعد از 5 ثانیه هنوز restore نشده، polling را شروع کن
         let attempts = 0;
         const maxAttempts = 10;
-        const checkInterval = setInterval(function() {
+        function waitForScrollRestore() {
             attempts++;
             if (window.scrollPositionRestored || attempts >= maxAttempts) {
-                clearInterval(checkInterval);
                 pollingStarted = true;
                 pollLog('✅ Polling started after', attempts, 'attempts');
                 
                 // حالا polling را شروع کن - برای تجربه نزدیک‌تر به بلادرنگ
                 let _isPollingPending = false;
                 const messagePollIntervalMs = 1000;
-                pollingInterval = setInterval(function() {
+                pollingInterval = realtimeLifecycle.interval(function() {
                     if (!shouldPollFallback()) {
                         return;
                     }
@@ -1566,7 +1917,7 @@ function openPollBox(){
                                 if (typeof appendMessage === 'function') {
                                     try {
                                         pollLog('🔄 Calling appendMessage for message ID:', messageData.id);
-                                        appendMessage(messageData);
+                                        renderMessageThroughPipeline(messageData, 'polling');
                                         pollLog('✅✅✅ Message successfully added to DOM:', messageData.id);
                                         
                                         // به‌روزرسانی lastMessageId
@@ -1596,39 +1947,14 @@ function openPollBox(){
                             // ===== Handle edited messages =====
                             if (response.updated_messages && Array.isArray(response.updated_messages)) {
                                 response.updated_messages.forEach(function(msg) {
-                                    const bubble = document.querySelector(`.message-bubble[data-message-id="${msg.id}"]`);
-                                    if (!bubble) return;
-                                    const contentEl = bubble.querySelector('.message-content');
-                                    if (contentEl) contentEl.innerHTML = msg.message || '';
-                                    bubble.setAttribute('data-content-raw', (msg.message || '').replace(/<[^>]*>/g, ''));
-                                    // نشانگر ویرایش
-                                    if (msg.edited && !bubble.querySelector('.edited-icon')) {
-                                        const ts = bubble.querySelector('.message-timestamp');
-                                        if (ts) {
-                                            const badge = document.createElement('span');
-                                            badge.className = 'edited-icon';
-                                            badge.style.cssText = 'font-size:10px;color:#9ca3af;margin-left:4px;';
-                                            badge.textContent = '(ویرایش شده)';
-                                            ts.prepend(badge);
-                                        }
-                                    }
+                                    mutateMessageThroughPipeline('edit', msg, 'polling');
                                 });
                             }
 
                             // ===== Handle deleted messages =====
                             if (response.deleted_message_ids && Array.isArray(response.deleted_message_ids)) {
                                 response.deleted_message_ids.forEach(function(msgId) {
-                                    const msgRow = document.getElementById('msg-' + msgId);
-                                    if (msgRow) {
-                                        msgRow.style.transition = 'opacity 0.3s ease-out';
-                                        msgRow.style.opacity = '0';
-                                        setTimeout(() => msgRow.remove(), 300);
-                                    }
-                                    // اگر این پیام reply target بود، indicator رو پاک کن
-                                    const parentInput = document.getElementById('parent_id');
-                                    if (parentInput && parentInput.value == msgId) {
-                                        if (typeof cancelReply === 'function') cancelReply();
-                                    }
+                                    mutateMessageThroughPipeline('delete', { id: msgId }, 'polling');
                                 });
                             }
                             
@@ -1690,7 +2016,7 @@ function openPollBox(){
                         if (pid > lastPostId) lastPostId = pid;
                     });
                 }
-                setInterval(function() {
+                realtimeState.postTimer = realtimeLifecycle.interval(function() {
                     if (!shouldPollFallback()) return;
                     if (_isPostPollPending) return;
                     if (!window.groupId) return;
@@ -1761,7 +2087,7 @@ function openPollBox(){
 
                 // ===== Reconcile check every 10s: ask server which visible posts were deleted =====
                 var _isReconcilePending = false;
-                setInterval(function() {
+                realtimeState.reconcileTimer = realtimeLifecycle.interval(function() {
                     if (!shouldPollFallback()) return;
                     if (_isReconcilePending || !window.groupId) return;
                     // collect all post IDs currently visible in DOM
@@ -1801,8 +2127,11 @@ function openPollBox(){
                     .catch(function() {})
                     .finally(function() { _isReconcilePending = false; });
                 }, 10000); // every 10 seconds
+            } else {
+                realtimeLifecycle.timeout(waitForScrollRestore, 500);
             }
-        }, 500); // هر 500ms چک کن
+        }
+        realtimeLifecycle.timeout(waitForScrollRestore, 500); // هر 500ms چک کن
     }
 
     // تابع مشترک برای راه‌اندازی منوهای action-menu در عناصر تازه اضافه‌شده
@@ -1982,7 +2311,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // اگر هم پیام خالی است و هم فایل صوتی نیست، از ارسال جلوگیری کن
             if (!messageText && !hasVoiceFile) {
-                alert('پیام نمی‌تواند خالی باشد.');
+                groupChatNotify('پیام نمی‌تواند خالی باشد.', 'error');
                 e.stopPropagation();
                 e.stopImmediatePropagation();
                 return false;
@@ -2016,13 +2345,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 message: messageHtml || messageText,
                 created_at: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
                 reactions: [],
-                parent_id: null
+                parent_id: null,
+                state: 'pending'
             };
-            appendMessage(optimisticMsg);
+            renderMessageThroughPipeline(optimisticMsg, 'optimistic');
             debugLog('[TIMING] JS T2 - after appendMessage (message should be visible NOW):', Date.now());
             // نمایش حالت «در حال ارسال» با کاهش شفافیت
             const tempMsgEl = document.getElementById('msg-' + tempMsgId);
             if (tempMsgEl) {
+                tempMsgEl.dataset.deliveryState = 'pending';
                 tempMsgEl.style.opacity = '0.65';
                 const pendingBubble = tempMsgEl.querySelector('.message-bubble');
                 if (pendingBubble) {
@@ -2049,7 +2380,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
                 
-                const response = await fetch(form.action, {
+                const response = await groupChatFetch(form.action, {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': getCsrfToken(),
@@ -2074,14 +2405,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         // حذف پیام موقت
                         const tempEl422 = document.getElementById('msg-' + tempMsgId);
                         if (tempEl422) tempEl422.remove();
-                        alert(`${errorMessage}\n${errors}`);
+                        groupChatNotify(`${errorMessage}\n${errors}`, 'error');
                         return;
                     } else if (response.status === 500) {
                         console.error('Server Error Details:', responseData);
                         // حذف پیام موقت
                         const tempEl500 = document.getElementById('msg-' + tempMsgId);
                         if (tempEl500) tempEl500.remove();
-                        alert('خطا در سرور. لطفاً دوباره تلاش کنید. اگر مشکل ادامه داشت، با پشتیبانی تماس بگیرید.');
+                        groupChatNotify('خطا در سرور. لطفاً دوباره تلاش کنید. اگر مشکل ادامه داشت، با پشتیبانی تماس بگیرید.', 'error');
                         return;
                     } else {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -2092,7 +2423,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     // حذف پیام موقت و جایگزینی با پیام واقعی از سرور
                     const tempElSuccess = document.getElementById('msg-' + tempMsgId);
                     const nextSibling = tempElSuccess ? tempElSuccess.nextSibling : null;
-                    const realMessageRow = appendMessage(responseData.message);
+                    const realMessageRow = renderMessageThroughPipeline(responseData.message, 'submit-response');
+                    if (realMessageRow) realMessageRow.dataset.deliveryState = responseData.message.state || 'sent';
                     if (tempElSuccess && realMessageRow && realMessageRow.parentElement) {
                         realMessageRow.parentElement.insertBefore(realMessageRow, nextSibling);
                         tempElSuccess.remove();
@@ -2132,7 +2464,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // حذف پیام موقت در صورت خطا سرور
                     const tempElFail = document.getElementById('msg-' + tempMsgId);
                     if (tempElFail) tempElFail.remove();
-                    alert('خطا در ارسال پیام: ' + (responseData.message || 'خطای ناشناخته'));
+                    groupChatNotify('خطا در ارسال پیام: ' + (responseData.message || 'خطای ناشناخته'), 'error');
                 }
             } catch (error) {
                 // حذف پیام موقت در صورت خطا شبکه
@@ -2140,9 +2472,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (tempElCatch) tempElCatch.remove();
                 console.error('Error:', error);
                 if (error.message.includes('Failed to fetch')) {
-                    alert('خطا در اتصال به سرور. لطفاً اتصال اینترنت خود را بررسی کنید.');
+                    groupChatNotify('خطا در اتصال به سرور. لطفاً اتصال اینترنت خود را بررسی کنید.', 'error');
                 } else {
-                    alert('خطا در ارسال پیام. لطفاً دوباره تلاش کنید.');
+                    groupChatNotify('خطا در ارسال پیام. لطفاً دوباره تلاش کنید.', 'error');
                 }
             }
         });
@@ -2164,7 +2496,7 @@ document.addEventListener('DOMContentLoaded', function() {
         pollLog('Value:', window.groupId);
         
         // شروع polling بعد از 2 ثانیه برای اطمینان از لود کامل
-        setTimeout(function() {
+        realtimeLifecycle.timeout(function() {
             pollLog('🚀🚀🚀 ATTEMPTING TO START POLLING 🚀🚀🚀');
             pollLog('Group ID:', window.groupId);
             pollLog('initGroupRealtimeListeners function exists:', typeof window.initGroupRealtimeListeners === 'function');
@@ -2182,9 +2514,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.startPolling();
                 } else {
                     pollLog('✅ Realtime healthy; polling deferred until fallback is needed.');
-                    setInterval(function() {
+                    realtimeState.fallbackMonitorTimer = realtimeLifecycle.interval(function() {
                         if (shouldPollFallback()) {
                             pollLog('⚠️ Realtime degraded; starting polling fallback.');
+                            window.clearInterval(realtimeState.fallbackMonitorTimer);
+                            realtimeState.fallbackMonitorTimer = null;
                             window.startPolling();
                         }
                     }, 5000);
@@ -2197,6 +2531,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     // ========== END POLLING MECHANISM ==========
 });
+
+function renderMessageThroughPipeline(message, source = 'legacy') {
+    if (window.__groupChatModularFrontend && window.GroupChat?.feed && window.GroupChat?.renderer?.supports('message')) {
+        return window.GroupChat.feed.apply([{ ...message, content_type: 'message' }], source)[0] || null;
+    }
+    return appendMessage(message);
+}
 
 function appendMessage(message) {
     const chatBox = document.getElementById('chat-box');
@@ -2263,7 +2604,7 @@ function appendMessage(message) {
             const type = r.type || r.reaction_type || '';
             const count = r.count || 0;
             const emoji = emojis[type] || type || '👍';
-            return `<span class="reaction-badge" style="background: #f0f0f0; padding: 2px 6px; border-radius: 12px; font-size: 12px; cursor: pointer;" onclick="if(typeof toggleReaction === 'function') toggleReaction(${messageId}, '${type}')">${emoji} ${count}</span>`;
+            return `<button type="button" class="reaction-badge" style="background:#f0f0f0;padding:2px 6px;border:0;border-radius:12px;font-size:12px;cursor:pointer;" data-legacy-chat-action="reaction" data-message-id="${messageId}" data-reaction-type="${type}">${emoji} ${count}</button>`;
         }).join('')}</div>`;
     }
     
@@ -2336,11 +2677,11 @@ function appendMessage(message) {
                     `<div class="action-menu message-action" data-action-menu>
                         <button type="button" class="action-menu__toggle"><i class="fas fa-ellipsis-v"></i></button>
                         <div class="action-menu__list">
-                            <button type="button" onclick="replyToMessageFromButton(this, '${message.id}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
+                            <button type="button" data-legacy-chat-action="reply" data-message-id="${message.id}" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
                             <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> واکنش</button>
-                            ${([2,3].includes(window.yourRole || 0)) ? `<button type="button" class="action-menu__item btn-pin" onclick="pinMessage('${message.id}')"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
+                            ${([2,3].includes(window.yourRole || 0)) ? `<button type="button" class="action-menu__item btn-pin" data-legacy-chat-action="pin" data-message-id="${message.id}"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
                             <button type="button" class="action-menu__item btn-edit"><i class="fas fa-edit"></i> ویرایش</button>
-                            <button type="button" class="action-menu__item action-menu__item--danger btn-delete"><i class="fas fa-trash"></i> حذف</button>
+                            <button type="button" data-group-chat-action="delete-message" data-message-id="${message.id}" class="action-menu__item action-menu__item--danger btn-delete"><i class="fas fa-trash"></i> حذف</button>
                             <div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" style="font-size: 0.7rem; opacity: 0.6; margin-left: 4px;"></i><span class="menu-meta-time__label">ارسال شده:</span><span class="menu-meta-time__value">${formattedTime}</span></div></div>
                         </div>
                     </div>
@@ -2349,15 +2690,15 @@ function appendMessage(message) {
                     </div>` :
                     // برای پیام‌های دیگران: نام کاربر در سمت چپ، سه نقطه در سمت راست
                     `<div class="message-head__info">
-                        <a href="/profile-member/${message.user_id}" class="message-sender" onclick="event.stopPropagation(); window.location.href='/profile-member/${message.user_id}'; return false;">${escapeHtml(senderName)}</a>
+                        <a href="/profile-member/${message.user_id}" class="message-sender">${escapeHtml(senderName)}</a>
                     </div>
                     <div class="action-menu message-action" data-action-menu>
                         <button type="button" class="action-menu__toggle"><i class="fas fa-ellipsis-v"></i></button>
                         <div class="action-menu__list">
-                            <button type="button" onclick="replyToMessageFromButton(this, '${message.id}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
+                            <button type="button" data-legacy-chat-action="reply" data-message-id="${message.id}" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
                             <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> واکنش</button>
-                            ${([2,3].includes(window.yourRole || 0)) ? `<button type="button" class="action-menu__item btn-pin" onclick="pinMessage('${message.id}')"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
-                            <button type="button" class="action-menu__item btn-report"><i class="fas fa-flag"></i> گزارش</button>
+                            ${([2,3].includes(window.yourRole || 0)) ? `<button type="button" class="action-menu__item btn-pin" data-legacy-chat-action="pin" data-message-id="${message.id}"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
+                            <button type="button" data-group-chat-action="report-message" data-message-id="${message.id}" class="action-menu__item btn-report"><i class="fas fa-flag"></i> گزارش</button>
                             <div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" style="font-size: 0.7rem; opacity: 0.6; margin-left: 4px;"></i><span class="menu-meta-time__label">ارسال شده:</span><span class="menu-meta-time__value">${formattedTime}</span></div></div>
                         </div>
                     </div>`
@@ -2554,7 +2895,7 @@ function showSuccessAlert(message) {
             showConfirmButton: false
         });
     } else {
-        alert(message);
+        groupChatNotify(message, 'error');
     }
 }
 
@@ -2567,6 +2908,7 @@ function closeAllModals() {
 }
 
 function startPollCountdowns() {
+  const lifecycle = window.GroupChatLifecycle;
   document.querySelectorAll('.poll-timer').forEach(timer => {
     if (timer.dataset.timerSet === "true") return;
 
@@ -2578,18 +2920,30 @@ function startPollCountdowns() {
 
     const expiresAt = new Date(expiresAtStr);
 
+    let intervalId = null;
+    function stopCountdown(label) {
+      if (label) timer.innerText = label;
+      if (intervalId !== null) lifecycle?.clearInterval(intervalId);
+      intervalId = null;
+      timer.dataset.timerSet = 'complete';
+    }
+
     function updateTimer() {
+      if (!timer.isConnected) {
+        stopCountdown();
+        return false;
+      }
       const now = new Date();
       const diffMs = expiresAt - now;
 
       if (isNaN(diffMs)) {
-        timer.innerText = 'تاریخ نامعتبر';
-        return;
+        stopCountdown('تاریخ نامعتبر');
+        return false;
       }
 
       if (diffMs <= 0) {
-        timer.innerText = 'پایان یافته';
-        return;
+        stopCountdown('پایان یافته');
+        return false;
       }
 
       const totalSeconds = Math.floor(diffMs / 1000);
@@ -2605,12 +2959,14 @@ if (hours > 24) {
     timer.innerText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
+      return true;
+
     }
 
-    updateTimer();
-    setInterval(updateTimer, 1000);
-
-    timer.dataset.timerSet = "true";
+    if (updateTimer()) {
+      intervalId = lifecycle?.interval(updateTimer, 1000) ?? setInterval(updateTimer, 1000);
+      timer.dataset.timerSet = "true";
+    }
   });
 }
 
@@ -2662,7 +3018,7 @@ async function startRecording() {
                         formData.append('message', '[پیام صوتی]');
                         
                         try {
-                            const response = await fetch(form.action, {
+                            const response = await groupChatFetch(form.action, {
                                 method: 'POST',
                                 headers: {
                                     'X-CSRF-TOKEN': getCsrfToken(),
@@ -2682,28 +3038,28 @@ async function startRecording() {
                                 if (response.status === 422) {
                                     const errorMessage = responseData.message || 'خطا در اعتبارسنجی داده‌ها';
                                     const errors = responseData.errors ? Object.values(responseData.errors).flat().join('\n') : '';
-                                    alert(`${errorMessage}\n${errors}`);
+                                    groupChatNotify(`${errorMessage}\n${errors}`, 'error');
                                 } else if (response.status === 500) {
                                     console.error('Server Error Details:', responseData);
-                                    alert('خطا در سرور. لطفاً دوباره تلاش کنید. اگر مشکل ادامه داشت، با پشتیبانی تماس بگیرید.');
+                                    groupChatNotify('خطا در سرور. لطفاً دوباره تلاش کنید. اگر مشکل ادامه داشت، با پشتیبانی تماس بگیرید.', 'error');
                                 } else {
                                     throw new Error(`HTTP error! status: ${response.status}`);
                                 }
                             }
                             
                             if (responseData.status === 'success') {
-                                appendMessage(responseData.message);
+                                renderMessageThroughPipeline(responseData.message, 'voice-response');
                                 form.reset();
                                 clientMessageIdInput.value = '';
                             } else {
-                                alert('خطا در ارسال پیام صوتی: ' + (responseData.message || 'خطای ناشناخته'));
+                                groupChatNotify('خطا در ارسال پیام صوتی: ' + (responseData.message || 'خطای ناشناخته'), 'error');
                             }
                         } catch (error) {
                             console.error('Error:', error);
                             if (error.message.includes('Failed to fetch')) {
-                                alert('خطا در اتصال به سرور. لطفاً اتصال اینترنت خود را بررسی کنید.');
+                                groupChatNotify('خطا در اتصال به سرور. لطفاً اتصال اینترنت خود را بررسی کنید.', 'error');
                             } else {
-                                alert('خطا در ارسال پیام صوتی. لطفاً دوباره تلاش کنید.');
+                                groupChatNotify('خطا در ارسال پیام صوتی. لطفاً دوباره تلاش کنید.', 'error');
                             }
                         }
                     }
@@ -2726,7 +3082,7 @@ async function startRecording() {
         
     } catch (err) {
         console.error('Error accessing microphone:', err);
-        alert('دسترسی به میکروفون امکان‌پذیر نیست. لطفاً دسترسی را بررسی کنید.');
+        groupChatNotify('دسترسی به میکروفون امکان‌پذیر نیست. لطفاً دسترسی را بررسی کنید.', 'error');
     }
 }
 
@@ -2755,15 +3111,6 @@ function stopRecording() {
 document.addEventListener('DOMContentLoaded', function() {
     const chatBoxEl = document.getElementById('chat-box');
     if (chatBoxEl) {
-        // Event listener برای لینک‌های پروفایل - باید اول اجرا شود
-        chatBoxEl.addEventListener('click', function(e) {
-            const link = e.target.closest('a.message-sender');
-            if (link && link.href) {
-                // اجازه بده لینک کار کند - هیچ کاری نکن
-                return;
-            }
-        }, true); // استفاده از capture phase برای اجرای زودتر
-
         // NOTE: Do not auto-set parent_id by clicking message bubbles.
         // Reply must only be initiated via explicit reply actions (btn-rep / replyToMessage)
         // to prevent accidental threaded replies during reaction/menu interactions.
@@ -2797,7 +3144,7 @@ function replyToMessage(messageId, senderName, content) {
                 <div class="reply-content">${sanitize(previewText)}</div>
             </div>
         </div>
-        <button class="btn-cancel-reply" onclick="cancelReply()">
+        <button type="button" class="btn-cancel-reply" data-legacy-chat-action="cancel-reply">
             <i class="fas fa-times"></i>
         </button>
     `;
@@ -2939,19 +3286,55 @@ function submitEdit(event, messageId) {
                 document.getElementById(`edit-form-${messageId}`).style.display = 'none';
                 
                 // Show success message
-                alert('پیام با موفقیت ویرایش شد');
+                groupChatNotify('پیام با موفقیت ویرایش شد', 'success');
             } else {
-                alert(response.message || 'خطا در ویرایش پیام');
+                groupChatNotify(response.message || 'خطا در ویرایش پیام', 'error');
             }
         },
         error: function() {
-            alert('خطا در ارتباط با سرور');
+            groupChatNotify('خطا در ارتباط با سرور', 'error');
         }
     });
 }
 
-function reportMessage(messageId) {
-    const reason = prompt('لطفاً دلیل گزارش این پیام را وارد کنید:');
+async function deleteMessage(messageId) {
+    const bubble = document.querySelector(`.message-bubble[data-message-id="${messageId}"]`);
+    const deleteUrl = bubble?.dataset.deleteUrl;
+    if (!bubble || !deleteUrl) {
+        groupChatNotify('پیام موردنظر پیدا نشد.', 'error');
+        return;
+    }
+
+    if (!await groupChatConfirm('آیا از حذف پیام مطمئن هستید؟', { confirmText: 'حذف' })) return;
+
+    try {
+        const response = await groupChatFetch(deleteUrl, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': getCsrfToken() },
+            credentials: 'same-origin'
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || (data.status && data.status !== 'success')) {
+            groupChatNotify(data.message || `خطا در حذف پیام (status ${response.status})`, 'error');
+            return;
+        }
+
+        const row = bubble.closest('.message-row') || document.getElementById(`msg-${messageId}`);
+        if (row) {
+            row.style.transition = 'opacity 0.3s ease-out';
+            row.style.opacity = '0';
+            window.setTimeout(() => row.remove(), 300);
+        }
+        const parentInput = document.getElementById('parent_id');
+        if (parentInput?.value == messageId && typeof cancelReply === 'function') cancelReply();
+    } catch (error) {
+        console.error('Error deleting message:', error);
+        groupChatNotify('خطا در ارتباط با سرور', 'error');
+    }
+}
+
+async function reportMessage(messageId) {
+    const reason = await groupChatPrompt('لطفاً دلیل گزارش این پیام را وارد کنید:');
     if (reason) {
         fetch(`/groups/messages/${messageId}/report`, {
             method: 'POST',
@@ -2964,20 +3347,20 @@ function reportMessage(messageId) {
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                alert('پیام با موفقیت گزارش شد.');
+                groupChatNotify('پیام با موفقیت گزارش شد.', 'success');
             } else {
-                alert('خطا در گزارش پیام.');
+                groupChatNotify('خطا در گزارش پیام.', 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('خطا در گزارش پیام.');
+            groupChatNotify('خطا در گزارش پیام.', 'error');
         });
     }
 }
 
-function deletePost(postId) {
-    if (confirm('آیا از حذف این پست اطمینان دارید؟')) {
+async function deletePost(postId) {
+    if (await groupChatConfirm('آیا از حذف این پست اطمینان دارید؟', { confirmText: 'حذف' })) {
         fetch(`/blog/${postId}`, {
             method: 'DELETE',
             headers: {
@@ -2997,10 +3380,10 @@ function deletePost(postId) {
                     setTimeout(function() { toRemove.remove(); }, 300);
                 }
             } else {
-                alert(data.message || 'خطا در حذف پست');
+                groupChatNotify(data.message || 'خطا در حذف پست', 'error');
             }
         })
-        .catch(function() { alert('خطا در ارتباط با سرور'); });
+        .catch(function() { groupChatNotify('خطا در ارتباط با سرور', 'error'); });
     }
 }
 
@@ -3041,20 +3424,20 @@ async function submitPostEdit(event, postId) {
     
     // Validate required fields
     if (!title.trim()) {
-        alert('لطفاً عنوان پست را وارد کنید');
+        groupChatNotify('لطفاً عنوان پست را وارد کنید', 'error');
         return;
     }
     if (!content.trim()) {
-        alert('لطفاً محتوای پست را وارد کنید');
+        groupChatNotify('لطفاً محتوای پست را وارد کنید', 'error');
         return;
     }
     if (!categoryId) {
-        alert('لطفاً دسته‌بندی را انتخاب کنید');
+        groupChatNotify('لطفاً دسته‌بندی را انتخاب کنید', 'error');
         return;
     }
     
     try {
-        const response = await fetch(`/blog/${postId}`, {
+        const response = await groupChatFetch(`/blog/${postId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -3120,11 +3503,11 @@ async function submitPostEdit(event, postId) {
             }
             showSuccessAlert('پست با موفقیت ویرایش شد');
         } else {
-            alert(data.message || 'خطا در ویرایش پست');
+            groupChatNotify(data.message || 'خطا در ویرایش پست', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('خطا در ارتباط با سرور');
+        groupChatNotify('خطا در ارتباط با سرور', 'error');
     }
 }
 
@@ -3134,7 +3517,7 @@ function openChatSearch() {
     searchBox.innerHTML = `
         <div class="search-header">
             <input type="text" id="chatSearchInput" placeholder="جستجو در پیام‌ها...">
-            <button onclick="closeChatSearch()">×</button>
+            <button type="button" data-legacy-chat-action="close-search">×</button>
         </div>
         <div id="searchResults" class="search-results"></div>
     `;
@@ -3186,8 +3569,8 @@ function closeChatSearch() {
     }
 }
 
-function clearChatHistory() {
-    if (confirm('آیا از پاک کردن تاریخچه چت اطمینان دارید؟')) {
+async function clearChatHistory() {
+    if (await groupChatConfirm('آیا از پاک کردن تاریخچه چت اطمینان دارید؟', { confirmText: 'پاک کردن' })) {
         fetch(`/api/groups/${groupId}/clear-history`, {
             method: 'POST',
             headers: {
@@ -3199,20 +3582,20 @@ function clearChatHistory() {
         .then(data => {
             if (data.success) {
                 document.getElementById('chat-box').innerHTML = '';
-                alert('تاریخچه چت با موفقیت پاک شد');
+                groupChatNotify('تاریخچه چت با موفقیت پاک شد', 'success');
             } else {
-                alert('خطا در پاک کردن تاریخچه چت');
+                groupChatNotify('خطا در پاک کردن تاریخچه چت', 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('خطا در پاک کردن تاریخچه چت');
+            groupChatNotify('خطا در پاک کردن تاریخچه چت', 'error');
         });
     }
 }
 
-function deleteChat() {
-    if (confirm('آیا از حذف این چت اطمینان دارید؟ این عمل غیرقابل بازگشت است.')) {
+async function deleteChat() {
+    if (await groupChatConfirm('آیا از حذف این چت اطمینان دارید؟ این عمل غیرقابل بازگشت است.', { confirmText: 'حذف چت' })) {
         fetch(`/api/groups/${groupId}/delete`, {
             method: 'POST',
             headers: {
@@ -3225,12 +3608,12 @@ function deleteChat() {
             if (data.success) {
                 window.location.href = '/groups';
             } else {
-                alert('خطا در حذف چت');
+                groupChatNotify('خطا در حذف چت', 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('خطا در حذف چت');
+            groupChatNotify('خطا در حذف چت', 'error');
         });
     }
 }
@@ -3241,7 +3624,7 @@ function reportUser() {
     reportBox.innerHTML = `
         <div class="report-header">
             <h3>گزارش کاربر</h3>
-            <button onclick="closeReportBox()">×</button>
+            <button type="button" data-legacy-chat-action="close-report">×</button>
         </div>
         <div class="report-content">
             <select id="reportReason">
@@ -3251,7 +3634,7 @@ function reportUser() {
                 <option value="other">سایر</option>
             </select>
             <textarea id="reportDescription" placeholder="توضیحات بیشتر..."></textarea>
-            <button onclick="submitReport()">ارسال گزارش</button>
+            <button type="button" data-legacy-chat-action="submit-report">ارسال گزارش</button>
         </div>
     `;
     document.body.appendChild(reportBox);
@@ -3283,15 +3666,15 @@ function submitReport() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('گزارش با موفقیت ارسال شد');
+            groupChatNotify('گزارش با موفقیت ارسال شد', 'success');
             closeReportBox();
         } else {
-            alert('خطا در ارسال گزارش');
+            groupChatNotify('خطا در ارسال گزارش', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('خطا در ارسال گزارش');
+        groupChatNotify('خطا در ارسال گزارش', 'error');
     });
 }
 

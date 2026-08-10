@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "test:group-chat": "node --test tests/js/group-chat/*.test.js",
     "realtime": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-soketi.ps1"
   },
   "devDependencies": {

@@ -15,7 +15,7 @@ class Group extends Model
 
     public function users()
     {
-        return $this->belongsToMany(User::class, 'group_user')->withPivot('role')->withTimestamps();
+        return $this->belongsToMany(User::class, 'group_user')->withPivot('role', 'status', 'expired', 'last_read_message_id')->withTimestamps();
     }
 
 
@@ -65,6 +65,11 @@ class Group extends Model
 
     public function polls(){
         return $this->hasMany(Poll::class);
+    }
+
+    public function feedItems()
+    {
+        return $this->hasMany(GroupFeedItem::class)->orderBy('sequence');
     }
 
     public function blogs(){

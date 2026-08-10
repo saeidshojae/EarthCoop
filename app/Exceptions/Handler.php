@@ -4,6 +4,10 @@ namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Str;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -60,6 +64,42 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $e)
     {
+        if ($this->isGroupChatJsonRequest($request)) {
+            $status = match (true) {
+                $e instanceof ValidationException => 422,
+                $e instanceof AuthorizationException => 403,
+                $e instanceof ModelNotFoundException => 404,
+                $e instanceof HttpException => $e->getStatusCode(),
+                default => 500,
+            };
+            $requestId = (string) ($request->attributes->get('group_chat_request_id') ?: Str::uuid());
+            $details = $e instanceof ValidationException ? $e->errors() : null;
+            $message = match ($status) {
+                403 => 'You are not allowed to perform this operation.',
+                404 => 'The requested resource was not found.',
+                422 => 'The submitted data is invalid.',
+                default => $status >= 500 ? 'An internal error occurred.' : ($e->getMessage() ?: 'The operation could not be completed.'),
+            };
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $message,
+                'errors' => $details,
+                'data' => null,
+                'error' => [
+                    'code' => match ($status) {
+                        403 => 'forbidden', 404 => 'not_found', 409 => 'conflict',
+                        422 => 'validation_failed', 429 => 'rate_limited', default => $status >= 500 ? 'server_error' : 'request_failed',
+                    },
+                    'message' => $message,
+                    'details' => $details,
+                    'retryable' => $status >= 500 || $status === 429,
+                ],
+                'meta' => ['api_version' => '2026-08-05', 'http_status' => $status],
+                'request_id' => $requestId,
+            ], $status)->header('X-Request-ID', $requestId);
+        }
+
         // Handle timeout errors (Maximum execution time exceeded)
         $errorMessage = $e->getMessage();
         $isTimeoutError = false;
@@ -96,5 +136,14 @@ class Handler extends ExceptionHandler
         }
 
         return parent::render($request, $e);
+    }
+
+    private function isGroupChatJsonRequest($request): bool
+    {
+        if (! ($request->expectsJson() || $request->wantsJson() || $request->ajax())) {
+            return false;
+        }
+
+        return $request->is('messages/*', 'api/groups/*', 'blog/*', 'blogs/*', 'poll/*', 'polls/*', 'comment/*', 'comments/*', 'groups/*/search', 'groups/*/mention-users');
     }
 }

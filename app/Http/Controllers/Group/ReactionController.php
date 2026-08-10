@@ -12,6 +12,7 @@ class ReactionController extends Controller
 {
     public function blogReact(Request $request, Blog $blog)
     {
+        $this->authorize('view', $blog);
         $request->validate(['type' => 'required|in:0,1']);
         $user = auth()->user();
         $type = $request->type;
@@ -72,6 +73,8 @@ class ReactionController extends Controller
     
     public function commentReact(Request $request, Comment $comment)
     {
+        $this->authorize('view', $comment);
+        $request->validate(['type' => 'required|in:like,dislike']);
         $type = $request->type === 'like' ? 1 : 0;
         $user = auth()->user();
     

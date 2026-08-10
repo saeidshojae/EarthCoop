@@ -532,7 +532,7 @@
 
                         <div>
 
-                            <img src="{{ asset('images/blogs/' . $post->img) }}" alt="{{ $post->title }}" class="max-w-full h-auto rounded-lg">
+                            <img src="{{ $post->media_url }}" alt="{{ $post->title }}" class="max-w-full h-auto rounded-lg">
 
                         </div>
 

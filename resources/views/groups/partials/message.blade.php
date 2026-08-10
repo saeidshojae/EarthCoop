@@ -82,7 +82,7 @@
 
                     <button type="button"
 
-                        onclick="replyToMessageFromButton(this, '{{ $item->id }}')"
+                        data-legacy-chat-action="reply" data-message-id="{{ $item->id }}"
 
                         class="action-menu__item btn-rep">
 
@@ -101,7 +101,7 @@
                     </button>
 
                     @if(in_array(($roleValue ?? 0), [2, 3]))
-                    <button type="button" class="action-menu__item btn-pin" onclick="pinMessage('{{ $item->id }}')">
+                    <button type="button" class="action-menu__item btn-pin" data-legacy-chat-action="pin" data-message-id="{{ $item->id }}">
 
                         <i class="fas fa-thumbtack"></i>
 
@@ -118,7 +118,8 @@
 
                     </button>
 
-                    <button type="button" class="action-menu__item action-menu__item--danger btn-delete">
+                    <button type="button" class="action-menu__item action-menu__item--danger btn-delete"
+                        data-group-chat-action="delete-message" data-message-id="{{ $message->id }}">
 
                         <i class="fas fa-trash"></i>
 
@@ -210,7 +211,7 @@
 
                 <a href="{{ route('profile.member.show', $item->user_id) }}" class="message-sender"
 
-                    onclick="console.log('Profile link clicked:', '{{ route('profile.member.show', $item->user_id) }}'); event.stopPropagation(); event.preventDefault(); window.location.href='{{ route('profile.member.show', $item->user_id) }}'; return false;">
+                    >
 
                     {{ $senderName }}
 
@@ -232,7 +233,7 @@
 
                     <button type="button"
 
-                        onclick="replyToMessageFromButton(this, '{{ $item->id }}')"
+                        data-legacy-chat-action="reply" data-message-id="{{ $item->id }}"
 
                         class="action-menu__item btn-rep">
 
@@ -252,7 +253,7 @@
 
                     @if(in_array(($roleValue ?? 0), [2, 3]))
 
-                    <button type="button" class="action-menu__item btn-pin" onclick="pinMessage('{{ $item->id }}')">
+                    <button type="button" class="action-menu__item btn-pin" data-legacy-chat-action="pin" data-message-id="{{ $item->id }}">
 
                         <i class="fas fa-thumbtack"></i>
 
@@ -262,7 +263,8 @@
 
                     @endif
 
-                    <button type="button" class="action-menu__item btn-report">
+                    <button type="button" class="action-menu__item btn-report"
+                        data-group-chat-action="report-message" data-message-id="{{ $message->id }}">
 
                         <i class="fas fa-flag"></i>
 
@@ -719,7 +721,7 @@
 
                             "
 
-                        onclick="if(typeof toggleReaction === 'function') toggleReaction({{ $item->id }}, '{{ $reactionType }}')">
+                        data-legacy-chat-action="reaction" data-message-id="{{ $item->id }}" data-reaction-type="{{ $reactionType }}">
 
                         {{ $emojis[$reactionType] ?? ($reactionType ?: '👍') }}
 
@@ -767,7 +769,7 @@
 
         <div class="thread-info" style="margin-top: 8px; font-size: 12px; color: #6b7280; cursor: pointer;"
 
-            onclick="showThread({{ $item->id }})">
+            data-chat-page-action="show-thread" data-message-id="{{ $item->id }}">
 
             <i class="fas fa-comments"></i> {{ $replyCount }} پاسخ
 

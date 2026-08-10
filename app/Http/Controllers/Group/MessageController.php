@@ -16,7 +16,9 @@ use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-    use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class MessageController extends Controller
@@ -31,7 +33,7 @@ class MessageController extends Controller
             'group_id' => 'required|exists:groups,id',
             'parent_id' => 'nullable',
             'client_message_id' => 'nullable|string|max:100',
-            'file' => 'nullable|file|max:20480',
+            'file' => 'nullable|file|mimes:jpg,jpeg,png,webp,gif,pdf,txt,csv,doc,docx,xls,xlsx,zip|max:20480',
             'voice_message' => 'nullable|file|max:10240',
         ];
 
@@ -98,6 +100,8 @@ class MessageController extends Controller
             return response()->json(['An error occurred. Please try again.'], 404);
         }
 
+        $this->authorize('participate', $group);
+
         \Illuminate\Support\Facades\Log::info('[STORE_TIMING] T3 after findOrFail: ' . round((microtime(true) - $storeT0) * 1000) . 'ms');
         $group->update(['last_activity_at' => now()]);
         \Illuminate\Support\Facades\Log::info('[STORE_TIMING] T4 after group update: ' . round((microtime(true) - $storeT0) * 1000) . 'ms');
@@ -150,8 +154,9 @@ class MessageController extends Controller
 
         $messageText = trim($request->message ?? '');
         $hasVoiceMessage = $request->hasFile('voice_message');
+        $hasAttachment = $request->hasFile('file');
 
-        if (empty($messageText) && ! $hasVoiceMessage) {
+        if (empty($messageText) && ! $hasVoiceMessage && ! $hasAttachment) {
             return response()->json(['An error occurred. Please try again.'], 422);
         }
 
@@ -182,6 +187,9 @@ class MessageController extends Controller
             'parent_id' => $request->parent_id,
             'client_message_id' => $clientMessageId !== '' ? $clientMessageId : null,
         ];
+        if (config('group-chat.features.message_lifecycle_v1', true) && Schema::hasColumn('messages', 'lifecycle_state')) {
+            $messageData['lifecycle_state'] = 'sent';
+        }
 
         $rawParentId = $request->parent_id;
         if ($rawParentId && is_numeric($rawParentId)) {
@@ -208,8 +216,8 @@ class MessageController extends Controller
 
         if ($request->hasFile('file')) {
             $file = $request->file('file');
-            $fileName = time() . '_' . $file->getClientOriginalName();
-            $filePath = $file->storeAs('uploads/messages', $fileName, 'public');
+            $fileName = (string) Str::uuid() . '.' . $file->extension();
+            $filePath = $file->storeAs('group-chat/messages/' . $group->id, $fileName, 'local');
             $messageData['file_path'] = $filePath;
             $messageData['file_type'] = $file->getMimeType();
             $messageData['file_name'] = $file->getClientOriginalName();
@@ -238,8 +246,8 @@ class MessageController extends Controller
                 }
             }
 
-            $voiceFileName = 'voice_' . time() . '_' . uniqid() . '.' . $originalExtension;
-            $voiceFilePath = $voiceFile->storeAs('uploads/voice_messages', $voiceFileName, 'public');
+            $voiceFileName = 'voice_' . Str::uuid() . '.' . $originalExtension;
+            $voiceFilePath = $voiceFile->storeAs('group-chat/voice/' . $group->id, $voiceFileName, 'local');
             $messageData['voice_message'] = $voiceFilePath;
             $messageData['file_type'] = $this->normalizeVoiceMimeType($mimeType, $originalExtension);
             $messageData['file_name'] = $voiceFile->getClientOriginalName() ?: 'voice_message.' . $originalExtension;
@@ -251,7 +259,15 @@ class MessageController extends Controller
 
         \Illuminate\Support\Facades\Log::info('[STORE_TIMING] T7 before Message::create: ' . round((microtime(true) - $storeT0) * 1000) . 'ms');
         try {
-            $message = Message::create($messageData);
+            $message = DB::transaction(function () use ($messageData, $group, $user): Message {
+                $message = Message::create($messageData);
+                $feedType = $message->voice_message ? 'voice' : ($message->file_path ? 'file' : 'message');
+                app(\App\Services\GroupChat\GroupFeedService::class)->record(
+                    (int) $group->id, $feedType, (int) $message->id, (int) $user->id, $message->created_at
+                );
+
+                return $message;
+            });
         } catch (QueryException $exception) {
             if ($clientMessageId !== '' && $this->isUniqueIdempotencyConflict($exception)) {
                 $existingMessage = Message::where('group_id', $group->id)
@@ -297,11 +313,13 @@ class MessageController extends Controller
             'created_at' => $message->created_at->format('H:i'),
             'sender' => $user->first_name . ' ' . $user->last_name,
             'parent_id' => $message->parent_id,
-            'file_path' => $message->file_path,
+            'file_path' => $message->file_path ? route('groups.messages.file', $message) : null,
             'file_type' => $this->normalizeVoiceMimeType($message->file_type, pathinfo((string) ($message->file_name ?? ''), PATHINFO_EXTENSION)),
             'file_name' => $message->file_name,
-            'voice_message' => $message->voice_message ? $this->normalizeVoiceStoragePath($message->voice_message) : null,
+            'voice_message' => $message->voice_message ? route('groups.messages.voice', ['message' => $message->id]) : null,
             'voice_message_url' => $message->voice_message ? route('groups.messages.voice', ['message' => $message->id]) : null,
+            'state' => $message->lifecycle_state ?? 'sent',
+            'edited_at' => $message->edited_at?->toIso8601String(),
         ];
 
         if ($message->parent_id) {
@@ -386,6 +404,7 @@ class MessageController extends Controller
 
     public function voice(Request $request, Message $message)
     {
+        $this->authorize('view', $message);
         $user = auth()->user();
 
         if (! $message->group || ! $message->group->users()->whereKey($user->id)->exists()) {
@@ -401,12 +420,13 @@ class MessageController extends Controller
             $storagePath = substr($storagePath, strlen('storage/'));
         }
 
-        if (! Storage::disk('public')->exists($storagePath)) {
+        $disk = str_starts_with($storagePath, 'group-chat/') ? 'local' : 'public';
+        if (! Storage::disk($disk)->exists($storagePath)) {
             abort(404);
         }
 
-        $absolutePath = Storage::disk('public')->path($storagePath);
-        $contentLength = (string) (Storage::disk('public')->size($storagePath) ?: filesize($absolutePath));
+        $absolutePath = Storage::disk($disk)->path($storagePath);
+        $contentLength = (string) (Storage::disk($disk)->size($storagePath) ?: filesize($absolutePath));
         $mimeType = $this->normalizeVoiceMimeType($message->file_type, pathinfo((string) ($message->file_name ?? ''), PATHINFO_EXTENSION));
 
         // Prevent session-file lock from blocking concurrent polling/audio requests.
@@ -422,6 +442,20 @@ class MessageController extends Controller
             'Content-Length' => $contentLength,
             'Accept-Ranges' => 'bytes',
             'Cache-Control' => 'private, max-age=3600',
+        ]);
+    }
+
+    public function file(Request $request, Message $message)
+    {
+        $this->authorize('view', $message);
+        abort_if(empty($message->file_path), 404);
+
+        $disk = str_starts_with($message->file_path, 'group-chat/') ? 'local' : 'public';
+        abort_unless(Storage::disk($disk)->exists($message->file_path), 404);
+
+        return Storage::disk($disk)->download($message->file_path, $message->file_name, [
+            'Content-Type' => $message->file_type ?: 'application/octet-stream',
+            'X-Content-Type-Options' => 'nosniff',
         ]);
     }
 
@@ -482,6 +516,7 @@ class MessageController extends Controller
      */
     public function getThreadReplies(Message $message)
     {
+        $this->authorize('view', $message);
         $user = auth()->user();
         
         // Check if user is member of the group
@@ -527,6 +562,7 @@ class MessageController extends Controller
 
     public function edit(Request $request, Message $message)
     {
+        $this->authorize('update', $message);
         $request->validate([
             'content' => 'required|string|max:2000',
         ]);
@@ -547,11 +583,31 @@ class MessageController extends Controller
 
         $htmlContent = $this->formatMessageHtmlWithMentions((string) $request->input('content'), $message->group);
 
-        $message->update([
-            'message' => $htmlContent,
-            'edited' => true,
-            'edited_by' => $user->id,
-        ]);
+        DB::transaction(function () use ($message, $htmlContent, $user): void {
+            if (Schema::hasTable('group_chat_content_edits')) {
+                DB::table('group_chat_content_edits')->insert([
+                    'content_type' => 'message',
+                    'content_id' => $message->id,
+                    'edited_by' => $user->id,
+                    'old_content' => $message->message,
+                    'new_content' => $htmlContent,
+                    'created_at' => now(),
+                ]);
+            }
+
+            $changes = ['message' => $htmlContent, 'edited' => true, 'edited_by' => $user->id];
+            if (Schema::hasColumn('messages', 'edited_at')) {
+                $changes['edited_at'] = now();
+            }
+            $message->update($changes);
+            app(\App\Services\GroupChat\GroupFeedService::class)->recordMutation(
+                $message->voice_message ? 'voice' : ($message->file_path ? 'file' : 'message'),
+                (int) $message->id,
+                'feed.message.updated',
+                (int) $user->id,
+                ['action' => 'edit']
+            );
+        });
 
         $this->dispatchGroupEvent(new GroupMessageUpdated(
             (int) $message->group_id,
@@ -644,6 +700,7 @@ class MessageController extends Controller
 
     public function delete(Request $request, Message $message)
     {
+        $this->authorize('delete', $message);
         $expectsJson = $request->expectsJson() || $request->wantsJson() || $request->ajax()
             || str_contains((string) $request->header('Accept', ''), 'application/json');
 
@@ -705,7 +762,27 @@ class MessageController extends Controller
             }
         }
 
-        $message->delete();
+        $feedContentType = $message->voice_message ? 'voice' : ($message->file_path ? 'file' : 'message');
+        if (config('group-chat.features.message_lifecycle_v1', true) && Schema::hasColumn('messages', 'lifecycle_state')) {
+            $message->update([
+                'message' => null,
+                'file_path' => null,
+                'voice_message' => null,
+                'lifecycle_state' => 'deleted',
+                'deleted_at' => now(),
+                'deleted_by' => $actorId,
+                'removed_by' => $actorId,
+            ]);
+            app(\App\Services\GroupChat\GroupFeedService::class)->recordMutation(
+                $feedContentType,
+                (int) $message->id,
+                'feed.message.deleted',
+                $actorId,
+                ['action' => 'delete']
+            );
+        } else {
+            $message->delete();
+        }
 
         $cacheKey = 'group.' . $groupId . '.deleted_ids';
         $deletedIds = Cache::get($cacheKey, []);
@@ -839,6 +916,7 @@ class MessageController extends Controller
 
     public function toggleReaction(Request $request, Message $message)
     {
+        $this->authorize('view', $message);
         $request->validate([
             'reaction_type' => 'required|string|max:10|in:' . implode(',', MessageReaction::REACTIONS),
         ]);
@@ -914,6 +992,7 @@ class MessageController extends Controller
      */
     public function markAsRead(Request $request, Message $message)
     {
+        $this->authorize('view', $message);
         $user = auth()->user();
         $groupUserRole = GroupUser::where('group_id', $message->group_id)
             ->where('user_id', $user->id)
@@ -929,6 +1008,13 @@ class MessageController extends Controller
         if ((int) $message->user_id !== (int) $user->id) {
             $message->markAsRead((int) $user->id);
             $message->refresh();
+        }
+        $feed = app(\App\Services\GroupChat\GroupFeedService::class);
+        if ($feed->available()) {
+            $sequence = (int) \App\Models\GroupFeedItem::whereIn('type', ['message', 'file', 'voice'])->where('content_id', $message->id)->value('sequence');
+            if ($sequence > 0) {
+                $feed->markRead((int) $message->group_id, (int) $user->id, $sequence);
+            }
         }
 
         $readBy = $message->read_by;
@@ -960,6 +1046,7 @@ class MessageController extends Controller
      */
     public function updateLastReadMessage(Request $request, Group $group)
     {
+        $this->authorize('view', $group);
         $validated = $request->validate([
             'message_id' => 'nullable|integer|min:1',
         ]);
@@ -1003,6 +1090,14 @@ class MessageController extends Controller
             }
         }
 
+        $feed = app(\App\Services\GroupChat\GroupFeedService::class);
+        if ($feed->available() && $messageId !== null) {
+            $sequence = (int) \App\Models\GroupFeedItem::whereIn('type', ['message', 'file', 'voice'])->where('content_id', $messageId)->value('sequence');
+            if ($sequence > 0) {
+                $feed->markRead((int) $group->id, (int) $user->id, $sequence);
+            }
+        }
+
         $group->update(['last_read_at' => now()]);
 
         return response()->json([
@@ -1017,6 +1112,7 @@ class MessageController extends Controller
      */
     public function typing(Request $request, Group $group)
     {
+        $this->authorize('participate', $group);
         $validated = $request->validate([
             'is_typing' => 'required|boolean',
         ]);
@@ -1050,6 +1146,7 @@ class MessageController extends Controller
      */
     public function searchUsersForMention(Request $request, Group $group)
     {
+        $this->authorize('view', $group);
         $user = auth()->user();
         $groupUserRole = GroupUser::where('group_id', $group->id)
             ->where('user_id', $user->id)
@@ -1094,6 +1191,7 @@ class MessageController extends Controller
      */
     public function search(Request $request, Group $group)
     {
+        $this->authorize('view', $group);
         $user = auth()->user();
         $groupUserRole = GroupUser::where('group_id', $group->id)
             ->where('user_id', $user->id)

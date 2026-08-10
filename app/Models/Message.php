@@ -22,13 +22,21 @@ class Message extends Model
         'client_message_id',
         'edited', 
         'edited_by',
+        'edited_at',
+        'lifecycle_state',
+        'delivered_at',
+        'deleted_at',
+        'deleted_by',
         'removed_by',
         'read_by'
     ];
 
     protected $casts = [
         'edited' => 'boolean',
-        'read_by' => 'array'
+        'read_by' => 'array',
+        'edited_at' => 'datetime',
+        'delivered_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
     public function group()

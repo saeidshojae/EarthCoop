@@ -35,7 +35,7 @@
 
 <div id="groupInfoPanel" class="group-info-panel">
     <div class="group-info-panel__inner">
-        <button id="exitNavbar" class="panel-close-btn" onclick="closeGroupInfo()">
+        <button type="button" id="exitNavbar" class="panel-close-btn" data-chat-page-action="close-group-info">
             <i class="fas fa-times"></i>
         </button>
 
@@ -50,7 +50,7 @@
             </div>
 
             <div class="panel-hero__content">
-                <h3 onclick="openGroupInfo()" class="panel-hero__title">{{ $group->name }}</h3>
+                <h3 data-chat-page-action="open-group-info" class="panel-hero__title">{{ $group->name }}</h3>
                 <p class="panel-hero__subtitle">
                     {{ $group->userCount() }} عضو
                     @if($guestCount > 0)
@@ -91,7 +91,7 @@
         <!-- ====== دکمه‌های اقدام ====== -->
         <div class="panel-actions">
             @if($group->location_level != 10 && in_array($yourRole, [2,3]))
-                <button type="button" class="panel-action-btn" onclick="openGroupEdit()">
+                <button type="button" class="panel-action-btn" data-chat-page-action="open-group-edit">
                     <i class="fas fa-pen-to-square"></i>
                     <span>ویرایش گروه</span>
                 </button>
@@ -103,7 +103,7 @@
                     <i class="fas fa-comments"></i>
                     <span>درخواست چت مدیران</span>
                 </button>
-                <button type="button" class="panel-action-btn" onclick="openElection2Box()">
+                <button type="button" class="panel-action-btn" data-chat-page-action="open-election-admin">
                     <i class="fas fa-ballot-check"></i>
                     <span>افزودن انتخابات</span>
                 </button>
@@ -388,14 +388,14 @@
                             @if($item->img)
                                 <div class="post-card__media">
                                     @if($type === 'image')
-                                        <img src="{{ asset('images/blogs/' . $item->img) }}" alt="{{ $item->title }}">
+                                        <img src="{{ $item->media_url }}" alt="{{ $item->title }}">
                                     @elseif($type === 'video')
                                         <video controls>
-                                            <source src="{{ asset('images/blogs/' . $item->img) }}" type="{{ $item->file_type }}">
+                                            <source src="{{ $item->media_url }}" type="{{ $item->file_type }}">
                                         </video>
                                     @elseif($type === 'audio')
                                         <audio controls>
-                                            <source src="{{ asset('images/blogs/' . $item->img) }}" type="{{ $item->file_type }}">
+                                            <source src="{{ $item->media_url }}" type="{{ $item->file_type }}">
                                         </audio>
                                     @endif
                                 </div>
@@ -471,7 +471,7 @@
 <!-- ====== مودال اضافه کردن کاربر مهمان ====== -->
 <div id="userSearchModal" class="panel-modal" style="display: none;">
     <div class="panel-modal__dialog">
-        <button type="button" class="panel-modal__close" onclick="cancelAddGuests()">×</button>
+        <button type="button" class="panel-modal__close" data-chat-page-action="cancel-add-guests">×</button>
         <h3 class="panel-modal__title">اضافه کردن کاربر مهمان</h3>
         <div class="panel-modal__body">
             <div class="panel-search__input mb-3">
@@ -486,7 +486,7 @@
                 </div>
                 <div class="col-12 col-sm-6 d-flex gap-2 mt-2 mt-sm-0">
                     <button type="button" class="btn btn-success flex-fill" id="addUsersToGroup">افزودن به گروه</button>
-                    <button type="button" class="btn btn-outline-secondary flex-fill" onclick="cancelAddGuests()">انصراف</button>
+                    <button type="button" class="btn btn-outline-secondary flex-fill" data-chat-page-action="cancel-add-guests">انصراف</button>
                 </div>
             </div>
         </div>
@@ -496,7 +496,7 @@
 <!-- ====== مودال درخواست چت مدیران ====== -->
 <div id="chatRequestModal" class="panel-modal" style="display: none;">
     <div class="panel-modal__dialog">
-        <button type="button" class="panel-modal__close" onclick="cancelManagerChat()">×</button>
+        <button type="button" class="panel-modal__close" data-chat-page-action="cancel-manager-chat">×</button>
         <h3 class="panel-modal__title">درخواست چت با مدیران دیگر گروه‌ها</h3>
         <div class="panel-modal__body">
             <div class="panel-search__input mb-3">
@@ -1298,7 +1298,7 @@
             document.getElementById('addUsersToGroup')?.addEventListener('click', function() {
                 const hours = document.getElementById('hoursUser').value;
                 if (!selectedUserId || !hours) {
-                    alert('لطفاً کاربر را انتخاب و مدت ساعت را وارد کنید.');
+                    window.groupChatNotify('لطفاً کاربر را انتخاب و مدت ساعت را وارد کنید.', 'error');
                     return;
                 }
 
@@ -1316,7 +1316,7 @@
                 })
                 .then(res => res.json())
                 .then(() => {
-                    alert('کاربر با موفقیت اضافه شد');
+                    window.groupChatNotify('کاربر با موفقیت اضافه شد', 'success');
                     selectedUserId = null;
                     searchInput.value = '';
                     document.getElementById('hoursUser').value = '';

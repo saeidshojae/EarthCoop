@@ -4,14 +4,18 @@ namespace App\Http\Controllers\Group;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Http\Requests\Group\StoreCommentRequest;
 use App\Models\Blog;
 use App\Models\GroupUser;
 use App\Models\Comment;
+use App\Services\GroupChat\GroupFeedService;
+use Illuminate\Support\Facades\DB;
 
 class CommentController extends Controller
 {
     public function comment(Blog $blog)
     {
+        $this->authorize('view', $blog);
         $comments = Comment::where('blog_id', $blog->id)->orderBy('created_at', 'asc')->get();
         $group = $blog->group;
         
@@ -22,20 +26,22 @@ class CommentController extends Controller
         return view('groups.comment', compact('blog', 'comments', 'group', 'yourRole'));
     }
 
-    public function store(Request $request)
+    public function store(StoreCommentRequest $request)
     {
-        $request->validate([
-            'blog_id' => 'required|exists:blogs,id',
-            'parent_id' => 'nullable|numeric|exists:comments,id',
-            'message' => 'required|string|max:2000',
-        ]);
+        $validated = $request->validated();
 
-        $comment = Comment::create([
-            'user_id' => auth()->id(),
-            'blog_id' => $request->blog_id,
-            'message' => $request->message,
-            'parent_id' => $request->parent_id,
-        ]);
+        $comment = DB::transaction(function () use ($validated): Comment {
+            $comment = Comment::create([
+                'user_id' => auth()->id(),
+                'blog_id' => $validated['blog_id'],
+                'message' => $validated['message'],
+                'parent_id' => $validated['parent_id'] ?? null,
+            ]);
+            $comment->loadMissing('blog');
+            app(GroupFeedService::class)->record((int) $comment->blog->group_id, 'comment', (int) $comment->id, (int) auth()->id(), $comment->created_at);
+
+            return $comment;
+        });
         $comment->refresh(); // برای اطمینان از بارگذاری روابط
 
         // Dispatch event for notifications
@@ -81,8 +87,9 @@ class CommentController extends Controller
 
 public function update(Request $request, Comment $comment)
     {
+        $this->authorize('update', $comment);
         // اطمینان از مالکیت نظر
-        abort_if($comment->user_id !== auth()->id(), 403);
+        // Authorization is centralized in CommentPolicy (owner or group moderator).
 
         $data = $request->validate([
             'message' => ['required','string'],
@@ -99,7 +106,8 @@ public function update(Request $request, Comment $comment)
 
     public function destroy(Comment $comment)
     {
-        abort_if($comment->user_id !== auth()->id(), 403);
+        $this->authorize('delete', $comment);
+        // Authorization is centralized in CommentPolicy (owner or group moderator).
 
         $blogId = $comment->blog_id;
         $commentId = $comment->id;
@@ -119,6 +127,7 @@ public function update(Request $request, Comment $comment)
 
 
     public function commentAPI(Blog $blog){
+        $this->authorize('view', $blog);
         $comments = Comment::where('blog_id', $blog->id)->orderBy('created_at', 'asc')->get();
         return view('partials.comments', compact('blog', 'comments'))->render();
     }
@@ -128,6 +137,7 @@ public function update(Request $request, Comment $comment)
      */
     public function commentsFeed(Blog $blog, Request $request)
     {
+        $this->authorize('view', $blog);
         $afterId = (int) $request->query('after_id', 0);
         $limit = min(max((int) $request->query('limit', 20), 1), 100);
 

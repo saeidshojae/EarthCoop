@@ -5,6 +5,7 @@ import "./bootstrap";
 import $ from "jquery";
 import "./najm-bahar.js";
 import { register } from "swiper/element/bundle";
+import "./group-chat/index.js";
 
 register();
 

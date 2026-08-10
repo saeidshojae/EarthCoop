@@ -19,6 +19,27 @@
     const typingWarn = (...args) => {
         if (typingDebug) console.warn('[typing]', ...args);
     };
+    const notify = (message, type = 'error') => window.GroupChatFeedback?.toast
+        ? window.GroupChatFeedback.toast(message, { type })
+        : console[type === 'error' ? 'error' : 'info'](message);
+    const confirmAction = (message, options = {}) => window.GroupChatFeedback?.confirm
+        ? window.GroupChatFeedback.confirm(message, options)
+        : Promise.resolve(false);
+
+    document.addEventListener('click', function handleDelegatedChatFeatureAction(event) {
+        const target = event.target.closest?.('[data-chat-feature-action]');
+        if (!target) return;
+        const action = target.dataset.chatFeatureAction;
+        if (action === 'settings-backdrop' && event.target !== target) return;
+        event.preventDefault();
+        if (action === 'toggle-member-role' && typeof window.toggleMemberRole === 'function') {
+            window.toggleMemberRole(Number(target.dataset.memberId), Number(target.dataset.memberRole), target);
+        } else if (action === 'report' && typeof window.handleReportAction === 'function') {
+            window.handleReportAction(Number(target.dataset.reportId), target.dataset.reportAction);
+        } else if ((action === 'close-settings' || action === 'settings-backdrop') && typeof window.closeGroupSettingsModal === 'function') {
+            window.closeGroupSettingsModal();
+        }
+    });
     
     // تعریف توابع مدیریت اعضا در window scope قبل از return
     // ========== مدیریت اعضا ==========
@@ -34,13 +55,13 @@
         
         if (!currentGroupId) {
             console.error('groupId not found');
-            alert('خطا: شناسه گروه یافت نشد');
+            notify('خطا: شناسه گروه یافت نشد');
             return;
         }
         
         if (!currentCsrfToken) {
             console.error('CSRF token not found');
-            alert('خطا: توکن امنیتی یافت نشد');
+            notify('خطا: توکن امنیتی یافت نشد');
             return;
         }
         
@@ -71,7 +92,7 @@
                 console.log(`Modal ${i}:`, m.id, m);
             });
             
-            alert('خطا: Modal مدیریت اعضا یافت نشد.\n\nلطفاً:\n1. مطمئن شوید که به عنوان مدیر وارد شده‌اید\n2. صفحه را رفرش کنید\n3. اگر مشکل ادامه داشت، با پشتیبانی تماس بگیرید');
+            notify('خطا: Modal مدیریت اعضا یافت نشد. لطفاً صفحه را رفرش کنید.');
             return;
         }
         
@@ -142,7 +163,7 @@
                 window.loadMembers(currentGroupId, currentCsrfToken);
             } else {
                 console.error('loadMembers is not a function! Available in scope:', Object.keys(window).filter(k => k.includes('load') || k.includes('member')));
-                alert('خطا: تابع loadMembers یافت نشد. لطفاً صفحه را رفرش کنید.');
+                notify('خطا: تابع loadMembers یافت نشد. لطفاً صفحه را رفرش کنید.');
             }
         }, 200);
     };
@@ -285,10 +306,10 @@
                     </span>
                     <button 
                         type="button"
-                        onclick="if(typeof window.toggleMemberRole === 'function') { window.toggleMemberRole(${member.id}, ${member.role}); } else { alert('تابع تغییر نقش یافت نشد'); }"
+                        data-chat-feature-action="toggle-member-role"
+                        data-member-id="${member.id}"
+                        data-member-role="${member.role}"
                         style="padding: 0.5rem 1rem; background: #2563eb; color: white; border: none; border-radius: 0.5rem; font-size: 0.875rem; cursor: pointer; transition: background 0.2s;"
-                        onmouseover="this.style.background='#1d4ed8'"
-                        onmouseout="this.style.background='#2563eb'"
                         title="تغییر نقش">
                         <i class="fas fa-exchange-alt" style="margin-left: 0.25rem;"></i>
                         تغییر به ${member.role === 0 ? 'فعال' : 'ناظر'}
@@ -332,26 +353,26 @@
         }, 100);
     };
     
-    window.toggleMemberRole = function(userId, currentRole) {
+    window.toggleMemberRole = async function(userId, currentRole, sourceButton = null) {
         // بررسی وجود groupId و csrfToken
         const currentGroupId = window.groupId || groupId;
         const currentCsrfToken = csrfToken || document.querySelector('meta[name="csrf-token"]')?.content;
         
         if (!currentGroupId) {
-            alert('خطا: شناسه گروه یافت نشد');
+            notify('خطا: شناسه گروه یافت نشد');
             return;
         }
         
         if (!currentCsrfToken) {
-            alert('خطا: توکن امنیتی یافت نشد');
+            notify('خطا: توکن امنیتی یافت نشد');
             return;
         }
         
-        if (!confirm(`آیا مطمئن هستید که می‌خواهید نقش این کاربر را تغییر دهید؟`)) {
+        if (!await confirmAction('آیا مطمئن هستید که می‌خواهید نقش این کاربر را تغییر دهید؟')) {
             return;
         }
 
-        const button = event.target.closest('button');
+        const button = sourceButton;
         if (button) {
             button.disabled = true;
             button.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i> در حال تغییر...';
@@ -386,7 +407,7 @@
                     loadMembers(currentGroupId, currentCsrfToken);
                 }
             } else {
-                alert(data.message || 'خطا در تغییر نقش');
+                notify(data.message || 'خطا در تغییر نقش');
                 if (button) {
                     button.disabled = false;
                     button.innerHTML = `<i class="fas fa-exchange-alt ml-1"></i> تغییر به ${currentRole === 0 ? 'فعال' : 'ناظر'}`;
@@ -395,7 +416,7 @@
         })
         .catch(error => {
             console.error('Error toggling role:', error);
-            alert('خطا در ارتباط با سرور');
+            notify('خطا در ارتباط با سرور');
             if (button) {
                 button.disabled = false;
                 button.innerHTML = `<i class="fas fa-exchange-alt ml-1"></i> تغییر به ${currentRole === 0 ? 'فعال' : 'ناظر'}`;
@@ -517,6 +538,7 @@
     let mentionDropdown = null;
     let mentionStart = -1;
     let mentionQuery = '';
+    let mentionSearchTimeout = null;
     
     function initMentionAutocomplete() {
         const textarea = document.getElementById('message_editor');
@@ -741,8 +763,8 @@
 
     function searchMentionUsers(query) {
         // Debounce search
-        clearTimeout(window.mentionSearchTimeout);
-        window.mentionSearchTimeout = setTimeout(() => {
+        clearTimeout(mentionSearchTimeout);
+        mentionSearchTimeout = setTimeout(() => {
             fetch(`/groups/${groupId}/mention-users?query=${encodeURIComponent(query || '')}`, {
                 headers: {
                     'Accept': 'application/json'
@@ -1036,15 +1058,16 @@
         }
 
         reactionDisplay.innerHTML = reactions.map(r => `
-            <span class="reaction-badge" style="
+            <button type="button" class="reaction-badge" style="
                 background: #f0f0f0;
                 padding: 2px 6px;
                 border-radius: 12px;
                 font-size: 12px;
                 cursor: pointer;
-            " onclick="toggleReaction(${messageId}, '${r.type || r.reaction_type || ''}')">
+                border: 0;
+            " data-legacy-chat-action="reaction" data-message-id="${messageId}" data-reaction-type="${r.type || r.reaction_type || ''}">
                 ${getReactionEmoji(r.type || r.reaction_type || '')} ${r.count || 0}
-            </span>
+            </button>
         `).join('');
     }
 
@@ -1318,7 +1341,7 @@
                 <div class="flex items-center gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-slate-600">
                     <button 
                         type="button"
-                        onclick="handleReportAction(${report.id}, 'resolve')"
+                        data-chat-feature-action="report" data-report-id="${report.id}" data-report-action="resolve"
                         class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
                         title="حل کردن - پیام را حذف می‌کند">
                         <i class="fas fa-check ml-1"></i>
@@ -1326,7 +1349,7 @@
                     </button>
                     <button 
                         type="button"
-                        onclick="handleReportAction(${report.id}, 'dismiss')"
+                        data-chat-feature-action="report" data-report-id="${report.id}" data-report-action="dismiss"
                         class="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
                         title="رد کردن - گزارش را رد می‌کند">
                         <i class="fas fa-times ml-1"></i>
@@ -1334,7 +1357,7 @@
                     </button>
                     <button 
                         type="button"
-                        onclick="handleReportAction(${report.id}, 'escalate')"
+                        data-chat-feature-action="report" data-report-id="${report.id}" data-report-action="escalate"
                         class="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm"
                         title="ارجاع به ادمین سایت">
                         <i class="fas fa-arrow-up ml-1"></i>
@@ -1357,14 +1380,14 @@
         }
     }
 
-    window.handleReportAction = function(reportId, action) {
+    window.handleReportAction = async function(reportId, action) {
         const actionLabels = {
             'resolve': 'حل کردن',
             'dismiss': 'رد کردن',
             'escalate': 'ارجاع به ادمین'
         };
 
-        if (!confirm(`آیا مطمئن هستید که می‌خواهید این گزارش را "${actionLabels[action]}" کنید؟`)) {
+        if (!await confirmAction(`آیا مطمئن هستید که می‌خواهید این گزارش را "${actionLabels[action]}" کنید؟`)) {
             return;
         }
 
@@ -1400,7 +1423,7 @@
                 // بارگذاری مجدد لیست گزارش‌ها
                 loadReports();
             } else {
-                alert(data.message || 'خطا در انجام عملیات');
+                notify(data.message || 'خطا در انجام عملیات');
                 if (buttons) {
                     buttons.forEach(btn => btn.disabled = false);
                 }
@@ -1408,7 +1431,7 @@
         })
         .catch(error => {
             console.error('Error handling report action:', error);
-            alert('خطا در ارتباط با سرور');
+            notify('خطا در ارتباط با سرور');
             if (buttons) {
                 buttons.forEach(btn => btn.disabled = false);
             }
@@ -1454,13 +1477,13 @@
         
         if (!currentGroupId) {
             console.error('groupId not found');
-            alert('خطا: شناسه گروه یافت نشد');
+            notify('خطا: شناسه گروه یافت نشد');
             return;
         }
         
         if (!currentCsrfToken) {
             console.error('CSRF token not found');
-            alert('خطا: توکن امنیتی یافت نشد');
+            notify('خطا: توکن امنیتی یافت نشد');
             return;
         }
         
@@ -1486,16 +1509,16 @@
                 modal.id = 'groupSettingsModal';
                 modal.className = 'modal-shell';
                 modal.style.cssText = 'display: flex; position: fixed; inset: 0; z-index: 9999; align-items: center; justify-content: center; padding: 1.5rem; direction: rtl;';
-                modal.setAttribute('onclick', 'handleModalClick(event, "groupSettingsModal")');
+                modal.dataset.chatFeatureAction = 'settings-backdrop';
                 
                 modal.innerHTML = `
-                    <div class="modal-shell__dialog" onclick="event.stopPropagation()" style="position: relative; width: min(500px, 94vw); background: #fff; border-radius: 28px; padding: 1.75rem; box-shadow: 0 45px 95px -45px rgba(15, 23, 42, 0.6);">
+                    <div class="modal-shell__dialog" style="position: relative; width: min(500px, 94vw); background: #fff; border-radius: 28px; padding: 1.75rem; box-shadow: 0 45px 95px -45px rgba(15, 23, 42, 0.6);">
                         <div class="modal-shell__header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;">
                             <h3 class="modal-shell__title" style="font-size: 1.1rem; font-weight: 800; color: #0f4c3a; display: flex; align-items: center; gap: .5rem;">
                                 <i class="fas fa-cog me-2 text-emerald-500"></i>
                                 تنظیمات گروه
                             </h3>
-                            <button type="button" class="modal-shell__close" onclick="closeGroupSettingsModal()" style="border: none; background: rgba(248, 250, 252, 0.9); width: 34px; height: 34px; border-radius: 999px; font-size: 1.2rem; color: #334155; display: flex; align-items: center; justify-content: center; cursor: pointer;">×</button>
+                            <button type="button" class="modal-shell__close" data-chat-feature-action="close-settings" style="border: none; background: rgba(248, 250, 252, 0.9); width: 34px; height: 34px; border-radius: 999px; font-size: 1.2rem; color: #334155; display: flex; align-items: center; justify-content: center; cursor: pointer;">×</button>
                         </div>
                         <div class="modal-shell__form" style="display: flex; flex-direction: column; gap: 1rem;">
                             <div style="display: flex; flex-direction: column; gap: .45rem;">
@@ -1511,7 +1534,7 @@
                                 </label>
                             </div>
                             <div style="display: flex; justify-content: flex-end; gap: .75rem; margin-top: .5rem;">
-                                <button onclick="closeGroupSettingsModal()" style="padding: 0.75rem 1.5rem; background: #e2e8f0; color: #475569; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                                <button type="button" data-chat-feature-action="close-settings" style="padding: 0.75rem 1.5rem; background: #e2e8f0; color: #475569; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
                                     بستن
                                 </button>
                             </div>
@@ -1536,12 +1559,12 @@
                     });
                 }
             } else {
-                alert(data.message || 'خطا در بارگذاری تنظیمات');
+                notify(data.message || 'خطا در بارگذاری تنظیمات');
             }
         })
         .catch(err => {
             console.error('Settings error:', err);
-            alert('خطا در ارتباط با سرور');
+            notify('خطا در ارتباط با سرور');
         });
     };
     
@@ -1567,12 +1590,12 @@
             if (data.status === 'success') {
                 console.log('Mute toggled:', data.muted);
             } else {
-                alert(data.message || 'خطا در تغییر وضعیت بی‌صدا');
+                notify(data.message || 'خطا در تغییر وضعیت بی‌صدا');
             }
         })
         .catch(err => {
             console.error('Toggle mute error:', err);
-            alert('خطا در ارتباط با سرور');
+            notify('خطا در ارتباط با سرور');
         });
     }
     
@@ -1591,14 +1614,34 @@
             if (data.status === 'success') {
                 console.log('Archive toggled:', data.archived);
             } else {
-                alert(data.message || 'خطا در تغییر وضعیت بایگانی');
+                notify(data.message || 'خطا در تغییر وضعیت بایگانی');
             }
         })
         .catch(err => {
             console.error('Toggle archive error:', err);
-            alert('خطا در ارتباط با سرور');
+            notify('خطا در ارتباط با سرور');
         });
     }
+
+    window.GroupChatFeatures = Object.freeze({
+        members: Object.freeze({
+            open: window.showManageMembersModal,
+            close: window.closeManageMembersModal,
+            reload: window.loadMembers,
+            toggleRole: window.toggleMemberRole,
+        }),
+        reports: Object.freeze({
+            open: window.showManageReportsModal,
+            close: window.closeManageReportsModal,
+            review: window.handleReportAction,
+        }),
+        settings: Object.freeze({
+            open: window.showGroupSettingsModal,
+            close: window.closeGroupSettingsModal,
+        }),
+        reactions: Object.freeze({ toggle: window.toggleReaction }),
+        threads: Object.freeze({ open: window.showThread, attachButton: window.addThreadButton }),
+    });
 
 })();
 

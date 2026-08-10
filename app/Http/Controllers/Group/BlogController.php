@@ -4,36 +4,44 @@ namespace App\Http\Controllers\Group;
 
 use App\Events\GroupFeedUpdated;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Group\StorePostRequest;
+use App\Http\Requests\Group\UpdatePostRequest;
 use App\Models\Blog;
 use App\Models\Category;
 use App\Models\Group;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use App\Services\GroupChat\HtmlSanitizer;
+use App\Services\GroupChat\GroupFeedService;
+use Illuminate\Support\Facades\DB;
 
 class BlogController extends Controller
 {
-    public function store(Group $group, Request $request)
+    public function store(Group $group, StorePostRequest $request, HtmlSanitizer $sanitizer)
     {
-        $inputs = $request->validate([
-            'title' => 'required|string|max:255',
-            'content' => 'required|string',
-            'category_id' => 'required|numeric|exists:categories,id',
-            'img' => 'nullable|file|max:20480',
-        ]);
+        $inputs = $request->validated();
+        $inputs['content'] = $sanitizer->sanitize($inputs['content']);
 
         $inputs['group_id'] = $group->id;
         $inputs['user_id'] = auth()->id();
 
         if ($request->hasFile('img') && $request->file('img')->isValid()) {
             $file = $request->file('img');
-            $name = time() . '.' . $file->getClientOriginalExtension();
             $inputs['file_type'] = $file->getMimeType();
-            $file->move(public_path('images/blogs'), $name);
-            $inputs['img'] = $name;
+            $inputs['img'] = $file->storeAs(
+                'group-chat/posts/' . $group->id,
+                (string) \Illuminate\Support\Str::uuid() . '.' . $file->extension(),
+                'local'
+            );
         }
 
-        $blog = Blog::create($inputs);
-        $blog->refresh();
+        $blog = DB::transaction(function () use ($inputs, $group): Blog {
+            $blog = Blog::create($inputs);
+            app(GroupFeedService::class)->record((int) $group->id, 'post', (int) $blog->id, (int) auth()->id(), $blog->created_at);
+
+            return $blog->refresh();
+        });
 
         $this->dispatchGroupEvent(new \App\Events\BlogCreated($blog, $group, auth()->user()));
 
@@ -73,7 +81,9 @@ class BlogController extends Controller
 
     public function destroy(Blog $blog)
     {
-        if ($blog->user_id !== auth()->id()) {
+        $this->authorize('delete', $blog);
+
+        if (false && $blog->user_id !== auth()->id()) {
             return response()->json(['status' => 'error', 'message' => 'شما مجوز حذف این پست را ندارید.'], 403);
         }
 
@@ -97,17 +107,16 @@ class BlogController extends Controller
         ]);
     }
 
-    public function update(Request $request, Blog $blog)
+    public function update(UpdatePostRequest $request, Blog $blog, HtmlSanitizer $sanitizer)
     {
-        if ($blog->user_id !== auth()->id()) {
+        $this->authorize('update', $blog);
+
+        if (false && $blog->user_id !== auth()->id()) {
             return response()->json(['status' => 'error', 'message' => 'شما مجوز ویرایش این پست را ندارید.'], 403);
         }
 
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'content' => 'required|string',
-            'category_id' => 'required|exists:categories,id',
-        ]);
+        $validated = $request->validated();
+        $validated['content'] = $sanitizer->sanitize($validated['content']);
 
         $blog->update($validated);
         $blog->refresh();
@@ -141,6 +150,7 @@ class BlogController extends Controller
      */
     public function markAsRead(Blog $blog)
     {
+        $this->authorize('view', $blog);
         $user = auth()->user();
         
         // Don't mark own posts as read
@@ -159,6 +169,20 @@ class BlogController extends Controller
         return response()->json([
             'status' => 'success',
             'read_count' => $blog->read_count,
+        ]);
+    }
+
+    public function media(Blog $blog)
+    {
+        $this->authorize('view', $blog);
+
+        abort_if(empty($blog->img) || ! str_contains($blog->img, '/'), 404);
+        abort_unless(Storage::disk('local')->exists($blog->img), 404);
+
+        return Storage::disk('local')->response($blog->img, null, [
+            'Content-Type' => $blog->file_type ?: 'application/octet-stream',
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Disposition' => 'inline; filename="post-media-' . $blog->id . '"',
         ]);
     }
 

@@ -10,7 +10,7 @@ class GroupUser extends Model
 {
     use HasFactory, SoftDeletes;
     protected $table = 'group_user';
-    protected $fillable = ['group_id', 'user_id', 'role', 'status', 'expired', 'last_read_message_id'];
+    protected $fillable = ['group_id', 'user_id', 'role', 'status', 'expired', 'last_read_message_id', 'last_read_feed_sequence'];
 
     public function user(){
         return $this->belongsTo(User::class);

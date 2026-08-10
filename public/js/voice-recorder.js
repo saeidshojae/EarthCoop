@@ -20,6 +20,21 @@
 
     'use strict';
 
+    const voiceLifecycle = window.GroupChatLifecycle || null;
+    const createOwnedInterval = (callback, ms) => voiceLifecycle?.interval(callback, ms)
+        ?? window.setInterval(callback, ms);
+    const clearOwnedInterval = id => {
+        if (voiceLifecycle?.clearInterval) voiceLifecycle.clearInterval(id);
+        else window.clearInterval(id);
+    };
+
+    const notify = (message, type = 'error') => window.GroupChatFeedback?.toast
+        ? window.GroupChatFeedback.toast(message, { type })
+        : console[type === 'error' ? 'error' : 'info'](message);
+    const confirmAction = (message, options = {}) => window.GroupChatFeedback?.confirm
+        ? window.GroupChatFeedback.confirm(message, options)
+        : Promise.resolve(false);
+
 
 
 
@@ -169,6 +184,14 @@
 
 
     let recordingTimer = null;
+
+    let stopRecordingButton = null;
+
+    let recordedAudioBlob = null;
+
+    let optimisticVoiceTempId = null;
+
+    let optimisticVoiceBlobUrl = null;
 
 
 
@@ -2260,7 +2283,7 @@
 
 
 
-        window.stopRecordingButton = stopButton;
+        stopRecordingButton = stopButton;
 
 
 
@@ -2410,7 +2433,7 @@
 
 
 
-            if (window.stopRecordingButton) {
+            if (stopRecordingButton) {
 
 
 
@@ -2420,7 +2443,7 @@
 
 
 
-                window.stopRecordingButton.onclick = stopRecording;
+                stopRecordingButton.onclick = stopRecording;
 
 
 
@@ -3751,7 +3774,7 @@
 
 
 
-            if (window.stopRecordingButton) {
+            if (stopRecordingButton) {
 
 
 
@@ -3761,7 +3784,7 @@
 
 
 
-                window.stopRecordingButton.style.display = 'none';
+                stopRecordingButton.style.display = 'none';
 
 
 
@@ -4041,7 +4064,7 @@
 
 
 
-    function cancelRecording() {
+    async function cancelRecording() {
 
 
 
@@ -4051,7 +4074,7 @@
 
 
 
-        if (confirm('آیا مطمئن هستید که می‌خواهید ضبط را لغو کنید؟')) {
+        if (await confirmAction('آیا مطمئن هستید که می‌خواهید ضبط را لغو کنید؟')) {
 
 
 
@@ -4362,7 +4385,7 @@
 
 
 
-        window.recordedAudioBlob = audioBlob;
+        recordedAudioBlob = audioBlob;
 
 
 
@@ -4412,7 +4435,7 @@
 
 
 
-        if (!window.recordedAudioBlob) {
+        if (!recordedAudioBlob) {
 
 
 
@@ -4622,7 +4645,7 @@
 
 
 
-            const blobMimeType = String(window.recordedAudioBlob.type || recordedAudioMimeType || 'audio/webm').toLowerCase();
+            const blobMimeType = String(recordedAudioBlob.type || recordedAudioMimeType || 'audio/webm').toLowerCase();
             let extension = 'webm';
             if (blobMimeType.includes('ogg')) {
                 extension = 'ogg';
@@ -4634,7 +4657,7 @@
                 extension = 'm4a';
             }
 
-            formData.append('voice_message', window.recordedAudioBlob, `voice_${Date.now()}.${extension}`);
+            formData.append('voice_message', recordedAudioBlob, `voice_${Date.now()}.${extension}`);
 
 
 
@@ -5234,7 +5257,7 @@
 
 
 
-                if (window.recordedAudioBlob) {
+                if (recordedAudioBlob) {
 
 
 
@@ -5244,7 +5267,7 @@
 
 
 
-                    URL.revokeObjectURL(URL.createObjectURL(window.recordedAudioBlob));
+                    URL.revokeObjectURL(URL.createObjectURL(recordedAudioBlob));
 
 
 
@@ -5254,7 +5277,7 @@
 
 
 
-                    window.recordedAudioBlob = null;
+                    recordedAudioBlob = null;
 
 
 
@@ -5684,7 +5707,7 @@
 
 
 
-        if (recordingTimer) clearInterval(recordingTimer);
+        if (recordingTimer) clearOwnedInterval(recordingTimer);
 
 
 
@@ -5704,7 +5727,7 @@
 
 
 
-        recordingTimer = setInterval(() => {
+        recordingTimer = createOwnedInterval(() => {
 
 
 
@@ -5954,7 +5977,7 @@
 
 
 
-            clearInterval(recordingTimer);
+            clearOwnedInterval(recordingTimer);
 
 
 
@@ -6814,7 +6837,7 @@
 
 
 
-        if (window.stopRecordingButton) {
+        if (stopRecordingButton) {
 
 
 
@@ -6824,7 +6847,7 @@
 
 
 
-            window.stopRecordingButton.style.display = 'inline-flex';
+            stopRecordingButton.style.display = 'inline-flex';
 
 
 
@@ -6974,7 +6997,7 @@
 
 
 
-        alert(message); // You can replace with a better notification system
+        notify(message);
 
 
 
@@ -7004,6 +7027,103 @@
 
 
 
+    function installOptimisticVoiceBridge() {
+        const originalAppend = window.appendMessage;
+        let wrappedAppend = null;
+
+        const clearOptimisticVoice = message => {
+            if (!message?.voice_message || !message.id || String(message.id).startsWith('voice_temp_') || !optimisticVoiceTempId) return;
+            document.getElementById('msg-' + optimisticVoiceTempId)?.remove();
+            try { URL.revokeObjectURL(optimisticVoiceBlobUrl); } catch (error) {}
+            optimisticVoiceTempId = null;
+            optimisticVoiceBlobUrl = null;
+        };
+
+        if (typeof originalAppend === 'function') {
+            wrappedAppend = message => {
+                clearOptimisticVoice(message);
+                return originalAppend(message);
+            };
+            window.appendMessage = wrappedAppend;
+        }
+
+        const handleSendCapture = event => {
+            const button = event.target.closest?.('#send-recording-btn');
+            const blob = recordedAudioBlob;
+            if (!button || !blob) return;
+            const blobUrl = URL.createObjectURL(blob);
+            const tempId = 'voice_temp_' + Date.now();
+            const modal = document.getElementById('voice-recording-modal');
+            if (modal) {
+                modal.style.opacity = '0';
+                modal.style.transition = 'opacity 0.2s';
+                setTimeout(() => { modal.style.display = 'none'; modal.style.opacity = ''; }, 200);
+            }
+            const renderVoice = window.renderMessageThroughPipeline || window.appendMessage;
+            if (typeof renderVoice === 'function') {
+                renderVoice({
+                    id: tempId,
+                    user_id: window.authUserId || 0,
+                    message: '🎤 پیام صوتی',
+                    created_at: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+                    sender: 'شما',
+                    voice_message: blobUrl,
+                    file_type: blob.type || 'audio/webm',
+                    _isOptimistic: true,
+                }, 'voice-optimistic');
+            }
+            optimisticVoiceTempId = tempId;
+            optimisticVoiceBlobUrl = blobUrl;
+        };
+
+        if (voiceLifecycle) voiceLifecycle.on(document, 'click', handleSendCapture, true);
+        else document.addEventListener('click', handleSendCapture, true);
+        return () => {
+            document.removeEventListener('click', handleSendCapture, true);
+            if (wrappedAppend && window.appendMessage === wrappedAppend) window.appendMessage = originalAppend;
+            if (optimisticVoiceBlobUrl) URL.revokeObjectURL(optimisticVoiceBlobUrl);
+            optimisticVoiceTempId = null;
+            optimisticVoiceBlobUrl = null;
+        };
+    }
+
+    const disposeOptimisticVoiceBridge = installOptimisticVoiceBridge();
+
+    let recorderDestroyed = false;
+    function destroyVoiceRecorder() {
+        if (recorderDestroyed) return;
+        recorderDestroyed = true;
+        disposeOptimisticVoiceBridge();
+        stopTimer();
+
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            try { mediaRecorder.stop(); } catch (error) {}
+        }
+        if (audioStream) audioStream.getTracks().forEach(track => track.stop());
+        audioStream = null;
+        if (audioContext && audioContext.state !== 'closed') {
+            Promise.resolve(audioContext.close()).catch(() => {});
+        }
+        audioContext = null;
+        analyser = null;
+        dataArray = null;
+        recordedAudioBlob = null;
+    }
+
+    voiceLifecycle?.add(destroyVoiceRecorder);
+
+    window.GroupVoiceRecorder = Object.freeze({
+        start: startRecording,
+        stop: stopRecording,
+        cancel: cancelRecording,
+        send: sendRecording,
+        open: showRecordingModal,
+        close: hideRecordingModal,
+        reset: resetUI,
+        getBlob: () => recordedAudioBlob || null,
+        destroy: destroyVoiceRecorder,
+    });
+
     // Cleanup on page unload
 
 
@@ -7014,7 +7134,9 @@
 
 
 
-    window.addEventListener('beforeunload', () => {
+    voiceLifecycle?.on(window, 'beforeunload', () => {
+
+        destroyVoiceRecorder();
 
 
 
@@ -7124,7 +7246,8 @@
 
 
 
-        document.addEventListener('DOMContentLoaded', init);
+        if (voiceLifecycle) voiceLifecycle.on(document, 'DOMContentLoaded', init, { once: true });
+        else document.addEventListener('DOMContentLoaded', init, { once: true });
 
 
 
@@ -7144,7 +7267,8 @@
 
 
 
-        setTimeout(init, 500);
+        if (voiceLifecycle) voiceLifecycle.timeout(init, 500);
+        else setTimeout(init, 500);
 
 
 

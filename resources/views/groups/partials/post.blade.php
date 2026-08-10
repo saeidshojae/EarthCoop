@@ -115,7 +115,7 @@
 
                             class="action-menu__item"
 
-                            onclick="replyToMessage('post-{{ $item->id }}', '', 'مقاله: {{ $item->title }}')">
+                            data-chat-page-action="reply-content" data-reply-target="post-{{ $item->id }}" data-reply-text="مقاله: {{ $item->title }}">
 
                         <i class="fas fa-reply"></i>
 
@@ -143,7 +143,7 @@
 
                                 class="action-menu__item action-menu__item--danger"
 
-                                onclick="deletePost({{ $item->id }})">
+                                data-chat-page-action="delete-post" data-post-id="{{ $item->id }}">
 
                             <i class="fas fa-trash"></i>
 
@@ -157,7 +157,7 @@
 
                                 class="action-menu__item action-menu__item--danger"
 
-                                onclick="reportMessage({{ $item->id }})">
+                                data-chat-page-action="report-message" data-message-id="{{ $item->id }}">
 
                             <i class="fas fa-flag"></i>
 
@@ -227,13 +227,13 @@
 
                 @if($type === 'image')
 
-                    <img src="{{ asset('images/blogs/' . $item->img) }}" alt="{{ $item->title }}">
+                    <img src="{{ $item->media_url }}" alt="{{ $item->title }}">
 
                 @elseif($type === 'video')
 
                     <video controls>
 
-                        <source src="{{ asset('images/blogs/' . $item->img) }}" type="{{ $item->file_type }}">
+                        <source src="{{ $item->media_url }}" type="{{ $item->file_type }}">
 
                     </video>
 
@@ -241,13 +241,13 @@
 
                     <audio controls>
 
-                        <source src="{{ asset('images/blogs/' . $item->img) }}" type="{{ $item->file_type }}">
+                        <source src="{{ $item->media_url }}" type="{{ $item->file_type }}">
 
                     </audio>
 
                 @else
 
-                    <a href="{{ asset('images/blogs/' . $item->img) }}"
+                    <a href="{{ $item->media_url }}"
 
                        class="post-card__comments"
 

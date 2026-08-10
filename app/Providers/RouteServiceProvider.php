@@ -59,5 +59,19 @@ class RouteServiceProvider extends ServiceProvider
         RateLimiter::for('najm-hoda-autonomy-write', function (Request $request) {
             return Limit::perMinute(20)->by('nh-write:' . ($request->user()?->id ?: $request->ip()));
         });
+
+        foreach ([
+            'group-message' => 30,
+            'group-upload' => 10,
+            'group-post' => 6,
+            'group-poll' => 6,
+            'group-vote' => 30,
+            'group-comment' => 20,
+            'group-reaction' => 60,
+        ] as $name => $attempts) {
+            RateLimiter::for($name, function (Request $request) use ($name, $attempts) {
+                return Limit::perMinute($attempts)->by($name . ':' . ($request->user()?->id ?: $request->ip()));
+            });
+        }
     }
 }

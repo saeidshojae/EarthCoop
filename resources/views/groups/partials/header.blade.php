@@ -38,7 +38,7 @@
 
                     <button type="button"
 
-                            onclick="openGroupInfo()"
+                            data-chat-page-action="open-group-info"
 
                             class="text-2xl font-black tracking-tight transition hover:text-white/80 lg:text-3xl">
 
@@ -96,7 +96,7 @@
 
                         type="button"
 
-                        onclick="openElectionBox()"
+                        data-chat-page-action="open-election"
 
                         title="ایجاد انتخابات">
 
@@ -146,13 +146,13 @@
 
                                 @if (in_array($yourRole, [2,3], true))
 
-                                    <li><a class="dropdown-item" onclick="openGroupEdit()" href="#">ویرایش گروه</a></li>
+                                    <li><a class="dropdown-item" data-chat-page-action="open-group-edit" href="#">ویرایش گروه</a></li>
 
                                     <li><a class="dropdown-item" id="addUserButton" href="#">اضافه کردن کاربر مهمان به گروه</a></li>
 
                                     <li><a class="dropdown-item" id="addChatRequestButton" href="#">درخواست چت به مدیران</a></li>
 
-                                    <li><a class="dropdown-item" onclick="openElection2Box()" href="#">➕ افزودن انتخابات</a></li>
+                                    <li><a class="dropdown-item" data-chat-page-action="open-election-admin" href="#">➕ افزودن انتخابات</a></li>
 
                                     <li><a class="dropdown-item" href="{{ route('groups.open', $group) }}">{{ $group->is_open == 0 ? 'فعال کردن نشست' : 'غیرفعال کردن نشست' }}</a></li>
 
@@ -164,13 +164,13 @@
 
                         @else
 
-                            <li><a class="dropdown-item" href="#" onclick="openChatSearch()">🔍 جستجو در چت</a></li>
+                            <li><a class="dropdown-item" href="#" data-chat-page-action="open-chat-search">🔍 جستجو در چت</a></li>
 
-                            <li><a class="dropdown-item" href="#" onclick="clearChatHistory()">🗑️ پاک کردن تاریخچه چت</a></li>
+                            <li><a class="dropdown-item" href="#" data-chat-page-action="clear-chat">🗑️ پاک کردن تاریخچه چت</a></li>
 
-                            <li><a class="dropdown-item" href="#" onclick="deleteChat()">❌ حذف چت</a></li>
+                            <li><a class="dropdown-item" href="#" data-chat-page-action="delete-chat">❌ حذف چت</a></li>
 
-                            <li><a class="dropdown-item" href="#" onclick="reportUser()">🚩 گزارش و ریپورت کاربر</a></li>
+                            <li><a class="dropdown-item" href="#" data-chat-page-action="report-user">🚩 گزارش و ریپورت کاربر</a></li>
 
                         @endif
 

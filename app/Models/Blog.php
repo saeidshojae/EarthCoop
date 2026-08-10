@@ -80,4 +80,15 @@ public function getReadCountAttribute(): int
     return count($this->read_by ?? []);
 }
 
+public function getMediaUrlAttribute(): ?string
+{
+    if (empty($this->img)) {
+        return null;
+    }
+
+    return str_contains($this->img, '/')
+        ? route('groups.blog.media', $this)
+        : asset('images/blogs/' . $this->img);
+}
+
 }

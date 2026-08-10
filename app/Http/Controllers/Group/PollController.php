@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Group;
 use App\Events\GroupFeedUpdated;
 use App\Events\GroupPollUpdated;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Group\StorePollRequest;
+use App\Http\Requests\Group\VotePollRequest;
 use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\Poll;
@@ -12,33 +14,28 @@ use App\Models\PollOption;
 use App\Models\PollVote;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use App\Services\GroupChat\GroupFeedService;
 
 class PollController extends Controller
 {
-    public function store(Group $group, Request $request)
+    public function store(Group $group, StorePollRequest $request)
     {
-        $inputs = $request->validate([
-            'question' => 'required|string|max:255',
-            'options' => 'required|array',
-            'expires_at' => 'required|numeric',
-            'type' => 'required|numeric|in:0,1',
-            'skill_id' => 'nullable',
-            'main_type' => 'required|numeric|in:0,1',
-        ]);
+        $inputs = $request->validated();
 
         $inputs['expires_at'] = Carbon::now()->addDays($inputs['expires_at'])->format('Y-m-d H:i:s');
         $inputs['group_id'] = $group->id;
         $inputs['created_by'] = auth()->id();
 
-        $poll = Poll::create($inputs);
-        $poll->refresh();
+        $poll = DB::transaction(function () use ($inputs): Poll {
+            $options = $inputs['options'];
+            unset($inputs['options']);
+            $poll = Poll::create($inputs);
+            $poll->options()->createMany(collect($options)->map(fn ($option) => ['text' => $option])->all());
+            app(GroupFeedService::class)->record((int) $poll->group_id, 'poll', (int) $poll->id, (int) $poll->created_by, $poll->created_at);
 
-        foreach ($inputs['options'] as $option) {
-            PollOption::create([
-                'poll_id' => $poll->id,
-                'text' => $option,
-            ]);
-        }
+            return $poll->refresh();
+        });
 
         $this->dispatchGroupEvent(new \App\Events\PollCreated($poll, $group, auth()->user()));
 
@@ -68,20 +65,21 @@ class PollController extends Controller
         return redirect()->back()->with('success', 'نظرسنجی شما با موفقیت ارسال شد!');
     }
 
-    public function vote(Request $request, Poll $poll)
+    public function vote(VotePollRequest $request, Poll $poll)
     {
-        $request->validate([
-            'option_id' => 'required|exists:poll_options,id',
-        ]);
+        abort_if(! $poll->is_active || $poll->isExpired(), 422, 'This poll is not accepting votes.');
 
-        if ($poll->votes()->where('user_id', auth()->id())->exists()) {
-            $poll->votes()->where('user_id', auth()->id())->first()->delete();
-        }
-
-        $poll->votes()->create([
-            'user_id' => auth()->id(),
-            'option_id' => $request->option_id,
-        ]);
+        DB::transaction(function () use ($request, $poll): void {
+            Poll::whereKey($poll->id)->lockForUpdate()->firstOrFail();
+            $poll->votes()->where('user_id', auth()->id())->delete();
+            $poll->votes()->create([
+                'user_id' => auth()->id(),
+                'option_id' => $request->validated('option_id'),
+            ]);
+            app(GroupFeedService::class)->recordMutation('poll', (int) $poll->id, 'feed.poll.voted', (int) auth()->id(), [
+                'option_id' => (int) $request->validated('option_id'),
+            ]);
+        }, 3);
 
         $activeMemberIdsSubquery = GroupUser::query()
             ->select('user_id')
@@ -132,6 +130,8 @@ class PollController extends Controller
 
     public function update(Request $request, Group $group, Poll $poll)
     {
+        abort_unless((int) $poll->group_id === (int) $group->id, 404);
+        $this->authorize('update', $poll);
         $validated = $request->validate([
             'question' => 'required|string|max:255',
             'expires_at' => 'nullable|numeric|min:1',
@@ -175,6 +175,8 @@ class PollController extends Controller
 
     public function delete(Request $request, Group $group, Poll $poll)
     {
+        abort_unless((int) $poll->group_id === (int) $group->id, 404);
+        $this->authorize('delete', $poll);
         $pollId = (int) $poll->id;
         $poll->delete();
 
@@ -231,6 +233,7 @@ class PollController extends Controller
      */
     public function markAsRead(Poll $poll)
     {
+        $this->authorize('view', $poll);
         $user = auth()->user();
         
         // Don't mark own polls as read

@@ -193,6 +193,39 @@ class MessageAuthorizationTest extends TestCase
         ]);
     }
 
+    public function test_non_member_cannot_read_group_feed_unread_or_search(): void
+    {
+        [$group] = $this->makeGroupWithMember();
+        $outsider = $this->makeUser();
+
+        $this->actingAs($outsider)
+            ->getJson('/api/groups/' . $group->id . '/messages')
+            ->assertForbidden();
+
+        $this->actingAs($outsider)
+            ->getJson(route('groups.unread-count', $group))
+            ->assertForbidden();
+
+        $this->actingAs($outsider)
+            ->getJson(route('groups.search', ['group' => $group, 'query' => 'secret']))
+            ->assertForbidden();
+    }
+
+    public function test_non_member_cannot_download_private_group_message_media(): void
+    {
+        [$group, $owner] = $this->makeGroupWithMember();
+        $outsider = $this->makeUser();
+        $message = $this->makeMessage($group, $owner, [
+            'file_path' => 'group-chat/messages/' . $group->id . '/secret.pdf',
+            'file_name' => 'secret.pdf',
+            'file_type' => 'application/pdf',
+        ]);
+
+        $this->actingAs($outsider)
+            ->get(route('groups.messages.file', $message))
+            ->assertForbidden();
+    }
+
     public function test_delete_decrements_thread_reply_count(): void
     {
         [$group, $owner] = $this->makeGroupWithMember(1);

@@ -27,7 +27,7 @@ class VoiceMessageFlowTest extends TestCase
 
     public function test_member_can_send_voice_message_only(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
 
         [$group, $member] = $this->makeGroupWithMember(1);
 
@@ -47,12 +47,12 @@ class VoiceMessageFlowTest extends TestCase
         $this->assertSame('Voice message', $saved->message);
         $this->assertSame($group->id, (int) $saved->group_id);
         $this->assertSame($member->id, (int) $saved->user_id);
-        Storage::disk('public')->assertExists($saved->voice_message);
+        Storage::disk('local')->assertExists($saved->voice_message);
 
         $payload = $response->json('message');
         $this->assertIsArray($payload);
         $this->assertNotEmpty($payload['voice_message'] ?? null);
-        $this->assertStringContainsString('/storage/uploads/voice_messages/', (string) $payload['voice_message']);
+        $this->assertStringContainsString('/messages/' . $saved->id . '/voice', (string) $payload['voice_message']);
     }
 
     public function test_non_member_cannot_send_voice_message(): void
@@ -86,7 +86,7 @@ class VoiceMessageFlowTest extends TestCase
 
     public function test_voice_message_store_is_idempotent_with_client_message_id(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
 
         [$group, $member] = $this->makeGroupWithMember(1);
         $clientMessageId = 'voice-cmid-' . uniqid();
@@ -123,7 +123,7 @@ class VoiceMessageFlowTest extends TestCase
 
     public function test_group_member_can_stream_voice_message(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
 
         [$group, $sender] = $this->makeGroupWithMember(1);
         $receiver = $this->makeUser();

@@ -61,18 +61,18 @@
                     <i class="fas fa-ellipsis-v"></i>
                 </button>
                 <div class="action-menu__list">
-                    <button type="button" class="action-menu__item" onclick="replyToMessage('poll-{{ $item->id }}', '', 'نظرسنجی: {{ e($item->question) }}')">
+                    <button type="button" class="action-menu__item" data-chat-page-action="reply-content" data-reply-target="poll-{{ $item->id }}" data-reply-text="نظرسنجی: {{ $item->question }}">
                         <i class="fas fa-reply"></i> پاسخ
                     </button>
                     @if($isOwner)
-                        <button type="button" class="action-menu__item" onclick="showEditPollBox({{ $item->id }})">
+                        <button type="button" class="action-menu__item" data-chat-page-action="edit-poll" data-poll-id="{{ $item->id }}">
                             <i class="fas fa-edit"></i> ویرایش
                         </button>
-                        <button type="button" class="action-menu__item action-menu__item--danger" onclick="deletePoll({{ $item->id }}, '{{ route('groups.poll.delete', [$group, $item->id]) }}')">
+                        <button type="button" class="action-menu__item action-menu__item--danger" data-chat-page-action="delete-poll" data-poll-id="{{ $item->id }}" data-delete-url="{{ route('groups.poll.delete', [$group, $item->id]) }}">
                             <i class="fas fa-trash"></i> حذف
                         </button>
                     @else
-                        <button type="button" class="action-menu__item action-menu__item--danger" onclick="reportMessage({{ $item->id }})">
+                        <button type="button" class="action-menu__item action-menu__item--danger" data-chat-page-action="report-message" data-message-id="{{ $item->id }}">
                             <i class="fas fa-flag"></i> گزارش
                         </button>
                     @endif
@@ -89,7 +89,7 @@
 
         @if($isSpecialized)
             <section class="poll-card__delegation" data-skill-id="{{ $item->skill_id }}">
-                <button type="button" class="poll-card__delegation-btn" onclick="toggleSkillList({{ $item->id }})">
+                <button type="button" class="poll-card__delegation-btn" data-chat-page-action="toggle-skill-list" data-poll-id="{{ $item->id }}">
                     <i class="fas fa-user-tie"></i> مشاهده متخصصین برای تفویض رأی
                 </button>
                 <span class="poll-card__delegation-status">
@@ -112,7 +112,7 @@
                         class="poll-option {{ $isSelected ? 'poll-option--selected voted' : '' }}"
                         data-poll-id="{{ $item->id }}"
                         data-option-id="{{ $option->id }}"
-                        @if(! $isVotingDisabled) onclick="submitVote(this)" @endif>
+                        @if(! $isVotingDisabled) data-chat-page-action="submit-vote" @endif>
                     <span class="poll-option__label">{{ $option->text }}</span>
                     <span class="poll-option__stat">{{ $percent }}%</span>
                 </button>

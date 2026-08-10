@@ -30,10 +30,9 @@ Broadcast::channel('support-chat.{chatId}', function ($user, $chatId) {
 });
 
 Broadcast::channel('group.{groupId}', function ($user, $groupId) {
-    return \App\Models\GroupUser::where('group_id', (int) $groupId)
-        ->where('user_id', (int) $user->id)
-        ->where('status', 1)
-        ->exists();
+    $group = \App\Models\Group::find((int) $groupId);
+
+    return $group !== null && $user->can('view', $group);
 });
 
 Broadcast::channel('private-chat.{conversationId}', function ($user, $conversationId) {

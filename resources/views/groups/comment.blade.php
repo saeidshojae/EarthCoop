@@ -40,6 +40,19 @@
 
 @section('head-tag')
 
+<script>
+window.commentNotify = function (message, type = 'error') {
+  if (window.GroupChatFeedback?.toast) return window.GroupChatFeedback.toast(message, { type });
+  console[type === 'error' ? 'error' : 'info'](message);
+};
+window.commentConfirm = function (message, options = {}) {
+  return window.GroupChatFeedback?.confirm ? window.GroupChatFeedback.confirm(message, options) : Promise.resolve(false);
+};
+window.commentPrompt = function (message, options = {}) {
+  return window.GroupChatFeedback?.prompt ? window.GroupChatFeedback.prompt(message, options) : Promise.resolve(null);
+};
+</script>
+
 
 
 
@@ -8805,7 +8818,7 @@
 
 
 
-        <img src="{{ asset('images/blogs/' . $blog->img) }}" alt="{{ $blog->title }}" class="comment-post-card__image">
+        <img src="{{ $blog->media_url }}" alt="{{ $blog->title }}" class="comment-post-card__image">
 
 
 
@@ -9175,7 +9188,7 @@
 
 
 
-            <button class="reaction-btn like-btn" onclick="sendReaction(1)">
+            <button type="button" class="reaction-btn like-btn" data-comment-page-action="reaction" data-reaction-type="1">
 
 
 
@@ -9215,7 +9228,7 @@
 
 
 
-            <button class="reaction-btn dislike-btn" onclick="sendReaction(0)">
+            <button type="button" class="reaction-btn dislike-btn" data-comment-page-action="reaction" data-reaction-type="0">
 
 
 
@@ -9665,7 +9678,7 @@
 
 
 
-          <button type="button" class="comment-form__reply-cancel" onclick="cancelReply()">
+          <button type="button" class="comment-form__reply-cancel" data-comment-page-action="cancel-reply">
 
 
 
@@ -10925,7 +10938,7 @@
 
 
 
-          alert(data.message || 'خطا در ثبت واکنش');
+          window.commentNotify(data.message || 'خطا در ثبت واکنش');
 
 
 
@@ -10965,7 +10978,7 @@
 
 
 
-        alert('❌ خطا در ارتباط با سرور');
+        window.commentNotify('خطا در ارتباط با سرور');
 
 
 
@@ -12645,7 +12658,7 @@
 
 
 
-          alert(res.message || 'خطا در ثبت واکنش.');
+          window.commentNotify(res.message || 'خطا در ثبت واکنش.');
 
 
 
@@ -12685,7 +12698,7 @@
 
 
 
-        alert('خطا در ارتباط با سرور');
+        window.commentNotify('خطا در ارتباط با سرور');
 
 
 
@@ -12745,7 +12758,7 @@
 
 
 
-  function editComment(id) {
+  async function editComment(id) {
 
 
 
@@ -12815,7 +12828,7 @@
 
 
 
-    const newText = prompt('متن جدید نظر را وارد کنید:', currentText);
+    const newText = await window.commentPrompt('متن جدید نظر را وارد کنید:', { defaultValue: currentText, confirmText: 'ذخیره' });
 
 
 
@@ -12845,7 +12858,7 @@
 
 
 
-      alert('متن نمی‌تواند خالی باشد.');
+      window.commentNotify('متن نمی‌تواند خالی باشد.');
 
 
 
@@ -13125,7 +13138,7 @@
 
 
 
-      alert('ویرایش انجام نشد.');
+      window.commentNotify('ویرایش انجام نشد.');
 
 
 
@@ -13185,7 +13198,7 @@
 
 
 
-  function deleteComment(id) {
+  async function deleteComment(id) {
 
 
 
@@ -13195,7 +13208,7 @@
 
 
 
-    if (!confirm('آیا از حذف این نظر مطمئن هستید؟')) return;
+    if (!await window.commentConfirm('آیا از حذف این نظر مطمئن هستید؟', { confirmText: 'حذف' })) return;
 
 
 
@@ -13515,7 +13528,7 @@
 
 
 
-      alert('حذف انجام نشد.');
+      window.commentNotify('حذف انجام نشد.');
 
 
 
@@ -13575,7 +13588,7 @@
 
 
 
-  function reportMessage(messageId) {
+  async function reportMessage(messageId) {
 
 
 
@@ -13585,7 +13598,7 @@
 
 
 
-    const reason = prompt('لطفاً دلیل گزارش این نظر را وارد کنید:');
+    const reason = await window.commentPrompt('لطفاً دلیل گزارش این نظر را وارد کنید:');
 
 
 
@@ -13665,7 +13678,7 @@
 
 
 
-      alert('امکان گزارش این نظر وجود ندارد.');
+      window.commentNotify('امکان گزارش این نظر وجود ندارد.');
 
 
 
@@ -13835,7 +13848,7 @@
 
 
 
-        alert('نظر با موفقیت گزارش شد.');
+        window.commentNotify('نظر با موفقیت گزارش شد.', 'success');
 
 
 
@@ -13855,7 +13868,7 @@
 
 
 
-        alert('خطا در گزارش نظر.');
+        window.commentNotify('خطا در گزارش نظر.');
 
 
 
@@ -13915,7 +13928,7 @@
 
 
 
-      alert('خطا در گزارش نظر.');
+      window.commentNotify('خطا در گزارش نظر.');
 
 
 
@@ -15315,7 +15328,7 @@
 
 
 
-          alert('لطفاً نظر خود را وارد کنید.');
+          window.commentNotify('لطفاً نظر خود را وارد کنید.');
 
 
 
@@ -15925,7 +15938,7 @@
 
 
 
-            alert('نظر شما با موفقیت ثبت شد.');
+            window.commentNotify('نظر شما با موفقیت ثبت شد.', 'success');
 
 
 
@@ -16175,7 +16188,7 @@
 
 
 
-            alert(data.message || 'خطا در ارسال نظر');
+            window.commentNotify(data.message || 'خطا در ارسال نظر');
 
 
 
@@ -16225,7 +16238,7 @@
 
 
 
-          alert(error.message || 'خطا در ارسال نظر. لطفاً دوباره تلاش کنید.');
+          window.commentNotify(error.message || 'خطا در ارسال نظر. لطفاً دوباره تلاش کنید.');
 
 
 
@@ -17534,5 +17547,18 @@
 
 
 
+
+<script>
+document.addEventListener('click', function handleStandaloneCommentAction(event) {
+  const target = event.target.closest?.('[data-comment-page-action]');
+  if (!target) return;
+  event.preventDefault();
+  if (target.dataset.commentPageAction === 'reaction' && typeof window.sendReaction === 'function') {
+    window.sendReaction(Number(target.dataset.reactionType));
+  } else if (target.dataset.commentPageAction === 'cancel-reply' && typeof window.cancelReply === 'function') {
+    window.cancelReply();
+  }
+});
+</script>
 
 @endsection

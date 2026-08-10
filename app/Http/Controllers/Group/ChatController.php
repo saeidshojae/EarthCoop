@@ -22,13 +22,19 @@ use App\Models\User;
 use App\Models\Vote;
 use App\Models\PinnedMessage;
 use App\Models\ReportedMessage;
+use App\Models\GroupFeedItem;
+use App\Models\Message;
+use App\Models\Blog;
+use App\Models\Comment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use App\Services\GroupChat\GroupFeedService;
 
 class ChatController extends Controller
 {
     public function chat(Group $group)
     {
+        $this->authorize('view', $group);
         $t0 = microtime(true);
         // Keep initial page load lightweight; older history is fetched via API pagination.
         $initialMessageLimit = 50;   // کاهش از 120 به 50 برای سرعت بیشتر
@@ -411,6 +417,7 @@ class ChatController extends Controller
 
     public function unreadCount(Group $group)
     {
+        $this->authorize('view', $group);
         $isMember = GroupUser::where('group_id', $group->id)
             ->where('user_id', auth()->id())
             ->where('status', 1)
@@ -431,6 +438,11 @@ class ChatController extends Controller
 
     private function countUnreadContent(Group $group, int $userId): array
     {
+        $feed = app(GroupFeedService::class);
+        if (config('group-chat.features.feed_unread_v1', true) && $feed->available()) {
+            return $feed->unreadCounts((int) $group->id, $userId);
+        }
+
         $countUnread = static function ($query, string $authorColumn) use ($userId): int {
             return $query
                 ->where($authorColumn, '!=', $userId)
@@ -453,7 +465,94 @@ class ChatController extends Controller
         ];
     }
 
+    public function markAllRead(Group $group, Request $request, GroupFeedService $feed)
+    {
+        $this->authorize('view', $group);
+        abort_unless($feed->available(), 409, 'Feed cursor is not available yet.');
+
+        $validated = $request->validate(['through_sequence' => ['nullable', 'integer', 'min:0']]);
+        $cursor = $feed->markRead((int) $group->id, (int) auth()->id(), $validated['through_sequence'] ?? null);
+
+        return response()->json([
+            'status' => 'success',
+            'cursor' => $cursor,
+            'unread' => $feed->unreadCounts((int) $group->id, (int) auth()->id()),
+        ]);
+    }
+
+    public function delta(Group $group, Request $request, GroupFeedService $feed)
+    {
+        $this->authorize('view', $group);
+        abort_unless(config('group-chat.features.delta_sync_v1', false) && $feed->available(), 409, 'Delta sync is not enabled.');
+        $validated = $request->validate([
+            'after_sequence' => ['nullable', 'integer', 'min:0'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+        $after = (int) ($validated['after_sequence'] ?? 0);
+        $limit = (int) ($validated['limit'] ?? 100);
+        $rows = GroupFeedItem::where('group_id', $group->id)->where('sequence', '>', $after)
+            ->orderBy('sequence')->limit($limit + 1)->get();
+        $hasMore = $rows->count() > $limit;
+        $rows = $rows->take($limit)->values();
+        $content = $this->deltaContent($rows);
+
+        return response()->json([
+            'status' => 'success',
+            'events' => $rows->map(fn (GroupFeedItem $item) => [
+                'version' => 1,
+                'event_id' => 'feed:' . $item->id . ':v' . $item->version,
+                'group_id' => (int) $item->group_id,
+                'sequence' => (int) $item->sequence,
+                'type' => 'feed.' . $item->type . '.snapshot',
+                'actor_id' => $item->actor_id ? (int) $item->actor_id : null,
+                'occurred_at' => $item->occurred_at->toIso8601String(),
+                'payload' => $content[$item->type][$item->content_id] ?? [
+                    'content_type' => $item->type, 'content_id' => (int) $item->content_id, 'missing' => true,
+                ],
+            ])->all(),
+            'after_sequence' => $after,
+            'latest_sequence' => (int) ($rows->last()?->sequence ?? $after),
+            'has_more' => $hasMore,
+        ]);
+    }
+
+    private function deltaContent($items): array
+    {
+        $byType = $items->groupBy('type');
+        $result = [];
+        $messageIds = collect(['message', 'file', 'voice'])->flatMap(fn ($type) => $byType->get($type, collect())->pluck('content_id'));
+        Message::with('user:id,first_name,last_name')->whereIn('id', $messageIds)->get()->each(function (Message $message) use (&$result): void {
+            $type = $message->voice_message ? 'voice' : ($message->file_path ? 'file' : 'message');
+            $result[$type][$message->id] = [
+                'content_type' => $type, 'content_id' => (int) $message->id, 'message' => $message->message,
+                'user_id' => (int) $message->user_id,
+                'sender' => trim(($message->user->first_name ?? '') . ' ' . ($message->user->last_name ?? '')),
+                'created_at' => $message->created_at->format('H:i'),
+                'parent_id' => $message->parent_id, 'state' => $message->lifecycle_state ?? 'sent',
+            ];
+        });
+        Blog::whereIn('id', $byType->get('post', collect())->pluck('content_id'))->get()->each(function (Blog $post) use (&$result): void {
+            $result['post'][$post->id] = ['content_type' => 'post', 'content_id' => (int) $post->id, 'title' => $post->title, 'content' => $post->content];
+        });
+        Poll::whereIn('id', $byType->get('poll', collect())->pluck('content_id'))->with('options:id,poll_id,text')->get()->each(function (Poll $poll) use (&$result): void {
+            $result['poll'][$poll->id] = ['content_type' => 'poll', 'content_id' => (int) $poll->id, 'question' => $poll->question, 'options' => $poll->options];
+        });
+        Comment::whereIn('id', $byType->get('comment', collect())->pluck('content_id'))
+            ->with(['blog' => fn ($query) => $query->withCount('comments')])
+            ->get()->each(function (Comment $comment) use (&$result): void {
+                $result['comment'][$comment->id] = [
+                    'content_type' => 'comment',
+                    'content_id' => (int) $comment->id,
+                    'blog_id' => (int) $comment->blog_id,
+                    'message' => $comment->message,
+                    'comments_count' => (int) ($comment->blog->comments_count ?? 0),
+                ];
+        });
+        return $result;
+    }
+
     public function chatAPI(Group $group, Request $request){
+        $this->authorize('view', $group);
         $page = max(1, (int) $request->get('page', 1));
         $perPage = min(max(20, (int) $request->get('per_page', 50)), 100); // بین 20 تا 100
         $offset = ($page - 1) * $perPage;
@@ -671,6 +770,7 @@ class ChatController extends Controller
 
     public function postsFeed(Group $group, Request $request)
     {
+        $this->authorize('view', $group);
         $isMember = GroupUser::where('group_id', $group->id)
             ->where('user_id', auth()->id())
             ->where('status', 1)
@@ -752,6 +852,7 @@ class ChatController extends Controller
 
     public function postsReconcile(Group $group, Request $request)
     {
+        $this->authorize('view', $group);
         $isMember = GroupUser::where('group_id', $group->id)
             ->where('user_id', auth()->id())
             ->where('status', 1)
@@ -794,6 +895,7 @@ class ChatController extends Controller
 
     public function messagesReconcile(Group $group, Request $request)
     {
+        $this->authorize('view', $group);
         $isMember = GroupUser::where('group_id', $group->id)
             ->where('user_id', auth()->id())
             ->where('status', 1)

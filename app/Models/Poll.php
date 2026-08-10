@@ -24,7 +24,9 @@ class Poll extends Model
     ];
 
     protected $casts = [
-        'read_by' => 'array'
+        'read_by' => 'array',
+        'expires_at' => 'datetime',
+        'is_active' => 'boolean',
     ];
 
     public function skill(){

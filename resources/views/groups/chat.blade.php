@@ -45,61 +45,6 @@ if (typeof jQuery !== 'undefined') {
 document.addEventListener("DOMContentLoaded", function() {
     const csrf = '{{ csrf_token() }}';
 
-    // Event listener برای لینک‌های پروفایل - باید اول اجرا شود
-    document.addEventListener('click', function(e) {
-        const link = e.target.closest('a.message-sender');
-        if (link && link.href && !link.href.includes('#')) {
-            // اجازه بده لینک کار کند - هیچ کاری نکن
-            // فقط مطمئن شو که event propagation متوقف نمی‌شود
-            return true;
-        }
-    }, true); // استفاده از capture phase برای اجرای زودتر
-
-    // تست: بررسی وجود لینک‌ها در DOM
-    setTimeout(function() {
-        const links = document.querySelectorAll('a.message-sender');
-        console.log('Found profile links:', links.length);
-        links.forEach((link, index) => {
-            console.log(`Link ${index}:`, link.href, link.textContent);
-        });
-    }, 500);
-
-    // Event delegation برای لینک‌های پروفایل - ساده و مستقیم
-    document.addEventListener('click', function(e) {
-        // بررسی اینکه آیا کلیک روی لینک پروفایل است
-        const link = e.target.closest('a.message-sender');
-        if (link) {
-            const href = link.getAttribute('href');
-            console.log('Profile link clicked!', href, e.target);
-            if (href && href.includes('/profile-member/')) {
-                e.stopPropagation();
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                console.log('Navigating to:', href);
-                window.location.href = href;
-                return false;
-            }
-        }
-    }, true); // استفاده از capture phase برای اجرای زودتر
-
-    // Initialize click handlers for existing profile links
-    setTimeout(function() {
-        document.querySelectorAll('a.message-sender').forEach(link => {
-            console.log('Attaching click handler to link:', link.href);
-            link.addEventListener('click', function(e) {
-                console.log('Direct click handler fired!', this.href);
-                e.stopPropagation();
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                const href = this.getAttribute('href');
-                if (href && href.includes('/profile-member/')) {
-                    console.log('Navigating to:', href);
-                    window.location.href = href;
-                }
-            }, true); // استفاده از capture phase
-        });
-    }, 100);
-
     // --- Helpers: ایجاد/نمایش/مخفی‌کردن overlay ---
     function ensureOverlay() {
         let el = document.getElementById('global-loading');
@@ -156,9 +101,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
 
         // حذف
-        bubble.querySelector(".btn-delete")?.addEventListener("click", async (e) => {
+        bubble.querySelector(".btn-delete:not([data-group-chat-action])")?.addEventListener("click", async (e) => {
             const btn = e.currentTarget;
-            if (!confirm("آیا از حذف پیام مطمئن هستید؟")) return;
+            if (!await window.groupChatConfirm("آیا از حذف پیام مطمئن هستید؟", { confirmText: 'حذف' })) return;
 
             await withSpinner(async () => {
                 const res = await fetch(deleteUrl, {
@@ -189,8 +134,8 @@ document.addEventListener("DOMContentLoaded", function() {
                         if (typeof cancelReply === 'function') cancelReply();
                     }
                 } else {
-                    alert(data.message ||
-                        `خطا در حذف پیام (status ${res.status})`);
+                    window.groupChatNotify(data.message ||
+                        `خطا در حذف پیام (status ${res.status})`, 'error');
                 }
             }, {
                 global: true,
@@ -199,9 +144,9 @@ document.addEventListener("DOMContentLoaded", function() {
         });
 
         // گزارش
-        bubble.querySelector(".btn-report")?.addEventListener("click", async (e) => {
+        bubble.querySelector(".btn-report:not([data-group-chat-action])")?.addEventListener("click", async (e) => {
             const btn = e.currentTarget;
-            const reason = prompt("دلیل گزارش را وارد کنید:");
+            const reason = await window.groupChatPrompt("دلیل گزارش را وارد کنید:");
             if (!reason) return;
 
             await withSpinner(async () => {
@@ -222,8 +167,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 try {
                     data = await res.json();
                 } catch (e) {}
-                alert(data.message || (res.ok ? "گزارش ثبت شد" :
-                    `خطا در ثبت گزارش (status ${res.status})`));
+                window.groupChatNotify(data.message || (res.ok ? "گزارش ثبت شد" :
+                    `خطا در ثبت گزارش (status ${res.status})`), res.ok ? 'success' : 'error');
             }, {
                 global: true,
                 btn
@@ -235,101 +180,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
 
 
-<script>
-const groupId = {{ $group->id }};
-window.groupChatTransport = @json(config('group-chat.transport', 'auto'));
-const authUserId = {{ auth()->id() }};
-const yourRole = {{ $yourRole ?? 0 }};
-window.groupId = groupId;
-window.authUserId = authUserId;
-window.yourRole = yourRole;
-const manageCount = {{ $groupSetting ? $groupSetting->manager_count : 0 }};
-const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
-</script>
-<script src="{{ asset('js/group-chat.js') }}" defer></script>
-<script src="{{ asset('js/chat-features.js') }}" defer></script>
-<script src="{{ asset('js/voice-recorder.js') }}" defer></script>
-<script>
-// ===== Voice Optimistic Override =====
-// وقتی دکمه ارسال صوتی ظاهر شد، click رو intercept می‌کنم
-// تا بلافاصله modal بسته شه + placeholder نشون داده بشه
-(function() {
-    const _observeForSendBtn = new MutationObserver(function(mutations) {
-        mutations.forEach(function(m) {
-            m.addedNodes.forEach(function(node) {
-                if (node.nodeType !== 1) return;
-                const btn = node.id === 'send-recording-btn' ? node
-                          : node.querySelector && node.querySelector('#send-recording-btn');
-                if (!btn) return;
-                // capture phase: قبل از handler اصلی اجرا می‌شه
-                btn.addEventListener('click', function _voiceOptimistic(e) {
-                    const blob = window.recordedAudioBlob;
-                    if (!blob) return;
-                    const blobUrl = URL.createObjectURL(blob);
-                    const tempId = 'voice_temp_' + Date.now();
-                    // بستن modal از طریق کلیک دکمه لغو (یا مستقیم hide)
-                    const modal = document.getElementById('voice-recording-modal');
-                    if (modal) {
-                        modal.style.opacity = '0';
-                        modal.style.transition = 'opacity 0.2s';
-                        setTimeout(() => { modal.style.display = 'none'; modal.style.opacity = ''; }, 200);
-                    }
-                    // نمایش پیام صوتی optimistic
-                    if (typeof appendMessage === 'function') {
-                        try {
-                            appendMessage({
-                                id: tempId,
-                                user_id: window.authUserId || 0,
-                                message: '🎤 پیام صوتی',
-                                created_at: new Date().toLocaleTimeString('fa-IR', {hour:'2-digit', minute:'2-digit'}),
-                                sender: 'شما',
-                                voice_message: blobUrl,
-                                file_type: blob.type || 'audio/webm',
-                                _isOptimistic: true
-                            });
-                        } catch(err) { console.warn('voice optimistic err:', err); }
-                    }
-                    // بعد از موفقیت fetch اصلی، temp را جایگزین کن
-                    const _origOnClick = btn._origOnClick;
-                    window._voiceTempId = tempId;
-                    window._voiceBlobUrl = blobUrl;
-                }, true); // capture=true → قبل از onclick اصلی
-                _observeForSendBtn.disconnect();
-            });
-        });
-    });
-    function observeForVoiceSendButton() {
-        _observeForSendBtn.observe(document.body, { childList: true, subtree: true });
-    }
-
-    if (document.body) {
-        observeForVoiceSendButton();
-    } else {
-        document.addEventListener('DOMContentLoaded', observeForVoiceSendButton, { once: true });
-    }
-
-    // وقتی polling پیام صوتی واقعی رو دید، temp رو حذف کن
-    const _origAppend = window.appendMessage;
-    document.addEventListener('DOMContentLoaded', function() {
-        // override appendMessage تا اگر temp وجود دارد جایگزین کند
-        if (typeof appendMessage === 'function') {
-            const _origFn = appendMessage;
-            window.appendMessage = function(msg) {
-                // اگر voice_message داره و temp در DOM هست، temp رو حذف کن
-                if (msg && msg.voice_message && msg.id && !String(msg.id).startsWith('voice_temp_') && window._voiceTempId) {
-                    const tempEl = document.getElementById('msg-' + window._voiceTempId);
-                    if (tempEl) { tempEl.remove(); }
-                    try { URL.revokeObjectURL(window._voiceBlobUrl); } catch(e) {}
-                    window._voiceTempId = null;
-                    window._voiceBlobUrl = null;
-                }
-                return _origFn(msg);
-            };
-        }
-    });
-})();
-</script>
-
+@include('groups.partials.chat_runtime')
 <!-- کد حفظ موقعیت scroll به انتهای صفحه منتقل شد -->
 <style>
 /* Collapsible Group Info Card برای موبایل */
@@ -1690,20 +1541,20 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                 <div class="flex flex-wrap items-center gap-3 justify-start lg:justify-end">
                     <button type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition lg:hidden"
-                        onclick="openGroupInfo()">
+                        data-chat-page-action="open-group-info">
                         <i class="fas fa-layer-group"></i>
                         پنل گروه
                     </button>
                     @if(($yourRole ?? 0) !== 5)
                     <button type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500 text-white shadow-sm hover:bg-emerald-600 transition"
-                        onclick="openBlogBox()">
+                        data-chat-page-action="open-blog">
                         <i class="far fa-pen-to-square"></i>
                         ایجاد پست
                     </button>
                     <button type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition"
-                        onclick="openPollBox()">
+                        data-chat-page-action="open-poll">
                         <i class="fas fa-chart-simple"></i>
                         ساخت نظرسنجی
                     </button>
@@ -1711,7 +1562,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                     @if($electionAvailable)
                     <button type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl {{ $canParticipateElection ? 'bg-indigo-500 text-white shadow-sm hover:bg-indigo-600 transition' : 'bg-slate-100 text-slate-500 cursor-not-allowed' }}"
-                        @if($canParticipateElection) onclick="openElectionBox()" @else disabled @endif>
+                        @if($canParticipateElection) data-chat-page-action="open-election" @else disabled @endif>
                         <i class="fas fa-vote-yea"></i>
                         {{ $canParticipateElection ? 'شرکت در انتخابات' : 'انتخابات فعال' }}
                     </button>
@@ -1719,7 +1570,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                     @if(in_array($yourRole ?? 0, [2,3]))
                     <button type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
-                        onclick="openElection2Box()">
+                        data-chat-page-action="open-election-admin">
                         <i class="fas fa-ballot-check text-emerald-500"></i>
                         افزودن انتخابات
                     </button>
@@ -1727,13 +1578,13 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                     @if(($yourRole ?? 0) == 3)
                     <button type="button" id="manage-members-btn"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-blue-200 text-blue-600 hover:bg-blue-50 transition"
-                        onclick="if(typeof window.showManageMembersModal === 'function') { window.showManageMembersModal(); } else { console.error('showManageMembersModal not found'); alert('تابع مدیریت اعضا یافت نشد. لطفاً صفحه را رفرش کنید.'); }">
+                        data-chat-page-action="manage-members">
                         <i class="fas fa-users-cog"></i>
                         مدیریت اعضا
                     </button>
                     <button type="button" id="manage-reports-btn"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-orange-200 text-orange-600 hover:bg-orange-50 transition relative"
-                        onclick="if(typeof window.showManageReportsModal === 'function') { window.showManageReportsModal(); } else { console.error('showManageReportsModal not found'); alert('تابع مدیریت گزارش‌ها یافت نشد. لطفاً صفحه را رفرش کنید.'); }">
+                        data-chat-page-action="manage-reports">
                         <i class="fas fa-flag"></i>
                         گزارش‌ها
                         <span id="reports-badge"
@@ -1743,7 +1594,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                     @endif
                     <button type="button" id="group-settings-btn"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition"
-                        onclick="showGroupSettingsModal()">
+                        data-chat-page-action="group-settings">
                         <i class="fas fa-cog"></i>
                         تنظیمات
                     </button>
@@ -1828,20 +1679,20 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                 <div class="flex flex-wrap items-center gap-3 justify-start lg:justify-end">
                     <button type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition lg:hidden"
-                        onclick="openGroupInfo()">
+                        data-chat-page-action="open-group-info">
                         <i class="fas fa-layer-group"></i>
                         پنل گروه
                     </button>
                     @if(($yourRole ?? 0) !== 5)
                     <button type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500 text-white shadow-sm hover:bg-emerald-600 transition"
-                        onclick="openBlogBox()">
+                        data-chat-page-action="open-blog">
                         <i class="far fa-pen-to-square"></i>
                         ایجاد پست
                     </button>
                     <button type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition"
-                        onclick="openPollBox()">
+                        data-chat-page-action="open-poll">
                         <i class="fas fa-chart-simple"></i>
                         ساخت نظرسنجی
                     </button>
@@ -1849,7 +1700,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                     @if($electionAvailable)
                     <button type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl {{ $canParticipateElection ? 'bg-indigo-500 text-white shadow-sm hover:bg-indigo-600 transition' : 'bg-slate-100 text-slate-500 cursor-not-allowed' }}"
-                        @if($canParticipateElection) onclick="openElectionBox()" @else disabled @endif>
+                        @if($canParticipateElection) data-chat-page-action="open-election" @else disabled @endif>
                         <i class="fas fa-vote-yea"></i>
                         {{ $canParticipateElection ? 'شرکت در انتخابات' : 'انتخابات فعال' }}
                     </button>
@@ -1857,7 +1708,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                     @if(in_array($yourRole ?? 0, [2,3]))
                     <button type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
-                        onclick="openElection2Box()">
+                        data-chat-page-action="open-election-admin">
                         <i class="fas fa-ballot-check text-emerald-500"></i>
                         افزودن انتخابات
                     </button>
@@ -1865,13 +1716,13 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                     @if(($yourRole ?? 0) == 3)
                     <button type="button" id="manage-members-btn"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-blue-200 text-blue-600 hover:bg-blue-50 transition"
-                        onclick="if(typeof window.showManageMembersModal === 'function') { window.showManageMembersModal(); } else { console.error('showManageMembersModal not found'); alert('تابع مدیریت اعضا یافت نشد. لطفاً صفحه را رفرش کنید.'); }">
+                        data-chat-page-action="manage-members">
                         <i class="fas fa-users-cog"></i>
                         مدیریت اعضا
                     </button>
                     <button type="button" id="manage-reports-btn"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-orange-200 text-orange-600 hover:bg-orange-50 transition relative"
-                        onclick="if(typeof window.showManageReportsModal === 'function') { window.showManageReportsModal(); } else { console.error('showManageReportsModal not found'); alert('تابع مدیریت گزارش‌ها یافت نشد. لطفاً صفحه را رفرش کنید.'); }">
+                        data-chat-page-action="manage-reports">
                         <i class="fas fa-flag"></i>
                         گزارش‌ها
                         <span id="reports-badge"
@@ -1881,7 +1732,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                     @endif
                     <button type="button" id="group-settings-btn"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition"
-                        onclick="showGroupSettingsModal()">
+                        data-chat-page-action="group-settings">
                         <i class="fas fa-cog"></i>
                         تنظیمات
                     </button>
@@ -1939,7 +1790,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                             <i class="fas fa-thumbtack" style="font-size: 1.1rem; color: #10b981; opacity: 0.5;"></i>
                         </a>
                         @if($roleValue === 3 || $pinnedMessage->message->user_id === auth()->id())
-                        <button onclick="event.preventDefault(); unpinMessage('{{ $pinnedMessage->message->id }}')"
+                        <button type="button" data-chat-page-action="unpin" data-message-id="{{ $pinnedMessage->message->id }}"
                             class="unpin-btn"
                             style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); border: none; background: #f1f5f9; cursor: pointer; color: #94a3b8; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
                             title="حذف از حالت سنجاق">
@@ -2129,9 +1980,9 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
     }
     </script>
     <script>
-    function confirmDelete(event, url) {
+    async function confirmDelete(event, url) {
         event.preventDefault();
-        if (confirm('آیا مطمئن هستید که می‌خواهید این آیتم را حذف کنید؟')) {
+        if (await window.groupChatConfirm('آیا مطمئن هستید که می‌خواهید این آیتم را حذف کنید؟', { confirmText: 'حذف' })) {
             window.location.href = url; // یا با AJAX حذف کن
         }
     }
@@ -2362,7 +2213,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                     console.log('Response data:', responseData);
                 } catch (parseError) {
                     console.error('Error parsing response:', parseError);
-                    alert('خطا در خواندن پاسخ سرور');
+                    window.groupChatNotify('خطا در خواندن پاسخ سرور', 'error');
                     return;
                 }
 
@@ -2372,14 +2223,14 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                     const errorMsg = responseData?.message || responseData?.error ||
                         'خطا در ذخیره‌سازی.';
                     console.error('Response error:', errorMsg);
-                    alert(errorMsg);
+                    window.groupChatNotify(errorMsg, 'error');
                     return;
                 }
 
                 // بررسی وجود currentBubble
                 if (!currentBubble) {
                     console.error('currentBubble is null');
-                    alert('خطا: عنصر پیام پیدا نشد. لطفا صفحه را رفرش کنید.');
+                    window.groupChatNotify('خطا: عنصر پیام پیدا نشد. لطفا صفحه را رفرش کنید.', 'error');
                     // ✅ FIXED: No reload - let user refresh manually if needed
                     closeModal();
                     return;
@@ -2456,12 +2307,12 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                                 .message.includes('not found') || updateError.message.includes(
                                     'not in DOM'))) {
                             console.warn('Critical error in updateMessageContent');
-                            alert('خطا در به‌روزرسانی پیام. لطفا دوباره تلاش کنید.');
+                            window.groupChatNotify('خطا در به‌روزرسانی پیام. لطفا دوباره تلاش کنید.', 'error');
                             closeModal();
                         } else {
                             // برای خطاهای دیگر، فقط alert بده
                             console.warn('Non-critical error in updateMessageContent, not reloading');
-                            alert('خطا در به‌روزرسانی پیام: ' + updateError.message);
+                            window.groupChatNotify('خطا در به‌روزرسانی پیام: ' + updateError.message, 'error');
                         }
                     }
                 } else {
@@ -2481,13 +2332,13 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         } catch (e) {
                             console.error('Failed to update using message:', e);
                             // ✅ FIXED: No reload - show error message
-                            alert('خطا در به‌روزرسانی پیام. لطفا دوباره تلاش کنید.');
+                            window.groupChatNotify('خطا در به‌روزرسانی پیام. لطفا دوباره تلاش کنید.', 'error');
                             closeModal();
                         }
                     } else {
                         // ✅ FIXED: No reload - show error message
                         console.error('No valid content found in response');
-                        alert('خطا در دریافت محتوای پیام. لطفا دوباره تلاش کنید.');
+                        window.groupChatNotify('خطا در دریافت محتوای پیام. لطفا دوباره تلاش کنید.', 'error');
                         closeModal();
                     }
                 }
@@ -2501,12 +2352,12 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                 if (err.name === 'TypeError' && (err.message.includes('fetch') || err.message.includes(
                         'network') || err.message.includes('Failed to fetch'))) {
                     console.warn('Network error detected');
-                    alert('خطا در اتصال به سرور. لطفاً اتصال اینترنت خود را بررسی کنید.');
+                    window.groupChatNotify('خطا در اتصال به سرور. لطفاً اتصال اینترنت خود را بررسی کنید.', 'error');
                     closeModal();
                     return;
                 }
                 // برای سایر خطاها، فقط alert بده و مودال را ببند
-                alert('خطا در ویرایش پیام: ' + (err.message || 'خطای نامشخص'));
+                window.groupChatNotify('خطا در ویرایش پیام: ' + (err.message || 'خطای نامشخص'), 'error');
                 closeModal();
 
             } finally {
@@ -2741,9 +2592,9 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         `<div class="action-menu message-action" data-action-menu>
                             <button type="button" class="action-menu__toggle"><i class="fas fa-ellipsis-v"></i></button>
                             <div class="action-menu__list">
-                                <button type="button" onclick="replyToMessageFromButton(this, '${messageData.id}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
+                                <button type="button" data-legacy-chat-action="reply" data-message-id="${messageData.id}" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
                                 <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> واکنش</button>
-                                ${([2,3].includes(CURRENT_USER_ROLE)) ? `<button type="button" class="action-menu__item btn-pin" onclick="pinMessage('${messageData.id}')"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
+                                ${([2,3].includes(CURRENT_USER_ROLE)) ? `<button type="button" class="action-menu__item btn-pin" data-legacy-chat-action="pin" data-message-id="${messageData.id}"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
                                 <button type="button" class="action-menu__item btn-edit"><i class="fas fa-edit"></i> ویرایش</button>
                                 <button type="button" class="action-menu__item action-menu__item--danger btn-delete"><i class="fas fa-trash"></i> حذف</button>
                                 <div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" style="font-size: 0.7rem; opacity: 0.6; margin-left: 4px;"></i><span class="menu-meta-time__label">ارسال شده:</span><span class="menu-meta-time__value">${formattedTime}</span></div></div>
@@ -2754,14 +2605,14 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         </div>` :
                         // برای پیام‌های دیگران: نام کاربر در سمت چپ، سه نقطه در سمت راست
                         `<div class="message-head__info">
-                            <a href="/profile-member/${messageData.user_id}" class="message-sender" onclick="event.stopPropagation(); window.location.href='/profile-member/${messageData.user_id}'; return false;">${escapeHtml(senderName)}</a>
+                            <a href="/profile-member/${messageData.user_id}" class="message-sender">${escapeHtml(senderName)}</a>
                         </div>
                         <div class="action-menu message-action" data-action-menu>
                             <button type="button" class="action-menu__toggle"><i class="fas fa-ellipsis-v"></i></button>
                             <div class="action-menu__list">
-                                <button type="button" onclick="replyToMessageFromButton(this, '${messageData.id}')" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
+                                <button type="button" data-legacy-chat-action="reply" data-message-id="${messageData.id}" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
                                 <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> واکنش</button>
-                                ${([2,3].includes(CURRENT_USER_ROLE)) ? `<button type="button" class="action-menu__item btn-pin" onclick="pinMessage('${messageData.id}')"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
+                                ${([2,3].includes(CURRENT_USER_ROLE)) ? `<button type="button" class="action-menu__item btn-pin" data-legacy-chat-action="pin" data-message-id="${messageData.id}"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
                                 <button type="button" class="action-menu__item btn-report"><i class="fas fa-flag"></i> گزارش</button>
                                 <div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" style="font-size: 0.7rem; opacity: 0.6; margin-left: 4px;"></i><span class="menu-meta-time__label">ارسال شده:</span><span class="menu-meta-time__value">${formattedTime}</span></div></div>
                             </div>
@@ -2868,7 +2719,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
         if (!id) return;
 
         // حذف
-        bubble.querySelector(".btn-delete")?.addEventListener("click", async (e) => {
+        bubble.querySelector(".btn-delete:not([data-group-chat-action])")?.addEventListener("click", async (e) => {
             // بستن منوی عملیات
             const actionMenu = bubble.closest('.message-head')?.querySelector('[data-action-menu]');
             if (actionMenu) {
@@ -2877,7 +2728,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             }
 
             const btn = e.currentTarget;
-            if (!confirm("آیا از حذف پیام مطمئن هستید؟")) return;
+            if (!await window.groupChatConfirm("آیا از حذف پیام مطمئن هستید؟", { confirmText: 'حذف' })) return;
 
             try {
                 const res = await fetch(deleteUrl, {
@@ -2910,16 +2761,16 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         if (typeof cancelReply === 'function') cancelReply();
                     }
                 } else {
-                    alert(data.message || `خطا در حذف پیام (status ${res.status})`);
+                    window.groupChatNotify(data.message || `خطا در حذف پیام (status ${res.status})`, 'error');
                 }
             } catch (error) {
                 console.error('Error deleting message:', error);
-                alert('خطا در حذف پیام');
+                window.groupChatNotify('خطا در حذف پیام', 'error');
             }
         });
 
         // گزارش
-        bubble.querySelector(".btn-report")?.addEventListener("click", async (e) => {
+        bubble.querySelector(".btn-report:not([data-group-chat-action])")?.addEventListener("click", async (e) => {
             // بستن منوی عملیات
             const actionMenu = bubble.closest('.message-head')?.querySelector('[data-action-menu]');
             if (actionMenu) {
@@ -2928,7 +2779,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             }
 
             const btn = e.currentTarget;
-            const reason = prompt("دلیل گزارش را وارد کنید:");
+            const reason = await window.groupChatPrompt("دلیل گزارش را وارد کنید:");
             if (!reason) return;
 
             try {
@@ -2949,11 +2800,11 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                 try {
                     data = await res.json();
                 } catch (e) {}
-                alert(data.message || (res.ok ? "گزارش ثبت شد" :
-                    `خطا در ثبت گزارش (status ${res.status})`));
+                window.groupChatNotify(data.message || (res.ok ? "گزارش ثبت شد" :
+                    `خطا در ثبت گزارش (status ${res.status})`), res.ok ? 'success' : 'error');
             } catch (error) {
                 console.error('Error reporting message:', error);
-                alert('خطا در ثبت گزارش');
+                window.groupChatNotify('خطا در ثبت گزارش', 'error');
             }
         });
     }
@@ -3402,12 +3253,12 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                         }
                     }
                 } else {
-                    alert(data.message || 'خطا در ارسال پست');
+                    window.groupChatNotify(data.message || 'خطا در ارسال پست', 'error');
                     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'انتشار پست'; }
                 }
             } catch(err) {
                 console.error('Post submit error:', err);
-                alert('خطا در ارتباط با سرور');
+                window.groupChatNotify('خطا در ارتباط با سرور', 'error');
                 if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'انتشار پست'; }
             }
         });
@@ -3437,7 +3288,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
 
 @if($electionAvailable && isset($election) && $election)
 <div id="electionVotingOverlay" class="election-voting-overlay" style="display: none;">
-    <div class="election-voting-overlay__backdrop" onclick="closeElectionBox()"></div>
+    <div class="election-voting-overlay__backdrop" data-chat-page-action="close-election"></div>
     @include('groups.modals.election_modal', compact('group', 'election', 'selectedVotesInspector',
     'selectedVotesManager', 'managersSorted', 'inspectorsSorted', 'managerCounts', 'inspectorCounts', 'groupSetting'))
 </div>
@@ -3445,8 +3296,9 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
 
 @if (session()->has('success'))
 <script>
-alert('{{ session()->get('
-    success ') }}')
+window.addEventListener('load', function () {
+    window.groupChatNotify(@json(session()->get('success')), 'success');
+}, { once: true });
 </script>
 @endif
 
@@ -4347,8 +4199,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script>
 // Add pin/unpin functionality
-function pinMessage(messageId) {
-    if (!confirm('آیا مایل به سنجاق کردن این پیام هستید؟')) return;
+async function pinMessage(messageId) {
+    if (!await window.groupChatConfirm('آیا مایل به سنجاق کردن این پیام هستید؟')) return;
 
     fetch(`/groups/messages/${messageId}/pin`, {
             method: 'POST',
@@ -4378,7 +4230,7 @@ function pinMessage(messageId) {
                         showConfirmButton: false
                     });
                 } else {
-                    alert('پیام با موفقیت سنجاق شد.');
+                    window.groupChatNotify('پیام با موفقیت سنجاق شد.', 'success');
                 }
             } else {
                 if (typeof Swal !== 'undefined') {
@@ -4388,14 +4240,14 @@ function pinMessage(messageId) {
                         text: data.message
                     });
                 } else {
-                    alert(data.message);
+                    window.groupChatNotify(data.message, 'error');
                 }
             }
         });
 }
 
-function unpinMessage(messageId) {
-    if (!confirm('آیا مایل به برداشتن این پیام از حالت سنجاق هستید؟')) return;
+async function unpinMessage(messageId) {
+    if (!await window.groupChatConfirm('آیا مایل به برداشتن این پیام از حالت سنجاق هستید؟')) return;
 
     fetch(`/groups/messages/${messageId}/unpin`, {
             method: 'POST',
@@ -4423,7 +4275,7 @@ function unpinMessage(messageId) {
                         showConfirmButton: false
                     });
                 } else {
-                    alert('پیام از حالت سنجاق خارج شد.');
+                    window.groupChatNotify('پیام از حالت سنجاق خارج شد.', 'success');
                 }
             } else {
                 if (typeof Swal !== 'undefined') {
@@ -4433,108 +4285,22 @@ function unpinMessage(messageId) {
                         text: data.message
                     });
                 } else {
-                    alert(data.message);
+                    window.groupChatNotify(data.message, 'error');
                 }
             }
         });
 }
 </script>
 
-<script>
-document.addEventListener('click', function(e) {
-    // همه‌ی منوهای باز
-    document.querySelectorAll('details.menu-wrapper[open]').forEach(function(d) {
-        // اگر کلیک بیرون از همین منو بوده، ببند
-        if (!d.contains(e.target)) d.removeAttribute('open');
-    });
-});
+@include('groups.partials.action_menu_dismissal')
 
-// جلوگیری از بسته‌شدن هنگام کلیک داخل منو
-document.addEventListener('click', function(e) {
-    const dropdown = e.target.closest('.menu-dropdown');
-    if (dropdown) {
-        e.stopPropagation();
-    }
-});
-
-// با ESC هم ببند
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        document.querySelectorAll('details.menu-wrapper[open]').forEach(d => d.removeAttribute('open'));
-    }
-});
-</script>
-
-{{-- Modal مدیریت اعضا - همیشه در DOM باشد اما فقط برای مدیران قابل مشاهده --}}
-<div id="manageMembersModal" class="modal-shell" style="display: none;" dir="rtl"
-    onclick="handleModalClick(event, 'manageMembersModal')">
-    <div class="modal-shell__dialog" onclick="event.stopPropagation()">
-        <div class="modal-shell__header">
-            <h3 class="modal-shell__title">
-                <i class="fas fa-users-cog me-2 text-blue-500"></i>
-                مدیریت اعضای گروه
-            </h3>
-            <button type="button" class="modal-shell__close" onclick="closeManageMembersModal()">×</button>
-        </div>
-
-        <div class="modal-shell__form">
-            <div id="members-loading" class="text-center py-8" style="display: none;">
-                <i class="fas fa-spinner fa-spin text-2xl text-blue-500"></i>
-                <p class="mt-2 text-slate-600">در حال بارگذاری...</p>
-            </div>
-
-            <div id="members-error" class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-4"
-                style="display: none;">
-                <i class="fas fa-exclamation-circle ml-2"></i>
-                <span id="members-error-text"></span>
-            </div>
-
-            <div id="members-list"
-                style="max-height: 400px; overflow-y: auto; padding: 0.5rem 0; min-height: 100px; display: block; visibility: visible;">
-                <!-- لیست اعضا اینجا نمایش داده می‌شود -->
-            </div>
-        </div>
-    </div>
-</div>
-
-{{-- Modal مدیریت گزارش‌ها --}}
-@if(($yourRole ?? 0) == 3)
-<div id="manageReportsModal" class="modal-shell" style="display: none;" dir="rtl"
-    onclick="handleModalClick(event, 'manageReportsModal')">
-    <div class="modal-shell__dialog" onclick="event.stopPropagation()" style="max-width: 900px; width: 90vw;">
-        <div class="modal-shell__header">
-            <h3 class="modal-shell__title">
-                <i class="fas fa-flag me-2 text-orange-500"></i>
-                مدیریت گزارش‌های پیام
-            </h3>
-            <button type="button" class="modal-shell__close" onclick="closeManageReportsModal()">×</button>
-        </div>
-
-        <div class="modal-shell__form">
-            <div id="reports-loading" class="text-center py-8" style="display: none;">
-                <i class="fas fa-spinner fa-spin text-2xl text-orange-500"></i>
-                <p class="mt-2 text-slate-600">در حال بارگذاری...</p>
-            </div>
-
-            <div id="reports-error" class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-4"
-                style="display: none;">
-                <i class="fas fa-exclamation-circle ml-2"></i>
-                <span id="reports-error-text"></span>
-            </div>
-
-            <div id="reports-list" class="space-y-3 max-h-96 overflow-y-auto">
-                <!-- لیست گزارش‌ها اینجا نمایش داده می‌شود -->
-            </div>
-        </div>
-    </div>
-</div>
-@endif
+@include('groups.partials.management_modals')
 
 </div>
 
 <!-- مدیریت حرفه‌ای اسکرول چت: ورود اول از ابتدا، ورودهای بعدی از اولین پیام نخوانده -->
 <script>
-(function() {
+function initializeGroupChatScrollManager() {
     'use strict';
 
     if (window.__groupChatScrollManagerInitialized) return;
@@ -4547,6 +4313,7 @@ document.addEventListener('keydown', function(e) {
     const scrollKey = 'chatScroll_' + groupId;
     const initialLastReadMessageId = Number({{ $lastReadMessageId ?? 'null' }});
     const unreadCountUrl = @json(route('groups.unread-count', $group));
+    const lifecycle = window.GroupChatLifecycle;
     let unreadCount = Number(@json($unreadContentCounts['total'] ?? 0));
     let isRenderingUnreadIndicators = false;
     let unreadRenderTimer = null;
@@ -4554,7 +4321,7 @@ document.addEventListener('keydown', function(e) {
 
     window.scrollPositionRestored = false;
 
-    if (!chatBox || !btn) {
+    if (!chatBox || !btn || !lifecycle || lifecycle.destroyed) {
         window.scrollPositionRestored = true;
         return;
     }
@@ -4638,7 +4405,7 @@ document.addEventListener('keydown', function(e) {
         // Retry a few times so initial position lands on first unread reliably.
         const delays = [0, 80, 220, 520, 1100, 1800];
         delays.forEach(function(delay) {
-            setTimeout(function() {
+            lifecycle.timeout(function() {
                 if (!node.isConnected) return;
 
                 try {
@@ -4824,7 +4591,7 @@ document.addEventListener('keydown', function(e) {
 
     function scheduleUnreadRefresh(delay = 120) {
         clearTimeout(unreadRefreshTimer);
-        unreadRefreshTimer = setTimeout(refreshUnreadCount, delay);
+        unreadRefreshTimer = lifecycle.timeout(refreshUnreadCount, delay);
     }
 
     function getLastMessageId() {
@@ -4864,14 +4631,14 @@ document.addEventListener('keydown', function(e) {
     }
 
     // چند بار بازیابی را تکرار می‌کنیم تا بعد از mount شدن کامل DOM دقیق بنشیند.
-    [0, 220, 620, 1200, 2000].forEach(delay => setTimeout(restoreInitialPosition, delay));
+    [0, 220, 620, 1200, 2000].forEach(delay => lifecycle.timeout(restoreInitialPosition, delay));
 
     let saveTimer = null;
-    chatBox.addEventListener('scroll', function() {
+    lifecycle.on(chatBox, 'scroll', function() {
         updateScrollButtonVisibility();
 
         clearTimeout(saveTimer);
-        saveTimer = setTimeout(function() {
+        saveTimer = lifecycle.timeout(function() {
             sessionStorage.setItem(scrollKey, String(chatBox.scrollTop));
 
             const lastVisibleId = getLastVisibleMessageIdInViewport();
@@ -4881,7 +4648,7 @@ document.addEventListener('keydown', function(e) {
         }, 180);
     }, { passive: true });
 
-    btn.addEventListener('click', function(e) {
+    lifecycle.on(btn, 'click', function(e) {
         e.preventDefault();
         scrollToLatest(true);
     });
@@ -4891,7 +4658,7 @@ document.addEventListener('keydown', function(e) {
             updateScrollButtonVisibility();
 
             clearTimeout(unreadRenderTimer);
-            unreadRenderTimer = setTimeout(function() {
+            unreadRenderTimer = lifecycle.timeout(function() {
                 renderUnreadIndicators();
             }, 80);
 
@@ -4906,26 +4673,33 @@ document.addEventListener('keydown', function(e) {
             if (feedChanged) scheduleUnreadRefresh();
         });
         observer.observe(chatBox, { childList: true, subtree: false });
+        lifecycle.add(() => observer.disconnect());
     }
 
-    window.addEventListener('group-chat:last-read-updated', function() {
+    lifecycle.on(window, 'group-chat:last-read-updated', function() {
         renderUnreadIndicators();
         updateScrollButtonVisibility();
     });
 
-    window.addEventListener('group-feed:read-state-changed', function() {
+    lifecycle.on(window, 'group-feed:read-state-changed', function() {
         scheduleUnreadRefresh(50);
     });
 
-    setTimeout(refreshUnreadCount, 250);
-    setInterval(refreshUnreadCount, 15000);
+    lifecycle.timeout(refreshUnreadCount, 250);
+    lifecycle.interval(refreshUnreadCount, 15000);
 
     if (typeof addReactionButton === 'function') {
         document.querySelectorAll('.message-bubble').forEach(b => {
             if (b.dataset.messageId) addReactionButton(b);
         });
     }
-})();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeGroupChatScrollManager, { once: true });
+} else {
+    initializeGroupChatScrollManager();
+}
 </script>
 
 @endsection
