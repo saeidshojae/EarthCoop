@@ -50,6 +50,8 @@ Checkpoint بیست‌وسوم: listenerهای textarea، منوی composer، do
 
 Checkpoint بیست‌وچهارم: runtime ارسال AJAX پست از Blade اصلی به `groups/partials/post_submission_runtime.blade.php` منتقل و listener فرم تحت مالکیت lifecycle قرار گرفت. از آنجا که modal و `postForm` پیش از runtime به‌صورت ثابت render می‌شوند، monkey-patch مبتنی بر `Object.defineProperty(window, 'openBlogBox', ...)`، فلگ DOM خصوصی `_ajaxIntercepted` و retryهای زمانی ۵۰/۵۰۰ میلی‌ثانیه حذف شدند و یک guard صریح با cleanup جایگزین آن‌ها شد. Blade اصلی از ۳۸۴۲ به ۳۷۵۶ خط کاهش یافت.
 
+Checkpoint بیست‌وپنجم: مسیر موفق ارسال پست به bridge محدود و immutable با نام `GroupChatFeedBridge` متصل شد. این bridge همان `applyFeedItemThroughPipeline` را در حالت modular یا legacy فراخوانی می‌کند و cursor داخلی polling را به‌روز نگه می‌دارد. در نتیجه runtime فرم دیگر `appendChild`، `_initPostMenus`، `_initReactionButtons` یا `_lastKnownPostId` را مستقیماً استفاده نمی‌کند و ایجاد پست مانند websocket/delta از boundary واحد feed/renderer عبور می‌کند.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.

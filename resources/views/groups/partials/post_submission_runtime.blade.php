@@ -40,22 +40,14 @@ function initializePostSubmissionRuntime() {
                     }
                     // close modal
                     if (typeof cancelPostForm === 'function') cancelPostForm();
-                    // inject new post into chat
-                    var chatBox = document.getElementById('chat-box');
-                    if (chatBox) {
-                        var tmp = document.createElement('div');
-                        tmp.innerHTML = data.post.html;
-                        var postEl = tmp.firstElementChild;
-                        if (postEl) {
-                            chatBox.appendChild(postEl);
-                            // init action menus for this new post
-                            if (typeof window._initPostMenus === 'function') window._initPostMenus(postEl);
-                            if (typeof window._initReactionButtons === 'function') window._initReactionButtons(postEl);
-                            chatBox.scrollTop = chatBox.scrollHeight;
-                            // update post polling lastPostId so we don't get duplicate from poll
-                            if (data.post.id) { window._lastKnownPostId = Math.max(window._lastKnownPostId || 0, data.post.id); }
-                        }
+                    const feedBridge = window.GroupChatFeedBridge;
+                    if (!feedBridge || typeof feedBridge.create !== 'function') {
+                        throw new Error('Group chat feed bridge is unavailable');
                     }
+
+                    const rendered = feedBridge.create('post', data.post, 'local-post-submit');
+                    const chatBox = document.getElementById('chat-box');
+                    if (rendered && chatBox) chatBox.scrollTop = chatBox.scrollHeight;
                 } else {
                     window.groupChatNotify(data.message || 'خطا در ارسال پست', 'error');
                     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'انتشار پست'; }

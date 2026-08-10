@@ -1487,6 +1487,16 @@ function openPollBox(){
             : adapter?.[operation]?.(item, { source }) || false;
     }
 
+    window.GroupChatFeedBridge = Object.freeze({
+        create(contentType, payload, source = 'local') {
+            const applied = applyFeedItemThroughPipeline(contentType, 'create', payload, source);
+            if (applied && contentType === 'post') {
+                updateLastPostCursor(payload?.post_id || payload?.content_id || payload?.id);
+            }
+            return applied;
+        },
+    });
+
     const remoteTypingUsers = new Map();
     let typingClearTimer = null;
 

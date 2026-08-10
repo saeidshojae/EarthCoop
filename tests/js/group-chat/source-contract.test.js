@@ -191,6 +191,7 @@ test('composer actions runtime is loaded through its dedicated partial', () => {
 test('post submission runtime is extracted without patching openBlogBox', () => {
     const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
     const runtime = readFileSync('resources/views/groups/partials/post_submission_runtime.blade.php', 'utf8');
+    const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
 
     assert.match(blade, /@include\('groups\.partials\.post_submission_runtime'\)/);
     assert.doesNotMatch(blade, /function interceptPostForm\(/);
@@ -202,4 +203,12 @@ test('post submission runtime is extracted without patching openBlogBox', () => 
     assert.doesNotMatch(runtime, /Object\.defineProperty\(window, 'openBlogBox'/);
     assert.doesNotMatch(runtime, /setTimeout\(/);
     assert.doesNotMatch(runtime, /_ajaxIntercepted/);
+    assert.match(runtime, /GroupChatFeedBridge/);
+    assert.match(runtime, /feedBridge\.create\('post', data\.post, 'local-post-submit'\)/);
+    assert.doesNotMatch(runtime, /appendChild\(/);
+    assert.doesNotMatch(runtime, /_init(?:PostMenus|ReactionButtons)/);
+    assert.doesNotMatch(runtime, /_lastKnownPostId/);
+    assert.match(groupChat, /window\.GroupChatFeedBridge\s*=\s*Object\.freeze/);
+    assert.match(groupChat, /applyFeedItemThroughPipeline\(contentType, 'create', payload, source\)/);
+    assert.match(groupChat, /updateLastPostCursor\(payload\?\.post_id \|\| payload\?\.content_id \|\| payload\?\.id\)/);
 });
