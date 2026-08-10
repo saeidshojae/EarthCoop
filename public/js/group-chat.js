@@ -195,25 +195,6 @@ async function groupChatFetch(input, init = {}) {
     if (!window.GroupChat?.api) throw new Error('GroupChat ApiClient is not ready');
     return window.GroupChat.api.request(input, init);
 }
-legacyLifecycle.on(document, 'DOMContentLoaded', function () {
-    debugLog('Tabs script loaded ✅');
-
-    const tabs = document.querySelectorAll('.tab');
-    const contents = document.querySelectorAll('.tab-content');
-
-    tabs.forEach(tab => {
-      legacyLifecycle.on(tab, 'click', () => {
-        tabs.forEach(t => t.classList.remove('active'));
-        contents.forEach(c => c.classList.remove('active'));
-
-        tab.classList.add('active');
-        const tabId = tab.getAttribute('data-tab');
-        const target = document.getElementById(tabId);
-        if (target) target.classList.add('active');
-      });
-    });
-  });
-
   let openSkillListId = null;
 
   function toggleSkillList(pollId) {

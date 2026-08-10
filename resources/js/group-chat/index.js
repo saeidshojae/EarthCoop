@@ -10,6 +10,7 @@ import { createActions } from './actions.js';
 import { createFeedback } from './feedback.js';
 import { createPolls } from './polls.js';
 import { createElections } from './elections.js';
+import { createTabs } from './tabs.js';
 
 if (!window.GroupChatFeedback) {
     window.GroupChatFeedback = createFeedback();
@@ -55,6 +56,7 @@ if (window.groupId) {
     };
     app.polls = createPolls({ api, store, feed, actions, lifecycle });
     app.elections = createElections({ actions, lifecycle, store });
+    app.tabs = createTabs({ store, lifecycle });
 
     app.feed.hydrate('initial');
 

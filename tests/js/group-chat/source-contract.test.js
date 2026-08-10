@@ -454,6 +454,18 @@ test('election page state and actions are lifecycle-owned', () => {
     assert.doesNotMatch(groupChat, /\$\('#electionForm'\)\.on/);
 });
 
+test('group info tabs are modular, scoped, and store-backed', () => {
+    const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
+    const tabs = readFileSync('resources/js/group-chat/tabs.js', 'utf8');
+    const legacy = readFileSync('public/js/group-chat.js', 'utf8');
+
+    assert.match(index, /createTabs\(\{ store, lifecycle \}\)/);
+    assert.match(tabs, /activeInfoTab/);
+    assert.match(tabs, /\.panel-tabs \.tab\[data-tab\]/);
+    assert.match(tabs, /\.panel-tab-contents > \.tab-content/);
+    assert.doesNotMatch(legacy, /Tabs script loaded/);
+});
+
 test('legacy group runtime has no active raw page listeners or timers', () => {
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8').replace(/^\s*\/\/.*$/gm, '');
 

@@ -1159,23 +1159,10 @@
     // ============================================================
     // مدیریت تب‌ها
     // ============================================================
-    document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-            document.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
-            this.classList.add('active');
-            const target = document.getElementById(this.dataset.tab);
-            if (target) {
-                target.classList.add('active');
-            }
+    /* Tab ownership moved to resources/js/group-chat/tabs.js.
 
             // بارگذاری آمار در صورت کلیک روی تب stats
-            if (this.dataset.tab === 'stats' && typeof loadGroupStats === 'function') {
-                loadGroupStats();
-            }
-        });
-    });
+    */
 
     // ============================================================
     // جستجوی اعضا
