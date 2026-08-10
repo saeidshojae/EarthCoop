@@ -6,6 +6,30 @@ function validationMessage(data, fallback) {
 export function createPolls({ api, store, feed, actions, lifecycle }) {
     const notify = (message, type = 'info') => window.GroupChatFeedback?.toast?.(message, { type });
     const setStatus = (status, error = null) => store.setState({ pollStatus: status, pollError: error });
+    const syncType = () => {
+        const type = document.getElementById('poll_type');
+        const specialties = document.getElementById('specialties_box');
+        if (specialties) specialties.style.display = type?.value === '1' ? 'block' : 'none';
+    };
+    const addOption = () => {
+        const container = document.getElementById('dynamic-inputs');
+        if (!container) return;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'd-flex gap-2 mb-2';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.name = 'options[]';
+        input.required = true;
+        input.className = 'modal-input';
+        input.placeholder = `گزینه ${container.children.length + 1}`;
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'modal-option-remove';
+        remove.dataset.groupChatAction = 'remove-poll-option';
+        remove.textContent = '×';
+        wrapper.append(input, remove);
+        container.appendChild(wrapper);
+    };
 
     async function request(url, body) {
         const response = await api.request(url, { method: 'POST', body });
@@ -92,8 +116,8 @@ export function createPolls({ api, store, feed, actions, lifecycle }) {
                 form.reset();
                 const options = document.getElementById('dynamic-inputs');
                 if (options) options.innerHTML = '<input type="text" name="options[]" placeholder="گزینه ۱" class="modal-input mb-2" />';
-                window.handlePollTypeChange?.();
-                window.cancelPollForm?.();
+                syncType();
+                window.GroupChat?.composer?.closePoll();
             }
             notify(data.message || (action === 'create' ? 'نظرسنجی با موفقیت ایجاد شد.' : 'نظرسنجی با موفقیت ویرایش شد.'), 'success');
             setStatus('idle');
@@ -107,6 +131,15 @@ export function createPolls({ api, store, feed, actions, lifecycle }) {
 
     actions.register('submit-vote', ({ target }) => { vote(target); });
     actions.register('delete-poll', ({ target }) => { remove(target); });
+    actions.register('add-poll-option', addOption);
+    actions.register('remove-poll-option', ({ target }) => { target.parentElement?.remove(); });
+    const pollType = document.getElementById('poll_type');
+    if (pollType) lifecycle.on(pollType, 'change', syncType);
+    const specialties = window.jQuery?.('#specialties');
+    if (specialties?.length && !specialties.data('select2')) {
+        specialties.select2({ dropdownParent: window.jQuery('#pollOptionsBox') });
+        lifecycle.add(() => { if (specialties.data('select2')) specialties.select2('destroy'); });
+    }
     lifecycle.on(document, 'submit', event => {
         const form = event.target;
         if (!(form instanceof HTMLFormElement)) return;

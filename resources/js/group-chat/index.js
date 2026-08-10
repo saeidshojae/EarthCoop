@@ -66,7 +66,7 @@ if (window.groupId) {
         reconciler,
         renderer,
         actions,
-        composer: createComposer({ api, store }),
+        composer: createComposer({ api, store, lifecycle, actions }),
         feed,
         unread: createUnread({ api, store, groupId: window.groupId }),
         destroy() {

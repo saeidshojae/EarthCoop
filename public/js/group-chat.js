@@ -311,72 +311,6 @@ if (!registerLegacyPostReaction()) {
 }
 
 
-// Handle modal click - close if clicked outside dialog
-window.handleModalClick = function(event, modalId) {
-    // اگر روی خود dialog یا داخل dialog کلیک شده، نباید بسته شود
-    const dialog = event.currentTarget.querySelector('.modal-shell__dialog');
-    if (dialog && (event.target === dialog || dialog.contains(event.target))) {
-        return;
-    }
-    
-    // اگر روی backdrop یا خارج از dialog کلیک شده، modal را ببند
-    if (modalId === 'postFormBox') {
-        window.cancelPostForm();
-    } else if (modalId === 'pollOptionsBox') {
-        window.cancelPollForm();
-    } else if (modalId === 'manageMembersModal') {
-        if (typeof window.closeManageMembersModal === 'function') {
-            window.closeManageMembersModal();
-        }
-    } else if (modalId === 'manageReportsModal') {
-        if (typeof window.closeManageReportsModal === 'function') {
-            window.closeManageReportsModal();
-        }
-    } else if (modalId === 'groupSettingsModal') {
-        if (typeof window.closeGroupSettingsModal === 'function') {
-            window.closeGroupSettingsModal();
-        }
-    }
-};
-
-// Make functions available in global scope
-window.openBlogBox = function(){
-    // حذف element #back اگر وجود دارد
-    const back = document.querySelector('#back');
-    if (back) {
-        back.style.display = 'none';
-    }
-    
-    const postFormBox = document.querySelector('#postFormBox');
-    if (postFormBox) {
-        postFormBox.style.display = 'flex';
-        postFormBox.style.setProperty('display', 'flex', 'important');
-    }
-};
-
-window.openPollBox = function(){
-    // حذف element #back اگر وجود دارد
-    const back = document.querySelector('#back');
-    if (back) {
-        back.style.display = 'none';
-    }
-    
-    const pollOptionsBox = document.querySelector('#pollOptionsBox');
-    if (pollOptionsBox) {
-        pollOptionsBox.style.display = 'flex';
-        pollOptionsBox.style.setProperty('display', 'flex', 'important');
-    }
-};
-
-// Also keep them in local scope for backward compatibility
-function openBlogBox(){
-    window.openBlogBox();
-}
-
-function openPollBox(){
-    window.openPollBox();
-}
-
   
   let openSkillListId = null;
 
@@ -420,44 +354,6 @@ function openPollBox(){
   }
   
   
-  
-  // Make cancelPostForm available in global scope
-  window.cancelPostForm = function(){
-    const postFormBox = document.querySelector('#postFormBox');
-    if (postFormBox) {
-        postFormBox.style.display = 'none';
-        postFormBox.style.setProperty('display', 'none', 'important');
-    }
-    // Also try to hide #back if it exists
-    const back = document.querySelector('#back');
-    if (back) {
-        back.style.display = 'none';
-    }
-  };
-  
-  // Also keep it in local scope for backward compatibility
-  function cancelPostForm(){
-    window.cancelPostForm();
-  }
-
-  // Make cancelPollForm available in global scope
-  window.cancelPollForm = function(){
-    const pollOptionsBox = document.querySelector('#pollOptionsBox');
-    if (pollOptionsBox) {
-        pollOptionsBox.style.display = 'none';
-        pollOptionsBox.style.setProperty('display', 'none', 'important');
-    }
-    // Also try to hide #back if it exists
-    const back = document.querySelector('#back');
-    if (back) {
-        back.style.display = 'none';
-    }
-  };
-  
-  // Also keep it in local scope for backward compatibility
-  function cancelPollForm(){
-    window.cancelPollForm();
-  }
   
   function cancelelectionForm(){
     document.querySelector('#back').style='display: none'
@@ -2141,8 +2037,8 @@ function showSuccessAlert(message) {
 
 function closeAllModals() {
   window.GroupChat?.elections?.close();
-  cancelPostForm();
-  cancelPollForm()
+  window.GroupChat?.composer?.closePost();
+  window.GroupChat?.composer?.closePoll();
   closeSkill()
   cancelelectionForm()
 }

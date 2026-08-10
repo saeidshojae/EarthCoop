@@ -5,8 +5,6 @@ const legacyActionTargets = {
     'cancel-reply': ['cancelReply'],
     'close-report': ['closeReportBox'],
     'submit-report': ['submitReport'],
-    'open-blog': ['openBlogBox'],
-    'open-poll': ['openPollBox'],
     'manage-members': ['showManageMembersModal'],
     'manage-reports': ['showManageReportsModal'],
     'group-settings': ['showGroupSettingsModal'],

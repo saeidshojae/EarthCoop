@@ -1,6 +1,6 @@
-<div id="postFormBox" class="modal-shell" style="display: none;" dir="rtl" onclick="handleModalClick(event, 'postFormBox')">
+<div id="postFormBox" class="modal-shell" style="display: none;" dir="rtl" data-composer-modal="post">
 
-    <div class="modal-shell__dialog" onclick="event.stopPropagation()">
+    <div class="modal-shell__dialog">
 
         <div class="modal-shell__header">
 
@@ -12,7 +12,7 @@
 
             </h3>
 
-            <button type="button" class="modal-shell__close" onclick="cancelPostForm()">×</button>
+            <button type="button" class="modal-shell__close" data-group-chat-action="close-post-modal">×</button>
 
         </div>
 
@@ -78,7 +78,7 @@
 
             <div class="modal-shell__actions">
 
-                <button type="button" class="btn btn-outline-secondary" onclick="cancelPostForm()">انصراف</button>
+                <button type="button" class="btn btn-outline-secondary" data-group-chat-action="close-post-modal">انصراف</button>
 
                 <button type="submit" class="btn btn-success" style="background-color: #10b981; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 600; cursor: pointer;">انتشار پست</button>
 

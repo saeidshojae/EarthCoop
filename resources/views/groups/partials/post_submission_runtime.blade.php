@@ -39,7 +39,7 @@ function initializePostSubmissionRuntime() {
                         });
                     }
                     // close modal
-                    if (typeof cancelPostForm === 'function') cancelPostForm();
+                    window.GroupChat?.composer?.closePost();
                     const feedBridge = window.GroupChatFeedBridge;
                     if (!feedBridge || typeof feedBridge.create !== 'function') {
                         throw new Error('Group chat feed bridge is unavailable');

@@ -27,8 +27,9 @@ const files = [
     'resources/views/groups/partials/styles/base_styles.blade.php',
     'resources/views/groups/partials/styles/message_edit_styles.blade.php',
     'resources/views/groups/partials/styles/auxiliary_styles.blade.php',
-    'resources/views/groups/partials/composer_actions_runtime.blade.php',
     'resources/views/groups/partials/post_submission_runtime.blade.php',
+    'resources/views/groups/modals/post_form.blade.php',
+    'resources/views/groups/modals/poll_form.blade.php',
 ];
 
 test('group chat templates and runtime do not contain inline event handlers', () => {
@@ -187,25 +188,23 @@ test('scroll and unread runtime is loaded through its dedicated partial', () => 
     assert.match(runtime, /function renderUnreadIndicators\(/);
 });
 
-test('composer actions runtime is loaded through its dedicated partial', () => {
+test('composer actions and modal state are owned by the modular Composer', () => {
     const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
-    const runtime = readFileSync('resources/views/groups/partials/composer_actions_runtime.blade.php', 'utf8');
+    const runtime = readFileSync('resources/js/group-chat/composer.js', 'utf8');
+    const post = readFileSync('resources/views/groups/modals/post_form.blade.php', 'utf8');
+    const poll = readFileSync('resources/views/groups/modals/poll_form.blade.php', 'utf8');
 
-    assert.match(blade, /@include\('groups\.partials\.composer_actions_runtime'\)/);
+    assert.doesNotMatch(blade, /composer_actions_runtime/);
     assert.doesNotMatch(blade, /const plusButton = document\.getElementById\('chatCreateToggle'\)/);
     assert.match(runtime, /const plusButton = document\.getElementById\('chatCreateToggle'\)/);
-    assert.match(runtime, /const audioUploadTrigger = document\.getElementById\('audio-upload-trigger'\)/);
-    assert.match(runtime, /const createPostBtn = document\.getElementById\('create-post-btn'\)/);
-    assert.match(runtime, /const createPollBtn = document\.getElementById\('create-poll-btn'\)/);
-    assert.match(runtime, /window\.__groupChatComposerActionsInitialized/);
     assert.match(runtime, /lifecycle\.on\(textarea, 'input'/);
     assert.match(runtime, /lifecycle\.on\(document, 'click'/);
     assert.match(runtime, /lifecycle\.on\(document, 'keydown'/);
-    assert.equal((runtime.match(/\.addEventListener\(/g) || []).length, 1);
-    assert.match(runtime, /document\.addEventListener\('DOMContentLoaded', initializeComposerActionsRuntime, \{ once: true \}\)/);
-    assert.equal((runtime.match(/lifecycle\.timeout\(/g) || []).length, 2);
-    assert.doesNotMatch(runtime, /(^|[^.])setTimeout\(/m);
-    assert.match(runtime, /lifecycle\.add\(function\(\)/);
+    assert.match(runtime, /store\.setState\(\{ composerModal: open \? type : null \}\)/);
+    assert.match(runtime, /actions\.register\('open-blog', openPost\)/);
+    assert.match(post, /data-composer-modal="post"/);
+    assert.match(poll, /data-composer-modal="poll"/);
+    assert.doesNotMatch(post + poll, /\son(?:click|change)=/i);
 });
 
 test('post submission runtime is extracted without patching openBlogBox', () => {
