@@ -1,3 +1,5 @@
+import { renderMessage } from './message-renderer.js';
+
 export function installLegacyRenderers({ app, callbacks = {} }) {
     const idOf = (item, type) => item?.content_id || item?.[`${type}_id`] || item?.id;
     const refreshPolls = () => app.polls?.refreshCountdowns();
@@ -127,7 +129,7 @@ export function installLegacyRenderers({ app, callbacks = {} }) {
         comment: { render: dispatchComment, update: dispatchComment, delete: dispatchComment, reaction: dispatchComment },
     };
     app.renderer.register('message', {
-        render: item => callbacks.renderMessage?.(item) || false,
+        render: renderMessage,
         mutate: (item, context) => messageMutations[context.action]?.(item) || false,
     });
     Object.entries(adapters).forEach(([type, adapter]) => app.renderer.register(type, {

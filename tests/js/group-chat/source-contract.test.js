@@ -71,12 +71,13 @@ test('sidecar runtimes expose explicit ownership APIs', () => {
 
 test('message delete and report actions use the delegated action bridge', () => {
     const runtime = readFileSync('public/js/group-chat.js', 'utf8');
+    const messageRenderer = readFileSync('resources/js/group-chat/message-renderer.js', 'utf8');
     const message = readFileSync('resources/views/groups/partials/message.blade.php', 'utf8');
     const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
     const legacyMessageRuntime = readFileSync('resources/views/groups/partials/legacy_message_runtime.blade.php', 'utf8');
 
     for (const action of ['delete-message', 'report-message']) {
-        assert.match(runtime, new RegExp(`data-group-chat-action="${action}"`));
+        assert.match(messageRenderer, new RegExp(`data-group-chat-action="${action}"`));
         assert.match(message, new RegExp(`data-group-chat-action="${action}"`));
         assert.match(legacyMessageRuntime, new RegExp(`data-group-chat-action="${action}"`));
     }
@@ -443,8 +444,12 @@ test('renderer adapters and feed bridge are owned by a modular registry', () => 
     const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
     const adapters = readFileSync('resources/js/group-chat/legacy-renderers.js', 'utf8');
     const legacy = readFileSync('public/js/group-chat.js', 'utf8');
+    const messages = readFileSync('resources/js/group-chat/message-renderer.js', 'utf8');
 
     assert.match(index, /installLegacyRenderers\(\{ app, callbacks \}\)/);
+    assert.match(adapters, /render: renderMessage/);
+    assert.match(messages, /export function renderMessage/);
+    assert.doesNotMatch(legacy, /function (?:renderMessageThroughPipeline|appendMessage)\(/);
     assert.match(adapters, /app\.renderer\.register\('message'/);
     assert.match(adapters, /Object\.entries\(adapters\)\.forEach/);
     assert.match(adapters, /app\.feed\.apply/);
