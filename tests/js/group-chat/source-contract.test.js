@@ -17,6 +17,7 @@ const files = [
     'resources/views/groups/partials/action_menu_dismissal.blade.php',
     'resources/views/groups/partials/chat_search_runtime.blade.php',
     'resources/views/groups/partials/pin_runtime.blade.php',
+    'resources/views/groups/partials/scroll_unread_runtime.blade.php',
 ];
 
 test('group chat templates and runtime do not contain inline event handlers', () => {
@@ -69,12 +70,12 @@ test('message delete and report actions use the delegated action bridge', () => 
 
 test('unread polling and observers are owned by the page lifecycle', () => {
     const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
-    const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
+    const runtime = readFileSync('resources/views/groups/partials/scroll_unread_runtime.blade.php', 'utf8');
 
     assert.match(index, /window\.GroupChatLifecycle\s*=\s*pageLifecycle/);
-    assert.match(blade, /lifecycle\.interval\(refreshUnreadCount, 15000\)/);
-    assert.match(blade, /lifecycle\.add\(\(\) => observer\.disconnect\(\)\)/);
-    assert.doesNotMatch(blade, /setInterval\(refreshUnreadCount/);
+    assert.match(runtime, /lifecycle\.interval\(refreshUnreadCount, 15000\)/);
+    assert.match(runtime, /lifecycle\.add\(\(\) => observer\.disconnect\(\)\)/);
+    assert.doesNotMatch(runtime, /setInterval\(refreshUnreadCount/);
 });
 
 test('realtime retries and fallback pollers are owned by the page lifecycle', () => {
@@ -151,4 +152,15 @@ test('pin runtime is extracted and targets the requested message id', () => {
     assert.match(pin, /function unpinMessage\(messageId\)/);
     assert.equal((pin.match(/`msg-\$\{messageId\}`/g) || []).length, 2);
     assert.doesNotMatch(pin, /`msg-\$\{id\}`/);
+});
+
+test('scroll and unread runtime is loaded through its dedicated partial', () => {
+    const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
+    const runtime = readFileSync('resources/views/groups/partials/scroll_unread_runtime.blade.php', 'utf8');
+
+    assert.match(blade, /@include\('groups\.partials\.scroll_unread_runtime'\)/);
+    assert.doesNotMatch(blade, /function initializeGroupChatScrollManager\(/);
+    assert.match(runtime, /function initializeGroupChatScrollManager\(/);
+    assert.match(runtime, /function restoreInitialPosition\(/);
+    assert.match(runtime, /function renderUnreadIndicators\(/);
 });

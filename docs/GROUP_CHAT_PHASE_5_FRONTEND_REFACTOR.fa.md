@@ -42,6 +42,8 @@ Checkpoint نوزدهم: partial جست‌وجو دارای guard ورود مج�
 
 Checkpoint بیستم: runtime سنجاق/برداشتن سنجاق پیام از Blade اصلی به `groups/partials/pin_runtime.blade.php` منتقل شد. هر دو مسیر pin و unpin که به‌اشتباه از متغیر تعریف‌نشدهٔ `id` برای DOM lookup استفاده می‌کردند به `messageId` اصلاح شدند و تست قرارداد این شناسه را برای هر دو مسیر کنترل می‌کند.
 
+Checkpoint بیست‌ویکم: مدیر یکپارچهٔ اسکرول، بازیابی موقعیت و نشانگرهای خوانده‌نشده از Blade اصلی به `groups/partials/scroll_unread_runtime.blade.php` منتقل شد. رفتار runtime در این checkpoint عمداً ثابت ماند؛ قراردادهای source اکنون include مستقل، خروج کامل پیاده‌سازی از Blade اصلی و مالکیت polling و MutationObserver توسط lifecycle صفحه را کنترل می‌کنند. Blade اصلی با این استخراج از ۴۳۶۶ به ۳۹۶۳ خط کاهش یافت.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.
