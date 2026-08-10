@@ -238,11 +238,6 @@ async function groupChatFetch(input, init = {}) {
   
   
   
-  function cancelelectionForm(){
-    document.querySelector('#back').style='display: none'
-    document.querySelector('#electionOptionsBox').style='display: none'
-  }
-  
     // این کد حذف شد چون با منطق حفظ موقعیت scroll در chat.blade.php تداخل دارد
     // window.addEventListener('DOMContentLoaded', function () {
     //     const chatBox = document.getElementById('chat-box');
@@ -1942,7 +1937,7 @@ function closeAllModals() {
   window.GroupChat?.composer?.closePost();
   window.GroupChat?.composer?.closePoll();
   closeSkill()
-  cancelelectionForm()
+  window.GroupChat?.elections?.closeAdmin();
 }
 
 function startPollCountdowns() {

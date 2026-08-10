@@ -1,6 +1,6 @@
 <div id="electionOptionsBox" class="modal-shell" style="display: none;" dir="rtl">
 
-    <div class="modal-shell__backdrop" onclick="cancelelectionForm()"></div>
+    <div class="modal-shell__backdrop" data-group-chat-action="close-election-admin"></div>
 
     <div class="modal-shell__dialog">
 
@@ -14,7 +14,7 @@
 
             </h3>
 
-            <button type="button" class="modal-shell__close" onclick="cancelelectionForm()">×</button>
+            <button type="button" class="modal-shell__close" data-group-chat-action="close-election-admin">×</button>
 
         </div>
 
@@ -42,7 +42,7 @@
 
                 <label for="poll_election_type" class="modal-label">نوع انتخابات</label>
 
-                <select name="type" id="poll_election_type" class="modal-input" onchange="handlePollTypeChange2()">
+                <select name="type" id="poll_election_type" class="modal-input">
 
                     <option value="0">عمومی</option>
 
@@ -92,7 +92,7 @@
 
                     نامزدها
 
-                    <button type="button" class="btn btn-sm btn-outline-success" onclick="addInput2()">
+                    <button type="button" class="btn btn-sm btn-outline-success" data-group-chat-action="add-election-candidate">
 
                         <i class="fas fa-user-plus me-1"></i>
 
@@ -116,7 +116,7 @@
 
             <div class="modal-shell__actions">
 
-                <button type="button" class="btn btn-outline-secondary" onclick="cancelelectionForm()">انصراف</button>
+                <button type="button" class="btn btn-outline-secondary" data-group-chat-action="close-election-admin">انصراف</button>
 
                 <button type="submit" class="btn btn-primary">انتشار انتخابات</button>
 
@@ -130,7 +130,7 @@
 
 
 
-<script>
+    <script>
 
     $(document).ready(function() {
 
@@ -144,49 +144,7 @@
 
 
 
-    let optionCount2 = 1;
-
-
-
-    function addInput2() {
-
-        optionCount2++;
-
-        const container = document.getElementById('el_dynamic-inputs');
-
-        const wrapper = document.createElement('div');
-
-        wrapper.className = 'modal-option-row';
-
-        wrapper.innerHTML = `
-
-            <input type="text" name="options[]" placeholder="نامزد ${optionCount2}" class="modal-input">
-
-            <button type="button" class="modal-option-remove" onclick="this.parentElement.remove()">
-
-                <i class="fas fa-times"></i>
-
-            </button>
-
-        `;
-
-        container.appendChild(wrapper);
-
-    }
-
-
-
-    function handlePollTypeChange2() {
-
-        const type = document.getElementById('poll_election_type').value;
-
-        const specialtiesBox = document.getElementById('el_specialties_box');
-
-        specialtiesBox.style.display = (type === '1') ? 'block' : 'none';
-
-    }
-
-</script>
+    </script>
 
 
 

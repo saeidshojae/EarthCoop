@@ -30,6 +30,7 @@ const files = [
     'resources/views/groups/partials/post_submission_runtime.blade.php',
     'resources/views/groups/modals/post_form.blade.php',
     'resources/views/groups/modals/poll_form.blade.php',
+    'resources/views/groups/modals/election_form.blade.php',
 ];
 
 test('group chat templates and runtime do not contain inline event handlers', () => {
@@ -446,11 +447,13 @@ test('election page state and actions are lifecycle-owned', () => {
     assert.match(elections, /actions\.register\('open-election', open\)/);
     assert.match(elections, /actions\.register\('close-election', close\)/);
     assert.match(elections, /actions\.register\('open-election-admin', openAdmin\)/);
+    assert.match(elections, /actions\.register\('close-election-admin', closeAdmin\)/);
     assert.match(elections, /store\.setState\(\{ electionOpen: true \}\)/);
     assert.match(elections, /lifecycle\.timeout\(/);
     assert.match(elections, /lifecycle\.on\(document, 'keydown'/);
     assert.doesNotMatch(actions, /'open-election': \['openElectionBox'\]|'close-election': \['closeElectionBox'/);
     assert.doesNotMatch(groupChat, /function (?:openElectionBox|closeElectionBox|openElection2Box)\(/);
+    assert.doesNotMatch(groupChat, /function cancelelectionForm\(/);
     assert.doesNotMatch(groupChat, /\$\('#electionForm'\)\.on/);
 });
 
