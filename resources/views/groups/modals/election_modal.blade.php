@@ -138,7 +138,7 @@
 
         
 
-          <script>
+          <script type="module">
 
               const startsAt = new Date("{{ $election->starts_at ?? '' }}").getTime();
 
@@ -148,7 +148,7 @@
 
               const progressBar = document.getElementById('progressBar');
 
-              const timer = setInterval(() => {
+              const timer = window.GroupChatLifecycle.interval(() => {
 
                 const now = new Date().getTime();
 
@@ -172,7 +172,7 @@
 
                 if (remaining <= 0) {
 
-                  clearInterval(timer);
+                  window.GroupChatLifecycle.clearInterval(timer);
 
                   countdownText.innerHTML = "⏰ انتخابات به پایان رسید";
 
@@ -842,11 +842,11 @@ $allOptions = $group->users->map(function ($u) use ($managerCounts, $inspectorCo
 
 
 
-<script>
+<script type="module">
 
 // تعریف global برای allOptions
 
-window.electionAllOptions = @json($allOptions);
+const electionAllOptions = @json($allOptions);
 
 
 
@@ -876,7 +876,7 @@ $(document).ready(function(){
 
 // تابع‌های باز کردن مدال‌ها - باید global باشند و بعد از لود شدن Bootstrap
 
-window.openCandidatesModal = function() {
+function openCandidatesModal() {
 
   console.log('openCandidatesModal called');
 
@@ -890,9 +890,9 @@ window.openCandidatesModal = function() {
 
     }
 
-    if (window.applyFilters && typeof window.applyFilters === 'function') {
+    if (typeof window.GroupElectionModal?.applyFilters === 'function') {
 
-      window.applyFilters();
+      window.GroupElectionModal.applyFilters();
 
     }
 
@@ -954,7 +954,7 @@ window.openCandidatesModal = function() {
 
 
 
-window.openGuidelineModal = function() {
+function openGuidelineModal() {
 
   console.log('openGuidelineModal called');
 
@@ -1004,7 +1004,7 @@ window.openGuidelineModal = function() {
 
 
 
-window.openTopVotesModal = function() {
+function openTopVotesModal() {
 
   console.log('openTopVotesModal called');
 
@@ -1054,15 +1054,16 @@ window.openTopVotesModal = function() {
 
 
 
-</script>
+window.GroupElectionModal = { electionAllOptions, openCandidatesModal, openGuidelineModal, openTopVotesModal };
+</script>
 
 
 
-<script>
+<script type="module">
 
   // تابع profileUrlOf - باید global باشد
 
-  window.profileUrlOf = function(id){
+  const profileUrlOf = function(id){
 
       return '/profile-member/' + id; 
 
@@ -1076,7 +1077,7 @@ window.openTopVotesModal = function() {
 
     // استفاده از allOptions global
 
-    const allOptions = window.electionAllOptions || @json($allOptions);
+    const allOptions = window.GroupElectionModal?.electionAllOptions || @json($allOptions);
 
 
 
@@ -1120,7 +1121,7 @@ window.openTopVotesModal = function() {
 
             <td>
 
-              <a href="${window.profileUrlOf(u.id)}" target="_blank" class="btn btn-sm btn-outline-primary btn-primary">
+              <a href="${profileUrlOf(u.id)}" target="_blank" class="btn btn-sm btn-outline-primary btn-primary">
 
                 مشاهده پروفایل
 
@@ -1142,7 +1143,7 @@ window.openTopVotesModal = function() {
 
     // تعریف global برای applyFilters
 
-    window.applyFilters = function(){
+    const applyFilters = function(){
 
       const q = ($('#candidateSearch').val() || '').trim();
 
@@ -1186,9 +1187,9 @@ window.openTopVotesModal = function() {
 
     // سرچ و فیلتر زنده
 
-    $(document).on('input', '#candidateSearch', window.applyFilters);
+    $(document).on('input', '#candidateSearch', applyFilters);
 
-    $(document).on('change', '#candidateFilter', window.applyFilters);
+    $(document).on('change', '#candidateFilter', applyFilters);
 
 
 
@@ -1196,7 +1197,7 @@ window.openTopVotesModal = function() {
 
     if ($('#candidatesModal').length) {
 
-      window.applyFilters();
+      applyFilters();
 
     }
 
@@ -1204,17 +1205,19 @@ window.openTopVotesModal = function() {
 
   })();
 
-</script>
+    Object.assign(window.GroupElectionModal, { applyFilters, profileUrlOf });
+</script>
 
 
 
 
 
-<script>
+<script type="module">
 
 // تابع برای بروزرسانی Select2 با نمایش تعداد رأی - باید global باشد
 
-window.updateElectionSelect2 = function() {
+const electionLifecycle = window.GroupChatLifecycle;
+const updateElectionSelect2 = function() {
 
   console.log('updateElectionSelect2 called');
 
@@ -1224,7 +1227,7 @@ window.updateElectionSelect2 = function() {
 
     console.error('jQuery or Select2 not loaded');
 
-    setTimeout(window.updateElectionSelect2, 500);
+    electionLifecycle.timeout(updateElectionSelect2, 500);
 
     return;
 
@@ -1236,7 +1239,7 @@ window.updateElectionSelect2 = function() {
 
   const $manager = jQuery('#manager_vote');
 
-  const allOptions = window.electionAllOptions || [];
+  const allOptions = window.GroupElectionModal?.electionAllOptions || [];
 
   
 
@@ -1414,7 +1417,7 @@ window.updateElectionSelect2 = function() {
 
       // تریگر مجدد برای refresh
 
-      setTimeout(function() {
+      electionLifecycle.timeout(function() {
 
             $inspector.trigger('change.select2');
 
@@ -1434,7 +1437,7 @@ window.updateElectionSelect2 = function() {
 
       // تریگر مجدد برای refresh
 
-      setTimeout(function() {
+      electionLifecycle.timeout(function() {
 
         $inspector.trigger('change.select2');
 
@@ -1452,7 +1455,7 @@ window.updateElectionSelect2 = function() {
 
       console.log('📂 Inspector dropdown opened');
 
-      setTimeout(function() {
+      electionLifecycle.timeout(function() {
 
         jQuery('.select2-dropdown').css({
 
@@ -1488,7 +1491,7 @@ window.updateElectionSelect2 = function() {
 
       console.log('📂 Manager dropdown opened');
 
-      setTimeout(function() {
+      electionLifecycle.timeout(function() {
 
         jQuery('.select2-dropdown').css({
 
@@ -1532,15 +1535,15 @@ window.updateElectionSelect2 = function() {
 
 if (document.readyState === 'loading') {
 
-  document.addEventListener('DOMContentLoaded', function() {
+  electionLifecycle.on(document, 'DOMContentLoaded', function() {
 
-    setTimeout(window.updateElectionSelect2, 500);
+    electionLifecycle.timeout(updateElectionSelect2, 500);
 
   });
 
 } else {
 
-  setTimeout(window.updateElectionSelect2, 500);
+  electionLifecycle.timeout(updateElectionSelect2, 500);
 
 }
 
@@ -1548,15 +1551,16 @@ if (document.readyState === 'loading') {
 
 // همچنین بعد از باز شدن مدال انتخابات
 
-window.addEventListener('electionModalOpened', function() {
+electionLifecycle.on(window, 'electionModalOpened', function() {
 
-  setTimeout(window.updateElectionSelect2, 300);
+  electionLifecycle.timeout(updateElectionSelect2, 300);
 
 });
 
 
 
-    </script>
+Object.assign(window.GroupElectionModal, { updateElectionSelect2 });
+    </script>
 
 
 

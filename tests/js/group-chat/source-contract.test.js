@@ -524,6 +524,10 @@ test('group info and election panel handlers are lifecycle-owned and declarative
     assert.doesNotMatch(panel, /(^|[^.\w])set(?:Timeout|Interval)\(/m);
     assert.doesNotMatch(panel, /window\.(?:cancelAddGuests|cancelManagerChat|loadGroupStats)\s*=/);
     assert.doesNotMatch(panel + election, /\son(?:click|submit|change|input)=/i);
+    assert.doesNotMatch(election, /(^|[^.\w])set(?:Timeout|Interval)\(/m);
+    assert.doesNotMatch(election, /\.addEventListener\(/);
+    assert.doesNotMatch(election, /window\.(?:electionAllOptions|openCandidatesModal|openGuidelineModal|openTopVotesModal|profileUrlOf|applyFilters|updateElectionSelect2)\s*=/);
+    assert.match(election, /window\.GroupElectionModal = \{/);
     for (const action of ['election-content', 'open-election-candidates', 'open-election-guideline', 'open-election-top-votes']) {
         assert.match(elections, new RegExp(`actions\\.register\\('${action}'`));
     }
