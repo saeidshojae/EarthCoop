@@ -21,6 +21,10 @@ if (!window.__groupChatPageLifecycleCleanupInstalled) {
     pageLifecycle.on(window, 'pagehide', () => pageLifecycle.destroy(), { once: true });
 }
 
+// Action delegation is safe for both legacy and modular runtimes and must not
+// depend on the migration feature flag. It is the single owner of page actions.
+const pageActions = createActions({ lifecycle: pageLifecycle });
+
 if (window.__groupChatModularFrontend && window.groupId) {
     const sequenceKey = `group-feed-sequence:${window.groupId}`;
     const lifecycle = pageLifecycle;
@@ -50,7 +54,7 @@ if (window.__groupChatModularFrontend && window.groupId) {
             },
         });
     });
-    const actions = createActions({ lifecycle });
+    const actions = pageActions;
 
     const app = {
         api,

@@ -327,6 +327,7 @@ test('page chrome runtime owns group edit and one-shot page effects', () => {
     const runtime = readFileSync('resources/views/groups/partials/page_chrome_runtime.blade.php', 'utf8');
     const groupEdit = readFileSync('resources/views/groups/modals/group_edit_form.blade.php', 'utf8');
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
+    const actions = readFileSync('resources/js/group-chat/actions.js', 'utf8');
 
     assert.match(blade, /@include\('groups\.partials\.page_chrome_runtime'\)/);
     assert.doesNotMatch(blade, /function openGroupEdit\(/);
@@ -336,11 +337,12 @@ test('page chrome runtime owns group edit and one-shot page effects', () => {
     assert.match(runtime, /delete window\.GroupChatPageChrome/);
     assert.match(groupEdit, /data-group-chat-action="cancel-group-edit"/);
     assert.doesNotMatch(groupEdit, /onclick=/);
-    assert.match(groupChat, /GroupChatPageChrome\.openGroupEdit\(\)/);
-    assert.match(groupChat, /GroupChatPageChrome\.cancelGroupEdit\(\)/);
+    assert.doesNotMatch(groupChat, /handleDelegatedLegacyChatAction/);
+    assert.match(actions, /'open-group-edit': 'openGroupEdit'/);
+    assert.match(actions, /'cancel-group-edit': 'cancelGroupEdit'/);
     assert.match(runtime, /showEditPollBox\(pollId\)/);
     assert.match(runtime, /querySelectorAll\('\[id\^="edit-poll-box-"\]'\)/);
-    assert.match(groupChat, /GroupChatPageChrome\.showEditPollBox\(Number\(target\.dataset\.pollId\)\)/);
+    assert.match(actions, /'edit-poll': 'showEditPollBox'/);
     assert.doesNotMatch(blade, /function (?:togglePollMenu|showEditPollBox|confirmDelete)\(/);
 });
 
@@ -371,5 +373,17 @@ test('group hero markup is loaded through its dedicated partial', () => {
     assert.match(hero, /aria-expanded="false"/);
     assert.doesNotMatch(hero, /(?:@click|x-data|x-show|x-cloak|:class)=?/);
     assert.match(readFileSync('resources/views/groups/partials/page_chrome_runtime.blade.php', 'utf8'), /toggleGroupHero\(\)/);
-    assert.match(readFileSync('public/js/group-chat.js', 'utf8'), /GroupChatPageChrome\.toggleGroupHero\(\)/);
+    assert.match(readFileSync('resources/js/group-chat/actions.js', 'utf8'), /'toggle-group-hero': 'toggleGroupHero'/);
+});
+
+test('all declarative chat actions use the lifecycle-owned modular dispatcher', () => {
+    const actions = readFileSync('resources/js/group-chat/actions.js', 'utf8');
+    const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
+    const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
+
+    assert.match(actions, /lifecycle\.on\(root, 'click'/);
+    assert.match(actions, /\[data-group-chat-action\], \[data-legacy-chat-action\], \[data-chat-page-action\]/);
+    assert.match(index, /const pageActions = createActions\(\{ lifecycle: pageLifecycle \}\)/);
+    assert.ok(index.indexOf('const pageActions') < index.indexOf('if (window.__groupChatModularFrontend'));
+    assert.doesNotMatch(groupChat, /handleDelegatedLegacyChatAction/);
 });
