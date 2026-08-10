@@ -1,6 +1,7 @@
 export function createLifecycle() {
     const cleanups = new Set();
     const intervalCleanups = new Map();
+    const timeoutCleanups = new Map();
     let destroyed = false;
 
     const add = cleanup => {
@@ -35,14 +36,22 @@ export function createLifecycle() {
             let id;
             const cleanup = () => {
                 globalThis.clearTimeout(id);
+                timeoutCleanups.delete(id);
                 cleanups.delete(cleanup);
             };
             id = globalThis.setTimeout(() => {
+                timeoutCleanups.delete(id);
                 cleanups.delete(cleanup);
                 callback();
             }, ms);
+            timeoutCleanups.set(id, cleanup);
             add(cleanup);
             return id;
+        },
+        clearTimeout(id) {
+            const cleanup = timeoutCleanups.get(id);
+            if (cleanup) cleanup();
+            else globalThis.clearTimeout(id);
         },
         add,
         destroy() {

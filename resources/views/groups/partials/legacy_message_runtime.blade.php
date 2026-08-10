@@ -9,6 +9,34 @@
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
         '{{ csrf_token() }}';
 
+    function initializeLegacyMessageLifecycle() {
+        const lifecycle = window.GroupChatLifecycle;
+        if (!lifecycle || lifecycle.destroyed || window.__groupChatLegacyMessageLifecycleInitialized) return;
+        window.__groupChatLegacyMessageLifecycleInitialized = true;
+
+        lifecycle.on(document, 'click', function(e) {
+            const profileLink = e.target.closest('a.message-sender');
+            if (!profileLink || !profileLink.closest('.message-row')) return;
+
+            e.stopPropagation();
+            e.preventDefault();
+            const href = profileLink.getAttribute('href');
+            if (href && !href.includes('#')) window.location.href = href;
+        });
+
+        lifecycle.add(function() {
+            if (lastReadUpdateTimeout !== null) lifecycle.clearTimeout(lastReadUpdateTimeout);
+            lastReadUpdateTimeout = null;
+            window.__groupChatLegacyMessageLifecycleInitialized = false;
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeLegacyMessageLifecycle, { once: true });
+    } else {
+        initializeLegacyMessageLifecycle();
+    }
+
     // جلوگیری از رفتار پیش‌فرض مرورگر
     if ('scrollRestoration' in history) {
         history.scrollRestoration = 'manual';
@@ -46,8 +74,16 @@
         setLastReadState(parsedId, true);
 
         // Debounce: فقط آخرین پیام visible را به‌روزرسانی کن
-        clearTimeout(lastReadUpdateTimeout);
-        lastReadUpdateTimeout = setTimeout(() => {
+        const lifecycle = window.GroupChatLifecycle;
+        if (lastReadUpdateTimeout !== null) {
+            if (lifecycle && !lifecycle.destroyed) lifecycle.clearTimeout(lastReadUpdateTimeout);
+            else clearTimeout(lastReadUpdateTimeout);
+        }
+        const schedule = lifecycle && !lifecycle.destroyed
+            ? lifecycle.timeout.bind(lifecycle)
+            : setTimeout;
+        lastReadUpdateTimeout = schedule(() => {
+            lastReadUpdateTimeout = null;
             fetch(UPDATE_LAST_READ_URL, {
                 method: 'POST',
                 headers: {
@@ -236,21 +272,6 @@
             const newMsgBubble = messageRow.querySelector('[data-message-id]');
             if (newMsgBubble && typeof window.addThreadButton === 'function') {
                 window.addThreadButton(newMsgBubble);
-            }
-
-            // Initialize click handler for profile link
-            const profileLink = messageRow.querySelector('a.message-sender');
-            if (profileLink) {
-                profileLink.addEventListener('click', function(e) {
-                    // اجازه بده لینک کار کند
-                    e.stopPropagation();
-                    e.preventDefault();
-                    // اگر href وجود دارد، به آن برو
-                    const href = this.getAttribute('href');
-                    if (href && !href.includes('#')) {
-                        window.location.href = href;
-                    }
-                });
             }
 
         } catch (error) {

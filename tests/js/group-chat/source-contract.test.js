@@ -301,4 +301,10 @@ test('legacy message runtime is loaded through its dedicated partial', () => {
     assert.match(runtime, /function addMessageToChat\(messageData\)/);
     assert.match(runtime, /function updateMessageContent\(messageBubble, newContent, isEdited\)/);
     assert.match(runtime, /function escapeHtml\(text\)/);
+    assert.match(runtime, /function initializeLegacyMessageLifecycle\(\)/);
+    assert.match(runtime, /window\.__groupChatLegacyMessageLifecycleInitialized/);
+    assert.match(runtime, /lifecycle\.on\(document, 'click'/);
+    assert.match(runtime, /lifecycle\.clearTimeout\(lastReadUpdateTimeout\)/);
+    assert.match(runtime, /lifecycle\.timeout\.bind\(lifecycle\)/);
+    assert.doesNotMatch(runtime, /profileLink\.addEventListener/);
 });

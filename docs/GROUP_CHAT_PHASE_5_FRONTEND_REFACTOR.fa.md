@@ -68,6 +68,8 @@ Checkpoint سی‌ودوم: تنظیم و راه‌اندازی CKEditor پست 
 
 Checkpoint سی‌وسوم: بلوک legacy پیام شامل قراردادهای صفحه، read-state، debounce ثبت پیام خوانده‌شده، renderer قدیمی پیام، patch محتوای ویرایش‌شده و helperهای escape/text به partial مستقل `legacy_message_runtime` منتقل شد. ترتیب اجرای classic script و APIهای مورد استفادهٔ runtimeهای موجود بدون تغییر حفظ شده‌اند تا این استخراج صرفاً ساختاری باشد؛ مالکیت lifecycle این بلوک در checkpoint جداگانه انجام می‌شود. Blade اصلی از ۳۰۸۲ به ۲۵۶۰ خط کاهش یافت.
 
+Checkpoint سی‌وچهارم: Lifecycle قابلیت لغو صریح timeout ثبت‌شده را دریافت کرد و debounce ثبت آخرین پیام خوانده‌شده از timeout خام به timeout تحت مالکیت صفحه منتقل شد. listener عنصربه‌عنصر لینک پروفایل پیام‌های تازه‌رندرشده نیز با delegation واحد document جایگزین شد؛ cleanup هم timeout معلق و guard راه‌اندازی را آزاد می‌کند. تست واحد `clearTimeout` و قرارداد source از بازگشت این دو الگوی نشت‌پذیر جلوگیری می‌کنند.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.

@@ -60,6 +60,17 @@ test('lifecycle can cancel a registered interval before page destroy', async () 
     assert.equal(calls, callsAtCancel);
 });
 
+test('lifecycle can cancel a registered timeout before page destroy', async () => {
+    const lifecycle = createLifecycle();
+    let calls = 0;
+    const id = lifecycle.timeout(() => calls++, 10);
+    lifecycle.clearTimeout(id);
+    await new Promise(resolve => setTimeout(resolve, 20));
+    lifecycle.destroy();
+
+    assert.equal(calls, 0);
+});
+
 test('reconciler ignores duplicates and identifies sequence gaps', () => {
     const reconciler = createReconciler({ initialSequence: 4 });
     assert.equal(reconciler.inspect({ event_id: 'a', sequence: 5 }).action, 'apply');
