@@ -57,9 +57,17 @@ class GroupChatRequestContext
 
     private function legacyData(array $payload): array
     {
-        return collect($payload)
+        $data = collect($payload)
             ->except(['status', 'data', 'error', 'meta', 'request_id', 'message', 'errors'])
             ->all();
+
+        // `message` is sometimes the stored message DTO and sometimes a notice.
+        // Only structured message data belongs in the canonical data envelope.
+        if (isset($payload['message']) && is_array($payload['message'])) {
+            $data['message'] = $payload['message'];
+        }
+
+        return $data;
     }
 
     private function errorCode(int $status): string

@@ -41,6 +41,12 @@ class ApiReliabilityTest extends TestCase
                 return response()->json(['status' => 'success', 'result' => $count]);
             })->name('tests.group-chat.idempotency');
 
+        Route::middleware(['web', 'group.chat.context'])
+            ->post('/_tests/group-chat/message-envelope', fn () => response()->json([
+                'status' => 'success',
+                'message' => ['id' => 91, 'user_id' => 17, 'message' => 'Hello'],
+            ]));
+
         Cache::forget('group-chat-idempotency-test-count');
     }
 
@@ -71,6 +77,17 @@ class ApiReliabilityTest extends TestCase
         $first->assertOk()->assertJsonPath('result', 1);
         $second->assertOk()->assertHeader('Idempotency-Replayed', 'true')->assertJsonPath('result', 1);
         $this->assertSame(1, (int) Cache::get('group-chat-idempotency-test-count'));
+    }
+
+    public function test_structured_message_is_preserved_in_canonical_data_envelope(): void
+    {
+        $user = $this->makeUser();
+
+        $this->actingAs($user)->postJson('/_tests/group-chat/message-envelope')
+            ->assertOk()
+            ->assertJsonPath('data.message.id', 91)
+            ->assertJsonPath('data.message.user_id', 17)
+            ->assertJsonPath('data.message.message', 'Hello');
     }
 
     public function test_reusing_key_with_different_payload_is_rejected(): void

@@ -2,6 +2,12 @@ export function renderMessage(message) {
     const chatBox = document.getElementById('chat-box');
     if (!chatBox) return;
 
+    const messageId = message?.id ?? message?.content_id ?? message?.message_id;
+    const userId = message?.user_id ?? message?.actor_id ?? message?.user?.id;
+    if (messageId == null || messageId === '' || messageId === 'undefined'
+        || userId == null || userId === '' || userId === 'undefined') return false;
+    message = { ...message, id: messageId, user_id: userId };
+
     if (message && message.id) {
         const existing = document.getElementById('msg-' + message.id);
         if (existing) return existing;
@@ -206,5 +212,4 @@ export function renderMessage(message) {
     // این کد حذف شد چون با scroll restore تداخل دارد
     return messageRow;
 }
-
 
