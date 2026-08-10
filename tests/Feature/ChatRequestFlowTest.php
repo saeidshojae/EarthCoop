@@ -58,11 +58,10 @@ class ChatRequestFlowTest extends TestCase
                 DB::statement('ALTER TABLE chat_requests MODIFY id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY');
             }
 
-            if (! Schema::hasColumn('chat_requests', 'message') || ! Schema::hasColumn('chat_requests', 'request_to_group')) {
-                Artisan::call('migrate', [
-                    '--path' => 'database/migrations/2026_05_27_180000_add_message_and_request_to_group_to_chat_requests_table.php',
-                    '--force' => true,
-                ]);
+            if (! Schema::hasColumn('chat_requests', 'message')) {
+                Schema::table('chat_requests', function (\Illuminate\Database\Schema\Blueprint $table) {
+                    $table->text('message')->nullable();
+                });
             }
 
             if (! Schema::hasColumn('chat_requests', 'private_conversation_id')) {

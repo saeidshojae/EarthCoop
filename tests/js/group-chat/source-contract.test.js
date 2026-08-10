@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+
+const collectBladeFiles = directory => readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    const path = join(directory, entry.name);
+    return entry.isDirectory() ? collectBladeFiles(path) : (entry.name.endsWith('.blade.php') ? [path] : []);
+});
 
 const files = [
     'public/js/group-chat.js',
@@ -33,6 +39,20 @@ test('group chat templates and runtime do not contain inline event handlers', ()
     for (const file of files) {
         const source = readFileSync(file, 'utf8');
         assert.doesNotMatch(source, /\son(?:click|mouseover|mouseout)\s*=/i, file);
+    }
+});
+
+test('all group chat partials and modals use lifecycle-owned listeners and timers', () => {
+    const templates = [
+        ...collectBladeFiles('resources/views/groups/partials'),
+        ...collectBladeFiles('resources/views/groups/modals'),
+    ];
+
+    for (const file of templates) {
+        const source = readFileSync(file, 'utf8');
+        assert.doesNotMatch(source, /\.addEventListener\(/, file);
+        assert.doesNotMatch(source, /(^|[^.\w])(?:set|clear)(?:Timeout|Interval)\(/m, file);
+        assert.doesNotMatch(source, /window\.__groupChat\w*/, file);
     }
 });
 
