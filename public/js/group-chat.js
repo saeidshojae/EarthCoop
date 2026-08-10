@@ -412,7 +412,7 @@ async function groupChatFetch(input, init = {}) {
                 addReactionButton(bubble);
             });
         }
-        startPollCountdowns();
+                            window.GroupChat?.polls?.refreshCountdowns();
         return true;
     }
 
@@ -428,7 +428,7 @@ async function groupChatFetch(input, init = {}) {
         if (!newEl) return false;
 
         wrapper.replaceWith(newEl);
-        startPollCountdowns();
+        window.GroupChat?.polls?.refreshCountdowns();
         return true;
     }
 
@@ -1152,7 +1152,7 @@ async function groupChatFetch(input, init = {}) {
                             }
                             
                             window.GroupChat?.skillLists?.restore();
-                            startPollCountdowns();
+        window.GroupChat?.polls?.refreshCountdowns();
 
                             // Restore the edit form state if it existed
                             if (activeEditFormId && activeEditContent) {
@@ -1889,69 +1889,6 @@ function closeAllModals() {
   window.GroupChat?.composer?.closePoll();
   window.GroupChat?.skillLists?.close();
   window.GroupChat?.elections?.closeAdmin();
-}
-
-function startPollCountdowns() {
-  const lifecycle = window.GroupChatLifecycle;
-  document.querySelectorAll('.poll-timer').forEach(timer => {
-    if (timer.dataset.timerSet === "true") return;
-
-    const expiresAtStr = timer.getAttribute('data-expires');
-    if (!expiresAtStr) {
-      timer.innerText = 'بدون زمان پایان';
-      return;
-    }
-
-    const expiresAt = new Date(expiresAtStr);
-
-    let intervalId = null;
-    function stopCountdown(label) {
-      if (label) timer.innerText = label;
-      if (intervalId !== null) lifecycle?.clearInterval(intervalId);
-      intervalId = null;
-      timer.dataset.timerSet = 'complete';
-    }
-
-    function updateTimer() {
-      if (!timer.isConnected) {
-        stopCountdown();
-        return false;
-      }
-      const now = new Date();
-      const diffMs = expiresAt - now;
-
-      if (isNaN(diffMs)) {
-        stopCountdown('تاریخ نامعتبر');
-        return false;
-      }
-
-      if (diffMs <= 0) {
-        stopCountdown('پایان یافته');
-        return false;
-      }
-
-      const totalSeconds = Math.floor(diffMs / 1000);
-      const hours = Math.floor(totalSeconds / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-if (hours > 24) {
-    const days = Math.floor(hours / 24);
-    const remainingHours = hours % 24;
-
-    timer.innerText = `${days} روز ${remainingHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-} else {
-    timer.innerText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-}
-
-      return true;
-
-    }
-
-    if (updateTimer()) {
-      intervalId = lifecycle.interval(updateTimer, 1000);
-      timer.dataset.timerSet = "true";
-    }
-  });
 }
 
 // // Add click handlers for file upload buttons

@@ -121,11 +121,13 @@ test('realtime retries and fallback pollers are owned by the page lifecycle', ()
 
 test('poll countdown and voice recorder release their owned resources', () => {
     const runtime = readFileSync('public/js/group-chat.js', 'utf8');
+    const polls = readFileSync('resources/js/group-chat/polls.js', 'utf8');
     const voice = readFileSync('public/js/voice-recorder.js', 'utf8');
 
-    assert.match(runtime, /lifecycle\.interval\(updateTimer, 1000\)/);
-    assert.match(runtime, /lifecycle\?\.clearInterval\(intervalId\)/);
-    assert.match(runtime, /timer\.dataset\.timerSet = 'complete'/);
+    assert.match(polls, /lifecycle\.interval\(update, 1000\)/);
+    assert.match(polls, /lifecycle\.clearInterval\(intervalId\)/);
+    assert.match(polls, /timer\.dataset\.timerSet = 'complete'/);
+    assert.doesNotMatch(runtime, /function startPollCountdowns\(/);
     assert.match(voice, /recordingTimer\s*=\s*createOwnedInterval/);
     assert.match(voice, /voiceLifecycle\?\.add\(destroyVoiceRecorder\)/);
     assert.match(voice, /destroyVoiceRecorder[\s\S]*stopTimer\(\)/);

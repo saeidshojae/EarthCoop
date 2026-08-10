@@ -4,6 +4,41 @@ function validationMessage(data, fallback) {
 }
 
 export function createPolls({ api, store, feed, actions, lifecycle }) {
+    function refreshCountdowns() {
+        document.querySelectorAll('.poll-timer').forEach(timer => {
+            if (timer.dataset.timerSet === 'true') return;
+            const expiresAtValue = timer.dataset.expires;
+            if (!expiresAtValue) {
+                timer.textContent = 'بدون زمان پایان';
+                return;
+            }
+            const expiresAt = new Date(expiresAtValue);
+            let intervalId = null;
+            const stop = label => {
+                if (label) timer.textContent = label;
+                if (intervalId !== null) lifecycle.clearInterval(intervalId);
+                intervalId = null;
+                timer.dataset.timerSet = 'complete';
+            };
+            const update = () => {
+                if (!timer.isConnected) return stop(), false;
+                const diff = expiresAt.getTime() - Date.now();
+                if (Number.isNaN(diff)) return stop('تاریخ نامعتبر'), false;
+                if (diff <= 0) return stop('پایان یافته'), false;
+                const total = Math.floor(diff / 1000);
+                const hours = Math.floor(total / 3600);
+                const minutes = Math.floor((total % 3600) / 60);
+                const seconds = total % 60;
+                const clock = `${String(hours % 24).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                timer.textContent = hours > 24 ? `${Math.floor(hours / 24)} روز ${clock}` : clock;
+                return true;
+            };
+            if (update()) {
+                intervalId = lifecycle.interval(update, 1000);
+                timer.dataset.timerSet = 'true';
+            }
+        });
+    }
     const notify = (message, type = 'info') => window.GroupChatFeedback?.toast?.(message, { type });
     const setStatus = (status, error = null) => store.setState({ pollStatus: status, pollError: error });
     const syncType = () => {
@@ -152,5 +187,6 @@ export function createPolls({ api, store, feed, actions, lifecycle }) {
         }
     });
 
-    return Object.freeze({ updateUI, vote });
+    refreshCountdowns();
+    return Object.freeze({ updateUI, vote, refreshCountdowns });
 }
