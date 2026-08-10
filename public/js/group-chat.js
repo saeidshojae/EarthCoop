@@ -353,9 +353,9 @@ if (!registerLegacyPostReaction()) {
         deltaRetryMs: 1000
     };
 
-    window.getGroupRealtimeState = function getGroupRealtimeState() {
+    function getGroupRealtimeState() {
         return { ...realtimeState };
-    };
+    }
 
     function markRealtimeHealthy() {
         realtimeState.connected = true;
@@ -992,7 +992,7 @@ if (!registerLegacyPostReaction()) {
         if (applied && contentType === 'post') updateLastPostCursor(payload.post_id || payload.content_id || payload.id);
     }
 
-    window.initGroupRealtimeListeners = function initGroupRealtimeListeners() {
+    function initGroupRealtimeListeners() {
         if (realtimeState.initialized || !window.groupId || !window.Echo || typeof window.Echo.private !== 'function') {
             return realtimeState.initialized;
         }
@@ -1057,7 +1057,7 @@ if (!registerLegacyPostReaction()) {
             realtimeState.usingFallback = true;
             return false;
         }
-    };
+    }
     
     // تابع برای دریافت آخرین message ID از صفحه
     function getLastMessageId() {
@@ -1087,8 +1087,7 @@ if (!registerLegacyPostReaction()) {
         return result;
     }
     
-    // تعریف startPolling در scope global برای دسترسی از DOMContentLoaded
-    window.startPolling = function startPolling() {
+    function startPolling() {
         if (pollingStarted) {
             pollLog('⚠️ Polling already started');
             return;
@@ -1405,6 +1404,12 @@ if (!registerLegacyPostReaction()) {
         realtimeLifecycle.timeout(waitForScrollRestore, 500); // هر 500ms چک کن
     }
 
+    window.GroupChat.realtimeRuntime = Object.freeze({
+        getState: getGroupRealtimeState,
+        initialize: initGroupRealtimeListeners,
+        startPolling,
+    });
+
 legacyLifecycle.on(document, 'DOMContentLoaded', function() {
     const chatBox = document.getElementById('chat-box');
     const form = document.getElementById('chatForm');
@@ -1716,33 +1721,22 @@ legacyLifecycle.on(document, 'DOMContentLoaded', function() {
         realtimeLifecycle.timeout(function() {
             pollLog('🚀🚀🚀 ATTEMPTING TO START POLLING 🚀🚀🚀');
             pollLog('Group ID:', window.groupId);
-            pollLog('initGroupRealtimeListeners function exists:', typeof window.initGroupRealtimeListeners === 'function');
-            pollLog('startPolling function exists:', typeof window.startPolling === 'function');
+            const realtimeInitResult = initGroupRealtimeListeners();
+            pollLog('Realtime init result:', realtimeInitResult);
 
-            let realtimeInitResult = false;
-            if (typeof window.initGroupRealtimeListeners === 'function') {
-                realtimeInitResult = window.initGroupRealtimeListeners();
-                pollLog('Realtime init result:', realtimeInitResult);
-            }
-            
-            if (typeof window.startPolling === 'function') {
-                if (shouldPollFallback()) {
-                    pollLog('✅ Starting polling because fallback is needed.');
-                    window.startPolling();
-                } else {
-                    pollLog('✅ Realtime healthy; polling deferred until fallback is needed.');
-                    realtimeState.fallbackMonitorTimer = realtimeLifecycle.interval(function() {
-                        if (shouldPollFallback()) {
-                            pollLog('⚠️ Realtime degraded; starting polling fallback.');
-                            window.clearInterval(realtimeState.fallbackMonitorTimer);
-                            realtimeState.fallbackMonitorTimer = null;
-                            window.startPolling();
-                        }
-                    }, 5000);
-                }
+            if (shouldPollFallback()) {
+                pollLog('✅ Starting polling because fallback is needed.');
+                startPolling();
             } else {
-                console.error('❌❌❌ window.startPolling function NOT FOUND! ❌❌❌');
-                console.error('Available functions:', Object.keys(window).filter(k => typeof window[k] === 'function' && k.toLowerCase().includes('poll')));
+                pollLog('✅ Realtime healthy; polling deferred until fallback is needed.');
+                realtimeState.fallbackMonitorTimer = realtimeLifecycle.interval(function() {
+                    if (shouldPollFallback()) {
+                        pollLog('⚠️ Realtime degraded; starting polling fallback.');
+                        realtimeLifecycle.clearInterval(realtimeState.fallbackMonitorTimer);
+                        realtimeState.fallbackMonitorTimer = null;
+                        startPolling();
+                    }
+                }, 5000);
             }
         }, 2000);
     }

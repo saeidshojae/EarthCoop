@@ -100,6 +100,11 @@ test('unread polling and observers are owned by the page lifecycle', () => {
 test('realtime retries and fallback pollers are owned by the page lifecycle', () => {
     const runtime = readFileSync('public/js/group-chat.js', 'utf8');
 
+    assert.match(runtime, /function getGroupRealtimeState\(\)/);
+    assert.match(runtime, /function initGroupRealtimeListeners\(\)/);
+    assert.match(runtime, /function startPolling\(\)/);
+    assert.match(runtime, /window\.GroupChat\.realtimeRuntime\s*=\s*Object\.freeze/);
+    assert.doesNotMatch(runtime, /window\.(?:getGroupRealtimeState|initGroupRealtimeListeners|startPolling)\s*=/);
     assert.match(runtime, /realtimeLifecycle\.timeout\(syncGroupDelta/);
     assert.match(runtime, /pollingInterval\s*=\s*realtimeLifecycle\.interval/);
     assert.match(runtime, /realtimeState\.postTimer\s*=\s*realtimeLifecycle\.interval/);
