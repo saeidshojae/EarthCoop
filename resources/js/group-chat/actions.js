@@ -1,8 +1,6 @@
 const legacyActionTargets = {
-    reply: ['replyToMessageFromButton', ({ target }) => [target, target.dataset.messageId]],
     pin: ['pinMessage', ({ target }) => [target.dataset.messageId]],
     reaction: ['toggleReaction', ({ target }) => [target.dataset.messageId, target.dataset.reactionType]],
-    'cancel-reply': ['cancelReply'],
     'close-report': ['closeReportBox'],
     'submit-report': ['submitReport'],
     'manage-members': ['showManageMembersModal'],
@@ -12,7 +10,6 @@ const legacyActionTargets = {
     'clear-chat': ['clearChatHistory'],
     'delete-chat': ['deleteChat'],
     'report-user': ['reportUser'],
-    'reply-content': ['replyToMessage', ({ target }) => [target.dataset.replyTarget, '', target.dataset.replyText || '']],
     'report-message': ['reportMessage', ({ target }) => [Number(target.dataset.messageId)]],
     'delete-message': ['deleteMessage', ({ target }) => [Number(target.dataset.messageId)]],
     'toggle-skill-list': ['toggleSkillList', ({ target }) => [Number(target.dataset.pollId)]],

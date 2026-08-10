@@ -454,6 +454,9 @@ test('legacy group runtime has no active raw page listeners or timers', () => {
     assert.match(groupChat, /legacyLifecycle\.on\(form, 'submit'/);
     assert.match(groupChat, /legacyLifecycle\.add\(\(\) => \{/);
     assert.doesNotMatch(groupChat, /window\.groupChat(?:Notify|Confirm|Prompt)/);
+    assert.doesNotMatch(groupChat, /window\.replyToMessageFromButton/);
+    assert.match(groupChat, /GroupChat\.actions\.register\('reply'/);
+    assert.match(groupChat, /GroupChat\.actions\.register\('cancel-reply'/);
     for (const file of files) {
         assert.doesNotMatch(readFileSync(file, 'utf8'), /window\.groupChat(?:Notify|Confirm|Prompt)/, file);
     }

@@ -2264,8 +2264,6 @@ function replyToMessageFromButton(button, fallbackMessageId) {
     replyToMessage(messageId, senderName, rawContent);
 }
 
-window.replyToMessageFromButton = replyToMessageFromButton;
-
 function cancelReply() {
     // Hide reply indicator container
     const replyContainer = document.getElementById('reply-indicator-container');
@@ -2408,6 +2406,14 @@ async function deleteMessage(messageId) {
         groupChatNotify('خطا در ارتباط با سرور', 'error');
     }
 }
+
+window.GroupChat.actions.register('reply', ({ target }) => {
+    replyToMessageFromButton(target, target.dataset.messageId);
+});
+window.GroupChat.actions.register('cancel-reply', cancelReply);
+window.GroupChat.actions.register('reply-content', ({ target }) => {
+    replyToMessage(target.dataset.replyTarget, '', target.dataset.replyText || '');
+});
 
 async function reportMessage(messageId) {
     const reason = await groupChatPrompt('لطفاً دلیل گزارش این پیام را وارد کنید:');
