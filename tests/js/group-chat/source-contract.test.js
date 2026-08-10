@@ -102,20 +102,19 @@ test('unread polling and observers are owned by the page lifecycle', () => {
 });
 
 test('realtime retries and fallback pollers are owned by the page lifecycle', () => {
-    const runtime = readFileSync('public/js/group-chat.js', 'utf8');
+    const legacy = readFileSync('public/js/group-chat.js', 'utf8');
+    const runtime = readFileSync('resources/js/group-chat/realtime-runtime.js', 'utf8');
+    const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
 
-    assert.match(runtime, /function getGroupRealtimeState\(\)/);
-    assert.match(runtime, /function initGroupRealtimeListeners\(\)/);
-    assert.match(runtime, /function startPolling\(\)/);
-    assert.match(runtime, /window\.GroupChat\.realtimeRuntime\s*=\s*Object\.freeze/);
-    assert.doesNotMatch(runtime, /window\.(?:getGroupRealtimeState|initGroupRealtimeListeners|startPolling)\s*=/);
-    assert.match(runtime, /realtimeLifecycle\.timeout\(syncGroupDelta/);
-    assert.match(runtime, /pollingInterval\s*=\s*realtimeLifecycle\.interval/);
-    assert.match(runtime, /realtimeState\.postTimer\s*=\s*realtimeLifecycle\.interval/);
-    assert.match(runtime, /realtimeState\.reconcileTimer\s*=\s*realtimeLifecycle\.interval/);
-    assert.match(runtime, /realtimeLifecycle\.on\(window, 'online'/);
-    assert.doesNotMatch(runtime, /pollingInterval\s*=\s*setInterval/);
-    assert.doesNotMatch(runtime, /window\.setTimeout\(syncGroupDelta/);
+    assert.match(index, /createRealtimeRuntime\(\{ app, groupId:/);
+    assert.match(legacy, /installRealtime\(\{ debug: groupChatDebug \}\)/);
+    assert.doesNotMatch(legacy, /function (?:getGroupRealtimeState|initGroupRealtimeListeners|startPolling|syncGroupDelta)\(/);
+    assert.match(runtime, /lifecycle\.timeout\(syncDelta, delay\)/);
+    assert.match(runtime, /lifecycle\.interval\(pollMessages, 1000\)/);
+    assert.match(runtime, /lifecycle\.interval\(pollPosts, 3000\)/);
+    assert.match(runtime, /lifecycle\.interval\(reconcilePosts, 10000\)/);
+    assert.match(runtime, /lifecycle\.on\(window, 'online'/);
+    assert.doesNotMatch(runtime, /(^|[^.\w])setInterval\(/m);
     assert.doesNotMatch(runtime, /window\.addEventListener\('(online|offline)'/);
 });
 
@@ -223,6 +222,7 @@ test('post submission runtime is extracted without patching openBlogBox', () => 
     const runtime = readFileSync('resources/views/groups/partials/post_submission_runtime.blade.php', 'utf8');
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
     const adapters = readFileSync('resources/js/group-chat/legacy-renderers.js', 'utf8');
+    const realtime = readFileSync('resources/js/group-chat/realtime-runtime.js', 'utf8');
 
     assert.match(blade, /@include\('groups\.partials\.post_submission_runtime'\)/);
     assert.doesNotMatch(blade, /function interceptPostForm\(/);
@@ -246,10 +246,10 @@ test('post submission runtime is extracted without patching openBlogBox', () => 
     assert.match(adapters, /app\.feed\.apply/);
     assert.match(adapters, /callbacks\.updateLastPostCursor/);
     assert.match(adapters, /mutate\(type, action, payload, source = 'local'\)/);
-    assert.match(groupChat, /feedBridge\.create\('post', p, 'polling-fallback'\)/);
-    assert.match(groupChat, /feedBridge\.mutate\('post', 'delete', \{ id: pid \}, 'polling-fallback'\)/);
-    assert.match(groupChat, /feedBridge\.mutate\('post', 'update', p, 'polling-fallback'\)/);
-    assert.match(groupChat, /feedBridge\.mutate\('post', 'delete', \{ id: pid \}, 'reconcile-fallback'\)/);
+    assert.match(realtime, /feedBridge\.create\('post', item, 'polling-fallback'\)/);
+    assert.match(realtime, /feedBridge\.mutate\('post', 'delete', \{ id \}, 'polling-fallback'\)/);
+    assert.match(realtime, /feedBridge\.mutate\('post', 'update', item, 'polling-fallback'\)/);
+    assert.match(realtime, /feedBridge\.mutate\('post', 'delete', \{ id \}, 'reconcile-fallback'\)/);
     assert.match(groupChat, /feedBridge\.mutate\('post', 'delete', \{ id: postId \}, 'local-post-delete'\)/);
     assert.match(groupChat, /feedBridge\.mutate\('post', 'update', updatedPost, 'local-post-edit'\)/);
     assert.match(adapters, /callbacks\.updatePostFields\?\.\(\{ \.\.\.item, id:/);
@@ -448,6 +448,7 @@ test('poll operations are owned by the modular Polls runtime', () => {
     const polls = readFileSync('resources/js/group-chat/polls.js', 'utf8');
     const actions = readFileSync('resources/js/group-chat/actions.js', 'utf8');
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
+    const realtime = readFileSync('resources/js/group-chat/realtime-runtime.js', 'utf8');
 
     assert.match(index, /import \{ createPolls \} from '\.\/polls\.js'/);
     assert.match(index, /app\.polls = createPolls\(/);
@@ -458,7 +459,7 @@ test('poll operations are owned by the modular Polls runtime', () => {
     assert.match(polls, /feed\.mutate\(item, 'local-poll-edit'\)/);
     assert.doesNotMatch(actions, /'submit-vote': \['submitVote'\]|'delete-poll': \['deletePoll'/);
     assert.doesNotMatch(groupChat, /function (?:submitVote|updatePollUI)\(|window\.deletePoll/);
-    assert.match(groupChat, /action: 'vote' \}, 'websocket-poll'/);
+    assert.match(realtime, /feedBridge\.mutate\('poll', 'vote', poll, 'websocket-poll'\)/);
 });
 
 test('election page state and actions are lifecycle-owned', () => {
@@ -516,7 +517,8 @@ test('typing indicator is store-backed and lifecycle-owned', () => {
     assert.match(typing, /typingUsers/);
     assert.match(typing, /store\.subscribe/);
     assert.match(typing, /lifecycle\.timeout\(clear, 3000\)/);
-    assert.match(legacy, /GroupChat\?\.typing\?\.apply\(payload\)/);
+    const realtime = readFileSync('resources/js/group-chat/realtime-runtime.js', 'utf8');
+    assert.match(realtime, /app\.typing\?\.apply\(payload\)/);
     assert.doesNotMatch(legacy, /remoteTypingUsers|typingClearTimer|function renderTypingIndicator/);
 });
 
