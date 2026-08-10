@@ -5312,7 +5312,7 @@
 
 
 
-                if (typeof appendMessage === 'function') {
+                if (result.message && typeof renderVoiceMessage === 'function') {
 
 
 
@@ -5322,7 +5322,8 @@
 
 
 
-                        appendMessage(result.message);
+                        clearOptimisticVoice(result.message);
+                        renderVoiceMessage(result.message, 'voice-submit-response');
 
 
 
@@ -5337,7 +5338,7 @@
 
 
 
-                        console.warn('appendMessage failed after successful voice upload, waiting for polling sync.', renderError);
+                        console.warn('Canonical voice render failed after upload; waiting for polling sync.', renderError);
 
 
 
@@ -5357,7 +5358,7 @@
 
 
 
-                    console.warn('appendMessage is not available; waiting for polling sync.');
+                    console.warn('Stored voice response is unavailable; waiting for polling sync.');
 
 
 
@@ -7027,6 +7028,27 @@
 
 
 
+    function clearOptimisticVoice(message) {
+        const isStoredVoice = (message?.voice_message || message?.voice_message_url)
+            && message?.id && !String(message.id).startsWith('voice_temp_');
+        if (!isStoredVoice || !optimisticVoiceTempId) return;
+        document.getElementById('msg-' + optimisticVoiceTempId)?.remove();
+        try { URL.revokeObjectURL(optimisticVoiceBlobUrl); } catch (error) {}
+        optimisticVoiceTempId = null;
+        optimisticVoiceBlobUrl = null;
+    }
+
+    function renderVoiceMessage(message, source) {
+        if (!message) return false;
+        const canonicalFeed = window.GroupChat?.feed;
+        if (typeof canonicalFeed?.apply === 'function') {
+            const [rendered] = canonicalFeed.apply([{ ...message, content_type: 'message' }], source);
+            return rendered || document.getElementById('msg-' + message.id) || false;
+        }
+        const legacyRender = window.renderMessageThroughPipeline || window.appendMessage;
+        return typeof legacyRender === 'function' ? legacyRender(message, source) : false;
+    }
+
     function installOptimisticVoiceBridge() {
         const originalAppend = window.appendMessage;
         let wrappedAppend = null;
@@ -7059,7 +7081,7 @@
                 modal.style.transition = 'opacity 0.2s';
                 setTimeout(() => { modal.style.display = 'none'; modal.style.opacity = ''; }, 200);
             }
-            const renderVoice = window.renderMessageThroughPipeline || window.appendMessage;
+            const renderVoice = renderVoiceMessage;
             if (typeof renderVoice === 'function') {
                 renderVoice({
                     id: tempId,
