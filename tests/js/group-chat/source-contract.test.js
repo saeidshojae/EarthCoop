@@ -14,6 +14,7 @@ const files = [
     'resources/views/groups/partials/comment.blade.php',
     'resources/views/groups/partials/header.blade.php',
     'resources/views/groups/partials/group_info_panel.blade.php',
+    'resources/views/groups/partials/group_hero.blade.php',
     'resources/views/groups/partials/action_menu_dismissal.blade.php',
     'resources/views/groups/partials/chat_search_runtime.blade.php',
     'resources/views/groups/partials/pin_runtime.blade.php',
@@ -354,4 +355,16 @@ test('chat page styles are extracted in cascade order', () => {
     assert.doesNotMatch(blade, /<style>/);
     assert.ok(includes.every(include => blade.includes(include)));
     assert.ok(includes.every((include, index) => index === 0 || blade.indexOf(includes[index - 1]) < blade.indexOf(include)));
+});
+
+test('group hero markup is loaded through its dedicated partial', () => {
+    const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
+    const hero = readFileSync('resources/views/groups/partials/group_hero.blade.php', 'utf8');
+
+    assert.match(blade, /@include\('groups\.partials\.group_hero'\)/);
+    assert.doesNotMatch(blade, /class="[^"]*group-info-card/);
+    assert.match(hero, /class="[^"]*group-info-card/);
+    assert.match(hero, /data-chat-page-action="open-group-info"/);
+    assert.match(hero, /data-chat-page-action="open-blog"/);
+    assert.match(hero, /data-chat-page-action="open-poll"/);
 });

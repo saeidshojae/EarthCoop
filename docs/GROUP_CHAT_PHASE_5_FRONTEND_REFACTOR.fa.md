@@ -78,6 +78,8 @@ Checkpoint سی‌وهفتم: کنترل نمایش فرم ویرایش poll ا�
 
 Checkpoint سی‌وهشتم: هر سه بلوک CSS باقی‌ماندهٔ صفحه به partialهای مستقل `base_styles`، `message_edit_styles` و `auxiliary_styles` منتقل شدند. includeها دقیقاً در نقاط قبلی باقی مانده‌اند تا ترتیب cascade تغییر نکند و قرارداد source ترتیب آن‌ها و نبود `<style>` در Blade اصلی را کنترل می‌کند. این استخراج ۱۸۵۴ خط CSS را از فایل هماهنگ‌کننده خارج کرد و `chat.blade.php` از ۲۵۰۶ به ۶۵۲ خط کاهش یافت.
 
+Checkpoint سی‌ونهم: hero و خلاصهٔ اطلاعات گروه در نسخه‌های موبایل و دسکتاپ، آمار و actionهای مدیریتی/محتوا از Blade اصلی به partial مستقل `group_hero` منتقل شدند. این checkpoint صرفاً مرزبندی markup است و ترتیب DOM و رفتار موجود را تغییر نمی‌دهد؛ قرارداد source حضور actionهای داده‌محور در partial و نبود card اصلی در فایل هماهنگ‌کننده را کنترل می‌کند. Blade اصلی از ۶۵۲ به ۳۳۸ خط کاهش یافت.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.
