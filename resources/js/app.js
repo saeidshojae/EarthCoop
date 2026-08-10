@@ -3,16 +3,22 @@ import "../css/app.css";
 import "bootstrap";
 import "./bootstrap";
 import $ from "jquery";
+import "select2";
+import "select2/dist/css/select2.min.css";
 import "./najm-bahar.js";
 import { register } from "swiper/element/bundle";
 import "./group-chat/index.js";
 
 register();
 
-// Preserve CDN jQuery with Select2 when present.
-if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.select2) {
-	window.$ = $;
-	window.jQuery = $;
+window.$ = $;
+window.jQuery = $;
+
+if ($.fn.select2?.defaults) {
+	$.fn.select2.defaults.set("language", {
+		noResults: () => "نتیجه‌ای یافت نشد",
+		searching: () => "در حال جستجو...",
+	});
 }
 
 

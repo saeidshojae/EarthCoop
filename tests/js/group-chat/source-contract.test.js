@@ -71,6 +71,18 @@ test('chat page loads runtime through its dedicated partial', () => {
     assert.doesNotMatch(source, /asset\('js\/group-chat\.js'\)/);
 });
 
+test('chat page uses only locally bundled library assets', () => {
+    const chat = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
+    const layout = readFileSync('resources/views/layouts/chat.blade.php', 'utf8');
+    const app = readFileSync('resources/js/app.js', 'utf8');
+
+    assert.doesNotMatch(chat, /<(?:script|link)\b[^>]+https?:\/\//i);
+    assert.match(layout, /vendor\/fontawesome\/css\/all\.min\.css/);
+    assert.match(app, /import \$ from "jquery"/);
+    assert.match(app, /import "select2"/);
+    assert.match(app, /select2\/dist\/css\/select2\.min\.css/);
+});
+
 test('sidecar runtimes expose explicit ownership APIs', () => {
     const features = readFileSync('public/js/chat-features.js', 'utf8');
     const voice = readFileSync('public/js/voice-recorder.js', 'utf8');
@@ -95,6 +107,8 @@ test('message delete and report actions use the delegated action bridge', () => 
         assert.match(messageRenderer, new RegExp(`data-group-chat-action="${action}"`));
         assert.match(message, new RegExp(`data-group-chat-action="${action}"`));
     }
+    assert.match(messageRenderer, /message\?\.id \?\? message\?\.content_id \?\? message\?\.message_id/);
+    assert.match(messageRenderer, /userId == null[\s\S]*return false/);
     assert.doesNotMatch(message, /\$message\b/);
     assert.match(message, /data-group-chat-action="delete-message" data-message-id="\{\{ \$item->id \}\}"/);
     assert.match(message, /data-group-chat-action="report-message" data-message-id="\{\{ \$item->id \}\}"/);

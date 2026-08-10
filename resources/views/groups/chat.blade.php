@@ -8,29 +8,7 @@ $lastReadMessageId = $lastReadMessageId ?? null;
 
 @section('head-tag')
 
-<!-- Tailwind & Bootstrap CSS via Vite -->
-<!-- Font Awesome -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
-<!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
-<!-- Select2 -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script>
-// مطمئن شو Select2 بعد از jQuery لود شده
-if (typeof jQuery !== 'undefined') {
-    jQuery.fn.select2.defaults.set('language', {
-        noResults: function() {
-            return "نتیجه‌ای یافت نشد";
-        },
-        searching: function() {
-            return "در حال جستجو...";
-        }
-    });
-}
-</script>
+<!-- Bootstrap, jQuery and Select2 are bundled by Vite; Font Awesome is local in the layout. -->
 
 <script src="{{ asset('vendor/ckeditor/ckeditor.js') }}"></script>
 
