@@ -16,6 +16,7 @@ const files = [
     'resources/views/groups/partials/group_info_panel.blade.php',
     'resources/views/groups/partials/action_menu_dismissal.blade.php',
     'resources/views/groups/partials/chat_search_runtime.blade.php',
+    'resources/views/groups/partials/pin_runtime.blade.php',
 ];
 
 test('group chat templates and runtime do not contain inline event handlers', () => {
@@ -138,4 +139,16 @@ test('chat search runtime is loaded through its dedicated partial', () => {
     assert.match(search, /lifecycle\.on\(listEl, 'click'/);
     assert.doesNotMatch(search, /window\.__(?:setSearching|ensureSearchOpen)/);
     assert.doesNotMatch(search, /\.addEventListener\(/);
+});
+
+test('pin runtime is extracted and targets the requested message id', () => {
+    const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
+    const pin = readFileSync('resources/views/groups/partials/pin_runtime.blade.php', 'utf8');
+
+    assert.match(blade, /@include\('groups\.partials\.pin_runtime'\)/);
+    assert.doesNotMatch(blade, /function pinMessage\(/);
+    assert.match(pin, /function pinMessage\(messageId\)/);
+    assert.match(pin, /function unpinMessage\(messageId\)/);
+    assert.equal((pin.match(/`msg-\$\{messageId\}`/g) || []).length, 2);
+    assert.doesNotMatch(pin, /`msg-\$\{id\}`/);
 });

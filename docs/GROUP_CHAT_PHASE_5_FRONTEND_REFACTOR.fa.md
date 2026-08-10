@@ -40,6 +40,8 @@ Checkpoint هجدهم: runtime کامل جست‌وجوی چت شامل باز/�
 
 Checkpoint نوزدهم: partial جست‌وجو دارای guard ورود مجدد شد و تمام listenerهای ثابت آن به Lifecycle منتقل شدند. stateهای `__setSearching` و `__ensureSearchOpen` از `window` حذف و محلی شدند؛ listener جداگانهٔ هر نتیجه نیز با یک handler delegated روی لیست جایگزین شد تا pagination تعداد handlerها را افزایش ندهد.
 
+Checkpoint بیستم: runtime سنجاق/برداشتن سنجاق پیام از Blade اصلی به `groups/partials/pin_runtime.blade.php` منتقل شد. هر دو مسیر pin و unpin که به‌اشتباه از متغیر تعریف‌نشدهٔ `id` برای DOM lookup استفاده می‌کردند به `messageId` اصلاح شدند و تست قرارداد این شناسه را برای هر دو مسیر کنترل می‌کند.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.
@@ -55,7 +57,7 @@ Checkpoint نوزدهم: partial جست‌وجو دارای guard ورود مج�
 
 ## تست checkpoint اول
 
-- `npm run test:group-chat`: بیست‌وسه تست پاس؛ شامل dual-read sequence، renderer مشترک، mutation pipeline، قرارداد delegated action، cleanup lifecycle و قرارداد partialهای منوی عملیات و جست‌وجو.
+- `npm run test:group-chat`: بیست‌وچهار تست پاس؛ شامل dual-read sequence، renderer مشترک، mutation pipeline، قرارداد delegated action، cleanup lifecycle و قرارداد partialهای منو، جست‌وجو و pin/unpin.
 - `npm run build`: build production موفق.
 - `node --check public/js/group-chat.js`: موفق.
 - `php artisan test tests/Feature/GroupChat tests/Unit/GroupChat`: بیست‌ودو تست پاس؛ شامل شمارندهٔ canonical کامنت در delta.
