@@ -72,6 +72,19 @@ if (window.groupId) {
         return app.realtimeRuntime;
     };
 
+    const debug = Boolean(
+        window.__groupChatDebug || window.__chatPollingDebug
+        || localStorage.getItem('__groupChatDebug') === '1'
+        || localStorage.getItem('__chatPollingDebug') === '1'
+    );
+    const realtimeRuntime = app.installRealtime({ debug });
+    app.installLegacyRenderers({ updateLastPostCursor: id => realtimeRuntime.advancePost(id) });
+    app.composer.initializeSubmission({ feed, realtime: realtimeRuntime });
+    lifecycle.timeout(() => {
+        realtimeRuntime.initialize();
+        realtimeRuntime.startPolling();
+    }, 2000);
+
     app.feed.hydrate('initial');
 
     lifecycle.on(window, 'online', () => store.setState({ connection: 'connecting' }));

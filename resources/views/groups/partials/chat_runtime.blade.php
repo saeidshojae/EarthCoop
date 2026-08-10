@@ -10,6 +10,5 @@ window.yourRole = yourRole;
 const manageCount = {{ $groupSetting ? $groupSetting->manager_count : 0 }};
 const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
 </script>
-<script src="{{ asset('js/group-chat.js') }}" defer></script>
 <script src="{{ asset('js/chat-features.js') }}" defer></script>
 <script src="{{ asset('js/voice-recorder.js') }}" defer></script>

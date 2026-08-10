@@ -116,7 +116,7 @@ test('realtime retries and fallback pollers are owned by the page lifecycle', ()
     const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
 
     assert.match(index, /createRealtimeRuntime\(\{ app, groupId:/);
-    assert.match(legacy, /installRealtime\(\{ debug: groupChatDebug \}\)/);
+    assert.match(index, /app\.installRealtime\(\{ debug \}\)/);
     assert.doesNotMatch(legacy, /function (?:getGroupRealtimeState|initGroupRealtimeListeners|startPolling|syncGroupDelta)\(/);
     assert.match(runtime, /lifecycle\.timeout\(syncDelta, delay\)/);
     assert.match(runtime, /lifecycle\.interval\(pollMessages, 1000\)/);
@@ -233,6 +233,7 @@ test('post submission runtime is extracted without patching openBlogBox', () => 
     const adapters = readFileSync('resources/js/group-chat/legacy-renderers.js', 'utf8');
     const realtime = readFileSync('resources/js/group-chat/realtime-runtime.js', 'utf8');
     const operations = readFileSync('resources/js/group-chat/operations.js', 'utf8');
+    const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
 
     assert.match(blade, /@include\('groups\.partials\.post_submission_runtime'\)/);
     assert.doesNotMatch(blade, /function interceptPostForm\(/);
@@ -249,7 +250,7 @@ test('post submission runtime is extracted without patching openBlogBox', () => 
     assert.doesNotMatch(runtime, /appendChild\(/);
     assert.doesNotMatch(runtime, /_init(?:PostMenus|ReactionButtons)/);
     assert.doesNotMatch(runtime, /_lastKnownPostId/);
-    assert.match(groupChat, /window\.GroupChat\.installLegacyRenderers/);
+    assert.match(index, /app\.installLegacyRenderers\(\{ updateLastPostCursor:/);
     assert.match(adapters, /const bridge = Object\.freeze/);
     assert.match(adapters, /app\.feedBridge = bridge/);
     assert.doesNotMatch(groupChat, /window\.GroupChat(?:LegacyMessageMutations|LegacyFeedRenderers|FeedBridge)/);
@@ -455,7 +456,7 @@ test('renderer adapters and feed bridge are owned by a modular registry', () => 
     assert.match(adapters, /Object\.entries\(adapters\)\.forEach/);
     assert.match(adapters, /app\.feed\.apply/);
     assert.match(adapters, /app\.feed\.mutate/);
-    assert.match(legacy, /window\.GroupChat\.installLegacyRenderers/);
+    assert.match(index, /app\.installLegacyRenderers\(\{ updateLastPostCursor:/);
     assert.doesNotMatch(legacy, /legacyMessageMutations|legacyFeedRenderers|registerLegacyRenderers/);
     assert.doesNotMatch(legacy, /function (?:appendRenderedFeedHtml|replaceRenderedFeedHtml|removeMessageDom)\(/);
 });
@@ -543,12 +544,13 @@ test('legacy group runtime has no active raw page listeners or timers', () => {
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8').replace(/^\s*\/\/.*$/gm, '');
     const unread = readFileSync('resources/js/group-chat/unread.js', 'utf8');
     const composer = readFileSync('resources/js/group-chat/composer.js', 'utf8');
+    const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
 
     assert.doesNotMatch(groupChat, /\.addEventListener\(/);
     assert.doesNotMatch(groupChat, /(^|[^.\w])set(?:Timeout|Interval)\(/m);
     assert.doesNotMatch(groupChat, /(^|[^.\w])clear(?:Timeout|Interval)\(/m);
     assert.match(composer, /lifecycle\.on\(form, 'submit'/);
-    assert.match(groupChat, /composer\.initializeSubmission/);
+    assert.match(index, /app\.composer\.initializeSubmission/);
     assert.doesNotMatch(groupChat, /legacyLifecycle\.on\(form, 'submit'/);
     assert.match(unread, /lifecycle\.add\(\(\) => \{/);
     assert.doesNotMatch(groupChat, /window\.groupChat(?:Notify|Confirm|Prompt)/);
