@@ -443,8 +443,8 @@ async function groupChatFetch(input, init = {}) {
         const msgRow = document.getElementById('msg-' + messageId);
         if (msgRow) fadeRemoveElement(msgRow);
         const parentInput = document.getElementById('parent_id');
-        if (parentInput && parentInput.value == messageId && typeof cancelReply === 'function') {
-            cancelReply();
+        if (parentInput && parentInput.value == messageId) {
+            window.GroupChat?.composer?.cancelReply();
         }
     }
 
@@ -1482,7 +1482,7 @@ legacyLifecycle.on(document, 'DOMContentLoaded', function() {
                     const parentMsgEl = document.getElementById('msg-' + parentIdVal);
                     if (!parentMsgEl) {
                         // پیام مرجع حذف شده - reply indicator رو پاک کن
-                        if (typeof cancelReply === 'function') cancelReply();
+                        window.GroupChat?.composer?.cancelReply();
                         formData.set('parent_id', '');
                     }
                 }
@@ -1560,13 +1560,7 @@ legacyLifecycle.on(document, 'DOMContentLoaded', function() {
                         activeMessageEditor.setData('');
                     }
                     
-                    // Clear parent_id after successful submission
-                    document.getElementById('parent_id').value = '';
-                    // Hide reply indicator
-                    const replyIndicator = document.querySelector('.reply-indicator');
-                    if (replyIndicator) {
-                        replyIndicator.remove();
-                    }
+                    window.GroupChat?.composer?.cancelReply();
                 } else {
                     // حذف پیام موقت در صورت خطا سرور
                     const tempElFail = document.getElementById('msg-' + tempMsgId);
@@ -1960,106 +1954,6 @@ if (hours > 24) {
   });
 }
 
-function replyToMessage(messageId, senderName, content) {
-    const sanitize = function(value) {
-        const div = document.createElement('div');
-        div.textContent = String(value || '');
-        return div.innerHTML;
-    };
-
-    const normalizedSender = String(senderName || 'کاربر').trim() || 'کاربر';
-    const contentAsText = String(content || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-    const previewText = contentAsText.substring(0, 120);
-
-    // Find the reply indicator container
-    const replyContainer = document.getElementById('reply-indicator-container');
-    if (!replyContainer) {
-        console.error('Reply indicator container not found');
-        return;
-    }
-
-    // Create reply indicator content directly in container (بدون wrapper اضافی)
-    replyContainer.innerHTML = `
-        <div class="reply-info">
-            <div class="reply-arrow"></div>
-            <div style="flex: 1; min-width: 0;">
-                <div class="reply-sender-name">${sanitize(normalizedSender)}</div>
-                <div class="reply-content">${sanitize(previewText)}</div>
-            </div>
-        </div>
-        <button type="button" class="btn-cancel-reply" data-legacy-chat-action="cancel-reply">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
-    replyContainer.style.display = 'block';
-
-    // Set parent_id in form
-    const parentIdInput = document.getElementById('parent_id');
-    if (parentIdInput) {
-        parentIdInput.value = messageId;
-    }
-
-    // Scroll to input
-    const chatForm = document.getElementById('chatForm');
-    if (chatForm) {
-        chatForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-}
-
-function replyToMessageFromButton(button, fallbackMessageId) {
-    const bubble = button?.closest('.message-bubble');
-    const row = button?.closest('.message-row');
-    const messageId = String(
-        fallbackMessageId ||
-        bubble?.getAttribute('data-message-id') ||
-        row?.getAttribute('data-message-id') ||
-        ''
-    ).trim();
-
-    if (!messageId) {
-        console.warn('Reply failed: message id not found from button context.');
-        return;
-    }
-
-    const senderEl = bubble?.querySelector('.message-sender');
-    const senderName = (senderEl?.textContent || '').trim() || (bubble?.classList.contains('you') ? 'شما' : 'کاربر');
-    const rawContent =
-        bubble?.getAttribute('data-content-raw') ||
-        bubble?.querySelector('.message-content')?.textContent ||
-        '';
-
-    replyToMessage(messageId, senderName, rawContent);
-}
-
-function cancelReply() {
-    // Hide reply indicator container
-    const replyContainer = document.getElementById('reply-indicator-container');
-    if (replyContainer) {
-        replyContainer.innerHTML = '';
-        replyContainer.style.display = 'none';
-    }
-    
-    // Remove reply indicator (fallback for old code)
-    const replyIndicator = document.querySelector('.reply-indicator');
-    if (replyIndicator && replyIndicator.parentElement === document.body) {
-        replyIndicator.remove();
-    }
-
-    // Clear parent_id
-    const parentIdInput = document.getElementById('parent_id');
-    if (parentIdInput) {
-        parentIdInput.value = '';
-    }
-}
-
-// Add event listener for form submit to clear reply after sending
-const chatForm = document.getElementById('chatForm');
-if (chatForm) {
-    legacyLifecycle.on(chatForm, 'submit', function() {
-        legacyLifecycle.timeout(cancelReply, 100);
-    });
-}
-
 // // Add click handlers for file upload buttons
 // document.getElementById('file-upload').addEventListener('change', function(e) {
 //     if (this.files.length > 0) {
@@ -2167,20 +2061,12 @@ async function deleteMessage(messageId) {
             window.setTimeout(() => row.remove(), 300);
         }
         const parentInput = document.getElementById('parent_id');
-        if (parentInput?.value == messageId && typeof cancelReply === 'function') cancelReply();
+        if (parentInput?.value == messageId) window.GroupChat?.composer?.cancelReply();
     } catch (error) {
         console.error('Error deleting message:', error);
         groupChatNotify('خطا در ارتباط با سرور', 'error');
     }
 }
-
-window.GroupChat.actions.register('reply', ({ target }) => {
-    replyToMessageFromButton(target, target.dataset.messageId);
-});
-window.GroupChat.actions.register('cancel-reply', cancelReply);
-window.GroupChat.actions.register('reply-content', ({ target }) => {
-    replyToMessage(target.dataset.replyTarget, '', target.dataset.replyText || '');
-});
 
 async function reportMessage(messageId) {
     const reason = await groupChatPrompt('لطفاً دلیل گزارش این پیام را وارد کنید:');
