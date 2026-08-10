@@ -58,6 +58,8 @@ Checkpoint بیست‌وهفتم: حذف‌های reconcile، حذف محلی پ
 
 Checkpoint بیست‌وهشتم: initialization عنصربه‌عنصر منو و reaction پست با event delegation زیر مالکیت `GroupChatLifecycle` جایگزین شد. globalهای `_initPostMenus` و `_initReactionButtons`، فلگ‌های خصوصی `_menuInit`/`_reactionInit` و listenerهای تکراری `DOMContentLoaded` حذف شدند؛ بنابراین پست‌ها و نظرسنجی‌های تازه‌رندرشده بدون initialization دستی قابل تعامل‌اند. delegation عمداً `.message-action` را به handler فعلی پیام واگذار می‌کند و click بیرون، Escape و repositionهای resize/scroll را با cleanup lifecycle مدیریت می‌کند.
 
+Checkpoint بیست‌ونهم: delegation مرکزی action menu به `.message-action` نیز گسترش یافت و دو بلوک initializer پیام در `public/js/group-chat.js` و Blade اصلی حذف شدند. toggle، aria، position، بستن سایر menuها و بستن actionهای معمولی اکنون برای message/post/poll یک مسیر مشترک دارند؛ `.btn-reaction` همچنان باز می‌ماند تا handler تخصصی reaction رفتار قبلی را حفظ کند. قرارداد source نبود lookup و listener per-message را در هر دو منبع کنترل می‌کند.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.

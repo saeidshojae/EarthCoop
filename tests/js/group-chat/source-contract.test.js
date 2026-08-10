@@ -226,6 +226,7 @@ test('post submission runtime is extracted without patching openBlogBox', () => 
 
 test('post menus and reactions use lifecycle-owned event delegation', () => {
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
+    const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
 
     assert.match(groupChat, /window\.__groupChatPostInteractionsDelegated/);
     assert.match(groupChat, /actionMenuLifecycle\.on\(document, 'click'/);
@@ -233,9 +234,12 @@ test('post menus and reactions use lifecycle-owned event delegation', () => {
     assert.match(groupChat, /actionMenuLifecycle\.on\(window, 'resize'/);
     assert.match(groupChat, /actionMenuLifecycle\.on\(document, 'scroll'/);
     assert.match(groupChat, /\.reaction-buttons \.btn-like, \.reaction-buttons \.btn-dislike/);
-    assert.match(groupChat, /\[data-action-menu\]:not\(\.message-action\)/);
+    assert.match(groupChat, /toggle\?\.closest\('\[data-action-menu\]'\)/);
+    assert.match(groupChat, /actionItem\?\.classList\.contains\('btn-reaction'\)/);
     assert.match(groupChat, /actionMenuLifecycle\.add\(function\(\)/);
     assert.doesNotMatch(groupChat, /_initPostMenus/);
     assert.doesNotMatch(groupChat, /_initReactionButtons/);
     assert.doesNotMatch(groupChat, /_menuInit|_reactionInit/);
+    assert.doesNotMatch(groupChat, /messageRow\.querySelector\('\[data-action-menu\]'\)/);
+    assert.doesNotMatch(blade, /messageRow\.querySelector\('\[data-action-menu\]'\)/);
 });

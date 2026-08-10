@@ -825,8 +825,7 @@ if (actionMenuLifecycle && !actionMenuLifecycle.destroyed && !window.__groupChat
         }
 
         const toggle = event.target.closest('.action-menu__toggle');
-        const menu = toggle?.closest('[data-action-menu]:not(.message-action)');
-        if (toggle && !menu) return;
+        const menu = toggle?.closest('[data-action-menu]');
         if (toggle && menu) {
             event.preventDefault();
             event.stopPropagation();
@@ -839,7 +838,7 @@ if (actionMenuLifecycle && !actionMenuLifecycle.destroyed && !window.__groupChat
         }
 
         const actionItem = event.target.closest('.action-menu__list button, .action-menu__list a');
-        if (actionItem?.closest('[data-action-menu].message-action')) return;
+        if (actionItem?.classList.contains('btn-reaction')) return;
         closeAllActionMenus();
     });
 
@@ -2648,43 +2647,6 @@ function appendMessage(message) {
     // Initialize action menu handlers if function exists
     if (typeof initializeMessageActions === 'function') {
         initializeMessageActions(messageRow);
-    }
-    
-    // Initialize action menu toggle
-    const menu = messageRow.querySelector('[data-action-menu]');
-    if (menu) {
-        const toggle = menu.querySelector('.action-menu__toggle');
-        const list = menu.querySelector('.action-menu__list');
-        
-        if (toggle && list) {
-            toggle.addEventListener('click', function(event) {
-                event.preventDefault();
-                event.stopPropagation();
-                const isOpen = menu.classList.contains('is-open');
-                // Close all other menus
-                document.querySelectorAll('[data-action-menu].is-open').forEach(m => {
-                    if (m !== menu) m.classList.remove('is-open');
-                });
-                menu.classList.toggle('is-open', !isOpen);
-                if (!isOpen) {
-                    requestAnimationFrame(() => positionActionMenu(menu));
-                }
-            });
-            
-            // بستن منو هنگام کلیک روی دکمه‌های منو (به جز دکمه واکنش)
-            list.querySelectorAll('button, a').forEach(item => {
-                // برای دکمه واکنش، event listener جداگانه اضافه نمی‌کنیم
-                // چون addReactionButton خودش event handler اضافه می‌کند
-                if (item.classList.contains('btn-reaction')) {
-                    return;
-                }
-                
-                item.addEventListener('click', function(e) {
-                    menu.classList.remove('is-open');
-                    toggle?.setAttribute('aria-expanded', 'false');
-                });
-            });
-        }
     }
     
     // Scroll to the bottom of the chat - فقط اگر scroll restore کامل شده باشد

@@ -2654,50 +2654,6 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             // Initialize action menu handlers for the new message
             initializeMessageActions(messageRow);
 
-            // Initialize action menu toggle (like in group-chat.js)
-            const menu = messageRow.querySelector('[data-action-menu]');
-            if (menu) {
-                const toggle = menu.querySelector('.action-menu__toggle');
-                const list = menu.querySelector('.action-menu__list');
-
-                if (toggle) {
-                    toggle.addEventListener('click', function(event) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        const isOpen = menu.classList.contains('is-open');
-                        // Close all other menus
-                        document.querySelectorAll('[data-action-menu]').forEach(m => {
-                            if (m !== menu) {
-                                m.classList.remove('is-open');
-                                m.querySelector('.action-menu__toggle')?.setAttribute('aria-expanded',
-                                    'false');
-                            }
-                        });
-                        if (!isOpen) {
-                            menu.classList.add('is-open');
-                            toggle.setAttribute('aria-expanded', 'true');
-                        } else {
-                            menu.classList.remove('is-open');
-                            toggle.setAttribute('aria-expanded', 'false');
-                        }
-                    });
-                }
-
-                if (list) {
-                    list.querySelectorAll('button, a').forEach(item => {
-                        // برای دکمه واکنش، event listener جداگانه اضافه نمی‌کنیم
-                        // چون addReactionButton خودش event handler اضافه می‌کند
-                        if (item.classList.contains('btn-reaction')) {
-                            return;
-                        }
-
-                        item.addEventListener('click', function(e) {
-                            menu.classList.remove('is-open');
-                            toggle?.setAttribute('aria-expanded', 'false');
-                        });
-                    });
-                }
-            }
         } catch (error) {
             console.error('Error in addMessageToChat:', error);
             // ✅ FIXED: No location.reload() - gracefully handle error without disrupting user
