@@ -469,6 +469,20 @@ test('group info tabs are modular, scoped, and store-backed', () => {
     assert.doesNotMatch(legacy, /Tabs script loaded/);
 });
 
+test('poll skill-list UI is modular and store-backed', () => {
+    const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
+    const skills = readFileSync('resources/js/group-chat/skill-lists.js', 'utf8');
+    const actions = readFileSync('resources/js/group-chat/actions.js', 'utf8');
+    const legacy = readFileSync('public/js/group-chat.js', 'utf8');
+
+    assert.match(index, /createSkillLists\(\{ actions, store, lifecycle \}\)/);
+    assert.match(skills, /openSkillListId/);
+    assert.match(skills, /actions\.register\('toggle-skill-list'/);
+    assert.match(skills, /lifecycle\.add\(close\)/);
+    assert.doesNotMatch(actions, /'toggle-skill-list': \['toggleSkillList'/);
+    assert.doesNotMatch(legacy, /function (?:toggleSkillList|closeSkill|reapplySkillListState)\(/);
+});
+
 test('legacy group runtime has no active raw page listeners or timers', () => {
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8').replace(/^\s*\/\/.*$/gm, '');
 

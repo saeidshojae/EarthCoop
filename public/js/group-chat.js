@@ -195,49 +195,6 @@ async function groupChatFetch(input, init = {}) {
     if (!window.GroupChat?.api) throw new Error('GroupChat ApiClient is not ready');
     return window.GroupChat.api.request(input, init);
 }
-  let openSkillListId = null;
-
-  function toggleSkillList(pollId) {
-      closeAllModals();
-  
-      const box = document.getElementById('skill-list-' + pollId);
-      const back = document.getElementById('back');
-
-
-      if (box && box.style.display !== 'flex') {
-          box.style.display = 'flex';
-          back.style.display = 'block';
-          openSkillListId = pollId;
-      } else {
-          openSkillListId = null;
-      }
-  }
-
-
-  
-  function closeSkill() {
-      document.querySelectorAll('.skill-list').forEach(el => el.style.display = 'none');
-      const back = document.getElementById('back');
-      if (back) back.style.display = 'none';
-      openSkillListId = null;
-  }
-  
-  // بعد از AJAX
-  function reapplySkillListState() {
-      if (openSkillListId !== null) {
-          const box = document.getElementById('skill-list-' + openSkillListId);
-          const back = document.getElementById('back');
-          if (box) {
-              box.style.display = 'flex';
-          }
-          if (back) {
-              back.style.display = 'block';
-          }
-      }
-  }
-  
-  
-  
     // این کد حذف شد چون با منطق حفظ موقعیت scroll در chat.blade.php تداخل دارد
     // window.addEventListener('DOMContentLoaded', function () {
     //     const chatBox = document.getElementById('chat-box');
@@ -1194,7 +1151,7 @@ async function groupChatFetch(input, init = {}) {
                                 });
                             }
                             
-                            reapplySkillListState();
+                            window.GroupChat?.skillLists?.restore();
                             startPollCountdowns();
 
                             // Restore the edit form state if it existed
@@ -1936,7 +1893,7 @@ function closeAllModals() {
   window.GroupChat?.elections?.close();
   window.GroupChat?.composer?.closePost();
   window.GroupChat?.composer?.closePoll();
-  closeSkill()
+  window.GroupChat?.skillLists?.close();
   window.GroupChat?.elections?.closeAdmin();
 }
 

@@ -12,7 +12,6 @@ const legacyActionTargets = {
     'report-user': ['reportUser'],
     'report-message': ['reportMessage', ({ target }) => [Number(target.dataset.messageId)]],
     'delete-message': ['deleteMessage', ({ target }) => [Number(target.dataset.messageId)]],
-    'toggle-skill-list': ['toggleSkillList', ({ target }) => [Number(target.dataset.pollId)]],
     'delete-post': ['deletePost', ({ target }) => [Number(target.dataset.postId)]],
     'show-thread': ['showThread', ({ target }) => [Number(target.dataset.messageId)]],
     'cancel-add-guests': ['cancelAddGuests'],

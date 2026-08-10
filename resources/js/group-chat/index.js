@@ -11,6 +11,7 @@ import { createFeedback } from './feedback.js';
 import { createPolls } from './polls.js';
 import { createElections } from './elections.js';
 import { createTabs } from './tabs.js';
+import { createSkillLists } from './skill-lists.js';
 
 if (!window.GroupChatFeedback) {
     window.GroupChatFeedback = createFeedback();
@@ -57,6 +58,7 @@ if (window.groupId) {
     app.polls = createPolls({ api, store, feed, actions, lifecycle });
     app.elections = createElections({ actions, lifecycle, store });
     app.tabs = createTabs({ store, lifecycle });
+    app.skillLists = createSkillLists({ actions, store, lifecycle });
 
     app.feed.hydrate('initial');
 
