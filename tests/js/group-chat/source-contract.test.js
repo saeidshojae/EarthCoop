@@ -222,6 +222,7 @@ test('post submission runtime is extracted without patching openBlogBox', () => 
     const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
     const runtime = readFileSync('resources/views/groups/partials/post_submission_runtime.blade.php', 'utf8');
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
+    const adapters = readFileSync('resources/js/group-chat/legacy-renderers.js', 'utf8');
 
     assert.match(blade, /@include\('groups\.partials\.post_submission_runtime'\)/);
     assert.doesNotMatch(blade, /function interceptPostForm\(/);
@@ -238,19 +239,20 @@ test('post submission runtime is extracted without patching openBlogBox', () => 
     assert.doesNotMatch(runtime, /appendChild\(/);
     assert.doesNotMatch(runtime, /_init(?:PostMenus|ReactionButtons)/);
     assert.doesNotMatch(runtime, /_lastKnownPostId/);
-    assert.match(groupChat, /const feedBridge\s*=\s*Object\.freeze/);
-    assert.match(groupChat, /app\.feedBridge = feedBridge/);
+    assert.match(groupChat, /const feedBridge = window\.GroupChat\.installLegacyRenderers/);
+    assert.match(adapters, /const bridge = Object\.freeze/);
+    assert.match(adapters, /app\.feedBridge = bridge/);
     assert.doesNotMatch(groupChat, /window\.GroupChat(?:LegacyMessageMutations|LegacyFeedRenderers|FeedBridge)/);
-    assert.match(groupChat, /applyFeedItemThroughPipeline\(contentType, 'create', payload, source\)/);
-    assert.match(groupChat, /updateLastPostCursor\(payload\?\.post_id \|\| payload\?\.content_id \|\| payload\?\.id\)/);
-    assert.match(groupChat, /mutate\(contentType, operation, payload, source = 'local'\)/);
+    assert.match(adapters, /app\.feed\.apply/);
+    assert.match(adapters, /callbacks\.updateLastPostCursor/);
+    assert.match(adapters, /mutate\(type, action, payload, source = 'local'\)/);
     assert.match(groupChat, /feedBridge\.create\('post', p, 'polling-fallback'\)/);
     assert.match(groupChat, /feedBridge\.mutate\('post', 'delete', \{ id: pid \}, 'polling-fallback'\)/);
     assert.match(groupChat, /feedBridge\.mutate\('post', 'update', p, 'polling-fallback'\)/);
     assert.match(groupChat, /feedBridge\.mutate\('post', 'delete', \{ id: pid \}, 'reconcile-fallback'\)/);
     assert.match(groupChat, /feedBridge\.mutate\('post', 'delete', \{ id: postId \}, 'local-post-delete'\)/);
     assert.match(groupChat, /feedBridge\.mutate\('post', 'update', updatedPost, 'local-post-edit'\)/);
-    assert.match(groupChat, /updatePostFieldsDom\(\{ \.\.\.item, id \}\)/);
+    assert.match(adapters, /callbacks\.updatePostFields\?\.\(\{ \.\.\.item, id:/);
     assert.doesNotMatch(groupChat, /function updateBlogUI\(/);
     assert.doesNotMatch(groupChat, /wrapperEl\.replaceWith\(/);
     assert.doesNotMatch(groupChat, /_lastKnownPostId/);
@@ -401,6 +403,7 @@ test('all declarative chat actions use the lifecycle-owned modular dispatcher', 
     const actions = readFileSync('resources/js/group-chat/actions.js', 'utf8');
     const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
+    const adapters = readFileSync('resources/js/group-chat/legacy-renderers.js', 'utf8');
 
     assert.match(actions, /lifecycle\.on\(root, 'click'/);
     assert.match(actions, /\[data-group-chat-action\], \[data-legacy-chat-action\], \[data-chat-page-action\]/);
@@ -415,13 +418,29 @@ test('all declarative chat actions use the lifecycle-owned modular dispatcher', 
 test('canonical modular runtime is not bypassed by the migration feature flag', () => {
     const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
+    const adapters = readFileSync('resources/js/group-chat/legacy-renderers.js', 'utf8');
 
     assert.match(index, /if \(window\.groupId\)/);
     assert.doesNotMatch(index, /if \(window\.__groupChatModularFrontend/);
     assert.doesNotMatch(groupChat, /window\.__groupChatModularFrontend && window\.GroupChat/);
     assert.match(groupChat, /renderMessageThroughPipeline\(optimisticMsg, 'optimistic'\)/);
-    assert.match(groupChat, /window\.GroupChat\.feed\.apply\(\[item\], source\)/);
-    assert.match(groupChat, /window\.GroupChat\.feed\.mutate\(item, source\)/);
+    assert.match(adapters, /app\.feed\.apply\(/);
+    assert.match(adapters, /app\.feed\.mutate\(/);
+});
+
+test('renderer adapters and feed bridge are owned by a modular registry', () => {
+    const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
+    const adapters = readFileSync('resources/js/group-chat/legacy-renderers.js', 'utf8');
+    const legacy = readFileSync('public/js/group-chat.js', 'utf8');
+
+    assert.match(index, /installLegacyRenderers\(\{ app, callbacks \}\)/);
+    assert.match(adapters, /app\.renderer\.register\('message'/);
+    assert.match(adapters, /Object\.entries\(adapters\)\.forEach/);
+    assert.match(adapters, /app\.feed\.apply/);
+    assert.match(adapters, /app\.feed\.mutate/);
+    assert.match(legacy, /window\.GroupChat\.installLegacyRenderers/);
+    assert.doesNotMatch(legacy, /legacyMessageMutations|legacyFeedRenderers|registerLegacyRenderers/);
+    assert.doesNotMatch(legacy, /function (?:appendRenderedFeedHtml|replaceRenderedFeedHtml|removeMessageDom)\(/);
 });
 
 test('poll operations are owned by the modular Polls runtime', () => {

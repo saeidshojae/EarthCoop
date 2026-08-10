@@ -1,0 +1,136 @@
+export function installLegacyRenderers({ app, callbacks = {} }) {
+    const idOf = (item, type) => item?.content_id || item?.[`${type}_id`] || item?.id;
+    const refreshPolls = () => app.polls?.refreshCountdowns();
+    const feedRoot = () => document.getElementById('chat-box') || document.getElementById('group-feed');
+    const appendHtml = (html, id, type) => {
+        if (!html || (type === 'post' && document.getElementById(`blog-${id}`)) || (type === 'poll' && document.getElementById(`poll-${id}`))) return false;
+        const root = feedRoot();
+        if (!root) return false;
+        const template = document.createElement('template');
+        template.innerHTML = html.trim();
+        const node = template.content.firstElementChild;
+        if (!node) return false;
+        const typing = document.getElementById('group-typing-indicator');
+        root.insertBefore(node, typing?.parentElement === root ? typing : null);
+        refreshPolls();
+        return true;
+    };
+    const replaceHtml = (selector, html) => {
+        const existing = html && document.querySelector(selector);
+        if (!existing) return false;
+        const template = document.createElement('template');
+        template.innerHTML = html.trim();
+        const node = template.content.firstElementChild;
+        if (!node) return false;
+        (existing.closest('.post-wrapper, .poll-wrapper') || existing).replaceWith(node);
+        refreshPolls();
+        return true;
+    };
+    const fadeRemove = element => {
+        if (!element) return false;
+        element.style.transition = 'opacity 0.3s ease-out';
+        element.style.opacity = '0';
+        app.lifecycle.timeout(() => element.remove(), 300);
+        return true;
+    };
+    const updateMessage = item => {
+        const id = idOf(item, 'message');
+        const bubble = document.querySelector(`.message-bubble[data-message-id="${id}"]`);
+        if (!bubble) return false;
+        const content = item.content || item.message || '';
+        const node = bubble.querySelector('.message-content');
+        if (node) node.innerHTML = content;
+        bubble.dataset.contentRaw = content.replace(/<[^>]*>/g, '');
+        if (item.edited !== false && !bubble.querySelector('.edited-icon')) {
+            const badge = document.createElement('span');
+            badge.className = 'edited-icon';
+            badge.textContent = '(ویرایش شده)';
+            bubble.querySelector('.message-timestamp')?.prepend(badge);
+        }
+        return true;
+    };
+    const updateReactions = item => {
+        const id = idOf(item, 'message');
+        const bubble = document.querySelector(`[data-message-id="${id}"]`);
+        if (!bubble) return false;
+        let region = bubble.querySelector('.message-reactions');
+        if (!item.reactions?.length) {
+            region?.remove();
+            return true;
+        }
+        if (!region) {
+            region = document.createElement('div');
+            region.className = 'message-reactions';
+            bubble.appendChild(region);
+        }
+        const emoji = { like: '👍', love: '❤️', laugh: '😂', wow: '😮', sad: '😢', angry: '😠' };
+        region.replaceChildren(...item.reactions.map(reaction => {
+            const type = reaction.type || reaction.reaction_type || '';
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'reaction-badge';
+            button.dataset.legacyChatAction = 'reaction';
+            button.dataset.messageId = id;
+            button.dataset.reactionType = type;
+            button.textContent = `${emoji[type] || type || '👍'} ${reaction.count || 0}`;
+            return button;
+        }));
+        return true;
+    };
+    const messageMutations = {
+        edit: updateMessage,
+        delete(item) {
+            const id = idOf(item, 'message');
+            const input = document.getElementById('parent_id');
+            if (input?.value == id) app.composer?.cancelReply();
+            return fadeRemove(document.getElementById(`msg-${id}`));
+        },
+        reaction: updateReactions,
+        'mark-read': item => callbacks.updateMessageReadReceipt?.(idOf(item, 'message'), item.read_count || 0) || false,
+    };
+    const dispatchComment = item => (document.dispatchEvent(new CustomEvent('group-comment-updated', { detail: item })), true);
+    const adapters = {
+        post: {
+            render: item => appendHtml(item.html, idOf(item, 'post'), 'post'),
+            update: item => item.html ? replaceHtml(`#blog-${idOf(item, 'post')}`, item.html) : callbacks.updatePostFields?.({ ...item, id: idOf(item, 'post') }),
+            delete: item => fadeRemove(document.getElementById(`blog-${idOf(item, 'post')}`)?.closest('.post-wrapper')),
+            reaction(item) {
+                const region = document.querySelector(`.reaction-buttons[data-post-id="${idOf(item, 'post')}"]`);
+                if (!region) return false;
+                if (region.querySelector('.like-count')) region.querySelector('.like-count').textContent = item.likes ?? 0;
+                if (region.querySelector('.dislike-count')) region.querySelector('.dislike-count').textContent = item.dislikes ?? 0;
+                return true;
+            },
+            read: item => callbacks.updatePostReadReceipt?.(idOf(item, 'post'), item.read_count || 0) || false,
+        },
+        poll: {
+            render: item => appendHtml(item.html, idOf(item, 'poll'), 'poll'),
+            update: item => replaceHtml(`#poll-${idOf(item, 'poll')}, [data-poll-id="${idOf(item, 'poll')}"]`, item.html),
+            vote: item => app.polls?.updateUI(item) || false,
+            delete: item => fadeRemove((document.getElementById(`poll-${idOf(item, 'poll')}`) || document.querySelector(`[data-poll-id="${idOf(item, 'poll')}"]`))?.closest('.poll-wrapper')),
+            read: item => callbacks.updatePollReadReceipt?.(idOf(item, 'poll'), item.read_count || 0) || false,
+        },
+        comment: { render: dispatchComment, update: dispatchComment, delete: dispatchComment, reaction: dispatchComment },
+    };
+    app.renderer.register('message', {
+        render: item => callbacks.renderMessage?.(item) || false,
+        mutate: (item, context) => messageMutations[context.action]?.(item) || false,
+    });
+    Object.entries(adapters).forEach(([type, adapter]) => app.renderer.register(type, {
+        render: (item, context) => adapter.render?.(item, context) || false,
+        mutate: (item, context) => adapter[context.action]?.(item, context) || false,
+    }));
+    const normalize = (type, action, payload) => ({ ...payload, content_type: type, content_id: idOf(payload, type), action });
+    const bridge = Object.freeze({
+        create(type, payload, source = 'local') {
+            const result = app.feed.apply([normalize(type, 'create', payload)], source)[0] || false;
+            if (result && type === 'post') callbacks.updateLastPostCursor?.(idOf(payload, type));
+            return result;
+        },
+        mutate(type, action, payload, source = 'local') {
+            return app.feed.mutate(normalize(type, action, payload), source);
+        },
+    });
+    app.feedBridge = bridge;
+    return bridge;
+}

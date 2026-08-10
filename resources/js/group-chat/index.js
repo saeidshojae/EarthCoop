@@ -12,6 +12,7 @@ import { createPolls } from './polls.js';
 import { createElections } from './elections.js';
 import { createTabs } from './tabs.js';
 import { createSkillLists } from './skill-lists.js';
+import { installLegacyRenderers } from './legacy-renderers.js';
 
 if (!window.GroupChatFeedback) {
     window.GroupChatFeedback = createFeedback();
@@ -59,6 +60,7 @@ if (window.groupId) {
     app.elections = createElections({ actions, lifecycle, store });
     app.tabs = createTabs({ store, lifecycle });
     app.skillLists = createSkillLists({ actions, store, lifecycle });
+    app.installLegacyRenderers = callbacks => installLegacyRenderers({ app, callbacks });
 
     app.feed.hydrate('initial');
 
