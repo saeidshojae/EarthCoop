@@ -36,6 +36,8 @@ Checkpoint شانزدهم: stateهای خصوصی mention debounce و Voice Reco
 
 Checkpoint هفدهم: منطق سراسری بستن action-menu از Blade اصلی به `groups/partials/action_menu_dismissal.blade.php` منتقل شد. دو click listener موازی به یک handler ادغام و click/keydown تحت Lifecycle ثبت شدند؛ guard ورود مجدد از نصب دوباره جلوگیری می‌کند. تست قرارداد include و مالکیت Lifecycle را تثبیت می‌کند و حجم Blade اصلی به ۴۱۵۱ خط کاهش یافت.
 
+Checkpoint هجدهم: runtime کامل جست‌وجوی چت شامل باز/بسته‌شدن پنل، debounce، pagination، رندر نتیجه و ناوبری صفحه‌کلید از Blade اصلی به `groups/partials/chat_search_runtime.blade.php` منتقل شد. رفتار runtime در این checkpoint عمداً تغییر نکرد تا refactor ساختاری diff کوچکی داشته باشد. تست قرارداد include و مالکیت کد جست‌وجو را تثبیت می‌کند و Blade اصلی به ۳۹۳۱ خط کاهش یافت.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.
@@ -51,7 +53,7 @@ Checkpoint هفدهم: منطق سراسری بستن action-menu از Blade ا�
 
 ## تست checkpoint اول
 
-- `npm run test:group-chat`: بیست‌ودو تست پاس؛ شامل dual-read sequence، renderer مشترک، mutation pipeline، قرارداد delegated action، cleanup lifecycle، عدم نشت state خصوصی و قرارداد partial منوی عملیات.
+- `npm run test:group-chat`: بیست‌وسه تست پاس؛ شامل dual-read sequence، renderer مشترک، mutation pipeline، قرارداد delegated action، cleanup lifecycle و قرارداد partialهای منوی عملیات و جست‌وجو.
 - `npm run build`: build production موفق.
 - `node --check public/js/group-chat.js`: موفق.
 - `php artisan test tests/Feature/GroupChat tests/Unit/GroupChat`: بیست‌ودو تست پاس؛ شامل شمارندهٔ canonical کامنت در delta.

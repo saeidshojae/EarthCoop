@@ -15,6 +15,7 @@ const files = [
     'resources/views/groups/partials/header.blade.php',
     'resources/views/groups/partials/group_info_panel.blade.php',
     'resources/views/groups/partials/action_menu_dismissal.blade.php',
+    'resources/views/groups/partials/chat_search_runtime.blade.php',
 ];
 
 test('group chat templates and runtime do not contain inline event handlers', () => {
@@ -122,4 +123,14 @@ test('action-menu dismissal is extracted and lifecycle-owned', () => {
     assert.match(partial, /lifecycle\.on\(document, 'click'/);
     assert.match(partial, /lifecycle\.on\(document, 'keydown'/);
     assert.doesNotMatch(partial, /document\.addEventListener/);
+});
+
+test('chat search runtime is loaded through its dedicated partial', () => {
+    const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
+    const search = readFileSync('resources/views/groups/partials/chat_search_runtime.blade.php', 'utf8');
+
+    assert.match(blade, /@include\('groups\.partials\.chat_search_runtime'\)/);
+    assert.doesNotMatch(blade, /function fetchPage\(reset = false\)/);
+    assert.match(search, /function fetchPage\(reset = false\)/);
+    assert.match(search, /gc-search-wrap/);
 });
