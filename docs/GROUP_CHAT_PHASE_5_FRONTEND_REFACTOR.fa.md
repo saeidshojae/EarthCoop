@@ -56,6 +56,8 @@ Checkpoint بیست‌وششم: شاخه‌های create، update و delete در
 
 Checkpoint بیست‌وهفتم: حذف‌های reconcile، حذف محلی پس از پاسخ موفق و جایگزینی/patch پس از ویرایش پست به `GroupChatFeedBridge.mutate` منتقل شدند. adapter مرکزی پست اکنون در حضور HTML جایگزینی canonical انجام می‌دهد و در پاسخ legacy بدون HTML، patch محدود فیلدها را از داخل همان boundary اجرا می‌کند. در نتیجه callerهای reconcile/delete/edit دیگر element پست را مستقیماً حذف یا جایگزین نمی‌کنند و قرارداد source بازگشت این مسیرهای موازی را ممنوع می‌کند.
 
+Checkpoint بیست‌وهشتم: initialization عنصربه‌عنصر منو و reaction پست با event delegation زیر مالکیت `GroupChatLifecycle` جایگزین شد. globalهای `_initPostMenus` و `_initReactionButtons`، فلگ‌های خصوصی `_menuInit`/`_reactionInit` و listenerهای تکراری `DOMContentLoaded` حذف شدند؛ بنابراین پست‌ها و نظرسنجی‌های تازه‌رندرشده بدون initialization دستی قابل تعامل‌اند. delegation عمداً `.message-action` را به handler فعلی پیام واگذار می‌کند و click بیرون، Escape و repositionهای resize/scroll را با cleanup lifecycle مدیریت می‌کند.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.

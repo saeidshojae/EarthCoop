@@ -666,13 +666,6 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
-document.addEventListener('DOMContentLoaded', function () {
-  if (typeof window._initReactionButtons === 'function') {
-    window._initReactionButtons(document);
-  }
-});
-
-  
 function sendReaction(blogId, type, container) {
   $.ajax({
     url: `/blogs/${blogId}/react`,
@@ -816,72 +809,49 @@ function closeAllActionMenus() {
 
 window.closeAllActionMenus = closeAllActionMenus;
 
-if (!document._globalActionMenuDismissRegistered) {
-    document._globalActionMenuDismissRegistered = true;
+const actionMenuLifecycle = window.GroupChatLifecycle;
+if (actionMenuLifecycle && !actionMenuLifecycle.destroyed && !window.__groupChatPostInteractionsDelegated) {
+    window.__groupChatPostInteractionsDelegated = true;
 
-    // Close open action menus on any page click, except clicking the toggle itself.
-    document.addEventListener('click', function(event) {
-        if (event.target.closest('.action-menu__toggle')) {
+    actionMenuLifecycle.on(document, 'click', function(event) {
+        const reactionButton = event.target.closest('.reaction-buttons .btn-like, .reaction-buttons .btn-dislike');
+        if (reactionButton) {
+            const container = reactionButton.closest('.reaction-buttons');
+            const blogId = container?.dataset.postId;
+            if (container && blogId) {
+                sendReaction(blogId, reactionButton.classList.contains('btn-like') ? '1' : '0', container);
+            }
             return;
         }
-        closeAllActionMenus();
-    }, true);
 
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') {
+        const toggle = event.target.closest('.action-menu__toggle');
+        const menu = toggle?.closest('[data-action-menu]:not(.message-action)');
+        if (toggle && !menu) return;
+        if (toggle && menu) {
+            event.preventDefault();
+            event.stopPropagation();
+            const isOpen = menu.classList.contains('is-open');
             closeAllActionMenus();
+            menu.classList.toggle('is-open', !isOpen);
+            toggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+            if (!isOpen) requestAnimationFrame(function() { positionActionMenu(menu); });
+            return;
         }
+
+        const actionItem = event.target.closest('.action-menu__list button, .action-menu__list a');
+        if (actionItem?.closest('[data-action-menu].message-action')) return;
+        closeAllActionMenus();
     });
 
-    if (!window._actionMenuRepositionBound) {
-        window._actionMenuRepositionBound = true;
-        window.addEventListener('resize', repositionOpenActionMenus);
-        document.addEventListener('scroll', repositionOpenActionMenus, true);
-    }
+    actionMenuLifecycle.on(document, 'keydown', function(event) {
+        if (event.key === 'Escape') closeAllActionMenus();
+    });
+    actionMenuLifecycle.on(window, 'resize', repositionOpenActionMenus);
+    actionMenuLifecycle.on(document, 'scroll', repositionOpenActionMenus, true);
+    actionMenuLifecycle.add(function() {
+        window.__groupChatPostInteractionsDelegated = false;
+    });
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-  const menus = Array.from(document.querySelectorAll('[data-action-menu]'));
-
-  const closeAllMenus = (except = null) => {
-    menus.forEach(menu => {
-      if (menu !== except) {
-        menu.classList.remove('is-open');
-        menu.querySelector('.action-menu__toggle')?.setAttribute('aria-expanded', 'false');
-      }
-    });
-  };
-
-  menus.forEach(menu => {
-    const toggle = menu.querySelector('.action-menu__toggle');
-    const list = menu.querySelector('.action-menu__list');
-
-    toggle?.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      const isOpen = menu.classList.contains('is-open');
-      closeAllMenus();
-      if (!isOpen) {
-        menu.classList.add('is-open');
-        toggle.setAttribute('aria-expanded', 'true');
-                requestAnimationFrame(() => positionActionMenu(menu));
-      }
-    });
-
-    list?.querySelectorAll('button, a').forEach(item => {
-            item.addEventListener('click', event => {
-                if (item.classList.contains('btn-reaction')) {
-                    event.stopPropagation();
-                    return;
-                }
-                closeAllMenus();
-            });
-    });
-  });
-
-    // Global click/escape dismissal is already registered once above.
-    // Keeping it single-source avoids duplicate handlers on long sessions.
-});
 
 
 // Handle modal click - close if clicked outside dialog
@@ -1254,8 +1224,6 @@ function openPollBox(){
         if (!newEl) return false;
 
         appendBeforeTypingIndicator(feedEl, newEl);
-        if (typeof window._initPostMenus === 'function') window._initPostMenus(newEl);
-        if (typeof window._initReactionButtons === 'function') window._initReactionButtons(newEl);
         if (typeof addReactionButton === 'function') {
             newEl.querySelectorAll?.('[data-message-id]').forEach(function(bubble) {
                 addReactionButton(bubble);
@@ -1277,8 +1245,6 @@ function openPollBox(){
         if (!newEl) return false;
 
         wrapper.replaceWith(newEl);
-        if (typeof window._initPostMenus === 'function') window._initPostMenus(newEl);
-        if (typeof window._initReactionButtons === 'function') window._initReactionButtons(newEl);
         startPollCountdowns();
         return true;
     }
@@ -2110,60 +2076,6 @@ function openPollBox(){
         }
         realtimeLifecycle.timeout(waitForScrollRestore, 500); // هر 500ms چک کن
     }
-
-    // تابع مشترک برای راه‌اندازی منوهای action-menu در عناصر تازه اضافه‌شده
-    window._initPostMenus = function(container) {
-        var menus = (container || document).querySelectorAll('[data-action-menu]');
-        menus.forEach(function(menu) {
-            if (menu._menuInit) return;
-            menu._menuInit = true;
-            var toggle = menu.querySelector('.action-menu__toggle');
-            var list = menu.querySelector('.action-menu__list');
-            if (!toggle) return;
-            toggle.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                var isOpen = menu.classList.contains('is-open');
-                document.querySelectorAll('[data-action-menu].is-open').forEach(function(m) {
-                    if (m !== menu) m.classList.remove('is-open');
-                });
-                menu.classList.toggle('is-open', !isOpen);
-                if (!isOpen) {
-                    requestAnimationFrame(function() { positionActionMenu(menu); });
-                }
-            });
-            if (list) list.querySelectorAll('button, a').forEach(function(item) {
-                item.addEventListener('click', function(e) {
-                    if (item.classList.contains('btn-reaction')) {
-                        e.stopPropagation();
-                        return;
-                    }
-                    menu.classList.remove('is-open');
-                });
-            });
-        });
-        // Global dismissal listeners are registered in one place earlier.
-    };
-
-    // تابع مشترک برای راه‌اندازی دکمه‌های لایک/دیسلایک در عناصر تازه اضافه‌شده
-    window._initReactionButtons = function(container) {
-        var scope = container || document;
-        scope.querySelectorAll('.reaction-buttons').forEach(function(rc) {
-            if (rc._reactionInit) return;
-            rc._reactionInit = true;
-            var blogId = rc.dataset.postId;
-            var btnLike = rc.querySelector('.btn-like');
-            var btnDislike = rc.querySelector('.btn-dislike');
-            if (btnLike) btnLike.addEventListener('click', function() {
-                sendReaction(blogId, '1', rc);
-            });
-            if (btnDislike) btnDislike.addEventListener('click', function() {
-                sendReaction(blogId, '0', rc);
-            });
-        });
-    };
-    // مقداردهی اولیه برای همه دکمه‌های واکنش موجود در صفحه
-    window._initReactionButtons(document);
 
 document.addEventListener('DOMContentLoaded', function() {
     const chatBox = document.getElementById('chat-box');
