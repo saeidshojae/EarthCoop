@@ -145,6 +145,7 @@ class PollController extends Controller
             'real_type' => (int) ($validated['type'] ?? ($poll->real_type ?? 0)),
             'skill_id' => ((int) ($validated['type'] ?? ($poll->real_type ?? 0)) === 1) ? ($validated['skill_id'] ?? null) : null,
         ]);
+        $poll->forceFill(['edited_at' => now()])->save();
 
         $poll->refresh();
         $poll->load(['options', 'votes', 'user', 'skill']);

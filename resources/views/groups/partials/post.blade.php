@@ -271,7 +271,7 @@
 
         </div>
 
-        <div class="post-card__footer">
+        <div class="post-card__footer content-meta-line">
 
             @php
                 $readBy = null;
@@ -285,18 +285,9 @@
                 $readCount = is_array($readBy) ? count($readBy) : 0;
             @endphp
 
-            @if($isOwner)
-            <div class="post-read-receipt" style="font-size: 11px; color: #6b7280; margin-bottom: 6px; padding: 0 12px;">
-                @if($readCount > 0)
-                <span style="color: #10b981;">
-                    <i class="fas fa-check-double"></i> {{ $readCount }} نفر دیده‌اند
-                </span>
-                @else
-                <span style="color: #9ca3af;">
-                    <i class="fas fa-check"></i> ارسال شده
-                </span>
-                @endif
-            </div>
+            <span class="content-meta-time">{{ verta($item->created_at)->format('H:i') }}</span>
+            @if($item->edited_at)
+            <span class="content-edit-status" title="ویرایش شده در {{ verta($item->edited_at)->format('Y/m/d H:i:s') }}">(ویرایش شده)</span>
             @endif
 
             <div class="reaction-buttons post-card__stats" data-post-id="{{ $item->id }}">
@@ -322,6 +313,16 @@
                 </button>
 
             </div>
+
+            @if($isOwner)
+            <div class="post-read-receipt content-read-receipt" style="font-size: 11px; color: #6b7280;">
+                @if($readCount > 0)
+                <span style="color: #10b981;"><i class="fas fa-check-double"></i> {{ $readCount }} نفر دیده‌اند</span>
+                @else
+                <span style="color: #9ca3af;"><i class="fas fa-check"></i> ارسال شده</span>
+                @endif
+            </div>
+            @endif
 
             <a href="{{ route('groups.comment', $item) }}" class="post-card__comments">
 

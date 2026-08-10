@@ -11,7 +11,8 @@ class Blog extends Model
     protected $fillable = ['title', 'content', 'img', 'user_id', 'group_id', 'category_id', 'file_type', 'read_by'];
 
     protected $casts = [
-        'read_by' => 'array'
+        'read_by' => 'array',
+        'edited_at' => 'datetime',
     ];
 
     public function group(){

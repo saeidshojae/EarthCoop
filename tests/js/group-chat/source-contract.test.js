@@ -138,6 +138,23 @@ test('message metadata keeps read receipts last and updates edit time in menus',
     assert.match(editRuntime, /responseData = responseData\?\.data \?\? responseData/);
 });
 
+test('all group content uses the same rtl metadata order', () => {
+    const message = readFileSync('resources/views/groups/partials/message.blade.php', 'utf8');
+    const post = readFileSync('resources/views/groups/partials/post.blade.php', 'utf8');
+    const poll = readFileSync('resources/views/groups/partials/poll.blade.php', 'utf8');
+    const renderer = readFileSync('resources/js/group-chat/message-renderer.js', 'utf8');
+    const styles = readFileSync('resources/views/groups/partials/styles/base_styles.blade.php', 'utf8');
+
+    for (const source of [message, post, poll, renderer]) assert.match(source, /content-meta-line/);
+    assert.match(post, /content-edit-status/);
+    assert.match(poll, /content-edit-status/);
+    assert.match(styles, /direction: rtl !important/);
+    assert.match(styles, /content-meta-time \{ order: 1/);
+    assert.match(styles, /content-edit-status \{ order: 2/);
+    assert.match(styles, /reaction-buttons \{ order: 3/);
+    assert.match(styles, /content-read-receipt \{ order: 4/);
+});
+
 test('realtime runtime is pinned and starts without package downloads', () => {
     const manifest = JSON.parse(readFileSync('package.json', 'utf8'));
     const launcher = readFileSync('scripts/start-soketi.ps1', 'utf8');

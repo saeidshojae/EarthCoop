@@ -119,8 +119,12 @@
             @endforeach
         </div>
 
-        <footer class="poll-card__footer">
-            <span class="poll-card__total">تعداد رأی: {{ $totalVotes }}</span>
+        <footer class="poll-card__footer content-meta-line">
+            <span class="content-meta-time">{{ verta($item->created_at)->format('H:i') }}</span>
+            @if($item->edited_at)
+            <span class="content-edit-status" title="ویرایش شده در {{ verta($item->edited_at)->format('Y/m/d H:i:s') }}">(ویرایش شده)</span>
+            @endif
+            <span class="poll-card__total content-reactions-slot">تعداد رأی: {{ $totalVotes }}</span>
             <span class="poll-card__status">
                 @if($isExpired)
                     مهلت رأی‌گیری تمام شده است.
@@ -128,7 +132,6 @@
                     رأی شما به متخصص تفویض شده است.
                 @endif
             </span>
-        </footer>
 
         @php
             $readBy = null;
@@ -143,7 +146,7 @@
         @endphp
 
         @if($isOwner)
-        <div class="poll-read-receipt" style="font-size: 11px; color: #6b7280; margin-bottom: 6px; padding: 0 12px;">
+        <div class="poll-read-receipt content-read-receipt" style="font-size: 11px; color: #6b7280;">
             @if($readCount > 0)
             <span style="color: #10b981;">
                 <i class="fas fa-check-double"></i> {{ $readCount }} نفر دیده‌اند
@@ -155,6 +158,7 @@
             @endif
         </div>
         @endif
+        </footer>
 
         <div id="edit-poll-box-{{ $item->id }}" style="display: none;" class="post-edit-form">
             <form class="poll-edit-form" action="{{ route('groups.poll.update', [$group, $item->id]) }}" method="POST">

@@ -119,6 +119,7 @@ class BlogController extends Controller
         $validated['content'] = $sanitizer->sanitize($validated['content']);
 
         $blog->update($validated);
+        $blog->forceFill(['edited_at' => now()])->save();
         $blog->refresh();
         $blog->load(['user', 'category', 'comments', 'reactions']);
 
