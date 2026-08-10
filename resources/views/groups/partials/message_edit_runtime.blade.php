@@ -80,16 +80,12 @@
             }
 
             // چرخنده و دکمه
-            const overlay = document.getElementById('global-loading');
-            const showOverlay = () => overlay && overlay.classList.add('show');
-            const hideOverlay = () => overlay && overlay.classList.remove('show');
             const setBtnLoading = (on = true) => {
                 btnSave.disabled = on;
                 btnSave.classList.toggle('btn-loading', on);
             };
 
             try {
-                showOverlay();
                 setBtnLoading(true);
 
                 // اگر روتت دقیقاً POST می‌پذیره (بدون شبیه‌سازی PATCH)، همین کافیه:
@@ -277,7 +273,6 @@
                 closeModal();
 
             } finally {
-                hideOverlay();
                 setBtnLoading(false);
             }
         });

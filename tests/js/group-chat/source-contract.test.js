@@ -273,6 +273,16 @@ test('poll countdown and voice recorder release their owned resources', () => {
     assert.doesNotMatch(voice, /window\.addEventListener\('beforeunload'/);
 });
 
+test('voice controls keep icons centered and message edits avoid the global overlay', () => {
+    const styles = readFileSync('resources/views/groups/partials/styles/base_styles.blade.php', 'utf8');
+    const editRuntime = readFileSync('resources/views/groups/partials/message_edit_runtime.blade.php', 'utf8');
+
+    assert.match(styles, /#voice-recording-modal #recording-controls button,[\s\S]*?display: inline-flex;[\s\S]*?align-items: center !important;[\s\S]*?gap: 7px !important/);
+    assert.match(styles, /#voice-recording-modal button > i \{[\s\S]*?width: 1em !important;[\s\S]*?height: 1em !important;[\s\S]*?transform-origin: 50% 50% !important/);
+    assert.match(styles, /#voice-recording-modal #send-recording-btn > \.fa-spinner \{[\s\S]*?voice-recorder-spin/);
+    assert.doesNotMatch(editRuntime, /global-loading|showOverlay\(|hideOverlay\(/);
+});
+
 test('private mention and voice state are not exposed as window globals', () => {
     const features = readFileSync('public/js/chat-features.js', 'utf8');
     const voice = readFileSync('public/js/voice-recorder.js', 'utf8');

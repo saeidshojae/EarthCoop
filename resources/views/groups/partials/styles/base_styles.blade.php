@@ -262,6 +262,44 @@
     border-radius: 50% !important;
 }
 
+/* Voice recorder controls: isolate icon metrics from generic RTL button rules. */
+#voice-recording-modal #recording-controls button,
+#voice-recording-modal #cancel-recording-btn,
+#voice-recording-modal #send-recording-btn {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 7px !important;
+    min-height: 44px;
+    line-height: 1 !important;
+    white-space: nowrap;
+}
+
+#voice-recording-modal button > i {
+    position: static !important;
+    display: inline-flex !important;
+    flex: 0 0 1em;
+    width: 1em !important;
+    height: 1em !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    align-items: center;
+    justify-content: center;
+    line-height: 1 !important;
+    vertical-align: middle;
+    transform-origin: 50% 50% !important;
+}
+
+#voice-recording-modal #send-recording-btn > .fa-spinner {
+    animation: voice-recorder-spin .8s linear infinite !important;
+    will-change: transform;
+}
+
+@keyframes voice-recorder-spin {
+    to { transform: rotate(360deg); }
+}
+
 .telegram-textarea {
     padding: 8px 5px !important;
     font-size: 0.95rem !important;
