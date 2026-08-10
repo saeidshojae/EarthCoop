@@ -968,8 +968,8 @@
             btn.onclick = (e) => {
                 e.stopPropagation();
                 toggleReaction(messageId, reaction);
-                if (typeof window.closeAllActionMenus === 'function') {
-                    window.closeAllActionMenus();
+                if (typeof window.GroupChat?.actions?.closeAllActionMenus === 'function') {
+                    window.GroupChat.actions.closeAllActionMenus();
                 } else {
                     document.querySelectorAll('[data-action-menu].is-open').forEach(menu => {
                         menu.classList.remove('is-open');

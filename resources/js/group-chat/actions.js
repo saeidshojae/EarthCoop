@@ -59,7 +59,67 @@ function invokePageChrome(action, context) {
 
 export function createActions({ lifecycle, root = document }) {
     const handlers = new Map();
+    let postReactionHandler = null;
+
+    const positionMenu = menu => {
+        const list = menu?.querySelector('.action-menu__list');
+        if (!list) return;
+        const bounds = document.getElementById('chat-box')?.getBoundingClientRect()
+            || { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+        const margin = 8;
+        list.style.left = '';
+        list.style.right = '';
+        list.style.transform = '';
+        list.style.maxWidth = '';
+        menu.classList.remove('open-down');
+        let rect = list.getBoundingClientRect();
+        if (rect.top < bounds.top + margin) {
+            menu.classList.add('open-down');
+            rect = list.getBoundingClientRect();
+        }
+        const minLeft = bounds.left + margin;
+        const maxRight = bounds.right - margin;
+        const maxWidth = Math.max(160, maxRight - minLeft);
+        if (rect.width > maxWidth) {
+            list.style.maxWidth = `${Math.floor(maxWidth)}px`;
+            rect = list.getBoundingClientRect();
+        }
+        const offset = (rect.left < minLeft ? minLeft - rect.left : 0)
+            - (rect.right > maxRight ? rect.right - maxRight : 0);
+        if (offset) list.style.transform = `translateX(${Math.round(offset)}px)`;
+    };
+    const closeAll = () => root.querySelectorAll('[data-action-menu].is-open').forEach(menu => {
+        menu.classList.remove('is-open');
+        menu.querySelector('.action-menu__toggle')?.setAttribute('aria-expanded', 'false');
+    });
+    const reposition = () => root.querySelectorAll('[data-action-menu].is-open').forEach(positionMenu);
+
     lifecycle.on(root, 'click', event => {
+        const reactionButton = event.target.closest?.('.reaction-buttons .btn-like, .reaction-buttons .btn-dislike');
+        if (reactionButton && postReactionHandler) {
+            const container = reactionButton.closest('.reaction-buttons');
+            if (container?.dataset.postId) {
+                postReactionHandler(container.dataset.postId, reactionButton.classList.contains('btn-like') ? '1' : '0', container);
+            }
+            return;
+        }
+
+        const toggle = event.target.closest?.('.action-menu__toggle');
+        const menu = toggle?.closest('[data-action-menu]');
+        if (toggle && menu) {
+            event.preventDefault();
+            event.stopPropagation();
+            const isOpen = menu.classList.contains('is-open');
+            closeAll();
+            menu.classList.toggle('is-open', !isOpen);
+            toggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+            if (!isOpen) requestAnimationFrame(() => positionMenu(menu));
+            return;
+        }
+
+        const menuAction = event.target.closest?.('.action-menu__list button, .action-menu__list a');
+        if (menuAction && !menuAction.classList.contains('btn-reaction')) closeAll();
+
         const target = event.target.closest?.('[data-group-chat-action], [data-legacy-chat-action], [data-chat-page-action]');
         if (!target || !root.contains(target)) return;
         const action = target.dataset.groupChatAction || target.dataset.legacyChatAction || target.dataset.chatPageAction;
@@ -77,12 +137,21 @@ export function createActions({ lifecycle, root = document }) {
             if (typeof close === 'function') close();
         }
     });
+    lifecycle.on(root, 'keydown', event => { if (event.key === 'Escape') closeAll(); });
+    lifecycle.on(window, 'resize', reposition);
+    lifecycle.on(root, 'scroll', reposition, true);
 
     return {
         register(name, handler) {
             handlers.set(name, handler);
             return () => handlers.delete(name);
         },
-        destroy() { handlers.clear(); },
+        setPostReactionHandler(handler) { postReactionHandler = handler; },
+        closeAllActionMenus: closeAll,
+        destroy() {
+            handlers.clear();
+            postReactionHandler = null;
+            closeAll();
+        },
     };
 }

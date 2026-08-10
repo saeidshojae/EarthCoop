@@ -78,4 +78,5 @@ if (window.groupId) {
     lifecycle.on(window, 'online', () => store.setState({ connection: 'connecting' }));
     lifecycle.on(window, 'offline', () => store.setState({ connection: 'offline' }));
     window.GroupChat = app;
+    document.dispatchEvent(new CustomEvent('group-chat:ready', { detail: app }));
 }

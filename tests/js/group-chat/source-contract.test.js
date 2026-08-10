@@ -242,17 +242,20 @@ test('post submission runtime is extracted without patching openBlogBox', () => 
 
 test('post menus and reactions use lifecycle-owned event delegation', () => {
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
+    const actions = readFileSync('resources/js/group-chat/actions.js', 'utf8');
+    const features = readFileSync('public/js/chat-features.js', 'utf8');
     const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
 
-    assert.match(groupChat, /window\.__groupChatPostInteractionsDelegated/);
-    assert.match(groupChat, /actionMenuLifecycle\.on\(document, 'click'/);
-    assert.match(groupChat, /actionMenuLifecycle\.on\(document, 'keydown'/);
-    assert.match(groupChat, /actionMenuLifecycle\.on\(window, 'resize'/);
-    assert.match(groupChat, /actionMenuLifecycle\.on\(document, 'scroll'/);
-    assert.match(groupChat, /\.reaction-buttons \.btn-like, \.reaction-buttons \.btn-dislike/);
-    assert.match(groupChat, /toggle\?\.closest\('\[data-action-menu\]'\)/);
-    assert.match(groupChat, /actionItem\?\.classList\.contains\('btn-reaction'\)/);
-    assert.match(groupChat, /actionMenuLifecycle\.add\(function\(\)/);
+    assert.match(actions, /lifecycle\.on\(root, 'click'/);
+    assert.match(actions, /lifecycle\.on\(root, 'keydown'/);
+    assert.match(actions, /lifecycle\.on\(window, 'resize'/);
+    assert.match(actions, /lifecycle\.on\(root, 'scroll'/);
+    assert.match(actions, /\.reaction-buttons \.btn-like, \.reaction-buttons \.btn-dislike/);
+    assert.match(actions, /event\.target\.closest\?\.\('\.action-menu__toggle'\)/);
+    assert.match(actions, /menuAction && !menuAction\.classList\.contains\('btn-reaction'\)/);
+    assert.match(groupChat, /setPostReactionHandler\(sendReaction\)/);
+    assert.match(features, /GroupChat\?\.actions\?\.closeAllActionMenus/);
+    assert.doesNotMatch(groupChat, /window\.closeAllActionMenus|__groupChatPostInteractionsDelegated/);
     assert.doesNotMatch(groupChat, /_initPostMenus/);
     assert.doesNotMatch(groupChat, /_initReactionButtons/);
     assert.doesNotMatch(groupChat, /_menuInit|_reactionInit/);

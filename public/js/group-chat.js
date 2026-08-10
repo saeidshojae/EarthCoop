@@ -645,115 +645,13 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
-function positionActionMenu(menu) {
-    if (!menu) return;
-    const list = menu.querySelector('.action-menu__list');
-    if (!list) return;
-
-    const margin = 8;
-    const chatBox = document.getElementById('chat-box');
-    const bounds = chatBox
-        ? chatBox.getBoundingClientRect()
-        : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
-
-    list.style.left = '';
-    list.style.right = '';
-    list.style.transform = '';
-    list.style.maxWidth = '';
-
-    menu.classList.remove('open-down');
-    let rect = list.getBoundingClientRect();
-    const viewportTop = bounds.top + margin;
-
-    // Default is opening upward. If there is not enough space above, flip downward.
-    if (rect.top < viewportTop) {
-        menu.classList.add('open-down');
-        rect = list.getBoundingClientRect();
-    }
-
-    // Keep menu horizontally inside chat panel / viewport by applying a local translate.
-    let offsetX = 0;
-    const minLeft = bounds.left + margin;
-    const maxRight = bounds.right - margin;
-
-    if (rect.left < minLeft) {
-        offsetX += (minLeft - rect.left);
-    }
-    if (rect.right > maxRight) {
-        offsetX -= (rect.right - maxRight);
-    }
-
-    // If the menu itself is wider than available area, cap width so all actions stay visible.
-    const maxWidth = Math.max(160, maxRight - minLeft);
-    if (rect.width > maxWidth) {
-        list.style.maxWidth = `${Math.floor(maxWidth)}px`;
-        rect = list.getBoundingClientRect();
-        offsetX = 0;
-        if (rect.left < minLeft) offsetX += (minLeft - rect.left);
-        if (rect.right > maxRight) offsetX -= (rect.right - maxRight);
-    }
-
-    if (offsetX !== 0) {
-        list.style.transform = `translateX(${Math.round(offsetX)}px)`;
-    }
-}
-
-function repositionOpenActionMenus() {
-    document.querySelectorAll('[data-action-menu].is-open').forEach(function(menu) {
-        positionActionMenu(menu);
-    });
-}
-
-function closeAllActionMenus() {
-    document.querySelectorAll('[data-action-menu].is-open').forEach(function(menu) {
-        menu.classList.remove('is-open');
-        menu.querySelector('.action-menu__toggle')?.setAttribute('aria-expanded', 'false');
-    });
-}
-
-window.closeAllActionMenus = closeAllActionMenus;
-
-const actionMenuLifecycle = window.GroupChatLifecycle;
-if (actionMenuLifecycle && !actionMenuLifecycle.destroyed && !window.__groupChatPostInteractionsDelegated) {
-    window.__groupChatPostInteractionsDelegated = true;
-
-    actionMenuLifecycle.on(document, 'click', function(event) {
-        const reactionButton = event.target.closest('.reaction-buttons .btn-like, .reaction-buttons .btn-dislike');
-        if (reactionButton) {
-            const container = reactionButton.closest('.reaction-buttons');
-            const blogId = container?.dataset.postId;
-            if (container && blogId) {
-                sendReaction(blogId, reactionButton.classList.contains('btn-like') ? '1' : '0', container);
-            }
-            return;
-        }
-
-        const toggle = event.target.closest('.action-menu__toggle');
-        const menu = toggle?.closest('[data-action-menu]');
-        if (toggle && menu) {
-            event.preventDefault();
-            event.stopPropagation();
-            const isOpen = menu.classList.contains('is-open');
-            closeAllActionMenus();
-            menu.classList.toggle('is-open', !isOpen);
-            toggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-            if (!isOpen) requestAnimationFrame(function() { positionActionMenu(menu); });
-            return;
-        }
-
-        const actionItem = event.target.closest('.action-menu__list button, .action-menu__list a');
-        if (actionItem?.classList.contains('btn-reaction')) return;
-        closeAllActionMenus();
-    });
-
-    actionMenuLifecycle.on(document, 'keydown', function(event) {
-        if (event.key === 'Escape') closeAllActionMenus();
-    });
-    actionMenuLifecycle.on(window, 'resize', repositionOpenActionMenus);
-    actionMenuLifecycle.on(document, 'scroll', repositionOpenActionMenus, true);
-    actionMenuLifecycle.add(function() {
-        window.__groupChatPostInteractionsDelegated = false;
-    });
+const registerLegacyPostReaction = () => {
+    if (!window.GroupChat?.actions) return false;
+    window.GroupChat.actions.setPostReactionHandler(sendReaction);
+    return true;
+};
+if (!registerLegacyPostReaction()) {
+    window.GroupChatLifecycle?.on(document, 'group-chat:ready', registerLegacyPostReaction, { once: true });
 }
 
 
