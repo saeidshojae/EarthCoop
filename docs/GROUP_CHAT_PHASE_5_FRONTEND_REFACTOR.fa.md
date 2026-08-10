@@ -60,6 +60,8 @@ Checkpoint بیست‌وهشتم: initialization عنصربه‌عنصر منو 
 
 Checkpoint بیست‌ونهم: delegation مرکزی action menu به `.message-action` نیز گسترش یافت و دو بلوک initializer پیام در `public/js/group-chat.js` و Blade اصلی حذف شدند. toggle، aria، position، بستن سایر menuها و بستن actionهای معمولی اکنون برای message/post/poll یک مسیر مشترک دارند؛ `.btn-reaction` همچنان باز می‌ماند تا handler تخصصی reaction رفتار قبلی را حفظ کند. قرارداد source نبود lookup و listener per-message را در هر دو منبع کنترل می‌کند.
 
+Checkpoint سی‌ام: delete/report پیام در هر سه تولیدکنندهٔ DOM به قرارداد یکسان `data-group-chat-action` و `data-message-id` منتقل شد. handler اولیهٔ `DOMContentLoaded` در Blade، تعریف `initializeMessageActions` و فراخوانی‌های per-message آن در هر دو renderer حذف شدند؛ edit همچنان از delegation سند و reply/pin از bridge داده‌ای موجود عبور می‌کنند. این تغییر ۲۴۷ خط fallback تکراری را حذف کرد و Blade اصلی از ۳۷۱۲ به ۳۴۷۲ خط کاهش یافت.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.

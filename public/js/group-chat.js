@@ -2644,11 +2644,6 @@ function appendMessage(message) {
         });
     }
     
-    // Initialize action menu handlers if function exists
-    if (typeof initializeMessageActions === 'function') {
-        initializeMessageActions(messageRow);
-    }
-    
     // Scroll to the bottom of the chat - فقط اگر scroll restore کامل شده باشد
     // و کاربر خودش به پایین رفته باشد
     // در غیر این صورت، scroll restore خودش موقعیت را تنظیم می‌کند

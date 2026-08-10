@@ -41,142 +41,6 @@ if (typeof jQuery !== 'undefined') {
 
 
 <link rel="stylesheet" href="{{ asset('Css/group-chat.css') }}">
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    const csrf = '{{ csrf_token() }}';
-
-    // --- Helpers: ایجاد/نمایش/مخفی‌کردن overlay ---
-    function ensureOverlay() {
-        let el = document.getElementById('global-loading');
-        if (!el) {
-            el = document.createElement('div');
-            el.id = 'global-loading';
-            el.className = 'loading-overlay';
-            el.innerHTML = '<div class="spinner"></div>';
-            document.body.appendChild(el);
-        }
-        return el;
-    }
-    const overlay = ensureOverlay();
-    const showOverlay = () => overlay.classList.add('show');
-    const hideOverlay = () => overlay.classList.remove('show');
-
-    // کلیدکردن روی یک دکمه: حالت لودینگ محلی
-    function setBtnLoading(btn, on = true) {
-        if (!btn) return;
-        if (on) {
-            btn.classList.add('btn-loading');
-            btn.disabled = true;
-        } else {
-            btn.classList.remove('btn-loading');
-            btn.disabled = false;
-        }
-    }
-
-    // پوشش‌دهنده‌ی عمومی برای fetch با چرخنده
-    async function withSpinner(fn, {
-        global = true,
-        btn = null
-    } = {}) {
-        try {
-            if (global) showOverlay();
-            if (btn) setBtnLoading(btn, true);
-            return await fn();
-        } finally {
-            if (global) hideOverlay();
-            if (btn) setBtnLoading(btn, false);
-        }
-    }
-
-    document.querySelectorAll(".message-bubble").forEach(bubble => {
-        const id = bubble.dataset.messageId;
-        const editUrl = bubble.dataset.editUrl;
-        const deleteUrl = bubble.dataset.deleteUrl;
-        const reportUrl = bubble.dataset.reportUrl;
-
-        if (!id) {
-            console.warn('message id missing', bubble);
-            return;
-        }
-
-
-        // حذف
-        bubble.querySelector(".btn-delete:not([data-group-chat-action])")?.addEventListener("click", async (e) => {
-            const btn = e.currentTarget;
-            if (!await window.groupChatConfirm("آیا از حذف پیام مطمئن هستید؟", { confirmText: 'حذف' })) return;
-
-            await withSpinner(async () => {
-                const res = await fetch(deleteUrl, {
-                    method: "POST",
-                    headers: {
-                        "X-CSRF-TOKEN": csrf,
-                        "Accept": "application/json"
-                    },
-                    credentials: "same-origin"
-                });
-
-                let data = {};
-                try {
-                    data = await res.json();
-                } catch (e) {}
-
-                if (res.ok && (data.status === 'success' || !data.status)) {
-                    // ✅ FIXED: Remove message from DOM smoothly
-                    const msgEl = document.getElementById(`msg-${id}`);
-                    if (msgEl) {
-                        msgEl.style.transition = 'opacity 0.3s';
-                        msgEl.style.opacity = '0';
-                        setTimeout(() => msgEl.remove(), 300);
-                    }
-                    // اگر این پیام reply تارگت بود، reply indicator را پاک کن
-                    const parentInput = document.getElementById('parent_id');
-                    if (parentInput && parentInput.value == id) {
-                        if (typeof cancelReply === 'function') cancelReply();
-                    }
-                } else {
-                    window.groupChatNotify(data.message ||
-                        `خطا در حذف پیام (status ${res.status})`, 'error');
-                }
-            }, {
-                global: true,
-                btn
-            });
-        });
-
-        // گزارش
-        bubble.querySelector(".btn-report:not([data-group-chat-action])")?.addEventListener("click", async (e) => {
-            const btn = e.currentTarget;
-            const reason = await window.groupChatPrompt("دلیل گزارش را وارد کنید:");
-            if (!reason) return;
-
-            await withSpinner(async () => {
-                const res = await fetch(reportUrl, {
-                    method: "POST",
-                    headers: {
-                        "X-CSRF-TOKEN": csrf,
-                        "Accept": "application/json",
-                        "Content-Type": "application/json"
-                    },
-                    credentials: "same-origin",
-                    body: JSON.stringify({
-                        reason
-                    })
-                });
-
-                let data = {};
-                try {
-                    data = await res.json();
-                } catch (e) {}
-                window.groupChatNotify(data.message || (res.ok ? "گزارش ثبت شد" :
-                    `خطا در ثبت گزارش (status ${res.status})`), res.ok ? 'success' : 'error');
-            }, {
-                global: true,
-                btn
-            });
-        });
-    });
-});
-</script>
 
 
 
@@ -2596,7 +2460,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                                 <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> واکنش</button>
                                 ${([2,3].includes(CURRENT_USER_ROLE)) ? `<button type="button" class="action-menu__item btn-pin" data-legacy-chat-action="pin" data-message-id="${messageData.id}"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
                                 <button type="button" class="action-menu__item btn-edit"><i class="fas fa-edit"></i> ویرایش</button>
-                                <button type="button" class="action-menu__item action-menu__item--danger btn-delete"><i class="fas fa-trash"></i> حذف</button>
+                                <button type="button" data-group-chat-action="delete-message" data-message-id="${messageData.id}" class="action-menu__item action-menu__item--danger btn-delete"><i class="fas fa-trash"></i> حذف</button>
                                 <div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" style="font-size: 0.7rem; opacity: 0.6; margin-left: 4px;"></i><span class="menu-meta-time__label">ارسال شده:</span><span class="menu-meta-time__value">${formattedTime}</span></div></div>
                             </div>
                         </div>
@@ -2613,7 +2477,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                                 <button type="button" data-legacy-chat-action="reply" data-message-id="${messageData.id}" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
                                 <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> واکنش</button>
                                 ${([2,3].includes(CURRENT_USER_ROLE)) ? `<button type="button" class="action-menu__item btn-pin" data-legacy-chat-action="pin" data-message-id="${messageData.id}"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
-                                <button type="button" class="action-menu__item btn-report"><i class="fas fa-flag"></i> گزارش</button>
+                                <button type="button" data-group-chat-action="report-message" data-message-id="${messageData.id}" class="action-menu__item btn-report"><i class="fas fa-flag"></i> گزارش</button>
                                 <div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" style="font-size: 0.7rem; opacity: 0.6; margin-left: 4px;"></i><span class="menu-meta-time__label">ارسال شده:</span><span class="menu-meta-time__value">${formattedTime}</span></div></div>
                             </div>
                         </div>`
@@ -2651,118 +2515,12 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                 });
             }
 
-            // Initialize action menu handlers for the new message
-            initializeMessageActions(messageRow);
-
         } catch (error) {
             console.error('Error in addMessageToChat:', error);
             // ✅ FIXED: No location.reload() - gracefully handle error without disrupting user
             console.warn('Could not add message to chat, but continuing without reload');
             // Don't reload - let the polling or next action recover the state
         }
-    }
-
-    // Initialize message action handlers
-    function initializeMessageActions(messageRow) {
-        const bubble = messageRow.querySelector('.message-bubble');
-        if (!bubble) return;
-
-        const id = bubble.dataset.messageId;
-        const deleteUrl = bubble.dataset.deleteUrl;
-        const reportUrl = bubble.dataset.reportUrl;
-        const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
-
-        if (!id) return;
-
-        // حذف
-        bubble.querySelector(".btn-delete:not([data-group-chat-action])")?.addEventListener("click", async (e) => {
-            // بستن منوی عملیات
-            const actionMenu = bubble.closest('.message-head')?.querySelector('[data-action-menu]');
-            if (actionMenu) {
-                actionMenu.classList.remove('is-open');
-                actionMenu.querySelector('.action-menu__toggle')?.setAttribute('aria-expanded', 'false');
-            }
-
-            const btn = e.currentTarget;
-            if (!await window.groupChatConfirm("آیا از حذف پیام مطمئن هستید؟", { confirmText: 'حذف' })) return;
-
-            try {
-                const res = await fetch(deleteUrl, {
-                    method: "POST",
-                    headers: {
-                        "X-CSRF-TOKEN": csrf,
-                        "Accept": "application/json"
-                    },
-                    credentials: "same-origin"
-                });
-
-                let data = {};
-                try {
-                    data = await res.json();
-                } catch (e) {}
-
-                if (res.ok && (data.status === 'success' || !data.status)) {
-                    // ✅ FIXED: No location.reload() - remove message from DOM smoothly
-                    const messageRow = bubble.closest('.message-row');
-                    if (messageRow) {
-                        messageRow.style.transition = 'opacity 0.3s ease-out';
-                        messageRow.style.opacity = '0';
-                        setTimeout(() => {
-                            messageRow.remove();
-                        }, 300);
-                    }
-                    // اگر این پیام reply تارگت بود، reply indicator را پاک کن
-                    const parentInput = document.getElementById('parent_id');
-                    if (parentInput && parentInput.value == id) {
-                        if (typeof cancelReply === 'function') cancelReply();
-                    }
-                } else {
-                    window.groupChatNotify(data.message || `خطا در حذف پیام (status ${res.status})`, 'error');
-                }
-            } catch (error) {
-                console.error('Error deleting message:', error);
-                window.groupChatNotify('خطا در حذف پیام', 'error');
-            }
-        });
-
-        // گزارش
-        bubble.querySelector(".btn-report:not([data-group-chat-action])")?.addEventListener("click", async (e) => {
-            // بستن منوی عملیات
-            const actionMenu = bubble.closest('.message-head')?.querySelector('[data-action-menu]');
-            if (actionMenu) {
-                actionMenu.classList.remove('is-open');
-                actionMenu.querySelector('.action-menu__toggle')?.setAttribute('aria-expanded', 'false');
-            }
-
-            const btn = e.currentTarget;
-            const reason = await window.groupChatPrompt("دلیل گزارش را وارد کنید:");
-            if (!reason) return;
-
-            try {
-                const res = await fetch(reportUrl, {
-                    method: "POST",
-                    headers: {
-                        "X-CSRF-TOKEN": csrf,
-                        "Accept": "application/json",
-                        "Content-Type": "application/json"
-                    },
-                    credentials: "same-origin",
-                    body: JSON.stringify({
-                        reason
-                    })
-                });
-
-                let data = {};
-                try {
-                    data = await res.json();
-                } catch (e) {}
-                window.groupChatNotify(data.message || (res.ok ? "گزارش ثبت شد" :
-                    `خطا در ثبت گزارش (status ${res.status})`), res.ok ? 'success' : 'error');
-            } catch (error) {
-                console.error('Error reporting message:', error);
-                window.groupChatNotify('خطا در ثبت گزارش', 'error');
-            }
-        });
     }
 
     // تابع برای به‌روزرسانی محتوای پیام بعد از ویرایش

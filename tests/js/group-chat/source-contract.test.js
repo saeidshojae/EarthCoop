@@ -58,16 +58,21 @@ test('sidecar runtimes expose explicit ownership APIs', () => {
 test('message delete and report actions use the delegated action bridge', () => {
     const runtime = readFileSync('public/js/group-chat.js', 'utf8');
     const message = readFileSync('resources/views/groups/partials/message.blade.php', 'utf8');
+    const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
 
     for (const action of ['delete-message', 'report-message']) {
         assert.match(runtime, new RegExp(`data-group-chat-action="${action}"`));
         assert.match(message, new RegExp(`data-group-chat-action="${action}"`));
+        assert.match(blade, new RegExp(`data-group-chat-action="${action}"`));
     }
     assert.doesNotMatch(runtime, /querySelector\(["']\.btn-(?:delete|report)["']\)\?\.addEventListener/);
     assert.doesNotMatch(
         readFileSync('resources/views/groups/chat.blade.php', 'utf8'),
         /querySelector\(["']\.btn-(?:delete|report)["']\)\?\.addEventListener/
     );
+    assert.doesNotMatch(runtime, /initializeMessageActions/);
+    assert.doesNotMatch(blade, /initializeMessageActions/);
+    assert.doesNotMatch(blade, /btn-(?:delete|report):not\(\[data-group-chat-action\]\)/);
 });
 
 test('unread polling and observers are owned by the page lifecycle', () => {
