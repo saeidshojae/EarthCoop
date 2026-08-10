@@ -176,7 +176,7 @@ export function renderMessage(message) {
             ${replyPreviewHTML}
             <p class="message-content">${messageContentHtml}</p>
             ${voiceMessageHTML}
-            <div class="message-timestamp content-meta-line" style="display: flex !important; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; margin-left: -10px !important; margin-right: -10px !important; padding-left: 10px !important; padding-right: 10px !important; float: none !important;">
+            <div class="message-timestamp content-meta-line" style="margin-top: 4px; margin-left: -10px !important; margin-right: -10px !important; padding-left: 10px !important; padding-right: 10px !important; float: none !important;">
                 <div class="message-reactions-slot" style="display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;">
                     ${(message.reactions && message.reactions.length > 0) ? generateReactionsHTML(message.id, message.reactions) : ''}
                 </div>

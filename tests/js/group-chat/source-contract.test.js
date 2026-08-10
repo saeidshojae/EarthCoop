@@ -149,13 +149,13 @@ test('all group content uses the same rtl metadata order', () => {
     assert.match(post, /content-edit-status/);
     assert.match(poll, /content-edit-status/);
     assert.match(styles, /direction: rtl !important/);
-    assert.match(styles, /content-meta-time \{[\s\S]*?order: 1/);
-    assert.match(styles, /content-edit-status \{[\s\S]*?order: 2/);
-    assert.match(styles, /reaction-buttons \{[\s\S]*?order: 3/);
-    assert.match(styles, /content-read-receipt \{[\s\S]*?order: 4/);
-    assert.match(styles, /flex-wrap: nowrap !important/);
-    assert.match(styles, /flex: 1 1 auto !important/);
-    assert.match(styles, /content-read-receipt \{[\s\S]*?flex: 0 0 auto/);
+    assert.match(styles, /grid-template-columns: max-content max-content minmax\(0, 1fr\) max-content/);
+    assert.match(styles, /content-meta-time \{[\s\S]*?grid-column: 1/);
+    assert.match(styles, /content-edit-status \{[\s\S]*?grid-column: 2/);
+    assert.match(styles, /reaction-buttons \{[\s\S]*?grid-column: 3/);
+    assert.match(styles, /content-read-receipt \{[\s\S]*?grid-column: 4/);
+    assert.match(styles, /message-reactions \{[\s\S]*?flex-wrap: nowrap !important/);
+    assert.match(styles, /min-width: min\(245px, calc\(100vw - 92px\)\) !important/);
 });
 
 test('realtime runtime is pinned and starts without package downloads', () => {

@@ -658,7 +658,7 @@
 
         <div class="message-timestamp content-meta-line"
 
-            style="display: flex !important; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; margin-left: -10px !important; margin-right: -10px !important; padding-left: 10px !important; padding-right: 10px !important; float: none !important;">
+            style="margin-top: 4px; margin-left: -10px !important; margin-right: -10px !important; padding-left: 10px !important; padding-right: 10px !important; float: none !important;">
 
             {{-- سمت چپ: ارسال شده (منتها الیه چپ) --}}
 
