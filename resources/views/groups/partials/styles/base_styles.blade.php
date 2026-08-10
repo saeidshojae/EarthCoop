@@ -447,6 +447,17 @@
     line-height: 1.5;
 }
 
+.menu-meta-time__item--edited {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(0, 0, 0, .08);
+}
+
+.message-reactions-slot { order: 1; }
+.message-primary-meta { order: 2; }
+.message-edit-status { order: 3; white-space: nowrap; }
+.message-timestamp > .read-receipt { order: 4; white-space: nowrap; }
+
 .menu-meta-time__label {
     font-weight: 600;
     color: #555;

@@ -662,34 +662,6 @@
 
             {{-- سمت چپ: ارسال شده (منتها الیه چپ) --}}
 
-            @if($isMine)
-
-            <div class="read-receipt"
-
-                style="font-size: 10px; text-align: left; direction: ltr; margin-right: auto; margin-left: 0;">
-
-                @if($readCount > 0)
-
-                <span style="color: #10b981;">
-
-                    <i class="fas fa-check-double"></i> {{ $readCount }} نفر خوانده‌اند
-
-                </span>
-
-                @else
-
-                <span style="color: #9ca3af;">
-
-                    <i class="fas fa-check"></i> ارسال شده
-
-                </span>
-
-                @endif
-
-            </div>
-
-            @endif
-
             {{-- وسط: واکنش‌ها --}}
 
             <div class="message-reactions-slot" style="display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;">
@@ -739,21 +711,25 @@
 
             {{-- سمت راست: زمان --}}
 
-            <div style="display: flex; align-items: center; gap: 4px; margin-left: auto;">
+            <div class="message-primary-meta" style="display: flex; align-items: center; gap: 4px; margin-left: auto;">
 
                 <span class="message-time">{{ $timeStr }}</span>
 
-                @if($isEdited && $updatedAt)
-
-                <span class="message-edited" title="ویرایش شده در {{ $updatedAt->format('Y/m/d H:i:s') }}">
-
-                    <i class="fas fa-edit"></i>
-
-                </span>
-
-                @endif
-
             </div>
+
+            @if($isEdited && $updatedAt)
+            <span class="message-edit-status" title="ویرایش شده در {{ $updatedAt->format('Y/m/d H:i:s') }}">(ویرایش شده)</span>
+            @endif
+
+            @if($isMine)
+            <div class="read-receipt" style="font-size: 10px; text-align: left; direction: ltr;">
+                @if($readCount > 0)
+                <span style="color: #10b981;"><i class="fas fa-check-double"></i> {{ $readCount }} نفر خوانده‌اند</span>
+                @else
+                <span style="color: #9ca3af;"><i class="fas fa-check"></i> ارسال شده</span>
+                @endif
+            </div>
+            @endif
 
         </div>
 

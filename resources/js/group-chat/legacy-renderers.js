@@ -43,11 +43,26 @@ export function installLegacyRenderers({ app, callbacks = {} }) {
         const node = bubble.querySelector('.message-content');
         if (node) node.innerHTML = content;
         bubble.dataset.contentRaw = content.replace(/<[^>]*>/g, '');
-        if (item.edited !== false && !bubble.querySelector('.edited-icon')) {
+        if (item.edited !== false && !bubble.querySelector('.message-edit-status')) {
             const badge = document.createElement('span');
-            badge.className = 'edited-icon';
+            badge.className = 'edited-icon message-edit-status';
             badge.textContent = '(ویرایش شده)';
-            bubble.querySelector('.message-timestamp')?.prepend(badge);
+            const receipt = bubble.querySelector('.read-receipt');
+            if (receipt) receipt.before(badge);
+            else bubble.querySelector('.message-timestamp')?.appendChild(badge);
+        }
+        if (item.edited !== false) {
+            const menuMeta = bubble.querySelector('.menu-meta-time');
+            if (menuMeta && !menuMeta.querySelector('.menu-meta-time__item--edited')) {
+                const edited = document.createElement('div');
+                edited.className = 'menu-meta-time__item menu-meta-time__item--edited';
+                edited.innerHTML = '<i class="fas fa-edit" aria-hidden="true"></i><span class="menu-meta-time__label">ویرایش شده:</span>';
+                const value = document.createElement('span');
+                value.className = 'menu-meta-time__value';
+                value.textContent = item.edited_at ? new Date(item.edited_at).toLocaleString('fa-IR') : new Date().toLocaleString('fa-IR');
+                edited.appendChild(value);
+                menuMeta.appendChild(edited);
+            }
         }
         return true;
     };

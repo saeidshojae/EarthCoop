@@ -32,6 +32,10 @@ export function renderMessage(message) {
 
     const messageContentHtml = renderMentionLinks(messageContent);
     const formattedTime = message.created_at || new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+    const editedAt = message.edited_at
+        ? new Date(message.edited_at).toLocaleString('fa-IR')
+        : (message.edited ? new Date().toLocaleString('fa-IR') : '');
+    const menuTimeHtml = `<div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" aria-hidden="true"></i><span class="menu-meta-time__label">ارسال شده:</span><span class="menu-meta-time__value">${formattedTime}</span></div>${editedAt ? `<div class="menu-meta-time__item menu-meta-time__item--edited"><i class="fas fa-edit" aria-hidden="true"></i><span class="menu-meta-time__label">ویرایش شده:</span><span class="menu-meta-time__value">${editedAt}</span></div>` : ''}</div>`;
     
     // Escape HTML helper
     function escapeHtml(text) {
@@ -147,7 +151,7 @@ export function renderMessage(message) {
                             ${([2,3].includes(window.yourRole || 0)) ? `<button type="button" class="action-menu__item btn-pin" data-legacy-chat-action="pin" data-message-id="${message.id}"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
                             <button type="button" class="action-menu__item btn-edit"><i class="fas fa-edit"></i> ویرایش</button>
                             <button type="button" data-group-chat-action="delete-message" data-message-id="${message.id}" class="action-menu__item action-menu__item--danger btn-delete"><i class="fas fa-trash"></i> حذف</button>
-                            <div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" style="font-size: 0.7rem; opacity: 0.6; margin-left: 4px;"></i><span class="menu-meta-time__label">ارسال شده:</span><span class="menu-meta-time__value">${formattedTime}</span></div></div>
+                            ${menuTimeHtml}
                         </div>
                     </div>
                     <div class="message-head__info">
@@ -164,7 +168,7 @@ export function renderMessage(message) {
                             <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> واکنش</button>
                             ${([2,3].includes(window.yourRole || 0)) ? `<button type="button" class="action-menu__item btn-pin" data-legacy-chat-action="pin" data-message-id="${message.id}"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
                             <button type="button" data-group-chat-action="report-message" data-message-id="${message.id}" class="action-menu__item btn-report"><i class="fas fa-flag"></i> گزارش</button>
-                            <div class="menu-meta-time"><div class="menu-meta-time__item"><i class="fas fa-paper-plane" style="font-size: 0.7rem; opacity: 0.6; margin-left: 4px;"></i><span class="menu-meta-time__label">ارسال شده:</span><span class="menu-meta-time__value">${formattedTime}</span></div></div>
+                            ${menuTimeHtml}
                         </div>
                     </div>`
                 }
@@ -173,13 +177,14 @@ export function renderMessage(message) {
             <p class="message-content">${messageContentHtml}</p>
             ${voiceMessageHTML}
             <div class="message-timestamp" style="display: flex !important; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; margin-left: -10px !important; margin-right: -10px !important; padding-left: 10px !important; padding-right: 10px !important; justify-content: space-between !important; float: none !important; text-align: left !important; direction: ltr !important;">
-                ${isMine ? '<div class="read-receipt" style="font-size: 10px; text-align: left; direction: ltr; margin-right: auto; margin-left: 0;"><span style="color: #9ca3af;"><i class="fas fa-check"></i> ارسال شده</span></div>' : ''}
                 <div class="message-reactions-slot" style="display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;">
                     ${(message.reactions && message.reactions.length > 0) ? generateReactionsHTML(message.id, message.reactions) : ''}
                 </div>
-                <div style="display: flex; align-items: center; gap: 4px; margin-left: auto;">
+                <div class="message-primary-meta" style="display: flex; align-items: center; gap: 4px; margin-left: auto;">
                     <span class="message-time">${formattedTime}</span>
                 </div>
+                ${message.edited ? '<span class="edited-icon message-edit-status">(ویرایش شده)</span>' : ''}
+                ${isMine ? '<div class="read-receipt" style="font-size: 10px; text-align: left; direction: ltr;"><span style="color: #9ca3af;"><i class="fas fa-check"></i> ارسال شده</span></div>' : ''}
             </div>
         </div>
     `;

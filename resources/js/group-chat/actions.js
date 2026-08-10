@@ -140,6 +140,8 @@ export function createActions({ lifecycle, root = document }) {
             return;
         }
 
+        if (!event.target.closest?.('[data-action-menu].is-open')) closeAll();
+
         const menuAction = event.target.closest?.('.action-menu__list button, .action-menu__list a');
         if (menuAction && !menuAction.classList.contains('btn-reaction')) closeAll();
 

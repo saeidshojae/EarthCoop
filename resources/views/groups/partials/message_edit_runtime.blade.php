@@ -125,6 +125,7 @@
                             };
                         }
                     }
+                    responseData = responseData?.data ?? responseData;
                     console.log('Response data:', responseData);
                 } catch (parseError) {
                     console.error('Error parsing response:', parseError);

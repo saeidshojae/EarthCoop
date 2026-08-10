@@ -123,6 +123,21 @@ test('message reactions always render inside the canonical timestamp slot', () =
     assert.match(blade, /class="message-reactions-slot"/);
 });
 
+test('message metadata keeps read receipts last and updates edit time in menus', () => {
+    const actions = readFileSync('resources/js/group-chat/actions.js', 'utf8');
+    const legacy = readFileSync('resources/js/group-chat/legacy-renderers.js', 'utf8');
+    const renderer = readFileSync('resources/js/group-chat/message-renderer.js', 'utf8');
+    const blade = readFileSync('resources/views/groups/partials/message.blade.php', 'utf8');
+    const editRuntime = readFileSync('resources/views/groups/partials/message_edit_runtime.blade.php', 'utf8');
+
+    assert.match(actions, /if \(!event\.target\.closest\?\.\('\[data-action-menu\]\.is-open'\)\) closeAll\(\)/);
+    assert.match(legacy, /receipt\.before\(badge\)/);
+    assert.match(legacy, /menu-meta-time__item--edited/);
+    assert.ok(renderer.indexOf('message-edit-status') < renderer.lastIndexOf('read-receipt'));
+    assert.ok(blade.lastIndexOf('message-edit-status') < blade.lastIndexOf('read-receipt'));
+    assert.match(editRuntime, /responseData = responseData\?\.data \?\? responseData/);
+});
+
 test('realtime runtime is pinned and starts without package downloads', () => {
     const manifest = JSON.parse(readFileSync('package.json', 'utf8'));
     const launcher = readFileSync('scripts/start-soketi.ps1', 'utf8');

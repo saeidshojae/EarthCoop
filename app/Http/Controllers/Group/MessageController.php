@@ -616,6 +616,7 @@ class MessageController extends Controller
                 'message_id' => (int) $message->id,
                 'content' => $htmlContent,
                 'edited' => true,
+                'edited_at' => now()->toIso8601String(),
             ],
             (int) $user->id
         ));
@@ -625,6 +626,7 @@ class MessageController extends Controller
             'message' => 'Message updated successfully.',
             'content' => $htmlContent,
             'edited' => true,
+            'edited_at' => now()->toIso8601String(),
             'message_id' => (int) $message->id,
         ]);
     }
