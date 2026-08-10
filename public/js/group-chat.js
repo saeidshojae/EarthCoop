@@ -136,10 +136,6 @@ const groupChatConfirm = (message, options = {}) => window.GroupChatFeedback?.co
 const groupChatPrompt = (message, options = {}) => window.GroupChatFeedback?.prompt
     ? window.GroupChatFeedback.prompt(message, options)
     : Promise.resolve(null);
-window.groupChatNotify = groupChatNotify;
-window.groupChatConfirm = groupChatConfirm;
-window.groupChatPrompt = groupChatPrompt;
-
 // ========== FORCE LOG - همیشه نمایش بده ==========
 // استفاده از alert برای اطمینان از نمایش
 if (groupChatDebug && typeof window !== 'undefined') {

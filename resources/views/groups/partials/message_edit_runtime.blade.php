@@ -122,7 +122,7 @@
                     console.log('Response data:', responseData);
                 } catch (parseError) {
                     console.error('Error parsing response:', parseError);
-                    window.groupChatNotify('خطا در خواندن پاسخ سرور', 'error');
+                    window.GroupChatFeedback?.toast('خطا در خواندن پاسخ سرور', { type: 'error' });
                     return;
                 }
 
@@ -132,14 +132,14 @@
                     const errorMsg = responseData?.message || responseData?.error ||
                         'خطا در ذخیره‌سازی.';
                     console.error('Response error:', errorMsg);
-                    window.groupChatNotify(errorMsg, 'error');
+                    window.GroupChatFeedback?.toast(errorMsg, { type: 'error' });
                     return;
                 }
 
                 // بررسی وجود currentBubble
                 if (!currentBubble) {
                     console.error('currentBubble is null');
-                    window.groupChatNotify('خطا: عنصر پیام پیدا نشد. لطفا صفحه را رفرش کنید.', 'error');
+                    window.GroupChatFeedback?.toast('خطا: عنصر پیام پیدا نشد. لطفا صفحه را رفرش کنید.', { type: 'error' });
                     // ✅ FIXED: No reload - let user refresh manually if needed
                     closeModal();
                     return;
@@ -216,12 +216,12 @@
                                 .message.includes('not found') || updateError.message.includes(
                                     'not in DOM'))) {
                             console.warn('Critical error in updateMessageContent');
-                            window.groupChatNotify('خطا در به‌روزرسانی پیام. لطفا دوباره تلاش کنید.', 'error');
+                            window.GroupChatFeedback?.toast('خطا در به‌روزرسانی پیام. لطفا دوباره تلاش کنید.', { type: 'error' });
                             closeModal();
                         } else {
                             // برای خطاهای دیگر، فقط alert بده
                             console.warn('Non-critical error in updateMessageContent, not reloading');
-                            window.groupChatNotify('خطا در به‌روزرسانی پیام: ' + updateError.message, 'error');
+                            window.GroupChatFeedback?.toast('خطا در به‌روزرسانی پیام: ' + updateError.message, { type: 'error' });
                         }
                     }
                 } else {
@@ -241,13 +241,13 @@
                         } catch (e) {
                             console.error('Failed to update using message:', e);
                             // ✅ FIXED: No reload - show error message
-                            window.groupChatNotify('خطا در به‌روزرسانی پیام. لطفا دوباره تلاش کنید.', 'error');
+                            window.GroupChatFeedback?.toast('خطا در به‌روزرسانی پیام. لطفا دوباره تلاش کنید.', { type: 'error' });
                             closeModal();
                         }
                     } else {
                         // ✅ FIXED: No reload - show error message
                         console.error('No valid content found in response');
-                        window.groupChatNotify('خطا در دریافت محتوای پیام. لطفا دوباره تلاش کنید.', 'error');
+                        window.GroupChatFeedback?.toast('خطا در دریافت محتوای پیام. لطفا دوباره تلاش کنید.', { type: 'error' });
                         closeModal();
                     }
                 }
@@ -261,12 +261,12 @@
                 if (err.name === 'TypeError' && (err.message.includes('fetch') || err.message.includes(
                         'network') || err.message.includes('Failed to fetch'))) {
                     console.warn('Network error detected');
-                    window.groupChatNotify('خطا در اتصال به سرور. لطفاً اتصال اینترنت خود را بررسی کنید.', 'error');
+                    window.GroupChatFeedback?.toast('خطا در اتصال به سرور. لطفاً اتصال اینترنت خود را بررسی کنید.', { type: 'error' });
                     closeModal();
                     return;
                 }
                 // برای سایر خطاها، فقط alert بده و مودال را ببند
-                window.groupChatNotify('خطا در ویرایش پیام: ' + (err.message || 'خطای نامشخص'), 'error');
+                window.GroupChatFeedback?.toast('خطا در ویرایش پیام: ' + (err.message || 'خطای نامشخص'), { type: 'error' });
                 closeModal();
 
             } finally {

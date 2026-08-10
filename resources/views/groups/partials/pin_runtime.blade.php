@@ -1,7 +1,7 @@
 <script>
 // Add pin/unpin functionality
 async function pinMessage(messageId) {
-    if (!await window.groupChatConfirm('آیا مایل به سنجاق کردن این پیام هستید؟')) return;
+    if (!await window.GroupChatFeedback?.confirm('آیا مایل به سنجاق کردن این پیام هستید؟')) return;
 
     fetch(`/groups/messages/${messageId}/pin`, {
             method: 'POST',
@@ -31,7 +31,7 @@ async function pinMessage(messageId) {
                         showConfirmButton: false
                     });
                 } else {
-                    window.groupChatNotify('پیام با موفقیت سنجاق شد.', 'success');
+                    window.GroupChatFeedback?.toast('پیام با موفقیت سنجاق شد.', { type: 'success' });
                 }
             } else {
                 if (typeof Swal !== 'undefined') {
@@ -41,14 +41,14 @@ async function pinMessage(messageId) {
                         text: data.message
                     });
                 } else {
-                    window.groupChatNotify(data.message, 'error');
+                    window.GroupChatFeedback?.toast(data.message, { type: 'error' });
                 }
             }
         });
 }
 
 async function unpinMessage(messageId) {
-    if (!await window.groupChatConfirm('آیا مایل به برداشتن این پیام از حالت سنجاق هستید؟')) return;
+    if (!await window.GroupChatFeedback?.confirm('آیا مایل به برداشتن این پیام از حالت سنجاق هستید؟')) return;
 
     fetch(`/groups/messages/${messageId}/unpin`, {
             method: 'POST',
@@ -76,7 +76,7 @@ async function unpinMessage(messageId) {
                         showConfirmButton: false
                     });
                 } else {
-                    window.groupChatNotify('پیام از حالت سنجاق خارج شد.', 'success');
+                    window.GroupChatFeedback?.toast('پیام از حالت سنجاق خارج شد.', { type: 'success' });
                 }
             } else {
                 if (typeof Swal !== 'undefined') {
@@ -86,7 +86,7 @@ async function unpinMessage(messageId) {
                         text: data.message
                     });
                 } else {
-                    window.groupChatNotify(data.message, 'error');
+                    window.GroupChatFeedback?.toast(data.message, { type: 'error' });
                 }
             }
         });

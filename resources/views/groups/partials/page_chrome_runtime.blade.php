@@ -50,7 +50,7 @@ function initializeGroupChatPageChrome() {
 
     @if (session()->has('success'))
     lifecycle.on(window, 'load', function() {
-        window.groupChatNotify(@json(session()->get('success')), 'success');
+        window.GroupChatFeedback?.toast(@json(session()->get('success')), { type: 'success' });
     }, { once: true });
     @endif
 

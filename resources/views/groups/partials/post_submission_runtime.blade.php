@@ -49,12 +49,12 @@ function initializePostSubmissionRuntime() {
                     const chatBox = document.getElementById('chat-box');
                     if (rendered && chatBox) chatBox.scrollTop = chatBox.scrollHeight;
                 } else {
-                    window.groupChatNotify(data.message || 'خطا در ارسال پست', 'error');
+                    window.GroupChatFeedback?.toast(data.message || 'خطا در ارسال پست', { type: 'error' });
                     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'انتشار پست'; }
                 }
             } catch(err) {
                 console.error('Post submit error:', err);
-                window.groupChatNotify('خطا در ارتباط با سرور', 'error');
+                window.GroupChatFeedback?.toast('خطا در ارتباط با سرور', { type: 'error' });
                 if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'انتشار پست'; }
             }
         });

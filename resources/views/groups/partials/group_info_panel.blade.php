@@ -1298,7 +1298,7 @@
             document.getElementById('addUsersToGroup')?.addEventListener('click', function() {
                 const hours = document.getElementById('hoursUser').value;
                 if (!selectedUserId || !hours) {
-                    window.groupChatNotify('لطفاً کاربر را انتخاب و مدت ساعت را وارد کنید.', 'error');
+                    window.GroupChatFeedback?.toast('لطفاً کاربر را انتخاب و مدت ساعت را وارد کنید.', { type: 'error' });
                     return;
                 }
 
@@ -1316,7 +1316,7 @@
                 })
                 .then(res => res.json())
                 .then(() => {
-                    window.groupChatNotify('کاربر با موفقیت اضافه شد', 'success');
+                    window.GroupChatFeedback?.toast('کاربر با موفقیت اضافه شد', { type: 'success' });
                     selectedUserId = null;
                     searchInput.value = '';
                     document.getElementById('hoursUser').value = '';
