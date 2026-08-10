@@ -61,6 +61,9 @@ test('sidecar runtimes expose explicit ownership APIs', () => {
     assert.match(features, /window\.GroupChatFeatures\s*=\s*Object\.freeze/);
     assert.match(voice, /window\.GroupVoiceRecorder\s*=\s*Object\.freeze/);
     assert.match(voice, /function installOptimisticVoiceBridge/);
+    assert.match(voice, /start: startRecording/);
+    assert.match(voice, /stop: stopRecording/);
+    assert.doesNotMatch(readFileSync('public/js/group-chat.js', 'utf8'), /function (?:startRecording|stopRecording)\(/);
     const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
     assert.doesNotMatch(blade, /Voice Optimistic Override/);
     assert.match(blade, /@include\('groups\.partials\.management_modals'\)/);
