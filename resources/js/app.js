@@ -3,7 +3,7 @@ import "../css/app.css";
 import "bootstrap";
 import "./bootstrap";
 import $ from "jquery";
-import "select2";
+import installSelect2 from "select2";
 import "select2/dist/css/select2.min.css";
 import "./najm-bahar.js";
 import { register } from "swiper/element/bundle";
@@ -13,6 +13,7 @@ register();
 
 window.$ = $;
 window.jQuery = $;
+installSelect2(window, $);
 
 if ($.fn.select2?.defaults) {
 	$.fn.select2.defaults.set("language", {

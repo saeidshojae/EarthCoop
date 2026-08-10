@@ -79,8 +79,19 @@ test('chat page uses only locally bundled library assets', () => {
     assert.doesNotMatch(chat, /<(?:script|link)\b[^>]+https?:\/\//i);
     assert.match(layout, /vendor\/fontawesome\/css\/all\.min\.css/);
     assert.match(app, /import \$ from "jquery"/);
-    assert.match(app, /import "select2"/);
+    assert.match(app, /import installSelect2 from "select2"/);
+    assert.match(app, /installSelect2\(window, \$\)/);
     assert.match(app, /select2\/dist\/css\/select2\.min\.css/);
+});
+
+test('delta synchronization follows the server-side feature flag', () => {
+    const config = readFileSync('resources/views/groups/partials/chat_runtime.blade.php', 'utf8');
+    const realtime = readFileSync('resources/js/group-chat/realtime-runtime.js', 'utf8');
+
+    assert.match(config, /deltaSyncEnabled: @json\(\(bool\) config\('group-chat\.features\.delta_sync_v1'/);
+    assert.match(realtime, /const deltaSyncEnabled = window\.GroupChatConfig\?\.deltaSyncEnabled === true/);
+    assert.match(realtime, /if \(!deltaSyncEnabled \|\| state\.syncingDelta/);
+    assert.match(realtime, /if \(deltaSyncEnabled\) void syncDelta\(\)\.finally\(setHealthy\)/);
 });
 
 test('composer keeps optimistic messages until a valid stored identity arrives', () => {

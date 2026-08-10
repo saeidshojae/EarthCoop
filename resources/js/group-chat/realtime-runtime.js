@@ -1,6 +1,7 @@
 export function createRealtimeRuntime({ app, groupId, authUserId, debug = false }) {
     const { api, store, lifecycle, reconciler } = app;
     const sequenceKey = `group-feed-sequence:${groupId}`;
+    const deltaSyncEnabled = window.GroupChatConfig?.deltaSyncEnabled === true;
     const state = {
         initialized: false,
         connected: false,
@@ -66,7 +67,7 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         publish();
     };
     const syncDelta = async () => {
-        if (state.syncingDelta || navigator.onLine === false) return;
+        if (!deltaSyncEnabled || state.syncingDelta || navigator.onLine === false) return;
         state.syncingDelta = true;
         publish();
         try {
@@ -92,6 +93,7 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         }
     };
     const applyEnvelope = event => {
+        if (!deltaSyncEnabled) return;
         const decision = reconciler.inspect(event, { commit: false });
         if (decision.action !== 'ignore') void syncDelta();
     };
@@ -121,7 +123,10 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         if (state.initialized || !window.Echo?.private) return state.initialized;
         try {
             channel = window.Echo.private(`group.${groupId}`);
-            channel.subscribed(() => void syncDelta().finally(setHealthy))
+            channel.subscribed(() => {
+                if (deltaSyncEnabled) void syncDelta().finally(setHealthy);
+                else setHealthy();
+            })
                 .error(() => { state.connected = false; state.usingFallback = true; publish(); })
                 .listen('.group.message.created', applyMessageEvent)
                 .listen('.group.message.updated', applyMessageEvent)
@@ -203,9 +208,16 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         };
         lifecycle.timeout(begin, 500);
     };
-    lifecycle.on(window, 'online', () => { state.connected = false; publish(); void syncDelta(); });
+    lifecycle.on(window, 'online', () => {
+        state.connected = false;
+        publish();
+        if (deltaSyncEnabled) void syncDelta();
+        else initialize();
+    });
     lifecycle.on(window, 'offline', () => { state.connected = false; state.usingFallback = false; publish(); });
-    lifecycle.on(document, 'visibilitychange', () => { if (!document.hidden) void syncDelta(); });
+    lifecycle.on(document, 'visibilitychange', () => {
+        if (!document.hidden && deltaSyncEnabled) void syncDelta();
+    });
     const renderConnection = current => {
         let indicator = document.getElementById('group-connection-status');
         if (!indicator) {
