@@ -427,3 +427,21 @@ test('poll operations are owned by the modular Polls runtime', () => {
     assert.doesNotMatch(groupChat, /function (?:submitVote|updatePollUI)\(|window\.deletePoll/);
     assert.match(groupChat, /action: 'vote' \}, 'websocket-poll'/);
 });
+
+test('election page state and actions are lifecycle-owned', () => {
+    const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
+    const elections = readFileSync('resources/js/group-chat/elections.js', 'utf8');
+    const actions = readFileSync('resources/js/group-chat/actions.js', 'utf8');
+    const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
+
+    assert.match(index, /createElections/);
+    assert.match(elections, /actions\.register\('open-election', open\)/);
+    assert.match(elections, /actions\.register\('close-election', close\)/);
+    assert.match(elections, /actions\.register\('open-election-admin', openAdmin\)/);
+    assert.match(elections, /store\.setState\(\{ electionOpen: true \}\)/);
+    assert.match(elections, /lifecycle\.timeout\(/);
+    assert.match(elections, /lifecycle\.on\(document, 'keydown'/);
+    assert.doesNotMatch(actions, /'open-election': \['openElectionBox'\]|'close-election': \['closeElectionBox'/);
+    assert.doesNotMatch(groupChat, /function (?:openElectionBox|closeElectionBox|openElection2Box)\(/);
+    assert.doesNotMatch(groupChat, /\$\('#electionForm'\)\.on/);
+});

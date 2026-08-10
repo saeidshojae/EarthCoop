@@ -264,115 +264,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-$(document).ready(function() {
-  // Select2 برای options (نه manager_vote و inspector_vote که در election_modal مدیریت می‌شوند)
-  if ($('#options').length && !$('#options').data('select2')) {
-    $('#options').select2({
-      placeholder: "انتخاب کنید",
-      dir: "rtl",
-      tags: 'true'
-    });
-  }
-  
-  // Select2 برای manager_vote و inspector_vote فقط اگر در election modal نباشند
-  // یا اگر تابع updateElectionSelect2 موجود نباشد
-  if (!$('#electionVotingOverlay').length || typeof updateElectionSelect2 === 'undefined') {
-    if ($('#manager_vote').length && !$('#manager_vote').data('select2')) {
-  $('#manager_vote').select2({
-    multiple: true,
-    placeholder: "انتخاب کنید",
-    dir: "rtl",
-  });
-    }
-    if ($('#inspector_vote').length && !$('#inspector_vote').data('select2')) {
-  $('#inspector_vote').select2({
-    multiple: true,
-    placeholder: "انتخاب کنید",
-    dir: "rtl",
-  });
-    }
-  }
-
-  $('#electionForm').on('submit', function (e) {
-    const inspectorSelectedCount = $('#inspector_vote').val()?.length || 0;
-    const managerSelectedCount   = $('#manager_vote').val()?.length || 0;
-  
-    console.log(`بازرس: ${inspectorSelectedCount}, مدیر: ${managerSelectedCount}`);
-  
-    if (inspectorSelectedCount > inspectorCount) {
-      e.preventDefault();
-      showWarningAlert(`برای تعداد بازرس دقیقاً ${inspectorCount} گزینه انتخاب کنید.`);
-      return;
-    }
-  
-    if (managerSelectedCount > manageCount) {
-      e.preventDefault();
-      showWarningAlert(`برای تعداد مدیر دقیقاً ${manageCount} گزینه انتخاب کنید.`);
-      return;
-    }
-  
-    // همه‌چیز اوکی => فرم ارسال می‌شه
-  });
-  
-
-  
-
-});
-
-function openElectionBox(){
-  const overlay = document.getElementById('electionVotingOverlay');
-  if (overlay) {
-    // Move overlay to body if not already there
-    if (overlay.parentElement !== document.body) {
-      document.body.appendChild(overlay);
-    }
-    overlay.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-    // Scroll to top of overlay
-    overlay.scrollTop = 0;
-    
-    // Trigger event برای بروزرسانی Select2 بعد از باز شدن مدال
-    setTimeout(function() {
-      if (typeof window.updateElectionSelect2 === 'function') {
-        window.updateElectionSelect2();
-      }
-      // Dispatch custom event برای اطلاع سایر کدها
-      try {
-        const event = new Event('electionModalOpened');
-        window.dispatchEvent(event);
-      } catch(e) {
-        // Fallback for older browsers
-        try {
-          var event = document.createEvent('Event');
-          event.initEvent('electionModalOpened', true, true);
-          window.dispatchEvent(event);
-        } catch(e2) {
-          console.error('Error dispatching event:', e2);
-        }
-      }
-    }, 600);
-  }
-  window.GroupChat?.actions?.closeGroupInfo();
-}
-
-function closeElectionBox(){
-  const overlay = document.getElementById('electionVotingOverlay');
-  if (overlay) {
-    overlay.style.display = 'none';
-    document.body.style.overflow = '';
-  }
-}
-
-// Close election modal on Escape key
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') {
-    const overlay = document.getElementById('electionVotingOverlay');
-    if (overlay && overlay.style.display === 'flex') {
-      closeElectionBox();
-    }
-  }
-});
-
 function sendReaction(blogId, type, container) {
   $.ajax({
     url: `/blogs/${blogId}/react`,
@@ -485,11 +376,6 @@ function openBlogBox(){
 function openPollBox(){
     window.openPollBox();
 }
-
-  function openElection2Box(){
-    document.querySelector('#back').style='display: block'
-    document.querySelector('#electionOptionsBox').style='display: block'
-  }
 
   
   let openSkillListId = null;
@@ -2254,7 +2140,7 @@ function showSuccessAlert(message) {
 }
 
 function closeAllModals() {
-  closeElectionBox(); 
+  window.GroupChat?.elections?.close();
   cancelPostForm();
   cancelPollForm()
   closeSkill()
