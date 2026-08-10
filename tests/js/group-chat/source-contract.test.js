@@ -150,10 +150,15 @@ test('all group content uses the same rtl metadata order', () => {
     assert.match(poll, /content-edit-status/);
     assert.match(styles, /direction: rtl !important/);
     assert.match(styles, /grid-template-columns: max-content max-content minmax\(0, 1fr\) max-content/);
+    assert.match(styles, /\.message-timestamp\.content-meta-line \{[\s\S]*?width: calc\(100% \+ 20px\);[\s\S]*?padding-inline: 2px !important/);
     assert.match(styles, /content-meta-time \{[\s\S]*?grid-column: 1/);
+    assert.match(styles, /content-meta-time \{[\s\S]*?grid-column: 1;[\s\S]*?grid-row: 1/);
     assert.match(styles, /content-edit-status \{[\s\S]*?grid-column: 2/);
+    assert.match(styles, /content-edit-status \{[\s\S]*?grid-column: 2;[\s\S]*?grid-row: 1/);
     assert.match(styles, /reaction-buttons \{[\s\S]*?grid-column: 3/);
+    assert.match(styles, /reaction-buttons \{[\s\S]*?grid-column: 3;[\s\S]*?grid-row: 1/);
     assert.match(styles, /content-read-receipt \{[\s\S]*?grid-column: 4/);
+    assert.match(styles, /content-read-receipt \{[\s\S]*?grid-column: 4;[\s\S]*?grid-row: 1;[\s\S]*?justify-self: start/);
     assert.match(styles, /message-reactions \{[\s\S]*?flex-wrap: nowrap !important/);
     assert.match(styles, /min-width: min\(245px, calc\(100vw - 92px\)\) !important/);
 });

@@ -464,15 +464,24 @@
     min-width: 0;
 }
 
+.message-timestamp.content-meta-line {
+    box-sizing: border-box;
+    width: calc(100% + 20px);
+    margin-inline: -10px !important;
+    padding-inline: 2px !important;
+}
+
 .content-meta-line .message-primary-meta,
 .content-meta-line > .content-meta-time {
     grid-column: 1;
+    grid-row: 1;
     margin: 0 !important;
     white-space: nowrap;
 }
 .content-meta-line .message-edit-status,
 .content-meta-line > .content-edit-status {
     grid-column: 2;
+    grid-row: 1;
     white-space: nowrap;
     opacity: .72;
     font-size: .66rem;
@@ -481,6 +490,7 @@
 .content-meta-line > .content-reactions-slot,
 .content-meta-line > .reaction-buttons {
     grid-column: 3;
+    grid-row: 1;
     min-width: 0;
     margin: 0 !important;
     display: flex !important;
@@ -504,6 +514,8 @@
 .content-meta-line > .read-receipt,
 .content-meta-line > .content-read-receipt {
     grid-column: 4;
+    grid-row: 1;
+    justify-self: start;
     margin: 0 !important;
     white-space: nowrap;
     text-align: left !important;
