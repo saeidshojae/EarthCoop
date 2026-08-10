@@ -18,6 +18,13 @@ function initializeGroupChatPageChrome() {
         },
         cancelGroupEdit() {
             setGroupEditVisible(false);
+        },
+        showEditPollBox(pollId) {
+            const editBox = document.getElementById('edit-poll-box-' + Number(pollId));
+            if (!editBox) return;
+            editBox.style.display = editBox.style.display === 'none' || editBox.style.display === ''
+                ? 'block'
+                : 'none';
         }
     });
 
@@ -32,6 +39,9 @@ function initializeGroupChatPageChrome() {
 
     lifecycle.add(function() {
         setGroupEditVisible(false);
+        document.querySelectorAll('[id^="edit-poll-box-"]').forEach(editBox => {
+            editBox.style.display = 'none';
+        });
         delete window.GroupChatPageChrome;
         window.__groupChatPageChromeInitialized = false;
     });

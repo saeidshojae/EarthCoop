@@ -308,8 +308,8 @@ document.addEventListener('click', function handleDelegatedLegacyChatAction(even
         window.reportUser();
     } else if (action === 'reply-content' && typeof window.replyToMessage === 'function') {
         window.replyToMessage(target.dataset.replyTarget, '', target.dataset.replyText || '');
-    } else if (action === 'edit-poll' && typeof window.showEditPollBox === 'function') {
-        window.showEditPollBox(Number(target.dataset.pollId));
+    } else if (action === 'edit-poll' && window.GroupChatPageChrome) {
+        window.GroupChatPageChrome.showEditPollBox(Number(target.dataset.pollId));
     } else if (action === 'delete-poll' && typeof window.deletePoll === 'function') {
         window.deletePoll(Number(target.dataset.pollId), target.dataset.deleteUrl);
     } else if (action === 'report-message' && typeof window.reportMessage === 'function') {

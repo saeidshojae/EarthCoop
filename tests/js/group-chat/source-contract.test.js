@@ -334,4 +334,8 @@ test('page chrome runtime owns group edit and one-shot page effects', () => {
     assert.doesNotMatch(groupEdit, /onclick=/);
     assert.match(groupChat, /GroupChatPageChrome\.openGroupEdit\(\)/);
     assert.match(groupChat, /GroupChatPageChrome\.cancelGroupEdit\(\)/);
+    assert.match(runtime, /showEditPollBox\(pollId\)/);
+    assert.match(runtime, /querySelectorAll\('\[id\^="edit-poll-box-"\]'\)/);
+    assert.match(groupChat, /GroupChatPageChrome\.showEditPollBox\(Number\(target\.dataset\.pollId\)\)/);
+    assert.doesNotMatch(blade, /function (?:togglePollMenu|showEditPollBox|confirmDelete)\(/);
 });

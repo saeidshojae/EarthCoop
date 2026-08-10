@@ -1824,33 +1824,6 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             </div>
         </div>
     </div>
-    <script>
-    function togglePollMenu(pollId) {
-        const menu = document.getElementById('poll-menu-' + pollId);
-        if (!menu) return;
-        if (menu.style.display === 'none' || menu.style.display === '') {
-            menu.style.display = 'block';
-        } else {
-            menu.style.display = 'none';
-        }
-    }
-    </script>
-    <script>
-    function showEditPollBox(pollId) {
-        // مثال: نمایش یک باکس ویرایش
-        const editBox = document.getElementById('edit-poll-box-' + pollId);
-        if (!editBox) return;
-        editBox.style.display = editBox.style.display === 'none' || editBox.style.display === '' ? 'block' : 'none';
-    }
-    </script>
-    <script>
-    async function confirmDelete(event, url) {
-        event.preventDefault();
-        if (await window.groupChatConfirm('آیا مطمئن هستید که می‌خواهید این آیتم را حذف کنید؟', { confirmText: 'حذف' })) {
-            window.location.href = url; // یا با AJAX حذف کن
-        }
-    }
-    </script>
     <!-- Edit Modal -->
     <div id="editModal" class="edit-modal hidden" aria-hidden="true">
         <div class="edit-modal__backdrop"></div>

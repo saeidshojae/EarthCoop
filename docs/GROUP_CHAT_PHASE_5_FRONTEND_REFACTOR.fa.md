@@ -74,6 +74,8 @@ Checkpoint سی‌وپنجم: listenerهای jQuery سراسری و listener ع�
 
 Checkpoint سی‌وششم: کنترل فرم ویرایش گروه از globalهای آزاد `openGroupEdit`/`cancelGroupEdit` به API محدود و immutable با نام `GroupChatPageChrome` منتقل شد و دکمهٔ لغو باقی‌مانده از `onclick` به action داده‌محور تغییر کرد. اعلان موفقیت session، اسکرول اولیهٔ pinned messages و cleanup فرم نیز تحت Lifecycle قرار گرفتند؛ تعریف تکراری و ناقص `closeAllModals` از Blade حذف و پیاده‌سازی اصلی runtime حفظ شد. Blade اصلی به ۲۵۳۳ خط کاهش یافت.
 
+Checkpoint سی‌وهفتم: کنترل نمایش فرم ویرایش poll از global آزاد `showEditPollBox` به `GroupChatPageChrome` منتقل و action bridge به API محدود متصل شد؛ cleanup تمام فرم‌های باز را می‌بندد. دو helper مردهٔ `togglePollMenu` و `confirmDelete` که هیچ call-site در چت نداشتند همراه سه بلوک script inline حذف شدند. Blade اصلی به ۲۵۰۶ خط کاهش یافت و قرارداد source نبود دوبارهٔ این globalها را تثبیت می‌کند.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.
