@@ -54,6 +54,8 @@ Checkpoint بیست‌وپنجم: مسیر موفق ارسال پست به bridg
 
 Checkpoint بیست‌وششم: شاخه‌های create، update و delete در fallback polling پست‌ها نیز به `GroupChatFeedBridge` منتقل شدند. ساختن element موقت، `appendChild`/`replaceWith` و راه‌اندازی مستقیم menu/reaction از حلقهٔ polling حذف شد؛ global موازی `_lastKnownPostId` نیز کامل کنار رفت و cursor فقط از create موفق pipeline یا `latest_post_id` سرور به‌روزرسانی می‌شود. قرارداد source هر سه عملیات polling و حذف global قدیمی را تثبیت می‌کند.
 
+Checkpoint بیست‌وهفتم: حذف‌های reconcile، حذف محلی پس از پاسخ موفق و جایگزینی/patch پس از ویرایش پست به `GroupChatFeedBridge.mutate` منتقل شدند. adapter مرکزی پست اکنون در حضور HTML جایگزینی canonical انجام می‌دهد و در پاسخ legacy بدون HTML، patch محدود فیلدها را از داخل همان boundary اجرا می‌کند. در نتیجه callerهای reconcile/delete/edit دیگر element پست را مستقیماً حذف یا جایگزین نمی‌کنند و قرارداد source بازگشت این مسیرهای موازی را ممنوع می‌کند.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.

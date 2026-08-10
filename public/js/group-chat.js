@@ -1409,7 +1409,9 @@ function openPollBox(){
             },
             update(item) {
                 const id = item.content_id || item.post_id || item.id;
-                return replaceRenderedFeedHtml('#blog-' + id, item.html);
+                return item.html
+                    ? replaceRenderedFeedHtml('#blog-' + id, item.html)
+                    : updatePostFieldsDom({ ...item, id });
             },
             delete(item) {
                 removePostDom(item.content_id || item.post_id || item.id);
@@ -2096,13 +2098,7 @@ function openPollBox(){
                     .then(function(data) {
                         if (!data || !data.deleted_ids || !data.deleted_ids.length) return;
                         data.deleted_ids.forEach(function(pid) {
-                            var el = document.getElementById('blog-' + pid);
-                            var toRemove = el ? (el.closest('.post-wrapper') || el.parentElement || el) : null;
-                            if (toRemove) {
-                                toRemove.style.transition = 'opacity 0.3s';
-                                toRemove.style.opacity = '0';
-                                setTimeout(function() { toRemove.remove(); }, 300);
-                            }
+                            window.GroupChatFeedBridge.mutate('post', 'delete', { id: pid }, 'reconcile-fallback');
                         });
                     })
                     .catch(function() {})
@@ -2838,12 +2834,12 @@ function updatePollUI(pollData) {
 }
 
 // ✅ NEW: Helper to update blog UI without page reload
-function updateBlogUI(blogData) {
+function updatePostFieldsDom(blogData) {
     try {
         const blogElement = document.getElementById(`blog-${blogData.id}`);
         if (!blogElement) {
             console.warn('Blog element not found:', blogData.id);
-            return;
+            return false;
         }
         
         // Update blog content
@@ -2860,8 +2856,10 @@ function updateBlogUI(blogData) {
         }
         
         console.log('Blog updated successfully:', blogData.id);
+        return true;
     } catch (error) {
         console.error('Error updating blog UI:', error);
+        return false;
     }
 }
 
@@ -3352,14 +3350,7 @@ async function deletePost(postId) {
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.status === 'success') {
-                var el = document.getElementById('blog-' + postId);
-                // remove the outer post-wrapper too so no empty shell remains
-                var toRemove = el ? (el.closest('.post-wrapper') || el.parentElement || el) : null;
-                if (toRemove) {
-                    toRemove.style.transition = 'opacity 0.3s';
-                    toRemove.style.opacity = '0';
-                    setTimeout(function() { toRemove.remove(); }, 300);
-                }
+                window.GroupChatFeedBridge.mutate('post', 'delete', { id: postId }, 'local-post-delete');
             } else {
                 groupChatNotify(data.message || 'خطا در حذف پست', 'error');
             }
@@ -3464,23 +3455,11 @@ async function submitPostEdit(event, postId) {
                 document.body.style.removeProperty('overflow');
                 document.body.style.removeProperty('padding-right');
             }, 350);
-            // Replace full post HTML with server-rendered version
-            if (data.post && data.post.html) {
-                var blogEl = document.getElementById('blog-' + postId);
-                // post-card is inside post-wrapper; replace the outer wrapper to preserve correct nesting
-                var wrapperEl = blogEl ? (blogEl.closest('.post-wrapper') || blogEl.parentElement || blogEl) : null;
-                if (wrapperEl) {
-                    var tmp = document.createElement('div');
-                    tmp.innerHTML = data.post.html;
-                    var newEl = tmp.firstElementChild;
-                    if (newEl) {
-                        wrapperEl.replaceWith(newEl);
-                        if (typeof window._initPostMenus === 'function') window._initPostMenus(newEl);
-                        if (typeof window._initReactionButtons === 'function') window._initReactionButtons(newEl);
-                    }
-                }
-            } else if (data.blog) {
-                updateBlogUI(data.blog);
+            const updatedPost = data.post?.html
+                ? { ...data.post, id: data.post.id || postId }
+                : data.blog;
+            if (updatedPost) {
+                window.GroupChatFeedBridge.mutate('post', 'update', updatedPost, 'local-post-edit');
             }
             showSuccessAlert('پست با موفقیت ویرایش شد');
         } else {
