@@ -307,4 +307,11 @@ test('legacy message runtime is loaded through its dedicated partial', () => {
     assert.match(runtime, /lifecycle\.clearTimeout\(lastReadUpdateTimeout\)/);
     assert.match(runtime, /lifecycle\.timeout\.bind\(lifecycle\)/);
     assert.doesNotMatch(runtime, /profileLink\.addEventListener/);
+    assert.match(runtime, /function initializeLegacyCategoryBlogs\(\)/);
+    assert.match(runtime, /window\.__groupChatCategoryBlogsInitialized/);
+    assert.match(runtime, /lifecycle\.on\(document, 'keydown'/);
+    assert.match(runtime, /const openCategory = e\.target\.closest\?\.\('\.open-category-blogs'\)/);
+    assert.match(runtime, /activeRequest\.abort\(\)/);
+    assert.doesNotMatch(runtime, /\$\(document\)\.on/);
+    assert.doesNotMatch(runtime, /openCategory\.addEventListener/);
 });

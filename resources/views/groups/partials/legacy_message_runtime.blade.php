@@ -389,7 +389,12 @@
     // unread indicators, and debounced updates to avoid observer loops.
 
 
-    (function() {
+    function initializeLegacyCategoryBlogs() {
+        const lifecycle = window.GroupChatLifecycle;
+        if (!lifecycle || lifecycle.destroyed || window.__groupChatCategoryBlogsInitialized) return;
+        window.__groupChatCategoryBlogsInitialized = true;
+        let activeRequest = null;
+
         function openCatModal() {
             $('#categoryBlogsOverlay').fadeIn(120);
             $('#categoryBlogsModal').fadeIn(120);
@@ -407,22 +412,27 @@
         $('#categoryBlogsModal').hide();
         $('#categoryBlogsOverlay').hide();
 
-        // بستن با کلیک یا Esc
-        $(document).on('click', '#closeCatModal, #categoryBlogsOverlay', closeCatModal);
-        $(document).on('keydown', function(e) {
+        lifecycle.on(document, 'keydown', function(e) {
             if (e.key === 'Escape') closeCatModal();
         });
 
-        // باز کردن مدال
-        document.querySelectorAll('.open-category-blogs').forEach(openCategory => {
-            openCategory.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
+        lifecycle.on(document, 'click', function(e) {
+            const closeTrigger = e.target.closest?.('#closeCatModal, #categoryBlogsOverlay');
+            if (closeTrigger) {
+                closeCatModal();
+                return;
+            }
 
-                const ajaxUrl = $(this).data('url');
-                const groupId = $(this).data('group-id') || '';
+            const openCategory = e.target.closest?.('.open-category-blogs');
+            if (!openCategory) return;
 
-                if (!ajaxUrl) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            const ajaxUrl = $(openCategory).data('url');
+            const groupId = $(openCategory).data('group-id') || '';
+
+            if (!ajaxUrl) return;
 
                 // ریست UI
                 $('#catList').empty().hide();
@@ -431,7 +441,8 @@
                 $('#catModalTitle').text('در حال بارگذاری...');
                 openCatModal();
 
-                $.ajax({
+                if (activeRequest && typeof activeRequest.abort === 'function') activeRequest.abort();
+                activeRequest = $.ajax({
                         url: ajaxUrl,
                         method: 'GET',
                         data: {
@@ -533,12 +544,26 @@
                         $('#catEmpty').show().text('خطا در دریافت لیست پست‌ها.');
                     })
                     .always(function() {
+                        activeRequest = null;
                         if ($('#catLoading').is(':visible')) {
                             $('#catLoading').hide();
                             $('#catEmpty').show().text('عدم دریافت پاسخ از سرور.');
                         }
                     });
-            });
         });
-    })();
+
+        lifecycle.add(function() {
+            if (activeRequest && typeof activeRequest.abort === 'function') activeRequest.abort();
+            activeRequest = null;
+            closeCatModal();
+            $('body').css('overflow', '');
+            window.__groupChatCategoryBlogsInitialized = false;
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeLegacyCategoryBlogs, { once: true });
+    } else {
+        initializeLegacyCategoryBlogs();
+    }
     </script>

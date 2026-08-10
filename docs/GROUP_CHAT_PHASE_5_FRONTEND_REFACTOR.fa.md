@@ -70,6 +70,8 @@ Checkpoint سی‌وسوم: بلوک legacy پیام شامل قراردادها
 
 Checkpoint سی‌وچهارم: Lifecycle قابلیت لغو صریح timeout ثبت‌شده را دریافت کرد و debounce ثبت آخرین پیام خوانده‌شده از timeout خام به timeout تحت مالکیت صفحه منتقل شد. listener عنصربه‌عنصر لینک پروفایل پیام‌های تازه‌رندرشده نیز با delegation واحد document جایگزین شد؛ cleanup هم timeout معلق و guard راه‌اندازی را آزاد می‌کند. تست واحد `clearTimeout` و قرارداد source از بازگشت این دو الگوی نشت‌پذیر جلوگیری می‌کنند.
 
+Checkpoint سی‌وپنجم: listenerهای jQuery سراسری و listener عنصربه‌عنصر triggerهای modal پست‌های دسته‌بندی به click/keydown delegation زیر مالکیت Lifecycle منتقل شدند. درخواست AJAX فعال پیش از درخواست بعدی و هنگام cleanup لغو می‌شود؛ modal، قفل scroll بدنه و guard نیز در teardown بازنشانی می‌شوند. قرارداد source بازگشت `$(document).on` و listenerهای per-trigger را ممنوع می‌کند.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.
