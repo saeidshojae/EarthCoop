@@ -1,5 +1,12 @@
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+(function initializeGroupChatSearch() {
+    'use strict';
+
+    if (window.__groupChatSearchInitialized) return;
+    const lifecycle = window.GroupChatLifecycle;
+    if (!lifecycle || lifecycle.destroyed) return;
+    window.__groupChatSearchInitialized = true;
+
     // --- باز/بسته‌شدن پنل ---
     const wrap = document.getElementById('gc-search-wrap');
     const input = document.getElementById('gc-search-input');
@@ -16,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function openSearch() {
         wrap.hidden = false;
         btn.setAttribute('aria-expanded', 'true');
-        setTimeout(() => input.focus(), 10);
+        lifecycle.timeout(() => input.focus(), 10);
     }
 
     function closeSearch() {
@@ -28,15 +35,15 @@ document.addEventListener('DOMContentLoaded', function() {
         wrap.hidden ? openSearch() : closeSearch();
     }
 
-    btn.addEventListener('click', (e) => {
+    lifecycle.on(btn, 'click', (e) => {
         e.stopPropagation();
         toggleSearch();
     });
-    document.addEventListener('click', (e) => {
+    lifecycle.on(document, 'click', (e) => {
         const inside = e.target.closest('#gc-search-wrap') || e.target.closest('#btn-chat-search');
         if (!inside) closeSearch();
     });
-    wrap.addEventListener('keydown', (e) => {
+    lifecycle.on(wrap, 'keydown', (e) => {
         if (e.key === 'Escape') {
             closeSearch();
             btn.focus();
@@ -44,13 +51,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // هوک برای اسپینر آیکن/استاتوس
-    window.__setSearching = function(on) {
+    function setSearching(on) {
         statusEl.style.display = on ? 'flex' : 'none';
         btn.classList.toggle('searching', !!on);
-    };
-    window.__ensureSearchOpen = function() {
+    }
+    function ensureSearchOpen() {
         if (wrap.hidden) openSearch();
-    };
+    }
 
     // --- سرچ AJAX ---
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
@@ -117,10 +124,16 @@ document.addEventListener('DOMContentLoaded', function() {
             meta.appendChild(date);
             li.appendChild(type);
             li.appendChild(meta);
-            li.addEventListener('click', () => goTo(it));
             listEl.appendChild(li);
         });
     }
+
+    lifecycle.on(listEl, 'click', (event) => {
+        const item = event.target.closest('.gc-search-item');
+        if (!item || !listEl.contains(item)) return;
+        const index = Number(item.dataset.index);
+        if (Number.isInteger(index) && items[index]) goTo(items[index]);
+    });
 
     function updateActive() {
         listEl.querySelectorAll('.gc-search-item').forEach((el, i) => el.classList.toggle('active', i ===
@@ -136,7 +149,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function fetchPage(reset = false) {
         if (loading) return;
         loading = true;
-        window.__setSearching(true);
+        setSearching(true);
         setStatus('در حال جستجو…');
         if (reset) {
             items = [];
@@ -176,15 +189,15 @@ document.addEventListener('DOMContentLoaded', function() {
             setStatus(newItems.length ? '' : (page === 1 ? 'چیزی پیدا نشد.' : ''));
             setMore(hasMore);
             openDD();
-            window.__ensureSearchOpen();
+            ensureSearchOpen();
         } catch (e) {
             console.error('Search fetch error', e);
             setStatus('خطا در دریافت نتایج');
             openDD();
-            window.__ensureSearchOpen();
+            ensureSearchOpen();
         } finally {
             loading = false;
-            window.__setSearching(false);
+            setSearching(false);
         }
     }
 
@@ -198,34 +211,34 @@ document.addEventListener('DOMContentLoaded', function() {
         fetchPage(true);
     }, 300);
 
-    input.addEventListener('input', onInput);
-    input.addEventListener('focus', () => {
+    lifecycle.on(input, 'input', onInput);
+    lifecycle.on(input, 'focus', () => {
         if (items.length) openDD();
         else if (input.value.trim()) {
             lastQuery = input.value.trim();
             fetchPage(true);
         }
     });
-    clearBtn.addEventListener('click', () => {
+    lifecycle.on(clearBtn, 'click', () => {
         input.value = '';
         closeDD();
         items = [];
         listEl.innerHTML = '';
     });
-    moreBtn.addEventListener('click', () => {
+    lifecycle.on(moreBtn, 'click', () => {
         if (!hasMore) return;
         page += 1;
         fetchPage(false);
     });
 
     // بستن dropdown با کلیک بیرون از سرچ‌بار
-    document.addEventListener('click', (e) => {
+    lifecycle.on(document, 'click', (e) => {
         const box = e.target.closest('.gc-searchbar');
         if (!box) closeDD();
     });
 
     // ناوبری کیبورد
-    input.addEventListener('keydown', (e) => {
+    lifecycle.on(input, 'keydown', (e) => {
         if (dd.hidden) return;
         const max = items.length - 1;
         if (e.key === 'ArrowDown') {
@@ -243,5 +256,5 @@ document.addEventListener('DOMContentLoaded', function() {
             closeDD();
         }
     });
-});
+})();
 </script>

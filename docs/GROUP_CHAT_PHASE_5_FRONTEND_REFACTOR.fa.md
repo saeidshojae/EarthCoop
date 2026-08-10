@@ -38,6 +38,8 @@ Checkpoint هفدهم: منطق سراسری بستن action-menu از Blade ا�
 
 Checkpoint هجدهم: runtime کامل جست‌وجوی چت شامل باز/بسته‌شدن پنل، debounce، pagination، رندر نتیجه و ناوبری صفحه‌کلید از Blade اصلی به `groups/partials/chat_search_runtime.blade.php` منتقل شد. رفتار runtime در این checkpoint عمداً تغییر نکرد تا refactor ساختاری diff کوچکی داشته باشد. تست قرارداد include و مالکیت کد جست‌وجو را تثبیت می‌کند و Blade اصلی به ۳۹۳۱ خط کاهش یافت.
 
+Checkpoint نوزدهم: partial جست‌وجو دارای guard ورود مجدد شد و تمام listenerهای ثابت آن به Lifecycle منتقل شدند. stateهای `__setSearching` و `__ensureSearchOpen` از `window` حذف و محلی شدند؛ listener جداگانهٔ هر نتیجه نیز با یک handler delegated روی لیست جایگزین شد تا pagination تعداد handlerها را افزایش ندهد.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.

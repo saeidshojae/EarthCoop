@@ -133,4 +133,9 @@ test('chat search runtime is loaded through its dedicated partial', () => {
     assert.doesNotMatch(blade, /function fetchPage\(reset = false\)/);
     assert.match(search, /function fetchPage\(reset = false\)/);
     assert.match(search, /gc-search-wrap/);
+    assert.match(search, /window\.__groupChatSearchInitialized/);
+    assert.match(search, /lifecycle\.on\(input, 'input'/);
+    assert.match(search, /lifecycle\.on\(listEl, 'click'/);
+    assert.doesNotMatch(search, /window\.__(?:setSearching|ensureSearchOpen)/);
+    assert.doesNotMatch(search, /\.addEventListener\(/);
 });
