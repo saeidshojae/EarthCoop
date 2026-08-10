@@ -162,13 +162,13 @@
 - [x] تمام inline handlerهای `onclick` حذف و event delegation جایگزین شود.
 - [x] `alert()` و `confirm()` با toast/dialog غیرمسدودکننده جایگزین شوند.
 - [x] `chat.blade.php` به layout و partial/componentهای کوچک تقسیم شود.
-- [ ] `group-chat.js` به ماژول‌های Composer، Feed، Realtime، Unread و Actions تقسیم شود.
+- [x] `group-chat.js` به ماژول‌های Composer، Feed، Realtime، Unread و Actions تقسیم شود.
 - [x] `chat-features.js` و `voice-recorder.js` مالکیت مشخص و API کوچک داشته باشند.
 - [x] ApiClient مرکزی CSRF، JSON parsing، timeout، error mapping و retry را مدیریت کند.
-- [ ] state store واحد منبع حقیقت UI باشد.
-- [ ] renderer واحد برای initial load، optimistic item، polling و WebSocket استفاده شود.
+- [x] state store واحد منبع حقیقت UI باشد.
+- [x] renderer واحد برای initial load، optimistic item، polling و WebSocket استفاده شود.
 - [x] lifecycle برای ثبت/حذف listener و timer در navigation تعریف شود.
-- [ ] تمام timerهای تکراری، listenerهای چندباره و globalهای غیرضروری حذف شوند.
+- [x] تمام timerهای تکراری، listenerهای چندباره و globalهای غیرضروری حذف شوند.
 - [x] migration تدریجی به TypeScript برای قراردادهای feed و API ارزیابی شود.
 - [x] تست واحد برای reducer/store و event reconciliation نوشته شود.
 
