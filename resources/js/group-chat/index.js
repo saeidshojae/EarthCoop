@@ -51,7 +51,7 @@ if (window.groupId) {
         actions,
         composer: createComposer({ api, store, lifecycle, actions }),
         feed,
-        unread: createUnread({ api, store, groupId: window.groupId }),
+        unread: createUnread({ api, store, feed, lifecycle, groupId: window.groupId }),
         destroy() {
             actions.destroy();
             lifecycle.destroy();
@@ -64,6 +64,7 @@ if (window.groupId) {
     app.skillLists = createSkillLists({ actions, store, lifecycle });
     app.installLegacyRenderers = callbacks => installLegacyRenderers({ app, callbacks });
     app.typing = createTyping({ store, lifecycle, authUserId: window.authUserId });
+    app.unread.initialize();
     app.installRealtime = options => {
         if (!app.realtimeRuntime) app.realtimeRuntime = createRealtimeRuntime({ app, groupId: window.groupId, authUserId: window.authUserId, ...options });
         return app.realtimeRuntime;

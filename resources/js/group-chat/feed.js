@@ -26,5 +26,8 @@ export function createFeed({ store, renderer }) {
             if (changed) commit([item], { remove: item?.action === 'delete' });
             return changed;
         },
+        markRead(type, id) {
+            commit([{ content_type: type, id, unread: false }]);
+        },
     };
 }

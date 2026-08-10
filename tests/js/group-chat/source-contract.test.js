@@ -94,10 +94,18 @@ test('message delete and report actions use the delegated action bridge', () => 
 test('unread polling and observers are owned by the page lifecycle', () => {
     const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
     const runtime = readFileSync('resources/views/groups/partials/scroll_unread_runtime.blade.php', 'utf8');
+    const unread = readFileSync('resources/js/group-chat/unread.js', 'utf8');
+    const legacy = readFileSync('public/js/group-chat.js', 'utf8');
 
     assert.match(index, /window\.GroupChatLifecycle\s*=\s*pageLifecycle/);
+    assert.match(index, /app\.unread\.initialize\(\)/);
     assert.match(runtime, /lifecycle\.interval\(refreshUnreadCount, 15000\)/);
     assert.match(runtime, /lifecycle\.add\(\(\) => observer\.disconnect\(\)\)/);
+    assert.match(unread, /api\.json\(descriptor\.url, \{ method: 'POST' \}\)/);
+    assert.match(unread, /feed\.markRead\(descriptor\.type, descriptor\.id\)/);
+    assert.match(unread, /lifecycle\.add\(\(\) => \{/);
+    assert.doesNotMatch(legacy, /new IntersectionObserver/);
+    assert.doesNotMatch(legacy, /\/(?:blog|poll)\/\$\{[^}]+\}\/mark-read/);
     assert.doesNotMatch(runtime, /setInterval\(refreshUnreadCount/);
 });
 
@@ -524,12 +532,13 @@ test('typing indicator is store-backed and lifecycle-owned', () => {
 
 test('legacy group runtime has no active raw page listeners or timers', () => {
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8').replace(/^\s*\/\/.*$/gm, '');
+    const unread = readFileSync('resources/js/group-chat/unread.js', 'utf8');
 
     assert.doesNotMatch(groupChat, /\.addEventListener\(/);
     assert.doesNotMatch(groupChat, /(^|[^.\w])set(?:Timeout|Interval)\(/m);
     assert.doesNotMatch(groupChat, /(^|[^.\w])clear(?:Timeout|Interval)\(/m);
     assert.match(groupChat, /legacyLifecycle\.on\(form, 'submit'/);
-    assert.match(groupChat, /legacyLifecycle\.add\(\(\) => \{/);
+    assert.match(unread, /lifecycle\.add\(\(\) => \{/);
     assert.doesNotMatch(groupChat, /window\.groupChat(?:Notify|Confirm|Prompt)/);
     assert.doesNotMatch(groupChat, /window\.replyToMessageFromButton/);
     const composer = readFileSync('resources/js/group-chat/composer.js', 'utf8');
