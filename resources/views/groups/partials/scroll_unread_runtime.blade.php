@@ -1,9 +1,6 @@
-<script>
+<script type="module">
 function initializeGroupChatScrollManager() {
     'use strict';
-
-    if (window.__groupChatScrollManagerInitialized) return;
-    window.__groupChatScrollManagerInitialized = true;
 
     const groupId = {{ $group->id }};
     const chatBox = document.getElementById('chat-box');
@@ -289,7 +286,7 @@ function initializeGroupChatScrollManager() {
     }
 
     function scheduleUnreadRefresh(delay = 120) {
-        clearTimeout(unreadRefreshTimer);
+        if (unreadRefreshTimer !== null) lifecycle.clearTimeout(unreadRefreshTimer);
         unreadRefreshTimer = lifecycle.timeout(refreshUnreadCount, delay);
     }
 
@@ -352,7 +349,7 @@ function initializeGroupChatScrollManager() {
         const observer = new MutationObserver(function(mutations) {
             updateScrollButtonVisibility();
 
-            clearTimeout(unreadRenderTimer);
+            if (unreadRenderTimer !== null) lifecycle.clearTimeout(unreadRenderTimer);
             unreadRenderTimer = lifecycle.timeout(function() {
                 renderUnreadIndicators();
             }, 80);
@@ -390,9 +387,5 @@ function initializeGroupChatScrollManager() {
     }
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeGroupChatScrollManager, { once: true });
-} else {
-    initializeGroupChatScrollManager();
-}
+initializeGroupChatScrollManager();
 </script>

@@ -1,11 +1,9 @@
-<script>
+<script type="module">
 (function initializeGroupChatSearch() {
     'use strict';
 
-    if (window.__groupChatSearchInitialized) return;
     const lifecycle = window.GroupChatLifecycle;
     if (!lifecycle || lifecycle.destroyed) return;
-    window.__groupChatSearchInitialized = true;
 
     // --- باز/بسته‌شدن پنل ---
     const wrap = document.getElementById('gc-search-wrap');
@@ -39,7 +37,6 @@
     lifecycle.add(() => {
         closeSearch();
         if (window.GroupChatSearch) delete window.GroupChatSearch;
-        window.__groupChatSearchInitialized = false;
     });
 
     lifecycle.on(btn, 'click', (e) => {
@@ -89,8 +86,8 @@
     function debounce(fn, ms = 300) {
         let t;
         return (...a) => {
-            clearTimeout(t);
-            t = setTimeout(() => fn(...a), ms);
+            if (t !== undefined) lifecycle.clearTimeout(t);
+            t = lifecycle.timeout(() => fn(...a), ms);
         }
     }
 

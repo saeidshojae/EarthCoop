@@ -1,8 +1,7 @@
-    <script>
+    <script type="module">
     function initializeMessageEditRuntime() {
         const lifecycle = window.GroupChatLifecycle;
-        if (!lifecycle || lifecycle.destroyed || window.__groupChatMessageEditInitialized) return;
-        window.__groupChatMessageEditInitialized = true;
+        if (!lifecycle || lifecycle.destroyed) return;
         // اگر CSRF را در <meta name="csrf-token" content="..."> داری:
         const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
             '{{ csrf_token() }}';
@@ -10,7 +9,6 @@
         const modal = document.getElementById('editModal');
         const textarea = document.getElementById('editText');
         if (!modal || !textarea) {
-            window.__groupChatMessageEditInitialized = false;
             return;
         }
         const btnSave = modal.querySelector('.save-edit');
@@ -18,7 +16,6 @@
         const btnClose = modal.querySelector('.edit-close');
         const backdrop = modal.querySelector('.edit-modal__backdrop');
         if (!btnSave) {
-            window.__groupChatMessageEditInitialized = false;
             return;
         }
 
@@ -314,13 +311,8 @@
         }
         lifecycle.add(function() {
             closeModal();
-            window.__groupChatMessageEditInitialized = false;
         });
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeMessageEditRuntime, { once: true });
-    } else {
-        initializeMessageEditRuntime();
-    }
+    initializeMessageEditRuntime();
     </script>

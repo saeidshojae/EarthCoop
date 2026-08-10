@@ -1,8 +1,7 @@
-<script>
+<script type="module">
 function initializeGroupChatPageChrome() {
     const lifecycle = window.GroupChatLifecycle;
-    if (!lifecycle || lifecycle.destroyed || window.__groupChatPageChromeInitialized) return;
-    window.__groupChatPageChromeInitialized = true;
+    if (!lifecycle || lifecycle.destroyed) return;
 
     const groupEditForm = document.getElementById('groupEditFormBox');
     const backdrop = document.getElementById('back');
@@ -61,13 +60,8 @@ function initializeGroupChatPageChrome() {
             editBox.style.display = 'none';
         });
         delete window.GroupChatPageChrome;
-        window.__groupChatPageChromeInitialized = false;
     });
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeGroupChatPageChrome, { once: true });
-} else {
-    initializeGroupChatPageChrome();
-}
+initializeGroupChatPageChrome();
 </script>

@@ -1,8 +1,7 @@
-<script>
+<script type="module">
 function initializeGroupChatCkeditorRuntime() {
     const lifecycle = window.GroupChatLifecycle;
-    if (!lifecycle || lifecycle.destroyed || window.__groupChatCkeditorInitialized) return;
-    window.__groupChatCkeditorInitialized = true;
+    if (!lifecycle || lifecycle.destroyed) return;
 
     function installChatConfig() {
         const ckeditor = window.CKEDITOR;
@@ -74,13 +73,8 @@ function initializeGroupChatCkeditorRuntime() {
     lifecycle.add(function() {
         const instance = window.CKEDITOR?.instances?.post_editor;
         if (instance && typeof instance.destroy === 'function') instance.destroy(true);
-        window.__groupChatCkeditorInitialized = false;
     });
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeGroupChatCkeditorRuntime, { once: true });
-} else {
-    initializeGroupChatCkeditorRuntime();
-}
+initializeGroupChatCkeditorRuntime();
 </script>

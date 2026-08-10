@@ -170,11 +170,13 @@ test('chat search runtime is loaded through its dedicated partial', () => {
     assert.match(search, /delete window\.GroupChatSearch/);
     assert.match(readFileSync('resources/js/group-chat/actions.js', 'utf8'), /window\.GroupChatSearch\?\.\[method\]/);
     assert.doesNotMatch(readFileSync('public/js/group-chat.js', 'utf8'), /function (?:openChatSearch|closeChatSearch)\(/);
-    assert.match(search, /window\.__groupChatSearchInitialized/);
+    assert.match(search, /<script type="module">/);
     assert.match(search, /lifecycle\.on\(input, 'input'/);
     assert.match(search, /lifecycle\.on\(listEl, 'click'/);
     assert.doesNotMatch(search, /window\.__(?:setSearching|ensureSearchOpen)/);
     assert.doesNotMatch(search, /\.addEventListener\(/);
+    assert.doesNotMatch(search, /(^|[^.\w])set(?:Timeout|Interval)\(/m);
+    assert.doesNotMatch(search, /window\.__groupChatSearchInitialized/);
 });
 
 test('pin operations are owned by modular Actions and ApiClient', () => {
@@ -285,13 +287,14 @@ test('message edit runtime is extracted and lifecycle-owned', () => {
     assert.match(blade, /@include\('groups\.partials\.message_edit_runtime'\)/);
     assert.doesNotMatch(blade, /const modal = document\.getElementById\('editModal'\)/);
     assert.match(runtime, /function initializeMessageEditRuntime\(\)/);
-    assert.match(runtime, /window\.__groupChatMessageEditInitialized/);
+    assert.match(runtime, /<script type="module">/);
     assert.match(runtime, /lifecycle\.on\(document, 'click'/);
     assert.match(runtime, /lifecycle\.on\(btnSave, 'click'/);
     assert.match(runtime, /lifecycle\.on\(document, 'keydown'/);
     assert.match(runtime, /lifecycle\.add\(function\(\)/);
-    assert.equal((runtime.match(/\.addEventListener\(/g) || []).length, 1);
-    assert.match(runtime, /document\.addEventListener\('DOMContentLoaded', initializeMessageEditRuntime, \{ once: true \}\)/);
+    assert.doesNotMatch(runtime, /\.addEventListener\(/);
+    assert.match(runtime, /initializeMessageEditRuntime\(\);/);
+    assert.doesNotMatch(runtime, /window\.__groupChatMessageEditInitialized/);
     assert.doesNotMatch(runtime, /btnSave\.addEventListener/);
 });
 
@@ -302,14 +305,15 @@ test('ckeditor runtime is extracted and lifecycle-owned', () => {
     assert.match(blade, /@include\('groups\.partials\.ckeditor_runtime'\)/);
     assert.doesNotMatch(blade, /function installCkeditorChatConfig\(/);
     assert.match(runtime, /function initializeGroupChatCkeditorRuntime\(\)/);
-    assert.match(runtime, /window\.__groupChatCkeditorInitialized/);
+    assert.match(runtime, /<script type="module">/);
     assert.match(runtime, /lifecycle\.interval\(function\(\)/);
     assert.match(runtime, /lifecycle\.clearInterval\(ckeditorWait\)/);
     assert.match(runtime, /ckeditor\.instances\?\.post_editor/);
     assert.match(runtime, /instance\.destroy\(true\)/);
     assert.match(runtime, /lifecycle\.add\(function\(\)/);
     assert.doesNotMatch(runtime, /(^|[^.])setInterval\(/m);
-    assert.equal((runtime.match(/\.addEventListener\(/g) || []).length, 1);
+    assert.doesNotMatch(runtime, /\.addEventListener\(/);
+    assert.doesNotMatch(runtime, /window\.__groupChatCkeditorInitialized/);
 });
 
 test('legacy message runtime is retired behind modular owners', () => {

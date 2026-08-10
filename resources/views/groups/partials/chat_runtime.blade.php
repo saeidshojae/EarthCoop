@@ -1,7 +1,6 @@
 <script>
 const groupId = {{ $group->id }};
 window.groupChatTransport = @json(config('group-chat.transport', 'auto'));
-window.__groupChatModularFrontend = @json(config('group-chat.features.modular_frontend_v1', false));
 const authUserId = {{ auth()->id() }};
 const yourRole = {{ $yourRole ?? 0 }};
 window.groupId = groupId;
