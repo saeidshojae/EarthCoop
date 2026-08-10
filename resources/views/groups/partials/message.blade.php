@@ -119,7 +119,7 @@
                     </button>
 
                     <button type="button" class="action-menu__item action-menu__item--danger btn-delete"
-                        data-group-chat-action="delete-message" data-message-id="{{ $message->id }}">
+                        data-group-chat-action="delete-message" data-message-id="{{ $item->id }}">
 
                         <i class="fas fa-trash"></i>
 
@@ -264,7 +264,7 @@
                     @endif
 
                     <button type="button" class="action-menu__item btn-report"
-                        data-group-chat-action="report-message" data-message-id="{{ $message->id }}">
+                        data-group-chat-action="report-message" data-message-id="{{ $item->id }}">
 
                         <i class="fas fa-flag"></i>
 

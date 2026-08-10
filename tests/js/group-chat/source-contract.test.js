@@ -95,6 +95,9 @@ test('message delete and report actions use the delegated action bridge', () => 
         assert.match(messageRenderer, new RegExp(`data-group-chat-action="${action}"`));
         assert.match(message, new RegExp(`data-group-chat-action="${action}"`));
     }
+    assert.doesNotMatch(message, /\$message\b/);
+    assert.match(message, /data-group-chat-action="delete-message" data-message-id="\{\{ \$item->id \}\}"/);
+    assert.match(message, /data-group-chat-action="report-message" data-message-id="\{\{ \$item->id \}\}"/);
     assert.doesNotMatch(runtime, /querySelector\(["']\.btn-(?:delete|report)["']\)\?\.addEventListener/);
     assert.doesNotMatch(
         readFileSync('resources/views/groups/chat.blade.php', 'utf8'),
