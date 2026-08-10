@@ -8,6 +8,7 @@ import { createFeed } from './feed.js';
 import { createUnread } from './unread.js';
 import { createActions } from './actions.js';
 import { createFeedback } from './feedback.js';
+import { createPolls } from './polls.js';
 
 if (!window.GroupChatFeedback) {
     window.GroupChatFeedback = createFeedback();
@@ -56,6 +57,7 @@ if (window.groupId) {
     });
     const actions = pageActions;
 
+    const feed = createFeed({ store, renderer });
     const app = {
         api,
         store,
@@ -64,7 +66,7 @@ if (window.groupId) {
         renderer,
         actions,
         composer: createComposer({ api, store }),
-        feed: createFeed({ store, renderer }),
+        feed,
         unread: createUnread({ api, store, groupId: window.groupId }),
         destroy() {
             actions.destroy();
@@ -72,6 +74,7 @@ if (window.groupId) {
             store.destroy();
         },
     };
+    app.polls = createPolls({ api, store, feed, actions, lifecycle });
 
     app.feed.hydrate('initial');
 

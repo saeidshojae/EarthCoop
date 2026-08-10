@@ -409,3 +409,21 @@ test('canonical modular runtime is not bypassed by the migration feature flag', 
     assert.match(groupChat, /window\.GroupChat\.feed\.apply\(\[item\], source\)/);
     assert.match(groupChat, /window\.GroupChat\.feed\.mutate\(item, source\)/);
 });
+
+test('poll operations are owned by the modular Polls runtime', () => {
+    const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
+    const polls = readFileSync('resources/js/group-chat/polls.js', 'utf8');
+    const actions = readFileSync('resources/js/group-chat/actions.js', 'utf8');
+    const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
+
+    assert.match(index, /import \{ createPolls \} from '\.\/polls\.js'/);
+    assert.match(index, /app\.polls = createPolls\(/);
+    assert.match(polls, /actions\.register\('submit-vote'/);
+    assert.match(polls, /actions\.register\('delete-poll'/);
+    assert.match(polls, /lifecycle\.on\(document, 'submit'/);
+    assert.match(polls, /feed\.apply\(\[item\], 'local-poll-create'\)/);
+    assert.match(polls, /feed\.mutate\(item, 'local-poll-edit'\)/);
+    assert.doesNotMatch(actions, /'submit-vote': \['submitVote'\]|'delete-poll': \['deletePoll'/);
+    assert.doesNotMatch(groupChat, /function (?:submitVote|updatePollUI)\(|window\.deletePoll/);
+    assert.match(groupChat, /action: 'vote' \}, 'websocket-poll'/);
+});

@@ -264,103 +264,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-function submitVote(el) {
-    const pollId = $(el).data('poll-id');
-    const optionId = $(el).data('option-id');
-
-    if ($(el).hasClass('voted')) return;
-
-    // ذخیره موقعیت scroll قبل از ارسال
-    const chatBox = document.getElementById('chat-box');
-    if (chatBox) {
-        const scrollPosition = chatBox.scrollTop;
-        // استفاده از window.groupId که در chat.blade.php تعریف شده
-        const groupId = window.groupId || (typeof GROUP_ID !== 'undefined' ? GROUP_ID : 'default');
-        const STORAGE_KEY = 'chatScroll_' + groupId;
-        sessionStorage.setItem(STORAGE_KEY, scrollPosition);
-        
-        // همچنین آخرین پیام visible را ذخیره کن
-        const messages = chatBox.querySelectorAll('[data-message-id]');
-        let lastVisibleId = null;
-        for (let i = messages.length - 1; i >= 0; i--) {
-            const msg = messages[i];
-            const rect = msg.getBoundingClientRect();
-            const chatBoxRect = chatBox.getBoundingClientRect();
-            if (rect.top >= chatBoxRect.top && rect.bottom <= chatBoxRect.bottom) {
-                const messageId = parseInt(msg.getAttribute('data-message-id'));
-                if (messageId && !isNaN(messageId)) {
-                    lastVisibleId = messageId;
-                    break;
-                }
-            }
-        }
-        if (lastVisibleId) {
-            sessionStorage.setItem('lastVisibleMessageId_' + groupId, lastVisibleId);
-        }
-    }
-
-    $.ajax({
-        url: `/polls/${pollId}/vote`,
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': getCsrfToken()
-        },
-        data: {
-            option_id: optionId
-        },
-        success: function(data) {
-            if (data.status === 'success') {
-                // ✅ FIXED: No location.reload() - update DOM smoothly instead
-                updatePollUI(data.poll);
-                // Dispatch event for other listeners
-                document.dispatchEvent(new CustomEvent('poll-voted', {
-                    detail: { poll: data.poll, optionId: optionId }
-                }));
-                showSuccessAlert('رای شما ثبت شد');
-            } else {
-              showErrorAlert(data.message || 'خطا در ثبت رأی');
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('❌ خطا در اتصال:', error);
-            showErrorAlert('خطا در اتصال به سرور');
-        }
-    });
-}
-
-window.deletePoll = async function(pollId, deleteUrl) {
-    if (!pollId || !deleteUrl) {
-        showErrorAlert('اطلاعات حذف نظرسنجی ناقص است.');
-        return;
-    }
-
-    if (!await groupChatConfirm('آیا از حذف این نظرسنجی مطمئن هستید؟', { confirmText: 'حذف' })) {
-        return;
-    }
-
-    try {
-        const response = await fetch(deleteUrl, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': getCsrfToken(),
-                'Accept': 'application/json'
-            }
-        });
-
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || data.status !== 'success') {
-            showErrorAlert(data.message || 'حذف نظرسنجی با خطا مواجه شد.');
-            return;
-        }
-
-        removePollDom(pollId);
-        showSuccessAlert(data.message || 'نظرسنجی حذف شد.');
-    } catch (error) {
-        console.error('Delete poll failed:', error);
-        showErrorAlert('خطا در اتصال به سرور');
-    }
-};
-
 $(document).ready(function() {
   // Select2 برای options (نه manager_vote و inspector_vote که در election_modal مدیریت می‌شوند)
   if ($('#options').length && !$('#options').data('select2')) {
@@ -414,106 +317,6 @@ $(document).ready(function() {
 
   
 
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-    const pollForm = document.getElementById('pollForm');
-
-    if (pollForm && !pollForm.dataset.ajaxBound) {
-        pollForm.dataset.ajaxBound = 'true';
-        pollForm.addEventListener('submit', async function(event) {
-            event.preventDefault();
-
-            if (pollForm.dataset.submitting === 'true') {
-                return;
-            }
-            pollForm.dataset.submitting = 'true';
-
-            try {
-                const response = await groupChatFetch(pollForm.action, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': getCsrfToken(),
-                        'Accept': 'application/json'
-                    },
-                    body: new FormData(pollForm)
-                });
-
-                const data = await response.json().catch(() => ({}));
-                if (!response.ok || data.status !== 'success') {
-                    const validationErrors = data.errors ? Object.values(data.errors).flat().join('\n') : '';
-                    showErrorAlert([data.message || 'ارسال نظرسنجی با خطا مواجه شد.', validationErrors].filter(Boolean).join('\n'));
-                    return;
-                }
-
-                const poll = data.poll || {};
-                if (poll.html && poll.id) {
-                    appendRenderedFeedHtml(poll.html, poll.id, 'poll');
-                }
-
-                pollForm.reset();
-                const optionsContainer = document.getElementById('dynamic-inputs');
-                if (optionsContainer) {
-                    optionsContainer.innerHTML = '<input type="text" name="options[]" placeholder="گزینه ۱" class="modal-input mb-2" />';
-                }
-                if (typeof handlePollTypeChange === 'function') {
-                    handlePollTypeChange();
-                }
-                if (typeof cancelPollForm === 'function') {
-                    cancelPollForm();
-                }
-
-                showSuccessAlert(data.message || 'نظرسنجی با موفقیت ایجاد شد.');
-            } catch (error) {
-                console.error('Create poll failed:', error);
-                showErrorAlert('خطا در اتصال به سرور');
-            } finally {
-                pollForm.dataset.submitting = 'false';
-            }
-        });
-    }
-});
-
-document.addEventListener('submit', async function(event) {
-    const form = event.target;
-    if (!(form instanceof HTMLFormElement)) return;
-    if (!form.classList.contains('poll-edit-form')) return;
-
-    event.preventDefault();
-    if (form.dataset.submitting === 'true') {
-        return;
-    }
-    form.dataset.submitting = 'true';
-
-    try {
-        const response = await groupChatFetch(form.action, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': getCsrfToken(),
-                'Accept': 'application/json'
-            },
-            body: new FormData(form)
-        });
-
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || data.status !== 'success') {
-            const validationErrors = data.errors ? Object.values(data.errors).flat().join('\n') : '';
-            showErrorAlert([data.message || 'ویرایش نظرسنجی با خطا مواجه شد.', validationErrors].filter(Boolean).join('\n'));
-            return;
-        }
-
-        const poll = data.poll || {};
-        if (poll.id && poll.html) {
-            replaceRenderedFeedHtml('#poll-' + poll.id + ', [data-poll-id="' + poll.id + '"]', poll.html);
-        }
-
-        showSuccessAlert(data.message || 'نظرسنجی با موفقیت ویرایش شد.');
-    } catch (error) {
-        console.error('Edit poll failed:', error);
-        showErrorAlert('خطا در اتصال به سرور');
-    } finally {
-        form.dataset.submitting = 'false';
-    }
 });
 
 function openElectionBox(){
@@ -1168,6 +971,9 @@ function openPollBox(){
                 const id = item.content_id || item.poll_id || item.id;
                 return replaceRenderedFeedHtml('#poll-' + id + ', [data-poll-id="' + id + '"]', item.html);
             },
+            vote(item) {
+                return window.GroupChat?.polls?.updateUI(item) || false;
+            },
             delete(item) {
                 removePollDom(item.content_id || item.poll_id || item.id);
                 return true;
@@ -1454,7 +1260,9 @@ function openPollBox(){
                 .listen('.group.poll.updated', function(event) {
                     markRealtimeHealthy();
                     const poll = (event && (event.poll || event.payload)) || {};
-                    if (poll.id || poll.poll_id) updatePollUI(poll);
+                    if (poll.id || poll.poll_id) {
+                        window.GroupChat?.feed?.mutate({ ...poll, content_type: 'poll', action: 'vote' }, 'websocket-poll');
+                    }
                 })
                 .listen('.group.election.updated', function(event) {
                     markRealtimeHealthy();
@@ -2393,77 +2201,11 @@ function appendMessage(message) {
         }
     }
     
-    // Initialize click handler for profile link
-    const profileLink = messageRow.querySelector('a.message-sender');
-    if (profileLink) {
-        profileLink.addEventListener('click', function(e) {
-            // اجازه بده لینک کار کند
-            e.stopPropagation();
-            e.preventDefault();
-            // اگر href وجود دارد، به آن برو
-            const href = this.getAttribute('href');
-            if (href && !href.includes('#')) {
-                window.location.href = href;
-            }
-        });
-    }
-    
     // Scroll to the bottom of the chat - فقط اگر scroll restore کامل شده باشد
     // و کاربر خودش به پایین رفته باشد
     // در غیر این صورت، scroll restore خودش موقعیت را تنظیم می‌کند
     // این کد حذف شد چون با scroll restore تداخل دارد
     return messageRow;
-}
-
-// ✅ NEW: Helper to update poll UI without page reload
-function updatePollUI(pollData) {
-    try {
-        const pollId = pollData.id || pollData.poll_id;
-        const pollElement = document.getElementById(`poll-${pollId}`);
-        if (!pollElement) {
-            console.warn('Poll element not found:', pollId);
-            return;
-        }
-
-        const options = Array.isArray(pollData.options) ? pollData.options : [];
-        const optionsById = {};
-        options.forEach(function(option) {
-            optionsById[String(option.id)] = option;
-        });
-
-        pollElement.querySelectorAll('.poll-option[data-option-id]').forEach(function(optionButton) {
-            const optionId = optionButton.getAttribute('data-option-id');
-            const option = optionsById[String(optionId)];
-            if (!option) return;
-
-            const percent = Number.isFinite(Number(option.percent)) ? Number(option.percent) : 0;
-            const statEl = optionButton.querySelector('.poll-option__stat');
-            if (statEl) {
-                statEl.textContent = `${percent}%`;
-            }
-
-            const selectedOptionId = parseInt(pollData.user_option_id, 10);
-            const currentOptionId = parseInt(optionId, 10);
-            const isSelected = selectedOptionId && selectedOptionId === currentOptionId;
-            optionButton.classList.toggle('poll-option--selected', Boolean(isSelected));
-            optionButton.classList.toggle('voted', Boolean(isSelected));
-        });
-
-        const totalVotes = Number.isFinite(Number(pollData.total_votes))
-            ? Number(pollData.total_votes)
-            : options.reduce(function(sum, option) {
-                return sum + (Number.isFinite(Number(option.count)) ? Number(option.count) : 0);
-            }, 0);
-
-        const totalEl = pollElement.querySelector('.poll-card__total');
-        if (totalEl) {
-            totalEl.textContent = `تعداد رأی: ${totalVotes}`;
-        }
-
-        console.log('Poll updated successfully:', pollId);
-    } catch (error) {
-        console.error('Error updating poll UI:', error);
-    }
 }
 
 // ✅ NEW: Helper to update blog UI without page reload
