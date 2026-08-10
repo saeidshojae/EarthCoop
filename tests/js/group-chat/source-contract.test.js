@@ -23,6 +23,9 @@ const files = [
     'resources/views/groups/partials/legacy_message_runtime.blade.php',
     'resources/views/groups/partials/page_chrome_runtime.blade.php',
     'resources/views/groups/modals/group_edit_form.blade.php',
+    'resources/views/groups/partials/styles/base_styles.blade.php',
+    'resources/views/groups/partials/styles/message_edit_styles.blade.php',
+    'resources/views/groups/partials/styles/auxiliary_styles.blade.php',
     'resources/views/groups/partials/composer_actions_runtime.blade.php',
     'resources/views/groups/partials/post_submission_runtime.blade.php',
 ];
@@ -338,4 +341,17 @@ test('page chrome runtime owns group edit and one-shot page effects', () => {
     assert.match(runtime, /querySelectorAll\('\[id\^="edit-poll-box-"\]'\)/);
     assert.match(groupChat, /GroupChatPageChrome\.showEditPollBox\(Number\(target\.dataset\.pollId\)\)/);
     assert.doesNotMatch(blade, /function (?:togglePollMenu|showEditPollBox|confirmDelete)\(/);
+});
+
+test('chat page styles are extracted in cascade order', () => {
+    const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
+    const includes = [
+        "@include('groups.partials.styles.base_styles')",
+        "@include('groups.partials.styles.message_edit_styles')",
+        "@include('groups.partials.styles.auxiliary_styles')",
+    ];
+
+    assert.doesNotMatch(blade, /<style>/);
+    assert.ok(includes.every(include => blade.includes(include)));
+    assert.ok(includes.every((include, index) => index === 0 || blade.indexOf(includes[index - 1]) < blade.indexOf(include)));
 });

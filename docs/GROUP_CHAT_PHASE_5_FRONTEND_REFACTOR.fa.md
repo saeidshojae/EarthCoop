@@ -76,6 +76,8 @@ Checkpoint سی‌وششم: کنترل فرم ویرایش گروه از global�
 
 Checkpoint سی‌وهفتم: کنترل نمایش فرم ویرایش poll از global آزاد `showEditPollBox` به `GroupChatPageChrome` منتقل و action bridge به API محدود متصل شد؛ cleanup تمام فرم‌های باز را می‌بندد. دو helper مردهٔ `togglePollMenu` و `confirmDelete` که هیچ call-site در چت نداشتند همراه سه بلوک script inline حذف شدند. Blade اصلی به ۲۵۰۶ خط کاهش یافت و قرارداد source نبود دوبارهٔ این globalها را تثبیت می‌کند.
 
+Checkpoint سی‌وهشتم: هر سه بلوک CSS باقی‌ماندهٔ صفحه به partialهای مستقل `base_styles`، `message_edit_styles` و `auxiliary_styles` منتقل شدند. includeها دقیقاً در نقاط قبلی باقی مانده‌اند تا ترتیب cascade تغییر نکند و قرارداد source ترتیب آن‌ها و نبود `<style>` در Blade اصلی را کنترل می‌کند. این استخراج ۱۸۵۴ خط CSS را از فایل هماهنگ‌کننده خارج کرد و `chat.blade.php` از ۲۵۰۶ به ۶۵۲ خط کاهش یافت.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.
