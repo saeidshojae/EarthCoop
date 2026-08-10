@@ -83,6 +83,36 @@ test('chat page uses only locally bundled library assets', () => {
     assert.match(app, /select2\/dist\/css\/select2\.min\.css/);
 });
 
+test('composer keeps optimistic messages until a valid stored identity arrives', () => {
+    const composer = readFileSync('resources/js/group-chat/composer.js', 'utf8');
+    const validation = composer.indexOf("throw new Error('Invalid stored message response')");
+    const removal = composer.indexOf('document.getElementById(`msg-${temporaryId}`)?.remove()');
+
+    assert.ok(validation > -1);
+    assert.ok(removal > validation);
+    assert.match(composer, /!storedMessage\?\.id \|\| !storedMessage\?\.user_id/);
+});
+
+test('legacy read tracking rejects temporary and undefined message identities', () => {
+    const features = readFileSync('public/js/chat-features.js', 'utf8');
+    assert.match(features, /if \(!\/\^\\d\+\$\/\.test\(key\)\) return/);
+});
+
+test('realtime runtime is pinned and starts without package downloads', () => {
+    const manifest = JSON.parse(readFileSync('package.json', 'utf8'));
+    const launcher = readFileSync('scripts/start-soketi.ps1', 'utf8');
+    const smoke = readFileSync('scripts/realtime-smoke.cjs', 'utf8');
+
+    assert.equal(manifest.devDependencies['@soketi/soketi'], '1.6.1');
+    assert.equal(manifest.devDependencies.node, '18.20.8');
+    assert.match(manifest.scripts.realtime, /start-soketi\.ps1/);
+    assert.match(manifest.scripts['realtime:smoke'], /node_modules\\node\\bin\\node\.exe scripts\/realtime-smoke\.cjs/);
+    assert.doesNotMatch(launcher, /(?:^|[;&|]\s*)npx\s|npm\s+(?:exec|ci)\b/im);
+    assert.match(launcher, /node_modules\\node\\bin\\node\.exe/);
+    assert.match(launcher, /node_modules\\@soketi\\soketi\\bin\\server\.js/);
+    assert.match(smoke, /PUSHER_CONNECTED/);
+});
+
 test('sidecar runtimes expose explicit ownership APIs', () => {
     const features = readFileSync('public/js/chat-features.js', 'utf8');
     const voice = readFileSync('public/js/voice-recorder.js', 'utf8');

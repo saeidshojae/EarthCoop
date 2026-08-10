@@ -209,10 +209,14 @@ export function createComposer({ api, store, lifecycle, actions }) {
                 store.setState({ composerStatus: 'sending', composerError: null });
                 try {
                     const data = await api.json(form.action, { method: 'POST', body: formData });
+                    const storedMessage = data?.message;
+                    if (!storedMessage?.id || !storedMessage?.user_id) {
+                        throw new Error('Invalid stored message response');
+                    }
                     document.getElementById(`msg-${temporaryId}`)?.remove();
-                    const [rendered] = feed.apply([{ ...data.message, content_type: 'message' }], 'submit-response');
-                    if (rendered) rendered.dataset.deliveryState = data.message?.state || 'sent';
-                    realtime?.advanceMessage(data.message?.id);
+                    const [rendered] = feed.apply([{ ...storedMessage, content_type: 'message' }], 'submit-response');
+                    if (rendered) rendered.dataset.deliveryState = storedMessage.state || 'sent';
+                    realtime?.advanceMessage(storedMessage.id);
                     form.reset();
                     idInput.value = '';
                     if (voiceInput) voiceInput.value = '';

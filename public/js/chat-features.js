@@ -832,8 +832,8 @@
     }
 
     function markMessageAsRead(messageId) {
-        if (!messageId) return;
-        const key = String(messageId);
+        const key = String(messageId || '').trim();
+        if (!/^\d+$/.test(key)) return;
         if (_markedReadIds.has(key)) return; // قبلاً mark شده
         _markedReadIds.add(key);
         _markReadQueue.add(key);

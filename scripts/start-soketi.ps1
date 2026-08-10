@@ -35,11 +35,15 @@ try {
     # If TCP lookup is unavailable, continue and let Soketi bind normally.
 }
 
-$cacheDir = Join-Path $repoRoot '.npm-cache-node18'
-New-Item -ItemType Directory -Force -Path $cacheDir | Out-Null
-$env:npm_config_cache = $cacheDir
+$localNode = Join-Path $repoRoot 'node_modules\node\bin\node.exe'
+$soketiServer = Join-Path $repoRoot 'node_modules\@soketi\soketi\bin\server.js'
 
-Write-Host "Starting Soketi on $reverbHost`:$port with Node 18..."
-& npx -y -p node@18 -p @soketi/soketi -c "soketi start --app-id $appId --app-key $appKey --app-secret $appSecret --host $reverbHost --port $port"
+if (-not (Test-Path -LiteralPath $localNode) -or -not (Test-Path -LiteralPath $soketiServer)) {
+    Write-Error 'Local realtime dependencies are missing. Run npm install before npm run realtime.'
+    exit 1
+}
+
+Write-Host "Starting local Soketi on $reverbHost`:$port with pinned Node 18..."
+& $localNode $soketiServer start --app-id $appId --app-key $appKey --app-secret $appSecret --host $reverbHost --port $port
 
 exit $LASTEXITCODE
