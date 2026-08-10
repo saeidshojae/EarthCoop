@@ -6,15 +6,19 @@ export function createCategoryBrowser({ api, lifecycle }) {
     const loading = document.getElementById('catLoading');
     const title = document.getElementById('catModalTitle');
     let controller = null;
+    const cache = new Map();
+    const cacheTtlMs = 30_000;
 
     const close = () => {
         modal?.style.setProperty('display', 'none');
         overlay?.style.setProperty('display', 'none');
+        modal?.setAttribute('aria-hidden', 'true');
         document.body.style.overflow = '';
     };
     const open = () => {
-        modal?.style.setProperty('display', 'block');
+        modal?.style.setProperty('display', 'flex');
         overlay?.style.setProperty('display', 'block');
+        modal?.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
     };
     const render = data => {
@@ -26,13 +30,23 @@ export function createCategoryBrowser({ api, lifecycle }) {
         list.style.display = items.length ? 'block' : 'none';
         items.forEach(item => {
             const row = document.createElement('li');
-            row.className = 'category-blog-row';
+            row.className = 'category-browser__row';
+            const details = document.createElement('div');
+            details.className = 'category-browser__details';
             const link = document.createElement('a');
+            link.className = 'category-browser__title';
             link.href = item.url;
             link.textContent = item.title;
+            link.title = item.title;
             const date = document.createElement('small');
+            date.className = 'category-browser__date';
             date.textContent = item.date;
-            row.append(link, date);
+            const view = document.createElement('a');
+            view.className = 'category-browser__view';
+            view.href = item.url;
+            view.textContent = 'مشاهده';
+            details.append(link, date);
+            row.append(details, view);
             list.appendChild(row);
         });
     };
@@ -49,7 +63,12 @@ export function createCategoryBrowser({ api, lifecycle }) {
         open();
         try {
             const query = new URLSearchParams({ group_id: trigger.dataset.groupId || '' });
-            render(await api.json(`${url}?${query}`, { signal: controller.signal }));
+            const requestUrl = `${url}?${query}`;
+            const cached = cache.get(requestUrl);
+            if (cached && Date.now() - cached.storedAt < cacheTtlMs) return render(cached.data);
+            const data = await api.json(requestUrl, { signal: controller.signal });
+            cache.set(requestUrl, { data, storedAt: Date.now() });
+            render(data);
         } catch (error) {
             if (error.name === 'AbortError') return;
             loading.style.display = 'none';
@@ -60,7 +79,7 @@ export function createCategoryBrowser({ api, lifecycle }) {
 
     close();
     lifecycle.on(document, 'click', event => {
-        if (event.target.closest?.('#closeCatModal, #categoryBlogsOverlay')) return close();
+        if (event.target.closest?.('#closeCatModal') || event.target === modal || event.target === overlay) return close();
         const trigger = event.target.closest?.('.open-category-blogs');
         if (!trigger) return;
         event.preventDefault();

@@ -14118,7 +14118,7 @@ window.commentPrompt = function (message, options = {}) {
 
 
 
-    if (e.target.id === 'closeCatModal' || e.target.id === 'categoryBlogsOverlay') {
+    if (e.target.id === 'closeCatModal' || e.target.id === 'categoryBlogsOverlay' || e.target.id === 'categoryBlogsModal') {
 
 
 

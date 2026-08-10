@@ -516,6 +516,10 @@ test('legacy message runtime is retired behind modular owners', () => {
     assert.match(unread, /updateLastMessage\(messageId\)/);
     assert.match(category, /export function createCategoryBrowser/);
     assert.match(category, /lifecycle\.on\(document, 'click'/);
+    assert.match(category, /style\.setProperty\('display', 'flex'\)/);
+    assert.match(category, /event\.target === modal/);
+    assert.match(category, /const cache = new Map\(\)/);
+    assert.match(category, /category-browser__view/);
     assert.match(edit, /window\.GroupChat\.feed\.mutate/);
 });
 

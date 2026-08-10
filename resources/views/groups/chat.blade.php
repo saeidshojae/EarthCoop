@@ -228,29 +228,19 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
     </div>
 
     <div id="groupInfoBackdrop" class="group-info-backdrop hidden"></div>
-    <div id="categoryBlogsOverlay"
-        style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1100;"></div>
+    <div id="categoryBlogsOverlay" class="category-browser__overlay"></div>
 
-    <div id="categoryBlogsModal" style="
-  display:none; position:fixed; inset:0; z-index:1110;
-  align-items:center; justify-content:center;">
-        <div style="
-    width: min(700px, 92vw);
-    max-height: 80vh;
-    background:#fff; border-radius:12px; overflow:hidden;
-    direction: rtl; box-shadow:0 10px 30px rgba(0,0,0,.2);
-  ">
-            <div
-                style="display:flex; align-items:center; justify-content:space-between; padding: .8rem 1rem; background:#f6f6f6;">
-                <strong id="catModalTitle" style="font-size:1rem">لیست پست‌ها</strong>
-                <button id="closeCatModal"
-                    style="border:none; background:transparent; font-size:1.2rem; line-height:1;">✖</button>
+    <div id="categoryBlogsModal" class="category-browser" role="dialog" aria-modal="true"
+        aria-labelledby="catModalTitle" aria-hidden="true">
+        <div class="category-browser__panel">
+            <div class="category-browser__header">
+                <strong id="catModalTitle">لیست پست‌ها</strong>
+                <button type="button" id="closeCatModal" class="category-browser__close" aria-label="بستن">×</button>
             </div>
-            <div id="catModalBody" style="padding: .6rem 1rem; overflow:auto; max-height: calc(80vh - 52px);">
-                <div id="catLoading" style="padding:1rem; text-align:center;">در حال بارگذاری...</div>
-                <ul id="catList" style="list-style:none; margin:0; padding:0; display:none;"></ul>
-                <div id="catEmpty" style="display:none; text-align:center; padding:1rem;">پستی در این دسته یافت نشد.
-                </div>
+            <div id="catModalBody" class="category-browser__body">
+                <div id="catLoading" class="category-browser__status">در حال بارگذاری...</div>
+                <ul id="catList" class="category-browser__list"></ul>
+                <div id="catEmpty" class="category-browser__status">پستی در این دسته یافت نشد.</div>
             </div>
         </div>
     </div>

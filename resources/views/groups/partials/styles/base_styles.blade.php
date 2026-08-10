@@ -914,10 +914,72 @@
 
 
 
-#categoryBlogsModal {
-    display: flex;
-    justify-content: center;
+.category-browser__overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    background: rgba(15, 23, 42, .48);
+    backdrop-filter: blur(3px);
 }
+
+.category-browser {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1110;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.category-browser__panel {
+    width: min(700px, 100%);
+    max-height: min(80vh, 640px);
+    overflow: hidden;
+    direction: rtl;
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, .08);
+    border-radius: 14px;
+    box-shadow: 0 18px 55px rgba(15, 23, 42, .24);
+}
+
+.category-browser__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 52px;
+    padding: .75rem 1rem;
+    background: #f8fafc;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.category-browser__close {
+    display: inline-grid;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    border: 0;
+    border-radius: 999px;
+    color: #475569;
+    background: transparent;
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.category-browser__close:hover { background: #e2e8f0; color: #0f172a; }
+.category-browser__body { max-height: calc(min(80vh, 640px) - 52px); padding: .35rem 1rem; overflow: auto; }
+.category-browser__list { display: none; margin: 0; padding: 0; list-style: none; }
+.category-browser__status { display: none; padding: 1.5rem 1rem; color: #64748b; text-align: center; }
+.category-browser__row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem .25rem; border-bottom: 1px solid #e5e7eb; }
+.category-browser__row:last-child { border-bottom: 0; }
+.category-browser__details { display: flex; min-width: 0; flex-direction: column; gap: .2rem; }
+.category-browser__title { overflow: hidden; color: #6d28d9; font-weight: 700; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+.category-browser__title:hover { text-decoration: underline; }
+.category-browser__date { color: #64748b; font-size: .75rem; }
+.category-browser__view { flex: 0 0 auto; padding: .38rem .7rem; border: 1px solid #d1d5db; border-radius: 8px; color: #334155; background: #fff; text-decoration: none; }
+.category-browser__view:hover { border-color: #8b5cf6; color: #6d28d9; background: #f5f3ff; }
 
 .main-section {
     padding: 0 !important;
