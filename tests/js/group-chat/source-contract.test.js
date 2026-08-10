@@ -412,6 +412,7 @@ test('all declarative chat actions use the lifecycle-owned modular dispatcher', 
     const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
     const adapters = readFileSync('resources/js/group-chat/legacy-renderers.js', 'utf8');
+    const composer = readFileSync('resources/js/group-chat/composer.js', 'utf8');
 
     assert.match(actions, /lifecycle\.on\(root, 'click'/);
     assert.match(actions, /\[data-group-chat-action\], \[data-legacy-chat-action\], \[data-chat-page-action\]/);
@@ -427,11 +428,13 @@ test('canonical modular runtime is not bypassed by the migration feature flag', 
     const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
     const adapters = readFileSync('resources/js/group-chat/legacy-renderers.js', 'utf8');
+    const composer = readFileSync('resources/js/group-chat/composer.js', 'utf8');
 
     assert.match(index, /if \(window\.groupId\)/);
     assert.doesNotMatch(index, /if \(window\.__groupChatModularFrontend/);
     assert.doesNotMatch(groupChat, /window\.__groupChatModularFrontend && window\.GroupChat/);
-    assert.match(groupChat, /renderMessageThroughPipeline\(optimisticMsg, 'optimistic'\)/);
+    assert.match(composer, /feed\.apply\(\[\{/);
+    assert.match(composer, /\], 'optimistic'\)/);
     assert.match(adapters, /app\.feed\.apply\(/);
     assert.match(adapters, /app\.feed\.mutate\(/);
 });
@@ -533,15 +536,17 @@ test('typing indicator is store-backed and lifecycle-owned', () => {
 test('legacy group runtime has no active raw page listeners or timers', () => {
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8').replace(/^\s*\/\/.*$/gm, '');
     const unread = readFileSync('resources/js/group-chat/unread.js', 'utf8');
+    const composer = readFileSync('resources/js/group-chat/composer.js', 'utf8');
 
     assert.doesNotMatch(groupChat, /\.addEventListener\(/);
     assert.doesNotMatch(groupChat, /(^|[^.\w])set(?:Timeout|Interval)\(/m);
     assert.doesNotMatch(groupChat, /(^|[^.\w])clear(?:Timeout|Interval)\(/m);
-    assert.match(groupChat, /legacyLifecycle\.on\(form, 'submit'/);
+    assert.match(composer, /lifecycle\.on\(form, 'submit'/);
+    assert.match(groupChat, /composer\.initializeSubmission/);
+    assert.doesNotMatch(groupChat, /legacyLifecycle\.on\(form, 'submit'/);
     assert.match(unread, /lifecycle\.add\(\(\) => \{/);
     assert.doesNotMatch(groupChat, /window\.groupChat(?:Notify|Confirm|Prompt)/);
     assert.doesNotMatch(groupChat, /window\.replyToMessageFromButton/);
-    const composer = readFileSync('resources/js/group-chat/composer.js', 'utf8');
     assert.match(composer, /actions\.register\('reply'/);
     assert.match(composer, /actions\.register\('cancel-reply'/);
     assert.match(composer, /composerReply/);

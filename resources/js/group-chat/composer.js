@@ -58,6 +58,43 @@ export function createComposer({ api, store, lifecycle, actions }) {
     const closePost = () => setModal('post', false);
     const openPoll = () => setModal('poll', true);
     const closePoll = () => setModal('poll', false);
+    const notify = (message, type = 'info') => window.GroupChatFeedback?.toast?.(message, { type });
+    const clientMessageId = form => {
+        let input = form.querySelector('input[name="client_message_id"]');
+        if (!input) {
+            input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'client_message_id';
+            form.appendChild(input);
+        }
+        if (!input.value) input.value = window.crypto?.randomUUID?.() || `cmid_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+        return input;
+    };
+    const editorContent = () => {
+        const editor = window.CKEDITOR?.instances?.message_editor;
+        if (!editor) return { editor: null, html: '', text: document.getElementById('message_editor')?.value.trim() || '' };
+        editor.updateElement();
+        const html = editor.getData().trim();
+        const holder = document.createElement('div');
+        holder.innerHTML = html;
+        holder.querySelectorAll('br').forEach(node => node.replaceWith('\n'));
+        holder.querySelectorAll('p, div').forEach(node => node.nextSibling && node.appendChild(document.createTextNode('\n')));
+        return { editor, html, text: (holder.textContent || holder.innerText || '').trim() };
+    };
+    const voicePreview = file => {
+        const preview = document.getElementById('voice-file-preview');
+        if (!preview) return;
+        const name = document.getElementById('voice-file-name');
+        const size = document.getElementById('voice-file-size');
+        if (name) name.textContent = file?.name || '';
+        if (size) {
+            const units = ['بایت', 'کیلوبایت', 'مگابایت', 'گیگابایت'];
+            const index = file?.size ? Math.floor(Math.log(file.size) / Math.log(1024)) : 0;
+            size.textContent = file ? `${Math.round(file.size / (1024 ** index) * 100) / 100} ${units[index]}` : '';
+        }
+        preview.style.setProperty('display', file ? 'flex' : 'none', 'important');
+        store.setState({ composerVoiceFile: file ? Object.freeze({ name: file.name, size: file.size }) : null });
+    };
 
     actions.register('open-blog', openPost);
     actions.register('open-poll', openPoll);
@@ -137,5 +174,61 @@ export function createComposer({ api, store, lifecycle, actions }) {
         closePoll,
         setReply,
         cancelReply,
+        initializeSubmission({ feed, realtime }) {
+            const form = document.getElementById('chatForm');
+            const voiceInput = document.getElementById('voice-file-input');
+            const removeVoice = document.getElementById('voice-file-remove');
+            if (voiceInput) lifecycle.on(voiceInput, 'change', () => voicePreview(voiceInput.files?.[0] || null));
+            if (removeVoice) lifecycle.on(removeVoice, 'click', event => {
+                event.preventDefault();
+                if (voiceInput) voiceInput.value = '';
+                voicePreview(null);
+            });
+            if (!form) return;
+            lifecycle.on(form, 'submit', async event => {
+                event.preventDefault();
+                if (store.getState().composerStatus === 'sending') return;
+                const { editor, html, text } = editorContent();
+                const hasVoice = Boolean(voiceInput?.files?.length);
+                if (!text && !hasVoice) return notify('پیام نمی‌تواند خالی باشد.', 'error');
+                const formData = new FormData(form);
+                const idInput = clientMessageId(form);
+                formData.set('client_message_id', idInput.value);
+                const reply = store.getState().composerReply;
+                if (reply?.id && document.getElementById(`msg-${reply.id}`)) formData.set('parent_id', reply.id);
+                else formData.delete('parent_id');
+                const message = text || '🎤 پیام صوتی';
+                formData.set('message', message);
+                const temporaryId = `temp_${Date.now()}`;
+                const [temporary] = feed.apply([{
+                    content_type: 'message', id: temporaryId, user_id: window.authUserId,
+                    sender: 'شما', message: html || message, reactions: [], parent_id: reply?.id || null,
+                    created_at: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }), state: 'pending',
+                }], 'optimistic');
+                if (temporary) temporary.dataset.deliveryState = 'pending';
+                store.setState({ composerStatus: 'sending', composerError: null });
+                try {
+                    const data = await api.json(form.action, { method: 'POST', body: formData });
+                    document.getElementById(`msg-${temporaryId}`)?.remove();
+                    const [rendered] = feed.apply([{ ...data.message, content_type: 'message' }], 'submit-response');
+                    if (rendered) rendered.dataset.deliveryState = data.message?.state || 'sent';
+                    realtime?.advanceMessage(data.message?.id);
+                    form.reset();
+                    idInput.value = '';
+                    if (voiceInput) voiceInput.value = '';
+                    voicePreview(null);
+                    editor?.setData('');
+                    cancelReply();
+                    const chatBox = document.getElementById('chat-box');
+                    if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+                    store.setState({ composerStatus: 'idle', composerError: null });
+                } catch (error) {
+                    document.getElementById(`msg-${temporaryId}`)?.remove();
+                    store.setState({ composerStatus: 'error', composerError: error });
+                    const details = error?.details ? Object.values(error.details).flat().join('\n') : '';
+                    notify(details || error?.message || 'خطا در ارسال پیام. لطفاً دوباره تلاش کنید.', 'error');
+                }
+            });
+        },
     });
 }
