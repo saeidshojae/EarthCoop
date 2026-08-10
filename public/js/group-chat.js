@@ -199,7 +199,7 @@ function groupChatRequestId() {
 }
 
 async function groupChatFetch(input, init = {}) {
-    if (window.__groupChatModularFrontend && window.GroupChat?.api) {
+    if (window.GroupChat?.api) {
         return window.GroupChat.api.request(input, init);
     }
 
@@ -979,7 +979,7 @@ function openPollBox(){
 
     function setConnectionStatus(status) {
         realtimeState.connectionStatus = status;
-        if (window.__groupChatModularFrontend && window.GroupChat?.store) {
+        if (window.GroupChat?.store) {
             window.GroupChat.store.setState({ connection: status });
         }
         let indicator = document.getElementById('group-connection-status');
@@ -1007,7 +1007,7 @@ function openPollBox(){
 
     function applyDeltaEvent(event) {
         if (!event) return;
-        if (window.__groupChatModularFrontend && window.GroupChat?.reconciler) {
+        if (window.GroupChat?.reconciler) {
             const decision = window.GroupChat.reconciler.inspect(event);
             if (decision.action === 'ignore') return;
             if (decision.action === 'sync') {
@@ -1059,7 +1059,7 @@ function openPollBox(){
 
     function applyRealtimeEnvelope(event) {
         if (!event) return;
-        if (window.__groupChatModularFrontend && window.GroupChat?.reconciler) {
+        if (window.GroupChat?.reconciler) {
             const decision = window.GroupChat.reconciler.inspect(event, { commit: false });
             if (decision.action === 'ignore') return;
             if (decision.action === 'sync') {
@@ -1254,7 +1254,7 @@ function openPollBox(){
             content_type: 'message',
             content_id: payload?.content_id || payload?.message_id || payload?.id
         };
-        if (window.__groupChatModularFrontend && window.GroupChat?.feed) {
+        if (window.GroupChat?.feed) {
             return window.GroupChat.feed.mutate(item, source);
         }
         const adapter = window.GroupChatLegacyMessageMutations[action];
@@ -1348,7 +1348,7 @@ function openPollBox(){
         const contentId = payload?.content_id || payload?.[contentType + '_id'] || payload?.id;
         const item = { ...(payload || {}), content_type: contentType, content_id: contentId, action: operation };
         const adapter = window.GroupChatLegacyFeedRenderers?.[contentType];
-        if (window.__groupChatModularFrontend && window.GroupChat?.feed) {
+        if (window.GroupChat?.feed) {
             return operation === 'create'
                 ? window.GroupChat.feed.apply([item], source)[0] || false
                 : window.GroupChat.feed.mutate(item, source);
@@ -2325,7 +2325,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function renderMessageThroughPipeline(message, source = 'legacy') {
-    if (window.__groupChatModularFrontend && window.GroupChat?.feed && window.GroupChat?.renderer?.supports('message')) {
+    if (window.GroupChat?.feed && window.GroupChat?.renderer?.supports('message')) {
         return window.GroupChat.feed.apply([{ ...message, content_type: 'message' }], source)[0] || null;
     }
     return appendMessage(message);

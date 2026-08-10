@@ -384,6 +384,18 @@ test('all declarative chat actions use the lifecycle-owned modular dispatcher', 
     assert.match(actions, /lifecycle\.on\(root, 'click'/);
     assert.match(actions, /\[data-group-chat-action\], \[data-legacy-chat-action\], \[data-chat-page-action\]/);
     assert.match(index, /const pageActions = createActions\(\{ lifecycle: pageLifecycle \}\)/);
-    assert.ok(index.indexOf('const pageActions') < index.indexOf('if (window.__groupChatModularFrontend'));
+    assert.ok(index.indexOf('const pageActions') < index.indexOf('if (window.groupId)'));
     assert.doesNotMatch(groupChat, /handleDelegatedLegacyChatAction/);
+});
+
+test('canonical modular runtime is not bypassed by the migration feature flag', () => {
+    const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
+    const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
+
+    assert.match(index, /if \(window\.groupId\)/);
+    assert.doesNotMatch(index, /if \(window\.__groupChatModularFrontend/);
+    assert.doesNotMatch(groupChat, /window\.__groupChatModularFrontend && window\.GroupChat/);
+    assert.match(groupChat, /renderMessageThroughPipeline\(optimisticMsg, 'optimistic'\)/);
+    assert.match(groupChat, /window\.GroupChat\.feed\.apply\(\[item\], source\)/);
+    assert.match(groupChat, /window\.GroupChat\.feed\.mutate\(item, source\)/);
 });

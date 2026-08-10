@@ -25,7 +25,7 @@ if (!window.__groupChatPageLifecycleCleanupInstalled) {
 // depend on the migration feature flag. It is the single owner of page actions.
 const pageActions = createActions({ lifecycle: pageLifecycle });
 
-if (window.__groupChatModularFrontend && window.groupId) {
+if (window.groupId) {
     const sequenceKey = `group-feed-sequence:${window.groupId}`;
     const lifecycle = pageLifecycle;
     const api = new ApiClient({ timeoutMs: Number(window.__groupChatRequestTimeoutMs || 15000) });
