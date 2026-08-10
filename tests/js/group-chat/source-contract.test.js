@@ -462,7 +462,10 @@ test('post editing uses plain text, closes its backdrop, and keeps metadata last
     assert.match(styles, /\.post-edit-modal__close:hover,[\s\S]*?color: #1f2937 !important/);
     assert.match(styles, /\.post-edit-modal__dismiss \{[\s\S]*?color: #64748b !important/);
     assert.match(styles, /\.post-edit-modal__close \{[\s\S]*?position: absolute !important;[\s\S]*?left: 16px !important;[\s\S]*?right: auto !important/);
-    assert.match(controller, /if \(\$submittedContent === strip_tags\(\$submittedContent\)\)[\s\S]*?nl2br\(e\(\$submittedContent\), false\)/);
+    assert.match(controller, /str_replace\(\["\\r\\n", "\\r"\], "\\n", \$submittedContent\)/);
+    assert.match(controller, /str_replace\("\\n", '<br>', e\(\$submittedContent\)\)/);
+    assert.doesNotMatch(controller, /nl2br\(e\(\$submittedContent\)/);
+    assert.match(post, /<br\\s\*\\\/\?>\[ \\t\]\*\(\?:\\r\\n\|\\r\|\\n\)\?/);
     assert.match(operations, /await closePostEditModal\(id\);[\s\S]*?feed\.mutate/);
     assert.match(operations, /document\.querySelectorAll\('\.modal-backdrop'\)\.forEach\(element => element\.remove\(\)\)/);
 });

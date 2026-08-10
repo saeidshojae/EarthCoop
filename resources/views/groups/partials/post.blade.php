@@ -365,8 +365,9 @@
 
                                     @php
                                         $editablePostContent = html_entity_decode((string) $item->content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                                        $editablePostContent = preg_replace('/<br\s*\/?>/iu', "\n", $editablePostContent);
-                                        $editablePostContent = preg_replace('/<\/p\s*>/iu', "\n", $editablePostContent);
+                                        $editablePostContent = preg_replace('/<br\s*\/?>[ \t]*(?:\r\n|\r|\n)?/iu', "\n", $editablePostContent);
+                                        $editablePostContent = preg_replace('/<\/p\s*>\s*<p[^>]*>/iu', "\n", $editablePostContent);
+                                        $editablePostContent = preg_replace('/<\/?p[^>]*>/iu', '', $editablePostContent);
                                         $editablePostContent = trim(strip_tags($editablePostContent));
                                     @endphp
                                     <textarea class="form-control" rows="4" id="edit-post-content-{{ $item->id }}" data-post-edit-content>{{ $editablePostContent }}</textarea>

@@ -118,7 +118,8 @@ class BlogController extends Controller
         $validated = $request->validated();
         $submittedContent = (string) $validated['content'];
         if ($submittedContent === strip_tags($submittedContent)) {
-            $submittedContent = nl2br(e($submittedContent), false);
+            $submittedContent = str_replace(["\r\n", "\r"], "\n", $submittedContent);
+            $submittedContent = str_replace("\n", '<br>', e($submittedContent));
         }
         $validated['content'] = $sanitizer->sanitize($submittedContent);
 
