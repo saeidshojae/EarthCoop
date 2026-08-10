@@ -626,7 +626,7 @@ if (!registerLegacyPostReaction()) {
         return true;
     }
 
-    window.GroupChatLegacyMessageMutations = {
+    const legacyMessageMutations = {
         edit(item) {
             return updateMessageContentDom(item.content_id || item.message_id || item.id, item.content || item.message || '', item.edited !== false);
         },
@@ -652,7 +652,7 @@ if (!registerLegacyPostReaction()) {
         if (window.GroupChat?.feed) {
             return window.GroupChat.feed.mutate(item, source);
         }
-        const adapter = window.GroupChatLegacyMessageMutations[action];
+        const adapter = legacyMessageMutations[action];
         return typeof adapter === 'function' ? adapter(item) : false;
     }
 
@@ -666,7 +666,7 @@ if (!registerLegacyPostReaction()) {
         fadeRemoveElement(el ? (el.closest('.poll-wrapper') || el) : null);
     }
 
-    window.GroupChatLegacyFeedRenderers = {
+    const legacyFeedRenderers = {
         post: {
             render(item) {
                 return appendRenderedFeedHtml(item.html, item.content_id || item.post_id || item.id, 'post');
@@ -745,7 +745,7 @@ if (!registerLegacyPostReaction()) {
     function applyFeedItemThroughPipeline(contentType, operation, payload, source) {
         const contentId = payload?.content_id || payload?.[contentType + '_id'] || payload?.id;
         const item = { ...(payload || {}), content_type: contentType, content_id: contentId, action: operation };
-        const adapter = window.GroupChatLegacyFeedRenderers?.[contentType];
+        const adapter = legacyFeedRenderers?.[contentType];
         if (window.GroupChat?.feed) {
             return operation === 'create'
                 ? window.GroupChat.feed.apply([item], source)[0] || false
@@ -756,7 +756,7 @@ if (!registerLegacyPostReaction()) {
             : adapter?.[operation]?.(item, { source }) || false;
     }
 
-    window.GroupChatFeedBridge = Object.freeze({
+    const feedBridge = Object.freeze({
         create(contentType, payload, source = 'local') {
             const applied = applyFeedItemThroughPipeline(contentType, 'create', payload, source);
             if (applied && contentType === 'post') {
@@ -768,6 +768,31 @@ if (!registerLegacyPostReaction()) {
             return applyFeedItemThroughPipeline(contentType, operation, payload, source);
         },
     });
+    const registerLegacyRenderers = app => {
+        if (!app?.renderer) return false;
+        app.renderer.register('message', {
+            render: item => appendMessage(item),
+            mutate(item, context) {
+                const adapter = legacyMessageMutations[context.action];
+                return typeof adapter === 'function' ? adapter(item) : false;
+            },
+        });
+        ['post', 'poll', 'comment'].forEach(type => app.renderer.register(type, {
+            render(item, context) {
+                const adapter = legacyFeedRenderers[type]?.render;
+                return typeof adapter === 'function' ? adapter(item, context) : null;
+            },
+            mutate(item, context) {
+                const adapter = legacyFeedRenderers[type]?.[context.action];
+                return typeof adapter === 'function' ? adapter(item, context) : false;
+            },
+        }));
+        app.feedBridge = feedBridge;
+        return true;
+    };
+    if (!registerLegacyRenderers(window.GroupChat)) {
+        legacyLifecycle.on(document, 'group-chat:ready', event => registerLegacyRenderers(event.detail), { once: true });
+    }
 
     const remoteTypingUsers = new Map();
     let typingClearTimer = null;
@@ -1315,21 +1340,21 @@ if (!registerLegacyPostReaction()) {
                         if (data.posts && data.posts.length) {
                             data.posts.forEach(function(p) {
                                 if (!p.html) return;
-                                window.GroupChatFeedBridge.create('post', p, 'polling-fallback');
+                                feedBridge.create('post', p, 'polling-fallback');
                             });
                         }
                         updateLastPostCursor(data.latest_post_id);
                         // Handle deleted posts
                         if (data.deleted_post_ids && data.deleted_post_ids.length) {
                             data.deleted_post_ids.forEach(function(pid) {
-                                window.GroupChatFeedBridge.mutate('post', 'delete', { id: pid }, 'polling-fallback');
+                                feedBridge.mutate('post', 'delete', { id: pid }, 'polling-fallback');
                             });
                         }
                         // Handle updated posts
                         if (data.updated_posts && data.updated_posts.length) {
                             data.updated_posts.forEach(function(p) {
                                 if (!p.html) return;
-                                window.GroupChatFeedBridge.mutate('post', 'update', p, 'polling-fallback');
+                                feedBridge.mutate('post', 'update', p, 'polling-fallback');
                             });
                         }
                     })
@@ -1367,7 +1392,7 @@ if (!registerLegacyPostReaction()) {
                     .then(function(data) {
                         if (!data || !data.deleted_ids || !data.deleted_ids.length) return;
                         data.deleted_ids.forEach(function(pid) {
-                            window.GroupChatFeedBridge.mutate('post', 'delete', { id: pid }, 'reconcile-fallback');
+                            feedBridge.mutate('post', 'delete', { id: pid }, 'reconcile-fallback');
                         });
                     })
                     .catch(function() {})
@@ -2453,7 +2478,7 @@ async function deletePost(postId) {
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.status === 'success') {
-                window.GroupChatFeedBridge.mutate('post', 'delete', { id: postId }, 'local-post-delete');
+                feedBridge.mutate('post', 'delete', { id: postId }, 'local-post-delete');
             } else {
                 groupChatNotify(data.message || 'خطا در حذف پست', 'error');
             }
@@ -2562,7 +2587,7 @@ async function submitPostEdit(event, postId) {
                 ? { ...data.post, id: data.post.id || postId }
                 : data.blog;
             if (updatedPost) {
-                window.GroupChatFeedBridge.mutate('post', 'update', updatedPost, 'local-post-edit');
+                feedBridge.mutate('post', 'update', updatedPost, 'local-post-edit');
             }
             showSuccessAlert('پست با موفقیت ویرایش شد');
         } else {

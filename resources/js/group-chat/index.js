@@ -34,28 +34,6 @@ if (window.groupId) {
     const store = createStore({ connection: navigator.onLine === false ? 'offline' : 'connecting', unread: {} });
     const reconciler = createReconciler({ initialSequence: localStorage.getItem(sequenceKey) || 0 });
     const renderer = createRenderer({ root: document.getElementById('chat-box') || document.getElementById('group-feed') });
-    renderer.register('message', {
-        render(item) {
-            if (typeof window.appendMessage !== 'function') return null;
-            return window.appendMessage(item);
-        },
-        mutate(item, context) {
-            const adapter = window.GroupChatLegacyMessageMutations?.[context.action];
-            return typeof adapter === 'function' ? adapter(item) : false;
-        },
-    });
-    ['post', 'poll', 'comment'].forEach(type => {
-        renderer.register(type, {
-            render(item, context) {
-                const adapter = window.GroupChatLegacyFeedRenderers?.[type]?.render;
-                return typeof adapter === 'function' ? adapter(item, context) : null;
-            },
-            mutate(item, context) {
-                const adapter = window.GroupChatLegacyFeedRenderers?.[type]?.[context.action];
-                return typeof adapter === 'function' ? adapter(item, context) : false;
-            },
-        });
-    });
     const actions = pageActions;
 
     const feed = createFeed({ store, renderer });

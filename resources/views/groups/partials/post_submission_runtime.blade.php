@@ -40,7 +40,7 @@ function initializePostSubmissionRuntime() {
                     }
                     // close modal
                     window.GroupChat?.composer?.closePost();
-                    const feedBridge = window.GroupChatFeedBridge;
+                    const feedBridge = window.GroupChat?.feedBridge;
                     if (!feedBridge || typeof feedBridge.create !== 'function') {
                         throw new Error('Group chat feed bridge is unavailable');
                     }
