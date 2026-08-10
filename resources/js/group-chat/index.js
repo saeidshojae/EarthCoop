@@ -15,6 +15,7 @@ import { createSkillLists } from './skill-lists.js';
 import { installLegacyRenderers } from './legacy-renderers.js';
 import { createTyping } from './typing.js';
 import { createRealtimeRuntime } from './realtime-runtime.js';
+import { createOperations } from './operations.js';
 
 if (!window.GroupChatFeedback) {
     window.GroupChatFeedback = createFeedback();
@@ -64,6 +65,7 @@ if (window.groupId) {
     app.skillLists = createSkillLists({ actions, store, lifecycle });
     app.installLegacyRenderers = callbacks => installLegacyRenderers({ app, callbacks });
     app.typing = createTyping({ store, lifecycle, authUserId: window.authUserId });
+    app.operations = createOperations({ api, store, feed, actions, lifecycle, groupId: window.groupId });
     app.unread.initialize();
     app.installRealtime = options => {
         if (!app.realtimeRuntime) app.realtimeRuntime = createRealtimeRuntime({ app, groupId: window.groupId, authUserId: window.authUserId, ...options });

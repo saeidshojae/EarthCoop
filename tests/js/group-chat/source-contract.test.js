@@ -232,6 +232,7 @@ test('post submission runtime is extracted without patching openBlogBox', () => 
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
     const adapters = readFileSync('resources/js/group-chat/legacy-renderers.js', 'utf8');
     const realtime = readFileSync('resources/js/group-chat/realtime-runtime.js', 'utf8');
+    const operations = readFileSync('resources/js/group-chat/operations.js', 'utf8');
 
     assert.match(blade, /@include\('groups\.partials\.post_submission_runtime'\)/);
     assert.doesNotMatch(blade, /function interceptPostForm\(/);
@@ -248,7 +249,7 @@ test('post submission runtime is extracted without patching openBlogBox', () => 
     assert.doesNotMatch(runtime, /appendChild\(/);
     assert.doesNotMatch(runtime, /_init(?:PostMenus|ReactionButtons)/);
     assert.doesNotMatch(runtime, /_lastKnownPostId/);
-    assert.match(groupChat, /const feedBridge = window\.GroupChat\.installLegacyRenderers/);
+    assert.match(groupChat, /window\.GroupChat\.installLegacyRenderers/);
     assert.match(adapters, /const bridge = Object\.freeze/);
     assert.match(adapters, /app\.feedBridge = bridge/);
     assert.doesNotMatch(groupChat, /window\.GroupChat(?:LegacyMessageMutations|LegacyFeedRenderers|FeedBridge)/);
@@ -259,9 +260,9 @@ test('post submission runtime is extracted without patching openBlogBox', () => 
     assert.match(realtime, /feedBridge\.mutate\('post', 'delete', \{ id \}, 'polling-fallback'\)/);
     assert.match(realtime, /feedBridge\.mutate\('post', 'update', item, 'polling-fallback'\)/);
     assert.match(realtime, /feedBridge\.mutate\('post', 'delete', \{ id \}, 'reconcile-fallback'\)/);
-    assert.match(groupChat, /feedBridge\.mutate\('post', 'delete', \{ id: postId \}, 'local-post-delete'\)/);
-    assert.match(groupChat, /feedBridge\.mutate\('post', 'update', updatedPost, 'local-post-edit'\)/);
-    assert.match(adapters, /callbacks\.updatePostFields\?\.\(\{ \.\.\.item, id:/);
+    assert.match(operations, /feed\.mutate\(\{ content_type: 'post', id, action: 'delete' \}, 'local-post-delete'\)/);
+    assert.match(operations, /feed\.mutate\(\{ \.\.\.post, content_type: 'post', id, action: 'update' \}, 'local-post-edit'\)/);
+    assert.match(adapters, /const updatePostFields = item =>/);
     assert.doesNotMatch(groupChat, /function updateBlogUI\(/);
     assert.doesNotMatch(groupChat, /wrapperEl\.replaceWith\(/);
     assert.doesNotMatch(groupChat, /_lastKnownPostId/);
@@ -559,4 +560,20 @@ test('legacy group runtime has no active raw page listeners or timers', () => {
     for (const file of files) {
         assert.doesNotMatch(readFileSync(file, 'utf8'), /window\.groupChat(?:Notify|Confirm|Prompt)/, file);
     }
+});
+
+test('message, post, and chat management operations are modular actions', () => {
+    const operations = readFileSync('resources/js/group-chat/operations.js', 'utf8');
+    const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
+    const legacy = readFileSync('public/js/group-chat.js', 'utf8');
+    const post = readFileSync('resources/views/groups/partials/post.blade.php', 'utf8');
+
+    for (const action of ['delete-message', 'report-message', 'delete-post', 'clear-chat', 'delete-chat', 'report-user', 'submit-report']) {
+        assert.match(operations, new RegExp(`(?:register|actions\\.register)\\('${action}'`));
+    }
+    assert.match(index, /createOperations\(\{ api, store, feed, actions, lifecycle/);
+    assert.match(operations, /lifecycle\.on\(document, 'submit'/);
+    assert.match(post, /data-post-edit-form/);
+    assert.doesNotMatch(post, /onsubmit=/);
+    assert.doesNotMatch(legacy, /function (?:deleteMessage|reportMessage|deletePost|submitPostEdit|clearChatHistory|deleteChat|reportUser|submitReport)\(/);
 });

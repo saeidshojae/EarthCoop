@@ -79,6 +79,17 @@ export function installLegacyRenderers({ app, callbacks = {} }) {
         }));
         return true;
     };
+    const updatePostFields = item => {
+        const root = document.getElementById(`blog-${idOf(item, 'post')}`);
+        if (!root) return false;
+        const title = root.querySelector('.blog-title');
+        const content = root.querySelector('.blog-content');
+        const editedAt = root.querySelector('.blog-edit-time');
+        if (title) title.textContent = item.title || '';
+        if (content) content.innerHTML = item.content || '';
+        if (editedAt && item.updated_at) editedAt.textContent = `(ویرایش شده: ${item.updated_at})`;
+        return true;
+    };
     const updateReceipt = (type, id, readCount) => {
         const root = type === 'message'
             ? document.querySelector(`.message-bubble[data-message-id="${id}"]`)
@@ -108,7 +119,7 @@ export function installLegacyRenderers({ app, callbacks = {} }) {
     const adapters = {
         post: {
             render: item => appendHtml(item.html, idOf(item, 'post'), 'post'),
-            update: item => item.html ? replaceHtml(`#blog-${idOf(item, 'post')}`, item.html) : callbacks.updatePostFields?.({ ...item, id: idOf(item, 'post') }),
+            update: item => item.html ? replaceHtml(`#blog-${idOf(item, 'post')}`, item.html) : updatePostFields(item),
             delete: item => fadeRemove(document.getElementById(`blog-${idOf(item, 'post')}`)?.closest('.post-wrapper')),
             reaction(item) {
                 const region = document.querySelector(`.reaction-buttons[data-post-id="${idOf(item, 'post')}"]`);

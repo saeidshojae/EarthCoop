@@ -341,7 +341,7 @@
 
                     <div class="modal-content">
 
-                        <form onsubmit="submitPostEdit(event, {{ $item->id }})">
+                        <form data-post-edit-form data-post-id="{{ $item->id }}">
 
                             <div class="modal-header">
 
@@ -357,7 +357,7 @@
 
                                     <label class="form-label">عنوان پست</label>
 
-                                    <input type="text" class="form-control" id="edit-post-title-{{ $item->id }}" value="{{ $item->title }}">
+                                    <input type="text" class="form-control" id="edit-post-title-{{ $item->id }}" data-post-edit-title value="{{ $item->title }}">
 
                                 </div>
 
@@ -365,7 +365,7 @@
 
                                     <label class="form-label">متن پست</label>
 
-                                    <textarea class="form-control" rows="4" id="edit-post-content-{{ $item->id }}">{{ $item->content }}</textarea>
+                                    <textarea class="form-control" rows="4" id="edit-post-content-{{ $item->id }}" data-post-edit-content>{{ $item->content }}</textarea>
 
                                 </div>
 
@@ -373,7 +373,7 @@
 
                                     <label class="form-label">دسته‌بندی</label>
 
-                                    <select class="form-control" id="edit-post-category-{{ $item->id }}">
+                                    <select class="form-control" id="edit-post-category-{{ $item->id }}" data-post-edit-category>
 
                                         <option value="">انتخاب دسته‌بندی</option>
 
