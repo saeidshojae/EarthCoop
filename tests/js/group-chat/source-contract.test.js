@@ -20,6 +20,7 @@ const files = [
     'resources/views/groups/partials/scroll_unread_runtime.blade.php',
     'resources/views/groups/partials/message_edit_runtime.blade.php',
     'resources/views/groups/partials/ckeditor_runtime.blade.php',
+    'resources/views/groups/partials/legacy_message_runtime.blade.php',
     'resources/views/groups/partials/composer_actions_runtime.blade.php',
     'resources/views/groups/partials/post_submission_runtime.blade.php',
 ];
@@ -61,11 +62,12 @@ test('message delete and report actions use the delegated action bridge', () => 
     const runtime = readFileSync('public/js/group-chat.js', 'utf8');
     const message = readFileSync('resources/views/groups/partials/message.blade.php', 'utf8');
     const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
+    const legacyMessageRuntime = readFileSync('resources/views/groups/partials/legacy_message_runtime.blade.php', 'utf8');
 
     for (const action of ['delete-message', 'report-message']) {
         assert.match(runtime, new RegExp(`data-group-chat-action="${action}"`));
         assert.match(message, new RegExp(`data-group-chat-action="${action}"`));
-        assert.match(blade, new RegExp(`data-group-chat-action="${action}"`));
+        assert.match(legacyMessageRuntime, new RegExp(`data-group-chat-action="${action}"`));
     }
     assert.doesNotMatch(runtime, /querySelector\(["']\.btn-(?:delete|report)["']\)\?\.addEventListener/);
     assert.doesNotMatch(
@@ -74,6 +76,7 @@ test('message delete and report actions use the delegated action bridge', () => 
     );
     assert.doesNotMatch(runtime, /initializeMessageActions/);
     assert.doesNotMatch(blade, /initializeMessageActions/);
+    assert.doesNotMatch(legacyMessageRuntime, /initializeMessageActions/);
     assert.doesNotMatch(blade, /btn-(?:delete|report):not\(\[data-group-chat-action\]\)/);
 });
 
@@ -283,4 +286,19 @@ test('ckeditor runtime is extracted and lifecycle-owned', () => {
     assert.match(runtime, /lifecycle\.add\(function\(\)/);
     assert.doesNotMatch(runtime, /(^|[^.])setInterval\(/m);
     assert.equal((runtime.match(/\.addEventListener\(/g) || []).length, 1);
+});
+
+test('legacy message runtime is loaded through its dedicated partial', () => {
+    const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
+    const runtime = readFileSync('resources/views/groups/partials/legacy_message_runtime.blade.php', 'utf8');
+
+    assert.match(blade, /@include\('groups\.partials\.legacy_message_runtime'\)/);
+    assert.doesNotMatch(blade, /function addMessageToChat\(/);
+    assert.doesNotMatch(blade, /function updateMessageContent\(/);
+    assert.match(runtime, /const GROUP_ID = \{\{ \$group->id \}\}/);
+    assert.match(runtime, /function setLastReadState\(messageId, notify = true\)/);
+    assert.match(runtime, /function updateLastReadMessage\(messageId\)/);
+    assert.match(runtime, /function addMessageToChat\(messageData\)/);
+    assert.match(runtime, /function updateMessageContent\(messageBubble, newContent, isEdited\)/);
+    assert.match(runtime, /function escapeHtml\(text\)/);
 });

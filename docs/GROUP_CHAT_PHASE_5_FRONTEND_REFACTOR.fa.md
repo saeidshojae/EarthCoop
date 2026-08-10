@@ -66,6 +66,8 @@ Checkpoint سی‌ویکم: runtime ویرایش پیام از Blade اصلی ب
 
 Checkpoint سی‌ودوم: تنظیم و راه‌اندازی CKEditor پست از Blade اصلی به partial مستقل `ckeditor_runtime` منتقل شد. polling انتظار برای بارگذاری CKEditor اکنون تحت مالکیت Lifecycle است، پس از موفقیت صریحاً متوقف می‌شود و راه‌اندازی editor با بررسی instance موجود idempotent است. cleanup نمونهٔ متعلق به صفحه و guard را آزاد می‌کند و قرارداد source از بازگشت interval خام جلوگیری می‌کند. Blade اصلی به ۳۰۸۲ خط کاهش یافت.
 
+Checkpoint سی‌وسوم: بلوک legacy پیام شامل قراردادهای صفحه، read-state، debounce ثبت پیام خوانده‌شده، renderer قدیمی پیام، patch محتوای ویرایش‌شده و helperهای escape/text به partial مستقل `legacy_message_runtime` منتقل شد. ترتیب اجرای classic script و APIهای مورد استفادهٔ runtimeهای موجود بدون تغییر حفظ شده‌اند تا این استخراج صرفاً ساختاری باشد؛ مالکیت lifecycle این بلوک در checkpoint جداگانه انجام می‌شود. Blade اصلی از ۳۰۸۲ به ۲۵۶۰ خط کاهش یافت.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.
