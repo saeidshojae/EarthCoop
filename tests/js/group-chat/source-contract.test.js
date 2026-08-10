@@ -512,6 +512,23 @@ test('group info tabs are modular, scoped, and store-backed', () => {
     assert.doesNotMatch(legacy, /Tabs script loaded/);
 });
 
+test('group info and election panel handlers are lifecycle-owned and declarative', () => {
+    const panel = readFileSync('resources/views/groups/partials/group_info_panel.blade.php', 'utf8');
+    const election = readFileSync('resources/views/groups/modals/election_modal.blade.php', 'utf8');
+    const elections = readFileSync('resources/js/group-chat/elections.js', 'utf8');
+
+    assert.match(panel, /<script type="module">/);
+    assert.match(panel, /const groupInfoLifecycle = window\.GroupChatLifecycle/);
+    assert.match(panel, /window\.GroupInfoPanel = Object\.freeze/);
+    assert.doesNotMatch(panel, /\.addEventListener\(/);
+    assert.doesNotMatch(panel, /(^|[^.\w])set(?:Timeout|Interval)\(/m);
+    assert.doesNotMatch(panel, /window\.(?:cancelAddGuests|cancelManagerChat|loadGroupStats)\s*=/);
+    assert.doesNotMatch(panel + election, /\son(?:click|submit|change|input)=/i);
+    for (const action of ['election-content', 'open-election-candidates', 'open-election-guideline', 'open-election-top-votes']) {
+        assert.match(elections, new RegExp(`actions\\.register\\('${action}'`));
+    }
+});
+
 test('poll skill-list UI is modular and store-backed', () => {
     const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
     const skills = readFileSync('resources/js/group-chat/skill-lists.js', 'utf8');

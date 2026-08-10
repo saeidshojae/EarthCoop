@@ -66,6 +66,10 @@ export function createElections({ actions, lifecycle, store }) {
     actions.register('close-election-admin', closeAdmin);
     actions.register('add-election-candidate', addCandidate);
     actions.register('remove-election-candidate', ({ target }) => Boolean(target.closest('.modal-option-row')?.remove() ?? true));
+    actions.register('election-content', ({ event }) => (event.stopPropagation(), true));
+    actions.register('open-election-candidates', () => (window.openCandidatesModal?.(), true));
+    actions.register('open-election-guideline', () => (window.openGuidelineModal?.(), true));
+    actions.register('open-election-top-votes', () => (window.openTopVotesModal?.(), true));
     const type = document.getElementById('poll_election_type');
     if (type) lifecycle.on(type, 'change', () => {
         const specialties = document.getElementById('el_specialties_box');

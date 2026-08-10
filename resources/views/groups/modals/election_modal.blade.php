@@ -28,9 +28,9 @@
 
 
 
-<div class="election-box election-card" onclick="event.stopPropagation()" dir="rtl">
+<div class="election-box election-card" data-group-chat-action="election-content" dir="rtl">
 
-  <button type="button" class="election-close" aria-label="بستن فرم انتخابات" onclick="closeElectionBox()">
+  <button type="button" class="election-close" aria-label="بستن فرم انتخابات" data-group-chat-action="close-election">
 
     <i class="fas fa-times"></i>
 
@@ -304,7 +304,7 @@
 
           class="election-action-btn election-action-btn--resume"
 
-          onclick="window.openCandidatesModal && window.openCandidatesModal()">
+          data-group-chat-action="open-election-candidates">
 
     <i class="fas fa-user-tie"></i>
 
@@ -318,7 +318,7 @@
 
           class="election-action-btn election-action-btn--guideline"
 
-          onclick="window.openGuidelineModal && window.openGuidelineModal()">
+          data-group-chat-action="open-election-guideline">
 
     <i class="fas fa-book"></i>
 
@@ -334,7 +334,7 @@
 
             class="election-action-btn election-action-btn--votes"
 
-            onclick="window.openTopVotesModal && window.openTopVotesModal()">
+            data-group-chat-action="open-election-top-votes">
 
       <i class="fas fa-chart-bar"></i>
 

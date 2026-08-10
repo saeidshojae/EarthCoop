@@ -6,8 +6,6 @@ const legacyActionTargets = {
     'group-settings': ['showGroupSettingsModal'],
     unpin: ['unpinMessage', ({ target }) => [target.dataset.messageId]],
     'show-thread': ['showThread', ({ target }) => [Number(target.dataset.messageId)]],
-    'cancel-add-guests': ['cancelAddGuests'],
-    'cancel-manager-chat': ['cancelManagerChat'],
     'comment-menu': ['openGlobalMenu', ({ event, target }) => [event, Number(target.dataset.commentId)]],
     'comment-reaction': ['reactToComment', ({ target }) => [target.dataset.reactionType, Number(target.dataset.commentId)]],
 };

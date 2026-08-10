@@ -10,7 +10,7 @@ export function createTabs({ store, lifecycle, root = document.getElementById('g
         tabs.forEach(item => item.classList.toggle('active', item === tab));
         contents.forEach(item => item.classList.toggle('active', item === content));
         store.setState({ activeInfoTab: name });
-        if (name === 'stats' && typeof window.loadGroupStats === 'function') window.loadGroupStats();
+        if (name === 'stats') window.GroupInfoPanel?.loadStats?.();
         return true;
     };
 

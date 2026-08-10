@@ -1058,7 +1058,8 @@
 @endpush
 
 @push('scripts')
-<script>
+<script type="module">
+    const groupInfoLifecycle = window.GroupChatLifecycle;
     // ============================================================
     // Debounce Helper
     // ============================================================
@@ -1066,18 +1067,18 @@
         let timeout;
         return function executedFunction(...args) {
             const later = () => {
-                clearTimeout(timeout);
+                groupInfoLifecycle.clearTimeout(timeout);
                 func(...args);
             };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
+            groupInfoLifecycle.clearTimeout(timeout);
+            timeout = groupInfoLifecycle.timeout(later, wait);
         };
     }
 
     // ============================================================
     // جستجوی گروه‌ها
     // ============================================================
-    document.addEventListener('DOMContentLoaded', function() {
+    groupInfoLifecycle.on(document, 'DOMContentLoaded', function() {
         const searchInput = document.getElementById('groupSearch');
         const searchType = document.getElementById('searchType');
 
@@ -1151,8 +1152,8 @@
                 });
             }, 500);
 
-            searchInput.addEventListener('input', performSearch);
-            searchType.addEventListener('change', performSearch);
+            groupInfoLifecycle.on(searchInput, 'input', performSearch);
+            groupInfoLifecycle.on(searchType, 'change', performSearch);
         }
     });
 
@@ -1167,7 +1168,7 @@
     // ============================================================
     // جستجوی اعضا
     // ============================================================
-    document.addEventListener('DOMContentLoaded', function() {
+    groupInfoLifecycle.on(document, 'DOMContentLoaded', function() {
         const membersSearch = document.getElementById('membersSearch');
         if (membersSearch) {
             const memberItems = Array.from(document.querySelectorAll('.member-item'));
@@ -1181,7 +1182,7 @@
 
             updateCount(memberItems.length, memberItems.length);
 
-            membersSearch.addEventListener('input', debounce(() => {
+            groupInfoLifecycle.on(membersSearch, 'input', debounce(() => {
                 const query = (membersSearch.value || '').trim().toLowerCase();
                 let shown = 0;
                 memberItems.forEach(li => {
@@ -1200,10 +1201,10 @@
     // ============================================================
     // جستجوی مدیران
     // ============================================================
-    document.addEventListener('DOMContentLoaded', function() {
+    groupInfoLifecycle.on(document, 'DOMContentLoaded', function() {
         const managerSearch = document.getElementById('searchManagers');
         if (managerSearch) {
-            managerSearch.addEventListener('input', debounce(function() {
+            groupInfoLifecycle.on(managerSearch, 'input', debounce(function() {
                 const query = (managerSearch.value || '').toLowerCase();
                 document.querySelectorAll('.manager-item').forEach(item => {
                     const text = item.querySelector('span')?.textContent?.toLowerCase() ?? '';
@@ -1216,32 +1217,36 @@
     // ============================================================
     // مدیریت مودال‌ها
     // ============================================================
-    window.cancelAddGuests = function() {
+    const cancelAddGuests = function() {
         document.getElementById('userSearchModal').style.display = 'none';
     };
 
-    window.cancelManagerChat = function() {
+    const cancelManagerChat = function() {
         document.getElementById('chatRequestModal').style.display = 'none';
     };
+    window.GroupChat.actions.register('cancel-add-guests', () => (cancelAddGuests(), true));
+    window.GroupChat.actions.register('cancel-manager-chat', () => (cancelManagerChat(), true));
 
-    document.getElementById('addUserButton')?.addEventListener('click', function() {
+    const addUserButton = document.getElementById('addUserButton');
+    if (addUserButton) groupInfoLifecycle.on(addUserButton, 'click', function() {
         document.getElementById('userSearchModal').style.display = 'flex';
     });
 
-    document.getElementById('addChatRequestButton')?.addEventListener('click', function() {
+    const addChatRequestButton = document.getElementById('addChatRequestButton');
+    if (addChatRequestButton) groupInfoLifecycle.on(addChatRequestButton, 'click', function() {
         document.getElementById('chatRequestModal').style.display = 'flex';
     });
 
     // ============================================================
     // جستجوی کاربران برای اضافه کردن به گروه
     // ============================================================
-    document.addEventListener('DOMContentLoaded', function() {
+    groupInfoLifecycle.on(document, 'DOMContentLoaded', function() {
         const searchInput = document.getElementById('searchUsers');
         const resultBox = document.getElementById('searchUserResults');
         let selectedUserId = null;
 
         if (searchInput && resultBox) {
-            searchInput.addEventListener('input', debounce(function() {
+            groupInfoLifecycle.on(searchInput, 'input', debounce(function() {
                 const query = (searchInput.value || '').trim();
                 if (query.length < 2) {
                     resultBox.style.display = 'none';
@@ -1259,7 +1264,7 @@
                                 const li = document.createElement('li');
                                 li.className = 'panel-modal__list-item';
                                 li.textContent = `${user.first_name ?? ''} ${user.last_name ?? ''} (${user.email ?? ''})`;
-                                li.addEventListener('click', () => {
+                                groupInfoLifecycle.on(li, 'click', () => {
                                     searchInput.value = user.email ?? '';
                                     selectedUserId = user.id;
                                     resultBox.style.display = 'none';
@@ -1276,13 +1281,14 @@
                     });
             }, 250));
 
-            document.addEventListener('click', (e) => {
+            groupInfoLifecycle.on(document, 'click', (e) => {
                 if (!searchInput.contains(e.target) && !resultBox.contains(e.target)) {
                     resultBox.style.display = 'none';
                 }
             });
 
-            document.getElementById('addUsersToGroup')?.addEventListener('click', function() {
+            const addUsersToGroup = document.getElementById('addUsersToGroup');
+            if (addUsersToGroup) groupInfoLifecycle.on(addUsersToGroup, 'click', function() {
                 const hours = document.getElementById('hoursUser').value;
                 if (!selectedUserId || !hours) {
                     window.GroupChatFeedback?.toast('لطفاً کاربر را انتخاب و مدت ساعت را وارد کنید.', { type: 'error' });
@@ -1396,7 +1402,7 @@
     }
 
     // Event delegation برای فیلترهای پست
-    document.addEventListener('click', function(e) {
+    groupInfoLifecycle.on(document, 'click', function(e) {
         const filterBtn = e.target.closest('.post-filter-btn');
         if (!filterBtn) return;
         e.preventDefault();
@@ -1558,7 +1564,7 @@
     // باز کردن تب پست در صورت وجود فیلتر در URL
     // ============================================================
     @if (isset($_GET['filter']))
-        document.addEventListener('DOMContentLoaded', function() {
+        groupInfoLifecycle.on(document, 'DOMContentLoaded', function() {
             const groupPanel = document.getElementById('groupInfoPanel');
             const backdrop = document.getElementById('group-info-backdrop');
             if (groupPanel) groupPanel.classList.add('is-open');
@@ -1570,5 +1576,6 @@
             postTab?.click();
         });
     @endif
+    window.GroupInfoPanel = Object.freeze({ loadStats: loadGroupStats });
 </script>
 @endpush
