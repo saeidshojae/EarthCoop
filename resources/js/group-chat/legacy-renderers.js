@@ -131,7 +131,14 @@ export function installLegacyRenderers({ app, callbacks = {} }) {
         reaction: updateReactions,
         'mark-read': item => updateReceipt('message', idOf(item, 'message'), item.read_count || 0),
     };
-    const dispatchComment = item => (document.dispatchEvent(new CustomEvent('group-comment-updated', { detail: item })), true);
+    const dispatchComment = item => {
+        const postId = item.blog_id || item.post_id;
+        const count = Number(item.comments_count);
+        const countNode = postId && document.querySelector(`#blog-${postId} .post-card__comments-count`);
+        if (countNode && Number.isFinite(count)) countNode.textContent = String(count);
+        document.dispatchEvent(new CustomEvent('group-comment-updated', { detail: item }));
+        return true;
+    };
     const adapters = {
         post: {
             render: item => appendHtml(item.html, idOf(item, 'post'), 'post'),

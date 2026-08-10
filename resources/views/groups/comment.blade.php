@@ -9178,6 +9178,9 @@ window.commentPrompt = function (message, options = {}) {
 
 
 
+          @php
+            $currentPostReaction = $blog->reactions()->where('user_id', auth()->id())->value('type');
+          @endphp
           <div class="comment-post-card__reactions">
 
 
@@ -9188,7 +9191,7 @@ window.commentPrompt = function (message, options = {}) {
 
 
 
-            <button type="button" class="reaction-btn like-btn" data-comment-page-action="reaction" data-reaction-type="1">
+            <button type="button" class="reaction-btn like-btn{{ (string) $currentPostReaction === '1' ? ' active' : '' }}" data-comment-page-action="reaction" data-reaction-type="1">
 
 
 
@@ -9228,7 +9231,7 @@ window.commentPrompt = function (message, options = {}) {
 
 
 
-            <button type="button" class="reaction-btn dislike-btn" data-comment-page-action="reaction" data-reaction-type="0">
+            <button type="button" class="reaction-btn dislike-btn{{ (string) $currentPostReaction === '0' ? ' active' : '' }}" data-comment-page-action="reaction" data-reaction-type="0">
 
 
 
@@ -10688,7 +10691,24 @@ window.commentPrompt = function (message, options = {}) {
 
 
 
-    showOverlay();
+    const optimisticLikeCount = container?.querySelector('.like-count');
+    const optimisticDislikeCount = container?.querySelector('.dislike-count');
+    const previousLikes = Number(optimisticLikeCount?.textContent || 0);
+    const previousDislikes = Number(optimisticDislikeCount?.textContent || 0);
+    const optimisticLikeButton = container?.querySelector('.like-btn');
+    const optimisticDislikeButton = container?.querySelector('.dislike-btn');
+    const previouslyLiked = optimisticLikeButton?.classList.contains('active') || false;
+    const previouslyDisliked = optimisticDislikeButton?.classList.contains('active') || false;
+    let reactionSucceeded = false;
+    const nextLiked = type === '1' ? !previouslyLiked : false;
+    const nextDisliked = type === '0' ? !previouslyDisliked : false;
+    if (optimisticLikeCount) optimisticLikeCount.textContent = String(Math.max(0, previousLikes + Number(nextLiked) - Number(previouslyLiked)));
+    if (optimisticDislikeCount) optimisticDislikeCount.textContent = String(Math.max(0, previousDislikes + Number(nextDisliked) - Number(previouslyDisliked)));
+    optimisticLikeButton?.classList.toggle('active', nextLiked);
+    optimisticDislikeButton?.classList.toggle('active', nextDisliked);
+    if (optimisticLikeButton) optimisticLikeButton.disabled = true;
+    if (optimisticDislikeButton) optimisticDislikeButton.disabled = true;
+    container?.classList.add('is-updating');
 
 
 
@@ -10798,6 +10818,7 @@ window.commentPrompt = function (message, options = {}) {
 
 
 
+          reactionSucceeded = true;
           document.querySelector('.like-count').textContent = data.likes;
 
 
@@ -10868,7 +10889,7 @@ window.commentPrompt = function (message, options = {}) {
 
 
 
-            likeBtn.classList.toggle('active');
+            likeBtn.classList.toggle('active', String(data.user_reaction) === '1');
 
 
 
@@ -10878,7 +10899,7 @@ window.commentPrompt = function (message, options = {}) {
 
 
 
-            dislikeBtn.classList.remove('active');
+            dislikeBtn.classList.toggle('active', String(data.user_reaction) === '0');
 
 
 
@@ -10898,7 +10919,7 @@ window.commentPrompt = function (message, options = {}) {
 
 
 
-            dislikeBtn.classList.toggle('active');
+            dislikeBtn.classList.toggle('active', String(data.user_reaction) === '0');
 
 
 
@@ -10908,7 +10929,7 @@ window.commentPrompt = function (message, options = {}) {
 
 
 
-            likeBtn.classList.remove('active');
+            likeBtn.classList.toggle('active', String(data.user_reaction) === '1');
 
 
 
@@ -11008,7 +11029,15 @@ window.commentPrompt = function (message, options = {}) {
 
 
 
-        hideOverlay();
+        if (!reactionSucceeded) {
+          if (optimisticLikeCount) optimisticLikeCount.textContent = String(previousLikes);
+          if (optimisticDislikeCount) optimisticDislikeCount.textContent = String(previousDislikes);
+          optimisticLikeButton?.classList.toggle('active', previouslyLiked);
+          optimisticDislikeButton?.classList.toggle('active', previouslyDisliked);
+        }
+        container?.classList.remove('is-updating');
+        if (optimisticLikeButton) optimisticLikeButton.disabled = false;
+        if (optimisticDislikeButton) optimisticDislikeButton.disabled = false;
 
 
 
@@ -15848,6 +15877,11 @@ window.commentPrompt = function (message, options = {}) {
 
 
 
+            const commentsCount = document.querySelector('.comments-section__count');
+            if (commentsCount && Number.isFinite(Number(data.comments_count))) {
+              commentsCount.textContent = String(data.comments_count);
+            }
+
             // Clear form
 
 
@@ -17007,6 +17041,11 @@ window.commentPrompt = function (message, options = {}) {
 
 
 
+
+        const commentsCount = document.querySelector('.comments-section__count');
+        if (commentsCount && Number.isFinite(Number(data.comments_count))) {
+          commentsCount.textContent = String(data.comments_count);
+        }
 
         const commentsList = document.getElementById('comments-list');
 

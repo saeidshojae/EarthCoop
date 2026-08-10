@@ -32,9 +32,7 @@ class ReactionController extends Controller
                 $existing->update(['type' => $type]);
                 // award if switched to like
                 if ($type == 1) {
-                    try {
-                        app(\App\Services\ReputationService::class)->applyAction(auth()->user(), 'post_upvoted', ['blog_id' => $blog->id], $blog->id, 'groups');
-                    } catch (\Throwable $e) {}
+                    $this->awardPostUpvoteAfterResponse($user, (int) $blog->id);
                 }
             }
         } else {
@@ -46,9 +44,7 @@ class ReactionController extends Controller
             ]);
 
             if ($type == 1) {
-                try {
-                    app(\App\Services\ReputationService::class)->applyAction(auth()->user(), 'post_upvoted', ['blog_id' => $blog->id], $blog->id, 'groups');
-                } catch (\Throwable $e) {}
+                $this->awardPostUpvoteAfterResponse($user, (int) $blog->id);
             }
         }
     
@@ -58,7 +54,7 @@ class ReactionController extends Controller
         // لمس کردن blog برای اینکه سایر کاربران از طریق postsFeed آپدیت را دریافت کنند
         $blog->touch();
 
-        event(new GroupFeedUpdated((int) $blog->group_id, 'post_reaction', [
+        $this->dispatchGroupEvent(new GroupFeedUpdated((int) $blog->group_id, 'post_reaction', [
             'post_id' => (int) $blog->id,
             'likes' => (int) $likes,
             'dislikes' => (int) $dislikes,
@@ -68,6 +64,7 @@ class ReactionController extends Controller
             'status' => 'success',
             'likes' => $likes,
             'dislikes' => $dislikes,
+            'user_reaction' => $blog->reactions()->where('user_id', $user->id)->value('type'),
         ]);
     }
     
@@ -124,6 +121,45 @@ class ReactionController extends Controller
             'dislikes' => $comment->reactions()->where('type', 0)->count(),
             'id' => $comment->id,
         ]);
+    }
+
+    private function dispatchGroupEvent(object $event): void
+    {
+        if (! (bool) config('group-chat.enabled', true)
+            || strtolower((string) config('group-chat.transport', 'auto')) === 'polling') {
+            return;
+        }
+
+        dispatch(static function () use ($event): void {
+            try {
+                event($event);
+            } catch (\Throwable $exception) {
+                \Illuminate\Support\Facades\Log::warning('group_chat_broadcast_failed', [
+                    'event' => get_class($event),
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+        })->afterResponse();
+    }
+
+    private function awardPostUpvoteAfterResponse($user, int $blogId): void
+    {
+        dispatch(static function () use ($user, $blogId): void {
+            try {
+                app(\App\Services\ReputationService::class)->applyAction(
+                    $user,
+                    'post_upvoted',
+                    ['blog_id' => $blogId],
+                    $blogId,
+                    'groups'
+                );
+            } catch (\Throwable $exception) {
+                \Illuminate\Support\Facades\Log::warning('post_reaction_reputation_failed', [
+                    'blog_id' => $blogId,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+        })->afterResponse();
     }
     
 }

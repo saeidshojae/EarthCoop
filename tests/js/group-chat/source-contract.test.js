@@ -470,6 +470,25 @@ test('post editing uses plain text, closes its backdrop, and keeps metadata last
     assert.match(operations, /document\.querySelectorAll\('\.modal-backdrop'\)\.forEach\(element => element\.remove\(\)\)/);
 });
 
+test('post comment counts sync across the comment page and group feed', () => {
+    const commentPage = readFileSync('resources/views/groups/comment.blade.php', 'utf8');
+    const post = readFileSync('resources/views/groups/partials/post.blade.php', 'utf8');
+    const renderers = readFileSync('resources/js/group-chat/legacy-renderers.js', 'utf8');
+    const controller = readFileSync('app/Http/Controllers/Group/CommentController.php', 'utf8');
+    const reactionBlock = commentPage.slice(
+        commentPage.indexOf('function sendReaction(type)'),
+        commentPage.indexOf('// Comment reaction functions'),
+    );
+
+    assert.doesNotMatch(reactionBlock, /showOverlay\(\)/);
+    assert.match(reactionBlock, /const previousLikes = Number/);
+    assert.match(commentPage, /commentsCount\.textContent = String\(data\.comments_count\)/);
+    assert.match(post, /post-card__comments-count/);
+    assert.match(renderers, /#blog-\$\{postId\} \.post-card__comments-count/);
+    assert.match(controller, /'comment_created'/);
+    assert.match(controller, /'comments_count' => \$commentsCount/);
+});
+
 test('message edit runtime is extracted and lifecycle-owned', () => {
     const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
     const runtime = readFileSync('resources/views/groups/partials/message_edit_runtime.blade.php', 'utf8');

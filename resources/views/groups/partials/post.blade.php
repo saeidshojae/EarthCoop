@@ -273,7 +273,7 @@
 
         <a href="{{ route('groups.comment', $item) }}" class="post-card__comments post-card__comments--cta">
             <i class="fas fa-comment-dots"></i>
-            نظر دهید ({{ $item->comments_count ?? 0 }})
+            نظر دهید (<span class="post-card__comments-count">{{ $item->comments_count ?? 0 }}</span>)
         </a>
 
         <div class="post-card__footer content-meta-line">

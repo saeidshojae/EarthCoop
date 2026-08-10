@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Group;
 
+use App\Events\GroupFeedUpdated;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Http\Requests\Group\StoreCommentRequest;
@@ -46,8 +47,14 @@ class CommentController extends Controller
 
         // Dispatch event for notifications
         $blog = $comment->blog;
+        $commentsCount = (int) $blog->comments()->count();
         if ($blog && $blog->group) {
             event(new \App\Events\CommentCreated($comment, $blog, $blog->group, auth()->user()));
+            $this->dispatchGroupEvent(new GroupFeedUpdated((int) $blog->group_id, 'comment_created', [
+                'comment_id' => (int) $comment->id,
+                'blog_id' => (int) $blog->id,
+                'comments_count' => $commentsCount,
+            ], (int) auth()->id()));
         }
 
         // award points for creating a comment
@@ -70,6 +77,7 @@ class CommentController extends Controller
                 'id' => $comment->id,
                 'html' => $html,
             ],
+            'comments_count' => $commentsCount,
             // Keep old 'message' key for backward compatibility if needed
             'message' => [
                 'id' => $comment->id,
@@ -187,9 +195,29 @@ public function update(Request $request, Comment $comment)
         return response()->json([
             'status' => 'success',
             'comments' => $payload,
+            'comments_count' => (int) $blog->comments()->count(),
             'latest_comment_id' => (int) ($comments->last()->id ?? $afterId),
             'updated_comments' => $updatedComments,
             'deleted_comment_ids' => $deletedCommentIds,
         ]);
+    }
+
+    private function dispatchGroupEvent(object $event): void
+    {
+        if (! (bool) config('group-chat.enabled', true)
+            || strtolower((string) config('group-chat.transport', 'auto')) === 'polling') {
+            return;
+        }
+
+        dispatch(static function () use ($event): void {
+            try {
+                event($event);
+            } catch (\Throwable $exception) {
+                \Illuminate\Support\Facades\Log::warning('group_chat_broadcast_failed', [
+                    'event' => get_class($event),
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+        })->afterResponse();
     }
 }
