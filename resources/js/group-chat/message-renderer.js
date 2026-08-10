@@ -48,6 +48,7 @@ export function renderMessage(message) {
     function stripHtml(html) {
         const tmp = document.createElement('DIV');
         tmp.innerHTML = html;
+        tmp.querySelectorAll('br').forEach(node => node.replaceWith(' '));
         return tmp.textContent || tmp.innerText || '';
     }
     
@@ -97,7 +98,8 @@ export function renderMessage(message) {
     // Reply preview
     let replyPreviewHTML = '';
     if (message.parent_id && message.parent_sender && message.parent_content) {
-        replyPreviewHTML = `<div class="reply-preview"><div class="reply-sender">${escapeHtml(message.parent_sender)}</div><div class="reply-text">${escapeHtml(message.parent_content.substring(0, 80))}</div></div>`;
+        const parentPreview = stripHtml(String(message.parent_content)).replace(/\s+/g, ' ').trim().slice(0, 80);
+        replyPreviewHTML = `<div class="reply-preview"><div class="reply-sender">${escapeHtml(message.parent_sender)}</div><div class="reply-text">${escapeHtml(parentPreview)}</div></div>`;
     }
     
     // Voice message

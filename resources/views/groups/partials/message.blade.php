@@ -396,6 +396,9 @@
 
         }
 
+        $replyText = html_entity_decode((string) $replyText, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $replyText = preg_replace('/<br\s*\/?>/iu', ' ', $replyText);
+        $replyText = preg_replace('/\s+/u', ' ', strip_tags($replyText));
         $replyText = \Illuminate\Support\Str::limit(trim((string) $replyText), 80);
 
         @endphp

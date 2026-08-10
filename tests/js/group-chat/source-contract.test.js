@@ -138,6 +138,23 @@ test('message metadata keeps read receipts last and updates edit time in menus',
     assert.match(editRuntime, /responseData = responseData\?\.data \?\? responseData/);
 });
 
+test('text and voice replies share safe previews and cancellable composer state', () => {
+    const composer = readFileSync('resources/js/group-chat/composer.js', 'utf8');
+    const renderer = readFileSync('resources/js/group-chat/message-renderer.js', 'utf8');
+    const message = readFileSync('resources/views/groups/partials/message.blade.php', 'utf8');
+    const voice = readFileSync('public/js/voice-recorder.js', 'utf8');
+
+    assert.match(composer, /data-legacy-chat-action="cancel-reply" aria-label="لغو پاسخ"/);
+    assert.match(composer, /container\.style\.display = 'flex'/);
+    assert.match(renderer, /parentPreview = stripHtml\(String\(message\.parent_content\)\)/);
+    assert.match(renderer, /querySelectorAll\('br'\)\.forEach\(node => node\.replaceWith\(' '\)\)/);
+    assert.match(message, /html_entity_decode\(\(string\) \$replyText/);
+    assert.match(message, /strip_tags\(\$replyText\)/);
+    assert.match(voice, /formData\.append\('parent_id', composerReply\.id\)/);
+    assert.match(voice, /parent_sender: composerReply\?\.sender/);
+    assert.match(voice, /window\.GroupChat\?\.composer\?\.cancelReply\?\.\(\)/);
+});
+
 test('all group content uses the same rtl metadata order', () => {
     const message = readFileSync('resources/views/groups/partials/message.blade.php', 'utf8');
     const post = readFileSync('resources/views/groups/partials/post.blade.php', 'utf8');

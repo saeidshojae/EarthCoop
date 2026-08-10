@@ -4679,6 +4679,11 @@
 
             formData.append('message', '🎤 پیام صوتی');
 
+            const composerReply = window.GroupChat?.store?.getState?.().composerReply || null;
+            if (composerReply?.id && document.getElementById('msg-' + composerReply.id)) {
+                formData.append('parent_id', composerReply.id);
+            }
+
 
 
 
@@ -5324,6 +5329,7 @@
 
                         clearOptimisticVoice(result.message);
                         renderVoiceMessage(result.message, 'voice-submit-response');
+                        window.GroupChat?.composer?.cancelReply?.();
 
 
 
@@ -7075,6 +7081,7 @@
             if (!button || !blob) return;
             const blobUrl = URL.createObjectURL(blob);
             const tempId = 'voice_temp_' + Date.now();
+            const composerReply = window.GroupChat?.store?.getState?.().composerReply || null;
             const modal = document.getElementById('voice-recording-modal');
             if (modal) {
                 modal.style.opacity = '0';
@@ -7091,6 +7098,9 @@
                     sender: 'شما',
                     voice_message: blobUrl,
                     file_type: blob.type || 'audio/webm',
+                    parent_id: composerReply?.id || null,
+                    parent_sender: composerReply?.sender || '',
+                    parent_content: composerReply?.content || '',
                     _isOptimistic: true,
                 }, 'voice-optimistic');
             }

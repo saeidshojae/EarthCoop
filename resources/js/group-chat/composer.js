@@ -22,8 +22,8 @@ export function createComposer({ api, store, lifecycle, actions }) {
         if (!messageId || !container || !input) return false;
         const normalizedSender = String(sender || 'کاربر').trim() || 'کاربر';
         const preview = String(content || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().slice(0, 120);
-        container.innerHTML = `<div class="reply-info"><div class="reply-arrow"></div><div style="flex:1;min-width:0"><div class="reply-sender-name">${escape(normalizedSender)}</div><div class="reply-content">${escape(preview)}</div></div></div><button type="button" class="btn-cancel-reply" data-legacy-chat-action="cancel-reply"><i class="fas fa-times" aria-hidden="true"></i></button>`;
-        container.style.display = 'block';
+        container.innerHTML = `<div class="reply-info"><div class="reply-arrow"></div><div style="flex:1;min-width:0"><div class="reply-sender-name">${escape(normalizedSender)}</div><div class="reply-content">${escape(preview)}</div></div></div><button type="button" class="btn-cancel-reply" data-legacy-chat-action="cancel-reply" aria-label="لغو پاسخ" title="لغو پاسخ"><i class="fas fa-times" aria-hidden="true"></i></button>`;
+        container.style.display = 'flex';
         input.value = messageId;
         store.setState({ composerReply: Object.freeze({ id: messageId, sender: normalizedSender, content: preview }) });
         document.getElementById('chatForm')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

@@ -194,6 +194,8 @@
     align-items: center;
     justify-content: center;
     font-size: 0.9rem;
+    position: relative;
+    z-index: 2;
 }
 
 .telegram-reply-indicator .btn-cancel-reply:hover {
