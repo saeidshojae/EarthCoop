@@ -85,8 +85,9 @@ if (window.groupId) {
         || localStorage.getItem('__chatPollingDebug') === '1'
     );
     const realtimeRuntime = app.installRealtime({ debug });
-    app.installLegacyRenderers({ updateLastPostCursor: id => realtimeRuntime.advancePost(id) });
+    const feedBridge = app.installLegacyRenderers({ updateLastPostCursor: id => realtimeRuntime.advancePost(id) });
     app.composer.initializeSubmission({ feed, realtime: realtimeRuntime });
+    app.composer.initializePostSubmission({ feedBridge });
     lifecycle.timeout(() => {
         realtimeRuntime.initialize();
         realtimeRuntime.startPolling();

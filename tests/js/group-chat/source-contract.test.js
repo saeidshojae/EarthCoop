@@ -26,7 +26,6 @@ const files = [
     'resources/views/groups/partials/styles/base_styles.blade.php',
     'resources/views/groups/partials/styles/message_edit_styles.blade.php',
     'resources/views/groups/partials/styles/auxiliary_styles.blade.php',
-    'resources/views/groups/partials/post_submission_runtime.blade.php',
     'resources/views/groups/modals/post_form.blade.php',
     'resources/views/groups/modals/poll_form.blade.php',
     'resources/views/groups/modals/election_form.blade.php',
@@ -224,28 +223,20 @@ test('composer actions and modal state are owned by the modular Composer', () =>
 
 test('post submission runtime is extracted without patching openBlogBox', () => {
     const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
-    const runtime = readFileSync('resources/views/groups/partials/post_submission_runtime.blade.php', 'utf8');
+    const composer = readFileSync('resources/js/group-chat/composer.js', 'utf8');
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
     const adapters = readFileSync('resources/js/group-chat/legacy-renderers.js', 'utf8');
     const realtime = readFileSync('resources/js/group-chat/realtime-runtime.js', 'utf8');
     const operations = readFileSync('resources/js/group-chat/operations.js', 'utf8');
     const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
 
-    assert.match(blade, /@include\('groups\.partials\.post_submission_runtime'\)/);
+    assert.doesNotMatch(blade, /post_submission_runtime/);
     assert.doesNotMatch(blade, /function interceptPostForm\(/);
-    assert.match(runtime, /function initializePostSubmissionRuntime\(/);
-    assert.match(runtime, /window\.__groupChatPostSubmissionInitialized/);
-    assert.match(runtime, /lifecycle\.on\(postForm, 'submit'/);
-    assert.equal((runtime.match(/\.addEventListener\(/g) || []).length, 1);
-    assert.match(runtime, /document\.addEventListener\('DOMContentLoaded', initializePostSubmissionRuntime, \{ once: true \}\)/);
-    assert.doesNotMatch(runtime, /Object\.defineProperty\(window, 'openBlogBox'/);
-    assert.doesNotMatch(runtime, /setTimeout\(/);
-    assert.doesNotMatch(runtime, /_ajaxIntercepted/);
-    assert.match(runtime, /GroupChat\?\.feedBridge/);
-    assert.match(runtime, /feedBridge\.create\('post', data\.post, 'local-post-submit'\)/);
-    assert.doesNotMatch(runtime, /appendChild\(/);
-    assert.doesNotMatch(runtime, /_init(?:PostMenus|ReactionButtons)/);
-    assert.doesNotMatch(runtime, /_lastKnownPostId/);
+    assert.match(composer, /initializePostSubmission\(\{ feedBridge \}\)/);
+    assert.match(composer, /lifecycle\.on\(form, 'submit'/);
+    assert.match(composer, /api\.json\(form\.action/);
+    assert.match(composer, /feedBridge\.create\('post', data\.post, 'local-post-submit'\)/);
+    assert.doesNotMatch(composer, /\.addEventListener\(/);
     assert.match(index, /app\.installLegacyRenderers\(\{ updateLastPostCursor:/);
     assert.match(adapters, /const bridge = Object\.freeze/);
     assert.match(adapters, /app\.feedBridge = bridge/);

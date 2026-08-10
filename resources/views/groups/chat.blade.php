@@ -302,7 +302,6 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
 </div>
 @include('groups.modals.election_form', compact('group'))
 @include('groups.modals.post_form', compact('group', 'categories'))
-@include('groups.partials.post_submission_runtime')
 @include('groups.modals.poll_form', compact('group'))
 
 @if($electionAvailable && isset($election) && $election)

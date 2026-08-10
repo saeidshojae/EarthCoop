@@ -230,5 +230,35 @@ export function createComposer({ api, store, lifecycle, actions }) {
                 }
             });
         },
+        initializePostSubmission({ feedBridge }) {
+            const form = document.getElementById('postForm');
+            if (!form) return;
+            lifecycle.on(form, 'submit', async event => {
+                event.preventDefault();
+                const button = form.querySelector('button[type="submit"]');
+                if (button?.disabled) return;
+                const label = button?.textContent;
+                if (button) { button.disabled = true; button.textContent = 'در حال ارسال...'; }
+                Object.values(window.CKEDITOR?.instances || {}).forEach(editor => editor.updateElement());
+                store.setState({ composerPostStatus: 'sending', composerPostError: null });
+                try {
+                    const data = await api.json(form.action, { method: 'POST', body: new FormData(form) });
+                    if (data?.status && data.status !== 'success') throw new Error(data.message || 'خطا در ارسال پست');
+                    if (!data?.post?.html) throw new Error('پاسخ پست فاقد محتوای قابل نمایش است');
+                    const rendered = feedBridge.create('post', data.post, 'local-post-submit');
+                    form.reset();
+                    Object.values(window.CKEDITOR?.instances || {}).forEach(editor => editor.setData(''));
+                    closePost();
+                    const root = document.getElementById('chat-box');
+                    if (rendered && root) root.scrollTop = root.scrollHeight;
+                    store.setState({ composerPostStatus: 'idle', composerPostError: null });
+                } catch (error) {
+                    store.setState({ composerPostStatus: 'error', composerPostError: error });
+                    notify(error.message || 'خطا در ارتباط با سرور', 'error');
+                } finally {
+                    if (button) { button.disabled = false; button.textContent = label; }
+                }
+            });
+        },
     });
 }
