@@ -378,9 +378,6 @@ async function groupChatFetch(input, init = {}) {
     const feedBridge = window.GroupChat.installLegacyRenderers({
         renderMessage: appendMessage,
         updatePostFields: updatePostFieldsDom,
-        updateMessageReadReceipt: updateMessageReadReceiptDom,
-        updatePostReadReceipt: updatePostReadReceiptDom,
-        updatePollReadReceipt: updatePollReadReceiptDom,
         updateLastPostCursor,
     });
     const mutateMessageThroughPipeline = (action, payload, source) => feedBridge.mutate('message', action, payload, source);
@@ -441,63 +438,6 @@ async function groupChatFetch(input, init = {}) {
             remoteTypingUsers.clear();
             renderTypingIndicator();
         }, 3000);
-    }
-
-    function updateMessageReadReceiptDom(messageId, readCount) {
-        if (!messageId) return false;
-        const bubble = document.querySelector(`.message-bubble[data-message-id="${messageId}"]`);
-        if (!bubble) return false;
-
-        const receipt = bubble.querySelector('.read-receipt span');
-        if (!receipt) return false;
-
-        const count = Number.isFinite(Number(readCount)) ? Number(readCount) : 0;
-        if (count > 0) {
-            receipt.style.color = '#10b981';
-            receipt.innerHTML = `<i class="fas fa-check-double"></i> ${count} نفر خوانده‌اند`;
-        } else {
-            receipt.style.color = '#9ca3af';
-            receipt.innerHTML = '<i class="fas fa-check"></i> ارسال شده';
-        }
-        return true;
-    }
-
-    function updatePostReadReceiptDom(postId, readCount) {
-        if (!postId) return false;
-        const post = document.getElementById('blog-' + postId);
-        if (!post) return false;
-
-        const receipt = post.querySelector('.post-read-receipt span');
-        if (!receipt) return false;
-
-        const count = Number.isFinite(Number(readCount)) ? Number(readCount) : 0;
-        if (count > 0) {
-            receipt.style.color = '#10b981';
-            receipt.innerHTML = `<i class="fas fa-check-double"></i> ${count} نفر دیده‌اند`;
-        } else {
-            receipt.style.color = '#9ca3af';
-            receipt.innerHTML = '<i class="fas fa-check"></i> ارسال شده';
-        }
-        return true;
-    }
-
-    function updatePollReadReceiptDom(pollId, readCount) {
-        if (!pollId) return false;
-        const poll = document.getElementById('poll-' + pollId);
-        if (!poll) return false;
-
-        const receipt = poll.querySelector('.poll-read-receipt span');
-        if (!receipt) return false;
-
-        const count = Number.isFinite(Number(readCount)) ? Number(readCount) : 0;
-        if (count > 0) {
-            receipt.style.color = '#10b981';
-            receipt.innerHTML = `<i class="fas fa-check-double"></i> ${count} نفر دیده‌اند`;
-        } else {
-            receipt.style.color = '#9ca3af';
-            receipt.innerHTML = '<i class="fas fa-check"></i> ارسال شده';
-        }
-        return true;
     }
 
     function applyMessageEvent(event) {

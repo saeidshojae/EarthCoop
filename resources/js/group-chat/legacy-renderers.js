@@ -77,6 +77,20 @@ export function installLegacyRenderers({ app, callbacks = {} }) {
         }));
         return true;
     };
+    const updateReceipt = (type, id, readCount) => {
+        const root = type === 'message'
+            ? document.querySelector(`.message-bubble[data-message-id="${id}"]`)
+            : document.getElementById(`${type === 'post' ? 'blog' : 'poll'}-${id}`);
+        const receipt = root?.querySelector(type === 'message' ? '.read-receipt span' : `.${type}-read-receipt span`);
+        if (!receipt) return false;
+        const count = Number.isFinite(Number(readCount)) ? Number(readCount) : 0;
+        receipt.style.color = count > 0 ? '#10b981' : '#9ca3af';
+        receipt.replaceChildren();
+        const icon = document.createElement('i');
+        icon.className = count > 0 ? 'fas fa-check-double' : 'fas fa-check';
+        receipt.append(icon, document.createTextNode(count > 0 ? ` ${count} نفر ${type === 'message' ? 'خوانده‌اند' : 'دیده‌اند'}` : ' ارسال شده'));
+        return true;
+    };
     const messageMutations = {
         edit: updateMessage,
         delete(item) {
@@ -86,7 +100,7 @@ export function installLegacyRenderers({ app, callbacks = {} }) {
             return fadeRemove(document.getElementById(`msg-${id}`));
         },
         reaction: updateReactions,
-        'mark-read': item => callbacks.updateMessageReadReceipt?.(idOf(item, 'message'), item.read_count || 0) || false,
+        'mark-read': item => updateReceipt('message', idOf(item, 'message'), item.read_count || 0),
     };
     const dispatchComment = item => (document.dispatchEvent(new CustomEvent('group-comment-updated', { detail: item })), true);
     const adapters = {
@@ -101,14 +115,14 @@ export function installLegacyRenderers({ app, callbacks = {} }) {
                 if (region.querySelector('.dislike-count')) region.querySelector('.dislike-count').textContent = item.dislikes ?? 0;
                 return true;
             },
-            read: item => callbacks.updatePostReadReceipt?.(idOf(item, 'post'), item.read_count || 0) || false,
+            read: item => updateReceipt('post', idOf(item, 'post'), item.read_count || 0),
         },
         poll: {
             render: item => appendHtml(item.html, idOf(item, 'poll'), 'poll'),
             update: item => replaceHtml(`#poll-${idOf(item, 'poll')}, [data-poll-id="${idOf(item, 'poll')}"]`, item.html),
             vote: item => app.polls?.updateUI(item) || false,
             delete: item => fadeRemove((document.getElementById(`poll-${idOf(item, 'poll')}`) || document.querySelector(`[data-poll-id="${idOf(item, 'poll')}"]`))?.closest('.poll-wrapper')),
-            read: item => callbacks.updatePollReadReceipt?.(idOf(item, 'poll'), item.read_count || 0) || false,
+            read: item => updateReceipt('poll', idOf(item, 'poll'), item.read_count || 0),
         },
         comment: { render: dispatchComment, update: dispatchComment, delete: dispatchComment, reaction: dispatchComment },
     };
