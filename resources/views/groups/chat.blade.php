@@ -298,7 +298,6 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
 @include('groups.partials.styles.message_edit_styles')
 
     @include('groups.partials.message_edit_runtime')
-    @include('groups.partials.legacy_message_runtime')
 </div>
 </div>
 @include('groups.modals.election_form', compact('group'))

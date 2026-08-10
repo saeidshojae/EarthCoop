@@ -26,6 +26,15 @@
         let currentBubble = null; // عنصر .message-bubble
         let currentUrl = null; // آدرس PATCH
         let currentId = null; // message-id
+        const updateMessageContent = (messageBubble, content, isEdited) => {
+            const id = Number(messageBubble?.dataset.messageId);
+            if (!Number.isFinite(id)) throw new Error('Message bubble not found in DOM');
+            const changed = window.GroupChat.feed.mutate({
+                content_type: 'message', id, action: 'edit', content, edited: isEdited,
+            }, 'local-message-edit');
+            if (!changed) throw new Error('Message content element not found');
+            return changed;
+        };
 
         // هندلر کلیک روی "ویرایش"
         lifecycle.on(document, 'click', function(e) {

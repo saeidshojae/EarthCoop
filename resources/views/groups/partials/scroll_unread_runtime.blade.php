@@ -18,10 +18,10 @@ function initializeGroupChatScrollManager() {
     let unreadRenderTimer = null;
     let unreadRefreshTimer = null;
 
-    window.scrollPositionRestored = false;
+    window.GroupChat.store.setState({ scrollRestored: false });
 
     if (!chatBox || !btn || !lifecycle || lifecycle.destroyed) {
-        window.scrollPositionRestored = true;
+        window.GroupChat.store.setState({ scrollRestored: true });
         return;
     }
 
@@ -32,7 +32,7 @@ function initializeGroupChatScrollManager() {
     btn.innerHTML = '<i class="fas fa-arrow-down"></i>';
 
     function getEffectiveLastReadMessageId() {
-        const liveValue = Number(window.lastReadMessageIdState);
+        const liveValue = Number(window.GroupChat.store.getState().lastReadMessageId);
         if (Number.isFinite(liveValue) && liveValue > 0) return liveValue;
 
         if (Number.isFinite(initialLastReadMessageId) && initialLastReadMessageId > 0) {
@@ -320,12 +320,10 @@ function initializeGroupChatScrollManager() {
             scrollToLatest(false);
 
             const lastId = getLastMessageId();
-            if (lastId && typeof updateLastReadMessage === 'function') {
-                updateLastReadMessage(lastId);
-            }
+            if (lastId) window.GroupChat.unread.updateLastMessage(lastId);
         }
 
-        window.scrollPositionRestored = true;
+        window.GroupChat.store.setState({ scrollRestored: true });
         updateScrollButtonVisibility();
     }
 
@@ -336,14 +334,12 @@ function initializeGroupChatScrollManager() {
     lifecycle.on(chatBox, 'scroll', function() {
         updateScrollButtonVisibility();
 
-        clearTimeout(saveTimer);
+        if (saveTimer !== null) lifecycle.clearTimeout(saveTimer);
         saveTimer = lifecycle.timeout(function() {
             sessionStorage.setItem(scrollKey, String(chatBox.scrollTop));
 
             const lastVisibleId = getLastVisibleMessageIdInViewport();
-            if (lastVisibleId && typeof updateLastReadMessage === 'function') {
-                updateLastReadMessage(lastVisibleId);
-            }
+            if (lastVisibleId) window.GroupChat.unread.updateLastMessage(lastVisibleId);
         }, 180);
     }, { passive: true });
 

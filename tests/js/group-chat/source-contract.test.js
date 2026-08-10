@@ -21,7 +21,6 @@ const files = [
     'resources/views/groups/partials/scroll_unread_runtime.blade.php',
     'resources/views/groups/partials/message_edit_runtime.blade.php',
     'resources/views/groups/partials/ckeditor_runtime.blade.php',
-    'resources/views/groups/partials/legacy_message_runtime.blade.php',
     'resources/views/groups/partials/page_chrome_runtime.blade.php',
     'resources/views/groups/modals/group_edit_form.blade.php',
     'resources/views/groups/partials/styles/base_styles.blade.php',
@@ -74,12 +73,10 @@ test('message delete and report actions use the delegated action bridge', () => 
     const messageRenderer = readFileSync('resources/js/group-chat/message-renderer.js', 'utf8');
     const message = readFileSync('resources/views/groups/partials/message.blade.php', 'utf8');
     const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
-    const legacyMessageRuntime = readFileSync('resources/views/groups/partials/legacy_message_runtime.blade.php', 'utf8');
 
     for (const action of ['delete-message', 'report-message']) {
         assert.match(messageRenderer, new RegExp(`data-group-chat-action="${action}"`));
         assert.match(message, new RegExp(`data-group-chat-action="${action}"`));
-        assert.match(legacyMessageRuntime, new RegExp(`data-group-chat-action="${action}"`));
     }
     assert.doesNotMatch(runtime, /querySelector\(["']\.btn-(?:delete|report)["']\)\?\.addEventListener/);
     assert.doesNotMatch(
@@ -88,7 +85,6 @@ test('message delete and report actions use the delegated action bridge', () => 
     );
     assert.doesNotMatch(runtime, /initializeMessageActions/);
     assert.doesNotMatch(blade, /initializeMessageActions/);
-    assert.doesNotMatch(legacyMessageRuntime, /initializeMessageActions/);
     assert.doesNotMatch(blade, /btn-(?:delete|report):not\(\[data-group-chat-action\]\)/);
 });
 
@@ -328,32 +324,17 @@ test('ckeditor runtime is extracted and lifecycle-owned', () => {
     assert.equal((runtime.match(/\.addEventListener\(/g) || []).length, 1);
 });
 
-test('legacy message runtime is loaded through its dedicated partial', () => {
+test('legacy message runtime is retired behind modular owners', () => {
     const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
-    const runtime = readFileSync('resources/views/groups/partials/legacy_message_runtime.blade.php', 'utf8');
+    const unread = readFileSync('resources/js/group-chat/unread.js', 'utf8');
+    const category = readFileSync('resources/js/group-chat/category-browser.js', 'utf8');
+    const edit = readFileSync('resources/views/groups/partials/message_edit_runtime.blade.php', 'utf8');
 
-    assert.match(blade, /@include\('groups\.partials\.legacy_message_runtime'\)/);
-    assert.doesNotMatch(blade, /function addMessageToChat\(/);
-    assert.doesNotMatch(blade, /function updateMessageContent\(/);
-    assert.match(runtime, /const GROUP_ID = \{\{ \$group->id \}\}/);
-    assert.match(runtime, /function setLastReadState\(messageId, notify = true\)/);
-    assert.match(runtime, /function updateLastReadMessage\(messageId\)/);
-    assert.match(runtime, /function addMessageToChat\(messageData\)/);
-    assert.match(runtime, /function updateMessageContent\(messageBubble, newContent, isEdited\)/);
-    assert.match(runtime, /function escapeHtml\(text\)/);
-    assert.match(runtime, /function initializeLegacyMessageLifecycle\(\)/);
-    assert.match(runtime, /window\.__groupChatLegacyMessageLifecycleInitialized/);
-    assert.match(runtime, /lifecycle\.on\(document, 'click'/);
-    assert.match(runtime, /lifecycle\.clearTimeout\(lastReadUpdateTimeout\)/);
-    assert.match(runtime, /lifecycle\.timeout\.bind\(lifecycle\)/);
-    assert.doesNotMatch(runtime, /profileLink\.addEventListener/);
-    assert.match(runtime, /function initializeLegacyCategoryBlogs\(\)/);
-    assert.match(runtime, /window\.__groupChatCategoryBlogsInitialized/);
-    assert.match(runtime, /lifecycle\.on\(document, 'keydown'/);
-    assert.match(runtime, /const openCategory = e\.target\.closest\?\.\('\.open-category-blogs'\)/);
-    assert.match(runtime, /activeRequest\.abort\(\)/);
-    assert.doesNotMatch(runtime, /\$\(document\)\.on/);
-    assert.doesNotMatch(runtime, /openCategory\.addEventListener/);
+    assert.doesNotMatch(blade, /legacy_message_runtime/);
+    assert.match(unread, /updateLastMessage\(messageId\)/);
+    assert.match(category, /export function createCategoryBrowser/);
+    assert.match(category, /lifecycle\.on\(document, 'click'/);
+    assert.match(edit, /window\.GroupChat\.feed\.mutate/);
 });
 
 test('page chrome runtime owns group edit and one-shot page effects', () => {

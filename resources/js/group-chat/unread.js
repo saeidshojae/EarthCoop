@@ -2,6 +2,7 @@ export function createUnread({ api, store, feed, lifecycle, groupId }) {
     const pending = new Set();
     let intersectionObserver = null;
     let mutationObserver = null;
+    let lastReadTimer = null;
 
     const descriptorFor = element => {
         if (element.id.startsWith('blog-')) {
@@ -66,6 +67,24 @@ export function createUnread({ api, store, feed, lifecycle, groupId }) {
                 mutationObserver = null;
                 pending.clear();
             });
+        },
+        updateLastMessage(messageId) {
+            const id = Number(messageId);
+            const current = Number(store.getState().lastReadMessageId);
+            if (!Number.isFinite(id) || id <= 0 || (Number.isFinite(current) && id <= current)) return;
+            store.setState({ lastReadMessageId: id });
+            window.dispatchEvent(new CustomEvent('group-chat:last-read-updated', { detail: { messageId: id } }));
+            if (lastReadTimer !== null) lifecycle.clearTimeout(lastReadTimer);
+            lastReadTimer = lifecycle.timeout(async () => {
+                lastReadTimer = null;
+                try {
+                    await api.json(window.GroupChatConfig.updateLastReadUrl, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message_id: id }),
+                    });
+                } catch (error) {
+                    console.error('Error updating last read message:', error);
+                }
+            }, 500);
         },
     };
 }

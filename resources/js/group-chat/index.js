@@ -16,6 +16,7 @@ import { installLegacyRenderers } from './legacy-renderers.js';
 import { createTyping } from './typing.js';
 import { createRealtimeRuntime } from './realtime-runtime.js';
 import { createOperations } from './operations.js';
+import { createCategoryBrowser } from './category-browser.js';
 
 if (!window.GroupChatFeedback) {
     window.GroupChatFeedback = createFeedback();
@@ -37,7 +38,12 @@ if (window.groupId) {
     const sequenceKey = `group-feed-sequence:${window.groupId}`;
     const lifecycle = pageLifecycle;
     const api = new ApiClient({ timeoutMs: Number(window.__groupChatRequestTimeoutMs || 15000) });
-    const store = createStore({ connection: navigator.onLine === false ? 'offline' : 'connecting', unread: {} });
+    const store = createStore({
+        connection: navigator.onLine === false ? 'offline' : 'connecting',
+        unread: {},
+        lastReadMessageId: Number(window.GroupChatConfig?.lastReadMessageId) || null,
+        scrollRestored: false,
+    });
     const reconciler = createReconciler({ initialSequence: localStorage.getItem(sequenceKey) || 0 });
     const renderer = createRenderer({ root: document.getElementById('chat-box') || document.getElementById('group-feed') });
     const actions = pageActions;
@@ -66,6 +72,7 @@ if (window.groupId) {
     app.installLegacyRenderers = callbacks => installLegacyRenderers({ app, callbacks });
     app.typing = createTyping({ store, lifecycle, authUserId: window.authUserId });
     app.operations = createOperations({ api, store, feed, actions, lifecycle, groupId: window.groupId });
+    app.categoryBrowser = createCategoryBrowser({ api, lifecycle });
     app.unread.initialize();
     app.installRealtime = options => {
         if (!app.realtimeRuntime) app.realtimeRuntime = createRealtimeRuntime({ app, groupId: window.groupId, authUserId: window.authUserId, ...options });
