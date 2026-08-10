@@ -19,6 +19,7 @@ const files = [
     'resources/views/groups/partials/pin_runtime.blade.php',
     'resources/views/groups/partials/scroll_unread_runtime.blade.php',
     'resources/views/groups/partials/composer_actions_runtime.blade.php',
+    'resources/views/groups/partials/post_submission_runtime.blade.php',
 ];
 
 test('group chat templates and runtime do not contain inline event handlers', () => {
@@ -185,4 +186,20 @@ test('composer actions runtime is loaded through its dedicated partial', () => {
     assert.equal((runtime.match(/lifecycle\.timeout\(/g) || []).length, 2);
     assert.doesNotMatch(runtime, /(^|[^.])setTimeout\(/m);
     assert.match(runtime, /lifecycle\.add\(function\(\)/);
+});
+
+test('post submission runtime is extracted without patching openBlogBox', () => {
+    const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
+    const runtime = readFileSync('resources/views/groups/partials/post_submission_runtime.blade.php', 'utf8');
+
+    assert.match(blade, /@include\('groups\.partials\.post_submission_runtime'\)/);
+    assert.doesNotMatch(blade, /function interceptPostForm\(/);
+    assert.match(runtime, /function initializePostSubmissionRuntime\(/);
+    assert.match(runtime, /window\.__groupChatPostSubmissionInitialized/);
+    assert.match(runtime, /lifecycle\.on\(postForm, 'submit'/);
+    assert.equal((runtime.match(/\.addEventListener\(/g) || []).length, 1);
+    assert.match(runtime, /document\.addEventListener\('DOMContentLoaded', initializePostSubmissionRuntime, \{ once: true \}\)/);
+    assert.doesNotMatch(runtime, /Object\.defineProperty\(window, 'openBlogBox'/);
+    assert.doesNotMatch(runtime, /setTimeout\(/);
+    assert.doesNotMatch(runtime, /_ajaxIntercepted/);
 });

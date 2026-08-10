@@ -48,6 +48,8 @@ Checkpoint بیست‌ودوم: runtime تعاملات composer شامل auto-re
 
 Checkpoint بیست‌وسوم: listenerهای textarea، منوی composer، document، انتخاب فایل و دکمه‌های ساخت پست/نظرسنجی و همچنین دو timeout تأخیری به مالکیت `GroupChatLifecycle` منتقل شدند. guard راه‌اندازی تکراری و cleanup برای آزادسازی وضعیت و کلاس textarea اضافه شد. تنها listener مستقیم باقی‌مانده bootstrap یک‌بارهٔ `DOMContentLoaded` است، چون lifecycle توسط ماژول Vite پس از parse ساخته می‌شود؛ قرارداد تست این استثنا را دقیقاً به یک listener با `{ once: true }` محدود می‌کند.
 
+Checkpoint بیست‌وچهارم: runtime ارسال AJAX پست از Blade اصلی به `groups/partials/post_submission_runtime.blade.php` منتقل و listener فرم تحت مالکیت lifecycle قرار گرفت. از آنجا که modal و `postForm` پیش از runtime به‌صورت ثابت render می‌شوند، monkey-patch مبتنی بر `Object.defineProperty(window, 'openBlogBox', ...)`، فلگ DOM خصوصی `_ajaxIntercepted` و retryهای زمانی ۵۰/۵۰۰ میلی‌ثانیه حذف شدند و یک guard صریح با cleanup جایگزین آن‌ها شد. Blade اصلی از ۳۸۴۲ به ۳۷۵۶ خط کاهش یافت.
+
 ## اجزای اضافه‌شده
 
 - `ApiClient`: مدیریت CSRF، request id، idempotency key، timeout، retry، JSON و نگاشت خطا.
