@@ -12,8 +12,9 @@ export class ApiError extends Error {
 const safeMethods = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 export class ApiClient {
-    constructor({ fetchImpl = globalThis.fetch, timeoutMs = 15000, retries = 1, csrfToken = null } = {}) {
-        this.fetchImpl = fetchImpl;
+    constructor({ fetchImpl = null, timeoutMs = 15000, retries = 1, csrfToken = null } = {}) {
+        this.fetchImpl = fetchImpl || globalThis.fetch?.bind(globalThis);
+        if (!this.fetchImpl) throw new TypeError('Fetch API is unavailable');
         this.timeoutMs = timeoutMs;
         this.retries = retries;
         this.csrfToken = csrfToken;

@@ -2,6 +2,26 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ApiClient, ApiError } from '../../../resources/js/group-chat/api-client.js';
 
+test('api client binds the browser fetch receiver', async () => {
+    const originalFetch = globalThis.fetch;
+    let receiver;
+    globalThis.fetch = async function () {
+        receiver = this;
+        return new Response(JSON.stringify({ data: { ok: true } }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    };
+
+    try {
+        const api = new ApiClient({ retries: 0 });
+        assert.deepEqual(await api.json('/receiver'), { ok: true });
+        assert.equal(receiver, globalThis);
+    } finally {
+        globalThis.fetch = originalFetch;
+    }
+});
+
 test('api client attaches request and idempotency headers to writes', async () => {
     let request;
     const api = new ApiClient({
