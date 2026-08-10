@@ -53,7 +53,7 @@ export function installLegacyRenderers({ app, callbacks = {} }) {
     };
     const updateReactions = item => {
         const id = idOf(item, 'message');
-        const bubble = document.querySelector(`[data-message-id="${id}"]`);
+        const bubble = document.querySelector(`.message-bubble[data-message-id="${id}"]`);
         if (!bubble) return false;
         let region = bubble.querySelector('.message-reactions');
         if (!item.reactions?.length) {
@@ -63,7 +63,8 @@ export function installLegacyRenderers({ app, callbacks = {} }) {
         if (!region) {
             region = document.createElement('div');
             region.className = 'message-reactions';
-            bubble.appendChild(region);
+            const slot = bubble.querySelector('.message-reactions-slot');
+            (slot || bubble).appendChild(region);
         }
         const emoji = { like: '👍', love: '❤️', laugh: '😂', wow: '😮', sad: '😢', angry: '😠' };
         region.replaceChildren(...item.reactions.map(reaction => {

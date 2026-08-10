@@ -692,7 +692,7 @@
 
             {{-- وسط: واکنش‌ها --}}
 
-            <div style="display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;">
+            <div class="message-reactions-slot" style="display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;">
 
                 @if(!empty($reactions))
 

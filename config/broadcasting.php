@@ -48,6 +48,10 @@ return [
             ],
             'client_options' => [
                 // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html
+                // Keep the polling fallback responsive when the local realtime
+                // process is temporarily unavailable.
+                'connect_timeout' => (float) env('GROUP_CHAT_BROADCAST_CONNECT_TIMEOUT', 0.35),
+                'timeout' => (float) env('GROUP_CHAT_BROADCAST_TIMEOUT', 0.75),
             ],
         ],
 

@@ -109,6 +109,20 @@ test('legacy read tracking rejects temporary and undefined message identities', 
     assert.match(features, /if \(!\/\^\\d\+\$\/\.test\(key\)\) return/);
 });
 
+test('message reactions always render inside the canonical timestamp slot', () => {
+    const legacy = readFileSync('resources/js/group-chat/legacy-renderers.js', 'utf8');
+    const features = readFileSync('public/js/chat-features.js', 'utf8');
+    const renderer = readFileSync('resources/js/group-chat/message-renderer.js', 'utf8');
+    const blade = readFileSync('resources/views/groups/partials/message.blade.php', 'utf8');
+
+    assert.match(legacy, /\.message-bubble\[data-message-id=/);
+    assert.match(legacy, /querySelector\('\.message-reactions-slot'\)/);
+    assert.match(features, /\.message-bubble\[data-message-id=/);
+    assert.match(features, /querySelector\('\.message-reactions-slot'\)/);
+    assert.match(renderer, /class="message-reactions-slot"/);
+    assert.match(blade, /class="message-reactions-slot"/);
+});
+
 test('realtime runtime is pinned and starts without package downloads', () => {
     const manifest = JSON.parse(readFileSync('package.json', 'utf8'));
     const launcher = readFileSync('scripts/start-soketi.ps1', 'utf8');

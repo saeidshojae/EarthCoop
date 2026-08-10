@@ -1029,13 +1029,13 @@
     };
 
     function updateReactionsDisplay(messageId, reactions) {
-        const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
-        if (!messageElement) {
+        const messageBubble = document.querySelector(`.message-bubble[data-message-id="${messageId}"]`);
+        if (!messageBubble) {
             console.warn('Message element not found for messageId:', messageId);
             return;
         }
 
-        let reactionDisplay = messageElement.querySelector('.message-reactions');
+        let reactionDisplay = messageBubble.querySelector('.message-reactions');
         
         // If no reactions, remove display if exists
         if (!reactions || reactions.length === 0) {
@@ -1049,12 +1049,8 @@
             reactionDisplay = document.createElement('div');
             reactionDisplay.className = 'message-reactions';
             reactionDisplay.style.cssText = 'display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap;';
-            const messageBubble = messageElement.querySelector('.message-bubble');
-            if (messageBubble) {
-                messageBubble.appendChild(reactionDisplay);
-            } else {
-                messageElement.appendChild(reactionDisplay);
-            }
+            const slot = messageBubble.querySelector('.message-reactions-slot');
+            (slot || messageBubble).appendChild(reactionDisplay);
         }
 
         reactionDisplay.innerHTML = reactions.map(r => `

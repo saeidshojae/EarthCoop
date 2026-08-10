@@ -174,7 +174,7 @@ export function renderMessage(message) {
             ${voiceMessageHTML}
             <div class="message-timestamp" style="display: flex !important; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; margin-left: -10px !important; margin-right: -10px !important; padding-left: 10px !important; padding-right: 10px !important; justify-content: space-between !important; float: none !important; text-align: left !important; direction: ltr !important;">
                 ${isMine ? '<div class="read-receipt" style="font-size: 10px; text-align: left; direction: ltr; margin-right: auto; margin-left: 0;"><span style="color: #9ca3af;"><i class="fas fa-check"></i> ارسال شده</span></div>' : ''}
-                <div style="display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;">
+                <div class="message-reactions-slot" style="display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;">
                     ${(message.reactions && message.reactions.length > 0) ? generateReactionsHTML(message.id, message.reactions) : ''}
                 </div>
                 <div style="display: flex; align-items: center; gap: 4px; margin-left: auto;">
@@ -212,4 +212,3 @@ export function renderMessage(message) {
     // این کد حذف شد چون با scroll restore تداخل دارد
     return messageRow;
 }
-
