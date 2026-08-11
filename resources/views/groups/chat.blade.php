@@ -18,7 +18,7 @@ $lastReadMessageId = $lastReadMessageId ?? null;
 <meta name="csrf-token" content="{{ csrf_token() }}">
 
 
-<link rel="stylesheet" href="{{ asset('Css/group-chat.css') }}">
+<link rel="stylesheet" href="{{ asset('Css/group-chat.css') }}?v={{ filemtime(public_path('Css/group-chat.css')) }}">
 
 
 
