@@ -2,6 +2,9 @@
 
 namespace App\Services\NajmHoda\Runtime;
 
+use App\Models\Conversation;
+use App\Models\User;
+use App\Services\NajmHoda\Context\NajmHodaPageContextResolver;
 use App\Services\NajmHoda\NajmHodaInteractionBoundaryService;
 use App\Services\NajmHoda\NajmHodaOrchestrator;
 use Illuminate\Support\Str;
@@ -12,9 +15,11 @@ class NajmHodaExecutionService
     public function __construct(
         protected NajmHodaInteractionBoundaryService $interactionBoundary,
         protected NajmHodaCrossModuleCapabilityOrchestratorService $actionOrchestrator,
-        protected ?NajmHodaResourceAuthorizationService $resourceAuthorization = null
+        protected ?NajmHodaResourceAuthorizationService $resourceAuthorization = null,
+        protected ?NajmHodaPageContextResolver $pageContextResolver = null
     ) {
         $this->resourceAuthorization = $this->resourceAuthorization ?? new NajmHodaResourceAuthorizationService();
+        $this->pageContextResolver = $this->pageContextResolver ?? new NajmHodaPageContextResolver();
     }
 
     public function executeChat(NajmHodaOrchestrator $orchestrator, string $message, array $context = []): array
@@ -23,7 +28,7 @@ class NajmHodaExecutionService
         $start = microtime(true);
 
         try {
-            $context = $this->sanitizeActionContext($context);
+            $context = $this->sanitizeActionContext($context, $message);
             $boundary = $this->interactionBoundary->classify($message, $context);
             $mode = (string) ($boundary['mode'] ?? 'answer');
 
@@ -79,43 +84,114 @@ class NajmHodaExecutionService
     }
 
     /**
-     * Strip all browser-forgeable execution controls unless trusted server code
-     * supplies a real NajmHodaRuntimeActionAuthority object.
+     * Strip browser-forgeable execution controls unless trusted server code
+     * supplies a real NajmHodaRuntimeActionAuthority object. Browser page hints
+     * are resolved server-side, and persisted conversation text is separated
+     * into role-preserving history instead of being promoted into system context.
      *
      * @param array<string, mixed> $context
      * @return array<string, mixed>
      */
-    protected function sanitizeActionContext(array $context): array
+    protected function sanitizeActionContext(array $context, ?string $currentMessage = null): array
     {
         $authority = $context['runtime_action_authority'] ?? null;
+        $browserPage = is_array($context['page'] ?? null) ? $context['page'] : [];
+        $contextActorId = isset($context['user_id']) && is_numeric($context['user_id'])
+            ? (int) $context['user_id']
+            : null;
+        $actorId = $authority instanceof NajmHodaRuntimeActionAuthority
+            ? $authority->actorId
+            : $contextActorId;
+        $user = $actorId ? User::query()->find($actorId) : null;
+        $pageContext = $this->pageContextResolver->resolve($user, ['page' => $browserPage]);
+        [$conversationMeta, $conversationHistory] = $this->resolveConversationContext(
+            $context['conversation'] ?? null,
+            $actorId,
+            $currentMessage
+        );
 
         if (!$authority instanceof NajmHodaRuntimeActionAuthority) {
-            foreach ([
-                'requested_action',
-                'capability_action',
-                'action_input',
-                'action_priority',
-                'action_reason',
-                'goals',
-                'trusted_apply_request',
-                'runtime_action_authority',
-            ] as $key) {
-                unset($context[$key]);
+            $safe = [
+                'page_context' => $pageContext,
+                'user_id' => $actorId,
+                'user_is_admin' => (bool) ($context['user_is_admin'] ?? false),
+            ];
+
+            if ($conversationMeta !== null) {
+                $safe['conversation'] = $conversationMeta;
+                $safe['conversation_history'] = $conversationHistory;
             }
 
-            return $context;
+            if (isset($context['force_agent']) && is_string($context['force_agent'])) {
+                $safe['force_agent'] = $context['force_agent'];
+            }
+
+            return $safe;
         }
 
+        unset($context['page'], $context['runtime_action_authority'], $context['conversation']);
+        $context['page_context'] = $pageContext;
         $context['trusted_apply_request'] = $authority->allowApply;
         $context['runtime_authority_source'] = $authority->source;
 
-        if ($authority->actorId !== null) {
-            $context['user_id'] = $authority->actorId;
+        if ($conversationMeta !== null) {
+            $context['conversation'] = $conversationMeta;
+            $context['conversation_history'] = $conversationHistory;
+        }
+
+        if ($actorId !== null) {
+            $context['user_id'] = $actorId;
         } else {
             unset($context['user_id']);
         }
 
         return $context;
+    }
+
+    /**
+     * @return array{0: array<string, mixed>|null, 1: array<int, array{role:string,content:string}>}
+     */
+    protected function resolveConversationContext(mixed $value, ?int $actorId, ?string $currentMessage): array
+    {
+        if (!$value instanceof Conversation || !$actorId || (int) $value->user_id !== $actorId) {
+            return [null, []];
+        }
+
+        $historyLimit = max(1, min(20, (int) config('najm-hoda.conversation_history_messages', 12)));
+        $messages = $value->messages()
+            ->whereIn('role', ['user', 'assistant'])
+            ->orderByDesc('id')
+            ->limit($historyLimit + 1)
+            ->get(['id', 'role', 'content'])
+            ->reverse()
+            ->values();
+
+        $last = $messages->last();
+        if (
+            $last
+            && (string) $last->role === 'user'
+            && $currentMessage !== null
+            && hash_equals(trim((string) $last->content), trim($currentMessage))
+        ) {
+            $messages->pop();
+        }
+
+        if ($messages->count() > $historyLimit) {
+            $messages = $messages->slice(-$historyLimit)->values();
+        }
+
+        $history = $messages->map(function ($message): array {
+            return [
+                'role' => (string) $message->role,
+                'content' => mb_substr((string) $message->content, 0, 2000),
+            ];
+        })->all();
+
+        return [[
+            'id' => (int) $value->id,
+            'agent_type' => is_scalar($value->agent_type) ? mb_substr((string) $value->agent_type, 0, 30) : null,
+            'status' => is_scalar($value->status) ? mb_substr((string) $value->status, 0, 30) : null,
+        ], $history];
     }
 
     /**
