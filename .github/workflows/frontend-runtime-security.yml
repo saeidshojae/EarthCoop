@@ -1,0 +1,67 @@
+name: Frontend Runtime Security
+
+on:
+  push:
+    branches:
+      - agent/frontend-runtime-security
+  pull_request:
+    paths:
+      - package.json
+      - package-lock.json
+      - resources/js/**
+      - resources/css/**
+      - resources/views/**
+      - app/Modules/**/Views/**
+      - public/vendor/persian-date/**
+      - public/vendor/persian-datepicker/**
+      - vite.config.*
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Reject legacy frontend asset references
+        run: |
+          if grep -RIn --exclude-dir=node_modules --exclude-dir=vendor 'vendor/swiper/swiper-element-bundle.min.js' resources app; then
+            echo 'Legacy vendored Swiper reference detected. Use the Vite-managed swiper/element/bundle entrypoint instead.'
+            exit 1
+          fi
+          if grep -RIn 'unpkg.com/persian-datepicker' resources/views app/Modules; then
+            echo 'External Persian Datepicker CDN reference detected. Use the tracked local runtime asset instead.'
+            exit 1
+          fi
+          if grep -Eq 'vendor/(jquery/jquery|min\.js|persian-date/persian-date|persian-datepicker/persian-datepicker)' resources/views/auth/register_step1.blade.php; then
+            echo 'Registration step 1 must not load unused Persian datepicker runtime assets.'
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.20.2'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify tracked Persian date runtime assets
+        run: |
+          cmp public/vendor/persian-date/persian-date.min.js node_modules/persian-date/dist/persian-date.min.js
+          cmp public/vendor/persian-datepicker/persian-datepicker.min.js node_modules/persian-datepicker/dist/js/persian-datepicker.min.js
+          cmp public/vendor/persian-datepicker/persian-datepicker.min.css node_modules/persian-datepicker/dist/css/persian-datepicker.min.css
+          grep -F 'data-alt="start_time"' app/Modules/Stock/Views/auction_create.blade.php
+          grep -F 'data-alt="end_time"' app/Modules/Stock/Views/auction_create.blade.php
+
+      - name: Build production assets
+        run: npm run build
+
+      - name: Block production npm vulnerabilities
+        run: npm audit --omit=dev --audit-level=low

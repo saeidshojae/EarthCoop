@@ -57,7 +57,7 @@
 
 
 
-<link rel="stylesheet" href="https://unpkg.com/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+<link rel="stylesheet" href="{{ asset("vendor/persian-datepicker/persian-datepicker.min.css") }}">
 
 
 
@@ -8977,7 +8977,7 @@
 
 
 
-<script src="https://unpkg.com/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+<script src="{{ asset("vendor/persian-datepicker/persian-datepicker.min.js") }}"></script>
 
 
 

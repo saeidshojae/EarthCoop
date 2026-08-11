@@ -6,10 +6,6 @@
 
 
 
-<!-- Swiper -->
-<script src="{{ asset("vendor/swiper/swiper-element-bundle.min.js") }}"></script>
-
-
 <!-- Tailwind & Bootstrap CSS via Vite -->
 <style>
 
@@ -212,7 +208,7 @@
 @if(session('success'))
 
 <div x-data="{ show: true }" 
-     x-show="show" 
+     x-show="show"
      x-init="setTimeout(() => show = false, 5000)"
      class="fixed bottom-4 left-4 bg-white rounded-xl shadow-2xl p-4 z-50 max-w-md"
      style="display: none; background-color: var(--color-pure-white);"
@@ -238,7 +234,7 @@
 @if(session('error'))
 
 <div x-data="{ show: true }" 
-     x-show="show" 
+     x-show="show"
      x-init="setTimeout(() => show = false, 5000)"
      class="fixed bottom-4 left-4 bg-white rounded-xl shadow-2xl p-4 z-50 max-w-md"
      style="display: none; background-color: var(--color-pure-white);"
