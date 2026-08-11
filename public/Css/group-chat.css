@@ -2366,13 +2366,46 @@ audio {
 
 @media (max-width: 768px) {
   .poll-card__hero {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1rem;
-    text-align: center;
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    gap: 0.9rem 0.75rem;
+    align-items: start;
+    text-align: right;
+    width: 100%;
+  }
+
+  .poll-card__context {
+    grid-column: 1 / -1 !important;
+    grid-row: 2 !important;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
   }
 
   .poll-card__owner {
-    justify-content: center;
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    justify-content: flex-start !important;
+    margin-left: auto !important;
+    margin-right: 0 !important;
+  }
+
+  .poll-card__hero .action-menu {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    order: -1 !important;
+    justify-self: start !important;
+    margin: 0 !important;
+    margin-right: auto !important;
+    align-self: start !important;
+    position: relative;
+    z-index: 2;
+  }
+
+  .poll-card__hero .action-menu__list {
+    left: 0 !important;
+    right: auto !important;
   }
 
   .poll-card__delegation {

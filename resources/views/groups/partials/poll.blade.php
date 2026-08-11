@@ -51,7 +51,14 @@
                     </div>
                 @endif
                 <div class="poll-card__owner-info">
-                    <span class="poll-card__name">{{ optional($item->user)->fullName() ?? 'حساب حذف شده' }}</span>
+                    @php
+                        $pollSenderProfileUrl = $item->user ? route('profile.member.show', $item->user->id) : null;
+                    @endphp
+                    @if($pollSenderProfileUrl)
+                        <a href="{{ $pollSenderProfileUrl }}" class="poll-card__name">{{ optional($item->user)->fullName() ?? 'حساب حذف شده' }}</a>
+                    @else
+                        <span class="poll-card__name">{{ optional($item->user)->fullName() ?? 'حساب حذف شده' }}</span>
+                    @endif
                     <span class="poll-card__role">{{ (int) ($item->main_type ?? 0) === 0 ? 'انتخاب' : 'نظرسنجی' }}</span>
                 </div>
             </div>
