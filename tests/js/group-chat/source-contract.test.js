@@ -402,6 +402,15 @@ test('scroll and unread runtime is loaded through its dedicated partial', () => 
     assert.match(runtime, /function renderUnreadIndicators\(/);
 });
 
+test('floating chat scroll button follows direction and navigates both endpoints', () => {
+    const runtime = readFileSync('resources/views/groups/partials/scroll_unread_runtime.blade.php', 'utf8');
+    assert.match(runtime, /setScrollButtonMode\('bottom'\)/);
+    assert.match(runtime, /delta < 0 && currentScrollTop > 72/);
+    assert.match(runtime, /setScrollButtonMode\('top'\)/);
+    assert.match(runtime, /scrollToBeginning\(true\)/);
+    assert.match(runtime, /scrollToLatest\(true\)/);
+});
+
 test('composer actions and modal state are owned by the modular Composer', () => {
     const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
     const runtime = readFileSync('resources/js/group-chat/composer.js', 'utf8');

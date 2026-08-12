@@ -14,6 +14,8 @@ function initializeGroupChatScrollManager() {
     let isRenderingUnreadIndicators = false;
     let unreadRenderTimer = null;
     let unreadRefreshTimer = null;
+    let scrollButtonMode = null;
+    let lastScrollTop = 0;
 
     window.GroupChat.store.setState({ scrollRestored: false });
 
@@ -26,7 +28,18 @@ function initializeGroupChatScrollManager() {
     btn.style.left = 'auto';
     btn.style.bottom = '96px';
 
-    btn.innerHTML = '<i class="fas fa-arrow-down"></i>';
+    function setScrollButtonMode(mode) {
+        if (mode !== 'top' && mode !== 'bottom') return;
+        if (scrollButtonMode === mode) return;
+        scrollButtonMode = mode;
+        const isTop = mode === 'top';
+        btn.innerHTML = '<i class="fas ' + (isTop ? 'fa-arrow-up' : 'fa-arrow-down') + '"></i>';
+        btn.setAttribute('aria-label', isTop ? 'رفتن به ابتدای گفتگو' : 'رفتن به انتهای گفتگو');
+        btn.setAttribute('title', isTop ? 'ابتدای گفتگو' : 'انتهای گفتگو');
+        renderUnreadIndicators();
+    }
+
+    setScrollButtonMode('bottom');
 
     function getEffectiveLastReadMessageId() {
         const liveValue = Number(window.GroupChat.store.getState().lastReadMessageId);
@@ -149,8 +162,19 @@ function initializeGroupChatScrollManager() {
         });
     }
 
+    function scrollToBeginning(smooth) {
+        chatBox.scrollTo({
+            top: 0,
+            behavior: smooth ? 'smooth' : 'auto'
+        });
+    }
+
     function updateScrollButtonVisibility() {
-        const shouldShow = unreadCount > 0 || !isNearBottom();
+        const isNearTop = chatBox.scrollTop <= 72;
+        if (scrollButtonMode === 'top' && isNearTop) setScrollButtonMode('bottom');
+        const shouldShow = scrollButtonMode === 'top'
+            ? !isNearTop
+            : (unreadCount > 0 || !isNearBottom());
         btn.classList.toggle('visible', shouldShow);
     }
 
@@ -329,6 +353,13 @@ function initializeGroupChatScrollManager() {
 
     let saveTimer = null;
     lifecycle.on(chatBox, 'scroll', function() {
+        const currentScrollTop = Math.max(0, chatBox.scrollTop);
+        const delta = currentScrollTop - lastScrollTop;
+        if (Math.abs(delta) >= 6) {
+            if (delta < 0 && currentScrollTop > 72) setScrollButtonMode('top');
+            if (delta > 0 || currentScrollTop <= 72) setScrollButtonMode('bottom');
+            lastScrollTop = currentScrollTop;
+        }
         updateScrollButtonVisibility();
 
         if (saveTimer !== null) lifecycle.clearTimeout(saveTimer);
@@ -342,7 +373,8 @@ function initializeGroupChatScrollManager() {
 
     lifecycle.on(btn, 'click', function(e) {
         e.preventDefault();
-        scrollToLatest(true);
+        if (scrollButtonMode === 'top') scrollToBeginning(true);
+        else scrollToLatest(true);
     });
 
     if (typeof MutationObserver !== 'undefined') {
