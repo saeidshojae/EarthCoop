@@ -625,6 +625,33 @@
 
 @include('components.footer-unified', ['footerContext' => 'welcome'])
 
+<style>
+    #welcome-scroll-assistant {
+        position: fixed; left: 1.5rem; bottom: 1.5rem; z-index: 900;
+        width: 3.5rem; height: 3.5rem; border: 0; border-radius: 999px;
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; background: linear-gradient(135deg, var(--color-earth-green), var(--color-ocean-blue));
+        box-shadow: 0 14px 35px rgba(16, 185, 129, .35);
+        opacity: .28; transform: translateY(0) scale(.94);
+        transition: opacity .4s ease, transform .4s ease, box-shadow .4s ease;
+        cursor: pointer;
+    }
+    #welcome-scroll-assistant.is-visible {
+        opacity: 1; transform: translateY(0) scale(1);
+        box-shadow: 0 18px 42px rgba(16, 185, 129, .48);
+    }
+    #welcome-scroll-assistant:hover,
+    #welcome-scroll-assistant:focus-visible { opacity: 1; transform: scale(1.08); outline: none; }
+    @media (max-width: 640px) {
+        #welcome-scroll-assistant { left: 1rem; bottom: 1rem; width: 3.25rem; height: 3.25rem; }
+    }
+</style>
+<button id="welcome-scroll-assistant" type="button"
+        aria-label="{{ app()->getLocale() === 'en' ? 'Scroll down' : 'حرکت به پایین صفحه' }}"
+        title="{{ app()->getLocale() === 'en' ? 'Scroll down' : 'حرکت به پایین صفحه' }}">
+    <i class="fas fa-arrow-down text-xl transition-transform duration-300" aria-hidden="true"></i>
+</button>
+
 <!-- Registration Modal - مودال ثبت‌نام -->
 <div id="registrationModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[100] flex items-center justify-center p-4" style="backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); background-color: rgba(0, 0, 0, 0.5);">
     <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-95 opacity-0" id="modalContent">
@@ -751,6 +778,54 @@
 </div>
 
 <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const scrollAssistant = document.getElementById('welcome-scroll-assistant');
+        if (!scrollAssistant) return;
+
+        const icon = scrollAssistant.querySelector('i');
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let hideTimer;
+
+        const labels = {
+            down: @json(app()->getLocale() === 'en' ? 'Scroll down' : 'حرکت به پایین صفحه'),
+            up: @json(app()->getLocale() === 'en' ? 'Back to top' : 'بازگشت به بالای صفحه')
+        };
+
+        function isNearTop() {
+            return window.scrollY < Math.max(180, window.innerHeight * 0.35);
+        }
+
+        function syncScrollAssistant() {
+            const goDown = isNearTop();
+            icon.classList.toggle('fa-arrow-down', goDown);
+            icon.classList.toggle('fa-arrow-up', !goDown);
+            scrollAssistant.setAttribute('aria-label', goDown ? labels.down : labels.up);
+            scrollAssistant.setAttribute('title', goDown ? labels.down : labels.up);
+        }
+
+        function revealScrollAssistant() {
+            syncScrollAssistant();
+            scrollAssistant.classList.add('is-visible');
+            clearTimeout(hideTimer);
+            hideTimer = setTimeout(function () {
+                scrollAssistant.classList.remove('is-visible');
+            }, 2600);
+        }
+
+        scrollAssistant.addEventListener('click', function () {
+            const targetTop = isNearTop()
+                ? Math.min(document.documentElement.scrollHeight - window.innerHeight, window.scrollY + window.innerHeight * 0.85)
+                : 0;
+            window.scrollTo({ top: targetTop, behavior: reduceMotion ? 'auto' : 'smooth' });
+            revealScrollAssistant();
+        });
+
+        window.addEventListener('scroll', revealScrollAssistant, { passive: true });
+        window.addEventListener('mousemove', revealScrollAssistant, { passive: true });
+        window.addEventListener('touchstart', revealScrollAssistant, { passive: true });
+        revealScrollAssistant();
+    });
+
     // Modal Functions
     function openModal() {
         const modal = document.getElementById('registrationModal');

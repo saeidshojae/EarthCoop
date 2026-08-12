@@ -60,6 +60,15 @@
         header.site-header-unified .site-header-mobile-actions.is-authenticated {
             gap: 16px !important;
         }
+        header.site-header-unified {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            z-index: 1000 !important;
+        }
+        .site-header-spacer { display: block; height: 77px; flex-shrink: 0; }
         @media (max-width: 768px) {
             header.site-header-unified {
                 box-sizing: border-box;
@@ -79,6 +88,7 @@
                 overflow: visible !important;
             }
             header.site-header-unified .site-header-row { height: 45px; }
+            .site-header-spacer { height: 84px; }
         }
         .site-header-hamburger {
             display: flex;
@@ -211,3 +221,4 @@
         </nav>
     </div>
 </header>
+<div class="site-header-spacer" aria-hidden="true"></div>

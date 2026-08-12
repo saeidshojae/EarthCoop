@@ -58,12 +58,20 @@
         @media (prefers-reduced-motion: reduce) {
             .brand-logo-animated { animation: none !important; }
         }
+        html[dir="rtl"] .site-footer-unified { direction: rtl; text-align: right; }
+        html[dir="ltr"] .site-footer-unified { direction: ltr; text-align: left; }
+        html[dir="ltr"] .site-footer-unified .footer-social-links { justify-content: flex-start; }
+        html[dir="rtl"] .site-footer-unified .footer-social-links { justify-content: flex-start; }
+        .site-footer-unified .footer-phone-row { direction: inherit; }
+        .site-footer-unified .footer-phone-number { direction: ltr; unicode-bidi: isolate; }
+        .site-footer-unified .footer-contact-row { display: flex; align-items: center; gap: .625rem; }
+        .site-footer-unified .footer-contact-row i { flex: 0 0 auto; margin: 0 !important; }
     </style>
 @endonce
 
-<footer class="bg-gentle-black text-white mt-auto py-10 px-4" style="background-color: var(--color-gentle-black);" data-footer-context="{{ $footerContext }}">
+<footer class="site-footer-unified bg-gentle-black text-white mt-auto py-10 px-4" style="background-color: var(--color-gentle-black);" data-footer-context="{{ $footerContext }}">
     <div class="container mx-auto">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 text-right">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
             <div>
                 <a href="{{ $footerHomeUrl }}" class="inline-flex items-center gap-2 mb-4 text-white" aria-label="EarthCoop">
                     <img src="{{ asset('icons/icon.svg') }}" alt="" class="brand-logo-animated w-9 h-9" width="36" height="36">
@@ -72,7 +80,7 @@
                 <p class="text-gray-300 text-sm leading-relaxed">
                     {{ __('langWelcome.footer_about_text') }}
                 </p>
-                <div class="flex items-center gap-4 mt-5">
+                <div class="footer-social-links flex items-center gap-4 mt-5">
                     @foreach($socialLinks as $link)
                         <a href="{{ $link['url'] }}" target="_blank" rel="noopener noreferrer"
                            class="text-gray-300 hover:text-earth-green transition duration-300 text-xl"
@@ -116,13 +124,13 @@
                     {{ $isWelcomeFooter ? __('langWelcome.footer_stay_connected') : __('navigation.footer_contact') }}
                 </h3>
                 @if($isWelcomeFooter)
-                    <p class="text-gray-300 mb-3 text-sm"><i class="fas fa-map-marker-alt ml-2" aria-hidden="true"></i>{{ __('langWelcome.footer_global_office') }}</p>
+                    <p class="footer-contact-row text-gray-300 mb-3 text-sm"><i class="fas fa-map-marker-alt" aria-hidden="true"></i><span>{{ __('langWelcome.footer_global_office') }}</span></p>
                 @endif
-                <p class="text-gray-300 mb-3 text-sm break-all">
-                    <i class="fas fa-envelope ml-2" aria-hidden="true"></i><a href="mailto:{{ $contactEmail }}" class="hover:text-earth-green transition">{{ $contactEmail }}</a>
+                <p class="footer-contact-row text-gray-300 mb-3 text-sm break-all">
+                    <i class="fas fa-envelope" aria-hidden="true"></i><a href="mailto:{{ $contactEmail }}" class="hover:text-earth-green transition">{{ $contactEmail }}</a>
                 </p>
-                <p class="text-gray-300 text-sm flex items-center gap-2" dir="rtl">
-                    <i class="fas fa-phone-alt flex-shrink-0" aria-hidden="true"></i><a href="tel:{{ preg_replace('/\s+/', '', $contactPhone) }}" class="hover:text-earth-green transition" dir="ltr">{{ $contactPhone }}</a>
+                <p class="footer-contact-row footer-phone-row text-gray-300 text-sm">
+                    <i class="fas fa-phone-alt flex-shrink-0" aria-hidden="true"></i><a href="tel:{{ preg_replace('/\s+/', '', $contactPhone) }}" class="footer-phone-number hover:text-earth-green transition">{{ $contactPhone }}</a>
                 </p>
             </div>
         </div>
