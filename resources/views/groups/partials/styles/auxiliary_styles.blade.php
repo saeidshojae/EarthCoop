@@ -456,6 +456,34 @@
         border-radius: 0 !important;
         padding: 0 !important;
     }
+
+    .chat-composer-shell--restricted {
+        position: fixed;
+        z-index: 1040;
+        right: max(10px, env(safe-area-inset-right));
+        left: max(10px, env(safe-area-inset-left));
+        bottom: max(10px, env(safe-area-inset-bottom));
+        width: auto !important;
+        margin: 0 !important;
+        pointer-events: none;
+    }
+
+    .chat-composer-shell--restricted .chat-session-closed {
+        pointer-events: auto;
+        align-items: center;
+        padding: .65rem .75rem;
+        gap: .55rem;
+        border-radius: .9rem;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, .16);
+        background: rgba(255, 251, 235, .97);
+        backdrop-filter: blur(8px);
+    }
+
+    .chat-composer-shell--restricted .chat-session-closed > i { display: none; }
+    .chat-composer-shell--restricted .chat-session-closed > div { display: flex; align-items: center; gap: .55rem; width: 100%; }
+    .chat-composer-shell--restricted .chat-session-closed strong { font-size: .78rem; white-space: nowrap; }
+    .chat-composer-shell--restricted .chat-session-closed p { display: none; }
+    .chat-composer-shell--restricted .session-request-trigger { margin: 0 auto 0 0; padding: .5rem .65rem; font-size: .74rem; white-space: nowrap; }
 }
 
 /* بهبود responsive */

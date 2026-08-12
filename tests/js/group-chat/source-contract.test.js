@@ -273,6 +273,18 @@ test('realtime retries and fallback pollers are owned by the page lifecycle', ()
     assert.doesNotMatch(runtime, /window\.addEventListener\('(online|offline)'/);
 });
 
+test('realtime connection state stays internal and restricted mobile composer is compact', () => {
+    const realtime = readFileSync('resources/js/group-chat/realtime-runtime.js', 'utf8');
+    const chat = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
+    const styles = readFileSync('resources/views/groups/partials/styles/auxiliary_styles.blade.php', 'utf8');
+
+    assert.doesNotMatch(realtime, /group-connection-status/);
+    assert.doesNotMatch(realtime, /textContent\s*=\s*current\.connection/);
+    assert.match(chat, /chat-composer-shell--restricted/);
+    assert.match(styles, /\.chat-composer-shell--restricted\s*\{[\s\S]*?position:\s*fixed/);
+    assert.match(styles, /\.chat-composer-shell--restricted \.chat-session-closed p\s*\{\s*display:\s*none/);
+});
+
 test('poll countdown and voice recorder release their owned resources', () => {
     const runtime = readFileSync('public/js/group-chat.js', 'utf8');
     const polls = readFileSync('resources/js/group-chat/polls.js', 'utf8');

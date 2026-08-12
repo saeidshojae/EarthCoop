@@ -218,28 +218,10 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
     lifecycle.on(document, 'visibilitychange', () => {
         if (!document.hidden && deltaSyncEnabled) void syncDelta();
     });
-    const renderConnection = current => {
-        let indicator = document.getElementById('group-connection-status');
-        if (!indicator) {
-            indicator = document.createElement('div');
-            indicator.id = 'group-connection-status';
-            indicator.setAttribute('role', 'status');
-            indicator.setAttribute('aria-live', 'polite');
-            document.body.appendChild(indicator);
-        }
-        indicator.dataset.status = current.connection;
-        indicator.textContent = current.connection === 'online' ? 'آنلاین' : current.connection === 'offline' ? 'آفلاین' : 'در حال اتصال';
-    };
-    const unsubscribe = store.subscribe((current, previous) => {
-        if (current.connection !== previous.connection) renderConnection(current);
-    });
     lifecycle.add(() => {
-        unsubscribe();
         if (channel && window.Echo?.leave) window.Echo.leave(`group.${groupId}`);
-        document.getElementById('group-connection-status')?.remove();
     });
     scanCursors();
-    renderConnection(store.getState());
     const advanceMessage = id => { state.lastMessageId = Math.max(state.lastMessageId, Number(id || 0)); publish(); };
     const advancePost = id => { state.lastPostId = Math.max(state.lastPostId, Number(id || 0)); publish(); };
     return Object.freeze({ getState: snapshot, initialize, startPolling, syncDelta, advanceMessage, advancePost });

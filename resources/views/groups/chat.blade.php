@@ -118,7 +118,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             'poll')->first();
             @endphp
 
-            <div class="chat-composer-shell bg-white border border-emerald-100 rounded-3xl shadow-sm p-5 w-full">
+            <div class="chat-composer-shell @cannot('participate', $group) chat-composer-shell--restricted @endcannot bg-white border border-emerald-100 rounded-3xl shadow-sm p-5 w-full">
                 @cannot('participate', $group)
                 <div class="chat-session-closed" role="status">
                     <i class="fas fa-lock" aria-hidden="true"></i>
