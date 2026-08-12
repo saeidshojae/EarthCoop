@@ -617,4 +617,24 @@
 .group-pin-navigator__copy{display:flex;flex-direction:column;gap:4px;min-width:0}.group-pin-navigator__eyebrow{font-size:12px;color:#059669}.group-pin-navigator__eyebrow b{margin-right:6px;padding:2px 7px;border-radius:999px;background:#ecfdf5;color:#047857}.group-pin-navigator__preview{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:700;color:#1e293b}.group-pin-navigator__controls{display:grid;grid-template-columns:38px 38px;align-content:center;gap:3px;padding:8px;border-right:1px solid #e2e8f0}.group-pin-navigator__controls button{display:grid;place-items:center;width:36px;height:25px;border:0;border-radius:8px;background:#f8fafc;color:#475569;cursor:pointer}.group-pin-navigator__controls button:hover{background:#d1fae5;color:#047857}.group-pin-navigator__count{grid-row:1/3;grid-column:2!important;height:53px!important;border-radius:12px!important;background:#059669!important;color:#fff!important;font-weight:800}
 .group-pin-modal{position:fixed;inset:0;z-index:10080;display:grid;place-items:center;padding:18px;direction:rtl}.group-pin-modal[hidden]{display:none!important}.group-pin-modal__backdrop{position:absolute;inset:0;background:rgba(15,23,42,.48);backdrop-filter:blur(4px)}.group-pin-modal__panel{position:relative;width:min(560px,100%);max-height:min(680px,85vh);display:flex;flex-direction:column;border-radius:24px;background:#fff;box-shadow:0 28px 80px rgba(15,23,42,.3);overflow:hidden}.group-pin-modal__header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:20px;border-bottom:1px solid #e2e8f0}.group-pin-modal__header h3{margin:0 0 4px;font-size:18px;color:#0f172a}.group-pin-modal__header p{margin:0;font-size:12px;color:#64748b}.group-pin-modal__header button{display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:11px;background:#f1f5f9;color:#475569;cursor:pointer}.group-pin-modal__list{padding:10px;overflow:auto}.group-pin-modal__item{display:flex;align-items:stretch;gap:6px;margin:5px 0;border:1px solid #e2e8f0;border-radius:15px;overflow:hidden}.group-pin-modal__item.is-active{border-color:#34d399;background:#ecfdf5}.group-pin-modal__jump{display:flex;flex:1;min-width:0;flex-direction:column;align-items:flex-start;gap:5px;padding:12px;border:0;background:transparent;text-align:right;cursor:pointer}.group-pin-modal__jump strong{max-width:100%;font-size:13px;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.group-pin-modal__jump small{color:#94a3b8}.group-pin-modal__type{font-size:11px;font-weight:800;color:#059669}.group-pin-modal__type i{margin-left:6px}.group-pin-modal__remove{width:48px;border:0;border-right:1px solid #e2e8f0;background:#fff7ed;color:#c2410c;cursor:pointer}.group-pin-modal__empty{padding:36px;text-align:center;color:#64748b}.group-pin-highlight{animation:group-pin-pulse 1.8s ease}@keyframes group-pin-pulse{0%,100%{filter:none}25%,70%{filter:drop-shadow(0 0 12px rgba(16,185,129,.75));transform:scale(1.012)}}body.group-pin-modal-open{overflow:hidden}
 @media(max-width:767px){.group-pin-navigator{top:4.65rem;min-height:62px;border-radius:14px}.group-pin-navigator__main{padding:8px 10px;gap:8px}.group-pin-navigator__icon{width:32px;height:32px}.group-pin-navigator__preview{font-size:12px}.group-pin-navigator__controls{grid-template-columns:31px 31px;padding:5px}.group-pin-navigator__controls button{width:30px}.group-pin-navigator__count{width:30px!important}.group-pin-modal{padding:10px;align-items:end}.group-pin-modal__panel{max-height:82vh;border-radius:22px 22px 12px 12px}}
+
+/* Chat canvas: balanced first-item spacing and a calm, readable branded surface. */
+#chat-box.chat-body {
+    padding: clamp(.9rem, 1.6vw, 1.25rem) 1.25rem 1.25rem !important;
+    background-color: #f5fbf8 !important;
+    background-image:
+        linear-gradient(180deg, rgba(248, 252, 250, .58), rgba(244, 251, 249, .48)),
+        url('/images/EarthCoopChatBacgrand.png') !important;
+    background-position: center center !important;
+    background-repeat: no-repeat !important;
+    background-size: cover !important;
+}
+
+@media (max-width: 767px) {
+    #chat-box.chat-body {
+        padding: .75rem .65rem 1rem !important;
+        background-position: center top !important;
+        background-size: auto 100% !important;
+    }
+}
 </style>
