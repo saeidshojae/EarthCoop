@@ -106,7 +106,6 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         if (action === 'typing') return void app.typing?.apply(payload);
         const id = payload.message_id || payload.id;
         if (id && ['edit', 'delete', 'reaction', 'mark-read'].includes(action)) app.feedBridge.mutate('message', action, { ...payload, message_id: id }, 'websocket');
-        else if (action === 'pin') document.dispatchEvent(new CustomEvent('group-message-pin-updated', { detail: payload }));
     };
     const applyFeedEvent = event => {
         setHealthy();
@@ -119,6 +118,10 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         }
         if (action === 'session_participation_resolved') {
             app.sessionParticipation?.receiveResolution(payload);
+            return;
+        }
+        if (action === 'pin_updated') {
+            app.pins?.apply(payload);
             return;
         }
         const match = /^(post|poll|comment)_(created|updated|deleted|reaction|read)$/.exec(action);

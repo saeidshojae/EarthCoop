@@ -9,7 +9,6 @@ use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\Message;
 use App\Models\MessageReaction;
-use App\Models\PinnedMessage;
 use App\Models\Poll;
 use App\Models\ReportedMessage;
 use App\Models\User;
@@ -807,70 +806,6 @@ class MessageController extends Controller
         }
 
         return back()->with('success', 'Operation completed successfully.');
-    }
-
-    public function pin(Message $message)
-    {
-        $group = $message->group;
-        $user = auth()->user();
-        $groupUserRole = GroupUser::where('group_id', $group->id)
-            ->where('user_id', $user->id)
-            ->value('role');
-
-        if ($groupUserRole !== 3 && $message->user_id !== $user->id) {
-            return response()->json(['An error occurred. Please try again.'], 403);
-        }
-
-        if (PinnedMessage::where('message_id', $message->id)->exists()) {
-            return response()->json(['An error occurred. Please try again.'], 400);
-        }
-
-        PinnedMessage::create([
-            'message_id' => $message->id,
-            'group_id' => $group->id,
-            'pinned_by' => $user->id,
-        ]);
-
-        $this->dispatchGroupEvent(new GroupMessageUpdated(
-            (int) $group->id,
-            'pin',
-            [
-                'message_id' => (int) $message->id,
-                'pinned' => true,
-                'pinned_count' => (int) PinnedMessage::where('group_id', $group->id)->count(),
-            ],
-            (int) $user->id
-        ));
-
-        return response()->json(['Operation completed successfully.']);
-    }
-
-    public function unpin(Message $message)
-    {
-        $group = $message->group;
-        $user = auth()->user();
-        $groupUserRole = GroupUser::where('group_id', $group->id)
-            ->where('user_id', $user->id)
-            ->value('role');
-
-        if ($groupUserRole !== 3 && $message->user_id !== $user->id) {
-            return response()->json(['An error occurred. Please try again.'], 403);
-        }
-
-        PinnedMessage::where('message_id', $message->id)->delete();
-
-        $this->dispatchGroupEvent(new GroupMessageUpdated(
-            (int) $group->id,
-            'pin',
-            [
-                'message_id' => (int) $message->id,
-                'pinned' => false,
-                'pinned_count' => (int) PinnedMessage::where('group_id', $group->id)->count(),
-            ],
-            (int) $user->id
-        ));
-
-        return response()->json(['Operation completed successfully.']);
     }
 
     public function report(Request $request, $id)

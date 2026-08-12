@@ -111,6 +111,12 @@
 
                 <div class="action-menu__list">
 
+                    @if(in_array(($roleValue ?? 0), [2, 3]))
+                        <button type="button" class="action-menu__item" data-chat-page-action="pin-content" data-pin-action data-content-type="post" data-content-id="{{ $item->id }}">
+                            <i class="fas fa-thumbtack"></i><span>سنجاق کردن</span>
+                        </button>
+                    @endif
+
                     <button type="button"
 
                             class="action-menu__item"

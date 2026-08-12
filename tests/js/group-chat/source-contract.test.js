@@ -373,13 +373,12 @@ test('chat search runtime is loaded through its dedicated partial', () => {
 
 test('pin operations are owned by modular Actions and ApiClient', () => {
     const blade = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
-    const operations = readFileSync('resources/js/group-chat/operations.js', 'utf8');
+    const pins = readFileSync('resources/js/group-chat/pins.js', 'utf8');
 
     assert.doesNotMatch(blade, /pin_runtime/);
-    assert.match(operations, /register\('pin', togglePin\(true\)\)/);
-    assert.match(operations, /register\('unpin', togglePin\(false\)\)/);
-    assert.match(operations, /api\.json\(`\/groups\/messages\/\$\{id\}\/\$\{pinned \? 'pin' : 'unpin'\}`/);
-    assert.match(operations, /pinnedMessages:/);
+    assert.match(pins, /actions\.register\('pin-content'/);
+    assert.match(pins, /actions\.register\('unpin-content'/);
+    assert.match(pins, /api\.json\(window\.GroupChatConfig\.pinsUrl/);
 });
 
 test('scroll and unread runtime is loaded through its dedicated partial', () => {
@@ -870,4 +869,25 @@ test('message, post, and chat management operations are modular actions', () => 
     assert.match(post, /data-post-edit-form/);
     assert.doesNotMatch(post, /onsubmit=/);
     assert.doesNotMatch(legacy, /function (?:deleteMessage|reportMessage|deletePost|submitPostEdit|clearChatHistory|deleteChat|reportUser|submitReport)\(/);
+});
+
+test('group pins are polymorphic, realtime, and navigable without refresh', () => {
+    const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
+    const pins = readFileSync('resources/js/group-chat/pins.js', 'utf8');
+    const realtime = readFileSync('resources/js/group-chat/realtime-runtime.js', 'utf8');
+    const message = readFileSync('resources/views/groups/partials/message.blade.php', 'utf8');
+    const post = readFileSync('resources/views/groups/partials/post.blade.php', 'utf8');
+    const poll = readFileSync('resources/views/groups/partials/poll.blade.php', 'utf8');
+
+    assert.match(index, /createPins\(\{ api, actions, lifecycle, groupId:/);
+    assert.match(pins, /actions\.register\('pin-content'/);
+    assert.match(pins, /actions\.register\('unpin-content'/);
+    assert.match(pins, /actions\.register\('previous-pin'/);
+    assert.match(pins, /actions\.register\('next-pin'/);
+    assert.match(pins, /scrollIntoView\(\{ behavior: 'smooth'/);
+    assert.match(realtime, /action === 'pin_updated'/);
+    for (const [source, type] of [[message, 'message'], [post, 'post'], [poll, 'poll']]) {
+        assert.match(source, new RegExp(`data-content-type="${type}"`));
+        assert.match(source, /data-chat-page-action="pin-content"/);
+    }
 });

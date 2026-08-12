@@ -101,11 +101,11 @@
                     </button>
 
                     @if(in_array(($roleValue ?? 0), [2, 3]))
-                    <button type="button" class="action-menu__item btn-pin" data-legacy-chat-action="pin" data-message-id="{{ $item->id }}">
+                    <button type="button" class="action-menu__item btn-pin" data-chat-page-action="pin-content" data-pin-action data-content-type="message" data-content-id="{{ $item->id }}">
 
                         <i class="fas fa-thumbtack"></i>
 
-                        سنجاق کردن
+                        <span>سنجاق کردن</span>
 
                     </button>
                     @endif
@@ -253,11 +253,11 @@
 
                     @if(in_array(($roleValue ?? 0), [2, 3]))
 
-                    <button type="button" class="action-menu__item btn-pin" data-legacy-chat-action="pin" data-message-id="{{ $item->id }}">
+                    <button type="button" class="action-menu__item btn-pin" data-chat-page-action="pin-content" data-pin-action data-content-type="message" data-content-id="{{ $item->id }}">
 
                         <i class="fas fa-thumbtack"></i>
 
-                        سنجاق کردن
+                        <span>سنجاق کردن</span>
 
                     </button>
 

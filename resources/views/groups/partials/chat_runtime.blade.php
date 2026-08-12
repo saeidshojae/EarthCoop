@@ -20,6 +20,7 @@ window.GroupChatConfig = Object.freeze({
     participationStateUrl: @json(route('groups.session-participation.state', $group)),
     participationIndexUrl: @json(route('groups.session-participation.index', $group)),
     participationBulkUrl: @json(route('groups.session-participation.bulk', $group)),
+    pinsUrl: @json(route('groups.pins.index', $group)),
 });
 const manageCount = {{ $groupSetting ? $groupSetting->manager_count : 0 }};
 const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};

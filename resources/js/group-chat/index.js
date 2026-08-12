@@ -18,6 +18,7 @@ import { createRealtimeRuntime } from './realtime-runtime.js';
 import { createOperations } from './operations.js';
 import { createCategoryBrowser } from './category-browser.js';
 import { createSessionParticipation } from './session-participation.js';
+import { createPins } from './pins.js';
 
 if (!window.GroupChatFeedback) {
     window.GroupChatFeedback = createFeedback();
@@ -75,6 +76,7 @@ if (window.groupId) {
     app.operations = createOperations({ api, store, feed, actions, lifecycle, groupId: window.groupId });
     app.categoryBrowser = createCategoryBrowser({ api, lifecycle });
     app.sessionParticipation = createSessionParticipation({ api, lifecycle });
+    app.pins = createPins({ api, actions, lifecycle, groupId: window.groupId });
     app.unread.initialize();
     app.installRealtime = options => {
         if (!app.realtimeRuntime) app.realtimeRuntime = createRealtimeRuntime({ app, groupId: window.groupId, authUserId: window.authUserId, ...options });

@@ -150,7 +150,7 @@ export function renderMessage(message) {
                         <div class="action-menu__list">
                             <button type="button" data-legacy-chat-action="reply" data-message-id="${message.id}" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
                             <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> واکنش</button>
-                            ${([2,3].includes(window.yourRole || 0)) ? `<button type="button" class="action-menu__item btn-pin" data-legacy-chat-action="pin" data-message-id="${message.id}"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
+                            ${([2,3].includes(window.yourRole || 0)) ? `<button type="button" class="action-menu__item btn-pin" data-chat-page-action="pin-content" data-pin-action data-content-type="message" data-content-id="${message.id}"><i class="fas fa-thumbtack"></i><span>سنجاق کردن</span></button>` : ''}
                             <button type="button" class="action-menu__item btn-edit"><i class="fas fa-edit"></i> ویرایش</button>
                             <button type="button" data-group-chat-action="delete-message" data-message-id="${message.id}" class="action-menu__item action-menu__item--danger btn-delete"><i class="fas fa-trash"></i> حذف</button>
                             ${menuTimeHtml}
@@ -168,7 +168,7 @@ export function renderMessage(message) {
                         <div class="action-menu__list">
                             <button type="button" data-legacy-chat-action="reply" data-message-id="${message.id}" class="action-menu__item btn-rep"><i class="fas fa-reply"></i> پاسخ</button>
                             <button type="button" class="action-menu__item btn-reaction"><i class="fas fa-smile"></i> واکنش</button>
-                            ${([2,3].includes(window.yourRole || 0)) ? `<button type="button" class="action-menu__item btn-pin" data-legacy-chat-action="pin" data-message-id="${message.id}"><i class="fas fa-thumbtack"></i> سنجاق کردن</button>` : ''}
+                            ${([2,3].includes(window.yourRole || 0)) ? `<button type="button" class="action-menu__item btn-pin" data-chat-page-action="pin-content" data-pin-action data-content-type="message" data-content-id="${message.id}"><i class="fas fa-thumbtack"></i><span>سنجاق کردن</span></button>` : ''}
                             <button type="button" data-group-chat-action="report-message" data-message-id="${message.id}" class="action-menu__item btn-report"><i class="fas fa-flag"></i> گزارش</button>
                             ${menuTimeHtml}
                         </div>

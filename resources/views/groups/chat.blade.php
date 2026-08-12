@@ -67,35 +67,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
 
     <div class="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] items-start">
         <div class="space-y-6">
-            @if ($pinnedMessages->count() > 0)
-            <div class="bg-white border border-emerald-100 rounded-3xl shadow-sm mb-6">
-                <div class="pinned-messages"
-                    style="border-radius: 1.5rem; overflow: hidden; background: #fff; border: none;">
-                    @foreach($pinnedMessages as $pinnedMessage)
-                    <div class="pin-wrapper"
-                        style="position: relative; border-bottom: 1px solid #f1f5f9; padding: 4px;">
-                        <a class="pin" href="#msg-{{ $pinnedMessage->message->id }}"
-                            style="flex: 1; padding-left: 45px; box-shadow: none; border-radius: 0.75rem;">
-                            <div>
-                                <b style="color: #10b981; font-size: 0.85rem;">پیام سنجاق‌شده</b>
-                                <p style="font-size: 0.9rem; color: #475569;">{!!
-                                    Str::limit(strip_tags($pinnedMessage->message->message), 120, '...') !!}</p>
-                            </div>
-                            <i class="fas fa-thumbtack" style="font-size: 1.1rem; color: #10b981; opacity: 0.5;"></i>
-                        </a>
-                        @if($roleValue === 3 || $pinnedMessage->message->user_id === auth()->id())
-                        <button type="button" data-chat-page-action="unpin" data-message-id="{{ $pinnedMessage->message->id }}"
-                            class="unpin-btn"
-                            style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); border: none; background: #f1f5f9; cursor: pointer; color: #94a3b8; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
-                            title="حذف از حالت سنجاق">
-                            <i class="fas fa-times" style="font-size: 0.9rem; color: inherit !important;"></i>
-                        </button>
-                        @endif
-                    </div>
-                    @endforeach
-                </div>
-            </div>
-            @endif
+            @include('groups.partials.pin_navigator')
 
             <div class="chat-wrapper">
                 <div class="chat-body" id="chat-box">

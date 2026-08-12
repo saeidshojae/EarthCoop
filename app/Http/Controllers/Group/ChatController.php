@@ -40,6 +40,8 @@ class ChatController extends Controller
         $initialMessageLimit = 50;   // کاهش از 120 به 50 برای سرعت بیشتر
         $initialPostLimit = 20;      // کاهش از 40 به 20
         $initialPollLimit = 20;      // کاهش از 40 به 20
+        [$focusedPinType, $focusedPinId] = array_pad(explode(':', (string) request()->query('pin'), 2), 2, null);
+        $focusedPinId = ctype_digit((string) $focusedPinId) ? (int) $focusedPinId : null;
 
         $groupUser = GroupUser::where('group_id', $group->id)
             ->where('user_id', auth()->id())
@@ -75,6 +77,7 @@ class ChatController extends Controller
         $messages = $group->messages()
             ->select('id', 'user_id', 'parent_id', 'message as content', 'removed_by', 'edited_by', 'edited', 'created_at', 'updated_at', 'read_by', 'reply_count', 'voice_message', 'file_path', 'file_type', DB::raw("'message' as type"))
             ->with(['reactions', 'user:id,first_name,last_name,avatar'])
+            ->when($focusedPinType === 'message' && $focusedPinId, fn ($query) => $query->orderByRaw('id = ? DESC', [$focusedPinId]))
             ->orderBy('id', 'desc')
             ->limit($initialMessageLimit)
             ->get()
@@ -91,6 +94,7 @@ class ChatController extends Controller
             ->select('id', 'user_id', 'title', 'img','file_type',  'content', 'created_at', 'category_id', 'group_id', 'read_by', DB::raw("'post' as type"))
             ->with(['user:id,first_name,last_name,avatar', 'reactions'])
             ->withCount('comments')
+            ->when($focusedPinType === 'post' && $focusedPinId, fn ($query) => $query->orderByRaw('id = ? DESC', [$focusedPinId]))
             ->orderBy('id', 'desc')
             ->limit($initialPostLimit)
             ->get();
@@ -119,6 +123,7 @@ class ChatController extends Controller
                 'skill:id,name',
                 'options:id,poll_id,text',
             ])
+            ->when($focusedPinType === 'poll' && $focusedPinId, fn ($query) => $query->orderByRaw('id = ? DESC', [$focusedPinId]))
             ->orderBy('id', 'desc')
             ->limit($initialPollLimit)
             ->get();

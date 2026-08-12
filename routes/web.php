@@ -381,8 +381,9 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::post('/messages/update-last-read/{group}', [MessageController::class, 'updateLastReadMessage'])->name('groups.messages.updateLastRead');
     Route::post('/groups/{group}/typing', [MessageController::class, 'typing'])->name('groups.messages.typing');
     Route::post('/messages/{message}/reaction', [MessageController::class, 'toggleReaction'])->middleware(['group.session.writable', 'group.chat.idempotency', 'group.chat.context'])->name('messages.reaction');
-    Route::post('/groups/messages/{message}/pin', [MessageController::class, 'pin'])->name('messages.pin');
-    Route::post('/groups/messages/{message}/unpin', [MessageController::class, 'unpin'])->name('messages.unpin');
+    Route::get('/api/groups/{group}/pins', [\App\Http\Controllers\Group\PinController::class, 'index'])->middleware('group.chat.context')->name('groups.pins.index');
+    Route::post('/api/groups/{group}/pins', [\App\Http\Controllers\Group\PinController::class, 'store'])->middleware('group.chat.context')->name('groups.pins.store');
+    Route::delete('/api/groups/{group}/pins', [\App\Http\Controllers\Group\PinController::class, 'destroy'])->middleware('group.chat.context')->name('groups.pins.destroy');
     Route::post('/groups/messages/{message}/report', [MessageController::class, 'report'])->name('messages.report');
     Route::get('/groups/{group}/mention-users', [MessageController::class, 'searchUsersForMention'])->middleware('group.chat.context')->name('groups.messages.mention-users');
     

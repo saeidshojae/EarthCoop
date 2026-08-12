@@ -74,6 +74,11 @@
                     <i class="fas fa-ellipsis-v"></i>
                 </button>
                 <div class="action-menu__list">
+                    @if(in_array(($roleValue ?? 0), [2, 3]))
+                        <button type="button" class="action-menu__item" data-chat-page-action="pin-content" data-pin-action data-content-type="poll" data-content-id="{{ $item->id }}">
+                            <i class="fas fa-thumbtack"></i><span>سنجاق کردن</span>
+                        </button>
+                    @endif
                     <button type="button" class="action-menu__item" data-chat-page-action="reply-content" data-reply-target="poll-{{ $item->id }}" data-reply-text="{{ $isElection ? 'انتخابات' : 'نظرسنجی' }}: {{ $item->question }}">
                         <i class="fas fa-reply"></i> پاسخ
                     </button>

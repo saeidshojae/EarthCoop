@@ -182,6 +182,30 @@ class MessageAuthorizationTest extends TestCase
                 $table->timestamps();
             });
         }
+
+        if (! Schema::hasTable('pinned_messages')) {
+            Schema::create('pinned_messages', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('message_id')->nullable();
+                $table->unsignedBigInteger('group_id');
+                $table->string('content_type', 40)->nullable();
+                $table->unsignedBigInteger('content_id')->nullable();
+                $table->unsignedBigInteger('pinned_by');
+                $table->unsignedBigInteger('announcement_id')->nullable();
+                $table->timestamps();
+                $table->unique(['group_id', 'content_type', 'content_id']);
+            });
+        } elseif (! Schema::hasColumn('pinned_messages', 'content_type')) {
+            Schema::table('pinned_messages', function (Blueprint $table) {
+                $table->string('content_type', 40)->nullable();
+                $table->unsignedBigInteger('content_id')->nullable();
+            });
+        }
+        if (Schema::hasTable('pinned_messages') && Schema::hasColumn('pinned_messages', 'message_id')) {
+            Schema::table('pinned_messages', function (Blueprint $table) {
+                $table->unsignedBigInteger('message_id')->nullable()->change();
+            });
+        }
     }
 
     public function test_message_owner_can_edit_message(): void
@@ -525,6 +549,46 @@ class MessageAuthorizationTest extends TestCase
         $this->actingAs($member)->postJson(route('groups.session-participation.bulk', $group), [
             'user_ids' => [$member->id], 'action' => 'grant',
         ])->assertForbidden();
+    }
+
+    public function test_only_group_moderators_can_pin_every_feed_content_type(): void
+    {
+        [$group, $member] = $this->makeGroupWithMember(1);
+        $inspector = $this->makeUser();
+        GroupUser::create(['group_id' => $group->id, 'user_id' => $inspector->id, 'role' => 2, 'status' => 1]);
+        $message = $this->makeMessage($group, $member);
+        $post = Blog::create(['group_id' => $group->id, 'user_id' => $member->id, 'title' => 'Pinned post', 'content' => '<p>Post body</p>', 'category_id' => 1]);
+        $poll = Poll::create(['group_id' => $group->id, 'created_by' => $member->id, 'question' => 'Pinned election?', 'main_type' => 0, 'expires_at' => now()->addDay()]);
+
+        $this->actingAs($member)->postJson(route('groups.pins.store', $group), [
+            'content_type' => 'message', 'content_id' => $message->id,
+        ])->assertForbidden();
+
+        foreach ([['message', $message->id], ['post', $post->id], ['poll', $poll->id]] as [$type, $id]) {
+            $this->actingAs($inspector)->postJson(route('groups.pins.store', $group), [
+                'content_type' => $type, 'content_id' => $id,
+            ])->assertOk()->assertJsonPath('pin.content_type', $type);
+        }
+
+        $this->actingAs($member)->getJson(route('groups.pins.index', $group))
+            ->assertOk()->assertJsonCount(3, 'pins')
+            ->assertJsonFragment(['label' => 'انتخابات']);
+
+        $this->actingAs($inspector)->deleteJson(route('groups.pins.destroy', $group), [
+            'content_type' => 'post', 'content_id' => $post->id,
+        ])->assertOk()->assertJsonPath('pinned', false);
+        $this->assertDatabaseMissing('pinned_messages', ['content_type' => Blog::class, 'content_id' => $post->id]);
+    }
+
+    public function test_pin_cannot_reference_content_from_another_group(): void
+    {
+        [$group, $manager] = $this->makeGroupWithMember(3);
+        [$otherGroup, $otherMember] = $this->makeGroupWithMember(1);
+        $message = $this->makeMessage($otherGroup, $otherMember);
+
+        $this->actingAs($manager)->postJson(route('groups.pins.store', $group), [
+            'content_type' => 'message', 'content_id' => $message->id,
+        ])->assertNotFound();
     }
 
     private function makeUser(): User
