@@ -9,9 +9,9 @@
     @endphp
 
     <!-- Right Sidebar - Collapsible on mobile -->
-    <aside x-data="{ open: false }" @click.away="open = false" class="w-full lg:w-80 bg-white rounded-2xl shadow-lg p-4 lg:p-6 pb-0 lg:pb-6 flex-shrink-0 lg:sticky lg:top-24 h-fit border border-gray-200 transition-all duration-300 hover:shadow-xl"
+    <aside x-data="{ open: false }" @click.away="open = false" class="home-sidebar w-full lg:w-80 bg-white rounded-2xl shadow-lg p-0 lg:p-6 flex-shrink-0 lg:sticky lg:top-24 h-fit border border-gray-200 transition-all duration-300 hover:shadow-xl"
            style="background-color: var(--color-pure-white);">
-        <button type="button" @click="open = !open" class="w-full text-left text-2xl font-bold text-gentle-black flex items-center justify-between gap-3 py-4 lg:py-3 border-b border-gray-200" style="color: var(--color-gentle-black);">
+        <button type="button" @click="open = !open" class="home-sidebar-toggle w-full text-left text-xl lg:text-2xl font-bold text-gentle-black flex items-center justify-between gap-3 px-4 py-3 lg:px-0 lg:py-3 border-gray-200" :class="open ? 'border-b' : 'lg:border-b'" style="color: var(--color-gentle-black);">
             <div class="flex items-center gap-3">
                 <i class="fas fa-bars" style="color: var(--color-earth-green);"></i>
                 <span>منو</span>
@@ -19,7 +19,7 @@
             <i class="lg:hidden" :class="open ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
         </button>
 
-        <nav x-cloak :class="open ? 'block' : 'hidden lg:block'" class="lg:block overflow-hidden transition-all duration-200 ease-out lg:border-t lg:border-gray-200">
+        <nav x-cloak :class="open ? 'block' : 'hidden lg:block'" class="home-sidebar-nav lg:block overflow-hidden transition-all duration-200 ease-out lg:border-t lg:border-gray-200">
             <ul class="space-y-2">
                 <!-- Notifications -->
                 <li class="sidebar-menu-item">

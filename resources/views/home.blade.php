@@ -82,13 +82,28 @@
         background-color: #2d2d2d !important;
         border-color: #404040 !important;
     }
+
+    @media (max-width: 1023px) {
+        .home-layout {
+            padding-top: 0.75rem;
+            gap: 1.25rem;
+        }
+
+        .home-sidebar-toggle {
+            min-height: 3.5rem;
+        }
+
+        .home-sidebar-nav > ul {
+            padding: 0.75rem;
+        }
+    }
 </style>
 @endpush
 @section('content')
 
 
 <!-- Main Layout: Sidebar first (right in RTL), then Main (left in RTL) -->
-<div class="container mx-auto flex flex-col lg:flex-row gap-8 p-6 md:p-8">
+<div class="home-layout container mx-auto flex flex-col lg:flex-row gap-8 p-6 md:p-8">
 
 
     <!-- Right Sidebar -->
