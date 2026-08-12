@@ -29,6 +29,25 @@
     transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease-in, padding 0.3s ease-in;
 }
 
+#group-chat-main-container {
+    margin-top: 0.85rem !important;
+}
+
+.group-info-card {
+    margin-top: 0.25rem !important;
+    margin-bottom: 0.55rem !important;
+}
+
+#group-chat-main-container > * + * {
+    margin-top: 0.35rem !important;
+}
+
+.group-info-card + .space-y-6,
+.group-info-card + .grid,
+.group-info-card + .w-full {
+    margin-top: 0.25rem !important;
+}
+
 /* در دسکتاپ: collapse-content باید مخفی بماند (نسخه جداگانه داریم) */
 @media (min-width: 1024px) {
     .group-info-card .collapse-content {
@@ -170,7 +189,7 @@
     bottom: 96px !important;
     right: 24px !important;
     left: auto !important;
-    z-index: 9999 !important;
+    z-index: 10001 !important;
     width: 50px !important;
     height: 50px !important;
     border-radius: 50% !important;
@@ -185,6 +204,22 @@
     transform: scale(0.5) !important;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
     cursor: pointer !important;
+}
+
+@media (max-width: 768px) {
+    .chat-scroll-btn {
+        bottom: 148px !important;
+        right: 20px !important;
+        left: auto !important;
+        z-index: 10003 !important;
+        transform: scale(1) !important;
+    }
+
+    .najm-hoda-widget {
+        bottom: 20px !important;
+        right: 20px !important;
+        z-index: 9998 !important;
+    }
 }
 
 .chat-scroll-btn.visible {

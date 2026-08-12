@@ -261,6 +261,20 @@
   pointer-events: auto;
 }
 
+@media (max-width: 768px) {
+  .chat-scroll-btn {
+    right: 1.25rem !important;
+    bottom: 148px !important;
+    z-index: 10003 !important;
+  }
+
+  .najm-hoda-widget {
+    right: 1.25rem !important;
+    bottom: 1.25rem !important;
+    z-index: 9998 !important;
+  }
+}
+
 .chat-scroll-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 24px 40px -22px rgba(15, 118, 110, 0.45);
