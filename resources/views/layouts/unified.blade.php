@@ -175,7 +175,7 @@
     </main>
 
     <!-- Unified Footer -->
-    @include('components.footer-unified')
+    @include('components.footer-unified', ['footerContext' => 'default'])
 
     <!-- Scripts -->
     @stack('scripts')

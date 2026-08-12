@@ -481,7 +481,7 @@
     <div class="container mx-auto flex justify-between items-center">
         <div class="flex items-center space-x-3 2xl:space-x-reverse 2xl:space-x-3 rtl:space-x-reverse rtl:space-x-3">
             <a href="{{ route('welcome') }}" class="flex items-center space-x-3 2xl:space-x-reverse 2xl:space-x-3 rtl:space-x-reverse rtl:space-x-3 hover:opacity-80 transition-opacity">
-                <svg width="45" height="45" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="animate-bounce-custom">
+                <svg width="45" height="45" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="animate-bounce-custom brand-logo-animated">
                     <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#10b981" opacity="0.8"/>
                     <path d="M12 2C10.5 4 8 6 8 9C8 12 12 14 12 14C12 14 16 12 16 9C16 6 13.5 4 12 2ZM12 14C12 14 10 16 10 18C10 20 12 22 12 22" fill="#047857"/>
                 </svg>
@@ -618,7 +618,7 @@
     @include('partials.cta-section')
 </main>
 
-@include('partials.footer')
+@include('components.footer-unified', ['footerContext' => 'welcome'])
 
 <!-- Registration Modal - مودال ثبت‌نام -->
 <div id="registrationModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[100] flex items-center justify-center p-4" style="backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); background-color: rgba(0, 0, 0, 0.5);">

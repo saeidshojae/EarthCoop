@@ -108,7 +108,7 @@
             @yield('content')
         </main>
         <!-- Footer -->
-        @include('components.footer-universal')
+        @include('components.footer-unified', ['footerContext' => 'default'])
     </div>
     <!-- ========== Core JavaScript Files ========== -->
     <!-- Bootstrap JS -->

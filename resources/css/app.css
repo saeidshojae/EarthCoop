@@ -7,6 +7,12 @@
 
 @tailwind utilities;
 
+@media (prefers-reduced-motion: reduce) {
+  .brand-logo-animated {
+    animation: none !important;
+  }
+}
+
 /* ============================================
    Custom Component Styles
    ============================================ */
@@ -37,6 +43,12 @@
     animation: bounce-custom 3s infinite ease-in-out;
     will-change: transform;
   }
+  .brand-logo-animated {
+    display: inline-block;
+    animation: brand-logo-float 3s infinite ease-in-out;
+    transform-origin: center;
+    will-change: transform;
+  }
 
   /* --- KEYFRAMES --- */
   @keyframes glow {
@@ -51,6 +63,10 @@
   @keyframes bounce-custom {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-15px); }
+  }
+  @keyframes brand-logo-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
   }
   @keyframes fade-in {
     0% {

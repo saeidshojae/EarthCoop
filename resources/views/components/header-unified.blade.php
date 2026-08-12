@@ -44,7 +44,7 @@
             <a href="{{ $logoTarget }}"
                class="flex items-center space-x-4 md:space-x-5 md:space-x-reverse hover:opacity-80 transition-opacity header-logo-link"
                style="align-items: center; min-width: 0; flex-shrink: 1;">
-                <svg width="35" height="35" class="md:w-[45px] md:h-[45px] logo-animated flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg width="35" height="35" class="md:w-[45px] md:h-[45px] logo-animated brand-logo-animated flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#10b981" opacity="0.8"/>
                     <path d="M12 2C10.5 4 8 6 8 9C8 12 12 14 12 14C12 14 16 12 16 9C16 6 13.5 4 12 2ZM12 14C12 14 10 16 10 18C10 20 12 22 12 22" fill="#047857"/>
                 </svg>

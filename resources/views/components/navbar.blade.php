@@ -164,7 +164,7 @@
             {{-- Logo Section --}}
             <div class="flex items-center gap-3">
                 <a href="{{ url('/') }}" class="flex items-center gap-2" aria-label="صفحه اصلی">
-                    <img src="{{ asset('images/logo.png') }}" alt="لوگو" class="h-10 md:h-12" style="filter: brightness(0) invert(1);">
+                    <img src="{{ asset('images/logo.png') }}" alt="لوگو" class="brand-logo-animated h-10 md:h-12" style="filter: brightness(0) invert(1);">
                     <span class="text-white text-xl md:text-2xl font-bold hidden sm:inline">EarthCoop</span>
                 </a>
             </div>
