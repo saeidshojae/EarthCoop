@@ -758,9 +758,12 @@ test('poll skill-list UI is modular and store-backed', () => {
     const actions = readFileSync('resources/js/group-chat/actions.js', 'utf8');
     const legacy = readFileSync('public/js/group-chat.js', 'utf8');
 
-    assert.match(index, /createSkillLists\(\{ actions, store, lifecycle \}\)/);
+    assert.match(index, /createSkillLists\(\{ api, actions, store, lifecycle \}\)/);
     assert.match(skills, /openSkillListId/);
     assert.match(skills, /actions\.register\('toggle-skill-list'/);
+    assert.match(skills, /api\.json\(element\.dataset\.expertsUrl\)/);
+    assert.match(skills, /actions\.register\('delegate-vote'/);
+    assert.doesNotMatch(skills, /getElementById\('back'\)/);
     assert.match(skills, /lifecycle\.add\(close\)/);
     assert.doesNotMatch(actions, /'toggle-skill-list': \['toggleSkillList'/);
     assert.doesNotMatch(legacy, /function (?:toggleSkillList|closeSkill|reapplySkillListState)\(/);

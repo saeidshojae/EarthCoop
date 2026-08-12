@@ -974,6 +974,54 @@ class ChatController extends Controller
         }
     }
 
+    public function pollExperts(Group $group, Poll $poll)
+    {
+        $this->authorize('view', $group);
+        abort_unless((int) $poll->group_id === (int) $group->id, 404);
+        abort_unless((int) $poll->type === 1 && $poll->skill_id, 422, 'این رأی‌گیری تخصصی نیست.');
+
+        $selectedExpertId = Delegation::query()->where('poll_id', $poll->id)
+            ->where('user_id', auth()->id())->value('expert_id');
+        $experts = User::query()
+            ->select('users.id', 'users.first_name', 'users.last_name', 'users.avatar')
+            ->where('users.id', '<>', auth()->id())
+            ->whereHas('experiences', fn ($query) => $query->where('experience_fields.id', $poll->skill_id))
+            ->whereHas('groups', fn ($query) => $query->where('groups.id', $group->id)->where('group_user.status', 1))
+            ->orderBy('users.first_name')->orderBy('users.last_name')->limit(100)->get()
+            ->map(fn (User $expert) => [
+                'id' => (int) $expert->id,
+                'name' => trim(($expert->first_name ?? '') . ' ' . ($expert->last_name ?? '')) ?: 'کاربر',
+                'avatar_url' => $expert->avatar ? asset('storage/' . ltrim($expert->avatar, '/')) : null,
+                'profile_url' => route('profile.member.show', $expert),
+                'selected' => (int) $selectedExpertId === (int) $expert->id,
+            ]);
+
+        return response()->json(['data' => ['experts' => $experts,
+            'empty_message' => 'در حال حاضر متخصصی از این حوزه در گروه حضور ندارد.']]);
+    }
+
+    public function storeDelegation(Group $group, Poll $poll, User $expert)
+    {
+        $this->authorize('view', $group);
+        abort_unless((int) $poll->group_id === (int) $group->id, 404);
+        abort_unless((int) $poll->type === 1 && $poll->skill_id, 422, 'این رأی‌گیری تخصصی نیست.');
+        $qualified = $expert->experiences()->where('experience_fields.id', $poll->skill_id)->exists()
+            && $expert->groups()->where('groups.id', $group->id)->wherePivot('status', 1)->exists();
+        abort_unless($qualified && (int) $expert->id !== (int) auth()->id(), 422, 'این کاربر برای تفویض این رأی واجد شرایط نیست.');
+
+        $delegation = Delegation::query()->where('poll_id', $poll->id)->where('user_id', auth()->id())->first();
+        $removed = $delegation && (int) $delegation->expert_id === (int) $expert->id;
+        if ($removed) {
+            $delegation->delete();
+        } else {
+            Delegation::updateOrCreate(['poll_id' => $poll->id, 'user_id' => auth()->id()], ['expert_id' => $expert->id]);
+        }
+
+        return response()->json(['data' => ['delegated' => ! $removed,
+            'expert_id' => $removed ? null : (int) $expert->id,
+            'message' => $removed ? 'تفویض رأی برداشته شد.' : 'رأی شما با موفقیت تفویض شد.']]);
+    }
+
     public function clearHistory(Group $group)
     {
         if ($group->group_type !== 'private') {

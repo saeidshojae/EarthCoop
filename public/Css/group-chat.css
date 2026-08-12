@@ -1518,8 +1518,9 @@ th {
 
 .poll-card--election .poll-card__badge {
   color: #9a3412;
-  background: rgba(255, 237, 213, 0.92);
-  border: 1px solid rgba(234, 88, 12, 0.16);
+  background: linear-gradient(135deg, #ffedd5, #fed7aa);
+  border: 1px solid rgba(234, 88, 12, 0.38);
+  box-shadow: 0 7px 16px -13px rgba(154, 52, 18, 0.9);
 }
 
 .poll-card--election .poll-option--selected {
@@ -2380,14 +2381,34 @@ audio {
 
 .skill-list {
   display: none;
+  position: static;
+  inset: auto;
   direction: rtl;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  flex-direction: column;
+  align-items: stretch;
   margin-top: 1.25rem;
   background: rgba(255, 255, 255, 0.95);
   border-radius: 22px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   padding: 1.25rem;
   box-shadow: 0 24px 54px -34px rgba(15, 23, 42, 0.3);
+  margin-inline: 1.75rem;
 }
+
+.skill-list__header, .skill-list__expert, .skill-list__identity { display: flex; align-items: center; }
+.skill-list__header, .skill-list__expert { justify-content: space-between; gap: .75rem; }
+.skill-list__header button { border: 0; background: #f1f5f9; border-radius: 50%; width: 2rem; height: 2rem; }
+.skill-list__items { display: grid; gap: .6rem; margin-top: .75rem; }
+.skill-list__expert { padding: .7rem; border-radius: 14px; background: #f8fafc; }
+.skill-list__identity { gap: .6rem; min-width: 0; color: #334155; text-decoration: none; }
+.skill-list__identity img, .skill-list__avatar { width: 2.25rem; height: 2.25rem; border-radius: 50%; object-fit: cover; display: grid; place-items: center; background: #e2e8f0; }
+.skill-list__state { display: flex; justify-content: center; align-items: center; gap: .6rem; margin: 0; color: #64748b; text-align: center; }
+.skill-list__state--error { color: #b91c1c; }
+.skill-list__spinner { width: 1rem; height: 1rem; border: 2px solid #cbd5e1; border-top-color: #0f766e; border-radius: 50%; animation: chat-spin .7s linear infinite; }
+.skill-list__action.is-selected { background: #dc2626; }
 
 .skill-list__table {
   width: 100%;
@@ -2440,7 +2461,11 @@ audio {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+    box-sizing: border-box;
+    padding-left: 3rem;
   }
+
+  .poll-card__badge { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .poll-card__owner {
     justify-content: flex-start !important;
@@ -2466,6 +2491,8 @@ audio {
   .poll-card__delegation {
     padding: 0 1.25rem;
   }
+
+  .skill-list { margin-inline: 1.25rem; padding: 1rem; }
 
   .poll-card__footer {
     flex-direction: column;

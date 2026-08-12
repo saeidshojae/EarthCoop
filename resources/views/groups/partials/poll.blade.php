@@ -109,8 +109,10 @@
                     {{ $delegation ? 'رأی شما به متخصص تفویض شده است.' : 'می‌توانید رأی خود را به متخصص تفویض کنید.' }}
                 </span>
             </section>
-            <div id="skill-list-{{ $item->id }}" class="skill-list" style="display:none;">
-                <p class="text-muted">برای کاهش فشار صفحه، لیست متخصصین در بارگذاری اولیه نمایش داده نمی‌شود.</p>
+            <div id="skill-list-{{ $item->id }}" class="skill-list" style="display:none;"
+                 data-experts-url="{{ route('groups.polls.experts', ['group' => $item->group_id, 'poll' => $item->id]) }}"
+                 data-delegation-url-template="{{ route('groups.delegation', ['group' => $item->group_id, 'poll' => $item->id, 'expert' => '__EXPERT__']) }}">
+                <p class="skill-list__state">در حال دریافت فهرست متخصصان…</p>
             </div>
         @endif
 

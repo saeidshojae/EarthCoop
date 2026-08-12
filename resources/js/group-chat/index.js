@@ -68,7 +68,7 @@ if (window.groupId) {
     app.polls = createPolls({ api, store, feed, actions, lifecycle });
     app.elections = createElections({ actions, lifecycle, store });
     app.tabs = createTabs({ store, lifecycle });
-    app.skillLists = createSkillLists({ actions, store, lifecycle });
+    app.skillLists = createSkillLists({ api, actions, store, lifecycle });
     app.installLegacyRenderers = callbacks => installLegacyRenderers({ app, callbacks });
     app.typing = createTyping({ store, lifecycle, authUserId: window.authUserId });
     app.operations = createOperations({ api, store, feed, actions, lifecycle, groupId: window.groupId });

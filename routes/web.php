@@ -360,7 +360,8 @@ Route::middleware(Authenticate::class)->group(function () {
     
 
     //delegation
-    Route::get('/groups/delegation/{poll}/{expert}', [ChatController::class, 'delegation'])->name('groups.delegation');
+    Route::get('/api/groups/{group}/polls/{poll}/experts', [ChatController::class, 'pollExperts'])->middleware('group.chat.context')->name('groups.polls.experts');
+    Route::post('/api/groups/{group}/polls/{poll}/delegation/{expert}', [ChatController::class, 'storeDelegation'])->middleware(['group.chat.idempotency', 'group.chat.context'])->name('groups.delegation');
 
     //show profile
     Route::get('/profile-member/{user}', [ProfileController::class, 'showProfileMember'])->name('profile.member.show');
