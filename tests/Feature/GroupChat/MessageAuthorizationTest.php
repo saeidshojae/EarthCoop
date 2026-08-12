@@ -398,6 +398,24 @@ class MessageAuthorizationTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_system_admin_still_needs_group_level_permission_in_closed_session(): void
+    {
+        [$group, $member] = $this->makeGroupWithMember(1);
+        $group->update(['is_open' => false]);
+        $member->update(['is_admin' => true]);
+
+        $this->actingAs($member)
+            ->postJson(route('groups.messages.store'), ['group_id' => $group->id, 'message' => 'must be blocked'])
+            ->assertForbidden();
+
+        GroupUser::where('group_id', $group->id)->where('user_id', $member->id)
+            ->update(['session_write_allowed' => true]);
+
+        $this->actingAs($member)
+            ->postJson(route('groups.messages.store'), ['group_id' => $group->id, 'message' => 'now allowed'])
+            ->assertSuccessful();
+    }
+
     public function test_closed_session_allows_inspector_manager_and_explicitly_permitted_member(): void
     {
         foreach ([2, 3] as $role) {

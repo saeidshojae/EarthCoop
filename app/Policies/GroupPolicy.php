@@ -17,10 +17,6 @@ class GroupPolicy
 
     public function participate(User $user, Group $group): bool
     {
-        if ($this->isAdministrator($user)) {
-            return true;
-        }
-
         $membership = $this->membership($user, $group);
         if ($membership === null) {
             return false;
