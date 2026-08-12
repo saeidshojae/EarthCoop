@@ -2409,8 +2409,6 @@ audio {
     top: 1rem !important;
     left: 1rem !important;
     right: auto !important;
-    inset-inline-start: 1rem !important;
-    inset-inline-end: auto !important;
     margin: 0 !important;
     z-index: 2;
   }
@@ -2418,8 +2416,6 @@ audio {
   .poll-card__hero .action-menu__list {
     left: 0 !important;
     right: auto !important;
-    inset-inline-start: 0 !important;
-    inset-inline-end: auto !important;
   }
 
   .poll-card__delegation {

@@ -69,16 +69,32 @@ class PollController extends Controller
     {
         abort_if(! $poll->is_active || $poll->isExpired(), 422, 'This poll is not accepting votes.');
 
-        DB::transaction(function () use ($request, $poll): void {
+        $selectedOptionId = (int) $request->validated('option_id');
+        $voteRemoved = DB::transaction(function () use ($poll, $selectedOptionId): bool {
             Poll::whereKey($poll->id)->lockForUpdate()->firstOrFail();
-            $poll->votes()->where('user_id', auth()->id())->delete();
+            $existing = $poll->votes()->where('user_id', auth()->id())->lockForUpdate()->first();
+
+            if ($existing && (int) $existing->option_id === $selectedOptionId) {
+                $existing->delete();
+                app(GroupFeedService::class)->recordMutation('poll', (int) $poll->id, 'feed.poll.voted', (int) auth()->id(), [
+                    'option_id' => null,
+                    'removed' => true,
+                ]);
+
+                return true;
+            }
+
+            $existing?->delete();
             $poll->votes()->create([
                 'user_id' => auth()->id(),
-                'option_id' => $request->validated('option_id'),
+                'option_id' => $selectedOptionId,
             ]);
             app(GroupFeedService::class)->recordMutation('poll', (int) $poll->id, 'feed.poll.voted', (int) auth()->id(), [
-                'option_id' => (int) $request->validated('option_id'),
+                'option_id' => $selectedOptionId,
+                'removed' => false,
             ]);
+
+            return false;
         }, 3);
 
         $activeMemberIdsSubquery = GroupUser::query()
@@ -111,19 +127,23 @@ class PollController extends Controller
 
         $pollPayload = [
             'id' => (int) $poll->id,
-            'user_option_id' => (int) $request->option_id,
+            'user_option_id' => $voteRemoved ? null : $selectedOptionId,
             'total_votes' => (int) $totalVotes,
             'options' => $options,
         ];
 
+        $broadcastPayload = $pollPayload;
+        unset($broadcastPayload['user_option_id']);
+
         $this->dispatchGroupEvent(new GroupPollUpdated(
             (int) $poll->group_id,
-            $pollPayload,
+            $broadcastPayload,
             (int) auth()->id()
         ));
 
         return response()->json([
             'status' => 'success',
+            'vote_removed' => $voteRemoved,
             'poll' => $pollPayload,
         ]);
     }

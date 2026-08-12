@@ -89,9 +89,12 @@ export function createPolls({ api, store, feed, actions, lifecycle }) {
             const percent = Number.isFinite(Number(option.percent)) ? Number(option.percent) : 0;
             const stat = button.querySelector('.poll-option__stat');
             if (stat) stat.textContent = `${percent}%`;
-            const selected = Number(pollData.user_option_id) === Number(button.dataset.optionId);
-            button.classList.toggle('poll-option--selected', selected);
-            button.classList.toggle('voted', selected);
+            if (Object.prototype.hasOwnProperty.call(pollData, 'user_option_id')) {
+                const selected = pollData.user_option_id !== null
+                    && Number(pollData.user_option_id) === Number(button.dataset.optionId);
+                button.classList.toggle('poll-option--selected', selected);
+                button.classList.toggle('voted', selected);
+            }
         });
         const total = Number.isFinite(Number(pollData.total_votes))
             ? Number(pollData.total_votes)
@@ -102,7 +105,6 @@ export function createPolls({ api, store, feed, actions, lifecycle }) {
     }
 
     async function vote(target) {
-        if (target.classList.contains('voted')) return;
         const pollId = target.dataset.pollId;
         const optionId = target.dataset.optionId;
         const body = new FormData();
@@ -112,7 +114,7 @@ export function createPolls({ api, store, feed, actions, lifecycle }) {
             const data = await request(`/polls/${pollId}/vote`, body);
             feed.mutate({ ...data.poll, id: data.poll?.id || pollId, content_type: 'poll', action: 'vote' }, 'local-vote');
             document.dispatchEvent(new CustomEvent('poll-voted', { detail: { poll: data.poll, optionId } }));
-            notify('رای شما ثبت شد', 'success');
+            notify(data.vote_removed ? 'رای شما برداشته شد' : 'رای شما ثبت شد', 'success');
             setStatus('idle');
         } catch (error) {
             setStatus('error', error);

@@ -666,6 +666,20 @@ test('poll operations are owned by the modular Polls runtime', () => {
     assert.match(realtime, /feedBridge\.mutate\('poll', 'vote', poll, 'websocket-poll'\)/);
 });
 
+test('poll votes toggle off and remote updates preserve each viewer selection', () => {
+    const polls = readFileSync('resources/js/group-chat/polls.js', 'utf8');
+    const controller = readFileSync('app/Http/Controllers/Group/PollController.php', 'utf8');
+    const css = readFileSync('public/Css/group-chat.css', 'utf8');
+
+    assert.doesNotMatch(polls, /if \(target\.classList\.contains\('voted'\)\) return/);
+    assert.match(polls, /hasOwnProperty\.call\(pollData, 'user_option_id'\)/);
+    assert.match(polls, /data\.vote_removed \? 'رای شما برداشته شد'/);
+    assert.match(controller, /\$existing && \(int\) \$existing->option_id === \$selectedOptionId/);
+    assert.match(controller, /'user_option_id' => \$voteRemoved \? null/);
+    assert.match(controller, /unset\(\$broadcastPayload\['user_option_id'\]\)/);
+    assert.doesNotMatch(css, /\.poll-card__hero \.action-menu \{[\s\S]*?inset-inline-start: 1rem/);
+});
+
 test('election page state and actions are lifecycle-owned', () => {
     const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
     const elections = readFileSync('resources/js/group-chat/elections.js', 'utf8');
