@@ -28,7 +28,7 @@
 
     <!-- Fonts -->
 
-    <link href="<link rel="stylesheet" href="{{ asset("Css/fonts-local.css") }}">" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('Css/fonts-local.css') }}">
 
     
 
@@ -72,7 +72,7 @@
 
         
 
-        * { font-family: 'Vazirmatn', 'Poppins', sans-serif; }
+        * { font-family: 'Vazirmatn', 'vazir', sans-serif; }
 
         
 
@@ -622,7 +622,7 @@
 
                     <input type="text" id="national_id" name="national_id" value="{{ old('national_id') }}" required
 
-                           class="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-ocean-blue font-poppins text-right transition @error('national_id') border-red-500 bg-red-50 @else border-gray-300 @enderror"
+                           class="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-ocean-blue font-vazirmatn text-right transition @error('national_id') border-red-500 bg-red-50 @else border-gray-300 @enderror"
 
                            placeholder="کدملی 10 رقمی" dir="ltr" style="direction: ltr; text-align: center;">
 
@@ -1267,4 +1267,3 @@
 </body>
 
 </html>
-

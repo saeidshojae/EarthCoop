@@ -28,7 +28,7 @@
 
     <!-- Fonts -->
 
-    <link href="<link rel="stylesheet" href="{{ asset("Css/fonts-local.css") }}">" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('Css/fonts-local.css') }}">
 
     
 
@@ -74,7 +74,7 @@
 
         
 
-        * { font-family: 'Vazirmatn', 'Poppins', sans-serif; }
+        * { font-family: 'Vazirmatn', 'vazir', sans-serif; }
 
         
 
@@ -1323,4 +1323,3 @@
 </body>
 
 </html>
-
