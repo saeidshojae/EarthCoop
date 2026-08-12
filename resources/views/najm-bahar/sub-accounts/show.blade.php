@@ -1108,6 +1108,7 @@ $isInactive = (int) ($subAccount->status ?? 1) !== 1;
 
 
         <section class="nb-hero">
+            <x-bahar-coin variant="hero" />
 
 
 
@@ -4628,7 +4629,6 @@ $isInactive = (int) ($subAccount->status ?? 1) !== 1;
 
 
 @endpush
-
 
 
 

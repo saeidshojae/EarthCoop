@@ -193,6 +193,38 @@
     filter: blur(2px);
     transform: scaleX(0.92);
   }
+  .bahar-coin--hero {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 0;
+    width: clamp(6.5rem, 9vw, 8.25rem);
+    margin: 0;
+    opacity: 0.82;
+    pointer-events: none;
+    transform: translate(-50%, -48%) rotate(-8deg);
+    filter: drop-shadow(0 14px 20px rgba(15, 23, 42, 0.28));
+  }
+  .bahar-coin--hero .bahar-coin__shadow {
+    height: .5rem;
+    margin-top: .35rem;
+  }
+  .nb-hero > :not(.bahar-coin--hero) {
+    position: relative;
+    z-index: 1;
+  }
+  @media (max-width: 767px) {
+    .bahar-coin--hero {
+      left: 1.125rem;
+      top: 1.125rem;
+      width: 5.25rem;
+      opacity: 0.7;
+      transform: rotate(-10deg);
+    }
+    .bahar-coin--hero .bahar-coin__shadow {
+      display: none;
+    }
+  }
   body.dark-mode .bahar-coin__shadow,
   .dark .bahar-coin__shadow {
     background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.2) 44%, transparent 72%);

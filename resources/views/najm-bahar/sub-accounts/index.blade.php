@@ -1038,6 +1038,7 @@ $actionLabels = [
 
 
         <section class="nb-hero">
+            <x-bahar-coin variant="hero" />
 
 
 
@@ -7758,7 +7759,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 @endsection
-
 
 
 

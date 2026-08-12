@@ -274,7 +274,8 @@
 
     <div class="nb-container relative nb-responsive-shell" style="z-index: var(--nb-z-base); max-width: var(--nb-container-max-width);">
 
-        <section class="nb-hero">
+        <section class="nb-hero">
+            <x-bahar-coin variant="hero" />
 
             <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 
