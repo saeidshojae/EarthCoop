@@ -42,10 +42,8 @@ class NajmBaharController extends Controller
         $user = auth()->user();
         
         // بررسی اینکه آیا کاربر قبلاً حساب نجم بهار دارد یا نه
-        if ($this->accountService->hasMainAccount($user->id)) {
-            return redirect()->route('najm-bahar.dashboard')
-                ->with('info', 'شما قبلاً حساب نجم بهار دارید.');
-        }
+        $hasAcceptedAgreement = $this->accountService->hasMainAccount($user->id)
+            || ! is_null($user->najm_bahar_agreement_accepted_at);
 
         // دریافت توافقنامه‌های نجم بهار
         $agreements = NajmBaharAgreement::whereNull('parent_id')
@@ -57,7 +55,11 @@ class NajmBaharController extends Controller
         $step1Complete = ($user->first_name && $user->last_name && $user->gender && $user->national_id && $user->phone);
         $isProfileComplete = $step1Complete && $hasExperience && $hasAddress;
 
-        return view('najm-bahar.agreement', compact('agreements', 'isProfileComplete'));
+        return view('najm-bahar.agreement', compact(
+            'agreements',
+            'isProfileComplete',
+            'hasAcceptedAgreement'
+        ));
     }
 
     /**

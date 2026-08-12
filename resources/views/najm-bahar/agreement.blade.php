@@ -3267,7 +3267,7 @@
 
 
 
-            <h3>گام بعدی شما چیست؟</h3>
+            <h3>{{ $hasAcceptedAgreement ? 'وضعیت توافقنامه شما' : 'گام بعدی شما چیست؟' }}</h3>
 
 
 
@@ -3277,7 +3277,11 @@
 
 
 
-            <p>پس از تایید توافقنامه، حساب نجم بهار شما در کمتر از چند لحظه فعال می‌شود و می‌توانید موجودی خود را مدیریت کنید.</p>
+            <p>
+                {{ $hasAcceptedAgreement
+                    ? 'این صفحه همیشه برای مطالعه متن جاری توافقنامه و آگاهی از به‌روزرسانی‌های آن در دسترس شماست.'
+                    : 'پس از تایید توافقنامه، حساب نجم بهار شما در کمتر از چند لحظه فعال می‌شود و می‌توانید موجودی خود را مدیریت کنید.' }}
+            </p>
 
 
 
@@ -3297,7 +3301,25 @@
 
 
 
-            @if($isProfileComplete)
+            @if($hasAcceptedAgreement)
+
+                <div class="agreement-alert inline-flex flex-col items-center gap-3" style="border-color: rgba(16, 185, 129, 0.35); color: #065f46; background: rgba(16, 185, 129, 0.12);">
+                    <div class="flex items-center justify-center gap-2 font-bold">
+                        <i class="fas fa-check-circle"></i>
+                        <span>شما قبلاً این توافقنامه را پذیرفته‌اید.</span>
+                    </div>
+                    @if(auth()->user()->najm_bahar_agreement_accepted_at)
+                        <span class="agreement-note">
+                            تاریخ پذیرش: {{ verta(auth()->user()->najm_bahar_agreement_accepted_at)->format('Y/m/d') }}
+                        </span>
+                    @endif
+                    <a href="{{ route('najm-bahar.dashboard') }}" class="agreement-button secondary">
+                        <i class="fas fa-arrow-left"></i>
+                        بازگشت به داشبورد نجم بهار
+                    </a>
+                </div>
+
+            @elseif($isProfileComplete)
 
 
 
