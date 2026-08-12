@@ -16,6 +16,8 @@ function initializeGroupChatScrollManager() {
     let unreadRefreshTimer = null;
     let scrollButtonMode = null;
     let lastScrollTop = 0;
+    let scrollButtonIdleTimer = null;
+    let scrollButtonAwake = false;
 
     window.GroupChat.store.setState({ scrollRestored: false });
 
@@ -175,7 +177,18 @@ function initializeGroupChatScrollManager() {
         const shouldShow = scrollButtonMode === 'top'
             ? !isNearTop
             : (unreadCount > 0 || !isNearBottom());
-        btn.classList.toggle('visible', shouldShow);
+        btn.classList.toggle('visible', shouldShow && scrollButtonAwake);
+    }
+
+    function wakeScrollButton() {
+        scrollButtonAwake = true;
+        if (scrollButtonIdleTimer !== null) lifecycle.clearTimeout(scrollButtonIdleTimer);
+        updateScrollButtonVisibility();
+        scrollButtonIdleTimer = lifecycle.timeout(function() {
+            scrollButtonIdleTimer = null;
+            scrollButtonAwake = false;
+            updateScrollButtonVisibility();
+        }, 1800);
     }
 
     function getLastVisibleMessageIdInViewport() {
@@ -345,7 +358,7 @@ function initializeGroupChatScrollManager() {
         }
 
         window.GroupChat.store.setState({ scrollRestored: true });
-        updateScrollButtonVisibility();
+        wakeScrollButton();
     }
 
     // چند بار بازیابی را تکرار می‌کنیم تا بعد از mount شدن کامل DOM دقیق بنشیند.
@@ -360,7 +373,7 @@ function initializeGroupChatScrollManager() {
             if (delta > 0 || currentScrollTop <= 72) setScrollButtonMode('bottom');
             lastScrollTop = currentScrollTop;
         }
-        updateScrollButtonVisibility();
+        wakeScrollButton();
 
         if (saveTimer !== null) lifecycle.clearTimeout(saveTimer);
         saveTimer = lifecycle.timeout(function() {

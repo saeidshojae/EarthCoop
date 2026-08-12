@@ -409,6 +409,15 @@ test('floating chat scroll button follows direction and navigates both endpoints
     assert.match(runtime, /setScrollButtonMode\('top'\)/);
     assert.match(runtime, /scrollToBeginning\(true\)/);
     assert.match(runtime, /scrollToLatest\(true\)/);
+    assert.match(runtime, /scrollButtonAwake = false/);
+    assert.match(runtime, /lifecycle\.timeout\(function\(\) \{[\s\S]*scrollButtonAwake = false;[\s\S]*\}, 1800\)/);
+});
+
+test('mobile group hero is edge-to-edge with balanced avatar spacing', () => {
+    const styles = readFileSync('resources/views/groups/partials/styles/auxiliary_styles.blade.php', 'utf8');
+    assert.match(styles, /\[data-group-hero\]\.group-info-card[\s\S]*width: calc\(100% \+ 2rem\)/);
+    assert.match(styles, /min-height: 86px/);
+    assert.match(styles, /group-hero__avatar--mobile[\s\S]*padding: 3px/);
 });
 
 test('composer actions and modal state are owned by the modular Composer', () => {
