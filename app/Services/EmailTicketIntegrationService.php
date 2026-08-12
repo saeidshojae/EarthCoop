@@ -249,7 +249,7 @@ class EmailTicketIntegrationService
             Mail::html($body, function ($message) use ($ticket, $subject, &$messageId) {
                 $message->to($ticket->email, $ticket->name)
                     ->subject($subject)
-                    ->replyTo(config('mail.support_email', 'support@earthcoop.org'), 'پشتیبانی EarthCoop');
+                    ->replyTo(config('mail.support_email', 'support@earthcoop.ir'), 'پشتیبانی EarthCoop');
                 
                 // تنظیم Message-ID برای ردیابی
                 $host = parse_url(config('app.url'), PHP_URL_HOST) ?? 'earthcoop.org';

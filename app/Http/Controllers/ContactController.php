@@ -49,7 +49,7 @@ class ContactController extends Controller
             }
 
             // Notify support team
-            $supportEmail = env('SUPPORT_EMAIL', 'support@earthcoop.info');
+            $supportEmail = env('SUPPORT_EMAIL', 'support@earthcoop.ir');
             Notification::route('mail', $supportEmail)->notify(new TicketCreatedNotification($ticket));
         } catch (\Throwable $e) {
             // log the error but don't interrupt the user flow

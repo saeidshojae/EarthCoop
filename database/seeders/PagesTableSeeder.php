@@ -610,17 +610,17 @@ If you are the only member of your neighbourhood, it means you are the founder o
             'slug' => 'hmkary',
             'template' => 'cooperation',
             'content' => '<p>ما در تیم توسعه ارث‌کوپ برای توسعه بهتر این زیست بوم به همکاری شما نیازمندیم.</p>
-<p>اگر در زمینه های زیر تخصص دارید و مایلید از توسعه دهندگان ارث‌کوپ باشید با ما تماس بگیرید: info@EarthCoop.info</p>
+<p>اگر در زمینه های زیر تخصص دارید و مایلید از توسعه دهندگان ارث‌کوپ باشید با ما تماس بگیرید: Team@EarthCoop.ir</p>
 <p>&nbsp;</p>',
             'content_translations' => json_encode([
                 'fa' => '<p>ما در تیم توسعه ارث‌کوپ برای توسعه بهتر این زیست بوم به همکاری شما نیازمندیم.</p>
-<p>اگر در زمینه های زیر تخصص دارید و مایلید از توسعه دهندگان ارث‌کوپ باشید با ما تماس بگیرید: info@EarthCoop.info</p>
+<p>اگر در زمینه های زیر تخصص دارید و مایلید از توسعه دهندگان ارث‌کوپ باشید با ما تماس بگیرید: Team@EarthCoop.ir</p>
 <p>&nbsp;</p>',
                 'en' => '<p>We in the EarthCoop development team need your cooperation to better develop this ecosystem.</p>
-<p>If you have expertise in the following fields and would like to be among EarthCoop developers, contact us at: info@EarthCoop.info</p>
+<p>If you have expertise in the following fields and would like to be among EarthCoop developers, contact us at: Team@EarthCoop.ir</p>
 <p>&nbsp;</p>',
                 'ar' => '<p>نحن في فريق تطوير EarthCoop نحتاج إلى تعاونكم لتطوير هذا النظام البيئي بشكل أفضل.</p>
-<p>إذا كان لديكم خبرة في المجالات التالية وترغبون في أن تكونوا من مطوري EarthCoop، تواصلوا معنا على: info@EarthCoop.info</p>
+<p>إذا كان لديكم خبرة في المجالات التالية وترغبون في أن تكونوا من مطوري EarthCoop، تواصلوا معنا على: Team@EarthCoop.ir</p>
 <p>&nbsp;</p>'
             ]),
             'meta_title' => 'فرصت همکاری',

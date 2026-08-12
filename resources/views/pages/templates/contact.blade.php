@@ -124,7 +124,7 @@
                         </span>
                         <div class="text-right">
                             <p class="text-xs text-slate-500">{{ __('pages.contact.direct_call') }}</p>
-                            <a href="tel:+982112345678" class="font-bold text-slate-700 hover:text-earth-green transition" dir="ltr">+98 21 1234 5678</a>
+                            <a href="tel:+982112345678" class="font-bold text-slate-700 hover:text-earth-green transition" dir="ltr">+98 9394765289</a>
                         </div>
                     </div>
                     <div class="contact-info-card bg-white/95 rounded-2xl border border-slate-200 px-5 py-4 flex items-center gap-4 shadow-sm">
@@ -209,7 +209,7 @@
                             </span>
                             <div>
                                 <p class="font-semibold">{{ __('pages.contact.direct_call') }}</p>
-                                <a href="tel:+982112345678" class="text-sm text-slate-700 hover:text-earth-green transition" dir="ltr">+98 21 1234 5678</a>
+                                <a href="tel:+989394765289" class="text-sm text-slate-700 hover:text-earth-green transition" dir="ltr">+98 9394865289</a>
                             </div>
                         </li>
                         <li class="flex items-start gap-3">

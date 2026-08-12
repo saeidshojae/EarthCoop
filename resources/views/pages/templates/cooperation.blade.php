@@ -268,7 +268,7 @@
             <div class="flex justify-center">
                 <div class="email-label text-xl sm:text-2xl md:text-4xl font-extrabold font-poppins flex flex-wrap items-center justify-center gap-2 md:gap-4 rtl:space-x-reverse" onclick="copyEmail()">
                     <i class="fas fa-envelope text-3xl sm:text-4xl md:text-5xl"></i>
-                    <span class="break-all">S.s.sh.kia@gmail.com</span>
+                    <span class="break-all">Team@EarthCoop.ir</span>
                 </div>
             </div>
         </div>
@@ -303,7 +303,7 @@
 
     // Copy email to clipboard
     function copyEmail() {
-        const email = 'Contact@EarthCoop.ir';
+        const email = 'Team@EarthCoop.ir';
         navigator.clipboard.writeText(email).then(() => {
             alert('ایمیل کپی شد: ' + email);
         }).catch(err => {

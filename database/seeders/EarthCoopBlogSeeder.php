@@ -24,7 +24,7 @@ class EarthCoopBlogSeeder extends Seeder
             $author = User::create([
                 'first_name' => 'تیم تولید محتوای',
                 'last_name' => 'EarthCoop',
-                'email' => 'content@earthcoop.com',
+                'email' => 'content@earthcoop.ir',
                 'password' => bcrypt('password'),
                 'email_verified_at' => now(),
             ]);

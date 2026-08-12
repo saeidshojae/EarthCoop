@@ -58,8 +58,8 @@
     ];
 
     // اطلاعات تماس (می‌تواند از config یا env خوانده شود)
-    $contactEmail = config('app.contact_email', 'info@earthcoop.org');
-    $contactPhone = config('app.contact_phone', '+98 21 1234 5678');
+    $contactEmail = config('app.contact_email', 'contact@earthcoop.ir');
+    $contactPhone = config('app.contact_phone', '+98 9394765289');
     $contactAddress = __('footer.address') ?? 'تهران، ایران';
 
     // دریافت صفحات منتشر شده برای بخش منابع (حداکثر ۵ عدد)

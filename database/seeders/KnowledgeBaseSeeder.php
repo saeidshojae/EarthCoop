@@ -22,7 +22,7 @@ class KnowledgeBaseSeeder extends Seeder
             $author = User::create([
                 'first_name' => 'تیم پشتیبانی',
                 'last_name' => 'EarthCoop',
-                'email' => 'support@earthcoop.com',
+                'email' => 'support@earthcoop.ir',
                 'password' => bcrypt('password'),
                 'email_verified_at' => now()
             ]);

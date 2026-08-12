@@ -8,7 +8,7 @@ $kernel->handle(new Symfony\Component\Console\Input\ArgvInput(), new Symfony\Com
 
 try {
     $mailer = $app->make(Illuminate\Contracts\Mail\Mailer::class);
-    $to = env('SUPPORT_EMAIL', env('MAIL_FROM_ADDRESS', 'info@earthcoop.info'));
+    $to = env('SUPPORT_EMAIL', env('MAIL_FROM_ADDRESS', 'info@earthcoop.ir'));
     echo "Sending test email to: $to\n";
     $mailer->raw('Test message from local test script', function($message) use ($to) {
         $message->to($to)->subject('Test email from NewEarthCoop');
