@@ -317,10 +317,15 @@
     }
     
     .sidebar-header {
+        width: 100%;
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 0.75rem;
+        color: var(--color-gentle-black);
+        font-size: 1.5rem;
+        font-weight: 700;
+        border-bottom: 1px solid #e2e8f0;
     }
 
     .sidebar-title {
@@ -329,30 +334,13 @@
         gap: 0.5rem;
     }
 
-    .sidebar-mobile-toggle {
+    .sidebar-chevron {
         display: none;
-        align-items: center;
-        justify-content: center;
-        width: 2.25rem;
-        height: 2.25rem;
-        border: 1px solid #e2e8f0;
-        border-radius: 0.5rem;
-        color: var(--color-earth-green);
-        background-color: transparent;
         transition: all 0.2s ease;
     }
 
-    .sidebar-mobile-toggle:hover {
-        background-color: #f8fafc;
-    }
-
-    body.dark-mode .sidebar-mobile-toggle {
-        border-color: var(--border-dark);
-        color: #86efac;
-    }
-
-    body.dark-mode .sidebar-mobile-toggle:hover {
-        background-color: rgba(255, 255, 255, 0.06);
+    .sidebar.mobile-open .sidebar-chevron {
+        transform: rotate(180deg);
     }
 
     .sidebar-menu-item {
@@ -525,6 +513,14 @@
 
     /* Responsive */
     @media (max-width: 1024px) {
+        .groups-page-shell {
+            padding: 0.75rem 1.5rem 1.5rem;
+        }
+
+        .groups-page-layout {
+            gap: 1.25rem;
+        }
+
         .main-container {
             flex-direction: column;
         }
@@ -534,20 +530,30 @@
             position: relative;
             top: 0;
             padding: 0;
-        }
-
-        .sidebar-mobile-toggle {
-            display: inline-flex;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.1);
         }
 
         .sidebar-header {
-            padding: 1rem 1.25rem;
+            min-height: 3.5rem;
+            padding: 0.75rem 1rem;
             margin: 0;
+            border-bottom: 0;
+            font-size: 1.25rem;
+            cursor: pointer;
+        }
+
+        .sidebar.mobile-open .sidebar-header {
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .sidebar-chevron {
+            display: inline-block;
         }
 
         .sidebar-content {
             display: none;
-            padding: 0 1.25rem 1.25rem;
+            padding: 0.75rem;
         }
 
         .sidebar.mobile-open .sidebar-content {
@@ -648,18 +654,14 @@
         + ($genderGroups ?? collect())->count();
 @endphp
 
-<div class="container mx-auto px-4 py-6">
-    <div class="flex flex-col lg:flex-row gap-8">
+<div class="groups-page-shell container mx-auto px-4 py-6">
+    <div class="groups-page-layout flex flex-col lg:flex-row gap-8">
         {{-- Sidebar --}}
         <aside class="sidebar" id="groups-sidebar">
-            <div class="sidebar-header pb-4 mb-4 border-b border-gray-200 dark:border-gray-700">
-                <h2 class="text-2xl font-bold sidebar-title">
-                    <button id="sidebar-mobile-toggle" class="sidebar-mobile-toggle" type="button" aria-controls="groups-sidebar-content" aria-expanded="false" aria-label="باز و بسته کردن منو">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <span class="mr-3">منو</span>
-                </h2>
-            </div>
+            <button id="sidebar-mobile-toggle" class="sidebar-header" type="button" aria-controls="groups-sidebar-content" aria-expanded="false" aria-label="باز و بسته کردن منو">
+                <span class="sidebar-title"><i class="fas fa-bars" style="color: var(--color-earth-green);"></i><span>منو</span></span>
+                <i class="sidebar-chevron fas fa-chevron-down" aria-hidden="true"></i>
+            </button>
             <div class="sidebar-content" id="groups-sidebar-content">
             <nav>
                 <ul class="space-y-2">
