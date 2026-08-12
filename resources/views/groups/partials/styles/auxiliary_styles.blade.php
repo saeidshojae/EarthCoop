@@ -633,8 +633,8 @@
 @media (max-width: 767px) {
     #chat-box.chat-body {
         padding: .75rem .65rem 1rem !important;
-        background-position: center top !important;
-        background-size: auto 100% !important;
+        background-position: center center !important;
+        background-size: cover !important;
     }
 }
 </style>

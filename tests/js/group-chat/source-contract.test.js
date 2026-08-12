@@ -898,5 +898,6 @@ test('chat canvas keeps first content spaced and uses the local responsive backg
     assert.match(styles, /#chat-box\.chat-body\s*\{[\s\S]*?padding:\s*clamp\(/);
     assert.match(styles, /url\('\/images\/EarthCoopChatBacgrand\.png'\)/);
     assert.match(styles, /background-size:\s*cover/);
-    assert.match(styles, /@media \(max-width: 767px\)[\s\S]*?#chat-box\.chat-body[\s\S]*?background-size:\s*auto 100%/);
+    assert.match(styles, /@media \(max-width: 767px\)[\s\S]*?#chat-box\.chat-body[\s\S]*?background-size:\s*cover/);
+    assert.doesNotMatch(styles, /background-size:\s*auto 100%/);
 });
