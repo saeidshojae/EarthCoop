@@ -366,7 +366,7 @@
 
 <div class="bg-light-gray/60 py-10 md:py-12 nb-dashboard" style="background-color: var(--color-light-gray);">
 
-    <div class="nb-page-container" style="max-width: var(--nb-container-max-width);">
+    <div class="nb-page-container nb-responsive-shell" style="max-width: var(--nb-container-max-width);">
 
         <section class="nb-hero">
 
@@ -434,7 +434,7 @@
 
 
 
-        <div class="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-6 items-start mt-8">
+        <div class="nb-responsive-layout grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-6 items-start mt-8">
 
             <div class="lg:order-1 nb-sidebar">
 

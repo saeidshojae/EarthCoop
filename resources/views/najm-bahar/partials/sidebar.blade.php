@@ -118,76 +118,88 @@
 @endphp
 
 <style>
-    /* Mobile Hamburger Menu Styles */
-    .mobile-menu-toggle {
-        display: none;
-        position: fixed;
-        bottom: 1rem;
-        left: 1rem;
-        z-index: 999;
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--nb-color-digital-gold) 0%, var(--nb-color-ocean-blue) 100%);
-        border: none;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        cursor: pointer;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.3s ease;
-    }
-
-    .mobile-menu-toggle:hover {
-        transform: scale(1.1);
-        box-shadow: 0 6px 16px rgba(0,0,0,0.25);
-    }
-
-    .mobile-menu-toggle i {
-        color: white;
-        font-size: 1.25rem;
-    }
-
-    .sidebar-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 998;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-
-    .sidebar-overlay.active {
-        opacity: 1;
-    }
+    .najm-bahar-sidebar-toggle { display: none; }
+    .najm-bahar-sidebar-body { display: block; }
 
     @media (max-width: 1023px) {
-        .mobile-menu-toggle {
+        .nb-dashboard {
+            padding-top: 1rem !important;
+            padding-bottom: 1.5rem !important;
+        }
+        .nb-responsive-shell {
             display: flex;
+            flex-direction: column;
+            gap: .875rem;
         }
-
-        aside {
-            position: fixed;
-            top: 0;
-            right: -100%;
-            height: 100vh;
-            width: 320px;
-            max-width: 85vw;
-            z-index: 999;
-            overflow-y: auto;
-            transition: right 0.3s ease;
+        .nb-responsive-shell > .nb-hero {
+            order: 2;
+            margin: 0 !important;
+            padding: 1.5rem !important;
+        }
+        .nb-responsive-shell > .nb-responsive-layout {
+            display: contents;
+        }
+        .nb-responsive-layout > .nb-sidebar {
+            order: 1;
+        }
+        .nb-responsive-layout > main {
+            order: 3;
+            margin-top: .125rem;
+        }
+        .nb-responsive-shell > .nb-hero h1 {
+            margin-top: .75rem !important;
+            font-size: 1.75rem !important;
+            line-height: 1.35;
+        }
+        .nb-responsive-shell > .nb-hero p {
+            margin-top: .375rem !important;
+        }
+        .nb-responsive-shell > .nb-hero > div {
+            gap: .875rem !important;
+        }
+        #najm-bahar-sidebar {
+            position: relative;
+            inset: auto;
+            width: 100%;
+            max-width: none;
+            height: auto;
             margin: 0;
-            border-radius: 0;
+            padding: 0 !important;
+            overflow: visible;
+            border-radius: 1rem !important;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, .1);
         }
-
-        aside.mobile-open {
-            right: 0;
+        .najm-bahar-sidebar-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            min-height: 3.5rem;
+            padding: .75rem 1rem;
+            border: 0;
+            border-radius: 1rem;
+            background: transparent;
+            color: var(--color-gentle-black);
+            font-size: 1.25rem;
+            font-weight: 700;
+            cursor: pointer;
         }
-
-        .sidebar-overlay.active {
+        .najm-bahar-sidebar-toggle-label {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+        }
+        .najm-bahar-sidebar-toggle-chevron { transition: transform .25s ease; }
+        #najm-bahar-sidebar.mobile-open .najm-bahar-sidebar-toggle {
+            border-bottom: 1px solid #e2e8f0;
+            border-radius: 1rem 1rem 0 0;
+        }
+        #najm-bahar-sidebar.mobile-open .najm-bahar-sidebar-toggle-chevron { transform: rotate(180deg); }
+        .najm-bahar-sidebar-body {
+            display: none;
+            padding: .75rem;
+        }
+        #najm-bahar-sidebar.mobile-open .najm-bahar-sidebar-body {
             display: block;
         }
     }
@@ -374,16 +386,13 @@
     }
 </style>
 
-{{-- Mobile Menu Toggle Button --}}
-<button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="منوی نجم بهار">
-    <i class="fas fa-bars"></i>
-</button>
-
-{{-- Overlay for mobile --}}
-<div class="sidebar-overlay" onclick="closeMobileMenu()"></div>
-
 <aside class="bg-white rounded-2xl shadow-lg p-6 border border-gray-200" style="border-radius: var(--nb-radius-xl);" id="najm-bahar-sidebar">
-    <div class="pb-4 mb-4 border-b border-gray-200">
+    <button type="button" class="najm-bahar-sidebar-toggle" onclick="toggleNajmBaharSidebar()" aria-controls="najm-bahar-sidebar-body" aria-expanded="false">
+        <span class="najm-bahar-sidebar-toggle-label"><i class="fas fa-bars" style="color: var(--color-earth-green);"></i><span>منو نجم بهار</span></span>
+        <i class="fas fa-chevron-down najm-bahar-sidebar-toggle-chevron" aria-hidden="true"></i>
+    </button>
+    <div class="najm-bahar-sidebar-body" id="najm-bahar-sidebar-body">
+    <div class="pb-4 mb-4 border-b border-gray-200 hidden lg:block">
         <h2 class="text-xl font-bold text-gentle-black flex items-center gap-2" style="color: var(--color-gentle-black);">
             <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl" style="background: rgba(16, 185, 129, 0.15); border-radius: var(--nb-radius-md);">
                 <i class="fas fa-compass" style="color: var(--color-earth-green);" aria-hidden="true"></i>
@@ -464,38 +473,26 @@
             @endforeach
         </ul>
     </nav>
+    </div>
 </aside>
 
 <script>
-    function toggleMobileMenu() {
+    function toggleNajmBaharSidebar() {
         const sidebar = document.getElementById('najm-bahar-sidebar');
-        const overlay = document.querySelector('.sidebar-overlay');
-        const toggle = document.querySelector('.mobile-menu-toggle');
-        const icon = toggle.querySelector('i');
+        const toggle = sidebar ? sidebar.querySelector('.najm-bahar-sidebar-toggle') : null;
+        if (!sidebar || !toggle) return;
         const isOpen = sidebar.classList.contains('mobile-open');
-
-        if (isOpen) {
-            closeMobileMenu();
-            return;
-        }
-
-        sidebar.classList.add('mobile-open');
-        overlay.classList.add('active');
-        icon.classList.remove('fa-bars');
-        icon.classList.add('fa-times');
+        sidebar.classList.toggle('mobile-open', !isOpen);
+        toggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
     }
 
     function closeMobileMenu() {
         const sidebar = document.getElementById('najm-bahar-sidebar');
-        const overlay = document.querySelector('.sidebar-overlay');
-        const toggle = document.querySelector('.mobile-menu-toggle');
-        const icon = toggle.querySelector('i');
+        const toggle = sidebar ? sidebar.querySelector('.najm-bahar-sidebar-toggle') : null;
         const openSubmenus = document.querySelectorAll('.menu-item-with-submenu.open');
 
-        sidebar.classList.remove('mobile-open');
-        overlay.classList.remove('active');
-        icon.classList.remove('fa-times');
-        icon.classList.add('fa-bars');
+        if (sidebar) sidebar.classList.remove('mobile-open');
+        if (toggle) toggle.setAttribute('aria-expanded', 'false');
 
         openSubmenus.forEach(item => {
             item.classList.remove('open');

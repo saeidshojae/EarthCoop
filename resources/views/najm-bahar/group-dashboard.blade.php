@@ -244,7 +244,7 @@
 
 <div class="bg-light-gray/60 py-10 md:py-12 nb-dashboard" style="background-color: var(--color-light-gray);">
 
-    <div class=\"nb-page-container\" style=\"max-width: var(--nb-container-max-width-xl);\" role=\"main\">
+    <div class=\"nb-page-container nb-responsive-shell\" style=\"max-width: var(--nb-container-max-width-xl);\" role=\"main\">
 
         <section class="nb-hero">
 
@@ -284,9 +284,9 @@
 
 
 
-        <div class="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-6 items-start">
+        <div class="nb-responsive-layout grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-6 items-start">
 
-            <div class="lg:order-1">
+            <div class="lg:order-1 nb-sidebar">
 
                 @include('najm-bahar.partials.sidebar', [
 
