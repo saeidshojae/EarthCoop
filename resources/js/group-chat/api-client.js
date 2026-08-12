@@ -70,6 +70,9 @@ export class ApiClient {
         const payload = await response.json().catch(() => null);
         if (!response.ok) {
             const error = payload?.error || payload || {};
+            if (error.code === 'group_session_closed') {
+                globalThis.dispatchEvent?.(new CustomEvent('group-chat:session-closed', { detail: error }));
+            }
             throw new ApiError(error.message || `Request failed (${response.status})`, {
                 status: response.status,
                 code: error.code,

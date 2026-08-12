@@ -114,6 +114,10 @@
                         <span>{{ $group->is_open ? 'غیرفعال کردن نشست' : 'فعال کردن نشست' }}</span>
                     </button>
                 </form>
+                <button type="button" class="panel-action-btn" data-session-admin-open>
+                    <i class="fas fa-hand-paper"></i>
+                    <span>مدیریت مشارکت نشست</span>
+                </button>
             @endif
             <a href="{{ route('groups.logout', $group->id) }}" class="panel-action-btn panel-action-btn--danger">
                 <i class="fas fa-door-open"></i>

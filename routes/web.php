@@ -35,6 +35,7 @@ use App\Http\Controllers\Group\CommentController;
 use App\Http\Controllers\Group\BlogController;
 use App\Http\Controllers\Group\PollController;
 use App\Http\Controllers\Group\ReactionController;
+use App\Http\Controllers\Group\SessionParticipationController;
 use App\Modules\Stock\Controllers\StockController;
 use App\Modules\Stock\Controllers\AuctionController;
 use App\Modules\Stock\Controllers\BidController;
@@ -324,6 +325,10 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::get('/groups/{group}/relogout', [GroupController::class, 'relogout'])->name('groups.relogout');
     Route::post('/groups/{group}/session/toggle', [GroupController::class, 'open'])->name('groups.session.toggle');
     Route::post('/groups/{group}/session-permissions/{user}/toggle', [GroupController::class, 'toggleSessionPermission'])->name('groups.session-permissions.toggle');
+    Route::post('/groups/{group}/session-participation/request', [SessionParticipationController::class, 'store'])->name('groups.session-participation.request');
+    Route::get('/groups/{group}/session-participation/state', [SessionParticipationController::class, 'state'])->name('groups.session-participation.state');
+    Route::get('/groups/{group}/session-participation', [SessionParticipationController::class, 'index'])->name('groups.session-participation.index');
+    Route::post('/groups/{group}/session-participation/bulk', [SessionParticipationController::class, 'bulkUpdate'])->name('groups.session-participation.bulk');
     Route::put('/groups/{group}', [GroupController::class, 'update'])->name('groups.update');
     Route::get('/groups/{group}/members', [GroupController::class, 'getMembers'])->name('groups.members');
     Route::post('/groups/{group}/users/{user}/toggle-role', [GroupController::class, 'toggleUserRole'])->name('groups.members.toggle-role');

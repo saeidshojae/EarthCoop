@@ -404,6 +404,35 @@
     }
     .member-session-permission:hover { border-color: #10b981; color: #047857; background: #ecfdf5; }
     .member-session-permission.is-allowed { border-color: #6ee7b7; color: #047857; background: #d1fae5; }
+    .session-request-trigger { margin-top:.7rem;border:0;border-radius:.7rem;padding:.55rem .85rem;background:#f59e0b;color:#fff;font-weight:700; }
+    .session-participation-modal[hidden] { display:none !important; }
+    .session-participation-modal { position:fixed;inset:0;z-index:11000;display:grid;place-items:center;padding:1rem; }
+    .session-participation-modal__backdrop { position:absolute;inset:0;border:0;background:rgba(15,23,42,.54);backdrop-filter:blur(3px); }
+    .session-participation-modal__dialog { position:relative;width:min(94vw,520px);max-height:88vh;overflow:auto;background:#fff;border-radius:1.35rem;box-shadow:0 24px 70px rgba(15,23,42,.3); }
+    .session-participation-modal__dialog--admin { width:min(94vw,880px); }
+    .session-participation-modal__header { display:flex;gap:.8rem;align-items:center;padding:1.1rem 1.2rem;border-bottom:1px solid #e2e8f0; }
+    .session-participation-modal__header h3 { margin:0;font-size:1rem;font-weight:800;color:#0f172a; }
+    .session-participation-modal__header p { margin:.15rem 0 0;font-size:.78rem;color:#64748b; }
+    .session-participation-modal__icon { width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:#fef3c7;color:#d97706;flex:none; }
+    .session-participation-modal__icon.is-admin { background:#d1fae5;color:#047857; }
+    .session-participation-modal__close { margin-right:auto;border:0;background:#f1f5f9;color:#64748b;width:34px;height:34px;border-radius:50%;font-size:1.25rem; }
+    .session-participation-modal__body { padding:1.1rem 1.2rem; }
+    .session-participation-modal__body label { display:block;font-weight:700;color:#334155;margin-bottom:.45rem; }
+    .session-participation-modal__body label span { font-weight:400;color:#94a3b8;font-size:.75rem; }
+    .session-participation-modal textarea,.session-admin-toolbar input[type=search] { width:100%;border:1px solid #cbd5e1;border-radius:.85rem;padding:.75rem;background:#f8fafc;outline:none; }
+    .session-participation-modal textarea:focus,.session-admin-toolbar input:focus { border-color:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.12); }
+    .session-participation-modal__footer { display:flex;gap:.6rem;flex-wrap:wrap;padding:1rem 1.2rem;border-top:1px solid #e2e8f0; }
+    .session-primary-btn,.session-secondary-btn,.session-danger-btn { border:0;border-radius:.75rem;padding:.65rem .9rem;font-weight:700; }
+    .session-primary-btn { background:#059669;color:#fff; }.session-secondary-btn { background:#f1f5f9;color:#475569; }.session-danger-btn { background:#fee2e2;color:#b91c1c; }
+    .session-participation-status { margin:.75rem 1.2rem;padding:.7rem .8rem;border-radius:.75rem;font-size:.82rem; }
+    .session-participation-status.is-success { background:#d1fae5;color:#047857; }.session-participation-status.is-error { background:#fee2e2;color:#b91c1c; }
+    .session-admin-toolbar { display:flex;align-items:center;gap:1rem;padding:1rem 1.2rem; }.session-admin-toolbar input { flex:1; }.session-admin-toolbar label { white-space:nowrap;font-size:.8rem;color:#475569; }
+    .session-admin-columns { display:grid;grid-template-columns:1fr 1fr;gap:1rem;padding:0 1.2rem 1rem; }.session-admin-columns h4 { font-size:.88rem;font-weight:800;color:#334155;display:flex;justify-content:space-between; }
+    .session-member-list { display:grid;gap:.5rem;max-height:360px;overflow:auto; }.session-member-card { display:flex;align-items:center;gap:.65rem;padding:.7rem;border:1px solid #e2e8f0;border-radius:.9rem;background:#fff;cursor:pointer; }.session-member-card:hover { border-color:#6ee7b7;background:#f0fdf4; }.session-member-card.is-allowed { background:#ecfdf5; }
+    .session-member-avatar { width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#e0f2fe;color:#0369a1;font-weight:800; }.session-member-copy { display:grid;min-width:0;flex:1; }.session-member-copy strong { font-size:.82rem; }.session-member-copy small { color:#64748b;font-size:.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+    .session-pending-badge,.session-allowed-badge { font-size:.65rem;border-radius:999px;padding:.25rem .45rem;white-space:nowrap; }.session-pending-badge { background:#fef3c7;color:#b45309; }.session-allowed-badge { background:#d1fae5;color:#047857; }.session-admin-empty { text-align:center;color:#94a3b8;padding:1.5rem;font-size:.82rem; }
+    body.session-modal-open { overflow:hidden; }
+    @media(max-width:700px){.session-admin-columns{grid-template-columns:1fr}.session-admin-toolbar{align-items:stretch;flex-direction:column}.session-participation-modal__dialog{max-height:94vh}.session-admin-actions>*{flex:1}.session-pending-badge{display:none}}
 
 @media (max-width: 767px) {
     .telegram-reply-indicator {

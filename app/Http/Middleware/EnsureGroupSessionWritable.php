@@ -18,7 +18,18 @@ class EnsureGroupSessionWritable
         $group = $this->resolveGroup($request);
 
         abort_unless($group, 404, 'گروه یافت نشد.');
-        Gate::authorize('participate', $group);
+        if (Gate::denies('participate', $group)) {
+            return response()->json([
+                'error' => [
+                    'code' => 'group_session_closed',
+                    'message' => 'نشست در حال برگزاری است و مشارکت اعضای عادی موقتاً محدود شده است.',
+                    'details' => [
+                        'group_id' => (int) $group->id,
+                        'can_request_participation' => true,
+                    ],
+                ],
+            ], 403);
+        }
 
         return $next($request);
     }

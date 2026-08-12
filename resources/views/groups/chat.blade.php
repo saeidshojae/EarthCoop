@@ -125,6 +125,9 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                     <div>
                         <strong>نشست در حالت محدود قرار دارد</strong>
                         <p>تا فعال‌شدن دوباره نشست، فقط مدیران، بازرسان و اعضای دارای مجوز می‌توانند پیام، پست، نظر یا رأی ثبت کنند.</p>
+                        <button type="button" class="session-request-trigger" data-session-request-open>
+                            <i class="fas fa-hand-paper"></i> درخواست مشارکت
+                        </button>
                     </div>
                 </div>
                 @elseif (auth()->user()->status == 0 || auth()->user()->first_name == null || auth()->user()->last_name

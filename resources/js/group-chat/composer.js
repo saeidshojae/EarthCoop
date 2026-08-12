@@ -199,6 +199,17 @@ export function createComposer({ api, store, lifecycle, actions }) {
                 else formData.delete('parent_id');
                 const message = text || '🎤 پیام صوتی';
                 formData.set('message', message);
+                try {
+                    const state = await api.json(window.GroupChatConfig?.participationStateUrl, { method: 'GET' });
+                    if (!state?.can_participate) {
+                        window.dispatchEvent(new CustomEvent('group-chat:session-closed', { detail: state }));
+                        return;
+                    }
+                } catch (error) {
+                    if (error?.code === 'group_session_closed') return;
+                    notify(error?.message || 'بررسی وضعیت نشست انجام نشد.', 'error');
+                    return;
+                }
                 const temporaryId = `temp_${Date.now()}`;
                 const [temporary] = feed.apply([{
                     content_type: 'message', id: temporaryId, user_id: window.authUserId,
@@ -229,6 +240,7 @@ export function createComposer({ api, store, lifecycle, actions }) {
                 } catch (error) {
                     document.getElementById(`msg-${temporaryId}`)?.remove();
                     store.setState({ composerStatus: 'error', composerError: error });
+                    if (error?.code === 'group_session_closed') return;
                     const details = error?.details ? Object.values(error.details).flat().join('\n') : '';
                     notify(details || error?.message || 'خطا در ارسال پیام. لطفاً دوباره تلاش کنید.', 'error');
                 }

@@ -427,6 +427,20 @@ class MessageAuthorizationTest extends TestCase
                 ->assertSuccessful();
         }
 
+        if (! Schema::hasTable('group_session_participation_requests')) {
+            Schema::create('group_session_participation_requests', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('group_id');
+                $table->unsignedBigInteger('user_id');
+                $table->string('status')->default('pending');
+                $table->string('message', 300)->nullable();
+                $table->unsignedBigInteger('resolved_by')->nullable();
+                $table->timestamp('resolved_at')->nullable();
+                $table->timestamps();
+                $table->unique(['group_id', 'user_id']);
+            });
+        }
+
         [$group, $member] = $this->makeGroupWithMember(1);
         $group->update(['is_open' => false]);
         GroupUser::where('group_id', $group->id)->where('user_id', $member->id)
@@ -452,6 +466,46 @@ class MessageAuthorizationTest extends TestCase
             ->assertRedirect();
         $this->assertTrue((bool) GroupUser::where('group_id', $group->id)
             ->where('user_id', $ordinary->id)->value('session_write_allowed'));
+    }
+
+    public function test_member_can_raise_hand_and_inspector_can_approve_request(): void
+    {
+        [$group, $member] = $this->makeGroupWithMember(1);
+        $inspector = $this->makeUser();
+        GroupUser::create(['group_id' => $group->id, 'user_id' => $inspector->id, 'role' => 2, 'status' => 1]);
+        $group->update(['is_open' => false]);
+
+        $this->actingAs($member)->postJson(route('groups.session-participation.request', $group), [
+            'message' => 'می‌خواهم درباره دستور جلسه صحبت کنم.',
+        ])->assertOk()->assertJsonPath('status', 'success');
+
+        $this->assertDatabaseHas('group_session_participation_requests', [
+            'group_id' => $group->id, 'user_id' => $member->id, 'status' => 'pending',
+        ]);
+
+        $this->actingAs($inspector)->getJson(route('groups.session-participation.index', $group))
+            ->assertOk()->assertJsonPath('requests.0.user_id', $member->id);
+
+        $this->actingAs($inspector)->postJson(route('groups.session-participation.bulk', $group), [
+            'user_ids' => [$member->id], 'action' => 'grant',
+        ])->assertOk();
+
+        $this->assertDatabaseHas('group_user', [
+            'group_id' => $group->id, 'user_id' => $member->id, 'session_write_allowed' => true,
+        ]);
+        $this->assertDatabaseHas('group_session_participation_requests', [
+            'group_id' => $group->id, 'user_id' => $member->id, 'status' => 'approved',
+        ]);
+    }
+
+    public function test_ordinary_member_cannot_manage_session_requests(): void
+    {
+        [$group, $member] = $this->makeGroupWithMember(1);
+
+        $this->actingAs($member)->getJson(route('groups.session-participation.index', $group))->assertForbidden();
+        $this->actingAs($member)->postJson(route('groups.session-participation.bulk', $group), [
+            'user_ids' => [$member->id], 'action' => 'grant',
+        ])->assertForbidden();
     }
 
     private function makeUser(): User
