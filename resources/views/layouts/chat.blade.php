@@ -387,7 +387,7 @@
 
     <!-- پیام‌های فلش -->
     @if(session('success'))
-        <div class="container mx-auto mt-3 px-4">
+        <div class="container mx-auto mt-3 px-4 group-chat-flash" data-group-chat-flash>
             <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
                 <span class="block sm:inline">{{ session('success') }}</span>
             </div>

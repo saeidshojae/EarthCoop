@@ -10,7 +10,7 @@
             class="lg:hidden w-full relative z-10 flex items-center justify-between gap-3 px-5 py-4 hover:bg-emerald-50/50 active:bg-emerald-50 transition-colors">
             <div class="flex items-center gap-4 flex-1 min-w-0">
                 <div
-                    class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl font-black shadow-md flex-shrink-0 border border-emerald-200/60">
+                    class="group-hero__avatar group-hero__avatar--mobile w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl font-black shadow-md flex-shrink-0 border border-emerald-200/60">
                     @if($group->avatar)
                     <img src="{{ asset('images/groups/' . $group->avatar) }}" alt="{{ $group->name }}"
                         class="w-full h-full object-cover rounded-2xl">
@@ -180,7 +180,7 @@
             <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                 <div class="flex items-center gap-5">
                     <div
-                        class="w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl font-black shadow-inner">
+                        class="group-hero__avatar w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl font-black shadow-inner">
                         @if($group->avatar)
                         <img src="{{ asset('images/groups/' . $group->avatar) }}" alt="{{ $group->name }}"
                             class="w-full h-full object-cover rounded-3xl">

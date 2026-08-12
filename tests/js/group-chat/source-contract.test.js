@@ -554,6 +554,9 @@ test('page chrome runtime owns group edit and one-shot page effects', () => {
     assert.doesNotMatch(blade, /function cancelGroupEdit\(/);
     assert.match(runtime, /window\.GroupChatPageChrome = Object\.freeze/);
     assert.match(runtime, /lifecycle\.on\(window, 'load'/);
+    assert.match(runtime, /querySelectorAll\('\[data-group-chat-flash\]'\)/);
+    assert.match(runtime, /flash\.classList\.add\('group-chat-flash--leaving'\)/);
+    assert.match(runtime, /lifecycle\.timeout\(function\(\) \{ flash\.remove\(\); \}, 260\)/);
     assert.match(runtime, /delete window\.GroupChatPageChrome/);
     assert.match(groupEdit, /data-group-chat-action="cancel-group-edit"/);
     assert.doesNotMatch(groupEdit, /onclick=/);
@@ -591,6 +594,10 @@ test('group hero markup is loaded through its dedicated partial', () => {
     assert.match(hero, /data-chat-page-action="open-poll"/);
     assert.match(hero, /data-group-chat-action="toggle-group-hero"/);
     assert.match(hero, /aria-expanded="false"/);
+    assert.match(hero, /group-hero__avatar w-16 h-16/);
+    const chatCss = readFileSync('public/Css/group-chat.css', 'utf8');
+    assert.match(chatCss, /\.group-hero__avatar \{[\s\S]*?flex: 0 0 4rem;[\s\S]*?aspect-ratio: 1 \/ 1;/);
+    assert.match(chatCss, /\.group-hero__avatar img \{[\s\S]*?object-fit: cover;/);
     assert.doesNotMatch(hero, /(?:@click|x-data|x-show|x-cloak|:class)=?/);
     assert.match(readFileSync('resources/views/groups/partials/page_chrome_runtime.blade.php', 'utf8'), /toggleGroupHero\(\)/);
     assert.match(readFileSync('resources/js/group-chat/actions.js', 'utf8'), /'toggle-group-hero': 'toggleGroupHero'/);

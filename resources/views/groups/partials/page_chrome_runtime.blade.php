@@ -47,6 +47,13 @@ function initializeGroupChatPageChrome() {
     const pinnedMessages = document.querySelector('.pinned-messages');
     if (pinnedMessages) pinnedMessages.scrollTop = pinnedMessages.scrollHeight;
 
+    document.querySelectorAll('[data-group-chat-flash]').forEach(function(flash) {
+        lifecycle.timeout(function() {
+            flash.classList.add('group-chat-flash--leaving');
+            lifecycle.timeout(function() { flash.remove(); }, 260);
+        }, 4200);
+    });
+
     @if (session()->has('success'))
     lifecycle.on(window, 'load', function() {
         window.GroupChatFeedback?.toast(@json(session()->get('success')), { type: 'success' });
