@@ -979,6 +979,36 @@
 
     }
 
+    .agreement-accordion-button {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+        text-align: right;
+        justify-content: space-between;
+        padding: 1rem 1.25rem;
+        margin: 0;
+    }
+
+    .agreement-accordion-heading {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .agreement-accordion-chevron { transition: transform 0.25s ease; }
+
+    .agreement-accordion-button[aria-expanded="true"] .agreement-accordion-chevron {
+        transform: rotate(180deg);
+    }
+
+    .agreement-accordion-panel {
+        display: none;
+        padding: 0 1.25rem 1.25rem;
+    }
+
+    .agreement-accordion-panel.active { display: block; }
+
 
 
 
@@ -1007,7 +1037,15 @@
 
 
 
-        padding: 1.5rem 0;
+        padding: 0;
+
+        border: 1px solid rgba(148, 163, 184, 0.28);
+
+        border-radius: 1rem;
+
+        overflow: hidden;
+
+        margin-bottom: 1rem;
 
 
 
@@ -1228,6 +1266,35 @@
 
 
     }
+
+    .agreement-subsection-button {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+        text-align: right;
+        justify-content: space-between;
+        margin: 0;
+        padding: 0;
+    }
+
+    .agreement-subsection-heading {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .agreement-subsection-chevron { transition: transform 0.25s ease; }
+
+    .agreement-subsection-button[aria-expanded="true"] .agreement-subsection-chevron {
+        transform: rotate(180deg);
+    }
+
+    .agreement-subsection-panel {
+        display: none;
+        padding-top: 0.75rem;
+    }
+
+    .agreement-subsection-panel.active { display: block; }
 
 
 
@@ -2147,7 +2214,7 @@
 
 
 
-    <div class="nb-page-container" style="max-width: var(--nb-container-max-width-sm);">
+    <div class="nb-page-container" style="max-width: 72rem;">
 
 
 
@@ -2767,7 +2834,11 @@
 
 
 
-                            <div class="agreement-section-title">
+                            <button type="button"
+                                    class="agreement-section-title agreement-accordion-button"
+                                    aria-expanded="{{ $loop->first ? 'true' : 'false' }}"
+                                    aria-controls="agreement-panel-{{ $agreement->id }}"
+                                    onclick="toggleAgreementSection(this)">
 
 
 
@@ -2776,6 +2847,8 @@
 
 
 
+
+                                <span class="agreement-accordion-heading">
 
                                 <i class="fas fa-file-contract"></i>
 
@@ -2789,6 +2862,9 @@
 
                                 {{ $agreement->title }}
 
+                                </span>
+
+                                <i class="fas fa-chevron-down agreement-accordion-chevron" aria-hidden="true"></i>
 
 
 
@@ -2797,7 +2873,11 @@
 
 
 
-                            </div>
+
+                            </button>
+
+                            <div id="agreement-panel-{{ $agreement->id }}"
+                                 class="agreement-accordion-panel{{ $loop->first ? ' active' : '' }}">
 
 
 
@@ -2877,7 +2957,13 @@
 
 
 
-                                        <div class="agreement-subsection-title">
+                                        <button type="button"
+                                                class="agreement-subsection-title agreement-subsection-button"
+                                                aria-expanded="false"
+                                                aria-controls="agreement-child-panel-{{ $child->id }}"
+                                                onclick="toggleAgreementSubsection(this)">
+
+                                            <span class="agreement-subsection-heading">
 
 
 
@@ -2899,15 +2985,9 @@
 
                                             {{ $child->title }}
 
+                                            </span>
 
-
-
-
-
-
-
-
-                                        </div>
+                                            <i class="fas fa-chevron-down agreement-subsection-chevron" aria-hidden="true"></i>
 
 
 
@@ -2917,7 +2997,17 @@
 
 
 
-                                        <div class="agreement-content">
+                                        </button>
+
+
+
+
+
+
+
+
+
+                                        <div id="agreement-child-panel-{{ $child->id }}" class="agreement-content agreement-subsection-panel">
 
 
 
@@ -2968,6 +3058,8 @@
 
 
                             @endif
+
+                            </div>
 
 
 
@@ -3308,11 +3400,6 @@
                         <i class="fas fa-check-circle"></i>
                         <span>شما قبلاً این توافقنامه را پذیرفته‌اید.</span>
                     </div>
-                    @if(auth()->user()->najm_bahar_agreement_accepted_at)
-                        <span class="agreement-note">
-                            تاریخ پذیرش: {{ verta(auth()->user()->najm_bahar_agreement_accepted_at)->format('Y/m/d') }}
-                        </span>
-                    @endif
                     <a href="{{ route('najm-bahar.dashboard') }}" class="agreement-button secondary">
                         <i class="fas fa-arrow-left"></i>
                         بازگشت به داشبورد نجم بهار
@@ -3559,7 +3646,11 @@
 
 
 
-                @if($agreements->isNotEmpty())
+                @if($hasAcceptedAgreement && auth()->user()->najm_bahar_agreement_accepted_at)
+
+                    تاریخ موافقت شما با توافقنامه: <strong>{{ verta(auth()->user()->najm_bahar_agreement_accepted_at)->format('Y/m/d') }}</strong>
+
+                @elseif($agreements->isNotEmpty())
 
 
 
@@ -3569,7 +3660,7 @@
 
 
 
-                    آخرین به‌روزرسانی: <strong>{{ $agreements->first()->updated_at ? verta($agreements->first()->updated_at)->format('Y/m/d') : '-' }}</strong>
+                    آخرین به‌روزرسانی متن توافقنامه: <strong>{{ $agreements->first()->updated_at ? verta($agreements->first()->updated_at)->format('Y/m/d') : '-' }}</strong>
 
 
 
@@ -3660,6 +3751,40 @@
 
 
 <script>
+    function toggleAgreementSection(button) {
+        const targetPanel = document.getElementById(button.getAttribute('aria-controls'));
+        const isOpen = button.getAttribute('aria-expanded') === 'true';
+
+        document.querySelectorAll('.agreement-accordion-button').forEach(otherButton => {
+            otherButton.setAttribute('aria-expanded', 'false');
+        });
+        document.querySelectorAll('.agreement-accordion-panel.active').forEach(panel => {
+            panel.classList.remove('active');
+        });
+
+        if (!isOpen && targetPanel) {
+            button.setAttribute('aria-expanded', 'true');
+            targetPanel.classList.add('active');
+        }
+    }
+
+    function toggleAgreementSubsection(button) {
+        const targetPanel = document.getElementById(button.getAttribute('aria-controls'));
+        const isOpen = button.getAttribute('aria-expanded') === 'true';
+        const parentPanel = button.closest('.agreement-accordion-panel');
+
+        parentPanel?.querySelectorAll('.agreement-subsection-button').forEach(otherButton => {
+            otherButton.setAttribute('aria-expanded', 'false');
+        });
+        parentPanel?.querySelectorAll('.agreement-subsection-panel.active').forEach(panel => {
+            panel.classList.remove('active');
+        });
+
+        if (!isOpen && targetPanel) {
+            button.setAttribute('aria-expanded', 'true');
+            targetPanel.classList.add('active');
+        }
+    }
 
 
 
