@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Group;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Group;
+use App\Models\GroupSession;
 use App\Models\GroupUser;
 use App\Models\NajmHodaGroupActionItem;
 use App\Models\NajmHodaGroupConfig;
 use App\Models\User;
 use App\Models\ReportedMessage;
 use App\Services\NajmHoda\NajmHodaGroupAssistantService;
+use App\Services\GroupChat\GroupSessionService;
 use Illuminate\Support\Facades\DB;
 use PhpParser\Node\Stmt\GroupUse;
 
@@ -188,14 +190,39 @@ class GroupController extends Controller
         return redirect()->route('groups.index')->with('success', 'شما با موفقیت به گروه بازگشتید');
     }
 
-    public function open(Group $group)
+    public function open(Request $request, Group $group, GroupSessionService $sessions)
     {
         $this->authorize('manageSession', $group);
-        $group->update(['is_open' => ! (bool) $group->is_open]);
+        if (! (bool) $group->is_open) {
+            $session = $sessions->end($group, (int) auth()->id());
+            $message = 'جلسه پایان یافت و مشارکت عمومی دوباره فعال شد.';
+        } else {
+            $validated = $request->validate([
+                'title' => ['nullable', 'string', 'max:160'],
+                'subject' => ['nullable', 'string', 'max:1000'],
+                'agenda' => ['nullable', 'string', 'max:3000'],
+                'starts_at' => ['nullable', 'date'],
+            ]);
+            $startsAt = isset($validated['starts_at']) ? now()->parse($validated['starts_at']) : now();
+            $session = GroupSession::create([
+                'group_id' => $group->id, 'created_by' => auth()->id(),
+                'title' => trim($validated['title'] ?? '') ?: 'نشست گروه ' . $group->name,
+                'subject' => $validated['subject'] ?? null, 'agenda' => $validated['agenda'] ?? null,
+                'starts_at' => $startsAt, 'status' => 'scheduled',
+            ]);
+            if ($startsAt->isFuture()) {
+                event(new \App\Events\GroupFeedUpdated((int) $group->id, 'session_scheduled', $sessions->payload($session), (int) auth()->id()));
+                $message = 'جلسه برای زمان تعیین‌شده برنامه‌ریزی شد.';
+            } else {
+                $session = $sessions->start($session, (int) auth()->id());
+                $message = 'جلسه آغاز شد و مشارکت عمومی محدود شد.';
+            }
+        }
 
-        return back()->with('success', $group->is_open
-            ? 'نشست فعال شد؛ همه اعضای گروه می‌توانند مشارکت کنند.'
-            : 'نشست غیرفعال شد؛ فقط مدیران، بازرسان و اعضای مجاز می‌توانند مشارکت کنند.');
+        if ($request->expectsJson()) {
+            return response()->json(['status' => 'success', 'message' => $message, 'session' => $session ? $sessions->payload($session) : null]);
+        }
+        return back()->with('success', $message);
     }
 
     public function toggleSessionPermission(Group $group, User $user)

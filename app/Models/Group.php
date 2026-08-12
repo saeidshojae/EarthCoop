@@ -80,6 +80,11 @@ class Group extends Model
         return $this->hasMany(Election::class, 'group_id');
     }
 
+    public function sessions()
+    {
+        return $this->hasMany(GroupSession::class);
+    }
+
     public function updateLastActivity()
     {
         $this->update(['last_activity_at' => now()]);

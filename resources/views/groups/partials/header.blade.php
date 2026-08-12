@@ -155,10 +155,7 @@
                                     <li><a class="dropdown-item" data-chat-page-action="open-election-admin" href="#">➕ افزودن انتخابات</a></li>
 
                                     <li>
-                                        <form method="POST" action="{{ route('groups.session.toggle', $group) }}">
-                                            @csrf
-                                            <button type="submit" class="dropdown-item">{{ $group->is_open == 0 ? 'فعال کردن نشست' : 'غیرفعال کردن نشست' }}</button>
-                                        </form>
+                                        <button type="button" class="dropdown-item" data-session-toggle data-session-open="{{ $group->is_open ? '1' : '0' }}">{{ $group->is_open == 0 ? 'فعال کردن نشست' : 'غیرفعال کردن نشست' }}</button>
                                     </li>
 
                                 @endif

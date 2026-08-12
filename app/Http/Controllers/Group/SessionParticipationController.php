@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Group;
 use App\Models\GroupSessionParticipationRequest;
 use App\Models\GroupUser;
+use App\Models\GroupSession;
+use App\Services\GroupChat\GroupSessionService;
 use App\Notifications\GroupSessionParticipationRequested;
 use App\Events\GroupFeedUpdated;
 use Illuminate\Http\Request;
@@ -13,16 +15,20 @@ use Illuminate\Support\Facades\DB;
 
 class SessionParticipationController extends Controller
 {
-    public function state(Group $group)
+    public function state(Group $group, GroupSessionService $sessions)
     {
         $this->authorize('view', $group);
+        $sessions->activateDueForGroup($group);
+        $group->refresh();
 
         $canManage = auth()->user()->can('manageSession', $group);
 
+        $activeSession = GroupSession::where('group_id', $group->id)->where('status', 'active')->latest('id')->first();
         return response()->json([
             'status' => 'success',
             'session_open' => (bool) $group->is_open,
             'can_participate' => auth()->user()->can('participate', $group),
+            'session' => $activeSession ? $sessions->payload($activeSession) : null,
             'pending_requests_count' => $canManage
                 ? GroupSessionParticipationRequest::where('group_id', $group->id)->where('status', 'pending')->count()
                 : 0,

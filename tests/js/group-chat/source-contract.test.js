@@ -42,6 +42,16 @@ test('group chat templates and runtime do not contain inline event handlers', ()
     }
 });
 
+test('session lifecycle is synchronized through realtime with polling fallback', () => {
+    const runtime = readFileSync('resources/js/group-chat/realtime-runtime.js', 'utf8');
+    const session = readFileSync('resources/js/group-chat/session-state.js', 'utf8');
+    assert.match(runtime, /session_started/);
+    assert.match(runtime, /session_ended/);
+    assert.match(runtime, /app\.sessionState\?\.receive/);
+    assert.match(session, /group-chat:composer-replaced/);
+    assert.match(session, /lifecycle\.interval\(reconcile, 15000\)/);
+});
+
 test('all group chat partials and modals use lifecycle-owned listeners and timers', () => {
     const templates = [
         ...collectBladeFiles('resources/views/groups/partials'),

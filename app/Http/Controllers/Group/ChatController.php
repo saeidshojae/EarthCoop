@@ -24,17 +24,21 @@ use App\Models\PinnedMessage;
 use App\Models\ReportedMessage;
 use App\Models\GroupFeedItem;
 use App\Models\Message;
+use App\Models\GroupSession;
 use App\Models\Blog;
 use App\Models\Comment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use App\Services\GroupChat\GroupFeedService;
+use App\Services\GroupChat\GroupSessionService;
 
 class ChatController extends Controller
 {
-    public function chat(Group $group)
+    public function chat(Group $group, GroupSessionService $sessionService)
     {
         $this->authorize('view', $group);
+        $sessionService->activateDueForGroup($group);
+        $group->refresh();
         $t0 = microtime(true);
         // Keep initial page load lightweight; older history is fetched via API pagination.
         $initialMessageLimit = 50;   // کاهش از 120 به 50 برای سرعت بیشتر
@@ -203,6 +207,19 @@ class ChatController extends Controller
             ->addSelect(DB::raw("'ann' as type"))
             ->get();
 
+        $sessions = GroupSession::where('group_id', $group->id)
+            ->whereIn('status', ['active', 'ended'])->whereNotNull('started_at')
+            ->latest('started_at')->limit(20)->get()->flatMap(function ($session) {
+                $started = clone $session;
+                $started->type = 'session'; $started->event_status = 'active'; $started->event_at = $session->started_at;
+                $started->created_at = $session->started_at;
+                if (! $session->ended_at) return [$started];
+                $ended = clone $session;
+                $ended->type = 'session'; $ended->event_status = 'ended'; $ended->event_at = $session->ended_at;
+                $ended->created_at = $session->ended_at;
+                return [$started, $ended];
+            });
+
         $pinnedMessages = PinnedMessage::with(['message', 'pinnedBy'])
             ->where('group_id', $group->id)
             ->orderBy('created_at', 'desc')
@@ -210,7 +227,7 @@ class ChatController extends Controller
             
         
 
-        $combined = $messages->concat($posts)->concat($polls)->concat($anns)
+        $combined = $messages->concat($posts)->concat($polls)->concat($anns)->concat($sessions)
             ->sortBy('created_at');
         \Log::info('ChatController@chat T3 (after polls+anns+combined): ' . round((microtime(true)-$t0)*1000) . 'ms');
 

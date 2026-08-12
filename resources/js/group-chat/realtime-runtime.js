@@ -111,6 +111,10 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         setHealthy();
         const payload = event?.payload || {};
         const action = event?.action || payload.action || '';
+        if (['session_scheduled', 'session_started', 'session_ended', 'session_state_changed'].includes(action)) {
+            app.sessionState?.receive(action, payload);
+            return;
+        }
         if (Number(event?.actor_id) === Number(authUserId) && !action.startsWith('poll_')) return;
         if (action === 'session_participation_requested') {
             app.sessionParticipation?.receiveRequest(payload);

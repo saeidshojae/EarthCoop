@@ -107,13 +107,12 @@
                     <i class="fas fa-ballot-check"></i>
                     <span>افزودن انتخابات</span>
                 </button>
-                <form method="POST" action="{{ route('groups.session.toggle', $group) }}" class="m-0">
-                    @csrf
-                    <button type="submit" class="panel-action-btn w-100">
+                <div class="m-0">
+                    <button type="button" class="panel-action-btn w-100" data-session-toggle data-session-open="{{ $group->is_open ? '1' : '0' }}">
                         <i class="fas {{ $group->is_open ? 'fa-toggle-on' : 'fa-toggle-off' }}"></i>
                         <span>{{ $group->is_open ? 'غیرفعال کردن نشست' : 'فعال کردن نشست' }}</span>
                     </button>
-                </form>
+                </div>
                 <button type="button" class="panel-action-btn" data-session-admin-open>
                     <i class="fas fa-hand-paper"></i>
                     <span>مدیریت مشارکت نشست</span>

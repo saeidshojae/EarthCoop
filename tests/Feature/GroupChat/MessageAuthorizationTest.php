@@ -171,6 +171,23 @@ class MessageAuthorizationTest extends TestCase
             });
         }
 
+        if (! Schema::hasTable('group_sessions')) {
+            Schema::create('group_sessions', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('group_id');
+                $table->unsignedBigInteger('created_by');
+                $table->unsignedBigInteger('ended_by')->nullable();
+                $table->string('title', 160);
+                $table->text('subject')->nullable();
+                $table->text('agenda')->nullable();
+                $table->string('status')->default('scheduled');
+                $table->timestamp('starts_at');
+                $table->timestamp('started_at')->nullable();
+                $table->timestamp('ended_at')->nullable();
+                $table->timestamps();
+            });
+        }
+
         if (! Schema::hasTable('notifications')) {
             Schema::create('notifications', function (Blueprint $table) {
                 $table->uuid('id')->primary();
@@ -502,6 +519,24 @@ class MessageAuthorizationTest extends TestCase
             ->assertRedirect();
         $this->assertTrue((bool) GroupUser::where('group_id', $group->id)
             ->where('user_id', $ordinary->id)->value('session_write_allowed'));
+    }
+
+    public function test_moderator_can_start_and_end_a_described_session(): void
+    {
+        [$group] = $this->makeGroupWithMember(1);
+        $manager = $this->makeUser();
+        GroupUser::create(['group_id' => $group->id, 'user_id' => $manager->id, 'role' => 3, 'status' => 1]);
+
+        $this->actingAs($manager)->postJson(route('groups.session.toggle', $group), [
+            'title' => 'جلسه برنامه‌ریزی محله', 'subject' => 'بودجه ماهانه',
+            'agenda' => "گزارش مالی\nتصمیم‌گیری", 'starts_at' => now()->subMinute()->toIso8601String(),
+        ])->assertOk()->assertJsonPath('session.status', 'active');
+        $this->assertFalse((bool) $group->fresh()->is_open);
+        $this->assertDatabaseHas('group_sessions', ['group_id' => $group->id, 'title' => 'جلسه برنامه‌ریزی محله', 'status' => 'active']);
+
+        $this->actingAs($manager)->postJson(route('groups.session.toggle', $group))
+            ->assertOk()->assertJsonPath('session.status', 'ended');
+        $this->assertTrue((bool) $group->fresh()->is_open);
     }
 
     public function test_member_can_raise_hand_and_inspector_can_approve_request(): void

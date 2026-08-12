@@ -42,6 +42,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\NajmHodaModerationSweep::class,
         \App\Console\Commands\SendElectionReminders::class,
         \App\Console\Commands\SendAuctionReminders::class,
+        \App\Console\Commands\ActivateScheduledGroupSessions::class,
     ];
 
     /**
@@ -59,6 +60,7 @@ class Kernel extends ConsoleKernel
 
         // Transactional outbox dispatcher; queue workers publish independently from HTTP requests.
         $schedule->command('group-chat:dispatch-outbox --limit=500')->everyMinute()->withoutOverlapping();
+        $schedule->command('group-chat:activate-sessions')->everyMinute()->withoutOverlapping();
         
         // Send election reminders every 12 hours
         $schedule->command('elections:send-reminders')->everyTwelveHours();

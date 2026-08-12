@@ -14,6 +14,7 @@ window.GroupChatConfig = Object.freeze({
     lastReadMessageId: @json($lastReadMessageId ?? null),
     updateLastReadUrl: @json(route('groups.messages.updateLastRead', $group->id)),
     sessionOpen: @json((bool) $group->is_open),
+    sessionToggleUrl: @json(route('groups.session.toggle', $group)),
     canParticipate: @json(auth()->user()->can('participate', $group)),
     canManageSession: @json(auth()->user()->can('manageSession', $group)),
     participationRequestUrl: @json(route('groups.session-participation.request', $group)),

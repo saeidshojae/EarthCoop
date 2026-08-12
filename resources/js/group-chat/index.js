@@ -19,6 +19,7 @@ import { createOperations } from './operations.js';
 import { createCategoryBrowser } from './category-browser.js';
 import { createSessionParticipation } from './session-participation.js';
 import { createPins } from './pins.js';
+import { createSessionState } from './session-state.js';
 
 if (!window.GroupChatFeedback) {
     window.GroupChatFeedback = createFeedback();
@@ -76,6 +77,7 @@ if (window.groupId) {
     app.operations = createOperations({ api, store, feed, actions, lifecycle, groupId: window.groupId });
     app.categoryBrowser = createCategoryBrowser({ api, lifecycle });
     app.sessionParticipation = createSessionParticipation({ api, lifecycle });
+    app.sessionState = createSessionState({ api, lifecycle });
     app.pins = createPins({ api, actions, lifecycle, groupId: window.groupId });
     app.unread.initialize();
     app.installRealtime = options => {
@@ -92,6 +94,10 @@ if (window.groupId) {
     const feedBridge = app.installLegacyRenderers({ updateLastPostCursor: id => realtimeRuntime.advancePost(id) });
     app.composer.initializeSubmission({ feed, realtime: realtimeRuntime });
     app.composer.initializePostSubmission({ feedBridge });
+    lifecycle.on(document, 'group-chat:composer-replaced', () => {
+        app.composer.initializeSubmission({ feed, realtime: realtimeRuntime });
+        app.composer.initializePostSubmission({ feedBridge });
+    });
     lifecycle.timeout(() => {
         realtimeRuntime.initialize();
         realtimeRuntime.startPolling();

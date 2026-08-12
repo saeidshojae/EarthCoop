@@ -59,6 +59,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
     @include('groups.partials.group_hero')
 
     @include('groups.modals.group_edit_form', compact('group'))
+    @include('groups.modals.session_schedule', compact('group'))
     @php use Illuminate\Support\Str; @endphp
     <div class="loading-overlay" id="global-loading">
         <div class="spinner"></div>
