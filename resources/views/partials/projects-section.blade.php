@@ -477,7 +477,7 @@
 
 
 
-            <a href="{{ route('register.form') }}" class="bg-earth-green text-pure-white px-10 py-5 rounded-full shadow-lg hover:bg-dark-green transition duration-300 font-vazirmatn text-xl font-bold transform hover:scale-105 flex items-center justify-center mx-auto inline-flex">
+            <button type="button" onclick="openModal()" aria-controls="registrationModal" class="bg-earth-green text-pure-white px-10 py-5 rounded-full shadow-lg hover:bg-dark-green transition duration-300 font-vazirmatn text-xl font-bold transform hover:scale-105 flex items-center justify-center mx-auto">
 
 
 
@@ -497,7 +497,7 @@
 
 
 
-            </a>
+            </button>
 
 
 
@@ -528,7 +528,6 @@
 
 
 </section>
-
 
 
 

@@ -1317,7 +1317,8 @@
 
 
 
-        max-height: 5000px;
+        max-height: none !important;
+        overflow: visible;
 
 
 
@@ -1653,7 +1654,8 @@
 
 
 
-        max-height: 3000px;
+        max-height: none !important;
+        overflow: visible;
 
 
 
@@ -1833,6 +1835,53 @@
 
 
 
+    }
+
+    .guest-actions-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 1rem;
+        width: 100%;
+        max-width: 46rem;
+        margin-inline: auto;
+        align-items: stretch;
+    }
+
+    .guest-registration-grid {
+        display: contents;
+    }
+
+    .guest-actions-grid .guest-full-row {
+        grid-column: 1 / -1;
+        order: 10;
+    }
+
+    .guest-actions-grid .terms-cta {
+        width: 100%;
+        min-height: 3.5rem;
+        justify-content: center;
+        margin: 0;
+        order: 20;
+    }
+
+    .guest-terms-consent {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0.875rem;
+        padding: 1rem 1.125rem;
+        text-align: right;
+        background: rgba(255, 255, 255, 0.94);
+        border: 1px solid rgba(203, 213, 225, 0.9);
+        border-radius: 1rem;
+        cursor: pointer;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .guest-terms-consent:hover,
+    .guest-terms-consent:focus-within {
+        border-color: var(--color-earth-green);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
     }
 
 
@@ -2843,6 +2892,20 @@
 
         }
 
+        .guest-actions-grid {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+
+        .guest-actions-grid .guest-full-row {
+            grid-column: 1;
+        }
+
+        .guest-terms-consent {
+            align-items: flex-start;
+            padding: 0.95rem;
+        }
+
 
 
 
@@ -3381,7 +3444,7 @@
 
 
 
-                        <button class="accordion-header-btn" type="button" onclick="toggleAccordion('accordion-{{ $term->id }}', this)">
+                        <button class="accordion-header-btn" type="button" aria-expanded="false" aria-controls="accordion-{{ $term->id }}" onclick="toggleAccordion('accordion-{{ $term->id }}', this)">
 
 
 
@@ -3645,7 +3708,7 @@
 
 
 
-                                                <button type="button" class="nested-accordion-button" onclick="toggleNested('nested-{{ $child->id }}', this)">
+                                                <button type="button" class="nested-accordion-button" aria-expanded="false" aria-controls="nested-{{ $child->id }}" onclick="toggleNested('nested-{{ $child->id }}', this)">
 
 
 
@@ -3969,7 +4032,7 @@
 
 
 
-        <section class="terms-action-card fade-up text-center space-y-5">
+        <section id="terms-acceptance" class="terms-action-card fade-up text-center space-y-5 scroll-mt-24">
 
 
 
@@ -4449,7 +4512,7 @@
 
 
 
-                            <input type="checkbox" id="acceptTerms" class="w-6 h-6 text-earth-green border-slate-300 rounded focus:ring-2 focus:ring-earth-green" required>
+                            <input type="checkbox" id="acceptTerms" name="terms" value="1" class="w-6 h-6 text-earth-green border-slate-300 rounded focus:ring-2 focus:ring-earth-green" required>
 
 
 
@@ -4593,7 +4656,7 @@
 
 
 
-                    <p class="text-slate-700">
+                    <p class="hidden" aria-hidden="true">
 
 
 
@@ -4605,7 +4668,6 @@
 
 
 
-                        برای تایید این توافقنامه و ادامه مراحل، ابتدا وارد حساب خود شوید یا ثبت‌نام کنید.
 
 
 
@@ -4629,7 +4691,7 @@
 
 
 
-                    <div class="flex flex-col md:flex-row items-center justify-center gap-3">
+                    <div class="guest-actions-grid">
 
 
 
@@ -4641,7 +4703,7 @@
 
 
 
-                        <a href="{{ route('login') }}" class="terms-cta w-full md:w-auto justify-center">
+                        <a href="{{ route('login') }}" class="terms-cta">
 
 
 
@@ -4689,7 +4751,21 @@
 
 
 
-                        <a href="{{ route('register.form') }}" class="terms-cta w-full md:w-auto justify-center" style="background: linear-gradient(120deg, var(--color-ocean-blue), #1d4ed8); box-shadow: 0 20px 32px rgba(59, 130, 246, 0.22);">
+                        <form action="{{ route('register.accept') }}" method="POST" id="guestTermsForm" class="guest-registration-grid">
+                            @csrf
+                            @if($setting && $setting->invation_status == 1)
+                                <label class="guest-full-row block text-right font-semibold text-slate-700" for="guestInviteCode">کد دعوت</label>
+                                <input type="text" id="guestInviteCode" name="invite_code" value="{{ old('invite_code', request('code')) }}" required class="guest-full-row w-full rounded-xl border border-slate-300 px-4 py-3 text-center focus:border-earth-green focus:ring-2 focus:ring-earth-green" placeholder="کد دعوت خود را وارد کنید">
+                                @error('invite_code')
+                                    <p class="guest-full-row text-sm font-semibold text-red-600" role="alert">{{ $message }}</p>
+                                @enderror
+                            @endif
+                            <label class="guest-terms-consent guest-full-row">
+                                <input type="checkbox" id="guestAcceptTerms" name="terms" value="1" class="w-6 h-6 shrink-0 text-earth-green border-slate-300 rounded focus:ring-2 focus:ring-earth-green">
+                                <span class="font-semibold text-slate-700">اساسنامه و شرایط استفاده را مطالعه کرده‌ام و می‌پذیرم.</span>
+                            </label>
+                            <p id="guestTermsError" class="guest-full-row hidden text-sm font-semibold text-red-600" role="alert">برای ثبت‌نام باید ابتدا اساسنامه و شرایط استفاده را بپذیرید.</p>
+                            <button type="submit" id="guestRegisterButton" aria-disabled="true" class="terms-cta opacity-60 cursor-not-allowed" style="background: linear-gradient(120deg, var(--color-ocean-blue), #1d4ed8); box-shadow: 0 20px 32px rgba(59, 130, 246, 0.22);">
 
 
 
@@ -4725,7 +4801,8 @@
 
 
 
-                        </a>
+                            </button>
+                        </form>
 
 
 
@@ -5181,7 +5258,7 @@
 
 
 
-                اگر سوالی دارید یا نیاز به راهنمایی دارید، با <a href="mailto:support@earthcoop.org" class="text-earth-green font-bold underline">پشتیبانی EarthCoop</a> در ارتباط باشید.
+                اگر سوالی دارید یا نیاز به راهنمایی دارید، با <a href="{{ route('pages.show', 'contact') }}#contact-form" class="text-earth-green font-bold underline hover:text-dark-green transition" aria-label="رفتن به فرم تماس با پشتیبانی EarthCoop">پشتیبانی EarthCoop</a> در ارتباط باشید.
 
 
 
@@ -5362,6 +5439,10 @@
 
 
         const acceptTerms = document.getElementById('acceptTerms');
+        const guestTermsForm = document.getElementById('guestTermsForm');
+        const guestAcceptTerms = document.getElementById('guestAcceptTerms');
+        const guestRegisterButton = document.getElementById('guestRegisterButton');
+        const guestTermsError = document.getElementById('guestTermsError');
 
 
 
@@ -5771,6 +5852,68 @@
 
         };
 
+        // Keep one main section open at a time and recalculate heights when
+        // nested sections change, so the final items are never clipped.
+        const setAccordionState = (content, button, expanded) => {
+            const icon = button?.querySelector('.fa-chevron-down');
+            content.classList.toggle('active', expanded);
+            content.style.maxHeight = expanded ? content.scrollHeight + 'px' : null;
+            button?.setAttribute('aria-expanded', String(expanded));
+            icon?.classList.toggle('rotate-180', expanded);
+        };
+
+        const refreshOpenParentHeights = (element) => {
+            requestAnimationFrame(() => {
+                let parent = element.closest('.accordion-content.active');
+                while (parent) {
+                    parent.style.maxHeight = parent.scrollHeight + 'px';
+                    parent = parent.parentElement?.closest('.accordion-content.active');
+                }
+            });
+        };
+
+        window.toggleAccordion = (id, button) => {
+            const target = document.getElementById(id);
+            if (!target) return;
+
+            const shouldOpen = !target.classList.contains('active');
+            document.querySelectorAll('.accordion-content.active').forEach((content) => {
+                if (content === target) return;
+                const header = content.previousElementSibling;
+                setAccordionState(content, header, false);
+            });
+
+            setAccordionState(target, button, shouldOpen);
+            if (shouldOpen) {
+                requestAnimationFrame(() => {
+                    target.style.maxHeight = target.scrollHeight + 'px';
+                });
+            }
+        };
+
+        window.toggleNested = (id, button) => {
+            const target = document.getElementById(id);
+            if (!target) return;
+
+            const shouldOpen = !target.classList.contains('active');
+            setAccordionState(target, button, shouldOpen);
+            requestAnimationFrame(() => {
+                if (shouldOpen) target.style.maxHeight = target.scrollHeight + 'px';
+                refreshOpenParentHeights(target);
+            });
+        };
+
+        const firstAccordionButton = document.querySelector('.accordion-header-btn');
+        if (firstAccordionButton) {
+            window.toggleAccordion(firstAccordionButton.getAttribute('aria-controls'), firstAccordionButton);
+        }
+
+        window.addEventListener('resize', () => {
+            document.querySelectorAll('.nested-content.active, .accordion-content.active').forEach((content) => {
+                content.style.maxHeight = content.scrollHeight + 'px';
+            });
+        });
+
 
 
 
@@ -5841,6 +5984,25 @@
 
 
 
+        }
+
+        if (guestTermsForm && guestAcceptTerms && guestRegisterButton && guestTermsError) {
+            const syncGuestRegistrationState = () => {
+                const accepted = guestAcceptTerms.checked;
+                guestRegisterButton.setAttribute('aria-disabled', String(!accepted));
+                guestRegisterButton.classList.toggle('opacity-60', !accepted);
+                guestRegisterButton.classList.toggle('cursor-not-allowed', !accepted);
+                guestTermsError.classList.toggle('hidden', accepted);
+            };
+
+            guestAcceptTerms.addEventListener('change', syncGuestRegistrationState);
+            guestTermsForm.addEventListener('submit', (event) => {
+                if (!guestAcceptTerms.checked) {
+                    event.preventDefault();
+                    guestTermsError.classList.remove('hidden');
+                    guestAcceptTerms.focus();
+                }
+            });
         }
 
 
@@ -6154,17 +6316,6 @@
 
 
 @endpush
-
-
-
-
-
-
-
-
-
-
-
 
 
 

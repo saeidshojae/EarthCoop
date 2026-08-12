@@ -149,7 +149,7 @@
                    class="bg-earth-green text-pure-white px-4 py-2 rounded-full shadow-md hover:bg-dark-green transition duration-300 font-medium transform hover:scale-105">
                     {{ __('navigation.login') }}
                 </a>
-                <a href="{{ route('register.form') }}"
+                <a href="{{ request()->routeIs('terms') ? '#terms-acceptance' : route('terms') . '#terms-acceptance' }}"
                    class="bg-ocean-blue text-pure-white px-4 py-2 rounded-full shadow-md hover:bg-dark-blue transition duration-300 font-medium transform hover:scale-105">
                     {{ __('navigation.register') }}
                 </a>

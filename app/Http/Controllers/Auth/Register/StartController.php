@@ -148,17 +148,33 @@ class StartController extends Controller
             }
         }
 
-        session(['fingerprint_id' => $request->fingerprint_id]);
+        session([
+            'fingerprint_id' => $request->fingerprint_id,
+            'registration_terms_accepted' => true,
+            'registration_terms_accepted_at' => now()->toIso8601String(),
+        ]);
         return redirect()->route('register.form', ['code' => $code]);
     }
 
-    public function showRegisterForm()
+    public function showRegisterForm(Request $request)
     {
+        if ($request->session()->get('registration_terms_accepted') !== true) {
+            return redirect()->route('welcome')->withErrors([
+                'terms' => 'برای ورود به صفحه ثبت‌نام، ابتدا اساسنامه و شرایط استفاده را بپذیرید.',
+            ]);
+        }
+
         return view('auth.register');
     }
 
     public function processRegister(Request $request)
     {
+        if ($request->session()->get('registration_terms_accepted') !== true) {
+            return redirect()->route('welcome')->withErrors([
+                'terms' => 'برای ثبت‌نام، ابتدا اساسنامه و شرایط استفاده را بپذیرید.',
+            ]);
+        }
+
         $inputs = $request->validate([
             'email'    => 'required|email|unique:users,email|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
             'phone'    => 'nullable|unique:users,phone',
@@ -171,6 +187,7 @@ class StartController extends Controller
             'phone'          => $request->phone,
             'password'       => Hash::make($request->password),
             'fingerprint_id' => session('fingerprint_id'),
+            'terms_accepted_at' => now(),
         ]);
         
         if(isset($inputs['invation_code'])){
@@ -189,6 +206,10 @@ class StartController extends Controller
         $emailVerification->sendVerificationCode($request);
 
         auth()->login($user);
+        $request->session()->forget([
+            'registration_terms_accepted',
+            'registration_terms_accepted_at',
+        ]);
         return redirect()->route('email.verify.form', ['email' => $request->email]);
     }
 }

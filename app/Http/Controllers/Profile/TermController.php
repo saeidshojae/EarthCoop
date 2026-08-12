@@ -13,9 +13,13 @@ class TermController extends Controller
         $setting = Setting::find(1);
 
         $request->validate([
+            'terms' => 'required|accepted',
             'finger' => ($setting && $setting->finger_status == 1)
                 ? 'required|image|mimes:png,jpg,jpeg,webp|max:5020'
                 : 'nullable|image|mimes:png,jpg,jpeg,webp|max:5020',
+        ], [
+            'terms.required' => 'لطفاً اساسنامه و شرایط استفاده را بپذیرید.',
+            'terms.accepted' => 'لطفاً اساسنامه و شرایط استفاده را بپذیرید.',
         ]);
 
         $updateData = ['terms_accepted_at' => now()];
