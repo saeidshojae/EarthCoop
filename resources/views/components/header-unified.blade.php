@@ -1,15 +1,22 @@
-{{-- Unified Header Component - بر اساس طراحی صفحه Home --}}
 @php
+    $headerContext = $headerContext ?? (request()->routeIs('welcome') ? 'welcome' : 'default');
+    $isWelcomeHeader = $headerContext === 'welcome';
     $isAuth = auth()->check();
     $isHome = request()->routeIs('home');
-    $prevUrl = url()->previous();
-    $currentUrl = url()->current();
-    $backUrl = ($prevUrl == $currentUrl) ? route('home') : $prevUrl;
-    $logoTarget = $isAuth ? route('home') : route('welcome');
+    $previousUrl = url()->previous();
+    $backUrl = $previousUrl === url()->current() ? route('home') : $previousUrl;
+    $logoTarget = $isAuth && !$isWelcomeHeader ? route('home') : route('welcome');
+    $currentLocale = app()->getLocale();
+    $locales = [
+        'fa' => ['label' => 'فارسی', 'abbr' => 'FA'],
+        'en' => ['label' => 'English', 'abbr' => 'EN'],
+        'ar' => ['label' => 'العربية', 'abbr' => 'AR'],
+    ];
+    $tagline = __('langWelcome.tagline');
+    $taglineParts = preg_split('/[؛;]+/', $tagline);
 
-    // دریافت صفحات هدر (فقط یک بار)
     $headerPages = collect();
-    if (\Illuminate\Support\Facades\Schema::hasTable('pages')) {
+    if (!$isWelcomeHeader && \Illuminate\Support\Facades\Schema::hasTable('pages')) {
         $headerPageQuery = \App\Models\Page::query()->where('is_published', 1);
         if (\Illuminate\Support\Facades\Schema::hasColumn('pages', 'show_in_header')) {
             $headerPageQuery->where('show_in_header', 1);
@@ -17,250 +24,190 @@
         $headerPages = $headerPageQuery->get();
     }
 
-    // آرایه زبان‌ها برای استفاده در دسکتاپ و موبایل
-    $locales = [
-        'fa' => ['label' => 'فارسی', 'abbr' => 'FA', 'flag' => '🇮🇷'],
-        'en' => ['label' => 'English', 'abbr' => 'EN', 'flag' => '🇬🇧'],
-        'ar' => ['label' => 'العربية', 'abbr' => 'AR', 'flag' => '🇸🇦'],
-    ];
-    $currentLocale = app()->getLocale();
+    $navLinks = $isWelcomeHeader
+        ? [
+            ['url' => route('blog.index'), 'label' => __('navigation.blog'), 'icon' => 'fa-blog'],
+            ['url' => '#about', 'label' => __('langWelcome.nav_about'), 'icon' => 'fa-info-circle'],
+            ['url' => '#how-it-works', 'label' => __('langWelcome.nav_guide'), 'icon' => 'fa-question-circle'],
+            ['url' => '#projects', 'label' => __('langWelcome.nav_projects'), 'icon' => 'fa-seedling'],
+            ['url' => '#testimonials', 'label' => __('langWelcome.nav_stories'), 'icon' => 'fa-users'],
+        ]
+        : [
+            ['url' => route('blog.index'), 'label' => __('navigation.blog'), 'icon' => 'fa-blog'],
+            ...($isAuth ? [['url' => route('stock.book'), 'label' => __('navigation.stock_office'), 'icon' => 'fa-chart-line']] : []),
+            ...$headerPages->map(fn ($page) => [
+                'url' => url('/pages/' . $page->slug),
+                'label' => $page->translated_title,
+                'icon' => 'fa-file-alt',
+            ])->all(),
+        ];
 @endphp
 
-<header
-    class="bg-pure-white shadow-md py-3 md:py-4 px-3 md:px-6 lg:px-8 sticky top-0 z-50 transition-all duration-300"
-    style="background-color: var(--color-pure-white); overflow: visible;"
->
-    <div class="container mx-auto flex justify-between items-center gap-2 md:gap-4 header-container" style="align-items: center; flex-wrap: nowrap; overflow: visible; position: relative;">
-        {{-- Logo Section --}}
-        <div class="flex items-center space-x-2 md:space-x-3 md:space-x-reverse rtl:space-x-reverse flex-shrink-0 header-logo-section" style="align-items: center; min-width: 0; overflow: visible; position: relative; z-index: 1;">
-            @if(!$isHome)
-                <a href="{{ $backUrl }}"
-                   class="text-gray-600 hover:text-green-600 transition-colors header-back-button flex-shrink-0 mr-2"
-                   aria-label="بازگشت">
-                    <i class="fa fa-arrow-left text-lg md:text-xl"></i>
+@once
+    <style>
+        .site-header-menu-panel { top: 100%; inset-inline: 0; }
+        html[dir="rtl"] .site-header-row,
+        html[dir="ltr"] .site-header-row { flex-direction: row-reverse; }
+        html[dir="rtl"] .site-header-row > * { direction: rtl; }
+        html[dir="ltr"] .site-header-row > * { direction: ltr; }
+        header.site-header-unified .site-header-row .site-header-logo {
+            width: 45px !important;
+            height: 45px !important;
+            min-width: 45px !important;
+            max-width: 45px !important;
+            max-height: 45px !important;
+        }
+        header.site-header-unified .site-header-mobile-actions.is-authenticated {
+            gap: 16px !important;
+        }
+        @media (max-width: 768px) {
+            header.site-header-unified {
+                box-sizing: border-box;
+                height: 77px !important;
+                min-height: 77px !important;
+                padding: 16px 24px !important;
+                overflow: visible !important;
+            }
+            header.site-header-unified .site-header-row { height: 45px; }
+        }
+        @media (min-width: 769px) and (max-width: 1535px) {
+            header.site-header-unified {
+                box-sizing: border-box;
+                height: 84px !important;
+                min-height: 84px !important;
+                padding: 19.5px 32px !important;
+                overflow: visible !important;
+            }
+            header.site-header-unified .site-header-row { height: 45px; }
+        }
+        .site-header-hamburger {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: stretch;
+            width: 30px;
+            height: 19px;
+        }
+        .site-header-hamburger span {
+            display: block; width: 30px; height: 3px; min-height: 3px; border-radius: 999px;
+            background: var(--color-gentle-black); transition: transform .25s ease, opacity .2s ease;
+        }
+        .site-header-hamburger.is-open span:nth-child(1) { transform: translateY(8px) rotate(45deg); }
+        .site-header-hamburger.is-open span:nth-child(2) { opacity: 0; }
+        .site-header-hamburger.is-open span:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
+        .site-header-link { white-space: nowrap; }
+    </style>
+@endonce
+
+<header x-data="{ headerMenuOpen: false, localeOpen: false }"
+        @keydown.escape.window="headerMenuOpen = false; localeOpen = false"
+        class="site-header-unified relative bg-pure-white shadow-md py-4 px-4 sm:px-6 2xl:px-8 sticky top-0 z-50 font-vazirmatn"
+        style="background-color: var(--color-pure-white);"
+        data-header-context="{{ $headerContext }}">
+    <div class="site-header-row container mx-auto flex items-center justify-between gap-3 flex-nowrap">
+        <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-shrink-0">
+            @if(!$isWelcomeHeader && !$isHome)
+                <a href="{{ $backUrl }}" class="flex-shrink-0 text-gray-600 hover:text-earth-green transition p-1" aria-label="بازگشت">
+                    <i class="fas fa-arrow-left text-lg" aria-hidden="true"></i>
                 </a>
             @endif
-
-            <a href="{{ $logoTarget }}"
-               class="flex items-center space-x-4 md:space-x-5 md:space-x-reverse hover:opacity-80 transition-opacity header-logo-link"
-               style="align-items: center; min-width: 0; flex-shrink: 1;">
-                <svg width="35" height="35" class="md:w-[45px] md:h-[45px] logo-animated brand-logo-animated flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <a href="{{ $logoTarget }}" class="flex items-center gap-3 hover:opacity-80 transition min-w-0">
+                <svg width="45" height="45" class="site-header-logo brand-logo-animated flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#10b981" opacity="0.8"/>
                     <path d="M12 2C10.5 4 8 6 8 9C8 12 12 14 12 14C12 14 16 12 16 9C16 6 13.5 4 12 2ZM12 14C12 14 10 16 10 18C10 20 12 22 12 22" fill="#047857"/>
                 </svg>
-                <span class="text-lg md:text-2xl lg:text-3xl font-extrabold text-gentle-black header-logo-text whitespace-nowrap overflow-hidden text-ellipsis">
-                    EarthCoop
-                </span>
+                <span class="text-2xl 2xl:text-3xl font-extrabold text-gentle-black whitespace-nowrap">EarthCoop</span>
+                @if($isWelcomeHeader)
+                    <span class="hidden 2xl:flex flex-col border-r-2 border-gray-200 pr-4 mr-1 text-sm text-gray-500 leading-tight whitespace-nowrap">
+                        <span>{{ $taglineParts[0] ?? $tagline }}</span>
+                        <span>{{ $taglineParts[1] ?? '' }}</span>
+                    </span>
+                @endif
             </a>
         </div>
 
-        {{-- Desktop Navigation --}}
-        <nav class="hidden md:flex items-center gap-2 md:gap-3 lg:gap-4 text-gentle-black justify-center flex-nowrap flex-1 min-w-0">
-            @if($isAuth)
-                <a href="{{ route('blog.index') }}"
-                   class="relative hover:text-earth-green transition duration-300 font-medium pb-1 group flex items-center whitespace-nowrap text-sm md:text-base gap-2.5">
-                    <i class="fas fa-blog text-xs md:text-sm flex-shrink-0" style="color: var(--color-earth-green);"></i>
-                    <span>{{ __('navigation.blog') }}</span>
-                    <span class="absolute bottom-0 right-0 w-0 h-0.5 group-hover:w-full transition-all duration-300" style="background-color: var(--color-earth-green);"></span>
-                </a>
-                <a href="{{ route('stock.book') }}"
-                   class="relative hover:text-earth-green transition duration-300 font-medium pb-1 group flex items-center whitespace-nowrap text-sm md:text-base gap-2.5">
-                    <i class="fas fa-chart-line text-xs md:text-sm flex-shrink-0" style="color: var(--color-earth-green);"></i>
-                    <span>{{ __('navigation.stock_office') }}</span>
-                    <span class="absolute bottom-0 right-0 w-0 h-0.5 group-hover:w-full transition-all duration-300" style="background-color: var(--color-earth-green);"></span>
-                </a>
-            @else
-                <a href="{{ route('blog.index') }}"
-                   class="relative hover:text-earth-green transition duration-300 font-medium pb-1 group flex items-center whitespace-nowrap text-sm md:text-base gap-2.5">
-                    <i class="fas fa-blog text-xs md:text-sm flex-shrink-0" style="color: var(--color-earth-green);"></i>
-                    <span>{{ __('navigation.blog') }}</span>
-                    <span class="absolute bottom-0 right-0 w-0 h-0.5 group-hover:w-full transition-all duration-300" style="background-color: var(--color-earth-green);"></span>
-                </a>
-            @endif
-
-            @foreach($headerPages as $page)
-                <a href="{{ url('/pages/' . $page->slug) }}"
-                   class="relative hover:text-earth-green transition duration-300 font-medium pb-1 group flex items-center whitespace-nowrap text-sm md:text-base gap-2.5">
-                    <i class="fas fa-file-alt text-xs md:text-sm flex-shrink-0" style="color: var(--color-earth-green);"></i>
-                    <span>{{ $page->translated_title }}</span>
-                    <span class="absolute bottom-0 right-0 w-0 h-0.5 group-hover:w-full transition-all duration-300" style="background-color: var(--color-earth-green);"></span>
+        <nav class="hidden 2xl:flex items-center justify-center gap-5 flex-1 min-w-0 text-gentle-black">
+            @foreach($navLinks as $link)
+                <a href="{{ $link['url'] }}" class="site-header-link relative flex items-center gap-2 pb-1 font-medium hover:text-earth-green transition group">
+                    <i class="fas {{ $link['icon'] }} text-earth-green" aria-hidden="true"></i>
+                    <span>{{ $link['label'] }}</span>
+                    <span class="absolute bottom-0 right-0 w-0 h-0.5 bg-earth-green group-hover:w-full transition-all duration-300"></span>
                 </a>
             @endforeach
         </nav>
 
-        {{-- User Actions --}}
-        <div class="flex items-center gap-3 flex-shrink-0">
-            {{-- Dark Mode Toggle - Desktop --}}
-            <div class="hidden md:block">
-                <div class="theme-toggle" onclick="toggleTheme()" title="{{ __('navigation.theme_toggle') }}" role="button" aria-label="{{ __('navigation.theme_toggle') }}" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTheme();}" style="margin: 0 0.5rem;">
-                    <span class="theme-toggle-icon sun">☀️</span>
-                    <span class="theme-toggle-icon moon">🌙</span>
-                    <div class="theme-toggle-slider"></div>
-                </div>
+        <div class="hidden 2xl:flex items-center gap-3 flex-shrink-0">
+            <div class="theme-toggle" onclick="toggleTheme()" title="{{ __('navigation.theme_toggle') }}" role="button" tabindex="0" aria-label="{{ __('navigation.theme_toggle') }}">
+                <span class="theme-toggle-icon sun">☀️</span><span class="theme-toggle-icon moon">🌙</span><div class="theme-toggle-slider"></div>
             </div>
-
-            {{-- Language Switcher - Desktop --}}
-            <div class="hidden md:block relative">
-                <button id="locale-toggle-button" type="button"
-                        class="flex items-center bg-light-gray rounded-full px-3 py-1 shadow-sm border border-gray-200 gap-2 transition hover:bg-white cursor-pointer">
-                    <span class="text-xs font-semibold tracking-wider">{{ $locales[$currentLocale]['abbr'] ?? strtoupper($currentLocale) }}</span>
-                    <svg class="w-3 h-3 text-gentle-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
+            <div class="relative" @click.outside="localeOpen = false">
+                <button type="button" @click="localeOpen = !localeOpen" class="flex items-center gap-2 rounded-full border border-gray-200 bg-light-gray px-3 py-1 shadow-sm" :aria-expanded="localeOpen">
+                    <span class="text-xs font-semibold">{{ $locales[$currentLocale]['abbr'] ?? strtoupper($currentLocale) }}</span>
+                    <i class="fas fa-chevron-down text-xs" aria-hidden="true"></i>
                 </button>
-                <div id="locale-dropdown" class="absolute left-0 mt-1 w-32 bg-white border border-gray-200 rounded-lg shadow-lg py-2 hidden z-50" onclick="event.stopPropagation()">
+                <div x-show="localeOpen" x-cloak class="absolute left-0 mt-2 w-32 rounded-lg border border-gray-200 bg-white py-2 shadow-lg z-50">
                     @foreach($locales as $code => $meta)
                         @if($currentLocale !== $code)
-                            <a href="{{ route('locale.change', $code) }}"
-                               class="flex items-center px-3 py-2 text-xs font-vazirmatn text-gentle-black hover:bg-light-gray transition">
-                                <span class="font-semibold tracking-wider">{{ $meta['abbr'] }}</span>
-                                <span class="ltr:ml-2 rtl:mr-2 text-[11px] text-gray-500">{{ $meta['label'] }}</span>
-                            </a>
+                            <a href="{{ route('locale.change', $code) }}" class="flex items-center gap-2 px-3 py-2 text-xs text-gentle-black hover:bg-light-gray"><strong>{{ $meta['abbr'] }}</strong><span>{{ $meta['label'] }}</span></a>
                         @endif
                     @endforeach
                 </div>
             </div>
 
-            @auth
-                {{-- Knowledge Base Quick Access (Desktop) --}}
-                <a href="{{ route('support.kb.index') }}"
-                   class="hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 bg-white shadow-sm hover:bg-gray-50 transition focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                   title="پایگاه دانش" aria-label="پایگاه دانش">
-                    <i class="fas fa-circle-question" style="color: var(--color-ocean-blue);"></i>
-                </a>
-            @endauth
-
-            {{-- Mobile Menu Button --}}
-            <button @click="mobileMenuOpen = !mobileMenuOpen"
-                    class="md:hidden text-gentle-black focus:outline-none flex items-center justify-center mobile-menu-button"
-                    style="color: var(--color-gentle-black); width: 45px; height: 45px; flex-shrink: 0; position: relative;"
-                    aria-label="منوی اصلی"
-                    :aria-expanded="mobileMenuOpen ? 'true' : 'false'"
-                    aria-controls="mobile-menu-unified">
-                <i class="fas fa-bars text-2xl mobile-menu-icon-bars" :class="{ 'hidden': mobileMenuOpen }"></i>
-                <i class="fas fa-times text-2xl mobile-menu-icon-times" :class="{ 'hidden': !mobileMenuOpen }" style="position: absolute;"></i>
-            </button>
-
-            @auth
-                {{-- User Dropdown --}}
+            @if($isWelcomeHeader)
+                <button type="button" onclick="openModal()" class="bg-earth-green text-white px-6 py-2 rounded-full shadow-md hover:bg-dark-green transition font-medium">{{ __('langWelcome.btn_join') }}</button>
+                <a href="{{ route('login') }}" class="bg-ocean-blue text-white px-6 py-2 rounded-full shadow-md hover:bg-dark-blue transition font-medium">{{ __('langWelcome.btn_login') }}</a>
+                <a href="{{ route('invite') }}" class="bg-digital-gold text-white px-6 py-2 rounded-full shadow-md transition font-medium">{{ __('langWelcome.btn_invite') }}</a>
+            @elseif($isAuth)
+                <a href="{{ route('support.kb.index') }}" class="inline-flex w-10 h-10 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm" title="پایگاه دانش"><i class="fas fa-circle-question text-ocean-blue"></i></a>
                 @include('components.user-dropdown-unified')
             @else
-                <a href="{{ route('login') }}"
-                   class="bg-earth-green text-pure-white px-4 py-2 rounded-full shadow-md hover:bg-dark-green transition duration-300 font-medium transform hover:scale-105">
-                    {{ __('navigation.login') }}
-                </a>
-                <a href="{{ request()->routeIs('terms') ? '#terms-acceptance' : route('terms') . '#terms-acceptance' }}"
-                   class="bg-ocean-blue text-pure-white px-4 py-2 rounded-full shadow-md hover:bg-dark-blue transition duration-300 font-medium transform hover:scale-105">
-                    {{ __('navigation.register') }}
-                </a>
-            @endauth
+                <a href="{{ route('login') }}" class="bg-earth-green text-white px-5 py-2 rounded-full shadow-md font-medium">{{ __('navigation.login') }}</a>
+                <a href="{{ request()->routeIs('terms') ? '#terms-acceptance' : route('terms') . '#terms-acceptance' }}" class="bg-ocean-blue text-white px-5 py-2 rounded-full shadow-md font-medium">{{ __('navigation.register') }}</a>
+            @endif
+        </div>
+
+        <div class="site-header-mobile-actions {{ !$isWelcomeHeader && $isAuth ? 'is-authenticated' : '' }} 2xl:hidden flex items-center gap-2 flex-shrink-0">
+            @if(!$isWelcomeHeader && $isAuth)
+                @include('components.user-dropdown-unified')
+            @endif
+            <button type="button" @click="headerMenuOpen = !headerMenuOpen" :class="{ 'is-open': headerMenuOpen }"
+                    class="site-header-hamburger flex flex-col justify-between w-[30px] h-[19px] focus:outline-none"
+                    aria-controls="site-header-mobile-menu" :aria-expanded="headerMenuOpen" aria-label="{{ __('navigation.open_menu') }}">
+                <span></span><span></span><span></span>
+            </button>
         </div>
     </div>
 
-    {{-- Mobile Menu --}}
-    <div id="mobile-menu-unified"
-         x-show="mobileMenuOpen"
-         @click.away="mobileMenuOpen = false"
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0 -translate-y-2"
-         x-transition:enter-end="opacity-100 translate-y-0"
-         x-transition:leave="transition ease-in duration-150"
-         x-transition:leave-start="opacity-100 translate-y-0"
-         x-transition:leave-end="opacity-0 -translate-y-2"
-         class="md:hidden mt-4 pb-4 border-t border-gray-200"
-         x-cloak
-         style="display: none;">
-        <nav class="flex flex-col items-center space-y-2 text-gentle-black">
-            @if($isAuth)
-                <a href="{{ route('blog.index') }}" @click="mobileMenuOpen = false"
-                   class="block w-full text-center py-2 hover:bg-gray-50 rounded-md transition duration-300 flex items-center justify-center">
-                    <i class="fas fa-blog ml-2" style="color: var(--color-earth-green);"></i>
-                    <span>{{ __('navigation.blog') }}</span>
-                </a>
-                <a href="{{ route('stock.book') }}" @click="mobileMenuOpen = false"
-                   class="block w-full text-center py-2 hover:bg-gray-50 rounded-md transition duration-300 flex items-center justify-center">
-                    <i class="fas fa-chart-line ml-2" style="color: var(--color-earth-green);"></i>
-                    <span>{{ __('navigation.stock_office') }}</span>
-                </a>
-            @else
-                <a href="{{ route('blog.index') }}" @click="mobileMenuOpen = false"
-                   class="block w-full text-center py-2 hover:bg-gray-50 rounded-md transition duration-300 flex items-center justify-center">
-                    <i class="fas fa-blog ml-2" style="color: var(--color-earth-green);"></i>
-                    <span>{{ __('navigation.blog') }}</span>
-                </a>
-            @endif
-
-            @foreach($headerPages as $page)
-                <a href="{{ url('/pages/' . $page->slug) }}" @click="mobileMenuOpen = false"
-                   class="block w-full text-center py-2 hover:bg-gray-50 rounded-md transition duration-300 flex items-center justify-center">
-                    <i class="fas fa-file-alt ml-2" style="color: var(--color-earth-green);"></i>
-                    <span>{{ $page->translated_title }}</span>
+    <div id="site-header-mobile-menu" x-show="headerMenuOpen" x-cloak @click.outside="headerMenuOpen = false"
+         x-transition class="site-header-menu-panel absolute 2xl:hidden bg-pure-white shadow-xl border-t border-gray-200 px-4 py-4">
+        <nav class="container mx-auto flex flex-col items-center gap-2 text-gentle-black">
+            @foreach($navLinks as $link)
+                <a href="{{ $link['url'] }}" @click="headerMenuOpen = false" class="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 font-medium hover:bg-light-gray hover:text-earth-green transition">
+                    <i class="fas {{ $link['icon'] }} text-earth-green" aria-hidden="true"></i><span>{{ $link['label'] }}</span>
                 </a>
             @endforeach
-
-            @auth
-                <a href="{{ route('support.kb.index') }}" @click="mobileMenuOpen = false"
-                   class="block w-full text-center py-2 hover:bg-gray-50 rounded-md transition duration-300 flex items-center justify-center">
-                    <i class="fas fa-circle-question ml-2" style="color: var(--color-ocean-blue);"></i>
-                    <span>پایگاه دانش</span>
-                </a>
-            @endauth
-
-            <hr class="w-full border-t border-gray-200 my-2">
-
-            {{-- Dark Mode Toggle - Mobile --}}
-            <div class="flex items-center justify-center w-full py-2">
-                <span class="text-sm mr-2">{{ __('navigation.footer_theme') }}:</span>
-                <div class="theme-toggle" onclick="toggleTheme()" title="{{ __('navigation.theme_toggle') }}" role="button" aria-label="{{ __('navigation.theme_toggle') }}" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTheme();}">
-                    <span class="theme-toggle-icon sun">☀️</span>
-                    <span class="theme-toggle-icon moon">🌙</span>
-                    <div class="theme-toggle-slider"></div>
+            @if(!$isWelcomeHeader && $isAuth)
+                <a href="{{ route('support.kb.index') }}" class="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 hover:bg-light-gray"><i class="fas fa-circle-question text-ocean-blue"></i><span>پایگاه دانش</span></a>
+            @endif
+            <div class="w-full border-t border-gray-200 mt-1 pt-3 flex flex-col items-center gap-3">
+                <div class="theme-toggle" onclick="toggleTheme()" role="button" tabindex="0" aria-label="{{ __('navigation.theme_toggle') }}">
+                    <span class="theme-toggle-icon sun">☀️</span><span class="theme-toggle-icon moon">🌙</span><div class="theme-toggle-slider"></div>
                 </div>
-            </div>
-
-            {{-- Language Switcher - Mobile --}}
-            <div class="flex items-center justify-center gap-2 w-full py-2">
-                @foreach($locales as $code => $meta)
-                    <a href="{{ route('locale.change', $code) }}"
-                       class="flex items-center text-sm font-vazirmatn px-3 py-1 rounded-full transition {{ $currentLocale === $code ? 'bg-earth-green text-white' : 'bg-light-gray text-gentle-black hover:bg-white' }}">
-                        <span class="font-semibold tracking-wider">{{ $meta['abbr'] }}</span>
-                        <span class="ltr:ml-1 rtl:mr-1">{{ $meta['label'] }}</span>
-                    </a>
-                @endforeach
+                @if($isWelcomeHeader)
+                    <button type="button" onclick="openModal()" class="w-full max-w-sm bg-earth-green text-white px-5 py-2.5 rounded-full shadow-md font-medium">{{ __('langWelcome.btn_join') }}</button>
+                    <a href="{{ route('invite') }}" class="w-full max-w-sm bg-digital-gold text-white px-5 py-2.5 rounded-full shadow-md text-center font-medium">{{ __('langWelcome.btn_invite') }}</a>
+                    <a href="{{ route('login') }}" class="w-full max-w-sm bg-ocean-blue text-white px-5 py-2.5 rounded-full shadow-md text-center font-medium">{{ __('langWelcome.btn_login') }}</a>
+                @elseif(!$isAuth)
+                    <a href="{{ route('login') }}" class="w-full max-w-sm bg-earth-green text-white px-5 py-2.5 rounded-full text-center font-medium">{{ __('navigation.login') }}</a>
+                    <a href="{{ request()->routeIs('terms') ? '#terms-acceptance' : route('terms') . '#terms-acceptance' }}" class="w-full max-w-sm bg-ocean-blue text-white px-5 py-2.5 rounded-full text-center font-medium">{{ __('navigation.register') }}</a>
+                @endif
+                <div class="flex flex-wrap justify-center gap-2">
+                    @foreach($locales as $code => $meta)
+                        <a href="{{ route('locale.change', $code) }}" class="px-3 py-1 rounded-full text-sm {{ $currentLocale === $code ? 'bg-earth-green text-white' : 'bg-light-gray text-gentle-black' }}">{{ $meta['abbr'] }} <span class="mr-1">{{ $meta['label'] }}</span></a>
+                    @endforeach
+                </div>
             </div>
         </nav>
     </div>
 </header>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const localeToggleButton = document.getElementById('locale-toggle-button');
-        const localeDropdown = document.getElementById('locale-dropdown');
-
-        if (localeToggleButton && localeDropdown) {
-            localeToggleButton.addEventListener('click', function(event) {
-                event.preventDefault();
-                event.stopPropagation();
-                const isHidden = localeDropdown.classList.contains('hidden');
-                document.querySelectorAll('[id^="locale-dropdown"]').forEach(dropdown => {
-                    if (dropdown !== localeDropdown) dropdown.classList.add('hidden');
-                });
-                localeDropdown.classList.toggle('hidden', !isHidden);
-            });
-
-            document.addEventListener('click', function(event) {
-                if (!localeDropdown.contains(event.target) && !localeToggleButton.contains(event.target)) {
-                    localeDropdown.classList.add('hidden');
-                }
-            });
-
-            document.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape') localeDropdown.classList.add('hidden');
-            });
-
-            localeDropdown.addEventListener('click', function(event) {
-                event.stopPropagation();
-            });
-        }
-    });
-</script>

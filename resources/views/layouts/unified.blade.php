@@ -137,7 +137,7 @@
           sidebarOpen: false
       }">
     <!-- Unified Header - بر اساس طراحی Home -->
-    @include('components.header-unified')
+    @include('components.header-unified', ['headerContext' => 'default'])
 
     <!-- Flash Messages -->
     @if(session('success'))

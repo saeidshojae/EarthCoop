@@ -14,6 +14,7 @@
 
     <!-- Tailwind & Bootstrap CSS via Vite -->
     @vite(['resources/js/app.js'])
+    <script defer src="{{ asset('vendor/alpinejs/cdn.min.js') }}"></script>
 
     <!-- Fonts with preconnect for better performance -->
     <link rel="stylesheet" href="{{ asset('Css/fonts-local.css') }}">
@@ -477,6 +478,7 @@
     </script>
 @endif
 
+@if(false)
 <header class="bg-pure-white shadow-md py-4 px-6 2xl:px-8 sticky top-0 z-50">
     <div class="container mx-auto flex justify-between items-center">
         <div class="flex items-center space-x-3 2xl:space-x-reverse 2xl:space-x-3 rtl:space-x-reverse rtl:space-x-3">
@@ -602,6 +604,9 @@
         </nav>
     </div>
 </header>
+@endif
+
+@include('components.header-unified', ['headerContext' => 'welcome'])
 
 <main>
     @include('partials.hero-section')
