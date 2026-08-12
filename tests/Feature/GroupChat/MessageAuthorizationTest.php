@@ -71,6 +71,11 @@ class MessageAuthorizationTest extends TestCase
                 $table->softDeletes();
             });
         }
+        if (! Schema::hasColumn('group_user', 'session_write_allowed')) {
+            Schema::table('group_user', function (Blueprint $table) {
+                $table->boolean('session_write_allowed')->default(false);
+            });
+        }
 
         if (! Schema::hasTable('roles')) {
             Schema::create('roles', function (Blueprint $table) {
@@ -376,6 +381,59 @@ class MessageAuthorizationTest extends TestCase
             ->assertJsonPath('unread.messages', 3)
             ->assertJsonPath('unread.posts', 1)
             ->assertJsonPath('unread.polls', 1);
+    }
+
+    public function test_closed_session_blocks_ordinary_member_message_mutations(): void
+    {
+        [$group, $member] = $this->makeGroupWithMember(1);
+        $group->update(['is_open' => false]);
+        $message = $this->makeMessage($group, $member);
+
+        $this->actingAs($member)
+            ->postJson(route('groups.messages.store'), ['group_id' => $group->id, 'message' => 'blocked'])
+            ->assertForbidden();
+
+        $this->actingAs($member)
+            ->postJson(route('groups.messages.edit', $message), ['content' => 'blocked edit'])
+            ->assertForbidden();
+    }
+
+    public function test_closed_session_allows_inspector_manager_and_explicitly_permitted_member(): void
+    {
+        foreach ([2, 3] as $role) {
+            [$group, $member] = $this->makeGroupWithMember($role);
+            $group->update(['is_open' => false]);
+
+            $this->actingAs($member)
+                ->postJson(route('groups.messages.store'), ['group_id' => $group->id, 'message' => "role {$role}"])
+                ->assertSuccessful();
+        }
+
+        [$group, $member] = $this->makeGroupWithMember(1);
+        $group->update(['is_open' => false]);
+        GroupUser::where('group_id', $group->id)->where('user_id', $member->id)
+            ->update(['session_write_allowed' => true]);
+
+        $this->actingAs($member)
+            ->postJson(route('groups.messages.store'), ['group_id' => $group->id, 'message' => 'explicit permission'])
+            ->assertSuccessful();
+    }
+
+    public function test_only_manager_or_inspector_can_toggle_session_and_member_permission(): void
+    {
+        [$group, $ordinary] = $this->makeGroupWithMember(1);
+        $inspector = $this->makeUser();
+        GroupUser::create(['group_id' => $group->id, 'user_id' => $inspector->id, 'role' => 2, 'status' => 1]);
+
+        $this->actingAs($ordinary)->post(route('groups.session.toggle', $group))->assertForbidden();
+        $this->actingAs($inspector)->post(route('groups.session.toggle', $group))->assertRedirect();
+        $this->assertFalse((bool) $group->fresh()->is_open);
+
+        $this->actingAs($inspector)
+            ->post(route('groups.session-permissions.toggle', [$group, $ordinary]))
+            ->assertRedirect();
+        $this->assertTrue((bool) GroupUser::where('group_id', $group->id)
+            ->where('user_id', $ordinary->id)->value('session_write_allowed'));
     }
 
     private function makeUser(): User

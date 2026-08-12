@@ -107,10 +107,13 @@
                     <i class="fas fa-ballot-check"></i>
                     <span>افزودن انتخابات</span>
                 </button>
-                <a href="{{ route('groups.open', $group) }}" class="panel-action-btn">
-                    <i class="fas fa-toggle-on"></i>
-                    <span>{{ $group->is_open == 0 ? 'فعال کردن نشست' : 'غیرفعال کردن نشست' }}</span>
-                </a>
+                <form method="POST" action="{{ route('groups.session.toggle', $group) }}" class="m-0">
+                    @csrf
+                    <button type="submit" class="panel-action-btn w-100">
+                        <i class="fas {{ $group->is_open ? 'fa-toggle-on' : 'fa-toggle-off' }}"></i>
+                        <span>{{ $group->is_open ? 'غیرفعال کردن نشست' : 'فعال کردن نشست' }}</span>
+                    </button>
+                </form>
             @endif
             <a href="{{ route('groups.logout', $group->id) }}" class="panel-action-btn panel-action-btn--danger">
                 <i class="fas fa-door-open"></i>
@@ -321,6 +324,16 @@
                                 <a href='{{ route('change-user-role', [$person->id, $group2->id]) }}' class="member-change-role">
                                     تغییر نقش
                                 </a>
+                            @endif
+                            @if(in_array($yourRole, [2,3], true) && !in_array((int)($member->role ?? -1), [2,3], true) && $person?->id)
+                                <form method="POST" action="{{ route('groups.session-permissions.toggle', [$group2, $person]) }}" class="m-0">
+                                    @csrf
+                                    <button type="submit" class="member-session-permission {{ $member->session_write_allowed ? 'is-allowed' : '' }}"
+                                        title="مجوز مشارکت هنگام غیرفعال بودن نشست">
+                                        <i class="fas {{ $member->session_write_allowed ? 'fa-user-check' : 'fa-user-lock' }}"></i>
+                                        {{ $member->session_write_allowed ? 'مجاز در نشست بسته' : 'اجازه در نشست بسته' }}
+                                    </button>
+                                </form>
                             @endif
                         </li>
                     @endforeach

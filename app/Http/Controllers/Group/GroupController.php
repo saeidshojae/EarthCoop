@@ -188,16 +188,32 @@ class GroupController extends Controller
         return redirect()->route('groups.index')->with('success', 'شما با موفقیت به گروه بازگشتید');
     }
 
-    public function open(Group $group){
-        if($group->is_open == 1){
-            $group->is_open = 0;
-            $msg = 'گروه با موفقیت به حالت بسته گردید';
-        }else{
-            $group->is_open = 1;
-            $msg = 'گروه با موفقیت به حالت باز گردید';
-        }
-        $group->save();
-        return back()->with('success', $msg);
+    public function open(Group $group)
+    {
+        $this->authorize('manageSession', $group);
+        $group->update(['is_open' => ! (bool) $group->is_open]);
+
+        return back()->with('success', $group->is_open
+            ? 'نشست فعال شد؛ همه اعضای گروه می‌توانند مشارکت کنند.'
+            : 'نشست غیرفعال شد؛ فقط مدیران، بازرسان و اعضای مجاز می‌توانند مشارکت کنند.');
+    }
+
+    public function toggleSessionPermission(Group $group, User $user)
+    {
+        $this->authorize('manageSession', $group);
+
+        $membership = GroupUser::query()
+            ->where('group_id', $group->id)
+            ->where('user_id', $user->id)
+            ->where('status', 1)
+            ->firstOrFail();
+
+        abort_if(in_array((int) $membership->role, [2, 3], true), 422, 'مدیران و بازرسان به‌صورت پیش‌فرض مجاز هستند.');
+        $membership->update(['session_write_allowed' => ! (bool) $membership->session_write_allowed]);
+
+        return back()->with('success', $membership->session_write_allowed
+            ? "مجوز مشارکت در نشست بسته برای {$user->fullName()} فعال شد."
+            : "مجوز مشارکت در نشست بسته برای {$user->fullName()} لغو شد.");
     }
 
     public function update(Request $request, Group $group)

@@ -76,5 +76,6 @@ class Kernel extends HttpKernel
         'group.chat.csp' => \App\Http\Middleware\GroupChatContentSecurityPolicy::class,
         'group.chat.context' => \App\Http\Middleware\GroupChatRequestContext::class,
         'group.chat.idempotency' => \App\Http\Middleware\GroupChatIdempotency::class,
+        'group.session.writable' => \App\Http\Middleware\EnsureGroupSessionWritable::class,
     ];
 }

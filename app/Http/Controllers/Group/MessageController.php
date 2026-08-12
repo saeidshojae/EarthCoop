@@ -106,13 +106,10 @@ class MessageController extends Controller
         $group->update(['last_activity_at' => now()]);
         \Illuminate\Support\Facades\Log::info('[STORE_TIMING] T4 after group update: ' . round((microtime(true) - $storeT0) * 1000) . 'ms');
         $user = auth()->user();
-        $groupUserRole = GroupUser::where('group_id', $group->id)->where('user_id', $user->id)->value('role');
-        \Illuminate\Support\Facades\Log::info('[STORE_TIMING] T5 after groupUserRole: ' . round((microtime(true) - $storeT0) * 1000) . 'ms');
-
         $member = $group->users()->whereKey($user->id)->exists();
         \Illuminate\Support\Facades\Log::info('[STORE_TIMING] T6 after member check: ' . round((microtime(true) - $storeT0) * 1000) . 'ms');
 
-        if (! $member || ($groupUserRole === 0 && $group->is_open == 0)) {
+        if (! $member) {
             return response()->json(['An error occurred. Please try again.'], 403);
         }
 
@@ -924,12 +921,8 @@ class MessageController extends Controller
         ]);
 
         $user = auth()->user();
-        $groupUserRole = GroupUser::where('group_id', $message->group_id)
-            ->where('user_id', $user->id)
-            ->value('role');
-
         $isMember = $message->group->users()->whereKey($user->id)->exists();
-        if (! $isMember || ($groupUserRole === 0 && $message->group->is_open == 0)) {
+        if (! $isMember) {
             return response()->json(['An error occurred. Please try again.'], 403);
         }
 
@@ -1120,12 +1113,8 @@ class MessageController extends Controller
         ]);
 
         $user = auth()->user();
-        $groupUserRole = GroupUser::where('group_id', $group->id)
-            ->where('user_id', $user->id)
-            ->value('role');
-
         $isMember = $group->users()->whereKey($user->id)->exists();
-        if (! $isMember || ($groupUserRole === 0 && $group->is_open == 0)) {
+        if (! $isMember) {
             return response()->json(['An error occurred. Please try again.'], 403);
         }
 
@@ -1150,12 +1139,8 @@ class MessageController extends Controller
     {
         $this->authorize('view', $group);
         $user = auth()->user();
-        $groupUserRole = GroupUser::where('group_id', $group->id)
-            ->where('user_id', $user->id)
-            ->value('role');
-
         $isMember = $group->users()->whereKey($user->id)->exists();
-        if (! $isMember || ($groupUserRole === 0 && $group->is_open == 0)) {
+        if (! $isMember) {
             return response()->json(['An error occurred. Please try again.'], 403);
         }
 
@@ -1195,12 +1180,8 @@ class MessageController extends Controller
     {
         $this->authorize('view', $group);
         $user = auth()->user();
-        $groupUserRole = GroupUser::where('group_id', $group->id)
-            ->where('user_id', $user->id)
-            ->value('role');
-
         $isMember = $group->users()->whereKey($user->id)->exists();
-        if (! $isMember || ($groupUserRole === 0 && $group->is_open == 0)) {
+        if (! $isMember) {
             return response()->json(['An error occurred. Please try again.'], 403);
         }
 

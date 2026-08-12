@@ -1,0 +1,24 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('group_user', function (Blueprint $table) {
+            $table->boolean('session_write_allowed')->default(false)->after('status');
+            $table->index(['group_id', 'session_write_allowed'], 'group_user_session_write_idx');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('group_user', function (Blueprint $table) {
+            $table->dropIndex('group_user_session_write_idx');
+            $table->dropColumn('session_write_allowed');
+        });
+    }
+};

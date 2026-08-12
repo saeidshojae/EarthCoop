@@ -382,6 +382,29 @@
 
 }
 
+.chat-session-closed {
+        display: flex;
+        align-items: flex-start;
+        gap: .75rem;
+        padding: .9rem 1rem;
+        color: #92400e;
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        border-radius: 1rem;
+    }
+    .chat-session-closed p { margin: .2rem 0 0; font-size: .82rem; line-height: 1.75; color: #a16207; }
+    .member-session-permission {
+        border: 1px solid #d1d5db;
+        background: #fff;
+        color: #4b5563;
+        border-radius: .65rem;
+        padding: .4rem .65rem;
+        font-size: .72rem;
+        white-space: nowrap;
+    }
+    .member-session-permission:hover { border-color: #10b981; color: #047857; background: #ecfdf5; }
+    .member-session-permission.is-allowed { border-color: #6ee7b7; color: #047857; background: #d1fae5; }
+
 @media (max-width: 767px) {
     .telegram-reply-indicator {
         padding: 8px 12px;

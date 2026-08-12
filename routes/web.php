@@ -322,7 +322,8 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::get('/groups/{group}', [GroupController::class, 'show'])->name('groups.show');
     Route::get('/groups/{group}/logout', [GroupController::class, 'logout'])->name('groups.logout');
     Route::get('/groups/{group}/relogout', [GroupController::class, 'relogout'])->name('groups.relogout');
-    Route::get('/groups/{group}/open', [GroupController::class, 'open'])->name('groups.open');
+    Route::post('/groups/{group}/session/toggle', [GroupController::class, 'open'])->name('groups.session.toggle');
+    Route::post('/groups/{group}/session-permissions/{user}/toggle', [GroupController::class, 'toggleSessionPermission'])->name('groups.session-permissions.toggle');
     Route::put('/groups/{group}', [GroupController::class, 'update'])->name('groups.update');
     Route::get('/groups/{group}/members', [GroupController::class, 'getMembers'])->name('groups.members');
     Route::post('/groups/{group}/users/{user}/toggle-role', [GroupController::class, 'toggleUserRole'])->name('groups.members.toggle-role');
@@ -361,20 +362,20 @@ Route::middleware(Authenticate::class)->group(function () {
 
     //delegation
     Route::get('/api/groups/{group}/polls/{poll}/experts', [ChatController::class, 'pollExperts'])->middleware('group.chat.context')->name('groups.polls.experts');
-    Route::post('/api/groups/{group}/polls/{poll}/delegation/{expert}', [ChatController::class, 'storeDelegation'])->middleware(['group.chat.idempotency', 'group.chat.context'])->name('groups.delegation');
+    Route::post('/api/groups/{group}/polls/{poll}/delegation/{expert}', [ChatController::class, 'storeDelegation'])->middleware(['group.session.writable', 'group.chat.idempotency', 'group.chat.context'])->name('groups.delegation');
 
     //show profile
     Route::get('/profile-member/{user}', [ProfileController::class, 'showProfileMember'])->name('profile.member.show');
 
     // ارسال پیام در گروه
-    Route::post('/messages/send', [MessageController::class, 'store'])->middleware(['group.chat.timing', 'throttle:group-message', 'group.chat.idempotency', 'group.chat.context'])->name('groups.messages.store');
-    Route::post('/messages/{message}/edit', [MessageController::class, 'edit'])->middleware(['group.chat.idempotency', 'group.chat.context'])->name('groups.messages.edit');
-    Route::post('/messages/{message}/delete', [MessageController::class, 'delete'])->middleware(['group.chat.idempotency', 'group.chat.context'])->name('groups.messages.delete');
+    Route::post('/messages/send', [MessageController::class, 'store'])->middleware(['group.session.writable', 'group.chat.timing', 'throttle:group-message', 'group.chat.idempotency', 'group.chat.context'])->name('groups.messages.store');
+    Route::post('/messages/{message}/edit', [MessageController::class, 'edit'])->middleware(['group.session.writable', 'group.chat.idempotency', 'group.chat.context'])->name('groups.messages.edit');
+    Route::post('/messages/{message}/delete', [MessageController::class, 'delete'])->middleware(['group.session.writable', 'group.chat.idempotency', 'group.chat.context'])->name('groups.messages.delete');
     Route::post('/messages/{message}/mark-read', [MessageController::class, 'markAsRead'])->name('messages.mark-read');
     Route::get('/messages/{message}/thread', [MessageController::class, 'getThreadReplies'])->name('messages.thread');
     Route::post('/messages/update-last-read/{group}', [MessageController::class, 'updateLastReadMessage'])->name('groups.messages.updateLastRead');
     Route::post('/groups/{group}/typing', [MessageController::class, 'typing'])->name('groups.messages.typing');
-    Route::post('/messages/{message}/reaction', [MessageController::class, 'toggleReaction'])->middleware(['group.chat.idempotency', 'group.chat.context'])->name('messages.reaction');
+    Route::post('/messages/{message}/reaction', [MessageController::class, 'toggleReaction'])->middleware(['group.session.writable', 'group.chat.idempotency', 'group.chat.context'])->name('messages.reaction');
     Route::post('/groups/messages/{message}/pin', [MessageController::class, 'pin'])->name('messages.pin');
     Route::post('/groups/messages/{message}/unpin', [MessageController::class, 'unpin'])->name('messages.unpin');
     Route::post('/groups/messages/{message}/report', [MessageController::class, 'report'])->name('messages.report');
@@ -402,32 +403,32 @@ Route::middleware(Authenticate::class)->group(function () {
     })->name('change-user-role');
 
     // کامنت‌ها
-    Route::post('/comment/send', [CommentController::class, 'store'])->middleware(['throttle:group-comment', 'group.chat.idempotency', 'group.chat.context'])->name('groups.comment.store');
-        Route::put('/comments/{comment}', [CommentController::class, 'update'])->name('comments.update');
-    Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
+    Route::post('/comment/send', [CommentController::class, 'store'])->middleware(['group.session.writable', 'throttle:group-comment', 'group.chat.idempotency', 'group.chat.context'])->name('groups.comment.store');
+    Route::put('/comments/{comment}', [CommentController::class, 'update'])->middleware('group.session.writable')->name('comments.update');
+    Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->middleware('group.session.writable')->name('comments.destroy');
     
     Route::get('/groups/comment/{blog}', [CommentController::class, 'comment'])->name('groups.comment');
     Route::get('/api/comments/{blog}/messages', [CommentController::class, 'commentAPI']);
     Route::get('/api/comments/{blog}/feed', [CommentController::class, 'commentsFeed']);
     // ارسال پست
-    Route::post('/blog/send/{group}', [BlogController::class, 'store'])->middleware(['group.chat.timing', 'throttle:group-post', 'group.chat.idempotency', 'group.chat.context'])->name('groups.blog.store');
+    Route::post('/blog/send/{group}', [BlogController::class, 'store'])->middleware(['group.session.writable', 'group.chat.timing', 'throttle:group-post', 'group.chat.idempotency', 'group.chat.context'])->name('groups.blog.store');
     Route::get('/blog/{blog}/media', [BlogController::class, 'media'])->name('groups.blog.media');
-    Route::delete('/blog/{blog}', [BlogController::class, 'destroy'])->name('groups.blog.destroy');
-    Route::put('/blog/{blog}', [BlogController::class, 'update'])->name('groups.blog.update');
+    Route::delete('/blog/{blog}', [BlogController::class, 'destroy'])->middleware('group.session.writable')->name('groups.blog.destroy');
+    Route::put('/blog/{blog}', [BlogController::class, 'update'])->middleware('group.session.writable')->name('groups.blog.update');
     Route::post('/blog/{blog}/mark-read', [BlogController::class, 'markAsRead'])->name('blogs.mark-read');
 
     // نظرسنجی و رأی‌گیری
-    Route::post('/poll/send/{group}', [PollController::class, 'store'])->middleware(['group.chat.timing', 'throttle:group-poll', 'group.chat.idempotency', 'group.chat.context'])->name('groups.poll.store');
-    Route::put('/poll/{group}/poll/{poll}', [PollController::class, 'update'])->name('groups.poll.update');
-    Route::post('/poll/{group}/delete/{poll}', [PollController::class, 'delete'])->name('groups.poll.delete');
+    Route::post('/poll/send/{group}', [PollController::class, 'store'])->middleware(['group.session.writable', 'group.chat.timing', 'throttle:group-poll', 'group.chat.idempotency', 'group.chat.context'])->name('groups.poll.store');
+    Route::put('/poll/{group}/poll/{poll}', [PollController::class, 'update'])->middleware('group.session.writable')->name('groups.poll.update');
+    Route::post('/poll/{group}/delete/{poll}', [PollController::class, 'delete'])->middleware('group.session.writable')->name('groups.poll.delete');
 
-    Route::post('/polls/{poll}/vote', [PollController::class, 'vote'])->middleware(['group.chat.timing', 'throttle:group-vote', 'group.chat.idempotency', 'group.chat.context'])->name('poll.vote');
+    Route::post('/polls/{poll}/vote', [PollController::class, 'vote'])->middleware(['group.session.writable', 'group.chat.timing', 'throttle:group-vote', 'group.chat.idempotency', 'group.chat.context'])->name('poll.vote');
     Route::post('/poll/{poll}/mark-read', [PollController::class, 'markAsRead'])->name('polls.mark-read');
 
     // ری‌اکت‌ها
-    Route::post('/blogs/{blog}/react', [ReactionController::class, 'blogReact'])->middleware(['throttle:group-reaction', 'group.chat.idempotency', 'group.chat.context'])->name('blogs.react');
-    Route::post('/comments/{comment}/react', [ReactionController::class, 'commentReact'])->middleware(['throttle:group-reaction', 'group.chat.idempotency', 'group.chat.context'])->name('comments.react');
-    Route::post('/election/{group}/vote', [ElectionController::class, 'submitVote'])->name('vote');
+    Route::post('/blogs/{blog}/react', [ReactionController::class, 'blogReact'])->middleware(['group.session.writable', 'throttle:group-reaction', 'group.chat.idempotency', 'group.chat.context'])->name('blogs.react');
+    Route::post('/comments/{comment}/react', [ReactionController::class, 'commentReact'])->middleware(['group.session.writable', 'throttle:group-reaction', 'group.chat.idempotency', 'group.chat.context'])->name('comments.react');
+    Route::post('/election/{group}/vote', [ElectionController::class, 'submitVote'])->middleware('group.session.writable')->name('vote');
     Route::post('/finish-election/{election}', [ElectionController::class, 'finishElection'])->name('finish.election');
 
         /*

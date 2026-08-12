@@ -9571,6 +9571,7 @@ window.commentPrompt = function (message, options = {}) {
 
 
 
+    @can('participate', $group)
     <div class="comment-form-section">
 
 
@@ -9892,6 +9893,15 @@ window.commentPrompt = function (message, options = {}) {
 
 
       </form>
+    </div>
+    @else
+      <div class="comment-form-section" role="status" style="display:flex;align-items:flex-start;gap:.75rem;color:#92400e;background:#fffbeb;border:1px solid #fde68a;">
+        <i class="fas fa-lock" aria-hidden="true"></i>
+        <div>
+          <strong>ثبت نظر در این نشست موقتاً محدود است</strong>
+          <p style="margin:.2rem 0 0;color:#a16207;">فقط مدیران، بازرسان و اعضای دارای مجوز می‌توانند نظر یا واکنش تازه ثبت کنند.</p>
+        </div>
+    @endcan
 
 
 

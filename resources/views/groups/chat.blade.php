@@ -119,10 +119,14 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             @endphp
 
             <div class="chat-composer-shell bg-white border border-emerald-100 rounded-3xl shadow-sm p-5 w-full">
-                @if ($yourRole === 0 && $group->is_open == 0)
-                <p class="text-red-500">
-                    شما مجاز به ارسال پیام در گروه نیستید.
-                </p>
+                @cannot('participate', $group)
+                <div class="chat-session-closed" role="status">
+                    <i class="fas fa-lock" aria-hidden="true"></i>
+                    <div>
+                        <strong>نشست در حالت محدود قرار دارد</strong>
+                        <p>تا فعال‌شدن دوباره نشست، فقط مدیران، بازرسان و اعضای دارای مجوز می‌توانند پیام، پست، نظر یا رأی ثبت کنند.</p>
+                    </div>
+                </div>
                 @elseif (auth()->user()->status == 0 || auth()->user()->first_name == null || auth()->user()->last_name
                 == null)
                 <p class="text-amber-600">

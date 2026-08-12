@@ -17,7 +17,27 @@ class GroupPolicy
 
     public function participate(User $user, Group $group): bool
     {
-        return $this->view($user, $group);
+        if ($this->isAdministrator($user)) {
+            return true;
+        }
+
+        $membership = $this->membership($user, $group);
+        if ($membership === null) {
+            return false;
+        }
+
+        return (bool) $group->is_open
+            || in_array((int) $membership->role, [2, 3], true)
+            || (bool) $membership->session_write_allowed;
+    }
+
+    public function manageSession(User $user, Group $group): bool
+    {
+        if ($this->isAdministrator($user)) {
+            return true;
+        }
+
+        return in_array((int) optional($this->membership($user, $group))->role, [2, 3], true);
     }
 
     public function moderate(User $user, Group $group): bool
