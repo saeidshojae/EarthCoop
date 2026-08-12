@@ -499,11 +499,21 @@
         <button type="button" class="panel-modal__close" data-chat-page-action="cancel-manager-chat">×</button>
         <h3 class="panel-modal__title">درخواست چت با مدیران دیگر گروه‌ها</h3>
         <div class="panel-modal__body">
-            <div class="panel-search__input mb-3">
-                <i class="fas fa-search"></i>
-                <input type="text" id="searchManagers" class="form-control" placeholder="جستجوی مدیران..." autocomplete="off">
+            <div class="manager-chat-tabs" role="tablist" aria-label="درخواست‌های چت مدیران">
+                <button type="button" class="manager-chat-tab active" data-manager-chat-tab="outgoing" role="tab" aria-selected="true">
+                    <i class="fas fa-paper-plane"></i><span>ارسال به مدیران</span>
+                </button>
+                <button type="button" class="manager-chat-tab" data-manager-chat-tab="incoming" role="tab" aria-selected="false">
+                    <i class="fas fa-inbox"></i><span>درخواست‌های دریافتی</span>
+                    @if($chatRequests->isNotEmpty())<b>{{ $chatRequests->count() }}</b>@endif
+                </button>
             </div>
-            <ul id="managerList" class="panel-modal__list">
+            <section class="manager-chat-pane active" data-manager-chat-pane="outgoing">
+                <div class="panel-search__input mb-3">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchManagers" class="form-control" placeholder="جستجوی مدیر یا گروه..." autocomplete="off">
+                </div>
+                <ul id="managerList" class="panel-modal__list">
                 @php
                     $managers = \App\Models\GroupUser::query()->where('role', 3)->with(['user', 'group'])->get();
                 @endphp
@@ -527,14 +537,14 @@
                         </li>
                     @endif
                 @endforeach
-            </ul>
+                </ul>
+            </section>
+            <section class="manager-chat-pane" data-manager-chat-pane="incoming" hidden>
+                @include('chat_request', ['user' => auth()->user(), 'manager_inbox' => true])
+            </section>
         </div>
     </div>
 </div>
-
-@if($yourRole == 3)
-    @include('chat_request', ['user' => auth()->user()])
-@endif
 
 @push('styles')
 <style>
@@ -1133,6 +1143,27 @@
     .manager-request-form__submit { min-height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; border: 0; border-radius: 13px; padding: .65rem .9rem; background: linear-gradient(135deg, #7c3aed, #5b21b6); color: #fff; font-size: .8rem; font-weight: 800; white-space: nowrap; box-shadow: 0 12px 22px -15px rgba(91, 33, 182, .8); transition: transform .2s ease, box-shadow .2s ease; }
     .manager-request-form__submit:hover { transform: translateY(-1px); box-shadow: 0 16px 26px -15px rgba(91, 33, 182, .9); }
 
+    .manager-chat-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; padding: .3rem; margin-bottom: .9rem; border-radius: 16px; background: #f1f5f9; }
+    .manager-chat-tab { display: flex; align-items: center; justify-content: center; gap: .45rem; min-height: 2.75rem; border: 0; border-radius: 12px; background: transparent; color: #64748b; font-size: .82rem; font-weight: 800; transition: .2s ease; }
+    .manager-chat-tab.active { background: #fff; color: #047857; box-shadow: 0 8px 20px -17px rgba(15, 23, 42, .7); }
+    .manager-chat-tab b { display: grid; place-items: center; min-width: 1.3rem; height: 1.3rem; padding: 0 .3rem; border-radius: 999px; background: #ef4444; color: #fff; font-size: .68rem; }
+    .manager-chat-pane { min-height: 0; }
+    .manager-chat-pane.active { display: flex; flex-direction: column; min-height: 0; }
+    .manager-inbox__list { display: grid; gap: .7rem; max-height: min(580px, calc(100vh - 14rem)); overflow-y: auto; padding: .1rem; }
+    .manager-inbox__item { padding: 1rem; border: 1px solid rgba(148, 163, 184, .25); border-radius: 18px; background: linear-gradient(135deg, #fff, #f8fafc); }
+    .manager-inbox__item > label { display: inline-flex; margin-bottom: .6rem; padding: .25rem .55rem; border-radius: 999px; background: #ecfdf5; color: #047857; font-size: .72rem; font-weight: 800; }
+    .manager-inbox__layout { display: grid; grid-template-columns: minmax(130px, .55fr) minmax(180px, 1fr) auto; align-items: center; gap: 1rem; }
+    .manager-inbox__sender h6 { margin: 0 0 .25rem; color: #0f172a; font-weight: 800; }
+    .manager-inbox__sender small { color: #94a3b8; }
+    .manager-inbox__message span { display: block; margin-bottom: .25rem; color: #64748b; font-size: .72rem; font-weight: 700; }
+    .manager-inbox__message p { margin: 0; color: #334155; line-height: 1.75; overflow-wrap: anywhere; }
+    .manager-inbox__actions { display: flex; align-items: center; gap: .45rem; }
+    .manager-inbox__actions form { margin: 0; }
+    .manager-inbox__empty { min-height: 230px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .55rem; text-align: center; color: #64748b; padding: 2rem; border: 1px dashed #cbd5e1; border-radius: 20px; background: #f8fafc; }
+    .manager-inbox__empty i { font-size: 2rem; color: #94a3b8; }
+    .manager-inbox__empty strong { color: #334155; }
+    .manager-inbox__empty span { max-width: 340px; font-size: .8rem; line-height: 1.8; }
+
     @media (max-width: 767px) {
         #exitNavbar {
             display: block;
@@ -1145,6 +1176,11 @@
         .manager-item { grid-template-columns: 1fr; gap: .85rem; padding: .85rem; }
         .manager-request-form { grid-template-columns: 1fr; }
         .manager-request-form__submit { width: 100%; }
+        .manager-chat-tab { font-size: .74rem; }
+        .manager-inbox__layout { grid-template-columns: 1fr; gap: .7rem; }
+        .manager-inbox__actions { width: 100%; }
+        .manager-inbox__actions form { flex: 1; }
+        .manager-inbox__actions .btn { width: 100%; }
     }
 </style>
 @endpush
@@ -1327,6 +1363,22 @@
     const addChatRequestButton = document.getElementById('addChatRequestButton');
     if (addChatRequestButton) groupInfoLifecycle.on(addChatRequestButton, 'click', function() {
         document.getElementById('chatRequestModal').style.display = 'flex';
+    });
+
+    document.querySelectorAll('[data-manager-chat-tab]').forEach(tab => {
+        groupInfoLifecycle.on(tab, 'click', function() {
+            const selected = tab.dataset.managerChatTab;
+            document.querySelectorAll('[data-manager-chat-tab]').forEach(candidate => {
+                const active = candidate === tab;
+                candidate.classList.toggle('active', active);
+                candidate.setAttribute('aria-selected', String(active));
+            });
+            document.querySelectorAll('[data-manager-chat-pane]').forEach(pane => {
+                const active = pane.dataset.managerChatPane === selected;
+                pane.classList.toggle('active', active);
+                pane.hidden = !active;
+            });
+        });
     });
 
     // ============================================================

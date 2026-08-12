@@ -2,6 +2,7 @@
     $userId = $user->id; // ID کاربر مورد نظر
     $currentUserId = auth()->user()->id; // ID کاربر فعلی
     $managerCard = (bool) ($manager_card ?? false);
+    $managerInbox = (bool) ($manager_inbox ?? false);
 @endphp
 
 @once
@@ -55,27 +56,26 @@
 @if(auth()->check())
     <!-- نمایش درخواست‌های در انتظار -->
     @if(auth()->user()->id === $user->id)
-        <div class="card mb-3">
-            <div class="card-header bg-primary text-white">
-                درخواست‌های چت
-            </div>
-            <div class="card-body">
+        <div class="{{ $managerInbox ? 'manager-inbox' : 'card mb-3' }}">
+            @unless($managerInbox)<div class="card-header bg-primary text-white">درخواست‌های چت</div>@endunless
+            <div class="{{ $managerInbox ? 'manager-inbox__body' : 'card-body' }}">
                 @if($chatRequests->isNotEmpty())
-                    <div class="list-group">
+                    <div class="{{ $managerInbox ? 'manager-inbox__list' : 'list-group' }}">
                         @foreach($chatRequests as $request)
-                            <div class="list-group-item">
+                            <article class="{{ $managerInbox ? 'manager-inbox__item' : 'list-group-item' }}">
                                 @if($request->request_to_group != null)
                                     <label>درخواست به گروه شما</label>
                                 @endif
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
+                                <div class="manager-inbox__layout">
+                                    <div class="manager-inbox__sender">
                                         <h6 class="mb-1">{{ $request->sender->fullName() }}</h6>
                                         <small class="text-muted">{{ verta($request->created_at)->format('Y-m-d H:i') }}</small>
                                     </div>
-                                    <div class="d-flex gap-2">
-                                        <label>توضیحات کاربر: </label>
-                                        <p>{{ $request->message }}</p>
-                                        @if(auth()->user()->id == $request->receiver_id)
+                                    <div class="manager-inbox__message">
+                                        <span>پیام درخواست</span><p>{{ $request->message }}</p>
+                                    </div>
+                                    <div class="manager-inbox__actions">
+                                        @if(auth()->user()->id == $request->receiver_id || ($managerInbox && ($yourRole ?? 0) == 3))
                                             <form action="{{ route('chat-requests.accept', $request->id) }}" method="POST" class="d-inline">
                                                 @csrf
                                                 <button type="submit" class="btn btn-success btn-sm">
@@ -91,12 +91,12 @@
                                         @endif
                                     </div>
                                 </div>
-                            </div>
+                            </article>
                         @endforeach
                     </div>
                 @else
-                    <div class="alert alert-info mb-0">
-                        <i class="fas fa-info-circle"></i> درخواست چت جدیدی وجود ندارد
+                    <div class="manager-inbox__empty">
+                        <i class="fas fa-inbox"></i><strong>درخواست تازه‌ای ندارید</strong><span>درخواست‌های خطاب‌شده به مدیران این گروه اینجا نمایش داده می‌شوند.</span>
                     </div>
                 @endif
             </div>

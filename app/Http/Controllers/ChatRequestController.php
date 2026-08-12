@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ChatRequest;
 use App\Models\PrivateConversation;
 use App\Models\User;
+use App\Models\GroupUser;
 use App\Notifications\ChatRequestNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -80,12 +81,23 @@ class ChatRequestController extends Controller
 
         $input = $request->validate([
             'description' => 'required|string|max:5000',
+            'request_to_group' => 'nullable|integer|exists:groups,id',
         ]);
 
         $currentUser = auth()->user();
 
         if ((int) $currentUser->id === (int) $user->id) {
             return back()->with('error', 'Invalid request');
+        }
+
+        if (!empty($input['request_to_group'])) {
+            $isTargetManager = GroupUser::query()
+                ->where('group_id', $input['request_to_group'])
+                ->where('user_id', $user->id)
+                ->where('role', 3)
+                ->where('status', 1)
+                ->exists();
+            abort_unless($isTargetManager, 422, 'مدیر انتخاب‌شده عضو فعال این گروه نیست.');
         }
 
         $existingRequest = ChatRequest::where(function ($query) use ($user, $currentUser) {
@@ -109,6 +121,7 @@ class ChatRequestController extends Controller
                 $existingRequest->update([
                     'sender_id' => $currentUser->id,
                     'receiver_id' => $user->id,
+                    'request_to_group' => $input['request_to_group'] ?? null,
                     'message' => $input['description'],
                     'status' => 'pending',
                     'private_conversation_id' => null,
@@ -123,6 +136,7 @@ class ChatRequestController extends Controller
         $chatRequest = ChatRequest::create([
             'sender_id' => $currentUser->id,
             'receiver_id' => $user->id,
+            'request_to_group' => $input['request_to_group'] ?? null,
             'message' => $input['description'],
             'status' => 'pending',
         ]);
@@ -141,7 +155,7 @@ class ChatRequestController extends Controller
     {
         $currentUser = auth()->user();
 
-        if ((int) $chatRequest->receiver_id !== (int) $currentUser->id) {
+        if (! $this->canManageRequest($chatRequest, $currentUser)) {
             return back()->with('error', 'Unauthorized');
         }
 
@@ -191,7 +205,7 @@ class ChatRequestController extends Controller
     {
         $currentUser = auth()->user();
 
-        if ((int) $chatRequest->receiver_id !== (int) $currentUser->id) {
+        if (! $this->canManageRequest($chatRequest, $currentUser)) {
             return back()->with('error', 'Unauthorized');
         }
 
@@ -253,5 +267,19 @@ class ChatRequestController extends Controller
         ]);
 
         return $existingConversation;
+    }
+
+    private function canManageRequest(ChatRequest $chatRequest, User $user): bool
+    {
+        if ((int) $chatRequest->receiver_id === (int) $user->id) {
+            return true;
+        }
+
+        return $chatRequest->request_to_group && GroupUser::query()
+            ->where('group_id', $chatRequest->request_to_group)
+            ->where('user_id', $user->id)
+            ->where('role', 3)
+            ->where('status', 1)
+            ->exists();
     }
 }

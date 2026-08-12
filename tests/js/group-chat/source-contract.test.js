@@ -767,6 +767,10 @@ test('manager chat request modal uses scoped responsive cards without duplicated
     assert.match(panel, /manager-request-form__submit/);
     assert.match(panel, /data-manager-search-text/);
     assert.match(panel, /#chatRequestModal \.panel-modal__dialog/);
+    assert.match(panel, /data-manager-chat-tab="outgoing"/);
+    assert.match(panel, /data-manager-chat-tab="incoming"/);
+    assert.match(panel, /data-manager-chat-pane="incoming"/);
+    assert.doesNotMatch(panel, /@include\('chat_request', \['user' => auth\(\)->user\(\)\]\)/);
     assert.match(panel, /@media \(max-width: 767px\)[\s\S]*?\.manager-item \{ grid-template-columns: 1fr;/);
     assert.doesNotMatch(request, /session\('success'\)/);
     assert.doesNotMatch(request, /session\('error'\)/);

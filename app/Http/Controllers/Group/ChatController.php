@@ -325,6 +325,7 @@ class ChatController extends Controller
 
         // Get pending chat requests
         $chatRequests = ChatRequest::whereIn('receiver_id', $allManagers)
+            ->where('request_to_group', $group2->id)
             ->where('status', 'pending')
             ->with('sender')
             ->latest()

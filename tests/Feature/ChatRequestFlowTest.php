@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\ChatRequest;
 use App\Models\PrivateConversation;
 use App\Models\User;
+use App\Models\Group;
+use App\Models\GroupUser;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Artisan;
@@ -71,9 +73,9 @@ class ChatRequestFlowTest extends TestCase
                 ]);
             }
 
-            if (Schema::hasColumn('chat_requests', 'group_id') || Schema::hasColumn('chat_requests', 'request_to_group')) {
+            if (! Schema::hasColumn('chat_requests', 'request_to_group')) {
                 Artisan::call('migrate', [
-                    '--path' => 'database/migrations/2026_06_21_000002_decouple_chat_requests_from_groups.php',
+                    '--path' => 'database/migrations/2026_08_12_143000_add_request_to_group_to_chat_requests_table.php',
                     '--force' => true,
                 ]);
             }
@@ -119,6 +121,30 @@ class ChatRequestFlowTest extends TestCase
             'receiver_id' => $receiver->id,
             'status' => 'pending',
             'message' => 'new message',
+        ]);
+    }
+
+    public function test_group_target_is_stored_and_another_active_manager_can_accept(): void
+    {
+        $sender = $this->makeUser('group-sender@example.com');
+        $targetManager = $this->makeUser('group-target@example.com');
+        $actingManager = $this->makeUser('group-acting@example.com');
+        $group = Group::create(['group_type' => 'test', 'name' => 'Manager inbox ' . uniqid(), 'is_open' => true]);
+        foreach ([$targetManager, $actingManager] as $manager) {
+            GroupUser::create(['group_id' => $group->id, 'user_id' => $manager->id, 'role' => 3, 'status' => 1]);
+        }
+
+        $this->actingAs($sender)->post(route('chat-requests.send', $targetManager), [
+            'description' => 'group scoped request', 'request_to_group' => $group->id,
+        ])->assertRedirect();
+
+        $request = ChatRequest::where('sender_id', $sender->id)->where('receiver_id', $targetManager->id)->firstOrFail();
+        $this->assertSame($group->id, (int) $request->request_to_group);
+        $this->actingAs($actingManager)->post(route('chat-requests.accept', $request))->assertRedirect();
+        $request->refresh();
+        $this->assertSame('accepted', $request->status);
+        $this->assertDatabaseHas('private_conversation_user', [
+            'private_conversation_id' => $request->private_conversation_id, 'user_id' => $actingManager->id,
         ]);
     }
 

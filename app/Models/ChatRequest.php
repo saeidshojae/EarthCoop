@@ -10,6 +10,7 @@ class ChatRequest extends Model
     protected $fillable = [
         'sender_id',
         'receiver_id',
+        'request_to_group',
         'status',
         'message',
         'private_conversation_id',
@@ -23,6 +24,11 @@ class ChatRequest extends Model
     public function receiver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'receiver_id');
+    }
+
+    public function requestedGroup(): BelongsTo
+    {
+        return $this->belongsTo(Group::class, 'request_to_group');
     }
 
     public function privateConversation(): BelongsTo
