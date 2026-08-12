@@ -1,4 +1,5 @@
-<div id="electionOptionsBox" class="modal-shell" style="display: none;" dir="rtl">
+<div id="electionOptionsBox" class="modal-shell election-admin-modal" style="display: none;" dir="rtl"
+    role="dialog" aria-modal="true" aria-labelledby="electionAdminModalTitle" aria-hidden="true">
 
     <div class="modal-shell__backdrop" data-group-chat-action="close-election-admin"></div>
 
@@ -6,7 +7,7 @@
 
         <div class="modal-shell__header">
 
-            <h3 class="modal-shell__title">
+            <h3 id="electionAdminModalTitle" class="modal-shell__title">
 
                 <i class="fas fa-vote-yea me-2 text-amber-500"></i>
 

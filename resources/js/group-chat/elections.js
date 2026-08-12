@@ -24,8 +24,14 @@ export function createElections({ actions, lifecycle, store }) {
     const openAdmin = () => {
         const backdrop = document.getElementById('back');
         const modal = document.getElementById('electionOptionsBox');
-        if (backdrop) backdrop.style.display = 'block';
-        if (modal) modal.style.display = 'block';
+        if (modal?.parentElement !== document.body) document.body.appendChild(modal);
+        if (backdrop) backdrop.style.display = 'none';
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.scrollTop = 0;
+            modal.setAttribute('aria-hidden', 'false');
+        }
+        document.body.style.overflow = 'hidden';
         store.setState({ electionAdminOpen: Boolean(modal) });
         return Boolean(modal);
     };
@@ -33,7 +39,11 @@ export function createElections({ actions, lifecycle, store }) {
         const backdrop = document.getElementById('back');
         const modal = document.getElementById('electionOptionsBox');
         if (backdrop) backdrop.style.display = 'none';
-        if (modal) modal.style.display = 'none';
+        if (modal) {
+            modal.style.display = 'none';
+            modal.setAttribute('aria-hidden', 'true');
+        }
+        document.body.style.overflow = '';
         store.setState({ electionAdminOpen: false });
         return Boolean(modal);
     };

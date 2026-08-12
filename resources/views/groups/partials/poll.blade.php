@@ -1,13 +1,19 @@
 @php
-    $isSpecialized = (int) ($item->real_type ?? 0) === 1;
+    $isElection = (int) ($item->main_type ?? 1) === 0;
+    $isSpecialized = (int) ($item->real_type ?? (is_numeric($item->type ?? null) ? $item->type : 0)) === 1;
     $delegation = $isSpecialized ? ($delegationsByPollId->get($item->id) ?? null) : null;
 
     $ownerId = (int) (optional($item->user)->id ?? 0);
     $hue = fmod($ownerId * 137.508, 360);
     $saturation = 72;
     $lightness = 88;
-    $backgroundColor = "linear-gradient(135deg, hsla({$hue}, {$saturation}%, {$lightness}%, 0.9), hsla({$hue}, {$saturation}%, 96%, 0.9))";
-    $textColor = "hsl({$hue}, {$saturation}%, 25%)";
+    $backgroundColor = $isElection
+        ? 'linear-gradient(135deg, rgba(255, 247, 237, .98), rgba(254, 215, 170, .88))'
+        : "linear-gradient(135deg, hsla({$hue}, {$saturation}%, {$lightness}%, 0.9), hsla({$hue}, {$saturation}%, 96%, 0.9))";
+    $textColor = $isElection ? '#9a3412' : "hsl({$hue}, {$saturation}%, 25%)";
+    $contentLabel = $isElection
+        ? ($isSpecialized ? 'انتخابات تخصصی' : 'انتخابات عمومی')
+        : ($isSpecialized ? 'نظرسنجی تخصصی' : 'نظرسنجی عمومی');
 
     $isOwner = ((int) ($item->created_by ?? 0)) === (int) auth()->id();
     $initials = $item->user
@@ -25,10 +31,10 @@
 <div class="poll-wrapper {{ $isOwner ? 'poll-wrapper--self' : '' }}" id="poll-{{ $item->id }}"
     data-feed-item="true" data-feed-type="poll" data-feed-id="{{ $item->id }}"
     data-feed-author-id="{{ $item->created_by }}" data-feed-unread="{{ !$isOwner && !$item->isReadBy((int) auth()->id()) ? '1' : '0' }}">
-    <article class="poll-card {{ $isSpecialized ? 'poll-card--specialized' : 'poll-card--general' }}">
+    <article class="poll-card {{ $isElection ? 'poll-card--election' : 'poll-card--survey' }} {{ $isSpecialized ? 'poll-card--specialized' : 'poll-card--general' }}">
         <header class="poll-card__hero" style="background: {{ $backgroundColor }}; color: {{ $textColor }};">
             <div class="poll-card__context">
-                <span class="poll-card__badge">{{ $isSpecialized ? 'نظرسنجی تخصصی' : 'نظرسنجی عمومی' }}</span>
+                <span class="poll-card__badge">{{ $contentLabel }}</span>
                 <span class="poll-card__meta">
                     <i class="far fa-calendar"></i> {{ verta($item->created_at)->format('Y/m/d') }}
                     <span class="poll-card__dot"></span>
@@ -59,16 +65,16 @@
                     @else
                         <span class="poll-card__name">{{ optional($item->user)->fullName() ?? 'حساب حذف شده' }}</span>
                     @endif
-                    <span class="poll-card__role">{{ (int) ($item->main_type ?? 0) === 0 ? 'انتخاب' : 'نظرسنجی' }}</span>
+                    <span class="poll-card__role">{{ $isElection ? 'انتخابات' : 'نظرسنجی' }}</span>
                 </div>
             </div>
 
             <div class="action-menu" data-action-menu>
-                <button type="button" class="action-menu__toggle" aria-expanded="false" aria-label="گزینه‌های نظرسنجی">
+                <button type="button" class="action-menu__toggle" aria-expanded="false" aria-label="گزینه‌های {{ $isElection ? 'انتخابات' : 'نظرسنجی' }}">
                     <i class="fas fa-ellipsis-v"></i>
                 </button>
                 <div class="action-menu__list">
-                    <button type="button" class="action-menu__item" data-chat-page-action="reply-content" data-reply-target="poll-{{ $item->id }}" data-reply-text="نظرسنجی: {{ $item->question }}">
+                    <button type="button" class="action-menu__item" data-chat-page-action="reply-content" data-reply-target="poll-{{ $item->id }}" data-reply-text="{{ $isElection ? 'انتخابات' : 'نظرسنجی' }}: {{ $item->question }}">
                         <i class="fas fa-reply"></i> پاسخ
                     </button>
                     @if($isOwner)

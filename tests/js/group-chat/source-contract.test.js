@@ -700,6 +700,25 @@ test('election page state and actions are lifecycle-owned', () => {
     assert.doesNotMatch(groupChat, /\$\('#electionForm'\)\.on/);
 });
 
+test('election admin modal is centered and election cards are distinct from surveys', () => {
+    const elections = readFileSync('resources/js/group-chat/elections.js', 'utf8');
+    const form = readFileSync('resources/views/groups/modals/election_form.blade.php', 'utf8');
+    const poll = readFileSync('resources/views/groups/partials/poll.blade.php', 'utf8');
+    const css = readFileSync('public/Css/group-chat.css', 'utf8');
+
+    assert.match(elections, /modal\.style\.display = 'flex'/);
+    assert.match(elections, /document\.body\.appendChild\(modal\)/);
+    assert.match(elections, /document\.body\.style\.overflow = 'hidden'/);
+    assert.match(form, /class="modal-shell election-admin-modal"/);
+    assert.match(form, /aria-labelledby="electionAdminModalTitle"/);
+    assert.match(css, /#electionOptionsBox \{[\s\S]*?inset: 0;[\s\S]*?align-items: center;[\s\S]*?justify-content: center;/);
+    assert.match(css, /#electionOptionsBox \.modal-shell__dialog \{[\s\S]*?width: min\(720px, 100%\)/);
+    assert.match(poll, /\$isElection = \(int\) \(\$item->main_type/);
+    assert.match(poll, /'انتخابات تخصصی' : 'انتخابات عمومی'/);
+    assert.match(poll, /poll-card--election/);
+    assert.match(css, /\.poll-card--election \{/);
+});
+
 test('group info tabs are modular, scoped, and store-backed', () => {
     const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
     const tabs = readFileSync('resources/js/group-chat/tabs.js', 'utf8');
