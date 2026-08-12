@@ -302,47 +302,6 @@
         display: none !important;
     }
 
-    /* Sidebar Styles */
-    .sidebar {
-        width: 320px;
-        background-color: var(--color-pure-white);
-        border-radius: 1rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        padding: 1.5rem;
-        flex-shrink: 0;
-        position: sticky;
-        top: 100px;
-        height: fit-content;
-        border: 1px solid #e2e8f0;
-    }
-    
-    .sidebar-header {
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        color: var(--color-gentle-black);
-        font-size: 1.5rem;
-        font-weight: 700;
-        border-bottom: 1px solid #e2e8f0;
-    }
-
-    .sidebar-title {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .sidebar-chevron {
-        display: none;
-        transition: all 0.2s ease;
-    }
-
-    .sidebar.mobile-open .sidebar-chevron {
-        transform: rotate(180deg);
-    }
-
     .sidebar-menu-item {
         margin-bottom: 0.5rem;
     }
@@ -525,41 +484,6 @@
             flex-direction: column;
         }
 
-        .sidebar {
-            width: 100%;
-            position: relative;
-            top: 0;
-            padding: 0;
-            border-radius: 1rem;
-            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.1);
-        }
-
-        .sidebar-header {
-            min-height: 3.5rem;
-            padding: 0.75rem 1rem;
-            margin: 0;
-            border-bottom: 0;
-            font-size: 1.25rem;
-            cursor: pointer;
-        }
-
-        .sidebar.mobile-open .sidebar-header {
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .sidebar-chevron {
-            display: inline-block;
-        }
-
-        .sidebar-content {
-            display: none;
-            padding: 0.75rem;
-        }
-
-        .sidebar.mobile-open .sidebar-content {
-            display: block;
-        }
-
         .tab-buttons {
             flex-direction: column;
         }
@@ -658,89 +582,6 @@
     <div class="groups-page-layout flex flex-col lg:flex-row gap-8">
         {{-- Shared public sidebar (Home is the canonical link source) --}}
         @include('partials.sidebar-unified')
-
-        @if(false)
-        {{-- Legacy groups sidebar kept temporarily for visual rollback --}}
-        <aside class="sidebar" id="groups-sidebar">
-            <button id="sidebar-mobile-toggle" class="sidebar-header" type="button" aria-controls="groups-sidebar-content" aria-expanded="false" aria-label="باز و بسته کردن منو">
-                <span class="sidebar-title"><i class="fas fa-bars" style="color: var(--color-earth-green);"></i><span>منو</span></span>
-                <i class="sidebar-chevron fas fa-chevron-down" aria-hidden="true"></i>
-            </button>
-            <div class="sidebar-content" id="groups-sidebar-content">
-            <nav>
-                <ul class="space-y-2">
-                    <li class="sidebar-menu-item">
-                        <a href="{{ route('groups.index') }}" class="sidebar-menu-link active">
-                            <i class="fas fa-users text-ocean-blue"></i>
-                            <span class="flex-grow text-right mx-3">{{ __('navigation.footer_my_groups') }}</span>
-                            @if($totalGroups > 0)
-                                <span class="badge bg-digital-gold text-white">{{ $totalGroups }}</span>
-                            @endif
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a href="{{ route('history.index') }}" class="sidebar-menu-link">
-                            <i class="fas fa-handshake text-digital-gold"></i>
-                            <span class="flex-grow text-right mx-3">مشارکت‌های من</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a href="{{ route('history.election') }}" class="sidebar-menu-link">
-                            <i class="fas fa-vote-yea text-earth-green"></i>
-                            <span class="flex-grow text-right mx-3">انتخابات جاری</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a href="{{ route('history.poll') }}" class="sidebar-menu-link">
-                            <i class="fas fa-chart-pie text-ocean-blue"></i>
-                            <span class="flex-grow text-right mx-3">نظرسنجی‌های جاری</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        @php
-                            $accountService = app(\App\Modules\NajmBahar\Services\AccountService::class);
-                            $needsNajmAgreement = !$accountService->hasMainAccount(auth()->id());
-                        @endphp
-                        <a href="{{ route('najm-bahar.agreement') }}" class="sidebar-menu-link {{ $needsNajmAgreement ? 'blinking-item' : '' }}">
-                            <i class="fas fa-wallet text-digital-gold"></i>
-                            <span class="flex-grow text-right mx-3">حساب مالی نجم بهار</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a href="{{ route('my-invation-code') }}" class="sidebar-menu-link">
-                            <i class="fas fa-user-plus text-earth-green"></i>
-                            <span class="flex-grow text-right mx-3">دعوت از دوستان</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a href="{{ route('profile.edit') }}" class="sidebar-menu-link">
-                            <i class="fas fa-cog text-ocean-blue"></i>
-                            <span class="flex-grow text-right mx-3">ویرایش حساب کاربری</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a href="{{ route('user.tickets.index') }}" class="sidebar-menu-link">
-                            <i class="fas fa-headset text-ocean-blue"></i>
-                            <span class="flex-grow text-right mx-3">پشتیبانی</span>
-                            @php
-                                $openTicketsCount = \App\Models\Ticket::where(function($q) {
-                                    $q->where('user_id', auth()->id())
-                                      ->orWhere('email', auth()->user()->email);
-                                })->whereIn('status', ['open', 'in-progress'])->count();
-                            @endphp
-                            @if($openTicketsCount > 0)
-                            <span class="badge text-white text-xs px-2 py-1 rounded-full font-bold" style="background-color: var(--color-red-tomato);">{{ $openTicketsCount }}</span>
-                            @endif
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-            <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-center text-sm text-gray-500">
-                نسخه ۲.۱.۰ - EarthCoop
-            </div>
-            </div>
-        </aside>
-        @endif
 
         {{-- Main Content --}}
         <main class="dashboard-content">
@@ -911,57 +752,6 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const sidebar = document.getElementById('groups-sidebar');
-        const sidebarToggle = document.getElementById('sidebar-mobile-toggle');
-        const sidebarContent = document.getElementById('groups-sidebar-content');
-        const mobileSidebarQuery = window.matchMedia('(max-width: 1024px)');
-
-        function setSidebarOpenState(isOpen) {
-            if (!sidebar || !sidebarToggle || !sidebarContent) return;
-
-            sidebar.classList.toggle('mobile-open', isOpen);
-            sidebarToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-            sidebarContent.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
-        }
-
-        function syncSidebarForViewport() {
-            if (!sidebar || !sidebarToggle || !sidebarContent) return;
-
-            if (mobileSidebarQuery.matches) {
-                setSidebarOpenState(false);
-            } else {
-                sidebar.classList.remove('mobile-open');
-                sidebarToggle.setAttribute('aria-expanded', 'true');
-                sidebarContent.setAttribute('aria-hidden', 'false');
-            }
-        }
-
-        if (sidebarToggle) {
-            sidebarToggle.addEventListener('click', function () {
-                if (!mobileSidebarQuery.matches || !sidebar) return;
-                const isOpen = sidebar.classList.contains('mobile-open');
-                setSidebarOpenState(!isOpen);
-            });
-        }
-
-        if (sidebarContent) {
-            sidebarContent.querySelectorAll('.sidebar-menu-link').forEach(link => {
-                link.addEventListener('click', function () {
-                    if (mobileSidebarQuery.matches) {
-                        setSidebarOpenState(false);
-                    }
-                });
-            });
-        }
-
-        if (typeof mobileSidebarQuery.addEventListener === 'function') {
-            mobileSidebarQuery.addEventListener('change', syncSidebarForViewport);
-        } else if (typeof mobileSidebarQuery.addListener === 'function') {
-            mobileSidebarQuery.addListener(syncSidebarForViewport);
-        }
-
-        syncSidebarForViewport();
-
         // Desktop tabs
         const tabButtons = document.querySelectorAll('.tab-button');
         const tabContents = document.querySelectorAll('.desktop-tabs .tab-content');

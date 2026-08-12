@@ -8,6 +8,78 @@
         $exclusiveGroups = $groups->where('type', 'exclusive');
     @endphp
 
+    @once
+        <style>
+            .unified-public-sidebar .support-submenu {
+                margin-top: .5rem !important;
+                margin-inline-start: 1.5rem !important;
+                padding: .375rem !important;
+                border-inline-start: 2px solid rgba(16, 185, 129, .2);
+                border-radius: .75rem;
+                background: rgba(248, 250, 252, .72);
+            }
+            .unified-public-sidebar .support-submenu > li {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .unified-public-sidebar .support-submenu-link {
+                display: grid !important;
+                grid-template-columns: 1.125rem minmax(0, 1fr) auto;
+                align-items: center !important;
+                width: 100% !important;
+                min-height: 2.5rem;
+                margin: 0 !important;
+                padding: .625rem .75rem !important;
+                column-gap: .625rem !important;
+                border-radius: .625rem !important;
+                color: var(--color-gentle-black) !important;
+                background: transparent !important;
+                font-size: .9rem !important;
+                font-weight: 500 !important;
+                text-align: start !important;
+                transform: none !important;
+            }
+            .unified-public-sidebar .support-submenu-link:hover {
+                color: var(--color-dark-green) !important;
+                background: rgba(16, 185, 129, .1) !important;
+                transform: none !important;
+            }
+            .unified-public-sidebar .support-submenu-link.active {
+                color: var(--color-dark-green) !important;
+                background: rgba(16, 185, 129, .16) !important;
+                font-weight: 700 !important;
+            }
+            .unified-public-sidebar .support-submenu-link > i {
+                width: 1.125rem;
+                margin: 0 !important;
+                flex: 0 0 1.125rem;
+                text-align: center;
+                color: var(--color-ocean-blue) !important;
+            }
+            .unified-public-sidebar .support-submenu-label {
+                min-width: 0;
+                text-align: start;
+                line-height: 1.5;
+            }
+            .unified-public-sidebar .support-submenu-link .badge {
+                margin: 0 !important;
+                justify-self: end;
+            }
+            body.dark-mode .unified-public-sidebar .support-submenu {
+                background: rgba(15, 23, 42, .5);
+                border-color: rgba(52, 211, 153, .25);
+            }
+            body.dark-mode .unified-public-sidebar .support-submenu-link {
+                color: var(--text-dark) !important;
+            }
+            body.dark-mode .unified-public-sidebar .support-submenu-link:hover,
+            body.dark-mode .unified-public-sidebar .support-submenu-link.active {
+                color: #a7f3d0 !important;
+                background: rgba(16, 185, 129, .18) !important;
+            }
+        </style>
+    @endonce
+
     <!-- Right Sidebar - Collapsible on mobile -->
     <aside x-data="{ open: false }" @click.away="open = false" class="home-sidebar unified-public-sidebar w-full lg:w-80 bg-white rounded-2xl shadow-lg p-0 lg:p-6 flex-shrink-0 lg:sticky lg:top-24 h-fit border border-gray-200 transition-all duration-300 hover:shadow-xl"
            style="background-color: var(--color-pure-white);">
@@ -121,8 +193,8 @@
                 </li>
 
                 <!-- Support -->
-                <li class="sidebar-menu-item" x-data="{ open: false }">
-                    <button @click="open = !open" class="sidebar-menu-link w-full block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                <li class="sidebar-menu-item" x-data="{ open: {{ request()->routeIs('support.kb.*', 'user.tickets.*', 'user.support-chat.*') ? 'true' : 'false' }} }">
+                    <button @click="open = !open" class="sidebar-menu-link {{ request()->routeIs('support.kb.*', 'user.tickets.*', 'user.support-chat.*') ? 'active' : '' }} w-full block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
                         <div class="flex items-center">
                             <i class="fas fa-headset" style="color: var(--color-ocean-blue);"></i>
@@ -137,28 +209,26 @@
                         x-transition:leave="transition ease-in duration-150"
                         x-transition:leave-start="opacity-100 transform translate-y-0"
                         x-transition:leave-end="opacity-0 transform -translate-y-2"
-                        class="mr-8 mt-2 space-y-1">
+                        class="support-submenu space-y-1">
                         <li>
-                            <a href="{{ route('support.kb.index') }}" class="sidebar-menu-link block px-4 py-2 rounded-xl text-gentle-black transition duration-200 flex items-center relative group" style="color: var(--color-gentle-black);">
+                            <a href="{{ route('support.kb.index') }}" class="sidebar-menu-link support-submenu-link {{ request()->routeIs('support.kb.*') ? 'active' : '' }} relative group">
                                 <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                                <i class="fas fa-book text-sm ml-2" style="color: var(--color-ocean-blue);"></i>
-                                <span>پایگاه دانش</span>
+                                <i class="fas fa-book text-sm" aria-hidden="true"></i>
+                                <span class="support-submenu-label">پایگاه دانش</span>
                             </a>
                         </li>
                         <li>
-                            <a href="{{ route('user.tickets.create') }}" class="sidebar-menu-link block px-4 py-2 rounded-xl text-gentle-black transition duration-200 flex items-center relative group" style="color: var(--color-gentle-black);">
+                            <a href="{{ route('user.tickets.create') }}" class="sidebar-menu-link support-submenu-link {{ request()->routeIs('user.tickets.create') ? 'active' : '' }} relative group">
                                 <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                                <i class="fas fa-plus-circle text-sm ml-2" style="color: var(--color-ocean-blue);"></i>
-                                <span>ارسال تیکت</span>
+                                <i class="fas fa-plus-circle text-sm" aria-hidden="true"></i>
+                                <span class="support-submenu-label">ارسال تیکت</span>
                             </a>
                         </li>
                         <li>
-                            <a href="{{ route('user.tickets.index') }}" class="sidebar-menu-link block px-4 py-2 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                            <a href="{{ route('user.tickets.index') }}" class="sidebar-menu-link support-submenu-link {{ request()->routeIs('user.tickets.index', 'user.tickets.show') ? 'active' : '' }} relative group">
                                 <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                                <div class="flex items-center">
-                                    <i class="fas fa-ticket-alt text-sm ml-2" style="color: var(--color-ocean-blue);"></i>
-                                    <span>تیکت‌ها</span>
-                                </div>
+                                <i class="fas fa-ticket-alt text-sm" aria-hidden="true"></i>
+                                <span class="support-submenu-label">تیکت‌ها</span>
                                 @php
                                     $openTicketsCount = \App\Models\Ticket::where(function($q) {
                                         $q->where('user_id', auth()->id())
@@ -171,10 +241,10 @@
                             </a>
                         </li>
                         <li>
-                            <a href="{{ route('user.support-chat.index') }}" class="sidebar-menu-link block px-4 py-2 rounded-xl text-gentle-black transition duration-200 flex items-center relative group" style="color: var(--color-gentle-black);">
+                            <a href="{{ route('user.support-chat.index') }}" class="sidebar-menu-link support-submenu-link {{ request()->routeIs('user.support-chat.*') ? 'active' : '' }} relative group">
                                 <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
-                                <i class="fas fa-comments text-sm ml-2" style="color: var(--color-ocean-blue);"></i>
-                                <span>چت پشتیبانی</span>
+                                <i class="fas fa-comments text-sm" aria-hidden="true"></i>
+                                <span class="support-submenu-label">چت پشتیبانی</span>
                             </a>
                         </li>
                     </ul>

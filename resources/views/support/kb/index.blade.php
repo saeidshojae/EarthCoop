@@ -57,7 +57,7 @@
 
 
 
-<div class="flex flex-col lg:flex-row" dir="rtl">
+<div class="container mx-auto flex flex-col lg:flex-row gap-8 p-4 md:p-8">
 
 
 
