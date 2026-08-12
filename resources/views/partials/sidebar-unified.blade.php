@@ -9,7 +9,7 @@
     @endphp
 
     <!-- Right Sidebar - Collapsible on mobile -->
-    <aside x-data="{ open: false }" @click.away="open = false" class="home-sidebar w-full lg:w-80 bg-white rounded-2xl shadow-lg p-0 lg:p-6 flex-shrink-0 lg:sticky lg:top-24 h-fit border border-gray-200 transition-all duration-300 hover:shadow-xl"
+    <aside x-data="{ open: false }" @click.away="open = false" class="home-sidebar unified-public-sidebar w-full lg:w-80 bg-white rounded-2xl shadow-lg p-0 lg:p-6 flex-shrink-0 lg:sticky lg:top-24 h-fit border border-gray-200 transition-all duration-300 hover:shadow-xl"
            style="background-color: var(--color-pure-white);">
         <button type="button" @click="open = !open" class="home-sidebar-toggle w-full text-left text-xl lg:text-2xl font-bold text-gentle-black flex items-center justify-between gap-3 px-4 py-3 lg:px-0 lg:py-3 border-gray-200" :class="open ? 'border-b' : 'lg:border-b'" style="color: var(--color-gentle-black);">
             <div class="flex items-center gap-3">
@@ -23,7 +23,7 @@
             <ul class="space-y-2">
                 <!-- Notifications -->
                 <li class="sidebar-menu-item">
-                    <a href="{{ route('notifications.index') }}" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                    <a href="{{ route('notifications.index') }}" class="sidebar-menu-link {{ request()->routeIs('notifications.*') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
                         <i class="fas fa-bell" style="color: var(--color-ocean-blue);"></i>
                         <span class="flex-grow text-right mx-3">اعلان‌ها</span>
@@ -40,7 +40,7 @@
                         ->count();
                 @endphp
                 <li class="sidebar-menu-item">
-                    <a href="{{ route('chat-requests.index') }}" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                    <a href="{{ route('chat-requests.index') }}" class="sidebar-menu-link {{ request()->routeIs('chat-requests.*') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
                         <i class="fas fa-comments" style="color: var(--color-ocean-blue);"></i>
                         <span class="flex-grow text-right mx-3">درخواست‌های چت</span>
@@ -52,7 +52,7 @@
 
                 <!-- Groups -->
                 <li class="sidebar-menu-item">
-                    <a href="{{ route('groups.index') }}" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                    <a href="{{ route('groups.index') }}" class="sidebar-menu-link {{ request()->routeIs('groups.index') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
                         <i class="fas fa-users" style="color: var(--color-ocean-blue);"></i>
                         <span class="flex-grow text-right mx-3">{{ __('navigation.footer_my_groups') }}</span>
@@ -64,7 +64,7 @@
 
                 <!-- Collaborations -->
                 <li class="sidebar-menu-item">
-                    <a href="{{ route('history.index') }}" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                    <a href="{{ route('history.index') }}" class="sidebar-menu-link {{ request()->routeIs('history.index') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
                         <i class="fas fa-handshake" style="color: var(--color-digital-gold);"></i>
                         <span class="flex-grow text-right mx-3">مشارکت‌های من</span>
@@ -73,7 +73,7 @@
 
                 <!-- Elections -->
                 <li class="sidebar-menu-item">
-                    <a href="{{ route('history.election') }}" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                    <a href="{{ route('history.election') }}" class="sidebar-menu-link {{ request()->routeIs('history.election') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
                         <i class="fas fa-vote-yea" style="color: var(--color-earth-green);"></i>
                         <span class="flex-grow text-right mx-3">انتخابات جاری</span>
@@ -82,7 +82,7 @@
 
                 <!-- Polls -->
                 <li class="sidebar-menu-item">
-                    <a href="{{ route('history.poll') }}" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                    <a href="{{ route('history.poll') }}" class="sidebar-menu-link {{ request()->routeIs('history.poll') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
                         <i class="fas fa-chart-pie" style="color: var(--color-ocean-blue);"></i>
                         <span class="flex-grow text-right mx-3">نظرسنجی‌های جاری</span>
@@ -95,7 +95,7 @@
                     $needsNajmAgreement = !$accountService->hasMainAccount(auth()->id());
                 @endphp
                 <li class="sidebar-menu-item">
-                    <a href="{{ route('najm-bahar.dashboard') }}" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group {{ $needsNajmAgreement ? 'blinking-item' : '' }}" style="color: var(--color-gentle-black);">
+                    <a href="{{ route('najm-bahar.dashboard') }}" class="sidebar-menu-link {{ request()->routeIs('najm-bahar.*') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group {{ $needsNajmAgreement ? 'blinking-item' : '' }}" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
                         <i class="fas fa-wallet" style="color: var(--color-digital-gold);"></i>
                         <span class="flex-grow text-right mx-3">حساب مالی نجم بهار</span>
@@ -104,7 +104,7 @@
 
                 <!-- Invite Friends -->
                 <li class="sidebar-menu-item">
-                    <a href="{{ route('my-invation-code') }}" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                    <a href="{{ route('my-invation-code') }}" class="sidebar-menu-link {{ request()->routeIs('my-invation-code') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
                         <i class="fas fa-user-plus" style="color: var(--color-earth-green);"></i>
                         <span class="flex-grow text-right mx-3">دعوت از دوستان</span>
@@ -113,7 +113,7 @@
 
                 <!-- Edit Profile -->
                 <li class="sidebar-menu-item">
-                    <a href="{{ route('profile.edit') }}" class="sidebar-menu-link block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                    <a href="{{ route('profile.edit') }}" class="sidebar-menu-link {{ request()->routeIs('profile.edit*') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
                         <i class="fas fa-cog" style="color: var(--color-ocean-blue);"></i>
                         <span class="flex-grow text-right mx-3">ویرایش حساب کاربری</span>

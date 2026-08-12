@@ -656,7 +656,11 @@
 
 <div class="groups-page-shell container mx-auto px-4 py-6">
     <div class="groups-page-layout flex flex-col lg:flex-row gap-8">
-        {{-- Sidebar --}}
+        {{-- Shared public sidebar (Home is the canonical link source) --}}
+        @include('partials.sidebar-unified')
+
+        @if(false)
+        {{-- Legacy groups sidebar kept temporarily for visual rollback --}}
         <aside class="sidebar" id="groups-sidebar">
             <button id="sidebar-mobile-toggle" class="sidebar-header" type="button" aria-controls="groups-sidebar-content" aria-expanded="false" aria-label="باز و بسته کردن منو">
                 <span class="sidebar-title"><i class="fas fa-bars" style="color: var(--color-earth-green);"></i><span>منو</span></span>
@@ -736,6 +740,7 @@
             </div>
             </div>
         </aside>
+        @endif
 
         {{-- Main Content --}}
         <main class="dashboard-content">
