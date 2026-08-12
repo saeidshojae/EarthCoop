@@ -24,19 +24,29 @@
 
 
 
-    .nb-transfer-header {
+    section.nb-transfer-header {
 
         background: var(--nb-gradient-hero);
 
         color: var(--nb-color-white);
 
-        border-radius: var(--nb-radius-lg);
+        border-radius: 1.5rem !important;
 
-        padding: var(--nb-space-6);
+        min-height: 10.5rem !important;
+
+        padding: 2rem !important;
 
-        box-shadow: var(--nb-shadow-lg);
+        box-shadow: var(--nb-shadow-lg);
 
-    }
+    }
+
+    @media (max-width: 767px) {
+        section.nb-transfer-header {
+            min-height: 9.5rem !important;
+            padding: 1.75rem 1.5rem !important;
+            border-radius: 1.5rem !important;
+        }
+    }
 
 
 
@@ -108,7 +118,7 @@
 
         @endphp
 
-        <section class="nb-transfer-header">
+        <section class="nb-transfer-header" style="min-height: 10.5rem; padding: 2rem; border-radius: 1.5rem;">
 
             <div class="flex flex-col gap-3">
 

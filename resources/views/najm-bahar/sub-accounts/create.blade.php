@@ -177,7 +177,7 @@
 
 
 
-    .nb-transfer-header {
+    section.nb-transfer-header {
 
 
 
@@ -207,7 +207,7 @@
 
 
 
-        border-radius: var(--nb-radius-lg);
+        border-radius: 1.5rem !important;
 
 
 
@@ -217,7 +217,9 @@
 
 
 
-        padding: var(--nb-space-6);
+        min-height: 10.5rem !important;
+
+        padding: 2rem !important;
 
 
 
@@ -237,6 +239,14 @@
 
 
 
+    }
+
+    @media (max-width: 767px) {
+        section.nb-transfer-header {
+            min-height: 9.5rem !important;
+            padding: 1.75rem 1.5rem !important;
+            border-radius: 1.5rem !important;
+        }
     }
 
 
@@ -477,7 +487,7 @@ $routeParams = $routeParams ?? [];
 
 
 
-            <section class="nb-transfer-header mb-6">
+            <section class="nb-transfer-header mb-6" style="min-height: 10.5rem; padding: 2rem; border-radius: 1.5rem;">
 
 
 
@@ -1558,9 +1568,6 @@ $routeParams = $routeParams ?? [];
 
 
 @endsection
-
-
-
 
 
 
