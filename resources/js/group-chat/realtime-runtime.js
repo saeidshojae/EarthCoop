@@ -112,6 +112,7 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         const payload = event?.payload || {};
         const action = event?.action || payload.action || '';
         if (['session_scheduled', 'session_started', 'session_ended', 'session_state_changed'].includes(action)) {
+            if (Number(event?.actor_id) === Number(authUserId)) return;
             app.sessionState?.receive(action, payload);
             return;
         }

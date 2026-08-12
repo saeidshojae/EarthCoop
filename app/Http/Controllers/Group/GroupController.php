@@ -211,7 +211,7 @@ class GroupController extends Controller
                 'starts_at' => $startsAt, 'status' => 'scheduled',
             ]);
             if ($startsAt->isFuture()) {
-                event(new \App\Events\GroupFeedUpdated((int) $group->id, 'session_scheduled', $sessions->payload($session), (int) auth()->id()));
+                $sessions->scheduled($session, (int) auth()->id());
                 $message = 'جلسه برای زمان تعیین‌شده برنامه‌ریزی شد.';
             } else {
                 $session = $sessions->start($session, (int) auth()->id());

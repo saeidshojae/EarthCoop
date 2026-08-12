@@ -3,6 +3,7 @@
 namespace App\Services\GroupChat;
 
 use App\Events\GroupFeedUpdated;
+use App\Jobs\BroadcastGroupFeedUpdate;
 use App\Models\Group;
 use App\Models\GroupSession;
 use Illuminate\Support\Facades\DB;
@@ -18,28 +19,30 @@ class GroupSessionService
 
     public function start(GroupSession $session, int $actorId): GroupSession
     {
-        return DB::transaction(function () use ($session, $actorId) {
+        $session = DB::transaction(function () use ($session, $actorId) {
             $session = GroupSession::query()->lockForUpdate()->findOrFail($session->id);
             if ($session->status !== 'scheduled') return $session;
             GroupSession::where('group_id', $session->group_id)->where('status', 'active')
                 ->update(['status' => 'ended', 'ended_at' => now(), 'ended_by' => $actorId]);
             $session->update(['status' => 'active', 'started_at' => now()]);
             $session->group()->update(['is_open' => false]);
-            $this->broadcast($session, 'session_started', $actorId);
             return $session->fresh();
         });
+        $this->broadcast($session, 'session_started', $actorId);
+        return $session;
     }
 
     public function end(Group $group, int $actorId): ?GroupSession
     {
-        return DB::transaction(function () use ($group, $actorId) {
+        $session = DB::transaction(function () use ($group, $actorId) {
             $session = GroupSession::where('group_id', $group->id)->where('status', 'active')->lockForUpdate()->latest('id')->first();
             if ($session) $session->update(['status' => 'ended', 'ended_at' => now(), 'ended_by' => $actorId]);
             $group->update(['is_open' => true]);
-            if ($session) $this->broadcast($session, 'session_ended', $actorId);
-            else event(new GroupFeedUpdated((int) $group->id, 'session_state_changed', ['is_open' => true], $actorId));
             return $session?->fresh();
         });
+        if ($session) $this->broadcast($session, 'session_ended', $actorId);
+        else $this->dispatch(new GroupFeedUpdated((int) $group->id, 'session_state_changed', ['is_open' => true], $actorId));
+        return $session;
     }
 
     public function payload(GroupSession $session): array
@@ -54,6 +57,22 @@ class GroupSessionService
 
     private function broadcast(GroupSession $session, string $action, int $actorId): void
     {
-        event(new GroupFeedUpdated((int) $session->group_id, $action, $this->payload($session), $actorId));
+        $this->dispatch(new GroupFeedUpdated((int) $session->group_id, $action, $this->payload($session), $actorId));
+    }
+
+    public function scheduled(GroupSession $session, int $actorId): void
+    {
+        $this->dispatch(new GroupFeedUpdated((int) $session->group_id, 'session_scheduled', $this->payload($session), $actorId));
+    }
+
+    private function dispatch(GroupFeedUpdated $event): void
+    {
+        if (app()->bound('request') && request()->route()) {
+            app(\Illuminate\Contracts\Bus\Dispatcher::class)->dispatchAfterResponse(new BroadcastGroupFeedUpdate(
+                $event->groupId, $event->action, $event->payload, $event->actorId
+            ));
+            return;
+        }
+        event($event);
     }
 }

@@ -76,21 +76,25 @@ export function createSessionState({ api, lifecycle }) {
         const button = form?.querySelector('[type="submit"]');
         if (!button || button.disabled) return;
         button.disabled = true;
+        let data;
         try {
             const values = Object.fromEntries(new FormData(form).entries());
-            const data = await api.json(config.sessionToggleUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) });
-            closeModal(); form.reset();
-            window.GroupChatFeedback?.toast?.(data.message, { type: 'success' });
-            if (data.session) await receive(data.session.status === 'scheduled' ? 'session_scheduled' : 'session_started', data.session);
+            data = await api.json(config.sessionToggleUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) });
         } catch (error) { setStatus(error.message || 'ثبت جلسه انجام نشد.', true); }
         finally { button.disabled = false; }
+        if (!data) return;
+        closeModal(); form.reset();
+        window.GroupChatFeedback?.toast?.(data.message, { type: 'success' });
+        if (data.session) void receive(data.session.status === 'scheduled' ? 'session_scheduled' : 'session_started', data.session);
     };
     const endNow = async () => {
+        let data;
         try {
-            const data = await api.json(config.sessionToggleUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-            window.GroupChatFeedback?.toast?.(data.message, { type: 'success' });
-            if (data.session) await receive('session_ended', data.session);
+            data = await api.json(config.sessionToggleUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
         } catch (error) { window.GroupChatFeedback?.toast?.(error.message || 'پایان جلسه ثبت نشد.', { type: 'error' }); }
+        if (!data) return;
+        window.GroupChatFeedback?.toast?.(data.message, { type: 'success' });
+        if (data.session) void receive('session_ended', data.session);
     };
 
     lifecycle.on(document, 'click', event => {
