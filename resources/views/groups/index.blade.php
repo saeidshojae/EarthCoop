@@ -401,14 +401,21 @@
     .accordion-tabs {
         display: none;
         flex-direction: column;
-        gap: 1rem;
+        gap: 0.875rem;
     }
 
     .accordion-item {
         border: 1px solid #e2e8f0;
-        border-radius: 0.75rem;
+        border-radius: 1rem;
         background-color: var(--color-pure-white);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+        overflow: hidden;
+        transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+    }
+
+    .accordion-item.is-open {
+        border-color: rgba(16, 185, 129, 0.45);
+        box-shadow: 0 14px 32px rgba(16, 185, 129, 0.12);
     }
 
     .accordion-header {
@@ -416,19 +423,56 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        background: linear-gradient(45deg, var(--color-earth-green), var(--color-dark-green));
-        color: var(--color-pure-white);
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        color: var(--color-gentle-black);
         border: none;
-        padding: 16px 20px;
-        border-radius: 0.75rem 0.75rem 0 0;
+        padding: 0.9rem 1rem;
+        border-radius: 1rem;
         font-weight: 700;
         font-size: 1rem;
         cursor: pointer;
+        transition: color 0.25s ease, background 0.25s ease;
+    }
+
+    .accordion-item.is-open .accordion-header {
+        color: var(--color-dark-green);
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.13), rgba(59, 130, 246, 0.06));
+        border-radius: 1rem 1rem 0 0;
+    }
+
+    .accordion-label {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        text-align: right;
+    }
+
+    .accordion-label-icon {
+        display: grid;
+        place-items: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        flex: 0 0 auto;
+        border-radius: 0.8rem;
+        color: var(--color-earth-green);
+        background: rgba(16, 185, 129, 0.12);
+    }
+
+    .accordion-header > .toggle-icon {
+        display: grid;
+        place-items: center;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 999px;
+        color: #64748b;
+        background: #f1f5f9;
     }
 
     .accordion-content {
         display: none;
-        padding: 20px;
+        padding: 1rem;
+        border-top: 1px solid rgba(16, 185, 129, 0.16);
+        background: #ffffff;
     }
 
     .accordion-content.active {
@@ -717,8 +761,8 @@
                 {{-- Accordion (mobile) --}}
                 <div class="accordion-tabs">
                     <div class="accordion-item">
-                        <button class="accordion-header" data-target="accordion-public">
-                            گروه‌های مجمع عمومی
+                        <button class="accordion-header" data-target="accordion-public" aria-expanded="false">
+                            <span class="accordion-label"><span class="accordion-label-icon"><i class="fas fa-users"></i></span><span>گروه‌های مجمع عمومی</span></span>
                             <i class="fas fa-chevron-down toggle-icon"></i>
                         </button>
                         <div class="accordion-content" id="accordion-public">
@@ -727,8 +771,8 @@
                     </div>
 
                     <div class="accordion-item">
-                        <button class="accordion-header" data-target="accordion-specialty">
-                            گروه‌های تخصصی
+                        <button class="accordion-header" data-target="accordion-specialty" aria-expanded="false">
+                            <span class="accordion-label"><span class="accordion-label-icon"><i class="fas fa-briefcase"></i></span><span>گروه‌های تخصصی</span></span>
                             <i class="fas fa-chevron-down toggle-icon"></i>
                         </button>
                         <div class="accordion-content" id="accordion-specialty">
@@ -754,8 +798,8 @@
                     </div>
 
                     <div class="accordion-item">
-                        <button class="accordion-header" data-target="accordion-exclusive">
-                            گروه‌های اختصاصی
+                        <button class="accordion-header" data-target="accordion-exclusive" aria-expanded="false">
+                            <span class="accordion-label"><span class="accordion-label-icon"><i class="fas fa-star"></i></span><span>گروه‌های اختصاصی</span></span>
                             <i class="fas fa-chevron-down toggle-icon"></i>
                         </button>
                         <div class="accordion-content" id="accordion-exclusive">
@@ -782,8 +826,8 @@
 
                     @if(!empty($managedTable))
                         <div class="accordion-item">
-                            <button class="accordion-header" data-target="accordion-managed">
-                                گروه‌های مدیریتی
+                            <button class="accordion-header" data-target="accordion-managed" aria-expanded="false">
+                                <span class="accordion-label"><span class="accordion-label-icon"><i class="fas fa-user-shield"></i></span><span>گروه‌های مدیریتی</span></span>
                                 <i class="fas fa-chevron-down toggle-icon"></i>
                             </button>
                             <div class="accordion-content" id="accordion-managed">
@@ -970,8 +1014,20 @@
                 const icon = this.querySelector('.toggle-icon');
                 if (!content) return;
                 const isActive = content.classList.contains('active');
+
+                accordionHeaders.forEach(otherHeader => {
+                    if (otherHeader === this) return;
+                    const otherContent = document.getElementById(otherHeader.dataset.target);
+                    otherContent?.classList.remove('active');
+                    otherHeader.querySelector('.toggle-icon')?.classList.remove('rotate');
+                    otherHeader.setAttribute('aria-expanded', 'false');
+                    otherHeader.closest('.accordion-item')?.classList.remove('is-open');
+                });
+
                 content.classList.toggle('active', !isActive);
                 icon?.classList.toggle('rotate', !isActive);
+                this.setAttribute('aria-expanded', String(!isActive));
+                this.closest('.accordion-item')?.classList.toggle('is-open', !isActive);
 
                 // Initialize filters when accordion opens
                 if (!isActive) {
@@ -1000,6 +1056,20 @@
                 }
             });
         });
+
+        // Open the group category requested by dashboard cards.
+        const requestedTab = new URLSearchParams(window.location.search).get('tab');
+        const allowedTabs = ['public', 'specialty', 'exclusive', 'managed'];
+        if (requestedTab && allowedTabs.includes(requestedTab)) {
+            const desktopButton = document.querySelector(`.tab-button[data-target="${requestedTab}"]`);
+            desktopButton?.click();
+
+            const mobileHeader = document.querySelector(`.accordion-header[data-target="accordion-${requestedTab}"]`);
+            const mobileContent = document.getElementById(`accordion-${requestedTab}`);
+            if (mobileHeader && mobileContent && !mobileContent.classList.contains('active')) {
+                mobileHeader.click();
+            }
+        }
 
         // Filters for specialty tables
         function initializeFilters(container) {

@@ -83,6 +83,37 @@
         border-color: #404040 !important;
     }
 
+    .group-stat-card {
+        position: relative;
+        display: block;
+        overflow: hidden;
+        text-decoration: none;
+    }
+
+    .group-stat-card::before {
+        content: '';
+        position: absolute;
+        inset: 0 0 auto 0;
+        height: 4px;
+        background: var(--group-accent);
+        opacity: 0;
+        transition: opacity 0.25s ease;
+    }
+
+    .group-stat-card:hover::before,
+    .group-stat-card:focus-visible::before {
+        opacity: 1;
+    }
+
+    .group-stat-card:focus-visible {
+        outline: 3px solid color-mix(in srgb, var(--group-accent) 30%, transparent);
+        outline-offset: 3px;
+    }
+
+    .group-stat-arrow {
+        display: none;
+    }
+
     @media (max-width: 1023px) {
         .home-layout {
             padding-top: 0.75rem;
@@ -96,6 +127,7 @@
         .home-sidebar-nav > ul {
             padding: 0.75rem;
         }
+
     }
 </style>
 @endpush
@@ -144,55 +176,58 @@
 
         <!-- Groups Statistics -->
         @if($groups->count() > 0)
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div class="group-stats-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
 
 
             <!-- General Groups -->
-            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 content-card" style="background-color: var(--color-pure-white);">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-xl font-semibold text-gentle-black" style="color: var(--color-gentle-black);">گروه‌های عمومی</h3>
-                    <div class="w-12 h-12 rounded-full flex items-center justify-center text-2xl" style="background-color: rgba(16, 185, 129, 0.15); color: var(--color-earth-green);">
+            <a href="{{ route('groups.index', ['tab' => 'public']) }}" class="group-stat-card bg-white rounded-xl shadow-md p-6 border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 content-card" style="--group-accent: var(--color-earth-green); background-color: var(--color-pure-white);" aria-label="مشاهده گروه‌های عمومی من">
+                <div class="group-stat-heading flex items-center justify-between mb-4">
+                    <h3 class="group-stat-title text-xl font-semibold text-gentle-black" style="color: var(--color-gentle-black);">گروه‌های عمومی</h3>
+                    <div class="group-stat-icon w-12 h-12 rounded-full flex items-center justify-center text-2xl" style="background-color: rgba(16, 185, 129, 0.15); color: var(--color-earth-green);">
                         <i class="fas fa-users"></i>
                     </div>
                 </div>
-                <div class="text-5xl font-extrabold text-gentle-black font-poppins mb-4" style="color: var(--color-gentle-black);">{{ $generalGroups->count() }}</div>
-                <div class="flex items-center text-sm text-gray-600 border-t border-gray-200 pt-4">
+                <div class="group-stat-number text-5xl font-extrabold text-gentle-black font-poppins mb-4" style="color: var(--color-gentle-black);">{{ $generalGroups->count() }}</div>
+                <div class="group-stat-description flex items-center text-sm text-gray-600 border-t border-gray-200 pt-4">
                     <i class="fas fa-arrow-up ml-2" style="color: var(--color-earth-green);"></i>
                     <span>فعال و در حال رشد</span>
                 </div>
-            </div>
+                <span class="group-stat-arrow"><i class="fas fa-chevron-left"></i></span>
+            </a>
 
 
             <!-- Specialized Groups -->
-            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 content-card" style="background-color: var(--color-pure-white);">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-xl font-semibold text-gentle-black" style="color: var(--color-gentle-black);">گروه‌های تخصصی</h3>
-                    <div class="w-12 h-12 rounded-full flex items-center justify-center text-2xl" style="background-color: rgba(59, 130, 246, 0.15); color: var(--color-ocean-blue);">
+            <a href="{{ route('groups.index', ['tab' => 'specialty']) }}" class="group-stat-card bg-white rounded-xl shadow-md p-6 border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 content-card" style="--group-accent: var(--color-ocean-blue); background-color: var(--color-pure-white);" aria-label="مشاهده گروه‌های تخصصی من">
+                <div class="group-stat-heading flex items-center justify-between mb-4">
+                    <h3 class="group-stat-title text-xl font-semibold text-gentle-black" style="color: var(--color-gentle-black);">گروه‌های تخصصی</h3>
+                    <div class="group-stat-icon w-12 h-12 rounded-full flex items-center justify-center text-2xl" style="background-color: rgba(59, 130, 246, 0.15); color: var(--color-ocean-blue);">
                         <i class="fas fa-briefcase"></i>
                     </div>
                 </div>
-                <div class="text-5xl font-extrabold text-gentle-black font-poppins mb-4" style="color: var(--color-gentle-black);">{{ $specializedGroups->count() }}</div>
-                <div class="flex items-center text-sm text-gray-600 border-t border-gray-200 pt-4">
+                <div class="group-stat-number text-5xl font-extrabold text-gentle-black font-poppins mb-4" style="color: var(--color-gentle-black);">{{ $specializedGroups->count() }}</div>
+                <div class="group-stat-description flex items-center text-sm text-gray-600 border-t border-gray-200 pt-4">
                     <i class="fas fa-arrow-up ml-2" style="color: var(--color-ocean-blue);"></i>
                     <span>تخصصی و پیشرفته</span>
                 </div>
-            </div>
+                <span class="group-stat-arrow"><i class="fas fa-chevron-left"></i></span>
+            </a>
 
 
             <!-- Exclusive Groups -->
-            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 content-card" style="background-color: var(--color-pure-white);">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-xl font-semibold text-gentle-black" style="color: var(--color-gentle-black);">گروه‌های اختصاصی</h3>
-                    <div class="w-12 h-12 rounded-full flex items-center justify-center text-2xl" style="background-color: rgba(147, 51, 234, 0.15); color: #9333ea;">
+            <a href="{{ route('groups.index', ['tab' => 'exclusive']) }}" class="group-stat-card bg-white rounded-xl shadow-md p-6 border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 content-card" style="--group-accent: #9333ea; background-color: var(--color-pure-white);" aria-label="مشاهده گروه‌های اختصاصی من">
+                <div class="group-stat-heading flex items-center justify-between mb-4">
+                    <h3 class="group-stat-title text-xl font-semibold text-gentle-black" style="color: var(--color-gentle-black);">گروه‌های اختصاصی</h3>
+                    <div class="group-stat-icon w-12 h-12 rounded-full flex items-center justify-center text-2xl" style="background-color: rgba(147, 51, 234, 0.15); color: #9333ea;">
                         <i class="fas fa-star"></i>
                     </div>
                 </div>
-                <div class="text-5xl font-extrabold text-gentle-black font-poppins mb-4" style="color: var(--color-gentle-black);">{{ $exclusiveGroups->count() }}</div>
-                <div class="flex items-center text-sm text-gray-600 border-t border-gray-200 pt-4">
+                <div class="group-stat-number text-5xl font-extrabold text-gentle-black font-poppins mb-4" style="color: var(--color-gentle-black);">{{ $exclusiveGroups->count() }}</div>
+                <div class="group-stat-description flex items-center text-sm text-gray-600 border-t border-gray-200 pt-4">
                     <i class="fas fa-arrow-up ml-2" style="color: #9333ea;"></i>
                     <span>ویژه و انحصاری</span>
                 </div>
-            </div>
+                <span class="group-stat-arrow"><i class="fas fa-chevron-left"></i></span>
+            </a>
         </div>
         @endif
 
