@@ -27,7 +27,10 @@
             --color-dark-green: #047857;
         }
 
-        * { font-family: 'Vazirmatn', 'Poppins', sans-serif; }
+        * {
+            box-sizing: border-box;
+            font-family: 'Vazirmatn', 'Poppins', sans-serif;
+        }
 
         body { background-color: #e2e8f0; }
 
@@ -57,8 +60,18 @@
             border-radius: 18px 18px 0 0;
         }
 
+        .verification-code {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 0.75rem;
+            width: 100%;
+            max-width: 26rem;
+            margin-inline: auto;
+        }
+
         .verification-code input {
-            width: 3.5rem;
+            width: 100%;
+            min-width: 0;
             height: 3.5rem;
             text-align: center;
             font-size: 1.75rem;
@@ -123,14 +136,75 @@
             color: #9ca3af;
             border-color: #d1d5db;
         }
+
+        @media (max-width: 640px) {
+            body.verify-email-page {
+                align-items: flex-start;
+                padding: 0.5rem;
+            }
+
+            .verification-card {
+                width: 100%;
+                max-width: none;
+                min-height: calc(100dvh - 1rem);
+                padding: 1.5rem 1rem;
+                border-radius: 14px;
+            }
+
+            .verification-card::before {
+                border-radius: 14px 14px 0 0;
+            }
+
+            .verification-logo {
+                margin-bottom: 1.5rem;
+            }
+
+            .verification-logo svg {
+                width: 2.75rem;
+                height: 2.75rem;
+            }
+
+            .verification-logo span {
+                font-size: 1.75rem;
+            }
+
+            .verification-heading {
+                margin-bottom: 1.5rem;
+            }
+
+            .verification-heading h2 {
+                font-size: 1.75rem;
+            }
+
+            .verification-heading p {
+                font-size: 0.95rem;
+                line-height: 1.9;
+            }
+
+            .verification-code {
+                gap: clamp(0.3rem, 1.8vw, 0.55rem);
+                max-width: 100%;
+            }
+
+            .verification-code input {
+                height: clamp(3rem, 13vw, 3.5rem);
+                font-size: 1.4rem;
+                border-radius: 10px;
+            }
+
+            .btn-primary-custom,
+            .btn-secondary-custom {
+                width: 100%;
+            }
+        }
     </style>
 </head>
-<body class="font-vazirmatn leading-relaxed flex items-center justify-center min-h-screen p-4">
+<body class="verify-email-page font-vazirmatn leading-relaxed flex items-center justify-center min-h-screen p-4">
 
-    <div class="form-card-gradient w-full max-w-2xl mx-auto p-8 md:p-10">
+    <div class="verification-card form-card-gradient w-full max-w-2xl mx-auto p-8 md:p-10">
 
         <!-- Logo -->
-        <div class="flex items-center justify-center space-x-3 rtl:space-x-reverse mb-8">
+        <div class="verification-logo flex items-center justify-center space-x-3 rtl:space-x-reverse mb-8">
             <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="animate-bounce-custom">
                 <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#10b981" opacity="0.8"/>
                 <path d="M12 2C10.5 4 8 6 8 9C8 12 12 14 12 14C12 14 16 12 16 9C16 6 13.5 4 12 2ZM12 14C12 14 10 16 10 18C10 20 12 22 12 22" fill="#047857"/>
@@ -139,7 +213,7 @@
         </div>
 
         <!-- Header -->
-        <div class="text-center mb-8">
+        <div class="verification-heading text-center mb-8">
             <h2 class="text-3xl md:text-4xl font-extrabold mb-3" style="color: var(--color-gentle-black);">
                 تأیید ایمیل
             </h2>
@@ -162,7 +236,7 @@
             @csrf
             <input type="hidden" name="email" value="{{ $email }}">
 
-            <div class="verification-code flex justify-center gap-3 mb-6" dir="ltr">
+            <div class="verification-code mb-6" dir="ltr">
                 <input type="text" name="code[]" maxlength="1" pattern="[0-9]" inputmode="numeric" required dir="ltr" style="direction: ltr; text-align: center;">
                 <input type="text" name="code[]" maxlength="1" pattern="[0-9]" inputmode="numeric" required dir="ltr" style="direction: ltr; text-align: center;">
                 <input type="text" name="code[]" maxlength="1" pattern="[0-9]" inputmode="numeric" required dir="ltr" style="direction: ltr; text-align: center;">
