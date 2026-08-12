@@ -505,13 +505,25 @@
             </div>
             <ul id="managerList" class="panel-modal__list">
                 @php
-                    $managers = \App\Models\GroupUser::where('role', 3)->get();
+                    $managers = \App\Models\GroupUser::query()->where('role', 3)->with(['user', 'group'])->get();
                 @endphp
                 @foreach ($managers as $manager)
                     @if (auth()->id() !== $manager->user_id)
-                        <li class="panel-modal__list-item manager-item">
-                            <span>{{ $manager->user->first_name }} {{ $manager->user->last_name }} ({{ $manager->group->name }})</span>
-                            @include('chat_request', ['user' => $manager->user, 'request_to_group' => $manager->group_id])
+                        <li class="manager-item" data-manager-search-text="{{ mb_strtolower(trim($manager->user->first_name . ' ' . $manager->user->last_name . ' ' . $manager->group->name)) }}">
+                            <div class="manager-request-card__identity">
+                                <div class="manager-request-card__avatar">
+                                    @if($manager->user->avatar)
+                                        <img src="{{ asset('storage/' . ltrim($manager->user->avatar, '/')) }}" alt="">
+                                    @else
+                                        <span>{{ mb_substr($manager->user->first_name ?? '', 0, 1) }}{{ mb_substr($manager->user->last_name ?? '', 0, 1) }}</span>
+                                    @endif
+                                </div>
+                                <div class="manager-request-card__person">
+                                    <strong>{{ $manager->user->first_name }} {{ $manager->user->last_name }}</strong>
+                                    <span><i class="fas fa-layer-group"></i>{{ $manager->group->name }}</span>
+                                </div>
+                            </div>
+                            @include('chat_request', ['user' => $manager->user, 'request_to_group' => $manager->group_id, 'manager_card' => true])
                         </li>
                     @endif
                 @endforeach
@@ -1005,6 +1017,24 @@
         box-shadow: 0 35px 70px -30px rgba(15, 23, 42, 0.45);
     }
 
+    #chatRequestModal .panel-modal__dialog {
+        width: min(760px, 94vw);
+        max-height: min(820px, calc(100vh - 3rem));
+        display: flex;
+        flex-direction: column;
+    }
+
+    #chatRequestModal .panel-modal__body {
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #chatRequestModal .panel-modal__list {
+        max-height: min(610px, calc(100vh - 12rem));
+        padding: .15rem .1rem .4rem;
+    }
+
     .panel-modal__close {
         position: absolute;
         top: 1rem;
@@ -1049,10 +1079,72 @@
         cursor: pointer;
     }
 
+    .manager-item {
+        display: grid;
+        grid-template-columns: minmax(180px, .8fr) minmax(300px, 1.4fr);
+        align-items: center;
+        gap: 1.15rem;
+        padding: 1rem;
+        border: 1px solid rgba(148, 163, 184, .25);
+        border-radius: 20px;
+        background: linear-gradient(135deg, rgba(248, 250, 252, .98), rgba(240, 253, 250, .72));
+        box-shadow: 0 14px 30px -28px rgba(15, 23, 42, .55);
+        transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+    }
+
+    .manager-item:hover {
+        border-color: rgba(16, 185, 129, .4);
+        box-shadow: 0 20px 38px -30px rgba(5, 150, 105, .65);
+        transform: translateY(-1px);
+    }
+
+    .manager-request-card__identity {
+        display: flex;
+        align-items: center;
+        gap: .8rem;
+        min-width: 0;
+    }
+
+    .manager-request-card__avatar {
+        flex: 0 0 3.25rem;
+        width: 3.25rem;
+        height: 3.25rem;
+        border-radius: 17px;
+        overflow: hidden;
+        display: grid;
+        place-items: center;
+        color: #047857;
+        font-weight: 800;
+        background: linear-gradient(145deg, #d1fae5, #ccfbf1);
+        border: 1px solid rgba(16, 185, 129, .24);
+    }
+
+    .manager-request-card__avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .manager-request-card__person { min-width: 0; display: grid; gap: .35rem; }
+    .manager-request-card__person strong { color: #0f172a; font-size: .95rem; overflow-wrap: anywhere; }
+    .manager-request-card__person span { display: inline-flex; align-items: center; gap: .35rem; color: #64748b; font-size: .78rem; }
+    .manager-request-card__person i { color: #10b981; }
+    .manager-request-card__action { margin: 0; width: 100%; }
+    .manager-request-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: .75rem; width: 100%; }
+    .manager-request-form__field { display: grid; gap: .35rem; min-width: 0; }
+    .manager-request-form__field label { color: #475569; font-size: .78rem; font-weight: 700; }
+    .manager-request-form__field textarea.form-control { min-height: 4.25rem; max-height: 8rem; resize: vertical; border-radius: 13px; border-color: #cbd5e1; padding: .65rem .75rem; font-size: .82rem; line-height: 1.65; background: #fff; }
+    .manager-request-form__field textarea.form-control:focus { border-color: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, .12); }
+    .manager-request-form__submit { min-height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; border: 0; border-radius: 13px; padding: .65rem .9rem; background: linear-gradient(135deg, #7c3aed, #5b21b6); color: #fff; font-size: .8rem; font-weight: 800; white-space: nowrap; box-shadow: 0 12px 22px -15px rgba(91, 33, 182, .8); transition: transform .2s ease, box-shadow .2s ease; }
+    .manager-request-form__submit:hover { transform: translateY(-1px); box-shadow: 0 16px 26px -15px rgba(91, 33, 182, .9); }
+
     @media (max-width: 767px) {
         #exitNavbar {
             display: block;
         }
+
+        #chatRequestModal { padding: .75rem; }
+        #chatRequestModal .panel-modal__dialog { width: 100%; max-height: calc(100dvh - 1.5rem); padding: 1.1rem; border-radius: 20px; }
+        #chatRequestModal .panel-modal__title { padding-left: 2.3rem; font-size: .98rem; }
+        #chatRequestModal .panel-modal__list { max-height: calc(100dvh - 11rem); }
+        .manager-item { grid-template-columns: 1fr; gap: .85rem; padding: .85rem; }
+        .manager-request-form { grid-template-columns: 1fr; }
+        .manager-request-form__submit { width: 100%; }
     }
 </style>
 @endpush
@@ -1207,7 +1299,7 @@
             groupInfoLifecycle.on(managerSearch, 'input', debounce(function() {
                 const query = (managerSearch.value || '').toLowerCase();
                 document.querySelectorAll('.manager-item').forEach(item => {
-                    const text = item.querySelector('span')?.textContent?.toLowerCase() ?? '';
+                    const text = item.dataset.managerSearchText || '';
                     item.style.display = text.includes(query) ? 'flex' : 'none';
                 });
             }, 200));

@@ -1,6 +1,7 @@
 @php
     $userId = $user->id; // ID کاربر مورد نظر
     $currentUserId = auth()->user()->id; // ID کاربر فعلی
+    $managerCard = (bool) ($manager_card ?? false);
 @endphp
 
 @once
@@ -114,22 +115,22 @@
             })->first();
         @endphp
 
-        <div class="chat-request mb-3" style="display: flex; justify-content: center; flex-direction: column; align-items: center;">
+        <div class="chat-request {{ $managerCard ? 'manager-request-card__action' : 'mb-3' }}">
             @if(!$existingRequest)
-                <form action="{{ route('chat-requests.send', $user->id) }}" method="POST" class="d-inline" style="width: 100%">
+                <form action="{{ route('chat-requests.send', $user->id) }}" method="POST" class="manager-request-form">
                     @csrf
                     @if(isset($request_to_group))
                         <input type="hidden" name="request_to_group" value="{{ $request_to_group }}">
                     @endif
-                    <div class="form-grpoup">
-                        <label>توضیحات خود را وارد کنید</label>
-                        <textarea class="form-control" placeholder="توضیحات" name="description">{{ old('description') }}</textarea>
+                    <div class="manager-request-form__field">
+                        <label for="manager-request-description-{{ $user->id }}-{{ $request_to_group ?? 0 }}">پیام درخواست</label>
+                        <textarea id="manager-request-description-{{ $user->id }}-{{ $request_to_group ?? 0 }}" class="form-control" placeholder="دلیل یا موضوع گفت‌وگو را کوتاه بنویسید…" name="description" rows="2">{{ old('description') }}</textarea>
                         @error('description')
                             <span>{{ $message }}</span>
                         @enderror
-                    </div><br>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-comment"></i> درخواست چت
+                    </div>
+                    <button type="submit" class="manager-request-form__submit">
+                        <i class="fas fa-comment-dots"></i><span>ارسال درخواست</span>
                     </button>
                 </form>
             @elseif($existingRequest->status === 'pending')
@@ -175,15 +176,4 @@
         </div>
     @endif
 
-    @if(session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="alert alert-danger">
-            {{ session('error') }}
-        </div>
-    @endif
 @endif

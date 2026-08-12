@@ -759,6 +759,19 @@ test('group info and election panel handlers are lifecycle-owned and declarative
     }
 });
 
+test('manager chat request modal uses scoped responsive cards without duplicated flash messages', () => {
+    const panel = readFileSync('resources/views/groups/partials/group_info_panel.blade.php', 'utf8');
+    const request = readFileSync('resources/views/chat_request.blade.php', 'utf8');
+
+    assert.match(panel, /manager-request-card__identity/);
+    assert.match(panel, /manager-request-form__submit/);
+    assert.match(panel, /data-manager-search-text/);
+    assert.match(panel, /#chatRequestModal \.panel-modal__dialog/);
+    assert.match(panel, /@media \(max-width: 767px\)[\s\S]*?\.manager-item \{ grid-template-columns: 1fr;/);
+    assert.doesNotMatch(request, /session\('success'\)/);
+    assert.doesNotMatch(request, /session\('error'\)/);
+});
+
 test('poll skill-list UI is modular and store-backed', () => {
     const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
     const skills = readFileSync('resources/js/group-chat/skill-lists.js', 'utf8');
