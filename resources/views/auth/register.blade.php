@@ -230,9 +230,8 @@
 
 
 
-                    @if(isset($_GET['code']))
+                    @if($invitationRequired && filled($invitationCode))
 
-                        <input type="hidden" name="invation_code" value="{{ $_GET['code'] }}">
 
                         <div class="bg-green-50 border-r-4 border-green-500 p-4 rounded-lg">
 
@@ -244,7 +243,7 @@
 
                                     <p class="text-green-700 font-bold">کد دعوت تایید شد</p>
 
-                                    <p class="text-green-600 text-sm mt-1">کد: <span class="font-mono font-bold">{{ $_GET['code'] }}</span></p>
+                                    <p class="text-green-600 text-sm mt-1">کد: <span class="font-mono font-bold">{{ $invitationCode }}</span></p>
 
                                 </div>
 

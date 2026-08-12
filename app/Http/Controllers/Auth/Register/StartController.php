@@ -117,8 +117,8 @@ class StartController extends Controller
 
     public function processAgreement(Request $request)
     {
-        $code = '';
         $setting = Setting::find(1);
+        $invitationRequired = $setting && (int) $setting->invation_status === 1;
         
         // Validate terms acceptance first
         $request->validate([
@@ -128,11 +128,7 @@ class StartController extends Controller
             'terms.accepted' => 'لطفاً قوانین و مقررات را بپذیرید'
         ]);
         
-        if($setting->invation_status == 0){
-            $request->validate([
-                'invite_code' => 'nullable|string'
-            ]);    
-        }else{
+        if ($invitationRequired) {
             $inputs = $request->validate([
                 'invite_code' => 'required|string|exists:invitation_codes,code'
             ], [
@@ -141,11 +137,13 @@ class StartController extends Controller
             ]);
             
             $invartion = InvitationCode::where('code', $inputs['invite_code'])->where('used', 0)->where('expire_at', '>=', now())->first();
-            if($invartion == null){
+            if ($invartion == null) {
                 return redirect()->back()->withErrors(['invite_code' => 'کد دعوت وارد شده نامعتبر، استفاده شده یا منقضی شده است'])->withInput();
-            }else{
-                $code = $invartion->code;
             }
+
+            $request->session()->put('registration_invitation_code', $invartion->code);
+        } else {
+            $request->session()->forget('registration_invitation_code');
         }
 
         session([
@@ -153,7 +151,7 @@ class StartController extends Controller
             'registration_terms_accepted' => true,
             'registration_terms_accepted_at' => now()->toIso8601String(),
         ]);
-        return redirect()->route('register.form', ['code' => $code]);
+        return redirect()->route('register.form');
     }
 
     public function showRegisterForm(Request $request)
@@ -164,7 +162,28 @@ class StartController extends Controller
             ]);
         }
 
-        return view('auth.register');
+        $setting = Setting::find(1);
+        $invitationRequired = $setting && (int) $setting->invation_status === 1;
+        $invitationCode = $invitationRequired
+            ? $request->session()->get('registration_invitation_code')
+            : null;
+
+        if ($invitationRequired) {
+            $validInvitation = InvitationCode::where('code', $invitationCode)
+                ->where('used', 0)
+                ->where('expire_at', '>=', now())
+                ->exists();
+
+            if (!$validInvitation) {
+                return redirect()->route('welcome')->withErrors([
+                    'invite_code' => 'برای ثبت‌نام باید یک کد دعوت معتبر وارد کنید.',
+                ]);
+            }
+        } else {
+            $request->session()->forget('registration_invitation_code');
+        }
+
+        return view('auth.register', compact('invitationRequired', 'invitationCode'));
     }
 
     public function processRegister(Request $request)
@@ -175,11 +194,32 @@ class StartController extends Controller
             ]);
         }
 
-        $inputs = $request->validate([
+        $setting = Setting::find(1);
+        $invitationRequired = $setting && (int) $setting->invation_status === 1;
+        $invitationCode = $invitationRequired
+            ? $request->session()->get('registration_invitation_code')
+            : null;
+        $invartion = null;
+
+        if ($invitationRequired) {
+            $invartion = InvitationCode::where('code', $invitationCode)
+                ->where('used', 0)
+                ->where('expire_at', '>=', now())
+                ->first();
+
+            if (!$invartion) {
+                return redirect()->route('welcome')->withErrors([
+                    'invite_code' => 'کد دعوت معتبر نیست یا منقضی شده است. لطفاً دوباره کد دعوت را وارد کنید.',
+                ]);
+            }
+        } else {
+            $request->session()->forget('registration_invitation_code');
+        }
+
+        $request->validate([
             'email'    => 'required|email|unique:users,email|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
             'phone'    => 'nullable|unique:users,phone',
             'password' => 'required|min:6|confirmed',
-            'invation_code' => 'nullable|string',
         ]);
 
         $user = User::create([
@@ -190,15 +230,12 @@ class StartController extends Controller
             'terms_accepted_at' => now(),
         ]);
         
-        if(isset($inputs['invation_code'])){
-            $invartion = InvitationCode::where('code', $inputs['invation_code'])->where('used', 0)->where('expire_at', '>=', now())->first();
-            if($invartion != null){
-                $invartion->update([
-                    'used' => 1 ,
-                    'used_by' => $user->id,
-                    'used_at' => now(),
-                ]);
-            }
+        if ($invartion) {
+            $invartion->update([
+                'used' => 1,
+                'used_by' => $user->id,
+                'used_at' => now(),
+            ]);
         }
 
         // ارسال کد تأیید ایمیل
@@ -209,6 +246,7 @@ class StartController extends Controller
         $request->session()->forget([
             'registration_terms_accepted',
             'registration_terms_accepted_at',
+            'registration_invitation_code',
         ]);
         return redirect()->route('email.verify.form', ['email' => $request->email]);
     }
