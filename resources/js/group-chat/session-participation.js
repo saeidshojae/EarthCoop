@@ -3,6 +3,16 @@ export function createSessionParticipation({ api, lifecycle }) {
     const memberModal = document.getElementById('sessionRequestModal');
     const adminModal = document.getElementById('sessionAdminModal');
     const listen = (target, type, handler) => target ? lifecycle.on(target, type, handler) : null;
+    const badge = document.getElementById('sessionParticipationBadge');
+    let pendingCount = Number(badge?.textContent || 0);
+    const updateBadge = count => {
+        pendingCount = Math.max(0, Number(count || 0));
+        if (!badge) return;
+        badge.textContent = String(pendingCount).replace(/\d/g, digit => '۰۱۲۳۴۵۶۷۸۹'[digit]);
+        badge.hidden = pendingCount === 0;
+        badge.classList.remove('is-pulsing');
+        if (pendingCount) requestAnimationFrame(() => badge.classList.add('is-pulsing'));
+    };
     const status = (element, message, type = 'info') => {
         if (!element) return;
         element.hidden = false;
@@ -61,6 +71,7 @@ export function createSessionParticipation({ api, lifecycle }) {
         if (members) members.innerHTML = adminData.members.length ? adminData.members.map(item => memberCard(item)).join('') : '<div class="session-admin-empty">عضوی برای مدیریت وجود ندارد.</div>';
         const count = document.getElementById('sessionPendingCount');
         if (count) count.textContent = String(adminData.requests.length).replace(/\d/g, digit => '۰۱۲۳۴۵۶۷۸۹'[digit]);
+        updateBadge(adminData.requests.length);
         document.getElementById('sessionAdminLoading')?.setAttribute('hidden', '');
         document.getElementById('sessionAdminContent')?.removeAttribute('hidden');
     };
@@ -107,5 +118,35 @@ export function createSessionParticipation({ api, lifecycle }) {
     });
     listen(submitRequest, 'click', sendRequest);
 
-    return Object.freeze({ showRequest: () => show(memberModal), showAdmin: loadAdmin });
+    const receiveRequest = payload => {
+        if (!config.canManageSession) return;
+        updateBadge(payload?.pending_count ?? (pendingCount + 1));
+        const name = payload?.requester_name || 'یکی از اعضا';
+        window.GroupChatFeedback?.toast?.(`${name} برای مشارکت در نشست دست بلند کرده است.`, { type: 'info', duration: 8000 });
+        if (adminModal && !adminModal.hidden) loadAdmin();
+    };
+    const receiveResolution = payload => {
+        if (!config.canManageSession) return;
+        updateBadge(payload?.pending_count ?? pendingCount);
+        if (adminModal && !adminModal.hidden) loadAdmin();
+    };
+    const refreshPendingCount = async () => {
+        if (!config.canManageSession || !config.participationStateUrl || document.hidden) return;
+        try {
+            const data = await api.json(config.participationStateUrl);
+            const next = Number(data?.pending_requests_count || 0);
+            if (next > pendingCount) {
+                window.GroupChatFeedback?.toast?.(`${next - pendingCount} درخواست مشارکت تازه دارید.`, { type: 'info', duration: 7000 });
+            }
+            updateBadge(next);
+        } catch (_) {
+            // Realtime/polling connectivity is handled by the shared runtime.
+        }
+    };
+    if (config.canManageSession) {
+        lifecycle.interval(refreshPendingCount, 15000);
+        if (new URLSearchParams(window.location.search).get('session_requests') === '1') lifecycle.timeout(loadAdmin, 0);
+    }
+
+    return Object.freeze({ showRequest: () => show(memberModal), showAdmin: loadAdmin, receiveRequest, receiveResolution, refreshPendingCount });
 }

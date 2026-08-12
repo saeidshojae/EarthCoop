@@ -117,6 +117,7 @@
                 <button type="button" class="panel-action-btn" data-session-admin-open>
                     <i class="fas fa-hand-paper"></i>
                     <span>مدیریت مشارکت نشست</span>
+                    <span id="sessionParticipationBadge" class="session-participation-badge" @if(empty($pendingSessionParticipationCount)) hidden @endif>{{ (int)($pendingSessionParticipationCount ?? 0) }}</span>
                 </button>
             @endif
             <a href="{{ route('groups.logout', $group->id) }}" class="panel-action-btn panel-action-btn--danger">

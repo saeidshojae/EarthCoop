@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Group;
 use App\Models\GroupSessionParticipationRequest;
 use App\Models\GroupUser;
+use App\Notifications\GroupSessionParticipationRequested;
+use App\Events\GroupFeedUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -15,10 +17,15 @@ class SessionParticipationController extends Controller
     {
         $this->authorize('view', $group);
 
+        $canManage = auth()->user()->can('manageSession', $group);
+
         return response()->json([
             'status' => 'success',
             'session_open' => (bool) $group->is_open,
             'can_participate' => auth()->user()->can('participate', $group),
+            'pending_requests_count' => $canManage
+                ? GroupSessionParticipationRequest::where('group_id', $group->id)->where('status', 'pending')->count()
+                : 0,
         ]);
     }
 
@@ -29,15 +36,33 @@ class SessionParticipationController extends Controller
         abort_if(auth()->user()->can('participate', $group), 422, 'شما هم‌اکنون مجوز مشارکت دارید.');
 
         $validated = $request->validate(['message' => 'nullable|string|max:300']);
+        $existing = GroupSessionParticipationRequest::where('group_id', $group->id)
+            ->where('user_id', auth()->id())->first();
+        $isNewRequest = ! $existing || $existing->status !== 'pending';
         $participationRequest = GroupSessionParticipationRequest::updateOrCreate(
             ['group_id' => $group->id, 'user_id' => auth()->id()],
             ['status' => 'pending', 'message' => $validated['message'] ?? null, 'resolved_by' => null, 'resolved_at' => null]
         );
 
+        if ($isNewRequest) {
+            $requester = auth()->user();
+            $moderators = $group->users()->wherePivot('status', 1)->wherePivotIn('role', [2, 3])->get();
+            $moderators->each->notify(new GroupSessionParticipationRequested($participationRequest, $group, $requester));
+
+            event(new GroupFeedUpdated((int) $group->id, 'session_participation_requested', [
+                'request_id' => (int) $participationRequest->id,
+                'requester_id' => (int) $requester->id,
+                'requester_name' => trim(($requester->first_name ?? '') . ' ' . ($requester->last_name ?? '')) ?: 'یکی از اعضا',
+                'message' => $participationRequest->message,
+                'pending_count' => GroupSessionParticipationRequest::where('group_id', $group->id)->where('status', 'pending')->count(),
+            ], (int) $requester->id));
+        }
+
         return response()->json([
             'status' => 'success',
             'message' => 'درخواست مشارکت شما برای مدیران و بازرسان ارسال شد.',
             'request' => ['id' => $participationRequest->id, 'status' => $participationRequest->status],
+            'already_pending' => ! $isNewRequest,
         ]);
     }
 
@@ -95,6 +120,12 @@ class SessionParticipationController extends Controller
                     'resolved_by' => auth()->id(), 'resolved_at' => now(), 'updated_at' => now(),
                 ]);
         });
+
+        event(new GroupFeedUpdated((int) $group->id, 'session_participation_resolved', [
+            'user_ids' => $memberships->pluck('user_id')->map(fn ($id) => (int) $id)->values()->all(),
+            'action' => $validated['action'],
+            'pending_count' => GroupSessionParticipationRequest::where('group_id', $group->id)->where('status', 'pending')->count(),
+        ], (int) auth()->id()));
 
         return response()->json([
             'status' => 'success',

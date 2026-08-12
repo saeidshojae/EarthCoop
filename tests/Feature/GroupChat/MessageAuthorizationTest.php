@@ -156,6 +156,32 @@ class MessageAuthorizationTest extends TestCase
                 $table->timestamps();
             });
         }
+
+        if (! Schema::hasTable('group_session_participation_requests')) {
+            Schema::create('group_session_participation_requests', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('group_id');
+                $table->unsignedBigInteger('user_id');
+                $table->string('status')->default('pending');
+                $table->string('message', 300)->nullable();
+                $table->unsignedBigInteger('resolved_by')->nullable();
+                $table->timestamp('resolved_at')->nullable();
+                $table->timestamps();
+                $table->unique(['group_id', 'user_id']);
+            });
+        }
+
+        if (! Schema::hasTable('notifications')) {
+            Schema::create('notifications', function (Blueprint $table) {
+                $table->uuid('id')->primary();
+                $table->string('type');
+                $table->string('notifiable_type');
+                $table->unsignedBigInteger('notifiable_id');
+                $table->text('data');
+                $table->timestamp('read_at')->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     public function test_message_owner_can_edit_message(): void
@@ -427,20 +453,6 @@ class MessageAuthorizationTest extends TestCase
                 ->assertSuccessful();
         }
 
-        if (! Schema::hasTable('group_session_participation_requests')) {
-            Schema::create('group_session_participation_requests', function (Blueprint $table) {
-                $table->id();
-                $table->unsignedBigInteger('group_id');
-                $table->unsignedBigInteger('user_id');
-                $table->string('status')->default('pending');
-                $table->string('message', 300)->nullable();
-                $table->unsignedBigInteger('resolved_by')->nullable();
-                $table->timestamp('resolved_at')->nullable();
-                $table->timestamps();
-                $table->unique(['group_id', 'user_id']);
-            });
-        }
-
         [$group, $member] = $this->makeGroupWithMember(1);
         $group->update(['is_open' => false]);
         GroupUser::where('group_id', $group->id)->where('user_id', $member->id)
@@ -482,6 +494,13 @@ class MessageAuthorizationTest extends TestCase
         $this->assertDatabaseHas('group_session_participation_requests', [
             'group_id' => $group->id, 'user_id' => $member->id, 'status' => 'pending',
         ]);
+        $this->assertSame(1, $inspector->notifications()->count());
+        $this->assertSame('group.chat.request', $inspector->notifications()->first()->data['type']);
+
+        $this->actingAs($member)->postJson(route('groups.session-participation.request', $group), [
+            'message' => 'توضیح تکمیلی درخواست',
+        ])->assertOk()->assertJsonPath('already_pending', true);
+        $this->assertSame(1, $inspector->notifications()->count(), 'A repeated pending request must not spam moderators.');
 
         $this->actingAs($inspector)->getJson(route('groups.session-participation.index', $group))
             ->assertOk()->assertJsonPath('requests.0.user_id', $member->id);

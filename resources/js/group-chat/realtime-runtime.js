@@ -113,6 +113,14 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         const payload = event?.payload || {};
         const action = event?.action || payload.action || '';
         if (Number(event?.actor_id) === Number(authUserId) && !action.startsWith('poll_')) return;
+        if (action === 'session_participation_requested') {
+            app.sessionParticipation?.receiveRequest(payload);
+            return;
+        }
+        if (action === 'session_participation_resolved') {
+            app.sessionParticipation?.receiveResolution(payload);
+            return;
+        }
         const match = /^(post|poll|comment)_(created|updated|deleted|reaction|read)$/.exec(action);
         if (!match) return;
         const operation = { created: 'create', updated: 'update', deleted: 'delete' }[match[2]] || match[2];

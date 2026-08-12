@@ -412,7 +412,10 @@ class ChatController extends Controller
             'inspectorsSorted' => $inspectorsSorted,
             'lastReadMessageId' => $lastReadMessageId,
             'unreadContentCounts' => $unreadContentCounts,
-            'postGroupUsersMap' => $postGroupUsersMap
+            'postGroupUsersMap' => $postGroupUsersMap,
+            'pendingSessionParticipationCount' => in_array((int) $yourRole, [2, 3], true)
+                ? \App\Models\GroupSessionParticipationRequest::where('group_id', $group->id)->where('status', 'pending')->count()
+                : 0
         ]);
     }
 

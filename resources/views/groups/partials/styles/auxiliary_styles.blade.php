@@ -405,6 +405,10 @@
     .member-session-permission:hover { border-color: #10b981; color: #047857; background: #ecfdf5; }
     .member-session-permission.is-allowed { border-color: #6ee7b7; color: #047857; background: #d1fae5; }
     .session-request-trigger { margin-top:.7rem;border:0;border-radius:.7rem;padding:.55rem .85rem;background:#f59e0b;color:#fff;font-weight:700; }
+    .session-participation-badge { margin-right:auto;min-width:1.35rem;height:1.35rem;padding:0 .35rem;border-radius:999px;display:inline-grid;place-items:center;background:#ef4444;color:#fff;font-size:.68rem;font-weight:800;box-shadow:0 3px 10px rgba(239,68,68,.3); }
+    .session-participation-badge[hidden] { display:none !important; }
+    .session-participation-badge.is-pulsing { animation:session-request-pulse .7s ease-out; }
+    @keyframes session-request-pulse { 0%{transform:scale(.75)} 55%{transform:scale(1.2)} 100%{transform:scale(1)} }
     .session-participation-modal[hidden] { display:none !important; }
     .session-participation-modal { position:fixed;inset:0;z-index:11000;display:grid;place-items:center;padding:1rem; }
     .session-participation-modal__backdrop { position:absolute;inset:0;border:0;background:rgba(15,23,42,.54);backdrop-filter:blur(3px); }

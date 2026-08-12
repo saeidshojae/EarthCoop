@@ -285,6 +285,19 @@ test('realtime connection state stays internal and restricted mobile composer is
     assert.match(styles, /\.chat-composer-shell--restricted \.chat-session-closed p\s*\{\s*display:\s*none/);
 });
 
+test('session participation requests notify moderators through realtime badge and polling fallback', () => {
+    const realtime = readFileSync('resources/js/group-chat/realtime-runtime.js', 'utf8');
+    const participation = readFileSync('resources/js/group-chat/session-participation.js', 'utf8');
+    const panel = readFileSync('resources/views/groups/partials/group_info_panel.blade.php', 'utf8');
+
+    assert.match(realtime, /session_participation_requested/);
+    assert.match(realtime, /sessionParticipation\?\.receiveRequest/);
+    assert.match(participation, /pending_requests_count/);
+    assert.match(participation, /lifecycle\.interval\(refreshPendingCount,\s*15000\)/);
+    assert.match(participation, /GroupChatFeedback\?\.toast/);
+    assert.match(panel, /id="sessionParticipationBadge"/);
+});
+
 test('poll countdown and voice recorder release their owned resources', () => {
     const runtime = readFileSync('public/js/group-chat.js', 'utf8');
     const polls = readFileSync('resources/js/group-chat/polls.js', 'utf8');
