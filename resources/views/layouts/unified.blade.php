@@ -7,7 +7,7 @@
     <meta name="format-detection" content="telephone=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="manifest" href="{{ asset('manifest.json') }}">
-    <meta name="theme-color" content="#4c7caf">
+    <meta name="theme-color" content="#10b981">
     <link rel="apple-touch-icon" href="{{ asset('icons/icon.svg') }}">
     <link rel="icon" type="image/svg+xml" href="{{ asset('icons/icon.svg') }}">
     <title>@yield('title', 'New Earth Coop')</title>
@@ -136,6 +136,7 @@
           userDropdownOpen: false,
           sidebarOpen: false
       }">
+    @include('components.pwa-splash')
     <!-- Unified Header - بر اساس طراحی Home -->
     @include('components.header-unified', ['headerContext' => 'default'])
 

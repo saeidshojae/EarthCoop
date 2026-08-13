@@ -7,7 +7,7 @@
     <meta name="format-detection" content="telephone=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="manifest" href="{{ asset('manifest.json') }}">
-    <meta name="theme-color" content="#4c7caf">
+    <meta name="theme-color" content="#10b981">
     <link rel="apple-touch-icon" href="{{ asset('icons/icon.svg') }}">
     <link rel="icon" type="image/svg+xml" href="{{ asset('icons/icon.svg') }}">
     <title>{{ __('langWelcome.site_title') }}</title>
@@ -437,6 +437,7 @@
     </style>
 </head>
 <body class="font-poppins text-gentle-black leading-relaxed bg-light-gray">
+    @include('components.pwa-splash')
 
 @php
     $locales = [

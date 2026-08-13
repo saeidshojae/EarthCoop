@@ -67,6 +67,7 @@
 </style>
 </head>
 <body class="font-vazirmatn">
+    @include('components.pwa-splash')
     <div id="app">
         <!-- Navigation -->
         @include('components.navbar')

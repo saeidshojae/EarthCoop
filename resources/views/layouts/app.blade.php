@@ -15,7 +15,7 @@
     <!-- PWA و تنظیمات اپلیکیشن                                     -->
     <!-- ========================================================== -->
     <link rel="manifest" href="{{ asset('manifest.json') }}">
-    <meta name="theme-color" content="#4c7caf">
+    <meta name="theme-color" content="#10b981">
     <link rel="apple-touch-icon" href="{{ asset('icons/icon.svg') }}">
     <link rel="icon" type="image/svg+xml" href="{{ asset('icons/icon.svg') }}">
 
@@ -207,6 +207,7 @@
 </head>
 
 <body class="bg-light font-vazirmatn">
+    @include('components.pwa-splash')
     <!-- ========================================================== -->
     <!-- کانتینر اصلی برنامه (app2)                                  -->
     <!-- ========================================================== -->
