@@ -2,6 +2,11 @@
 function initializeGroupChatScrollManager() {
     'use strict';
 
+    if (!window.GroupChat?.store) {
+        document.addEventListener('group-chat:ready', initializeGroupChatScrollManager, { once: true });
+        return;
+    }
+
     const groupId = {{ $group->id }};
     const chatBox = document.getElementById('chat-box');
     const btn = document.getElementById('scroll-toggle-btn');

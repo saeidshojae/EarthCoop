@@ -16,6 +16,8 @@ $lastReadMessageId = $lastReadMessageId ?? null;
 
 <!-- CSRF Token (برای Ajax) -->
 <meta name="csrf-token" content="{{ csrf_token() }}">
+<meta name="group-chat-id" content="{{ $group->id }}">
+<meta name="group-chat-auth-user-id" content="{{ auth()->id() }}">
 
 
 <link rel="stylesheet" href="{{ asset('Css/group-chat.css') }}?v={{ filemtime(public_path('Css/group-chat.css')) }}">

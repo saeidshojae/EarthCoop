@@ -1369,8 +1369,15 @@
     const cancelManagerChat = function() {
         document.getElementById('chatRequestModal').style.display = 'none';
     };
-    window.GroupChat.actions.register('cancel-add-guests', () => (cancelAddGuests(), true));
-    window.GroupChat.actions.register('cancel-manager-chat', () => (cancelManagerChat(), true));
+    const registerGroupInfoActions = () => {
+        if (!window.GroupChat?.actions) return false;
+        window.GroupChat.actions.register('cancel-add-guests', () => (cancelAddGuests(), true));
+        window.GroupChat.actions.register('cancel-manager-chat', () => (cancelManagerChat(), true));
+        return true;
+    };
+    if (!registerGroupInfoActions()) {
+        document.addEventListener('group-chat:ready', registerGroupInfoActions, { once: true });
+    }
 
     const addUserButton = document.getElementById('addUserButton');
     if (addUserButton) groupInfoLifecycle.on(addUserButton, 'click', function() {

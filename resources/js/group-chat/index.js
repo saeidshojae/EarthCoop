@@ -21,6 +21,9 @@ import { createSessionParticipation } from './session-participation.js';
 import { createPins } from './pins.js';
 import { createSessionState } from './session-state.js';
 
+window.groupId = Number(window.groupId || document.querySelector('meta[name="group-chat-id"]')?.content) || null;
+window.authUserId = Number(window.authUserId || document.querySelector('meta[name="group-chat-auth-user-id"]')?.content) || null;
+
 if (!window.GroupChatFeedback) {
     window.GroupChatFeedback = createFeedback();
 }

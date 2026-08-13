@@ -2,8 +2,8 @@
 (function() {
     'use strict';
     
-    const groupId = window.groupId || null;
-    const authUserId = window.authUserId || null;
+    const groupId = Number(window.groupId || document.querySelector('meta[name="group-chat-id"]')?.content) || null;
+    const authUserId = Number(window.authUserId || document.querySelector('meta[name="group-chat-auth-user-id"]')?.content) || null;
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     const typingDebug = Boolean(
         window.__typingDebug ||

@@ -53,7 +53,7 @@
 
 
 
-    const groupId = window.groupId || null;
+    const groupId = Number(window.groupId || document.querySelector('meta[name="group-chat-id"]')?.content) || null;
 
 
 
