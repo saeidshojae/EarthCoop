@@ -1,5 +1,8 @@
 export function createRealtimeRuntime({ app, groupId, authUserId, debug = false }) {
     const { api, store, lifecycle, reconciler } = app;
+    groupId = Number(groupId);
+    authUserId = Number(authUserId);
+    const hasValidGroupContext = Number.isInteger(groupId) && groupId > 0;
     const sequenceKey = `group-feed-sequence:${groupId}`;
     const deltaSyncEnabled = window.GroupChatConfig?.deltaSyncEnabled === true;
     const state = {
@@ -210,6 +213,11 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         finally { reconcilePending = false; }
     };
     const startPolling = () => {
+        if (!hasValidGroupContext) {
+            store.setState({ connection: 'offline' });
+            if (debug) console.error('[GroupChat] Polling disabled: invalid group context.', { groupId });
+            return;
+        }
         if (state.pollingStarted) return;
         let attempts = 0;
         const begin = () => {

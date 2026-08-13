@@ -1,8 +1,8 @@
 <script>
-const groupId = {{ $group->id }};
+const groupId = @json((int) $group->id);
 window.groupChatTransport = @json(config('group-chat.transport', 'auto'));
-const authUserId = {{ auth()->id() }};
-const yourRole = {{ $yourRole ?? 0 }};
+const authUserId = @json((int) auth()->id());
+const yourRole = @json((int) ($yourRole ?? 0));
 window.groupId = groupId;
 window.authUserId = authUserId;
 window.yourRole = yourRole;
@@ -23,8 +23,9 @@ window.GroupChatConfig = Object.freeze({
     participationBulkUrl: @json(route('groups.session-participation.bulk', $group)),
     pinsUrl: @json(route('groups.pins.index', $group)),
 });
-const manageCount = {{ $groupSetting ? $groupSetting->manager_count : 0 }};
-const inspectorCount = {{ $groupSetting ? $groupSetting->inspector_count : 0 }};
+// Database values may legitimately be NULL. Always emit valid JavaScript.
+const manageCount = @json((int) ($groupSetting?->manager_count ?? 0));
+const inspectorCount = @json((int) ($groupSetting?->inspector_count ?? 0));
 </script>
 <script src="{{ asset('js/chat-features.js') }}" defer></script>
 <script src="{{ asset('js/voice-recorder.js') }}" defer></script>

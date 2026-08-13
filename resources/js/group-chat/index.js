@@ -21,8 +21,10 @@ import { createSessionParticipation } from './session-participation.js';
 import { createPins } from './pins.js';
 import { createSessionState } from './session-state.js';
 
-window.groupId = Number(window.groupId || document.querySelector('meta[name="group-chat-id"]')?.content) || null;
-window.authUserId = Number(window.authUserId || document.querySelector('meta[name="group-chat-auth-user-id"]')?.content) || null;
+const pageGroupId = Number(document.querySelector('meta[name="group-chat-id"]')?.content || window.groupId);
+const pageAuthUserId = Number(document.querySelector('meta[name="group-chat-auth-user-id"]')?.content || window.authUserId);
+window.groupId = Number.isInteger(pageGroupId) && pageGroupId > 0 ? pageGroupId : null;
+window.authUserId = Number.isInteger(pageAuthUserId) && pageAuthUserId > 0 ? pageAuthUserId : null;
 
 if (!window.GroupChatFeedback) {
     window.GroupChatFeedback = createFeedback();
@@ -84,7 +86,7 @@ if (window.groupId) {
     app.pins = createPins({ api, actions, lifecycle, groupId: window.groupId });
     app.unread.initialize();
     app.installRealtime = options => {
-        if (!app.realtimeRuntime) app.realtimeRuntime = createRealtimeRuntime({ app, groupId: window.groupId, authUserId: window.authUserId, ...options });
+        if (!app.realtimeRuntime) app.realtimeRuntime = createRealtimeRuntime({ app, ...options, groupId: pageGroupId, authUserId: pageAuthUserId });
         return app.realtimeRuntime;
     };
 
