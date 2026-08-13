@@ -40,6 +40,7 @@ class NajmBaharController extends Controller
     public function showAgreement()
     {
         $user = auth()->user();
+        abort_if($user->isSystemIdentity(), 403, 'System identities cannot use Najm Bahar.');
         
         // بررسی اینکه آیا کاربر قبلاً حساب نجم بهار دارد یا نه
         $hasAcceptedAgreement = $this->accountService->hasMainAccount($user->id)
@@ -75,6 +76,7 @@ class NajmBaharController extends Controller
         ]);
 
         $user = auth()->user();
+        abort_if($user->isSystemIdentity(), 403, 'System identities cannot use Najm Bahar.');
         
         // بررسی مجدد اینکه آیا کاربر قبلاً حساب دارد
         if ($this->accountService->hasMainAccount($user->id)) {
@@ -174,7 +176,7 @@ class NajmBaharController extends Controller
         $this->ensureInitialFundingAndMembershipFee($user, $account);
 
         $settings = Setting::firstNajmBaharSettings();
-        $userCount = User::count();
+        $userCount = User::members()->count();
         $userThreshold = (int) ($settings?->najm_bahar_user_threshold ?? 1111111);
         $initialAmount = (int) ($settings?->najm_bahar_initial_amount ?? BaharMoney::toGolFromBahar(10000));
         $isThresholdMet = $userCount >= $userThreshold;

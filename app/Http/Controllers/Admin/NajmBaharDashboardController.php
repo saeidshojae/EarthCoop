@@ -29,7 +29,7 @@ class NajmBaharDashboardController extends Controller
         $settings = Setting::firstNajmBaharSettings();
         $userThreshold = (int) ($settings->najm_bahar_user_threshold ?? self::DEFAULT_USER_THRESHOLD);
         $initialAmount = (int) ($settings->najm_bahar_initial_amount ?? self::DEFAULT_INITIAL_AMOUNT);
-        $userCount = User::count();
+        $userCount = User::members()->count();
         $isThresholdMet = $userCount >= $userThreshold;
         $totalMinted = $userCount * $initialAmount;
         $activeUserIds = User::select('id');

@@ -37,9 +37,6 @@ class DatabaseSeeder extends Seeder
             PagesTableSeeder::class,
             FaqContactPagesSeeder::class,
 
-            KnowledgeBaseSeeder::class,
-
-            EarthCoopBlogSeeder::class,
             /*
             |--------------------------------------------------------------------------
             | Authorization
@@ -47,6 +44,10 @@ class DatabaseSeeder extends Seeder
             */
 
             RolePermissionSeeder::class,
+            SystemUserSeeder::class,
+
+            KnowledgeBaseSeeder::class,
+            EarthCoopBlogSeeder::class,
 
             /*
             |--------------------------------------------------------------------------
@@ -54,7 +55,6 @@ class DatabaseSeeder extends Seeder
             |--------------------------------------------------------------------------
             */
 
-            StockSeeder::class,
             NajmBaharSeeder::class,
             NajmBaharProjectCategorySeeder::class,
 

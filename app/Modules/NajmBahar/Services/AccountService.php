@@ -8,6 +8,8 @@ use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\Transaction;
 use App\Modules\NajmBahar\Services\TransactionService;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
+use App\Models\User;
 
 class AccountService
 {
@@ -17,6 +19,10 @@ class AccountService
      */
     public function createMainAccountForUser(int $userId, string $name = 'NajmBahar Account'): Account
     {
+        if (User::whereKey($userId)->where('is_system', true)->exists()) {
+            throw new InvalidArgumentException('System identities cannot own Najm Bahar accounts.');
+        }
+
         $accountNumber = AccountNumberService::makeMainAccountNumberForUser($userId);
 
         return Account::create([

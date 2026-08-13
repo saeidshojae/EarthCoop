@@ -52,6 +52,14 @@ class LoginController extends Controller
 
     protected function authenticated(Request $request, $user)
     {
+        if ($user->isSystemIdentity()) {
+            $this->guard()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            abort(403, 'System identities cannot sign in interactively.');
+        }
+
         $user->update([
             'last_login_ip' => $request->ip(),
             'last_login_at' => now(),

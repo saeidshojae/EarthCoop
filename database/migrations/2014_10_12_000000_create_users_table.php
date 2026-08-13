@@ -57,6 +57,8 @@ return new class extends Migration
             
             // مدیریت
             $table->boolean('is_admin')->default(false);
+            // Technical identities (bots/content authors) are not cooperative members.
+            $table->boolean('is_system')->default(false)->index();
             
             // آخرین فعالیت
             $table->timestamp('last_seen')->nullable();

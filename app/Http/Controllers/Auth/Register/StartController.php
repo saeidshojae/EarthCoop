@@ -26,7 +26,7 @@ class StartController extends Controller
         }
 
         // محاسبه آمار پویا
-        $membersCount = User::count();
+        $membersCount = User::members()->count();
 
         // تعداد پروژه‌ها: وقتی schema کامل نیست از خطای SQL جلوگیری می‌کنیم.
         $projectsCount = 0;

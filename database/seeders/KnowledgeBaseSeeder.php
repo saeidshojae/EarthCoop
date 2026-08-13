@@ -17,16 +17,7 @@ class KnowledgeBaseSeeder extends Seeder
     public function run()
     {
         // دریافت یا ایجاد کاربر نویسنده
-        $author = User::first();
-        if (!$author) {
-            $author = User::create([
-                'first_name' => 'تیم پشتیبانی',
-                'last_name' => 'EarthCoop',
-                'email' => 'support@earthcoop.ir',
-                'password' => bcrypt('password'),
-                'email_verified_at' => now()
-            ]);
-        }
+        $author = User::where('email', 'support@earthcoop.ir')->firstOrFail();
 
         // ایجاد دسته‌بندی‌ها
         $categories = $this->createCategories();

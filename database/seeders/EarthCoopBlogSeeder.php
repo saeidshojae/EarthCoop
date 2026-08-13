@@ -19,16 +19,7 @@ class EarthCoopBlogSeeder extends Seeder
     public function run(): void
     {
         // نویسنده پیش‌فرض
-        $author = User::first();
-        if (!$author) {
-            $author = User::create([
-                'first_name' => 'تیم تولید محتوای',
-                'last_name' => 'EarthCoop',
-                'email' => 'content@earthcoop.ir',
-                'password' => bcrypt('password'),
-                'email_verified_at' => now(),
-            ]);
-        }
+        $author = User::where('email', 'support@earthcoop.ir')->firstOrFail();
 
         // پاک‌سازی مطالب قبلی وبلاگ
         DB::statement('SET FOREIGN_KEY_CHECKS=0');

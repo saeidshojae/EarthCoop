@@ -9,6 +9,7 @@ Homestead.json
 .composer-cache/
 # Composer authentication credentials (may contain private tokens)
 /auth.json
+/database/exports/
 .npm-cache/
 /storage/logs/
 /storage/framework/cache/

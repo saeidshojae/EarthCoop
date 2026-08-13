@@ -41,6 +41,9 @@ class NajmHodaGroupAssistantService
 
         $bot = User::where('email', $email)->first();
         if ($bot) {
+            if (! $bot->is_system) {
+                $bot->forceFill(['is_system' => true])->save();
+            }
             return $bot;
         }
 
@@ -50,6 +53,7 @@ class NajmHodaGroupAssistantService
             'first_name' => (string) config('najm-hoda.group_assistant.bot_first_name', 'نجم'),
             'last_name' => (string) config('najm-hoda.group_assistant.bot_last_name', 'هدا'),
             'status' => 'active',
+            'is_system' => true,
             'email_verified_at' => now(),
             'terms_accepted_at' => now(),
         ]);
