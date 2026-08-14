@@ -302,7 +302,7 @@ class NajmHodaServiceProvider extends ServiceProvider
         // ثبت Event Listeners
         $this->registerEventListeners();
         
-        Log::info('نجم‌هدا راه‌اندازی شد');
+        // Do not log a successful provider boot on every polling request.
     }
 
     /**

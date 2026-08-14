@@ -862,26 +862,22 @@ class MessageController extends Controller
         }
 
         $reactionType = $request->input('reaction_type');
-        $existingReaction = MessageReaction::where([
-            'message_id' => $message->id,
-            'user_id' => $user->id,
-        ])->first();
+        $existingReaction = $message->reactions()
+            ->where('user_id', $user->id)
+            ->first();
 
         if ($existingReaction && $existingReaction->reaction_type === $reactionType) {
             $existingReaction->delete();
         } elseif ($existingReaction) {
             $existingReaction->update(['reaction_type' => $reactionType]);
         } else {
-            MessageReaction::create([
-                'message_id' => $message->id,
+            $message->reactions()->create([
                 'user_id' => $user->id,
                 'reaction_type' => $reactionType,
             ]);
         }
 
-        $reactions = MessageReaction::where([
-            'message_id' => $message->id,
-        ])
+        $reactions = $message->reactions()
             ->with('user:id,first_name,last_name,avatar')
             ->get()
             ->groupBy('reaction_type')
@@ -1143,35 +1139,6 @@ class MessageController extends Controller
 
     private function dispatchGroupEvent(object $event): void
     {
-        if (! (bool) config('group-chat.enabled', true)) {
-            return;
-        }
-
-        if (strtolower((string) config('group-chat.transport', 'auto')) === 'polling') {
-            return;
-        }
-
-        if ((bool) config('group-chat.defer_broadcasts', true)) {
-            dispatch(static function () use ($event): void {
-                try {
-                    event($event);
-                } catch (\Throwable $exception) {
-                    \Illuminate\Support\Facades\Log::warning('group_chat_broadcast_failed', [
-                        'event' => get_class($event),
-                        'message' => $exception->getMessage(),
-                    ]);
-                }
-            })->afterResponse();
-            return;
-        }
-
-        try {
-            event($event);
-        } catch (\Throwable $exception) {
-            \Illuminate\Support\Facades\Log::warning('group_chat_broadcast_failed', [
-                'event' => get_class($event),
-                'message' => $exception->getMessage(),
-            ]);
-        }
+        app(\App\Services\GroupChat\GroupEventPublisher::class)->publish($event);
     }
 }

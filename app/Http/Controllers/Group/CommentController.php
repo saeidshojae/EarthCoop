@@ -50,11 +50,6 @@ class CommentController extends Controller
         $commentsCount = (int) $blog->comments()->count();
         if ($blog && $blog->group) {
             event(new \App\Events\CommentCreated($comment, $blog, $blog->group, auth()->user()));
-            $this->dispatchGroupEvent(new GroupFeedUpdated((int) $blog->group_id, 'comment_created', [
-                'comment_id' => (int) $comment->id,
-                'blog_id' => (int) $blog->id,
-                'comments_count' => $commentsCount,
-            ], (int) auth()->id()));
         }
 
         // award points for creating a comment
@@ -70,6 +65,15 @@ class CommentController extends Controller
 
         // Render HTML for client-side injection
         $html = view('groups.partials.comment', ['item' => $comment])->render();
+
+        if ($blog && $blog->group) {
+            $this->dispatchGroupEvent(new GroupFeedUpdated((int) $blog->group_id, 'comment_created', [
+                'comment_id' => (int) $comment->id,
+                'blog_id' => (int) $blog->id,
+                'comments_count' => $commentsCount,
+                'html' => $html,
+            ], (int) auth()->id()));
+        }
 
         return response()->json([
             'status' => 'success',
@@ -105,6 +109,15 @@ public function update(Request $request, Comment $comment)
 
         $comment->message = $data['message'];
         $comment->save();
+        $comment->load(['user', 'reactions']);
+        $blog = $comment->blog;
+
+        $this->dispatchGroupEvent(new GroupFeedUpdated((int) $blog->group_id, 'comment_updated', [
+            'comment_id' => (int) $comment->id,
+            'blog_id' => (int) $blog->id,
+            'comments_count' => (int) $blog->comments()->count(),
+            'html' => view('groups.partials.comment', ['item' => $comment])->render(),
+        ], (int) auth()->id()));
 
         return response()->json([
             'ok' => true,
@@ -117,6 +130,7 @@ public function update(Request $request, Comment $comment)
         $this->authorize('delete', $comment);
         // Authorization is centralized in CommentPolicy (owner or group moderator).
 
+        $blog = $comment->blog;
         $blogId = $comment->blog_id;
         $commentId = $comment->id;
 
@@ -129,6 +143,12 @@ public function update(Request $request, Comment $comment)
             $existing[] = $commentId;
             \Illuminate\Support\Facades\Cache::put($cacheKey, $existing, 600); // 10 minutes TTL
         }
+
+        $this->dispatchGroupEvent(new GroupFeedUpdated((int) $blog->group_id, 'comment_deleted', [
+            'comment_id' => (int) $commentId,
+            'blog_id' => (int) $blogId,
+            'comments_count' => (int) $blog->comments()->count(),
+        ], (int) auth()->id()));
 
         return response()->json(['ok' => true]);
     }
@@ -204,20 +224,6 @@ public function update(Request $request, Comment $comment)
 
     private function dispatchGroupEvent(object $event): void
     {
-        if (! (bool) config('group-chat.enabled', true)
-            || strtolower((string) config('group-chat.transport', 'auto')) === 'polling') {
-            return;
-        }
-
-        dispatch(static function () use ($event): void {
-            try {
-                event($event);
-            } catch (\Throwable $exception) {
-                \Illuminate\Support\Facades\Log::warning('group_chat_broadcast_failed', [
-                    'event' => get_class($event),
-                    'message' => $exception->getMessage(),
-                ]);
-            }
-        })->afterResponse();
+        app(\App\Services\GroupChat\GroupEventPublisher::class)->publish($event);
     }
 }

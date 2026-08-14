@@ -22,7 +22,10 @@ class VoiceMessageFlowTest extends TestCase
         parent::setUp();
 
         $this->bootstrapGroupChatSchema();
-        config(['broadcasting.default' => 'null']);
+        config([
+            'broadcasting.default' => 'null',
+            'group-chat.transport' => 'polling',
+        ]);
     }
 
     public function test_member_can_send_voice_message_only(): void
@@ -48,6 +51,12 @@ class VoiceMessageFlowTest extends TestCase
         $this->assertSame($group->id, (int) $saved->group_id);
         $this->assertSame($member->id, (int) $saved->user_id);
         Storage::disk('local')->assertExists($saved->voice_message);
+        $this->assertDatabaseHas('group_sync_events', [
+            'group_id' => $group->id,
+            'action' => 'message_created',
+            'content_type' => 'message',
+            'content_id' => $saved->id,
+        ]);
 
         $payload = $response->json('message');
         $this->assertIsArray($payload);

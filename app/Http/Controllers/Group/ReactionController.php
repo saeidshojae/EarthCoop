@@ -85,6 +85,8 @@ class ReactionController extends Controller
                 // Touch comment for real-time updates
                 $comment->touch();
 
+                $this->publishCommentReaction($comment, $user->id);
+
                 return response()->json([
                     'status' => 'removed',
                     'likes' => $comment->reactions()->where('type', 1)->count(),
@@ -114,6 +116,7 @@ class ReactionController extends Controller
 
         // Touch comment for real-time updates to other users
         $comment->touch();
+        $this->publishCommentReaction($comment, $user->id);
 
         return response()->json([
             'status' => 'success',
@@ -125,21 +128,20 @@ class ReactionController extends Controller
 
     private function dispatchGroupEvent(object $event): void
     {
-        if (! (bool) config('group-chat.enabled', true)
-            || strtolower((string) config('group-chat.transport', 'auto')) === 'polling') {
-            return;
-        }
+        app(\App\Services\GroupChat\GroupEventPublisher::class)->publish($event);
+    }
 
-        dispatch(static function () use ($event): void {
-            try {
-                event($event);
-            } catch (\Throwable $exception) {
-                \Illuminate\Support\Facades\Log::warning('group_chat_broadcast_failed', [
-                    'event' => get_class($event),
-                    'message' => $exception->getMessage(),
-                ]);
-            }
-        })->afterResponse();
+    private function publishCommentReaction(Comment $comment, int $actorId): void
+    {
+        $comment->load(['user', 'reactions', 'blog']);
+        $this->dispatchGroupEvent(new GroupFeedUpdated((int) $comment->blog->group_id, 'comment_reaction', [
+            'comment_id' => (int) $comment->id,
+            'blog_id' => (int) $comment->blog_id,
+            'comments_count' => (int) $comment->blog->comments()->count(),
+            'likes' => (int) $comment->reactions->where('type', 1)->count(),
+            'dislikes' => (int) $comment->reactions->where('type', 0)->count(),
+            'html' => view('groups.partials.comment', ['item' => $comment])->render(),
+        ], $actorId));
     }
 
     private function awardPostUpvoteAfterResponse($user, int $blogId): void

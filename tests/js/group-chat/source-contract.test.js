@@ -52,6 +52,25 @@ test('session lifecycle is synchronized through realtime with polling fallback',
     assert.match(session, /lifecycle\.interval\(reconcile, 15000\)/);
 });
 
+test('polling consumes the same complete group event contract as websocket', () => {
+    const config = readFileSync('resources/views/groups/partials/chat_runtime.blade.php', 'utf8');
+    const runtime = readFileSync('resources/js/group-chat/realtime-runtime.js', 'utf8');
+
+    assert.match(config, /syncUrl:/);
+    assert.match(config, /syncCursor:/);
+    assert.match(config, /pollingIntervalMs:/);
+    assert.match(runtime, /const pollSync = async/);
+    assert.match(runtime, /after_cursor=\$\{state\.syncCursor\}/);
+    for (const action of [
+        'message_created', 'message_deleted', 'post_created', 'poll_voted',
+        'comment_reaction', 'pin_updated', 'session_started', 'election_started',
+    ]) {
+        assert.match(runtime, new RegExp(action), action);
+    }
+    assert.match(runtime, /lifecycle\.on\(window, 'online'/);
+    assert.match(runtime, /lifecycle\.on\(document, 'visibilitychange'/);
+});
+
 test('all group chat partials and modals use lifecycle-owned listeners and timers', () => {
     const templates = [
         ...collectBladeFiles('resources/views/groups/partials'),

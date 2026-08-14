@@ -143,7 +143,9 @@ class PinController extends Controller
     private function broadcast(Group $group, array $payload): void
     {
         try {
-            event(new GroupFeedUpdated((int) $group->id, 'pin_updated', $payload, (int) auth()->id()));
+            app(\App\Services\GroupChat\GroupEventPublisher::class)->publish(
+                new GroupFeedUpdated((int) $group->id, 'pin_updated', $payload, (int) auth()->id())
+            );
         } catch (\Throwable $e) {
             report($e);
         }

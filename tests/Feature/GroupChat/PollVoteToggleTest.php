@@ -20,6 +20,7 @@ class PollVoteToggleTest extends TestCase
         config([
             'broadcasting.default' => 'null',
             'group-chat.features.transactional_outbox_v1' => false,
+            'group-chat.transport' => 'polling',
         ]);
 
         $user = User::create([
@@ -59,6 +60,12 @@ class PollVoteToggleTest extends TestCase
             'poll_id' => $poll->id,
             'user_id' => $user->id,
             'option_id' => $option->id,
+        ]);
+        $this->assertDatabaseHas('group_sync_events', [
+            'group_id' => $group->id,
+            'action' => 'poll_voted',
+            'content_type' => 'poll',
+            'content_id' => $poll->id,
         ]);
 
         $this->actingAs($user)

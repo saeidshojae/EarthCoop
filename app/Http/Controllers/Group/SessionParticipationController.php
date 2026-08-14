@@ -55,7 +55,7 @@ class SessionParticipationController extends Controller
             $moderators = $group->users()->wherePivot('status', 1)->wherePivotIn('role', [2, 3])->get();
             $moderators->each->notify(new GroupSessionParticipationRequested($participationRequest, $group, $requester));
 
-            event(new GroupFeedUpdated((int) $group->id, 'session_participation_requested', [
+            app(\App\Services\GroupChat\GroupEventPublisher::class)->publish(new GroupFeedUpdated((int) $group->id, 'session_participation_requested', [
                 'request_id' => (int) $participationRequest->id,
                 'requester_id' => (int) $requester->id,
                 'requester_name' => trim(($requester->first_name ?? '') . ' ' . ($requester->last_name ?? '')) ?: 'یکی از اعضا',
@@ -127,7 +127,7 @@ class SessionParticipationController extends Controller
                 ]);
         });
 
-        event(new GroupFeedUpdated((int) $group->id, 'session_participation_resolved', [
+        app(\App\Services\GroupChat\GroupEventPublisher::class)->publish(new GroupFeedUpdated((int) $group->id, 'session_participation_resolved', [
             'user_ids' => $memberships->pluck('user_id')->map(fn ($id) => (int) $id)->values()->all(),
             'action' => $validated['action'],
             'pending_count' => GroupSessionParticipationRequest::where('group_id', $group->id)->where('status', 'pending')->count(),

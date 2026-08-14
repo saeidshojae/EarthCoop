@@ -316,14 +316,110 @@ class MessageAuthorizationTest extends TestCase
             'deleted' => true,
         ]);
 
-        $this->assertDatabaseMissing('messages', [
+        $this->assertDatabaseHas('messages', [
             'id' => $reply->id,
+            'lifecycle_state' => 'deleted',
+            'message' => null,
         ]);
+        $this->assertFalse(Message::query()->visibleInChat()->whereKey($reply->id)->exists());
 
         $this->assertDatabaseHas('messages', [
             'id' => $root->id,
             'reply_count' => 0,
         ]);
+    }
+
+    public function test_group_message_reaction_uses_polymorphic_type_and_is_journaled(): void
+    {
+        config()->set('group-chat.transport', 'polling');
+        [$group, $owner] = $this->makeGroupWithMember(1);
+        $message = $this->makeMessage($group, $owner);
+        $reaction = \App\Models\MessageReaction::REACTIONS[0];
+
+        $this->actingAs($owner)
+            ->postJson(route('messages.reaction', $message), ['reaction_type' => $reaction])
+            ->assertOk()
+            ->assertJsonPath('status', 'success');
+
+        $this->assertDatabaseHas('message_reactions', [
+            'message_id' => $message->id,
+            'message_type' => Message::class,
+            'user_id' => $owner->id,
+            'reaction_type' => $reaction,
+        ]);
+        $this->assertDatabaseHas('group_sync_events', [
+            'group_id' => $group->id,
+            'action' => 'reaction',
+            'content_type' => 'message',
+            'content_id' => $message->id,
+        ]);
+
+        $sync = $this->actingAs($owner)->getJson(route('groups.sync', [
+            'group' => $group,
+            'after_cursor' => 0,
+        ]));
+        $sync->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('events.0.action', 'reaction')
+            ->assertJsonPath('events.0.content_type', 'message')
+            ->assertJsonPath('events.0.content_id', $message->id)
+            ->assertJsonPath('has_more', false);
+        $this->assertGreaterThan(0, (int) $sync->json('cursor'));
+    }
+
+    public function test_non_member_cannot_consume_group_sync_journal(): void
+    {
+        [$group] = $this->makeGroupWithMember();
+        $outsider = $this->makeUser();
+
+        $this->actingAs($outsider)
+            ->getJson(route('groups.sync', ['group' => $group, 'after_cursor' => 0]))
+            ->assertForbidden();
+    }
+
+    public function test_group_sync_journal_is_ordered_and_resumable_by_cursor(): void
+    {
+        config()->set('group-chat.transport', 'polling');
+        [$group, $owner] = $this->makeGroupWithMember(1);
+        $secondClient = $this->makeUser();
+        GroupUser::create([
+            'group_id' => $group->id,
+            'user_id' => $secondClient->id,
+            'role' => 1,
+            'status' => 1,
+        ]);
+        $publisher = app(\App\Services\GroupChat\GroupEventPublisher::class);
+
+        foreach (['post_created', 'poll_created', 'comment_created', 'pin_updated', 'session_started', 'election_started'] as $index => $action) {
+            $publisher->publish(new \App\Events\GroupFeedUpdated(
+                (int) $group->id,
+                $action,
+                ['id' => $index + 1, 'post_id' => $action === 'post_created' ? 101 : null],
+                (int) $owner->id
+            ));
+        }
+
+        $first = $this->actingAs($secondClient)->getJson(route('groups.sync', [
+            'group' => $group,
+            'after_cursor' => 0,
+            'limit' => 2,
+        ]));
+        $first->assertOk()
+            ->assertJsonCount(2, 'events')
+            ->assertJsonPath('events.0.action', 'post_created')
+            ->assertJsonPath('events.1.action', 'poll_created')
+            ->assertJsonPath('has_more', true);
+
+        $second = $this->actingAs($secondClient)->getJson(route('groups.sync', [
+            'group' => $group,
+            'after_cursor' => $first->json('cursor'),
+            'limit' => 10,
+        ]));
+        $second->assertOk()
+            ->assertJsonCount(4, 'events')
+            ->assertJsonPath('events.0.action', 'comment_created')
+            ->assertJsonPath('events.3.action', 'election_started')
+            ->assertJsonPath('has_more', false);
     }
 
     public function test_group_manager_can_admin_hide_message(): void

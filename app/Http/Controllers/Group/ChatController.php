@@ -23,6 +23,7 @@ use App\Models\Vote;
 use App\Models\PinnedMessage;
 use App\Models\ReportedMessage;
 use App\Models\GroupFeedItem;
+use App\Models\GroupSyncEvent;
 use App\Models\Message;
 use App\Models\GroupSession;
 use App\Models\Blog;
@@ -79,6 +80,7 @@ class ChatController extends Controller
         \Log::info('ChatController@chat T1 (after groupUser): ' . round((microtime(true)-$t0)*1000) . 'ms');
 
         $messages = $group->messages()
+            ->visibleInChat()
             ->select('id', 'user_id', 'parent_id', 'message as content', 'removed_by', 'edited_by', 'edited', 'created_at', 'updated_at', 'read_by', 'reply_count', 'voice_message', 'file_path', 'file_type', DB::raw("'message' as type"))
             ->with(['reactions', 'user:id,first_name,last_name,avatar'])
             ->when($focusedPinType === 'message' && $focusedPinId, fn ($query) => $query->orderByRaw('id = ? DESC', [$focusedPinId]))
@@ -309,7 +311,14 @@ class ChatController extends Controller
 
             // Dispatch event for new elections
             if ($wasRecentlyCreated) {
-                event(new \App\Events\ElectionStarted($election, $group));
+                app(\App\Services\GroupChat\GroupEventPublisher::class)->publish(
+                    new \App\Events\GroupFeedUpdated((int) $group->id, 'election_started', [
+                        'election_id' => (int) $election->id,
+                        'starts_at' => $election->starts_at ? (string) $election->starts_at : null,
+                        'ends_at' => $election->ends_at ? (string) $election->ends_at : null,
+                        'is_closed' => (bool) $election->is_closed,
+                    ], (int) auth()->id())
+                );
             }
         }else{
             $election = Election::where('group_id', $group->id)
@@ -435,6 +444,9 @@ class ChatController extends Controller
             'lastReadMessageId' => $lastReadMessageId,
             'unreadContentCounts' => $unreadContentCounts,
             'postGroupUsersMap' => $postGroupUsersMap,
+            'groupSyncCursor' => \Illuminate\Support\Facades\Schema::hasTable('group_sync_events')
+                ? (int) GroupSyncEvent::where('group_id', $group->id)->max('id')
+                : 0,
             'pendingSessionParticipationCount' => in_array((int) $yourRole, [2, 3], true)
                 ? \App\Models\GroupSessionParticipationRequest::where('group_id', $group->id)->where('status', 'pending')->count()
                 : 0
@@ -479,7 +491,7 @@ class ChatController extends Controller
                 ->count();
         };
 
-        $messages = $countUnread($group->messages(), 'user_id');
+        $messages = $countUnread($group->messages()->visibleInChat(), 'user_id');
         $posts = $countUnread($group->blogs(), 'user_id');
         $polls = $countUnread($group->polls(), 'created_by');
 
@@ -542,6 +554,78 @@ class ChatController extends Controller
         ]);
     }
 
+    public function sync(Group $group, Request $request)
+    {
+        $this->authorize('view', $group);
+        abort_unless(\Illuminate\Support\Facades\Schema::hasTable('group_sync_events'), 503, 'Group sync is not available yet.');
+        $validated = $request->validate([
+            'after_cursor' => ['nullable', 'integer', 'min:0'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+        $after = (int) ($validated['after_cursor'] ?? 0);
+        $limit = (int) ($validated['limit'] ?? 100);
+
+        $events = GroupSyncEvent::query()
+            ->where('group_id', $group->id)
+            ->where('id', '>', $after)
+            ->orderBy('id')
+            ->limit($limit + 1)
+            ->get();
+        $hasMore = $events->count() > $limit;
+        $events = $events->take($limit)->values();
+
+        return response()->json([
+            'status' => 'success',
+            'events' => $events->map(fn (GroupSyncEvent $event) => [
+                'cursor' => (int) $event->id,
+                'event_type' => $event->event_type,
+                'action' => $event->action,
+                'content_type' => $event->content_type,
+                'content_id' => $event->content_id ? (int) $event->content_id : null,
+                'actor_id' => $event->actor_id ? (int) $event->actor_id : null,
+                'payload' => $this->syncPayload($group, $event),
+                'occurred_at' => $event->occurred_at?->toIso8601String(),
+            ])->all(),
+            'cursor' => (int) ($events->last()?->id ?? $after),
+            'has_more' => $hasMore,
+        ]);
+    }
+
+    /** Render user-sensitive feed fragments for the client consuming the journal. */
+    private function syncPayload(Group $group, GroupSyncEvent $event): array
+    {
+        $payload = $event->payload ?? [];
+        $action = (string) $event->action;
+
+        if (in_array($action, ['post_created', 'post_updated'], true) && $event->content_id) {
+            $post = Blog::with(['user', 'category', 'comments', 'reactions'])->find($event->content_id);
+            if ($post) {
+                $payload['html'] = view('groups.partials.post', [
+                    'item' => $post,
+                    'group' => $group,
+                    'userVote' => null,
+                    'categories' => Category::all(),
+                ])->render();
+            }
+        } elseif (in_array($action, ['poll_created', 'poll_updated'], true) && $event->content_id) {
+            $poll = Poll::with(['options', 'votes', 'user', 'skill'])->find($event->content_id);
+            if ($poll) {
+                $payload['html'] = view('groups.partials.poll', [
+                    'item' => $poll,
+                    'group' => $group,
+                    'userVote' => PollVote::where('poll_id', $poll->id)->where('user_id', auth()->id())->first(),
+                ])->render();
+            }
+        } elseif (in_array($action, ['comment_created', 'comment_updated', 'comment_reaction'], true) && $event->content_id) {
+            $comment = Comment::with(['user', 'reactions'])->find($event->content_id);
+            if ($comment) {
+                $payload['html'] = view('groups.partials.comment', ['item' => $comment])->render();
+            }
+        }
+
+        return $payload;
+    }
+
     private function deltaContent($items): array
     {
         $byType = $items->groupBy('type');
@@ -586,6 +670,7 @@ class ChatController extends Controller
         $lastMessageId = $request->get('last_message_id'); // برای دریافت فقط پیام‌های جدید
         
         $messagesQuery = $group->messages()
+            ->visibleInChat()
             ->select('id', 'user_id', 'parent_id', 'message as content', 'removed_by', 'edited_by', 'edited', 'created_at', 'updated_at', 'read_by', 'reply_count', 'voice_message', 'file_path', 'file_type', DB::raw("'message' as type"))
             ->with('reactions')
             ->orderBy('created_at', 'desc');
@@ -657,7 +742,7 @@ class ChatController extends Controller
         $hasMore = false;
         if ($messages->isNotEmpty()) {
             $oldestMessageId = $messages->first()->id;
-            $hasMore = $group->messages()->where('id', '<', $oldestMessageId)->exists();
+            $hasMore = $group->messages()->visibleInChat()->where('id', '<', $oldestMessageId)->exists();
         }
         
         
@@ -742,6 +827,7 @@ class ChatController extends Controller
 
                 // پیام‌های تازه ویرایش‌شده (برای کاربرانی که پیام رو قبلاً دریافت کرده‌اند)
                 $updatedMsgs = $group->messages()
+                    ->visibleInChat()
                     ->select('id', 'user_id', 'message as content', 'edited', 'updated_at', DB::raw("'message' as type"))
                     ->where('id', '<=', (int) $lastMessageId)
                     ->where('edited', true)
@@ -751,7 +837,13 @@ class ChatController extends Controller
                     ->values();
 
                 // شناسه‌های پیام‌های حذف‌شده (از cache)
-                $deletedIds = Cache::get('group.' . $group->id . '.deleted_ids', []);
+                $deletedIds = $group->messages()
+                    ->where('lifecycle_state', 'deleted')
+                    ->latest('id')
+                    ->limit(500)
+                    ->pluck('id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
 
                 return response()->json([
                     'messages' => $messagesPayload,
@@ -949,6 +1041,7 @@ class ChatController extends Controller
         }
 
         $existingIds = $group->messages()
+            ->visibleInChat()
             ->whereIn('id', $ids->all())
             ->pluck('id')
             ->map(fn ($id) => (int) $id)

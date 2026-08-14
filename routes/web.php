@@ -355,6 +355,7 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::get('/api/groups/{group}/unread-count', [ChatController::class, 'unreadCount'])->middleware('group.chat.context')->name('groups.unread-count');
     Route::post('/api/groups/{group}/mark-all-read', [ChatController::class, 'markAllRead'])->middleware(['group.chat.idempotency', 'group.chat.context'])->name('groups.mark-all-read');
     Route::get('/api/groups/{group}/feed/delta', [ChatController::class, 'delta'])->middleware('group.chat.context')->name('groups.feed.delta');
+    Route::get('/api/groups/{group}/sync', [ChatController::class, 'sync'])->middleware('group.chat.context')->name('groups.sync');
     Route::get('/api/groups/{group}/messages', [ChatController::class, 'chatAPI'])->middleware('group.chat.context');
     Route::get('/messages/{message}/voice', [MessageController::class, 'voice'])->middleware('group.chat.context')->name('groups.messages.voice');
     Route::get('/messages/{message}/file', [MessageController::class, 'file'])->middleware('group.chat.context')->name('groups.messages.file');

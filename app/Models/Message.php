@@ -2,6 +2,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class Message extends Model
@@ -38,6 +39,15 @@ class Message extends Model
         'delivered_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
+
+    /** Exclude lifecycle tombstones from every user-visible chat feed. */
+    public function scopeVisibleInChat(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query): void {
+            $query->whereNull('lifecycle_state')
+                ->orWhere('lifecycle_state', '!=', 'deleted');
+        });
+    }
 
     public function group()
     {
@@ -118,7 +128,7 @@ class Message extends Model
      */
     public function reactions()
     {
-        return $this->hasMany(MessageReaction::class);
+        return $this->morphMany(MessageReaction::class, 'message');
     }
 
     /**

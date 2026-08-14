@@ -16,11 +16,22 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         lastPostId: 0,
         syncingDelta: false,
         deltaRetryMs: 1000,
+        syncCursor: Number(window.GroupChatConfig?.syncCursor || 0),
     };
     let messagePending = false;
     let postPending = false;
     let reconcilePending = false;
+    let syncPending = false;
     let channel = null;
+    const supportedSyncActions = new Set([
+        'message_created', 'edit', 'delete', 'reaction', 'mark-read',
+        'post_created', 'post_updated', 'post_deleted', 'post_reaction', 'post_read',
+        'poll_created', 'poll_updated', 'poll_deleted', 'poll_voted', 'poll_read',
+        'comment_created', 'comment_updated', 'comment_deleted', 'comment_reaction',
+        'pin_updated', 'session_participation_requested', 'session_participation_resolved',
+        'session_scheduled', 'session_started', 'session_ended', 'session_state_changed',
+        'election_started', 'election_finished',
+    ]);
     const log = (...args) => { if (debug) console.log(...args); };
     const snapshot = () => Object.freeze({ ...state });
     const publish = () => store.setState({ realtime: snapshot(), connection: navigator.onLine === false ? 'offline' : state.connected ? 'online' : 'connecting' });
@@ -31,7 +42,14 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         state.deltaRetryMs = 1000;
         publish();
     };
-    const shouldPoll = () => !document.hidden && navigator.onLine !== false && (!state.initialized || state.usingFallback || !state.connected);
+    const shouldPoll = () => {
+        if (document.hidden || navigator.onLine === false) return false;
+        // The cursor journal is the canonical polling transport. Legacy
+        // snapshot endpoints are only a recovery path when that endpoint is
+        // unavailable, preventing parallel requests and stale DOM races.
+        if (window.GroupChatConfig?.syncUrl) return state.usingFallback && !syncPending;
+        return !state.initialized || state.usingFallback || !state.connected;
+    };
     const scanCursors = () => {
         document.querySelectorAll('[data-message-id]').forEach(node => {
             const id = Number(node.dataset.messageId);
@@ -61,7 +79,10 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         }
         const payload = event.payload || {};
         const type = payload.content_type;
-        if (['message', 'file', 'voice'].includes(type)) applyMessage(payload, 'delta');
+        if (['message', 'file', 'voice'].includes(type) && (payload.state === 'deleted' || payload.missing === true)) {
+            app.feedBridge.mutate('message', 'delete', payload, 'delta');
+        }
+        else if (['message', 'file', 'voice'].includes(type)) applyMessage(payload, 'delta');
         else if (['post', 'poll', 'comment'].includes(type)) app.feedBridge.create(type, payload, 'delta');
         else state.usingFallback = true;
         state.lastSequence = Math.max(state.lastSequence, Number(event.sequence || 0));
@@ -100,6 +121,64 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         const decision = reconciler.inspect(event, { commit: false });
         if (decision.action !== 'ignore') void syncDelta();
     };
+    const applySyncEvent = event => {
+        if (!event) return;
+        const payload = event.payload || {};
+        const action = String(event.action || '');
+        const type = event.content_type || payload.content_type || action.split('_')[0];
+        const id = Number(event.content_id || payload[`${type}_id`] || payload.id || 0);
+
+        if (!supportedSyncActions.has(action)) log('Unsupported group sync action.', { action, event });
+
+        if (type === 'message') {
+            if (action === 'message_created' || action === 'created') applyMessage({ ...payload, id }, 'polling-sync');
+            else {
+                const operation = { message_updated: 'edit', message_deleted: 'delete', message_reaction: 'reaction', message_read: 'mark-read' }[action] || action;
+                if (['edit', 'delete', 'reaction', 'mark-read'].includes(operation)) {
+                    app.feedBridge.mutate('message', operation, { ...payload, id, message_id: id }, 'polling-sync');
+                }
+            }
+        } else if (['post', 'poll', 'comment'].includes(type)) {
+            const suffix = action.startsWith(`${type}_`) ? action.slice(type.length + 1) : action;
+            const operation = { created: 'create', updated: 'update', deleted: 'delete', voted: 'vote' }[suffix] || suffix;
+            if (operation === 'create') app.feedBridge.create(type, { ...payload, id }, 'polling-sync');
+            else app.feedBridge.mutate(type, operation, { ...payload, id }, 'polling-sync');
+        } else if (action === 'pin_updated') {
+            app.pins?.apply(payload);
+        } else if (action === 'session_participation_requested') {
+            app.sessionParticipation?.receiveRequest(payload);
+        } else if (action === 'session_participation_resolved') {
+            app.sessionParticipation?.receiveResolution(payload);
+        } else if (['session_scheduled', 'session_started', 'session_ended', 'session_state_changed'].includes(action)) {
+            app.sessionState?.receive(action, payload);
+        } else if (action.startsWith('election_')) {
+            document.dispatchEvent(new CustomEvent('group-election-updated', { detail: { action, payload } }));
+        }
+
+        state.syncCursor = Math.max(state.syncCursor, Number(event.cursor || 0));
+    };
+    const pollSync = async () => {
+        if (document.hidden || navigator.onLine === false || syncPending || !window.GroupChatConfig?.syncUrl) return;
+        syncPending = true;
+        try {
+            let hasMore = true;
+            while (hasMore) {
+                const separator = window.GroupChatConfig.syncUrl.includes('?') ? '&' : '?';
+                const data = await api.json(`${window.GroupChatConfig.syncUrl}${separator}after_cursor=${state.syncCursor}&limit=100`);
+                (data?.events || []).forEach(applySyncEvent);
+                state.syncCursor = Math.max(state.syncCursor, Number(data?.cursor || 0));
+                hasMore = Boolean(data?.has_more) && (data?.events || []).length > 0;
+            }
+            setHealthy();
+        } catch (error) {
+            state.connected = false;
+            state.usingFallback = true;
+            publish();
+            log('Group sync polling failed.', error);
+        } finally {
+            syncPending = false;
+        }
+    };
     const applyMessageEvent = event => {
         setHealthy();
         if (event?.actor_id && Number(event.actor_id) === Number(authUserId)) return;
@@ -130,6 +209,10 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         }
         if (action === 'pin_updated') {
             app.pins?.apply(payload);
+            return;
+        }
+        if (action.startsWith('election_')) {
+            document.dispatchEvent(new CustomEvent('group-election-updated', { detail: event || {} }));
             return;
         }
         const match = /^(post|poll|comment)_(created|updated|deleted|reaction|read)$/.exec(action);
@@ -225,6 +308,10 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
             if (!window.scrollPositionRestored && attempts < 10) return lifecycle.timeout(begin, 500);
             state.pollingStarted = true;
             scanCursors();
+            const configuredInterval = Number(window.GroupChatConfig?.pollingIntervalMs || 1800);
+            const syncInterval = Math.min(10000, Math.max(1000, configuredInterval));
+            void pollSync();
+            lifecycle.interval(pollSync, syncInterval);
             lifecycle.interval(pollMessages, 1000);
             lifecycle.interval(pollPosts, 3000);
             lifecycle.interval(reconcilePosts, 10000);
@@ -235,12 +322,15 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
     lifecycle.on(window, 'online', () => {
         state.connected = false;
         publish();
+        void pollSync();
         if (deltaSyncEnabled) void syncDelta();
         else initialize();
     });
     lifecycle.on(window, 'offline', () => { state.connected = false; state.usingFallback = false; publish(); });
     lifecycle.on(document, 'visibilitychange', () => {
-        if (!document.hidden && deltaSyncEnabled) void syncDelta();
+        if (document.hidden) return;
+        void pollSync();
+        if (deltaSyncEnabled) void syncDelta();
     });
     lifecycle.add(() => {
         if (channel && window.Echo?.leave) window.Echo.leave(`group.${groupId}`);

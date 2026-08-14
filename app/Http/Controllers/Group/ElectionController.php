@@ -113,11 +113,16 @@ class ElectionController
             $candidate->save();
         }
 
-        // Dispatch event for finished election
-        event(new \App\Events\ElectionFinished($election, $election->group, $activeCandidates));
-
         // Close the election
         $election->update(['is_closed' => 1]);
+
+        app(\App\Services\GroupChat\GroupEventPublisher::class)->publish(
+            new \App\Events\GroupFeedUpdated((int) $election->group_id, 'election_finished', [
+                'election_id' => (int) $election->id,
+                'is_closed' => true,
+                'elected_candidate_ids' => $activeCandidates->pluck('user_id')->map(fn ($id) => (int) $id)->values()->all(),
+            ], (int) auth()->id())
+        );
 
         return response()->json([
             'status' => 'success',

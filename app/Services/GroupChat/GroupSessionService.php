@@ -3,7 +3,6 @@
 namespace App\Services\GroupChat;
 
 use App\Events\GroupFeedUpdated;
-use App\Jobs\BroadcastGroupFeedUpdate;
 use App\Models\Group;
 use App\Models\GroupSession;
 use Illuminate\Support\Facades\DB;
@@ -67,12 +66,6 @@ class GroupSessionService
 
     private function dispatch(GroupFeedUpdated $event): void
     {
-        if (app()->bound('request') && request()->route()) {
-            app(\Illuminate\Contracts\Bus\Dispatcher::class)->dispatchAfterResponse(new BroadcastGroupFeedUpdate(
-                $event->groupId, $event->action, $event->payload, $event->actorId
-            ));
-            return;
-        }
-        event($event);
+        app(GroupEventPublisher::class)->publish($event);
     }
 }
