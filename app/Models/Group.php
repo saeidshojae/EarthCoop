@@ -15,11 +15,20 @@ class Group extends Model
 
     public function users()
     {
-        return $this->belongsToMany(User::class, 'group_user')->withPivot(
+        return $this->belongsToMany(User::class, 'group_user')
+            ->where('users.is_system', false)
+            ->withPivot(
             'role', 'status', 'expired', 'last_read_message_id',
             'role_override_active', 'role_override_original_role', 'role_override_started_at',
             'role_override_expires_at', 'role_override_changed_by', 'role_override_source'
         )->withTimestamps();
+    }
+
+    public function systemUsers()
+    {
+        return $this->belongsToMany(User::class, 'group_user')
+            ->where('users.is_system', true)
+            ->withTimestamps();
     }
 
 
@@ -57,10 +66,18 @@ class Group extends Model
     }
 
     public function userCount(){
-        return $this->hasMany(GroupUser::class)->where('status', 1)->where('role', '!=', 4)->count();
+        return $this->hasMany(GroupUser::class)
+            ->whereHas('user', fn ($query) => $query->where('is_system', false))
+            ->where('status', 1)
+            ->where('role', '!=', 4)
+            ->count();
     }
     public function guestsCount(){
-        return $this->hasMany(GroupUser::class)->where('status', 1)->where('role', 4)->count();
+        return $this->hasMany(GroupUser::class)
+            ->whereHas('user', fn ($query) => $query->where('is_system', false))
+            ->where('status', 1)
+            ->where('role', 4)
+            ->count();
     }
 
     public function groupUser(){

@@ -32,7 +32,7 @@ class NajmBaharDashboardController extends Controller
         $userCount = User::members()->count();
         $isThresholdMet = $userCount >= $userThreshold;
         $totalMinted = $userCount * $initialAmount;
-        $activeUserIds = User::select('id');
+        $activeUserIds = User::members()->select('id');
 
         // آمار کلی
         $stats = [

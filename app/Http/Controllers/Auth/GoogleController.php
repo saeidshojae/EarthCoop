@@ -58,6 +58,10 @@ class GoogleController extends Controller
             $email = (string) ($googleUser->getEmail() ?? '');
             $user = User::whereEmail($email)->first();
 
+            if ($user?->isSystemIdentity()) {
+                abort(403, 'System identities cannot sign in interactively.');
+            }
+
             if (!$user) {
                 if ($state === 'login') {
                     $this->emitRuntime('najm_hoda.input.auth.service.google_oauth.callback.rejected', [

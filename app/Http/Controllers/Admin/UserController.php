@@ -21,7 +21,7 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::with([
+        $query = User::members()->with([
             'address.country',
             'address.province',
             'address.county',
@@ -88,15 +88,15 @@ class UserController extends Controller
 
         // آمار
         $stats = [
-            'total' => User::count(),
-            'active' => User::where('status', 'active')->count(),
-            'inactive' => User::where('status', 'inactive')->count(),
-            'suspended' => User::where('status', 'suspended')->count(),
-            'verified' => User::whereNotNull('email_verified_at')->count(),
-            'unverified' => User::whereNull('email_verified_at')->count(),
-            'today' => User::whereDate('created_at', today())->count(),
-            'this_week' => User::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
-            'this_month' => User::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count(),
+            'total' => User::members()->count(),
+            'active' => User::members()->where('status', 'active')->count(),
+            'inactive' => User::members()->where('status', 'inactive')->count(),
+            'suspended' => User::members()->where('status', 'suspended')->count(),
+            'verified' => User::members()->whereNotNull('email_verified_at')->count(),
+            'unverified' => User::members()->whereNull('email_verified_at')->count(),
+            'today' => User::members()->whereDate('created_at', today())->count(),
+            'this_week' => User::members()->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+            'this_month' => User::members()->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count(),
         ];
 
         // دریافت لیست استان‌ها برای فیلتر
@@ -106,7 +106,7 @@ class UserController extends Controller
         $registrationChartData = [];
         for ($i = 29; $i >= 0; $i--) {
             $date = now()->subDays($i);
-            $count = User::whereDate('created_at', $date->format('Y-m-d'))->count();
+            $count = User::members()->whereDate('created_at', $date->format('Y-m-d'))->count();
             $registrationChartData[] = [
                 'date' => \Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m/d'),
                 'count' => $count
@@ -114,7 +114,7 @@ class UserController extends Controller
         }
 
         // داده‌های نمودار توزیع جغرافیایی (بر اساس استان)
-        $geographicDistribution = \App\Models\User::whereHas('address', function($q) {
+        $geographicDistribution = \App\Models\User::members()->whereHas('address', function($q) {
             $q->whereNotNull('province_id');
         })
         ->with('address.province')
@@ -646,7 +646,7 @@ class UserController extends Controller
     // Export به Excel
     public function exportUsers($userIds = null)
     {
-        $query = User::with([
+        $query = User::members()->with([
             'address.country',
             'address.province',
             'address.county',

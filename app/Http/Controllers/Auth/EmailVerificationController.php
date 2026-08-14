@@ -58,6 +58,7 @@ class EmailVerificationController extends Controller
         
         // فعال کردن کاربر
         $user = User::where('email', $email)->first();
+        abort_if($user?->isSystemIdentity(), 403, 'System identities cannot sign in interactively.');
         $user->email_verified_at = Carbon::now();
         $user->save();
 
@@ -99,4 +100,4 @@ class EmailVerificationController extends Controller
     return $this->sendVerificationCode($request);
 }
 
-} 
+}

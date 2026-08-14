@@ -10,7 +10,7 @@ class SystemUserSeeder extends Seeder
 {
     public function run(): void
     {
-        User::updateOrCreate(
+        $support = User::updateOrCreate(
             ['email' => 'support@earthcoop.ir'],
             [
                 'first_name' => 'تیم پشتیبانی',
@@ -22,5 +22,11 @@ class SystemUserSeeder extends Seeder
                 'terms_accepted_at' => now(),
             ]
         );
+
+        // A technical identity may author system content, but it is never an
+        // interactive administrator or a cooperative/group member.
+        $support->forceFill(['is_admin' => false])->save();
+        $support->groups()->detach();
+        $support->roles()->detach();
     }
 }
