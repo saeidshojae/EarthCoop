@@ -1376,7 +1376,7 @@
         return true;
     };
     if (!registerGroupInfoActions()) {
-        document.addEventListener('group-chat:ready', registerGroupInfoActions, { once: true });
+        groupInfoLifecycle.on(document, 'group-chat:ready', registerGroupInfoActions, { once: true });
     }
 
     const addUserButton = document.getElementById('addUserButton');

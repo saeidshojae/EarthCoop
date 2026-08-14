@@ -1,8 +1,9 @@
 <script>
 const groupId = @json((int) $group->id);
-window.groupChatTransport = @json(config('group-chat.transport', 'auto'));
+window.groupChatTransport = @json(($realtimeConfig['transport'] ?? 'polling'));
 const authUserId = @json((int) auth()->id());
 const yourRole = @json((int) ($yourRole ?? 0));
+window.EarthCoopRealtimeConfig = Object.freeze(@json($realtimeConfig ?? []));
 window.groupId = groupId;
 window.authUserId = authUserId;
 window.yourRole = yourRole;
@@ -12,7 +13,10 @@ window.GroupChatConfig = Object.freeze({
     yourRole,
     syncCursor: @json((int) ($groupSyncCursor ?? 0)),
     syncUrl: @json(route('groups.sync', $group)),
-    pollingIntervalMs: @json((int) config('group-chat.polling_interval_ms', 1800)),
+    pollingIntervalMs: @json((int) ($realtimeConfig['pollingIntervalMs'] ?? 1800)),
+    enabled: window.EarthCoopRealtimeConfig.enabled !== false,
+    transport: window.EarthCoopRealtimeConfig.transport || 'polling',
+    fallbackToPolling: window.EarthCoopRealtimeConfig.fallbackToPolling !== false,
     deltaSyncEnabled: @json((bool) config('group-chat.features.delta_sync_v1', false)),
     lastReadMessageId: @json($lastReadMessageId ?? null),
     updateLastReadUrl: @json(route('groups.messages.updateLastRead', $group->id)),

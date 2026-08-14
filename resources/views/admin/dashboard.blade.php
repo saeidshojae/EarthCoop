@@ -1057,7 +1057,7 @@
 
 
 
-            <a href="{{ route('admin.category.index') }}" class="admin-card-link">
+            <a href="{{ route('admin.categories.index') }}" class="admin-card-link">
 
 
 
@@ -2317,7 +2317,7 @@
 
 
 
-            <a href="{{ route('admin.dashboard', ['general']) }}" class="admin-card-link">
+            <a href="{{ route('admin.system-settings.index') }}" class="admin-card-link">
 
 
 
@@ -2398,6 +2398,18 @@
 
 
             </a>
+
+            @if(auth()->user()?->is_admin || auth()->user()?->hasRole('super-admin'))
+            <a href="{{ route('admin.system-settings.realtime.index') }}" class="admin-card-link">
+                <div class="admin-card admin-card-info">
+                    <div class="admin-card-icon">
+                        <i class="fas fa-tower-broadcast"></i>
+                    </div>
+                    <h3 class="admin-card-title">ارتباط بلادرنگ و Polling</h3>
+                    <p class="admin-card-description">مدیریت Polling، Reverb، Soketi و Pusher و آزمایش اتصال</p>
+                </div>
+            </a>
+            @endif
 
 
 
@@ -3138,7 +3150,6 @@
 
 
 @endsection
-
 
 
 

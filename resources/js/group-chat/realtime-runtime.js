@@ -5,6 +5,9 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
     const hasValidGroupContext = Number.isInteger(groupId) && groupId > 0;
     const sequenceKey = `group-feed-sequence:${groupId}`;
     const deltaSyncEnabled = window.GroupChatConfig?.deltaSyncEnabled === true;
+    const configuredTransport = String(window.GroupChatConfig?.transport || 'polling').toLowerCase();
+    const realtimeEnabled = window.GroupChatConfig?.enabled !== false;
+    const pollingAllowed = realtimeEnabled && (configuredTransport !== 'websocket' || window.GroupChatConfig?.fallbackToPolling !== false);
     const state = {
         initialized: false,
         connected: false,
@@ -158,7 +161,7 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         state.syncCursor = Math.max(state.syncCursor, Number(event.cursor || 0));
     };
     const pollSync = async () => {
-        if (document.hidden || navigator.onLine === false || syncPending || !window.GroupChatConfig?.syncUrl) return;
+        if (!pollingAllowed || document.hidden || navigator.onLine === false || syncPending || !window.GroupChatConfig?.syncUrl) return;
         syncPending = true;
         try {
             let hasMore = true;
@@ -301,7 +304,7 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
             if (debug) console.error('[GroupChat] Polling disabled: invalid group context.', { groupId });
             return;
         }
-        if (state.pollingStarted) return;
+        if (state.pollingStarted || !pollingAllowed) return;
         let attempts = 0;
         const begin = () => {
             attempts += 1;

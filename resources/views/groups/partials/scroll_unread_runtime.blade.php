@@ -3,7 +3,7 @@ function initializeGroupChatScrollManager() {
     'use strict';
 
     if (!window.GroupChat?.store) {
-        document.addEventListener('group-chat:ready', initializeGroupChatScrollManager, { once: true });
+        window.GroupChatLifecycle?.on(document, 'group-chat:ready', initializeGroupChatScrollManager, { once: true });
         return;
     }
 

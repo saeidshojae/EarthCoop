@@ -562,6 +562,9 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
     
     // تنظیمات سیستمی
     Route::get('system-settings', [SystemSettingsController::class, 'index'])->name('system-settings.index');
+    Route::get('system-settings/realtime', [\App\Http\Controllers\Admin\RealtimeSettingsController::class, 'index'])->name('system-settings.realtime.index');
+    Route::put('system-settings/realtime', [\App\Http\Controllers\Admin\RealtimeSettingsController::class, 'update'])->name('system-settings.realtime.update');
+    Route::post('system-settings/realtime/test', [\App\Http\Controllers\Admin\RealtimeSettingsController::class, 'test'])->name('system-settings.realtime.test');
     // Reputation admin
     Route::get('system-settings/reputation', [\App\Http\Controllers\Admin\ReputationController::class, 'index'])->name('reputation.index');
     Route::post('system-settings/reputation', [\App\Http\Controllers\Admin\ReputationController::class, 'update'])->name('reputation.update');

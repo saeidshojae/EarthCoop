@@ -12,18 +12,22 @@ if (csrfToken) {
 
 window.Pusher = Pusher;
 
-const realtimeKey = import.meta.env.VITE_REVERB_APP_KEY || import.meta.env.VITE_PUSHER_APP_KEY;
-const realtimeHost = import.meta.env.VITE_REVERB_HOST || import.meta.env.VITE_PUSHER_HOST;
-const realtimePort = import.meta.env.VITE_REVERB_PORT || import.meta.env.VITE_PUSHER_PORT;
-const realtimeScheme = import.meta.env.VITE_REVERB_SCHEME || import.meta.env.VITE_PUSHER_SCHEME || 'https';
-const chatTransport = (import.meta.env.VITE_GROUP_CHAT_TRANSPORT || 'auto').toLowerCase();
+const runtimeRealtime = window.EarthCoopRealtimeConfig || {};
+const hasRuntimeRealtime = Object.keys(runtimeRealtime).length > 0;
+const realtimeEnabled = hasRuntimeRealtime ? runtimeRealtime.enabled !== false : true;
+const realtimeKey = hasRuntimeRealtime ? runtimeRealtime.key : (import.meta.env.VITE_REVERB_APP_KEY || import.meta.env.VITE_PUSHER_APP_KEY);
+const realtimeHost = hasRuntimeRealtime ? runtimeRealtime.host : (import.meta.env.VITE_REVERB_HOST || import.meta.env.VITE_PUSHER_HOST);
+const realtimePort = hasRuntimeRealtime ? runtimeRealtime.port : (import.meta.env.VITE_REVERB_PORT || import.meta.env.VITE_PUSHER_PORT);
+const realtimeScheme = hasRuntimeRealtime ? runtimeRealtime.scheme : (import.meta.env.VITE_REVERB_SCHEME || import.meta.env.VITE_PUSHER_SCHEME || 'https');
+const realtimeCluster = hasRuntimeRealtime ? runtimeRealtime.cluster : (import.meta.env.VITE_PUSHER_APP_CLUSTER || 'mt1');
+const chatTransport = String(runtimeRealtime.transport || import.meta.env.VITE_GROUP_CHAT_TRANSPORT || 'auto').toLowerCase();
 const isSecureRealtime = String(realtimeScheme).toLowerCase() === 'https';
 
-if (realtimeKey && chatTransport !== 'polling') {
+if (realtimeEnabled && realtimeKey && chatTransport !== 'polling') {
     window.Echo = new Echo({
         broadcaster: 'pusher',
         key: realtimeKey,
-        cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER || 'mt1',
+        cluster: realtimeCluster,
         wsHost: realtimeHost || undefined,
         wsPort: realtimePort ? Number(realtimePort) : 80,
         wssPort: realtimePort ? Number(realtimePort) : 443,

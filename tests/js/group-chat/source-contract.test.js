@@ -290,7 +290,7 @@ test('realtime retries and fallback pollers are owned by the page lifecycle', ()
     const runtime = readFileSync('resources/js/group-chat/realtime-runtime.js', 'utf8');
     const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
 
-    assert.match(index, /createRealtimeRuntime\(\{ app, groupId:/);
+    assert.match(index, /createRealtimeRuntime\(\{ app, \.\.\.options, groupId:/);
     assert.match(index, /app\.installRealtime\(\{ debug \}\)/);
     assert.doesNotMatch(legacy, /function (?:getGroupRealtimeState|initGroupRealtimeListeners|startPolling|syncGroupDelta)\(/);
     assert.match(runtime, /lifecycle\.timeout\(syncDelta, delay\)/);

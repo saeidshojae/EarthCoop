@@ -447,6 +447,7 @@ class ChatController extends Controller
             'groupSyncCursor' => \Illuminate\Support\Facades\Schema::hasTable('group_sync_events')
                 ? (int) GroupSyncEvent::where('group_id', $group->id)->max('id')
                 : 0,
+            'realtimeConfig' => app(\App\Services\GroupChat\RealtimeSettingsService::class)->publicConfig(),
             'pendingSessionParticipationCount' => in_array((int) $yourRole, [2, 3], true)
                 ? \App\Models\GroupSessionParticipationRequest::where('group_id', $group->id)->where('status', 'pending')->count()
                 : 0

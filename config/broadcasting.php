@@ -40,6 +40,7 @@ return [
             'secret' => env('REVERB_APP_SECRET', env('PUSHER_APP_SECRET')),
             'app_id' => env('REVERB_APP_ID', env('PUSHER_APP_ID')),
             'options' => [
+                'cluster' => env('PUSHER_APP_CLUSTER', 'mt1'),
                 'host' => env('REVERB_HOST', env('PUSHER_HOST', 'api-' . env('PUSHER_APP_CLUSTER', 'mt1') . '.pusher.com')),
                 'port' => env('REVERB_PORT', env('PUSHER_PORT', 443)),
                 'scheme' => env('REVERB_SCHEME', env('PUSHER_SCHEME', 'https')),

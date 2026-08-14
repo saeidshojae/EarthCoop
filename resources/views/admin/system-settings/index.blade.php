@@ -304,7 +304,18 @@
 
 </div>
 
-@endsection
+<div class="container-fluid px-4 pb-8" dir="rtl">
+    <a href="{{ route('admin.system-settings.realtime.index') }}" class="block bg-gradient-to-l from-emerald-600 to-cyan-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
+        <div class="flex items-center justify-between gap-4">
+            <div>
+                <h3 class="text-xl font-bold"><i class="fas fa-tower-broadcast ml-2"></i>ارتباط بلادرنگ و Polling</h3>
+                <p class="mt-2 text-white/85">مدیریت Reverb، Soketi، Pusher، fallback و سلامت journal گروه‌ها</p>
+            </div>
+            <i class="fas fa-arrow-left text-2xl"></i>
+        </div>
+    </a>
+</div>
+@endsection
 
 
 

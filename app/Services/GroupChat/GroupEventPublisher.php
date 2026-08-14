@@ -10,13 +10,17 @@ use Illuminate\Support\Facades\Log;
 
 class GroupEventPublisher
 {
-    public function __construct(private readonly GroupSyncService $sync)
+    public function __construct(
+        private readonly GroupSyncService $sync,
+        private readonly RealtimeSettingsService $realtime
+    )
     {
     }
 
     public function publish(object $event): void
     {
-        if (! (bool) config('group-chat.enabled', true)) {
+        $settings = $this->realtime->effective();
+        if (! $settings['enabled']) {
             return;
         }
 
@@ -29,9 +33,11 @@ class GroupEventPublisher
             ]);
         }
 
-        if (strtolower((string) config('group-chat.transport', 'auto')) === 'polling') {
+        if ($settings['transport'] === 'polling') {
             return;
         }
+
+        $this->realtime->applyBroadcastingConfig();
 
         $broadcast = static function () use ($event): void {
             try {
