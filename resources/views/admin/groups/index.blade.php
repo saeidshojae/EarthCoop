@@ -68,7 +68,15 @@
 
 
 
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between gap-4 mb-6">
+
+        @hasPermission('groups.manage-members')
+            <a href="{{ route('admin.groups.global-roles.index') }}"
+               class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-l from-emerald-600 to-teal-500 text-white font-bold shadow-lg hover:shadow-xl transition-all">
+                <i class="fas fa-users-cog"></i>
+                مدیریت سراسری نقش‌ها
+            </a>
+        @endhasPermission
 
 
 

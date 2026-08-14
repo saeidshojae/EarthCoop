@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExperienceController;
 use App\Http\Controllers\Admin\GroupController as AdminGroupController;
 use App\Http\Controllers\Admin\GroupManagementController;
+use App\Http\Controllers\Admin\GlobalGroupRoleController;
 use App\Http\Controllers\Admin\GroupSettingController;
 use App\Http\Controllers\Admin\InvitationCodeController;
 use App\Http\Controllers\Admin\RuleController;
@@ -684,6 +685,13 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
     // مدیریت گروه‌ها
     Route::middleware('permission:groups.view')->prefix('groups')->name('groups.')->group(function () {
         Route::get('/', [AdminGroupController::class, 'index'])->name('index');
+        Route::middleware('permission:groups.manage-members')->prefix('global-roles')->name('global-roles.')->group(function () {
+            Route::get('/', [GlobalGroupRoleController::class, 'index'])->name('index');
+            Route::post('/preview', [GlobalGroupRoleController::class, 'preview'])->name('preview');
+            Route::post('/', [GlobalGroupRoleController::class, 'store'])->name('store');
+            Route::post('/{operation}/process', [GlobalGroupRoleController::class, 'process'])->name('process');
+            Route::get('/{operation}/status', [GlobalGroupRoleController::class, 'status'])->name('status');
+        });
         Route::get('/{group}/manage', [GroupManagementController::class, 'manage'])->name('manage');
         
         Route::middleware('permission:groups.manage-members')->group(function () {
