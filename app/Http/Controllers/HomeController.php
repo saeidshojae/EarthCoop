@@ -6,6 +6,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Address;
 use App\Models\UserExperience;
+use App\Models\Setting;
+use App\Models\Slider;
 
 class HomeController extends Controller
 {
@@ -59,9 +61,18 @@ class HomeController extends Controller
             ->orderBy('ends_at', 'asc')
             ->limit(3)
             ->get();
+
+        $homeSetting = Setting::find(1);
+        $homeSliders = Slider::query()
+            ->where('position', 1)
+            ->orderBy('created_at')
+            ->get();
     
         // ارسال متغیرها به ویو
-        return view('home', compact('groups', 'generalGroups', 'specializedGroups', 'exclusiveGroups', 'activeAuctions'));
+        return view('home', compact(
+            'groups', 'generalGroups', 'specializedGroups', 'exclusiveGroups',
+            'activeAuctions', 'homeSetting', 'homeSliders'
+        ));
     }
 }
 

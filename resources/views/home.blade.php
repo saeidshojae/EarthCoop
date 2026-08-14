@@ -6,10 +6,6 @@
 
 
 
-<!-- Swiper -->
-<script src="{{ asset("vendor/swiper/swiper-element-bundle.min.js") }}"></script>
-
-
 <!-- Tailwind & Bootstrap CSS via Vite -->
 <style>
 
@@ -37,23 +33,45 @@
 
     /* Swiper Slider */
     swiper-container {
+        display: block;
         width: 100%;
-        height: auto;
+        max-width: 100%;
+        min-width: 0;
+        aspect-ratio: 2 / 1;
+        overflow: hidden;
     }
 
     swiper-slide {
         text-align: center;
         display: flex;
+        width: 100%;
+        height: 100%;
+        flex-shrink: 0;
         justify-content: center;
         align-items: center;
+        overflow: hidden;
     }
 
     swiper-slide img {
         display: block;
         width: 100%;
-        height: auto;
+        height: 100%;
         object-fit: cover;
-        border-radius: 1rem;
+    }
+
+    .home-slider-shell {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        aspect-ratio: 2 / 1;
+        overflow: hidden;
+    }
+
+    @media (max-width: 640px) {
+        swiper-container,
+        .home-slider-shell {
+            aspect-ratio: 16 / 9;
+        }
     }
 
 
@@ -142,25 +160,27 @@
     @include('partials.sidebar-unified')
 
     <!-- Main Content -->
-    <main class="flex-grow bg-white rounded-2xl shadow-lg p-6 md:p-8 border border-gray-200" style="background-color: var(--color-pure-white);">
+    <main class="min-w-0 w-full flex-grow bg-white rounded-2xl shadow-lg p-6 md:p-8 border border-gray-200" style="background-color: var(--color-pure-white);">
 
 
         <!-- Welcome Section -->
         <div class="mb-8">
             <h1 class="text-3xl md:text-4xl font-bold text-gentle-black mb-4 text-center" style="color: var(--color-gentle-black);">
-                {{ \App\Models\Setting::find(1)->home_titre }}
+                {{ $homeSetting?->home_titre }}
             </h1>
             <p class="text-center text-gray-600">به زمین نو خوش آمدید</p>
         </div>
 
 
         <!-- Image Slider -->
-        @if(\App\Models\Slider::where('position', 1)->count() > 0)
-        <div class="relative w-full mb-8 rounded-xl shadow-md overflow-hidden border border-gray-200 group">
-            <swiper-container class="mySwiper" pagination="true" loop="true" autoplay-delay="6000" style="--swiper-pagination-color: var(--color-earth-green); --swiper-pagination-bullet-inactive-color: #d1d5db;">
-                @foreach(\App\Models\Slider::where('position', 1)->get() as $slider)
+        @if($homeSliders->isNotEmpty())
+        <div class="home-slider-shell relative mb-8 rounded-xl shadow-md border border-gray-200 group">
+            <swiper-container class="mySwiper"
+                @if($homeSliders->count() > 1) pagination="true" loop="true" autoplay-delay="6000" autoplay-disable-on-interaction="false" @endif
+                style="--swiper-pagination-color: var(--color-earth-green); --swiper-pagination-bullet-inactive-color: #d1d5db;">
+                @foreach($homeSliders as $slider)
                 <swiper-slide>
-                    <img src="{{ asset('images/sliders/' . $slider->src) }}" class="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105" alt="اسلایدر {{ $loop->iteration }}">
+                    <img src="{{ asset('images/sliders/' . $slider->src) }}" class="transition-transform duration-500 group-hover:scale-105" alt="{{ $slider->alt ?: 'اسلایدر ' . $loop->iteration }}">
                 </swiper-slide>
                 @endforeach
             </swiper-container>
@@ -170,7 +190,7 @@
 
         <!-- Home Content -->
         <div class="mb-8 prose prose-lg max-w-none text-gray-700">
-            {!! \App\Models\Setting::find(1)->home_content !!}
+            {!! $homeSetting?->home_content !!}
         </div>
 
 
