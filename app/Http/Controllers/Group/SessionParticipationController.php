@@ -38,6 +38,12 @@ class SessionParticipationController extends Controller
     public function store(Request $request, Group $group)
     {
         $this->authorize('view', $group);
+        abort_if(GroupUser::query()
+            ->where('group_id', $group->id)
+            ->where('user_id', auth()->id())
+            ->where('status', 1)
+            ->where('role', 0)
+            ->exists(), 403, 'نقش ناظر فقط مجوز مشاهده فعالیت‌های گروه را دارد.');
         abort_if((bool) $group->is_open, 422, 'نشست فعال است و نیازی به درخواست مشارکت نیست.');
         abort_if(auth()->user()->can('participate', $group), 422, 'شما هم‌اکنون مجوز مشارکت دارید.');
 
@@ -111,7 +117,7 @@ class SessionParticipationController extends Controller
         ]);
 
         $memberships = GroupUser::query()->where('group_id', $group->id)->where('status', 1)
-            ->whereIn('user_id', $validated['user_ids'])->whereNotIn('role', [2, 3])->get();
+            ->whereIn('user_id', $validated['user_ids'])->whereIn('role', [1, 4, 5])->get();
         abort_if($memberships->isEmpty(), 422, 'هیچ عضو معتبری انتخاب نشده است.');
 
         DB::transaction(function () use ($memberships, $validated, $group) {

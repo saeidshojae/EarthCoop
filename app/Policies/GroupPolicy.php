@@ -22,6 +22,12 @@ class GroupPolicy
             return false;
         }
 
+        // Observers are strictly read-only. An open session or a temporary
+        // session permission must never turn role 0 into a participant.
+        if ((int) $membership->role === 0) {
+            return false;
+        }
+
         return (bool) $group->is_open
             || in_array((int) $membership->role, [2, 3], true)
             || (bool) $membership->session_write_allowed;

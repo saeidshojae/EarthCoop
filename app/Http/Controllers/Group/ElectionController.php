@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Group;
 
+use App\Http\Controllers\Controller;
 use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\Group;
@@ -10,7 +11,7 @@ use App\Models\Vote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class ElectionController
+class ElectionController extends Controller
 {
     public function submitVote(Request $request, Group $group)
     {
@@ -71,6 +72,7 @@ class ElectionController
     }
 
     public function finishElection(Election $election){
+        $this->authorize('manageSession', $election->group);
         $groupSetting = GroupSetting::where('level', $election->group->location_level)->first();
         $candidates = $election->candidates;
         foreach($candidates as $candidate){

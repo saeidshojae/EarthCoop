@@ -19,7 +19,8 @@ class PostPolicy
     public function update(User $user, Blog $post): bool
     {
         return $this->view($user, $post)
-            && ((int) $post->user_id === (int) $user->id || $this->canModerateGroup($user, $post->group));
+            && ($this->canModerateGroup($user, $post->group)
+                || ((int) $post->user_id === (int) $user->id && $this->canParticipateInGroup($user, $post->group)));
     }
 
     public function delete(User $user, Blog $post): bool

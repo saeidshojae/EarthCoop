@@ -5,6 +5,7 @@ namespace Tests\Feature\GroupChat;
 use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\Blog;
+use App\Models\Election;
 use App\Models\Message;
 use App\Models\Poll;
 use App\Models\User;
@@ -558,6 +559,78 @@ class MessageAuthorizationTest extends TestCase
 
         $this->actingAs($member)
             ->postJson(route('groups.messages.edit', $message), ['content' => 'blocked edit'])
+            ->assertForbidden();
+    }
+
+    public function test_observer_is_read_only_even_in_open_group_and_with_session_permission(): void
+    {
+        [$group, $observer] = $this->makeGroupWithMember(0);
+        GroupUser::where('group_id', $group->id)->where('user_id', $observer->id)
+            ->update(['session_write_allowed' => true]);
+        $message = $this->makeMessage($group, $observer);
+        $poll = Poll::create([
+            'group_id' => $group->id,
+            'created_by' => $observer->id,
+            'question' => 'Observer poll?',
+            'is_active' => true,
+            'expires_at' => now()->addDay(),
+        ]);
+        $option = $poll->options()->create(['text' => 'No']);
+
+        $this->assertFalse($observer->can('participate', $group));
+
+        $this->actingAs($observer)
+            ->postJson(route('groups.messages.store'), ['group_id' => $group->id, 'message' => 'blocked'])
+            ->assertForbidden()
+            ->assertJsonPath('error.code', 'observer_read_only');
+        $this->actingAs($observer)
+            ->postJson(route('groups.messages.edit', $message), ['content' => 'blocked edit'])
+            ->assertForbidden();
+        $this->actingAs($observer)
+            ->postJson(route('messages.reaction', $message), ['reaction_type' => \App\Models\MessageReaction::REACTIONS[0]])
+            ->assertForbidden();
+        $this->actingAs($observer)
+            ->postJson(route('poll.vote', $poll), ['option_id' => $option->id])
+            ->assertForbidden();
+
+        $election = Election::create([
+            'group_id' => $group->id,
+            'starts_at' => now()->subHour(),
+            'ends_at' => now()->addHour(),
+            'is_closed' => false,
+        ]);
+        $this->actingAs($observer)
+            ->postJson(route('finish.election', $election))
+            ->assertForbidden();
+
+        $group->update(['is_open' => false]);
+        $this->actingAs($observer)
+            ->postJson(route('groups.session-participation.request', $group), ['message' => 'let me write'])
+            ->assertForbidden();
+    }
+
+    public function test_group_manager_can_temporarily_toggle_observer_and_active_roles(): void
+    {
+        [$group, $manager] = $this->makeGroupWithMember(3);
+        $observer = $this->makeUser();
+        GroupUser::create(['group_id' => $group->id, 'user_id' => $observer->id, 'role' => 0, 'status' => 1]);
+
+        $this->actingAs($manager)
+            ->postJson(route('groups.members.toggle-role', [$group, $observer]))
+            ->assertOk()
+            ->assertJsonPath('new_role', 1);
+        $this->assertTrue($observer->fresh()->can('participate', $group));
+
+        $this->actingAs($manager)
+            ->postJson(route('groups.members.toggle-role', [$group, $observer]))
+            ->assertOk()
+            ->assertJsonPath('new_role', 0);
+        $this->assertFalse($observer->fresh()->can('participate', $group));
+
+        $ordinary = $this->makeUser();
+        GroupUser::create(['group_id' => $group->id, 'user_id' => $ordinary->id, 'role' => 1, 'status' => 1]);
+        $this->actingAs($ordinary)
+            ->postJson(route('groups.members.toggle-role', [$group, $observer]))
             ->assertForbidden();
     }
 

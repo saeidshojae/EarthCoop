@@ -98,11 +98,16 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
                 <div class="chat-session-closed" role="status">
                     <i class="fas fa-lock" aria-hidden="true"></i>
                     <div>
+                        @if((int) $yourRole === 0)
+                        <strong>حالت مشاهده برای نقش ناظر</strong>
+                        <p>شما می‌توانید فعالیت اعضای فعال را مشاهده کنید، اما امکان ارسال پیام، پست، نظر، رأی یا واکنش ندارید.</p>
+                        @else
                         <strong>نشست در حالت محدود قرار دارد</strong>
                         <p>تا فعال‌شدن دوباره نشست، فقط مدیران، بازرسان و اعضای دارای مجوز می‌توانند پیام، پست، نظر یا رأی ثبت کنند.</p>
                         <button type="button" class="session-request-trigger" data-session-request-open>
                             <i class="fas fa-hand-paper"></i> درخواست مشارکت
                         </button>
+                        @endif
                     </div>
                 </div>
                 @elseif (auth()->user()->status == 0 || auth()->user()->first_name == null || auth()->user()->last_name

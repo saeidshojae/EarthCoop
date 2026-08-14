@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Group;
+use App\Models\GroupUser;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -49,7 +50,11 @@ class GroupManagementController extends Controller
             'role' => 'required|integer|in:0,1,2,3,4',
         ]);
 
-        $group->users()->updateExistingPivot($user->id, ['role' => (int) $request->role]);
+        $membership = GroupUser::query()
+            ->where('group_id', $group->id)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+        $membership->update(['role' => (int) $request->role]);
 
         return redirect()->route('admin.groups.manage', $group)->with('success', 'نقش کاربر با موفقیت به‌روزرسانی شد.');
     }

@@ -19,7 +19,8 @@ class MessagePolicy
     public function update(User $user, Message $message): bool
     {
         return $this->view($user, $message)
-            && ((int) $message->user_id === (int) $user->id || $this->canModerateGroup($user, $message->group));
+            && ($this->canModerateGroup($user, $message->group)
+                || ((int) $message->user_id === (int) $user->id && $this->canParticipateInGroup($user, $message->group)));
     }
 
     public function delete(User $user, Message $message): bool

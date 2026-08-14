@@ -18,13 +18,14 @@ class PollPolicy
 
     public function vote(User $user, Poll $poll): bool
     {
-        return $this->view($user, $poll);
+        return $this->view($user, $poll) && $this->canParticipateInGroup($user, $poll->group);
     }
 
     public function update(User $user, Poll $poll): bool
     {
         return $this->view($user, $poll)
-            && ((int) $poll->created_by === (int) $user->id || $this->canModerateGroup($user, $poll->group));
+            && ($this->canModerateGroup($user, $poll->group)
+                || ((int) $poll->created_by === (int) $user->id && $this->canParticipateInGroup($user, $poll->group)));
     }
 
     public function delete(User $user, Poll $poll): bool

@@ -321,9 +321,10 @@ public function addUsersToGroup(Request $request)
         // بررسی اینکه کاربر فعلی مدیر است
         $managerRole = GroupUser::where('group_id', $group->id)
             ->where('user_id', auth()->id())
+            ->where('status', 1)
             ->value('role');
         
-        if ($managerRole !== 3) {
+        if ((int) $managerRole !== 3) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'شما دسترسی لازم را ندارید.'
@@ -388,9 +389,10 @@ public function addUsersToGroup(Request $request)
         // بررسی اینکه کاربر فعلی مدیر است
         $managerRole = GroupUser::where('group_id', $group->id)
             ->where('user_id', auth()->id())
+            ->where('status', 1)
             ->value('role');
         
-        if ($managerRole !== 3) {
+        if ((int) $managerRole !== 3) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'شما دسترسی لازم را ندارید.'

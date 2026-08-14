@@ -391,24 +391,6 @@ Route::middleware(Authenticate::class)->group(function () {
         Route::get('/groups/{group}/search', [MessageController::class, 'search'])->middleware('group.chat.context')
              ->name('groups.search');
 
-    Route::get('/change-user-role/{user_id}/{group_id}', function($user_id, $group_id){
-        $user = \App\Models\User::find($user_id);
-
-        $groupUser = \App\Models\GroupUser::where('user_id', $user_id)->where('group_id', $group_id)->first();
-
-        if($groupUser->role == 0){
-            $groupUser->role = 5;
-            $groupUser->save();
-            return back()->with('success', 'نقش کاربر ' . $user->fullName() . ' از ناظر به فعال ۲ تغییر پیدا کرد');
-        }elseif($groupUser->role == 5){
-            $groupUser->role = 0;
-            $groupUser->save();
-            return back()->with('success', 'نقش کاربر ' . $user->fullName() . ' از فعال ۲ به ناظر تغییر پیدا کرد');
-        }else{
-            return back()->with('success', 'نقش غیرمجاز است');
-        }
-    })->name('change-user-role');
-
     // کامنت‌ها
     Route::post('/comment/send', [CommentController::class, 'store'])->middleware(['group.session.writable', 'throttle:group-comment', 'group.chat.idempotency', 'group.chat.context'])->name('groups.comment.store');
     Route::put('/comments/{comment}', [CommentController::class, 'update'])->middleware('group.session.writable')->name('comments.update');
@@ -711,12 +693,17 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
                     'users.*' => 'exists:users,id',
                     'main_role' => 'required|in:0,1,2,3',
                 ]);
-                
+
+                $memberIds = \App\Models\GroupUser::query()
+                    ->where('group_id', $group->id)
+                    ->whereIn('user_id', $validated['users'])
+                    ->pluck('user_id');
+                abort_unless($memberIds->count() === count($validated['users']), 422, 'یک یا چند کاربر عضو این گروه نیستند.');
+
                 // فقط نقش کاربران انتخاب شده را تغییر می‌دهیم
-                foreach ($validated['users'] as $userId) {
+                foreach ($memberIds as $userId) {
                     $group->users()->updateExistingPivot($userId, [
-                        'role' => $validated['main_role'],
-                        'main_role' => $validated['main_role']
+                        'role' => $validated['main_role']
                     ]);
                 }
                 
@@ -736,24 +723,6 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
     Route::delete('faq-questions/{question}', [AdminFaqQuestionController::class, 'destroy'])->name('faq.destroy');
     Route::post('faq-questions/bulk', [AdminFaqQuestionController::class, 'bulkAction'])->name('faq.bulk');
     
-    Route::put('groups/manage/chage-roles/{group}', function(Request $request, \App\Models\Group $group){
-        $validated = $request->validate([
-            'users' => 'required|array|min:1',
-            'users.*' => 'exists:users,id',
-            'main_role' => 'required|in:0,1,2,3', // بر اساس نقش‌های موجود
-        ]);
-
-        foreach ($validated['users'] as $userId) {
-            $groupUser = \App\Models\GroupUser::where('group_id', $group->id)->where('user_id', $userId)->first();
-            $groupUser->role = $validated['main_role'];
-            $groupUser->save();
-            
-        }
-    
-        return back()->with('success', 'نقش کاربران با موفقیت تغییر یافت.');    
-    })->name('groups.change-roles');
-    
-
     Route::put('group-post-update/{blog}', [AdminGroupController::class, 'postUpdate'])->name('group-post.update');
     Route::get('group-post-delete/{blog}', [AdminGroupController::class, 'postDelete'])->name('group.post.delete');
 

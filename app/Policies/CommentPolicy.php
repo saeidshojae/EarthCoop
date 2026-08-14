@@ -19,7 +19,8 @@ class CommentPolicy
     public function update(User $user, Comment $comment): bool
     {
         return $this->view($user, $comment)
-            && ((int) $comment->user_id === (int) $user->id || $this->canModerateGroup($user, $comment->blog->group));
+            && ($this->canModerateGroup($user, $comment->blog->group)
+                || ((int) $comment->user_id === (int) $user->id && $this->canParticipateInGroup($user, $comment->blog->group)));
     }
 
     public function delete(User $user, Comment $comment): bool

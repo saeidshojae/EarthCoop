@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Blog;
 use App\Models\Comment;
 use App\Models\Group;
+use App\Models\GroupUser;
 use App\Models\Message;
 use App\Models\Poll;
 use Closure;
@@ -19,13 +20,22 @@ class EnsureGroupSessionWritable
 
         abort_unless($group, 404, 'گروه یافت نشد.');
         if (Gate::denies('participate', $group)) {
+            $isObserver = GroupUser::query()
+                ->where('group_id', $group->id)
+                ->where('user_id', $request->user()->id)
+                ->where('status', 1)
+                ->where('role', 0)
+                ->exists();
+
             return response()->json([
                 'error' => [
-                    'code' => 'group_session_closed',
-                    'message' => 'نشست در حال برگزاری است و مشارکت اعضای عادی موقتاً محدود شده است.',
+                    'code' => $isObserver ? 'observer_read_only' : 'group_session_closed',
+                    'message' => $isObserver
+                        ? 'نقش ناظر فقط مجوز مشاهده فعالیت‌های گروه را دارد.'
+                        : 'نشست در حال برگزاری است و مشارکت اعضای عادی موقتاً محدود شده است.',
                     'details' => [
                         'group_id' => (int) $group->id,
-                        'can_request_participation' => true,
+                        'can_request_participation' => ! $isObserver,
                     ],
                 ],
             ], 403);

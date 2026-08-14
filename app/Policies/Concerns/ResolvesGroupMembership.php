@@ -33,4 +33,9 @@ trait ResolvesGroupMembership
 
         return (int) optional($this->membership($user, $group))->role === 3;
     }
+
+    private function canParticipateInGroup(User $user, Group $group): bool
+    {
+        return $user->can('participate', $group);
+    }
 }

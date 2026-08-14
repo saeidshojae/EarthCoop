@@ -325,11 +325,14 @@
                                 </div>
                             </div>
                             @if($yourRole == 3 && in_array((int)($member->role ?? -1), [0,1], true) && $person?->id)
-                                <a href='{{ route('change-user-role', [$person->id, $group2->id]) }}' class="member-change-role">
+                                <button type="button" class="member-change-role"
+                                    data-chat-feature-action="toggle-member-role"
+                                    data-member-id="{{ $person->id }}"
+                                    data-member-role="{{ (int) $member->role }}">
                                     تغییر نقش
-                                </a>
+                                </button>
                             @endif
-                            @if(in_array($yourRole, [2,3], true) && !in_array((int)($member->role ?? -1), [2,3], true) && $person?->id)
+                            @if(in_array($yourRole, [2,3], true) && in_array((int)($member->role ?? -1), [1,4,5], true) && $person?->id)
                                 <form method="POST" action="{{ route('groups.session-permissions.toggle', [$group2, $person]) }}" class="m-0">
                                     @csrf
                                     <button type="submit" class="member-session-permission {{ $member->session_write_allowed ? 'is-allowed' : '' }}"
