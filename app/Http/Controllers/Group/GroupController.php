@@ -316,8 +316,12 @@ public function addUsersToGroup(Request $request)
      * تغییر نقش کاربر بین ناظر (0) و فعال (1)
      * فقط برای مدیران (role 3)
      */
-    public function toggleUserRole(Group $group, User $user)
+    public function toggleUserRole(\Illuminate\Http\Request $request, Group $group, User $user, \App\Services\TemporaryGroupRoleService $roleService)
     {
+        $validated = $request->validate([
+            'duration_hours' => ['required', 'integer', 'min:1', 'max:24'],
+        ]);
+        $roleService->restoreExpiredForGroup($group->id);
         // بررسی اینکه کاربر فعلی مدیر است
         $managerRole = GroupUser::where('group_id', $group->id)
             ->where('user_id', auth()->id())
@@ -345,11 +349,11 @@ public function addUsersToGroup(Request $request)
 
         // فقط بین ناظر (0) و فعال (1) تغییر می‌دهد
         if ($groupUser->role == 0) {
-            $groupUser->role = 1;
+            $targetRole = 1;
             $newRole = 'فعال';
             $oldRole = 'ناظر';
         } elseif ($groupUser->role == 1) {
-            $groupUser->role = 0;
+            $targetRole = 0;
             $newRole = 'ناظر';
             $oldRole = 'فعال';
         } else {
@@ -359,13 +363,20 @@ public function addUsersToGroup(Request $request)
             ], 400);
         }
 
-        $groupUser->save();
+        $groupUser = $roleService->apply(
+            $groupUser,
+            $targetRole,
+            now()->addHours((int) $validated['duration_hours']),
+            $request->user(),
+            'group_manager'
+        );
 
         return response()->json([
             'status' => 'success',
             'message' => "نقش کاربر {$user->fullName()} از {$oldRole} به {$newRole} تغییر پیدا کرد.",
             'new_role' => $groupUser->role,
-            'new_role_label' => $newRole
+            'new_role_label' => $newRole,
+            'expires_at' => $groupUser->role_override_expires_at?->toIso8601String()
         ]);
     }
 
@@ -373,7 +384,7 @@ public function addUsersToGroup(Request $request)
      * دریافت لیست اعضای گروه برای مدیریت
      * فقط برای مدیران (role 3)
      */
-    public function getMembers($group)
+    public function getMembers($group, \App\Services\TemporaryGroupRoleService $roleService)
     {
         // اگر route model binding کار نکرد، گروه را دستی پیدا کن
         if (!($group instanceof Group)) {
@@ -385,6 +396,8 @@ public function addUsersToGroup(Request $request)
                 ], 404);
             }
         }
+
+        $roleService->restoreExpiredForGroup($group->id);
         
         // بررسی اینکه کاربر فعلی مدیر است
         $managerRole = GroupUser::where('group_id', $group->id)
@@ -402,7 +415,7 @@ public function addUsersToGroup(Request $request)
         $members = $group->users()
             ->wherePivotIn('role', [0, 1, 3]) // ناظر، فعال و مدیر
             ->select('users.id', 'users.first_name', 'users.last_name', 'users.email')
-            ->withPivot('role', 'status')
+            ->withPivot('role', 'status', 'role_override_active', 'role_override_expires_at')
             ->orderBy('group_user.role', 'desc') // فعال‌ها اول
             ->orderBy('users.first_name', 'asc')
             ->get()
@@ -418,6 +431,8 @@ public function addUsersToGroup(Request $request)
                         default => 'ناظر',
                     },
                     'status' => (int) $user->pivot->status,
+                    'role_override_active' => (bool) $user->pivot->role_override_active,
+                    'role_override_expires_at' => $user->pivot->role_override_expires_at,
                 ];
             });
 
@@ -727,6 +742,7 @@ public function addUsersToGroup(Request $request)
                 unset($validated[$inputKey]);
             }
         }
+
         $actionPolicy['enabled'] = (bool) $global['action_executor_enabled'];
         $actionPolicy['max_actions_per_hour'] = (int) $global['action_max_per_hour'];
         $policy['action_executor'] = $actionPolicy;

@@ -325,6 +325,12 @@
                                 </div>
                             </div>
                             @if($yourRole == 3 && in_array((int)($member->role ?? -1), [0,1], true) && $person?->id)
+                                <label class="sr-only" for="role-hours-{{ $person->id }}">مدت تغییر نقش</label>
+                                <select id="role-hours-{{ $person->id }}" class="member-role-hours" style="padding:.4rem;border:1px solid #cbd5e1;border-radius:.5rem">
+                                    @for($hour = 1; $hour <= 24; $hour++)
+                                        <option value="{{ $hour }}">{{ $hour }} ساعت</option>
+                                    @endfor
+                                </select>
                                 <button type="button" class="member-change-role"
                                     data-chat-feature-action="toggle-member-role"
                                     data-member-id="{{ $person->id }}"

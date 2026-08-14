@@ -15,7 +15,11 @@ class Group extends Model
 
     public function users()
     {
-        return $this->belongsToMany(User::class, 'group_user')->withPivot('role', 'status', 'expired', 'last_read_message_id')->withTimestamps();
+        return $this->belongsToMany(User::class, 'group_user')->withPivot(
+            'role', 'status', 'expired', 'last_read_message_id',
+            'role_override_active', 'role_override_original_role', 'role_override_started_at',
+            'role_override_expires_at', 'role_override_changed_by', 'role_override_source'
+        )->withTimestamps();
     }
 
 

@@ -304,6 +304,10 @@
                     }">
                         ${member.role_label}
                     </span>
+                    ${member.role_override_active ? `<small style="color:#64748b">${member.role_override_expires_at ? `تا ${new Date(member.role_override_expires_at).toLocaleString('fa-IR')}` : 'بدون محدودیت'}</small>` : ''}
+                    <select class="member-role-hours" aria-label="مدت تغییر نقش" style="padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; background: white;">
+                        ${Array.from({length: 24}, (_, index) => `<option value="${index + 1}">${index + 1} ساعت</option>`).join('')}
+                    </select>
                     <button 
                         type="button"
                         data-chat-feature-action="toggle-member-role"
@@ -354,6 +358,11 @@
     };
     
     window.toggleMemberRole = async function(userId, currentRole, sourceButton = null) {
+        const durationHours = Number(sourceButton?.previousElementSibling?.value || 1);
+        if (!Number.isInteger(durationHours) || durationHours < 1 || durationHours > 24) {
+            notify('مدت تغییر نقش باید بین ۱ تا ۲۴ ساعت باشد.');
+            return;
+        }
         // بررسی وجود groupId و csrfToken
         const currentGroupId = window.groupId || groupId;
         const currentCsrfToken = csrfToken || document.querySelector('meta[name="csrf-token"]')?.content;
@@ -385,7 +394,8 @@
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
-            }
+            },
+            body: JSON.stringify({ duration_hours: durationHours })
         })
         .then(response => response.json())
         .then(data => {
@@ -1579,7 +1589,8 @@
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
-            }
+            },
+            body: JSON.stringify({ muted })
         })
         .then(res => res.json())
         .then(data => {

@@ -616,22 +616,44 @@ class MessageAuthorizationTest extends TestCase
         GroupUser::create(['group_id' => $group->id, 'user_id' => $observer->id, 'role' => 0, 'status' => 1]);
 
         $this->actingAs($manager)
-            ->postJson(route('groups.members.toggle-role', [$group, $observer]))
+            ->postJson(route('groups.members.toggle-role', [$group, $observer]), ['duration_hours' => 2])
             ->assertOk()
             ->assertJsonPath('new_role', 1);
         $this->assertTrue($observer->fresh()->can('participate', $group));
 
         $this->actingAs($manager)
-            ->postJson(route('groups.members.toggle-role', [$group, $observer]))
+            ->postJson(route('groups.members.toggle-role', [$group, $observer]), ['duration_hours' => 2])
             ->assertOk()
             ->assertJsonPath('new_role', 0);
         $this->assertFalse($observer->fresh()->can('participate', $group));
+        $this->assertDatabaseHas('group_user', [
+            'group_id' => $group->id,
+            'user_id' => $observer->id,
+            'role' => 0,
+            'role_override_active' => false,
+            'role_override_expires_at' => null,
+        ]);
 
         $ordinary = $this->makeUser();
         GroupUser::create(['group_id' => $group->id, 'user_id' => $ordinary->id, 'role' => 1, 'status' => 1]);
         $this->actingAs($ordinary)
-            ->postJson(route('groups.members.toggle-role', [$group, $observer]))
+            ->postJson(route('groups.members.toggle-role', [$group, $observer]), ['duration_hours' => 2])
             ->assertForbidden();
+    }
+
+    public function test_group_manager_role_override_requires_one_to_twenty_four_hours(): void
+    {
+        [$group, $manager] = $this->makeGroupWithMember(3);
+        $observer = $this->makeUser();
+        GroupUser::create(['group_id' => $group->id, 'user_id' => $observer->id, 'role' => 0, 'status' => 1]);
+
+        $this->actingAs($manager)
+            ->postJson(route('groups.members.toggle-role', [$group, $observer]), ['duration_hours' => 0])
+            ->assertUnprocessable();
+        $this->actingAs($manager)
+            ->postJson(route('groups.members.toggle-role', [$group, $observer]), ['duration_hours' => 25])
+            ->assertUnprocessable();
+        $this->assertDatabaseHas('group_user', ['group_id' => $group->id, 'user_id' => $observer->id, 'role' => 0]);
     }
 
     public function test_system_admin_still_needs_group_level_permission_in_closed_session(): void

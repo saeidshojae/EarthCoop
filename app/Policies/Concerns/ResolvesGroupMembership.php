@@ -10,7 +10,7 @@ trait ResolvesGroupMembership
 {
     private function membership(User $user, Group $group): ?GroupUser
     {
-        return GroupUser::query()
+        $membership = GroupUser::query()
             ->where('group_id', $group->id)
             ->where('user_id', $user->id)
             ->where('status', 1)
@@ -18,6 +18,8 @@ trait ResolvesGroupMembership
                 $query->whereNull('expired')->orWhere('expired', 0)->orWhere('expired', '>', now());
             })
             ->first();
+
+        return app(\App\Services\TemporaryGroupRoleService::class)->restoreIfExpired($membership);
     }
 
     private function isAdministrator(User $user): bool

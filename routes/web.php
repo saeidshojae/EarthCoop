@@ -692,7 +692,10 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
                     'users' => 'required|array|min:1',
                     'users.*' => 'exists:users,id',
                     'main_role' => 'required|in:0,1,2,3',
+                    'duration_unit' => 'required|in:day,month,unlimited',
+                    'duration_value' => 'nullable|required_unless:duration_unit,unlimited|integer|min:1|max:31',
                 ]);
+                abort_if($validated['duration_unit'] === 'month' && (int) $validated['duration_value'] > 12, 422, 'مدت ماهانه حداکثر ۱۲ ماه است.');
 
                 $memberIds = \App\Models\GroupUser::query()
                     ->where('group_id', $group->id)
@@ -702,9 +705,19 @@ Route::middleware(AdminMiddleware::class)->prefix('admin')->name('admin.')->grou
 
                 // فقط نقش کاربران انتخاب شده را تغییر می‌دهیم
                 foreach ($memberIds as $userId) {
-                    $group->users()->updateExistingPivot($userId, [
-                        'role' => $validated['main_role']
-                    ]);
+                    $membership = \App\Models\GroupUser::where('group_id', $group->id)->where('user_id', $userId)->firstOrFail();
+                    $expiresAt = $validated['duration_unit'] === 'unlimited'
+                        ? null
+                        : ($validated['duration_unit'] === 'month'
+                            ? now()->addMonthsNoOverflow((int) $validated['duration_value'])
+                            : now()->addDays((int) $validated['duration_value']));
+                    app(\App\Services\TemporaryGroupRoleService::class)->apply(
+                        $membership,
+                        (int) $validated['main_role'],
+                        $expiresAt,
+                        $request->user(),
+                        'system_admin'
+                    );
                 }
                 
                 return back()->with('success', 'نقش‌های کاربران با موفقیت تغییر کرد');

@@ -1860,6 +1860,15 @@
 
                 </select>
 
+                <input type="number" name="duration_value" min="1" max="31" value="1"
+                       class="w-20 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white"
+                       aria-label="مدت تغییر نقش">
+                <select name="duration_unit" class="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white">
+                    <option value="day">روز</option>
+                    <option value="month">ماه</option>
+                    <option value="unlimited">بدون محدودیت</option>
+                </select>
+
 
 
 
@@ -2139,6 +2148,8 @@
 
 
                                        name="users[]" 
+
+                                       form="bulkActionForm"
 
 
 
@@ -2460,6 +2471,12 @@
 
                                     @method('PUT')
 
+                                    @if($user->pivot->role_override_active)
+                                        <span class="text-xs text-amber-600 whitespace-normal">
+                                            {{ $user->pivot->role_override_expires_at ? 'موقت تا ' . \Carbon\Carbon::parse($user->pivot->role_override_expires_at)->format('Y-m-d H:i') : 'بدون محدودیت زمانی' }}
+                                        </span>
+                                    @endif
+
 
 
 
@@ -2538,6 +2555,14 @@
 
 
 
+                                    </select>
+                                    <input type="number" name="duration_value" min="1" max="31" value="1"
+                                           class="w-16 px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm dark:bg-slate-700 dark:text-white"
+                                           aria-label="مدت تغییر نقش">
+                                    <select name="duration_unit" class="px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm dark:bg-slate-700 dark:text-white">
+                                        <option value="day">روز</option>
+                                        <option value="month">ماه</option>
+                                        <option value="unlimited">نامحدود</option>
                                     </select>
 
 

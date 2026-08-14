@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\User;
+use App\Services\TemporaryGroupRoleService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class GroupManagementController extends Controller
 {
@@ -36,26 +38,43 @@ class GroupManagementController extends Controller
         return view('admin.groups.manage_groups', compact('generalGroups', 'specializedGroups', 'exclusiveGroups'));
     }
 
-    public function manage(Group $group)
+    public function manage(Group $group, TemporaryGroupRoleService $roleService)
     {
+        $roleService->restoreExpiredForGroup($group->id);
         // با withPivot('role') در relationship، pivot خودکار لود می‌شود
         $users = $group->users()->get();
         $blogs = \App\Models\Blog::where('group_id', $group->id)->with('category')->get();
         return view('admin.groups.manage', compact('group', 'users', 'blogs'));
     }
 
-    public function updateRole(Request $request, Group $group, User $user)
+    public function updateRole(Request $request, Group $group, User $user, TemporaryGroupRoleService $roleService)
     {
-        $request->validate([
+        $validated = $request->validate([
             'role' => 'required|integer|in:0,1,2,3,4',
+            'duration_unit' => ['required', Rule::in(['day', 'month', 'unlimited'])],
+            'duration_value' => ['nullable', 'integer', 'min:1', 'max:31', 'required_unless:duration_unit,unlimited'],
         ]);
+        abort_if($validated['duration_unit'] === 'month' && (int) $validated['duration_value'] > 12, 422, 'مدت ماهانه حداکثر ۱۲ ماه است.');
 
         $membership = GroupUser::query()
             ->where('group_id', $group->id)
             ->where('user_id', $user->id)
             ->firstOrFail();
-        $membership->update(['role' => (int) $request->role]);
+        $roleService->apply($membership, (int) $validated['role'], $this->roleExpiry($validated), $request->user(), 'system_admin');
 
         return redirect()->route('admin.groups.manage', $group)->with('success', 'نقش کاربر با موفقیت به‌روزرسانی شد.');
+    }
+
+    private function roleExpiry(array $validated): ?\Carbon\CarbonInterface
+    {
+        if ($validated['duration_unit'] === 'unlimited') {
+            return null;
+        }
+
+        $value = (int) $validated['duration_value'];
+
+        return $validated['duration_unit'] === 'month'
+            ? now()->addMonthsNoOverflow($value)
+            : now()->addDays($value);
     }
 }
