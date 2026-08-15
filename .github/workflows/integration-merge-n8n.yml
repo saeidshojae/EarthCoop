@@ -20,8 +20,10 @@ jobs:
       - name: Fetch n8n source
         run: git fetch origin agent/najm-hoda-n8n-integration:refs/remotes/origin/agent/najm-hoda-n8n-integration
 
-      - name: Merge and resolve RouteServiceProvider conflict
+      - name: Merge and resolve known conflict
         shell: bash
+        env:
+          ROUTE_PROVIDER_B64: "PD9waHAKCm5hbWVzcGFjZSBBcHBcUHJvdmlkZXJzOwoKdXNlIElsbHVtaW5hdGVcQ2FjaGVcUmF0ZUxpbWl0aW5nXExpbWl0Owp1c2UgSWxsdW1pbmF0ZVxGb3VuZGF0aW9uXFN1cHBvcnRcUHJvdmlkZXJzXFJvdXRlU2VydmljZVByb3ZpZGVyIGFzIFNlcnZpY2VQcm92aWRlcjsKdXNlIElsbHVtaW5hdGVcSHR0cFxSZXF1ZXN0Owp1c2UgSWxsdW1pbmF0ZVxTdXBwb3J0XEZhY2FkZXNcUmF0ZUxpbWl0ZXI7CnVzZSBJbGx1bWluYXRlXFN1cHBvcnRcRmFjYWRlc1xSb3V0ZTsKCmNsYXNzIFJvdXRlU2VydmljZVByb3ZpZGVyIGV4dGVuZHMgU2VydmljZVByb3ZpZGVyCnsKICAgIC8qKgogICAgICogVGhlIHBhdGggdG8gdGhlICJob21lIiByb3V0ZSBmb3IgeW91ciBhcHBsaWNhdGlvbi4KICAgICAqCiAgICAgKiBUeXBpY2FsbHksIHVzZXJzIGFyZSByZWRpcmVjdGVkIGhlcmUgYWZ0ZXIgYXV0aGVudGljYXRpb24uCiAgICAgKgogICAgICogQHZhciBzdHJpbmcKICAgICAqLwogICAgcHVibGljIGNvbnN0IEhPTUUgPSAnL2hvbWUnOwoKICAgIC8qKgogICAgICogRGVmaW5lIHlvdXIgcm91dGUgbW9kZWwgYmluZGluZ3MsIHBhdHRlcm4gZmlsdGVycywgYW5kIG90aGVyIHJvdXRlIGNvbmZpZ3VyYXRpb24uCiAgICAgKgogICAgICogQHJldHVybiB2b2lkCiAgICAgKi8KICAgIHB1YmxpYyBmdW5jdGlvbiBib290KCkKICAgIHsKICAgICAgICAkdGhpcy0+Y29uZmlndXJlUmF0ZUxpbWl0aW5nKCk7CgogICAgICAgICR0aGlzLT5yb3V0ZXMoZnVuY3Rpb24gKCkgewogICAgICAgICAgICBSb3V0ZTo6bWlkZGxld2FyZSgnYXBpJykKICAgICAgICAgICAgICAgIC0+cHJlZml4KCdhcGknKQogICAgICAgICAgICAgICAgLT5ncm91cChiYXNlX3BhdGgoJ3JvdXRlcy9hcGkucGhwJykpOwoKICAgICAgICAgICAgUm91dGU6Om1pZGRsZXdhcmUoJ2FwaScpCiAgICAgICAgICAgICAgICAtPnByZWZpeCgnYXBpJykKICAgICAgICAgICAgICAgIC0+Z3JvdXAoYmFzZV9wYXRoKCdyb3V0ZXMvbmFqbS1ob2RhLW44bi5waHAnKSk7CgogICAgICAgICAgICBSb3V0ZTo6bWlkZGxld2FyZShbJ3dlYicsIFxBcHBcSHR0cFxNaWRkbGV3YXJlXEFkbWluTWlkZGxld2FyZTo6Y2xhc3NdKQogICAgICAgICAgICAgICAgLT5wcmVmaXgoJ2FkbWluL25ham0taG9kYS9uOG4nKQogICAgICAgICAgICAgICAgLT5uYW1lKCdhZG1pbi5uYWptLWhvZGEubjhuLicpCiAgICAgICAgICAgICAgICAtPmdyb3VwKGJhc2VfcGF0aCgncm91dGVzL25ham0taG9kYS1hZG1pbi1uOG4ucGhwJykpOwoKICAgICAgICAgICAgUm91dGU6Om1pZGRsZXdhcmUoJ3dlYicpCiAgICAgICAgICAgICAgICAtPmdyb3VwKGJhc2VfcGF0aCgncm91dGVzL3dlYi5waHAnKSk7CiAgICAgICAgICAgICAgICAKICAgICAgICAgICAgUm91dGU6Om1pZGRsZXdhcmUoJ3dlYicpCiAgICAgICAgICAgICAgICAtPmdyb3VwKGJhc2VfcGF0aCgncm91dGVzL25ham0tYmFoYXIucGhwJykpOwogICAgICAgIH0pOwogICAgfQoKICAgIC8qKgogICAgICogQ29uZmlndXJlIHRoZSByYXRlIGxpbWl0ZXJzIGZvciB0aGUgYXBwbGljYXRpb24uCiAgICAgKgogICAgICogQHJldHVybiB2b2lkCiAgICAgKi8KICAgIHByb3RlY3RlZCBmdW5jdGlvbiBjb25maWd1cmVSYXRlTGltaXRpbmcoKQogICAgewogICAgICAgIFJhdGVMaW1pdGVyOjpmb3IoJ2FwaScsIGZ1bmN0aW9uIChSZXF1ZXN0ICRyZXF1ZXN0KSB7CiAgICAgICAgICAgIHJldHVybiBMaW1pdDo6cGVyTWludXRlKDYwKS0+YnkoJHJlcXVlc3QtPnVzZXIoKT8tPmlkID86ICRyZXF1ZXN0LT5pcCgpKTsKICAgICAgICB9KTsKCiAgICAgICAgUmF0ZUxpbWl0ZXI6OmZvcignbmFqbS1ob2RhLWF1dG9ub215LXJlYWQnLCBmdW5jdGlvbiAoUmVxdWVzdCAkcmVxdWVzdCkgewogICAgICAgICAgICByZXR1cm4gTGltaXQ6OnBlck1pbnV0ZSg2MCktPmJ5KCduaC1yZWFkOicgLiAoJHJlcXVlc3QtPnVzZXIoKT8tPmlkID86ICRyZXF1ZXN0LT5pcCgpKSk7CiAgICAgICAgfSk7CgogICAgICAgIFJhdGVMaW1pdGVyOjpmb3IoJ25ham0taG9kYS1hdXRvbm9teS13cml0ZScsIGZ1bmN0aW9uIChSZXF1ZXN0ICRyZXF1ZXN0KSB7CiAgICAgICAgICAgIHJldHVybiBMaW1pdDo6cGVyTWludXRlKDIwKS0+YnkoJ25oLXdyaXRlOicgLiAoJHJlcXVlc3QtPnVzZXIoKT8tPmlkID86ICRyZXF1ZXN0LT5pcCgpKSk7CiAgICAgICAgfSk7CgogICAgICAgIFJhdGVMaW1pdGVyOjpmb3IoJ25ham0taG9kYS1uOG4tY2FsbGJhY2snLCBmdW5jdGlvbiAoUmVxdWVzdCAkcmVxdWVzdCkgewogICAgICAgICAgICByZXR1cm4gTGltaXQ6OnBlck1pbnV0ZSgzMCktPmJ5KCduaC1uOG4tY2FsbGJhY2s6JyAuICRyZXF1ZXN0LT5pcCgpKTsKICAgICAgICB9KTsKCiAgICAgICAgZm9yZWFjaCAoWwogICAgICAgICAgICAnZ3JvdXAtbWVzc2FnZScgPT4gMzAsCiAgICAgICAgICAgICdncm91cC11cGxvYWQnID0+IDEwLAogICAgICAgICAgICAnZ3JvdXAtcG9zdCcgPT4gNiwKICAgICAgICAgICAgJ2dyb3VwLXBvbGwnID0+IDYsCiAgICAgICAgICAgICdncm91cC12b3RlJyA9PiAzMCwKICAgICAgICAgICAgJ2dyb3VwLWNvbW1lbnQnID0+IDIwLAogICAgICAgICAgICAnZ3JvdXAtcmVhY3Rpb24nID0+IDYwLAogICAgICAgIF0gYXMgJG5hbWUgPT4gJGF0dGVtcHRzKSB7CiAgICAgICAgICAgIFJhdGVMaW1pdGVyOjpmb3IoJG5hbWUsIGZ1bmN0aW9uIChSZXF1ZXN0ICRyZXF1ZXN0KSB1c2UgKCRuYW1lLCAkYXR0ZW1wdHMpIHsKICAgICAgICAgICAgICAgIHJldHVybiBMaW1pdDo6cGVyTWludXRlKCRhdHRlbXB0cyktPmJ5KCRuYW1lIC4gJzonIC4gKCRyZXF1ZXN0LT51c2VyKCk/LT5pZCA/OiAkcmVxdWVzdC0+aXAoKSkpOwogICAgICAgICAgICB9KTsKICAgICAgICB9CiAgICB9Cn0K"
         run: |
           set -euo pipefail
           SOURCE=origin/agent/najm-hoda-n8n-integration
@@ -29,78 +31,26 @@ jobs:
             echo "n8n source is already integrated."
             exit 0
           fi
-
           git config user.name "EarthCoop Integration Bot"
           git config user.email "integration@earthcoop.invalid"
-
           set +e
           git merge --no-commit --no-ff "$SOURCE"
           merge_status=$?
           set -e
-
           if [ "$merge_status" -ne 0 ]; then
             conflicts="$(git diff --name-only --diff-filter=U | sort)"
-            expected="app/Providers/RouteServiceProvider.php"
-            if [ "$conflicts" != "$expected" ]; then
-              echo "Unexpected conflicts detected:"
-              echo "$conflicts"
+            if [ "$conflicts" != "app/Providers/RouteServiceProvider.php" ]; then
+              echo "Unexpected conflicts detected: $conflicts"
               git merge --abort || true
               exit 1
             fi
-
-            # Preserve the post-groups integration provider and add the n8n routes/rate limiter.
-            git checkout --ours app/Providers/RouteServiceProvider.php
-            python3 - <<'PY'
-          from pathlib import Path
-          p = Path('app/Providers/RouteServiceProvider.php')
-          s = p.read_text()
-
-          api_anchor = """            Route::middleware('api')
-                ->prefix('api')
-                ->group(base_path('routes/api.php'));
-"""
-          api_insert = api_anchor + """
-
-            Route::middleware('api')
-                ->prefix('api')
-                ->group(base_path('routes/najm-hoda-n8n.php'));
-
-            Route::middleware(['web', \\App\\Http\\Middleware\\AdminMiddleware::class])
-                ->prefix('admin/najm-hoda/n8n')
-                ->name('admin.najm-hoda.n8n.')
-                ->group(base_path('routes/najm-hoda-admin-n8n.php'));
-"""
-          if "routes/najm-hoda-n8n.php" not in s:
-              if api_anchor not in s:
-                  raise SystemExit('RouteServiceProvider API anchor not found')
-              s = s.replace(api_anchor, api_insert, 1)
-
-          limiter_anchor = """        RateLimiter::for('najm-hoda-autonomy-write', function (Request $request) {
-            return Limit::perMinute(20)->by('nh-write:' . ($request->user()?->id ?: $request->ip()));
-        });
-"""
-          limiter_insert = limiter_anchor + """
-
-        RateLimiter::for('najm-hoda-n8n-callback', function (Request $request) {
-            return Limit::perMinute(30)->by('nh-n8n-callback:' . $request->ip());
-        });
-"""
-          if "najm-hoda-n8n-callback" not in s:
-              if limiter_anchor not in s:
-                  raise SystemExit('RouteServiceProvider limiter anchor not found')
-              s = s.replace(limiter_anchor, limiter_insert, 1)
-
-          p.write_text(s)
-          PY
+            printf '%s' "$ROUTE_PROVIDER_B64" | base64 -d > app/Providers/RouteServiceProvider.php
             git add app/Providers/RouteServiceProvider.php
           fi
-
           if git diff --name-only --diff-filter=U | grep -q .; then
-            echo "Unresolved conflicts remain."
             git diff --name-only --diff-filter=U
             exit 1
           fi
-
           git add -A
           git commit -m "Integrate Najm Hoda n8n after group and economic integration"
           git push origin HEAD:agent/integration-hoda-bahar-after-groups
