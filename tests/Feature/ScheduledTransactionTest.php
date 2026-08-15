@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Setting;
 use App\Models\User;
+use App\Modules\NajmBahar\Models\LedgerEntry;
 use App\Modules\NajmBahar\Models\ScheduledTransaction;
 use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
@@ -43,7 +44,7 @@ class ScheduledTransactionTest extends TestCase
 
         $transaction = NajmTransaction::findOrFail($scheduled->transaction_id);
         $this->assertSame('completed', $transaction->status);
-        $this->assertSame(2, $transaction->ledgerEntries()->count());
+        $this->assertSame(2, LedgerEntry::query()->where('transaction_id', $transaction->id)->count());
     }
 
     public function test_scheduled_transaction_not_due_yet(): void
