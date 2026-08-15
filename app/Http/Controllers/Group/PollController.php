@@ -7,10 +7,10 @@ use App\Events\GroupPollUpdated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Group\StorePollRequest;
 use App\Http\Requests\Group\VotePollRequest;
+use App\Models\Delegation;
 use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\Poll;
-use App\Models\PollOption;
 use App\Models\PollVote;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -39,22 +39,18 @@ class PollController extends Controller
 
         $this->dispatchGroupEvent(new \App\Events\PollCreated($poll, $group, auth()->user()));
 
-        $poll->load(['options', 'votes', 'user', 'skill']);
         $payload = [
             'poll_id' => (int) $poll->id,
-            'html' => view('groups.partials.poll', [
-                'item' => $poll,
-                'group' => $group,
-                'userVote' => null,
-            ])->render(),
+            'html' => $this->renderPollHtml($poll, $group),
         ];
 
         $this->dispatchGroupEvent(new GroupFeedUpdated((int) $group->id, 'poll_created', $payload, (int) auth()->id()));
 
+        $isElection = (int) $poll->main_type === 0;
         if ($request->expectsJson() || $request->wantsJson()) {
             return response()->json([
                 'status' => 'success',
-                'message' => 'نظرسنجی با موفقیت ایجاد شد.',
+                'message' => $isElection ? 'انتخابات با موفقیت ایجاد شد.' : 'نظرسنجی با موفقیت ایجاد شد.',
                 'poll' => [
                     'id' => (int) $poll->id,
                     'html' => $payload['html'],
@@ -62,7 +58,7 @@ class PollController extends Controller
             ]);
         }
 
-        return redirect()->back()->with('success', 'نظرسنجی شما با موفقیت ارسال شد!');
+        return redirect()->back()->with('success', $isElection ? 'انتخابات با موفقیت ایجاد شد.' : 'نظرسنجی شما با موفقیت ارسال شد!');
     }
 
     public function vote(VotePollRequest $request, Poll $poll)
@@ -159,31 +155,27 @@ class PollController extends Controller
             'skill_id' => 'nullable',
         ]);
 
+        $nextType = (int) ($validated['type'] ?? $poll->type ?? 0);
         $poll->update([
             'question' => $validated['question'],
             'expires_at' => now()->addDays((int) ($validated['expires_at'] ?? 3)),
-            'real_type' => (int) ($validated['type'] ?? ($poll->real_type ?? 0)),
-            'skill_id' => ((int) ($validated['type'] ?? ($poll->real_type ?? 0)) === 1) ? ($validated['skill_id'] ?? null) : null,
+            'type' => $nextType,
+            'skill_id' => $nextType === 1 ? ($validated['skill_id'] ?? null) : null,
         ]);
         $poll->forceFill(['edited_at' => now()])->save();
-
         $poll->refresh();
-        $poll->load(['options', 'votes', 'user', 'skill']);
 
         $eventPayload = [
             'poll_id' => (int) $poll->id,
-            'html' => view('groups.partials.poll', [
-                'item' => $poll,
-                'group' => $group,
-                'userVote' => null,
-            ])->render(),
+            'html' => $this->renderPollHtml($poll, $group),
         ];
         $this->dispatchGroupEvent(new GroupFeedUpdated((int) $group->id, 'poll_updated', $eventPayload, (int) auth()->id()));
 
+        $isElection = (int) $poll->main_type === 0;
         if ($request->expectsJson() || $request->wantsJson()) {
             return response()->json([
                 'status' => 'success',
-                'message' => 'نظرسنجی با موفقیت ویرایش شد.',
+                'message' => $isElection ? 'انتخابات با موفقیت ویرایش شد.' : 'نظرسنجی با موفقیت ویرایش شد.',
                 'poll' => [
                     'id' => (int) $poll->id,
                     'html' => $eventPayload['html'],
@@ -191,7 +183,7 @@ class PollController extends Controller
             ]);
         }
 
-        return redirect()->back()->with('success', 'نظرسنجی با موفقیت ویرایش شد.');
+        return redirect()->back()->with('success', $isElection ? 'انتخابات با موفقیت ویرایش شد.' : 'نظرسنجی با موفقیت ویرایش شد.');
     }
 
     public function delete(Request $request, Group $group, Poll $poll)
@@ -215,6 +207,59 @@ class PollController extends Controller
 
         return redirect()->back()->with('success', 'نظرسنجی با موفقیت حذف شد.');
     }
+
+    private function renderPollHtml(Poll $poll, Group $group): string
+    {
+        $poll->load(['options', 'votes', 'user', 'skill']);
+        $poll->setAttribute('real_type', (int) ($poll->type ?? 0));
+
+        $activeMemberIdsSubquery = GroupUser::query()
+            ->select('user_id')
+            ->where('status', 1)
+            ->where('group_id', $group->id);
+
+        $voteCounts = PollVote::query()
+            ->where('poll_id', $poll->id)
+            ->whereIn('user_id', $activeMemberIdsSubquery)
+            ->selectRaw('option_id, COUNT(*) as votes_count')
+            ->groupBy('option_id')
+            ->pluck('votes_count', 'option_id');
+
+        $pollOptionVotes = [
+            (int) $poll->id => $voteCounts->map(fn ($count) => (int) $count)->all(),
+        ];
+        $pollTotals = [(int) $poll->id => (int) $voteCounts->sum()];
+
+        $userVoteOptionId = PollVote::query()
+            ->where('poll_id', $poll->id)
+            ->where('user_id', auth()->id())
+            ->value('option_id');
+        $userVotesByPollId = $userVoteOptionId
+            ? [(int) $poll->id => (int) $userVoteOptionId]
+            : [];
+
+        $delegationsByPollId = collect();
+        if ((int) ($poll->type ?? 0) === 1) {
+            $delegation = Delegation::query()
+                ->where('poll_id', $poll->id)
+                ->where('user_id', auth()->id())
+                ->first();
+            if ($delegation) {
+                $delegationsByPollId = collect([(int) $poll->id => $delegation]);
+            }
+        }
+
+        return view('groups.partials.poll', [
+            'item' => $poll,
+            'group' => $group,
+            'userVote' => $userVoteOptionId,
+            'pollTotals' => $pollTotals,
+            'pollOptionVotes' => $pollOptionVotes,
+            'userVotesByPollId' => $userVotesByPollId,
+            'delegationsByPollId' => $delegationsByPollId,
+        ])->render();
+    }
+
     private function dispatchGroupEvent(object $event): void
     {
         app(\App\Services\GroupChat\GroupEventPublisher::class)->publish($event);
@@ -227,8 +272,7 @@ class PollController extends Controller
     {
         $this->authorize('view', $poll);
         $user = auth()->user();
-        
-        // Don't mark own polls as read
+
         if ($poll->created_by === $user->id) {
             return response()->json(['status' => 'ignored']);
         }
