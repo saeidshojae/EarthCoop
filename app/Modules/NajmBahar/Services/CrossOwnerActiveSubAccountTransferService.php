@@ -19,7 +19,8 @@ class CrossOwnerActiveSubAccountTransferService
         SubAccount $to,
         int $amount,
         ?string $description = null,
-        ?string $idempotencyKey = null
+        ?string $idempotencyKey = null,
+        array $meta = []
     ): NajmTransaction {
         if ($amount <= 0) {
             throw new \InvalidArgumentException('Amount must be positive');
@@ -30,7 +31,7 @@ class CrossOwnerActiveSubAccountTransferService
         }
 
         try {
-            return DB::transaction(function () use ($from, $to, $amount, $description, $idempotencyKey) {
+            return DB::transaction(function () use ($from, $to, $amount, $description, $idempotencyKey, $meta) {
                 if ($idempotencyKey) {
                     $existing = app(FinancialIdempotencyReplayService::class)->find($idempotencyKey);
                     if ($existing) {
@@ -63,7 +64,7 @@ class CrossOwnerActiveSubAccountTransferService
                 $destinationMirror = $accountService->ensureSubAccountAccount($destination);
 
                 $policy = app(TransactionService::class);
-                $policy->assertEffectiveOwnerTransferAllowed($sourceMirror, $destinationMirror);
+                $policy->assertEffectiveOwnerTransferAllowed($sourceMirror, $destinationMirror, $meta);
 
                 $available = (int) ($source->balance_active ?? 0);
                 if ($available < $amount) {
@@ -81,7 +82,7 @@ class CrossOwnerActiveSubAccountTransferService
                 $sourceCanonical = $invariants->reconcileSubAccountMirror($source->fresh());
                 $destinationCanonical = $invariants->reconcileSubAccountMirror($destination->fresh());
 
-                $metadata = [
+                $metadata = array_merge($meta, [
                     'transfer_type' => 'subaccount',
                     'from_sub_account_id' => (int) $source->id,
                     'to_sub_account_id' => (int) $destination->id,
@@ -91,7 +92,7 @@ class CrossOwnerActiveSubAccountTransferService
                     'balance_type' => 'active',
                     'routed_by' => 'safe_sub_account_service',
                     'executor' => 'cross_owner_active_sub_account_transfer_service',
-                ];
+                ]);
                 if ($idempotencyKey) {
                     $metadata['idempotency_key'] = $idempotencyKey;
                 }
