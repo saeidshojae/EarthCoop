@@ -22,7 +22,8 @@ class EligibilitySnapshotService
                 'group_id' => (int) $group->id,
                 'membership_status' => 1,
                 'deleted_at' => null,
-                'captured_from' => 'group_user',
+                'system_identity' => false,
+                'captured_from' => 'group_user+users',
                 'ordering' => 'user_id_asc',
             ];
 
@@ -41,10 +42,12 @@ class EligibilitySnapshotService
             $chunkIndex = 0;
 
             DB::table('group_user')
-                ->select(['user_id'])
-                ->where('group_id', $group->id)
-                ->where('status', 1)
-                ->whereNull('deleted_at')
+                ->join('users', 'users.id', '=', 'group_user.user_id')
+                ->select(['group_user.user_id as user_id'])
+                ->where('group_user.group_id', $group->id)
+                ->where('group_user.status', 1)
+                ->whereNull('group_user.deleted_at')
+                ->where('users.is_system', false)
                 ->chunkById($chunkSize, function ($rows) use ($snapshot, &$hash, &$eligibleCount, &$chunkIndex) {
                     $memberIds = $rows->pluck('user_id')->map(fn ($id) => (int) $id)->values()->all();
                     if ($memberIds === []) {
@@ -64,7 +67,7 @@ class EligibilitySnapshotService
                         'member_ids' => $memberIds,
                     ]);
                     $eligibleCount += count($memberIds);
-                }, 'user_id', 'user_id');
+                }, 'group_user.user_id', 'user_id');
 
             $snapshot->update([
                 'status' => 'finalized',
