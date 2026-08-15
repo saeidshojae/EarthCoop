@@ -1,0 +1,34 @@
+{
+  "name": "ops.health.read",
+  "mode": "read_only",
+  "version": 1,
+  "purpose": "First staging-only end-to-end contract for Najm Hoda and n8n.",
+  "constraints": {
+    "mutations_allowed": false,
+    "earthcoop_capability_execution_allowed": false,
+    "callback_statuses": ["progress", "completed", "failed"]
+  },
+  "completed_result_schema": {
+    "healthy": "boolean",
+    "observed_at": "ISO-8601 timestamp",
+    "checks": {
+      "max_entries": 20,
+      "key_format": "tokenized name",
+      "value_type": "boolean"
+    },
+    "unknown_fields": "reject"
+  },
+  "progress_result_schema": {
+    "phase": "string",
+    "percent": "integer 0..100",
+    "unknown_fields": "reject"
+  },
+  "failed_result_schema": {
+    "error_code": "string",
+    "unknown_fields": "reject"
+  },
+  "notes": [
+    "This is a contract/evidence artifact, not an executable n8n export yet.",
+    "Generate the executable workflow only against the installed staging n8n version and validate it in GameDay before activation."
+  ]
+}
