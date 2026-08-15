@@ -1,0 +1,106 @@
+name: Merge Najm Hoda n8n into integration
+
+on:
+  push:
+    branches:
+      - agent/integration-hoda-bahar-after-groups
+
+permissions:
+  contents: write
+
+jobs:
+  merge-n8n:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout integration branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch n8n source
+        run: git fetch origin agent/najm-hoda-n8n-integration:refs/remotes/origin/agent/najm-hoda-n8n-integration
+
+      - name: Merge and resolve RouteServiceProvider conflict
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE=origin/agent/najm-hoda-n8n-integration
+          if git merge-base --is-ancestor "$SOURCE" HEAD; then
+            echo "n8n source is already integrated."
+            exit 0
+          fi
+
+          git config user.name "EarthCoop Integration Bot"
+          git config user.email "integration@earthcoop.invalid"
+
+          set +e
+          git merge --no-commit --no-ff "$SOURCE"
+          merge_status=$?
+          set -e
+
+          if [ "$merge_status" -ne 0 ]; then
+            conflicts="$(git diff --name-only --diff-filter=U | sort)"
+            expected="app/Providers/RouteServiceProvider.php"
+            if [ "$conflicts" != "$expected" ]; then
+              echo "Unexpected conflicts detected:"
+              echo "$conflicts"
+              git merge --abort || true
+              exit 1
+            fi
+
+            # Preserve the post-groups integration provider and add the n8n routes/rate limiter.
+            git checkout --ours app/Providers/RouteServiceProvider.php
+            python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/Providers/RouteServiceProvider.php')
+          s = p.read_text()
+
+          api_anchor = """            Route::middleware('api')
+                ->prefix('api')
+                ->group(base_path('routes/api.php'));
+"""
+          api_insert = api_anchor + """
+
+            Route::middleware('api')
+                ->prefix('api')
+                ->group(base_path('routes/najm-hoda-n8n.php'));
+
+            Route::middleware(['web', \\App\\Http\\Middleware\\AdminMiddleware::class])
+                ->prefix('admin/najm-hoda/n8n')
+                ->name('admin.najm-hoda.n8n.')
+                ->group(base_path('routes/najm-hoda-admin-n8n.php'));
+"""
+          if "routes/najm-hoda-n8n.php" not in s:
+              if api_anchor not in s:
+                  raise SystemExit('RouteServiceProvider API anchor not found')
+              s = s.replace(api_anchor, api_insert, 1)
+
+          limiter_anchor = """        RateLimiter::for('najm-hoda-autonomy-write', function (Request $request) {
+            return Limit::perMinute(20)->by('nh-write:' . ($request->user()?->id ?: $request->ip()));
+        });
+"""
+          limiter_insert = limiter_anchor + """
+
+        RateLimiter::for('najm-hoda-n8n-callback', function (Request $request) {
+            return Limit::perMinute(30)->by('nh-n8n-callback:' . $request->ip());
+        });
+"""
+          if "najm-hoda-n8n-callback" not in s:
+              if limiter_anchor not in s:
+                  raise SystemExit('RouteServiceProvider limiter anchor not found')
+              s = s.replace(limiter_anchor, limiter_insert, 1)
+
+          p.write_text(s)
+          PY
+            git add app/Providers/RouteServiceProvider.php
+          fi
+
+          if git diff --name-only --diff-filter=U | grep -q .; then
+            echo "Unresolved conflicts remain."
+            git diff --name-only --diff-filter=U
+            exit 1
+          fi
+
+          git add -A
+          git commit -m "Integrate Najm Hoda n8n after group and economic integration"
+          git push origin HEAD:agent/integration-hoda-bahar-after-groups
