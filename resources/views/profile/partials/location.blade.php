@@ -1028,7 +1028,7 @@
 
         $('#create_location_error').addClass('hidden').text('خطا در ثبت اطلاعات. لطفاً دوباره تلاش کنید.');
 
-        $('#createLocationModal').removeClass('hidden');
+        $('#createLocationModal').addClass('is-open').attr('aria-hidden', 'false');
 
     }
 
@@ -1036,17 +1036,15 @@
 
     function closeCreateLocationModal() {
 
-        $('#createLocationModal').addClass('hidden');
+        $('#createLocationModal').removeClass('is-open').attr('aria-hidden', 'true');
 
         currentCreateLevel = null;
 
         currentCreateType = null;
 
-    }
-
-
-
-    function resetToContinent() {
+    }
+
+    function resetToContinent() {
 
         pathParts = [];
 
@@ -1222,11 +1220,19 @@
 
 
 
-.modal.show {
+.modal.show {
 
-    display: block;
+    display: block;
 
-}
+}
+
+.create-location-modal {
+    display: none;
+}
+
+.create-location-modal.is-open {
+    display: flex;
+}
 
 </style>
 
@@ -1320,7 +1326,7 @@
 
 <!-- Inline Modal for Creating New Locations -->
 
-<div id="createLocationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+<div id="createLocationModal" class="create-location-modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50 p-4" aria-hidden="true">
 
     <div class="bg-white rounded-2xl shadow-2xl max-w-md mx-auto p-6 sm:p-8 w-full">
 

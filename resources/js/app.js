@@ -11,12 +11,15 @@ import "./group-chat/index.js";
 
 register();
 
-window.$ = $;
-window.jQuery = $;
-installSelect2(window, $);
+// Some legacy pages load jQuery plugins before this deferred Vite module runs.
+// Preserve that instance so those plugins are not detached by replacing window.$.
+const appJQuery = window.jQuery || $;
+window.$ = appJQuery;
+window.jQuery = appJQuery;
+installSelect2(window, appJQuery);
 
-if ($.fn.select2?.defaults) {
-	$.fn.select2.defaults.set("language", {
+if (appJQuery.fn.select2?.defaults) {
+	appJQuery.fn.select2.defaults.set("language", {
 		noResults: () => "نتیجه‌ای یافت نشد",
 		searching: () => "در حال جستجو...",
 	});

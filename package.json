@@ -27,6 +27,7 @@
     "@ckeditor/ckeditor5-build-classic": "^41.4.2",
     "alpinejs": "^3.14.0",
     "ckeditor4": "^4.22.1",
+    "cropperjs": "^1.6.2",
     "jquery": "^3.7.1",
     "laravel-echo": "^2.3.0",
     "persian-datepicker": "^0.5.11",

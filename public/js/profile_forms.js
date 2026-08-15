@@ -70,9 +70,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const container = document.getElementById(containerId);
 
-        const error = document.getElementById(errorId);
+        const error = document.getElementById(errorId);
+
+        if (!container) return;
 
-        const badges = container.querySelectorAll('span.badge');
+        const badges = container.querySelectorAll('span.badge');
 
         // error.style.display = (badges.length > 2) ? 'block' : 'none';
 

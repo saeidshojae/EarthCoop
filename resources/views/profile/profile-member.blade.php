@@ -559,6 +559,19 @@
 
     }
 
+    .profile-avatar > img,
+    .profile-avatar > .group-avatar {
+        display: flex !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        border-radius: 50% !important;
+        object-fit: cover;
+        align-items: center;
+        justify-content: center;
+    }
+
 
 
 
@@ -7848,7 +7861,6 @@
 
 
 @endsection
-
 
 
 

@@ -57,7 +57,7 @@
 
 
 
-<link rel="stylesheet" href="https://unpkg.com/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+<link rel="stylesheet" href="{{ asset('profile-assets/css/persian-datepicker.min.css') }}">
 
 
 
@@ -67,7 +67,7 @@
 
 
 
-<link rel="stylesheet" href="{{ asset("vendor/cropperjs/cropper.min.css") }}">
+<link rel="stylesheet" href="{{ asset('profile-assets/css/cropper.min.css') }}">
 
 
 
@@ -77,7 +77,7 @@
 
 
 
-<link rel="stylesheet" href="{{ asset("vendor/select2/css/select2.min.css") }}" />
+<link rel="stylesheet" href="{{ asset('profile-assets/css/select2.min.css') }}" />
 
 
 
@@ -8937,7 +8937,7 @@
 
 
 
-<script src="{{ asset("vendor/jquery/jquery.min.js") }}"></script>
+<script src="{{ asset('profile-assets/js/jquery.min.js') }}"></script>
 
 
 
@@ -8947,7 +8947,7 @@
 
 
 
-<script src="{{ asset("vendor/bootstrap/js/bootstrap.bundle.min.js") }}"></script>
+<script src="{{ asset('profile-assets/js/bootstrap.bundle.min.js') }}"></script>
 
 
 
@@ -8957,7 +8957,7 @@
 
 
 
-<script src="{{ asset("vendor/select2/js/select2.min.js") }}"></script>
+<script src="{{ asset('profile-assets/js/select2.min.js') }}"></script>
 
 
 
@@ -8967,7 +8967,7 @@
 
 
 
-<script src="{{ asset("vendor/persian-date/persian-date.min.js") }}"></script>
+<script src="{{ asset('profile-assets/js/persian-date.min.js') }}"></script>
 
 
 
@@ -8977,7 +8977,7 @@
 
 
 
-<script src="https://unpkg.com/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+<script src="{{ asset('profile-assets/js/persian-datepicker.js') }}"></script>
 
 
 
@@ -8987,7 +8987,7 @@
 
 
 
-<script src="{{ asset("vendor/cropperjs/cropper.min.js") }}"></script>
+<script src="{{ asset('profile-assets/js/cropper.min.js') }}"></script>
 
 
 
@@ -9997,7 +9997,6 @@
 
 
 
-<script src="{{ asset('js/edit_location.js') }}"></script>
 
 
 
@@ -10038,9 +10037,6 @@
 
 
 @endsection
-
-
-
 
 
 

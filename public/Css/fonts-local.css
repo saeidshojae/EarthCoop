@@ -75,8 +75,10 @@
 @font-face {
     font-family: 'vazir';
     /* اصلاح مسیر */
-    src: url('/fonts/vazir.ttf') format('truetype');
-    font-weight: 400;
+    src: url('/fonts/Vazirmatn[wght].woff2') format('woff2-variations');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
 }
 
 /* System Font Stack - Poppins as fallback (local or system) */
