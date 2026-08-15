@@ -84,9 +84,7 @@ class ScheduledSubAccountTransferExecutor
             $toMirror = $accounts->ensureSubAccountAccount($to);
 
             if (! $sameOwner && $moneyState === 'active') {
-                /** @var SafeTransactionService $transactions */
-                $transactions = app(TransactionService::class);
-                $transactions->assertEffectiveOwnerTransferAllowed($fromMirror, $toMirror);
+                app(EffectiveOwnerTransferPolicyService::class)->assertAllowed($fromMirror, $toMirror);
             }
 
             if ($moneyState === 'active') {
