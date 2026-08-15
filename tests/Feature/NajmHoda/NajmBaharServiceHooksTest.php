@@ -6,7 +6,7 @@ use App\Models\User;
 use App\Modules\NajmBahar\Models\Investment;
 use App\Modules\NajmBahar\Models\Project;
 use App\Modules\NajmBahar\Services\InvestmentService;
-use App\Modules\NajmBahar\Services\TransactionService;
+use App\Modules\NajmBahar\Services\InvestmentTransferService;
 use App\Services\NajmHoda\Runtime\InMemoryRuntimeEventBus;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Tests\TestCase;
@@ -18,7 +18,7 @@ class NajmBaharServiceHooksTest extends TestCase
         $bus = new InMemoryRuntimeEventBus(100);
         $this->app->instance(RuntimeEventBus::class, $bus);
 
-        $service = new InvestmentService(new TransactionService());
+        $service = new InvestmentService(app(InvestmentTransferService::class));
         $project = new Project([
             'status' => 'draft',
             'required_capital' => 100000,
@@ -43,7 +43,7 @@ class NajmBaharServiceHooksTest extends TestCase
         $bus = new InMemoryRuntimeEventBus(100);
         $this->app->instance(RuntimeEventBus::class, $bus);
 
-        $service = new InvestmentService(new TransactionService());
+        $service = new InvestmentService(app(InvestmentTransferService::class));
         $investment = new Investment([
             'status' => 'paid',
             'investor_type' => User::class,
@@ -64,4 +64,3 @@ class NajmBaharServiceHooksTest extends TestCase
         }
     }
 }
-
