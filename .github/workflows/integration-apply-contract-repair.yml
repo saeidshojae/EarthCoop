@@ -1,0 +1,34 @@
+name: Apply Integration Contract Repair
+
+on:
+  push:
+    branches:
+      - agent/integration-hoda-bahar-after-groups
+
+permissions:
+  contents: write
+
+jobs:
+  apply-repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout integration branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/integration-hoda-bahar-after-groups
+          fetch-depth: 0
+
+      - name: Apply canonical contract repair
+        run: python3 scripts/integration_contract_repair.py
+
+      - name: Commit repaired contracts
+        run: |
+          if git diff --quiet; then
+            echo "No repair changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests .github/workflows/integration-full-validation.yml
+          git commit -m "Align integration regression tests with canonical contracts"
+          git push origin HEAD:agent/integration-hoda-bahar-after-groups
