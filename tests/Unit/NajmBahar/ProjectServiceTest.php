@@ -447,6 +447,7 @@ class ProjectServiceTest extends TestCase
             'description' => 'توضیحات',
             'required_capital' => 10000000,
             'profit_percentage' => 15,
+            'investment_duration_months' => 12,
             'project_type' => 'production',
             'project_visibility' => 'public',
             'project_stage' => 'active',

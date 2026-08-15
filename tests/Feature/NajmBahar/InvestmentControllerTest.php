@@ -107,8 +107,11 @@ class InvestmentControllerTest extends TestCase
         $response = $this->actingAs($this->investor)
             ->post(route('najm-bahar.investments.store', $this->project), $data);
 
-        $response->assertRedirect()
-            ->assertSessionHas('success');
+        $response->assertRedirect();
+        $this->assertTrue(
+            $response->getSession()->has('success'),
+            (string) ($response->getSession()->get('error') ?? 'Expected success flash was not set.')
+        );
 
         $this->assertDatabaseHas('najm_bahar_investments', [
             'investor_type' => User::class,
@@ -167,8 +170,11 @@ class InvestmentControllerTest extends TestCase
         $response = $this->actingAs($this->investor)
             ->post(route('najm-bahar.investments.process-payment', $investment));
 
-        $response->assertRedirect()
-            ->assertSessionHas('success');
+        $response->assertRedirect();
+        $this->assertTrue(
+            $response->getSession()->has('success'),
+            (string) ($response->getSession()->get('error') ?? 'Expected success flash was not set.')
+        );
 
         $this->assertEquals('paid', $investment->fresh()->status);
         $this->assertNotNull($investment->fresh()->transaction_id);
@@ -245,8 +251,11 @@ class InvestmentControllerTest extends TestCase
                 'reason' => 'لغو توسط کاربر',
             ]);
 
-        $response->assertRedirect()
-            ->assertSessionHas('success');
+        $response->assertRedirect();
+        $this->assertTrue(
+            $response->getSession()->has('success'),
+            (string) ($response->getSession()->get('error') ?? 'Expected success flash was not set.')
+        );
 
         $this->assertEquals('cancelled', $investment->fresh()->status);
     }
@@ -273,8 +282,11 @@ class InvestmentControllerTest extends TestCase
                 'reason' => 'لغو و بازگشت وجه',
             ]);
 
-        $response->assertRedirect()
-            ->assertSessionHas('success');
+        $response->assertRedirect();
+        $this->assertTrue(
+            $response->getSession()->has('success'),
+            (string) ($response->getSession()->get('error') ?? 'Expected success flash was not set.')
+        );
 
         $this->assertEquals('refunded', $investment->fresh()->status);
     }

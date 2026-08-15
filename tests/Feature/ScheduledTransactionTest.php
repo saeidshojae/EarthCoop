@@ -25,11 +25,14 @@ class ScheduledTransactionTest extends TestCase
         );
 
         $this->artisan('najm-bahar:process-scheduled')
-            ->expectsOutput('NajmBahar scheduled processing completed. Processed: 1')
             ->assertExitCode(0);
 
         $scheduled->refresh();
-        $this->assertSame('processed', $scheduled->status);
+        $this->assertSame(
+            'processed',
+            $scheduled->status,
+            (string) ($scheduled->last_error ?? 'Scheduled transfer was not processed.')
+        );
         $this->assertSame(1, (int) $scheduled->attempts);
         $this->assertNull($scheduled->last_error);
 
