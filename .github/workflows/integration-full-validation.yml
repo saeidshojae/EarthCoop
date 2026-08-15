@@ -136,6 +136,6 @@ jobs:
           php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Unit/Stock || status=1
 
           echo '=== GROUP CHAT JAVASCRIPT ==='
-          npm test -- --runInBand || status=1
+          npm run test:group-chat || status=1
 
           exit $status
