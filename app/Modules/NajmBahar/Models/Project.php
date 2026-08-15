@@ -196,7 +196,7 @@ class Project extends Model
      */
     public function scopePublic($query)
     {
-        return $query->where('project_type', 'public');
+        return $query->where('project_visibility', 'public');
     }
 
     /**
@@ -204,7 +204,7 @@ class Project extends Model
      */
     public function scopePrivate($query)
     {
-        return $query->where('project_type', 'private');
+        return $query->where('project_visibility', 'private');
     }
 
     /**
@@ -218,7 +218,7 @@ class Project extends Model
     }
 
     /**
-     * درصد تکمیل سرمایه‌گذاری
+     * محاسبه درصد تکمیل سرمایه‌گذاری
      */
     public function getInvestmentProgressAttribute(): float
     {
@@ -230,50 +230,10 @@ class Project extends Model
     }
 
     /**
-     * تعداد سرمایه‌گذاران
+     * بررسی اینکه آیا پروژه کامل سرمایه‌گذاری شده
      */
-    public function getInvestorsCountAttribute(): int
+    public function getIsFullyFundedAttribute(): bool
     {
-        return $this->investments()
-            ->whereIn('status', ['paid', 'active', 'completed'])
-            ->distinct('investor_id')
-            ->count();
-    }
-
-    /**
-     * آیا پروژه قابل سرمایه‌گذاری است؟
-     */
-    public function isInvestable(): bool
-    {
-        return $this->status === 'approved' && 
-               $this->total_invested < $this->required_capital;
-    }
-
-    /**
-     * دریافت مسیر کامل دسته‌بندی
-     */
-    public function getCategoryPathAttribute(): string
-    {
-        $parts = [];
-        
-        if ($this->categoryLevel1) {
-            $parts[] = $this->categoryLevel1->name;
-        }
-        if ($this->categoryLevel2) {
-            $parts[] = $this->categoryLevel2->name;
-        }
-        if ($this->categoryLevel3) {
-            $parts[] = $this->categoryLevel3->name;
-        }
-
-        return implode(' / ', $parts);
-    }
-
-    /**
-     * تعریف Factory برای تست
-     */
-    protected static function newFactory()
-    {
-        return \Database\Factories\Modules\NajmBahar\Models\ProjectFactory::new();
+        return $this->total_invested >= $this->required_capital;
     }
 }
