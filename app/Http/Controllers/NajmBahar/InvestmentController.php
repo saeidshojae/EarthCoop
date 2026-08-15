@@ -123,7 +123,7 @@ class InvestmentController extends Controller
 
         if ($investment->status !== 'pending') {
             return redirect()
-                ->route('najm-bahar.my-investments')
+                ->route('najm-bahar.investments.my-investments')
                 ->with('error', 'این سرمایه‌گذاری قبلاً پرداخت شده است.');
         }
 
@@ -153,7 +153,7 @@ class InvestmentController extends Controller
             $this->investmentService->activateInvestment($investment);
 
             return redirect()
-                ->route('najm-bahar.my-investments')
+                ->route('najm-bahar.investments.my-investments')
                 ->with('success', 'پرداخت با موفقیت انجام شد و سرمایه‌گذاری فعال شد.');
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
@@ -205,7 +205,7 @@ class InvestmentController extends Controller
             $this->investmentService->cancelInvestment($investment, $validated['reason']);
 
             return redirect()
-                ->route('najm-bahar.my-investments')
+                ->route('najm-bahar.investments.my-investments')
                 ->with('success', 'سرمایه‌گذاری لغو شد.');
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
