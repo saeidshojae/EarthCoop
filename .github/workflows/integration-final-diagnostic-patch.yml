@@ -1,36 +1,13 @@
-name: Apply Final Regression Patch
+name: Archived Final Regression Patch
 
 on:
-  push:
-    branches:
-      - agent/integration-hoda-bahar-after-groups
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  patch:
+  archived:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout integration branch
-        uses: actions/checkout@v4
-        with:
-          ref: agent/integration-hoda-bahar-after-groups
-          fetch-depth: 0
-
-      - name: Apply deterministic patch
-        run: python3 scripts/integration_final_regression_patch.py
-
-      - name: Commit patched tests
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- tests; then
-            echo "No patch changes required."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tests
-          git commit -m "Align final regression fixtures and diagnostics"
-          git push origin HEAD:agent/integration-hoda-bahar-after-groups
+      - run: echo "Final regression patch already applied; workflow archived."
