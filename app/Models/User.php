@@ -159,6 +159,65 @@ class User extends Authenticatable
     public function hasRole($role)
     {
         if (is_string($role)) {
+            return $this->roles()->where('slug', $role)->exists();
+        }
+        return $this->roles->contains($role);
+    }
+
+    /**
+     * بررسی اینکه آیا کاربر دارای دسترسی خاصی است
+     */
+    public function hasPermission($permission)
+    {
+        // اگر Super Admin است، همه دسترسی‌ها را دارد
+        if ($this->is_admin || $this->hasRole('super-admin')) {
+            return true;
+        }
+
+        // بررسی دسترسی از طریق نقش‌ها
+        foreach ($this->roles as $role) {
+            if ($role->hasPermission($permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * بررسی اینکه آیا کاربر دارای هر کدام از دسترسی‌های داده شده است
+     */
+    public function hasAnyPermission(array $permissions)
+    {
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * بررسی اینکه آیا کاربر دارای همه دسترسی‌های داده شده است
+     */
+    public function hasAllPermissions(array $permissions)
+    {
+        foreach ($permissions as $permission) {
+            if (!$this->hasPermission($permission)) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    /**
+     * اضافه کردن نقش به کاربر
+     */
+    public function assignRole($role)
+    {
+        if (is_string($role)) {
             $role = Role::where('slug', $role)->first();
         }
         
