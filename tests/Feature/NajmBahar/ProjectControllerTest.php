@@ -158,6 +158,7 @@ class ProjectControllerTest extends TestCase
             'investment_method' => 'auction_shares',
             'problem_statement' => 'مسئله',
             'solution_description' => 'راه‌حل',
+            'target_market' => 'general',
             'accept_transparency' => true,
             'accept_rules' => true,
             'base_value_min' => 0, // مقدار نامعتبر
