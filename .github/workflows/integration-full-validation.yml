@@ -138,4 +138,7 @@ jobs:
           echo '=== GROUP CHAT JAVASCRIPT ==='
           npm run test:group-chat || status=1
 
+          echo '=== FULL PROJECT PHPUNIT REGRESSION ==='
+          php vendor/bin/phpunit --configuration phpunit.xml.dist || status=1
+
           exit $status
