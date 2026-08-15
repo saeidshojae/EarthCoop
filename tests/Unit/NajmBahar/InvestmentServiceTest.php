@@ -4,6 +4,7 @@ namespace Tests\Unit\NajmBahar;
 
 use Tests\TestCase;
 use App\Models\User;
+use App\Models\Setting;
 use App\Modules\NajmBahar\Models\Project;
 use App\Modules\NajmBahar\Models\Investment;
 use App\Modules\NajmBahar\Models\ProjectCategory;
@@ -29,6 +30,10 @@ class InvestmentServiceTest extends TestCase
 
         $this->investmentService = app(InvestmentService::class);
         $this->accountService = app(AccountService::class);
+
+        Setting::query()->updateOrCreate(['id' => 1], [
+            'najm_bahar_user_threshold' => 1,
+        ]);
 
         // ایجاد کاربران
         $this->investor = User::factory()->create(['email_verified_at' => now()]);
@@ -135,6 +140,8 @@ class InvestmentServiceTest extends TestCase
         // شارژ حساب سرمایه‌گذار
         $investorAccount = $this->accountService->getMainAccountForUser($this->investor->id);
         $investorAccount->balance = 50000000; // 500,000 گل
+        $investorAccount->balance_active = 50000000;
+$investorAccount = 50000000;
         $investorAccount->save();
 
         $investment = $this->investmentService->createInvestment(
@@ -166,6 +173,8 @@ class InvestmentServiceTest extends TestCase
         // شارژ حساب
         $investorAccount = $this->accountService->getMainAccountForUser($this->investor->id);
         $investorAccount->balance = 50000000;
+        $investorAccount->balance_active = 50000000;
+$investorAccount = 50000000;
         $investorAccount->save();
 
         $investment = $this->investmentService->createInvestment(
@@ -186,6 +195,8 @@ class InvestmentServiceTest extends TestCase
         // شارژ و پرداخت
         $investorAccount = $this->accountService->getMainAccountForUser($this->investor->id);
         $investorAccount->balance = 30000000;
+        $investorAccount->balance_active = 30000000;
+$investorAccount = 30000000;
         $investorAccount->save();
 
         $investment = $this->investmentService->createInvestment($this->project, $this->investor, 15000000);
@@ -205,10 +216,14 @@ class InvestmentServiceTest extends TestCase
         // شارژ، پرداخت و فعال‌سازی
         $investorAccount = $this->accountService->getMainAccountForUser($this->investor->id);
         $investorAccount->balance = 25000000;
+        $investorAccount->balance_active = 25000000;
+$investorAccount = 25000000;
         $investorAccount->save();
 
         $projectOwnerAccount = $this->accountService->getMainAccountForUser($this->projectOwner->id);
         $projectOwnerAccount->balance = 100000000; // برای بازگشت سرمایه
+        $projectOwnerAccount->balance_active = 100000000;
+$projectOwnerAccount = 100000000;
         $projectOwnerAccount->save();
 
         $investment = $this->investmentService->createInvestment($this->project, $this->investor, 10000000);
@@ -244,6 +259,8 @@ class InvestmentServiceTest extends TestCase
         // شارژ و پرداخت
         $investorAccount = $this->accountService->getMainAccountForUser($this->investor->id);
         $investorAccount->balance = 40000000;
+        $investorAccount->balance_active = 40000000;
+$investorAccount = 40000000;
         $investorAccount->save();
 
         $investment = $this->investmentService->createInvestment($this->project, $this->investor, 20000000);
@@ -298,6 +315,8 @@ class InvestmentServiceTest extends TestCase
         // شارژ حساب
         $investorAccount = $this->accountService->getMainAccountForUser($this->investor->id);
         $investorAccount->balance = 100000000;
+        $investorAccount->balance_active = 100000000;
+$investorAccount = 100000000;
         $investorAccount->save();
 
         // ایجاد چند سرمایه‌گذاری

@@ -4,6 +4,7 @@ namespace Tests\Feature\NajmBahar;
 
 use Tests\TestCase;
 use App\Models\User;
+use App\Models\Setting;
 use App\Modules\NajmBahar\Models\Project;
 use App\Modules\NajmBahar\Models\Investment;
 use App\Modules\NajmBahar\Models\ProjectCategory;
@@ -27,6 +28,10 @@ class InvestmentControllerTest extends TestCase
         parent::setUp();
 
         $this->accountService = app(AccountService::class);
+
+        Setting::query()->updateOrCreate(['id' => 1], [
+            'najm_bahar_user_threshold' => 1,
+        ]);
 
         // ایجاد کاربران تست
         $this->investor = User::factory()->create(['email_verified_at' => now()]);
@@ -150,6 +155,8 @@ class InvestmentControllerTest extends TestCase
         // شارژ حساب سرمایه‌گذار
         $investorAccount = $this->accountService->getMainAccountForUser($this->investor->id);
         $investorAccount->balance = 20000000; // 200,000 گل
+        $investorAccount->balance_active = 20000000;
+$investorAccount = 20000000;
         $investorAccount->save();
 
         $investment = app(InvestmentService::class)->createInvestment(
@@ -251,6 +258,8 @@ class InvestmentControllerTest extends TestCase
         // شارژ حساب
         $investorAccount = $this->accountService->getMainAccountForUser($this->investor->id);
         $investorAccount->balance = 15000000;
+        $investorAccount->balance_active = 15000000;
+$investorAccount = 15000000;
         $investorAccount->save();
 
         $investment = app(InvestmentService::class)->createInvestment(

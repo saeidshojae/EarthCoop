@@ -447,7 +447,8 @@ class ProjectServiceTest extends TestCase
             'description' => 'توضیحات',
             'required_capital' => 10000000,
             'profit_percentage' => 15,
-            'project_type' => 'public',
+            'project_type' => 'production',
+            'project_visibility' => 'public',
         ]);
 
         $this->projectService->submitForReview($project);

@@ -6,7 +6,6 @@ use App\Models\User;
 use App\Models\Group;
 use App\Modules\NajmBahar\Models\Investment;
 use App\Modules\NajmBahar\Models\Project;
-use App\Modules\NajmBahar\Services\TransactionService;
 use App\Modules\NajmBahar\Services\AccountNumberService;
 use App\Services\NajmHoda\Runtime\NajmHodaDomainEventPolicyLinkService;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
@@ -19,7 +18,7 @@ use Throwable;
 class InvestmentService
 {
     public function __construct(
-        protected TransactionService $transactionService
+        protected InvestmentTransferService $investmentTransferService
     ) {}
 
     /**
@@ -142,7 +141,7 @@ class InvestmentService
                 : AccountNumberService::makeMainAccountNumberForGroup($investment->project->owner_id);
 
             // انتقال وجه
-            $transaction = $this->transactionService->transfer(
+            $transaction = $this->investmentTransferService->transfer(
                 $investorAccountNumber,
                 $projectOwnerAccountNumber,
                 $investment->amount,
@@ -275,7 +274,7 @@ class InvestmentService
                 : AccountNumberService::makeMainAccountNumberForGroup($investment->investor_id);
 
             // انتقال سود
-            $transaction = $this->transactionService->transfer(
+            $transaction = $this->investmentTransferService->transfer(
                 $projectOwnerAccountNumber,
                 $investorAccountNumber,
                 $returnAmount,
@@ -355,7 +354,7 @@ class InvestmentService
                     : AccountNumberService::makeMainAccountNumberForGroup($investment->investor_id);
 
                 // بازگشت اصل سرمایه
-                $this->transactionService->transfer(
+                $this->investmentTransferService->transfer(
                     $projectOwnerAccountNumber,
                     $investorAccountNumber,
                     $investment->amount,
