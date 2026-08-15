@@ -25,7 +25,8 @@ class ProjectFactory extends Factory
             'required_capital' => $this->faker->numberBetween(1000000, 100000000), // 10K - 1M گل
             'profit_percentage' => $this->faker->numberBetween(5, 30),
             'investment_duration_months' => $this->faker->randomElement([6, 12, 18, 24, 36]),
-            'project_type' => $this->faker->randomElement(['public', 'private']),
+            'project_type' => $this->faker->randomElement(['production', 'service', 'infrastructure', 'research', 'social']),
+            'project_visibility' => $this->faker->randomElement(['public', 'private']),
             'status' => 'draft',
             'attachments' => [],
         ];
@@ -64,7 +65,7 @@ class ProjectFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'status' => 'under_review',
             'submitted_at' => now()->subDays(3),
-            'reviewed_at' => now()->subDays(1),
+            'reviewed_at' => now()->subDay(),
         ]);
     }
 }
