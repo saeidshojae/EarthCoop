@@ -30,6 +30,7 @@ class AuctionConcurrencyTest extends TestCase
             'base_price' => 100,
             'start_time' => now()->subMinute(),
             'end_time' => now()->addDay(),
+            'ends_at' => now()->addDay(),
             'status' => 'running',
             'type' => 'uniform_price',
             'lot_size' => 5,
