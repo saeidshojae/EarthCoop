@@ -176,8 +176,10 @@ class InvestmentControllerTest extends TestCase
             (string) ($response->getSession()->get('error') ?? 'Expected success flash was not set.')
         );
 
-        $this->assertEquals('paid', $investment->fresh()->status);
-        $this->assertNotNull($investment->fresh()->transaction_id);
+        $fresh = $investment->fresh();
+        $this->assertEquals('active', $fresh->status);
+        $this->assertNotNull($fresh->transaction_id);
+        $this->assertNotNull($fresh->metadata['activated_at'] ?? null);
     }
 
     /** @test */
