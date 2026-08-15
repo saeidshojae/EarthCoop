@@ -23,7 +23,7 @@ class PollController extends Controller
     {
         $inputs = $request->validated();
 
-        $inputs['expires_at'] = Carbon::now()->addDays($inputs['expires_at'])->format('Y-m-d H:i:s');
+        $inputs['expires_at'] = Carbon::now()->addDays((int) $inputs['expires_at'])->format('Y-m-d H:i:s');
         $inputs['group_id'] = $group->id;
         $inputs['created_by'] = auth()->id();
 
