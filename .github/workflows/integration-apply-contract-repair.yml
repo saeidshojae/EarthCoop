@@ -21,15 +21,18 @@ jobs:
       - name: Apply canonical contract repair
         run: python3 scripts/integration_contract_repair.py
 
-      - name: Commit repaired test contracts
+      - name: Apply investment financial boundary repair
+        run: python3 scripts/integration_financial_boundary_repair.py
+
+      - name: Commit repaired integration contracts
         run: |
           git restore .github/workflows/integration-full-validation.yml
-          if git diff --quiet -- tests; then
-            echo "No test repair changes required."
+          if git diff --quiet -- app tests; then
+            echo "No integration repair changes required."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tests
-          git commit -m "Align integration regression tests with canonical contracts"
+          git add app tests
+          git commit -m "Route investments through canonical transfer boundary"
           git push origin HEAD:agent/integration-hoda-bahar-after-groups
