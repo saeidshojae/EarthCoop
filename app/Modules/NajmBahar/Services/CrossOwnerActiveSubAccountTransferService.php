@@ -63,8 +63,7 @@ class CrossOwnerActiveSubAccountTransferService
                 $sourceMirror = $accountService->ensureSubAccountAccount($source);
                 $destinationMirror = $accountService->ensureSubAccountAccount($destination);
 
-                $policy = app(TransactionService::class);
-                $policy->assertEffectiveOwnerTransferAllowed($sourceMirror, $destinationMirror, $meta);
+                app(EffectiveOwnerTransferPolicyService::class)->assertAllowed($sourceMirror, $destinationMirror, $meta);
 
                 $available = (int) ($source->balance_active ?? 0);
                 if ($available < $amount) {
