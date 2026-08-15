@@ -47,9 +47,12 @@ class ProposalLifecycleServiceTest extends TestCase
             'is_active' => false,
         ]);
 
-        $expectedEligible = GroupUser::where('group_id', $group->id)
-            ->where('status', 1)
-            ->whereNull('deleted_at')
+        $expectedEligible = GroupUser::query()
+            ->join('users', 'users.id', '=', 'group_user.user_id')
+            ->where('group_user.group_id', $group->id)
+            ->where('group_user.status', 1)
+            ->whereNull('group_user.deleted_at')
+            ->where('users.is_system', false)
             ->count();
 
         $proposal = $service->openVote($proposal, $poll, $manager);

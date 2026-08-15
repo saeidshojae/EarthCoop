@@ -24,6 +24,16 @@ class NajmBaharFinancialMutationBoundaryTest extends TestCase
         'app/Modules/NajmBahar/Services/InternalAccountTransferService.php',
         'app/Modules/NajmBahar/Services/SubAccountService.php',
         'app/Modules/NajmBahar/Services/AccountService.php',
+        // Dedicated Release B/C financial persistence boundaries.
+        'app/Modules/NajmBahar/Services/PublicExecutionPaymentService.php',
+        'app/Modules/NajmBahar/Services/CrossOwnerActiveSubAccountTransferService.php',
+        'app/Modules/NajmBahar/Services/MainAccountSystemTransferService.php',
+        'app/Modules/NajmBahar/Services/AccountInvariantService.php',
+        'app/Modules/NajmBahar/Services/ScheduledSubAccountTransferExecutor.php',
+        'app/Modules/NajmBahar/Services/PublicExecutionReversalService.php',
+        'app/Modules/NajmBahar/Services/DimCommitmentService.php',
+        'app/Modules/NajmBahar/Services/InternalSubAccountTransferService.php',
+        'app/Modules/NajmBahar/Services/SubAccountSystemTransferService.php',
         'app/Console/Commands/FixCorruptedBalances.php',
         'app/Http/Controllers/Admin/UserController.php',
     ];

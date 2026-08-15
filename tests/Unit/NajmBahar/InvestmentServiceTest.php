@@ -52,7 +52,15 @@ class InvestmentServiceTest extends TestCase
             'required_capital' => 100000000, // 1,000,000 گل
             'profit_percentage' => 25,
             'investment_duration_months' => 24,
-            'project_type' => 'public',
+            'project_type' => 'production',
+            'project_visibility' => 'public',
+            'project_stage' => 'active',
+            'investment_method' => 'capital_participation',
+            'problem_statement' => 'نیاز اقتصادی روشن برای پروژه',
+            'solution_description' => 'راه‌حل اجرایی پروژه',
+            'target_market' => 'general',
+            'accept_transparency' => true,
+            'accept_rules' => true,
         ]);
 
         // تایید پروژه
@@ -94,7 +102,15 @@ class InvestmentServiceTest extends TestCase
             'description' => 'توضیحات',
             'required_capital' => 5000000,
             'profit_percentage' => 10,
-            'project_type' => 'public',
+            'project_type' => 'production',
+            'project_visibility' => 'public',
+            'project_stage' => 'active',
+            'investment_method' => 'capital_participation',
+            'problem_statement' => 'نیاز اقتصادی روشن برای پروژه',
+            'solution_description' => 'راه‌حل اجرایی پروژه',
+            'target_market' => 'general',
+            'accept_transparency' => true,
+            'accept_rules' => true,
         ]);
 
         $this->investmentService->createInvestment($draftProject, $this->investor, 1000000);

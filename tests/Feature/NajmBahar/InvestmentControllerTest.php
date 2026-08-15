@@ -50,7 +50,15 @@ class InvestmentControllerTest extends TestCase
             'required_capital' => 50000000, // 500,000 گل
             'profit_percentage' => 20,
             'investment_duration_months' => 18,
-            'project_type' => 'public',
+            'project_type' => 'production',
+            'project_visibility' => 'public',
+            'project_stage' => 'active',
+            'investment_method' => 'capital_participation',
+            'problem_statement' => 'نیاز اقتصادی روشن برای پروژه',
+            'solution_description' => 'راه‌حل اجرایی پروژه',
+            'target_market' => 'general',
+            'accept_transparency' => true,
+            'accept_rules' => true,
         ]);
 
         // تایید پروژه

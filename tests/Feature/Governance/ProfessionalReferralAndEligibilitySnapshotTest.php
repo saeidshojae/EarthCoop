@@ -94,9 +94,12 @@ class ProfessionalReferralAndEligibilitySnapshotTest extends TestCase
             'is_active' => false,
         ]);
 
-        $expectedEligible = GroupUser::where('group_id', $group->id)
-            ->where('status', 1)
-            ->whereNull('deleted_at')
+        $expectedEligible = GroupUser::query()
+            ->join('users', 'users.id', '=', 'group_user.user_id')
+            ->where('group_user.group_id', $group->id)
+            ->where('group_user.status', 1)
+            ->whereNull('group_user.deleted_at')
+            ->where('users.is_system', false)
             ->count();
 
         $proposal = $lifecycle->openVote($proposal, $poll, $manager);
@@ -109,9 +112,12 @@ class ProfessionalReferralAndEligibilitySnapshotTest extends TestCase
         $lateMember = User::factory()->create();
         GroupUser::create(['group_id' => $group->id, 'user_id' => $lateMember->id, 'role' => 1, 'status' => 1]);
 
-        $currentEligibleAfterMembershipChange = GroupUser::where('group_id', $group->id)
-            ->where('status', 1)
-            ->whereNull('deleted_at')
+        $currentEligibleAfterMembershipChange = GroupUser::query()
+            ->join('users', 'users.id', '=', 'group_user.user_id')
+            ->where('group_user.group_id', $group->id)
+            ->where('group_user.status', 1)
+            ->whereNull('group_user.deleted_at')
+            ->where('users.is_system', false)
             ->count();
         $this->assertSame($expectedEligible, $currentEligibleAfterMembershipChange, 'Fixture swaps one voter for another while keeping cohort size equal.');
 

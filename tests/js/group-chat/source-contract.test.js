@@ -109,7 +109,7 @@ test('chat page uses only locally bundled library assets', () => {
     assert.match(layout, /vendor\/fontawesome\/css\/all\.min\.css/);
     assert.match(app, /import \$ from "jquery"/);
     assert.match(app, /import installSelect2 from "select2"/);
-    assert.match(app, /installSelect2\(window, \$\)/);
+    assert.match(app, /installSelect2\(window, appJQuery\)/);
     assert.match(app, /select2\/dist\/css\/select2\.min\.css/);
 });
 
