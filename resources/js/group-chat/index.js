@@ -74,7 +74,7 @@ if (window.groupId) {
         },
     };
     app.polls = createPolls({ api, store, feed, actions, lifecycle });
-    app.elections = createElections({ actions, lifecycle, store });
+    app.elections = createElections({ api, feed, actions, lifecycle, store });
     app.tabs = createTabs({ store, lifecycle });
     app.skillLists = createSkillLists({ api, actions, store, lifecycle });
     app.installLegacyRenderers = callbacks => installLegacyRenderers({ app, callbacks });
