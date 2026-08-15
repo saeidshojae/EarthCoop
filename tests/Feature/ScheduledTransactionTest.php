@@ -2,246 +2,165 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use App\Modules\NajmBahar\Models\Account;
+use App\Models\Setting;
+use App\Models\User;
 use App\Modules\NajmBahar\Models\ScheduledTransaction;
+use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
-use App\Modules\NajmBahar\Services\TransactionService;
+use App\Modules\NajmBahar\Services\AccountInvariantService;
+use App\Modules\NajmBahar\Services\AccountService;
+use App\Modules\NajmBahar\Services\SubAccountService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Artisan;
-use Carbon\Carbon;
+use Tests\TestCase;
 
 class ScheduledTransactionTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function setUp(): void
+    public function test_process_scheduled_transactions_command(): void
     {
-        parent::setUp();
+        [$scheduled, $fromSubAccount, $toSubAccount] = $this->scheduledTransfer(
+            sourceActive: 1000,
+            executeAt: now()->subMinute(),
+        );
 
-        // Run NajmBahar migrations
-        $paths = [
-            'database/migrations/2025_11_22_000001_create_najm_accounts_table.php',
-            'database/migrations/2025_11_22_000002_create_najm_sub_accounts_table.php',
-            'database/migrations/2025_11_22_000003_create_najm_transactions_table.php',
-            'database/migrations/2025_11_22_000004_create_najm_scheduled_transactions_table.php',
-            'database/migrations/2025_11_22_000005_create_najm_ledger_entries_table.php',
-        ];
-
-        foreach ($paths as $path) {
-            Artisan::call('migrate', [
-                '--path' => $path,
-                '--env' => 'testing',
-                '--force' => true,
-            ]);
-        }
-    }
-
-    public function test_process_scheduled_transactions_command()
-    {
-        // Create accounts
-        $fromAccount = Account::create([
-            'account_number' => '1000000001',
-            'user_id' => 1,
-            'name' => 'From Account',
-            'type' => 'user',
-            'balance' => 1000,
-        ]);
-
-        $toAccount = Account::create([
-            'account_number' => '1000000002',
-            'user_id' => 2,
-            'name' => 'To Account',
-            'type' => 'user',
-            'balance' => 0,
-        ]);
-
-        // Create scheduled transaction
-        $transaction = NajmTransaction::create([
-            'from_account_id' => $fromAccount->id,
-            'to_account_id' => null,
-            'amount' => 100,
-            'type' => 'scheduled',
-            'status' => 'pending',
-            'scheduled_at' => now()->subMinute(), // Past time
-        ]);
-
-        $scheduled = ScheduledTransaction::create([
-            'transaction_id' => $transaction->id,
-            'execute_at' => now()->subMinute(),
-            'status' => 'scheduled',
-            'attempts' => 0,
-            'payload' => [
-                'from_account_number' => $fromAccount->account_number,
-                'to_account_number' => $toAccount->account_number,
-                'amount' => 100,
-                'description' => 'Scheduled transfer',
-            ],
-        ]);
-
-        // Run command
         $this->artisan('najm-bahar:process-scheduled')
             ->expectsOutput('NajmBahar scheduled processing completed. Processed: 1')
             ->assertExitCode(0);
 
-        // Verify transaction was processed
         $scheduled->refresh();
-        $this->assertEquals('processed', $scheduled->status);
-        $this->assertEquals(1, $scheduled->attempts);
+        $this->assertSame('processed', $scheduled->status);
+        $this->assertSame(1, (int) $scheduled->attempts);
+        $this->assertNull($scheduled->last_error);
 
-        // Verify balances updated
-        $fromAccount->refresh();
-        $toAccount->refresh();
-        $this->assertEquals(900, $fromAccount->balance);
-        $this->assertEquals(100, $toAccount->balance);
+        $fromSubAccount->refresh();
+        $toSubAccount->refresh();
+        $this->assertSame(900, (int) $fromSubAccount->balance_active);
+        $this->assertSame(100, (int) $toSubAccount->balance_active);
+
+        $transaction = NajmTransaction::findOrFail($scheduled->transaction_id);
+        $this->assertSame('completed', $transaction->status);
+        $this->assertSame(2, $transaction->ledgerEntries()->count());
     }
 
-    public function test_scheduled_transaction_not_due_yet()
+    public function test_scheduled_transaction_not_due_yet(): void
     {
-        $fromAccount = Account::create([
-            'account_number' => '1000000001',
-            'user_id' => 1,
-            'name' => 'From Account',
-            'type' => 'user',
-            'balance' => 1000,
-        ]);
+        [$scheduled, $fromSubAccount, $toSubAccount] = $this->scheduledTransfer(
+            sourceActive: 1000,
+            executeAt: now()->addDay(),
+        );
 
-        $toAccount = Account::create([
-            'account_number' => '1000000002',
-            'user_id' => 2,
-            'name' => 'To Account',
-            'type' => 'user',
-            'balance' => 0,
-        ]);
-
-        $transaction = NajmTransaction::create([
-            'from_account_id' => $fromAccount->id,
-            'to_account_id' => null,
-            'amount' => 100,
-            'type' => 'scheduled',
-            'status' => 'pending',
-            'scheduled_at' => now()->addDay(),
-        ]);
-
-        $scheduled = ScheduledTransaction::create([
-            'transaction_id' => $transaction->id,
-            'execute_at' => now()->addDay(), // Future time
-            'status' => 'scheduled',
-            'attempts' => 0,
-            'payload' => [
-                'from_account_number' => $fromAccount->account_number,
-                'to_account_number' => $toAccount->account_number,
-                'amount' => 100,
-            ],
-        ]);
-
-        // Run command
         $this->artisan('najm-bahar:process-scheduled')
             ->expectsOutput('NajmBahar scheduled processing completed. Processed: 0')
             ->assertExitCode(0);
 
-        // Verify transaction not processed
         $scheduled->refresh();
-        $this->assertEquals('scheduled', $scheduled->status);
+        $this->assertSame('scheduled', $scheduled->status);
+        $this->assertSame(0, (int) $scheduled->attempts);
+
+        $this->assertSame(1000, (int) $fromSubAccount->fresh()->balance_active);
+        $this->assertSame(0, (int) $toSubAccount->fresh()->balance_active);
     }
 
-    public function test_scheduled_transaction_failure_retry()
+    public function test_scheduled_transaction_failure_retry_records_diagnostic(): void
     {
-        $fromAccount = Account::create([
-            'account_number' => '1000000001',
-            'user_id' => 1,
-            'name' => 'From Account',
-            'type' => 'user',
-            'balance' => 50, // Insufficient funds
-        ]);
+        [$scheduled, $fromSubAccount, $toSubAccount] = $this->scheduledTransfer(
+            sourceActive: 50,
+            executeAt: now()->subMinute(),
+        );
 
-        $toAccount = Account::create([
-            'account_number' => '1000000002',
-            'user_id' => 2,
-            'name' => 'To Account',
-            'type' => 'user',
-            'balance' => 0,
-        ]);
-
-        $transaction = NajmTransaction::create([
-            'from_account_id' => $fromAccount->id,
-            'to_account_id' => null,
-            'amount' => 100,
-            'type' => 'scheduled',
-            'status' => 'pending',
-            'scheduled_at' => now()->subMinute(),
-        ]);
-
-        $scheduled = ScheduledTransaction::create([
-            'transaction_id' => $transaction->id,
-            'execute_at' => now()->subMinute(),
-            'status' => 'scheduled',
-            'attempts' => 0,
-            'payload' => [
-                'from_account_number' => $fromAccount->account_number,
-                'to_account_number' => $toAccount->account_number,
-                'amount' => 100,
-            ],
-        ]);
-
-        // Run command
         $this->artisan('najm-bahar:process-scheduled')
+            ->expectsOutput('NajmBahar scheduled processing completed. Processed: 0')
             ->assertExitCode(0);
 
-        // Verify transaction failed but still scheduled for retry
         $scheduled->refresh();
-        $this->assertEquals('scheduled', $scheduled->status);
-        $this->assertEquals(1, $scheduled->attempts);
+        $this->assertSame('scheduled', $scheduled->status);
+        $this->assertSame(1, (int) $scheduled->attempts);
         $this->assertNotNull($scheduled->last_error);
+        $this->assertStringContainsString('Insufficient active funds', $scheduled->last_error);
+
+        $this->assertSame(50, (int) $fromSubAccount->fresh()->balance_active);
+        $this->assertSame(0, (int) $toSubAccount->fresh()->balance_active);
     }
 
-    public function test_scheduled_transaction_max_attempts()
+    public function test_scheduled_transaction_max_attempts_marks_failed(): void
     {
-        $fromAccount = Account::create([
-            'account_number' => '1000000001',
-            'user_id' => 1,
-            'name' => 'From Account',
-            'type' => 'user',
-            'balance' => 50,
+        [$scheduled] = $this->scheduledTransfer(
+            sourceActive: 50,
+            executeAt: now()->subMinute(),
+            attempts: 4,
+        );
+
+        $this->artisan('najm-bahar:process-scheduled')
+            ->expectsOutput('NajmBahar scheduled processing completed. Processed: 0')
+            ->assertExitCode(0);
+
+        $scheduled->refresh();
+        $this->assertSame('failed', $scheduled->status);
+        $this->assertSame(5, (int) $scheduled->attempts);
+        $this->assertNotNull($scheduled->last_error);
+
+        $transaction = NajmTransaction::findOrFail($scheduled->transaction_id);
+        $this->assertSame('failed', $transaction->status);
+    }
+
+    /**
+     * @return array{ScheduledTransaction, SubAccount, SubAccount}
+     */
+    private function scheduledTransfer(int $sourceActive, $executeAt, int $attempts = 0): array
+    {
+        Setting::query()->updateOrCreate(['id' => 1], [
+            'najm_bahar_user_threshold' => 1,
         ]);
 
-        $toAccount = Account::create([
-            'account_number' => '1000000002',
-            'user_id' => 2,
-            'name' => 'To Account',
-            'type' => 'user',
-            'balance' => 0,
-        ]);
+        $fromUser = User::factory()->create(['email_verified_at' => now()]);
+        $toUser = User::factory()->create(['email_verified_at' => now()]);
+
+        $accounts = app(AccountService::class);
+        $fromMain = $accounts->createMainAccountForUser($fromUser->id);
+        $toMain = $accounts->createMainAccountForUser($toUser->id);
+
+        $subAccounts = app(SubAccountService::class);
+        $fromSubAccount = $subAccounts->createSubAccount($fromMain->id, 'Scheduled source');
+        $toSubAccount = $subAccounts->createSubAccount($toMain->id, 'Scheduled destination');
+
+        $fromSubAccount->balance_active = $sourceActive;
+        $fromSubAccount->balance_faded = 0;
+        $fromSubAccount->balance = $sourceActive;
+        $fromSubAccount->save();
+        app(AccountInvariantService::class)->reconcileSubAccountMirror($fromSubAccount->fresh());
 
         $transaction = NajmTransaction::create([
-            'from_account_id' => $fromAccount->id,
+            'from_account_id' => null,
             'to_account_id' => null,
             'amount' => 100,
             'type' => 'scheduled',
             'status' => 'pending',
-            'scheduled_at' => now()->subMinute(),
+            'scheduled_at' => $executeAt,
+            'metadata' => [
+                'domain' => 'scheduled_transfer_test',
+            ],
         ]);
 
         $scheduled = ScheduledTransaction::create([
             'transaction_id' => $transaction->id,
-            'execute_at' => now()->subMinute(),
+            'execute_at' => $executeAt,
             'status' => 'scheduled',
-            'attempts' => 4, // One less than max
+            'attempts' => $attempts,
             'payload' => [
-                'from_account_number' => $fromAccount->account_number,
-                'to_account_number' => $toAccount->account_number,
+                'type' => 'subaccount_transfer',
+                'from_sub_account_id' => $fromSubAccount->id,
+                'to_sub_account_id' => $toSubAccount->id,
                 'amount' => 100,
+                'money_state' => 'active',
+                'description' => 'Scheduled canonical Active-Bahar transfer',
+                'metadata' => [
+                    'actor_user_id' => $fromUser->id,
+                    'money_state' => 'active',
+                ],
             ],
         ]);
 
-        // Run command
-        $this->artisan('najm-bahar:process-scheduled')
-            ->assertExitCode(0);
-
-        // Verify transaction marked as failed after max attempts
-        $scheduled->refresh();
-        $this->assertEquals('failed', $scheduled->status);
-        $this->assertEquals(5, $scheduled->attempts);
+        return [$scheduled, $fromSubAccount, $toSubAccount];
     }
 }
-
