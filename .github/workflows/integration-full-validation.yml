@@ -1,0 +1,123 @@
+name: EarthCoop Integration Full Validation
+
+on:
+  push:
+    branches:
+      - agent/integration-hoda-bahar-after-groups
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: earthcoop-integration-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  full-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: newearthcoop
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout integration branch
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo, pdo_mysql, bcmath, openssl, fileinfo, zip, curl, json
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Prepare Laravel directories
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          chmod -R 775 bootstrap/cache storage/framework storage/logs
+
+      - name: Install backend dependencies from lock
+        run: |
+          rm -rf vendor
+          composer validate --no-check-publish
+          composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Install and build frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Create isolated test environment
+        run: |
+          cat > .env <<'EOF'
+          APP_NAME=EarthCoop
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          LOG_CHANNEL=stack
+          DB_CONNECTION=mysql
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_DATABASE=newearthcoop
+          DB_USERNAME=root
+          DB_PASSWORD=
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          MAIL_MAILER=array
+          BROADCAST_DRIVER=log
+          FILESYSTEM_DISK=local
+          NAJM_HODA_ENABLED=true
+          NAJM_HODA_MOCK_MODE=true
+          NAJM_HODA_RUNTIME_EVENT_BUS_DRIVER=database
+          EOF
+          php artisan key:generate --force
+
+      - name: Migrate full integrated schema
+        run: php artisan migrate --force
+
+      - name: Validate route and command boot
+        run: |
+          php artisan route:list > /tmp/routes.txt
+          grep -F 'najm-hoda' /tmp/routes.txt >/dev/null
+          grep -F 'najm-bahar' /tmp/routes.txt >/dev/null
+          php artisan list > /tmp/commands.txt
+          grep -F 'najm-hoda:production-readiness' /tmp/commands.txt >/dev/null
+          grep -F 'najm-bahar:production-readiness' /tmp/commands.txt >/dev/null
+
+      - name: Run group and identity regression suite
+        run: |
+          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/GroupChat
+          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Admin/GlobalGroupRoleManagementTest.php tests/Feature/Admin/GroupRoleManagementTest.php tests/Feature/Admin/RealtimeSettingsTest.php tests/Feature/SystemIdentityIsolationTest.php tests/Feature/ChatRequestFlowTest.php
+
+      - name: Run Najm Hoda suite including n8n
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda
+
+      - name: Run governance and Najm Bahar suites
+        run: |
+          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Governance
+          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmBahar tests/Unit/NajmBahar tests/Architecture/NajmBaharFinancialMutationBoundaryTest.php
+
+      - name: Run Stock settlement suite
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Unit/Stock
+
+      - name: Run JavaScript group-chat tests
+        run: npm test -- --runInBand
