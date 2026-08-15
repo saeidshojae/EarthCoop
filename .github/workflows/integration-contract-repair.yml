@@ -23,6 +23,7 @@ jobs:
         run: |
           python3 <<'PY'
           from pathlib import Path
+          import re
 
           def replace_once(path, old, new):
               p = Path(path)
@@ -38,33 +39,54 @@ jobs:
                   raise SystemExit(f'Expected pattern not found in {path}: {old!r}')
               p.write_text(s.replace(old, new), encoding='utf-8')
 
-          # Governance snapshots intentionally exclude system identities; expectations must use the same cohort.
-          cohort_old = """        $expectedEligible = GroupUser::where('group_id', $group->id)\n            ->where('status', 1)\n            ->whereNull('deleted_at')\n            ->count();"""
-          cohort_new = """        $expectedEligible = GroupUser::query()\n            ->join('users', 'users.id', '=', 'group_user.user_id')\n            ->where('group_user.group_id', $group->id)\n            ->where('group_user.status', 1)\n            ->whereNull('group_user.deleted_at')\n            ->where('users.is_system', false)\n            ->count();"""
+          cohort_old = """        $expectedEligible = GroupUser::where('group_id', $group->id)
+            ->where('status', 1)
+            ->whereNull('deleted_at')
+            ->count();"""
+          cohort_new = """        $expectedEligible = GroupUser::query()
+            ->join('users', 'users.id', '=', 'group_user.user_id')
+            ->where('group_user.group_id', $group->id)
+            ->where('group_user.status', 1)
+            ->whereNull('group_user.deleted_at')
+            ->where('users.is_system', false)
+            ->count();"""
           replace_once('tests/Feature/Governance/ProfessionalReferralAndEligibilitySnapshotTest.php', cohort_old, cohort_new)
           replace_once('tests/Feature/Governance/ProposalLifecycleServiceTest.php', cohort_old, cohort_new)
 
-          current_old = """        $currentEligibleAfterMembershipChange = GroupUser::where('group_id', $group->id)\n            ->where('status', 1)\n            ->whereNull('deleted_at')\n            ->count();"""
-          current_new = """        $currentEligibleAfterMembershipChange = GroupUser::query()\n            ->join('users', 'users.id', '=', 'group_user.user_id')\n            ->where('group_user.group_id', $group->id)\n            ->where('group_user.status', 1)\n            ->whereNull('group_user.deleted_at')\n            ->where('users.is_system', false)\n            ->count();"""
+          current_old = """        $currentEligibleAfterMembershipChange = GroupUser::where('group_id', $group->id)
+            ->where('status', 1)
+            ->whereNull('deleted_at')
+            ->count();"""
+          current_new = """        $currentEligibleAfterMembershipChange = GroupUser::query()
+            ->join('users', 'users.id', '=', 'group_user.user_id')
+            ->where('group_user.group_id', $group->id)
+            ->where('group_user.status', 1)
+            ->whereNull('group_user.deleted_at')
+            ->where('users.is_system', false)
+            ->count();"""
           replace_once('tests/Feature/Governance/ProfessionalReferralAndEligibilitySnapshotTest.php', current_old, current_new)
 
-          # Investment tests were written before project_type/project_visibility split and before project submit invariants.
-          legacy_capital = """            'project_type' => 'public',"""
-          canonical_capital = """            'project_type' => 'production',\n            'project_visibility' => 'public',\n            'project_stage' => 'active',\n            'investment_method' => 'capital_participation',\n            'problem_statement' => 'نیاز اقتصادی روشن برای پروژه',\n            'solution_description' => 'راه‌حل اجرایی پروژه',\n            'target_market' => 'general',\n            'accept_transparency' => true,\n            'accept_rules' => true,"""
+          legacy_capital = "            'project_type' => 'public',"
+          canonical_capital = """            'project_type' => 'production',
+            'project_visibility' => 'public',
+            'project_stage' => 'active',
+            'investment_method' => 'capital_participation',
+            'problem_statement' => 'نیاز اقتصادی روشن برای پروژه',
+            'solution_description' => 'راه‌حل اجرایی پروژه',
+            'target_market' => 'general',
+            'accept_transparency' => true,
+            'accept_rules' => true,"""
           replace_all('tests/Feature/NajmBahar/InvestmentControllerTest.php', legacy_capital, canonical_capital)
           replace_all('tests/Unit/NajmBahar/InvestmentServiceTest.php', legacy_capital, canonical_capital)
 
-          # Auction-oriented project tests already provide valuation/share fields; declare the method explicitly.
           for path in ['tests/Feature/NajmBahar/ProjectControllerTest.php', 'tests/Unit/NajmBahar/ProjectServiceTest.php']:
               p = Path(path)
               s = p.read_text(encoding='utf-8')
-              import re
               s = re.sub(
                   r"(\s*'project_stage'\s*=>\s*'[^']+',\n)(?!\s*'investment_method')",
                   r"\1            'investment_method' => 'auction_shares',\n",
                   s,
               )
-              # target_market is part of the canonical project payload and required by the HTTP controller.
               s = re.sub(
                   r"(\s*'solution_description'\s*=>\s*'[^']*',\n)(?!\s*'target_market')",
                   r"\1            'target_market' => 'general',\n",
@@ -72,28 +94,43 @@ jobs:
               )
               p.write_text(s, encoding='utf-8')
 
-          # Factory-based invalid-auction test must exercise auction validation, not capital validation.
           p = Path('tests/Feature/NajmBahar/ProjectControllerTest.php')
           s = p.read_text(encoding='utf-8')
-          invalid_old = """            'status' => 'draft',\n            'base_value_min' => 0, // مقدار نامعتبر\n            'base_value_max' => 0, // مقدار نامعتبر"""
-          invalid_new = """            'status' => 'draft',\n            'investment_method' => 'auction_shares',\n            'problem_statement' => 'مسئله',\n            'solution_description' => 'راه‌حل',\n            'accept_transparency' => true,\n            'accept_rules' => true,\n            'base_value_min' => 0, // مقدار نامعتبر\n            'base_value_max' => 0, // مقدار نامعتبر"""
+          invalid_old = """            'status' => 'draft',
+            'base_value_min' => 0, // مقدار نامعتبر
+            'base_value_max' => 0, // مقدار نامعتبر"""
+          invalid_new = """            'status' => 'draft',
+            'investment_method' => 'auction_shares',
+            'problem_statement' => 'مسئله',
+            'solution_description' => 'راه‌حل',
+            'accept_transparency' => true,
+            'accept_rules' => true,
+            'base_value_min' => 0, // مقدار نامعتبر
+            'base_value_max' => 0, // مقدار نامعتبر"""
           if invalid_old not in s:
               raise SystemExit('Invalid auction fixture pattern not found')
           p.write_text(s.replace(invalid_old, invalid_new, 1), encoding='utf-8')
 
-          # Main branch intentionally preserves an already-loaded jQuery instance.
           replace_once(
               'tests/js/group-chat/source-contract.test.js',
-              r"assert.match(appSource, /installSelect2\\(window, \\$\\)/);",
-              r"assert.match(appSource, /installSelect2\\(window, appJQuery\\)/);",
+              r"assert.match(appSource, /installSelect2\(window, \$\)/);",
+              r"assert.match(appSource, /installSelect2\(window, appJQuery\)/);",
           )
 
-          # Release B/C introduced dedicated financial mutation services. These are persistence boundaries,
-          # not arbitrary controllers/callers; keep the architecture test explicit and auditable.
           p = Path('tests/Architecture/NajmBaharFinancialMutationBoundaryTest.php')
           s = p.read_text(encoding='utf-8')
           marker = "        'app/Modules/NajmBahar/Services/AccountService.php',\n"
-          additions = """        // Dedicated Release B/C financial persistence boundaries.\n        'app/Modules/NajmBahar/Services/PublicExecutionPaymentService.php',\n        'app/Modules/NajmBahar/Services/CrossOwnerActiveSubAccountTransferService.php',\n        'app/Modules/NajmBahar/Services/MainAccountSystemTransferService.php',\n        'app/Modules/NajmBahar/Services/AccountInvariantService.php',\n        'app/Modules/NajmBahar/Services/ScheduledSubAccountTransferExecutor.php',\n        'app/Modules/NajmBahar/Services/PublicExecutionReversalService.php',\n        'app/Modules/NajmBahar/Services/DimCommitmentService.php',\n        'app/Modules/NajmBahar/Services/InternalSubAccountTransferService.php',\n        'app/Modules/NajmBahar/Services/SubAccountSystemTransferService.php',\n"""
+          additions = """        // Dedicated Release B/C financial persistence boundaries.
+        'app/Modules/NajmBahar/Services/PublicExecutionPaymentService.php',
+        'app/Modules/NajmBahar/Services/CrossOwnerActiveSubAccountTransferService.php',
+        'app/Modules/NajmBahar/Services/MainAccountSystemTransferService.php',
+        'app/Modules/NajmBahar/Services/AccountInvariantService.php',
+        'app/Modules/NajmBahar/Services/ScheduledSubAccountTransferExecutor.php',
+        'app/Modules/NajmBahar/Services/PublicExecutionReversalService.php',
+        'app/Modules/NajmBahar/Services/DimCommitmentService.php',
+        'app/Modules/NajmBahar/Services/InternalSubAccountTransferService.php',
+        'app/Modules/NajmBahar/Services/SubAccountSystemTransferService.php',
+"""
           if additions not in s:
               if marker not in s:
                   raise SystemExit('Architecture allowlist insertion point not found')
@@ -108,8 +145,17 @@ jobs:
           from pathlib import Path
           p = Path('.github/workflows/integration-full-validation.yml')
           s = p.read_text(encoding='utf-8')
-          needle = """          echo '=== GROUP CHAT JAVASCRIPT ==='\n          npm run test:group-chat || status=1\n\n          exit $status"""
-          replacement = """          echo '=== GROUP CHAT JAVASCRIPT ==='\n          npm run test:group-chat || status=1\n\n          echo '=== FULL PROJECT PHPUNIT REGRESSION ==='\n          php vendor/bin/phpunit --configuration phpunit.xml.dist || status=1\n\n          exit $status"""
+          needle = """          echo '=== GROUP CHAT JAVASCRIPT ==='
+          npm run test:group-chat || status=1
+
+          exit $status"""
+          replacement = """          echo '=== GROUP CHAT JAVASCRIPT ==='
+          npm run test:group-chat || status=1
+
+          echo '=== FULL PROJECT PHPUNIT REGRESSION ==='
+          php vendor/bin/phpunit --configuration phpunit.xml.dist || status=1
+
+          exit $status"""
           if needle not in s:
               raise SystemExit('Full-validation insertion point not found')
           p.write_text(s.replace(needle, replacement, 1), encoding='utf-8')
