@@ -19,13 +19,32 @@ class AccountService
 
         $accountNumber = AccountNumberService::makeMainAccountNumberForUser($userId);
 
-        return Account::create([
+        $account = Account::firstOrCreate([
             'account_number' => $accountNumber,
+        ], [
             'user_id' => $userId,
             'name' => $name,
             'type' => 'user',
             'balance' => 0,
         ]);
+
+        // Account number is the canonical identity. Repeated provisioning must
+        // return the same row, while repairing non-financial identity metadata
+        // if an older row was partially populated.
+        if ((int) ($account->user_id ?? 0) !== $userId) {
+            $account->user_id = $userId;
+        }
+        if ($account->type !== 'user') {
+            $account->type = 'user';
+        }
+        if ($account->name === null || $account->name === '') {
+            $account->name = $name;
+        }
+        if ($account->isDirty()) {
+            $account->save();
+        }
+
+        return $account;
     }
 
     public function hasMainAccount(int $userId): bool
