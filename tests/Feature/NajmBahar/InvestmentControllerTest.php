@@ -156,7 +156,6 @@ class InvestmentControllerTest extends TestCase
         $investorAccount = $this->accountService->getMainAccountForUser($this->investor->id);
         $investorAccount->balance = 20000000; // 200,000 گل
         $investorAccount->balance_active = 20000000;
-$investorAccount = 20000000;
         $investorAccount->save();
 
         $investment = app(InvestmentService::class)->createInvestment(
@@ -259,7 +258,6 @@ $investorAccount = 20000000;
         $investorAccount = $this->accountService->getMainAccountForUser($this->investor->id);
         $investorAccount->balance = 15000000;
         $investorAccount->balance_active = 15000000;
-$investorAccount = 15000000;
         $investorAccount->save();
 
         $investment = app(InvestmentService::class)->createInvestment(

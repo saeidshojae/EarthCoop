@@ -141,7 +141,6 @@ class InvestmentServiceTest extends TestCase
         $investorAccount = $this->accountService->getMainAccountForUser($this->investor->id);
         $investorAccount->balance = 50000000; // 500,000 گل
         $investorAccount->balance_active = 50000000;
-$investorAccount = 50000000;
         $investorAccount->save();
 
         $investment = $this->investmentService->createInvestment(
@@ -174,7 +173,6 @@ $investorAccount = 50000000;
         $investorAccount = $this->accountService->getMainAccountForUser($this->investor->id);
         $investorAccount->balance = 50000000;
         $investorAccount->balance_active = 50000000;
-$investorAccount = 50000000;
         $investorAccount->save();
 
         $investment = $this->investmentService->createInvestment(
@@ -196,7 +194,6 @@ $investorAccount = 50000000;
         $investorAccount = $this->accountService->getMainAccountForUser($this->investor->id);
         $investorAccount->balance = 30000000;
         $investorAccount->balance_active = 30000000;
-$investorAccount = 30000000;
         $investorAccount->save();
 
         $investment = $this->investmentService->createInvestment($this->project, $this->investor, 15000000);
@@ -217,13 +214,11 @@ $investorAccount = 30000000;
         $investorAccount = $this->accountService->getMainAccountForUser($this->investor->id);
         $investorAccount->balance = 25000000;
         $investorAccount->balance_active = 25000000;
-$investorAccount = 25000000;
         $investorAccount->save();
 
         $projectOwnerAccount = $this->accountService->getMainAccountForUser($this->projectOwner->id);
         $projectOwnerAccount->balance = 100000000; // برای بازگشت سرمایه
         $projectOwnerAccount->balance_active = 100000000;
-$projectOwnerAccount = 100000000;
         $projectOwnerAccount->save();
 
         $investment = $this->investmentService->createInvestment($this->project, $this->investor, 10000000);
@@ -260,7 +255,6 @@ $projectOwnerAccount = 100000000;
         $investorAccount = $this->accountService->getMainAccountForUser($this->investor->id);
         $investorAccount->balance = 40000000;
         $investorAccount->balance_active = 40000000;
-$investorAccount = 40000000;
         $investorAccount->save();
 
         $investment = $this->investmentService->createInvestment($this->project, $this->investor, 20000000);
@@ -316,7 +310,6 @@ $investorAccount = 40000000;
         $investorAccount = $this->accountService->getMainAccountForUser($this->investor->id);
         $investorAccount->balance = 100000000;
         $investorAccount->balance_active = 100000000;
-$investorAccount = 100000000;
         $investorAccount->save();
 
         // ایجاد چند سرمایه‌گذاری
