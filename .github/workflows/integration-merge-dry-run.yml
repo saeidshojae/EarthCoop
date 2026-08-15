@@ -1,0 +1,37 @@
+name: Integration merge dry run
+
+on:
+  push:
+    branches:
+      - agent/integration-hoda-bahar-after-groups
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run-economic-merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout integration branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch source branch
+        run: git fetch origin agent/stock-bahar-external-capital:refs/remotes/origin/agent/stock-bahar-external-capital
+
+      - name: Simulate merge and print conflicts
+        shell: bash
+        run: |
+          set +e
+          git config user.name "EarthCoop Integration Audit"
+          git config user.email "integration-audit@earthcoop.invalid"
+          git merge --no-commit --no-ff origin/agent/stock-bahar-external-capital
+          status=$?
+          echo "MERGE_EXIT_CODE=$status"
+          echo "=== CONFLICT FILES ==="
+          git diff --name-only --diff-filter=U || true
+          echo "=== STATUS ==="
+          git status --short
+          git merge --abort >/dev/null 2>&1 || true
+          exit 0
