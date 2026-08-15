@@ -4,7 +4,11 @@ const legacyActionTargets = {
     'manage-reports': ['showManageReportsModal'],
     'group-settings': ['showGroupSettingsModal'],
     'show-thread': ['showThread', ({ target }) => [Number(target.dataset.messageId)]],
-    'comment-menu': ['openGlobalMenu', ({ event, target }) => [event, Number(target.dataset.commentId)]],
+    'comment-menu': ['openGlobalMenu', ({ event, target }) => [{
+        stopPropagation: () => event.stopPropagation(),
+        currentTarget: target,
+        target: event.target,
+    }, Number(target.dataset.commentId)]],
     'comment-reaction': ['reactToComment', ({ target }) => [target.dataset.reactionType, Number(target.dataset.commentId)]],
 };
 
