@@ -10,6 +10,7 @@ import "./najm-bahar-membership-source.js";
 import "./najm-hoda-context.js";
 import { register } from "swiper/element/bundle";
 import "./group-chat/index.js";
+import "./group-comment-form-fallback.js";
 
 register();
 
