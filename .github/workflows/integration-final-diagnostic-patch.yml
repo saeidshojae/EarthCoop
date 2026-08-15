@@ -1,4 +1,4 @@
-name: Apply final regression diagnostic patch
+name: Apply Final Regression Patch
 
 on:
   push:
@@ -12,96 +12,25 @@ jobs:
   patch:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout integration branch
+        uses: actions/checkout@v4
         with:
           ref: agent/integration-hoda-bahar-after-groups
           fetch-depth: 0
 
-      - name: Patch remaining fixtures and expose hidden domain errors
+      - name: Apply deterministic patch
+        run: python3 scripts/integration_final_regression_patch.py
+
+      - name: Commit patched tests
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          # Current project contract requires an investment duration.
-          p = Path('tests/Unit/NajmBahar/ProjectServiceTest.php')
-          s = p.read_text(encoding='utf-8')
-          marker = '    public function it_can_get_approved_projects()\n'
-          pos = s.index(marker)
-          head, tail = s[:pos], s[pos:]
-          anchor = "            'profit_percentage' => 15,\n"
-          duration = "            'investment_duration_months' => 12,\n"
-          if duration not in tail:
-              if anchor not in tail:
-                  raise SystemExit('Approved-project duration anchor not found')
-              tail = tail.replace(anchor, anchor + duration, 1)
-          p.write_text(head + tail, encoding='utf-8')
-
-          # Auction::isActive() uses ends_at, not legacy end_time.
-          p = Path('tests/Feature/AuctionConcurrencyTest.php')
-          s = p.read_text(encoding='utf-8')
-          anchor = "            'end_time' => now()->addDay(),\n"
-          replacement = anchor + "            'ends_at' => now()->addDay(),\n"
-          if "            'ends_at' => now()->addDay(),\n" not in s:
-              if anchor not in s:
-                  raise SystemExit('Auction ends_at anchor not found')
-              s = s.replace(anchor, replacement, 1)
-          p.write_text(s, encoding='utf-8')
-
-          # Keep success strict, but surface the controller's caught domain error.
-          p = Path('tests/Feature/NajmBahar/InvestmentControllerTest.php')
-          s = p.read_text(encoding='utf-8')
-          old = """        $response->assertRedirect()
-            ->assertSessionHas('success');
-"""
-          new = """        $response->assertRedirect();
-        $this->assertTrue(
-            $response->getSession()->has('success'),
-            (string) ($response->getSession()->get('error') ?? 'Expected success flash was not set.')
-        );
-"""
-          # Improve all success-path assertions consistently; semantics remain strict.
-          s = s.replace(old, new)
-          p.write_text(s, encoding='utf-8')
-
-          # Surface the executor diagnostic instead of failing first on console text.
-          p = Path('tests/Feature/ScheduledTransactionTest.php')
-          s = p.read_text(encoding='utf-8')
-          old = """        $this->artisan('najm-bahar:process-scheduled')
-            ->expectsOutput('NajmBahar scheduled processing completed. Processed: 1')
-            ->assertExitCode(0);
-
-        $scheduled->refresh();
-        $this->assertSame('processed', $scheduled->status);
-"""
-          new = """        $this->artisan('najm-bahar:process-scheduled')
-            ->assertExitCode(0);
-
-        $scheduled->refresh();
-        $this->assertSame(
-            'processed',
-            $scheduled->status,
-            (string) ($scheduled->last_error ?? 'Scheduled transfer was not processed.')
-        );
-"""
-          if old in s:
-              s = s.replace(old, new, 1)
-          elif "Scheduled transfer was not processed." not in s:
-              raise SystemExit('Scheduled diagnostic anchor not found')
-          p.write_text(s, encoding='utf-8')
-          PY
-
-      - name: Commit patch
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tests/Unit/NajmBahar/ProjectServiceTest.php tests/Feature/AuctionConcurrencyTest.php tests/Feature/NajmBahar/InvestmentControllerTest.php tests/Feature/ScheduledTransactionTest.php
-          if git diff --cached --quiet; then
-            echo 'No patch changes required.'
+          if git diff --quiet -- tests; then
+            echo "No patch changes required."
             exit 0
           fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests
           git commit -m "Align final regression fixtures and diagnostics"
           git push origin HEAD:agent/integration-hoda-bahar-after-groups
