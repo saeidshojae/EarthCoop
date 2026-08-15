@@ -678,7 +678,7 @@
                 $setting = \App\Models\Setting::find(1);
             @endphp
             
-            @if($setting->invation_status == 1)
+            @if(($setting?->invation_status ?? 0) == 1)
                 <!-- Invitation Code Section -->
                 <div class="mb-6">
                     <div class="bg-blue-50 border-r-4 border-ocean-blue p-4 rounded-lg mb-4">
