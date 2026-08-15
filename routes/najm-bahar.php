@@ -10,8 +10,21 @@ use App\Http\Controllers\Admin\NajmBahar\ProjectController as AdminProjectContro
 |--------------------------------------------------------------------------
 | Najm Bahar Routes
 |--------------------------------------------------------------------------
-| Routes for the new Najm Bahar financial system
+| Routes for the new Najm Bahar financial system.
+|
+| This file is loaded explicitly by RouteServiceProvider inside the `web`
+| middleware group. A legacy include also exists in routes/api.php; when this
+| file is required from that API group, do not register the web UI routes a
+| second time under the /api prefix / API middleware stack.
 */
+
+$loadedInsideApiGroup = collect(Route::getGroupStack())->contains(function (array $group): bool {
+    return trim((string) ($group['prefix'] ?? ''), '/') === 'api';
+});
+
+if ($loadedInsideApiGroup) {
+    return;
+}
 
 Route::middleware(['auth'])->group(function () {
     // نمایش توافقنامه نجم بهار

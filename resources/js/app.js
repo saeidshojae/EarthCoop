@@ -6,6 +6,8 @@ import $ from "jquery";
 import installSelect2 from "select2";
 import "select2/dist/css/select2.min.css";
 import "./najm-bahar.js";
+import "./najm-bahar-membership-source.js";
+import "./najm-hoda-context.js";
 import { register } from "swiper/element/bundle";
 import "./group-chat/index.js";
 

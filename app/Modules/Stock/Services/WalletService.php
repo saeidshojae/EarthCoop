@@ -88,16 +88,37 @@ class WalletService
         });
     }
     
+    /**
+     * Legacy wallet settlement only.
+     *
+     * This wallet is not Najm Bahar and must not be used as a second monetary
+     * system. Until the canonical settlement gateways replace it, settlement
+     * must at least consume both the reservation and the underlying legacy
+     * balance atomically. The previous implementation only released the hold,
+     * leaving balance unchanged after a purchase.
+     */
     public function settle(Wallet $wallet, float $amount, string $description = null, $reference = null): WalletTransaction
     {
         return DB::transaction(function () use ($wallet, $amount, $description, $reference) {
-            if ($wallet->held_amount < $amount) {
+            /** @var Wallet $lockedWallet */
+            $lockedWallet = Wallet::whereKey($wallet->getKey())->lockForUpdate()->firstOrFail();
+
+            if ($lockedWallet->held_amount < $amount) {
                 throw new \Exception('Insufficient held amount for settlement');
             }
+
+            if ($lockedWallet->balance < $amount) {
+                throw new \Exception('Insufficient balance for settlement');
+            }
+
+            $lockedWallet->decrement('held_amount', $amount);
+            $lockedWallet->decrement('balance', $amount);
+            $lockedWallet->refresh();
+
+            // Keep the caller's model coherent with the row mutated under lock.
+            $wallet->setRawAttributes($lockedWallet->getAttributes(), true);
             
-            $wallet->decrement('held_amount', $amount);
-            
-            return $wallet->transactions()->create([
+            return $lockedWallet->transactions()->create([
                 'type' => 'settlement',
                 'amount' => $amount,
                 'description' => $description,
