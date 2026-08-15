@@ -23,7 +23,7 @@ class InvestmentTransferService
     public function __construct(
         private readonly InternalAccountTransferService $internalTransfer,
         private readonly CrossOwnerActiveSubAccountTransferService $crossOwnerTransfer,
-        private readonly TransactionService $transferPolicy,
+        private readonly EffectiveOwnerTransferPolicyService $transferPolicy,
     ) {
     }
 
@@ -57,7 +57,7 @@ class InvestmentTransferService
 
         // Preserve the constitutional/pre-threshold transfer gate. This service
         // is an explicit boundary, not a system-operation bypass.
-        $this->transferPolicy->assertEffectiveOwnerTransferAllowed($from, $to, $meta);
+        $this->transferPolicy->assertAllowed($from, $to, $meta);
 
         return DB::transaction(function () use ($from, $to, $amount, $description, $meta, $idempotencyKey) {
             $sourceClearing = $this->clearingSubAccount($from);
