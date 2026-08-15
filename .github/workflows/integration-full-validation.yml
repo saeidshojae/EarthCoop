@@ -22,7 +22,7 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: yes
-          MYSQL_DATABASE: newearthcoop
+          MYSQL_DATABASE: newearthcoop_testing
         ports:
           - 3306:3306
         options: >-
@@ -76,7 +76,7 @@ jobs:
           DB_CONNECTION=mysql
           DB_HOST=127.0.0.1
           DB_PORT=3306
-          DB_DATABASE=newearthcoop
+          DB_DATABASE=newearthcoop_testing
           DB_USERNAME=root
           DB_PASSWORD=
           CACHE_DRIVER=array
@@ -103,21 +103,39 @@ jobs:
           grep -F 'najm-hoda:production-readiness' /tmp/commands.txt >/dev/null
           grep -F 'najm-bahar:production-readiness' /tmp/commands.txt >/dev/null
 
-      - name: Run group and identity regression suite
+      - name: Run all integration regression suites
+        shell: bash
         run: |
-          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/GroupChat
-          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Admin/GlobalGroupRoleManagementTest.php tests/Feature/Admin/GroupRoleManagementTest.php tests/Feature/Admin/RealtimeSettingsTest.php tests/Feature/SystemIdentityIsolationTest.php tests/Feature/ChatRequestFlowTest.php
+          set +e
+          status=0
 
-      - name: Run Najm Hoda suite including n8n
-        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda
+          echo '=== GROUP CHAT ==='
+          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/GroupChat || status=1
 
-      - name: Run governance and Najm Bahar suites
-        run: |
-          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Governance
-          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmBahar tests/Unit/NajmBahar tests/Architecture/NajmBaharFinancialMutationBoundaryTest.php
+          echo '=== GROUP ADMIN / IDENTITY ==='
+          php vendor/bin/phpunit --configuration phpunit.xml.dist \
+            tests/Feature/Admin/GlobalGroupRoleManagementTest.php \
+            tests/Feature/Admin/GroupRoleManagementTest.php \
+            tests/Feature/Admin/RealtimeSettingsTest.php \
+            tests/Feature/SystemIdentityIsolationTest.php \
+            tests/Feature/ChatRequestFlowTest.php || status=1
 
-      - name: Run Stock settlement suite
-        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Unit/Stock
+          echo '=== NAJM HODA + N8N ==='
+          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda || status=1
 
-      - name: Run JavaScript group-chat tests
-        run: npm test -- --runInBand
+          echo '=== GOVERNANCE ==='
+          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Governance || status=1
+
+          echo '=== NAJM BAHAR ==='
+          php vendor/bin/phpunit --configuration phpunit.xml.dist \
+            tests/Feature/NajmBahar \
+            tests/Unit/NajmBahar \
+            tests/Architecture/NajmBaharFinancialMutationBoundaryTest.php || status=1
+
+          echo '=== STOCK ==='
+          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Unit/Stock || status=1
+
+          echo '=== GROUP CHAT JAVASCRIPT ==='
+          npm test -- --runInBand || status=1
+
+          exit $status
