@@ -4,6 +4,7 @@ namespace Tests\Feature\NajmHoda;
 
 use App\Models\Group;
 use App\Models\GroupUser;
+use App\Models\Message;
 use App\Models\NajmHodaGroupActionItem;
 use App\Models\User;
 use App\Services\NajmHoda\NajmHodaGroupActionCandidateService;
@@ -27,6 +28,11 @@ class PrivateGroupActionItemCommandServiceTest extends TestCase
     public function test_manager_preview_requires_confirmation_before_persisting_action_item(): void
     {
         [$group, $manager] = $this->seedMember(3);
+        $sourceMessage = Message::create([
+            'group_id' => $group->id,
+            'user_id' => $manager->id,
+            'message' => 'گزارش جلسه را تا فردا آماده کنید',
+        ]);
 
         $extractor = Mockery::mock(NajmHodaGroupActionCandidateService::class);
         $extractor->shouldReceive('extract')->once()->andReturn([
@@ -37,7 +43,7 @@ class PrivateGroupActionItemCommandServiceTest extends TestCase
                 'assignee_name' => null,
                 'due_text' => 'فردا',
                 'priority' => 'high',
-                'source' => 'message:42',
+                'source' => 'message:' . $sourceMessage->id,
                 'evidence' => 'گزارش جلسه را تا فردا آماده کنید',
             ]],
             'snapshot' => [],
@@ -65,8 +71,9 @@ class PrivateGroupActionItemCommandServiceTest extends TestCase
         $this->assertSame('تهیه گزارش جلسه', $item->title);
         $this->assertSame('high', $item->priority);
         $this->assertSame('open', $item->status);
+        $this->assertSame($sourceMessage->id, (int) $item->source_message_id);
         $this->assertSame($manager->id, (int) data_get($item->meta, 'confirmed_by_user_id'));
-        $this->assertSame('message:42', data_get($item->meta, 'source'));
+        $this->assertSame('message:' . $sourceMessage->id, data_get($item->meta, 'source'));
     }
 
     public function test_non_leadership_member_cannot_request_action_item_extraction(): void
