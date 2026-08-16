@@ -37,6 +37,59 @@ class PageCapabilityRegistryTest extends TestCase
         $this->assertSame(['read_group_feed'], $ids);
     }
 
+    public function test_group_chat_contracts_respect_operation_blocks_and_role_specific_ui(): void
+    {
+        $registry = new NajmHodaPageCapabilityRegistry();
+
+        $blocked = $registry->forPage('group_chat', [
+            'can_participate' => true,
+            'viewer_group_role' => '3',
+            'blocked_positions' => ['message', 'poll'],
+        ]);
+        $blockedIds = array_column($blocked, 'id');
+
+        $this->assertNotContains('send_message', $blockedIds);
+        $this->assertNotContains('send_voice', $blockedIds);
+        $this->assertNotContains('create_poll', $blockedIds);
+        $this->assertContains('create_post', $blockedIds);
+        $this->assertContains('vote', $blockedIds);
+
+        $specialActive = $registry->forPage('group_chat', [
+            'can_participate' => true,
+            'viewer_group_role' => '5',
+        ]);
+        $specialIds = array_column($specialActive, 'id');
+
+        $this->assertNotContains('create_post', $specialIds);
+        $this->assertNotContains('create_poll', $specialIds);
+        $this->assertContains('send_message', $specialIds);
+    }
+
+    public function test_delegated_najm_hoda_actions_are_separate_and_leadership_only(): void
+    {
+        $registry = new NajmHodaPageCapabilityRegistry();
+
+        $managerActions = $registry->delegatedActionsForGroup([
+            'viewer_relation' => 'member',
+            'viewer_group_role' => '3',
+        ]);
+        $memberActions = $registry->delegatedActionsForGroup([
+            'viewer_relation' => 'member',
+            'viewer_group_role' => '1',
+        ]);
+
+        $this->assertSame([
+            'najm_hoda_create_post',
+            'najm_hoda_create_poll',
+            'najm_hoda_create_comment',
+            'najm_hoda_react',
+        ], array_column($managerActions, 'id'));
+        $this->assertSame([], $memberActions);
+        $this->assertTrue((bool) $managerActions[0]['requires_confirmation']);
+        $this->assertSame('private_widget', $managerActions[0]['conversation_visibility']);
+        $this->assertSame('group_feed', $managerActions[0]['result_visibility']);
+    }
+
     public function test_registered_group_chat_selectors_still_exist_in_their_source_views(): void
     {
         $contracts = (new NajmHodaPageCapabilityRegistry())->forPage('group_chat', [
@@ -80,6 +133,7 @@ class PageCapabilityRegistryTest extends TestCase
         $this->assertSame(['read_group_feed'], $resolved['available_capabilities']);
         $this->assertCount(1, $resolved['capability_contracts']);
         $this->assertSame('read_group_feed', $resolved['capability_contracts'][0]['id']);
+        $this->assertSame([], $resolved['delegated_actions']);
         $this->assertArrayNotHasKey('page_title', $resolved);
     }
 
