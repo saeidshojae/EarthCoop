@@ -81,11 +81,11 @@ if (!globalThis.__earthcoopGroupNetworkArbiterInstalled && typeof globalThis.fet
 
         let controller = null;
         let upstreamAbort = null;
+        const upstreamSignal = init?.signal;
         try {
             if (background) {
                 controller = new AbortController();
                 state.backgroundControllers.add(controller);
-                const upstreamSignal = init?.signal;
                 upstreamAbort = () => controller.abort(upstreamSignal?.reason);
                 upstreamSignal?.addEventListener?.('abort', upstreamAbort, { once: true });
                 init = { ...init, signal: controller.signal };
@@ -95,7 +95,7 @@ if (!globalThis.__earthcoopGroupNetworkArbiterInstalled && typeof globalThis.fet
             return await nativeFetch(requestInput, init);
         } finally {
             if (controller) state.backgroundControllers.delete(controller);
-            if (upstreamAbort) init?.signal?.removeEventListener?.('abort', upstreamAbort);
+            if (upstreamAbort) upstreamSignal?.removeEventListener?.('abort', upstreamAbort);
             if (mutation) endMutation();
         }
     };
