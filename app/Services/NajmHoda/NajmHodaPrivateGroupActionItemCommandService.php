@@ -4,6 +4,7 @@ namespace App\Services\NajmHoda;
 
 use App\Models\Group;
 use App\Models\GroupUser;
+use App\Models\Message;
 use App\Models\NajmHodaGroupActionItem;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
@@ -134,7 +135,13 @@ class NajmHodaPrivateGroupActionItemCommandService
             $source = (string) ($candidate['source'] ?? '');
             $sourceMessageId = null;
             if (preg_match('/^message:(\d+)$/', $source, $m) === 1) {
-                $sourceMessageId = (int) $m[1];
+                $candidateMessageId = (int) $m[1];
+                $sourceMessageId = Message::query()
+                    ->whereKey($candidateMessageId)
+                    ->where('group_id', $group->id)
+                    ->exists()
+                        ? $candidateMessageId
+                        : null;
             }
 
             NajmHodaGroupActionItem::create([
