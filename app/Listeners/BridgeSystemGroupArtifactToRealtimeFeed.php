@@ -15,6 +15,11 @@ use App\Services\GroupChat\GroupFeedService;
  * emitted the legacy domain event. Bridge system-authored artifacts back into
  * the same canonical feed/realtime pipeline without duplicating normal user
  * controller events.
+ *
+ * Important: delegated system publications are not optimistic writes by the
+ * authenticated browser user. Realtime actor_id is therefore intentionally 0
+ * so the client does not suppress the event as a normal self-echo. The actual
+ * system author remains explicit in system_actor_id and in the persisted model.
  */
 class BridgeSystemGroupArtifactToRealtimeFeed
 {
@@ -57,8 +62,12 @@ class BridgeSystemGroupArtifactToRealtimeFeed
         $this->publisher->publish(new GroupFeedUpdated(
             (int) $group->id,
             'poll_created',
-            ['poll_id' => (int) $poll->id],
-            (int) $creator->id
+            [
+                'poll_id' => (int) $poll->id,
+                'system_authored' => true,
+                'system_actor_id' => (int) $creator->id,
+            ],
+            0
         ));
     }
 
@@ -83,8 +92,12 @@ class BridgeSystemGroupArtifactToRealtimeFeed
         $this->publisher->publish(new GroupFeedUpdated(
             (int) $group->id,
             'post_created',
-            ['post_id' => (int) $post->id],
-            (int) $author->id
+            [
+                'post_id' => (int) $post->id,
+                'system_authored' => true,
+                'system_actor_id' => (int) $author->id,
+            ],
+            0
         ));
     }
 }
