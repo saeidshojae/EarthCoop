@@ -97,10 +97,18 @@ class PageCapabilityRegistryTest extends TestCase
         ]);
 
         foreach ($contracts as $contract) {
-            $source = (string) ($contract['source'] ?? '');
-            $this->assertNotSame('', $source, "Capability {$contract['id']} must declare a source view.");
-            $sourceText = file_get_contents(base_path($source));
-            $this->assertNotFalse($sourceText, "Source view {$source} must be readable.");
+            $sources = array_values(array_unique(array_filter(array_map('strval',
+                (array) ($contract['sources'] ?? [$contract['source'] ?? ''])
+            ))));
+
+            $this->assertNotEmpty($sources, "Capability {$contract['id']} must declare at least one source view.");
+
+            $sourceTexts = [];
+            foreach ($sources as $source) {
+                $sourceText = file_get_contents(base_path($source));
+                $this->assertNotFalse($sourceText, "Source view {$source} must be readable.");
+                $sourceTexts[$source] = $sourceText;
+            }
 
             foreach ($this->selectorsFromUi((array) ($contract['ui'] ?? [])) as $selector) {
                 if (!str_starts_with($selector, '#')) {
@@ -108,12 +116,19 @@ class PageCapabilityRegistryTest extends TestCase
                 }
 
                 $id = substr($selector, 1);
-                $exists = str_contains($sourceText, 'id="' . $id . '"')
-                    || str_contains($sourceText, "id='" . $id . "'");
+                $foundIn = null;
+                foreach ($sourceTexts as $source => $sourceText) {
+                    $exists = str_contains($sourceText, 'id="' . $id . '"')
+                        || str_contains($sourceText, "id='" . $id . "'");
+                    if ($exists) {
+                        $foundIn = $source;
+                        break;
+                    }
+                }
 
-                $this->assertTrue(
-                    $exists,
-                    "Najm Hoda capability {$contract['id']} points to stale selector {$selector} in {$source}."
+                $this->assertNotNull(
+                    $foundIn,
+                    "Najm Hoda capability {$contract['id']} points to stale selector {$selector}; it was not found in declared sources: " . implode(', ', $sources)
                 );
             }
         }
