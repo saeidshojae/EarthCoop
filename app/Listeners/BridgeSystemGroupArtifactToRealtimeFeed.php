@@ -40,9 +40,9 @@ class BridgeSystemGroupArtifactToRealtimeFeed
     {
         $poll = $event->poll;
         $group = $event->group;
-        $sender = $event->sender;
+        $creator = $event->creator;
 
-        if (! (bool) ($sender->is_system ?? false)) {
+        if (! (bool) ($creator->is_system ?? false)) {
             return;
         }
 
@@ -50,7 +50,7 @@ class BridgeSystemGroupArtifactToRealtimeFeed
             (int) $group->id,
             'poll',
             (int) $poll->id,
-            (int) $sender->id,
+            (int) $creator->id,
             $poll->created_at
         );
 
@@ -58,7 +58,7 @@ class BridgeSystemGroupArtifactToRealtimeFeed
             (int) $group->id,
             'poll_created',
             ['poll_id' => (int) $poll->id],
-            (int) $sender->id
+            (int) $creator->id
         ));
     }
 
@@ -66,9 +66,9 @@ class BridgeSystemGroupArtifactToRealtimeFeed
     {
         $post = $event->blog;
         $group = $event->group;
-        $sender = $event->sender;
+        $author = $event->author;
 
-        if (! (bool) ($sender->is_system ?? false)) {
+        if (! (bool) ($author->is_system ?? false)) {
             return;
         }
 
@@ -76,7 +76,7 @@ class BridgeSystemGroupArtifactToRealtimeFeed
             (int) $group->id,
             'post',
             (int) $post->id,
-            (int) $sender->id,
+            (int) $author->id,
             $post->created_at
         );
 
@@ -84,7 +84,7 @@ class BridgeSystemGroupArtifactToRealtimeFeed
             (int) $group->id,
             'post_created',
             ['post_id' => (int) $post->id],
-            (int) $sender->id
+            (int) $author->id
         ));
     }
 }
