@@ -171,7 +171,15 @@ class NajmHodaPageCapabilityRegistry
                         'دکمه «انتشار پست» را بزنید.',
                     ],
                 ],
+                // The menu trigger lives in chat.blade.php while the form fields
+                // live in the included modal. A capability can legitimately span
+                // multiple source views, so declare both instead of pretending all
+                // selectors belong to the modal file.
                 'source' => 'resources/views/groups/modals/post_form.blade.php',
+                'sources' => [
+                    'resources/views/groups/chat.blade.php',
+                    'resources/views/groups/modals/post_form.blade.php',
+                ],
             ],
             [
                 'id' => 'create_poll',
@@ -193,6 +201,10 @@ class NajmHodaPageCapabilityRegistry
                     ],
                 ],
                 'source' => 'resources/views/groups/modals/poll_form.blade.php',
+                'sources' => [
+                    'resources/views/groups/chat.blade.php',
+                    'resources/views/groups/modals/poll_form.blade.php',
+                ],
             ],
             [
                 'id' => 'vote',
