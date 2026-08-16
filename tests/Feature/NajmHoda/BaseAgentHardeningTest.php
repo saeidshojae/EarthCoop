@@ -3,6 +3,7 @@
 namespace Tests\Feature\NajmHoda;
 
 use App\Services\NajmHoda\BaseAgent;
+use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -68,6 +69,48 @@ class BaseAgentHardeningTest extends TestCase
                 ['message' => ['content' => '']],
             ],
         ]);
+    }
+
+    public function test_openrouter_403_uses_free_router_fallback_in_testing(): void
+    {
+        config([
+            'najm-hoda.provider.type' => 'openrouter',
+            'najm-hoda.provider.api_key' => 'test-key',
+            'najm-hoda.provider.model' => 'openai/gpt-oss-20b:free',
+            'najm-hoda.provider.retry_count' => 0,
+            'najm-hoda.mock_mode' => false,
+        ]);
+
+        Http::fakeSequence()
+            ->push(['error' => ['message' => 'Primary free model unavailable']], 403)
+            ->push(['choices' => [['message' => ['content' => 'fallback-ok']]]], 200);
+
+        $response = (new TestBaseAgent())->ask('hello');
+
+        $this->assertSame('fallback-ok', $response);
+        Http::assertSentCount(2);
+        Http::assertSent(fn ($request) => $request['model'] === 'openai/gpt-oss-20b:free');
+        Http::assertSent(fn ($request) => $request['model'] === 'openrouter/free');
+    }
+
+    public function test_openrouter_401_does_not_hide_invalid_credentials_with_fallback(): void
+    {
+        config([
+            'najm-hoda.provider.type' => 'openrouter',
+            'najm-hoda.provider.api_key' => 'invalid-key',
+            'najm-hoda.provider.model' => 'openai/gpt-oss-20b:free',
+            'najm-hoda.provider.retry_count' => 0,
+            'najm-hoda.mock_mode' => false,
+        ]);
+
+        Http::fake([
+            '*' => Http::response(['error' => ['message' => 'Unauthorized']], 401),
+        ]);
+
+        $response = (new TestBaseAgent())->ask('hello');
+
+        $this->assertStringContainsString('قادر به پاسخگویی نیستم', $response);
+        Http::assertSentCount(1);
     }
 }
 
