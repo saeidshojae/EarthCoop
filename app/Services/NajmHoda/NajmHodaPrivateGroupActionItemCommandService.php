@@ -27,10 +27,16 @@ class NajmHodaPrivateGroupActionItemCommandService
         // are managed deterministically, but a request to extract new semantic
         // proposals must continue to the evidence-grounded extractor below.
         if (! $this->looksLikeExtractionRequest($message)) {
+            // Natural manager language may refer to an action item simply as
+            // «کار». Internally normalize that narrow form without exposing IDs.
+            $queueMessage = preg_match('/^\s*کار\s+[«"]/u', $message) === 1
+                ? 'مورد اقدام ' . $message
+                : $message;
+
             $queueResponse = app(NajmHodaPrivateGroupActionQueueService::class)->intercept(
                 $requester,
                 $pageContext,
-                $message,
+                $queueMessage,
                 $conversationId
             );
             if (is_array($queueResponse)) {
