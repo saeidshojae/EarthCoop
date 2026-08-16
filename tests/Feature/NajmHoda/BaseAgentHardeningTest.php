@@ -71,6 +71,28 @@ class BaseAgentHardeningTest extends TestCase
         ]);
     }
 
+    public function test_page_guidance_prompt_requires_capability_contract_grounding(): void
+    {
+        $messages = (new TestBaseAgent())->exposeBuildMessages('چطور نظرسنجی بسازم؟', [
+            'page_context' => [
+                'page_label' => 'گفتگوی گروه',
+                'page_kind' => 'group_chat',
+                'available_capabilities' => ['create_poll'],
+                'capability_contracts' => [[
+                    'id' => 'create_poll',
+                    'ui' => ['steps' => ['از منوی پیوست، ایجاد نظرسنجی را انتخاب کنید.']],
+                ]],
+            ],
+        ]);
+
+        $systemContext = (string) ($messages[1]['content'] ?? '');
+
+        $this->assertStringContainsString('page_context.capability_contracts', $systemContext);
+        $this->assertStringContainsString('MUST come only from those contracts', $systemContext);
+        $this->assertStringContainsString('do not invent buttons', $systemContext);
+        $this->assertStringContainsString('create_poll', $systemContext);
+    }
+
     public function test_openrouter_403_uses_free_router_fallback_in_testing(): void
     {
         config([
@@ -131,5 +153,10 @@ class TestBaseAgent extends BaseAgent
     public function exposeExtractResponseContent(array $result): string
     {
         return $this->extractResponseContent($result, 'TestProvider');
+    }
+
+    public function exposeBuildMessages(string $prompt, array $context): array
+    {
+        return $this->buildMessages($prompt, $context);
     }
 }
