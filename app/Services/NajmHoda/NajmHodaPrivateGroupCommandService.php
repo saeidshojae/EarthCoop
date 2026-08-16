@@ -67,10 +67,19 @@ class NajmHodaPrivateGroupCommandService extends NajmHodaGroupAssistantService
             return null;
         }
 
+        if ((bool) ($plan['needs_input'] ?? false)) {
+            return $this->widgetResponse(
+                (string) ($plan['message'] ?? 'برای اجرای این درخواست به اطلاعات بیشتری نیاز دارم.'),
+                'needs_input',
+                (string) ($plan['action'] ?? '')
+            );
+        }
+
         if (!(bool) ($plan['allowed'] ?? false)) {
             return $this->widgetResponse(
                 (string) ($plan['message'] ?? 'شما مجوز اجرای این اقدام را در این گروه ندارید.'),
-                'blocked'
+                'blocked',
+                (string) ($plan['action'] ?? '')
             );
         }
 
@@ -85,7 +94,7 @@ class NajmHodaPrivateGroupCommandService extends NajmHodaGroupAssistantService
         $groupName = trim((string) $group->name) ?: ('#' . $group->id);
 
         return $this->widgetResponse(
-            "درخواست اجرایی برای گروه «{$groupName}» آماده شد.\n\n{$preview}\n\nاگر درست است «تأیید» بفرستید. برای انصراف «لغو» بفرستید. تا قبل از تأیید هیچ تغییری در گروه اعمال نمی‌شود.",
+            "درخواست اجرایی برای گروه «{$groupName}» آماده شد.\n\n{$preview}\n\nاگر همین مورد باید منتشر شود «تأیید» بفرستید. برای انصراف «لغو» بفرستید. تا قبل از تأیید هیچ تغییری در گروه اعمال نمی‌شود.",
             'awaiting_confirmation',
             (string) ($plan['action'] ?? '')
         );
@@ -125,11 +134,153 @@ class NajmHodaPrivateGroupCommandService extends NajmHodaGroupAssistantService
             ];
         }
 
+        $preview = $this->buildPrivateActionPreview($intent, $text);
+        if (!(bool) ($preview['valid'] ?? false)) {
+            return [
+                'allowed' => true,
+                'needs_input' => true,
+                'action' => $intent,
+                'message' => (string) ($preview['message'] ?? 'اطلاعات این درخواست کامل نیست.'),
+            ];
+        }
+
         return [
             'allowed' => true,
             'action' => $intent,
-            'preview' => $this->buildGroupActionProposalReply($text),
+            'preview' => (string) ($preview['preview'] ?? ''),
         ];
+    }
+
+    /**
+     * Private widget commands are deliberately stricter than the historical
+     * public-chat parser: Najm Hoda must not invent user-visible content before
+     * asking for confirmation.
+     *
+     * @return array{valid:bool,preview?:string,message?:string}
+     */
+    protected function buildPrivateActionPreview(string $intent, string $text): array
+    {
+        if ($intent === 'create_poll') {
+            $question = $this->extractLabeledValue($text, ['سوال', 'سؤال', 'پرسش'], ['گزینه', 'گزینه‌ها', 'گزینه ها', 'مهلت']);
+            $optionsRaw = $this->extractLabeledValue($text, ['گزینه', 'گزینه‌ها', 'گزینه ها'], ['مهلت']);
+            $options = $this->splitOptions($optionsRaw);
+
+            if ($question === '' || count($options) < 2) {
+                return [
+                    'valid' => false,
+                    'message' => "برای ساخت نظرسنجی، سؤال و حداقل دو گزینه را مشخص کنید.\nمثال: «یک نظرسنجی بساز | سوال: بهترین زمان جلسه؟ | گزینه‌ها: شنبه، یکشنبه | مهلت: 3»",
+                ];
+            }
+
+            $days = 3;
+            if (preg_match('/مهلت\s*[:：]\s*(\d+)/u', $text, $match)) {
+                $days = max(1, min((int) $match[1], 90));
+            }
+
+            return [
+                'valid' => true,
+                'preview' => implode("\n", [
+                    'نوع اقدام: ایجاد نظرسنجی',
+                    'سؤال: ' . $question,
+                    'گزینه‌ها: ' . implode('، ', $options),
+                    'مدت فعال بودن: ' . $days . ' روز',
+                    'منتشرکننده سیستمی: نجم هدا',
+                ]),
+            ];
+        }
+
+        if ($intent === 'create_post') {
+            $title = $this->extractLabeledValue($text, ['عنوان'], ['متن']);
+            $content = $this->extractLabeledValue($text, ['متن'], []);
+
+            if ($content === '') {
+                return [
+                    'valid' => false,
+                    'message' => "برای انتشار پست، متن پست را صریحاً مشخص کنید تا نجم هدا چیزی را از خودش حدس نزند.\nمثال: «یک پست بساز | عنوان: گزارش جلسه | متن: ...»",
+                ];
+            }
+
+            if ($title === '') {
+                $title = mb_substr(trim(strip_tags($content)), 0, 70);
+            }
+
+            return [
+                'valid' => true,
+                'preview' => implode("\n", [
+                    'نوع اقدام: انتشار پست',
+                    'عنوان: ' . $title,
+                    'متن: ' . mb_substr($content, 0, 500),
+                    'منتشرکننده سیستمی: نجم هدا',
+                ]),
+            ];
+        }
+
+        if ($intent === 'create_comment') {
+            $target = 'محتوای مشخص‌شده در فرمان';
+            if (preg_match('/پست\s*#?(\d+)/u', $text, $match)) {
+                $target = 'پست #' . $match[1];
+            } elseif (mb_stripos($text, 'آخرین پست') !== false || mb_stripos($text, 'پست آخر') !== false) {
+                $target = 'آخرین پست گروه';
+            } elseif (mb_stripos($text, 'پست من') !== false || mb_stripos($text, 'پستم') !== false) {
+                $target = 'آخرین پست شما در گروه';
+            }
+
+            return [
+                'valid' => true,
+                'preview' => "نوع اقدام: ثبت نظر توسط نجم هدا\nهدف: {$target}\nجزئیات فرمان: " . mb_substr(trim(strip_tags($text)), 0, 500),
+            ];
+        }
+
+        if ($intent === 'react') {
+            return [
+                'valid' => true,
+                'preview' => "نوع اقدام: ثبت واکنش توسط نجم هدا\nجزئیات فرمان: " . mb_substr(trim(strip_tags($text)), 0, 500),
+            ];
+        }
+
+        return [
+            'valid' => false,
+            'message' => 'این نوع اقدام هنوز برای اجرای خصوصی در گروه پشتیبانی نمی‌شود.',
+        ];
+    }
+
+    protected function extractLabeledValue(string $text, array $labels, array $stopLabels): string
+    {
+        $labelPattern = implode('|', array_map(fn (string $value): string => preg_quote($value, '/'), $labels));
+        $stopPattern = implode('|', array_map(fn (string $value): string => preg_quote($value, '/'), $stopLabels));
+
+        $pattern = '/(?:' . $labelPattern . ')\s*[:：]\s*(.+?)';
+        if ($stopPattern !== '') {
+            $pattern .= '(?=\s*(?:\||\n)\s*(?:' . $stopPattern . ')\s*[:：]|$)';
+        } else {
+            $pattern .= '$';
+        }
+        $pattern .= '/us';
+
+        if (!preg_match($pattern, $text, $match)) {
+            return '';
+        }
+
+        return trim((string) ($match[1] ?? ''));
+    }
+
+    /** @return array<int,string> */
+    protected function splitOptions(string $value): array
+    {
+        if ($value === '') {
+            return [];
+        }
+
+        $parts = preg_split('/[,،؛;\n]+/u', $value) ?: [];
+        $options = [];
+        foreach ($parts as $part) {
+            $option = trim($part);
+            if ($option !== '') {
+                $options[] = $option;
+            }
+        }
+
+        return array_values(array_unique($options));
     }
 
     /**
