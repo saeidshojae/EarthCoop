@@ -23,7 +23,7 @@ function escapeHtml(value) {
 function safeFormatMessage(content) {
     return escapeHtml(content)
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        .replace(/\*([^*]+)\*\*/g, '<em>$1</em>')
         .replace(/\n/g, '<br>');
 }
 
@@ -45,6 +45,16 @@ function pageContext() {
         const candidate = projectIndex >= 0 ? pathParts[projectIndex + 1] : null;
         if (candidate && /^\d+$/.test(candidate)) {
             resourceType = 'najm_bahar_project';
+            resourceId = candidate;
+        }
+    } else if (!resourceId && typeof routeName === 'string' && routeName.startsWith('groups.chat')) {
+        // Current group-chat URLs are /groups/chat/{group}. The old generic
+        // inference expected /groups/{group}, so it accidentally read "chat"
+        // instead of the group id and degraded Najm Hoda to read-only context.
+        const chatIndex = pathParts.findIndex((part) => part.toLowerCase() === 'chat');
+        const candidate = chatIndex >= 0 ? pathParts[chatIndex + 1] : null;
+        if (candidate && /^\d+$/.test(candidate)) {
+            resourceType = 'group';
             resourceId = candidate;
         }
     } else if (!resourceId && ['group', 'groups'].includes(String(module).toLowerCase())) {
