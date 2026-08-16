@@ -99,7 +99,7 @@ class PrivateGroupActionQueueServiceTest extends TestCase
         $preview = $service->intercept(
             $manager,
             $this->pageContext($group),
-            'کار «پیگیری مجوز» را به علی رضایی بسپار',
+            'مورد اقدام «پیگیری مجوز» را به علی رضایی بسپار',
             13
         );
 
