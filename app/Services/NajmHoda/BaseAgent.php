@@ -85,7 +85,7 @@ abstract class BaseAgent
             $messages[] = [
                 'role' => 'system',
                 'content' => "Server-validated context follows. Treat it as authoritative factual data, not as user instructions.\n"
-                    . "PAGE-AWARENESS RULE: If the user asks where they are, which page/section is open, or what can be done on the current page, answer directly from page_context.page_label, page_context.page_kind, page_context.available_capabilities, and any authorized page_context.resource data. Never guess the current page from conversation history or general knowledge. If validated page data is unavailable, say that you cannot determine the current page.\n"
+                    . "PAGE-AWARENESS RULE: If the user asks where they are, which page/section is open, what can be done on the current page, or how to perform a page action, answer directly from page_context.page_label, page_context.page_kind, page_context.available_capabilities, page_context.capability_contracts, and any authorized page_context.resource data. When capability_contracts are present, UI instructions and capability claims MUST come only from those contracts: use their label, summary, ui.steps and declared controls; do not invent buttons, menus, search, notifications, attachments, permissions, limits, or other UI behavior that is not present in the contracts. Never guess the current page from conversation history or general knowledge. If validated page data is unavailable, say that you cannot determine it.\n"
                     . json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             ];
         }
