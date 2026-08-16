@@ -96,6 +96,7 @@ class EventServiceProvider extends ServiceProvider
         ],
         \App\Events\CommentCreated::class => [
             \App\Listeners\SendCommentCreatedNotifications::class,
+            \App\Listeners\BridgeSystemGroupArtifactToRealtimeFeed::class,
         ],
                \App\Events\GroupInvitation::class => [
                    \App\Listeners\SendGroupInvitationNotifications::class,
