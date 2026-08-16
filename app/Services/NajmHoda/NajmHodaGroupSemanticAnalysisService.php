@@ -51,19 +51,26 @@ class NajmHodaGroupSemanticAnalysisService
 2) آمار خام را تکرار نکن مگر برای فهم مطلب لازم باشد؛ هدف «فهم محتوا» است.
 3) پست/نظرسنجی/پیام‌های تکراری یا آزمایشی را در صورت قابل تشخیص بودن تجمیع کن و صریحاً بگو که تکراری/آزمایشی به نظر می‌رسند، نه اینکه آن را واقعیت قطعی اعلام کنی.
 4) «تصمیم قطعی/مصوبه/وظیفه ثبت‌شده» فقط چیزی است که در action_items وجود دارد. سایر موارد را فقط «پیشنهاد/برداشت قابل بررسی» بنام.
-5) برای هر نکته مهم، منبع را با شناسه داخلی در پرانتز ذکر کن؛ مانند (پیام #12)، (پست #8)، (نظرسنجی #4). این شناسه‌ها برای audit هستند و لازم نیست کاربر آنها را بداند یا وارد کند.
+5) برای هر نکته مهم، منبع را با شناسه داخلی در پرانتز ذکر کن؛ مانند (پیام #12)، (پست #8)، (نظرسنجی #4). این شناسه‌ها فقط برای audit هستند و کاربر لازم نیست آنها را بداند یا وارد کند.
 6) اگر داده برای یک نتیجه کافی نیست، صریحاً بگو کافی نیست.
 7) فارسی روان، مدیریتی و کوتاه بنویس.
+8) فرایند فکر، chain-of-thought، تحلیل مرحله‌به‌مرحله، یادداشت داخلی، بررسی قواعد، self-check یا توضیح اینکه چگونه به جواب رسیدی را هرگز خروجی نده.
+9) فقط پاسخ نهایی قابل نمایش به مدیر را تولید کن و آن را دقیقاً بین تگ‌های <final> و </final> قرار بده. بیرون این دو تگ هیچ متنی ننویس.
 
 SOURCE_JSON:
 PROMPT;
 
-        $response = trim($this->guide->ask(
+        $rawResponse = trim($this->guide->ask(
             $prompt . "\n" . json_encode($source, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             []
         ));
 
-        if ($response === '' || $this->looksUnavailable($response)) {
+        if ($rawResponse === '' || $this->looksUnavailable($rawResponse)) {
+            return ['available' => false, 'text' => null, 'snapshot' => $snapshot];
+        }
+
+        $response = $this->extractSafeFinalAnswer($rawResponse);
+        if ($response === null || $response === '') {
             return ['available' => false, 'text' => null, 'snapshot' => $snapshot];
         }
 
@@ -88,6 +95,67 @@ PROMPT;
             'polls' => array_values((array) ($snapshot['polls'] ?? [])),
             'action_items' => array_values((array) ($snapshot['action_items'] ?? [])),
         ];
+    }
+
+    /**
+     * Provider/model scratchpads are never user-visible. Semantic output is
+     * fail-closed: only the explicit final envelope is accepted. If a provider
+     * ignores the contract or emits reasoning leakage, the caller falls back to
+     * the deterministic grounded report rather than exposing internal analysis.
+     */
+    protected function extractSafeFinalAnswer(string $response): ?string
+    {
+        if (preg_match('/<final>\s*(.*?)\s*<\/final>/isu', $response, $match) === 1) {
+            $final = trim((string) ($match[1] ?? ''));
+            if ($final === '' || $this->containsReasoningLeakage($final)) {
+                return null;
+            }
+
+            return mb_substr($final, 0, 12000);
+        }
+
+        if ($this->containsReasoningLeakage($response)) {
+            return null;
+        }
+
+        // Older/alternative providers may obey the no-reasoning instruction but
+        // omit the requested envelope. Accept only a concise clean response; a
+        // verbose unstructured answer is safer to reject and fall back.
+        $clean = trim($response);
+        if ($clean !== '' && mb_strlen($clean) <= 6000) {
+            return $clean;
+        }
+
+        return null;
+    }
+
+    protected function containsReasoningLeakage(string $response): bool
+    {
+        $plain = mb_strtolower($response);
+        $markers = [
+            "here's a thinking process",
+            'thinking process',
+            'chain-of-thought',
+            'chain of thought',
+            'analyze user request',
+            'analyse user request',
+            'examine source_json',
+            'process content per rules',
+            "let's draft",
+            'final check',
+            'check against rules',
+            'reasoning:',
+            'internal reasoning',
+            'scratchpad',
+        ];
+
+        foreach ($markers as $marker) {
+            if (str_contains($plain, $marker)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function looksUnavailable(string $response): bool
