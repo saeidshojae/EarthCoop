@@ -28,6 +28,17 @@ class NajmHodaPrivateGroupActionItemCommandService
         // are managed deterministically, but a request to extract new semantic
         // proposals must continue to the evidence-grounded extractor below.
         if (! $this->looksLikeExtractionRequest($message)) {
+            // Broad managerial attention questions are answered deterministically
+            // from the existing queue before falling through to specific filters.
+            $attentionResponse = app(NajmHodaPrivateGroupAttentionDigestService::class)->intercept(
+                $requester,
+                $pageContext,
+                $message
+            );
+            if (is_array($attentionResponse)) {
+                return $attentionResponse;
+            }
+
             // Natural manager language may refer to an action item simply as
             // «کار». Internally normalize that narrow form without exposing IDs.
             $queueMessage = preg_match('/^\s*کار\s+[«"]/u', $message) === 1
@@ -226,7 +237,7 @@ class NajmHodaPrivateGroupActionItemCommandService
 
     protected function priorityLabel(string $priority): string
     {
-        return match ($priority) { 'high' => 'زیاد', 'low' => 'کم', default => 'متوسط' };
+        return match ($priority) { 'high' => 'زیاد', 'low' => 'کم', 'urgent' => 'فوری', default => 'متوسط' };
     }
 
     protected function sourceLabel(string $source): string
