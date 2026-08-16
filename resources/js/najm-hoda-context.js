@@ -23,7 +23,7 @@ function escapeHtml(value) {
 function safeFormatMessage(content) {
     return escapeHtml(content)
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*([^*]+)\*\*/g, '<em>$1</em>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
         .replace(/\n/g, '<br>');
 }
 
