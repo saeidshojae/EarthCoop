@@ -23,17 +23,86 @@ class NajmHodaPageCapabilityRegistry
             default => [],
         };
 
-        if ($pageKind === 'group_chat' && !(bool) ($resource['can_participate'] ?? false)) {
-            $contracts = array_values(array_filter(
-                $contracts,
-                fn (array $contract): bool => !(bool) ($contract['requires_participation'] ?? false)
-            ));
+        if ($pageKind === 'group_chat') {
+            $resource = is_array($resource) ? $resource : [];
+            $canParticipate = (bool) ($resource['can_participate'] ?? false);
+            $role = isset($resource['viewer_group_role']) ? (int) $resource['viewer_group_role'] : null;
+            $blocked = array_values(array_filter(array_map('strval', (array) ($resource['blocked_positions'] ?? []))));
+
+            $contracts = array_values(array_filter($contracts, function (array $contract) use ($canParticipate, $role, $blocked): bool {
+                if ((bool) ($contract['requires_participation'] ?? false) && !$canParticipate) {
+                    return false;
+                }
+
+                // Role 5 can send text/recorded voice but the current composer
+                // intentionally hides the attachment menu that contains post/poll creation.
+                if ($role === 5 && in_array((string) ($contract['id'] ?? ''), ['create_post', 'create_poll'], true)) {
+                    return false;
+                }
+
+                $position = (string) ($contract['blocked_by_position'] ?? '');
+                if ($position !== '' && in_array($position, $blocked, true)) {
+                    return false;
+                }
+
+                return true;
+            }));
         }
 
         return array_map(function (array $contract): array {
-            unset($contract['requires_participation']);
+            unset($contract['requires_participation'], $contract['blocked_by_position']);
             return $contract;
         }, $contracts);
+    }
+
+    /**
+     * Delegated actions are intentionally separate from UI capabilities. A user
+     * may be able to perform an action themselves while not being authorized to
+     * ask a system identity to perform it on the group's behalf.
+     *
+     * @param array<string,mixed>|null $resource
+     * @return array<int,array<string,mixed>>
+     */
+    public function delegatedActionsForGroup(?array $resource = null): array
+    {
+        $resource = is_array($resource) ? $resource : [];
+        $role = isset($resource['viewer_group_role']) ? (int) $resource['viewer_group_role'] : null;
+        $isPlatformAdmin = (string) ($resource['viewer_relation'] ?? '') === 'admin';
+
+        if (!$isPlatformAdmin && !in_array($role, [2, 3], true)) {
+            return [];
+        }
+
+        return [
+            [
+                'id' => 'najm_hoda_create_post',
+                'label' => 'تفویض انتشار پست به نجم هدا',
+                'requires_confirmation' => true,
+                'result_visibility' => 'group_feed',
+                'conversation_visibility' => 'private_widget',
+            ],
+            [
+                'id' => 'najm_hoda_create_poll',
+                'label' => 'تفویض ایجاد نظرسنجی به نجم هدا',
+                'requires_confirmation' => true,
+                'result_visibility' => 'group_feed',
+                'conversation_visibility' => 'private_widget',
+            ],
+            [
+                'id' => 'najm_hoda_create_comment',
+                'label' => 'تفویض ثبت نظر به نجم هدا',
+                'requires_confirmation' => true,
+                'result_visibility' => 'group_feed',
+                'conversation_visibility' => 'private_widget',
+            ],
+            [
+                'id' => 'najm_hoda_react',
+                'label' => 'تفویض واکنش به نجم هدا',
+                'requires_confirmation' => true,
+                'result_visibility' => 'group_feed',
+                'conversation_visibility' => 'private_widget',
+            ],
+        ];
     }
 
     /**
@@ -57,6 +126,7 @@ class NajmHodaPageCapabilityRegistry
                 'label' => 'ارسال پیام متنی',
                 'summary' => 'در صورت داشتن مجوز مشارکت، پیام متنی را از composer پایین صفحه ارسال کنید.',
                 'requires_participation' => true,
+                'blocked_by_position' => 'message',
                 'ui' => [
                     'surface' => '#message_editor',
                     'submit' => '#telegram-send-btn',
@@ -72,6 +142,7 @@ class NajmHodaPageCapabilityRegistry
                 'label' => 'ارسال پیام صوتی',
                 'summary' => 'در صورت داشتن مجوز مشارکت، صدا را ضبط کنید یا فایل صوتی انتخاب کنید.',
                 'requires_participation' => true,
+                'blocked_by_position' => 'message',
                 'ui' => [
                     'record_trigger' => '#voice-record-btn',
                     'file_trigger' => '#audio-upload-trigger',
@@ -87,6 +158,7 @@ class NajmHodaPageCapabilityRegistry
                 'label' => 'ایجاد پست',
                 'summary' => 'از منوی پیوست، فرم ایجاد پست را باز کرده و عنوان، متن و در صورت نیاز دسته‌بندی یا فایل را وارد کنید.',
                 'requires_participation' => true,
+                'blocked_by_position' => 'post',
                 'ui' => [
                     'menu_trigger' => '#chatCreateToggle',
                     'trigger' => '#create-post-btn',
@@ -106,6 +178,7 @@ class NajmHodaPageCapabilityRegistry
                 'label' => 'ایجاد نظرسنجی',
                 'summary' => 'از منوی پیوست، فرم نظرسنجی را باز کرده و سؤال، مدت و حداقل دو گزینه را تعریف کنید.',
                 'requires_participation' => true,
+                'blocked_by_position' => 'poll',
                 'ui' => [
                     'menu_trigger' => '#chatCreateToggle',
                     'trigger' => '#create-poll-btn',
