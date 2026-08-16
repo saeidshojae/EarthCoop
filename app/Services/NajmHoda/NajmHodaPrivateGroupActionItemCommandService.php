@@ -23,17 +23,19 @@ class NajmHodaPrivateGroupActionItemCommandService
     /** @param array<string,mixed> $pageContext @return array<string,mixed>|null */
     public function intercept(User $requester, array $pageContext, string $message, ?int $conversationId = null): ?array
     {
-        // Existing queue items are managed by a deterministic, no-LLM service.
-        // Run it before semantic extraction so confirmations and ordinary queue
-        // queries are never mistaken for a new extraction request.
-        $queueResponse = app(NajmHodaPrivateGroupActionQueueService::class)->intercept(
-            $requester,
-            $pageContext,
-            $message,
-            $conversationId
-        );
-        if (is_array($queueResponse)) {
-            return $queueResponse;
+        // Extraction and management are separate intents. Existing queue items
+        // are managed deterministically, but a request to extract new semantic
+        // proposals must continue to the evidence-grounded extractor below.
+        if (! $this->looksLikeExtractionRequest($message)) {
+            $queueResponse = app(NajmHodaPrivateGroupActionQueueService::class)->intercept(
+                $requester,
+                $pageContext,
+                $message,
+                $conversationId
+            );
+            if (is_array($queueResponse)) {
+                return $queueResponse;
+            }
         }
 
         if ((string) ($pageContext['page_kind'] ?? '') !== 'group_chat') return null;
