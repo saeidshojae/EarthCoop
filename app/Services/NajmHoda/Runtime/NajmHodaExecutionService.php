@@ -9,6 +9,7 @@ use App\Services\NajmHoda\Context\NajmHodaPageContextResolver;
 use App\Services\NajmHoda\NajmHodaInteractionBoundaryService;
 use App\Services\NajmHoda\NajmHodaOrchestrator;
 use App\Services\NajmHoda\NajmHodaPrivateGroupCommandService;
+use App\Services\NajmHoda\NajmHodaPrivateGroupCommentCommandService;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -20,11 +21,13 @@ class NajmHodaExecutionService
         protected ?NajmHodaResourceAuthorizationService $resourceAuthorization = null,
         protected ?NajmHodaPageContextResolver $pageContextResolver = null,
         protected ?NajmHodaPrivateGroupCommandService $privateGroupCommandService = null,
+        protected ?NajmHodaPrivateGroupCommentCommandService $privateGroupCommentCommandService = null,
         protected ?NajmHodaGroundedPageResponder $groundedPageResponder = null
     ) {
         $this->resourceAuthorization = $this->resourceAuthorization ?? new NajmHodaResourceAuthorizationService();
         $this->pageContextResolver = $this->pageContextResolver ?? new NajmHodaPageContextResolver();
         $this->privateGroupCommandService = $this->privateGroupCommandService ?? app(NajmHodaPrivateGroupCommandService::class);
+        $this->privateGroupCommentCommandService = $this->privateGroupCommentCommandService ?? app(NajmHodaPrivateGroupCommentCommandService::class);
         $this->groundedPageResponder = $this->groundedPageResponder ?? new NajmHodaGroundedPageResponder();
     }
 
@@ -37,13 +40,26 @@ class NajmHodaExecutionService
             $context = $this->sanitizeActionContext($context, $message);
 
             // Group actions requested from the private Najm Hoda widget are
-            // handled before the LLM. The server-resolved page/group context and
-            // actual group role authorize the request; confirmation is required
-            // before the existing GroupActionExecutor publishes any artifact.
+            // handled before the LLM. Highly specific structured command
+            // interceptors run before the generic parser so a target noun like
+            // «پست #8» cannot change a comment command into create_post.
             $actorId = isset($context['user_id']) ? (int) $context['user_id'] : 0;
             $actor = $actorId > 0 ? User::query()->find($actorId) : null;
             if ($actor && is_array($context['page_context'] ?? null)) {
                 $conversationId = (int) data_get($context, 'conversation.id', 0);
+
+                $privateCommentResponse = $this->privateGroupCommentCommandService?->intercept(
+                    $actor,
+                    (array) $context['page_context'],
+                    $message,
+                    $conversationId > 0 ? $conversationId : null
+                );
+                if (is_array($privateCommentResponse)) {
+                    $privateCommentResponse['response_time_ms'] = (int) round((microtime(true) - $start) * 1000);
+                    $privateCommentResponse['request_id'] = $requestId;
+                    return $privateCommentResponse;
+                }
+
                 $privateGroupResponse = $this->privateGroupCommandService?->intercept(
                     $actor,
                     (array) $context['page_context'],
