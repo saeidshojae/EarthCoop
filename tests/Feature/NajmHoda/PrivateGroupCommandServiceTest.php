@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\NajmHoda;
 
+use App\Models\Blog;
+use App\Models\Category;
 use App\Models\Group;
 use App\Models\GroupFeedItem;
 use App\Models\GroupSyncEvent;
@@ -29,6 +31,7 @@ class PrivateGroupCommandServiceTest extends TestCase
             'najm-hoda.group_assistant.action_executor.dry_run' => false,
             'najm-hoda.group_assistant.action_executor.propose_before_execute' => false,
             'najm-hoda.group_assistant.action_executor.allow_create_poll' => true,
+            'najm-hoda.group_assistant.action_executor.allow_create_post' => true,
             'najm-hoda.group_assistant.action_executor.permitted_roles' => [2, 3],
             // This test asserts the canonical sequenced feed contract explicitly.
             // The feature is staged/off by default in config, so enable it here
@@ -123,6 +126,57 @@ class PrivateGroupCommandServiceTest extends TestCase
                 ->where('content_id', $poll->id)
                 ->exists(),
             'System-authored polls must emit the canonical sync event consumed by realtime clients.'
+        );
+    }
+
+    public function test_manager_can_confirm_exact_private_post_and_it_enters_realtime_feed(): void
+    {
+        [$group, $manager] = $this->makeGroupAndUser(3);
+        Category::firstOrCreate(['name' => 'Najm Hoda test category']);
+        $service = app(NajmHodaPrivateGroupCommandService::class);
+        $command = 'برای همین گروه یک پست بساز | عنوان: گزارش جلسه هفتگی | متن: جلسه هفتگی روز شنبه ساعت ۱۸ برگزار می‌شود.';
+
+        $proposal = $service->intercept($manager, $this->pageContext($group), $command, 1010);
+
+        $this->assertIsArray($proposal);
+        $this->assertSame('awaiting_confirmation', $proposal['action_status']);
+        $this->assertStringContainsString('نوع اقدام: انتشار پست', $proposal['message']);
+        $this->assertStringContainsString('عنوان: گزارش جلسه هفتگی', $proposal['message']);
+        $this->assertSame(0, Blog::query()->where('group_id', $group->id)->count(), 'Preview must not publish the post.');
+
+        $executed = $service->intercept($manager, $this->pageContext($group), 'تأیید', 1010);
+
+        $this->assertIsArray($executed);
+        $this->assertSame('executed', $executed['action_status']);
+
+        $post = Blog::query()->where('group_id', $group->id)->latest('id')->firstOrFail();
+        $this->assertSame('گزارش جلسه هفتگی', $post->title);
+        $this->assertSame('جلسه هفتگی روز شنبه ساعت ۱۸ برگزار می‌شود.', $post->content);
+
+        $bot = User::query()
+            ->where('email', config('najm-hoda.group_assistant.bot_email', 'najm-hoda-bot@local.invalid'))
+            ->firstOrFail();
+        $this->assertSame((int) $bot->id, (int) $post->user_id);
+        $this->assertTrue($bot->isSystemIdentity());
+        $this->assertFalse(Account::query()->where('user_id', $bot->id)->exists());
+
+        $this->assertTrue(
+            GroupFeedItem::query()
+                ->where('group_id', $group->id)
+                ->where('type', 'post')
+                ->where('content_id', $post->id)
+                ->exists(),
+            'System-authored posts must enter the canonical sequenced group feed.'
+        );
+
+        $this->assertTrue(
+            GroupSyncEvent::query()
+                ->where('group_id', $group->id)
+                ->where('action', 'post_created')
+                ->where('content_type', 'post')
+                ->where('content_id', $post->id)
+                ->exists(),
+            'System-authored posts must emit the canonical sync event consumed by realtime clients.'
         );
     }
 
