@@ -52,7 +52,11 @@ class NajmHodaPrivateGroupCommandService extends NajmHodaGroupAssistantService
 
         if (is_array($pending) && $this->isConfirmation($message)) {
             Cache::forget($pendingKey);
-            $result = $this->executeConfirmedWidgetCommand($requester, $group, (string) ($pending['command'] ?? ''));
+            $result = $this->executeConfirmedWidgetCommand(
+                $requester,
+                $group,
+                (string) ($pending['execution_command'] ?? $pending['command'] ?? '')
+            );
             return $this->widgetExecutionResponse($result);
         }
 
@@ -88,6 +92,10 @@ class NajmHodaPrivateGroupCommandService extends NajmHodaGroupAssistantService
             'requester_user_id' => $requester->id,
             'action' => (string) ($plan['action'] ?? ''),
             'command' => $message,
+            // Execute the canonical command derived from the same parsed payload
+            // that produced the preview. Confirmation therefore cannot approve
+            // one payload while the legacy parser executes a subtly different one.
+            'execution_command' => (string) ($plan['execution_command'] ?? $message),
         ], now()->addMinutes(15));
 
         $preview = (string) ($plan['preview'] ?? 'درخواست آماده اجرا است.');
@@ -148,6 +156,7 @@ class NajmHodaPrivateGroupCommandService extends NajmHodaGroupAssistantService
             'allowed' => true,
             'action' => $intent,
             'preview' => (string) ($preview['preview'] ?? ''),
+            'execution_command' => (string) ($preview['execution_command'] ?? $text),
         ];
     }
 
@@ -156,7 +165,7 @@ class NajmHodaPrivateGroupCommandService extends NajmHodaGroupAssistantService
      * public-chat parser: Najm Hoda must not invent user-visible content before
      * asking for confirmation.
      *
-     * @return array{valid:bool,preview?:string,message?:string}
+     * @return array{valid:bool,preview?:string,message?:string,execution_command?:string}
      */
     protected function buildPrivateActionPreview(string $intent, string $text): array
     {
@@ -186,6 +195,11 @@ class NajmHodaPrivateGroupCommandService extends NajmHodaGroupAssistantService
                     'مدت فعال بودن: ' . $days . ' روز',
                     'منتشرکننده سیستمی: نجم هدا',
                 ]),
+                // Keep deadline before options because the historical parser reads
+                // options to end-of-command. This canonical shape is unambiguous.
+                'execution_command' => 'نظرسنجی بساز | مهلت: ' . $days
+                    . ' | سوال: ' . $question
+                    . ' | گزینه‌ها: ' . implode('، ', $options),
             ];
         }
 
@@ -212,6 +226,7 @@ class NajmHodaPrivateGroupCommandService extends NajmHodaGroupAssistantService
                     'متن: ' . mb_substr($content, 0, 500),
                     'منتشرکننده سیستمی: نجم هدا',
                 ]),
+                'execution_command' => 'پست بساز | عنوان: ' . $title . ' | متن: ' . $content,
             ];
         }
 
@@ -228,6 +243,7 @@ class NajmHodaPrivateGroupCommandService extends NajmHodaGroupAssistantService
             return [
                 'valid' => true,
                 'preview' => "نوع اقدام: ثبت نظر توسط نجم هدا\nهدف: {$target}\nجزئیات فرمان: " . mb_substr(trim(strip_tags($text)), 0, 500),
+                'execution_command' => $text,
             ];
         }
 
@@ -235,6 +251,7 @@ class NajmHodaPrivateGroupCommandService extends NajmHodaGroupAssistantService
             return [
                 'valid' => true,
                 'preview' => "نوع اقدام: ثبت واکنش توسط نجم هدا\nجزئیات فرمان: " . mb_substr(trim(strip_tags($text)), 0, 500),
+                'execution_command' => $text,
             ];
         }
 
