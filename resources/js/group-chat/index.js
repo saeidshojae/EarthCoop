@@ -1,3 +1,4 @@
+import './network-arbiter.js';
 import { ApiClient } from './api-client.js';
 import { createStore } from './store.js';
 import { createLifecycle } from './lifecycle.js';
