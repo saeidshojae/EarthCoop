@@ -4,6 +4,8 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Services\NajmHoda\NajmHodaOrchestrator;
+use App\Services\NajmHoda\NajmHodaPrivateGroupActionItemCommandService;
+use App\Services\NajmHoda\Context\NajmHodaPageContextResolver;
 use App\Services\NajmHoda\Runtime\NajmHodaEntryPolicy;
 use App\Services\NajmHoda\Runtime\NajmHodaExecutionService;
 use App\Models\Conversation;
@@ -22,15 +24,21 @@ class NajmHodaController extends Controller
     protected NajmHodaOrchestrator $najmHoda;
     protected NajmHodaEntryPolicy $entryPolicy;
     protected NajmHodaExecutionService $executionService;
+    protected NajmHodaPageContextResolver $pageContextResolver;
+    protected NajmHodaPrivateGroupActionItemCommandService $privateGroupActionItemCommandService;
 
     public function __construct(
         NajmHodaOrchestrator $najmHoda,
         NajmHodaEntryPolicy $entryPolicy,
-        NajmHodaExecutionService $executionService
+        NajmHodaExecutionService $executionService,
+        NajmHodaPageContextResolver $pageContextResolver,
+        NajmHodaPrivateGroupActionItemCommandService $privateGroupActionItemCommandService
     ) {
         $this->najmHoda = $najmHoda;
         $this->entryPolicy = $entryPolicy;
         $this->executionService = $executionService;
+        $this->pageContextResolver = $pageContextResolver;
+        $this->privateGroupActionItemCommandService = $privateGroupActionItemCommandService;
     }
 
     public function welcome()
@@ -96,11 +104,31 @@ class NajmHodaController extends Controller
                 $context['force_agent'] = $request->agent;
             }
 
-            $response = $this->executionService->executeChat(
-                $this->najmHoda,
-                (string) $request->message,
-                $context
-            );
+            // Action-item extraction/confirmation is a private manager workflow.
+            // Resolve the current page again on the server before giving it a
+            // chance to mutate anything; browser-supplied group/role hints are
+            // never treated as authority.
+            $response = null;
+            if ($user) {
+                $browserPage = is_array(data_get($request->context ?? [], 'page'))
+                    ? (array) data_get($request->context ?? [], 'page')
+                    : [];
+                $pageContext = $this->pageContextResolver->resolve($user, ['page' => $browserPage]);
+                $response = $this->privateGroupActionItemCommandService->intercept(
+                    $user,
+                    $pageContext,
+                    (string) $request->message,
+                    (int) $conversation->id
+                );
+            }
+
+            if (! is_array($response)) {
+                $response = $this->executionService->executeChat(
+                    $this->najmHoda,
+                    (string) $request->message,
+                    $context
+                );
+            }
 
             if ((bool) ($response['success'] ?? false)) {
                 $this->saveAssistantMessage(
