@@ -3,6 +3,7 @@
 namespace App\Listeners;
 
 use App\Events\BlogCreated;
+use App\Events\CommentCreated;
 use App\Events\GroupFeedUpdated;
 use App\Events\PollCreated;
 use App\Services\GroupChat\GroupEventPublisher;
@@ -38,6 +39,11 @@ class BridgeSystemGroupArtifactToRealtimeFeed
 
         if ($event instanceof BlogCreated) {
             $this->bridgePost($event);
+            return;
+        }
+
+        if ($event instanceof CommentCreated) {
+            $this->bridgeComment($event);
         }
     }
 
@@ -94,6 +100,39 @@ class BridgeSystemGroupArtifactToRealtimeFeed
             'post_created',
             [
                 'post_id' => (int) $post->id,
+                'system_authored' => true,
+                'system_actor_id' => (int) $author->id,
+            ],
+            0
+        ));
+    }
+
+    private function bridgeComment(CommentCreated $event): void
+    {
+        $comment = $event->comment;
+        $post = $event->blog;
+        $group = $event->group;
+        $author = $event->author;
+
+        if (! (bool) ($author->is_system ?? false)) {
+            return;
+        }
+
+        $this->feed->record(
+            (int) $group->id,
+            'comment',
+            (int) $comment->id,
+            (int) $author->id,
+            $comment->created_at
+        );
+
+        $this->publisher->publish(new GroupFeedUpdated(
+            (int) $group->id,
+            'comment_created',
+            [
+                'comment_id' => (int) $comment->id,
+                'blog_id' => (int) $post->id,
+                'comments_count' => (int) $post->comments()->count(),
                 'system_authored' => true,
                 'system_actor_id' => (int) $author->id,
             ],
