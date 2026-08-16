@@ -33,10 +33,14 @@ class NajmHodaPageContextResolver
         $module = $this->cleanToken($page['module'] ?? null, 60);
         $resourceType = $this->cleanToken($page['resource_type'] ?? null, 60);
         $resourceId = $this->positiveInt($page['resource_id'] ?? null);
+        $description = $this->describePage($routeName, $module, $resourceType);
 
         $resolved = [
             'route_name' => $routeName,
             'module' => $module,
+            'page_label' => $description['label'],
+            'page_kind' => $description['kind'],
+            'available_capabilities' => $description['capabilities'],
             'resource_type' => $resourceType,
             'resource_id' => null,
             'resource' => null,
@@ -66,6 +70,88 @@ class NajmHodaPageContextResolver
         }
 
         return $resolved;
+    }
+
+    /**
+     * Produce human-readable, server-derived page awareness. The browser never
+     * supplies these strings; only sanitized route/module tokens select them.
+     *
+     * @return array{label:string,kind:string,capabilities:array<int,string>}
+     */
+    protected function describePage(?string $routeName, ?string $module, ?string $resourceType): array
+    {
+        $route = Str::lower((string) $routeName);
+        $module = Str::lower((string) $module);
+
+        $exact = [
+            'home' => ['خانه ارثکوپ', 'home', ['navigation', 'profile_overview', 'platform_overview']],
+            'dashboard' => ['داشبورد کاربر', 'dashboard', ['account_overview', 'navigation']],
+            'najm-bahar.agreement' => ['توافقنامه نجم بهار', 'najm_bahar_agreement', ['read_agreement', 'accept_agreement']],
+            'najm-bahar.projects.index' => ['فهرست پروژه‌های نجم بهار', 'najm_bahar_projects', ['browse_projects', 'create_project']],
+            'najm-bahar.projects.create' => ['ثبت پروژه جدید در نجم بهار', 'najm_bahar_project_create', ['create_project']],
+            'najm-bahar.investments.index' => ['فرصت‌های سرمایه‌گذاری نجم بهار', 'najm_bahar_investments', ['browse_investments']],
+            'najm-bahar.investments.my-investments' => ['سرمایه‌گذاری‌های من در نجم بهار', 'najm_bahar_my_investments', ['review_own_investments']],
+        ];
+
+        if ($route !== '' && isset($exact[$route])) {
+            [$label, $kind, $capabilities] = $exact[$route];
+            return compact('label', 'kind', 'capabilities');
+        }
+
+        $prefixes = [
+            'groups.chat' => ['گفتگوی گروه', 'group_chat', ['read_group_feed', 'send_message', 'create_post', 'create_poll', 'vote']],
+            'groups.comment' => ['نظرات پست گروه', 'group_comments', ['read_comments', 'create_comment', 'react_to_comment']],
+            'groups.' => ['بخش گروه‌های ارثکوپ', 'groups', ['browse_group', 'participate_in_group']],
+            'najm-bahar.projects.show' => ['جزئیات پروژه نجم بهار', 'najm_bahar_project', ['view_project']],
+            'najm-bahar.projects.edit' => ['ویرایش پروژه نجم بهار', 'najm_bahar_project_edit', ['edit_project']],
+            'najm-bahar.investments.show' => ['جزئیات فرصت سرمایه‌گذاری نجم بهار', 'najm_bahar_investment', ['view_investment', 'invest']],
+            'admin.najm-hoda.' => ['پنل مدیریت نجم هدا', 'najm_hoda_admin', ['inspect_najm_hoda', 'manage_najm_hoda']],
+            'admin.najm-bahar.' => ['پنل مدیریت نجم بهار', 'najm_bahar_admin', ['review_projects', 'manage_najm_bahar']],
+        ];
+
+        foreach ($prefixes as $prefix => [$label, $kind, $capabilities]) {
+            if ($route !== '' && Str::startsWith($route, $prefix)) {
+                return compact('label', 'kind', 'capabilities');
+            }
+        }
+
+        if ($resourceType === 'group' || in_array($module, ['group', 'groups'], true)) {
+            return [
+                'label' => 'بخش گروه‌های ارثکوپ',
+                'kind' => 'groups',
+                'capabilities' => ['browse_group', 'participate_in_group'],
+            ];
+        }
+
+        if (in_array($module, ['najm-bahar', 'najm_bahar'], true)) {
+            return [
+                'label' => 'بخش نجم بهار',
+                'kind' => 'najm_bahar',
+                'capabilities' => ['navigate_najm_bahar'],
+            ];
+        }
+
+        if ($module === 'admin') {
+            return [
+                'label' => 'پنل مدیریت ارثکوپ',
+                'kind' => 'admin',
+                'capabilities' => ['admin_navigation'],
+            ];
+        }
+
+        if (in_array($module, ['', 'home'], true)) {
+            return [
+                'label' => 'خانه ارثکوپ',
+                'kind' => 'home',
+                'capabilities' => ['navigation', 'platform_overview'],
+            ];
+        }
+
+        return [
+            'label' => 'بخش ' . $module . ' ارثکوپ',
+            'kind' => $module !== '' ? $module : 'unknown',
+            'capabilities' => ['navigation'],
+        ];
     }
 
     /**
