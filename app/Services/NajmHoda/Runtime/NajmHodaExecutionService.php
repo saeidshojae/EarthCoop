@@ -4,6 +4,7 @@ namespace App\Services\NajmHoda\Runtime;
 
 use App\Models\Conversation;
 use App\Models\User;
+use App\Services\NajmHoda\Context\NajmHodaGroundedPageResponder;
 use App\Services\NajmHoda\Context\NajmHodaPageContextResolver;
 use App\Services\NajmHoda\NajmHodaInteractionBoundaryService;
 use App\Services\NajmHoda\NajmHodaOrchestrator;
@@ -18,11 +19,13 @@ class NajmHodaExecutionService
         protected NajmHodaCrossModuleCapabilityOrchestratorService $actionOrchestrator,
         protected ?NajmHodaResourceAuthorizationService $resourceAuthorization = null,
         protected ?NajmHodaPageContextResolver $pageContextResolver = null,
-        protected ?NajmHodaPrivateGroupCommandService $privateGroupCommandService = null
+        protected ?NajmHodaPrivateGroupCommandService $privateGroupCommandService = null,
+        protected ?NajmHodaGroundedPageResponder $groundedPageResponder = null
     ) {
         $this->resourceAuthorization = $this->resourceAuthorization ?? new NajmHodaResourceAuthorizationService();
         $this->pageContextResolver = $this->pageContextResolver ?? new NajmHodaPageContextResolver();
         $this->privateGroupCommandService = $this->privateGroupCommandService ?? app(NajmHodaPrivateGroupCommandService::class);
+        $this->groundedPageResponder = $this->groundedPageResponder ?? new NajmHodaGroundedPageResponder();
     }
 
     public function executeChat(NajmHodaOrchestrator $orchestrator, string $message, array $context = []): array
@@ -52,6 +55,22 @@ class NajmHodaExecutionService
                     $privateGroupResponse['response_time_ms'] = (int) round((microtime(true) - $start) * 1000);
                     $privateGroupResponse['request_id'] = $requestId;
                     return $privateGroupResponse;
+                }
+            }
+
+            // Questions whose factual answer already exists in server-validated
+            // page context must not depend on an external model. This keeps page
+            // awareness correct during provider outages and prevents UI hallucination.
+            if (is_array($context['page_context'] ?? null)) {
+                $groundedResponse = $this->groundedPageResponder?->respond(
+                    $message,
+                    (array) $context['page_context']
+                );
+
+                if (is_array($groundedResponse)) {
+                    $groundedResponse['response_time_ms'] = (int) round((microtime(true) - $start) * 1000);
+                    $groundedResponse['request_id'] = $requestId;
+                    return $groundedResponse;
                 }
             }
 
