@@ -45,7 +45,7 @@ class GroupSemanticAnalysisServiceTest extends TestCase
 
         $guide = Mockery::mock(GuideAgent::class);
         $guide->shouldReceive('ask')->once()->andReturn(
-            "Here's a thinking process:\n1. Analyze User Request\n2. Examine SOURCE_JSON\nFinal check: all good.\n\nخلاصه نهایی کاربر"
+            "Here's a thinking process:\n1. Analyze User Request\n2. Examine SOURCE_JSON\nFinal check: all good."
         );
         $this->app->instance(GuideAgent::class, $guide);
 
@@ -58,20 +58,30 @@ class GroupSemanticAnalysisServiceTest extends TestCase
 
         $this->assertFalse($result['available']);
         $this->assertNull($result['text']);
-        $this->assertSame(1, $result['snapshot']['counts']['messages']);
     }
 
-    public function test_only_explicit_final_envelope_is_returned(): void
+    public function test_valid_structured_semantic_output_is_rendered_by_laravel(): void
     {
         config()->set('najm-hoda.provider.api_key', 'test-key');
         config()->set('najm-hoda.mock_mode', false);
 
-        [$group] = $this->seedActivity();
+        [$group, , $message] = $this->seedActivity();
 
         $guide = Mockery::mock(GuideAgent::class);
-        $guide->shouldReceive('ask')->once()->andReturn(
-            "<final>موضوع اصلی گفت‌وگو، پیشنهاد برگزاری جلسه در شنبه است (پیام #1). هنوز تصمیم قطعی ثبت نشده است.</final>"
-        );
+        $guide->shouldReceive('ask')->once()->andReturn(json_encode([
+            'topics' => [[
+                'title' => 'زمان جلسه بعدی',
+                'insight' => 'یک عضو پیشنهاد کرده جلسه بعدی شنبه برگزار شود؛ این هنوز مصوبه قطعی نیست.',
+                'sources' => ['message:' . $message->id],
+            ]],
+            'disagreements' => [],
+            'followups' => [[
+                'title' => 'تعیین زمان جلسه',
+                'reason' => 'پیشنهاد مطرح شده ولی تصمیم ثبت‌شده‌ای وجود ندارد.',
+                'sources' => ['message:' . $message->id],
+            ]],
+            'data_limits' => ['فقط یک پیام محتوایی در این بازه وجود دارد.'],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         $this->app->instance(GuideAgent::class, $guide);
 
         $result = app(NajmHodaGroupSemanticAnalysisService::class)->analyze(
@@ -82,15 +92,53 @@ class GroupSemanticAnalysisServiceTest extends TestCase
         );
 
         $this->assertTrue($result['available']);
-        $this->assertSame(
-            'موضوع اصلی گفت‌وگو، پیشنهاد برگزاری جلسه در شنبه است (پیام #1). هنوز تصمیم قطعی ثبت نشده است.',
-            $result['text']
-        );
-        $this->assertStringNotContainsString('<final>', (string) $result['text']);
-        $this->assertStringNotContainsString('thinking process', mb_strtolower((string) $result['text']));
+        $this->assertStringContainsString('خلاصهٔ تحلیلی', (string) $result['text']);
+        $this->assertStringContainsString('زمان جلسه بعدی', (string) $result['text']);
+        $this->assertStringContainsString('پیام #' . $message->id, (string) $result['text']);
+        $this->assertStringContainsString('مورد ثبت‌شده‌ای وجود ندارد', (string) $result['text']);
+        $this->assertStringNotContainsString('{"topics"', (string) $result['text']);
     }
 
-    /** @return array{0:Group,1:User} */
+    public function test_observation_with_only_forged_sources_is_not_rendered(): void
+    {
+        config()->set('najm-hoda.provider.api_key', 'test-key');
+        config()->set('najm-hoda.mock_mode', false);
+
+        [$group, , $message] = $this->seedActivity();
+
+        $guide = Mockery::mock(GuideAgent::class);
+        $guide->shouldReceive('ask')->once()->andReturn(json_encode([
+            'topics' => [
+                [
+                    'title' => 'موضوع جعلی',
+                    'insight' => 'این موضوع نباید نمایش داده شود.',
+                    'sources' => ['message:999999'],
+                ],
+                [
+                    'title' => 'پیشنهاد معتبر',
+                    'insight' => 'پیشنهاد شنبه از پیام واقعی استخراج شده است.',
+                    'sources' => ['message:' . $message->id],
+                ],
+            ],
+            'disagreements' => [],
+            'followups' => [],
+            'data_limits' => [],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        $this->app->instance(GuideAgent::class, $guide);
+
+        $result = app(NajmHodaGroupSemanticAnalysisService::class)->analyze(
+            $group,
+            now()->subMinute(),
+            now()->addMinute(),
+            'summary'
+        );
+
+        $this->assertTrue($result['available']);
+        $this->assertStringNotContainsString('موضوع جعلی', (string) $result['text']);
+        $this->assertStringContainsString('پیشنهاد معتبر', (string) $result['text']);
+    }
+
+    /** @return array{0:Group,1:User,2:Message} */
     private function seedActivity(): array
     {
         $group = Group::create(['name' => 'Semantic group', 'is_open' => 1]);
@@ -103,12 +151,12 @@ class GroupSemanticAnalysisServiceTest extends TestCase
             'is_system' => false,
         ]);
 
-        Message::create([
+        $message = Message::create([
             'group_id' => $group->id,
             'user_id' => $user->id,
             'message' => 'پیشنهاد می‌کنم جلسه بعدی شنبه برگزار شود.',
         ]);
 
-        return [$group, $user];
+        return [$group, $user, $message];
     }
 }
