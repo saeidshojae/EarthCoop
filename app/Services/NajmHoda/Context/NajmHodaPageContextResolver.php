@@ -2,6 +2,7 @@
 
 namespace App\Services\NajmHoda\Context;
 
+use App\Models\Block;
 use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\User;
@@ -49,6 +50,7 @@ class NajmHodaPageContextResolver
             'page_kind' => $description['kind'],
             'available_capabilities' => $description['capabilities'],
             'capability_contracts' => [],
+            'delegated_actions' => [],
             'resource_type' => $resourceType,
             'resource_id' => null,
             'resource' => null,
@@ -82,17 +84,18 @@ class NajmHodaPageContextResolver
 
     /**
      * Replace broad capability names with canonical UI contracts when a page
-     * has been migrated to the self-describing registry. Other pages retain
-     * their existing capability list until they are migrated deliberately.
+     * has been migrated to the self-describing registry. Delegated Najm Hoda
+     * operations are kept separate from actions the viewer can perform directly.
      *
      * @param array<string, mixed> $resolved
      * @return array<string, mixed>
      */
     protected function attachCapabilityContracts(array $resolved): array
     {
+        $resource = is_array($resolved['resource'] ?? null) ? $resolved['resource'] : null;
         $contracts = $this->capabilityRegistry->forPage(
             (string) ($resolved['page_kind'] ?? ''),
-            is_array($resolved['resource'] ?? null) ? $resolved['resource'] : null
+            $resource
         );
 
         if ($contracts !== []) {
@@ -101,6 +104,10 @@ class NajmHodaPageContextResolver
                 fn (array $contract): string => (string) ($contract['id'] ?? ''),
                 $contracts
             ));
+        }
+
+        if ((string) ($resolved['page_kind'] ?? '') === 'group_chat') {
+            $resolved['delegated_actions'] = $this->capabilityRegistry->delegatedActionsForGroup($resource);
         }
 
         return $resolved;
@@ -261,6 +268,15 @@ class NajmHodaPageContextResolver
             }
         }
 
+        $blockedPositions = Block::query()
+            ->where('user_id', $user->id)
+            ->whereIn('position', ['message', 'post', 'poll', 'election'])
+            ->pluck('position')
+            ->map(fn ($value): string => (string) $value)
+            ->unique()
+            ->values()
+            ->all();
+
         return [
             'type' => 'group',
             'id' => (int) $group->id,
@@ -274,6 +290,7 @@ class NajmHodaPageContextResolver
                 ? mb_substr((string) $membership->role, 0, 20)
                 : null,
             'can_participate' => Gate::forUser($user)->allows('participate', $group),
+            'blocked_positions' => $blockedPositions,
         ];
     }
 
