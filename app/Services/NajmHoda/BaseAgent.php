@@ -5,6 +5,7 @@ namespace App\Services\NajmHoda;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Models\AIInteraction;
+use Illuminate\Http\Client\Response;
 use RuntimeException;
 
 /**
@@ -15,29 +16,10 @@ use RuntimeException;
  */
 abstract class BaseAgent
 {
-    /**
-     * نقش عامل (engineer, pilot, steward, guide)
-     */
     protected string $role;
-
-    /**
-     * تخصص‌های عامل
-     */
     protected array $expertise = [];
-
-    /**
-     * مدل AI مورد استفاده
-     */
     protected string $model;
-
-    /**
-     * دمای تولید (0-1: کمتر = دقیق‌تر، بیشتر = خلاق‌تر)
-     */
     protected float $temperature;
-
-    /**
-     * حداکثر تعداد توکن‌ها
-     */
     protected int $maxTokens;
 
     public function __construct()
@@ -45,9 +27,6 @@ abstract class BaseAgent
         $this->loadConfig();
     }
 
-    /**
-     * بارگذاری تنظیمات از فایل config
-     */
     protected function loadConfig(): void
     {
         $agentConfig = config("najm-hoda.agents.{$this->role}", []);
@@ -57,20 +36,8 @@ abstract class BaseAgent
         $this->maxTokens = (int) ($agentConfig['max_tokens'] ?? 3000);
     }
 
-    /**
-     * دریافت System Prompt برای هر عامل
-     *
-     * هر عامل باید این متد را پیاده‌سازی کند
-     */
     abstract public function getSystemPrompt(): string;
 
-    /**
-     * ارسال پیام به AI و دریافت پاسخ
-     *
-     * @param string $prompt پیام کاربر
-     * @param array $context اطلاعات اضافی
-     * @return string پاسخ AI
-     */
     public function ask(string $prompt, array $context = []): string
     {
         if (!config('najm-hoda.provider.api_key')) {
@@ -86,8 +53,6 @@ abstract class BaseAgent
 
         try {
             $response = $this->callAI($messages);
-
-            // لاگ کردن تعامل فقط برای پاسخ معتبر provider
             $this->logInteraction($prompt, $response);
 
             return $response;
@@ -104,10 +69,6 @@ abstract class BaseAgent
 
     /**
      * Build provider messages while preserving trust levels.
-     *
-     * Server-validated metadata may be supplied as a system-side data block,
-     * but persisted conversation text is never promoted to system authority.
-     * History is replayed only with the original user/assistant roles.
      */
     protected function buildMessages(string $prompt, array $context): array
     {
@@ -157,9 +118,6 @@ abstract class BaseAgent
         return $messages;
     }
 
-    /**
-     * فراخوانی API هوش مصنوعی
-     */
     protected function callAI(array $messages): string
     {
         $provider = config('najm-hoda.provider.type', 'openai');
@@ -172,9 +130,6 @@ abstract class BaseAgent
         };
     }
 
-    /**
-     * فراخوانی OpenAI API
-     */
     protected function callOpenAI(array $messages): string
     {
         $baseUrl = rtrim((string) config('najm-hoda.provider.base_url', 'https://api.openai.com/v1'), '/');
@@ -204,9 +159,6 @@ abstract class BaseAgent
         return $this->extractResponseContent((array) $response->json(), 'OpenAI');
     }
 
-    /**
-     * فراخوانی OpenRouter API
-     */
     protected function callOpenRouter(array $messages): string
     {
         $baseUrl = rtrim((string) config('najm-hoda.provider.openrouter.base_url', 'https://openrouter.ai/api/v1'), '/');
@@ -225,25 +177,113 @@ abstract class BaseAgent
             $headers['X-Title'] = $appName;
         }
 
-        $response = $this->httpClient()
-            ->withHeaders($headers)
-            ->post("{$baseUrl}/chat/completions", [
-                'model' => $this->model,
-                'messages' => $messages,
-                'temperature' => $this->temperature,
-                'max_tokens' => $this->maxTokens,
-            ]);
-
-        if (!$response->successful()) {
-            throw new RuntimeException('خطا در ارتباط با OpenRouter: HTTP ' . $response->status());
+        $response = $this->openRouterRequest($baseUrl, $headers, $messages, $this->model);
+        if ($response->successful()) {
+            return $this->extractResponseContent((array) $response->json(), 'OpenRouter');
         }
 
-        return $this->extractResponseContent((array) $response->json(), 'OpenRouter');
+        $this->logOpenRouterFailure($response, $this->model, false);
+
+        if ($this->shouldUseLocalOpenRouterFreeFallback($response, $this->model)) {
+            $fallbackModel = 'openrouter/free';
+            Log::warning('نجم‌هدا: تلاش مجدد OpenRouter با free router در محیط توسعه.', [
+                'agent_role' => $this->role,
+                'primary_model' => $this->model,
+                'fallback_model' => $fallbackModel,
+                'primary_status' => $response->status(),
+            ]);
+
+            $fallback = $this->openRouterRequest($baseUrl, $headers, $messages, $fallbackModel);
+            if ($fallback->successful()) {
+                return $this->extractResponseContent((array) $fallback->json(), 'OpenRouter');
+            }
+
+            $this->logOpenRouterFailure($fallback, $fallbackModel, true);
+            throw new RuntimeException('خطا در ارتباط با OpenRouter: HTTP ' . $fallback->status() . ' (fallback failed)');
+        }
+
+        throw new RuntimeException('خطا در ارتباط با OpenRouter: HTTP ' . $response->status());
+    }
+
+    protected function openRouterRequest(string $baseUrl, array $headers, array $messages, string $model): Response
+    {
+        $timeoutSeconds = max(1, (int) config('najm-hoda.provider.timeout_seconds', 60));
+        $retryCount = max(0, (int) config('najm-hoda.provider.retry_count', 2));
+        $retryDelayMs = max(0, (int) config('najm-hoda.provider.retry_delay_ms', 250));
+
+        $request = Http::timeout($timeoutSeconds)->withHeaders($headers);
+        if ($retryCount > 0) {
+            // Keep the final HTTP response available for diagnostics/fallback instead
+            // of throwing before we can inspect OpenRouter's error payload.
+            $request = $request->retry($retryCount, $retryDelayMs, null, false);
+        }
+
+        return $request->post("{$baseUrl}/chat/completions", [
+            'model' => $model,
+            'messages' => $messages,
+            'temperature' => $this->temperature,
+            'max_tokens' => $this->maxTokens,
+        ]);
+    }
+
+    protected function shouldUseLocalOpenRouterFreeFallback(Response $response, string $model): bool
+    {
+        if (!app()->environment(['local', 'testing'])) {
+            return false;
+        }
+
+        if ($model === 'openrouter/free') {
+            return false;
+        }
+
+        // Local UAT fallback is deliberately narrow: auth failures (401) must not
+        // be masked. 403/404/408/429 and provider-side 5xx may be model/route
+        // availability or free-tier constraints and can safely try the free router.
+        return in_array($response->status(), [403, 404, 408, 429], true)
+            || $response->serverError();
+    }
+
+    protected function logOpenRouterFailure(Response $response, string $model, bool $fallback): void
+    {
+        $body = $this->sanitizeProviderErrorBody($response);
+
+        Log::error('نجم‌هدا OpenRouter request failed.', [
+            'agent_role' => $this->role,
+            'provider' => 'openrouter',
+            'model' => $model,
+            'fallback' => $fallback,
+            'status' => $response->status(),
+            'error' => $body,
+        ]);
     }
 
     /**
-     * HTTP client مشترک با timeout/retry قابل تنظیم.
+     * Log only a small allow-listed subset of provider diagnostics. Never log
+     * request headers, API keys, prompts, or arbitrary response bodies.
      */
+    protected function sanitizeProviderErrorBody(Response $response): array
+    {
+        $json = $response->json();
+        if (!is_array($json)) {
+            return [
+                'message' => mb_substr(trim($response->body()), 0, 500),
+            ];
+        }
+
+        $error = is_array($json['error'] ?? null) ? $json['error'] : [];
+
+        return array_filter([
+            'message' => isset($error['message']) && is_scalar($error['message'])
+                ? mb_substr((string) $error['message'], 0, 500)
+                : (isset($json['message']) && is_scalar($json['message']) ? mb_substr((string) $json['message'], 0, 500) : null),
+            'code' => isset($error['code']) && is_scalar($error['code']) ? mb_substr((string) $error['code'], 0, 120) : null,
+            'type' => isset($error['type']) && is_scalar($error['type']) ? mb_substr((string) $error['type'], 0, 120) : null,
+            'provider_name' => isset($error['metadata']['provider_name']) && is_scalar($error['metadata']['provider_name'])
+                ? mb_substr((string) $error['metadata']['provider_name'], 0, 120)
+                : null,
+        ], static fn ($value) => $value !== null && $value !== '');
+    }
+
     protected function httpClient()
     {
         $timeoutSeconds = max(1, (int) config('najm-hoda.provider.timeout_seconds', 60));
@@ -259,9 +299,6 @@ abstract class BaseAgent
         return $client;
     }
 
-    /**
-     * پاسخ provider باید صریحاً محتوای غیرخالی داشته باشد.
-     */
     protected function extractResponseContent(array $result, string $providerName): string
     {
         $content = data_get($result, 'choices.0.message.content');
@@ -273,18 +310,11 @@ abstract class BaseAgent
         return $content;
     }
 
-    /**
-     * فراخوانی Claude API
-     */
     protected function callClaude(array $messages): string
     {
-        // پیاده‌سازی برای Claude در آینده
         throw new RuntimeException('Claude هنوز پیاده‌سازی نشده است');
     }
 
-    /**
-     * دریافت پاسخ آزمایشی (فقط زمانی که mock_mode صریحاً فعال است)
-     */
     protected function getMockResponse(string $prompt): string
     {
         $mockResponses = [
@@ -303,9 +333,6 @@ abstract class BaseAgent
         return "متأسفم، در حال حاضر قادر به پاسخگویی نیستم. لطفاً بعداً تلاش کنید.";
     }
 
-    /**
-     * ذخیره تعامل در دیتابیس
-     */
     protected function logInteraction(string $input, string $output): void
     {
         try {
@@ -325,10 +352,6 @@ abstract class BaseAgent
         }
     }
 
-    /**
-     * تخمین تقریبی تعداد توکن‌ها.
-     * این مقدار برای telemetry است و جایگزین usage واقعی provider نیست.
-     */
     protected function estimateTokens(string $text): int
     {
         $charactersPerToken = max(1.0, (float) config('najm-hoda.cost_tracking.characters_per_token', 3.0));
@@ -336,9 +359,6 @@ abstract class BaseAgent
         return (int) ceil(mb_strlen($text) / $charactersPerToken);
     }
 
-    /**
-     * محاسبه هزینه بر اساس توکن‌های تخمینی.
-     */
     protected function calculateCost(int $tokens): float
     {
         if (!(bool) config('najm-hoda.cost_tracking.enabled', true)) {
@@ -350,9 +370,6 @@ abstract class BaseAgent
         return ($tokens / 1000) * $costPer1k;
     }
 
-    /**
-     * دریافت نام فارسی عامل
-     */
     public function getPersianName(): string
     {
         $names = [
@@ -366,9 +383,6 @@ abstract class BaseAgent
         return $names[$this->role] ?? 'عامل';
     }
 
-    /**
-     * دریافت آیکون عامل
-     */
     public function getIcon(): string
     {
         $icons = [
@@ -382,9 +396,6 @@ abstract class BaseAgent
         return $icons[$this->role] ?? '🤖';
     }
 
-    /**
-     * بررسی اینکه آیا عامل فعال است
-     */
     public function isEnabled(): bool
     {
         return config("najm-hoda.agents.{$this->role}.enabled", true);
