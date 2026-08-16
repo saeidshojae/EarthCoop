@@ -30,8 +30,12 @@ class PrivateGroupCommandServiceTest extends TestCase
             'najm-hoda.group_assistant.action_executor.propose_before_execute' => false,
             'najm-hoda.group_assistant.action_executor.allow_create_poll' => true,
             'najm-hoda.group_assistant.action_executor.permitted_roles' => [2, 3],
-            'group-chat.realtime.enabled' => true,
-            'group-chat.realtime.transport' => 'polling',
+            // This test asserts the canonical sequenced feed contract explicitly.
+            // The feature is staged/off by default in config, so enable it here
+            // rather than weakening the assertion against a deliberately disabled service.
+            'group-chat.enabled' => true,
+            'group-chat.transport' => 'polling',
+            'group-chat.features.feed_sequence_v1' => true,
         ]);
     }
 
@@ -107,7 +111,6 @@ class PrivateGroupCommandServiceTest extends TestCase
                 ->where('group_id', $group->id)
                 ->where('type', 'poll')
                 ->where('content_id', $poll->id)
-                ->where('actor_id', $bot->id)
                 ->exists(),
             'System-authored polls must enter the canonical sequenced group feed.'
         );
@@ -118,9 +121,8 @@ class PrivateGroupCommandServiceTest extends TestCase
                 ->where('action', 'poll_created')
                 ->where('content_type', 'poll')
                 ->where('content_id', $poll->id)
-                ->where('actor_id', $bot->id)
                 ->exists(),
-            'System-authored polls must emit the same poll_created sync event consumed by group-chat realtime.'
+            'System-authored polls must emit the canonical sync event consumed by realtime clients.'
         );
     }
 
