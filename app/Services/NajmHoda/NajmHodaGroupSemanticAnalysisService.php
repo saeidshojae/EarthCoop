@@ -11,7 +11,8 @@ use Carbon\CarbonInterface;
  *
  * The model is never trusted to render user-visible prose directly. It may only
  * return a small structured semantic interpretation whose references are checked
- * against the factual snapshot. Laravel renders the final Persian response.
+ * against the factual snapshot. Laravel validates evidence and renders the final
+ * Persian response.
  */
 class NajmHodaGroupSemanticAnalysisService
 {
@@ -42,9 +43,7 @@ class NajmHodaGroupSemanticAnalysisService
             ];
         }
 
-        $prompt = $this->buildStructuredPrompt($source, $mode);
-        $rawResponse = trim($this->guide->ask($prompt, []));
-
+        $rawResponse = trim($this->guide->ask($this->buildStructuredPrompt($source, $mode), []));
         if ($rawResponse === '' || $this->looksUnavailable($rawResponse) || $this->containsReasoningLeakage($rawResponse)) {
             return ['available' => false, 'text' => null, 'snapshot' => $snapshot];
         }
@@ -77,13 +76,31 @@ class NajmHodaGroupSemanticAnalysisService
         $schema = <<<'JSON'
 {
   "topics": [
-    {"title": "...", "insight": "...", "sources": ["message:12", "post:8"]}
+    {
+      "title": "...",
+      "claim_type": "fact|interpretation|suggestion",
+      "insight": "...",
+      "sources": ["message:12", "post:8"],
+      "evidence": [{"source": "message:12", "quote": "عبارت دقیق موجود در منبع"}]
+    }
   ],
   "disagreements": [
-    {"title": "...", "insight": "...", "sources": ["message:12", "message:13"]}
+    {
+      "title": "...",
+      "claim_type": "fact|interpretation",
+      "insight": "...",
+      "sources": ["message:12", "message:13"],
+      "evidence": [{"source": "message:12", "quote": "..."}]
+    }
   ],
   "followups": [
-    {"title": "...", "reason": "...", "sources": ["poll:4"]}
+    {
+      "title": "...",
+      "claim_type": "suggestion",
+      "reason": "...",
+      "sources": ["poll:4"],
+      "evidence": [{"source": "poll:4", "quote": "..."}]
+    }
   ],
   "data_limits": ["..."]
 }
@@ -93,13 +110,15 @@ JSON;
             . $purpose . "\n\n"
             . "قواعد سخت:\n"
             . "1) فقط از SOURCE_JSON استفاده کن؛ هیچ شخص، علت، نتیجه، تصمیم یا رویداد خارج از آن نساز.\n"
-            . "2) خروجی فقط یک JSON معتبر و دقیقاً مطابق schema زیر باشد؛ هیچ Markdown، توضیح، مقدمه، نتیجه‌گیری یا متن دیگری ننویس.\n"
-            . "3) تکرارها و موارد آزمایشی را در یک topic تجمیع کن و در insight با لحن احتمالی/قابل بررسی بیان کن.\n"
-            . "4) action_items تنها منبع تصمیم/وظیفه قطعی است. در topics/disagreements/followups چیزی را مصوبه قطعی ننام.\n"
-            . "5) هر topic/disagreement/followup باید حداقل یک source معتبر داشته باشد. source فقط یکی از message:<id>، post:<id>، poll:<id> یا action_item:<id> باشد.\n"
-            . "6) اگر اختلاف واقعی در داده نیست disagreements را [] برگردان. اگر پیگیری قابل استناد نیست followups را [] برگردان.\n"
-            . "7) متن title/insight/reason فارسی، کوتاه و مدیریتی باشد.\n"
-            . "8) فرایند فکر، reasoning، self-check یا تحلیل مرحله‌به‌مرحله را هرگز خروجی نده.\n\n"
+            . "2) خروجی فقط یک JSON معتبر و دقیقاً مطابق schema زیر باشد؛ هیچ Markdown، توضیح یا متن دیگری ننویس.\n"
+            . "3) claim_type=fact فقط وقتی مجاز است که insight مستقیماً از متن evidence پشتیبانی شود. برای fact هیچ واژه یا جزئیات تازه‌ای مثل زمان، مکان، علت یا نتیجه اضافه نکن.\n"
+            . "4) interpretation یعنی برداشت تحلیلی قابل بررسی، نه واقعیت قطعی. suggestion فقط پیشنهاد پیگیری است.\n"
+            . "5) evidence.quote باید عیناً بخشی از متن همان source باشد؛ بازنویسی یا ساختن quote ممنوع است.\n"
+            . "6) تکرارها و موارد آزمایشی را در یک topic تجمیع کن و claim_type آن را interpretation قرار بده مگر evidence مستقیم چیز دیگری را ثابت کند.\n"
+            . "7) action_items تنها منبع تصمیم/وظیفه قطعی است. در topics/disagreements/followups چیزی را مصوبه قطعی ننام.\n"
+            . "8) هر topic/disagreement/followup باید حداقل یک source و یک evidence معتبر داشته باشد. source فقط message:<id>، post:<id>، poll:<id> یا action_item:<id> است.\n"
+            . "9) اگر اختلاف واقعی در داده نیست disagreements=[]؛ اگر پیگیری قابل استناد نیست followups=[].\n"
+            . "10) متن فارسی، کوتاه و مدیریتی باشد و فرایند فکر/reasoning/self-check هرگز خروجی داده نشود.\n\n"
             . "SCHEMA:\n{$schema}\n\n"
             . "SOURCE_JSON:\n"
             . json_encode($source, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -116,7 +135,6 @@ JSON;
                     return false;
                 }
                 $text = trim((string) ($item['text'] ?? ''));
-                // Empty/voice placeholders carry no semantic content until a transcript exists.
                 return $text !== '' && ! in_array($text, ['پیام صوتی', 'voice message'], true);
             })),
             'posts' => array_values((array) ($snapshot['posts'] ?? [])),
@@ -151,10 +169,10 @@ JSON;
             }
         }
 
-        $allowedSources = $this->allowedSourceReferences($source);
-        $topics = $this->validateInsightItems($decoded['topics'] ?? [], 'insight', $allowedSources, 8);
-        $disagreements = $this->validateInsightItems($decoded['disagreements'] ?? [], 'insight', $allowedSources, 6);
-        $followups = $this->validateInsightItems($decoded['followups'] ?? [], 'reason', $allowedSources, 8);
+        $sourceTexts = $this->sourceTextMap($source);
+        $topics = $this->validateInsightItems($decoded['topics'] ?? [], 'insight', $sourceTexts, 8, ['fact', 'interpretation', 'suggestion']);
+        $disagreements = $this->validateInsightItems($decoded['disagreements'] ?? [], 'insight', $sourceTexts, 6, ['fact', 'interpretation']);
+        $followups = $this->validateInsightItems($decoded['followups'] ?? [], 'reason', $sourceTexts, 8, ['suggestion']);
         $limits = $this->validateStringList($decoded['data_limits'] ?? [], 6, 350);
 
         if ($topics === null || $disagreements === null || $followups === null || $limits === null) {
@@ -175,10 +193,11 @@ JSON;
 
     /**
      * @param mixed $items
-     * @param array<string,bool> $allowedSources
+     * @param array<string,string> $sourceTexts
+     * @param array<int,string> $allowedClaimTypes
      * @return array<int,array<string,mixed>>|null
      */
-    protected function validateInsightItems(mixed $items, string $bodyKey, array $allowedSources, int $limit): ?array
+    protected function validateInsightItems(mixed $items, string $bodyKey, array $sourceTexts, int $limit, array $allowedClaimTypes): ?array
     {
         if (! is_array($items)) {
             return null;
@@ -192,8 +211,10 @@ JSON;
 
             $title = $this->cleanScalar($item['title'] ?? null, 180);
             $body = $this->cleanScalar($item[$bodyKey] ?? null, 700);
+            $claimType = is_string($item['claim_type'] ?? null) ? trim((string) $item['claim_type']) : '';
             $sources = is_array($item['sources'] ?? null) ? $item['sources'] : null;
-            if ($title === null || $body === null || $sources === null) {
+            $evidence = is_array($item['evidence'] ?? null) ? $item['evidence'] : null;
+            if ($title === null || $body === null || ! in_array($claimType, $allowedClaimTypes, true) || $sources === null || $evidence === null) {
                 return null;
             }
 
@@ -203,7 +224,7 @@ JSON;
                     return null;
                 }
                 $source = trim($source);
-                if (isset($allowedSources[$source])) {
+                if (isset($sourceTexts[$source])) {
                     $validSources[] = $source;
                 }
             }
@@ -212,14 +233,107 @@ JSON;
                 continue;
             }
 
+            $validEvidence = $this->validateEvidence($evidence, $sourceTexts, $validSources);
+            if ($validEvidence === []) {
+                continue;
+            }
+
+            if ($claimType === 'fact' && ! $this->factSupportedByEvidence($body, $validEvidence)) {
+                // A referenced source is not enough to make an unsupported detail a fact.
+                // Preserve useful semantic interpretation but never present it as factual.
+                $claimType = 'interpretation';
+            }
+
             $validated[] = [
                 'title' => $title,
+                'claim_type' => $claimType,
                 $bodyKey => $body,
                 'sources' => array_slice($validSources, 0, 6),
+                'evidence' => array_slice($validEvidence, 0, 6),
             ];
         }
 
         return $validated;
+    }
+
+    /**
+     * @param array<int,mixed> $evidence
+     * @param array<string,string> $sourceTexts
+     * @param array<int,string> $validSources
+     * @return array<int,array{source:string,quote:string}>
+     */
+    protected function validateEvidence(array $evidence, array $sourceTexts, array $validSources): array
+    {
+        $valid = [];
+        foreach (array_slice($evidence, 0, 8) as $item) {
+            if (! is_array($item) || ! is_string($item['source'] ?? null) || ! is_scalar($item['quote'] ?? null)) {
+                continue;
+            }
+
+            $source = trim((string) $item['source']);
+            $quote = trim(preg_replace('/\s+/u', ' ', strip_tags((string) $item['quote'])) ?: (string) $item['quote']);
+            if ($quote === '' || ! in_array($source, $validSources, true) || ! isset($sourceTexts[$source])) {
+                continue;
+            }
+
+            $haystack = $this->normalizeForEvidence($sourceTexts[$source]);
+            $needle = $this->normalizeForEvidence($quote);
+            if ($needle === '' || ! str_contains($haystack, $needle)) {
+                continue;
+            }
+
+            $valid[] = ['source' => $source, 'quote' => mb_substr($quote, 0, 350)];
+        }
+
+        return $valid;
+    }
+
+    /** @param array<int,array{source:string,quote:string}> $evidence */
+    protected function factSupportedByEvidence(string $claim, array $evidence): bool
+    {
+        $evidenceText = implode(' ', array_map(static fn (array $item): string => $item['quote'], $evidence));
+        $evidenceTokens = array_fill_keys($this->meaningfulTokens($evidenceText), true);
+        $claimTokens = $this->meaningfulTokens($claim);
+        if ($claimTokens === []) {
+            return false;
+        }
+
+        $supported = 0;
+        foreach ($claimTokens as $token) {
+            if (isset($evidenceTokens[$token])) {
+                $supported++;
+            }
+        }
+
+        return ($supported / count($claimTokens)) >= 0.75;
+    }
+
+    /** @return array<int,string> */
+    protected function meaningfulTokens(string $text): array
+    {
+        $normalized = $this->normalizeForEvidence($text);
+        $parts = preg_split('/[^\p{L}\p{N}]+/u', $normalized, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $stop = array_fill_keys([
+            'از', 'به', 'در', 'با', 'برای', 'که', 'و', 'یا', 'این', 'آن', 'را', 'یک', 'است', 'هست', 'شده', 'شود',
+            'فعلی', 'فعلا', 'حال', 'مورد', 'موارد', 'درباره', 'روی', 'توسط', 'می', 'های', 'ها',
+        ], true);
+
+        $tokens = [];
+        foreach ($parts as $part) {
+            if (mb_strlen($part) < 3 || isset($stop[$part])) {
+                continue;
+            }
+            $tokens[$part] = true;
+        }
+
+        return array_keys($tokens);
+    }
+
+    protected function normalizeForEvidence(string $text): string
+    {
+        $text = mb_strtolower(strip_tags($text));
+        $text = str_replace(['ي', 'ك', 'ۀ', '‌'], ['ی', 'ک', 'ه', ' '], $text);
+        return trim(preg_replace('/\s+/u', ' ', $text) ?: $text);
     }
 
     /** @return array<int,string>|null */
@@ -256,19 +370,38 @@ JSON;
         return mb_substr($clean, 0, $limit);
     }
 
-    /** @param array<string,mixed> $source @return array<string,bool> */
-    protected function allowedSourceReferences(array $source): array
+    /** @param array<string,mixed> $source @return array<string,string> */
+    protected function sourceTextMap(array $source): array
     {
-        $allowed = [];
-        foreach (['messages' => 'message', 'posts' => 'post', 'polls' => 'poll', 'action_items' => 'action_item'] as $key => $prefix) {
-            foreach ((array) ($source[$key] ?? []) as $item) {
-                if (is_array($item) && isset($item['id'])) {
-                    $allowed[$prefix . ':' . (int) $item['id']] = true;
-                }
+        $map = [];
+        foreach ((array) ($source['messages'] ?? []) as $item) {
+            if (is_array($item) && isset($item['id'])) {
+                $map['message:' . (int) $item['id']] = trim((string) ($item['text'] ?? ''));
+            }
+        }
+        foreach ((array) ($source['posts'] ?? []) as $item) {
+            if (is_array($item) && isset($item['id'])) {
+                $map['post:' . (int) $item['id']] = trim((string) ($item['title'] ?? '') . ' ' . (string) ($item['text'] ?? ''));
+            }
+        }
+        foreach ((array) ($source['polls'] ?? []) as $item) {
+            if (is_array($item) && isset($item['id'])) {
+                $options = implode(' ', array_map('strval', (array) ($item['options'] ?? [])));
+                $map['poll:' . (int) $item['id']] = trim((string) ($item['question'] ?? '') . ' ' . $options);
+            }
+        }
+        foreach ((array) ($source['action_items'] ?? []) as $item) {
+            if (is_array($item) && isset($item['id'])) {
+                $map['action_item:' . (int) $item['id']] = trim(implode(' ', [
+                    (string) ($item['title'] ?? ''),
+                    (string) ($item['details'] ?? ''),
+                    (string) ($item['assignee_name'] ?? ''),
+                    (string) ($item['status'] ?? ''),
+                ]));
             }
         }
 
-        return $allowed;
+        return $map;
     }
 
     /**
@@ -277,18 +410,17 @@ JSON;
      */
     protected function renderAnalysis(array $analysis, array $snapshot, string $mode): string
     {
-        $groupName = trim((string) data_get($snapshot, 'group.name', 'گروه'));
-        $title = $mode === 'minutes'
-            ? "صورتجلسهٔ تحلیلی — {$groupName}"
-            : "خلاصهٔ تحلیلی — {$groupName}";
-        $lines = [$title];
-
+        $lines = [];
         $topics = (array) ($analysis['topics'] ?? []);
         if ($topics !== []) {
-            $lines[] = '';
             $lines[] = $mode === 'minutes' ? 'موضوعات و برداشت‌های قابل استناد:' : 'موضوعات اصلی:';
             foreach ($topics as $item) {
-                $lines[] = '• ' . $item['title'] . ': ' . $item['insight'] . ' ' . $this->renderSources((array) $item['sources']);
+                $prefix = match ((string) ($item['claim_type'] ?? 'interpretation')) {
+                    'fact' => 'واقعیت مستند',
+                    'suggestion' => 'پیشنهاد',
+                    default => 'برداشت تحلیلی',
+                };
+                $lines[] = '• [' . $prefix . '] ' . $item['title'] . ': ' . $item['insight'] . ' ' . $this->renderSources((array) $item['sources']);
             }
         }
 
@@ -297,7 +429,8 @@ JSON;
             $lines[] = '';
             $lines[] = 'اختلاف‌ها یا دیدگاه‌های متفاوت:';
             foreach ($disagreements as $item) {
-                $lines[] = '• ' . $item['title'] . ': ' . $item['insight'] . ' ' . $this->renderSources((array) $item['sources']);
+                $prefix = (($item['claim_type'] ?? '') === 'fact') ? 'واقعیت مستند' : 'برداشت تحلیلی';
+                $lines[] = '• [' . $prefix . '] ' . $item['title'] . ': ' . $item['insight'] . ' ' . $this->renderSources((array) $item['sources']);
             }
         }
 
@@ -308,10 +441,10 @@ JSON;
             $lines[] = '• مورد ثبت‌شده‌ای وجود ندارد.';
         } else {
             foreach (array_slice($actionItems, 0, 10) as $item) {
-                $titleText = trim((string) ($item['title'] ?? ''));
+                $title = trim((string) ($item['title'] ?? ''));
                 $assignee = trim((string) ($item['assignee_name'] ?? ''));
                 $suffix = $assignee !== '' ? " — مسئول: {$assignee}" : '';
-                $lines[] = '• ' . $titleText . $suffix . ' ' . $this->renderSources(['action_item:' . (int) ($item['id'] ?? 0)]);
+                $lines[] = '• ' . $title . $suffix . ' ' . $this->renderSources(['action_item:' . (int) ($item['id'] ?? 0)]);
             }
         }
 
@@ -333,10 +466,7 @@ JSON;
             }
         }
 
-        $lines[] = '';
-        $lines[] = 'این تحلیل فقط بر داده‌های واقعی snapshot گروه تکیه دارد؛ متن نهایی توسط EarthCoop از خروجی ساختاریافته و اعتبارسنجی‌شده ساخته شده است.';
-
-        return implode("\n", $lines);
+        return trim(implode("\n", $lines));
     }
 
     /** @param array<int,string> $sources */
@@ -364,20 +494,9 @@ JSON;
     {
         $plain = mb_strtolower($response);
         $markers = [
-            "here's a thinking process",
-            'thinking process',
-            'chain-of-thought',
-            'chain of thought',
-            'analyze user request',
-            'analyse user request',
-            'examine source_json',
-            'process content per rules',
-            "let's draft",
-            'final check',
-            'check against rules',
-            'reasoning:',
-            'internal reasoning',
-            'scratchpad',
+            "here's a thinking process", 'thinking process', 'chain-of-thought', 'chain of thought',
+            'analyze user request', 'analyse user request', 'examine source_json', 'process content per rules',
+            "let's draft", 'final check', 'check against rules', 'reasoning:', 'internal reasoning', 'scratchpad',
         ];
 
         foreach ($markers as $marker) {
