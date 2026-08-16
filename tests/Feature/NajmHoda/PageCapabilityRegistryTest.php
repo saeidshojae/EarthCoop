@@ -83,6 +83,17 @@ class PageCapabilityRegistryTest extends TestCase
         $this->assertArrayNotHasKey('page_title', $resolved);
     }
 
+    public function test_frontend_knows_group_chat_route_uses_groups_chat_id_shape(): void
+    {
+        $source = file_get_contents(base_path('resources/js/najm-hoda-context.js'));
+
+        $this->assertNotFalse($source);
+        $this->assertStringContainsString("routeName.startsWith('groups.chat')", $source);
+        $this->assertStringContainsString("part.toLowerCase() === 'chat'", $source);
+        $this->assertStringContainsString("resourceType = 'group'", $source);
+        $this->assertStringContainsString('resourceId = candidate', $source);
+    }
+
     /**
      * @param array<string, mixed> $ui
      * @return array<int, string>
