@@ -19,6 +19,13 @@ use Illuminate\Support\Str;
  */
 class NajmHodaPageContextResolver
 {
+    protected NajmHodaPageCapabilityRegistry $capabilityRegistry;
+
+    public function __construct(?NajmHodaPageCapabilityRegistry $capabilityRegistry = null)
+    {
+        $this->capabilityRegistry = $capabilityRegistry ?? new NajmHodaPageCapabilityRegistry();
+    }
+
     /**
      * @param array<string, mixed> $browserContext
      * @return array<string, mixed>
@@ -41,13 +48,14 @@ class NajmHodaPageContextResolver
             'page_label' => $description['label'],
             'page_kind' => $description['kind'],
             'available_capabilities' => $description['capabilities'],
+            'capability_contracts' => [],
             'resource_type' => $resourceType,
             'resource_id' => null,
             'resource' => null,
         ];
 
         if (!$user || !$resourceId) {
-            return $resolved;
+            return $this->attachCapabilityContracts($resolved);
         }
 
         if ($this->looksLikeProjectContext($routeName, $resourceType)) {
@@ -57,7 +65,7 @@ class NajmHodaPageContextResolver
                 $resolved['resource_id'] = $resourceId;
                 $resolved['resource'] = $resource;
             }
-            return $resolved;
+            return $this->attachCapabilityContracts($resolved);
         }
 
         if ($this->looksLikeGroupContext($module, $resourceType)) {
@@ -67,6 +75,32 @@ class NajmHodaPageContextResolver
                 $resolved['resource_id'] = $resourceId;
                 $resolved['resource'] = $resource;
             }
+        }
+
+        return $this->attachCapabilityContracts($resolved);
+    }
+
+    /**
+     * Replace broad capability names with canonical UI contracts when a page
+     * has been migrated to the self-describing registry. Other pages retain
+     * their existing capability list until they are migrated deliberately.
+     *
+     * @param array<string, mixed> $resolved
+     * @return array<string, mixed>
+     */
+    protected function attachCapabilityContracts(array $resolved): array
+    {
+        $contracts = $this->capabilityRegistry->forPage(
+            (string) ($resolved['page_kind'] ?? ''),
+            is_array($resolved['resource'] ?? null) ? $resolved['resource'] : null
+        );
+
+        if ($contracts !== []) {
+            $resolved['capability_contracts'] = $contracts;
+            $resolved['available_capabilities'] = array_values(array_map(
+                fn (array $contract): string => (string) ($contract['id'] ?? ''),
+                $contracts
+            ));
         }
 
         return $resolved;
@@ -239,6 +273,7 @@ class NajmHodaPageContextResolver
             'viewer_group_role' => $membership && is_scalar($membership->role)
                 ? mb_substr((string) $membership->role, 0, 20)
                 : null,
+            'can_participate' => Gate::forUser($user)->allows('participate', $group),
         ];
     }
 
