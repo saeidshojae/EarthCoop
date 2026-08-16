@@ -3,6 +3,8 @@
 namespace Tests\Feature\NajmHoda;
 
 use App\Models\Group;
+use App\Models\GroupFeedItem;
+use App\Models\GroupSyncEvent;
 use App\Models\GroupUser;
 use App\Models\Poll;
 use App\Models\User;
@@ -28,6 +30,8 @@ class PrivateGroupCommandServiceTest extends TestCase
             'najm-hoda.group_assistant.action_executor.propose_before_execute' => false,
             'najm-hoda.group_assistant.action_executor.allow_create_poll' => true,
             'najm-hoda.group_assistant.action_executor.permitted_roles' => [2, 3],
+            'group-chat.realtime.enabled' => true,
+            'group-chat.realtime.transport' => 'polling',
         ]);
     }
 
@@ -67,9 +71,6 @@ class PrivateGroupCommandServiceTest extends TestCase
     {
         [$group, $manager] = $this->makeGroupAndUser(3);
         $service = app(NajmHodaPrivateGroupCommandService::class);
-        // Deadline deliberately comes after options. The private planner must
-        // canonicalize this before handing it to the historical executor so it
-        // cannot become an accidental third option after confirmation.
         $command = 'یک نظرسنجی بساز | سوال: آیا برنامه هفتگی تصویب شود؟ | گزینه‌ها: موافق، مخالف | مهلت: 3';
 
         $proposal = $service->intercept($manager, $this->pageContext($group), $command, 1002);
@@ -100,6 +101,27 @@ class PrivateGroupCommandServiceTest extends TestCase
         $this->assertTrue($group->systemUsers()->whereKey($bot->id)->exists());
         $this->assertFalse($group->users()->whereKey($bot->id)->exists());
         $this->assertFalse(Account::query()->where('user_id', $bot->id)->exists());
+
+        $this->assertTrue(
+            GroupFeedItem::query()
+                ->where('group_id', $group->id)
+                ->where('type', 'poll')
+                ->where('content_id', $poll->id)
+                ->where('actor_id', $bot->id)
+                ->exists(),
+            'System-authored polls must enter the canonical sequenced group feed.'
+        );
+
+        $this->assertTrue(
+            GroupSyncEvent::query()
+                ->where('group_id', $group->id)
+                ->where('action', 'poll_created')
+                ->where('content_type', 'poll')
+                ->where('content_id', $poll->id)
+                ->where('actor_id', $bot->id)
+                ->exists(),
+            'System-authored polls must emit the same poll_created sync event consumed by group-chat realtime.'
+        );
     }
 
     public function test_non_leadership_member_cannot_execute_manager_group_action(): void
