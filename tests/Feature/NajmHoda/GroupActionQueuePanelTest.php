@@ -14,10 +14,21 @@ class GroupActionQueuePanelTest extends TestCase
 {
     use DatabaseTransactions;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // This feature test verifies the real panel route and queue markup, not
+        // the asset pipeline or the global Najm Hoda widget. Keeping those out
+        // avoids Windows test-runner stalls unrelated to the panel itself.
+        $this->withoutVite();
+        config()->set('najm-hoda.widget.enabled', false);
+    }
+
     public function test_group_leader_panel_exposes_action_queue_and_grounded_metadata(): void
     {
         [$group, $manager] = $this->seedMember(3, 'مدیر', 'گروه');
-        NajmHodaGroupActionItem::create([
+        $item = NajmHodaGroupActionItem::create([
             'group_id' => $group->id,
             'title' => 'پیگیری گزارش جلسه',
             'details' => 'گزارش جلسه باید تکمیل شود.',
@@ -32,13 +43,21 @@ class GroupActionQueuePanelTest extends TestCase
         ]);
 
         $response = $this->actingAs($manager)->get(route('groups.najm-hoda.panel', $group));
-
         $response->assertOk();
-        $response->assertSee('صف اقدام نجم‌هدا');
-        $response->assertSee('بدون مسئول');
-        $response->assertSee('فوری');
-        $response->assertSee('message:17', false);
-        $response->assertSee('لطفاً گزارش جلسه را تکمیل کنید');
+
+        // Avoid Laravel's normalization-heavy assertSee path on the very large
+        // Persian unified-layout HTML. Raw containment is sufficient here and
+        // keeps the regression test focused on actual emitted panel markup.
+        $html = (string) $response->getContent();
+        $this->assertTrue(str_contains($html, 'صف اقدام نجم‌هدا'));
+        $this->assertTrue(str_contains($html, 'بدون مسئول'));
+        $this->assertTrue(str_contains($html, 'فوری'));
+        $this->assertTrue(str_contains($html, 'message:17'));
+        $this->assertTrue(str_contains($html, 'لطفاً گزارش جلسه را تکمیل کنید'));
+
+        $item->refresh();
+        $this->assertSame('message:17', data_get($item->meta, 'source'));
+        $this->assertSame('لطفاً گزارش جلسه را تکمیل کنید', data_get($item->meta, 'evidence'));
     }
 
     public function test_regular_member_cannot_open_group_najm_hoda_panel(): void
