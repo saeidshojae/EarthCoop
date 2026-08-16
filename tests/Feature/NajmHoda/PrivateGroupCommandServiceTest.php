@@ -46,16 +46,39 @@ class PrivateGroupCommandServiceTest extends TestCase
         $this->assertSame(0, Poll::query()->where('group_id', $group->id)->count());
     }
 
-    public function test_manager_command_requires_confirmation_then_publishes_only_result(): void
+    public function test_incomplete_poll_command_requests_missing_input_without_mutation(): void
+    {
+        [$group, $manager] = $this->makeGroupAndUser(3);
+
+        $response = app(NajmHodaPrivateGroupCommandService::class)->intercept(
+            $manager,
+            $this->pageContext($group),
+            'برای این گروه یک نظرسنجی بساز',
+            1004
+        );
+
+        $this->assertIsArray($response);
+        $this->assertSame('needs_input', $response['action_status']);
+        $this->assertStringContainsString('حداقل دو گزینه', $response['message']);
+        $this->assertSame(0, Poll::query()->where('group_id', $group->id)->count());
+    }
+
+    public function test_manager_command_requires_confirmation_then_publishes_exact_confirmed_result(): void
     {
         [$group, $manager] = $this->makeGroupAndUser(3);
         $service = app(NajmHodaPrivateGroupCommandService::class);
-        $command = 'یک نظرسنجی بساز | مهلت: 3 | سوال: آیا برنامه هفتگی تصویب شود؟ | گزینه‌ها: موافق، مخالف';
+        // Deadline deliberately comes after options. The private planner must
+        // canonicalize this before handing it to the historical executor so it
+        // cannot become an accidental third option after confirmation.
+        $command = 'یک نظرسنجی بساز | سوال: آیا برنامه هفتگی تصویب شود؟ | گزینه‌ها: موافق، مخالف | مهلت: 3';
 
         $proposal = $service->intercept($manager, $this->pageContext($group), $command, 1002);
 
         $this->assertIsArray($proposal);
         $this->assertSame('awaiting_confirmation', $proposal['action_status']);
+        $this->assertStringContainsString('سؤال: آیا برنامه هفتگی تصویب شود؟', $proposal['message']);
+        $this->assertStringContainsString('گزینه‌ها: موافق، مخالف', $proposal['message']);
+        $this->assertStringContainsString('مدت فعال بودن: 3 روز', $proposal['message']);
         $this->assertSame(0, Poll::query()->where('group_id', $group->id)->count(), 'Planning must not mutate the group.');
 
         $executed = $service->intercept($manager, $this->pageContext($group), 'تأیید', 1002);
@@ -67,7 +90,7 @@ class PrivateGroupCommandServiceTest extends TestCase
         $poll = Poll::query()->where('group_id', $group->id)->latest('id')->firstOrFail();
         $this->assertSame('آیا برنامه هفتگی تصویب شود؟', $poll->question);
         $this->assertSame(1, (int) $poll->main_type);
-        $this->assertCount(2, $poll->options()->get());
+        $this->assertSame(['موافق', 'مخالف'], $poll->options()->orderBy('id')->pluck('text')->all());
 
         $bot = User::query()
             ->where('email', config('najm-hoda.group_assistant.bot_email', 'najm-hoda-bot@local.invalid'))
