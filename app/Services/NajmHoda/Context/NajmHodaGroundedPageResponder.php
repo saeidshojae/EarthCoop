@@ -2,11 +2,16 @@
 
 namespace App\Services\NajmHoda\Context;
 
+use App\Models\Group;
+use App\Services\NajmHoda\NajmHodaGroupKnowledgeService;
+use Carbon\CarbonInterface;
+
 /**
  * Deterministic responder for questions whose answer already exists in
- * server-validated page context. These questions must not depend on an LLM:
- * doing so adds latency/provider fragility and can hallucinate UI that does not
- * exist. The LLM remains responsible for open-ended advice and drafting.
+ * server-validated page/group context. These questions must not depend on an
+ * LLM: doing so adds latency/provider fragility and can hallucinate UI or group
+ * activity that does not exist. The LLM remains responsible for open-ended
+ * advice and drafting that is not already grounded in EarthCoop state.
  */
 class NajmHodaGroundedPageResponder
 {
@@ -19,6 +24,11 @@ class NajmHodaGroundedPageResponder
         $plain = $this->normalize($message);
         if ($plain === '') {
             return null;
+        }
+
+        $groupKnowledge = $this->respondToGroupKnowledgeRequest($plain, $pageContext);
+        if ($groupKnowledge !== null) {
+            return $groupKnowledge;
         }
 
         $contracts = array_values(array_filter(
@@ -76,6 +86,204 @@ class NajmHodaGroundedPageResponder
         }
 
         return $this->response(implode("\n", $lines));
+    }
+
+    /** @param array<string,mixed> $pageContext */
+    protected function respondToGroupKnowledgeRequest(string $plain, array $pageContext): ?array
+    {
+        if ((string) ($pageContext['page_kind'] ?? '') !== 'group_chat') {
+            return null;
+        }
+
+        $asksSummary = $this->containsAny($plain, [
+            'خلاصه کن', 'خلاصه بده', 'خلاصه گروه', 'جمع بندی', 'جمع‌بندی', 'گزارش فعالیت',
+            'چه گذشت', 'چه اتفاقی افتاد', 'مرور مطالب', 'مرور گفتگو', 'مرور گفت‌وگو',
+        ]);
+        $asksMinutes = $this->containsAny($plain, [
+            'صورتجلسه', 'صورت جلسه', 'صورت‌جلسه', 'گزارش جلسه', 'جمع بندی جلسه', 'جمع‌بندی جلسه',
+        ]);
+
+        if (!$asksSummary && !$asksMinutes) {
+            return null;
+        }
+
+        $resource = is_array($pageContext['resource'] ?? null) ? $pageContext['resource'] : [];
+        $groupId = (int) ($pageContext['resource_id'] ?? $resource['id'] ?? 0);
+        if ($groupId <= 0) {
+            return $this->response('شناسه معتبر گروه در context فعلی در دسترس نیست؛ نمی‌توانم بدون حدس محتوای گروه را خلاصه کنم.');
+        }
+
+        $group = Group::query()->find($groupId);
+        if (!$group) {
+            return $this->response('گروه فعلی در سیستم پیدا نشد.');
+        }
+
+        [$from, $to, $windowLabel] = $this->resolveKnowledgeWindow($plain);
+        $snapshot = app(NajmHodaGroupKnowledgeService::class)->snapshot($group, $from, $to, 120);
+
+        return $this->response(
+            $asksMinutes
+                ? $this->renderGroundedMinutes($snapshot, $windowLabel)
+                : $this->renderGroundedSummary($snapshot, $windowLabel)
+        );
+    }
+
+    /** @return array{0:CarbonInterface,1:CarbonInterface,2:string} */
+    protected function resolveKnowledgeWindow(string $plain): array
+    {
+        $now = now();
+
+        if ($this->containsAny($plain, ['دیروز'])) {
+            return [$now->copy()->subDay()->startOfDay(), $now->copy()->subDay()->endOfDay(), 'دیروز'];
+        }
+
+        if ($this->containsAny($plain, ['این هفته', 'هفته جاری', 'هفته اخیر'])) {
+            return [$now->copy()->startOfWeek(), $now->copy(), 'این هفته'];
+        }
+
+        if ($this->containsAny($plain, ['۲۴ ساعت', '24 ساعت', 'شبانه روز', 'شبانه‌روز'])) {
+            return [$now->copy()->subDay(), $now->copy(), '۲۴ ساعت اخیر'];
+        }
+
+        return [$now->copy()->startOfDay(), $now->copy(), 'امروز'];
+    }
+
+    /** @param array<string,mixed> $snapshot */
+    protected function renderGroundedSummary(array $snapshot, string $windowLabel): string
+    {
+        $groupName = trim((string) data_get($snapshot, 'group.name', 'گروه'));
+        $counts = (array) ($snapshot['counts'] ?? []);
+        $messages = (array) ($snapshot['messages'] ?? []);
+        $posts = (array) ($snapshot['posts'] ?? []);
+        $polls = (array) ($snapshot['polls'] ?? []);
+        $actionItems = (array) ($snapshot['action_items'] ?? []);
+
+        $lines = [
+            "خلاصهٔ داده‌محور {$windowLabel} برای «{$groupName}»: ",
+            '• پیام‌ها: ' . (int) ($counts['messages'] ?? 0),
+            '• پست‌ها: ' . (int) ($counts['posts'] ?? 0),
+            '• نظرسنجی‌های ایجادشده: ' . (int) ($counts['polls'] ?? 0),
+            '• موارد اقدام ثبت‌شده: ' . (int) ($counts['action_items'] ?? 0),
+        ];
+
+        if ($posts !== []) {
+            $lines[] = '';
+            $lines[] = 'پست‌های این بازه:';
+            foreach (array_slice($posts, -5) as $post) {
+                $title = trim((string) ($post['title'] ?? '')) ?: ('پست #' . (int) ($post['id'] ?? 0));
+                $author = trim((string) ($post['author'] ?? ''));
+                $lines[] = '• ' . $title . ($author !== '' ? " — {$author}" : '');
+            }
+        }
+
+        if ($polls !== []) {
+            $lines[] = '';
+            $lines[] = 'نظرسنجی‌های این بازه:';
+            foreach (array_slice($polls, -5) as $poll) {
+                $lines[] = '• ' . trim((string) ($poll['question'] ?? ''));
+            }
+        }
+
+        if ($messages !== []) {
+            $lines[] = '';
+            $lines[] = 'نمونهٔ آخرین گفتگوهای ثبت‌شده:';
+            foreach (array_slice($messages, -8) as $message) {
+                $author = trim((string) ($message['author'] ?? '')) ?: 'عضو';
+                $text = mb_substr(trim((string) ($message['text'] ?? '')), 0, 220);
+                if ($text !== '') {
+                    $lines[] = "• {$author}: {$text}";
+                }
+            }
+        }
+
+        if ($actionItems !== []) {
+            $lines[] = '';
+            $lines[] = 'موارد اقدام ثبت‌شده در این بازه:';
+            foreach (array_slice($actionItems, -8) as $item) {
+                $title = trim((string) ($item['title'] ?? ''));
+                $status = trim((string) ($item['status'] ?? ''));
+                $assignee = trim((string) ($item['assignee_name'] ?? ''));
+                $suffix = $assignee !== '' ? " — مسئول: {$assignee}" : '';
+                if ($status !== '') {
+                    $suffix .= " — وضعیت: {$status}";
+                }
+                $lines[] = "• {$title}{$suffix}";
+            }
+        }
+
+        $lines[] = '';
+        $lines[] = 'این گزارش فقط از داده‌های واقعی ثبت‌شده در گروه ساخته شده و برداشت یا رویداد خارج از snapshot را اضافه نمی‌کند.';
+
+        return implode("\n", $lines);
+    }
+
+    /** @param array<string,mixed> $snapshot */
+    protected function renderGroundedMinutes(array $snapshot, string $windowLabel): string
+    {
+        $groupName = trim((string) data_get($snapshot, 'group.name', 'گروه'));
+        $counts = (array) ($snapshot['counts'] ?? []);
+        $posts = (array) ($snapshot['posts'] ?? []);
+        $polls = (array) ($snapshot['polls'] ?? []);
+        $actionItems = (array) ($snapshot['action_items'] ?? []);
+        $messages = (array) ($snapshot['messages'] ?? []);
+
+        $lines = [
+            "پیش‌نویس صورتجلسهٔ داده‌محور — {$groupName}",
+            "بازه: {$windowLabel}",
+            '',
+            '۱) دامنه فعالیت ثبت‌شده',
+            '• ' . (int) ($counts['messages'] ?? 0) . ' پیام، ' . (int) ($counts['posts'] ?? 0) . ' پست و ' . (int) ($counts['polls'] ?? 0) . ' نظرسنجی در این بازه ثبت شده است.',
+        ];
+
+        $lines[] = '';
+        $lines[] = '۲) موضوعات قابل استناد';
+        if ($posts === [] && $polls === []) {
+            $lines[] = '• پست یا نظرسنجی جدیدی برای استخراج موضوع رسمی ثبت نشده است.';
+        } else {
+            foreach (array_slice($posts, -6) as $post) {
+                $title = trim((string) ($post['title'] ?? '')) ?: ('پست #' . (int) ($post['id'] ?? 0));
+                $lines[] = "• پست: {$title}";
+            }
+            foreach (array_slice($polls, -6) as $poll) {
+                $lines[] = '• نظرسنجی: ' . trim((string) ($poll['question'] ?? ''));
+            }
+        }
+
+        $lines[] = '';
+        $lines[] = '۳) نکات مطرح‌شده در گفتگو';
+        if ($messages === []) {
+            $lines[] = '• پیام متنی قابل استنادی در این بازه ثبت نشده است.';
+        } else {
+            foreach (array_slice($messages, -10) as $message) {
+                $author = trim((string) ($message['author'] ?? '')) ?: 'عضو';
+                $text = mb_substr(trim((string) ($message['text'] ?? '')), 0, 260);
+                if ($text !== '') {
+                    $lines[] = "• {$author}: {$text}";
+                }
+            }
+        }
+
+        $lines[] = '';
+        $lines[] = '۴) تصمیمات/اقدامات ثبت‌شده در سیستم';
+        if ($actionItems === []) {
+            $lines[] = '• در این بازه Action Item ثبت‌شده‌ای وجود ندارد؛ بنابراین نجم هدا چیزی را به‌عنوان مصوبه قطعی حدس نمی‌زند.';
+        } else {
+            foreach ($actionItems as $item) {
+                $title = trim((string) ($item['title'] ?? ''));
+                $assignee = trim((string) ($item['assignee_name'] ?? ''));
+                $dueAt = trim((string) ($item['due_at'] ?? ''));
+                $suffix = $assignee !== '' ? " — مسئول: {$assignee}" : '';
+                if ($dueAt !== '') {
+                    $suffix .= " — موعد: {$dueAt}";
+                }
+                $lines[] = "• {$title}{$suffix}";
+            }
+        }
+
+        $lines[] = '';
+        $lines[] = 'این متن «پیش‌نویس داده‌محور» است. مرحله بعدی نجم هدا می‌تواند پیشنهادهای تصمیم و Action Item را از گفتگو استخراج کند، اما ثبت آن‌ها باید با پیش‌نمایش و تأیید مدیر انجام شود.';
+
+        return implode("\n", $lines);
     }
 
     protected function asksPageIdentity(string $plain): bool
