@@ -10,6 +10,7 @@ use App\Services\NajmHoda\NajmHodaInteractionBoundaryService;
 use App\Services\NajmHoda\NajmHodaOrchestrator;
 use App\Services\NajmHoda\NajmHodaPrivateGroupCommandService;
 use App\Services\NajmHoda\NajmHodaPrivateGroupCommentCommandService;
+use App\Services\NajmHoda\NajmHodaPrivateGroupReactionCommandService;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -22,12 +23,14 @@ class NajmHodaExecutionService
         protected ?NajmHodaPageContextResolver $pageContextResolver = null,
         protected ?NajmHodaPrivateGroupCommandService $privateGroupCommandService = null,
         protected ?NajmHodaPrivateGroupCommentCommandService $privateGroupCommentCommandService = null,
+        protected ?NajmHodaPrivateGroupReactionCommandService $privateGroupReactionCommandService = null,
         protected ?NajmHodaGroundedPageResponder $groundedPageResponder = null
     ) {
         $this->resourceAuthorization = $this->resourceAuthorization ?? new NajmHodaResourceAuthorizationService();
         $this->pageContextResolver = $this->pageContextResolver ?? new NajmHodaPageContextResolver();
         $this->privateGroupCommandService = $this->privateGroupCommandService ?? app(NajmHodaPrivateGroupCommandService::class);
         $this->privateGroupCommentCommandService = $this->privateGroupCommentCommandService ?? app(NajmHodaPrivateGroupCommentCommandService::class);
+        $this->privateGroupReactionCommandService = $this->privateGroupReactionCommandService ?? app(NajmHodaPrivateGroupReactionCommandService::class);
         $this->groundedPageResponder = $this->groundedPageResponder ?? new NajmHodaGroundedPageResponder();
     }
 
@@ -41,12 +44,24 @@ class NajmHodaExecutionService
 
             // Group actions requested from the private Najm Hoda widget are
             // handled before the LLM. Highly specific structured command
-            // interceptors run before the generic parser so a target noun like
-            // «پست #8» cannot change a comment command into create_post.
+            // interceptors run before the generic parser so target nouns cannot
+            // change the intended action between preview and execution.
             $actorId = isset($context['user_id']) ? (int) $context['user_id'] : 0;
             $actor = $actorId > 0 ? User::query()->find($actorId) : null;
             if ($actor && is_array($context['page_context'] ?? null)) {
                 $conversationId = (int) data_get($context, 'conversation.id', 0);
+
+                $privateReactionResponse = $this->privateGroupReactionCommandService?->intercept(
+                    $actor,
+                    (array) $context['page_context'],
+                    $message,
+                    $conversationId > 0 ? $conversationId : null
+                );
+                if (is_array($privateReactionResponse)) {
+                    $privateReactionResponse['response_time_ms'] = (int) round((microtime(true) - $start) * 1000);
+                    $privateReactionResponse['request_id'] = $requestId;
+                    return $privateReactionResponse;
+                }
 
                 $privateCommentResponse = $this->privateGroupCommentCommandService?->intercept(
                     $actor,
