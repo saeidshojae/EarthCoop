@@ -44,6 +44,9 @@ class RouteServiceProvider extends ServiceProvider
 
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
+
+            Route::middleware('web')
+                ->group(base_path('routes/najm-hoda-group-attention.php'));
                 
             Route::middleware('web')
                 ->group(base_path('routes/najm-bahar.php'));
@@ -51,7 +54,7 @@ class RouteServiceProvider extends ServiceProvider
     }
 
     /**
-     * Configure the rate limiters for the application.
+     * Configure the rate limiters.
      *
      * @return void
      */
