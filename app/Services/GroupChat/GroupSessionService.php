@@ -18,15 +18,35 @@ class GroupSessionService
 
     public function start(GroupSession $session, int $actorId): GroupSession
     {
-        $session = DB::transaction(function () use ($session, $actorId) {
+        [$session, $autoEndedIds] = DB::transaction(function () use ($session, $actorId) {
             $session = GroupSession::query()->lockForUpdate()->findOrFail($session->id);
-            if ($session->status !== 'scheduled') return $session;
-            GroupSession::where('group_id', $session->group_id)->where('status', 'active')
-                ->update(['status' => 'ended', 'ended_at' => now(), 'ended_by' => $actorId]);
+            if ($session->status !== 'scheduled') return [$session, []];
+
+            $previousActive = GroupSession::where('group_id', $session->group_id)
+                ->where('status', 'active')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($previousActive as $previous) {
+                $previous->update(['status' => 'ended', 'ended_at' => now(), 'ended_by' => $actorId]);
+            }
+
             $session->update(['status' => 'active', 'started_at' => now()]);
             $session->group()->update(['is_open' => false]);
-            return $session->fresh();
+
+            return [$session->fresh(), $previousActive->pluck('id')->map(fn ($id) => (int) $id)->all()];
         });
+
+        // Starting a replacement meeting must not bypass the rule that every
+        // ended official meeting receives a grounded minutes draft.
+        if ($autoEndedIds !== []) {
+            $actor = \App\Models\User::query()->find($actorId);
+            GroupSession::query()->whereIn('id', $autoEndedIds)->get()->each(function (GroupSession $ended) use ($actor) {
+                app(\App\Services\NajmHoda\NajmHodaGroupMeetingMinutesService::class)
+                    ->generateDraft($ended, $actor);
+            });
+        }
+
         $this->broadcast($session, 'session_started', $actorId);
         return $session;
     }
