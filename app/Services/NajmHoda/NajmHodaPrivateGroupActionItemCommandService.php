@@ -28,6 +28,19 @@ class NajmHodaPrivateGroupActionItemCommandService
         // are managed deterministically, but a request to extract new semantic
         // proposals must continue to the evidence-grounded extractor below.
         if (! $this->looksLikeExtractionRequest($message)) {
+            // Official meeting stewardship has its own pending confirmation key.
+            // Route it before other managerial workflows so a plain «تأیید» is
+            // consumed by the exact meeting proposal that created it.
+            $meetingResponse = app(NajmHodaPrivateGroupMeetingCommandService::class)->intercept(
+                $requester,
+                $pageContext,
+                $message,
+                $conversationId
+            );
+            if (is_array($meetingResponse)) {
+                return $meetingResponse;
+            }
+
             // Proactive attention policy changes are deterministic and require
             // their own preview/confirmation before any group setting mutates.
             $policyResponse = app(NajmHodaPrivateGroupAttentionPolicyService::class)->intercept(
@@ -218,45 +231,53 @@ class NajmHodaPrivateGroupActionItemCommandService
         return [$now->copy()->startOfDay(), $now->copy(), 'امروز'];
     }
 
-    protected function pendingKey(int $userId, ?int $conversationId, int $groupId): string
-    {
-        return 'najm_hoda:private_group_action_items:' . $groupId . ':' . $userId . ':' . ($conversationId ?: 0);
-    }
-
-    protected function isConfirmation(string $message): bool
-    {
-        return in_array($this->normalize($message), ['تایید', 'تأیید', 'تایید کن', 'تأیید کن', 'confirm', 'yes'], true);
-    }
-
-    protected function isCancellation(string $message): bool
-    {
-        return in_array($this->normalize($message), ['لغو', 'لغو کن', 'cancel', 'نه', 'خیر'], true);
-    }
-
-    protected function normalize(string $value): string
-    {
-        $plain = mb_strtolower(trim(strip_tags($value)));
-        $plain = str_replace(['ي', 'ك', 'ۀ'], ['ی', 'ک', 'ه'], $plain);
-        return preg_replace('/\s+/u', ' ', $plain) ?: $plain;
-    }
-
-    /** @param array<int,string> $needles */
-    protected function containsAny(string $haystack, array $needles): bool
-    {
-        foreach ($needles as $needle) if ($needle !== '' && mb_stripos($haystack, $needle) !== false) return true;
-        return false;
-    }
-
     protected function priorityLabel(string $priority): string
     {
-        return match ($priority) { 'high' => 'زیاد', 'low' => 'کم', 'urgent' => 'فوری', default => 'متوسط' };
+        return match ($priority) {
+            'low' => 'کم',
+            'high' => 'زیاد',
+            'urgent' => 'فوری',
+            default => 'متوسط',
+        };
     }
 
     protected function sourceLabel(string $source): string
     {
-        if (preg_match('/^(message|post|poll):(\d+)$/', $source, $m) !== 1) return 'منبع گروه';
-        $label = match ($m[1]) { 'message' => 'پیام', 'post' => 'پست', 'poll' => 'نظرسنجی', default => 'منبع' };
-        return $label . ' #' . $m[2];
+        if (str_starts_with($source, 'message:')) return 'پیام گروه';
+        if (str_starts_with($source, 'post:')) return 'پست گروه';
+        if (str_starts_with($source, 'poll:')) return 'نظرسنجی گروه';
+        return 'محتوای گروه';
+    }
+
+    protected function isConfirmation(string $message): bool
+    {
+        $plain = $this->normalize($message);
+        return in_array($plain, ['تایید','تأیید','تایید کن','تأیید کن','بله','انجام بده','اجرا کن','اوکی','ok','yes','confirm'], true);
+    }
+
+    protected function isCancellation(string $message): bool
+    {
+        $plain = $this->normalize($message);
+        return in_array($plain, ['لغو','لغو کن','بیخیال','بی‌خیال','انصراف','cancel','no'], true);
+    }
+
+    protected function pendingKey(int $userId, ?int $conversationId, int $groupId): string
+    {
+        $conversation = $conversationId && $conversationId > 0 ? $conversationId : 0;
+        return "najm_hoda:private_group_action_items:{$groupId}:{$userId}:{$conversation}";
+    }
+
+    protected function normalize(string $message): string
+    {
+        return mb_strtolower(trim(preg_replace('/\s+/u', ' ', strip_tags($message)) ?? ''));
+    }
+
+    protected function containsAny(string $plain, array $needles): bool
+    {
+        foreach ($needles as $needle) {
+            if ($needle !== '' && mb_stripos($plain, $needle) !== false) return true;
+        }
+        return false;
     }
 
     /** @return array<string,mixed> */
@@ -267,10 +288,10 @@ class NajmHodaPrivateGroupActionItemCommandService
             'message' => $message,
             'agent' => 'runtime',
             'agent_name' => 'نجم‌هدا',
-            'agent_icon' => '📋',
+            'agent_icon' => '🧭',
             'suggestions' => [],
             'private_group_action_items' => true,
-            'status' => $status,
+            'action_status' => $status,
         ];
     }
 }
