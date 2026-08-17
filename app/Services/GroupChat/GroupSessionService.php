@@ -39,8 +39,18 @@ class GroupSessionService
             $group->update(['is_open' => true]);
             return $session?->fresh();
         });
-        if ($session) $this->broadcast($session, 'session_ended', $actorId);
-        else $this->dispatch(new GroupFeedUpdated((int) $group->id, 'session_state_changed', ['is_open' => true], $actorId));
+        if ($session) {
+            $this->broadcast($session, 'session_ended', $actorId);
+
+            // Every official session gets a grounded draft automatically. This is
+            // deliberately generated after the canonical session is closed so the
+            // evidence window has a stable started_at/ended_at boundary.
+            $actor = \App\Models\User::query()->find($actorId);
+            app(\App\Services\NajmHoda\NajmHodaGroupMeetingMinutesService::class)
+                ->generateDraft($session, $actor);
+        } else {
+            $this->dispatch(new GroupFeedUpdated((int) $group->id, 'session_state_changed', ['is_open' => true], $actorId));
+        }
         return $session;
     }
 
