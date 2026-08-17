@@ -22,9 +22,10 @@ Schedule::command('najm-bahar:retry-failed-monetary-operations --limit=20')
     ->everyFiveMinutes()
     ->withoutOverlapping();
 
-// Evaluate only groups that explicitly enable proactive Najm Hoda stewardship.
-// This creates/deduplicates internal attention events; delivery is a separate
-// concern and no action item is mutated by this scheduled command.
-Schedule::command('najm-hoda:evaluate-group-attention')
+// Proactive Najm Hoda stewardship is explicitly opt-in per group. Each cycle
+// evaluates the real action queue, deduplicates attention events, then delivers
+// only due managerial digests according to the group's policy. The cycle never
+// creates or mutates action items on its own.
+Schedule::command('najm-hoda:group-attention-cycle')
     ->everyFifteenMinutes()
     ->withoutOverlapping();
