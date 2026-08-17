@@ -273,6 +273,7 @@ jobs:
           **/.env.*
           **/node_modules/**
           **/vendor/**
+          **/public/build/**
           **/tests/**
           **/.github/**
           storage/**
