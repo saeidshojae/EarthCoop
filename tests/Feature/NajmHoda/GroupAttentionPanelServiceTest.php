@@ -16,7 +16,7 @@ class GroupAttentionPanelServiceTest extends TestCase
 
     public function test_panel_snapshot_exposes_policy_active_events_and_operational_timestamps(): void
     {
-        $group = Group::factory()->create();
+        $group = $this->makeGroup('گروه تست پنل توجه');
         $item = NajmHodaGroupActionItem::create([
             'group_id' => $group->id,
             'title' => 'پیگیری گزارش جلسه',
@@ -65,7 +65,7 @@ class GroupAttentionPanelServiceTest extends TestCase
 
     public function test_panel_policy_update_only_changes_attention_policy_fields(): void
     {
-        $group = Group::factory()->create();
+        $group = $this->makeGroup('گروه تست تنظیم policy');
         $service = app(NajmHodaGroupAttentionPanelService::class);
 
         $setting = $service->updatePolicy($group, [
@@ -87,5 +87,15 @@ class GroupAttentionPanelServiceTest extends TestCase
         $this->assertSame(360, (int) $setting->suppress_minutes);
         $this->assertFalse($setting->alert_unassigned);
         $this->assertNull($setting->last_digest_at);
+    }
+
+    private function makeGroup(string $name): Group
+    {
+        return Group::query()->create([
+            'group_type' => 0,
+            'name' => $name,
+            'location_level' => 10,
+            'is_open' => 1,
+        ]);
     }
 }
