@@ -21,3 +21,10 @@ Schedule::command('najm-bahar:activate-faded')
 Schedule::command('najm-bahar:retry-failed-monetary-operations --limit=20')
     ->everyFiveMinutes()
     ->withoutOverlapping();
+
+// Evaluate only groups that explicitly enable proactive Najm Hoda stewardship.
+// This creates/deduplicates internal attention events; delivery is a separate
+// concern and no action item is mutated by this scheduled command.
+Schedule::command('najm-hoda:evaluate-group-attention')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping();
