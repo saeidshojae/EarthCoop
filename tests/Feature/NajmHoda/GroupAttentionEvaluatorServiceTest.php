@@ -9,11 +9,26 @@ use App\Models\NajmHodaGroupAttentionSetting;
 use App\Services\NajmHoda\NajmHodaGroupAttentionEvaluatorService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class GroupAttentionEvaluatorServiceTest extends TestCase
 {
     use DatabaseTransactions;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (! Schema::hasTable('najm_hoda_group_attention_settings')
+            || ! Schema::hasTable('najm_hoda_group_attention_events')) {
+            Artisan::call('migrate', [
+                '--path' => 'database/migrations/2026_08_17_044500_create_najm_hoda_group_attention_tables.php',
+                '--force' => true,
+            ]);
+        }
+    }
 
     protected function tearDown(): void
     {
