@@ -28,6 +28,18 @@ class NajmHodaPrivateGroupActionItemCommandService
         // are managed deterministically, but a request to extract new semantic
         // proposals must continue to the evidence-grounded extractor below.
         if (! $this->looksLikeExtractionRequest($message)) {
+            // Proactive attention policy changes are deterministic and require
+            // their own preview/confirmation before any group setting mutates.
+            $policyResponse = app(NajmHodaPrivateGroupAttentionPolicyService::class)->intercept(
+                $requester,
+                $pageContext,
+                $message,
+                $conversationId
+            );
+            if (is_array($policyResponse)) {
+                return $policyResponse;
+            }
+
             // Broad managerial attention questions are answered deterministically
             // from the existing queue before falling through to specific filters.
             $attentionResponse = app(NajmHodaPrivateGroupAttentionDigestService::class)->intercept(
