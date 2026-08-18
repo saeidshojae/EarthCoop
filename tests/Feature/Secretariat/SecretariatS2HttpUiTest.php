@@ -16,6 +16,12 @@ class SecretariatS2HttpUiTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutVite();
+    }
+
     public function test_manager_can_create_confidential_record_with_attachment_and_reach_same_record(): void
     {
         Storage::fake('local');
