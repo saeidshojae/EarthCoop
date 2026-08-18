@@ -2,11 +2,12 @@
 
 namespace App\Services\NajmHoda;
 
+use App\Models\Blog;
 use App\Models\GroupSession;
 use App\Models\Message;
-use App\Models\Blog;
-use App\Models\Poll;
+use App\Models\NajmHodaGroupActionItem;
 use App\Models\NajmHodaGroupMeetingMinute;
+use App\Models\Poll;
 use App\Models\User;
 
 class NajmHodaGroupMeetingMinutesService
@@ -139,6 +140,9 @@ class NajmHodaGroupMeetingMinutesService
 
     public function approve(NajmHodaGroupMeetingMinute $minute, User $approver): NajmHodaGroupMeetingMinute
     {
+        // Freeze the official document at approval time. Subsequent action-state
+        // changes are displayed as a live execution layer and do not rewrite this snapshot.
+        $minute->minutes = $this->renderManagementDocument($minute, false);
         $minute->update([
             'status' => 'approved',
             'approved_by' => $approver->id,
@@ -146,6 +150,101 @@ class NajmHodaGroupMeetingMinutesService
         ]);
 
         return $minute->fresh();
+    }
+
+    public function renderManagementDocument(NajmHodaGroupMeetingMinute $minute, bool $includeLiveExecution = true): string
+    {
+        $minute->loadMissing('session');
+        $session = $minute->session;
+        $evidence = is_array($minute->evidence_snapshot) ? $minute->evidence_snapshot : [];
+        $counts = is_array($evidence['counts'] ?? null) ? $evidence['counts'] : [];
+        $participants = array_values((array) ($evidence['participants'] ?? []));
+        $decisions = collect((array) $minute->decision_candidates)
+            ->filter(fn ($item): bool => is_array($item) && (string) ($item['state'] ?? '') === 'confirmed')
+            ->values();
+        $actions = $this->meetingActions($minute);
+
+        $lines = [
+            $minute->status === 'approved' ? 'صورتجلسه رسمی نشست' : 'پیش‌نویس صورتجلسه رسمی',
+            'عنوان: ' . ($session?->title ?: data_get($evidence, 'session.title', 'ثبت نشده')),
+            'موضوع: ' . ($session?->subject ?: data_get($evidence, 'session.subject', 'ثبت نشده')),
+            'دستور جلسه: ' . ($session?->agenda ?: data_get($evidence, 'session.agenda', 'ثبت نشده')),
+            'آغاز: ' . ($session?->started_at?->toDateTimeString() ?: data_get($evidence, 'session.started_at', 'ثبت نشده')),
+            'پایان: ' . ($session?->ended_at?->toDateTimeString() ?: data_get($evidence, 'session.ended_at', 'ثبت نشده')),
+            '',
+            'حضور و مشارکت قابل استناد:',
+            '• مشارکت‌کنندگان: ' . ($participants !== [] ? implode('، ', $participants) : 'ثبت نشده'),
+            '• فعالیت ثبت‌شده: ' . (int) ($counts['messages'] ?? 0) . ' پیام، ' . (int) ($counts['posts'] ?? 0) . ' پست و ' . (int) ($counts['polls'] ?? 0) . ' نظرسنجی.',
+            '',
+            'تصمیمات/مصوبات تأییدشده:',
+        ];
+
+        if ($decisions->isEmpty()) {
+            $lines[] = '• هنوز تصمیم یا مصوبه‌ای با تأیید انسانی ثبت نشده است.';
+        } else {
+            foreach ($decisions as $i => $decision) {
+                $lines[] = '• ' . ($i + 1) . '. ' . (string) ($decision['decision'] ?? $decision['title'] ?? 'تصمیم تأییدشده');
+                $lines[] = '  شاهد: «' . (string) ($decision['evidence'] ?? '') . '» (' . (string) ($decision['source'] ?? '-') . ')';
+            }
+        }
+
+        $lines[] = '';
+        $lines[] = 'اقدامات اجرایی ناشی از نشست:';
+        if ($actions->isEmpty()) {
+            $lines[] = '• هنوز اقدام تأییدشده‌ای از این نشست در صف اجرا ثبت نشده است.';
+        } else {
+            foreach ($actions as $action) {
+                $parts = ['وضعیت: ' . $this->statusLabel((string) $action->status)];
+                if (trim((string) $action->assignee_name) !== '') $parts[] = 'مسئول: ' . $action->assignee_name;
+                elseif ($action->assignedUser) $parts[] = 'مسئول: ' . $this->userName($action->assignedUser);
+                else $parts[] = 'مسئول: تعیین نشده';
+                if ($action->due_at) $parts[] = 'موعد: ' . $action->due_at->format('Y-m-d H:i');
+                elseif (trim((string) $action->due_text) !== '') $parts[] = 'موعد: ' . $action->due_text;
+                $meta = is_array($action->meta) ? $action->meta : [];
+                if (trim((string) ($meta['decision_title'] ?? '')) !== '') $parts[] = 'مرتبط با تصمیم: ' . $meta['decision_title'];
+                $lines[] = '• ' . $action->title . ' — ' . implode(' | ', $parts);
+            }
+        }
+
+        if ($includeLiveExecution && $minute->status === 'approved') {
+            $lines[] = '';
+            $lines[] = 'وضعیت اجرایی جاری:';
+            $active = $actions->whereNotIn('status', ['done', 'cancelled']);
+            $done = $actions->where('status', 'done');
+            $blocked = $actions->where('status', 'blocked');
+            $overdue = $actions->filter(fn (NajmHodaGroupActionItem $item): bool => $item->due_at && $item->due_at->isPast() && ! in_array((string) $item->status, ['done', 'cancelled'], true));
+            $lines[] = '• فعال: ' . $active->count() . ' | انجام‌شده: ' . $done->count() . ' | مسدود: ' . $blocked->count() . ' | معوق: ' . $overdue->count();
+            $lines[] = '• این بخش وضعیت جاری صف اقدام است و جزء snapshot تاریخیِ زمان تصویب صورتجلسه محسوب نمی‌شود.';
+        }
+
+        $lines[] = '';
+        $lines[] = $minute->status === 'approved'
+            ? 'این صورتجلسه با تأیید مدیر/بازرس رسمی شده است؛ شواهد و تصمیمات تأییدشده مرجع تاریخی سند هستند.'
+            : 'این سند تا قبل از تأیید مدیر/بازرس، صورتجلسه رسمی نهایی محسوب نمی‌شود.';
+
+        return implode("\n", $lines);
+    }
+
+    /** @return \Illuminate\Support\Collection<int,NajmHodaGroupActionItem> */
+    protected function meetingActions(NajmHodaGroupMeetingMinute $minute)
+    {
+        return NajmHodaGroupActionItem::query()
+            ->where('group_id', $minute->group_id)
+            ->where('meta->meeting_minute_id', (int) $minute->id)
+            ->with('assignedUser:id,first_name,last_name,email')
+            ->orderBy('id')
+            ->get();
+    }
+
+    protected function statusLabel(string $status): string
+    {
+        return [
+            'open' => 'باز',
+            'in_progress' => 'در حال انجام',
+            'blocked' => 'مسدود',
+            'done' => 'انجام‌شده',
+            'cancelled' => 'لغوشده',
+        ][$status] ?? $status;
     }
 
     protected function userName($user): string
