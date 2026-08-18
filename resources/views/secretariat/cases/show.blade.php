@@ -41,7 +41,12 @@
                         <a href="{{ route('secretariat.records.show', [$record->office, $record]) }}" class="block rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-gray-900/50">
                             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                 <div>
-                                    <strong>{{ $record->title }}</strong>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <strong>{{ $record->title }}</strong>
+                                        @if($record->pivot->link_type === 'cross_office_reference')
+                                            <span class="text-xs rounded-full bg-indigo-100 text-indigo-800 px-2 py-1">ارجاع از دفتر {{ $record->office->code }}</span>
+                                        @endif
+                                    </div>
                                     <div class="text-xs text-gray-500 mt-1">{{ $record->record_type }} · {{ $record->pivot->role }}</div>
                                 </div>
                                 <span class="font-mono text-xs text-emerald-700">{{ $record->registry_number }}</span>
@@ -56,6 +61,7 @@
                     @if($case->status !== 'archived' && $linkableRecords->isNotEmpty())
                         <form method="POST" action="{{ route('secretariat.cases.records.store', [$office, $case]) }}" class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3 rounded-xl bg-gray-50 dark:bg-gray-900 p-4">
                             @csrf
+                            <div class="md:col-span-3 font-medium">افزودن رکورد همین دفتر</div>
                             <select name="record_id" required class="rounded-xl border-gray-300 dark:bg-gray-800 dark:border-gray-700 md:col-span-2">
                                 @foreach($linkableRecords as $record)
                                     <option value="{{ $record->id }}">{{ $record->registry_number }} — {{ $record->title }}</option>
@@ -65,6 +71,26 @@
                                 @foreach($roles as $role)<option value="{{ $role }}">{{ $role }}</option>@endforeach
                             </select>
                             <button class="md:col-span-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5">افزودن رکورد رسمی به پرونده</button>
+                        </form>
+                    @endif
+
+                    @if($case->status !== 'archived' && $referenceOffices->isNotEmpty())
+                        <form method="POST" action="{{ route('secretariat.cases.references.store', [$office, $case]) }}" class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3 rounded-xl border border-indigo-100 bg-indigo-50/50 dark:bg-indigo-950/20 dark:border-indigo-900 p-4">
+                            @csrf
+                            <div class="md:col-span-4">
+                                <div class="font-medium">ارجاع رکورد رسمی از دفتر دیگر</div>
+                                <p class="text-xs text-gray-500 mt-1">هیچ کپی‌ای ساخته نمی‌شود؛ سند در دفتر مبدأ منبع حقیقت می‌ماند.</p>
+                            </div>
+                            <select name="source_office_id" required class="rounded-xl border-gray-300 dark:bg-gray-800 dark:border-gray-700">
+                                @foreach($referenceOffices as $candidateOffice)
+                                    <option value="{{ $candidateOffice->id }}">{{ $candidateOffice->code }} — {{ $candidateOffice->name }}</option>
+                                @endforeach
+                            </select>
+                            <input name="registry_number" required maxlength="255" placeholder="شماره ثبت دقیق" class="rounded-xl border-gray-300 dark:bg-gray-800 dark:border-gray-700 md:col-span-2">
+                            <select name="role" required class="rounded-xl border-gray-300 dark:bg-gray-800 dark:border-gray-700">
+                                @foreach($roles as $role)<option value="{{ $role }}">{{ $role }}</option>@endforeach
+                            </select>
+                            <button class="md:col-span-4 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white px-4 py-2.5">ثبت ارجاع بین‌دفتری</button>
                         </form>
                     @endif
                 @endcan
