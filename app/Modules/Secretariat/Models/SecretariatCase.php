@@ -56,7 +56,7 @@ class SecretariatCase extends Model
     public function records(): BelongsToMany
     {
         return $this->belongsToMany(SecretariatRecord::class, 'secretariat_case_records', 'case_id', 'record_id')
-            ->withPivot(['role', 'added_by', 'added_at', 'metadata'])
+            ->withPivot(['link_type', 'source_office_id', 'role', 'added_by', 'added_at', 'metadata'])
             ->withTimestamps();
     }
 
