@@ -10,6 +10,14 @@ use Illuminate\Validation\ValidationException;
 
 class SecretariatKnowledgeRetrievalService
 {
+    private const QUERY_STOPWORDS = [
+        'در', 'از', 'به', 'با', 'برای', 'درباره', 'روی', 'چه', 'چی', 'چیست', 'کدام', 'آیا',
+        'این', 'آن', 'را', 'و', 'یا', 'که', 'یک', 'است', 'هست', 'بود', 'شده', 'شود', 'کرده',
+        'لطفا', 'لطفاً', 'میخواهم', 'می‌خواهم', 'میشه', 'می‌شود', 'کن', 'بگو', 'بده',
+        'سند', 'اسناد', 'رسمی', 'دبیرخانه', 'جستجو', 'جست‌وجو', 'بگرد', 'پیدا',
+        'the', 'a', 'an', 'in', 'on', 'of', 'to', 'for', 'about', 'find', 'search', 'document', 'documents',
+    ];
+
     public function __construct(
         private readonly SecretariatSearchService $search,
         private readonly SecretariatAclService $acl,
@@ -22,9 +30,11 @@ class SecretariatKnowledgeRetrievalService
      * consumer. Consumers never query Secretariat records directly: candidate
      * selection and the final RecordPolicy check stay inside Secretariat.
      *
-     * Ranking happens only after authorized packets are built. A semantic/vector
-     * implementation may replace the ranker contract later, but it must never
-     * load raw Secretariat records or broaden candidate authority.
+     * Natural-language candidate generation fans out only through the already
+     * permission-aware SecretariatSearchService. Ranking then happens only after
+     * authorized packets are built. A semantic/vector implementation may replace
+     * the ranker contract later, but it must never load raw Secretariat records
+     * or broaden candidate authority.
      */
     public function retrieve(
         User $actor,
@@ -45,9 +55,9 @@ class SecretariatKnowledgeRetrievalService
         $perRecordChars = max(256, min(12000, $perRecordChars));
         $totalChars = max($perRecordChars, min(50000, $totalChars));
 
-        $filters['text'] = $query;
-        $candidateLimit = min(100, max($limit, $limit * 4));
-        $records = $this->search->search($actor, $filters, $candidateLimit);
+        unset($filters['text']);
+        $candidateLimit = min(100, max(20, $limit * 8));
+        $records = $this->knowledgeCandidates($actor, $query, $filters, $candidateLimit);
         $queryFingerprint = hash('sha256', $query);
         $candidatePackets = collect();
 
@@ -104,6 +114,55 @@ class SecretariatKnowledgeRetrievalService
         }
 
         return $packets;
+    }
+
+    /** @return Collection<int,SecretariatRecord> */
+    private function knowledgeCandidates(User $actor, string $query, array $filters, int $candidateLimit): Collection
+    {
+        $needles = collect([$query])
+            ->merge($this->queryTerms($query))
+            ->map(fn (string $value) => trim($value))
+            ->filter(fn (string $value) => $value !== '')
+            ->unique()
+            ->take(10)
+            ->values();
+
+        $perSearchLimit = min(40, max(10, $candidateLimit));
+        $records = collect();
+
+        foreach ($needles as $needle) {
+            $result = $this->search->search(
+                $actor,
+                array_merge($filters, ['text' => $needle]),
+                $perSearchLimit,
+            );
+
+            foreach ($result as $record) {
+                $records->put((int) $record->id, $record);
+            }
+
+            if ($records->count() >= $candidateLimit) {
+                break;
+            }
+        }
+
+        return $records->values()->take($candidateLimit);
+    }
+
+    /** @return array<int,string> */
+    private function queryTerms(string $query): array
+    {
+        $normalized = mb_strtolower(preg_replace('/[\x{200C}\x{200F}\x{202A}-\x{202E}]/u', ' ', $query) ?? $query);
+        $parts = preg_split('/[^\p{L}\p{N}_-]+/u', $normalized, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $stopwords = array_fill_keys(self::QUERY_STOPWORDS, true);
+
+        return collect($parts)
+            ->map(fn (string $term) => trim($term))
+            ->filter(fn (string $term) => mb_strlen($term) >= 2 && ! isset($stopwords[$term]))
+            ->unique()
+            ->take(9)
+            ->values()
+            ->all();
     }
 
     private function contentFor(SecretariatRecord $record): string
