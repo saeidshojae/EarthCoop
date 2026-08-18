@@ -3,6 +3,7 @@
 namespace App\Modules\Secretariat\Models;
 
 use App\Models\User;
+use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use LogicException;
@@ -10,6 +11,8 @@ use LogicException;
 class SecretariatAclEntry extends Model
 {
     protected $guarded = [];
+
+    private bool $allowRevocation = false;
 
     protected $casts = [
         'granted_at' => 'datetime',
@@ -21,9 +24,13 @@ class SecretariatAclEntry extends Model
     protected static function booted(): void
     {
         static::updating(function (self $entry): void {
-            foreach (['record_id', 'principal_type', 'principal_id', 'permission', 'granted_by', 'granted_at'] as $field) {
-                if ($entry->isDirty($field)) {
-                    throw new LogicException("Secretariat ACL grant identity field [{$field}] is immutable.");
+            if (! $entry->allowRevocation) {
+                throw new LogicException('Secretariat ACL grants are append-only; only controlled revocation may mutate a grant.');
+            }
+
+            foreach (array_keys($entry->getDirty()) as $field) {
+                if (! in_array($field, ['revoked_by', 'revoked_at'], true)) {
+                    throw new LogicException("Secretariat ACL field [{$field}] cannot change during revocation.");
                 }
             }
         });
@@ -31,6 +38,18 @@ class SecretariatAclEntry extends Model
         static::deleting(function (): void {
             throw new LogicException('Secretariat ACL history cannot be hard-deleted; revoke the grant instead.');
         });
+    }
+
+    public function performRevocation(Closure $callback): mixed
+    {
+        $previous = $this->allowRevocation;
+        $this->allowRevocation = true;
+
+        try {
+            return $callback($this);
+        } finally {
+            $this->allowRevocation = $previous;
+        }
     }
 
     public function record(): BelongsTo
