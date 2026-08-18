@@ -35,6 +35,33 @@ class SecretariatS2AttachmentTest extends TestCase
         ]);
     }
 
+    public function test_attachment_metadata_cannot_be_rewritten_in_place(): void
+    {
+        Storage::fake('local');
+        [$actor, $record] = $this->draft();
+        $attachment = app(SecretariatAttachmentService::class)->upload(
+            $record,
+            $actor,
+            UploadedFile::fake()->createWithContent('evidence.txt', 'immutable evidence'),
+            null,
+            'local'
+        );
+
+        try {
+            $attachment->forceFill([
+                'original_name' => 'rewritten.txt',
+                'state' => 'hidden',
+                'metadata' => ['rewritten' => true],
+            ])->save();
+            $this->fail('Attachment history was rewritten in place.');
+        } catch (LogicException) {
+            $fresh = $attachment->fresh();
+            $this->assertSame('evidence.txt', $fresh->original_name);
+            $this->assertSame('active', $fresh->state);
+            $this->assertNull($fresh->metadata);
+        }
+    }
+
     public function test_formal_version_cannot_receive_retroactive_attachment_or_hard_delete_existing_attachment(): void
     {
         Storage::fake('local');
