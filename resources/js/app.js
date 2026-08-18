@@ -8,7 +8,7 @@ import "select2/dist/css/select2.min.css";
 import "./najm-bahar.js";
 import "./najm-bahar-membership-source.js";
 import "./najm-hoda-context.js";
-import "./najm-hoda-management-console.js";
+import "./najm-hoda-management-console-v2.js";
 import "./najm-hoda-attention-panel.js";
 import { register } from "swiper/element/bundle";
 import "./group-chat/index.js";
@@ -16,8 +16,6 @@ import "./group-comment-form-fallback.js";
 
 register();
 
-// Some legacy pages load jQuery plugins before this deferred Vite module runs.
-// Preserve that instance so those plugins are not detached by replacing window.$.
 const appJQuery = window.jQuery || $;
 window.$ = appJQuery;
 window.jQuery = appJQuery;
@@ -30,11 +28,6 @@ if (appJQuery.fn.select2?.defaults) {
 	});
 }
 
-
-// PWA registration and user-visible install prompt.
-// Local development must never be routed through a persisted service worker:
-// it obscures request ownership in DevTools and can amplify/carry stale fetches
-// while debugging the high-frequency group-chat runtime.
 const localDevelopmentHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 if ('serviceWorker' in navigator && localDevelopmentHost) {
     window.addEventListener('load', async () => {
@@ -70,11 +63,7 @@ if ('serviceWorker' in navigator && localDevelopmentHost) {
     const dismissCooldown = 7 * 24 * 60 * 60 * 1000;
     const canShow = !isStandalone && (!dismissedAt || Date.now() - dismissedAt > dismissCooldown);
 
-    const showBanner = () => {
-        if (!canShow) return;
-        banner.classList.remove('hidden');
-    };
-
+    const showBanner = () => { if (canShow) banner.classList.remove('hidden'); };
     const hideBanner = (remember = false) => {
         banner.classList.add('hidden');
         if (remember) localStorage.setItem('earthcoop-pwa-dismissed-at', String(Date.now()));
