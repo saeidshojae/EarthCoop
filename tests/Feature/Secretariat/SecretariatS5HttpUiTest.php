@@ -100,6 +100,8 @@ class SecretariatS5HttpUiTest extends TestCase
         $this->assertDatabaseHas('secretariat_case_records', [
             'case_id' => $case->id,
             'record_id' => $record->id,
+            'link_type' => 'local_membership',
+            'source_office_id' => $office->id,
             'role' => 'evidence',
         ]);
 
@@ -108,6 +110,60 @@ class SecretariatS5HttpUiTest extends TestCase
             ->assertRedirect();
 
         $this->assertSame('closed', $case->fresh()->status);
+    }
+
+    public function test_cross_office_reference_is_not_a_copy_and_is_rechecked_for_each_case_viewer(): void
+    {
+        [$manager, $destinationMember, $destinationOffice] = $this->groupOffice('S5-XOFF-DST');
+        [, , $sourceOffice] = $this->groupOffice('S5-XOFF-SRC', $manager);
+        $case = app(SecretariatCaseService::class)->create($destinationOffice, $manager, [
+            'title' => 'Cross-office case',
+            'confidentiality' => 'office_members',
+        ]);
+        $foreign = $this->formalRecord($sourceOffice, $manager, 'Foreign source evidence');
+
+        $this->actingAs($manager)
+            ->post(route('secretariat.cases.references.store', [$destinationOffice, $case]), [
+                'source_office_id' => $sourceOffice->id,
+                'registry_number' => $foreign->registry_number,
+                'role' => 'evidence',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('secretariat_case_records', [
+            'case_id' => $case->id,
+            'record_id' => $foreign->id,
+            'link_type' => 'cross_office_reference',
+            'source_office_id' => $sourceOffice->id,
+        ]);
+        $this->assertSame($sourceOffice->id, $foreign->fresh()->office_id);
+
+        // The manager belongs to both offices and sees the referenced source.
+        $this->actingAs($manager)
+            ->get(route('secretariat.cases.show', [$destinationOffice, $case]))
+            ->assertOk()
+            ->assertSee('Foreign source evidence');
+
+        // Destination-only member can see the Case but receives no title/number
+        // metadata for the foreign record because its source RecordPolicy denies it.
+        $this->actingAs($destinationMember)
+            ->get(route('secretariat.cases.show', [$destinationOffice, $case]))
+            ->assertOk()
+            ->assertDontSee('Foreign source evidence')
+            ->assertDontSee($foreign->registry_number);
+
+        $this->assertDatabaseHas('secretariat_audit_events', [
+            'office_id' => $destinationOffice->id,
+            'record_id' => null,
+            'actor_id' => $manager->id,
+            'event_type' => 'cross_office_case_reference_added',
+        ]);
+        $this->assertDatabaseHas('secretariat_audit_events', [
+            'office_id' => $sourceOffice->id,
+            'record_id' => $foreign->id,
+            'actor_id' => $manager->id,
+            'event_type' => 'record_referenced_by_foreign_case',
+        ]);
     }
 
     public function test_case_from_another_office_returns_404_even_for_manager_of_both(): void
