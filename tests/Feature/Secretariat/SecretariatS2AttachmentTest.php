@@ -28,6 +28,7 @@ class SecretariatS2AttachmentTest extends TestCase
         $this->assertSame($record->current_version_id, $attachment->version_id);
         $this->assertSame(hash('sha256', 'earthcoop-secretariat-evidence'), $attachment->checksum);
         Storage::disk('local')->assertExists($attachment->storage_key);
+        $this->assertTrue($record->currentVersion->attachments()->whereKey($attachment->id)->exists());
 
         $this->assertDatabaseHas('secretariat_audit_events', [
             'record_id' => $record->id,
@@ -60,6 +61,27 @@ class SecretariatS2AttachmentTest extends TestCase
             $this->assertSame('active', $fresh->state);
             $this->assertNull($fresh->metadata);
         }
+    }
+
+    public function test_delete_draft_cleans_attachment_row_and_physical_object_after_commit(): void
+    {
+        Storage::fake('local');
+        [$actor, $record, $records] = $this->draft(true);
+        $attachment = app(SecretariatAttachmentService::class)->upload(
+            $record,
+            $actor,
+            UploadedFile::fake()->createWithContent('temporary.txt', 'temporary draft evidence'),
+            null,
+            'local'
+        );
+        $storageKey = $attachment->storage_key;
+
+        Storage::disk('local')->assertExists($storageKey);
+        $records->deleteDraft($record);
+
+        $this->assertDatabaseMissing('secretariat_records', ['id' => $record->id]);
+        $this->assertDatabaseMissing('secretariat_attachments', ['id' => $attachment->id]);
+        Storage::disk('local')->assertMissing($storageKey);
     }
 
     public function test_formal_version_cannot_receive_retroactive_attachment_or_hard_delete_existing_attachment(): void
