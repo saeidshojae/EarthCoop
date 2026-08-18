@@ -6,18 +6,23 @@ use App\Http\Controllers\Controller;
 use App\Models\Group;
 use App\Models\GroupUser;
 use App\Services\NajmHoda\NajmHodaGroupAttentionPanelService;
+use App\Services\NajmHoda\NajmHodaGroupManagementSnapshotService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class NajmHodaAttentionController extends Controller
 {
-    public function show(Group $group, NajmHodaGroupAttentionPanelService $service): JsonResponse
-    {
-        $this->authorizeLeadership($group);
+    public function show(
+        Group $group,
+        NajmHodaGroupAttentionPanelService $service,
+        NajmHodaGroupManagementSnapshotService $management
+    ): JsonResponse {
+        $role = $this->authorizeLeadership($group);
 
         return response()->json([
             'status' => 'success',
             'attention' => $service->snapshot($group),
+            'management' => $management->snapshot($group, $role),
         ]);
     }
 
@@ -48,14 +53,16 @@ class NajmHodaAttentionController extends Controller
         ]);
     }
 
-    protected function authorizeLeadership(Group $group): void
+    protected function authorizeLeadership(Group $group): int
     {
-        $role = GroupUser::query()
+        $role = (int) GroupUser::query()
             ->where('group_id', $group->id)
             ->where('user_id', auth()->id())
             ->where('status', 1)
             ->value('role');
 
-        abort_unless(in_array((int) $role, [2, 3], true), 403);
+        abort_unless(in_array($role, [2, 3], true), 403);
+
+        return $role;
     }
 }
