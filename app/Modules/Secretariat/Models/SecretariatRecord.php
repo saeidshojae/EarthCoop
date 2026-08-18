@@ -3,6 +3,7 @@
 namespace App\Modules\Secretariat\Models;
 
 use App\Models\User;
+use App\Modules\Secretariat\Services\SecretariatMorphMap;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -22,6 +23,8 @@ class SecretariatRecord extends Model
 
     protected static function booted(): void
     {
+        SecretariatMorphMap::register();
+
         static::deleting(function (self $record): void {
             if ($record->status !== 'draft' && $record->status !== 'cancelled') {
                 throw new LogicException('Registered or formal Secretariat records cannot be hard-deleted.');
