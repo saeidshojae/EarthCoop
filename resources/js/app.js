@@ -8,6 +8,7 @@ import "select2/dist/css/select2.min.css";
 import "./najm-bahar.js";
 import "./najm-bahar-membership-source.js";
 import "./najm-hoda-context.js";
+import "./najm-hoda-management-console.js";
 import "./najm-hoda-attention-panel.js";
 import { register } from "swiper/element/bundle";
 import "./group-chat/index.js";
