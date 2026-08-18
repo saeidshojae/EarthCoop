@@ -52,9 +52,6 @@ class NajmHodaPrivateGroupMeetingDecisionCommandService extends NajmHodaPrivateG
             }
         }
 
-        // Keep the existing action workflow authoritative, but remember its exact
-        // pending payload so newly persisted actions can be linked to a confirmed
-        // decision from the same evidence source after successful execution.
         $actionPending = is_array($pending) && (string) ($pending['operation'] ?? '') === 'persist_meeting_actions'
             && $this->isConfirmation($message) ? $pending : null;
 
@@ -184,6 +181,12 @@ class NajmHodaPrivateGroupMeetingDecisionCommandService extends NajmHodaPrivateG
                 $item->meta = $meta;
                 $item->save();
             });
+    }
+
+    protected function renderMinute(NajmHodaGroupMeetingMinute $minute): string
+    {
+        $status = $minute->status === 'approved' ? 'رسمی/تأییدشده' : 'پیش‌نویس';
+        return "وضعیت: {$status}\n\n" . $this->minutes->renderManagementDocument($minute, true);
     }
 
     protected function looksLikeDecisionExtraction(string $message): bool
