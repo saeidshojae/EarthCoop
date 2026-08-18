@@ -60,6 +60,9 @@ export function createSessionState({ api, lifecycle }) {
         feed?.appendChild(node); node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     };
     const escapeHtml = value => String(value || '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+    const publishState = data => {
+        window.dispatchEvent(new CustomEvent('group-chat:session-state', { detail: data || {} }));
+    };
     const receive = async (action, payload = {}) => {
         if (action === 'session_scheduled') {
             window.GroupChatFeedback?.toast?.(`جلسه «${payload.title}» برنامه‌ریزی شد.`, { type: 'info', duration: 7000 });
@@ -106,6 +109,7 @@ export function createSessionState({ api, lifecycle }) {
         if (document.hidden || !config.participationStateUrl) return;
         try {
             const data = await api.json(config.participationStateUrl);
+            publishState(data);
             const nextOpen = Boolean(data.session_open);
             const nextId = Number(data.session?.id || 0) || null;
             if (nextOpen !== sessionOpen || (!nextOpen && nextId !== activeSessionId)) {
@@ -114,6 +118,8 @@ export function createSessionState({ api, lifecycle }) {
             }
         } catch (_) { /* Realtime remains primary; this is only a resilience fallback. */ }
     };
-    lifecycle.interval(reconcile, 15000);
-    return Object.freeze({ receive, refreshComposer });
+    // Realtime is primary. One shared, slower poll is enough for resilience and
+    // also feeds the participation badge through group-chat:session-state.
+    lifecycle.interval(reconcile, 30000);
+    return Object.freeze({ receive, refreshComposer, reconcile });
 }
