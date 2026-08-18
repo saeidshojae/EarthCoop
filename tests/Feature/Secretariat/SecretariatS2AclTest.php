@@ -7,6 +7,7 @@ use App\Modules\Secretariat\Services\SecretariatAclService;
 use App\Modules\Secretariat\Services\SecretariatOfficeService;
 use App\Modules\Secretariat\Services\SecretariatRecordService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use LogicException;
 use Tests\TestCase;
 
 class SecretariatS2AclTest extends TestCase
@@ -42,6 +43,38 @@ class SecretariatS2AclTest extends TestCase
         $this->assertTrue($reader->can('view', $record));
         $this->assertSame(2, $record->aclEntries()->count());
         $this->assertNotNull($first->fresh()->revoked_at);
+    }
+
+    public function test_acl_grant_cannot_be_rewritten_outside_controlled_revocation(): void
+    {
+        $manager = User::factory()->create();
+        $reader = User::factory()->create();
+        $office = app(SecretariatOfficeService::class)->create([
+            'code' => 'S2-ACL-IMMUTABLE',
+            'name' => 'S2 ACL Immutability Office',
+            'office_type' => 'central',
+        ]);
+        $record = app(SecretariatRecordService::class)->createDraft($office, $manager, [
+            'record_type' => 'official_note',
+            'title' => 'Restricted immutable grant',
+            'confidentiality' => 'restricted',
+        ]);
+        $entry = app(SecretariatAclService::class)->grant($record, 'user', $reader->id, $manager);
+
+        try {
+            $entry->forceFill([
+                'expires_at' => now()->subMinute(),
+                'metadata' => ['rewritten' => true],
+                'revoked_at' => now(),
+            ])->save();
+            $this->fail('ACL grant was rewritten outside the revocation service.');
+        } catch (LogicException) {
+            $fresh = $entry->fresh();
+            $this->assertNull($fresh->expires_at);
+            $this->assertNull($fresh->metadata);
+            $this->assertNull($fresh->revoked_at);
+            $this->assertTrue($reader->can('view', $record));
+        }
     }
 
     public function test_confidential_access_can_be_audited_without_exposing_record_to_ungranted_user(): void
