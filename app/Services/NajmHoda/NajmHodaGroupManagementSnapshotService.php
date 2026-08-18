@@ -7,6 +7,7 @@ use App\Models\Group;
 use App\Models\GroupSession;
 use App\Models\NajmHodaGroupActionItem;
 use App\Models\NajmHodaGroupMeetingMinute;
+use App\Models\PinnedMessage;
 
 class NajmHodaGroupManagementSnapshotService
 {
@@ -57,6 +58,9 @@ class NajmHodaGroupManagementSnapshotService
                 'in_progress' => (clone $actions)->where('status', 'in_progress')->count(),
                 'blocked' => (clone $actions)->where('status', 'blocked')->count(),
                 'done' => (clone $actions)->where('status', 'done')->count(),
+            ],
+            'content' => [
+                'pinned_count' => PinnedMessage::query()->where('group_id', $group->id)->count(),
             ],
             'requests' => [
                 'pending_group_chat' => $role === 3
