@@ -11,6 +11,7 @@ use App\Models\User;
 class NajmHodaSecretariatCorrespondenceRouter
 {
     public function __construct(
+        private readonly NajmHodaSecretariatInternalCorrespondenceAssistant $internal,
         private readonly NajmHodaSecretariatIncomingCorrespondenceAssistant $incoming,
         private readonly NajmHodaSecretariatCorrespondenceAssistant $outgoing,
     ) {
@@ -19,6 +20,11 @@ class NajmHodaSecretariatCorrespondenceRouter
     /** @param array<string,mixed> $pageContext */
     public function intercept(User $actor, array $pageContext, string $message, ?int $conversationId = null): ?array
     {
+        $response = $this->internal->intercept($actor, $pageContext, $message, $conversationId);
+        if (is_array($response)) {
+            return $response;
+        }
+
         $response = $this->incoming->intercept($actor, $pageContext, $message, $conversationId);
         if (is_array($response)) {
             return $response;
