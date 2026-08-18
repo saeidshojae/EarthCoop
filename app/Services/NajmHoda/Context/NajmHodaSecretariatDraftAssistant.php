@@ -24,7 +24,7 @@ class NajmHodaSecretariatDraftAssistant
     public function __construct(
         private readonly SecretariatRecordService $records,
         private readonly NajmHodaSecretariatDraftRevisionAssistant $revisions,
-        private readonly NajmHodaSecretariatCorrespondenceAssistant $correspondence,
+        private readonly NajmHodaSecretariatCorrespondenceRouter $correspondence,
     ) {
     }
 
@@ -35,9 +35,6 @@ class NajmHodaSecretariatDraftAssistant
             return null;
         }
 
-        // A record page is server-resolved by NajmHodaPageContextResolver. Give
-        // the append-only Draft revision flow first chance before considering a
-        // new Draft creation in the same office.
         if ((string) ($pageContext['resource_type'] ?? '') === 'secretariat_record') {
             $revisionResponse = $this->revisions->intercept($actor, $pageContext, $message, $conversationId);
             if (is_array($revisionResponse)) {
@@ -55,9 +52,6 @@ class NajmHodaSecretariatDraftAssistant
             return null;
         }
 
-        // Correspondence uses the established S4 aggregate (record + details +
-        // parties) and therefore gets a dedicated guided workflow before the
-        // generic record draft parser. It still only creates Drafts.
         $correspondenceResponse = $this->correspondence->intercept(
             $actor,
             $pageContext,
