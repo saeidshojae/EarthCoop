@@ -36,7 +36,8 @@ class PageAwarenessContextTest extends TestCase
 
         $this->assertSame('گفتگوی گروه', $resolved['page_label']);
         $this->assertSame('group_chat', $resolved['page_kind']);
-        $this->assertContains('send_message', $resolved['available_capabilities']);
+        $this->assertContains('read_group_feed', $resolved['available_capabilities']);
+        $this->assertNotContains('send_message', $resolved['available_capabilities']);
         $this->assertArrayNotHasKey('page_title', $resolved);
         $this->assertArrayNotHasKey('path', $resolved);
     }
