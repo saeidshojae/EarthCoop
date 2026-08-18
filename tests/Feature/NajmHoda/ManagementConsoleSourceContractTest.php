@@ -13,6 +13,7 @@ class ManagementConsoleSourceContractTest extends TestCase
         $contentTools = file_get_contents(resource_path('js/najm-hoda-management-content-tools.js'));
         $nativeTools = file_get_contents(resource_path('js/najm-hoda-management-native-tools.js'));
         $liveAttention = file_get_contents(resource_path('js/najm-hoda-management-live-attention.js'));
+        $managementSnapshot = file_get_contents(app_path('Services/NajmHoda/NajmHodaGroupManagementSnapshotService.php'));
 
         $this->assertStringContainsString('import "./najm-hoda-management-console-v2.js";', $app);
         $this->assertStringContainsString('import "./najm-hoda-management-content-tools.js";', $app);
@@ -56,7 +57,11 @@ class ManagementConsoleSourceContractTest extends TestCase
         $this->assertStringContainsString('مدیریت انتخابات درون‌گروهی', $nativeTools);
         $this->assertStringContainsString('GroupChat?.elections?.openAdmin', $nativeTools);
         $this->assertStringContainsString('open-election-admin', $nativeTools);
-        $this->assertStringContainsString('data-tab="election"', $nativeTools);
+        $this->assertStringContainsString('data-tab="${name}"', $nativeTools);
+        $this->assertStringContainsString('سنجاق‌شده‌ها', $nativeTools);
+        $this->assertStringContainsString('.pinned-messages', $nativeTools);
+        $this->assertStringContainsString('آمار و گزارش‌گیری', $nativeTools);
+        $this->assertStringContainsString("openGroupInfoTab('stats')", $nativeTools);
         $this->assertStringContainsString('ویرایش گروه', $nativeTools);
         $this->assertStringContainsString('افزودن مهمان', $nativeTools);
         $this->assertStringContainsString('درخواست چت مدیران', $nativeTools);
@@ -64,6 +69,9 @@ class ManagementConsoleSourceContractTest extends TestCase
         $this->assertStringContainsString('تنظیمات گروه', $nativeTools);
         $this->assertStringContainsString('گزارش‌ها و رسیدگی', $nativeTools);
         $this->assertStringNotContainsString('electionVotingOverlay', $nativeTools);
+
+        $this->assertStringContainsString('PinnedMessage::query()', $managementSnapshot);
+        $this->assertStringContainsString("'pinned_count'", $managementSnapshot);
 
         $this->assertStringContainsString('وضعیت زنده نیازمند توجه', $liveAttention);
         $this->assertStringContainsString('/najm-hoda/attention', $liveAttention);
@@ -73,6 +81,8 @@ class ManagementConsoleSourceContractTest extends TestCase
         $this->assertStringContainsString('blocked', $liveAttention);
         $this->assertStringContainsString('urgent', $liveAttention);
         $this->assertStringContainsString('unassigned', $liveAttention);
+        $this->assertStringContainsString('pinned_count', $liveAttention);
+        $this->assertStringContainsString("cardBadge(panel,'pinned-content'", $liveAttention);
         $this->assertStringContainsString('nh-mgmt-header-badge', $liveAttention);
         $this->assertStringContainsString('najm-hoda:attention-updated', $liveAttention);
     }
