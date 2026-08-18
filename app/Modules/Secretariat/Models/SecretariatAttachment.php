@@ -18,17 +18,16 @@ class SecretariatAttachment extends Model
 
     protected static function booted(): void
     {
-        static::updating(function (self $attachment): void {
-            foreach (['record_id', 'version_id', 'storage_disk', 'storage_key', 'checksum', 'file_size', 'uploaded_by', 'uploaded_at'] as $field) {
-                if ($attachment->isDirty($field)) {
-                    throw new LogicException("Secretariat attachment identity field [{$field}] is immutable.");
-                }
-            }
+        static::updating(function (): void {
+            // Attachment rows describe immutable evidence: changing display name,
+            // MIME, state or metadata in place would rewrite the historical
+            // package. Future lifecycle changes must use an explicit event/model.
+            throw new LogicException('Secretariat attachment metadata is append-only.');
         });
 
         static::deleting(function (self $attachment): void {
             $record = $attachment->record()->first();
-            if ($record !== null && $record->status !== 'draft' && $record->status !== 'cancelled') {
+            if ($record !== null && ! in_array($record->status, ['draft', 'cancelled'], true)) {
                 throw new LogicException('Attachments of formal Secretariat records cannot be hard-deleted.');
             }
         });
