@@ -22,9 +22,13 @@ return new class extends Migration
             $table->json('metadata')->nullable();
             $table->timestamps();
 
-            $table->unique(
-                ['record_id', 'principal_type', 'principal_id', 'permission'],
-                'secretariat_acl_principal_permission_unique'
+            // Historical grant generations must remain append-only. We therefore
+            // index, rather than uniquely constrain, this tuple; the domain service
+            // makes an active grant idempotent while allowing a new row after
+            // revoke/expiry without rewriting prior access history.
+            $table->index(
+                ['record_id', 'principal_type', 'principal_id', 'permission', 'revoked_at'],
+                'secretariat_acl_principal_permission_idx'
             );
             $table->index(
                 ['principal_type', 'principal_id', 'permission', 'revoked_at', 'expires_at'],
