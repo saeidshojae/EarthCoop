@@ -14,6 +14,53 @@ class SecretariatIntegrityGuardTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_draft_content_cannot_bypass_version_service(): void
+    {
+        $actor = User::factory()->create();
+        $office = app(SecretariatOfficeService::class)->create([
+            'code' => 'DRAFT-GUARD',
+            'name' => 'Draft Guard Office',
+            'office_type' => 'central',
+        ]);
+        $record = app(SecretariatRecordService::class)->createDraft($office, $actor, [
+            'record_type' => 'official_note',
+            'title' => 'Draft v1',
+        ]);
+
+        try {
+            $record->forceFill(['title' => 'silent draft overwrite'])->save();
+            $this->fail('Direct draft content mutation was accepted.');
+        } catch (LogicException) {
+            $this->assertSame('Draft v1', $record->fresh()->title);
+            $this->assertSame(1, $record->fresh()->versions()->count());
+        }
+    }
+
+    public function test_pending_record_cannot_jump_to_registered_without_registration_service(): void
+    {
+        $actor = User::factory()->create();
+        $office = app(SecretariatOfficeService::class)->create([
+            'code' => 'REGISTER-GUARD',
+            'name' => 'Registration Guard Office',
+            'office_type' => 'central',
+        ]);
+        $service = app(SecretariatRecordService::class);
+        $pending = $service->submitForApproval($service->createDraft($office, $actor, [
+            'record_type' => 'official_note',
+            'title' => 'Pending note',
+        ]), $actor);
+
+        try {
+            $pending->forceFill(['status' => 'registered'])->save();
+            $this->fail('Direct registration-state mutation was accepted.');
+        } catch (LogicException) {
+            $pending = $pending->fresh();
+            $this->assertSame('pending_approval', $pending->status);
+            $this->assertNull($pending->registry_number);
+            $this->assertFalse($pending->currentVersion->is_official);
+        }
+    }
+
     public function test_formal_record_fields_cannot_be_overwritten_directly(): void
     {
         [, $record] = $this->registeredPolicy();
