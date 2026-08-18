@@ -154,18 +154,20 @@ class SecretariatRecordService
             $officialVersion = $this->versions->markOfficial($locked->currentVersion, $actor);
             $now = now();
 
-            $locked->forceFill([
-                'status' => 'registered',
-                'registry_number' => $allocation['number'],
-                'registry_sequence' => $allocation['sequence'],
-                'registry_year' => $allocation['year'],
-                'registry_family' => $allocation['family'],
-                'registered_by' => $actor->id,
-                'registered_at' => $now,
-                'approved_by' => $actor->id,
-                'approved_at' => $now,
-                'current_version_id' => $officialVersion->id,
-            ])->save();
+            $locked->performControlledMutation(function (SecretariatRecord $target) use ($allocation, $officialVersion, $actor, $now): void {
+                $target->forceFill([
+                    'status' => 'registered',
+                    'registry_number' => $allocation['number'],
+                    'registry_sequence' => $allocation['sequence'],
+                    'registry_year' => $allocation['year'],
+                    'registry_family' => $allocation['family'],
+                    'registered_by' => $actor->id,
+                    'registered_at' => $now,
+                    'approved_by' => $actor->id,
+                    'approved_at' => $now,
+                    'current_version_id' => $officialVersion->id,
+                ])->save();
+            });
 
             $this->audit->append($locked->office, $locked, $actor, 'approved', [
                 'version_number' => $officialVersion->version_number,
