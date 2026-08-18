@@ -40,6 +40,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\NajmHodaPolicyLearningLoop::class,
         \App\Console\Commands\NajmHodaShadowRollout::class,
         \App\Console\Commands\NajmHodaModerationSweep::class,
+        \App\Console\Commands\NajmHodaGroupAttentionSweep::class,
         \App\Console\Commands\SendElectionReminders::class,
         \App\Console\Commands\SendAuctionReminders::class,
         \App\Console\Commands\ActivateScheduledGroupSessions::class,
@@ -63,6 +64,11 @@ class Kernel extends ConsoleKernel
 
         // Najm Hoda scheduled group moderation cleanup (respects per-group interval)
         $schedule->command('najm-hoda:moderation-sweep --max-groups=200')->hourly();
+
+        // Najm Hoda proactive leadership attention for group action queues.
+        $schedule->command('najm-hoda:group-attention-sweep --max-groups=200')
+            ->everyFiveMinutes()
+            ->withoutOverlapping();
 
         // Najm Hoda operational health monitor + auto triage
         $schedule->command('najm-hoda:ops-monitor')->everyFiveMinutes();
