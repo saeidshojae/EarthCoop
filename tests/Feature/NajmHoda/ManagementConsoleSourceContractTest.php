@@ -12,10 +12,12 @@ class ManagementConsoleSourceContractTest extends TestCase
         $console = file_get_contents(resource_path('js/najm-hoda-management-console-v2.js'));
         $contentTools = file_get_contents(resource_path('js/najm-hoda-management-content-tools.js'));
         $nativeTools = file_get_contents(resource_path('js/najm-hoda-management-native-tools.js'));
+        $liveAttention = file_get_contents(resource_path('js/najm-hoda-management-live-attention.js'));
 
         $this->assertStringContainsString('import "./najm-hoda-management-console-v2.js";', $app);
         $this->assertStringContainsString('import "./najm-hoda-management-content-tools.js";', $app);
         $this->assertStringContainsString('import "./najm-hoda-management-native-tools.js";', $app);
+        $this->assertStringContainsString('import "./najm-hoda-management-live-attention.js";', $app);
         $this->assertStringNotContainsString('import "./najm-hoda-management-console.js";', $app);
 
         $this->assertStringContainsString('GroupChatConfig?.canManageSession', $console);
@@ -62,5 +64,16 @@ class ManagementConsoleSourceContractTest extends TestCase
         $this->assertStringContainsString('تنظیمات گروه', $nativeTools);
         $this->assertStringContainsString('گزارش‌ها و رسیدگی', $nativeTools);
         $this->assertStringNotContainsString('electionVotingOverlay', $nativeTools);
+
+        $this->assertStringContainsString('وضعیت زنده نیازمند توجه', $liveAttention);
+        $this->assertStringContainsString('/najm-hoda/attention', $liveAttention);
+        $this->assertStringContainsString('active_events', $liveAttention);
+        $this->assertStringContainsString('overdue', $liveAttention);
+        $this->assertStringContainsString('due_soon', $liveAttention);
+        $this->assertStringContainsString('blocked', $liveAttention);
+        $this->assertStringContainsString('urgent', $liveAttention);
+        $this->assertStringContainsString('unassigned', $liveAttention);
+        $this->assertStringContainsString('nh-mgmt-header-badge', $liveAttention);
+        $this->assertStringContainsString('najm-hoda:attention-updated', $liveAttention);
     }
 }
