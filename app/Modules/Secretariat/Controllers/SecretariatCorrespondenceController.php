@@ -19,6 +19,8 @@ use Illuminate\Validation\Rule;
 
 class SecretariatCorrespondenceController extends Controller
 {
+    private const CORRESPONDENCE_TYPES = ['incoming_letter', 'outgoing_letter', 'internal_correspondence'];
+
     public function __construct(
         private readonly SecretariatCorrespondenceService $correspondence,
         private readonly SecretariatDispatchService $dispatches,
@@ -37,21 +39,12 @@ class SecretariatCorrespondenceController extends Controller
             ? (string) $request->query('direction')
             : 'incoming';
         $group = $this->officeGroup($office);
-        $members = $group === null
-            ? collect()
-            : User::query()
-                ->join('group_user', 'users.id', '=', 'group_user.user_id')
-                ->where('group_user.group_id', $group->id)
-                ->select('users.*')
-                ->orderBy('users.id')
-                ->limit(500)
-                ->get();
 
         return view('secretariat.correspondence.create', [
             'office' => $office,
             'direction' => $direction,
             'group' => $group,
-            'members' => $members,
+            'members' => $this->groupMembers($group),
             'confidentialities' => ['public', 'office_members', 'leadership', 'restricted', 'confidential'],
             'channels' => ['internal', 'email', 'physical', 'api', 'other'],
         ]);
@@ -83,13 +76,12 @@ class SecretariatCorrespondenceController extends Controller
         $group = $this->officeGroup($office);
         abort_if($group === null, 422, 'S4 correspondence UI currently requires a group-scoped Secretariat office.');
 
-        $parties = $this->partyPayload($validated, $group);
         $record = $this->correspondence->createDraft(
             $office,
             $request->user(),
             $validated['direction'],
             $validated,
-            $parties,
+            $this->partyPayload($validated, $group),
         );
 
         if (in_array($record->confidentiality, ['restricted', 'confidential'], true)) {
@@ -101,8 +93,46 @@ class SecretariatCorrespondenceController extends Controller
         }
 
         return redirect()
-            ->route('secretariat.records.show', [$office, $record])
+            ->route('secretariat.correspondence.show', [$office, $record])
             ->with('success', 'پیش‌نویس مکاتبه دبیرخانه ایجاد شد.');
+    }
+
+    public function show(Request $request, SecretariatOffice $office, SecretariatRecord $record)
+    {
+        $this->assertOfficeRecord($office, $record);
+        abort_unless(in_array($record->record_type, self::CORRESPONDENCE_TYPES, true), 404);
+        $this->authorize('view', $record);
+
+        $this->acl->auditSensitiveAccess($record, $request->user(), [
+            'surface' => 'secretariat_correspondence_show',
+        ]);
+
+        $record->load([
+            'currentVersion',
+            'attachments',
+            'parties.user',
+            'parties.group',
+            'correspondenceDetail',
+            'dispatches.targetParty',
+            'dispatches.targetUser',
+            'outgoingRelations.targetRecord',
+            'incomingRelations.sourceRecord',
+        ]);
+
+        return view('secretariat.correspondence.show', [
+            'office' => $office,
+            'record' => $record,
+            'dispatchUsers' => $this->groupMembers($this->officeGroup($office)),
+            'nextDispatchStatuses' => [
+                'pending' => ['sent', 'cancelled'],
+                'sent' => ['received', 'failed', 'cancelled'],
+                'received' => ['acknowledged', 'completed'],
+                'acknowledged' => ['completed'],
+                'completed' => [],
+                'failed' => [],
+                'cancelled' => [],
+            ],
+        ]);
     }
 
     public function dispatch(Request $request, SecretariatOffice $office, SecretariatRecord $record): RedirectResponse
@@ -199,6 +229,22 @@ class SecretariatCorrespondenceController extends Controller
                 'email' => $user->email,
             ],
         ];
+    }
+
+    private function groupMembers(?Group $group)
+    {
+        if ($group === null) {
+            return collect();
+        }
+
+        return User::query()
+            ->join('group_user', 'users.id', '=', 'group_user.user_id')
+            ->where('group_user.group_id', $group->id)
+            ->select('users.*')
+            ->distinct()
+            ->orderBy('users.id')
+            ->limit(500)
+            ->get();
     }
 
     private function officeGroup(SecretariatOffice $office): ?Group
