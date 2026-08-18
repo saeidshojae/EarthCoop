@@ -6,6 +6,7 @@ use App\Models\User;
 use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use LogicException;
 
 class SecretariatRecordVersion extends Model
@@ -48,11 +49,6 @@ class SecretariatRecordVersion extends Model
         });
     }
 
-    /**
-     * Internal escape hatch used only by SecretariatVersionService while it
-     * performs an audited/transactional approval. Ordinary code must never
-     * update persisted versions in place.
-     */
     public function performOfficialPromotion(Closure $callback): mixed
     {
         if ($this->is_official) {
@@ -72,6 +68,11 @@ class SecretariatRecordVersion extends Model
     public function record(): BelongsTo
     {
         return $this->belongsTo(SecretariatRecord::class, 'record_id');
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(SecretariatAttachment::class, 'version_id')->orderBy('id');
     }
 
     public function createdBy(): BelongsTo
