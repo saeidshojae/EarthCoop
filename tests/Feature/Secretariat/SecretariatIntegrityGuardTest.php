@@ -49,6 +49,33 @@ class SecretariatIntegrityGuardTest extends TestCase
         }
     }
 
+    public function test_pending_version_cannot_be_overwritten_or_self_promoted(): void
+    {
+        [$actor, $record, $service] = $this->registeredPolicy(true);
+        $pending = $service->createAmendment($record, $actor, ['title' => 'Pending v2'], 'pending');
+
+        try {
+            $pending->forceFill(['title' => 'silently rewritten'])->save();
+            $this->fail('Pending version overwrite was accepted.');
+        } catch (LogicException) {
+            $this->assertSame('Pending v2', $pending->fresh()->title);
+        }
+
+        try {
+            $pending->refresh()->forceFill([
+                'is_official' => true,
+                'approved_by' => $actor->id,
+                'approved_at' => now(),
+            ])->save();
+            $this->fail('Direct official promotion was accepted.');
+        } catch (LogicException) {
+            $this->assertFalse($pending->fresh()->is_official);
+        }
+
+        $this->expectException(LogicException::class);
+        $pending->refresh()->delete();
+    }
+
     public function test_audit_events_cannot_be_updated_or_deleted_through_model(): void
     {
         [, $record] = $this->registeredPolicy();
