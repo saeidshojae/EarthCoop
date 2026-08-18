@@ -16,7 +16,7 @@ class SecretariatIntegrityGuardTest extends TestCase
 
     public function test_formal_record_fields_cannot_be_overwritten_directly(): void
     {
-        [$actor, $record] = $this->registeredPolicy();
+        [, $record] = $this->registeredPolicy();
 
         $this->expectException(LogicException::class);
         $record->forceFill(['title' => 'silent overwrite'])->save();
@@ -53,6 +53,25 @@ class SecretariatIntegrityGuardTest extends TestCase
 
         $this->expectException(LogicException::class);
         $service->approveAmendment($v2, $actor);
+    }
+
+    public function test_new_pending_amendment_builds_on_latest_pending_revision(): void
+    {
+        [$actor, $record, $service] = $this->registeredPolicy(true);
+
+        $v2 = $service->createAmendment($record, $actor, [
+            'title' => 'Policy v2',
+            'summary' => 'Summary from v2',
+        ], 'v2');
+
+        $v3 = $service->createAmendment($record, $actor, [
+            'body' => 'Body from v3',
+        ], 'v3');
+
+        $this->assertSame('Policy v2', $v3->title);
+        $this->assertSame('Summary from v2', $v3->summary);
+        $this->assertSame('Body from v3', $v3->body);
+        $this->assertSame($v2->version_number + 1, $v3->version_number);
     }
 
     /**
