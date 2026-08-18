@@ -13,7 +13,7 @@ class SecretariatDispatchService
 {
     private const TYPES = ['referral', 'notification', 'delivery', 'return'];
     private const CHANNELS = ['internal', 'email', 'physical', 'api', 'other'];
-    private const FORMAL_RECORD_STATUSES = ['registered', 'active', 'closed', 'archived'];
+    private const DISPATCHABLE_RECORD_STATUSES = ['registered', 'active', 'closed'];
     private const TRANSITIONS = [
         'pending' => ['sent', 'cancelled'],
         'sent' => ['received', 'failed', 'cancelled'],
@@ -36,9 +36,9 @@ class SecretariatDispatchService
             $lockedRecord = SecretariatRecord::query()->whereKey($record->id)->lockForUpdate()->firstOrFail();
             if (
                 $lockedRecord->registry_number === null
-                || ! in_array($lockedRecord->status, self::FORMAL_RECORD_STATUSES, true)
+                || ! in_array($lockedRecord->status, self::DISPATCHABLE_RECORD_STATUSES, true)
             ) {
-                throw ValidationException::withMessages(['record' => 'Only a formally registered Secretariat record can be dispatched.']);
+                throw ValidationException::withMessages(['record' => 'Only a registered, active, or closed Secretariat record can enter a new dispatch trail.']);
             }
 
             $type = (string) ($attributes['dispatch_type'] ?? '');
