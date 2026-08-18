@@ -20,8 +20,8 @@ class SecretariatParty extends Model
     {
         $assertMutable = static function (self $party): void {
             $record = $party->record()->first();
-            if ($record !== null && ! in_array($record->status, ['draft', 'pending_approval', 'cancelled'], true)) {
-                throw new LogicException('Parties of a formal Secretariat record are immutable; create an amendment or a new record instead.');
+            if ($record !== null && ! in_array($record->status, ['draft', 'cancelled'], true)) {
+                throw new LogicException('Submitted or formal Secretariat party snapshots are immutable; return the record to draft or create an amendment/new record instead.');
             }
         };
 
