@@ -5,6 +5,7 @@ namespace App\Modules\Secretariat\Services;
 use App\Models\User;
 use App\Modules\Secretariat\Models\SecretariatOffice;
 use App\Modules\Secretariat\Models\SecretariatRecord;
+use App\Modules\Secretariat\Models\SecretariatRecordVersion;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use LogicException;
@@ -103,7 +104,9 @@ class SecretariatRecordService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($locked->registry_number !== null && $locked->status === 'registered') {
+            // Once a number has been allocated, registration is permanently
+            // idempotent even if the record later moved to active/closed/etc.
+            if ($locked->registry_number !== null) {
                 return $locked;
             }
 
@@ -145,15 +148,34 @@ class SecretariatRecordService
         });
     }
 
-    public function createAmendment(SecretariatRecord $record, User $actor, array $content, string $reason): SecretariatRecord
+    public function createAmendment(SecretariatRecord $record, User $actor, array $content, string $reason): SecretariatRecordVersion
     {
         if (! in_array($record->status, ['registered', 'active', 'closed'], true)) {
             throw new LogicException('Amendments require a registered Secretariat record.');
         }
 
-        $this->versions->append($record, $actor, $content, $reason);
+        return $this->versions->append($record, $actor, $content, $reason, true, false);
+    }
 
-        return $record->refresh();
+    public function approveAmendment(SecretariatRecordVersion $version, User $actor): SecretariatRecord
+    {
+        $record = $version->record;
+        if (! in_array($record->status, ['registered', 'active', 'closed'], true)) {
+            throw new LogicException('Only a formal Secretariat record can receive an approved amendment.');
+        }
+        if ($version->is_official) {
+            return $record->refresh();
+        }
+
+        $approved = $this->versions->markOfficial($version, $actor, true);
+        $record = $record->refresh();
+
+        $this->audit->append($record->office, $record, $actor, 'approved', [
+            'version_number' => $approved->version_number,
+            'amendment' => true,
+        ]);
+
+        return $record;
     }
 
     public function transition(SecretariatRecord $record, string $to, User $actor, array $metadata = []): SecretariatRecord
