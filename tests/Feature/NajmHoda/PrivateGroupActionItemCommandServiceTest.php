@@ -60,13 +60,13 @@ class PrivateGroupActionItemCommandServiceTest extends TestCase
         );
 
         $this->assertIsArray($preview);
-        $this->assertSame('awaiting_confirmation', $preview['status']);
+        $this->assertSame('awaiting_confirmation', $preview['action_status']);
         $this->assertStringContainsString('تهیه گزارش جلسه', $preview['message']);
         $this->assertSame(0, NajmHodaGroupActionItem::query()->where('group_id', $group->id)->count());
 
         $confirmed = $service->intercept($manager, $pageContext, 'تأیید', 77);
 
-        $this->assertSame('executed', $confirmed['status']);
+        $this->assertSame('executed', $confirmed['action_status']);
         $item = NajmHodaGroupActionItem::query()->where('group_id', $group->id)->firstOrFail();
         $this->assertSame('تهیه گزارش جلسه', $item->title);
         $this->assertSame('high', $item->priority);
@@ -91,7 +91,7 @@ class PrivateGroupActionItemCommandServiceTest extends TestCase
             88
         );
 
-        $this->assertSame('blocked', $response['status']);
+        $this->assertSame('blocked', $response['action_status']);
         $this->assertSame(0, NajmHodaGroupActionItem::query()->where('group_id', $group->id)->count());
     }
 
@@ -114,7 +114,7 @@ class PrivateGroupActionItemCommandServiceTest extends TestCase
             99
         );
 
-        $this->assertSame('provider_unavailable', $response['status']);
+        $this->assertSame('provider_unavailable', $response['action_status']);
         $this->assertSame(0, NajmHodaGroupActionItem::query()->where('group_id', $group->id)->count());
     }
 
