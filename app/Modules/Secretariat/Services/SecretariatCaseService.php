@@ -20,8 +20,10 @@ class SecretariatCaseService
         'archived' => [],
     ];
 
-    public function __construct(private readonly SecretariatAuditService $audit)
-    {
+    public function __construct(
+        private readonly SecretariatAuditService $audit,
+        private readonly RegistryNumberService $numbers,
+    ) {
     }
 
     /** @param array<string,mixed> $attributes */
@@ -29,17 +31,30 @@ class SecretariatCaseService
     {
         $title = trim((string) ($attributes['title'] ?? ''));
         $confidentiality = (string) ($attributes['confidentiality'] ?? $office->default_confidentiality ?? 'office_members');
+        $requestedNumber = isset($attributes['case_number']) ? trim((string) $attributes['case_number']) : null;
+
         if ($title === '' || mb_strlen($title) > 500) {
             throw ValidationException::withMessages(['title' => 'A Secretariat case requires a title up to 500 characters.']);
         }
         if (! in_array($confidentiality, self::CONFIDENTIALITIES, true)) {
             throw ValidationException::withMessages(['confidentiality' => 'Unsupported case confidentiality.']);
         }
+        if ($requestedNumber !== null && ($requestedNumber === '' || mb_strlen($requestedNumber) > 160)) {
+            throw ValidationException::withMessages(['case_number' => 'Case number must be a non-empty value up to 160 characters.']);
+        }
 
-        return DB::transaction(function () use ($office, $actor, $attributes, $title, $confidentiality) {
+        return DB::transaction(function () use ($office, $actor, $attributes, $title, $confidentiality, $requestedNumber) {
+            /** @var SecretariatOffice $lockedOffice */
             $lockedOffice = SecretariatOffice::query()->whereKey($office->id)->lockForUpdate()->firstOrFail();
-            $next = (int) SecretariatCase::query()->where('office_id', $lockedOffice->id)->max('id') + 1;
-            $caseNumber = $attributes['case_number'] ?? sprintf('%s/CASE/%06d', $lockedOffice->code, $next);
+
+            if ($requestedNumber !== null) {
+                if (SecretariatCase::query()->where('office_id', $lockedOffice->id)->where('case_number', $requestedNumber)->exists()) {
+                    throw ValidationException::withMessages(['case_number' => 'This case number already exists in the Secretariat office.']);
+                }
+                $caseNumber = $requestedNumber;
+            } else {
+                $caseNumber = $this->numbers->allocateFamily($lockedOffice, 'CASE')['number'];
+            }
 
             $case = SecretariatCase::query()->create([
                 'office_id' => $lockedOffice->id,
