@@ -28,12 +28,17 @@ class SecretariatRecord extends Model
         'title',
         'subject',
         'summary',
+        'status',
+        'confidentiality',
+        'current_version_id',
         'source_type',
         'source_id',
         'registered_by',
         'registered_at',
         'approved_by',
         'approved_at',
+        'effective_at',
+        'metadata',
     ];
 
     protected $casts = [
@@ -69,6 +74,13 @@ class SecretariatRecord extends Model
         });
     }
 
+    /**
+     * Internal escape hatch for deterministic Secretariat domain services only.
+     *
+     * Formal records are otherwise immutable through ordinary Eloquent updates.
+     * Callers using this method are responsible for transaction, lifecycle and
+     * audit invariants; controllers/integrations must not use it directly.
+     */
     public function performFormalMutation(Closure $callback): mixed
     {
         $previous = $this->allowFormalMutation;
