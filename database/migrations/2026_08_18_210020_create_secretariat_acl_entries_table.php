@@ -17,6 +17,8 @@ return new class extends Migration
             $table->foreignId('granted_by')->constrained('users')->restrictOnDelete();
             $table->timestamp('granted_at');
             $table->timestamp('expires_at')->nullable();
+            $table->foreignId('revoked_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamp('revoked_at')->nullable();
             $table->json('metadata')->nullable();
             $table->timestamps();
 
@@ -25,10 +27,10 @@ return new class extends Migration
                 'secretariat_acl_principal_permission_unique'
             );
             $table->index(
-                ['principal_type', 'principal_id', 'permission', 'expires_at'],
+                ['principal_type', 'principal_id', 'permission', 'revoked_at', 'expires_at'],
                 'secretariat_acl_lookup_idx'
             );
-            $table->index(['record_id', 'permission'], 'secretariat_acl_record_permission_idx');
+            $table->index(['record_id', 'permission', 'revoked_at'], 'secretariat_acl_record_permission_idx');
         });
     }
 
