@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Modules\Secretariat\Models\SecretariatOffice;
 use App\Modules\Secretariat\Models\SecretariatRecord;
 use App\Modules\Secretariat\Models\SecretariatRecordVersion;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use LogicException;
@@ -14,6 +15,28 @@ class SecretariatRecordService
 {
     private const DIRECTIONS = ['incoming', 'outgoing', 'internal', 'none'];
     private const CONFIDENTIALITIES = ['public', 'office_members', 'leadership', 'restricted', 'confidential'];
+    private const RECORD_TYPES = [
+        'incoming_letter',
+        'outgoing_letter',
+        'internal_correspondence',
+        'meeting_minute',
+        'resolution',
+        'formal_decision',
+        'contract',
+        'memorandum_of_understanding',
+        'agreement',
+        'policy',
+        'directive',
+        'official_report',
+        'notice',
+        'official_note',
+        'financial_record',
+        'execution_record',
+        'election_record',
+        'case_record',
+        'other',
+    ];
+    private const DESCRIPTOR_SOURCES = ['manual', 'external_document'];
 
     public function __construct(
         private readonly SecretariatVersionService $versions,
@@ -26,8 +49,13 @@ class SecretariatRecordService
     public function createDraft(SecretariatOffice $office, User $actor, array $attributes): SecretariatRecord
     {
         return DB::transaction(function () use ($office, $actor, $attributes) {
+            SecretariatMorphMap::register();
+
             $direction = (string) ($attributes['direction'] ?? 'none');
             $confidentiality = (string) ($attributes['confidentiality'] ?? $office->default_confidentiality);
+            $recordType = (string) ($attributes['record_type'] ?? '');
+            $sourceType = $attributes['source_type'] ?? null;
+            $sourceId = $attributes['source_id'] ?? null;
 
             if (! in_array($direction, self::DIRECTIONS, true)) {
                 throw ValidationException::withMessages(['direction' => 'Unsupported Secretariat direction.']);
@@ -35,24 +63,26 @@ class SecretariatRecordService
             if (! in_array($confidentiality, self::CONFIDENTIALITIES, true)) {
                 throw ValidationException::withMessages(['confidentiality' => 'Unsupported Secretariat confidentiality.']);
             }
+            if (! in_array($recordType, self::RECORD_TYPES, true)) {
+                throw ValidationException::withMessages(['record_type' => 'Unsupported Secretariat record type.']);
+            }
             if (trim((string) ($attributes['title'] ?? '')) === '') {
                 throw ValidationException::withMessages(['title' => 'A Secretariat record requires a title.']);
             }
-            if (trim((string) ($attributes['record_type'] ?? '')) === '') {
-                throw ValidationException::withMessages(['record_type' => 'A Secretariat record requires a type.']);
-            }
+
+            $this->validateSource($sourceType, $sourceId);
 
             $record = SecretariatRecord::query()->create([
                 'office_id' => $office->id,
-                'record_type' => $attributes['record_type'],
+                'record_type' => $recordType,
                 'direction' => $direction,
                 'title' => $attributes['title'],
                 'subject' => $attributes['subject'] ?? null,
                 'summary' => $attributes['summary'] ?? null,
                 'status' => 'draft',
                 'confidentiality' => $confidentiality,
-                'source_type' => $attributes['source_type'] ?? null,
-                'source_id' => $attributes['source_id'] ?? null,
+                'source_type' => $sourceType,
+                'source_id' => $sourceId,
                 'metadata' => $attributes['metadata'] ?? null,
             ]);
 
@@ -79,9 +109,15 @@ class SecretariatRecordService
             throw new LogicException('Only draft Secretariat records can be edited directly.');
         }
 
-        $this->versions->append($record, $actor, $content, $reason ?? 'Draft revision');
+        $version = $this->versions->append($record, $actor, $content, $reason ?? 'Draft revision');
+        $record = $record->refresh();
 
-        return $record->refresh();
+        $this->audit->append($record->office, $record, $actor, 'draft_updated', [
+            'version_number' => $version->version_number,
+            'change_reason' => $reason,
+        ]);
+
+        return $record;
     }
 
     public function submitForApproval(SecretariatRecord $record, User $actor): SecretariatRecord
@@ -104,8 +140,6 @@ class SecretariatRecordService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            // Once a number has been allocated, registration is permanently
-            // idempotent even if the record later moved to active/closed/etc.
             if ($locked->registry_number !== null) {
                 return $locked;
             }
@@ -190,5 +224,31 @@ class SecretariatRecordService
         }
 
         $record->delete();
+    }
+
+    private function validateSource(mixed $sourceType, mixed $sourceId): void
+    {
+        if ($sourceType === null) {
+            if ($sourceId !== null) {
+                throw ValidationException::withMessages(['source_id' => 'A source id cannot exist without a source type.']);
+            }
+            return;
+        }
+
+        $sourceType = (string) $sourceType;
+        if (in_array($sourceType, self::DESCRIPTOR_SOURCES, true)) {
+            if ($sourceId !== null) {
+                throw ValidationException::withMessages(['source_id' => 'Descriptor sources do not use polymorphic ids.']);
+            }
+            return;
+        }
+
+        $class = Relation::getMorphedModel($sourceType);
+        if ($class === null) {
+            throw ValidationException::withMessages(['source_type' => 'Unknown or unmapped Secretariat source token.']);
+        }
+        if ($sourceId === null || ! $class::query()->whereKey($sourceId)->exists()) {
+            throw ValidationException::withMessages(['source_id' => 'Secretariat source does not exist.']);
+        }
     }
 }
