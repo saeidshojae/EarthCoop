@@ -5,14 +5,14 @@ namespace App\Modules\Secretariat\Services;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
-use Illuminate\Support\Facades\DB;
 
 class SecretariatRecordAccessQuery
 {
     /**
-     * Apply a conservative DB-level authorization prefilter before records enter
-     * deterministic or semantic retrieval. RecordPolicy remains the final source
-     * of truth and must still be rechecked before a result leaves the service.
+     * Apply a DB-level authorization prefilter before records enter deterministic
+     * or semantic retrieval. This query deliberately mirrors the current
+     * SecretariatRecordPolicy view semantics; RecordPolicy is still rechecked as
+     * defense in depth before a result leaves the retrieval boundary.
      */
     public function apply(Builder $query, User $actor): Builder
     {
@@ -27,12 +27,12 @@ class SecretariatRecordAccessQuery
                 ->where(function (Builder $ordinary) use ($userId) {
                     $ordinary
                         ->whereIn('secretariat_records.confidentiality', ['public', 'office_members'])
-                        ->whereExists(fn (QueryBuilder $office) => $this->accessibleOfficeExists($office, $userId, false));
+                        ->whereExists(fn (QueryBuilder $office) => $this->groupOfficeMembershipExists($office, $userId, false));
                 })
                 ->orWhere(function (Builder $leadership) use ($userId) {
                     $leadership
                         ->where('secretariat_records.confidentiality', 'leadership')
-                        ->whereExists(fn (QueryBuilder $office) => $this->accessibleOfficeExists($office, $userId, true));
+                        ->whereExists(fn (QueryBuilder $office) => $this->groupOfficeMembershipExists($office, $userId, true));
                 })
                 ->orWhere(function (Builder $sensitive) use ($userId) {
                     $sensitive
@@ -73,39 +73,24 @@ class SecretariatRecordAccessQuery
         });
     }
 
-    private function accessibleOfficeExists(QueryBuilder $office, int $userId, bool $leadership): void
+    private function groupOfficeMembershipExists(QueryBuilder $office, int $userId, bool $leadership): void
     {
         $office->selectRaw('1')
             ->from('secretariat_offices as so_access')
             ->whereColumn('so_access.id', 'secretariat_records.office_id')
             ->where('so_access.status', 'active')
-            ->where(function (QueryBuilder $scope) use ($userId, $leadership) {
-                $scope
-                    ->where(function (QueryBuilder $groupOffice) use ($userId, $leadership) {
-                        $groupOffice->where('so_access.scope_type', 'group')
-                            ->whereExists(function (QueryBuilder $membership) use ($userId, $leadership) {
-                                $membership->selectRaw('1')
-                                    ->from('group_user as gu_access')
-                                    ->whereColumn('gu_access.group_id', 'so_access.scope_id')
-                                    ->where('gu_access.user_id', $userId)
-                                    ->where('gu_access.status', 1)
-                                    ->when($leadership, fn (QueryBuilder $role) => $role->whereIn('gu_access.role', [2, 3]))
-                                    ->where(function (QueryBuilder $validity) {
-                                        $validity->whereNull('gu_access.expired')
-                                            ->orWhere('gu_access.expired', 0)
-                                            ->orWhere('gu_access.expired', '>', now());
-                                    });
-                            });
-                    })
-                    ->orWhere(function (QueryBuilder $projectOffice) use ($userId) {
-                        $projectOffice->where('so_access.scope_type', 'najm_bahar_project')
-                            ->whereExists(function (QueryBuilder $project) use ($userId) {
-                                $project->selectRaw('1')
-                                    ->from('najm_bahar_projects as nbp_access')
-                                    ->whereColumn('nbp_access.id', 'so_access.scope_id')
-                                    ->where('nbp_access.owner_type', User::class)
-                                    ->where('nbp_access.owner_id', $userId);
-                            });
+            ->where('so_access.scope_type', 'group')
+            ->whereExists(function (QueryBuilder $membership) use ($userId, $leadership) {
+                $membership->selectRaw('1')
+                    ->from('group_user as gu_access')
+                    ->whereColumn('gu_access.group_id', 'so_access.scope_id')
+                    ->where('gu_access.user_id', $userId)
+                    ->where('gu_access.status', 1)
+                    ->when($leadership, fn (QueryBuilder $role) => $role->whereIn('gu_access.role', [2, 3]))
+                    ->where(function (QueryBuilder $validity) {
+                        $validity->whereNull('gu_access.expired')
+                            ->orWhere('gu_access.expired', 0)
+                            ->orWhere('gu_access.expired', '>', now());
                     });
             });
     }
