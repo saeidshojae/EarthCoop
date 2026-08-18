@@ -78,18 +78,38 @@ class SecretariatCaseService
 
     public function addRecord(SecretariatCase $case, SecretariatRecord $record, User $actor, string $role = 'related'): SecretariatCase
     {
-        return DB::transaction(function () use ($case, $record, $actor, $role) {
+        return $this->attachRecord($case, $record, $actor, $role, false);
+    }
+
+    public function addCrossOfficeReference(SecretariatCase $case, SecretariatRecord $record, User $actor, string $role = 'related'): SecretariatCase
+    {
+        return $this->attachRecord($case, $record, $actor, $role, true);
+    }
+
+    private function attachRecord(
+        SecretariatCase $case,
+        SecretariatRecord $record,
+        User $actor,
+        string $role,
+        bool $crossOffice,
+    ): SecretariatCase {
+        return DB::transaction(function () use ($case, $record, $actor, $role, $crossOffice) {
             $lockedCase = SecretariatCase::query()->with('office')->whereKey($case->id)->lockForUpdate()->firstOrFail();
-            $lockedRecord = SecretariatRecord::query()->whereKey($record->id)->lockForUpdate()->firstOrFail();
+            $lockedRecord = SecretariatRecord::query()->with('office')->whereKey($record->id)->lockForUpdate()->firstOrFail();
 
             if ($lockedCase->status === 'archived') {
                 throw ValidationException::withMessages(['case' => 'Archived Secretariat cases cannot receive new records.']);
             }
-            if ((int) $lockedCase->office_id !== (int) $lockedRecord->office_id) {
-                throw ValidationException::withMessages(['record' => 'S5 starts with same-office case membership; cross-office references require explicit routing policy.']);
-            }
             if ($lockedRecord->registry_number === null) {
                 throw ValidationException::withMessages(['record' => 'Only formally registered Secretariat records can enter a case.']);
+            }
+
+            $sameOffice = (int) $lockedCase->office_id === (int) $lockedRecord->office_id;
+            if ($crossOffice && $sameOffice) {
+                throw ValidationException::withMessages(['record' => 'Use ordinary case membership for a record from the same office.']);
+            }
+            if (! $crossOffice && ! $sameOffice) {
+                throw ValidationException::withMessages(['record' => 'Cross-office records require the explicit reference operation.']);
             }
 
             $existing = DB::table('secretariat_case_records')
@@ -101,20 +121,41 @@ class SecretariatCaseService
                 return $lockedCase->load('records');
             }
 
+            $linkType = $crossOffice ? 'cross_office_reference' : 'local_membership';
             DB::table('secretariat_case_records')->insert([
                 'case_id' => $lockedCase->id,
                 'record_id' => $lockedRecord->id,
+                'link_type' => $linkType,
+                'source_office_id' => $lockedRecord->office_id,
                 'role' => $role,
                 'added_by' => $actor->id,
                 'added_at' => now(),
+                'metadata' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
 
-            $this->audit->append($lockedCase->office, $lockedRecord, $actor, 'case_record_added', [
-                'case_id' => $lockedCase->id,
-                'role' => $role,
-            ]);
+            if ($crossOffice) {
+                // Destination audit does not pretend that the foreign record belongs
+                // to the Case office. Source audit separately records the fact that
+                // its official record is referenced by another office.
+                $this->audit->append($lockedCase->office, null, $actor, 'cross_office_case_reference_added', [
+                    'case_id' => $lockedCase->id,
+                    'record_id' => $lockedRecord->id,
+                    'source_office_id' => $lockedRecord->office_id,
+                    'role' => $role,
+                ]);
+                $this->audit->append($lockedRecord->office, $lockedRecord, $actor, 'record_referenced_by_foreign_case', [
+                    'case_id' => $lockedCase->id,
+                    'destination_office_id' => $lockedCase->office_id,
+                    'role' => $role,
+                ]);
+            } else {
+                $this->audit->append($lockedCase->office, $lockedRecord, $actor, 'case_record_added', [
+                    'case_id' => $lockedCase->id,
+                    'role' => $role,
+                ]);
+            }
 
             return $lockedCase->load('records');
         });
