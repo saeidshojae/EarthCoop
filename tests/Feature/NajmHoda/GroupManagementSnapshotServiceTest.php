@@ -7,6 +7,7 @@ use App\Models\Group;
 use App\Models\GroupSession;
 use App\Models\NajmHodaGroupActionItem;
 use App\Models\NajmHodaGroupMeetingMinute;
+use App\Models\User;
 use App\Services\NajmHoda\NajmHodaGroupManagementSnapshotService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Artisan;
@@ -31,19 +32,23 @@ class GroupManagementSnapshotServiceTest extends TestCase
 
     public function test_snapshot_counts_only_current_group_management_work(): void
     {
+        $actor = User::factory()->create();
+        $sender = User::factory()->create();
+        $receiver = User::factory()->create();
+
         $group = Group::create(['name' => 'Snapshot group ' . uniqid('', true), 'is_open' => 1]);
         $other = Group::create(['name' => 'Other group ' . uniqid('', true), 'is_open' => 1]);
 
         $active = GroupSession::create([
-            'group_id' => $group->id, 'created_by' => null, 'title' => 'نشست فعال',
+            'group_id' => $group->id, 'created_by' => $actor->id, 'title' => 'نشست فعال',
             'status' => 'active', 'starts_at' => now()->subHour(), 'started_at' => now()->subHour(),
         ]);
         GroupSession::create([
-            'group_id' => $group->id, 'created_by' => null, 'title' => 'نشست آینده',
+            'group_id' => $group->id, 'created_by' => $actor->id, 'title' => 'نشست آینده',
             'status' => 'scheduled', 'starts_at' => now()->addDay(),
         ]);
         GroupSession::create([
-            'group_id' => $other->id, 'created_by' => null, 'title' => 'نشست گروه دیگر',
+            'group_id' => $other->id, 'created_by' => $actor->id, 'title' => 'نشست گروه دیگر',
             'status' => 'scheduled', 'starts_at' => now()->addDay(),
         ]);
 
@@ -66,7 +71,7 @@ class GroupManagementSnapshotServiceTest extends TestCase
 
         if (Schema::hasTable('chat_requests')) {
             ChatRequest::create([
-                'sender_id' => null, 'receiver_id' => null, 'request_to_group' => $group->id,
+                'sender_id' => $sender->id, 'receiver_id' => $receiver->id, 'request_to_group' => $group->id,
                 'status' => 'pending', 'message' => 'درخواست گروه',
             ]);
         }
@@ -89,10 +94,13 @@ class GroupManagementSnapshotServiceTest extends TestCase
 
     public function test_inspector_snapshot_does_not_surface_manager_chat_request_queue(): void
     {
+        $sender = User::factory()->create();
+        $receiver = User::factory()->create();
         $group = Group::create(['name' => 'Inspector snapshot ' . uniqid('', true), 'is_open' => 1]);
+
         if (Schema::hasTable('chat_requests')) {
             ChatRequest::create([
-                'sender_id' => null, 'receiver_id' => null, 'request_to_group' => $group->id,
+                'sender_id' => $sender->id, 'receiver_id' => $receiver->id, 'request_to_group' => $group->id,
                 'status' => 'pending', 'message' => 'مدیر باید رسیدگی کند',
             ]);
         }
