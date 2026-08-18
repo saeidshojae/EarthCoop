@@ -22,6 +22,33 @@ class SecretariatIntegrityGuardTest extends TestCase
         $record->forceFill(['title' => 'silent overwrite'])->save();
     }
 
+    public function test_formal_lifecycle_cannot_bypass_transition_service(): void
+    {
+        [, $record] = $this->registeredPolicy();
+
+        try {
+            $record->forceFill(['status' => 'archived'])->save();
+            $this->fail('Direct lifecycle mutation was accepted.');
+        } catch (LogicException) {
+            $this->assertSame('registered', $record->fresh()->status);
+        }
+    }
+
+    public function test_formal_current_version_pointer_cannot_be_changed_directly(): void
+    {
+        [$actor, $record, $service] = $this->registeredPolicy(true);
+        $officialVersionId = $record->current_version_id;
+        $pending = $service->createAmendment($record, $actor, ['title' => 'Pending v2'], 'pending');
+
+        try {
+            $record->refresh()->forceFill(['current_version_id' => $pending->id])->save();
+            $this->fail('Direct current-version pointer mutation was accepted.');
+        } catch (LogicException) {
+            $this->assertSame($officialVersionId, $record->fresh()->current_version_id);
+            $this->assertFalse($pending->fresh()->is_official);
+        }
+    }
+
     public function test_audit_events_cannot_be_updated_or_deleted_through_model(): void
     {
         [, $record] = $this->registeredPolicy();
