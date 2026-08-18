@@ -116,6 +116,8 @@ class NajmHodaPageContextResolver
     /**
      * Produce human-readable, server-derived page awareness. The browser never
      * supplies these strings; only sanitized route/module tokens select them.
+     * Secretariat page descriptions intentionally expose no record body/title
+     * metadata; document content remains behind permission-aware retrieval.
      *
      * @return array{label:string,kind:string,capabilities:array<int,string>}
      */
@@ -132,6 +134,12 @@ class NajmHodaPageContextResolver
             'najm-bahar.projects.create' => ['ثبت پروژه جدید در نجم بهار', 'najm_bahar_project_create', ['create_project']],
             'najm-bahar.investments.index' => ['فرصت‌های سرمایه‌گذاری نجم بهار', 'najm_bahar_investments', ['browse_investments']],
             'najm-bahar.investments.my-investments' => ['سرمایه‌گذاری‌های من در نجم بهار', 'najm_bahar_my_investments', ['review_own_investments']],
+            'secretariat.directory' => ['فهرست دبیرخانه‌ها', 'secretariat_directory', ['browse_secretariat_offices', 'search_secretariat_records']],
+            'secretariat.index' => ['دفتر دبیرخانه', 'secretariat_office', ['browse_secretariat_records', 'search_secretariat_records']],
+            'secretariat.records.create' => ['ثبت پیش‌نویس سند دبیرخانه', 'secretariat_record_create', ['prepare_secretariat_record']],
+            'secretariat.cases.index' => ['پرونده‌های دبیرخانه', 'secretariat_cases', ['browse_secretariat_cases']],
+            'secretariat.cases.create' => ['ایجاد پرونده دبیرخانه', 'secretariat_case_create', ['prepare_secretariat_case']],
+            'secretariat.correspondence.create' => ['ثبت مکاتبه دبیرخانه', 'secretariat_correspondence_create', ['prepare_secretariat_correspondence']],
         ];
 
         if ($route !== '' && isset($exact[$route])) {
@@ -146,6 +154,10 @@ class NajmHodaPageContextResolver
             'najm-bahar.projects.show' => ['جزئیات پروژه نجم بهار', 'najm_bahar_project', ['view_project']],
             'najm-bahar.projects.edit' => ['ویرایش پروژه نجم بهار', 'najm_bahar_project_edit', ['edit_project']],
             'najm-bahar.investments.show' => ['جزئیات فرصت سرمایه‌گذاری نجم بهار', 'najm_bahar_investment', ['view_investment', 'invest']],
+            'secretariat.cases.show' => ['پرونده دبیرخانه', 'secretariat_case', ['view_secretariat_case', 'review_case_records']],
+            'secretariat.correspondence.show' => ['مکاتبه سند دبیرخانه', 'secretariat_correspondence', ['view_secretariat_correspondence']],
+            'secretariat.records.show' => ['سند دبیرخانه', 'secretariat_record', ['view_secretariat_record', 'review_record_context']],
+            'secretariat.acl.index' => ['دسترسی‌های سند دبیرخانه', 'secretariat_record_access', ['review_secretariat_access']],
             'admin.najm-hoda.' => ['پنل مدیریت نجم هدا', 'najm_hoda_admin', ['inspect_najm_hoda', 'manage_najm_hoda']],
             'admin.najm-bahar.' => ['پنل مدیریت نجم بهار', 'najm_bahar_admin', ['review_projects', 'manage_najm_bahar']],
         ];
@@ -161,6 +173,14 @@ class NajmHodaPageContextResolver
                 'label' => 'بخش گروه‌های ارثکوپ',
                 'kind' => 'groups',
                 'capabilities' => ['browse_group', 'participate_in_group'],
+            ];
+        }
+
+        if (in_array($module, ['secretariat', 'registry'], true)) {
+            return [
+                'label' => 'بخش دبیرخانه ارثکوپ',
+                'kind' => 'secretariat',
+                'capabilities' => ['browse_secretariat_offices', 'search_secretariat_records'],
             ];
         }
 
