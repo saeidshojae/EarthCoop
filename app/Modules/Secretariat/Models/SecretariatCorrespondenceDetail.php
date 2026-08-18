@@ -21,8 +21,8 @@ class SecretariatCorrespondenceDetail extends Model
     {
         $assertMutable = static function (self $detail): void {
             $record = $detail->record()->first();
-            if ($record !== null && ! in_array($record->status, ['draft', 'pending_approval', 'cancelled'], true)) {
-                throw new LogicException('Correspondence details of a formal Secretariat record are immutable.');
+            if ($record !== null && ! in_array($record->status, ['draft', 'cancelled'], true)) {
+                throw new LogicException('Submitted or formal correspondence details are immutable; return the record to draft or create an amendment/new record instead.');
             }
         };
 
