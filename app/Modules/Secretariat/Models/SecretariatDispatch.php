@@ -16,6 +16,7 @@ class SecretariatDispatch extends Model
 
     protected $casts = [
         'metadata' => 'array',
+        'expects_response' => 'boolean',
         'due_at' => 'datetime',
         'follow_up_at' => 'datetime',
         'dispatched_at' => 'datetime',
