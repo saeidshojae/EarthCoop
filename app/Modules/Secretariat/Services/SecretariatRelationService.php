@@ -49,10 +49,27 @@ class SecretariatRelationService
         }
 
         return DB::transaction(function () use ($source, $target, $type, $actor, $metadata) {
+            // Lock both records in deterministic primary-key order. Logical
+            // relation direction remains source→target, but A→B and B→A cannot
+            // deadlock by acquiring the same two record locks in reverse order.
+            $ids = [(int) $source->id, (int) $target->id];
+            sort($ids, SORT_NUMERIC);
+
+            $lockedRecords = SecretariatRecord::query()
+                ->whereIn('id', $ids)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
             /** @var SecretariatRecord $lockedSource */
-            $lockedSource = SecretariatRecord::query()->whereKey($source->id)->lockForUpdate()->firstOrFail();
+            $lockedSource = $lockedRecords->get($source->id);
             /** @var SecretariatRecord $lockedTarget */
-            $lockedTarget = SecretariatRecord::query()->whereKey($target->id)->lockForUpdate()->firstOrFail();
+            $lockedTarget = $lockedRecords->get($target->id);
+
+            if ($lockedSource === null || $lockedTarget === null) {
+                throw ValidationException::withMessages(['target_record_id' => 'Secretariat relation records no longer exist.']);
+            }
 
             $existing = SecretariatRelation::query()
                 ->where('source_record_id', $lockedSource->id)
