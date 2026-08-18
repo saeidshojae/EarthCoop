@@ -4,6 +4,7 @@ namespace App\Modules\Secretariat\Services;
 
 use App\Modules\Secretariat\Models\SecretariatOffice;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class SecretariatOfficeService
@@ -23,11 +24,11 @@ class SecretariatOfficeService
         $name = trim((string) ($attributes['name'] ?? ''));
         $numberingPolicy = $attributes['numbering_policy'] ?? null;
 
-        if ($code === '') {
-            throw ValidationException::withMessages(['code' => 'A Secretariat office requires a code.']);
+        if ($code === '' || mb_strlen($code) > 80) {
+            throw ValidationException::withMessages(['code' => 'A Secretariat office requires a code up to 80 characters.']);
         }
-        if ($name === '') {
-            throw ValidationException::withMessages(['name' => 'A Secretariat office requires a name.']);
+        if ($name === '' || mb_strlen($name) > 255) {
+            throw ValidationException::withMessages(['name' => 'A Secretariat office requires a name up to 255 characters.']);
         }
         if (! in_array($type, self::TYPES, true)) {
             throw ValidationException::withMessages(['office_type' => 'Unsupported Secretariat office type.']);
@@ -51,39 +52,63 @@ class SecretariatOfficeService
 
         $this->validateNumberingPolicy($numberingPolicy);
 
+        $scopeClass = null;
         if ($scopeType !== null) {
-            $class = Relation::getMorphedModel((string) $scopeType);
-            if ($class === null) {
+            $scopeClass = Relation::getMorphedModel((string) $scopeType);
+            if ($scopeClass === null) {
                 throw ValidationException::withMessages(['scope_type' => 'Unknown or unmapped Secretariat scope token.']);
             }
-            if (! $class::query()->whereKey($scopeId)->exists()) {
-                throw ValidationException::withMessages(['scope_id' => 'Secretariat office scope does not exist.']);
-            }
         }
 
-        if (in_array($type, ['group', 'project'], true)) {
-            $duplicate = SecretariatOffice::query()
-                ->where('office_type', $type)
-                ->where('scope_type', $scopeType)
-                ->where('scope_id', $scopeId)
-                ->exists();
+        return DB::transaction(function () use (
+            $attributes,
+            $type,
+            $scopeType,
+            $scopeId,
+            $scopeClass,
+            $confidentiality,
+            $code,
+            $name,
+            $numberingPolicy,
+        ) {
+            if ($scopeClass !== null) {
+                $query = $scopeClass::query()->whereKey($scopeId);
 
-            if ($duplicate) {
-                throw ValidationException::withMessages(['scope_id' => 'This scope already has its canonical Secretariat office.']);
+                // Group/project offices are canonical. Lock the source domain row
+                // so two concurrent requests cannot both pass the duplicate check.
+                if (in_array($type, ['group', 'project'], true)) {
+                    $query->lockForUpdate();
+                }
+
+                if ($query->first() === null) {
+                    throw ValidationException::withMessages(['scope_id' => 'Secretariat office scope does not exist.']);
+                }
             }
-        }
 
-        return SecretariatOffice::query()->create([
-            'code' => $code,
-            'name' => $name,
-            'office_type' => $type,
-            'scope_type' => $scopeType,
-            'scope_id' => $scopeId,
-            'status' => $attributes['status'] ?? 'active',
-            'numbering_policy' => $numberingPolicy,
-            'default_confidentiality' => $confidentiality,
-            'metadata' => $attributes['metadata'] ?? null,
-        ]);
+            if (in_array($type, ['group', 'project'], true)) {
+                $duplicate = SecretariatOffice::query()
+                    ->where('office_type', $type)
+                    ->where('scope_type', $scopeType)
+                    ->where('scope_id', $scopeId)
+                    ->exists();
+
+                if ($duplicate) {
+                    throw ValidationException::withMessages(['scope_id' => 'This scope already has its canonical Secretariat office.']);
+                }
+            }
+
+            return SecretariatOffice::query()->create([
+                'code' => $code,
+                'name' => $name,
+                'office_type' => $type,
+                'scope_type' => $scopeType,
+                'scope_id' => $scopeId,
+                'status' => $attributes['status'] ?? 'active',
+                'numbering_policy' => $numberingPolicy,
+                'default_confidentiality' => $confidentiality,
+                'metadata' => $attributes['metadata'] ?? null,
+            ]);
+        });
     }
 
     private function validateNumberingPolicy(mixed $policy): void
