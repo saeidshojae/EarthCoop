@@ -12,6 +12,7 @@ class NajmHodaSecretariatCorrespondenceRouter
 {
     public function __construct(
         private readonly NajmHodaSecretariatReferralAssistant $referrals,
+        private readonly NajmHodaSecretariatWorkQueueAssistant $workQueue,
         private readonly NajmHodaSecretariatDraftReadinessAssistant $readiness,
         private readonly NajmHodaSecretariatExecutionReportAssistant $executionReports,
         private readonly NajmHodaSecretariatGovernanceDraftAssistant $governanceDrafts,
@@ -25,6 +26,11 @@ class NajmHodaSecretariatCorrespondenceRouter
     public function intercept(User $actor, array $pageContext, string $message, ?int $conversationId = null): ?array
     {
         $response = $this->referrals->intercept($actor, $pageContext, $message, $conversationId);
+        if (is_array($response)) {
+            return $response;
+        }
+
+        $response = $this->workQueue->intercept($actor, $pageContext, $message);
         if (is_array($response)) {
             return $response;
         }
