@@ -99,6 +99,13 @@ class SecretariatController extends Controller
 
         $record = $this->records->createDraft($office, $request->user(), $validated);
 
+        // Sensitive records remain explicit-ACL resources. Persist a real grant
+        // for their creator so the post-create redirect never relies on a hidden
+        // policy bypass and the access is visible in the append-only audit trail.
+        if (in_array($record->confidentiality, ['restricted', 'confidential'], true)) {
+            $this->acl->grant($record, 'user', $request->user()->id, $request->user());
+        }
+
         if ($request->hasFile('attachment')) {
             $this->attachments->upload($record, $request->user(), $request->file('attachment'));
         }
