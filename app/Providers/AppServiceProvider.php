@@ -18,6 +18,8 @@ use App\Modules\NajmBahar\Services\SubAccountService;
 use App\Modules\NajmBahar\Services\SafeSubAccountService;
 use App\Modules\NajmBahar\Services\TransactionService;
 use App\Modules\NajmBahar\Services\StrictTransactionService;
+use App\Modules\Secretariat\Contracts\SecretariatKnowledgeRanker;
+use App\Modules\Secretariat\Services\DeterministicSecretariatKnowledgeRanker;
 use App\Observers\NajmBaharTransactionObserver;
 use App\Models\Group;
 use App\Observers\GroupObserver;
@@ -40,6 +42,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(TransactionService::class, StrictTransactionService::class);
         $this->app->bind(UserController::class, SafeUserController::class);
         $this->app->bind(NajmHodaPrivateGroupMeetingCommandService::class, NajmHodaPrivateGroupMeetingDecisionCommandService::class);
+        $this->app->bind(SecretariatKnowledgeRanker::class, DeterministicSecretariatKnowledgeRanker::class);
     }
 
     public function boot()
