@@ -1,0 +1,45 @@
+<?php
+
+use App\Http\Middleware\Authenticate;
+use App\Modules\Secretariat\Controllers\SecretariatAccessController;
+use App\Modules\Secretariat\Controllers\SecretariatController;
+use App\Modules\Secretariat\Controllers\SecretariatDirectoryController;
+use Illuminate\Support\Facades\Route;
+
+Route::middleware(Authenticate::class)->group(function () {
+    Route::get('/secretariat', [SecretariatDirectoryController::class, 'index'])
+        ->name('secretariat.directory');
+
+    Route::prefix('secretariat/offices/{office}')
+        ->name('secretariat.')
+        ->group(function () {
+            Route::get('/', [SecretariatController::class, 'index'])->name('index');
+            Route::get('/records/create', [SecretariatController::class, 'create'])->name('records.create');
+            Route::post('/records', [SecretariatController::class, 'store'])
+                ->middleware('throttle:10,1')
+                ->name('records.store');
+            Route::get('/records/{record}', [SecretariatController::class, 'show'])->name('records.show');
+            Route::post('/records/{record}/submit', [SecretariatController::class, 'submit'])
+                ->middleware('throttle:20,1')
+                ->name('records.submit');
+            Route::post('/records/{record}/register', [SecretariatController::class, 'register'])
+                ->middleware('throttle:10,1')
+                ->name('records.register');
+            Route::post('/records/{record}/attachments', [SecretariatController::class, 'upload'])
+                ->middleware('throttle:10,1')
+                ->name('attachments.store');
+            Route::get('/records/{record}/attachments/{attachment}', [SecretariatController::class, 'download'])
+                ->name('attachments.download');
+            Route::post('/records/{record}/relations', [SecretariatController::class, 'addRelation'])
+                ->middleware('throttle:20,1')
+                ->name('relations.store');
+            Route::get('/records/{record}/access', [SecretariatAccessController::class, 'index'])
+                ->name('acl.index');
+            Route::post('/records/{record}/acl', [SecretariatAccessController::class, 'grant'])
+                ->middleware('throttle:20,1')
+                ->name('acl.grant');
+            Route::delete('/records/{record}/acl/{aclEntry}', [SecretariatAccessController::class, 'revoke'])
+                ->middleware('throttle:20,1')
+                ->name('acl.revoke');
+        });
+});
