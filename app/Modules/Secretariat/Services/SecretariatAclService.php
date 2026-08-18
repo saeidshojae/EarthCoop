@@ -83,10 +83,12 @@ class SecretariatAclService
                 return $locked;
             }
 
-            $locked->forceFill([
-                'revoked_by' => $actor->id,
-                'revoked_at' => now(),
-            ])->save();
+            $locked->performRevocation(function (SecretariatAclEntry $target) use ($actor): void {
+                $target->forceFill([
+                    'revoked_by' => $actor->id,
+                    'revoked_at' => now(),
+                ])->save();
+            });
 
             $this->audit->append($locked->record->office, $locked->record, $actor, 'acl_revoked', [
                 'acl_entry_id' => $locked->id,
