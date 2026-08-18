@@ -91,11 +91,13 @@ class SecretariatVersionService
             }
 
             if (! $lockedVersion->is_official) {
-                $lockedVersion->forceFill([
-                    'is_official' => true,
-                    'approved_by' => $actor->id,
-                    'approved_at' => now(),
-                ])->save();
+                $lockedVersion->performOfficialPromotion(function (SecretariatRecordVersion $target) use ($actor): void {
+                    $target->forceFill([
+                        'is_official' => true,
+                        'approved_by' => $actor->id,
+                        'approved_at' => now(),
+                    ])->save();
+                });
             }
 
             if ($makeCurrent) {
