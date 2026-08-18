@@ -39,45 +39,38 @@ class SecretariatRecordPolicy
 
     public function create(User $user, SecretariatRecord $record): bool
     {
-        return $this->canLeadOffice($user, $record);
+        return $this->canPrepareOfficeRecord($user, $record);
     }
 
     public function update(User $user, SecretariatRecord $record): bool
     {
-        return $record->status === 'draft' && $this->canLeadOffice($user, $record);
+        return $record->status === 'draft' && $this->canPrepareOfficeRecord($user, $record);
     }
 
     public function submitForApproval(User $user, SecretariatRecord $record): bool
     {
-        return $record->status === 'draft' && $this->canLeadOffice($user, $record);
+        return $record->status === 'draft' && $this->canPrepareOfficeRecord($user, $record);
     }
 
     public function register(User $user, SecretariatRecord $record): bool
     {
-        if ($record->status !== 'pending_approval') {
-            return false;
-        }
-
-        if ($this->isAdministrator($user)) {
-            return true;
-        }
-
-        $group = $this->groupScope($record);
-        return $group !== null && (int) optional($this->membership($user, $group))->role === 3;
+        return $record->status === 'pending_approval' && $this->canManageOffice($user, $record);
     }
 
     public function transition(User $user, SecretariatRecord $record): bool
     {
-        return $this->canLeadOffice($user, $record);
+        // Inspectors may prepare/review drafts, but formal lifecycle effects
+        // (activate/close/archive/void/supersede) belong to the office manager.
+        return $this->canManageOffice($user, $record);
     }
 
     public function delete(User $user, SecretariatRecord $record): bool
     {
         return in_array($record->status, ['draft', 'cancelled'], true)
-            && $this->canLeadOffice($user, $record);
+            && $this->canPrepareOfficeRecord($user, $record);
     }
 
-    private function canLeadOffice(User $user, SecretariatRecord $record): bool
+    private function canPrepareOfficeRecord(User $user, SecretariatRecord $record): bool
     {
         if ($this->isAdministrator($user)) {
             return true;
@@ -85,6 +78,16 @@ class SecretariatRecordPolicy
 
         $group = $this->groupScope($record);
         return $group !== null && in_array((int) optional($this->membership($user, $group))->role, [2, 3], true);
+    }
+
+    private function canManageOffice(User $user, SecretariatRecord $record): bool
+    {
+        if ($this->isAdministrator($user)) {
+            return true;
+        }
+
+        $group = $this->groupScope($record);
+        return $group !== null && (int) optional($this->membership($user, $group))->role === 3;
     }
 
     private function groupScope(SecretariatRecord $record): ?Group
