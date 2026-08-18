@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Modules\NajmBahar\Models\Project;
 use App\Modules\Secretariat\Models\SecretariatOffice;
 use App\Policies\Concerns\ResolvesGroupMembership;
-use App\Policies\NajmBahar\ProjectPolicy;
 
 class SecretariatOfficePolicy
 {
@@ -25,8 +24,12 @@ class SecretariatOfficePolicy
         }
 
         if ($office->scope_type === 'najm_bahar_project') {
-            $project = $this->projectScope($office);
-            return $project !== null && app(ProjectPolicy::class)->view($user, $project);
+            // Public visibility of the project itself is not Secretariat authority.
+            // Until the Project domain defines explicit project-team roles for the
+            // Registry, only the project owner (or an administrator above) may
+            // enter its office. This prevents an approved public Project from
+            // accidentally exposing its formal records/cases to every user.
+            return $this->isUserProjectOwner($user, $office);
         }
 
         // Central, legal-entity, committee and unknown scopes stay default-deny
