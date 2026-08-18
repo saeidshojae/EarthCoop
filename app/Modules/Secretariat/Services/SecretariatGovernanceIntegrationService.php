@@ -2,6 +2,7 @@
 
 namespace App\Modules\Secretariat\Services;
 
+use App\Models\NajmHodaGroupActionItem;
 use App\Models\NajmHodaGroupMeetingMinute;
 use App\Models\User;
 use App\Modules\Governance\Models\Resolution;
@@ -14,10 +15,10 @@ use LogicException;
 /**
  * S3 adapter boundary between source domains and the Registry.
  *
- * This service never mutates GroupSession, MeetingMinute, Proposal or Resolution
- * business state. It only creates idempotent Secretariat drafts containing an
- * archival snapshot plus stable provenance. Formal registration remains a
- * separate human-authorized S1 workflow.
+ * This service never mutates GroupSession, MeetingMinute, Governance Resolution
+ * or Action Item business state. It only creates idempotent Secretariat drafts
+ * containing an archival snapshot plus stable provenance. Formal registration
+ * remains a separate human-authorized S1 workflow.
  */
 class SecretariatGovernanceIntegrationService
 {
@@ -134,6 +135,100 @@ class SecretariatGovernanceIntegrationService
             ]);
 
             $this->linkDecisionToMinuteIfRequested($record, $meetingMinuteRecord, $actor);
+
+            return $record;
+        }, 5);
+    }
+
+    public function proposeCompletedActionExecutionReport(
+        NajmHodaGroupActionItem $action,
+        SecretariatRecord $officialResolutionRecord,
+        User $actor,
+    ): SecretariatRecord {
+        return DB::transaction(function () use ($action, $officialResolutionRecord, $actor) {
+            /** @var NajmHodaGroupActionItem $locked */
+            $locked = NajmHodaGroupActionItem::query()
+                ->whereKey($action->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($locked->status !== 'done') {
+                throw ValidationException::withMessages([
+                    'action_item' => 'Only a done Action Item can produce a Secretariat execution report draft.',
+                ]);
+            }
+
+            $resolutionRecord = SecretariatRecord::query()
+                ->whereKey($officialResolutionRecord->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (
+                $resolutionRecord->record_type !== 'resolution'
+                || $resolutionRecord->source_type !== 'governance_resolution'
+                || $resolutionRecord->registry_number === null
+                || ! in_array($resolutionRecord->status, ['registered', 'active', 'closed', 'archived'], true)
+            ) {
+                throw ValidationException::withMessages([
+                    'resolution_record' => 'Action execution reporting requires a formally registered Governance resolution record.',
+                ]);
+            }
+
+            /** @var Resolution|null $sourceResolution */
+            $sourceResolution = Resolution::query()->find($resolutionRecord->source_id);
+            if ($sourceResolution === null || (int) $sourceResolution->group_id !== (int) $locked->group_id) {
+                throw ValidationException::withMessages([
+                    'resolution_record' => 'Action Item and Governance resolution must belong to the same group.',
+                ]);
+            }
+
+            $office = $this->groupOffice((int) $locked->group_id);
+            if ((int) $resolutionRecord->office_id !== (int) $office->id) {
+                throw ValidationException::withMessages([
+                    'resolution_record' => 'Execution report and resolution must belong to the same Secretariat office.',
+                ]);
+            }
+
+            $existing = $this->existingSourceRecord($office, 'action_item', (int) $locked->id);
+            if ($existing !== null) {
+                $this->relations->add(
+                    $existing,
+                    $resolutionRecord,
+                    'report_of',
+                    $actor,
+                    ['integration' => 's3_action_execution', 'action_item_id' => (int) $locked->id]
+                );
+                return $existing;
+            }
+
+            $record = $this->records->createDraft($office, $actor, [
+                'record_type' => 'execution_record',
+                'direction' => 'internal',
+                'title' => 'گزارش اجرای: ' . $locked->title,
+                'subject' => $locked->title,
+                'summary' => $locked->details,
+                'body' => $locked->details,
+                'source_type' => 'action_item',
+                'source_id' => $locked->id,
+                'metadata' => [
+                    // The Action Item remains the live owner of status, assignee,
+                    // priority and due date. Registry stores only an archival link.
+                    's3_snapshot' => [
+                        'action_item_id' => (int) $locked->id,
+                        'action_status' => (string) $locked->status,
+                        'resolution_record_id' => (int) $resolutionRecord->id,
+                        'governance_resolution_id' => (int) $resolutionRecord->source_id,
+                    ],
+                ],
+            ]);
+
+            $this->relations->add(
+                $record,
+                $resolutionRecord,
+                'report_of',
+                $actor,
+                ['integration' => 's3_action_execution', 'action_item_id' => (int) $locked->id]
+            );
 
             return $record;
         }, 5);
