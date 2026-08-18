@@ -15,18 +15,44 @@ $app = require dirname(__DIR__, 2) . '/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
 $mode = $argv[1] ?? null;
-$stateDir = dirname(__DIR__, 2) . '/storage/framework/secretariat-concurrency';
+$root = dirname(__DIR__, 2);
+$stateDir = $root . '/storage/framework/secretariat-concurrency';
 $officeFile = $stateDir . '/office-id';
 $barrierFile = $stateDir . '/go';
 
+function failProbe(string $message, int $code): never
+{
+    fwrite(STDERR, $message . PHP_EOL);
+    exit($code);
+}
+
+function writeAtomically(string $path, string $payload): void
+{
+    $dir = dirname($path);
+    $tmp = $path . '.tmp.' . getmypid() . '.' . bin2hex(random_bytes(4));
+    $expected = strlen($payload);
+    $written = file_put_contents($tmp, $payload, LOCK_EX);
+
+    if ($written !== $expected) {
+        @unlink($tmp);
+        failProbe("Atomic write failed for {$path}: expected {$expected} bytes, wrote " . var_export($written, true), 8);
+    }
+
+    if (! rename($tmp, $path)) {
+        @unlink($tmp);
+        failProbe("Atomic publish failed for {$path}.", 9);
+    }
+}
+
 if (! is_dir($stateDir) && ! mkdir($stateDir, 0775, true) && ! is_dir($stateDir)) {
-    fwrite(STDERR, "Unable to create concurrency state directory.\n");
-    exit(2);
+    failProbe('Unable to create concurrency state directory.', 2);
 }
 
 if ($mode === 'setup') {
     foreach (glob($stateDir . '/*') ?: [] as $file) {
-        @unlink($file);
+        if (is_file($file) && ! unlink($file)) {
+            failProbe("Unable to clean stale concurrency file {$file}.", 10);
+        }
     }
 
     $office = app(SecretariatOfficeService::class)->create([
@@ -35,28 +61,26 @@ if ($mode === 'setup') {
         'office_type' => 'central',
     ]);
 
-    file_put_contents($officeFile, (string) $office->id, LOCK_EX);
+    writeAtomically($officeFile, (string) $office->id);
     echo $office->id . PHP_EOL;
     exit(0);
 }
 
 if ($mode === 'release') {
-    file_put_contents($barrierFile, 'go', LOCK_EX);
+    writeAtomically($barrierFile, 'go');
     exit(0);
 }
 
 if ($mode === 'worker') {
     $worker = isset($argv[2]) ? (int) $argv[2] : 0;
     if ($worker < 1 || ! is_file($officeFile)) {
-        fwrite(STDERR, "Worker requires a valid worker number and setup state.\n");
-        exit(2);
+        failProbe('Worker requires a valid worker number and setup state.', 2);
     }
 
     $deadline = microtime(true) + 15;
     while (! is_file($barrierFile)) {
         if (microtime(true) >= $deadline) {
-            fwrite(STDERR, "Worker {$worker} timed out waiting for barrier.\n");
-            exit(3);
+            failProbe("Worker {$worker} timed out waiting for barrier.", 3);
         }
         usleep(10_000);
     }
@@ -69,35 +93,75 @@ if ($mode === 'worker') {
         5
     );
 
-    file_put_contents(
-        $stateDir . '/worker-' . $worker . '.json',
-        json_encode($allocation, JSON_THROW_ON_ERROR),
-        LOCK_EX
-    );
+    $resultPath = $stateDir . '/worker-' . $worker . '.json';
+    $payload = json_encode([
+        ...$allocation,
+        'worker' => $worker,
+        'pid' => getmypid(),
+    ], JSON_THROW_ON_ERROR);
 
-    echo $allocation['number'] . PHP_EOL;
+    writeAtomically($resultPath, $payload);
+
+    if (! is_file($resultPath) || filesize($resultPath) !== strlen($payload)) {
+        failProbe("Worker {$worker} result was not durably published.", 11);
+    }
+
+    echo "worker={$worker} number={$allocation['number']} sequence={$allocation['sequence']}" . PHP_EOL;
     exit(0);
 }
 
 if ($mode === 'verify') {
     if (! is_file($officeFile)) {
-        fwrite(STDERR, "Concurrency setup state is missing.\n");
-        exit(2);
+        failProbe('Concurrency setup state is missing.', 2);
     }
 
     $officeId = (int) trim((string) file_get_contents($officeFile));
-    $files = glob($stateDir . '/worker-*.json') ?: [];
     $expectedWorkers = isset($argv[2]) ? (int) $argv[2] : 0;
+    if ($expectedWorkers < 1) {
+        failProbe('Verify requires a positive worker count.', 2);
+    }
 
-    if (count($files) !== $expectedWorkers) {
-        fwrite(STDERR, sprintf("Expected %d worker results, found %d.\n", $expectedWorkers, count($files)));
-        exit(4);
+    // All worker processes have already been waited on by the workflow. Polling
+    // here is only a bounded durability/visibility guard for runner filesystems.
+    $deadline = microtime(true) + 2.0;
+    do {
+        $missing = [];
+        for ($worker = 1; $worker <= $expectedWorkers; $worker++) {
+            if (! is_file($stateDir . '/worker-' . $worker . '.json')) {
+                $missing[] = $worker;
+            }
+        }
+        if ($missing === []) {
+            break;
+        }
+        usleep(50_000);
+    } while (microtime(true) < $deadline);
+
+    if ($missing !== []) {
+        $present = array_map('basename', glob($stateDir . '/worker-*.json') ?: []);
+        failProbe(
+            'Missing worker result files: ' . implode(',', $missing) . '; present=' . json_encode($present),
+            4
+        );
     }
 
     $sequences = [];
     $numbers = [];
-    foreach ($files as $file) {
-        $allocation = json_decode((string) file_get_contents($file), true, flags: JSON_THROW_ON_ERROR);
+    $seenWorkers = [];
+
+    for ($worker = 1; $worker <= $expectedWorkers; $worker++) {
+        $file = $stateDir . '/worker-' . $worker . '.json';
+        $raw = file_get_contents($file);
+        if ($raw === false || $raw === '') {
+            failProbe("Worker {$worker} result is unreadable or empty.", 12);
+        }
+
+        $allocation = json_decode($raw, true, flags: JSON_THROW_ON_ERROR);
+        if ((int) ($allocation['worker'] ?? 0) !== $worker) {
+            failProbe("Worker result identity mismatch for file {$file}.", 13);
+        }
+
+        $seenWorkers[] = $worker;
         $sequences[] = (int) $allocation['sequence'];
         $numbers[] = (string) $allocation['number'];
     }
@@ -105,14 +169,16 @@ if ($mode === 'verify') {
     sort($sequences, SORT_NUMERIC);
     $expected = range(1, $expectedWorkers);
 
+    if ($seenWorkers !== $expected) {
+        failProbe('Worker identity set mismatch: ' . json_encode($seenWorkers), 14);
+    }
+
     if ($sequences !== $expected) {
-        fwrite(STDERR, 'Allocated sequences are not gap-free and unique: ' . json_encode($sequences) . PHP_EOL);
-        exit(5);
+        failProbe('Allocated sequences are not gap-free and unique: ' . json_encode($sequences), 5);
     }
 
     if (count(array_unique($numbers)) !== $expectedWorkers) {
-        fwrite(STDERR, "Duplicate registry numbers were allocated.\n");
-        exit(6);
+        failProbe('Duplicate registry numbers were allocated.', 6);
     }
 
     $lastValue = (int) SecretariatSequence::query()
@@ -122,8 +188,7 @@ if ($mode === 'verify') {
         ->value('last_value');
 
     if ($lastValue !== $expectedWorkers) {
-        fwrite(STDERR, "Sequence row last_value mismatch: {$lastValue}.\n");
-        exit(7);
+        failProbe("Sequence row last_value mismatch: {$lastValue}.", 7);
     }
 
     echo sprintf(
@@ -135,5 +200,4 @@ if ($mode === 'verify') {
     exit(0);
 }
 
-fwrite(STDERR, "Usage: php tests/Support/SecretariatConcurrencyProbe.php setup|release|worker <n>|verify <count>\n");
-exit(1);
+failProbe('Usage: php tests/Support/SecretariatConcurrencyProbe.php setup|release|worker <n>|verify <count>', 1);
