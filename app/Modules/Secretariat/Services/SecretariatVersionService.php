@@ -112,23 +112,14 @@ class SecretariatVersionService
 
     private function applyVersionSnapshot(SecretariatRecord $record, SecretariatRecordVersion $version): void
     {
-        $mutation = function (SecretariatRecord $target) use ($version): void {
+        $record->performControlledMutation(function (SecretariatRecord $target) use ($version): void {
             $target->forceFill([
                 'title' => $version->title,
                 'subject' => $version->subject,
                 'summary' => $version->summary,
                 'current_version_id' => $version->id,
             ])->save();
-        };
-
-        $isFormal = in_array((string) $record->getOriginal('status'), ['registered', 'active', 'closed', 'archived', 'superseded', 'voided'], true);
-
-        if ($isFormal) {
-            $record->performFormalMutation($mutation);
-            return;
-        }
-
-        $mutation($record);
+        });
     }
 
     private function canonicalPayload(array $snapshot): string
