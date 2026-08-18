@@ -24,6 +24,7 @@ class NajmHodaSecretariatDraftAssistant
     public function __construct(
         private readonly SecretariatRecordService $records,
         private readonly NajmHodaSecretariatDraftRevisionAssistant $revisions,
+        private readonly NajmHodaSecretariatCorrespondenceAssistant $correspondence,
     ) {
     }
 
@@ -52,6 +53,19 @@ class NajmHodaSecretariatDraftAssistant
         $office = SecretariatOffice::query()->find($officeId);
         if (! $office) {
             return null;
+        }
+
+        // Correspondence uses the established S4 aggregate (record + details +
+        // parties) and therefore gets a dedicated guided workflow before the
+        // generic record draft parser. It still only creates Drafts.
+        $correspondenceResponse = $this->correspondence->intercept(
+            $actor,
+            $pageContext,
+            $message,
+            $conversationId
+        );
+        if (is_array($correspondenceResponse)) {
+            return $correspondenceResponse;
         }
 
         $pendingKey = $this->pendingKey($actor->id, $conversationId, $office->id);
