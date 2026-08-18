@@ -26,7 +26,16 @@ class SecretariatVersionService
             /** @var SecretariatRecord $locked */
             $locked = SecretariatRecord::query()->whereKey($record->getKey())->lockForUpdate()->firstOrFail();
 
-            $base = $locked->versions()->orderByDesc('version_number')->first() ?? $locked->currentVersion;
+            // Do not use $locked->versions() here: that relationship intentionally
+            // carries ASC ordering for read/display purposes. Appending a revision
+            // must resolve the latest persisted version with an independent query,
+            // otherwise inherited ordering can make repeated amendments allocate
+            // the same version number.
+            $base = SecretariatRecordVersion::query()
+                ->where('record_id', $locked->id)
+                ->orderByDesc('version_number')
+                ->first() ?? $locked->currentVersion;
+
             $last = (int) ($base?->version_number ?? 0);
             $snapshot = [
                 'title' => (string) ($content['title'] ?? $base?->title ?? $locked->title),
