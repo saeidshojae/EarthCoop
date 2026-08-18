@@ -77,6 +77,32 @@ class SecretariatS2AclTest extends TestCase
         }
     }
 
+    public function test_acl_history_prevents_draft_hard_delete(): void
+    {
+        $manager = User::factory()->create();
+        $reader = User::factory()->create();
+        $office = app(SecretariatOfficeService::class)->create([
+            'code' => 'S2-ACL-DELETE',
+            'name' => 'S2 ACL Delete Office',
+            'office_type' => 'central',
+        ]);
+        $records = app(SecretariatRecordService::class);
+        $record = $records->createDraft($office, $manager, [
+            'record_type' => 'official_note',
+            'title' => 'Draft with access history',
+            'confidentiality' => 'restricted',
+        ]);
+        $entry = app(SecretariatAclService::class)->grant($record, 'user', $reader->id, $manager);
+
+        try {
+            $records->deleteDraft($record);
+            $this->fail('Draft with ACL history was hard-deleted.');
+        } catch (LogicException) {
+            $this->assertDatabaseHas('secretariat_records', ['id' => $record->id]);
+            $this->assertDatabaseHas('secretariat_acl_entries', ['id' => $entry->id]);
+        }
+    }
+
     public function test_confidential_access_can_be_audited_without_exposing_record_to_ungranted_user(): void
     {
         $manager = User::factory()->create();
