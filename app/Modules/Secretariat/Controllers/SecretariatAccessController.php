@@ -17,6 +17,23 @@ class SecretariatAccessController extends Controller
     {
     }
 
+    public function index(SecretariatOffice $office, SecretariatRecord $record)
+    {
+        $this->assertOfficeRecord($office, $record);
+        $this->authorize('manageAcl', $record);
+
+        $entries = $record->aclEntries()
+            ->with(['grantedBy', 'revokedBy'])
+            ->orderByDesc('id')
+            ->get();
+
+        return view('secretariat.access', [
+            'office' => $office,
+            'record' => $record,
+            'entries' => $entries,
+        ]);
+    }
+
     public function grant(Request $request, SecretariatOffice $office, SecretariatRecord $record): RedirectResponse
     {
         $this->assertOfficeRecord($office, $record);
