@@ -33,6 +33,8 @@ Route::middleware(Authenticate::class)->group(function () {
             Route::post('/records/{record}/relations', [SecretariatController::class, 'addRelation'])
                 ->middleware('throttle:20,1')
                 ->name('relations.store');
+            Route::get('/records/{record}/access', [SecretariatAccessController::class, 'index'])
+                ->name('acl.index');
             Route::post('/records/{record}/acl', [SecretariatAccessController::class, 'grant'])
                 ->middleware('throttle:20,1')
                 ->name('acl.grant');
