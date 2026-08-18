@@ -118,8 +118,8 @@ export function createSessionState({ api, lifecycle }) {
             }
         } catch (_) { /* Realtime remains primary; this is only a resilience fallback. */ }
     };
-    // Realtime is primary. One shared, slower poll is enough for resilience and
-    // also feeds the participation badge through group-chat:session-state.
-    lifecycle.interval(reconcile, 30000);
+    // Realtime is primary. Keep one shared 15s fallback poll for compatibility;
+    // participation badges consume the same state event instead of polling again.
+    lifecycle.interval(reconcile, 15000);
     return Object.freeze({ receive, refreshComposer, reconcile });
 }
