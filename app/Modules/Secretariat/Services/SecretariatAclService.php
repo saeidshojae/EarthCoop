@@ -34,33 +34,32 @@ class SecretariatAclService
             /** @var SecretariatRecord $locked */
             $locked = SecretariatRecord::query()->whereKey($record->id)->lockForUpdate()->firstOrFail();
 
-            $entry = SecretariatAclEntry::query()
+            $active = SecretariatAclEntry::query()
                 ->where('record_id', $locked->id)
                 ->where('principal_type', $principalType)
                 ->where('principal_id', $principalId)
                 ->where('permission', $permission)
+                ->whereNull('revoked_at')
+                ->where(function ($query) {
+                    $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
+                ->latest('id')
                 ->first();
 
-            if ($entry === null) {
-                $entry = SecretariatAclEntry::query()->create([
-                    'record_id' => $locked->id,
-                    'principal_type' => $principalType,
-                    'principal_id' => $principalId,
-                    'permission' => $permission,
-                    'granted_by' => $grantor->id,
-                    'granted_at' => now(),
-                    'expires_at' => $expiresAt,
-                    'metadata' => $metadata ?: null,
-                ]);
-            } elseif (! $entry->isActive()) {
-                // Preserve the original grant identity/history. A re-grant is a
-                // new logical grant, so the expired/revoked row is not rewritten.
-                throw ValidationException::withMessages([
-                    'principal_id' => 'A historical ACL grant already exists for this principal. Re-grant requires a future grant-generation model.',
-                ]);
-            } else {
-                return $entry;
+            if ($active !== null) {
+                return $active;
             }
+
+            $entry = SecretariatAclEntry::query()->create([
+                'record_id' => $locked->id,
+                'principal_type' => $principalType,
+                'principal_id' => $principalId,
+                'permission' => $permission,
+                'granted_by' => $grantor->id,
+                'granted_at' => now(),
+                'expires_at' => $expiresAt,
+                'metadata' => $metadata ?: null,
+            ]);
 
             $this->audit->append($locked->office, $locked, $grantor, 'acl_granted', [
                 'acl_entry_id' => $entry->id,
