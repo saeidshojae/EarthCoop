@@ -13,6 +13,8 @@ class SecretariatOfficeService
 
     public function create(array $attributes): SecretariatOffice
     {
+        SecretariatMorphMap::register();
+
         $type = (string) ($attributes['office_type'] ?? '');
         $scopeType = $attributes['scope_type'] ?? null;
         $scopeId = $attributes['scope_id'] ?? null;
