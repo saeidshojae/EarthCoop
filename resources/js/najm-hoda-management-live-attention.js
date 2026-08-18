@@ -37,6 +37,19 @@ function setBadge(node, count) {
     }
 }
 
+function participationCount(panel) {
+    const badge = panel.querySelector('[data-key="participation"] [data-badge]');
+    return number(String(badge?.textContent || '').replace('+', ''));
+}
+
+function refreshHeaderBadge(panel) {
+    const attention = number(panel.dataset.attentionActiveCount);
+    const participation = participationCount(panel);
+    const headerBadge = document.querySelector('#nh-management-header-button .nh-mgmt-header-badge');
+    setBadge(headerBadge, attention + participation);
+    panel.dataset.managementAlertCount = String(attention + participation);
+}
+
 function ensureSection(panel) {
     let section = panel.querySelector('[data-nh-live-attention]');
     if (section) return section;
@@ -86,10 +99,8 @@ function render(panel, attention) {
     const attentionCard = panel.querySelector('[data-key="attention"]');
     setBadge(attentionCard?.querySelector('[data-badge]'), number(stats.active_events));
 
-    const headerBadge = document.querySelector('#nh-management-header-button .nh-mgmt-header-badge');
-    setBadge(headerBadge, number(stats.active_events));
-
     panel.dataset.attentionActiveCount = String(number(stats.active_events));
+    refreshHeaderBadge(panel);
     window.dispatchEvent(new CustomEvent('najm-hoda:attention-updated', { detail: { groupId: Number(window.groupId), attention } }));
 }
 
@@ -121,6 +132,20 @@ async function refresh(panel, force = false) {
     }
 }
 
+function watchParticipationBadge(panel) {
+    const badge = panel.querySelector('[data-key="participation"] [data-badge]');
+    if (!badge || badge.dataset.nhAggregateObserved === '1') return;
+    badge.dataset.nhAggregateObserved = '1';
+    new MutationObserver(() => refreshHeaderBadge(panel)).observe(badge, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style'],
+    });
+    refreshHeaderBadge(panel);
+}
+
 function install() {
     if (!canManage()) return false;
     const panel = document.getElementById(PANEL_ID);
@@ -129,6 +154,7 @@ function install() {
     panel.dataset.liveAttentionInstalled = '1';
     ensureStyles();
     ensureSection(panel);
+    watchParticipationBadge(panel);
     refresh(panel, true);
 
     document.getElementById('nh-management-header-button')?.addEventListener('click', () => {
