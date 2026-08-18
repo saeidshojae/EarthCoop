@@ -29,6 +29,8 @@ use App\Models\FaqQuestion;
 use App\Observers\FaqQuestionObserver;
 use App\Models\StewardKnowledgeFile;
 use App\Observers\StewardKnowledgeFileObserver;
+use App\Services\NajmHoda\NajmHodaPrivateGroupMeetingCommandService;
+use App\Services\NajmHoda\NajmHodaPrivateGroupMeetingDecisionCommandService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -37,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SubAccountService::class, SafeSubAccountService::class);
         $this->app->bind(TransactionService::class, StrictTransactionService::class);
         $this->app->bind(UserController::class, SafeUserController::class);
+        $this->app->bind(NajmHodaPrivateGroupMeetingCommandService::class, NajmHodaPrivateGroupMeetingDecisionCommandService::class);
     }
 
     public function boot()
