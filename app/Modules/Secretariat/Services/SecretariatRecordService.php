@@ -43,6 +43,7 @@ class SecretariatRecordService
         private readonly SecretariatAuditService $audit,
         private readonly SecretariatTransitionService $transitions,
         private readonly RegistryNumberService $numbers,
+        private readonly SecretariatAttachmentService $attachments,
     ) {
     }
 
@@ -221,11 +222,28 @@ class SecretariatRecordService
 
     public function deleteDraft(SecretariatRecord $record): void
     {
-        if (! in_array($record->status, ['draft', 'cancelled'], true)) {
-            throw new LogicException('Formal Secretariat records cannot be hard-deleted.');
-        }
+        DB::transaction(function () use ($record): void {
+            /** @var SecretariatRecord $locked */
+            $locked = SecretariatRecord::query()
+                ->with(['attachments', 'aclEntries'])
+                ->whereKey($record->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $record->delete();
+            if (! in_array($locked->status, ['draft', 'cancelled'], true)) {
+                throw new LogicException('Formal Secretariat records cannot be hard-deleted.');
+            }
+
+            if ($locked->aclEntries->isNotEmpty()) {
+                throw new LogicException('A Secretariat draft with ACL history cannot be hard-deleted; cancel it to preserve access history.');
+            }
+
+            foreach ($locked->attachments as $attachment) {
+                $this->attachments->deleteDraftAttachment($attachment);
+            }
+
+            $locked->delete();
+        });
     }
 
     private function validateSource(mixed $sourceType, mixed $sourceId): void
