@@ -19,15 +19,21 @@ class SecretariatOfficeService
         $scopeType = $attributes['scope_type'] ?? null;
         $scopeId = $attributes['scope_id'] ?? null;
         $confidentiality = (string) ($attributes['default_confidentiality'] ?? 'office_members');
+        $code = trim((string) ($attributes['code'] ?? ''));
+        $name = trim((string) ($attributes['name'] ?? ''));
 
+        if ($code === '') {
+            throw ValidationException::withMessages(['code' => 'A Secretariat office requires a code.']);
+        }
+        if ($name === '') {
+            throw ValidationException::withMessages(['name' => 'A Secretariat office requires a name.']);
+        }
         if (! in_array($type, self::TYPES, true)) {
             throw ValidationException::withMessages(['office_type' => 'Unsupported Secretariat office type.']);
         }
-
         if (! in_array($confidentiality, self::CONFIDENTIALITIES, true)) {
             throw ValidationException::withMessages(['default_confidentiality' => 'Unsupported confidentiality level.']);
         }
-
         if ($type !== 'central' && ($scopeType === null || $scopeId === null)) {
             throw ValidationException::withMessages(['scope_type' => 'A non-central Secretariat office requires a scope.']);
         }
@@ -42,10 +48,28 @@ class SecretariatOfficeService
             }
         }
 
+        if (in_array($type, ['group', 'project'], true)) {
+            $duplicate = SecretariatOffice::query()
+                ->where('office_type', $type)
+                ->where('scope_type', $scopeType)
+                ->where('scope_id', $scopeId)
+                ->exists();
+
+            if ($duplicate) {
+                throw ValidationException::withMessages(['scope_id' => 'This scope already has its canonical Secretariat office.']);
+            }
+        }
+
         return SecretariatOffice::query()->create([
-            ...$attributes,
-            'default_confidentiality' => $confidentiality,
+            'code' => $code,
+            'name' => $name,
+            'office_type' => $type,
+            'scope_type' => $scopeType,
+            'scope_id' => $scopeId,
             'status' => $attributes['status'] ?? 'active',
+            'numbering_policy' => $attributes['numbering_policy'] ?? null,
+            'default_confidentiality' => $confidentiality,
+            'metadata' => $attributes['metadata'] ?? null,
         ]);
     }
 }
