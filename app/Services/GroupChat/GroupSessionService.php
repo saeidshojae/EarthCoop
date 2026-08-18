@@ -5,6 +5,8 @@ namespace App\Services\GroupChat;
 use App\Events\GroupFeedUpdated;
 use App\Models\Group;
 use App\Models\GroupSession;
+use App\Models\GroupSessionParticipationRequest;
+use App\Models\GroupUser;
 use Illuminate\Support\Facades\DB;
 
 class GroupSessionService
@@ -31,14 +33,16 @@ class GroupSessionService
                 $previous->update(['status' => 'ended', 'ended_at' => now(), 'ended_by' => $actorId]);
             }
 
+            // Session participation is intentionally temporary. A grant from a
+            // previous/replaced meeting must never leak into the new meeting.
+            $this->expireParticipationState((int) $session->group_id, $actorId);
+
             $session->update(['status' => 'active', 'started_at' => now()]);
             $session->group()->update(['is_open' => false]);
 
             return [$session->fresh(), $previousActive->pluck('id')->map(fn ($id) => (int) $id)->all()];
         });
 
-        // Starting a replacement meeting must not bypass the rule that every
-        // ended official meeting receives a grounded minutes draft.
         if ($autoEndedIds !== []) {
             $actor = \App\Models\User::query()->find($actorId);
             GroupSession::query()->whereIn('id', $autoEndedIds)->get()->each(function (GroupSession $ended) use ($actor) {
@@ -56,15 +60,18 @@ class GroupSessionService
         $session = DB::transaction(function () use ($group, $actorId) {
             $session = GroupSession::where('group_id', $group->id)->where('status', 'active')->lockForUpdate()->latest('id')->first();
             if ($session) $session->update(['status' => 'ended', 'ended_at' => now(), 'ended_by' => $actorId]);
+
+            // End-of-session is the canonical expiry boundary for hand-raise and
+            // manager-granted participation. Leaders keep access by role, not by
+            // this temporary flag, so all non-leader grants are reset here.
+            $this->expireParticipationState((int) $group->id, $actorId);
+
             $group->update(['is_open' => true]);
             return $session?->fresh();
         });
         if ($session) {
             $this->broadcast($session, 'session_ended', $actorId);
 
-            // Every official session gets a grounded draft automatically. This is
-            // deliberately generated after the canonical session is closed so the
-            // evidence window has a stable started_at/ended_at boundary.
             $actor = \App\Models\User::query()->find($actorId);
             app(\App\Services\NajmHoda\NajmHodaGroupMeetingMinutesService::class)
                 ->generateDraft($session, $actor);
@@ -72,6 +79,25 @@ class GroupSessionService
             $this->dispatch(new GroupFeedUpdated((int) $group->id, 'session_state_changed', ['is_open' => true], $actorId));
         }
         return $session;
+    }
+
+    private function expireParticipationState(int $groupId, int $actorId): void
+    {
+        GroupUser::query()
+            ->where('group_id', $groupId)
+            ->whereNotIn('role', [2, 3])
+            ->where('session_write_allowed', true)
+            ->update(['session_write_allowed' => false, 'updated_at' => now()]);
+
+        GroupSessionParticipationRequest::query()
+            ->where('group_id', $groupId)
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'rejected',
+                'resolved_by' => $actorId ?: null,
+                'resolved_at' => now(),
+                'updated_at' => now(),
+            ]);
     }
 
     public function payload(GroupSession $session): array
