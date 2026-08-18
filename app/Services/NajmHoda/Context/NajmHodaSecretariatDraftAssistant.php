@@ -15,14 +15,16 @@ use Illuminate\Support\Facades\Gate;
  * Drafting is deliberately split into two trust levels:
  *  - preview: pure text, no persistence and no side effect;
  *  - save: the exact preview payload is persisted only after an explicit
- *    confirmation, a fresh policy check and server-side office resolution.
+ *    confirmation, a fresh policy check and server-side resource resolution.
  *
  * This service never submits, registers, dispatches or publishes a record.
  */
 class NajmHodaSecretariatDraftAssistant
 {
-    public function __construct(private readonly SecretariatRecordService $records)
-    {
+    public function __construct(
+        private readonly SecretariatRecordService $records,
+        private readonly NajmHodaSecretariatDraftRevisionAssistant $revisions,
+    ) {
     }
 
     /** @param array<string,mixed> $pageContext */
@@ -30,6 +32,16 @@ class NajmHodaSecretariatDraftAssistant
     {
         if (! $this->isSecretariatPage($pageContext)) {
             return null;
+        }
+
+        // A record page is server-resolved by NajmHodaPageContextResolver. Give
+        // the append-only Draft revision flow first chance before considering a
+        // new Draft creation in the same office.
+        if ((string) ($pageContext['resource_type'] ?? '') === 'secretariat_record') {
+            $revisionResponse = $this->revisions->intercept($actor, $pageContext, $message, $conversationId);
+            if (is_array($revisionResponse)) {
+                return $revisionResponse;
+            }
         }
 
         $officeId = $this->officeId($pageContext);
@@ -111,7 +123,6 @@ class NajmHodaSecretariatDraftAssistant
         ]);
         $probe->setRelation('office', $office);
 
-        // Re-authorize at execution time; preview-time authority is never cached.
         if (! Gate::forUser($actor)->allows('create', $probe)) {
             return $this->response('مجوز ایجاد پیش‌نویس دیگر معتبر نیست؛ هیچ سندی ایجاد نشد.', 'blocked');
         }
