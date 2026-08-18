@@ -5,16 +5,28 @@ namespace App\Modules\Secretariat\Policies;
 use App\Models\Group;
 use App\Models\User;
 use App\Modules\Secretariat\Models\SecretariatRecord;
+use App\Modules\Secretariat\Services\SecretariatAclService;
 use App\Policies\Concerns\ResolvesGroupMembership;
 
 class SecretariatRecordPolicy
 {
     use ResolvesGroupMembership;
 
+    public function __construct(private readonly SecretariatAclService $acl)
+    {
+    }
+
     public function view(User $user, SecretariatRecord $record): bool
     {
         if ($this->isAdministrator($user)) {
             return true;
+        }
+
+        // Sensitive records are explicit-capability resources in S2. An ACL can
+        // intentionally grant a user (or a group containing that user) access
+        // even when the principal is not an ordinary member of the office scope.
+        if (in_array($record->confidentiality, ['restricted', 'confidential'], true)) {
+            return $this->acl->allows($user, $record, 'view');
         }
 
         $group = $this->groupScope($record);
@@ -30,9 +42,6 @@ class SecretariatRecordPolicy
         return match ($record->confidentiality) {
             'public', 'office_members' => true,
             'leadership' => in_array((int) $membership->role, [2, 3], true),
-            // ACL lands in S2. Until then, default-deny sensitive records rather
-            // than accidentally leaking them through an incomplete policy.
-            'restricted', 'confidential' => false,
             default => false,
         };
     }
@@ -61,6 +70,11 @@ class SecretariatRecordPolicy
     {
         // Inspectors may prepare/review drafts, but formal lifecycle effects
         // (activate/close/archive/void/supersede) belong to the office manager.
+        return $this->canManageOffice($user, $record);
+    }
+
+    public function manageAcl(User $user, SecretariatRecord $record): bool
+    {
         return $this->canManageOffice($user, $record);
     }
 
