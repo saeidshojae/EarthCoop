@@ -22,6 +22,7 @@ class AuthServiceProvider extends ServiceProvider
         \App\Modules\NajmBahar\Models\Investment::class => \App\Policies\NajmBahar\InvestmentPolicy::class,
         \App\Modules\Secretariat\Models\SecretariatOffice::class => \App\Modules\Secretariat\Policies\SecretariatOfficePolicy::class,
         \App\Modules\Secretariat\Models\SecretariatRecord::class => \App\Modules\Secretariat\Policies\SecretariatRecordPolicy::class,
+        \App\Modules\Secretariat\Models\SecretariatCase::class => \App\Modules\Secretariat\Policies\SecretariatCasePolicy::class,
     ];
 
     /**
