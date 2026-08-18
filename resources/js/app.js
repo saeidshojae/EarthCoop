@@ -31,7 +31,22 @@ if (appJQuery.fn.select2?.defaults) {
 
 
 // PWA registration and user-visible install prompt.
-if ('serviceWorker' in navigator && window.isSecureContext) {
+// Local development must never be routed through a persisted service worker:
+// it obscures request ownership in DevTools and can amplify/carry stale fetches
+// while debugging the high-frequency group-chat runtime.
+const localDevelopmentHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+if ('serviceWorker' in navigator && localDevelopmentHost) {
+    window.addEventListener('load', async () => {
+        try {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(registrations.map(registration => registration.unregister()));
+            const keys = await caches?.keys?.() || [];
+            await Promise.all(keys.filter(key => key.startsWith('earthcoop-')).map(key => caches.delete(key)));
+        } catch (error) {
+            console.warn('EarthCoop local service worker cleanup failed:', error);
+        }
+    });
+} else if ('serviceWorker' in navigator && window.isSecureContext) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch((error) => {
             console.warn('EarthCoop service worker registration failed:', error);
