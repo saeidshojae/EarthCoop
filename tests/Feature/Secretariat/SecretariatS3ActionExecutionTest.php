@@ -81,6 +81,11 @@ class SecretariatS3ActionExecutionTest extends TestCase
             'details' => 'اقدام مصوب انجام و نتیجه مستندسازی شد.',
             'priority' => 'high',
             'status' => 'done',
+            'meta' => [
+                'origin' => 'najm_hoda_meeting_minutes',
+                'meeting_minute_id' => $minute->id,
+                'group_session_id' => $session->id,
+            ],
         ]);
         $actionBefore = $action->fresh()->getAttributes();
 
@@ -94,6 +99,8 @@ class SecretariatS3ActionExecutionTest extends TestCase
         $this->assertSame($action->id, $report->source_id);
         $this->assertNull($report->registry_number);
         $this->assertSame($actionBefore, $action->fresh()->getAttributes());
+        $this->assertSame($minute->id, (int) data_get($report->metadata, 's3_snapshot.meeting_minute_id'));
+        $this->assertSame($minuteRecord->id, (int) data_get($report->metadata, 's3_snapshot.meeting_minute_record_id'));
 
         $this->assertDatabaseHas('secretariat_relations', [
             'source_record_id' => $resolutionRecord->id,
@@ -169,6 +176,65 @@ class SecretariatS3ActionExecutionTest extends TestCase
         $this->expectException(ValidationException::class);
         app(SecretariatGovernanceIntegrationService::class)
             ->proposeCompletedActionExecutionReport($action, $resolutionDraft, $actor);
+    }
+
+    public function test_done_action_cannot_be_attached_to_unrelated_same_group_resolution(): void
+    {
+        [$actor, $group] = $this->groupContext('S3-PROVENANCE');
+        $records = app(SecretariatRecordService::class);
+        $integration = app(SecretariatGovernanceIntegrationService::class);
+
+        $session = GroupSession::query()->create([
+            'group_id' => $group->id,
+            'created_by' => $actor->id,
+            'title' => 'جلسه مرجع اقدام',
+            'status' => 'ended',
+            'starts_at' => now()->subHours(2),
+            'started_at' => now()->subHours(2),
+            'ended_at' => now()->subHour(),
+        ]);
+        $minute = NajmHodaGroupMeetingMinute::query()->create([
+            'group_session_id' => $session->id,
+            'group_id' => $group->id,
+            'status' => 'approved',
+            'summary' => 'صورتجلسه مرجع اقدام',
+            'approved_by' => $actor->id,
+            'approved_at' => now()->subHour(),
+        ]);
+        $minuteRecord = $integration->proposeApprovedMeetingMinute($minute, $actor);
+        $records->register($records->submitForApproval($minuteRecord, $actor), $actor);
+
+        $unrelatedResolutionRecord = $this->registeredResolution($actor, $group);
+        $action = NajmHodaGroupActionItem::query()->create([
+            'group_id' => $group->id,
+            'title' => 'اقدام انجام‌شده همان جلسه',
+            'priority' => 'medium',
+            'status' => 'done',
+            'meta' => [
+                'origin' => 'najm_hoda_meeting_minutes',
+                'meeting_minute_id' => $minute->id,
+                'group_session_id' => $session->id,
+            ],
+        ]);
+
+        $this->expectException(ValidationException::class);
+        $integration->proposeCompletedActionExecutionReport($action, $unrelatedResolutionRecord, $actor);
+    }
+
+    public function test_done_action_without_meeting_minute_provenance_is_rejected(): void
+    {
+        [$actor, $group] = $this->groupContext('S3-NO-PROVENANCE');
+        $resolutionRecord = $this->registeredResolution($actor, $group);
+        $action = NajmHodaGroupActionItem::query()->create([
+            'group_id' => $group->id,
+            'title' => 'اقدام عمومی بدون منشأ جلسه',
+            'priority' => 'medium',
+            'status' => 'done',
+        ]);
+
+        $this->expectException(ValidationException::class);
+        app(SecretariatGovernanceIntegrationService::class)
+            ->proposeCompletedActionExecutionReport($action, $resolutionRecord, $actor);
     }
 
     private function registeredResolution(User $actor, Group $group)
