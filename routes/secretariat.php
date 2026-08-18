@@ -26,6 +26,9 @@ Route::middleware(Authenticate::class)->group(function () {
             Route::post('/cases/{case}/records', [SecretariatCaseController::class, 'addRecord'])
                 ->middleware('throttle:20,1')
                 ->name('cases.records.store');
+            Route::post('/cases/{case}/references', [SecretariatCaseController::class, 'addCrossOfficeReference'])
+                ->middleware('throttle:20,1')
+                ->name('cases.references.store');
             Route::post('/cases/{case}/transition', [SecretariatCaseController::class, 'transition'])
                 ->middleware('throttle:20,1')
                 ->name('cases.transition');
