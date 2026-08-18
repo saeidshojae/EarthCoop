@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Secretariat;
 
+use App\Models\Group;
 use App\Models\User;
 use App\Modules\Secretariat\Services\SecretariatOfficeService;
 use App\Modules\Secretariat\Services\SecretariatRecordService;
@@ -47,6 +48,29 @@ class SecretariatContractValidationTest extends TestCase
             'title' => 'External descriptor',
             'source_type' => 'external_document',
             'source_id' => 42,
+        ]);
+    }
+
+    public function test_group_scope_has_only_one_canonical_secretariat_office(): void
+    {
+        $group = Group::query()->create(['name' => 'Canonical Office Group', 'group_type' => '0']);
+        $service = app(SecretariatOfficeService::class);
+
+        $service->create([
+            'code' => 'GROUP-CANONICAL-1',
+            'name' => 'Canonical Group Secretariat',
+            'office_type' => 'group',
+            'scope_type' => 'group',
+            'scope_id' => $group->id,
+        ]);
+
+        $this->expectException(ValidationException::class);
+        $service->create([
+            'code' => 'GROUP-CANONICAL-2',
+            'name' => 'Duplicate Group Secretariat',
+            'office_type' => 'group',
+            'scope_type' => 'group',
+            'scope_id' => $group->id,
         ]);
     }
 
