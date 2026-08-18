@@ -4,7 +4,6 @@ namespace Tests\Feature\Secretariat;
 
 use App\Models\Group;
 use App\Models\User;
-use App\Modules\Secretariat\Models\SecretariatCase;
 use App\Modules\Secretariat\Services\SecretariatCaseService;
 use App\Modules\Secretariat\Services\SecretariatOfficeService;
 use App\Modules\Secretariat\Services\SecretariatRecordService;
@@ -27,6 +26,35 @@ class SecretariatS5CaseManagementTest extends TestCase
 
         $this->assertSame($record->id, $case->fresh()->records()->firstOrFail()->id);
         $this->assertDatabaseHas('secretariat_case_records', ['case_id' => $case->id, 'record_id' => $record->id, 'role' => 'evidence']);
+    }
+
+    public function test_case_numbers_use_independent_office_case_sequences_not_database_ids(): void
+    {
+        [$actorA, $officeA] = $this->office('CASE-SEQ-A');
+        [$actorB, $officeB] = $this->office('CASE-SEQ-B');
+        $service = app(SecretariatCaseService::class);
+        $year = (int) now()->year;
+
+        $a1 = $service->create($officeA, $actorA, ['title' => 'A1']);
+        $b1 = $service->create($officeB, $actorB, ['title' => 'B1']);
+        $a2 = $service->create($officeA, $actorA, ['title' => 'A2']);
+
+        $this->assertSame("CASE-SEQ-A/{$year}/CASE/000001", $a1->case_number);
+        $this->assertSame("CASE-SEQ-B/{$year}/CASE/000001", $b1->case_number);
+        $this->assertSame("CASE-SEQ-A/{$year}/CASE/000002", $a2->case_number);
+
+        $this->assertDatabaseHas('secretariat_sequences', [
+            'office_id' => $officeA->id,
+            'calendar_year' => $year,
+            'record_family' => 'CASE',
+            'last_value' => 2,
+        ]);
+        $this->assertDatabaseHas('secretariat_sequences', [
+            'office_id' => $officeB->id,
+            'calendar_year' => $year,
+            'record_family' => 'CASE',
+            'last_value' => 1,
+        ]);
     }
 
     public function test_case_rejects_draft_and_cross_office_records(): void
