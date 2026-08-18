@@ -15,9 +15,9 @@ class SecretariatRecord extends Model
 {
     protected $guarded = [];
 
-    private bool $allowFormalMutation = false;
+    private bool $allowControlledMutation = false;
 
-    private const FORMAL_IMMUTABLE_FIELDS = [
+    private const CONTROLLED_FIELDS = [
         'office_id',
         'registry_number',
         'registry_sequence',
@@ -41,6 +41,15 @@ class SecretariatRecord extends Model
         'metadata',
     ];
 
+    private const FORMAL_STATUSES = [
+        'registered',
+        'active',
+        'closed',
+        'archived',
+        'superseded',
+        'voided',
+    ];
+
     protected $casts = [
         'metadata' => 'array',
         'registered_at' => 'datetime',
@@ -53,18 +62,16 @@ class SecretariatRecord extends Model
         SecretariatMorphMap::register();
 
         static::updating(function (self $record): void {
-            $originalStatus = (string) $record->getOriginal('status');
-            $isFormal = in_array($originalStatus, ['registered', 'active', 'closed', 'archived', 'superseded', 'voided'], true);
-
-            if (! $isFormal || $record->allowFormalMutation) {
-                return;
-            }
-
-            foreach (self::FORMAL_IMMUTABLE_FIELDS as $field) {
-                if ($record->isDirty($field)) {
-                    throw new LogicException("Formal Secretariat field [{$field}] cannot be overwritten directly.");
+            if (! $record->allowControlledMutation) {
+                foreach (self::CONTROLLED_FIELDS as $field) {
+                    if ($record->isDirty($field)) {
+                        throw new LogicException("Secretariat record field [{$field}] must be mutated through a domain service.");
+                    }
                 }
             }
+
+            $record->assertCurrentVersionBelongsToRecord();
+            $record->assertFormalStateIntegrity();
         });
 
         static::deleting(function (self $record): void {
@@ -77,19 +84,59 @@ class SecretariatRecord extends Model
     /**
      * Internal escape hatch for deterministic Secretariat domain services only.
      *
-     * Formal records are otherwise immutable through ordinary Eloquent updates.
-     * Callers using this method are responsible for transaction, lifecycle and
-     * audit invariants; controllers/integrations must not use it directly.
+     * All business-field updates are otherwise rejected by the aggregate. The
+     * callback still passes structural invariants: a current version must belong
+     * to this record, and formal states must have complete registration identity
+     * backed by an official current version.
      */
-    public function performFormalMutation(Closure $callback): mixed
+    public function performControlledMutation(Closure $callback): mixed
     {
-        $previous = $this->allowFormalMutation;
-        $this->allowFormalMutation = true;
+        $previous = $this->allowControlledMutation;
+        $this->allowControlledMutation = true;
 
         try {
             return $callback($this);
         } finally {
-            $this->allowFormalMutation = $previous;
+            $this->allowControlledMutation = $previous;
+        }
+    }
+
+    private function assertCurrentVersionBelongsToRecord(): void
+    {
+        if (! $this->isDirty('current_version_id') || $this->current_version_id === null) {
+            return;
+        }
+
+        $belongs = SecretariatRecordVersion::query()
+            ->whereKey($this->current_version_id)
+            ->where('record_id', $this->id)
+            ->exists();
+
+        if (! $belongs) {
+            throw new LogicException('Current Secretariat version must belong to the same record.');
+        }
+    }
+
+    private function assertFormalStateIntegrity(): void
+    {
+        if (! in_array((string) $this->status, self::FORMAL_STATUSES, true)) {
+            return;
+        }
+
+        foreach (['registry_number', 'registry_sequence', 'registry_year', 'registry_family', 'registered_by', 'registered_at', 'approved_by', 'approved_at', 'current_version_id'] as $field) {
+            if ($this->{$field} === null || $this->{$field} === '') {
+                throw new LogicException("Formal Secretariat record requires [{$field}].");
+            }
+        }
+
+        $officialCurrentVersion = SecretariatRecordVersion::query()
+            ->whereKey($this->current_version_id)
+            ->where('record_id', $this->id)
+            ->where('is_official', true)
+            ->exists();
+
+        if (! $officialCurrentVersion) {
+            throw new LogicException('Formal Secretariat record requires an official current version belonging to the record.');
         }
     }
 
