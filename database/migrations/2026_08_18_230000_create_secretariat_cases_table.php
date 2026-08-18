@@ -31,6 +31,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('case_id')->constrained('secretariat_cases')->restrictOnDelete();
             $table->foreignId('record_id')->constrained('secretariat_records')->restrictOnDelete();
+            $table->enum('link_type', ['local_membership', 'cross_office_reference'])->default('local_membership');
+            $table->foreignId('source_office_id')->constrained('secretariat_offices')->restrictOnDelete();
             $table->string('role', 80)->default('related');
             $table->foreignId('added_by')->constrained('users');
             $table->timestamp('added_at');
@@ -39,6 +41,8 @@ return new class extends Migration
 
             $table->unique(['case_id', 'record_id']);
             $table->index(['record_id', 'case_id']);
+            $table->index(['case_id', 'link_type']);
+            $table->index(['source_office_id', 'link_type']);
         });
     }
 
