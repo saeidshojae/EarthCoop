@@ -38,7 +38,7 @@ class SecretariatCaseService
 
         return DB::transaction(function () use ($office, $actor, $attributes, $title, $confidentiality) {
             $lockedOffice = SecretariatOffice::query()->whereKey($office->id)->lockForUpdate()->firstOrFail();
-            $next = (int) SecretariatCase::query()->where('office_id', $lockedOffice->id)->lockForUpdate()->max('id') + 1;
+            $next = (int) SecretariatCase::query()->where('office_id', $lockedOffice->id)->max('id') + 1;
             $caseNumber = $attributes['case_number'] ?? sprintf('%s/CASE/%06d', $lockedOffice->code, $next);
 
             $case = SecretariatCase::query()->create([
@@ -52,7 +52,11 @@ class SecretariatCaseService
                 'metadata' => $attributes['metadata'] ?? null,
             ]);
 
-            $this->audit->append($lockedOffice, null, $actor, 'case_created', ['case_id' => $case->id, 'case_number' => $case->case_number]);
+            $this->audit->append($lockedOffice, null, $actor, 'case_created', [
+                'case_id' => $case->id,
+                'case_number' => $case->case_number,
+            ]);
+
             return $case;
         });
     }
@@ -62,6 +66,7 @@ class SecretariatCaseService
         return DB::transaction(function () use ($case, $record, $actor, $role) {
             $lockedCase = SecretariatCase::query()->with('office')->whereKey($case->id)->lockForUpdate()->firstOrFail();
             $lockedRecord = SecretariatRecord::query()->whereKey($record->id)->lockForUpdate()->firstOrFail();
+
             if ($lockedCase->status === 'archived') {
                 throw ValidationException::withMessages(['case' => 'Archived Secretariat cases cannot receive new records.']);
             }
@@ -72,11 +77,30 @@ class SecretariatCaseService
                 throw ValidationException::withMessages(['record' => 'Only formally registered Secretariat records can enter a case.']);
             }
 
-            DB::table('secretariat_case_records')->updateOrInsert(
-                ['case_id' => $lockedCase->id, 'record_id' => $lockedRecord->id],
-                ['role' => $role, 'added_by' => $actor->id, 'added_at' => now(), 'updated_at' => now(), 'created_at' => now()],
-            );
-            $this->audit->append($lockedCase->office, $lockedRecord, $actor, 'case_record_added', ['case_id' => $lockedCase->id, 'role' => $role]);
+            $existing = DB::table('secretariat_case_records')
+                ->where('case_id', $lockedCase->id)
+                ->where('record_id', $lockedRecord->id)
+                ->first();
+
+            if ($existing !== null) {
+                return $lockedCase->load('records');
+            }
+
+            DB::table('secretariat_case_records')->insert([
+                'case_id' => $lockedCase->id,
+                'record_id' => $lockedRecord->id,
+                'role' => $role,
+                'added_by' => $actor->id,
+                'added_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $this->audit->append($lockedCase->office, $lockedRecord, $actor, 'case_record_added', [
+                'case_id' => $lockedCase->id,
+                'role' => $role,
+            ]);
+
             return $lockedCase->load('records');
         });
     }
@@ -100,7 +124,13 @@ class SecretariatCaseService
                 $target->closed_at = in_array($to, ['closed', 'archived'], true) ? now() : null;
                 $target->save();
             });
-            $this->audit->append($locked->office, null, $actor, 'case_status_changed', ['case_id' => $locked->id, 'from' => $from, 'to' => $to]);
+
+            $this->audit->append($locked->office, null, $actor, 'case_status_changed', [
+                'case_id' => $locked->id,
+                'from' => $from,
+                'to' => $to,
+            ]);
+
             return $locked->refresh();
         });
     }
