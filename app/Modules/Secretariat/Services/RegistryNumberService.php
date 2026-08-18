@@ -26,23 +26,34 @@ class RegistryNumberService
     /**
      * Must be called inside the caller's transaction.
      *
-     * Registry numbering is a serialized namespace operation per office. We lock
-     * the office row first so every allocator for that office acquires locks in
-     * the same order before touching a sequence row. This avoids the InnoDB
-     * insert-or-ignore/SELECT FOR UPDATE deadlock that can otherwise occur when
-     * many requests race to create the first sequence row for the same scope.
-     *
      * @return array{year:int,family:string,sequence:int,number:string}
      */
     public function allocate(SecretariatOffice $office, string $recordType, ?int $year = null): array
     {
+        return $this->allocateFamily($office, $this->familyFor($recordType), $year);
+    }
+
+    /**
+     * Allocate from a stable registry namespace family that is not necessarily a
+     * SecretariatRecord taxonomy type. Cases use the dedicated CASE family while
+     * ordinary records continue to map through familyFor().
+     *
+     * The office row is always locked first. This gives every allocation in the
+     * office the same lock order before a sequence row is created/locked and is
+     * the concurrency invariant already proven by the S1 registry probe.
+     *
+     * @return array{year:int,family:string,sequence:int,number:string}
+     */
+    public function allocateFamily(SecretariatOffice $office, string $family, ?int $year = null): array
+    {
+        $family = strtoupper(trim($family));
+        if ($family === '' || ! preg_match('/^[A-Z0-9_-]{1,32}$/', $family)) {
+            throw new \InvalidArgumentException('Registry sequence family must be a stable token up to 32 characters.');
+        }
+
         $year ??= (int) now()->year;
-        $family = $this->familyFor($recordType);
         $now = now();
 
-        // The office is the namespace root. Lock it before any sequence lookup or
-        // creation so concurrent allocations for the same office cannot acquire
-        // sequence locks in competing orders.
         SecretariatOffice::query()
             ->whereKey($office->getKey())
             ->lockForUpdate()

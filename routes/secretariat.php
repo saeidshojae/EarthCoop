@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\Authenticate;
 use App\Modules\Secretariat\Controllers\SecretariatAccessController;
+use App\Modules\Secretariat\Controllers\SecretariatCaseController;
 use App\Modules\Secretariat\Controllers\SecretariatController;
 use App\Modules\Secretariat\Controllers\SecretariatCorrespondenceController;
 use App\Modules\Secretariat\Controllers\SecretariatDirectoryController;
@@ -15,6 +16,23 @@ Route::middleware(Authenticate::class)->group(function () {
         ->name('secretariat.')
         ->group(function () {
             Route::get('/', [SecretariatController::class, 'index'])->name('index');
+
+            Route::get('/cases', [SecretariatCaseController::class, 'index'])->name('cases.index');
+            Route::get('/cases/create', [SecretariatCaseController::class, 'create'])->name('cases.create');
+            Route::post('/cases', [SecretariatCaseController::class, 'store'])
+                ->middleware('throttle:10,1')
+                ->name('cases.store');
+            Route::get('/cases/{case}', [SecretariatCaseController::class, 'show'])->name('cases.show');
+            Route::post('/cases/{case}/records', [SecretariatCaseController::class, 'addRecord'])
+                ->middleware('throttle:20,1')
+                ->name('cases.records.store');
+            Route::post('/cases/{case}/references', [SecretariatCaseController::class, 'addCrossOfficeReference'])
+                ->middleware('throttle:20,1')
+                ->name('cases.references.store');
+            Route::post('/cases/{case}/transition', [SecretariatCaseController::class, 'transition'])
+                ->middleware('throttle:20,1')
+                ->name('cases.transition');
+
             Route::get('/records/create', [SecretariatController::class, 'create'])->name('records.create');
             Route::post('/records', [SecretariatController::class, 'store'])
                 ->middleware('throttle:10,1')
