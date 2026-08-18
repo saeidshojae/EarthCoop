@@ -5,26 +5,46 @@
 **Base architecture:** `agent/secretariat-master-roadmap` / PR #27
 
 ## وضعیت
-S1 Registry Core در سطح schema + domain services + policies + tests پیاده‌سازی شده و پس از یک دور self-review و hardening عمیق، Gateهای اجرایی اصلی آن روی GitHub Actions با MySQL 8 و PHP 8.2 با موفقیت عبور کرده‌اند.
+S1 Registry Core در سطح schema + domain services + policies + tests پیاده‌سازی شده است. Gateهای syntax، migration/rollback و تست‌های دامنه سبز هستند، اما Gate نهایی concurrency پس از stress test سه‌مرحله‌ای یک deadlock واقعی MySQL را آشکار کرد. الگوریتم شماره‌گذاری برای حذف منشأ این deadlock harden شده و اکنون نیازمند validation مجدد روی head جدید است.
 
-آخرین validation کامل موفقِ کد:
+آخرین validation کامل موفق پیش از stress test چندمرحله‌ای:
 - Workflow: `EarthCoop Secretariat S1 Validation`
 - Run: `#50`
 - GitHub Actions run id: `32166580419`
 - Result: `success`
 
-## Gateهای اثبات‌شده
+آخرین stress validation پیش از اصلاح lock ordering:
+- Run: `#56`
+- GitHub Actions run id: `32167195223`
+- PHP syntax: **PASS**
+- `migrate:fresh`: **PASS**
+- rollback + re-apply شش migration S1: **PASS**
+- PHPUnit کل `tests/Feature/Secretariat`: **PASS** — 19 tests / 66 assertions
+- concurrency round 1/3: **PASS** — 12 process، sequenceهای 1..12، `last_value=12`
+- concurrency round 2/3: **FAIL** — یک worker با MySQL/InnoDB deadlock `SQLSTATE[40001] / 1213` روی `secretariat_sequences ... FOR UPDATE`
+- authorization regressions: به‌علت fail-fast workflow اجرا نشدند.
+
+بنابراین Gate S1 تا سبزشدن validation مجدد روی الگوریتم اصلاح‌شده **باز** است.
+
+## اصلاح جدید concurrency
+الگوی قبلی در `RegistryNumberService` برای scope جدید ابتدا `insertOrIgnore` روی `secretariat_sequences` انجام می‌داد و سپس همان row را `SELECT ... FOR UPDATE` می‌گرفت. در burst واقعی 12 process، InnoDB توانست بین ایجاد/قفل sequence row deadlock بسازد.
+
+شماره ثبت ذاتاً یک namespace ترتیبی در سطح Office است. الگوریتم جدید قبل از هر ایجاد یا lock روی sequence، row مربوط به `secretariat_offices` را با `FOR UPDATE` قفل می‌کند. در نتیجه تمام allocatorهای یک Office lockها را با ترتیب یکسان می‌گیرند:
+
+`Office namespace lock → Sequence create/find → Sequence row lock/update`
+
+این تصمیم عمداً correctness را بر parallelism داخل یک Office مقدم می‌کند. Officeهای مستقل همچنان می‌توانند موازی شماره‌گذاری کنند؛ فقط allocationهای یک Office برای مدت کوتاه serialize می‌شوند.
+
+## Gateهای مورد انتظار برای بستن S1
 1. PHP syntax gate برای فایل‌های S1: **PASS**
 2. `migrate:fresh` روی MySQL 8: **PASS**
 3. rollback شش migration دبیرخانه و re-apply: **PASS**
 4. PHPUnit کل `tests/Feature/Secretariat`: **PASS**
-5. concurrency واقعی شماره ثبت با 12 process مستقل: **PASS**
-   - یک Office
-   - یک calendar year
-   - یک record family
-   - sequenceهای یکتا و gap-free از 1 تا 12
-   - `last_value = 12`
-6. regression authorization گروه‌ها: **PASS**
+5. سه دور مستقل concurrency واقعی، هر دور 12 process: **باید PASS شود**
+   - sequenceهای یکتا و gap-free از 1 تا 12 در هر دور
+   - `last_value = 12` در هر scope
+   - بدون deadlock یا worker loss
+6. regression authorization گروه‌ها: **باید PASS شود**
    - `MessageAuthorizationTest`
    - `GroupRoleManagementTest`
 
@@ -98,4 +118,4 @@ CI یک خطای واقعی در version allocation پیدا کرد: رابطه 
 این موارد طبق Master Roadmap در S2+ اجرا می‌شوند.
 
 ## وضعیت review / merge
-از نظر automated S1 gate و self-review فنی، implementation به Gate S1 رسیده است. PR #28 همچنان Draft نگه داشته می‌شود تا تصمیم merge آن به branch roadmap آگاهانه انجام شود. هیچ merge مستقیمی به `main` انجام نشده است.
+PR #28 همچنان Draft است. Gate نهایی S1 تا سبزشدن stress validation جدید بسته اعلام نمی‌شود. هیچ merge مستقیمی به `main` انجام نشده است.
