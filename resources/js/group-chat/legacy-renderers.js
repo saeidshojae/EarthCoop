@@ -28,6 +28,43 @@ export function installLegacyRenderers({ app, callbacks = {} }) {
         refreshPolls();
         return true;
     };
+    const replacePollHtmlPreservingVotes = (item) => {
+        const id = idOf(item, 'poll');
+        const existing = document.getElementById(`poll-${id}`) || document.querySelector(`[data-poll-id="${id}"]`);
+        if (!existing || !item.html) return false;
+
+        // Editing a poll/election currently changes metadata only (question,
+        // duration/type) and must never reset the ballot. Preserve the
+        // client-specific vote state while replacing the server-rendered card;
+        // this also protects against a later sync snapshot that lacks aggregates.
+        const voteState = new Map();
+        existing.querySelectorAll('.poll-option[data-option-id]').forEach(button => {
+            voteState.set(String(button.dataset.optionId), {
+                stat: button.querySelector('.poll-option__stat')?.textContent || '0%',
+                selected: button.classList.contains('poll-option--selected') || button.classList.contains('voted'),
+            });
+        });
+        const totalText = existing.querySelector('.poll-card__total')?.textContent || null;
+
+        const replaced = replaceHtml(`#poll-${id}, [data-poll-id="${id}"]`, item.html);
+        if (!replaced) return false;
+
+        const next = document.getElementById(`poll-${id}`) || document.querySelector(`[data-poll-id="${id}"]`);
+        if (!next) return true;
+        next.querySelectorAll('.poll-option[data-option-id]').forEach(button => {
+            const previous = voteState.get(String(button.dataset.optionId));
+            if (!previous) return;
+            const stat = button.querySelector('.poll-option__stat');
+            if (stat) stat.textContent = previous.stat;
+            button.classList.toggle('poll-option--selected', previous.selected);
+            button.classList.toggle('voted', previous.selected);
+        });
+        if (totalText) {
+            const total = next.querySelector('.poll-card__total');
+            if (total) total.textContent = totalText;
+        }
+        return true;
+    };
     const fadeRemove = element => {
         if (!element) return false;
         element.style.transition = 'opacity 0.3s ease-out';
@@ -155,7 +192,7 @@ export function installLegacyRenderers({ app, callbacks = {} }) {
         },
         poll: {
             render: item => appendHtml(item.html, idOf(item, 'poll'), 'poll'),
-            update: item => replaceHtml(`#poll-${idOf(item, 'poll')}, [data-poll-id="${idOf(item, 'poll')}"]`, item.html),
+            update: replacePollHtmlPreservingVotes,
             vote: item => app.polls?.updateUI(item) || false,
             delete: item => fadeRemove((document.getElementById(`poll-${idOf(item, 'poll')}`) || document.querySelector(`[data-poll-id="${idOf(item, 'poll')}"]`))?.closest('.poll-wrapper')),
             read: item => updateReceipt('poll', idOf(item, 'poll'), item.read_count || 0),

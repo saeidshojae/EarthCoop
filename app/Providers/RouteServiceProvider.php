@@ -33,8 +33,20 @@ class RouteServiceProvider extends ServiceProvider
                 ->prefix('api')
                 ->group(base_path('routes/api.php'));
 
+            Route::middleware('api')
+                ->prefix('api')
+                ->group(base_path('routes/najm-hoda-n8n.php'));
+
+            Route::middleware(['web', \App\Http\Middleware\AdminMiddleware::class])
+                ->prefix('admin/najm-hoda/n8n')
+                ->name('admin.najm-hoda.n8n.')
+                ->group(base_path('routes/najm-hoda-admin-n8n.php'));
+
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
+
+            Route::middleware('web')
+                ->group(base_path('routes/najm-hoda-group-attention.php'));
                 
             Route::middleware('web')
                 ->group(base_path('routes/najm-bahar.php'));
@@ -42,7 +54,7 @@ class RouteServiceProvider extends ServiceProvider
     }
 
     /**
-     * Configure the rate limiters for the application.
+     * Configure the rate limiters.
      *
      * @return void
      */
@@ -58,6 +70,10 @@ class RouteServiceProvider extends ServiceProvider
 
         RateLimiter::for('najm-hoda-autonomy-write', function (Request $request) {
             return Limit::perMinute(20)->by('nh-write:' . ($request->user()?->id ?: $request->ip()));
+        });
+
+        RateLimiter::for('najm-hoda-n8n-callback', function (Request $request) {
+            return Limit::perMinute(30)->by('nh-n8n-callback:' . $request->ip());
         });
 
         foreach ([

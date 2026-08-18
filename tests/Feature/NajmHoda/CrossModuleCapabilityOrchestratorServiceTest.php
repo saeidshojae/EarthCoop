@@ -28,6 +28,8 @@ class CrossModuleCapabilityOrchestratorServiceTest extends TestCase
             'najm-hoda.enabled' => true,
             'najm-hoda.runtime.autonomy.orchestrator.enabled' => true,
             'najm-hoda.runtime.autonomy.allow_apply_low_risk' => true,
+            'najm-hoda.runtime.autonomy.permissioning_v2.enabled' => true,
+            'najm-hoda.runtime.autonomy.permissioning_v2.enforce_apply_requires_delegation' => true,
             'najm-hoda.runtime.autonomy.executor.enabled' => true,
             'najm-hoda.runtime.autonomy.executor.max_retries' => 1,
             'najm-hoda.runtime.autonomy.executor.idempotency_ttl_minutes' => 30,

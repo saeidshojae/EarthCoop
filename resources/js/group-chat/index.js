@@ -1,3 +1,4 @@
+import './network-arbiter.js';
 import { ApiClient } from './api-client.js';
 import { createStore } from './store.js';
 import { createLifecycle } from './lifecycle.js';
@@ -38,14 +39,18 @@ if (!window.__groupChatPageLifecycleCleanupInstalled) {
     pageLifecycle.on(window, 'pagehide', () => pageLifecycle.destroy(), { once: true });
 }
 
-// Action delegation is safe for both legacy and modular runtimes and must not
-// depend on the migration feature flag. It is the single owner of page actions.
 const pageActions = createActions({ lifecycle: pageLifecycle });
 
 if (window.groupId) {
     const sequenceKey = `group-feed-sequence:${window.groupId}`;
     const lifecycle = pageLifecycle;
-    const api = new ApiClient({ timeoutMs: Number(window.__groupChatRequestTimeoutMs || 15000) });
+    // Polling already owns retries at the scheduling layer. Retrying every HTTP
+    // request internally doubles pressure on constrained/local PHP servers and
+    // can turn a single timeout into a request storm.
+    const api = new ApiClient({
+        timeoutMs: Number(window.__groupChatRequestTimeoutMs || 15000),
+        retries: 0,
+    });
     const store = createStore({
         connection: navigator.onLine === false ? 'offline' : 'connecting',
         unread: {},
@@ -74,7 +79,7 @@ if (window.groupId) {
         },
     };
     app.polls = createPolls({ api, store, feed, actions, lifecycle });
-    app.elections = createElections({ actions, lifecycle, store });
+    app.elections = createElections({ api, feed, actions, lifecycle, store });
     app.tabs = createTabs({ store, lifecycle });
     app.skillLists = createSkillLists({ api, actions, store, lifecycle });
     app.installLegacyRenderers = callbacks => installLegacyRenderers({ app, callbacks });

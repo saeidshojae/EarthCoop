@@ -1,0 +1,13 @@
+name: Archived n8n integration merge runner
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archived:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Najm Hoda n8n integration merge already completed; this workflow is archived."

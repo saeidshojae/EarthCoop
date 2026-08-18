@@ -4,6 +4,8 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Services\NajmHoda\NajmHodaOrchestrator;
+use App\Services\NajmHoda\NajmHodaPrivateGroupActionItemCommandService;
+use App\Services\NajmHoda\Context\NajmHodaPageContextResolver;
 use App\Services\NajmHoda\Runtime\NajmHodaEntryPolicy;
 use App\Services\NajmHoda\Runtime\NajmHodaExecutionService;
 use App\Models\Conversation;
@@ -14,7 +16,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * کنترلر API برای نجم‌هدا
- * 
+ *
  * این کنترلر تمام درخواست‌های مرتبط با چت و تعامل با نجم‌هدا را مدیریت می‌کند
  */
 class NajmHodaController extends Controller
@@ -22,23 +24,23 @@ class NajmHodaController extends Controller
     protected NajmHodaOrchestrator $najmHoda;
     protected NajmHodaEntryPolicy $entryPolicy;
     protected NajmHodaExecutionService $executionService;
-    
+    protected NajmHodaPageContextResolver $pageContextResolver;
+    protected NajmHodaPrivateGroupActionItemCommandService $privateGroupActionItemCommandService;
+
     public function __construct(
         NajmHodaOrchestrator $najmHoda,
         NajmHodaEntryPolicy $entryPolicy,
-        NajmHodaExecutionService $executionService
-    )
-    {
+        NajmHodaExecutionService $executionService,
+        NajmHodaPageContextResolver $pageContextResolver,
+        NajmHodaPrivateGroupActionItemCommandService $privateGroupActionItemCommandService
+    ) {
         $this->najmHoda = $najmHoda;
         $this->entryPolicy = $entryPolicy;
         $this->executionService = $executionService;
+        $this->pageContextResolver = $pageContextResolver;
+        $this->privateGroupActionItemCommandService = $privateGroupActionItemCommandService;
     }
-    
-    /**
-     * پیام خوش‌آمدگویی
-     * 
-     * GET /api/najm-hoda/welcome
-     */
+
     public function welcome()
     {
         if ($policyResponse = $this->denyByEntryPolicy('api.welcome', false)) {
@@ -51,12 +53,7 @@ class NajmHodaController extends Controller
             'stats' => $this->najmHoda->getSystemStats(),
         ]);
     }
-    
-    /**
-     * چت با نجم‌هدا
-     * 
-     * POST /api/najm-hoda/chat
-     */
+
     public function chat(Request $request)
     {
         if ($policyResponse = $this->denyByEntryPolicy('api.chat')) {
@@ -70,48 +67,68 @@ class NajmHodaController extends Controller
             $request->merge(['agent' => 'steward']);
         }
 
-        // اعتبارسنجی
         $validator = Validator::make($request->all(), [
             'message' => 'required|string|max:2000',
             'agent' => 'nullable|in:auto,engineer,pilot,steward,guide',
-            'conversation_id' => 'nullable|exists:conversations,id',
+            // Existence is deliberately checked inside the owner-scoped query below.
+            // This also avoids leaking whether another user's conversation ID exists.
+            'conversation_id' => 'nullable|integer|min:1',
             'context' => 'nullable|array',
         ], [
             'message.required' => 'لطفاً پیام خود را وارد کنید',
             'message.max' => 'پیام نباید بیشتر از 2000 کاراکتر باشد',
             'agent.in' => 'عامل انتخاب شده معتبر نیست',
-            'conversation_id.exists' => 'مکالمه یافت نشد',
+            'conversation_id.integer' => 'شناسه مکالمه معتبر نیست',
         ]);
-        
+
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
                 'errors' => $validator->errors(),
             ], 422);
         }
-        
+
         try {
-            // پیدا کردن یا ایجاد مکالمه
             $conversation = $this->getOrCreateConversation($request);
-            
-            // ذخیره پیام کاربر
             $this->saveUserMessage($conversation, $request->message);
-            
-            // ارسال به نجم‌هدا
+
+            // Browser context is informational only. ExecutionService strips all
+            // action authority fields unless trusted server code supplies authority.
             $context = array_merge($request->context ?? [], [
                 'conversation' => $conversation,
                 'user_id' => auth()->id(),
                 'user_is_admin' => $isAdmin,
             ]);
-            
+
             if ($request->agent && $request->agent !== 'auto') {
                 $context['force_agent'] = $request->agent;
             }
-            $response = $this->executionService->executeChat(
-                $this->najmHoda,
-                (string) $request->message,
-                $context
-            );
+
+            // Action-item extraction/confirmation is a private manager workflow.
+            // Resolve the current page again on the server before giving it a
+            // chance to mutate anything; browser-supplied group/role hints are
+            // never treated as authority.
+            $response = null;
+            if ($user) {
+                $browserPage = is_array(data_get($request->context ?? [], 'page'))
+                    ? (array) data_get($request->context ?? [], 'page')
+                    : [];
+                $pageContext = $this->pageContextResolver->resolve($user, ['page' => $browserPage]);
+                $response = $this->privateGroupActionItemCommandService->intercept(
+                    $user,
+                    $pageContext,
+                    (string) $request->message,
+                    (int) $conversation->id
+                );
+            }
+
+            if (! is_array($response)) {
+                $response = $this->executionService->executeChat(
+                    $this->najmHoda,
+                    (string) $request->message,
+                    $context
+                );
+            }
 
             if ((bool) ($response['success'] ?? false)) {
                 $this->saveAssistantMessage(
@@ -124,7 +141,7 @@ class NajmHodaController extends Controller
             if (!(bool) ($response['success'] ?? false)) {
                 return response()->json([
                     'success' => false,
-                    'message' => (string) ($response['message'] ??  'عملیات با خطا مواجه شد. لطفاً مجدداً تلاش کنید.'),
+                    'message' => (string) ($response['message'] ?? 'عملیات با خطا مواجه شد. لطفاً مجدداً تلاش کنید.'),
                     'agent' => (string) ($response['agent'] ?? 'system'),
                     'request_id' => (string) ($response['request_id'] ?? ''),
                     'response_time_ms' => (int) ($response['response_time_ms'] ?? 0),
@@ -137,20 +154,24 @@ class NajmHodaController extends Controller
                 'message' => (string) ($response['message'] ?? ''),
                 'agent' => (string) ($response['agent'] ?? 'unknown'),
                 'agent_name' => (string) ($response['agent_name'] ?? 'نجم هدا'),
-                'agent_icon' => (string) ($response['agent_icon'] ?? '??'),
+                'agent_icon' => (string) ($response['agent_icon'] ?? '🤖'),
                 'conversation_id' => $conversation->id,
                 'suggestions' => (array) ($response['suggestions'] ?? []),
                 'response_time_ms' => (int) ($response['response_time_ms'] ?? 0),
                 'request_id' => (string) ($response['request_id'] ?? ''),
             ]);
-            
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'مکالمه یافت نشد',
+            ], 404);
         } catch (\Exception $e) {
             Log::error('خطا در چت با نجم‌هدا: ' . $e->getMessage(), [
                 'user_id' => auth()->id(),
                 'message' => $request->message,
                 'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'متأسفانه مشکلی پیش آمد. لطفاً دوباره تلاش کنید.',
@@ -158,12 +179,7 @@ class NajmHodaController extends Controller
             ], 500);
         }
     }
-    
-    /**
-     * دریافت تاریخچه مکالمه
-     * 
-     * GET /api/najm-hoda/conversations/{id}
-     */
+
     public function getConversation($id)
     {
         if ($policyResponse = $this->denyByEntryPolicy('api.conversation.show')) {
@@ -171,18 +187,12 @@ class NajmHodaController extends Controller
         }
 
         try {
-            $conversation = Conversation::with(['messages' => function($query) {
-                $query->orderBy('created_at', 'asc');
-            }])->findOrFail($id);
-            
-            // بررسی دسترسی
-            if ($conversation->user_id && $conversation->user_id !== auth()->id()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'شما دسترسی به این مکالمه ندارید',
-                ], 403);
-            }
-            
+            $conversation = $this->ownedConversationQuery()
+                ->with(['messages' => function ($query) {
+                    $query->orderBy('created_at', 'asc');
+                }])
+                ->findOrFail($id);
+
             return response()->json([
                 'success' => true,
                 'conversation' => [
@@ -190,7 +200,7 @@ class NajmHodaController extends Controller
                     'title' => $conversation->title,
                     'agent_type' => $conversation->agent_type,
                     'created_at' => $conversation->created_at,
-                    'messages' => $conversation->messages->map(function($msg) {
+                    'messages' => $conversation->messages->map(function ($msg) {
                         return [
                             'role' => $msg->role,
                             'content' => $msg->content,
@@ -199,7 +209,6 @@ class NajmHodaController extends Controller
                     }),
                 ],
             ]);
-            
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -207,35 +216,43 @@ class NajmHodaController extends Controller
             ], 404);
         }
     }
-    
-    /**
-     * لیست مکالمات کاربر
-     * 
-     * GET /api/najm-hoda/conversations
-     */
+
     public function listConversations(Request $request)
     {
         if ($policyResponse = $this->denyByEntryPolicy('api.conversation.list')) {
             return $policyResponse;
         }
 
-        $query = Conversation::where('user_id', auth()->id())
+        $validator = Validator::make($request->all(), [
+            'status' => 'nullable|in:active,archived,deleted',
+            'agent' => 'nullable|in:auto,engineer,pilot,steward,guide',
+            'per_page' => 'nullable|integer|min:1|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $query = $this->ownedConversationQuery()
             ->with('lastMessage')
             ->latest();
-        
+
         if ($request->status) {
             $query->where('status', $request->status);
         }
-        
+
         if ($request->agent) {
             $query->where('agent_type', $request->agent);
         }
-        
-        $conversations = $query->paginate($request->per_page ?? 20);
-        
+
+        $conversations = $query->paginate((int) ($request->per_page ?? 20));
+
         return response()->json([
             'success' => true,
-            'conversations' => $conversations->map(function($conv) {
+            'conversations' => $conversations->map(function ($conv) {
                 return [
                     'id' => $conv->id,
                     'title' => $conv->title ?? 'بدون عنوان',
@@ -254,12 +271,7 @@ class NajmHodaController extends Controller
             ],
         ]);
     }
-    
-    /**
-     * حذف مکالمه
-     * 
-     * DELETE /api/najm-hoda/conversations/{id}
-     */
+
     public function deleteConversation($id)
     {
         if ($policyResponse = $this->denyByEntryPolicy('api.conversation.delete')) {
@@ -267,23 +279,13 @@ class NajmHodaController extends Controller
         }
 
         try {
-            $conversation = Conversation::findOrFail($id);
-            
-            // بررسی دسترسی
-            if ($conversation->user_id !== auth()->id()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'شما دسترسی به این مکالمه ندارید',
-                ], 403);
-            }
-            
+            $conversation = $this->ownedConversationQuery()->findOrFail($id);
             $conversation->update(['status' => 'deleted']);
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'مکالمه با موفقیت حذف شد',
             ]);
-            
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -291,12 +293,7 @@ class NajmHodaController extends Controller
             ], 404);
         }
     }
-    
-    /**
-     * آرشیو مکالمه
-     * 
-     * PUT /api/najm-hoda/conversations/{id}/archive
-     */
+
     public function archiveConversation($id)
     {
         if ($policyResponse = $this->denyByEntryPolicy('api.conversation.archive')) {
@@ -304,22 +301,13 @@ class NajmHodaController extends Controller
         }
 
         try {
-            $conversation = Conversation::findOrFail($id);
-            
-            if ($conversation->user_id !== auth()->id()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'شما دسترسی به این مکالمه ندارید',
-                ], 403);
-            }
-            
+            $conversation = $this->ownedConversationQuery()->findOrFail($id);
             $conversation->update(['status' => 'archived']);
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'مکالمه آرشیو شد',
             ]);
-            
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -327,12 +315,7 @@ class NajmHodaController extends Controller
             ], 404);
         }
     }
-    
-    /**
-     * ارسال بازخورد
-     * 
-     * POST /api/najm-hoda/feedback
-     */
+
     public function submitFeedback(Request $request)
     {
         if ($policyResponse = $this->denyByEntryPolicy('api.feedback.submit')) {
@@ -345,14 +328,14 @@ class NajmHodaController extends Controller
             'content' => 'required|string|max:2000',
             'rating' => 'nullable|integer|min:1|max:5',
         ]);
-        
+
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
                 'errors' => $validator->errors(),
             ], 422);
         }
-        
+
         try {
             $feedback = \App\Models\Feedback::create([
                 'user_id' => auth()->id(),
@@ -361,28 +344,22 @@ class NajmHodaController extends Controller
                 'content' => $request->content,
                 'rating' => $request->rating,
             ]);
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'بازخورد شما ثبت شد. متشکریم!',
                 'feedback_id' => $feedback->id,
             ]);
-            
         } catch (\Exception $e) {
             Log::error('خطا در ثبت بازخورد: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'خطا در ثبت بازخورد',
             ], 500);
         }
     }
-    
-    /**
-     * دریافت آمار سیستم (فقط ادمین)
-     * 
-     * GET /api/najm-hoda/stats
-     */
+
     public function getStats()
     {
         if ($policyResponse = $this->denyByEntryPolicy('api.stats', false)) {
@@ -390,7 +367,7 @@ class NajmHodaController extends Controller
         }
 
         $this->authorize('admin');
-        
+
         try {
             $stats = [
                 'total_interactions' => \App\Models\AIInteraction::count(),
@@ -406,12 +383,11 @@ class NajmHodaController extends Controller
                     'guide' => \App\Models\AIInteraction::byAgent('guide')->thisMonth()->count(),
                 ],
             ];
-            
+
             return response()->json([
                 'success' => true,
                 'stats' => $stats,
             ]);
-            
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -419,16 +395,22 @@ class NajmHodaController extends Controller
             ], 500);
         }
     }
-    
+
     /**
-     * پیدا کردن یا ایجاد مکالمه
+     * Owner scoping is applied in SQL, before the conversation is materialized.
+     * Foreign and nonexistent IDs therefore have the same externally visible result.
      */
+    protected function ownedConversationQuery()
+    {
+        return Conversation::query()->where('user_id', auth()->id());
+    }
+
     protected function getOrCreateConversation(Request $request): Conversation
     {
         if ($request->conversation_id) {
-            return Conversation::findOrFail($request->conversation_id);
+            return $this->ownedConversationQuery()->findOrFail((int) $request->conversation_id);
         }
-        
+
         return Conversation::create([
             'user_id' => auth()->id(),
             'title' => $this->generateTitle($request->message),
@@ -436,10 +418,7 @@ class NajmHodaController extends Controller
             'status' => 'active',
         ]);
     }
-    
-    /**
-     * ذخیره پیام کاربر
-     */
+
     protected function saveUserMessage(Conversation $conversation, string $message): ConversationMessage
     {
         return $conversation->messages()->create([
@@ -447,10 +426,7 @@ class NajmHodaController extends Controller
             'content' => $message,
         ]);
     }
-    
-    /**
-     * ذخیره پاسخ دستیار
-     */
+
     protected function saveAssistantMessage(Conversation $conversation, string $message, string $agent): ConversationMessage
     {
         return $conversation->messages()->create([
@@ -462,19 +438,15 @@ class NajmHodaController extends Controller
             ],
         ]);
     }
-    
-    /**
-     * تولید عنوان برای مکالمه
-     */
+
     protected function generateTitle(string $message): string
     {
-        // عنوان را از 50 کاراکتر اول پیام بسازیم
         $title = mb_substr($message, 0, 50);
-        
+
         if (mb_strlen($message) > 50) {
             $title .= '...';
         }
-        
+
         return $title;
     }
 

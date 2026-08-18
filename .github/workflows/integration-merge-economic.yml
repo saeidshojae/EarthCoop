@@ -1,0 +1,13 @@
+name: Archived economic integration merge runner
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archived:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Economic integration merge already completed; this workflow is archived."

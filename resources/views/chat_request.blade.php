@@ -106,13 +106,38 @@
     <!-- دکمه ارسال درخواست چت -->
     @if(auth()->user()->id !== $user->id)
         @php
-            $existingRequest = \App\Models\ChatRequest::where(function($query) use ($user) {
-                $query->where('sender_id', auth()->user()->id)
-                      ->where('receiver_id', $user->id);
-            })->orWhere(function($query) use ($user) {
-                $query->where('sender_id', $user->id)
-                      ->where('receiver_id', auth()->user()->id);
-            })->first();
+            // This partial is rendered once for every manager card. The old code
+            // executed one ChatRequest query per card (90 queries on the measured
+            // group page). Load all requests involving the current user once and
+            // reuse a counterparty map for the rest of this HTTP request.
+            $requestAttributeKey = 'group_chat.chat_request_counterparty_map';
+            $chatRequestCounterpartyMap = request()->attributes->get($requestAttributeKey);
+
+            if (!is_array($chatRequestCounterpartyMap)) {
+                $chatRequestCounterpartyMap = [];
+                $allCurrentUserRequests = \App\Models\ChatRequest::query()
+                    ->where(function ($query) use ($currentUserId) {
+                        $query->where('sender_id', $currentUserId)
+                            ->orWhere('receiver_id', $currentUserId);
+                    })
+                    ->orderBy('id')
+                    ->get();
+
+                foreach ($allCurrentUserRequests as $candidateRequest) {
+                    $counterpartyId = (int) ($candidateRequest->sender_id == $currentUserId
+                        ? $candidateRequest->receiver_id
+                        : $candidateRequest->sender_id);
+
+                    // Preserve the legacy first() semantics for each pair.
+                    if (!array_key_exists($counterpartyId, $chatRequestCounterpartyMap)) {
+                        $chatRequestCounterpartyMap[$counterpartyId] = $candidateRequest;
+                    }
+                }
+
+                request()->attributes->set($requestAttributeKey, $chatRequestCounterpartyMap);
+            }
+
+            $existingRequest = $chatRequestCounterpartyMap[(int) $user->id] ?? null;
         @endphp
 
         <div class="chat-request {{ $managerCard ? 'manager-request-card__action' : 'mb-3' }}">

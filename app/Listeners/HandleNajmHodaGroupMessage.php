@@ -22,6 +22,14 @@ class HandleNajmHodaGroupMessage
             return;
         }
 
+        // Legacy public-chat conversations are disabled by default. Managers and
+        // members talk to Najm Hoda privately in the widget; only the resulting
+        // artifact/action is published to the group. A deliberate feature flag
+        // can re-enable public mention mode later without changing this contract.
+        if (!(bool) config('najm-hoda-group-runtime.public_chat_enabled', false)) {
+            return;
+        }
+
         try {
             $this->assistant->handleIncomingMessage($event->message);
         } catch (\Throwable $e) {

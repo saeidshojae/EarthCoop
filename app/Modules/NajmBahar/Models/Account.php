@@ -15,6 +15,7 @@ class Account extends Model
         'balance',
         'balance_active',
         'balance_faded',
+        'committed_dim',
         'meta',
         'status'
     ];
@@ -23,6 +24,7 @@ class Account extends Model
         'balance' => 'integer',
         'balance_active' => 'integer',
         'balance_faded' => 'integer',
+        'committed_dim' => 'integer',
         'meta' => 'array',
     ];
 

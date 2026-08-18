@@ -4,6 +4,7 @@ namespace Tests\Feature\NajmBahar;
 
 use Tests\TestCase;
 use App\Models\User;
+use App\Models\Setting;
 use App\Modules\NajmBahar\Models\Project;
 use App\Modules\NajmBahar\Models\Investment;
 use App\Modules\NajmBahar\Models\ProjectCategory;
@@ -28,6 +29,10 @@ class InvestmentControllerTest extends TestCase
 
         $this->accountService = app(AccountService::class);
 
+        Setting::query()->updateOrCreate(['id' => 1], [
+            'najm_bahar_user_threshold' => 1,
+        ]);
+
         // ایجاد کاربران تست
         $this->investor = User::factory()->create(['email_verified_at' => now()]);
         $this->projectOwner = User::factory()->create(['email_verified_at' => now()]);
@@ -50,7 +55,15 @@ class InvestmentControllerTest extends TestCase
             'required_capital' => 50000000, // 500,000 گل
             'profit_percentage' => 20,
             'investment_duration_months' => 18,
-            'project_type' => 'public',
+            'project_type' => 'production',
+            'project_visibility' => 'public',
+            'project_stage' => 'active',
+            'investment_method' => 'capital_participation',
+            'problem_statement' => 'نیاز اقتصادی روشن برای پروژه',
+            'solution_description' => 'راه‌حل اجرایی پروژه',
+            'target_market' => 'general',
+            'accept_transparency' => true,
+            'accept_rules' => true,
         ]);
 
         // تایید پروژه
@@ -94,8 +107,11 @@ class InvestmentControllerTest extends TestCase
         $response = $this->actingAs($this->investor)
             ->post(route('najm-bahar.investments.store', $this->project), $data);
 
-        $response->assertRedirect()
-            ->assertSessionHas('success');
+        $response->assertRedirect();
+        $this->assertTrue(
+            $response->getSession()->has('success'),
+            (string) ($response->getSession()->get('error') ?? 'Expected success flash was not set.')
+        );
 
         $this->assertDatabaseHas('najm_bahar_investments', [
             'investor_type' => User::class,
@@ -142,6 +158,7 @@ class InvestmentControllerTest extends TestCase
         // شارژ حساب سرمایه‌گذار
         $investorAccount = $this->accountService->getMainAccountForUser($this->investor->id);
         $investorAccount->balance = 20000000; // 200,000 گل
+        $investorAccount->balance_active = 20000000;
         $investorAccount->save();
 
         $investment = app(InvestmentService::class)->createInvestment(
@@ -153,11 +170,16 @@ class InvestmentControllerTest extends TestCase
         $response = $this->actingAs($this->investor)
             ->post(route('najm-bahar.investments.process-payment', $investment));
 
-        $response->assertRedirect()
-            ->assertSessionHas('success');
+        $response->assertRedirect();
+        $this->assertTrue(
+            $response->getSession()->has('success'),
+            (string) ($response->getSession()->get('error') ?? 'Expected success flash was not set.')
+        );
 
-        $this->assertEquals('paid', $investment->fresh()->status);
-        $this->assertNotNull($investment->fresh()->transaction_id);
+        $fresh = $investment->fresh();
+        $this->assertEquals('active', $fresh->status);
+        $this->assertNotNull($fresh->transaction_id);
+        $this->assertNotNull($fresh->metadata['activated_at'] ?? null);
     }
 
     /** @test */
@@ -231,8 +253,11 @@ class InvestmentControllerTest extends TestCase
                 'reason' => 'لغو توسط کاربر',
             ]);
 
-        $response->assertRedirect()
-            ->assertSessionHas('success');
+        $response->assertRedirect();
+        $this->assertTrue(
+            $response->getSession()->has('success'),
+            (string) ($response->getSession()->get('error') ?? 'Expected success flash was not set.')
+        );
 
         $this->assertEquals('cancelled', $investment->fresh()->status);
     }
@@ -243,6 +268,7 @@ class InvestmentControllerTest extends TestCase
         // شارژ حساب
         $investorAccount = $this->accountService->getMainAccountForUser($this->investor->id);
         $investorAccount->balance = 15000000;
+        $investorAccount->balance_active = 15000000;
         $investorAccount->save();
 
         $investment = app(InvestmentService::class)->createInvestment(
@@ -258,8 +284,11 @@ class InvestmentControllerTest extends TestCase
                 'reason' => 'لغو و بازگشت وجه',
             ]);
 
-        $response->assertRedirect()
-            ->assertSessionHas('success');
+        $response->assertRedirect();
+        $this->assertTrue(
+            $response->getSession()->has('success'),
+            (string) ($response->getSession()->get('error') ?? 'Expected success flash was not set.')
+        );
 
         $this->assertEquals('refunded', $investment->fresh()->status);
     }

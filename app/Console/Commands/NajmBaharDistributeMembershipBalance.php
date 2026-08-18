@@ -14,7 +14,7 @@ class NajmBaharDistributeMembershipBalance extends Command
 {
     protected $signature = 'najm-bahar:distribute-membership-balance {amount : Total amount to distribute} {--dry-run : Show planned transfers without applying}';
 
-    protected $description = 'Distribute a total membership-fee amount from the system account into its subaccounts based on current split settings.';
+    protected $description = 'Distribute a legacy accumulated membership-fee amount through the canonical transaction boundary.';
 
     public function handle(AccountService $accountService, TransactionService $transactionService): int
     {
@@ -61,9 +61,9 @@ class NajmBaharDistributeMembershipBalance extends Command
         $burnAccount = AccountNumberService::makeSubAccountCode($systemAccount->account_number, 0);
 
         $this->info('Planned transfers:');
-        $this->line("- Membership: " . BaharMoney::formatDecimal($membershipTotal) . " -> {$membershipAccount}");
-        $this->line("- Insurance: " . BaharMoney::formatDecimal($insuranceTotal) . " -> {$insuranceAccount}");
-        $this->line("- Burn: " . BaharMoney::formatDecimal($burnTotal) . " -> {$burnAccount}");
+        $this->line('- Membership: ' . BaharMoney::formatDecimal($membershipTotal) . " -> {$membershipAccount}");
+        $this->line('- Insurance: ' . BaharMoney::formatDecimal($insuranceTotal) . " -> {$insuranceAccount}");
+        $this->line('- Burn: ' . BaharMoney::formatDecimal($burnTotal) . " -> {$burnAccount}");
 
         if ($this->option('dry-run')) {
             return self::SUCCESS;
@@ -111,11 +111,7 @@ class NajmBaharDistributeMembershipBalance extends Command
         $subAccounts = SubAccount::where('account_id', $systemAccountId)->get();
 
         foreach ($subAccounts as $subAccount) {
-            $account = $accountService->ensureSubAccountAccount($subAccount);
-            if ($subAccount->balance !== $account->balance) {
-                $subAccount->balance = $account->balance;
-                $subAccount->save();
-            }
+            $accountService->syncSubAccountFromAccount($subAccount);
         }
     }
 }

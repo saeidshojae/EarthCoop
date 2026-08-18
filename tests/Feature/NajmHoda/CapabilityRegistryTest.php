@@ -14,6 +14,9 @@ class CapabilityRegistryTest extends TestCase
 
         config([
             'cache.default' => 'array',
+            'najm-hoda.runtime.autonomy.allow_apply_low_risk' => true,
+            'najm-hoda.runtime.autonomy.permissioning_v2.enabled' => true,
+            'najm-hoda.runtime.autonomy.permissioning_v2.enforce_apply_requires_delegation' => true,
             'najm-hoda.runtime.autonomy.capabilities.run_ops_monitor' => [
                 'enabled' => true,
                 'version' => 2,
@@ -63,9 +66,60 @@ class CapabilityRegistryTest extends TestCase
         $this->assertIsArray($planned);
         $this->assertSame('run_ops_monitor', (string) ($planned['action'] ?? ''));
         $this->assertSame(2, (int) ($planned['contract_version'] ?? 0));
+        $this->assertSame('propose', (string) ($planned['mode'] ?? ''));
 
         $accepted = $bus->recent('najm_hoda.autonomy.contract.accepted', 1);
         $this->assertNotEmpty($accepted);
         $this->assertSame('run_ops_monitor', data_get($accepted[0], 'payload.action'));
+    }
+
+    public function test_apply_request_can_be_planned_only_with_delegation_enforcement_enabled(): void
+    {
+        $registry = new NajmHodaCapabilityRegistry(new InMemoryRuntimeEventBus(100));
+
+        $planned = $registry->makePlannedAction(
+            'run_ops_monitor',
+            ['health_status' => 'warning'],
+            'stability',
+            'test_apply',
+            true,
+            ['stabilize_operations']
+        );
+
+        $this->assertSame('apply', (string) ($planned['mode'] ?? ''));
+    }
+
+    public function test_apply_request_falls_back_to_propose_when_delegation_enforcement_is_disabled(): void
+    {
+        config(['najm-hoda.runtime.autonomy.permissioning_v2.enforce_apply_requires_delegation' => false]);
+        $registry = new NajmHodaCapabilityRegistry(new InMemoryRuntimeEventBus(100));
+
+        $planned = $registry->makePlannedAction(
+            'run_ops_monitor',
+            ['health_status' => 'warning'],
+            'stability',
+            'test_apply',
+            true,
+            ['stabilize_operations']
+        );
+
+        $this->assertSame('propose', (string) ($planned['mode'] ?? ''));
+    }
+
+    public function test_apply_request_falls_back_to_propose_when_permissioning_is_disabled(): void
+    {
+        config(['najm-hoda.runtime.autonomy.permissioning_v2.enabled' => false]);
+        $registry = new NajmHodaCapabilityRegistry(new InMemoryRuntimeEventBus(100));
+
+        $planned = $registry->makePlannedAction(
+            'run_ops_monitor',
+            ['health_status' => 'warning'],
+            'stability',
+            'test_apply',
+            true,
+            ['stabilize_operations']
+        );
+
+        $this->assertSame('propose', (string) ($planned['mode'] ?? ''));
     }
 }

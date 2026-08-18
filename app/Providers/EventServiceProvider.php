@@ -77,9 +77,11 @@ class EventServiceProvider extends ServiceProvider
         ],
         \App\Events\BlogCreated::class => [
             \App\Listeners\SendBlogCreatedNotifications::class,
+            \App\Listeners\BridgeSystemGroupArtifactToRealtimeFeed::class,
         ],
         \App\Events\PollCreated::class => [
             \App\Listeners\SendPollCreatedNotifications::class,
+            \App\Listeners\BridgeSystemGroupArtifactToRealtimeFeed::class,
         ],
         \App\Events\ElectionStarted::class => [
             \App\Listeners\SendElectionStartedNotifications::class,
@@ -94,6 +96,7 @@ class EventServiceProvider extends ServiceProvider
         ],
         \App\Events\CommentCreated::class => [
             \App\Listeners\SendCommentCreatedNotifications::class,
+            \App\Listeners\BridgeSystemGroupArtifactToRealtimeFeed::class,
         ],
                \App\Events\GroupInvitation::class => [
                    \App\Listeners\SendGroupInvitationNotifications::class,

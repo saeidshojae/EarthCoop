@@ -66,9 +66,11 @@ class AccountServiceTest extends TestCase
         $account1 = $service->createMainAccountForUser($userId);
         $account2 = $service->createMainAccountForUser($userId);
 
-        // Should create new account each time (no idempotency check in service)
-        $this->assertNotEquals($account1->id, $account2->id);
-        $this->assertEquals($account1->account_number, $account2->account_number);
+        // Main account number is the canonical identity; provisioning the same
+        // owner twice must return the same row rather than violate uniqueness.
+        $this->assertSame($account1->id, $account2->id);
+        $this->assertSame($account1->account_number, $account2->account_number);
+        $this->assertSame(1, Account::where('account_number', $account1->account_number)->count());
     }
 
     public function test_create_transaction()
@@ -106,4 +108,3 @@ class AccountServiceTest extends TestCase
         $this->assertEquals(100, $transaction->amount);
     }
 }
-

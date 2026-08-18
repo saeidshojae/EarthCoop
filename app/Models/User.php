@@ -32,6 +32,11 @@ class User extends Authenticatable
         'show_created_at' => 'boolean',
         'show_social_networks' => 'boolean',
         'is_system' => 'boolean',
+        'last_seen' => 'datetime',
+        'birth_date' => 'date',
+        'terms_accepted_at' => 'datetime',
+        'email_verified_at' => 'datetime',
+        'last_login_at' => 'datetime',
     ];
 
     public function scopeMembers($query)
@@ -43,12 +48,6 @@ class User extends Authenticatable
     {
         return (bool) $this->is_system;
     }
-
-    protected $dates = [
-        'last_seen',
-        'birth_date',
-        'terms_accepted_at',
-    ];
 
     // روابط چند به چند:
     public function occupationalFields()
@@ -68,9 +67,29 @@ class User extends Authenticatable
 
     public function groups()
     {
-        return $this->belongsToMany(Group::class, 'group_user', 'user_id', 'group_id')
+        $relation = $this->belongsToMany(Group::class, 'group_user', 'user_id', 'group_id')
             ->withPivot('role', 'status', 'expired', 'last_read_message_id')
             ->withTimestamps();
+
+        // The group chat information panel lists all groups of the current user.
+        // Historically that Blade loop lazy-loaded specialty/experience and ran
+        // userCount() once per group. Preload those values only for the canonical
+        // group-chat page so other callers of User::groups() keep their existing
+        // query shape.
+        if (! app()->runningInConsole() && request()->routeIs('groups.chat')) {
+            $relation
+                ->with(['specialty', 'experience'])
+                ->withCount([
+                    'groupUser as active_members_count' => function ($query) {
+                        $query
+                            ->where('status', 1)
+                            ->where('role', '!=', 4)
+                            ->whereHas('user', fn ($userQuery) => $userQuery->where('is_system', false));
+                    },
+                ]);
+        }
+
+        return $relation;
     }    
 
     public function messages()
@@ -162,21 +181,18 @@ class User extends Authenticatable
         if (is_string($role)) {
             return $this->roles()->where('slug', $role)->exists();
         }
-        
         return $this->roles->contains($role);
     }
 
     /**
-     * بررسی اینکه آیا کاربر دارای دسترسی خاصی است
+     * بررسی دسترسی کاربر
      */
     public function hasPermission($permission)
     {
-        // اگر Super Admin است، همه دسترسی‌ها را دارد
         if ($this->is_admin || $this->hasRole('super-admin')) {
             return true;
         }
 
-        // بررسی دسترسی از طریق نقش‌ها
         foreach ($this->roles as $role) {
             if ($role->hasPermission($permission)) {
                 return true;
@@ -186,9 +202,6 @@ class User extends Authenticatable
         return false;
     }
 
-    /**
-     * بررسی اینکه آیا کاربر دارای هر کدام از دسترسی‌های داده شده است
-     */
     public function hasAnyPermission(array $permissions)
     {
         foreach ($permissions as $permission) {
@@ -200,9 +213,6 @@ class User extends Authenticatable
         return false;
     }
 
-    /**
-     * بررسی اینکه آیا کاربر دارای همه دسترسی‌های داده شده است
-     */
     public function hasAllPermissions(array $permissions)
     {
         foreach ($permissions as $permission) {
@@ -214,9 +224,6 @@ class User extends Authenticatable
         return true;
     }
 
-    /**
-     * اضافه کردن نقش به کاربر
-     */
     public function assignRole($role)
     {
         if (is_string($role)) {
@@ -230,9 +237,6 @@ class User extends Authenticatable
         return $this;
     }
 
-    /**
-     * حذف نقش از کاربر
-     */
     public function removeRole($role)
     {
         if (is_string($role)) {
@@ -246,9 +250,6 @@ class User extends Authenticatable
         return $this;
     }
 
-    /**
-     * همگام‌سازی نقش‌ها
-     */
     public function syncRoles(array $roles)
     {
         $roleIds = [];
@@ -269,9 +270,6 @@ class User extends Authenticatable
         return $this;
     }
 
-    /**
-     * دریافت همه دسترسی‌های کاربر (از طریق نقش‌ها)
-     */
     public function getAllPermissions()
     {
         $permissions = collect();
@@ -283,17 +281,11 @@ class User extends Authenticatable
         return $permissions->unique('id');
     }
 
-    /**
-     * پروژه‌های نجم بهار (به عنوان صاحب پروژه)
-     */
     public function najmBaharProjects()
     {
         return $this->morphMany(\App\Modules\NajmBahar\Models\Project::class, 'owner');
     }
 
-    /**
-     * سرمایه‌گذاری‌های نجم بهار (به عنوان سرمایه‌گذار)
-     */
     public function najmBaharInvestments()
     {
         return $this->morphMany(\App\Modules\NajmBahar\Models\Investment::class, 'investor');

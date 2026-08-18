@@ -130,23 +130,25 @@ export function createSessionParticipation({ api, lifecycle }) {
         updateBadge(payload?.pending_count ?? pendingCount);
         if (adminModal && !adminModal.hidden) loadAdmin();
     };
-    const refreshPendingCount = async () => {
-        if (!config.canManageSession || !config.participationStateUrl || document.hidden) return;
-        try {
-            const data = await api.json(config.participationStateUrl);
-            const next = Number(data?.pending_requests_count || 0);
-            if (next > pendingCount) {
-                window.GroupChatFeedback?.toast?.(`${next - pendingCount} درخواست مشارکت تازه دارید.`, { type: 'info', duration: 7000 });
-            }
-            updateBadge(next);
-        } catch (_) {
-            // Realtime/polling connectivity is handled by the shared runtime.
+    const consumeSessionState = data => {
+        if (!config.canManageSession) return;
+        const next = Number(data?.pending_requests_count || 0);
+        if (next > pendingCount) {
+            window.GroupChatFeedback?.toast?.(`${next - pendingCount} درخواست مشارکت تازه دارید.`, { type: 'info', duration: 7000 });
         }
+        updateBadge(next);
     };
-    if (config.canManageSession) {
-        lifecycle.interval(refreshPendingCount, 15000);
-        if (new URLSearchParams(window.location.search).get('session_requests') === '1') lifecycle.timeout(loadAdmin, 0);
+    listen(window, 'group-chat:session-state', event => consumeSessionState(event.detail || {}));
+
+    if (config.canManageSession && new URLSearchParams(window.location.search).get('session_requests') === '1') {
+        lifecycle.timeout(loadAdmin, 0);
     }
 
-    return Object.freeze({ showRequest: () => show(memberModal), showAdmin: loadAdmin, receiveRequest, receiveResolution, refreshPendingCount });
+    return Object.freeze({
+        showRequest: () => show(memberModal),
+        showAdmin: loadAdmin,
+        receiveRequest,
+        receiveResolution,
+        refreshPendingCount: consumeSessionState,
+    });
 }

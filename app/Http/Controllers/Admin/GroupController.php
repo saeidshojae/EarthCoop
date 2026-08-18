@@ -13,18 +13,15 @@ class GroupController extends Controller
     public function index(Request $request){
         $groupsQuery = Group::with(['experience', 'specialty', 'ageGroup']);
 
-        // فیلتر user
         if($request->has('user') && $request->user){
             $groupUserIds = GroupUser::where('user_id', $request->user)->pluck('group_id')->toArray();
             $groupsQuery->whereIn('id', $groupUserIds);
         }
 
-        // فیلتر level
         if($request->has('level') && $request->level){
             $groupsQuery->where('location_level', $request->level);
         }
 
-        // فیلتر sort
         if($request->has('sort') && $request->sort){
             switch($request->sort){
                 case 'experience':
@@ -63,8 +60,10 @@ class GroupController extends Controller
         if ($request->hasFile('avatar')) {
             $avatar = $request->file('avatar');
             $filename = time() . '.' . $avatar->getClientOriginalExtension();
-            $avatar->move(public_path('uploads/groups/avatars'), $filename);
-            $inputs['avatar'] = 'uploads/groups/avatars/' . $filename;
+            // Keep one canonical contract across both group edit surfaces:
+            // files live in public/images/groups and DB stores filename only.
+            $avatar->move(public_path('images/groups'), $filename);
+            $inputs['avatar'] = $filename;
         }
 
         $group->update($inputs);
@@ -107,6 +106,4 @@ class GroupController extends Controller
         $blog->delete();
         return back()->with('success', 'پست شما با موفقیت حذف شد!');;
     }
-    
-    
 }

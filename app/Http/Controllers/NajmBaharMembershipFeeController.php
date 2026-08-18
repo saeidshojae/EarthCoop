@@ -3,15 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\BaharMoney;
-use App\Models\Setting;
 use App\Models\User;
-use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
+use App\Modules\NajmBahar\Services\AccountBalanceService;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\FeeService;
-use App\Modules\NajmBahar\Services\SubAccountService;
+use App\Modules\NajmBahar\Services\MonetaryPolicyService;
+use App\Modules\NajmBahar\Services\MonetaryService;
 use App\Modules\NajmBahar\Services\TransactionService;
+use App\Modules\NajmBahar\Services\TreasuryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -19,42 +20,29 @@ use Illuminate\Support\Facades\Log;
 
 class NajmBaharMembershipFeeController extends Controller
 {
-    protected $transactionService;
-    protected $accountService;
-    protected $feeService;
-    protected $subAccountService;
-
     public function __construct(
-        TransactionService $transactionService,
-        AccountService $accountService,
-        FeeService $feeService,
-        SubAccountService $subAccountService
+        protected TransactionService $transactionService,
+        protected AccountService $accountService,
+        protected AccountBalanceService $balanceService,
+        protected FeeService $feeService,
+        protected MonetaryService $monetaryService,
+        protected MonetaryPolicyService $monetaryPolicy,
+        protected TreasuryService $treasuryService
     ) {
-        $this->transactionService = $transactionService;
-        $this->accountService = $accountService;
-        $this->feeService = $feeService;
-        $this->subAccountService = $subAccountService;
     }
 
-    /**
-     * API: دریافت اطلاعات حق عضویت برای نمایش در مدال
-     */
     public function getInfo()
     {
         $user = Auth::user();
         $account = $this->accountService->getMainAccountForUser($user->id);
 
-        if (!$account) {
+        if (! $account) {
             return response()->json(['error' => 'حساب نجم بهار یافت نشد'], 404);
         }
 
-        $settings = Setting::firstNajmBaharSettings();
-        $membershipFee = $this->feeService->getMembershipFee();
-
-        // بررسی پرداخت قبلی برای سال جاری
         $hasPaid = $this->hasPaidCurrentYearMembershipFee($user->id, $account->id);
+        $wallet = $this->balanceService->aggregate($account);
 
-        // محاسبه سالگرد بعدی
         $membershipDate = $user->created_at;
         $currentYear = now()->year;
         $nextAnniversary = $membershipDate->copy()->setYear($currentYear);
@@ -62,42 +50,52 @@ class NajmBaharMembershipFeeController extends Controller
             $nextAnniversary->addYear();
         }
 
-        // محاسبه تقسیم‌بندی
-        $membershipAmount = (int) ($settings?->najm_bahar_membership_fee_membership_amount ?? BaharMoney::toGolFromBahar(6));
-        $insuranceAmount = (int) ($settings?->najm_bahar_membership_fee_insurance_amount ?? BaharMoney::toGolFromBahar(3));
-        $burnAmount = (int) ($settings?->najm_bahar_membership_fee_burn_amount ?? BaharMoney::toGolFromBahar(3));
-
-        $total = $membershipAmount + $insuranceAmount + $burnAmount;
+        [$operationsAmount, $insuranceAmount, $burnAmount] = $this->membershipSplit();
+        $total = $operationsAmount + $insuranceAmount + $burnAmount;
 
         $subAccounts = SubAccount::where('account_id', $account->id)
             ->where('status', 1)
             ->orderBy('created_at')
             ->get();
 
-        $defaultSubAccount = $subAccounts->first();
-        $requiresSubAccount = $defaultSubAccount === null;
-        $subAccountActiveBalance = $defaultSubAccount ? intval($defaultSubAccount->balance_active ?? 0) : 0;
-        $mainActiveBalance = intval($account->balance_active ?? 0);
+        $mainActive = (int) ($account->balance_active ?? 0);
+        $mainDim = (int) ($account->balance_faded ?? 0);
+        $canPayFromDim = $mainDim >= $total;
+        $canPayFromActive = (int) $wallet['active'] >= $total;
 
-        // بررسی موجودی کافی در حساب فرعی
-        $hasEnoughBalance = $subAccountActiveBalance >= $total;
+        $defaultSubAccount = $subAccounts->first(fn ($sub) => (int) ($sub->balance_active ?? 0) >= $total)
+            ?? $subAccounts->first();
+        $defaultSubActive = (int) ($defaultSubAccount?->balance_active ?? 0);
+        $hasEnoughBalance = $canPayFromDim || $mainActive >= $total || $defaultSubActive >= $total;
+        $requiresSubAccount = ! $canPayFromDim && $mainActive < $total && $defaultSubAccount === null;
+
+        $funds = $this->treasuryService->ensureDefaultFunds();
 
         return response()->json([
             'has_paid' => $hasPaid,
             'total_fee' => $total,
             'total_fee_formatted' => BaharMoney::formatDecimal($total),
-            'balance_active' => $subAccountActiveBalance,
-            'balance_active_formatted' => BaharMoney::formatDecimal($subAccountActiveBalance),
-            'main_active_balance' => $mainActiveBalance,
-            'main_active_formatted' => BaharMoney::formatDecimal($mainActiveBalance),
+            'balance_dim' => (int) $wallet['dim'],
+            'balance_dim_formatted' => BaharMoney::formatDecimal((int) $wallet['dim']),
+            'balance_active' => (int) $wallet['active'],
+            'balance_active_formatted' => BaharMoney::formatDecimal((int) $wallet['active']),
+            'wallet_total' => (int) $wallet['total'],
+            'wallet_total_formatted' => BaharMoney::formatDecimal((int) $wallet['total']),
+            'can_pay_from_dim' => $canPayFromDim,
+            'can_pay_from_active' => $canPayFromActive,
+            'default_payment_source' => $canPayFromDim ? 'dim' : 'active',
+            'payment_source_required' => true,
+            'policy_version_id' => $this->monetaryPolicy->versionId(),
             'has_enough_balance' => $hasEnoughBalance,
             'requires_sub_account' => $requiresSubAccount,
+            'main_active_balance' => $mainActive,
+            'main_active_formatted' => BaharMoney::formatDecimal($mainActive),
             'sub_account' => $defaultSubAccount ? [
                 'id' => $defaultSubAccount->id,
                 'code' => $defaultSubAccount->sub_account_code,
                 'name' => $defaultSubAccount->name,
-                'balance_active' => $subAccountActiveBalance,
-                'balance_active_formatted' => BaharMoney::formatDecimal($subAccountActiveBalance),
+                'balance_active' => $defaultSubActive,
+                'balance_active_formatted' => BaharMoney::formatDecimal($defaultSubActive),
             ] : null,
             'create_subaccount_url' => route('najm-bahar.sub-accounts.create'),
             'create_subaccount_store_url' => route('najm-bahar.sub-accounts.store'),
@@ -105,26 +103,33 @@ class NajmBaharMembershipFeeController extends Controller
             'transfer_to_url' => $defaultSubAccount
                 ? route('najm-bahar.sub-accounts.transfer-to', ['subAccount' => $defaultSubAccount->id])
                 : null,
+            'sub_accounts' => $subAccounts->map(fn ($sub) => [
+                'id' => $sub->id,
+                'code' => $sub->sub_account_code,
+                'name' => $sub->name,
+                'balance_active' => (int) ($sub->balance_active ?? 0),
+                'balance_active_formatted' => BaharMoney::formatDecimal((int) ($sub->balance_active ?? 0)),
+            ])->values(),
             'membership_date' => $membershipDate->format('Y-m-d'),
             'membership_date_formatted' => $membershipDate->locale('fa')->isoFormat('jYYYY/jMM/jDD'),
             'next_anniversary' => $nextAnniversary->format('Y-m-d'),
             'next_anniversary_formatted' => $nextAnniversary->locale('fa')->isoFormat('jYYYY/jMM/jDD'),
             'breakdown' => [
                 [
-                    'name' => 'حساب عضویت',
-                    'account' => $settings?->najm_bahar_membership_fee_account ?? '0000000000-001',
-                    'amount' => $membershipAmount,
-                    'amount_formatted' => BaharMoney::formatDecimal($membershipAmount),
+                    'name' => 'صندوق حقوق و هزینه‌ها',
+                    'account' => $funds[TreasuryService::OPERATIONS_SALARY]->account->account_number,
+                    'amount' => $operationsAmount,
+                    'amount_formatted' => BaharMoney::formatDecimal($operationsAmount),
                 ],
                 [
-                    'name' => 'حساب بیمه',
-                    'account' => $settings?->najm_bahar_membership_fee_insurance_account ?? '0000000000-002',
+                    'name' => 'صندوق بیمه مرکزی',
+                    'account' => $funds[TreasuryService::CENTRAL_INSURANCE]->account->account_number,
                     'amount' => $insuranceAmount,
                     'amount_formatted' => BaharMoney::formatDecimal($insuranceAmount),
                 ],
                 [
-                    'name' => 'حساب سوزاندن',
-                    'account' => $settings?->najm_bahar_membership_fee_burn_account ?? '0000000000-000',
+                    'name' => 'صندوق امحای پول',
+                    'account' => $funds[TreasuryService::MONEY_DESTRUCTION]->account->account_number,
                     'amount' => $burnAmount,
                     'amount_formatted' => BaharMoney::formatDecimal($burnAmount),
                 ],
@@ -132,54 +137,110 @@ class NajmBaharMembershipFeeController extends Controller
         ]);
     }
 
-    /**
-     * پرداخت حق عضویت سالانه
-     */
     public function pay(Request $request)
     {
+        $validated = $request->validate([
+            'payment_source' => 'required|in:dim,active',
+            'sub_account_id' => 'nullable|integer',
+        ], [
+            'payment_source.required' => 'منبع پرداخت حق عضویت را مشخص کنید.',
+            'payment_source.in' => 'منبع پرداخت حق عضویت معتبر نیست.',
+        ]);
+
         $user = Auth::user();
         $account = $this->accountService->getMainAccountForUser($user->id);
-
-        if (!$account) {
+        if (! $account) {
             return back()->with('error', 'حساب نجم بهار یافت نشد');
         }
 
-        // بررسی پرداخت قبلی برای سال جاری
         if ($this->hasPaidCurrentYearMembershipFee($user->id, $account->id)) {
             return back()->with('error', 'شما برای سال جاری حق عضویت سالانه را پرداخت کرده‌اید');
         }
 
-        $subAccountId = $request->input('sub_account_id');
-        $subAccount = null;
-        if ($subAccountId) {
-            $subAccount = SubAccount::where('id', $subAccountId)
-                ->where('account_id', $account->id)
-                ->where('status', 1)
-                ->first();
-        }
-
-        if (! $subAccount) {
-            $subAccount = SubAccount::where('account_id', $account->id)
-                ->where('status', 1)
-                ->orderBy('created_at')
-                ->first();
-        }
-
-        if (! $subAccount) {
-            return back()->with('error', 'برای پرداخت حق عضویت ابتدا یک حساب فرعی بسازید و موجودی فعال را به آن منتقل کنید.');
-        }
-
-        $this->accountService->ensureSubAccountAccount($subAccount);
+        [$operationsAmount, $insuranceAmount, $burnAmount] = $this->membershipSplit();
+        $total = $operationsAmount + $insuranceAmount + $burnAmount;
+        $currentYear = $this->membershipPaymentYear($user);
+        $policyVersionId = $this->monetaryPolicy->versionId();
+        $paymentSource = $validated['payment_source'];
 
         try {
-            $totalPaid = $this->distributeMembershipFee($subAccount, $user->id);
+            DB::transaction(function () use (
+                $user,
+                $account,
+                $paymentSource,
+                $validated,
+                $currentYear,
+                $total,
+                $operationsAmount,
+                $insuranceAmount,
+                $burnAmount,
+                $policyVersionId
+            ) {
+                $sourceAccountNumber = $account->account_number;
+
+                if ($paymentSource === 'dim') {
+                    $this->monetaryService->activateDim(
+                        $account,
+                        $total,
+                        'فعال‌سازی حق عضویت سالانه EarthCoop',
+                        [
+                            'type' => 'membership_fee_activation',
+                            'user_id' => $user->id,
+                            'payment_year' => $currentYear,
+                            'policy_version_id' => $policyVersionId,
+                        ],
+                        'membership-fee-activation-' . $user->id . '-' . $currentYear,
+                        false
+                    );
+                } else {
+                    $subAccount = null;
+                    if (! empty($validated['sub_account_id'])) {
+                        $subAccount = SubAccount::where('id', $validated['sub_account_id'])
+                            ->where('account_id', $account->id)
+                            ->where('status', 1)
+                            ->first();
+                    }
+
+                    if ($subAccount) {
+                        if ((int) ($subAccount->balance_active ?? 0) < $total) {
+                            throw new \RuntimeException('موجودی فعال حساب فرعی برای پرداخت حق عضویت کافی نیست.');
+                        }
+                        $this->accountService->ensureSubAccountAccount($subAccount);
+                        $sourceAccountNumber = $subAccount->sub_account_code;
+                    } elseif ((int) ($account->balance_active ?? 0) < $total) {
+                        $subAccount = SubAccount::where('account_id', $account->id)
+                            ->where('status', 1)
+                            ->where('balance_active', '>=', $total)
+                            ->orderBy('created_at')
+                            ->first();
+
+                        if (! $subAccount) {
+                            throw new \RuntimeException('موجودی فعال برای پرداخت حق عضویت کافی نیست.');
+                        }
+
+                        $this->accountService->ensureSubAccountAccount($subAccount);
+                        $sourceAccountNumber = $subAccount->sub_account_code;
+                    }
+                }
+
+                $this->distributeMembershipFee(
+                    $sourceAccountNumber,
+                    $user->id,
+                    $currentYear,
+                    $operationsAmount,
+                    $insuranceAmount,
+                    $burnAmount,
+                    $paymentSource,
+                    $policyVersionId
+                );
+            });
 
             return redirect()->route('najm-bahar.dashboard')
-                ->with('success', 'حق عضویت سالانه با موفقیت پرداخت شد. مبلغ: ' . BaharMoney::formatDecimal($totalPaid) . ' بهار');
-                
+                ->with('success', 'حق عضویت سالانه با موفقیت پرداخت شد. مبلغ: ' . BaharMoney::formatDecimal($total) . ' بهار');
         } catch (\Exception $e) {
             Log::error('NajmBahar membership fee payment failed', [
                 'user_id' => $user->id,
+                'payment_source' => $paymentSource,
                 'error' => $e->getMessage(),
             ]);
 
@@ -187,102 +248,104 @@ class NajmBaharMembershipFeeController extends Controller
         }
     }
 
-    /**
-     * توزیع حق عضویت به حساب‌های سیستمی
-     */
-    private function distributeMembershipFee(SubAccount $fromSubAccount, int $userId): int
-    {
-        $settings = Setting::firstNajmBaharSettings();
-        $systemAccount = $this->accountService->getSystemAccount();
-        $this->accountService->ensureDefaultSystemSubAccounts($systemAccount);
+    private function distributeMembershipFee(
+        string $sourceAccountNumber,
+        int $userId,
+        int $paymentYear,
+        int $operationsAmount,
+        int $insuranceAmount,
+        int $burnAmount,
+        string $paymentSource,
+        ?int $policyVersionId
+    ): int {
+        $membershipFee = $this->membershipFeeAmount();
+        $total = $operationsAmount + $insuranceAmount + $burnAmount;
+        $funds = $this->treasuryService->ensureDefaultFunds();
 
-        $membershipFee = $this->feeService->getMembershipFee();
+        $transfers = $total === $membershipFee && $total > 0
+            ? [
+                [$funds[TreasuryService::OPERATIONS_SALARY]->account->account_number, $operationsAmount, 'operations_salary'],
+                [$funds[TreasuryService::CENTRAL_INSURANCE]->account->account_number, $insuranceAmount, 'central_insurance'],
+                [$funds[TreasuryService::MONEY_DESTRUCTION]->account->account_number, $burnAmount, 'money_destruction'],
+            ]
+            : [
+                [$funds[TreasuryService::OPERATIONS_SALARY]->account->account_number, $membershipFee, 'operations_salary'],
+            ];
 
-        $membershipAccount = $settings?->najm_bahar_membership_fee_account ?? '0000000000-001';
-        $insuranceAccount = $settings?->najm_bahar_membership_fee_insurance_account ?? '0000000000-002';
-        $burnAccount = $settings?->najm_bahar_membership_fee_burn_account ?? '0000000000-000';
-
-        $membershipAmount = (int) ($settings?->najm_bahar_membership_fee_membership_amount ?? BaharMoney::toGolFromBahar(6));
-        $insuranceAmount = (int) ($settings?->najm_bahar_membership_fee_insurance_amount ?? BaharMoney::toGolFromBahar(3));
-        $burnAmount = (int) ($settings?->najm_bahar_membership_fee_burn_amount ?? BaharMoney::toGolFromBahar(3));
-
-        $total = $membershipAmount + $insuranceAmount + $burnAmount;
-
-        if ($total <= 0 || $total !== $membershipFee) {
-            Log::warning('NajmBahar membership split mismatch; falling back to membership account.', [
+        if ($total !== $membershipFee) {
+            Log::warning('NajmBahar membership split mismatch; falling back to operations/salary fund.', [
                 'user_id' => $userId,
                 'split_total' => $total,
                 'membership_fee' => $membershipFee,
+                'policy_version_id' => $policyVersionId,
             ]);
-
-            $currentYear = now()->year;
-            $this->transactionService->transfer(
-                $fromSubAccount->sub_account_code,
-                $membershipAccount,
-                $membershipFee,
-                'پرداخت حق عضویت سالانه EarthCoop',
-                ['type' => 'membership_fee', 'user_id' => $userId, 'split' => 'membership', 'user_initiated' => true, 'payment_year' => $currentYear],
-                'membership-fee-' . $userId . '-membership-' . $currentYear,
-                'active',
-                'membership_fee'
-            );
-
-            return $membershipFee;
         }
 
-        $transfers = [
-            [$membershipAccount, $membershipAmount, 'membership'],
-            [$insuranceAccount, $insuranceAmount, 'insurance'],
-            [$burnAccount, $burnAmount, 'burn'],
-        ];
-
-        $currentYear = now()->year;
         foreach ($transfers as [$targetAccount, $amount, $suffix]) {
             if ($amount <= 0) {
                 continue;
             }
 
             $this->transactionService->transfer(
-                $fromSubAccount->sub_account_code,
+                $sourceAccountNumber,
                 $targetAccount,
                 $amount,
                 'پرداخت حق عضویت سالانه EarthCoop',
-                ['type' => 'membership_fee', 'user_id' => $userId, 'split' => $suffix, 'user_initiated' => true, 'payment_year' => $currentYear],
-                'membership-fee-' . $userId . '-' . $suffix . '-' . $currentYear,
+                [
+                    'type' => 'membership_fee',
+                    'user_id' => $userId,
+                    'split' => $suffix,
+                    'user_initiated' => true,
+                    'system_operation' => true,
+                    'payment_source' => $paymentSource,
+                    'payment_year' => $paymentYear,
+                    'policy_version_id' => $policyVersionId,
+                ],
+                'membership-fee-' . $userId . '-' . $suffix . '-' . $paymentYear,
                 'active',
                 'membership_fee'
             );
         }
 
-        return $total;
+        return $membershipFee;
     }
 
-    /**
-     * بررسی پرداخت حق عضویت برای سال جاری (بر اساس سالگرد عضویت)
-     */
+    private function membershipSplit(): array
+    {
+        return [
+            max(0, (int) $this->monetaryPolicy->parameter('membership_operations_gol', BaharMoney::toGolFromBahar(6))),
+            max(0, (int) $this->monetaryPolicy->parameter('membership_insurance_gol', BaharMoney::toGolFromBahar(3))),
+            max(0, (int) $this->monetaryPolicy->parameter('membership_burn_gol', BaharMoney::toGolFromBahar(3))),
+        ];
+    }
+
+    private function membershipFeeAmount(): int
+    {
+        $policyAmount = (int) $this->monetaryPolicy->parameter('membership_fee_gol', 0);
+        return $policyAmount > 0 ? $policyAmount : $this->feeService->getMembershipFee();
+    }
+
+    private function membershipPaymentYear(User $user): int
+    {
+        $currentYear = now()->year;
+        $currentAnniversary = $user->created_at->copy()->setYear($currentYear);
+
+        return now()->lessThan($currentAnniversary) ? $currentYear - 1 : $currentYear;
+    }
+
     private function hasPaidCurrentYearMembershipFee(int $userId, int $accountId): bool
     {
         $user = User::find($userId);
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
-        // محاسبه سالگرد عضویت کاربر برای سال جاری
-        $membershipDate = $user->created_at;
-        $currentYear = now()->year;
-        $currentAnniversary = $membershipDate->copy()->setYear($currentYear);
-        
-        // اگر سالگرد امسال هنوز نیامده، یعنی باید برای سال قبل چک کنیم
-        if (now()->lessThan($currentAnniversary)) {
-            $currentYear = $currentYear - 1;
-        }
+        $paymentYear = $this->membershipPaymentYear($user);
+        $expected = ['operations_salary', 'central_insurance', 'money_destruction'];
 
-        // بررسی اینکه آیا برای این سال پرداخت شده
-        $expected = ['membership', 'insurance', 'burn'];
-        
         $actual = NajmTransaction::where('metadata->type', 'membership_fee')
             ->where('metadata->user_id', $userId)
-            ->where('metadata->payment_year', $currentYear)
+            ->where('metadata->payment_year', $paymentYear)
             ->pluck('metadata')
             ->map(fn ($m) => $m['split'] ?? null)
             ->filter()
@@ -290,31 +353,11 @@ class NajmBaharMembershipFeeController extends Controller
             ->values()
             ->toArray();
 
+        $legacy = ['membership', 'insurance', 'burn'];
         sort($expected);
+        sort($legacy);
         sort($actual);
 
-        return $expected === $actual;
-    }
-
-    /**
-     * بررسی پرداخت کامل حق عضویت (قدیمی - برای سازگاری)
-     */
-    private function hasCompleteMembershipFeeSplits(int $accountId): bool
-    {
-        $expected = ['membership', 'insurance', 'burn'];
-        
-        $actual = NajmTransaction::where('from_account_id', $accountId)
-            ->where('metadata->type', 'membership_fee')
-            ->pluck('metadata')
-            ->map(fn ($m) => $m['split'] ?? null)
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
-
-        sort($expected);
-        sort($actual);
-
-        return $expected === $actual;
+        return $expected === $actual || $legacy === $actual;
     }
 }
