@@ -25,6 +25,8 @@ Route::middleware(Authenticate::class)->group(function () {
             Route::post('/correspondence', [SecretariatCorrespondenceController::class, 'store'])
                 ->middleware('throttle:10,1')
                 ->name('correspondence.store');
+            Route::get('/records/{record}/correspondence', [SecretariatCorrespondenceController::class, 'show'])
+                ->name('correspondence.show');
 
             Route::get('/records/{record}', [SecretariatController::class, 'show'])->name('records.show');
             Route::post('/records/{record}/submit', [SecretariatController::class, 'submit'])
