@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Modules\Governance\Models\Resolution;
 use App\Modules\Secretariat\Models\SecretariatOffice;
 use App\Modules\Secretariat\Models\SecretariatRecord;
+use App\Modules\Secretariat\Models\SecretariatRelation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use LogicException;
@@ -189,6 +190,8 @@ class SecretariatGovernanceIntegrationService
                 ]);
             }
 
+            $minuteRecord = $this->assertActionResolutionProvenance($locked, $resolutionRecord, $office);
+
             $existing = $this->existingSourceRecord($office, 'action_item', (int) $locked->id);
             if ($existing !== null) {
                 $this->relations->add(
@@ -212,10 +215,12 @@ class SecretariatGovernanceIntegrationService
                 'source_id' => $locked->id,
                 'metadata' => [
                     // The Action Item remains the live owner of status, assignee,
-                    // priority and due date. Registry stores only an archival link.
+                    // priority and due date. Registry stores only archival provenance.
                     's3_snapshot' => [
                         'action_item_id' => (int) $locked->id,
                         'action_status' => (string) $locked->status,
+                        'meeting_minute_id' => (int) $minuteRecord->source_id,
+                        'meeting_minute_record_id' => (int) $minuteRecord->id,
                         'resolution_record_id' => (int) $resolutionRecord->id,
                         'governance_resolution_id' => (int) $resolutionRecord->source_id,
                     ],
@@ -251,6 +256,63 @@ class SecretariatGovernanceIntegrationService
             ->where('source_type', $sourceType)
             ->where('source_id', $sourceId)
             ->first();
+    }
+
+    private function assertActionResolutionProvenance(
+        NajmHodaGroupActionItem $action,
+        SecretariatRecord $resolutionRecord,
+        SecretariatOffice $office,
+    ): SecretariatRecord {
+        $meta = is_array($action->meta) ? $action->meta : [];
+        $meetingMinuteId = (int) ($meta['meeting_minute_id'] ?? 0);
+
+        if ($meetingMinuteId <= 0) {
+            throw ValidationException::withMessages([
+                'action_item' => 'Execution reporting requires Action Item provenance to an approved meeting minute.',
+            ]);
+        }
+
+        /** @var NajmHodaGroupMeetingMinute|null $sourceMinute */
+        $sourceMinute = NajmHodaGroupMeetingMinute::query()->find($meetingMinuteId);
+        if (
+            $sourceMinute === null
+            || $sourceMinute->status !== 'approved'
+            || (int) $sourceMinute->group_id !== (int) $action->group_id
+        ) {
+            throw ValidationException::withMessages([
+                'action_item' => 'Action Item meeting-minute provenance is missing, unapproved, or belongs to another group.',
+            ]);
+        }
+
+        /** @var SecretariatRecord|null $minuteRecord */
+        $minuteRecord = SecretariatRecord::query()
+            ->where('office_id', $office->id)
+            ->where('record_type', 'meeting_minute')
+            ->where('source_type', 'meeting_minute')
+            ->where('source_id', $meetingMinuteId)
+            ->whereNotNull('registry_number')
+            ->whereIn('status', ['registered', 'active', 'closed', 'archived'])
+            ->first();
+
+        if ($minuteRecord === null) {
+            throw ValidationException::withMessages([
+                'action_item' => 'Execution reporting requires the Action Item meeting minute to be formally registered.',
+            ]);
+        }
+
+        $decisionRelationExists = SecretariatRelation::query()
+            ->where('source_record_id', $resolutionRecord->id)
+            ->where('target_record_id', $minuteRecord->id)
+            ->where('relation_type', 'decision_of')
+            ->exists();
+
+        if (! $decisionRelationExists) {
+            throw ValidationException::withMessages([
+                'resolution_record' => 'The Governance resolution is not formally linked to the Action Item meeting minute.',
+            ]);
+        }
+
+        return $minuteRecord;
     }
 
     private function linkDecisionToMinuteIfRequested(
