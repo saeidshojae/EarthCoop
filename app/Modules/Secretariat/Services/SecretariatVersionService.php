@@ -26,8 +26,8 @@ class SecretariatVersionService
             /** @var SecretariatRecord $locked */
             $locked = SecretariatRecord::query()->whereKey($record->getKey())->lockForUpdate()->firstOrFail();
 
-            $base = $locked->currentVersion;
-            $last = (int) $locked->versions()->max('version_number');
+            $base = $locked->versions()->orderByDesc('version_number')->first() ?? $locked->currentVersion;
+            $last = (int) ($base?->version_number ?? 0);
             $snapshot = [
                 'title' => (string) ($content['title'] ?? $base?->title ?? $locked->title),
                 'subject' => array_key_exists('subject', $content) ? $content['subject'] : ($base?->subject ?? $locked->subject),
