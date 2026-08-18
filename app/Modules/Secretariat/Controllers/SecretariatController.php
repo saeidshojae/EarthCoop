@@ -3,6 +3,7 @@
 namespace App\Modules\Secretariat\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Modules\Secretariat\Models\SecretariatAttachment;
 use App\Modules\Secretariat\Models\SecretariatOffice;
 use App\Modules\Secretariat\Models\SecretariatRecord;
@@ -13,6 +14,7 @@ use App\Modules\Secretariat\Services\SecretariatRelationService;
 use App\Modules\Secretariat\Services\SecretariatSearchService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -99,9 +101,6 @@ class SecretariatController extends Controller
 
         $record = $this->records->createDraft($office, $request->user(), $validated);
 
-        // Sensitive records remain explicit-ACL resources. Persist a real grant
-        // for their creator so the post-create redirect never relies on a hidden
-        // policy bypass and the access is visible in the append-only audit trail.
         if (in_array($record->confidentiality, ['restricted', 'confidential'], true)) {
             $this->acl->grant($record, 'user', $request->user()->id, $request->user());
         }
@@ -129,6 +128,11 @@ class SecretariatController extends Controller
             'versions.attachments',
             'currentVersion',
             'attachments',
+            'parties.user',
+            'parties.group',
+            'correspondenceDetail',
+            'dispatches.targetParty',
+            'dispatches.targetUser',
             'outgoingRelations.targetRecord',
             'incomingRelations.sourceRecord',
             'auditEvents.actor',
@@ -138,11 +142,21 @@ class SecretariatController extends Controller
             'office_id' => $office->id,
         ], 100)->reject(fn (SecretariatRecord $candidate) => $candidate->is($record));
 
+        $dispatchUsers = collect();
+        if ($office->scope_type === 'group' && $office->scope_id !== null) {
+            $memberIds = DB::table('group_user')
+                ->where('group_id', $office->scope_id)
+                ->limit(500)
+                ->pluck('user_id');
+            $dispatchUsers = User::query()->whereIn('id', $memberIds)->orderBy('id')->get();
+        }
+
         return view('secretariat.show', [
             'office' => $office,
             'record' => $record,
             'relationTypes' => self::RELATION_TYPES,
             'linkableRecords' => $linkableRecords,
+            'dispatchUsers' => $dispatchUsers,
         ]);
     }
 

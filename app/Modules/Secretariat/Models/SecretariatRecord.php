@@ -8,6 +8,7 @@ use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use LogicException;
 
@@ -150,6 +151,21 @@ class SecretariatRecord extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(SecretariatAttachment::class, 'record_id')->orderBy('id');
+    }
+
+    public function parties(): HasMany
+    {
+        return $this->hasMany(SecretariatParty::class, 'record_id')->orderBy('id');
+    }
+
+    public function correspondenceDetail(): HasOne
+    {
+        return $this->hasOne(SecretariatCorrespondenceDetail::class, 'record_id');
+    }
+
+    public function dispatches(): HasMany
+    {
+        return $this->hasMany(SecretariatDispatch::class, 'record_id')->orderBy('id');
     }
 
     public function outgoingRelations(): HasMany
