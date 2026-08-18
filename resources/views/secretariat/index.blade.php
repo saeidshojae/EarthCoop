@@ -23,10 +23,14 @@
         <div>
             <p class="text-sm text-gray-500 mb-1">دفتر ثبت {{ $office->code }}</p>
             <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ $office->name }}</h1>
-            <p class="text-sm text-gray-500 mt-2">ثبت رسمی، مکاتبات، نسخه‌ها، پیوست‌ها و روابط اسناد این دفتر</p>
+            <p class="text-sm text-gray-500 mt-2">ثبت رسمی، مکاتبات، پرونده‌ها، نسخه‌ها، پیوست‌ها و روابط اسناد این دفتر</p>
         </div>
-        @can('inspect', $office)
-            <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('secretariat.cases.index', $office) }}"
+               class="inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-500 px-4 py-2.5 text-indigo-700 hover:bg-indigo-50">
+                <i class="fa-solid fa-folder-tree"></i> پرونده‌ها
+            </a>
+            @can('inspect', $office)
                 <a href="{{ route('secretariat.correspondence.create', ['office' => $office, 'direction' => 'incoming']) }}"
                    class="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-600 px-4 py-2.5 text-emerald-700 hover:bg-emerald-50">
                     <i class="fa-solid fa-inbox"></i> نامه وارده
@@ -43,8 +47,8 @@
                    class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-white hover:bg-emerald-700">
                     <i class="fa-solid fa-plus"></i> سند دیگر
                 </a>
-            </div>
-        @endcan
+            @endcan
+        </div>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
