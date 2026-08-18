@@ -45,15 +45,9 @@ class SecretariatTransitionService
             $from = $locked->status;
             $this->assertAllowed($from, $to);
 
-            $mutation = static function (SecretariatRecord $target) use ($to): void {
+            $locked->performControlledMutation(static function (SecretariatRecord $target) use ($to): void {
                 $target->forceFill(['status' => $to])->save();
-            };
-
-            if ($this->isFormalStatus($from)) {
-                $locked->performFormalMutation($mutation);
-            } else {
-                $mutation($locked);
-            }
+            });
 
             $this->audit->append($locked->office, $locked, $actor, $this->eventFor($to), [
                 'from' => $from,
@@ -63,11 +57,6 @@ class SecretariatTransitionService
 
             return $locked->refresh();
         });
-    }
-
-    private function isFormalStatus(string $status): bool
-    {
-        return in_array($status, ['registered', 'active', 'closed', 'archived', 'superseded', 'voided'], true);
     }
 
     private function eventFor(string $status): string
