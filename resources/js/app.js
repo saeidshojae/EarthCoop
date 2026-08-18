@@ -9,6 +9,7 @@ import "./najm-bahar.js";
 import "./najm-bahar-membership-source.js";
 import "./najm-hoda-context.js";
 import "./najm-hoda-management-console-v2.js";
+import "./najm-hoda-management-content-tools.js";
 import "./najm-hoda-attention-panel.js";
 import { register } from "swiper/element/bundle";
 import "./group-chat/index.js";
