@@ -5,48 +5,47 @@
 **Base architecture:** `agent/secretariat-master-roadmap` / PR #27
 
 ## وضعیت
-S1 Registry Core در سطح schema + domain services + policies + tests پیاده‌سازی شده است. Gateهای syntax، migration/rollback و تست‌های دامنه سبز هستند، اما Gate نهایی concurrency پس از stress test سه‌مرحله‌ای یک deadlock واقعی MySQL را آشکار کرد. الگوریتم شماره‌گذاری برای حذف منشأ این deadlock harden شده و اکنون نیازمند validation مجدد روی head جدید است.
+S1 Registry Core در سطح schema + domain services + policies + tests پیاده‌سازی و harden شده است. پس از کشف یک deadlock واقعی MySQL در stress test شماره‌گذاری، lock ordering اصلاح شد و validation کامل روی MySQL 8 و PHP 8.2 با موفقیت عبور کرد.
 
-آخرین validation کامل موفق پیش از stress test چندمرحله‌ای:
+آخرین validation کامل موفق:
 - Workflow: `EarthCoop Secretariat S1 Validation`
-- Run: `#50`
-- GitHub Actions run id: `32166580419`
-- Result: `success`
-
-آخرین stress validation پیش از اصلاح lock ordering:
-- Run: `#56`
-- GitHub Actions run id: `32167195223`
+- Run: `#60`
+- GitHub Actions run id: `32167752936`
+- Result: **success**
 - PHP syntax: **PASS**
 - `migrate:fresh`: **PASS**
 - rollback + re-apply شش migration S1: **PASS**
 - PHPUnit کل `tests/Feature/Secretariat`: **PASS** — 19 tests / 66 assertions
-- concurrency round 1/3: **PASS** — 12 process، sequenceهای 1..12، `last_value=12`
-- concurrency round 2/3: **FAIL** — یک worker با MySQL/InnoDB deadlock `SQLSTATE[40001] / 1213` روی `secretariat_sequences ... FOR UPDATE`
-- authorization regressions: به‌علت fail-fast workflow اجرا نشدند.
+- concurrency واقعی: **PASS** — سه دور مستقل × 12 process
+- authorization regressions: **PASS**
+  - `MessageAuthorizationTest`: 23 tests / 121 assertions
+  - `GroupRoleManagementTest`: 4 tests / 16 assertions
 
-بنابراین Gate S1 تا سبزشدن validation مجدد روی الگوریتم اصلاح‌شده **باز** است.
+## اثبات concurrency
+در هر سه دور مستقل stress test:
+- 12 process واقعی PHP به‌طور هم‌زمان برای یک Office/Year/Family شماره دریافت کردند.
+- sequenceها دقیقاً یکتا و gap-free از `1..12` بودند.
+- `secretariat_sequences.last_value = 12` بود.
+- هیچ deadlock، worker loss یا duplicate registry number رخ نداد.
 
-## اصلاح جدید concurrency
-الگوی قبلی در `RegistryNumberService` برای scope جدید ابتدا `insertOrIgnore` روی `secretariat_sequences` انجام می‌داد و سپس همان row را `SELECT ... FOR UPDATE` می‌گرفت. در burst واقعی 12 process، InnoDB توانست بین ایجاد/قفل sequence row deadlock بسازد.
+در مجموع Gate نهایی 36 allocation رقابتی واقعی را در سه scope تازه با موفقیت اجرا کرد.
 
-شماره ثبت ذاتاً یک namespace ترتیبی در سطح Office است. الگوریتم جدید قبل از هر ایجاد یا lock روی sequence، row مربوط به `secretariat_offices` را با `FOR UPDATE` قفل می‌کند. در نتیجه تمام allocatorهای یک Office lockها را با ترتیب یکسان می‌گیرند:
+## اصلاح concurrency
+الگوی اولیه در `RegistryNumberService` برای scope جدید ابتدا `insertOrIgnore` روی `secretariat_sequences` انجام می‌داد و سپس همان row را `SELECT ... FOR UPDATE` می‌گرفت. در run #56 (`32167195223`) و burst واقعی 12 process، InnoDB یک deadlock `SQLSTATE[40001] / 1213` روی sequence row ایجاد کرد.
+
+شماره ثبت ذاتاً یک namespace ترتیبی در سطح Office است. الگوریتم نهایی قبل از هر ایجاد یا lock روی sequence، row مربوط به `secretariat_offices` را با `FOR UPDATE` قفل می‌کند. ترتیب lock اکنون ثابت است:
 
 `Office namespace lock → Sequence create/find → Sequence row lock/update`
 
 این تصمیم عمداً correctness را بر parallelism داخل یک Office مقدم می‌کند. Officeهای مستقل همچنان می‌توانند موازی شماره‌گذاری کنند؛ فقط allocationهای یک Office برای مدت کوتاه serialize می‌شوند.
 
-## Gateهای مورد انتظار برای بستن S1
+## Gateهای بسته‌شده S1
 1. PHP syntax gate برای فایل‌های S1: **PASS**
 2. `migrate:fresh` روی MySQL 8: **PASS**
 3. rollback شش migration دبیرخانه و re-apply: **PASS**
 4. PHPUnit کل `tests/Feature/Secretariat`: **PASS**
-5. سه دور مستقل concurrency واقعی، هر دور 12 process: **باید PASS شود**
-   - sequenceهای یکتا و gap-free از 1 تا 12 در هر دور
-   - `last_value = 12` در هر scope
-   - بدون deadlock یا worker loss
-6. regression authorization گروه‌ها: **باید PASS شود**
-   - `MessageAuthorizationTest`
-   - `GroupRoleManagementTest`
+5. سه دور مستقل concurrency واقعی، هر دور 12 process: **PASS**
+6. regression authorization گروه‌ها: **PASS**
 
 ## اصلاحات حاصل از validation و self-review
 ### Version allocation
@@ -118,4 +117,4 @@ CI یک خطای واقعی در version allocation پیدا کرد: رابطه 
 این موارد طبق Master Roadmap در S2+ اجرا می‌شوند.
 
 ## وضعیت review / merge
-PR #28 همچنان Draft است. Gate نهایی S1 تا سبزشدن stress validation جدید بسته اعلام نمی‌شود. هیچ merge مستقیمی به `main` انجام نشده است.
+از نظر automated validation و self-review فنی، **Gate S1 بسته است**. PR #28 همچنان Draft و باز باقی می‌ماند تا درباره merge آن به branch roadmap تصمیم آگاهانه گرفته شود. هیچ merge مستقیمی به `main` انجام نشده است.
