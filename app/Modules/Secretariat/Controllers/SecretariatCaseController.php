@@ -90,6 +90,7 @@ class SecretariatCaseController extends Controller
             ->values();
 
         $linkableRecords = collect();
+        $referenceOffices = collect();
         if ($request->user()->can('manage', $case) && $case->status !== 'archived') {
             $memberIds = $case->records->pluck('id');
             $linkableRecords = SecretariatRecord::query()
@@ -101,6 +102,17 @@ class SecretariatCaseController extends Controller
                 ->get()
                 ->filter(fn (SecretariatRecord $record): bool => Gate::forUser($request->user())->allows('view', $record))
                 ->values();
+
+            // Only offices the actor can actually enter are offered as a source
+            // namespace. Exact record lookup still re-runs RecordPolicy below.
+            $referenceOffices = SecretariatOffice::query()
+                ->where('status', 'active')
+                ->whereKeyNot($office->id)
+                ->orderBy('name')
+                ->limit(200)
+                ->get()
+                ->filter(fn (SecretariatOffice $candidate): bool => Gate::forUser($request->user())->allows('view', $candidate))
+                ->values();
         }
 
         return view('secretariat.cases.show', [
@@ -108,6 +120,7 @@ class SecretariatCaseController extends Controller
             'case' => $case,
             'visibleRecords' => $visibleRecords,
             'linkableRecords' => $linkableRecords,
+            'referenceOffices' => $referenceOffices,
             'roles' => self::ROLES,
         ]);
     }
@@ -129,6 +142,34 @@ class SecretariatCaseController extends Controller
         $this->cases->addRecord($case, $record, $request->user(), $validated['role']);
 
         return back()->with('success', 'سند رسمی به پرونده افزوده شد.');
+    }
+
+    public function addCrossOfficeReference(Request $request, SecretariatOffice $office, SecretariatCase $case): RedirectResponse
+    {
+        $this->assertOfficeCase($office, $case);
+        $this->authorize('manage', $case);
+
+        $validated = $request->validate([
+            'source_office_id' => ['required', 'integer', 'exists:secretariat_offices,id'],
+            'registry_number' => ['required', 'string', 'max:255'],
+            'role' => ['required', Rule::in(self::ROLES)],
+        ]);
+
+        abort_if((int) $validated['source_office_id'] === (int) $office->id, 422, 'Use local case membership for records from this office.');
+
+        $sourceOffice = SecretariatOffice::query()->findOrFail($validated['source_office_id']);
+        $this->authorize('view', $sourceOffice);
+
+        $record = SecretariatRecord::query()
+            ->where('office_id', $sourceOffice->id)
+            ->where('registry_number', trim($validated['registry_number']))
+            ->whereNotNull('registry_number')
+            ->firstOrFail();
+        $this->authorize('view', $record);
+
+        $this->cases->addCrossOfficeReference($case, $record, $request->user(), $validated['role']);
+
+        return back()->with('success', 'ارجاع بین‌دفتری بدون کپی سند به پرونده افزوده شد.');
     }
 
     public function transition(Request $request, SecretariatOffice $office, SecretariatCase $case): RedirectResponse
