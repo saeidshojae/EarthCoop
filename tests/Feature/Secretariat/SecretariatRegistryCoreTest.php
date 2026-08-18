@@ -46,6 +46,12 @@ class SecretariatRegistryCoreTest extends TestCase
         $this->assertSame(1, (int) SecretariatSequence::query()->value('last_value'));
         $this->assertTrue($registered->currentVersion->is_official);
 
+        $active = $service->transition($registered, 'active', $actor);
+        $lateRetry = $service->register($active, $actor);
+        $this->assertSame('active', $lateRetry->status);
+        $this->assertSame($registered->registry_number, $lateRetry->registry_number);
+        $this->assertSame(1, (int) SecretariatSequence::query()->value('last_value'));
+
         $events = SecretariatAuditEvent::query()
             ->where('record_id', $registered->id)
             ->pluck('event_type')
@@ -55,6 +61,7 @@ class SecretariatRegistryCoreTest extends TestCase
         $this->assertContains('submitted_for_approval', $events);
         $this->assertContains('approved', $events);
         $this->assertContains('registered', $events);
+        $this->assertContains('activated', $events);
         $this->assertSame(1, SecretariatAuditEvent::query()->where('record_id', $registered->id)->where('event_type', 'registered')->count());
     }
 
