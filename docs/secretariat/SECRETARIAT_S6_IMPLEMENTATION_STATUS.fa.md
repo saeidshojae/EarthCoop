@@ -62,35 +62,46 @@ Phase S6 — Search, Knowledge & Retrieval — از آخرین head سبز S5 آ
 - فقط whitelist محدود فیلترها به Secretariat forwarding می‌شود
 - `text` و `registry_number` دلخواه context اجازه override کردن query اصلی retrieval را ندارند
 
-## Evidence موجود
+## Evidence
 
-S6 Gate run #1 / `32182687638` روی head اولیه Search:
+### Search foundation
+
+S6 Gate run #1 / `32182687638`:
 
 - PHP syntax: PASS
-- MySQL migrate:fresh: PASS
+- MySQL `migrate:fresh`: PASS
 - all Secretariat S1-S6 tests: PASS
 - 3 × 12-process Registry numbering concurrency: PASS
 - Group authorization regressions: PASS
 
-Knowledge Retrieval run #3 / `32183014056`:
+### Knowledge Retrieval boundary
+
+Run #3 / `32183014056`:
 
 - full S6 Gate: PASS
 - confidential ACL isolation tests: PASS
 - sensitive access audit tests: PASS
 - context character budget tests: PASS
 
-## Gate باز
+### Najm Hoda bridge
 
-Bridge نجم هدا پس از توسعه workflow CI باید در run جدید صریحاً با test مستقل زیر PASS شود:
+Run #6 / `32183613035`:
 
-`tests/Feature/NajmHoda/NajmHodaSecretariatKnowledgeBridgeTest.php`
+- PHP syntax including Najm Hoda bridge: PASS
+- MySQL `migrate:fresh`: PASS
+- all Secretariat S1-S6 feature tests: PASS
+- dedicated `NajmHodaSecretariatKnowledgeBridgeTest`: PASS
+- spoofed `actor_id` / `user_id` cannot elevate retrieval authority: PASS
+- retrieval context whitelist: PASS
+- 3 × 12-process Registry numbering concurrency: PASS
+- Group authorization regressions: PASS
 
-تا آن run سبز نشده، اتصال Najm Hoda به دبیرخانه نهایی اعلام نمی‌شود.
+نتیجه: read-side bridge نجم هدا به اسناد دبیرخانه در این slice سبز است و هیچ مسیر مستقلی از Agent/LLM به جدول‌های دبیرخانه ایجاد نشده است.
 
-## گام بعد پس از Gate
+## گام بعد
 
-1. ثبت evidence نهایی Bridge
-2. تصمیم درباره semantic ranking implementation بدون ایجاد permission bypass
-3. semantic ranker باید فقط روی packet/candidate ازپیش‌مجاز کار کند
+1. بررسی implementation موجود برای embedding/vector/semantic ranking در repository
+2. اگر ranker موجود قابل استفاده است، فقط روی candidate/packet ازپیش‌مجاز اعمال شود
+3. اگر وجود ندارد، ابتدا interface و deterministic fallback ساخته شود؛ provider خارجی بعداً قابل اتصال باشد
 4. هیچ embedding/index سراسری از metadata یا body رکورد غیرمجاز ساخته نشود
-5. سپس اتصال کنترل‌شده به context builder/grounded responder نجم هدا
+5. اتصال کنترل‌شده به context builder / grounded responder نجم هدا فقط پس از Gate semantic isolation
