@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\NajmHoda\NajmHodaOrchestrator;
 use App\Services\NajmHoda\NajmHodaPrivateGroupActionItemCommandService;
 use App\Services\NajmHoda\Context\NajmHodaPageContextResolver;
+use App\Services\NajmHoda\Context\NajmHodaSecretariatDraftAssistant;
 use App\Services\NajmHoda\Runtime\NajmHodaEntryPolicy;
 use App\Services\NajmHoda\Runtime\NajmHodaExecutionService;
 use App\Models\Conversation;
@@ -26,19 +27,22 @@ class NajmHodaController extends Controller
     protected NajmHodaExecutionService $executionService;
     protected NajmHodaPageContextResolver $pageContextResolver;
     protected NajmHodaPrivateGroupActionItemCommandService $privateGroupActionItemCommandService;
+    protected NajmHodaSecretariatDraftAssistant $secretariatDraftAssistant;
 
     public function __construct(
         NajmHodaOrchestrator $najmHoda,
         NajmHodaEntryPolicy $entryPolicy,
         NajmHodaExecutionService $executionService,
         NajmHodaPageContextResolver $pageContextResolver,
-        NajmHodaPrivateGroupActionItemCommandService $privateGroupActionItemCommandService
+        NajmHodaPrivateGroupActionItemCommandService $privateGroupActionItemCommandService,
+        NajmHodaSecretariatDraftAssistant $secretariatDraftAssistant
     ) {
         $this->najmHoda = $najmHoda;
         $this->entryPolicy = $entryPolicy;
         $this->executionService = $executionService;
         $this->pageContextResolver = $pageContextResolver;
         $this->privateGroupActionItemCommandService = $privateGroupActionItemCommandService;
+        $this->secretariatDraftAssistant = $secretariatDraftAssistant;
     }
 
     public function welcome()
@@ -104,22 +108,33 @@ class NajmHodaController extends Controller
                 $context['force_agent'] = $request->agent;
             }
 
-            // Action-item extraction/confirmation is a private manager workflow.
-            // Resolve the current page again on the server before giving it a
-            // chance to mutate anything; browser-supplied group/role hints are
-            // never treated as authority.
+            // Private page-aware mutation helpers run only after the browser page
+            // hint has been resolved again on the server. Secretariat drafting gets
+            // first chance on Secretariat pages; it only previews or saves Drafts,
+            // never submits/registers/dispatches/publishes. Group action-item flow
+            // remains unchanged for group pages.
             $response = null;
             if ($user) {
                 $browserPage = is_array(data_get($request->context ?? [], 'page'))
                     ? (array) data_get($request->context ?? [], 'page')
                     : [];
                 $pageContext = $this->pageContextResolver->resolve($user, ['page' => $browserPage]);
-                $response = $this->privateGroupActionItemCommandService->intercept(
+
+                $response = $this->secretariatDraftAssistant->intercept(
                     $user,
                     $pageContext,
                     (string) $request->message,
                     (int) $conversation->id
                 );
+
+                if (! is_array($response)) {
+                    $response = $this->privateGroupActionItemCommandService->intercept(
+                        $user,
+                        $pageContext,
+                        (string) $request->message,
+                        (int) $conversation->id
+                    );
+                }
             }
 
             if (! is_array($response)) {
