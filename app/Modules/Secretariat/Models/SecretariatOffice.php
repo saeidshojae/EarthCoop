@@ -2,6 +2,7 @@
 
 namespace App\Modules\Secretariat\Models;
 
+use App\Modules\Secretariat\Services\SecretariatMorphMap;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -14,6 +15,11 @@ class SecretariatOffice extends Model
         'numbering_policy' => 'array',
         'metadata' => 'array',
     ];
+
+    protected static function booted(): void
+    {
+        SecretariatMorphMap::register();
+    }
 
     public function scope(): MorphTo
     {
