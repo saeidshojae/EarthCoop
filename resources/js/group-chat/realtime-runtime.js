@@ -8,6 +8,7 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
     const configuredTransport = String(window.GroupChatConfig?.transport || 'polling').toLowerCase();
     const realtimeEnabled = window.GroupChatConfig?.enabled !== false;
     const pollingAllowed = realtimeEnabled && (configuredTransport !== 'websocket' || window.GroupChatConfig?.fallbackToPolling !== false);
+    const hasCanonicalSync = Boolean(window.GroupChatConfig?.syncUrl);
     const state = {
         initialized: false,
         connected: false,
@@ -45,12 +46,8 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         state.deltaRetryMs = 1000;
         publish();
     };
-    const shouldPoll = () => {
-        if (document.hidden || navigator.onLine === false) return false;
-        // The cursor journal is the canonical polling transport. Legacy
-        // snapshot endpoints are only a recovery path when that endpoint is
-        // unavailable, preventing parallel requests and stale DOM races.
-        if (window.GroupChatConfig?.syncUrl) return state.usingFallback && !syncPending;
+    const shouldPollLegacySnapshots = () => {
+        if (document.hidden || navigator.onLine === false || hasCanonicalSync) return false;
         return !state.initialized || state.usingFallback || !state.connected;
     };
     const scanCursors = () => {
@@ -161,7 +158,7 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         state.syncCursor = Math.max(state.syncCursor, Number(event.cursor || 0));
     };
     const pollSync = async () => {
-        if (!pollingAllowed || document.hidden || navigator.onLine === false || syncPending || !window.GroupChatConfig?.syncUrl) return;
+        if (!pollingAllowed || document.hidden || navigator.onLine === false || syncPending || !hasCanonicalSync) return;
         syncPending = true;
         try {
             let hasMore = true;
@@ -174,6 +171,9 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
             }
             setHealthy();
         } catch (error) {
+            // Cursor sync remains the sole polling owner. Do not fan out to the
+            // legacy message/post/reconcile endpoints when it is slow; the next
+            // scheduled cursor poll (or websocket) will recover without a storm.
             state.connected = false;
             state.usingFallback = true;
             publish();
@@ -258,7 +258,7 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         }
     };
     const pollMessages = async () => {
-        if (!shouldPoll() || messagePending) return;
+        if (!shouldPollLegacySnapshots() || messagePending) return;
         messagePending = true;
         try {
             const data = await api.json(`/api/groups/${groupId}/messages?last_message_id=${state.lastMessageId || ''}`);
@@ -273,7 +273,7 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         finally { messagePending = false; }
     };
     const pollPosts = async () => {
-        if (!shouldPoll() || postPending) return;
+        if (!shouldPollLegacySnapshots() || postPending) return;
         postPending = true;
         try {
             const data = await api.json(`/api/groups/${groupId}/posts/feed?after_id=${state.lastPostId}`);
@@ -286,7 +286,7 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
         finally { postPending = false; }
     };
     const reconcilePosts = async () => {
-        if (!shouldPoll() || reconcilePending) return;
+        if (!shouldPollLegacySnapshots() || reconcilePending) return;
         const ids = Array.from(document.querySelectorAll('[id^="blog-"]'), node => Number(node.id.replace('blog-', ''))).filter(Boolean);
         if (!ids.length) return;
         reconcilePending = true;
@@ -312,12 +312,17 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
             state.pollingStarted = true;
             scanCursors();
             const configuredInterval = Number(window.GroupChatConfig?.pollingIntervalMs || 1800);
-            const syncInterval = Math.min(10000, Math.max(1000, configuredInterval));
-            void pollSync();
-            lifecycle.interval(pollSync, syncInterval);
-            lifecycle.interval(pollMessages, 1000);
-            lifecycle.interval(pollPosts, 3000);
-            lifecycle.interval(reconcilePosts, 10000);
+            const syncInterval = Math.min(10000, Math.max(1500, configuredInterval));
+            if (hasCanonicalSync) {
+                // Canonical cursor journal exclusively owns HTTP polling. The
+                // websocket can coexist because it is push, not another poller.
+                void pollSync();
+                lifecycle.interval(pollSync, syncInterval);
+            } else {
+                lifecycle.interval(pollMessages, 3000);
+                lifecycle.interval(pollPosts, 5000);
+                lifecycle.interval(reconcilePosts, 15000);
+            }
             publish();
         };
         lifecycle.timeout(begin, 500);
@@ -325,14 +330,14 @@ export function createRealtimeRuntime({ app, groupId, authUserId, debug = false 
     lifecycle.on(window, 'online', () => {
         state.connected = false;
         publish();
-        void pollSync();
+        if (hasCanonicalSync) void pollSync();
         if (deltaSyncEnabled) void syncDelta();
         else initialize();
     });
     lifecycle.on(window, 'offline', () => { state.connected = false; state.usingFallback = false; publish(); });
     lifecycle.on(document, 'visibilitychange', () => {
         if (document.hidden) return;
-        void pollSync();
+        if (hasCanonicalSync) void pollSync();
         if (deltaSyncEnabled) void syncDelta();
     });
     lifecycle.add(() => {
