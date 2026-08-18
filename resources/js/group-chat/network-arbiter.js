@@ -3,8 +3,10 @@ const safeMethods = new Set(['GET', 'HEAD', 'OPTIONS']);
 const state = globalThis.__earthcoopGroupNetworkState || {
     activeMutations: 0,
     backgroundControllers: new Set(),
+    backgroundFlights: new Map(),
     mutationWaiters: new Set(),
 };
+if (!state.backgroundFlights) state.backgroundFlights = new Map();
 globalThis.__earthcoopGroupNetworkState = state;
 
 function urlOf(input) {
@@ -20,7 +22,7 @@ function isGroupBackground(url) {
     if (!url || globalThis.location && url.origin !== globalThis.location.origin) return false;
     const path = url.pathname;
     return /\/api\/groups\/\d+\/(sync|messages|unread-count|posts\/feed|posts\/reconcile)$/.test(path)
-        || /\/groups\/\d+\/session-participation\/state$/.test(path);
+        || /\/groups\/\d+\/(unread-count|session-participation\/state)$/.test(path);
 }
 
 function isGroupMutation(url, method) {
@@ -33,10 +35,8 @@ function isGroupMutation(url, method) {
 function tuneBackgroundUrl(url) {
     if (!url) return url;
     if (/\/api\/groups\/\d+\/sync$/.test(url.pathname)) {
-        // The sync endpoint renders user-sensitive fragments per event. Large
-        // batches can monopolize constrained/local PHP servers, delaying user
-        // mutations until their client timeout. Keep batches short; the cursor
-        // journal will continue from the returned cursor on the next pass.
+        // Rendering many event fragments in a single sync response can monopolize
+        // a constrained PHP worker. Keep cursor batches intentionally small.
         const current = Number(url.searchParams.get('limit') || 0);
         if (!current || current > 12) url.searchParams.set('limit', '12');
     }
@@ -75,27 +75,38 @@ if (!globalThis.__earthcoopGroupNetworkArbiterInstalled && typeof globalThis.fet
         if (background) {
             await waitForMutations();
             url = tuneBackgroundUrl(url);
+
+            // Coalesce identical concurrent background reads. Multiple runtimes
+            // may legitimately ask for the same state after one DOM/realtime
+            // event, but the PHP server should only execute that request once.
+            const flightKey = `${method}:${url?.toString() || String(input)}`;
+            const existing = state.backgroundFlights.get(flightKey);
+            if (existing) {
+                const response = await existing;
+                return response.clone();
+            }
+
+            const controller = new AbortController();
+            state.backgroundControllers.add(controller);
+            const upstreamSignal = init?.signal;
+            const upstreamAbort = () => controller.abort(upstreamSignal?.reason);
+            upstreamSignal?.addEventListener?.('abort', upstreamAbort, { once: true });
+            const requestInput = url && typeof input === 'string' ? url.toString() : input;
+            const flight = nativeFetch(requestInput, { ...init, signal: controller.signal })
+                .finally(() => {
+                    state.backgroundFlights.delete(flightKey);
+                    state.backgroundControllers.delete(controller);
+                    upstreamSignal?.removeEventListener?.('abort', upstreamAbort);
+                });
+            state.backgroundFlights.set(flightKey, flight);
+            const response = await flight;
+            return response.clone();
         }
 
         if (mutation) beginMutation();
-
-        let controller = null;
-        let upstreamAbort = null;
-        const upstreamSignal = init?.signal;
         try {
-            if (background) {
-                controller = new AbortController();
-                state.backgroundControllers.add(controller);
-                upstreamAbort = () => controller.abort(upstreamSignal?.reason);
-                upstreamSignal?.addEventListener?.('abort', upstreamAbort, { once: true });
-                init = { ...init, signal: controller.signal };
-            }
-
-            const requestInput = url && typeof input === 'string' ? url.toString() : input;
-            return await nativeFetch(requestInput, init);
+            return await nativeFetch(input, init);
         } finally {
-            if (controller) state.backgroundControllers.delete(controller);
-            if (upstreamAbort) upstreamSignal?.removeEventListener?.('abort', upstreamAbort);
             if (mutation) endMutation();
         }
     };
@@ -105,5 +116,6 @@ export function groupNetworkState() {
     return {
         activeMutations: state.activeMutations,
         backgroundRequests: state.backgroundControllers.size,
+        backgroundFlights: state.backgroundFlights.size,
     };
 }
