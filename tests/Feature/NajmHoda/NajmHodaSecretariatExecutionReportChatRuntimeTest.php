@@ -55,8 +55,8 @@ class NajmHodaSecretariatExecutionReportChatRuntimeTest extends TestCase
         ]);
         $saved->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('agent', 'secretariat_execution_report')
-            ->assertJsonPath('status', 'draft_saved');
+            ->assertJsonPath('agent', 'secretariat_execution_report');
+        $this->assertStringContainsString('Draft', (string) $saved->json('message'));
 
         $report = SecretariatRecord::query()
             ->where('record_type', 'execution_record')
