@@ -81,14 +81,6 @@ class SecretariatRecord extends Model
         });
     }
 
-    /**
-     * Internal escape hatch for deterministic Secretariat domain services only.
-     *
-     * All business-field updates are otherwise rejected by the aggregate. The
-     * callback still passes structural invariants: a current version must belong
-     * to this record, and formal states must have complete registration identity
-     * backed by an official current version.
-     */
     public function performControlledMutation(Closure $callback): mixed
     {
         $previous = $this->allowControlledMutation;
@@ -153,6 +145,26 @@ class SecretariatRecord extends Model
     public function currentVersion(): BelongsTo
     {
         return $this->belongsTo(SecretariatRecordVersion::class, 'current_version_id');
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(SecretariatAttachment::class, 'record_id')->orderBy('id');
+    }
+
+    public function outgoingRelations(): HasMany
+    {
+        return $this->hasMany(SecretariatRelation::class, 'source_record_id')->orderBy('id');
+    }
+
+    public function incomingRelations(): HasMany
+    {
+        return $this->hasMany(SecretariatRelation::class, 'target_record_id')->orderBy('id');
+    }
+
+    public function aclEntries(): HasMany
+    {
+        return $this->hasMany(SecretariatAclEntry::class, 'record_id')->orderBy('id');
     }
 
     public function source(): MorphTo
