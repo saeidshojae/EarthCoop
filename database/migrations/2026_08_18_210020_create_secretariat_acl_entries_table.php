@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('secretariat_acl_entries', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('record_id')->constrained('secretariat_records')->cascadeOnDelete();
+            $table->foreignId('record_id')->constrained('secretariat_records')->restrictOnDelete();
             $table->string('principal_type', 32);
             $table->unsignedBigInteger('principal_id');
             $table->string('permission', 32)->default('view');
@@ -22,10 +22,6 @@ return new class extends Migration
             $table->json('metadata')->nullable();
             $table->timestamps();
 
-            // Historical grant generations must remain append-only. We therefore
-            // index, rather than uniquely constrain, this tuple; the domain service
-            // makes an active grant idempotent while allowing a new row after
-            // revoke/expiry without rewriting prior access history.
             $table->index(
                 ['record_id', 'principal_type', 'principal_id', 'permission', 'revoked_at'],
                 'secretariat_acl_principal_permission_idx'
