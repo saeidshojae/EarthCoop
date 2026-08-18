@@ -26,6 +26,12 @@ class RegistryNumberService
     /**
      * Must be called inside the caller's transaction.
      *
+     * Registry numbering is a serialized namespace operation per office. We lock
+     * the office row first so every allocator for that office acquires locks in
+     * the same order before touching a sequence row. This avoids the InnoDB
+     * insert-or-ignore/SELECT FOR UPDATE deadlock that can otherwise occur when
+     * many requests race to create the first sequence row for the same scope.
+     *
      * @return array{year:int,family:string,sequence:int,number:string}
      */
     public function allocate(SecretariatOffice $office, string $recordType, ?int $year = null): array
@@ -33,6 +39,14 @@ class RegistryNumberService
         $year ??= (int) now()->year;
         $family = $this->familyFor($recordType);
         $now = now();
+
+        // The office is the namespace root. Lock it before any sequence lookup or
+        // creation so concurrent allocations for the same office cannot acquire
+        // sequence locks in competing orders.
+        SecretariatOffice::query()
+            ->whereKey($office->getKey())
+            ->lockForUpdate()
+            ->firstOrFail();
 
         DB::table('secretariat_sequences')->insertOrIgnore([
             'office_id' => $office->id,
