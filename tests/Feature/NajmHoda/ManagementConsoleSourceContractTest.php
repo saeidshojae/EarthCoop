@@ -11,10 +11,13 @@ class ManagementConsoleSourceContractTest extends TestCase
         $app = file_get_contents(resource_path('js/app.js'));
         $console = file_get_contents(resource_path('js/najm-hoda-management-console-v2.js'));
         $contentTools = file_get_contents(resource_path('js/najm-hoda-management-content-tools.js'));
+        $nativeTools = file_get_contents(resource_path('js/najm-hoda-management-native-tools.js'));
 
         $this->assertStringContainsString('import "./najm-hoda-management-console-v2.js";', $app);
         $this->assertStringContainsString('import "./najm-hoda-management-content-tools.js";', $app);
+        $this->assertStringContainsString('import "./najm-hoda-management-native-tools.js";', $app);
         $this->assertStringNotContainsString('import "./najm-hoda-management-console.js";', $app);
+
         $this->assertStringContainsString('GroupChatConfig?.canManageSession', $console);
         $this->assertStringContainsString('[2, 3].includes', $console);
         $this->assertStringContainsString("fetch('/api/najm-hoda/chat'", $console);
@@ -40,12 +43,24 @@ class ManagementConsoleSourceContractTest extends TestCase
         $this->assertStringContainsString('ثبت نظر', $contentTools);
         $this->assertStringContainsString('ثبت واکنش', $contentTools);
         $this->assertStringContainsString('ارسال پیام گروه', $contentTools);
-        $this->assertStringContainsString('انتخابات گروه', $contentTools);
         $this->assertStringContainsString('یک پست بساز | عنوان:', $contentTools);
         $this->assertStringContainsString('یک نظرسنجی بساز | سوال:', $contentTools);
         $this->assertStringContainsString("fetch('/api/najm-hoda/chat'", $contentTools);
         $this->assertStringContainsString("send(panel,widget,'تأیید'", $contentTools);
-        $this->assertStringContainsString('electionVotingOverlay', $contentTools);
         $this->assertStringContainsString('message_editor', $contentTools);
+
+        $this->assertStringContainsString('مدیریت و حکمرانی گروه', $nativeTools);
+        $this->assertStringContainsString('ایجاد انتخابات درون‌گروهی', $nativeTools);
+        $this->assertStringContainsString('مدیریت انتخابات درون‌گروهی', $nativeTools);
+        $this->assertStringContainsString('GroupChat?.elections?.openAdmin', $nativeTools);
+        $this->assertStringContainsString('open-election-admin', $nativeTools);
+        $this->assertStringContainsString('data-tab="election"', $nativeTools);
+        $this->assertStringContainsString('ویرایش گروه', $nativeTools);
+        $this->assertStringContainsString('افزودن مهمان', $nativeTools);
+        $this->assertStringContainsString('درخواست چت مدیران', $nativeTools);
+        $this->assertStringContainsString('مدیریت اعضا', $nativeTools);
+        $this->assertStringContainsString('تنظیمات گروه', $nativeTools);
+        $this->assertStringContainsString('گزارش‌ها و رسیدگی', $nativeTools);
+        $this->assertStringNotContainsString('electionVotingOverlay', $nativeTools);
     }
 }
