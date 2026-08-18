@@ -61,15 +61,18 @@ class SecretariatPolicyTest extends TestCase
             'record_type' => 'meeting_minute',
             'title' => 'B minute',
         ]), $manager);
+        $confidential = $records->submitForApproval($records->createDraft($officeA, $manager, [
+            'record_type' => 'official_note',
+            'title' => 'Sensitive note',
+            'confidentiality' => 'confidential',
+        ]), $manager);
 
         $this->assertTrue($manager->can('register', $recordA));
         $this->assertFalse($manager->can('register', $recordB));
         $this->assertFalse($member->can('register', $recordA));
         $this->assertTrue($member->can('view', $recordA));
-
-        $recordA->forceFill(['confidentiality' => 'confidential'])->save();
-        $this->assertFalse($member->can('view', $recordA));
-        $this->assertFalse($manager->can('view', $recordA));
+        $this->assertFalse($member->can('view', $confidential));
+        $this->assertFalse($manager->can('view', $confidential));
     }
 
     public function test_inspector_can_prepare_but_cannot_register_or_drive_formal_lifecycle(): void
