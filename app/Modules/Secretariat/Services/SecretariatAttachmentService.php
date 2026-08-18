@@ -83,7 +83,7 @@ class SecretariatAttachmentService
                     'storage_disk' => $disk,
                     'storage_key' => $storageKey,
                     'mime_type' => $file->getMimeType(),
-                    'file_size' => $file->getSize(),
+                    'file_size' => (int) $file->getSize(),
                     'checksum' => $checksum,
                     'uploaded_by' => $actor->id,
                     'uploaded_at' => now(),
@@ -103,6 +103,8 @@ class SecretariatAttachmentService
                 return $attachment;
             });
         } catch (Throwable $exception) {
+            // Storage write happened before the DB transaction. If DB persistence
+            // fails, compensate by removing the unreferenced object.
             Storage::disk($disk)->delete($storageKey);
             throw $exception;
         }
@@ -121,7 +123,12 @@ class SecretariatAttachmentService
             $disk = $locked->storage_disk;
             $key = $locked->storage_key;
             $locked->delete();
-            Storage::disk($disk)->delete($key);
+
+            // Object storage cannot participate in the SQL transaction. Delete
+            // the physical object only after the row deletion has committed.
+            DB::afterCommit(static function () use ($disk, $key): void {
+                Storage::disk($disk)->delete($key);
+            });
         });
     }
 
