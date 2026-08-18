@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('secretariat_cases', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('office_id')->constrained('secretariat_offices')->cascadeOnDelete();
+            $table->foreignId('office_id')->constrained('secretariat_offices')->restrictOnDelete();
             $table->string('case_number', 160);
             $table->string('title', 500);
             $table->text('summary')->nullable();
@@ -29,8 +29,8 @@ return new class extends Migration
 
         Schema::create('secretariat_case_records', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('case_id')->constrained('secretariat_cases')->cascadeOnDelete();
-            $table->foreignId('record_id')->constrained('secretariat_records')->cascadeOnDelete();
+            $table->foreignId('case_id')->constrained('secretariat_cases')->restrictOnDelete();
+            $table->foreignId('record_id')->constrained('secretariat_records')->restrictOnDelete();
             $table->string('role', 80)->default('related');
             $table->foreignId('added_by')->constrained('users');
             $table->timestamp('added_at');
