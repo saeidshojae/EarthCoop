@@ -66,6 +66,13 @@ class Group extends Model
     }
 
     public function userCount(){
+        // The group-chat panel preloads this aggregate for all related groups in
+        // one query. Reuse it when present and preserve the canonical fallback
+        // everywhere else.
+        if (array_key_exists('active_members_count', $this->attributes)) {
+            return (int) $this->attributes['active_members_count'];
+        }
+
         return $this->hasMany(GroupUser::class)
             ->whereHas('user', fn ($query) => $query->where('is_system', false))
             ->where('status', 1)
@@ -127,4 +134,3 @@ class Group extends Model
         return $this->morphMany(\App\Modules\NajmBahar\Models\Investment::class, 'investor');
     }
 }
-
