@@ -12,12 +12,8 @@ use Illuminate\Support\Facades\Gate;
 /**
  * Private, page-aware Secretariat drafting surface for Najm Hoda.
  *
- * Drafting is deliberately split into two trust levels:
- *  - preview: pure text, no persistence and no side effect;
- *  - save: the exact preview payload is persisted only after an explicit
- *    confirmation, a fresh policy check and server-side resource resolution.
- *
- * This service never submits, registers, dispatches or publishes a record.
+ * Preview surfaces remain pure. Any deterministic domain mutation happens only
+ * after explicit confirmation and a fresh server-side policy/resource check.
  */
 class NajmHodaSecretariatDraftAssistant
 {
@@ -25,6 +21,7 @@ class NajmHodaSecretariatDraftAssistant
         private readonly SecretariatRecordService $records,
         private readonly NajmHodaSecretariatDraftRevisionAssistant $revisions,
         private readonly NajmHodaSecretariatCorrespondenceRouter $correspondence,
+        private readonly NajmHodaSecretariatCaseAssistant $cases,
     ) {
     }
 
@@ -50,6 +47,11 @@ class NajmHodaSecretariatDraftAssistant
         $office = SecretariatOffice::query()->find($officeId);
         if (! $office) {
             return null;
+        }
+
+        $caseResponse = $this->cases->intercept($actor, $pageContext, $message, $conversationId);
+        if (is_array($caseResponse)) {
+            return $caseResponse;
         }
 
         $correspondenceResponse = $this->correspondence->intercept(
