@@ -110,6 +110,54 @@ class SecretariatS6KnowledgeRetrievalTest extends TestCase
         }
     }
 
+    public function test_natural_language_question_finds_document_by_meaningful_term_when_full_phrase_does_not_match(): void
+    {
+        [$manager, $office] = $this->office('S6-KNOW-NL', 3);
+        $record = app(SecretariatRecordService::class)->createDraft($office, $manager, [
+            'record_type' => 'formal_decision',
+            'direction' => 'internal',
+            'title' => 'تصمیم درباره تخصیص آب کشاورزی',
+            'body' => 'سهم آب باغ‌های پایین‌دست برای فصل آینده بازتنظیم می‌شود.',
+            'confidentiality' => 'office_members',
+        ]);
+
+        $packets = app(SecretariatKnowledgeRetrievalService::class)->retrieve(
+            $manager,
+            'لطفاً در اسناد دبیرخانه بگو درباره آب چه تصمیمی گرفته شده است؟'
+        );
+
+        $this->assertContains($record->id, $packets->pluck('record_id')->all());
+        $this->assertGreaterThan(0, $packets->firstWhere('record_id', $record->id)['retrieval_score']);
+    }
+
+    public function test_keyword_fanout_still_cannot_surface_foreign_office_record(): void
+    {
+        [$member, $office] = $this->office('S6-KNOW-SAFE', 1);
+        [$foreignManager, $foreignOffice] = $this->office('S6-KNOW-FOREIGN', 3);
+
+        app(SecretariatRecordService::class)->createDraft($office, $member, [
+            'record_type' => 'official_note',
+            'direction' => 'internal',
+            'title' => 'یادداشت آب محلی',
+            'body' => 'آب محله در دستور بررسی است.',
+            'confidentiality' => 'office_members',
+        ]);
+        $hidden = app(SecretariatRecordService::class)->createDraft($foreignOffice, $foreignManager, [
+            'record_type' => 'official_note',
+            'direction' => 'internal',
+            'title' => 'سند محرمانه دفتر دیگر درباره آب',
+            'body' => 'آب و برنامه خصوصی دفتر دیگر',
+            'confidentiality' => 'office_members',
+        ]);
+
+        $packets = app(SecretariatKnowledgeRetrievalService::class)->retrieve(
+            $member,
+            'در اسناد دبیرخانه درباره آب چه چیزی داریم؟'
+        );
+
+        $this->assertNotContains($hidden->id, $packets->pluck('record_id')->all());
+    }
+
     public function test_retrieval_rejects_empty_or_oversized_query_before_search(): void
     {
         $actor = User::factory()->create();
