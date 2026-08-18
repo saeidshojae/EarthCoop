@@ -8,7 +8,6 @@ use App\Models\User;
 use App\Modules\Secretariat\Models\SecretariatRecord;
 use App\Modules\Secretariat\Services\SecretariatOfficeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class NajmHodaSecretariatDraftChatRuntimeTest extends TestCase
@@ -20,7 +19,7 @@ class NajmHodaSecretariatDraftChatRuntimeTest extends TestCase
         config(['najm-hoda.enabled' => true]);
 
         $actor = User::factory()->create();
-        Sanctum::actingAs($actor);
+        $this->actingAs($actor);
 
         $group = Group::query()->create([
             'name' => 'S6 Draft Runtime',
@@ -47,7 +46,6 @@ class NajmHodaSecretariatDraftChatRuntimeTest extends TestCase
             'module' => 'secretariat',
             'resource_type' => 'secretariat_office',
             'resource_id' => $office->id,
-            // Must never be used as document content by the server resolver.
             'title' => 'BROWSER FORGED TITLE',
             'body' => 'BROWSER FORGED BODY',
         ];
@@ -93,7 +91,7 @@ class NajmHodaSecretariatDraftChatRuntimeTest extends TestCase
         config(['najm-hoda.enabled' => true]);
 
         $actor = User::factory()->create();
-        Sanctum::actingAs($actor);
+        $this->actingAs($actor);
         $group = Group::query()->create(['name' => 'S6 Draft Cancel', 'group_type' => '0']);
         GroupUser::query()->create([
             'group_id' => $group->id,
