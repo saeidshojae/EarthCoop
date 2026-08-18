@@ -3,6 +3,7 @@
 use App\Http\Middleware\Authenticate;
 use App\Modules\Secretariat\Controllers\SecretariatAccessController;
 use App\Modules\Secretariat\Controllers\SecretariatController;
+use App\Modules\Secretariat\Controllers\SecretariatCorrespondenceController;
 use App\Modules\Secretariat\Controllers\SecretariatDirectoryController;
 use Illuminate\Support\Facades\Route;
 
@@ -18,6 +19,13 @@ Route::middleware(Authenticate::class)->group(function () {
             Route::post('/records', [SecretariatController::class, 'store'])
                 ->middleware('throttle:10,1')
                 ->name('records.store');
+
+            Route::get('/correspondence/create', [SecretariatCorrespondenceController::class, 'create'])
+                ->name('correspondence.create');
+            Route::post('/correspondence', [SecretariatCorrespondenceController::class, 'store'])
+                ->middleware('throttle:10,1')
+                ->name('correspondence.store');
+
             Route::get('/records/{record}', [SecretariatController::class, 'show'])->name('records.show');
             Route::post('/records/{record}/submit', [SecretariatController::class, 'submit'])
                 ->middleware('throttle:20,1')
@@ -33,6 +41,14 @@ Route::middleware(Authenticate::class)->group(function () {
             Route::post('/records/{record}/relations', [SecretariatController::class, 'addRelation'])
                 ->middleware('throttle:20,1')
                 ->name('relations.store');
+
+            Route::post('/records/{record}/dispatches', [SecretariatCorrespondenceController::class, 'dispatch'])
+                ->middleware('throttle:20,1')
+                ->name('dispatches.store');
+            Route::post('/records/{record}/dispatches/{dispatch}/transition', [SecretariatCorrespondenceController::class, 'transitionDispatch'])
+                ->middleware('throttle:30,1')
+                ->name('dispatches.transition');
+
             Route::get('/records/{record}/access', [SecretariatAccessController::class, 'index'])
                 ->name('acl.index');
             Route::post('/records/{record}/acl', [SecretariatAccessController::class, 'grant'])
