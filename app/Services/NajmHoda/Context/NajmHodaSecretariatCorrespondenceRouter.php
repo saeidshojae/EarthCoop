@@ -9,14 +9,15 @@ use App\Models\User;
  * assistant remains the single controller-facing integration point.
  *
  * The historical class name is retained during S7 to avoid destabilizing the
- * already-validated Chat API wiring. Read-only readiness runs before mutation
- * helpers; evidence-grounded execution report and correspondence flows follow.
+ * already-validated Chat API wiring. Read-only readiness runs first, then the
+ * most specific evidence/governance operations before correspondence helpers.
  */
 class NajmHodaSecretariatCorrespondenceRouter
 {
     public function __construct(
         private readonly NajmHodaSecretariatDraftReadinessAssistant $readiness,
         private readonly NajmHodaSecretariatExecutionReportAssistant $executionReports,
+        private readonly NajmHodaSecretariatGovernanceDraftAssistant $governanceDrafts,
         private readonly NajmHodaSecretariatInternalCorrespondenceAssistant $internal,
         private readonly NajmHodaSecretariatIncomingCorrespondenceAssistant $incoming,
         private readonly NajmHodaSecretariatCorrespondenceAssistant $outgoing,
@@ -32,6 +33,11 @@ class NajmHodaSecretariatCorrespondenceRouter
         }
 
         $response = $this->executionReports->intercept($actor, $pageContext, $message, $conversationId);
+        if (is_array($response)) {
+            return $response;
+        }
+
+        $response = $this->governanceDrafts->intercept($actor, $pageContext, $message, $conversationId);
         if (is_array($response)) {
             return $response;
         }
