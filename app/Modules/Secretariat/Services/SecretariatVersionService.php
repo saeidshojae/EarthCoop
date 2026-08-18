@@ -6,7 +6,6 @@ use App\Models\User;
 use App\Modules\Secretariat\Models\SecretariatRecord;
 use App\Modules\Secretariat\Models\SecretariatRecordVersion;
 use Illuminate\Support\Facades\DB;
-use LogicException;
 
 class SecretariatVersionService
 {
@@ -19,18 +18,20 @@ class SecretariatVersionService
         User $actor,
         array $content,
         ?string $changeReason = null,
-        bool $audit = true
+        bool $audit = true,
+        bool $makeCurrent = true,
     ): SecretariatRecordVersion {
-        return DB::transaction(function () use ($record, $actor, $content, $changeReason, $audit) {
+        return DB::transaction(function () use ($record, $actor, $content, $changeReason, $audit, $makeCurrent) {
             /** @var SecretariatRecord $locked */
             $locked = SecretariatRecord::query()->whereKey($record->getKey())->lockForUpdate()->firstOrFail();
 
+            $base = $locked->currentVersion;
             $last = (int) $locked->versions()->max('version_number');
             $snapshot = [
-                'title' => (string) ($content['title'] ?? $locked->title),
-                'subject' => $content['subject'] ?? $locked->subject,
-                'summary' => $content['summary'] ?? $locked->summary,
-                'body' => $content['body'] ?? null,
+                'title' => (string) ($content['title'] ?? $base?->title ?? $locked->title),
+                'subject' => array_key_exists('subject', $content) ? $content['subject'] : ($base?->subject ?? $locked->subject),
+                'summary' => array_key_exists('summary', $content) ? $content['summary'] : ($base?->summary ?? $locked->summary),
+                'body' => array_key_exists('body', $content) ? $content['body'] : $base?->body,
             ];
 
             $version = $locked->versions()->create([
@@ -42,18 +43,16 @@ class SecretariatVersionService
                 'is_official' => false,
             ]);
 
-            $locked->forceFill([
-                'title' => $snapshot['title'],
-                'subject' => $snapshot['subject'],
-                'summary' => $snapshot['summary'],
-                'current_version_id' => $version->id,
-            ])->save();
+            if ($makeCurrent) {
+                $this->applyVersionSnapshot($locked, $version);
+            }
 
             if ($audit) {
                 $this->audit->append($locked->office, $locked, $actor, 'version_created', [
                     'version_number' => $version->version_number,
                     'change_reason' => $changeReason,
                     'checksum' => $version->content_checksum,
+                    'made_current' => $makeCurrent,
                 ]);
             }
 
@@ -61,23 +60,42 @@ class SecretariatVersionService
         });
     }
 
-    public function markOfficial(SecretariatRecordVersion $version, User $actor): SecretariatRecordVersion
+    public function markOfficial(SecretariatRecordVersion $version, User $actor, bool $makeCurrent = true): SecretariatRecordVersion
     {
-        if ($version->is_official) {
-            return $version;
-        }
+        return DB::transaction(function () use ($version, $actor, $makeCurrent) {
+            /** @var SecretariatRecordVersion $lockedVersion */
+            $lockedVersion = SecretariatRecordVersion::query()
+                ->with('record.office')
+                ->whereKey($version->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if ($version->record->current_version_id !== $version->id) {
-            throw new LogicException('Only the current Secretariat version can become official.');
-        }
+            if (! $lockedVersion->is_official) {
+                $lockedVersion->forceFill([
+                    'is_official' => true,
+                    'approved_by' => $actor->id,
+                    'approved_at' => now(),
+                ])->save();
+            }
 
-        $version->forceFill([
-            'is_official' => true,
-            'approved_by' => $actor->id,
-            'approved_at' => now(),
+            if ($makeCurrent) {
+                /** @var SecretariatRecord $record */
+                $record = SecretariatRecord::query()->whereKey($lockedVersion->record_id)->lockForUpdate()->firstOrFail();
+                $this->applyVersionSnapshot($record, $lockedVersion);
+            }
+
+            return $lockedVersion->refresh();
+        });
+    }
+
+    private function applyVersionSnapshot(SecretariatRecord $record, SecretariatRecordVersion $version): void
+    {
+        $record->forceFill([
+            'title' => $version->title,
+            'subject' => $version->subject,
+            'summary' => $version->summary,
+            'current_version_id' => $version->id,
         ])->save();
-
-        return $version->refresh();
     }
 
     private function canonicalPayload(array $snapshot): string
