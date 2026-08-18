@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Modules\Secretariat\Models\SecretariatRecord;
 use App\Modules\Secretariat\Models\SecretariatRecordVersion;
 use Illuminate\Support\Facades\DB;
+use LogicException;
 
 class SecretariatVersionService
 {
@@ -69,6 +70,16 @@ class SecretariatVersionService
                 ->whereKey($version->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            if ($makeCurrent) {
+                $latestNumber = (int) SecretariatRecordVersion::query()
+                    ->where('record_id', $lockedVersion->record_id)
+                    ->max('version_number');
+
+                if ((int) $lockedVersion->version_number !== $latestNumber) {
+                    throw new LogicException('A stale Secretariat version cannot supersede a newer amendment.');
+                }
+            }
 
             if (! $lockedVersion->is_official) {
                 $lockedVersion->forceFill([
