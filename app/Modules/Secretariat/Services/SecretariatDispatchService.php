@@ -6,14 +6,17 @@ use App\Models\User;
 use App\Modules\Secretariat\Models\SecretariatDispatch;
 use App\Modules\Secretariat\Models\SecretariatParty;
 use App\Modules\Secretariat\Models\SecretariatRecord;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class SecretariatDispatchService
 {
     private const TYPES = ['referral', 'notification', 'delivery', 'return'];
     private const CHANNELS = ['internal', 'email', 'physical', 'api', 'other'];
     private const DISPATCHABLE_RECORD_STATUSES = ['registered', 'active', 'closed'];
+    private const TERMINAL_STATUSES = ['completed', 'failed', 'cancelled'];
     private const TRANSITIONS = [
         'pending' => ['sent', 'cancelled'],
         'sent' => ['received', 'failed', 'cancelled'],
@@ -31,13 +34,13 @@ class SecretariatDispatchService
     /** @param array<string,mixed> $attributes */
     public function create(SecretariatRecord $record, User $actor, array $attributes): SecretariatDispatch
     {
-        return DB::transaction(function () use ($record, $actor, $attributes) {
+        $dueAt = $this->parseTimestamp($attributes['due_at'] ?? null, 'due_at');
+        $followUpAt = $this->parseTimestamp($attributes['follow_up_at'] ?? null, 'follow_up_at');
+
+        return DB::transaction(function () use ($record, $actor, $attributes, $dueAt, $followUpAt) {
             /** @var SecretariatRecord $lockedRecord */
-            $lockedRecord = SecretariatRecord::query()->whereKey($record->id)->lockForUpdate()->firstOrFail();
-            if (
-                $lockedRecord->registry_number === null
-                || ! in_array($lockedRecord->status, self::DISPATCHABLE_RECORD_STATUSES, true)
-            ) {
+            $lockedRecord = SecretariatRecord::query()->with('office')->whereKey($record->id)->lockForUpdate()->firstOrFail();
+            if ($lockedRecord->registry_number === null || ! in_array($lockedRecord->status, self::DISPATCHABLE_RECORD_STATUSES, true)) {
                 throw ValidationException::withMessages(['record' => 'Only a registered, active, or closed Secretariat record can enter a new dispatch trail.']);
             }
 
@@ -82,6 +85,8 @@ class SecretariatDispatchService
                 'target_user_id' => $userId,
                 'instructions' => $attributes['instructions'] ?? null,
                 'external_reference_number' => $attributes['external_reference_number'] ?? null,
+                'due_at' => $dueAt,
+                'follow_up_at' => $followUpAt,
                 'metadata' => $attributes['metadata'] ?? null,
                 'created_by' => $actor->id,
             ]);
@@ -92,9 +97,52 @@ class SecretariatDispatchService
                 'channel' => $channel,
                 'target_party_id' => $partyId,
                 'target_user_id' => $userId,
+                'due_at' => $dueAt?->toIso8601String(),
+                'follow_up_at' => $followUpAt?->toIso8601String(),
             ]);
 
             return $dispatch;
+        });
+    }
+
+    /**
+     * Schedule or reschedule a non-terminal dispatch through one audited service.
+     * No implicit default deadline is ever invented by the Secretariat.
+     */
+    public function schedule(SecretariatDispatch $dispatch, User $actor, mixed $dueAt = null, mixed $followUpAt = null): SecretariatDispatch
+    {
+        $parsedDueAt = $this->parseTimestamp($dueAt, 'due_at');
+        $parsedFollowUpAt = $this->parseTimestamp($followUpAt, 'follow_up_at');
+
+        return DB::transaction(function () use ($dispatch, $actor, $parsedDueAt, $parsedFollowUpAt) {
+            /** @var SecretariatDispatch $locked */
+            $locked = SecretariatDispatch::query()->with('record.office')->whereKey($dispatch->id)->lockForUpdate()->firstOrFail();
+            if (in_array((string) $locked->status, self::TERMINAL_STATUSES, true)) {
+                throw ValidationException::withMessages(['status' => 'A terminal Secretariat dispatch cannot be rescheduled.']);
+            }
+
+            $before = [
+                'due_at' => $locked->due_at?->toIso8601String(),
+                'follow_up_at' => $locked->follow_up_at?->toIso8601String(),
+            ];
+
+            $locked->performControlledMutation(function (SecretariatDispatch $target) use ($parsedDueAt, $parsedFollowUpAt): void {
+                $target->forceFill([
+                    'due_at' => $parsedDueAt,
+                    'follow_up_at' => $parsedFollowUpAt,
+                ])->save();
+            });
+
+            $this->audit->append($locked->record->office, $locked->record, $actor, 'dispatch_schedule_changed', [
+                'dispatch_id' => $locked->id,
+                'before' => $before,
+                'after' => [
+                    'due_at' => $parsedDueAt?->toIso8601String(),
+                    'follow_up_at' => $parsedFollowUpAt?->toIso8601String(),
+                ],
+            ]);
+
+            return $locked->refresh();
         });
     }
 
@@ -134,5 +182,18 @@ class SecretariatDispatchService
 
             return $locked->refresh();
         });
+    }
+
+    private function parseTimestamp(mixed $value, string $field): ?CarbonImmutable
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            return CarbonImmutable::parse($value);
+        } catch (Throwable) {
+            throw ValidationException::withMessages([$field => "Invalid {$field} timestamp."]);
+        }
     }
 }
