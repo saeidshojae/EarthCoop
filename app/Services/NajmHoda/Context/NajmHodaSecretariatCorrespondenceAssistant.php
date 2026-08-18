@@ -225,7 +225,10 @@ class NajmHodaSecretariatCorrespondenceAssistant
                 'body' => $body,
                 'confidentiality' => $confidentiality,
                 'channel' => $channel,
-                'source_type' => 'najm_hoda_guided',
+                // `manual` is the existing S1 descriptor source for operator-
+                // prepared records. Najm Hoda provenance belongs in metadata,
+                // not in an unregistered morph/source token.
+                'source_type' => 'manual',
                 'record_metadata' => ['prepared_by' => 'najm_hoda_s7'],
                 'correspondence_metadata' => ['prepared_by' => 'najm_hoda_s7'],
             ],
