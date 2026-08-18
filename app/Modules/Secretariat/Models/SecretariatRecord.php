@@ -4,6 +4,7 @@ namespace App\Modules\Secretariat\Models;
 
 use App\Models\User;
 use App\Modules\Secretariat\Services\SecretariatMorphMap;
+use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -13,6 +14,27 @@ use LogicException;
 class SecretariatRecord extends Model
 {
     protected $guarded = [];
+
+    private bool $allowFormalMutation = false;
+
+    private const FORMAL_IMMUTABLE_FIELDS = [
+        'office_id',
+        'registry_number',
+        'registry_sequence',
+        'registry_year',
+        'registry_family',
+        'record_type',
+        'direction',
+        'title',
+        'subject',
+        'summary',
+        'source_type',
+        'source_id',
+        'registered_by',
+        'registered_at',
+        'approved_by',
+        'approved_at',
+    ];
 
     protected $casts = [
         'metadata' => 'array',
@@ -25,11 +47,38 @@ class SecretariatRecord extends Model
     {
         SecretariatMorphMap::register();
 
+        static::updating(function (self $record): void {
+            $originalStatus = (string) $record->getOriginal('status');
+            $isFormal = in_array($originalStatus, ['registered', 'active', 'closed', 'archived', 'superseded', 'voided'], true);
+
+            if (! $isFormal || $record->allowFormalMutation) {
+                return;
+            }
+
+            foreach (self::FORMAL_IMMUTABLE_FIELDS as $field) {
+                if ($record->isDirty($field)) {
+                    throw new LogicException("Formal Secretariat field [{$field}] cannot be overwritten directly.");
+                }
+            }
+        });
+
         static::deleting(function (self $record): void {
             if ($record->status !== 'draft' && $record->status !== 'cancelled') {
                 throw new LogicException('Registered or formal Secretariat records cannot be hard-deleted.');
             }
         });
+    }
+
+    public function performFormalMutation(Closure $callback): mixed
+    {
+        $previous = $this->allowFormalMutation;
+        $this->allowFormalMutation = true;
+
+        try {
+            return $callback($this);
+        } finally {
+            $this->allowFormalMutation = $previous;
+        }
     }
 
     public function office(): BelongsTo
