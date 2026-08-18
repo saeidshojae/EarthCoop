@@ -71,4 +71,51 @@ class SecretariatPolicyTest extends TestCase
         $this->assertFalse($member->can('view', $recordA));
         $this->assertFalse($manager->can('view', $recordA));
     }
+
+    public function test_inspector_can_prepare_but_cannot_register_or_drive_formal_lifecycle(): void
+    {
+        $inspector = User::factory()->create();
+        $manager = User::factory()->create();
+        $group = Group::query()->create(['name' => 'Policy Group', 'group_type' => '0']);
+
+        GroupUser::query()->create([
+            'group_id' => $group->id,
+            'user_id' => $inspector->id,
+            'role' => 2,
+            'status' => 1,
+            'expired' => null,
+        ]);
+        GroupUser::query()->create([
+            'group_id' => $group->id,
+            'user_id' => $manager->id,
+            'role' => 3,
+            'status' => 1,
+            'expired' => null,
+        ]);
+
+        $office = app(SecretariatOfficeService::class)->create([
+            'code' => 'POLICY-GROUP',
+            'name' => 'Policy Group Secretariat',
+            'office_type' => 'group',
+            'scope_type' => 'group',
+            'scope_id' => $group->id,
+        ]);
+
+        $records = app(SecretariatRecordService::class);
+        $draft = $records->createDraft($office, $inspector, [
+            'record_type' => 'official_report',
+            'title' => 'Inspector report draft',
+        ]);
+
+        $this->assertTrue($inspector->can('update', $draft));
+        $this->assertTrue($inspector->can('submitForApproval', $draft));
+
+        $pending = $records->submitForApproval($draft, $inspector);
+        $this->assertFalse($inspector->can('register', $pending));
+        $this->assertTrue($manager->can('register', $pending));
+
+        $registered = $records->register($pending, $manager);
+        $this->assertFalse($inspector->can('transition', $registered));
+        $this->assertTrue($manager->can('transition', $registered));
+    }
 }
