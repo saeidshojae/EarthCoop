@@ -10,6 +10,7 @@ class FounderOperationsRoutesTest extends TestCase
     public function test_founder_operations_exposes_only_read_routes_in_initial_rollout(): void
     {
         foreach ([
+            'admin.najm-hoda.founder-ops.index',
             'admin.najm-hoda.founder-ops.brief',
             'admin.najm-hoda.founder-ops.snapshot',
             'admin.najm-hoda.founder-ops.approvals',
