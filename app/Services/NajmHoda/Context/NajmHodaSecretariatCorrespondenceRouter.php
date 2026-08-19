@@ -14,6 +14,7 @@ class NajmHodaSecretariatCorrespondenceRouter
         private readonly NajmHodaSecretariatReferralAssistant $referrals,
         private readonly NajmHodaSecretariatWorkQueueAssistant $workQueue,
         private readonly NajmHodaSecretariatRegistrationAdvisor $registrationAdvisor,
+        private readonly NajmHodaSecretariatCaseSummaryAssistant $caseSummary,
         private readonly NajmHodaSecretariatRelationAdvisor $relationAdvisor,
         private readonly NajmHodaSecretariatDraftReadinessAssistant $readiness,
         private readonly NajmHodaSecretariatExecutionReportAssistant $executionReports,
@@ -34,6 +35,9 @@ class NajmHodaSecretariatCorrespondenceRouter
         if (is_array($response)) return $response;
 
         $response = $this->registrationAdvisor->intercept($actor, $pageContext, $message);
+        if (is_array($response)) return $response;
+
+        $response = $this->caseSummary->intercept($actor, $pageContext, $message);
         if (is_array($response)) return $response;
 
         // Readiness owns prompts about missing fields/evidence. Relation advice is
