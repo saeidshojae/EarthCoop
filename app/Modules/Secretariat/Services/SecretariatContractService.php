@@ -2,6 +2,7 @@
 
 namespace App\Modules\Secretariat\Services;
 
+use App\Models\Group;
 use App\Models\User;
 use App\Modules\Secretariat\Models\SecretariatContractSignatory;
 use App\Modules\Secretariat\Models\SecretariatContractVersionDetail;
@@ -15,9 +16,71 @@ class SecretariatContractService
 {
     private const CONTRACT_TYPES = ['contract', 'memorandum_of_understanding', 'agreement'];
     private const RENEWAL_MODES = ['none', 'manual', 'automatic'];
+    private const PARTY_TYPES = ['user', 'group', 'external'];
 
     public function __construct(private readonly SecretariatAuditService $audit)
     {
+    }
+
+    /** @param array<string,mixed> $attributes */
+    public function addParty(SecretariatRecord $record, User $actor, array $attributes): SecretariatParty
+    {
+        $record->loadMissing('office');
+        $this->assertContractRecord($record);
+        if ($record->status !== 'draft') {
+            throw ValidationException::withMessages(['record' => 'Contract parties can only be added while the initial record is a draft. Amendments reuse or extend the record party directory before formality.']);
+        }
+
+        $partyType = (string) ($attributes['party_type'] ?? '');
+        if (! in_array($partyType, self::PARTY_TYPES, true)) {
+            throw ValidationException::withMessages(['party_type' => 'Unsupported contract party type.']);
+        }
+
+        $userId = isset($attributes['user_id']) ? (int) $attributes['user_id'] : null;
+        $groupId = isset($attributes['group_id']) ? (int) $attributes['group_id'] : null;
+        if ($partyType === 'user') {
+            if ($userId === null || ! User::query()->whereKey($userId)->exists() || $groupId !== null) {
+                throw ValidationException::withMessages(['user_id' => 'A user contract party requires exactly one existing user.']);
+            }
+        } elseif ($partyType === 'group') {
+            if ($groupId === null || ! Group::query()->whereKey($groupId)->exists() || $userId !== null) {
+                throw ValidationException::withMessages(['group_id' => 'A group contract party requires exactly one existing group.']);
+            }
+        } elseif ($userId !== null || $groupId !== null) {
+            throw ValidationException::withMessages(['party_type' => 'External contract parties cannot reference EarthCoop user/group ids.']);
+        }
+
+        $displayName = trim((string) ($attributes['display_name'] ?? ''));
+        if ($displayName === '' || mb_strlen($displayName) > 255) {
+            throw ValidationException::withMessages(['display_name' => 'A contract party requires a display name up to 255 characters.']);
+        }
+
+        $email = $this->nullableString($attributes['email'] ?? null, 320);
+        if ($email !== null && filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            throw ValidationException::withMessages(['email' => 'Invalid contract party email.']);
+        }
+
+        $party = SecretariatParty::query()->create([
+            'record_id' => $record->id,
+            'role' => 'other',
+            'party_type' => $partyType,
+            'user_id' => $userId,
+            'group_id' => $groupId,
+            'display_name' => $displayName,
+            'organization_name' => $this->nullableString($attributes['organization_name'] ?? null, 255),
+            'email' => $email,
+            'phone' => $this->nullableString($attributes['phone'] ?? null, 80),
+            'address' => $this->nullableString($attributes['address'] ?? null, 2000),
+            'metadata' => is_array($attributes['metadata'] ?? null) ? $attributes['metadata'] : null,
+            'created_by' => $actor->id,
+        ]);
+
+        $this->audit->append($record->office, $record, $actor, 'contract_party_added', [
+            'party_id' => $party->id,
+            'party_type' => $party->party_type,
+        ]);
+
+        return $party;
     }
 
     /** @param array<string,mixed> $attributes */
