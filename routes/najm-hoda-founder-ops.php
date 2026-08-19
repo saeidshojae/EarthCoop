@@ -7,6 +7,7 @@ Route::middleware(['throttle:najm-hoda-autonomy-read'])
     ->prefix('admin/najm-hoda/founder-ops')
     ->name('admin.najm-hoda.founder-ops.')
     ->group(function (): void {
+        Route::get('/', [FounderOperationsController::class, 'index'])->name('index');
         Route::get('/brief', [FounderOperationsController::class, 'brief'])->name('brief');
         Route::get('/snapshot', [FounderOperationsController::class, 'snapshot'])->name('snapshot');
         Route::get('/approvals', [FounderOperationsController::class, 'approvals'])->name('approvals');
