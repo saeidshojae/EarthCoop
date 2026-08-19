@@ -42,15 +42,19 @@ if [[ ${#tables[@]} -eq 0 ]]; then
     exit 3
 fi
 
-printf '%s\n' "${tables[@]}" > "$workdir/tables.txt"
+printf '%s\n' "${tables[@]}" > "$workdir/secretariat-tables.txt"
 
+# A Secretariat-only SQL dump is not independently restorable because Registry
+# rows intentionally reference users, groups and other source-domain rows. The
+# disaster-recovery artifact therefore captures the complete transactional DB,
+# while verification below remains focused on the bounded Secretariat tables.
 "${MYSQLDUMP[@]}" \
     --single-transaction \
     --skip-lock-tables \
     --set-gtid-purged=OFF \
     --no-tablespaces \
-    "$DB_DATABASE" "${tables[@]}" > "$workdir/secretariat.sql"
-sha256sum "$workdir/secretariat.sql" > "$workdir/secretariat.sql.sha256"
+    "$DB_DATABASE" > "$workdir/database.sql"
+sha256sum "$workdir/database.sql" > "$workdir/database.sql.sha256"
 
 if [[ -d "$SECRETARIAT_STORAGE_DIR" ]]; then
     tar -C "$(dirname "$SECRETARIAT_STORAGE_DIR")" -czf "$workdir/secretariat-storage.tar.gz" "$(basename "$SECRETARIAT_STORAGE_DIR")"
@@ -60,7 +64,7 @@ fi
 sha256sum "$workdir/secretariat-storage.tar.gz" > "$workdir/secretariat-storage.tar.gz.sha256"
 
 "${MYSQL[@]}" -e "DROP DATABASE IF EXISTS \`$drill_db\`; CREATE DATABASE \`$drill_db\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-"${MYSQL[@]}" "$drill_db" < "$workdir/secretariat.sql"
+"${MYSQL[@]}" "$drill_db" < "$workdir/database.sql"
 
 mismatch=0
 {
@@ -75,21 +79,22 @@ mismatch=0
         fi
         echo "$table,$source_count,$restored_count,$status"
     done
-} > "$workdir/row-count-verification.csv"
+} > "$workdir/secretariat-row-count-verification.csv"
 
 cat > "$workdir/manifest.txt" <<EOF
 schema=earthcoop.secretariat.dr.v1
 created_at_utc=$stamp
+backup_scope=full_database_plus_secretariat_storage
 source_database=$DB_DATABASE
 drill_database=$drill_db
-table_count=${#tables[@]}
+secretariat_table_count=${#tables[@]}
 storage_source=$SECRETARIAT_STORAGE_DIR
-sql_sha256=$(cut -d' ' -f1 "$workdir/secretariat.sql.sha256")
+database_sha256=$(cut -d' ' -f1 "$workdir/database.sql.sha256")
 storage_sha256=$(cut -d' ' -f1 "$workdir/secretariat-storage.tar.gz.sha256")
 EOF
 
 if [[ "$mismatch" != "0" ]]; then
-    echo "Secretariat DR drill FAILED: restored row counts differ. Evidence: $workdir" >&2
+    echo "Secretariat DR drill FAILED: restored Secretariat row counts differ. Evidence: $workdir" >&2
     exit 4
 fi
 
