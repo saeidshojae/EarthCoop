@@ -26,7 +26,7 @@ class NajmBaharSettlementGatewayTest extends TestCase
         $settle=$gateway->settle(new SettlementRequest(SettlementChannel::ACTIVE_BAHAR,400,'bid:7:settle','auction_bid',7,$payer->account_number,$payee->account_number,['reservation_key'=>'bid:7:reserve']));
         $this->assertSame(SettlementReceipt::SETTLED,$settle->status);
 
-        $refund=$gateway->refund(new SettlementRequest(SettlementChannel::ACTIVE_BAHAR,100,'bid:7:refund:1','auction_bid',7,$ay=$payer->account_number,$payee->account_number,['reservation_key'=>'bid:7:reserve']));
+        $refund=$gateway->refund(new SettlementRequest(SettlementChannel::ACTIVE_BAHAR,100,'bid:7:refund:1','auction_bid',7,$payer->account_number,$payee->account_number,['reservation_key'=>'bid:7:reserve']));
         $this->assertSame(SettlementReceipt::REFUNDED,$refund->status);
         $this->assertSame(700,(int)$payer->fresh()->balance_active);
         $this->assertSame(300,(int)$payee->fresh()->balance_active);
