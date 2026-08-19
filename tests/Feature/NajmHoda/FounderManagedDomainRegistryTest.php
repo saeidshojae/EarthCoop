@@ -9,58 +9,37 @@ class FounderManagedDomainRegistryTest extends TestCase
 {
     public function test_registry_exposes_all_major_management_domains(): void
     {
-        $registry = app(FounderManagedDomainRegistry::class);
-        $domains = $registry->all();
-
+        $domains = app(FounderManagedDomainRegistry::class)->all();
         foreach ([
-            'users',
-            'support',
-            'groups',
-            'governance',
-            'secretariat',
-            'najm_bahar',
-            'email',
-            'blog',
-            'stock',
-            'notifications',
-            'reports_moderation',
-            'admin_settings',
+            'users','support','groups','governance','secretariat','najm_bahar','email','blog','stock',
+            'notifications','reports_moderation','invitations','admin_settings',
         ] as $key) {
             $this->assertArrayHasKey($key, $domains, "Missing Founder Ops domain: {$key}");
         }
     }
 
-    public function test_coverage_distinguishes_integrated_from_planned_domains(): void
+    public function test_coverage_distinguishes_integrated_from_not_yet_managed_domains(): void
     {
-        $registry = app(FounderManagedDomainRegistry::class);
-        $coverage = $registry->coverage();
+        $coverage = app(FounderManagedDomainRegistry::class)->coverage();
 
         $this->assertGreaterThan(0, data_get($coverage, 'counts.total', 0));
-        $this->assertGreaterThan(0, data_get($coverage, 'counts.planned', 0));
         $this->assertGreaterThan(0, data_get($coverage, 'counts.observed', 0));
         $this->assertGreaterThan(0, data_get($coverage, 'counts.managed', 0));
+        $this->assertGreaterThan(
+            0,
+            (int) data_get($coverage, 'counts.mapped', 0) + (int) data_get($coverage, 'counts.observed', 0),
+            'Founder Ops should still expose domains that are not fully managed.'
+        );
         $this->assertIsArray(data_get($coverage, 'next_domains'));
     }
 
     public function test_rollout_queue_prioritizes_more_mature_unmanaged_domains(): void
     {
         config()->set('najm-hoda-founder-operations.domains', [
-            'planned_high' => [
-                'priority' => 10,
-                'integration_stage' => 'planned',
-            ],
-            'mapped_medium' => [
-                'priority' => 5,
-                'integration_stage' => 'mapped',
-            ],
-            'observed_low' => [
-                'priority' => 1,
-                'integration_stage' => 'observed',
-            ],
-            'managed_top' => [
-                'priority' => 10,
-                'integration_stage' => 'managed',
-            ],
+            'planned_high' => ['priority' => 10, 'integration_stage' => 'planned'],
+            'mapped_medium' => ['priority' => 5, 'integration_stage' => 'mapped'],
+            'observed_low' => ['priority' => 1, 'integration_stage' => 'observed'],
+            'managed_top' => ['priority' => 10, 'integration_stage' => 'managed'],
         ]);
 
         $queue = app(FounderManagedDomainRegistry::class)->rolloutQueue();
