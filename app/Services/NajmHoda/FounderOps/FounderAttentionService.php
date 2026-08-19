@@ -2,6 +2,8 @@
 
 namespace App\Services\NajmHoda\FounderOps;
 
+use App\Models\FounderFinancialRiskFinding;
+
 class FounderAttentionService
 {
     public function __construct(
@@ -20,6 +22,19 @@ class FounderAttentionService
         $runtimeStatus = (string) data_get($snapshot, 'runtime_health.status', 'healthy');
         if ($runtimeStatus === 'critical') $items[] = $this->item('P0', 'runtime_health', 'Najm Hoda runtime is critical');
         elseif ($runtimeStatus === 'warning') $items[] = $this->item('P1', 'runtime_health', 'Najm Hoda runtime needs attention');
+
+        foreach (['critical'=>'P0','high'=>'P1','medium'=>'P2'] as $severity=>$priority) {
+            $findings = FounderFinancialRiskFinding::query()
+                ->where('status','open')->where('severity',$severity)
+                ->get(['domain','risk_code']);
+            if ($findings->isEmpty()) continue;
+            $items[] = $this->item($priority, 'financial_risk', 'Open financial integrity findings require attention', [
+                'severity'=>$severity,
+                'count'=>$findings->count(),
+                'by_domain'=>$findings->groupBy('domain')->map->count()->all(),
+                'by_code'=>$findings->groupBy('risk_code')->map->count()->all(),
+            ]);
+        }
 
         $overdueFounderApprovals = (int) data_get($approvalSnapshot, 'overdue', 0);
         if ($overdueFounderApprovals > 0) {
