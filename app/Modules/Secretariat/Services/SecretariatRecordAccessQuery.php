@@ -24,15 +24,10 @@ class SecretariatRecordAccessQuery
 
         return $query->where(function (Builder $access) use ($userId) {
             $access
-                ->where(function (Builder $ordinary) use ($userId) {
-                    $ordinary
-                        ->whereIn('secretariat_records.confidentiality', ['public', 'office_members'])
-                        ->whereExists(fn (QueryBuilder $office) => $this->groupOfficeMembershipExists($office, $userId, false));
-                })
-                ->orWhere(function (Builder $leadership) use ($userId) {
-                    $leadership
-                        ->where('secretariat_records.confidentiality', 'leadership')
-                        ->whereExists(fn (QueryBuilder $office) => $this->groupOfficeMembershipExists($office, $userId, true));
+                ->where(function (Builder $oversightVisible) use ($userId) {
+                    $oversightVisible
+                        ->whereIn('secretariat_records.confidentiality', ['public', 'office_members', 'leadership'])
+                        ->whereExists(fn (QueryBuilder $office) => $this->visibleOfficeExists($office, $userId));
                 })
                 ->orWhere(function (Builder $sensitive) use ($userId) {
                     $sensitive
@@ -73,25 +68,53 @@ class SecretariatRecordAccessQuery
         });
     }
 
-    private function groupOfficeMembershipExists(QueryBuilder $office, int $userId, bool $leadership): void
+    private function visibleOfficeExists(QueryBuilder $office, int $userId): void
     {
         $office->selectRaw('1')
             ->from('secretariat_offices as so_access')
             ->whereColumn('so_access.id', 'secretariat_records.office_id')
             ->where('so_access.status', 'active')
-            ->where('so_access.scope_type', 'group')
-            ->whereExists(function (QueryBuilder $membership) use ($userId, $leadership) {
-                $membership->selectRaw('1')
-                    ->from('group_user as gu_access')
-                    ->whereColumn('gu_access.group_id', 'so_access.scope_id')
-                    ->where('gu_access.user_id', $userId)
-                    ->where('gu_access.status', 1)
-                    ->when($leadership, fn (QueryBuilder $role) => $role->whereIn('gu_access.role', [2, 3]))
-                    ->where(function (QueryBuilder $validity) {
-                        $validity->whereNull('gu_access.expired')
-                            ->orWhere('gu_access.expired', 0)
-                            ->orWhere('gu_access.expired', '>', now());
+            ->where(function (QueryBuilder $scope) use ($userId) {
+                $scope
+                    ->where(function (QueryBuilder $groupOffice) use ($userId) {
+                        $groupOffice
+                            ->where('so_access.scope_type', 'group')
+                            ->whereExists(fn (QueryBuilder $membership) => $this->groupMembershipExists($membership, $userId));
+                    })
+                    ->orWhere(function (QueryBuilder $projectOffice) use ($userId) {
+                        $projectOffice
+                            ->where('so_access.scope_type', 'najm_bahar_project')
+                            ->whereExists(function (QueryBuilder $project) use ($userId) {
+                                $project->selectRaw('1')
+                                    ->from('najm_bahar_projects as nbp_access')
+                                    ->whereColumn('nbp_access.id', 'so_access.scope_id')
+                                    ->where(function (QueryBuilder $visibility) use ($userId) {
+                                        $visibility
+                                            ->where(function (QueryBuilder $owner) use ($userId) {
+                                                $owner->where('nbp_access.owner_type', User::class)
+                                                    ->where('nbp_access.owner_id', $userId);
+                                            })
+                                            ->orWhere(function (QueryBuilder $publicProject) {
+                                                $publicProject->where('nbp_access.status', 'approved')
+                                                    ->where('nbp_access.project_visibility', 'public');
+                                            });
+                                    });
+                            });
                     });
+            });
+    }
+
+    private function groupMembershipExists(QueryBuilder $membership, int $userId): void
+    {
+        $membership->selectRaw('1')
+            ->from('group_user as gu_access')
+            ->whereColumn('gu_access.group_id', 'so_access.scope_id')
+            ->where('gu_access.user_id', $userId)
+            ->where('gu_access.status', 1)
+            ->where(function (QueryBuilder $validity) {
+                $validity->whereNull('gu_access.expired')
+                    ->orWhere('gu_access.expired', 0)
+                    ->orWhere('gu_access.expired', '>', now());
             });
     }
 
