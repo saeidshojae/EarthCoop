@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\FounderContentDraft;
 use App\Models\FounderEmailDraft;
+use App\Models\FounderFinancialRiskFinding;
 use App\Models\ModerationCaseSummary;
 use App\Models\SupportReplyDraft;
 use App\Modules\Secretariat\Models\SecretariatFollowUpProposal;
@@ -35,6 +36,9 @@ class FounderOperationsController extends Controller
             'secretariatFollowUps'=>SecretariatFollowUpProposal::query()->with(['dispatch.record:id,registry_number,status'])->where('status','draft')->latest('id')->limit(20)->get(),
             'emailDrafts'=>FounderEmailDraft::query()->where('status','draft')->latest('id')->limit(20)->get(),
             'contentDrafts'=>FounderContentDraft::query()->where('status','draft')->latest('id')->limit(20)->get(),
+            'financialRiskFindings'=>FounderFinancialRiskFinding::query()->where('status','open')
+                ->orderByRaw("CASE severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END")
+                ->latest('id')->limit(30)->get(),
         ]);
     }
 
