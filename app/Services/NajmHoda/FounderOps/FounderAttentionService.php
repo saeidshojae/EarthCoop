@@ -4,16 +4,28 @@ namespace App\Services\NajmHoda\FounderOps;
 
 class FounderAttentionService
 {
-    public function __construct(protected FounderOperationsSnapshotService $snapshots) {}
+    public function __construct(
+        protected FounderOperationsSnapshotService $snapshots,
+        protected FounderApprovalInboxService $approvalInbox
+    ) {}
 
     public function brief(int $hours = 24): array
     {
         $snapshot = $this->snapshots->snapshot($hours);
+        $approvalSnapshot = $this->approvalInbox->snapshot();
         $items = [];
 
         $runtimeStatus = (string) data_get($snapshot, 'runtime_health.status', 'healthy');
         if ($runtimeStatus === 'critical') $items[] = $this->item('P0', 'runtime_health', 'Najm Hoda runtime is critical');
         elseif ($runtimeStatus === 'warning') $items[] = $this->item('P1', 'runtime_health', 'Najm Hoda runtime needs attention');
+
+        $overdueFounderApprovals = (int) data_get($approvalSnapshot, 'overdue', 0);
+        if ($overdueFounderApprovals > 0) {
+            $items[] = $this->item('P1', 'founder_approvals', 'Founder action approvals are overdue', [
+                'count' => $overdueFounderApprovals,
+                'pending_total' => (int) data_get($approvalSnapshot, 'pending', 0),
+            ]);
+        }
 
         $rules = [
             ['P1','support','support.high_priority_active','High-priority support tickets are active'],
@@ -36,6 +48,14 @@ class FounderAttentionService
         foreach ($rules as [$priority, $domain, $path, $title]) {
             $count = (int) data_get($snapshot, $path, 0);
             if ($count > 0) $items[] = $this->item($priority, $domain, $title, ['count' => $count]);
+        }
+
+        $pendingFounderApprovals = (int) data_get($approvalSnapshot, 'pending', 0);
+        if ($pendingFounderApprovals > 0 && $overdueFounderApprovals === 0) {
+            $items[] = $this->item('P2', 'founder_approvals', 'Founder actions are waiting for explicit approval', [
+                'count' => $pendingFounderApprovals,
+                'by_risk' => data_get($approvalSnapshot, 'by_risk', []),
+            ]);
         }
 
         $pendingApprovals = (int) data_get($snapshot, 'approvals.total', 0);
@@ -83,6 +103,7 @@ class FounderAttentionService
                 'P2' => $this->countPriority($items, 'P2'), 'P3' => $this->countPriority($items, 'P3'),
             ],
             'items' => $items,
+            'founder_approvals' => $approvalSnapshot,
             'management_coverage' => data_get($snapshot, 'management_coverage', []),
         ];
     }
@@ -90,7 +111,7 @@ class FounderAttentionService
     protected function item(string $priority, string $domain, string $title, array $context = []): array
     {
         return ['priority' => $priority, 'domain' => $domain, 'title' => $title, 'context' => $context,
-            'requires_founder_decision' => in_array($priority, ['P0', 'P1'], true)];
+            'requires_founder_decision' => in_array($priority, ['P0', 'P1'], true) || $domain === 'founder_approvals'];
     }
 
     protected function countPriority(array $items, string $priority): int
