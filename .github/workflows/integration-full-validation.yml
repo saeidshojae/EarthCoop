@@ -54,7 +54,7 @@ jobs:
 
       - name: Prepare Laravel directories
         run: |
-          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs regression-logs
           chmod -R 775 bootstrap/cache storage/framework storage/logs
 
       - name: Install backend dependencies from lock
@@ -109,52 +109,83 @@ jobs:
 
       - name: Regression — Group Chat
         id: regression_group_chat
-        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/GroupChat
+        shell: bash
+        run: |
+          set -o pipefail
+          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/GroupChat 2>&1 | tee regression-logs/group-chat.log
 
       - name: Regression — Group Admin / Identity
         id: regression_group_admin_identity
         if: always()
+        shell: bash
         run: |
+          set -o pipefail
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/Admin/GlobalGroupRoleManagementTest.php \
             tests/Feature/Admin/GroupRoleManagementTest.php \
             tests/Feature/Admin/RealtimeSettingsTest.php \
             tests/Feature/SystemIdentityIsolationTest.php \
-            tests/Feature/ChatRequestFlowTest.php
+            tests/Feature/ChatRequestFlowTest.php 2>&1 | tee regression-logs/group-admin-identity.log
 
       - name: Regression — Najm Hoda + n8n
         id: regression_najm_hoda
         if: always()
-        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda
+        shell: bash
+        run: |
+          set -o pipefail
+          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda 2>&1 | tee regression-logs/najm-hoda.log
 
       - name: Regression — Governance
         id: regression_governance
         if: always()
-        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Governance
+        shell: bash
+        run: |
+          set -o pipefail
+          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Governance 2>&1 | tee regression-logs/governance.log
 
       - name: Regression — Najm Bahar
         id: regression_najm_bahar
         if: always()
+        shell: bash
         run: |
+          set -o pipefail
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/NajmBahar \
             tests/Unit/NajmBahar \
-            tests/Architecture/NajmBaharFinancialMutationBoundaryTest.php
+            tests/Architecture/NajmBaharFinancialMutationBoundaryTest.php 2>&1 | tee regression-logs/najm-bahar.log
 
       - name: Regression — Stock
         id: regression_stock
         if: always()
-        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Unit/Stock
+        shell: bash
+        run: |
+          set -o pipefail
+          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Unit/Stock 2>&1 | tee regression-logs/stock.log
 
       - name: Regression — Group Chat JavaScript
         id: regression_group_chat_js
         if: always()
-        run: npm run test:group-chat
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:group-chat 2>&1 | tee regression-logs/group-chat-js.log
 
       - name: Regression — Full Project PHPUnit
         id: regression_full_phpunit
         if: always()
-        run: php vendor/bin/phpunit --configuration phpunit.xml.dist
+        shell: bash
+        run: |
+          set -o pipefail
+          php vendor/bin/phpunit --configuration phpunit.xml.dist 2>&1 | tee regression-logs/full-phpunit.log
+
+      - name: Upload regression diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-regression-logs
+          path: regression-logs/*.log
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Enforce regression gate
         if: always()
