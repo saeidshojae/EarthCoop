@@ -21,7 +21,7 @@ class SecretariatS6KnowledgeRetrievalTest extends TestCase
     public function test_knowledge_packets_never_return_confidential_content_without_explicit_acl(): void
     {
         [$manager, $office] = $this->office('S6-KNOW-A', 3);
-        $outsider = User::factory()->create(['email' => 's6-know-outsider@example.test']);
+        $outsider = User::factory()->create();
         $record = app(SecretariatRecordService::class)->createDraft($office, $manager, [
             'record_type' => 'official_report',
             'direction' => 'internal',
@@ -160,7 +160,7 @@ class SecretariatS6KnowledgeRetrievalTest extends TestCase
 
     public function test_retrieval_rejects_empty_or_oversized_query_before_search(): void
     {
-        $actor = User::factory()->create(['email' => 's6-know-validation@example.test']);
+        $actor = User::factory()->create();
         $retrieval = app(SecretariatKnowledgeRetrievalService::class);
 
         try {
@@ -176,9 +176,7 @@ class SecretariatS6KnowledgeRetrievalTest extends TestCase
 
     private function office(string $code, int $role): array
     {
-        $actor = User::factory()->create([
-            'email' => strtolower($code) . '-' . $role . '@example.test',
-        ]);
+        $actor = User::factory()->create();
         $group = Group::query()->create(['name' => $code, 'group_type' => '0']);
         GroupUser::query()->create([
             'group_id' => $group->id,

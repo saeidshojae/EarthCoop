@@ -121,7 +121,7 @@ jobs:
 
       - name: Regression — Group Admin / Identity
         id: regression_group_admin_identity
-        if: always()
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -o pipefail
@@ -134,7 +134,7 @@ jobs:
 
       - name: Regression — Najm Hoda + n8n
         id: regression_najm_hoda
-        if: always()
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -o pipefail
@@ -142,7 +142,7 @@ jobs:
 
       - name: Regression — Governance
         id: regression_governance
-        if: always()
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -o pipefail
@@ -150,7 +150,7 @@ jobs:
 
       - name: Regression — Najm Bahar
         id: regression_najm_bahar
-        if: always()
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -o pipefail
@@ -161,7 +161,7 @@ jobs:
 
       - name: Regression — Stock
         id: regression_stock
-        if: always()
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -o pipefail
@@ -169,22 +169,26 @@ jobs:
 
       - name: Regression — Group Chat JavaScript
         id: regression_group_chat_js
-        if: always()
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -o pipefail
           npm run test:group-chat 2>&1 | tee regression-logs/group-chat-js.log
 
+      - name: Reset phpunit database for full suite
+        if: ${{ !cancelled() }}
+        run: DB_DATABASE=newearthcoop-test php artisan migrate:fresh --force
+
       - name: Regression — Full Project PHPUnit
         id: regression_full_phpunit
-        if: always()
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -o pipefail
           php vendor/bin/phpunit --configuration phpunit.xml.dist 2>&1 | tee regression-logs/full-phpunit.log
 
       - name: Upload regression diagnostics
-        if: always()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: integration-regression-logs
@@ -193,7 +197,7 @@ jobs:
           retention-days: 7
 
       - name: Enforce regression gate
-        if: always()
+        if: ${{ !cancelled() }}
         shell: bash
         env:
           GROUP_CHAT: ${{ steps.regression_group_chat.outcome }}
