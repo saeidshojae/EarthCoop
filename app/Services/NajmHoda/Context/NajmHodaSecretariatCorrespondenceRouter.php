@@ -36,10 +36,12 @@ class NajmHodaSecretariatCorrespondenceRouter
         $response = $this->registrationAdvisor->intercept($actor, $pageContext, $message);
         if (is_array($response)) return $response;
 
-        $response = $this->relationAdvisor->intercept($actor, $pageContext, $message);
+        // Readiness owns prompts about missing fields/evidence. Relation advice is
+        // narrower and must not steal phrases such as "شواهد مرتبط".
+        $response = $this->readiness->intercept($actor, $pageContext, $message);
         if (is_array($response)) return $response;
 
-        $response = $this->readiness->intercept($actor, $pageContext, $message);
+        $response = $this->relationAdvisor->intercept($actor, $pageContext, $message);
         if (is_array($response)) return $response;
 
         $response = $this->executionReports->intercept($actor, $pageContext, $message, $conversationId);
