@@ -18,6 +18,8 @@ class MessageAuthorizationTest extends TestCase
 {
     use DatabaseTransactions;
 
+    private static int $userSequence = 0;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -822,7 +824,7 @@ class MessageAuthorizationTest extends TestCase
         return User::create([
             'first_name' => 'Test',
             'last_name' => 'User',
-            'email' => fake()->unique()->safeEmail(),
+            'email' => 'message-authorization-' . (++self::$userSequence) . '@example.test',
             'password' => bcrypt('password123'),
         ]);
     }
