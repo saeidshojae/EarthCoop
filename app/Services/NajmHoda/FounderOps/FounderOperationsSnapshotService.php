@@ -11,13 +11,15 @@ use App\Models\Rural;
 use App\Models\Street;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Services\NajmHoda\Runtime\NajmHodaOpsHealthMonitor;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Carbon\CarbonImmutable;
 
 class FounderOperationsSnapshotService
 {
     public function __construct(
-        protected RuntimeEventBus $events
+        protected RuntimeEventBus $events,
+        protected NajmHodaOpsHealthMonitor $healthMonitor
     ) {
     }
 
@@ -100,6 +102,7 @@ class FounderOperationsSnapshotService
                     ->whereIn('status', ['open', 'in-progress'])
                     ->count(),
             ],
+            'runtime_health' => $this->healthMonitor->snapshot(),
             'recent_founder_events' => $recentFounderEvents,
         ];
     }
