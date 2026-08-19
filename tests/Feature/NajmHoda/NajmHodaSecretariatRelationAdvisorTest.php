@@ -3,6 +3,7 @@
 namespace Tests\Feature\NajmHoda;
 
 use App\Models\Group;
+use App\Models\NajmHodaGroupActionItem;
 use App\Models\User;
 use App\Modules\Secretariat\Models\SecretariatRelation;
 use App\Modules\Secretariat\Services\SecretariatOfficeService;
@@ -17,13 +18,21 @@ class NajmHodaSecretariatRelationAdvisorTest extends TestCase
 
     public function test_explicit_provenance_suggests_relation_without_mutation(): void
     {
-        [$actor, $office] = $this->fixture();
+        [$actor, $office, $group] = $this->fixture();
         $records = app(SecretariatRecordService::class);
         $resolution = $records->createDraft($office, $actor, [
             'record_type'=>'resolution','direction'=>'internal','title'=>'مصوبه آب','source_type'=>'manual',
         ]);
+        $action = NajmHodaGroupActionItem::query()->create([
+            'group_id'=>$group->id,
+            'assigned_user_id'=>$actor->id,
+            'title'=>'اجرای مصوبه آب',
+            'priority'=>'high',
+            'status'=>'done',
+        ]);
         $report = $records->createDraft($office, $actor, [
-            'record_type'=>'execution_record','direction'=>'internal','title'=>'گزارش اجرای آب','source_type'=>'manual',
+            'record_type'=>'execution_record','direction'=>'internal','title'=>'گزارش اجرای آب',
+            'source_type'=>'action_item','source_id'=>$action->id,
             'metadata'=>['s3_snapshot'=>['resolution_record_id'=>$resolution->id]],
         ]);
 
@@ -31,7 +40,7 @@ class NajmHodaSecretariatRelationAdvisorTest extends TestCase
         $result = app(NajmHodaSecretariatRelationAdvisor::class)->intercept(
             $actor,
             ['page_kind'=>'secretariat_record','resource_type'=>'secretariat_record','resource_id'=>$report->id],
-            'اسناد مرتبط و رابطه این گزارش چیست؟'
+            'رابطه این گزارش با کدام سند است؟'
         );
 
         $this->assertSame('relation_suggestions', $result['status']);
@@ -56,7 +65,7 @@ class NajmHodaSecretariatRelationAdvisorTest extends TestCase
         $result = app(NajmHodaSecretariatRelationAdvisor::class)->intercept(
             $actor,
             ['resource_type'=>'secretariat_record','resource_id'=>$report->id],
-            'چه اسنادی مرتبط هستند؟'
+            'اسناد مرتبط این گزارش را پیدا کن'
         );
 
         $this->assertSame('no_relation_suggestion', $result['status']);
@@ -66,13 +75,21 @@ class NajmHodaSecretariatRelationAdvisorTest extends TestCase
 
     public function test_existing_relation_is_not_suggested_twice(): void
     {
-        [$actor, $office] = $this->fixture();
+        [$actor, $office, $group] = $this->fixture();
         $records = app(SecretariatRecordService::class);
         $resolution = $records->createDraft($office, $actor, [
             'record_type'=>'resolution','direction'=>'internal','title'=>'مصوبه','source_type'=>'manual',
         ]);
+        $action = NajmHodaGroupActionItem::query()->create([
+            'group_id'=>$group->id,
+            'assigned_user_id'=>$actor->id,
+            'title'=>'اجرای مصوبه',
+            'priority'=>'medium',
+            'status'=>'done',
+        ]);
         $report = $records->createDraft($office, $actor, [
-            'record_type'=>'execution_record','direction'=>'internal','title'=>'گزارش','source_type'=>'manual',
+            'record_type'=>'execution_record','direction'=>'internal','title'=>'گزارش',
+            'source_type'=>'action_item','source_id'=>$action->id,
             'metadata'=>['s3_snapshot'=>['resolution_record_id'=>$resolution->id]],
         ]);
         app(\App\Modules\Secretariat\Services\SecretariatRelationService::class)->add($report, $resolution, 'report_of', $actor);
@@ -94,6 +111,6 @@ class NajmHodaSecretariatRelationAdvisorTest extends TestCase
         $office = app(SecretariatOfficeService::class)->create([
             'code'=>'REL-'.$group->id,'name'=>'Relation Office','office_type'=>'group','scope_type'=>'group','scope_id'=>$group->id,
         ]);
-        return [$actor, $office];
+        return [$actor, $office, $group];
     }
 }
