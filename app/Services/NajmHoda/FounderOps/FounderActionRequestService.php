@@ -9,6 +9,7 @@ class FounderActionRequestService
     public function __construct(
         protected FounderActionAuthorityService $authority,
         protected FounderManagedDomainRegistry $domains,
+        protected FounderDelegationGrantService $delegations,
         protected NajmHodaAutonomyApprovalService $approvals
     ) {}
 
@@ -21,15 +22,13 @@ class FounderActionRequestService
      */
     public function prepare(string $domain, string $action, array $context = []): array
     {
-        $decision = $this->authority->evaluate($domain, $action, false);
+        $mode = $this->authority->mode($domain, $action);
+        $delegated = $mode === 'delegated_safe' && $this->delegations->isGranted($domain, $action);
+        $decision = $this->authority->evaluate($domain, $action, false, $delegated);
         $risk = (string) data_get($this->domains->get($domain), 'risk', 'unknown');
 
         if ($decision['mode'] === 'forbidden') {
-            return [
-                'status' => 'blocked',
-                'decision' => $decision,
-                'approval_request' => null,
-            ];
+            return ['status' => 'blocked', 'decision' => $decision, 'approval_request' => null];
         }
 
         if ($decision['mode'] === 'approval_required') {
@@ -42,16 +41,12 @@ class FounderActionRequestService
                 'execution_contract' => 'founder_operations',
             ], $this->safeContext($context));
 
-            return [
-                'status' => 'awaiting_approval',
-                'decision' => $decision,
-                'approval_request' => $request,
-            ];
+            return ['status' => 'awaiting_approval', 'decision' => $decision, 'approval_request' => $request];
         }
 
         if ($decision['mode'] === 'delegated_safe') {
             return [
-                'status' => $decision['may_execute'] ? 'delegated_ready' : 'delegation_disabled',
+                'status' => $decision['may_execute'] ? 'delegated_ready' : 'delegation_required',
                 'decision' => $decision,
                 'approval_request' => null,
             ];
@@ -64,13 +59,7 @@ class FounderActionRequestService
         ];
     }
 
-    /**
-     * Deliberately keep approval queue context compact and metadata-only.
-     * Domain services may expose display labels separately after authorization.
-     *
-     * @param array<string,mixed> $context
-     * @return array<string,mixed>
-     */
+    /** @param array<string,mixed> $context @return array<string,mixed> */
     protected function safeContext(array $context): array
     {
         $allowed = [
