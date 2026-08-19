@@ -3,10 +3,15 @@
 namespace App\Services\Support;
 
 use App\Models\Ticket;
+use App\Models\TicketComment;
+use App\Services\EmailTicketIntegrationService;
 use InvalidArgumentException;
+use Illuminate\Support\Facades\Log;
 
 class TicketManagementService
 {
+    public function __construct(protected EmailTicketIntegrationService $emailService) {}
+
     public function classify(Ticket $ticket): array
     {
         $text = mb_strtolower(trim((string) $ticket->subject . ' ' . (string) $ticket->message));
@@ -33,19 +38,64 @@ class TicketManagementService
         return ['ticket_id' => (int) $ticket->id, 'priority' => $priority];
     }
 
-    public function assign(Ticket $ticket, ?int $assigneeId): void
+    public function assign(Ticket $ticket, ?int $assigneeId): array
     {
         $ticket->assignee_id = $assigneeId;
         $ticket->save();
+
+        return ['ticket_id' => (int) $ticket->id, 'assignee_id' => $assigneeId];
     }
 
-    public function close(Ticket $ticket): void
+    public function reply(Ticket $ticket, int $actorUserId, string $message, bool $sendEmail = true): array
     {
-        $ticket->status = 'closed';
-        if ($ticket->isFillable('resolved_at') || array_key_exists('resolved_at', $ticket->getAttributes())) {
+        $comment = TicketComment::create([
+            'ticket_id' => $ticket->id,
+            'user_id' => $actorUserId,
+            'message' => $message,
+        ]);
+
+        if (!$ticket->first_response_at) $ticket->first_response_at = now();
+        if ($ticket->status === 'open') $ticket->status = 'in-progress';
+        $ticket->save();
+
+        if ($sendEmail) {
+            try {
+                $this->emailService->sendTicketReplyToEmail($ticket, $comment);
+            } catch (\Throwable $e) {
+                Log::error('خطا در ارسال ایمیل پاسخ تیکت', [
+                    'ticket_id' => $ticket->id,
+                    'exception_class' => $e::class,
+                ]);
+            }
+        }
+
+        return [
+            'ticket_id' => (int) $ticket->id,
+            'comment_id' => (int) $comment->id,
+            'status' => (string) $ticket->status,
+        ];
+    }
+
+    public function changeStatus(Ticket $ticket, string $status): array
+    {
+        if (!in_array($status, ['open', 'in-progress', 'closed'], true)) {
+            throw new InvalidArgumentException('invalid_ticket_status');
+        }
+
+        $ticket->status = $status;
+        if ($status === 'closed') {
             $ticket->resolved_at = now();
+        } elseif ($ticket->resolved_at) {
+            $ticket->resolved_at = null;
         }
         $ticket->save();
+
+        return ['ticket_id' => (int) $ticket->id, 'status' => $status];
+    }
+
+    public function close(Ticket $ticket): array
+    {
+        return $this->changeStatus($ticket, 'closed');
     }
 
     protected function detectCategory(string $text): string
