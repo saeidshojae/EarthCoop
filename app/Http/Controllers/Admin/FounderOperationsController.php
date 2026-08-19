@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ModerationCaseSummary;
 use App\Models\SupportReplyDraft;
 use App\Services\NajmHoda\FounderOps\FounderActionAuthorityService;
 use App\Services\NajmHoda\FounderOps\FounderApprovalInboxService;
 use App\Services\NajmHoda\FounderOps\FounderAttentionService;
 use App\Services\NajmHoda\FounderOps\FounderAuthoritySnapshotService;
 use App\Services\NajmHoda\FounderOps\FounderAutonomyBridgeService;
+use App\Services\NajmHoda\FounderOps\FounderModerationDecisionService;
 use App\Services\NajmHoda\FounderOps\FounderOperationsSnapshotService;
 use App\Services\NajmHoda\FounderOps\FounderReferenceApprovalCandidateService;
 use App\Services\NajmHoda\FounderOps\FounderReferenceApprovalDecisionService;
@@ -24,6 +26,7 @@ class FounderOperationsController extends Controller
             'hours'=>$hours,'brief'=>$attention->brief($hours),'snapshot'=>$snapshots->snapshot($hours),
             'approvalInbox'=>$approvals->snapshot(),'referenceCandidates'=>$referenceCandidates->candidates(10),
             'supportDrafts'=>SupportReplyDraft::query()->with(['ticket:id,tracking_code,subject,status,priority,category'])->where('status','draft')->latest('id')->limit(20)->get(),
+            'moderationCases'=>ModerationCaseSummary::query()->where('status','draft')->latest('id')->limit(20)->get(),
         ]);
     }
 
@@ -57,5 +60,18 @@ class FounderOperationsController extends Controller
         $validated=$request->validate(['decision'=>'required|in:approve,reject','reason'=>'nullable|string|max:500']);
         $result=$service->decideAndExecute($requestId,$validated['decision'],(int)$request->user()->id,$validated['reason']??null);
         return back()->with((bool)($result['success']??false)?'success':'error',(bool)($result['success']??false)?'تصمیم داده پایه ثبت و مطابق policy اجرا شد.':'تصمیم یا اجرای تأیید مجاز نبود.');
+    }
+
+    public function requestModerationResolve(Request $request,string $sourceType,int $sourceId,FounderModerationDecisionService $service)
+    {
+        try{$result=$service->requestResolve($sourceType,$sourceId,(int)$request->user()->id);}catch(\Throwable $e){return back()->with('error','گزارش معتبر یا قابل بررسی نیست.');}
+        return back()->with(($result['status']??'')==='awaiting_approval'?'success':'error',($result['status']??'')==='awaiting_approval'?'درخواست حل گزارش در صف تأیید Founder قرار گرفت.':'امکان ایجاد درخواست حل گزارش وجود ندارد.');
+    }
+
+    public function decideModerationResolve(Request $request,string $requestId,FounderModerationDecisionService $service)
+    {
+        $validated=$request->validate(['decision'=>'required|in:approve,reject','reason'=>'nullable|string|max:500']);
+        $result=$service->decideAndExecute($requestId,$validated['decision'],(int)$request->user()->id,$validated['reason']??null);
+        return back()->with((bool)($result['success']??false)?'success':'error',(bool)($result['success']??false)?'تصمیم moderation ثبت و مطابق policy اجرا شد.':'تصمیم یا اجرای moderation مجاز نبود.');
     }
 }
