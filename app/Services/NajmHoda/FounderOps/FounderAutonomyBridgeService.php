@@ -12,47 +12,49 @@ class FounderAutonomyBridgeService
         protected FounderSupportCandidateService $supportCandidates,
         protected FounderModerationCandidateService $moderationCandidates,
         protected FounderSecretariatCandidateService $secretariatCandidates,
+        protected FounderStockCandidateService $stockCandidates,
+        protected FounderNajmBaharCandidateService $baharCandidates,
         protected RuntimeEventBus $events
     ) {}
 
-    /** @return array<string,mixed> */
     public function plan(int $hours = 24, int $limit = 12): array
     {
-        $brief = $this->attention->brief($hours);
-        $items = array_slice((array)($brief['items'] ?? []),0,max(1,min($limit,50)));
-        $prepared=[];
+        $brief=$this->attention->brief($hours); $items=array_slice((array)($brief['items']??[]),0,max(1,min($limit,50))); $prepared=[];
 
         foreach ($this->supportCandidates->candidates(min(5,$limit)) as $candidate) {
-            $ticketId=(int)($candidate['ticket_id'] ?? 0);
-            if ($ticketId<=0) continue;
-            foreach (['classify_ticket','assign_priority','draft_reply'] as $action) {
-                $context=['entity_type'=>'ticket','entity_id'=>$ticketId,'attention_priority'=>($candidate['priority']??null)==='high'?'P1':'P2','reason_code'=>substr(hash('sha256','support|'.$action.'|'.$ticketId),0,20),'source_event'=>'founder_support_candidate'];
-                $prepared[]=['source_attention'=>['priority'=>$context['attention_priority'],'domain'=>'support','title'=>'Support ticket requires operational triage'],'domain'=>'support','action'=>$action,'action_context'=>$context,'preparation'=>$this->requests->prepare('support',$action,$context)];
-            }
+            $id=(int)($candidate['ticket_id']??0); if($id<=0) continue;
+            foreach(['classify_ticket','assign_priority','draft_reply'] as $action){$context=['entity_type'=>'ticket','entity_id'=>$id,'attention_priority'=>($candidate['priority']??null)==='high'?'P1':'P2','reason_code'=>substr(hash('sha256','support|'.$action.'|'.$id),0,20),'source_event'=>'founder_support_candidate'];$prepared[]=$this->prepared('support',$action,$context,'Support ticket requires operational triage');}
         }
 
         foreach ($this->moderationCandidates->candidates(min(5,$limit)) as $candidate) {
-            $sourceType=(string)($candidate['source_type']??''); $sourceId=(int)($candidate['source_id']??0);
-            if ($sourceId<=0 || !in_array($sourceType,['report','reported_message'],true)) continue;
-            foreach (['classify_report','prepare_case_summary'] as $action) {
-                $context=['entity_type'=>$sourceType,'entity_id'=>$sourceId,'attention_priority'=>in_array(($candidate['priority']??''),['critical','high'],true)?'P1':'P2','reason_code'=>substr(hash('sha256','moderation|'.$action.'|'.$sourceType.'|'.$sourceId),0,20),'source_event'=>'founder_moderation_candidate'];
-                $prepared[]=['source_attention'=>['priority'=>$context['attention_priority'],'domain'=>'reports_moderation','title'=>'Moderation report requires review'],'domain'=>'reports_moderation','action'=>$action,'action_context'=>$context,'preparation'=>$this->requests->prepare('reports_moderation',$action,$context)];
-            }
+            $type=(string)($candidate['source_type']??''); $id=(int)($candidate['source_id']??0); if($id<=0||!in_array($type,['report','reported_message'],true)) continue;
+            foreach(['classify_report','prepare_case_summary'] as $action){$context=['entity_type'=>$type,'entity_id'=>$id,'attention_priority'=>in_array(($candidate['priority']??''),['critical','high'],true)?'P1':'P2','reason_code'=>substr(hash('sha256','moderation|'.$action.'|'.$type.'|'.$id),0,20),'source_event'=>'founder_moderation_candidate'];$prepared[]=$this->prepared('reports_moderation',$action,$context,'Moderation report requires review');}
         }
 
         foreach ($this->secretariatCandidates->candidates(min(5,$limit)) as $candidate) {
-            $dispatchId=(int)($candidate['dispatch_id']??0); if ($dispatchId<=0) continue;
-            $context=['entity_type'=>'secretariat_dispatch','entity_id'=>$dispatchId,'attention_priority'=>($candidate['urgency']??'normal')==='high'?'P1':'P2','reason_code'=>substr(hash('sha256','secretariat|prepare_follow_up|'.$dispatchId),0,20),'source_event'=>'founder_secretariat_candidate'];
-            $prepared[]=['source_attention'=>['priority'=>$context['attention_priority'],'domain'=>'secretariat','title'=>'Secretariat follow-up is due'],'domain'=>'secretariat','action'=>'prepare_follow_up','action_context'=>$context,'preparation'=>$this->requests->prepare('secretariat','prepare_follow_up',$context)];
+            $id=(int)($candidate['dispatch_id']??0); if($id<=0) continue;
+            $context=['entity_type'=>'secretariat_dispatch','entity_id'=>$id,'attention_priority'=>($candidate['urgency']??'normal')==='high'?'P1':'P2','reason_code'=>substr(hash('sha256','secretariat|prepare_follow_up|'.$id),0,20),'source_event'=>'founder_secretariat_candidate'];
+            $prepared[]=$this->prepared('secretariat','prepare_follow_up',$context,'Secretariat follow-up is due');
         }
 
-        foreach ($items as $item) {
-            if (!is_array($item) || in_array((string)($item['domain']??''),['support','reports_moderation','secretariat'],true)) continue;
-            $mapped=$this->mapAttentionToAction($item); if ($mapped===null) continue; [$domain,$action]=$mapped;
+        foreach ($this->stockCandidates->candidates(min(5,$limit)) as $candidate) {
+            $id=(int)($candidate['auction_id']??0); if($id<=0) continue;
+            $context=['entity_type'=>'auction','entity_id'=>$id,'attention_priority'=>($candidate['urgency']??'normal')==='high'?'P1':'P2','reason_code'=>substr(hash('sha256','stock|flag_settlement_issue|'.$id),0,20),'source_event'=>'founder_stock_candidate'];
+            $prepared[]=$this->prepared('stock','flag_settlement_issue',$context,'Stock auction settlement boundary requires audit');
+        }
+
+        foreach ($this->baharCandidates->candidates(min(5,$limit)) as $candidate) {
+            $id=(int)($candidate['scheduled_transaction_id']??0); if($id<=0) continue;
+            $context=['entity_type'=>'scheduled_transaction','entity_id'=>$id,'attention_priority'=>($candidate['urgency']??'normal')==='high'?'P1':'P2','reason_code'=>substr(hash('sha256','bahar|flag_transaction_anomaly|'.$id),0,20),'source_event'=>'founder_bahar_candidate'];
+            $prepared[]=$this->prepared('najm_bahar','flag_transaction_anomaly',$context,'Najm Bahar scheduled transaction requires anomaly audit');
+        }
+
+        foreach($items as $item){
+            if(!is_array($item)||in_array((string)($item['domain']??''),['support','reports_moderation','secretariat','stock','najm_bahar'],true)) continue;
+            $mapped=$this->mapAttentionToAction($item); if($mapped===null) continue; [$domain,$action]=$mapped;
             $context=['attention_priority'=>(string)($item['priority']??''),'reason_code'=>$this->reasonCode($item),'source_event'=>'founder_attention'];
-            $entityId=data_get($item,'context.entity_id');
-            if (is_numeric($entityId)) { $context['entity_id']=(int)$entityId; $context['entity_type']=(string)data_get($item,'context.entity_type',$domain); }
-            $prepared[]=['source_attention'=>['priority'=>$item['priority']??null,'domain'=>$item['domain']??null,'title'=>$item['title']??null],'domain'=>$domain,'action'=>$action,'action_context'=>$context,'preparation'=>$this->requests->prepare($domain,$action,$context)];
+            $entityId=data_get($item,'context.entity_id'); if(is_numeric($entityId)){ $context['entity_id']=(int)$entityId; $context['entity_type']=(string)data_get($item,'context.entity_type',$domain); }
+            $prepared[]=$this->prepared($domain,$action,$context,(string)($item['title']??'Founder attention item'));
         }
 
         $prepared=array_slice($prepared,0,max(1,min($limit,50)));
@@ -61,13 +63,11 @@ class FounderAutonomyBridgeService
         return ['generated_at'=>now()->toIso8601String(),'attention_summary'=>$brief['summary']??[],'summary'=>$summary,'actions'=>$prepared];
     }
 
-    protected function mapAttentionToAction(array $item): ?array
-    {
-        return match((string)($item['domain']??'')) {
-            'governance'=>['governance','flag_anomaly'],'stock'=>['stock','flag_settlement_issue'],'najm_bahar'=>['najm_bahar','flag_transaction_anomaly'],'content'=>['content','draft_faq_answer'],'approvals'=>['reference_data','recommend_approval'],'invitations'=>['invitations','recommend_request_decision'],'admin_settings'=>['admin_settings','recommend_change'],'runtime_health'=>['runtime_health','run_read_only_diagnostic'],'users'=>['users','draft_support_response'],'groups'=>['groups','propose_action_item'],'notifications'=>['notifications','draft_announcement'],'blog'=>['blog','suggest_edit'],default=>null,
-        };
-    }
+    protected function prepared(string $domain,string $action,array $context,string $title): array
+    { return ['source_attention'=>['priority'=>$context['attention_priority']??'P2','domain'=>$domain,'title'=>$title],'domain'=>$domain,'action'=>$action,'action_context'=>$context,'preparation'=>$this->requests->prepare($domain,$action,$context)]; }
 
+    protected function mapAttentionToAction(array $item): ?array
+    { return match((string)($item['domain']??'')){'governance'=>['governance','flag_anomaly'],'content'=>['content','draft_faq_answer'],'approvals'=>['reference_data','recommend_approval'],'invitations'=>['invitations','recommend_request_decision'],'admin_settings'=>['admin_settings','recommend_change'],'runtime_health'=>['runtime_health','run_read_only_diagnostic'],'users'=>['users','draft_support_response'],'groups'=>['groups','propose_action_item'],'notifications'=>['notifications','draft_announcement'],'blog'=>['blog','suggest_edit'],default=>null}; }
     protected function reasonCode(array $item): string { return substr(hash('sha256',implode('|',[(string)($item['priority']??''),(string)($item['domain']??''),(string)($item['title']??'')])),0,20); }
     protected function countStatus(array $prepared,string $status): int { return count(array_filter($prepared,static fn(array $item): bool => (string)data_get($item,'preparation.status','')===$status)); }
 }
