@@ -19,7 +19,8 @@ class FounderOperationsSnapshotService
 {
     public function __construct(
         protected RuntimeEventBus $events,
-        protected NajmHodaOpsHealthMonitor $healthMonitor
+        protected NajmHodaOpsHealthMonitor $healthMonitor,
+        protected FounderManagedDomainRegistry $domains
     ) {
     }
 
@@ -68,6 +69,7 @@ class FounderOperationsSnapshotService
                 'since' => $since->toIso8601String(),
                 'generated_at' => CarbonImmutable::now()->toIso8601String(),
             ],
+            'management_coverage' => $this->domains->coverage(),
             'users' => [
                 'new_members' => User::query()
                     ->members()
