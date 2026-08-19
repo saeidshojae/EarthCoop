@@ -19,15 +19,15 @@ class SecretariatContractVersionDetail extends Model
 
     protected static function booted(): void
     {
-        $assertDraftVersion = static function (self $detail): void {
-            $version = $detail->version()->with('record')->first();
-            if ($version !== null && ($version->is_official || in_array((string) $version->record?->status, ['registered', 'active', 'closed', 'archived', 'superseded', 'voided'], true))) {
-                throw new LogicException('Formal contract version metadata is immutable; create an amendment version instead.');
+        $assertMutableVersion = static function (self $detail): void {
+            $version = $detail->version()->first();
+            if ($version !== null && $version->is_official) {
+                throw new LogicException('Official contract version metadata is immutable; create an amendment version instead.');
             }
         };
 
-        static::updating($assertDraftVersion);
-        static::deleting($assertDraftVersion);
+        static::updating($assertMutableVersion);
+        static::deleting($assertMutableVersion);
     }
 
     public function version(): BelongsTo
