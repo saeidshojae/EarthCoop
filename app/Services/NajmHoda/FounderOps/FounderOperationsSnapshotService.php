@@ -5,9 +5,12 @@ namespace App\Services\NajmHoda\FounderOps;
 use App\Models\Alley;
 use App\Models\Announcement;
 use App\Models\Election;
+use App\Models\EmailTemplate;
 use App\Models\ExperienceField;
 use App\Models\Group;
 use App\Models\GroupSetting;
+use App\Models\Invitation;
+use App\Models\InvitationCode;
 use App\Models\Neighborhood;
 use App\Models\NotificationSetting;
 use App\Models\OccupationalField;
@@ -18,6 +21,8 @@ use App\Models\Setting;
 use App\Models\Street;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Modules\Blog\Models\Post as BlogPost;
+use App\Modules\Stock\Models\Auction;
 use App\Services\NajmHoda\Runtime\NajmHodaOpsHealthMonitor;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Carbon\CarbonImmutable;
@@ -28,8 +33,7 @@ class FounderOperationsSnapshotService
         protected RuntimeEventBus $events,
         protected NajmHodaOpsHealthMonitor $healthMonitor,
         protected FounderManagedDomainRegistry $domains
-    ) {
-    }
+    ) {}
 
     public function snapshot(int $hours = 24): array
     {
@@ -58,16 +62,10 @@ class FounderOperationsSnapshotService
                 if (! is_string($timestamp) || $timestamp === '') return true;
                 try { return CarbonImmutable::parse($timestamp)->greaterThanOrEqualTo($since); }
                 catch (\Throwable) { return true; }
-            })
-            ->values()
-            ->all();
+            })->values()->all();
 
         return [
-            'window' => [
-                'hours' => $hours,
-                'since' => $since->toIso8601String(),
-                'generated_at' => $now->toIso8601String(),
-            ],
+            'window' => ['hours' => $hours, 'since' => $since->toIso8601String(), 'generated_at' => $now->toIso8601String()],
             'management_coverage' => $this->domains->coverage(),
             'users' => [
                 'new_members' => User::query()->members()->where('created_at', '>=', $since)->count(),
@@ -85,8 +83,7 @@ class FounderOperationsSnapshotService
                 'unassigned_active' => Ticket::query()->whereNull('assignee_id')->whereIn('status', ['open', 'in-progress'])->count(),
             ],
             'groups' => [
-                'total' => Group::query()->count(),
-                'open' => Group::query()->where('is_open', 1)->count(),
+                'total' => Group::query()->count(), 'open' => Group::query()->where('is_open', 1)->count(),
                 'active_in_window' => Group::query()->whereNotNull('last_activity_at')->where('last_activity_at', '>=', $since)->count(),
                 'created_in_window' => Group::query()->where('created_at', '>=', $since)->count(),
             ],
@@ -98,9 +95,7 @@ class FounderOperationsSnapshotService
             ],
             'moderation' => [
                 'pending_group_manager' => ReportedMessage::query()->where('status', 'pending_group_manager')->count(),
-                'escalated_to_admin' => ReportedMessage::query()->where(function ($query) {
-                    $query->where('escalated_to_admin', 1)->orWhere('status', 'escalated_to_admin');
-                })->count(),
+                'escalated_to_admin' => ReportedMessage::query()->where(fn ($q) => $q->where('escalated_to_admin', 1)->orWhere('status', 'escalated_to_admin'))->count(),
                 'unresolved_total' => ReportedMessage::query()->whereNotIn('status', ['resolved_by_group_manager', 'resolved_by_admin'])->count(),
                 'created_in_window' => ReportedMessage::query()->where('created_at', '>=', $since)->count(),
             ],
@@ -108,6 +103,31 @@ class FounderOperationsSnapshotService
                 'announcements_in_window' => Announcement::query()->where('created_at', '>=', $since)->count(),
                 'pinned_announcements_in_window' => Announcement::query()->where('created_at', '>=', $since)->where('should_pin', 1)->count(),
                 'preference_records' => NotificationSetting::query()->count(),
+            ],
+            'growth' => [
+                'pending_invitation_requests' => Invitation::query()->where('status', 0)->count(),
+                'issued_requests_in_window' => Invitation::query()->where('status', 1)->where('updated_at', '>=', $since)->count(),
+                'active_codes' => InvitationCode::query()->where('used', 0)->where(fn ($q) => $q->whereNull('expire_at')->orWhere('expire_at', '>', $now))->count(),
+                'expired_unused_codes' => InvitationCode::query()->where('used', 0)->whereNotNull('expire_at')->where('expire_at', '<=', $now)->count(),
+                'used_codes_in_window' => InvitationCode::query()->where('used', 1)->where(fn ($q) => $q->where('used_at', '>=', $since)->orWhere(fn ($qq) => $qq->whereNull('used_at')->where('updated_at', '>=', $since)))->count(),
+            ],
+            'email' => [
+                'templates_total' => EmailTemplate::query()->count(),
+                'active_templates' => EmailTemplate::query()->where('is_active', 1)->count(),
+                'inactive_templates' => EmailTemplate::query()->where('is_active', 0)->count(),
+                'changed_in_window' => EmailTemplate::query()->where('updated_at', '>=', $since)->count(),
+            ],
+            'blog' => [
+                'posts_total' => BlogPost::query()->count(),
+                'published_total' => BlogPost::query()->where('status', 'published')->count(),
+                'published_in_window' => BlogPost::query()->where('status', 'published')->where('published_at', '>=', $since)->count(),
+                'changed_in_window' => BlogPost::query()->where('updated_at', '>=', $since)->count(),
+            ],
+            'stock' => [
+                'running_auctions' => Auction::query()->running()->count(),
+                'scheduled_auctions' => Auction::query()->scheduled()->count(),
+                'ending_within_24h' => Auction::query()->running()->whereNotNull('ends_at')->whereBetween('ends_at', [$now, $next24h])->count(),
+                'expired_unsettled' => Auction::query()->whereNotNull('ends_at')->where('ends_at', '<', $now)->where('status', '!=', 'settled')->count(),
             ],
             'admin_configuration' => [
                 'group_setting_records' => GroupSetting::query()->count(),
@@ -123,8 +143,7 @@ class FounderOperationsSnapshotService
         if ($name === '') return false;
         foreach ($this->domains->all() as $domain) {
             foreach ((array) ($domain['event_prefixes'] ?? []) as $prefix) {
-                $prefix = (string) $prefix;
-                if ($prefix !== '' && str_starts_with($name, $prefix)) return true;
+                if (($prefix = (string) $prefix) !== '' && str_starts_with($name, $prefix)) return true;
             }
         }
         return false;
