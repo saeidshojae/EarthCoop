@@ -23,4 +23,6 @@ Route::middleware(['throttle:najm-hoda-autonomy-write'])
         Route::post('/support-approvals/{requestId}/decision', [FounderOperationsController::class, 'decideSupportDraft'])->name('support-approvals.decision');
         Route::post('/reference/{type}/{id}/request-approve', [FounderOperationsController::class, 'requestReferenceApprove'])->name('reference.request-approve');
         Route::post('/reference-approvals/{requestId}/decision', [FounderOperationsController::class, 'decideReferenceApproval'])->name('reference-approvals.decision');
+        Route::post('/moderation/{sourceType}/{sourceId}/request-resolve', [FounderOperationsController::class, 'requestModerationResolve'])->name('moderation.request-resolve');
+        Route::post('/moderation-approvals/{requestId}/decision', [FounderOperationsController::class, 'decideModerationResolve'])->name('moderation-approvals.decision');
     });
