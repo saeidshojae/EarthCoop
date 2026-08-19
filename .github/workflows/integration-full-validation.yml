@@ -109,12 +109,11 @@ jobs:
 
       - name: Regression — Group Chat
         id: regression_group_chat
-        continue-on-error: true
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/GroupChat
 
       - name: Regression — Group Admin / Identity
         id: regression_group_admin_identity
-        continue-on-error: true
+        if: always()
         run: |
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/Admin/GlobalGroupRoleManagementTest.php \
@@ -125,17 +124,17 @@ jobs:
 
       - name: Regression — Najm Hoda + n8n
         id: regression_najm_hoda
-        continue-on-error: true
+        if: always()
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda
 
       - name: Regression — Governance
         id: regression_governance
-        continue-on-error: true
+        if: always()
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Governance
 
       - name: Regression — Najm Bahar
         id: regression_najm_bahar
-        continue-on-error: true
+        if: always()
         run: |
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/NajmBahar \
@@ -144,17 +143,17 @@ jobs:
 
       - name: Regression — Stock
         id: regression_stock
-        continue-on-error: true
+        if: always()
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Unit/Stock
 
       - name: Regression — Group Chat JavaScript
         id: regression_group_chat_js
-        continue-on-error: true
+        if: always()
         run: npm run test:group-chat
 
       - name: Regression — Full Project PHPUnit
         id: regression_full_phpunit
-        continue-on-error: true
+        if: always()
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist
 
       - name: Enforce regression gate
