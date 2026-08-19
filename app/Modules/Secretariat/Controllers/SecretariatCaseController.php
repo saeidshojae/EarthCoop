@@ -190,8 +190,8 @@ class SecretariatCaseController extends Controller
     private function allowedConfidentialities(Request $request): array
     {
         $user = $request->user();
-        $isAdmin = (method_exists($user, 'hasRole') && $user->hasRole('admin'))
-            || (isset($user->role) && (string) $user->role === 'admin');
+        $isAdmin = (bool) ($user->is_admin ?? false)
+            || (method_exists($user, 'hasRole') && $user->hasRole('super-admin'));
 
         return $isAdmin
             ? self::CONFIDENTIALITIES
