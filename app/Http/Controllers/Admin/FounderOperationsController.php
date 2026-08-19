@@ -10,6 +10,7 @@ use App\Services\NajmHoda\FounderOps\FounderAttentionService;
 use App\Services\NajmHoda\FounderOps\FounderAuthoritySnapshotService;
 use App\Services\NajmHoda\FounderOps\FounderAutonomyBridgeService;
 use App\Services\NajmHoda\FounderOps\FounderOperationsSnapshotService;
+use App\Services\NajmHoda\FounderOps\FounderReferenceApprovalCandidateService;
 use App\Services\NajmHoda\FounderOps\FounderSupportDraftApprovalService;
 use Illuminate\Http\Request;
 
@@ -19,7 +20,8 @@ class FounderOperationsController extends Controller
         Request $request,
         FounderAttentionService $attention,
         FounderOperationsSnapshotService $snapshots,
-        FounderApprovalInboxService $approvals
+        FounderApprovalInboxService $approvals,
+        FounderReferenceApprovalCandidateService $referenceCandidates
     ) {
         $hours = max(1, min((int) $request->integer('hours', 24), 168));
 
@@ -28,6 +30,7 @@ class FounderOperationsController extends Controller
             'brief' => $attention->brief($hours),
             'snapshot' => $snapshots->snapshot($hours),
             'approvalInbox' => $approvals->snapshot(),
+            'referenceCandidates' => $referenceCandidates->candidates(10),
             'supportDrafts' => SupportReplyDraft::query()
                 ->with(['ticket:id,tracking_code,subject,status,priority,category'])
                 ->where('status', 'draft')
