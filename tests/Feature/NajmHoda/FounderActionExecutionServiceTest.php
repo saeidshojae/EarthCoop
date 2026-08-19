@@ -5,28 +5,31 @@ namespace Tests\Feature\NajmHoda;
 use App\Services\NajmHoda\FounderOps\FounderActionAuthorityService;
 use App\Services\NajmHoda\FounderOps\FounderActionExecutionService;
 use App\Services\NajmHoda\FounderOps\FounderApprovalVerifierService;
+use App\Services\NajmHoda\FounderOps\FounderDelegationGrantService;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Tests\TestCase;
 
 class FounderActionExecutionServiceTest extends TestCase
 {
-    public function test_forbidden_action_never_invokes_callback(): void
+    protected function service($verifier, $delegations, $events): FounderActionExecutionService
     {
-        $verifier = $this->createMock(FounderApprovalVerifierService::class);
-        $events = $this->createMock(RuntimeEventBus::class);
-        $events->expects($this->once())->method('emit')->with(
-            'najm_hoda.founder_ops.execution.blocked',
-            $this->isType('array')
-        );
-
-        $service = new FounderActionExecutionService(
+        return new FounderActionExecutionService(
             app(FounderActionAuthorityService::class),
+            $delegations,
             $verifier,
             $events
         );
+    }
+
+    public function test_forbidden_action_never_invokes_callback(): void
+    {
+        $verifier = $this->createMock(FounderApprovalVerifierService::class);
+        $delegations = $this->createMock(FounderDelegationGrantService::class);
+        $events = $this->createMock(RuntimeEventBus::class);
+        $events->expects($this->once())->method('emit')->with('najm_hoda.founder_ops.execution.blocked', $this->isType('array'));
 
         $called = false;
-        $result = $service->execute('governance', 'alter_vote', function () use (&$called) {
+        $result = $this->service($verifier, $delegations, $events)->execute('governance', 'alter_vote', function () use (&$called) {
             $called = true;
             return 'should-not-run';
         });
@@ -40,17 +43,12 @@ class FounderActionExecutionServiceTest extends TestCase
     {
         $verifier = $this->createMock(FounderApprovalVerifierService::class);
         $verifier->expects($this->never())->method('verify');
+        $delegations = $this->createMock(FounderDelegationGrantService::class);
         $events = $this->createMock(RuntimeEventBus::class);
         $events->expects($this->once())->method('emit');
 
-        $service = new FounderActionExecutionService(
-            app(FounderActionAuthorityService::class),
-            $verifier,
-            $events
-        );
-
         $called = false;
-        $result = $service->execute('email', 'send_email', function () use (&$called) {
+        $result = $this->service($verifier, $delegations, $events)->execute('email', 'send_email', function () use (&$called) {
             $called = true;
         });
 
@@ -61,49 +59,48 @@ class FounderActionExecutionServiceTest extends TestCase
     public function test_verified_founder_approval_allows_canonical_callback_to_run(): void
     {
         $verifier = $this->createMock(FounderApprovalVerifierService::class);
-        $verifier->expects($this->once())
-            ->method('verify')
-            ->with('r1', 'email', 'send_email')
+        $verifier->expects($this->once())->method('verify')->with('r1', 'email', 'send_email')
             ->willReturn(['valid' => true, 'reason' => 'verified_founder_approval', 'decision_by' => 10]);
-
+        $delegations = $this->createMock(FounderDelegationGrantService::class);
         $events = $this->createMock(RuntimeEventBus::class);
         $events->expects($this->exactly(2))->method('emit');
 
-        $service = new FounderActionExecutionService(
-            app(FounderActionAuthorityService::class),
-            $verifier,
-            $events
-        );
-
-        $result = $service->execute('email', 'send_email', fn () => ['sent' => true], 'r1', [
-            'entity_type' => 'email_template',
-            'entity_id' => 5,
-            'body' => 'must-not-enter-audit',
+        $result = $this->service($verifier, $delegations, $events)->execute('email', 'send_email', fn () => ['sent' => true], 'r1', [
+            'entity_type' => 'email_template', 'entity_id' => 5, 'body' => 'must-not-enter-audit',
         ]);
 
         $this->assertTrue($result['success']);
         $this->assertSame(['sent' => true], $result['result']);
     }
 
-    public function test_delegated_safe_action_remains_blocked_while_delegation_is_disabled(): void
+    public function test_delegated_safe_action_is_blocked_without_active_grant(): void
     {
-        config()->set('najm-hoda-founder-action-policy.delegation.enabled', false);
         $verifier = $this->createMock(FounderApprovalVerifierService::class);
+        $delegations = $this->createMock(FounderDelegationGrantService::class);
+        $delegations->expects($this->once())->method('isGranted')->with('support', 'classify_ticket')->willReturn(false);
         $events = $this->createMock(RuntimeEventBus::class);
         $events->expects($this->once())->method('emit');
 
-        $service = new FounderActionExecutionService(
-            app(FounderActionAuthorityService::class),
-            $verifier,
-            $events
-        );
-
         $called = false;
-        $result = $service->execute('support', 'classify_ticket', function () use (&$called) {
+        $result = $this->service($verifier, $delegations, $events)->execute('support', 'classify_ticket', function () use (&$called) {
             $called = true;
         });
 
         $this->assertFalse($called);
-        $this->assertSame('delegation_not_enabled', $result['reason']);
+        $this->assertSame('explicit_delegation_required', $result['reason']);
+    }
+
+    public function test_delegated_safe_action_executes_only_with_active_grant(): void
+    {
+        $verifier = $this->createMock(FounderApprovalVerifierService::class);
+        $delegations = $this->createMock(FounderDelegationGrantService::class);
+        $delegations->expects($this->once())->method('isGranted')->with('support', 'classify_ticket')->willReturn(true);
+        $events = $this->createMock(RuntimeEventBus::class);
+        $events->expects($this->exactly(2))->method('emit');
+
+        $result = $this->service($verifier, $delegations, $events)->execute('support', 'classify_ticket', fn () => ['classified' => true]);
+
+        $this->assertTrue($result['success']);
+        $this->assertTrue($result['delegated']);
     }
 }
