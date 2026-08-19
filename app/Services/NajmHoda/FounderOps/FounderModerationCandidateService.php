@@ -13,8 +13,7 @@ class FounderModerationCandidateService
         $limit = max(1, min($limit, 50));
         $new = Report::query()
             ->whereIn('status', ['pending','reviewed'])
-            ->orderByRaw("FIELD(priority,'critical','high','medium','low')")
-            ->latest('id')->limit($limit)->get()
+            ->latest('id')->limit($limit * 2)->get()
             ->map(fn (Report $r) => [
                 'source_type'=>'report','source_id'=>(int)$r->id,'type'=>(string)$r->type,
                 'status'=>(string)$r->status,'priority'=>(string)($r->priority ?: 'medium'),
@@ -23,7 +22,7 @@ class FounderModerationCandidateService
 
         $legacy = ReportedMessage::query()
             ->whereNotIn('status', ['resolved_by_group_manager','resolved_by_admin'])
-            ->orderByDesc('escalated_to_admin')->latest('id')->limit($limit)->get()
+            ->orderByDesc('escalated_to_admin')->latest('id')->limit($limit * 2)->get()
             ->map(fn (ReportedMessage $r) => [
                 'source_type'=>'reported_message','source_id'=>(int)$r->id,'type'=>'message',
                 'status'=>(string)$r->status,'priority'=>$r->isEscalatedToAdmin() ? 'high' : 'medium',
