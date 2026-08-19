@@ -12,74 +12,54 @@ class FounderAttentionService
         $items = [];
 
         $runtimeStatus = (string) data_get($snapshot, 'runtime_health.status', 'healthy');
-        if ($runtimeStatus === 'critical') {
-            $items[] = $this->item('P0', 'runtime_health', 'Najm Hoda runtime is critical', [
-                'error_rate_percent' => data_get($snapshot, 'runtime_health.metrics.error_rate_percent'),
-                'unresolved_requests' => data_get($snapshot, 'runtime_health.metrics.unresolved_requests'),
-            ]);
-        } elseif ($runtimeStatus === 'warning') {
-            $items[] = $this->item('P1', 'runtime_health', 'Najm Hoda runtime needs attention');
+        if ($runtimeStatus === 'critical') $items[] = $this->item('P0', 'runtime_health', 'Najm Hoda runtime is critical');
+        elseif ($runtimeStatus === 'warning') $items[] = $this->item('P1', 'runtime_health', 'Najm Hoda runtime needs attention');
+
+        $rules = [
+            ['P1','support','support.high_priority_active','High-priority support tickets are active'],
+            ['P1','support','support.unassigned_active','Active support tickets have no assignee'],
+            ['P1','governance','governance.overdue_open','Open elections are past their configured end time'],
+            ['P1','reports_moderation','moderation.escalated_to_admin','Moderation reports are escalated to the central admin'],
+            ['P1','stock','stock.expired_unsettled','Stock auctions expired without settled status'],
+            ['P1','secretariat','secretariat.overdue_dispatches','Secretariat dispatches are overdue'],
+            ['P1','najm_bahar','najm_bahar.scheduled_overdue','Najm Bahar scheduled transactions are overdue'],
+            ['P2','governance','governance.ending_within_24h','Active elections are ending within 24 hours'],
+            ['P2','reports_moderation','moderation.pending_group_manager','Reports are waiting for group-manager review'],
+            ['P2','invitations','growth.pending_invitation_requests','Invitation requests are waiting for review'],
+            ['P2','stock','stock.ending_within_24h','Running stock auctions are ending within 24 hours'],
+            ['P2','secretariat','secretariat.dispatches_due_within_24h','Secretariat dispatches are due within 24 hours'],
+            ['P2','secretariat','secretariat.responses_due','Secretariat dispatches are awaiting a response'],
+            ['P2','najm_bahar','najm_bahar.projects_submitted','Najm Bahar projects are waiting for review'],
+            ['P2','najm_bahar','najm_bahar.scheduled_due_within_24h','Najm Bahar scheduled transactions are due within 24 hours'],
+            ['P2','content','content.faq_pending','FAQ questions are waiting for an answer'],
+        ];
+        foreach ($rules as [$priority, $domain, $path, $title]) {
+            $count = (int) data_get($snapshot, $path, 0);
+            if ($count > 0) $items[] = $this->item($priority, $domain, $title, ['count' => $count]);
         }
-
-        $highPriorityTickets = (int) data_get($snapshot, 'support.high_priority_active', 0);
-        if ($highPriorityTickets > 0) $items[] = $this->item('P1', 'support', 'High-priority support tickets are active', ['count' => $highPriorityTickets]);
-
-        $unassignedTickets = (int) data_get($snapshot, 'support.unassigned_active', 0);
-        if ($unassignedTickets > 0) $items[] = $this->item('P1', 'support', 'Active support tickets have no assignee', ['count' => $unassignedTickets]);
-
-        $overdueElections = (int) data_get($snapshot, 'governance.overdue_open', 0);
-        if ($overdueElections > 0) $items[] = $this->item('P1', 'governance', 'Open elections are past their configured end time', ['count' => $overdueElections]);
-
-        $adminEscalations = (int) data_get($snapshot, 'moderation.escalated_to_admin', 0);
-        if ($adminEscalations > 0) $items[] = $this->item('P1', 'reports_moderation', 'Moderation reports are escalated to the central admin', ['count' => $adminEscalations]);
-
-        $expiredUnsettled = (int) data_get($snapshot, 'stock.expired_unsettled', 0);
-        if ($expiredUnsettled > 0) $items[] = $this->item('P1', 'stock', 'Stock auctions expired without settled status', ['count' => $expiredUnsettled]);
-
-        $endingElections = (int) data_get($snapshot, 'governance.ending_within_24h', 0);
-        if ($endingElections > 0) $items[] = $this->item('P2', 'governance', 'Active elections are ending within 24 hours', ['count' => $endingElections]);
-
-        $pendingManagerReports = (int) data_get($snapshot, 'moderation.pending_group_manager', 0);
-        if ($pendingManagerReports > 0) $items[] = $this->item('P2', 'reports_moderation', 'Reports are waiting for group-manager review', ['count' => $pendingManagerReports]);
 
         $pendingApprovals = (int) data_get($snapshot, 'approvals.total', 0);
-        if ($pendingApprovals > 0) {
-            $items[] = $this->item('P2', 'approvals', 'Reference-data approvals are waiting', [
-                'count' => $pendingApprovals,
-                'references' => data_get($snapshot, 'approvals.references.by_type', []),
-                'locations' => data_get($snapshot, 'approvals.locations.by_type', []),
-            ]);
-        }
-
-        $pendingInvitations = (int) data_get($snapshot, 'growth.pending_invitation_requests', 0);
-        if ($pendingInvitations > 0) $items[] = $this->item('P2', 'invitations', 'Invitation requests are waiting for review', ['count' => $pendingInvitations]);
-
-        $endingAuctions = (int) data_get($snapshot, 'stock.ending_within_24h', 0);
-        if ($endingAuctions > 0) $items[] = $this->item('P2', 'stock', 'Running stock auctions are ending within 24 hours', ['count' => $endingAuctions]);
+        if ($pendingApprovals > 0) $items[] = $this->item('P2', 'approvals', 'Reference-data approvals are waiting', [
+            'count' => $pendingApprovals,
+            'references' => data_get($snapshot, 'approvals.references.by_type', []),
+            'locations' => data_get($snapshot, 'approvals.locations.by_type', []),
+        ]);
 
         $sensitiveConfigChanges = collect((array) data_get($snapshot, 'recent_managed_events', []))
-            ->filter(fn (array $event): bool => str_starts_with((string) ($event['event'] ?? ''), 'najm_hoda.input.admin_settings.'))
-            ->count();
+            ->filter(fn (array $event): bool => str_starts_with((string) ($event['event'] ?? ''), 'najm_hoda.input.admin_settings.'))->count();
         if ($sensitiveConfigChanges > 0) $items[] = $this->item('P2', 'admin_settings', 'Sensitive admin configuration changed in the reporting window', ['events' => $sensitiveConfigChanges]);
 
-        $newMembers = (int) data_get($snapshot, 'users.new_members', 0);
-        if ($newMembers > 0) $items[] = $this->item('P3', 'users', 'New members joined in the reporting window', [
-            'count' => $newMembers, 'verified' => (int) data_get($snapshot, 'users.new_verified_members', 0),
-        ]);
-
-        $newGroups = (int) data_get($snapshot, 'groups.created_in_window', 0);
-        if ($newGroups > 0) $items[] = $this->item('P3', 'groups', 'New system/community groups were created', ['count' => $newGroups]);
-
-        $announcements = (int) data_get($snapshot, 'notifications.announcements_in_window', 0);
-        if ($announcements > 0) $items[] = $this->item('P3', 'notifications', 'Announcements were published in the reporting window', [
-            'count' => $announcements, 'pinned' => (int) data_get($snapshot, 'notifications.pinned_announcements_in_window', 0),
-        ]);
-
-        $blogPublished = (int) data_get($snapshot, 'blog.published_in_window', 0);
-        if ($blogPublished > 0) $items[] = $this->item('P3', 'blog', 'Blog posts were published in the reporting window', ['count' => $blogPublished]);
-
-        $usedInvites = (int) data_get($snapshot, 'growth.used_codes_in_window', 0);
-        if ($usedInvites > 0) $items[] = $this->item('P3', 'invitations', 'Invitation codes converted to registrations', ['count' => $usedInvites]);
+        foreach ([
+            ['users','users.new_members','New members joined in the reporting window'],
+            ['groups','groups.created_in_window','New system/community groups were created'],
+            ['notifications','notifications.announcements_in_window','Announcements were published in the reporting window'],
+            ['blog','blog.published_in_window','Blog posts were published in the reporting window'],
+            ['invitations','growth.used_codes_in_window','Invitation codes converted to registrations'],
+            ['najm_bahar','najm_bahar.review_events_in_window','Najm Bahar project-review events occurred in the reporting window'],
+        ] as [$domain, $path, $title]) {
+            $count = (int) data_get($snapshot, $path, 0);
+            if ($count > 0) $items[] = $this->item('P3', $domain, $title, ['count' => $count]);
+        }
 
         $rolloutQueue = (array) data_get($snapshot, 'management_coverage.next_domains', []);
         if ($rolloutQueue !== [] && is_array($rolloutQueue[0] ?? null)) {
@@ -109,10 +89,8 @@ class FounderAttentionService
 
     protected function item(string $priority, string $domain, string $title, array $context = []): array
     {
-        return [
-            'priority' => $priority, 'domain' => $domain, 'title' => $title, 'context' => $context,
-            'requires_founder_decision' => in_array($priority, ['P0', 'P1'], true),
-        ];
+        return ['priority' => $priority, 'domain' => $domain, 'title' => $title, 'context' => $context,
+            'requires_founder_decision' => in_array($priority, ['P0', 'P1'], true)];
     }
 
     protected function countPriority(array $items, string $priority): int
