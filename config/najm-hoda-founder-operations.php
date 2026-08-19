@@ -120,11 +120,11 @@ return [
         'stock' => [
             'label' => 'Stock, Auctions & Settlement',
             'priority' => 10,
-            'integration_stage' => 'planned',
+            'integration_stage' => 'observed',
             'risk' => 'high',
             'sources' => ['app/Modules/Stock', 'auctions', 'settlement', 'share ownership'],
             'event_prefixes' => ['najm_hoda.input.stock.'],
-            'capabilities' => [],
+            'capabilities' => ['observe'],
         ],
         'content' => [
             'label' => 'Pages, Knowledge Base & Published Content',
