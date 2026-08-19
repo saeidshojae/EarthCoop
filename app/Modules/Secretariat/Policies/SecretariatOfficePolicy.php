@@ -24,12 +24,14 @@ class SecretariatOfficePolicy
         }
 
         if ($office->scope_type === 'najm_bahar_project') {
-            // Public visibility of the project itself is not Secretariat authority.
-            // Until the Project domain defines explicit project-team roles for the
-            // Registry, only the project owner (or an administrator above) may
-            // enter its office. This prevents an approved public Project from
-            // accidentally exposing its formal records/cases to every user.
-            return $this->isUserProjectOwner($user, $office);
+            $project = $this->projectScope($office);
+
+            // EarthCoop members are shareholders with an oversight right over
+            // project information that the source project domain exposes to them.
+            // Public/approved project visibility therefore carries read-only
+            // visibility into its Secretariat office, while management authority
+            // remains restricted to the project owner (or a global administrator).
+            return $project !== null && $user->can('view', $project);
         }
 
         // Central, legal-entity, committee and unknown scopes stay default-deny
