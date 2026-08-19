@@ -12,6 +12,20 @@ use Illuminate\Http\Request;
 
 class FounderOperationsController extends Controller
 {
+    public function index(
+        Request $request,
+        FounderAttentionService $attention,
+        FounderOperationsSnapshotService $snapshots
+    ) {
+        $hours = max(1, min((int) $request->integer('hours', 24), 168));
+
+        return view('admin.najm-hoda.founder-ops.index', [
+            'hours' => $hours,
+            'brief' => $attention->brief($hours),
+            'snapshot' => $snapshots->snapshot($hours),
+        ]);
+    }
+
     public function brief(Request $request, FounderAttentionService $service)
     {
         $hours = (int) $request->integer('hours', 24);
