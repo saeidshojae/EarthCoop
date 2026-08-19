@@ -13,13 +13,7 @@ class FounderActionRequestService
         protected NajmHodaAutonomyApprovalService $approvals
     ) {}
 
-    /**
-     * Prepare one Founder Operations action for the next allowed step.
-     * This method never performs the domain mutation itself.
-     *
-     * @param array<string,mixed> $context
-     * @return array<string,mixed>
-     */
+    /** @param array<string,mixed> $context @return array<string,mixed> */
     public function prepare(string $domain, string $action, array $context = []): array
     {
         $mode = $this->authority->mode($domain, $action);
@@ -32,6 +26,12 @@ class FounderActionRequestService
         }
 
         if ($decision['mode'] === 'approval_required') {
+            $safeContext = $this->safeContext($context);
+            $existing = $this->findPending($domain, $action, (string) ($safeContext['reason_code'] ?? ''));
+            if ($existing !== null) {
+                return ['status' => 'awaiting_approval', 'decision' => $decision, 'approval_request' => $existing, 'deduplicated' => true];
+            }
+
             $request = $this->approvals->requestApproval([
                 'action' => 'founder_ops:' . $domain . '.' . $action,
                 'domain' => $domain,
@@ -39,9 +39,9 @@ class FounderActionRequestService
                 'risk' => $risk,
                 'mode' => 'approval_required',
                 'execution_contract' => 'founder_operations',
-            ], $this->safeContext($context));
+            ], $safeContext);
 
-            return ['status' => 'awaiting_approval', 'decision' => $decision, 'approval_request' => $request];
+            return ['status' => 'awaiting_approval', 'decision' => $decision, 'approval_request' => $request, 'deduplicated' => false];
         }
 
         if ($decision['mode'] === 'delegated_safe') {
@@ -57,6 +57,18 @@ class FounderActionRequestService
             'decision' => $decision,
             'approval_request' => null,
         ];
+    }
+
+    /** @return array<string,mixed>|null */
+    protected function findPending(string $domain, string $action, string $reasonCode): ?array
+    {
+        foreach ($this->approvals->pending(200) as $request) {
+            if ((string) data_get($request, 'plan_item.domain') !== $domain) continue;
+            if ((string) data_get($request, 'plan_item.domain_action') !== $action) continue;
+            if ($reasonCode !== '' && (string) data_get($request, 'context.reason_code') !== $reasonCode) continue;
+            return $request;
+        }
+        return null;
     }
 
     /** @param array<string,mixed> $context @return array<string,mixed> */
