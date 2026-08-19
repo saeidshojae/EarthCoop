@@ -47,9 +47,12 @@ class RouteServiceProvider extends ServiceProvider
 
             Route::middleware('web')
                 ->group(base_path('routes/najm-hoda-group-attention.php'));
-                
+
             Route::middleware('web')
                 ->group(base_path('routes/najm-bahar.php'));
+
+            Route::middleware('web')
+                ->group(base_path('routes/secretariat.php'));
         });
     }
 
@@ -61,7 +64,7 @@ class RouteServiceProvider extends ServiceProvider
     protected function configureRateLimiting()
     {
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+            return Limit::perMinute(60)->by('api:' . ($request->user()?->id ?: $request->ip()));
         });
 
         RateLimiter::for('najm-hoda-autonomy-read', function (Request $request) {
