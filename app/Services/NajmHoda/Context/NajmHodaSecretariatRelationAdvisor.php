@@ -73,7 +73,18 @@ class NajmHodaSecretariatRelationAdvisor
     private function looksLikeRelationRequest(string $message): bool
     {
         $plain = mb_strtolower($message);
-        foreach (['رابطه', 'مرتبط', 'ارتباط سند', 'اسناد مرتبط', 'پاسخ به چه', 'گزارش کدام', 'مصوبه مرتبط', 'relation', 'related record'] as $needle) {
+
+        // Readiness/evidence prompts belong to the dedicated readiness advisor.
+        foreach (['آمادگی', 'ناقص', 'کمبود', 'چه چیزی کم', 'شواهد', 'evidence', 'ready'] as $readinessCue) {
+            if (mb_stripos($plain, $readinessCue) !== false) {
+                return false;
+            }
+        }
+
+        // Avoid the overly broad single token "مرتبط". Relation advice requires
+        // an explicit relation-oriented phrase so normal evidence/search prompts
+        // cannot be intercepted accidentally.
+        foreach (['رابطه', 'ارتباط سند', 'اسناد مرتبط', 'پاسخ به چه', 'گزارش کدام', 'مصوبه مرتبط', 'relation', 'related record'] as $needle) {
             if (mb_stripos($plain, $needle) !== false) {
                 return true;
             }
