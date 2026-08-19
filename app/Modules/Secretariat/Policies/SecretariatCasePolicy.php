@@ -4,9 +4,12 @@ namespace App\Modules\Secretariat\Policies;
 
 use App\Models\User;
 use App\Modules\Secretariat\Models\SecretariatCase;
+use App\Policies\Concerns\ResolvesGroupMembership;
 
 class SecretariatCasePolicy
 {
+    use ResolvesGroupMembership;
+
     public function __construct(private readonly SecretariatOfficePolicy $offices)
     {
     }
@@ -19,11 +22,11 @@ class SecretariatCasePolicy
         }
 
         return match ((string) $case->confidentiality) {
-            'public', 'office_members' => true,
-            'leadership' => $this->offices->inspect($user, $office),
-            // Case-specific ACL is not part of the current S5 slice. Do not fake
-            // one through office membership: sensitive case metadata stays admin-only
-            // until an explicit case ACL contract exists.
+            // leadership is oversight-visible: it distinguishes workflow authority,
+            // not the shareholder/member right to inspect related management data.
+            'public', 'office_members', 'leadership' => true,
+            // Case-specific ACL is not part of the current S5 slice. Until it is,
+            // sensitive case metadata remains limited to the canonical global admin.
             'restricted', 'confidential' => $this->isAdministrator($user),
             default => false,
         };
@@ -39,14 +42,5 @@ class SecretariatCasePolicy
     {
         $office = $case->relationLoaded('office') ? $case->office : $case->office()->first();
         return $office !== null && $this->offices->manage($user, $office);
-    }
-
-    private function isAdministrator(User $user): bool
-    {
-        if (method_exists($user, 'hasRole') && $user->hasRole('admin')) {
-            return true;
-        }
-
-        return isset($user->role) && (string) $user->role === 'admin';
     }
 }
