@@ -2,14 +2,19 @@
 
 namespace App\Providers;
 
+use App\Models\Alley;
 use App\Models\Ticket;
 use App\Models\TicketComment;
 use App\Models\Blog;
 use App\Models\ExperienceField;
 use App\Models\FaqQuestion;
 use App\Models\KbArticle;
+use App\Models\Neighborhood;
 use App\Models\OccupationalField;
 use App\Models\Page;
+use App\Models\Region;
+use App\Models\Rural;
+use App\Models\Street;
 use App\Models\User;
 use App\Modules\NajmBahar\Models\Account as NajmBaharAccount;
 use App\Modules\NajmBahar\Models\Fee as NajmBaharFee;
@@ -148,6 +153,11 @@ class EventServiceProvider extends ServiceProvider
         User::observe(FounderUserObserver::class);
         ExperienceField::observe(FounderReferenceDataObserver::class);
         OccupationalField::observe(FounderReferenceDataObserver::class);
+        Alley::observe(FounderReferenceDataObserver::class);
+        Street::observe(FounderReferenceDataObserver::class);
+        Neighborhood::observe(FounderReferenceDataObserver::class);
+        Region::observe(FounderReferenceDataObserver::class);
+        Rural::observe(FounderReferenceDataObserver::class);
         Ticket::observe(TicketObserver::class);
         TicketComment::observe(TicketCommentObserver::class);
         NajmBaharTransaction::observe(NajmBaharTransactionObserver::class);
