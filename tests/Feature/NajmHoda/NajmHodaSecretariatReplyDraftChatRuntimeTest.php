@@ -68,7 +68,7 @@ class NajmHodaSecretariatReplyDraftChatRuntimeTest extends TestCase
         $reply = SecretariatRecord::query()
             ->where('record_type', 'outgoing_letter')
             ->where('status', 'draft')
-            ->whereKeyNot($source->id)
+            ->where('id', '<>', $source->id)
             ->latest('id')
             ->firstOrFail();
 
