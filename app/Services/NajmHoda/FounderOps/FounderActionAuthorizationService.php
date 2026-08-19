@@ -8,7 +8,7 @@ use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 class FounderActionAuthorizationService
 {
     public function __construct(
-        protected FounderCapabilityGate $gate,
+        protected FounderActionAuthorityService $authority,
         protected FounderDelegationGrantService $delegations,
         protected NajmHodaAutonomyApprovalService $approvals,
         protected RuntimeEventBus $events
@@ -17,27 +17,27 @@ class FounderActionAuthorizationService
     /** @param array<string,mixed> $context @return array<string,mixed> */
     public function authorize(string $domain, string $action, array $context = []): array
     {
-        $decision = $this->gate->inspect($domain, $action);
-        $level = (string) $decision['level'];
+        $mode = $this->authority->mode($domain, $action);
+        $decision = $this->authority->evaluate($domain, $action);
 
-        if ($level === FounderCapabilityGate::FORBIDDEN) {
-            $this->emit('denied', $domain, $action, $decision, $context);
+        if ($mode === 'forbidden') {
+            $this->emit('denied', $domain, $action, $mode, $context);
             return $this->result('denied', $decision);
         }
 
-        if ($level === FounderCapabilityGate::OBSERVE || $level === FounderCapabilityGate::PROPOSE) {
-            $this->emit($level, $domain, $action, $decision, $context);
-            return $this->result($level, $decision);
+        if (in_array($mode, ['observe', 'propose'], true)) {
+            $this->emit($mode, $domain, $action, $mode, $context);
+            return $this->result($mode, $decision);
         }
 
-        if ($level === FounderCapabilityGate::DELEGATED_SAFE) {
+        if ($mode === 'delegated_safe') {
             $granted = $this->delegations->isGranted($domain, $action);
             $outcome = $granted ? 'delegated_authorized' : 'delegation_required';
-            $this->emit($outcome, $domain, $action, $decision, $context);
+            $this->emit($outcome, $domain, $action, $mode, $context);
             return [
                 'status' => $outcome,
                 'executable' => $granted,
-                'decision' => $this->gate->inspect($domain, $action, false, $granted),
+                'decision' => $this->authority->evaluate($domain, $action, false, $granted),
                 'approval_request' => null,
             ];
         }
@@ -50,7 +50,7 @@ class FounderActionAuthorizationService
             'capability_action' => $action,
         ], $this->safeContext($context));
 
-        $this->emit('approval_requested', $domain, $action, $decision, ['approval_request_id' => $request['id'] ?? null]);
+        $this->emit('approval_requested', $domain, $action, $mode, ['approval_request_id' => $request['id'] ?? null]);
 
         return [
             'status' => 'approval_required',
@@ -62,26 +62,23 @@ class FounderActionAuthorizationService
 
     public function mayExecute(string $domain, string $action, bool $founderApproved = false): bool
     {
-        $decision = $this->gate->inspect($domain, $action);
-        $delegated = ($decision['level'] ?? null) === FounderCapabilityGate::DELEGATED_SAFE
+        $delegated = $this->authority->mode($domain, $action) === 'delegated_safe'
             && $this->delegations->isGranted($domain, $action);
 
-        return $this->gate->canExecute($domain, $action, $founderApproved, $delegated);
+        return $this->authority->mayExecute($domain, $action, $founderApproved, $delegated);
     }
 
-    /** @return array<string,mixed> */
     protected function result(string $status, array $decision): array
     {
         return ['status' => $status, 'executable' => false, 'decision' => $decision, 'approval_request' => null];
     }
 
-    /** @param array<string,mixed> $decision @param array<string,mixed> $context */
-    protected function emit(string $outcome, string $domain, string $action, array $decision, array $context): void
+    protected function emit(string $outcome, string $domain, string $action, string $mode, array $context): void
     {
         $this->events->emit('najm_hoda.founder.authorization.' . $outcome, [
             'domain' => $domain,
             'action' => $action,
-            'level' => $decision['level'] ?? FounderCapabilityGate::FORBIDDEN,
+            'mode' => $mode,
             'scope' => 'founder_operations',
             'context_keys' => array_values(array_map('strval', array_keys($context))),
         ]);
@@ -93,7 +90,6 @@ class FounderActionAuthorizationService
         return is_string($risk) && $risk !== '' ? $risk : 'high';
     }
 
-    /** @param array<string,mixed> $context @return array<string,mixed> */
     protected function safeContext(array $context): array
     {
         $safe = [];
