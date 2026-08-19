@@ -22,6 +22,7 @@ class NajmHodaSecretariatDraftAssistant
         private readonly NajmHodaSecretariatDraftRevisionAssistant $revisions,
         private readonly NajmHodaSecretariatCorrespondenceRouter $correspondence,
         private readonly NajmHodaSecretariatCaseAssistant $cases,
+        private readonly NajmHodaSecretariatEvidenceDraftAssistant $evidenceDrafts,
     ) {
     }
 
@@ -62,6 +63,17 @@ class NajmHodaSecretariatDraftAssistant
         );
         if (is_array($correspondenceResponse)) {
             return $correspondenceResponse;
+        }
+
+        $evidenceDraftResponse = $this->evidenceDrafts->intercept(
+            $actor,
+            $office,
+            $pageContext,
+            $message,
+            $conversationId
+        );
+        if (is_array($evidenceDraftResponse)) {
+            return $evidenceDraftResponse;
         }
 
         $pendingKey = $this->pendingKey($actor->id, $conversationId, $office->id);
