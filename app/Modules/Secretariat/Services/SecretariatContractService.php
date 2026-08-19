@@ -27,8 +27,8 @@ class SecretariatContractService
     {
         $record->loadMissing('office');
         $this->assertContractRecord($record);
-        if ($record->status !== 'draft') {
-            throw ValidationException::withMessages(['record' => 'Contract parties can only be added while the initial record is a draft. Amendments reuse or extend the record party directory before formality.']);
+        if (in_array((string) $record->status, ['archived', 'voided'], true)) {
+            throw ValidationException::withMessages(['record' => 'Archived or voided contracts cannot receive new party snapshots.']);
         }
 
         $partyType = (string) ($attributes['party_type'] ?? '');
