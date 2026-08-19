@@ -157,8 +157,6 @@ class SecretariatAttachmentService
                 return $attachment;
             });
         } catch (Throwable $exception) {
-            // Storage write happened before the DB transaction. If DB persistence
-            // fails, compensate by removing the unreferenced object.
             Storage::disk($disk)->delete($storageKey);
             throw $exception;
         }
@@ -172,13 +170,6 @@ class SecretariatAttachmentService
 
             if (! in_array($locked->record->status, ['draft', 'cancelled'], true)) {
                 throw new LogicException('Attachments of formal Secretariat records cannot be hard-deleted.');
-            }
-
-            // Scan evidence is intentionally append-only. A draft attachment that
-            // already has scan evidence cannot be physically erased without also
-            // erasing its security history; cancel the record instead.
-            if (SecretariatAttachmentScan::query()->where('attachment_id', $locked->id)->exists()) {
-                throw new LogicException('A scanned Secretariat attachment cannot be hard-deleted; cancel the draft to preserve scan history.');
             }
 
             $disk = $locked->storage_disk;
