@@ -21,4 +21,6 @@ Route::middleware(['throttle:najm-hoda-autonomy-write'])
     ->group(function (): void {
         Route::post('/support-drafts/{draft}/request-send', [FounderOperationsController::class, 'requestSupportDraftSend'])->name('support-drafts.request-send');
         Route::post('/support-approvals/{requestId}/decision', [FounderOperationsController::class, 'decideSupportDraft'])->name('support-approvals.decision');
+        Route::post('/reference/{type}/{id}/request-approve', [FounderOperationsController::class, 'requestReferenceApprove'])->name('reference.request-approve');
+        Route::post('/reference-approvals/{requestId}/decision', [FounderOperationsController::class, 'decideReferenceApproval'])->name('reference-approvals.decision');
     });
