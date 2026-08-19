@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - agent/integration-hoda-bahar-after-groups
+      - agent/integration-secretariat-s9-current-main
   workflow_dispatch:
 
 permissions:
