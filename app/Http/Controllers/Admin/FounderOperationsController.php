@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\FounderContentDraft;
+use App\Models\FounderEmailDraft;
 use App\Models\ModerationCaseSummary;
 use App\Models\SupportReplyDraft;
 use App\Modules\Secretariat\Models\SecretariatFollowUpProposal;
@@ -11,6 +13,8 @@ use App\Services\NajmHoda\FounderOps\FounderApprovalInboxService;
 use App\Services\NajmHoda\FounderOps\FounderAttentionService;
 use App\Services\NajmHoda\FounderOps\FounderAuthoritySnapshotService;
 use App\Services\NajmHoda\FounderOps\FounderAutonomyBridgeService;
+use App\Services\NajmHoda\FounderOps\FounderContentDecisionService;
+use App\Services\NajmHoda\FounderOps\FounderEmailDecisionService;
 use App\Services\NajmHoda\FounderOps\FounderModerationDecisionService;
 use App\Services\NajmHoda\FounderOps\FounderOperationsSnapshotService;
 use App\Services\NajmHoda\FounderOps\FounderReferenceApprovalCandidateService;
@@ -29,6 +33,8 @@ class FounderOperationsController extends Controller
             'supportDrafts'=>SupportReplyDraft::query()->with(['ticket:id,tracking_code,subject,status,priority,category'])->where('status','draft')->latest('id')->limit(20)->get(),
             'moderationCases'=>ModerationCaseSummary::query()->where('status','draft')->latest('id')->limit(20)->get(),
             'secretariatFollowUps'=>SecretariatFollowUpProposal::query()->with(['dispatch.record:id,registry_number,status'])->where('status','draft')->latest('id')->limit(20)->get(),
+            'emailDrafts'=>FounderEmailDraft::query()->where('status','draft')->latest('id')->limit(20)->get(),
+            'contentDrafts'=>FounderContentDraft::query()->where('status','draft')->latest('id')->limit(20)->get(),
         ]);
     }
 
@@ -38,42 +44,18 @@ class FounderOperationsController extends Controller
     public function approvals(FounderApprovalInboxService $service){return response()->json(['success'=>true,'data'=>$service->snapshot()]);}
     public function authority(FounderAuthoritySnapshotService $summary, FounderActionAuthorityService $authority){return response()->json(['success'=>true,'data'=>['summary'=>$summary->snapshot(),'matrix'=>$authority->matrix()]]);}
 
-    public function requestSupportDraftSend(Request $request, SupportReplyDraft $draft, FounderSupportDraftApprovalService $service)
-    {
-        $result=$service->requestSend($draft,(int)$request->user()->id);
-        return back()->with(($result['status']??'')==='awaiting_approval'?'success':'error',($result['status']??'')==='awaiting_approval'?'درخواست ارسال پاسخ در صف تأیید Founder قرار گرفت.':'امکان ایجاد درخواست ارسال وجود ندارد.');
-    }
+    public function requestSupportDraftSend(Request $request, SupportReplyDraft $draft, FounderSupportDraftApprovalService $service){$result=$service->requestSend($draft,(int)$request->user()->id);return $this->approvalBack($result,'درخواست ارسال پاسخ در صف تأیید Founder قرار گرفت.');}
+    public function decideSupportDraft(Request $request,string $requestId,FounderSupportDraftApprovalService $service){return $this->decisionBack($request,$service->decideAndExecute($requestId,...$this->decisionArgs($request)));}
+    public function requestReferenceApprove(Request $request,string $type,int $id,FounderReferenceApprovalDecisionService $service){try{$result=$service->requestApprove($type,$id,(int)$request->user()->id);}catch(\Throwable){return back()->with('error','مورد تأیید معتبر نیست.');}return $this->approvalBack($result,'درخواست تأیید در صف Founder قرار گرفت.');}
+    public function decideReferenceApproval(Request $request,string $requestId,FounderReferenceApprovalDecisionService $service){return $this->decisionBack($request,$service->decideAndExecute($requestId,...$this->decisionArgs($request)));}
+    public function requestModerationResolve(Request $request,string $sourceType,int $sourceId,FounderModerationDecisionService $service){try{$result=$service->requestResolve($sourceType,$sourceId,(int)$request->user()->id);}catch(\Throwable){return back()->with('error','گزارش معتبر یا قابل بررسی نیست.');}return $this->approvalBack($result,'درخواست حل گزارش در صف تأیید Founder قرار گرفت.');}
+    public function decideModerationResolve(Request $request,string $requestId,FounderModerationDecisionService $service){return $this->decisionBack($request,$service->decideAndExecute($requestId,...$this->decisionArgs($request)));}
+    public function requestEmailSend(Request $request,FounderEmailDraft $draft,FounderEmailDecisionService $service){return $this->approvalBack($service->requestSend($draft,(int)$request->user()->id),'درخواست ارسال ایمیل در صف تأیید Founder قرار گرفت.');}
+    public function decideEmailSend(Request $request,string $requestId,FounderEmailDecisionService $service){return $this->decisionBack($request,$service->decideAndExecute($requestId,...$this->decisionArgs($request)));}
+    public function requestContentPublish(Request $request,FounderContentDraft $draft,FounderContentDecisionService $service){return $this->approvalBack($service->requestPublish($draft,(int)$request->user()->id),'درخواست انتشار محتوا در صف تأیید Founder قرار گرفت.');}
+    public function decideContentPublish(Request $request,string $requestId,FounderContentDecisionService $service){return $this->decisionBack($request,$service->decideAndExecute($requestId,...$this->decisionArgs($request)));}
 
-    public function decideSupportDraft(Request $request,string $requestId,FounderSupportDraftApprovalService $service)
-    {
-        $validated=$request->validate(['decision'=>'required|in:approve,reject','reason'=>'nullable|string|max:500']);
-        $result=$service->decideAndExecute($requestId,$validated['decision'],(int)$request->user()->id,$validated['reason']??null);
-        return back()->with((bool)($result['success']??false)?'success':'error',(bool)($result['success']??false)?'تصمیم ثبت و مطابق policy اجرا شد.':'تصمیم یا اجرای درخواست مجاز نبود.');
-    }
-
-    public function requestReferenceApprove(Request $request,string $type,int $id,FounderReferenceApprovalDecisionService $service)
-    {
-        try{$result=$service->requestApprove($type,$id,(int)$request->user()->id);}catch(\Throwable $e){return back()->with('error','مورد تأیید معتبر نیست.');}
-        return back()->with(($result['status']??'')==='awaiting_approval'?'success':'error',($result['status']??'')==='awaiting_approval'?'درخواست تأیید در صف Founder قرار گرفت.':'امکان ایجاد درخواست تأیید وجود ندارد.');
-    }
-
-    public function decideReferenceApproval(Request $request,string $requestId,FounderReferenceApprovalDecisionService $service)
-    {
-        $validated=$request->validate(['decision'=>'required|in:approve,reject','reason'=>'nullable|string|max:500']);
-        $result=$service->decideAndExecute($requestId,$validated['decision'],(int)$request->user()->id,$validated['reason']??null);
-        return back()->with((bool)($result['success']??false)?'success':'error',(bool)($result['success']??false)?'تصمیم داده پایه ثبت و مطابق policy اجرا شد.':'تصمیم یا اجرای تأیید مجاز نبود.');
-    }
-
-    public function requestModerationResolve(Request $request,string $sourceType,int $sourceId,FounderModerationDecisionService $service)
-    {
-        try{$result=$service->requestResolve($sourceType,$sourceId,(int)$request->user()->id);}catch(\Throwable $e){return back()->with('error','گزارش معتبر یا قابل بررسی نیست.');}
-        return back()->with(($result['status']??'')==='awaiting_approval'?'success':'error',($result['status']??'')==='awaiting_approval'?'درخواست حل گزارش در صف تأیید Founder قرار گرفت.':'امکان ایجاد درخواست حل گزارش وجود ندارد.');
-    }
-
-    public function decideModerationResolve(Request $request,string $requestId,FounderModerationDecisionService $service)
-    {
-        $validated=$request->validate(['decision'=>'required|in:approve,reject','reason'=>'nullable|string|max:500']);
-        $result=$service->decideAndExecute($requestId,$validated['decision'],(int)$request->user()->id,$validated['reason']??null);
-        return back()->with((bool)($result['success']??false)?'success':'error',(bool)($result['success']??false)?'تصمیم moderation ثبت و مطابق policy اجرا شد.':'تصمیم یا اجرای moderation مجاز نبود.');
-    }
+    private function decisionArgs(Request $request): array{$v=$request->validate(['decision'=>'required|in:approve,reject','reason'=>'nullable|string|max:500']);return [$v['decision'],(int)$request->user()->id,$v['reason']??null];}
+    private function approvalBack(array $result,string $message){return back()->with(($result['status']??'')==='awaiting_approval'?'success':'error',($result['status']??'')==='awaiting_approval'?$message:'امکان ایجاد درخواست وجود ندارد.');}
+    private function decisionBack(Request $request,array $result){return back()->with((bool)($result['success']??false)?'success':'error',(bool)($result['success']??false)?'تصمیم ثبت و مطابق policy اجرا شد.':'تصمیم یا اجرای درخواست مجاز نبود.');}
 }
