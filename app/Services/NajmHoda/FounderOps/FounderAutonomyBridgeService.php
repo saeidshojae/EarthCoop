@@ -4,18 +4,12 @@ namespace App\Services\NajmHoda\FounderOps;
 
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 
-/**
- * Bridge Founder Operations into Najm Hoda's autonomous-governance loop.
- *
- * This service deliberately does not execute mutations. It converts high-value
- * Founder attention items into the next policy-governed action preparation step.
- * Execution remains behind FounderActionExecutionService and domain command layers.
- */
 class FounderAutonomyBridgeService
 {
     public function __construct(
         protected FounderAttentionService $attention,
         protected FounderActionRequestService $requests,
+        protected FounderSupportCandidateService $supportCandidates,
         protected RuntimeEventBus $events
     ) {}
 
@@ -26,31 +20,51 @@ class FounderAutonomyBridgeService
         $items = array_slice((array) ($brief['items'] ?? []), 0, max(1, min($limit, 50)));
         $prepared = [];
 
-        foreach ($items as $item) {
-            if (! is_array($item)) continue;
+        foreach ($this->supportCandidates->candidates(min(5, $limit)) as $candidate) {
+            $ticketId = (int) ($candidate['ticket_id'] ?? 0);
+            if ($ticketId <= 0) continue;
 
+            foreach (['classify_ticket', 'assign_priority'] as $action) {
+                $context = [
+                    'entity_type' => 'ticket',
+                    'entity_id' => $ticketId,
+                    'attention_priority' => ($candidate['priority'] ?? null) === 'high' ? 'P1' : 'P2',
+                    'reason_code' => substr(hash('sha256', 'support|' . $action . '|' . $ticketId), 0, 20),
+                    'source_event' => 'founder_support_candidate',
+                ];
+                $prepared[] = [
+                    'source_attention' => ['priority' => $context['attention_priority'], 'domain' => 'support', 'title' => 'Support ticket requires operational triage'],
+                    'domain' => 'support', 'action' => $action, 'action_context' => $context,
+                    'preparation' => $this->requests->prepare('support', $action, $context),
+                ];
+            }
+        }
+
+        foreach ($items as $item) {
+            if (! is_array($item) || (string) ($item['domain'] ?? '') === 'support') continue;
             $mapped = $this->mapAttentionToAction($item);
             if ($mapped === null) continue;
 
             [$domain, $action] = $mapped;
-            $result = $this->requests->prepare($domain, $action, [
+            $context = [
                 'attention_priority' => (string) ($item['priority'] ?? ''),
                 'reason_code' => $this->reasonCode($item),
                 'source_event' => 'founder_attention',
-            ]);
+            ];
+            $entityId = data_get($item, 'context.entity_id');
+            if (is_numeric($entityId)) {
+                $context['entity_id'] = (int) $entityId;
+                $context['entity_type'] = (string) data_get($item, 'context.entity_type', $domain);
+            }
 
             $prepared[] = [
-                'source_attention' => [
-                    'priority' => $item['priority'] ?? null,
-                    'domain' => $item['domain'] ?? null,
-                    'title' => $item['title'] ?? null,
-                ],
-                'domain' => $domain,
-                'action' => $action,
-                'preparation' => $result,
+                'source_attention' => ['priority' => $item['priority'] ?? null, 'domain' => $item['domain'] ?? null, 'title' => $item['title'] ?? null],
+                'domain' => $domain, 'action' => $action, 'action_context' => $context,
+                'preparation' => $this->requests->prepare($domain, $action, $context),
             ];
         }
 
+        $prepared = array_slice($prepared, 0, max(1, min($limit, 50)));
         $summary = [
             'total' => count($prepared),
             'awaiting_approval' => $this->countStatus($prepared, 'awaiting_approval'),
@@ -62,30 +76,16 @@ class FounderAutonomyBridgeService
         ];
 
         $this->events->emit('najm_hoda.founder_ops.autonomy.plan_prepared', [
-            'count' => $summary['total'],
-            'awaiting_approval' => $summary['awaiting_approval'],
-            'delegated_ready' => $summary['delegated_ready'],
-            'blocked' => $summary['blocked'],
+            'count' => $summary['total'], 'awaiting_approval' => $summary['awaiting_approval'],
+            'delegated_ready' => $summary['delegated_ready'], 'blocked' => $summary['blocked'],
         ]);
 
-        return [
-            'generated_at' => now()->toIso8601String(),
-            'attention_summary' => $brief['summary'] ?? [],
-            'summary' => $summary,
-            'actions' => $prepared,
-        ];
+        return ['generated_at' => now()->toIso8601String(), 'attention_summary' => $brief['summary'] ?? [], 'summary' => $summary, 'actions' => $prepared];
     }
 
-    /** @param array<string,mixed> $item @return array{0:string,1:string}|null */
     protected function mapAttentionToAction(array $item): ?array
     {
-        $domain = (string) ($item['domain'] ?? '');
-        $title = mb_strtolower((string) ($item['title'] ?? ''));
-
-        return match ($domain) {
-            'support' => str_contains($title, 'no assignee')
-                ? ['support', 'assign_priority']
-                : ['support', 'draft_reply'],
+        return match ((string) ($item['domain'] ?? '')) {
             'governance' => ['governance', 'flag_anomaly'],
             'reports_moderation' => ['reports_moderation', 'prepare_case_summary'],
             'stock' => ['stock', 'flag_settlement_issue'],
@@ -104,21 +104,13 @@ class FounderAutonomyBridgeService
         };
     }
 
-    /** @param array<string,mixed> $item */
     protected function reasonCode(array $item): string
     {
-        return substr(hash('sha256', implode('|', [
-            (string) ($item['priority'] ?? ''),
-            (string) ($item['domain'] ?? ''),
-            (string) ($item['title'] ?? ''),
-        ])), 0, 20);
+        return substr(hash('sha256', implode('|', [(string) ($item['priority'] ?? ''), (string) ($item['domain'] ?? ''), (string) ($item['title'] ?? '')])), 0, 20);
     }
 
-    /** @param array<int,array<string,mixed>> $prepared */
     protected function countStatus(array $prepared, string $status): int
     {
-        return count(array_filter($prepared, static fn (array $item): bool =>
-            (string) data_get($item, 'preparation.status', '') === $status
-        ));
+        return count(array_filter($prepared, static fn (array $item): bool => (string) data_get($item, 'preparation.status', '') === $status));
     }
 }
