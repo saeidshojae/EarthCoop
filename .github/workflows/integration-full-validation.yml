@@ -98,8 +98,10 @@ jobs:
       - name: Provision phpunit forced database
         run: mysql --host=127.0.0.1 --port=3306 --user=root -e 'CREATE DATABASE IF NOT EXISTS `newearthcoop-test` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
 
-      - name: Migrate full integrated schema
-        run: php artisan migrate --force
+      - name: Migrate full integrated schemas
+        run: |
+          php artisan migrate --force
+          DB_DATABASE=newearthcoop-test php artisan migrate --force
 
       - name: Validate route and command boot
         run: |
