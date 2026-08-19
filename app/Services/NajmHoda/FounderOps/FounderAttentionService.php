@@ -6,13 +6,15 @@ class FounderAttentionService
 {
     public function __construct(
         protected FounderOperationsSnapshotService $snapshots,
-        protected FounderApprovalInboxService $approvalInbox
+        protected FounderApprovalInboxService $approvalInbox,
+        protected FounderAuthoritySnapshotService $authoritySnapshot
     ) {}
 
     public function brief(int $hours = 24): array
     {
         $snapshot = $this->snapshots->snapshot($hours);
         $approvalSnapshot = $this->approvalInbox->snapshot();
+        $authoritySnapshot = $this->authoritySnapshot->snapshot();
         $items = [];
 
         $runtimeStatus = (string) data_get($snapshot, 'runtime_health.status', 'healthy');
@@ -81,6 +83,14 @@ class FounderAttentionService
             if ($count > 0) $items[] = $this->item('P3', $domain, $title, ['count' => $count]);
         }
 
+        $activeDelegations = (int) data_get($authoritySnapshot, 'active_delegations_count', 0);
+        if ($activeDelegations > 0) {
+            $items[] = $this->item('P3', 'authority', 'Delegated Founder Operations actions are active', [
+                'count' => $activeDelegations,
+                'actions' => data_get($authoritySnapshot, 'active_delegations', []),
+            ]);
+        }
+
         $rolloutQueue = (array) data_get($snapshot, 'management_coverage.next_domains', []);
         if ($rolloutQueue !== [] && is_array($rolloutQueue[0] ?? null)) {
             $next = $rolloutQueue[0];
@@ -104,6 +114,7 @@ class FounderAttentionService
             ],
             'items' => $items,
             'founder_approvals' => $approvalSnapshot,
+            'authority' => $authoritySnapshot,
             'management_coverage' => data_get($snapshot, 'management_coverage', []),
         ];
     }
