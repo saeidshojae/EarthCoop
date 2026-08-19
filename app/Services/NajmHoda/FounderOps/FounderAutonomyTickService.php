@@ -13,7 +13,6 @@ class FounderAutonomyTickService
         protected RuntimeEventBus $events
     ) {}
 
-    /** @return array<string,mixed> */
     public function run(int $hours = 24, int $limit = 12, bool $applyDelegated = true): array
     {
         $plan = $this->bridge->plan($hours, $limit);
@@ -25,7 +24,8 @@ class FounderAutonomyTickService
             $domain = (string) ($item['domain'] ?? '');
             $action = (string) ($item['action'] ?? '');
             $status = (string) data_get($item, 'preparation.status', '');
-            $reasonCode = (string) data_get($item, 'preparation.decision.reason', '');
+            $actionContext = is_array($item['action_context'] ?? null) ? $item['action_context'] : [];
+            $reasonCode = (string) ($actionContext['reason_code'] ?? data_get($item, 'preparation.decision.reason', ''));
 
             if ($status !== 'delegated_ready' || ! $applyDelegated) {
                 $results[] = ['domain' => $domain, 'action' => $action, 'status' => 'planned_only', 'preparation_status' => $status];
@@ -40,9 +40,13 @@ class FounderAutonomyTickService
             $result = $this->execution->execute(
                 $domain,
                 $action,
-                fn () => $this->handlers->execute($domain, $action, ['reason_code' => $reasonCode]),
+                fn () => $this->handlers->execute($domain, $action, $actionContext),
                 null,
-                ['entity_type' => 'founder_attention', 'reason_code' => $reasonCode]
+                [
+                    'entity_type' => $actionContext['entity_type'] ?? 'founder_attention',
+                    'entity_id' => $actionContext['entity_id'] ?? null,
+                    'reason_code' => $reasonCode,
+                ]
             );
             $results[] = $result;
         }
