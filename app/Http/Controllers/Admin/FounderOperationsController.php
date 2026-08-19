@@ -7,6 +7,7 @@ use App\Services\NajmHoda\FounderOps\FounderActionAuthorityService;
 use App\Services\NajmHoda\FounderOps\FounderApprovalInboxService;
 use App\Services\NajmHoda\FounderOps\FounderAttentionService;
 use App\Services\NajmHoda\FounderOps\FounderAuthoritySnapshotService;
+use App\Services\NajmHoda\FounderOps\FounderAutonomyBridgeService;
 use App\Services\NajmHoda\FounderOps\FounderOperationsSnapshotService;
 use Illuminate\Http\Request;
 
@@ -36,6 +37,14 @@ class FounderOperationsController extends Controller
     {
         $hours = (int) $request->integer('hours', 24);
         return response()->json(['success' => true, 'data' => $service->snapshot($hours)]);
+    }
+
+    public function autonomyPlan(Request $request, FounderAutonomyBridgeService $service)
+    {
+        $hours = max(1, min((int) $request->integer('hours', 24), 168));
+        $limit = max(1, min((int) $request->integer('limit', 12), 50));
+
+        return response()->json(['success' => true, 'data' => $service->plan($hours, $limit)]);
     }
 
     public function approvals(FounderApprovalInboxService $service)
