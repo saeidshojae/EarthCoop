@@ -10,6 +10,7 @@ use App\Modules\Secretariat\Models\SecretariatParty;
 use App\Modules\Secretariat\Models\SecretariatRecord;
 use App\Modules\Secretariat\Models\SecretariatRecordVersion;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class SecretariatContractService
@@ -27,6 +28,7 @@ class SecretariatContractService
     {
         $record->loadMissing('office');
         $this->assertContractRecord($record);
+        $this->authorizeMutation($record, $actor);
         if (in_array((string) $record->status, ['archived', 'voided'], true)) {
             throw ValidationException::withMessages(['record' => 'Archived or voided contracts cannot receive new party snapshots.']);
         }
@@ -89,6 +91,7 @@ class SecretariatContractService
         $version->loadMissing('record.office');
         $record = $version->record;
         $this->assertContractRecord($record);
+        $this->authorizeMutation($record, $actor);
         $this->assertMutableVersion($version);
 
         $effectiveAt = $attributes['effective_at'] ?? null;
@@ -112,7 +115,8 @@ class SecretariatContractService
         }
 
         return DB::transaction(function () use ($version, $record, $actor, $attributes, $effectiveAt, $expiresAt, $renewalMode, $noticeDays) {
-            $locked = SecretariatRecordVersion::query()->whereKey($version->id)->lockForUpdate()->firstOrFail();
+            $locked = SecretariatRecordVersion::query()->with('record.office')->whereKey($version->id)->lockForUpdate()->firstOrFail();
+            $this->authorizeMutation($locked->record, $actor);
             $this->assertMutableVersion($locked);
 
             $detail = SecretariatContractVersionDetail::query()->firstOrNew(['record_version_id' => $locked->id]);
@@ -144,6 +148,7 @@ class SecretariatContractService
         $version->loadMissing('record.office');
         $record = $version->record;
         $this->assertContractRecord($record);
+        $this->authorizeMutation($record, $actor);
         $this->assertMutableVersion($version);
 
         if ((int) $party->record_id !== (int) $record->id) {
@@ -160,7 +165,8 @@ class SecretariatContractService
         }
 
         return DB::transaction(function () use ($version, $record, $party, $actor, $attributes, $capacity, $order) {
-            $locked = SecretariatRecordVersion::query()->whereKey($version->id)->lockForUpdate()->firstOrFail();
+            $locked = SecretariatRecordVersion::query()->with('record.office')->whereKey($version->id)->lockForUpdate()->firstOrFail();
+            $this->authorizeMutation($locked->record, $actor);
             $this->assertMutableVersion($locked);
 
             $signatory = SecretariatContractSignatory::query()->updateOrCreate(
@@ -197,6 +203,12 @@ class SecretariatContractService
         if (! SecretariatContractSignatory::query()->where('record_version_id', $version->id)->exists()) {
             throw ValidationException::withMessages(['signatories' => 'Formal contract/MOU/agreement requires at least one signatory snapshot.']);
         }
+    }
+
+    private function authorizeMutation(SecretariatRecord $record, User $actor): void
+    {
+        $ability = $record->status === 'draft' ? 'update' : 'transition';
+        Gate::forUser($actor)->authorize($ability, $record);
     }
 
     private function assertContractRecord(SecretariatRecord $record): void

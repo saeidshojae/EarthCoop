@@ -3,7 +3,9 @@
 namespace App\Modules\Secretariat\Services;
 
 use App\Models\User;
+use App\Modules\Secretariat\Contracts\SecretariatMalwareScanner;
 use App\Modules\Secretariat\Models\SecretariatAttachment;
+use App\Modules\Secretariat\Models\SecretariatAttachmentScan;
 use App\Modules\Secretariat\Models\SecretariatRecord;
 use App\Modules\Secretariat\Models\SecretariatRecordVersion;
 use Illuminate\Http\UploadedFile;
@@ -16,8 +18,10 @@ use Throwable;
 
 class SecretariatAttachmentService
 {
-    public function __construct(private readonly SecretariatAuditService $audit)
-    {
+    public function __construct(
+        private readonly SecretariatAuditService $audit,
+        private readonly SecretariatMalwareScanner $scanner,
+    ) {
     }
 
     public function upload(
@@ -46,6 +50,42 @@ class SecretariatAttachmentService
             throw ValidationException::withMessages(['file' => 'Uploaded Secretariat file is not readable.']);
         }
 
+        $size = $file->getSize();
+        $size = $size === false ? filesize($realPath) : $size;
+        if ($size === false) {
+            throw ValidationException::withMessages(['file' => 'Unable to determine Secretariat attachment size.']);
+        }
+        $maxBytes = max(1, (int) config('secretariat.attachments.max_bytes', 25 * 1024 * 1024));
+        if ((int) $size > $maxBytes) {
+            throw ValidationException::withMessages([
+                'file' => sprintf('Secretariat attachment exceeds the server-side limit of %d bytes.', $maxBytes),
+            ]);
+        }
+
+        $mimeType = $file->getMimeType();
+        $mimeType = is_string($mimeType) && $mimeType !== '' ? strtolower($mimeType) : null;
+        $allowedMimes = array_values(array_filter(array_map(
+            static fn ($value) => strtolower(trim((string) $value)),
+            (array) config('secretariat.attachments.allowed_mime_types', [])
+        )));
+        if ($mimeType === null || ($allowedMimes !== [] && ! in_array($mimeType, $allowedMimes, true))) {
+            throw ValidationException::withMessages([
+                'file' => 'Secretariat attachment MIME type is not allowed by server policy.',
+            ]);
+        }
+
+        $scan = $this->scanner->scan($realPath, $mimeType);
+        $scanStatus = strtolower((string) ($scan['status'] ?? 'error'));
+        if (! in_array($scanStatus, ['clean', 'infected', 'unavailable', 'error'], true)) {
+            throw new LogicException('Secretariat malware scanner returned an unsupported status.');
+        }
+        if ($scanStatus === 'infected') {
+            throw ValidationException::withMessages(['file' => 'Secretariat attachment was rejected by malware scanning.']);
+        }
+        if ($scanStatus === 'error') {
+            throw ValidationException::withMessages(['file' => 'Secretariat malware scan failed; upload was not persisted.']);
+        }
+
         $disk ??= (string) config('filesystems.default', 'local');
         $checksum = hash_file('sha256', $realPath);
         if ($checksum === false) {
@@ -63,7 +103,7 @@ class SecretariatAttachmentService
         }
 
         try {
-            return DB::transaction(function () use ($record, $version, $actor, $file, $disk, $storageKey, $checksum, $metadata) {
+            return DB::transaction(function () use ($record, $version, $actor, $file, $disk, $storageKey, $checksum, $metadata, $mimeType, $size, $scan, $scanStatus) {
                 /** @var SecretariatRecord $locked */
                 $locked = SecretariatRecord::query()->with(['office', 'currentVersion'])->whereKey($record->id)->lockForUpdate()->firstOrFail();
                 /** @var SecretariatRecordVersion $lockedVersion */
@@ -82,13 +122,24 @@ class SecretariatAttachmentService
                     'original_name' => $file->getClientOriginalName(),
                     'storage_disk' => $disk,
                     'storage_key' => $storageKey,
-                    'mime_type' => $file->getMimeType(),
-                    'file_size' => (int) $file->getSize(),
+                    'mime_type' => $mimeType,
+                    'file_size' => (int) $size,
                     'checksum' => $checksum,
                     'uploaded_by' => $actor->id,
                     'uploaded_at' => now(),
                     'state' => 'active',
                     'metadata' => $metadata ?: null,
+                ]);
+
+                $scanEvidence = SecretariatAttachmentScan::query()->create([
+                    'attachment_id' => $attachment->id,
+                    'status' => $scanStatus,
+                    'engine' => mb_substr(trim((string) ($scan['engine'] ?? 'unknown')), 0, 120) ?: 'unknown',
+                    'signature' => isset($scan['signature']) && $scan['signature'] !== null
+                        ? mb_substr((string) $scan['signature'], 0, 255)
+                        : null,
+                    'metadata' => is_array($scan['metadata'] ?? null) && $scan['metadata'] !== [] ? $scan['metadata'] : null,
+                    'scanned_at' => now(),
                 ]);
 
                 $this->audit->append($locked->office, $locked, $actor, 'attachment_added', [
@@ -98,13 +149,14 @@ class SecretariatAttachmentService
                     'mime_type' => $attachment->mime_type,
                     'file_size' => $attachment->file_size,
                     'checksum' => $attachment->checksum,
+                    'scan_id' => $scanEvidence->id,
+                    'scan_status' => $scanEvidence->status,
+                    'scan_engine' => $scanEvidence->engine,
                 ]);
 
                 return $attachment;
             });
         } catch (Throwable $exception) {
-            // Storage write happened before the DB transaction. If DB persistence
-            // fails, compensate by removing the unreferenced object.
             Storage::disk($disk)->delete($storageKey);
             throw $exception;
         }
@@ -124,8 +176,6 @@ class SecretariatAttachmentService
             $key = $locked->storage_key;
             $locked->delete();
 
-            // Object storage cannot participate in the SQL transaction. Delete
-            // the physical object only after the row deletion has committed.
             DB::afterCommit(static function () use ($disk, $key): void {
                 Storage::disk($disk)->delete($key);
             });

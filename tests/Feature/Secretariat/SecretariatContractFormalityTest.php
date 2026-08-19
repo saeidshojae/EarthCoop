@@ -252,7 +252,9 @@ class SecretariatContractFormalityTest extends TestCase
 
     private function context(): array
     {
-        $actor = User::factory()->create();
+        // These are positive-path formality tests. The actor must be genuinely
+        // authorized now that S9 enforces authorization inside the domain service.
+        $actor = User::factory()->create(['is_admin' => 1]);
         $group = Group::query()->create(['name' => 'S8 Contract Office', 'group_type' => '0']);
         $office = app(SecretariatOfficeService::class)->create([
             'code' => 'S8-CONTRACT-' . $group->id,

@@ -7,6 +7,7 @@ use App\Modules\Secretariat\Models\SecretariatLegalHold;
 use App\Modules\Secretariat\Models\SecretariatRecord;
 use App\Modules\Secretariat\Models\SecretariatRetentionAssignment;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class SecretariatRetentionService
@@ -23,10 +24,13 @@ class SecretariatRetentionService
         if (! in_array($disposition, self::DISPOSITIONS, true)) {
             throw ValidationException::withMessages(['disposition' => 'Unsupported Secretariat retention disposition.']);
         }
+        $record->loadMissing('office');
+        Gate::forUser($actor)->authorize('transition', $record);
 
         return DB::transaction(function () use ($record, $actor, $attributes, $disposition) {
             $locked = SecretariatRecord::query()->with('office')->whereKey($record->id)->lockForUpdate()->firstOrFail();
             $this->assertFormal($locked);
+            Gate::forUser($actor)->authorize('transition', $locked);
 
             $sequence = (int) SecretariatRetentionAssignment::query()
                 ->where('record_id', $locked->id)
@@ -64,10 +68,13 @@ class SecretariatRetentionService
         if ($reason === '') {
             throw ValidationException::withMessages(['reason' => 'A legal hold requires a reason.']);
         }
+        $record->loadMissing('office');
+        Gate::forUser($actor)->authorize('transition', $record);
 
         return DB::transaction(function () use ($record, $actor, $attributes, $reason) {
             $locked = SecretariatRecord::query()->with('office')->whereKey($record->id)->lockForUpdate()->firstOrFail();
             $this->assertFormal($locked);
+            Gate::forUser($actor)->authorize('transition', $locked);
 
             $hold = SecretariatLegalHold::query()->create([
                 'record_id' => $locked->id,
@@ -93,9 +100,12 @@ class SecretariatRetentionService
         if ($reason === '') {
             throw ValidationException::withMessages(['release_reason' => 'Releasing a legal hold requires a reason.']);
         }
+        $hold->loadMissing('record.office');
+        Gate::forUser($actor)->authorize('transition', $hold->record);
 
         return DB::transaction(function () use ($hold, $actor, $reason) {
             $locked = SecretariatLegalHold::query()->with('record.office')->whereKey($hold->id)->lockForUpdate()->firstOrFail();
+            Gate::forUser($actor)->authorize('transition', $locked->record);
             if ($locked->released_at !== null) {
                 return $locked;
             }
@@ -117,8 +127,7 @@ class SecretariatRetentionService
     }
 
     /**
-     * This is an assessment only. S8 never deletes formal Secretariat history.
-     *
+     * Assessment only. It does not authorize or execute purge.
      * @return array{assignment:?SecretariatRetentionAssignment,active_hold_count:int,retention_elapsed:bool,eligible_for_disposition:bool,purge_authorized:bool}
      */
     public function assess(SecretariatRecord $record): array
@@ -143,8 +152,6 @@ class SecretariatRetentionService
             'active_hold_count' => $activeHoldCount,
             'retention_elapsed' => $elapsed,
             'eligible_for_disposition' => $eligible,
-            // Formal history remains protected by existing hard-delete guards.
-            // A future S9 disposition/archive subsystem must make any purge decision.
             'purge_authorized' => false,
         ];
     }

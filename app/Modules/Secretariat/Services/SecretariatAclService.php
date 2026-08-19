@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Modules\Secretariat\Models\SecretariatAclEntry;
 use App\Modules\Secretariat\Models\SecretariatRecord;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class SecretariatAclService
@@ -29,10 +30,13 @@ class SecretariatAclService
         array $metadata = [],
     ): SecretariatAclEntry {
         $this->validateGrant($principalType, $principalId, $permission);
+        $record->loadMissing('office');
+        Gate::forUser($grantor)->authorize('manageAcl', $record);
 
         return DB::transaction(function () use ($record, $principalType, $principalId, $grantor, $permission, $expiresAt, $metadata) {
             /** @var SecretariatRecord $locked */
-            $locked = SecretariatRecord::query()->whereKey($record->id)->lockForUpdate()->firstOrFail();
+            $locked = SecretariatRecord::query()->with('office')->whereKey($record->id)->lockForUpdate()->firstOrFail();
+            Gate::forUser($grantor)->authorize('manageAcl', $locked);
 
             $active = SecretariatAclEntry::query()
                 ->where('record_id', $locked->id)
@@ -75,9 +79,13 @@ class SecretariatAclService
 
     public function revoke(SecretariatAclEntry $entry, User $actor): SecretariatAclEntry
     {
+        $entry->loadMissing('record.office');
+        Gate::forUser($actor)->authorize('manageAcl', $entry->record);
+
         return DB::transaction(function () use ($entry, $actor) {
             /** @var SecretariatAclEntry $locked */
             $locked = SecretariatAclEntry::query()->with('record.office')->whereKey($entry->id)->lockForUpdate()->firstOrFail();
+            Gate::forUser($actor)->authorize('manageAcl', $locked->record);
 
             if ($locked->revoked_at !== null) {
                 return $locked;

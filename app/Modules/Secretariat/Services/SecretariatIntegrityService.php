@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Modules\Secretariat\Models\SecretariatIntegrityManifest;
 use App\Modules\Secretariat\Models\SecretariatRecordVersion;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class SecretariatIntegrityService
@@ -24,6 +25,9 @@ class SecretariatIntegrityService
             throw ValidationException::withMessages(['version' => 'Integrity manifests can only be generated for official Secretariat versions.']);
         }
 
+        // Integrity evidence is a formal side effect, not a passive read.
+        Gate::forUser($actor)->authorize('transition', $version->record);
+
         return DB::transaction(function () use ($version, $actor) {
             $locked = SecretariatRecordVersion::query()->whereKey($version->id)->lockForUpdate()->firstOrFail();
             if (! $locked->is_official) {
@@ -36,6 +40,7 @@ class SecretariatIntegrityService
                 'contractDetails',
                 'contractSignatories.party',
             ]);
+            Gate::forUser($actor)->authorize('transition', $fresh->record);
             $payload = $this->buildPayload($fresh);
             $checksum = $this->checksum($payload);
             $sequence = (int) SecretariatIntegrityManifest::query()

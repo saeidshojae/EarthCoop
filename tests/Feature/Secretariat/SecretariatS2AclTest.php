@@ -16,7 +16,7 @@ class SecretariatS2AclTest extends TestCase
 
     public function test_restricted_record_uses_explicit_acl_and_regrant_preserves_history(): void
     {
-        $manager = User::factory()->create();
+        $manager = User::factory()->create(['is_admin' => 1]);
         $reader = User::factory()->create();
         $office = app(SecretariatOfficeService::class)->create([
             'code' => 'S2-ACL',
@@ -47,7 +47,7 @@ class SecretariatS2AclTest extends TestCase
 
     public function test_acl_grant_cannot_be_rewritten_outside_controlled_revocation(): void
     {
-        $manager = User::factory()->create();
+        $manager = User::factory()->create(['is_admin' => 1]);
         $reader = User::factory()->create();
         $office = app(SecretariatOfficeService::class)->create([
             'code' => 'S2-ACL-IMMUTABLE',
@@ -79,7 +79,7 @@ class SecretariatS2AclTest extends TestCase
 
     public function test_acl_history_prevents_draft_hard_delete(): void
     {
-        $manager = User::factory()->create();
+        $manager = User::factory()->create(['is_admin' => 1]);
         $reader = User::factory()->create();
         $office = app(SecretariatOfficeService::class)->create([
             'code' => 'S2-ACL-DELETE',
@@ -105,7 +105,7 @@ class SecretariatS2AclTest extends TestCase
 
     public function test_confidential_access_can_be_audited_without_exposing_record_to_ungranted_user(): void
     {
-        $manager = User::factory()->create();
+        $manager = User::factory()->create(['is_admin' => 1]);
         $reader = User::factory()->create();
         $other = User::factory()->create();
         $office = app(SecretariatOfficeService::class)->create([

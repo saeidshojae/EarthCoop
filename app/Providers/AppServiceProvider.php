@@ -19,7 +19,9 @@ use App\Modules\NajmBahar\Services\SafeSubAccountService;
 use App\Modules\NajmBahar\Services\TransactionService;
 use App\Modules\NajmBahar\Services\StrictTransactionService;
 use App\Modules\Secretariat\Contracts\SecretariatKnowledgeRanker;
+use App\Modules\Secretariat\Contracts\SecretariatMalwareScanner;
 use App\Modules\Secretariat\Services\DeterministicSecretariatKnowledgeRanker;
+use App\Modules\Secretariat\Services\UnavailableSecretariatMalwareScanner;
 use App\Observers\NajmBaharTransactionObserver;
 use App\Models\Group;
 use App\Observers\GroupObserver;
@@ -43,6 +45,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(UserController::class, SafeUserController::class);
         $this->app->bind(NajmHodaPrivateGroupMeetingCommandService::class, NajmHodaPrivateGroupMeetingDecisionCommandService::class);
         $this->app->bind(SecretariatKnowledgeRanker::class, DeterministicSecretariatKnowledgeRanker::class);
+        // Production deployments may replace this binding with ClamAV or another
+        // scanner adapter. The default is explicitly unavailable, never fake-clean.
+        $this->app->bind(SecretariatMalwareScanner::class, UnavailableSecretariatMalwareScanner::class);
     }
 
     public function boot()
