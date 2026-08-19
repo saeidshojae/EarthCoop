@@ -27,9 +27,10 @@ class SecretariatS6RetrievalTest extends TestCase
         [$actor, $group, $groupOffice] = $this->groupOffice('S6-PREFILTER', 1);
         $visible = $this->draft($groupOffice, $actor, 'Visible group record');
 
+        $projectOwner = User::factory()->create();
         $project = Project::query()->create([
             'owner_type' => User::class,
-            'owner_id' => $actor->id,
+            'owner_id' => $projectOwner->id,
             'title' => 'S6 private project',
             'summary' => 'S6 project',
             'project_type' => 'service',
@@ -44,7 +45,7 @@ class SecretariatS6RetrievalTest extends TestCase
             'scope_type' => 'najm_bahar_project',
             'scope_id' => $project->id,
         ]);
-        $hidden = $this->draft($projectOffice, $actor, 'Project-office ordinary record');
+        $hidden = $this->draft($projectOffice, $projectOwner, 'Project-office ordinary record');
 
         $query = SecretariatRecord::query();
         app(SecretariatRecordAccessQuery::class)->apply($query, $actor);
@@ -53,6 +54,7 @@ class SecretariatS6RetrievalTest extends TestCase
         $this->assertContains($visible->id, $candidateIds);
         $this->assertNotContains($hidden->id, $candidateIds);
         $this->assertFalse($actor->can('view', $hidden));
+        $this->assertTrue($projectOwner->can('view', $hidden));
     }
 
     public function test_unauthorized_newer_records_cannot_starve_accessible_results_at_limit_boundary(): void
@@ -103,12 +105,13 @@ class SecretariatS6RetrievalTest extends TestCase
             'expired' => null,
         ]);
 
-        $leadership = $this->draft($office, $manager, 'Leadership only', 'leadership');
+        $leadership = $this->draft($office, $manager, 'Leadership oversight record', 'leadership');
         $restricted = $this->draft($office, $manager, 'Restricted via group ACL', 'restricted');
 
         $memberCandidates = SecretariatRecord::query();
         app(SecretariatRecordAccessQuery::class)->apply($memberCandidates, $member);
-        $this->assertNotContains($leadership->id, $memberCandidates->pluck('id')->all());
+        $this->assertContains($leadership->id, $memberCandidates->pluck('id')->all());
+        $this->assertTrue($member->can('view', $leadership));
 
         $managerCandidates = SecretariatRecord::query();
         app(SecretariatRecordAccessQuery::class)->apply($managerCandidates, $manager);
