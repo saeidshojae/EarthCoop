@@ -16,6 +16,9 @@ class SecretariatDispatch extends Model
 
     protected $casts = [
         'metadata' => 'array',
+        'expects_response' => 'boolean',
+        'due_at' => 'datetime',
+        'follow_up_at' => 'datetime',
         'dispatched_at' => 'datetime',
         'received_at' => 'datetime',
         'acknowledged_at' => 'datetime',
@@ -26,7 +29,7 @@ class SecretariatDispatch extends Model
     {
         static::updating(function (self $dispatch): void {
             if (! $dispatch->allowControlledMutation) {
-                throw new LogicException('Secretariat dispatch lifecycle must be mutated through SecretariatDispatchService.');
+                throw new LogicException('Secretariat dispatch lifecycle and schedule must be mutated through SecretariatDispatchService.');
             }
         });
 
