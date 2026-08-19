@@ -10,31 +10,19 @@ use App\Models\NotificationSetting;
 use App\Models\ReportedMessage;
 use App\Models\Setting;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 
 class FounderOperationalDomainObserver
 {
-    public function created(Model $model): void
-    {
-        $this->emit($model, 'created');
-    }
-
-    public function updated(Model $model): void
-    {
-        $this->emit($model, 'updated', array_keys($model->getChanges()));
-    }
-
-    public function deleted(Model $model): void
-    {
-        $this->emit($model, 'deleted');
-    }
+    public function created(Model $model): void { $this->emit($model, 'created'); }
+    public function updated(Model $model): void { $this->emit($model, 'updated', array_keys($model->getChanges())); }
+    public function deleted(Model $model): void { $this->emit($model, 'deleted'); }
 
     protected function emit(Model $model, string $operation, array $changedFields = []): void
     {
         $descriptor = $this->descriptor($model);
-        if ($descriptor === null) {
-            return;
-        }
+        if ($descriptor === null) return;
 
         $payload = [
             'domain' => $descriptor['domain'],
@@ -58,8 +46,8 @@ class FounderOperationalDomainObserver
         } elseif ($model instanceof Election) {
             $payload['group_id'] = (int) $model->group_id;
             $payload['is_closed'] = (bool) $model->is_closed;
-            $payload['starts_at'] = optional($model->starts_at)->toIso8601String() ?? (is_string($model->starts_at) ? $model->starts_at : null);
-            $payload['ends_at'] = optional($model->ends_at)->toIso8601String() ?? (is_string($model->ends_at) ? $model->ends_at : null);
+            $payload['starts_at'] = $this->dateValue($model->starts_at);
+            $payload['ends_at'] = $this->dateValue($model->ends_at);
         } elseif ($model instanceof ReportedMessage) {
             $payload['group_id'] = $model->group_id !== null ? (int) $model->group_id : null;
             $payload['message_id'] = $model->message_id !== null ? (int) $model->message_id : null;
@@ -79,10 +67,7 @@ class FounderOperationalDomainObserver
             $payload['settings_record'] = (int) $model->getKey();
         }
 
-        $this->bus()->emit(
-            'najm_hoda.input.' . $descriptor['domain'] . '.' . $operation,
-            $payload
-        );
+        $this->bus()->emit('najm_hoda.input.' . $descriptor['domain'] . '.' . $operation, $payload);
     }
 
     protected function descriptor(Model $model): ?array
@@ -97,6 +82,13 @@ class FounderOperationalDomainObserver
             $model instanceof Setting => ['domain' => 'admin_settings', 'entity_type' => 'system_setting', 'category' => 'system_configuration', 'risk' => 'high'],
             default => null,
         };
+    }
+
+    protected function dateValue(mixed $value): ?string
+    {
+        if ($value === null || $value === '') return null;
+        try { return CarbonImmutable::parse($value)->toIso8601String(); }
+        catch (\Throwable) { return is_scalar($value) ? (string) $value : null; }
     }
 
     protected function bus(): RuntimeEventBus
