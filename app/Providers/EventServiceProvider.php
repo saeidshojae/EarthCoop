@@ -52,11 +52,6 @@ use Illuminate\Support\Facades\Event;
 
 class EventServiceProvider extends ServiceProvider
 {
-    /**
-     * The event to listener mappings for the application.
-     *
-     * @var array<class-string, array<int, class-string>>
-     */
     protected $listen = [
         Registered::class => [
             SendEmailVerificationNotification::class,
@@ -119,38 +114,42 @@ class EventServiceProvider extends ServiceProvider
         ],
         \App\Events\BidLost::class => [
             \App\Listeners\SendBidLostNotifications::class,
+            \App\Listeners\CaptureNajmHodaStockRuntimeInput::class,
         ],
         \App\Events\BidCancelled::class => [
             \App\Listeners\SendBidCancelledNotifications::class,
+            \App\Listeners\CaptureNajmHodaStockRuntimeInput::class,
         ],
         \App\Events\WalletSettled::class => [
             \App\Listeners\SendWalletSettledNotifications::class,
+            \App\Listeners\CaptureNajmHodaStockRuntimeInput::class,
         ],
         \App\Events\WalletReleased::class => [
             \App\Listeners\SendWalletReleasedNotifications::class,
+            \App\Listeners\CaptureNajmHodaStockRuntimeInput::class,
         ],
         \App\Events\WalletHeld::class => [
             \App\Listeners\SendWalletHeldNotifications::class,
+            \App\Listeners\CaptureNajmHodaStockRuntimeInput::class,
         ],
         \App\Events\SharesReceived::class => [
             \App\Listeners\SendSharesReceivedNotifications::class,
+            \App\Listeners\CaptureNajmHodaStockRuntimeInput::class,
         ],
         \App\Events\SharesGifted::class => [
             \App\Listeners\SendSharesGiftedNotifications::class,
+            \App\Listeners\CaptureNajmHodaStockRuntimeInput::class,
         ],
         \App\Events\StockPriceChanged::class => [
             \App\Listeners\SendStockPriceChangedNotifications::class,
+            \App\Listeners\CaptureNajmHodaStockRuntimeInput::class,
         ],
         \App\Events\AuctionReminder::class => [
             \App\Listeners\SendAuctionReminderNotifications::class,
+            \App\Listeners\CaptureNajmHodaStockRuntimeInput::class,
         ],
     ];
 
-    /**
-     * Register any events for your application.
-     *
-     * @return void
-     */
     public function boot()
     {
         User::observe(FounderUserObserver::class);
@@ -184,11 +183,6 @@ class EventServiceProvider extends ServiceProvider
         FaqQuestion::observe(ContentModelObserver::class);
     }
 
-    /**
-     * Determine if events and listeners should be automatically discovered.
-     *
-     * @return bool
-     */
     public function shouldDiscoverEvents()
     {
         return false;
