@@ -4,35 +4,29 @@ namespace App\Services\NajmHoda\FounderOps;
 
 class FounderActionAuthorityService
 {
-    public const MODES = [
-        'observe',
-        'propose',
-        'approval_required',
-        'delegated_safe',
-        'forbidden',
-    ];
+    public const MODES = ['observe', 'propose', 'approval_required', 'delegated_safe', 'forbidden'];
 
-    /**
-     * Return the effective authority decision for one Founder Operations action.
-     * No mutation is performed here. Domain command services must call this gate
-     * before executing any state-changing operation.
-     *
-     * @return array<string,mixed>
-     */
-    public function evaluate(string $domain, string $action, bool $founderApproved = false): array
-    {
+    /** @return array<string,mixed> */
+    public function evaluate(
+        string $domain,
+        string $action,
+        bool $founderApproved = false,
+        bool $delegationGranted = false
+    ): array {
         $mode = $this->mode($domain, $action);
-        $delegated = $mode === 'delegated_safe' && $this->isDelegated($domain, $action);
+        $known = $this->isKnown($domain, $action);
+        $delegated = $mode === 'delegated_safe' && $delegationGranted;
         $approved = $mode === 'approval_required' && $founderApproved;
 
         return [
             'domain' => $domain,
             'action' => $action,
             'mode' => $mode,
-            'known_action' => $this->isKnown($domain, $action),
+            'known_action' => $known,
             'may_observe' => $mode !== 'forbidden',
             'may_prepare' => in_array($mode, ['propose', 'approval_required', 'delegated_safe'], true),
             'requires_founder_approval' => $mode === 'approval_required' && ! $founderApproved,
+            'requires_delegation' => $mode === 'delegated_safe' && ! $delegationGranted,
             'delegation_enabled' => $delegated,
             'may_execute' => $approved || $delegated,
             'reason' => $this->reason($mode, $founderApproved, $delegated),
@@ -42,10 +36,7 @@ class FounderActionAuthorityService
     public function mode(string $domain, string $action): string
     {
         $mode = config("najm-hoda-founder-action-policy.domains.{$domain}.actions.{$action}");
-        if (! is_string($mode) || ! in_array($mode, self::MODES, true)) {
-            return $this->defaultMode();
-        }
-
+        if (! is_string($mode) || ! in_array($mode, self::MODES, true)) return $this->defaultMode();
         return $mode;
     }
 
@@ -54,9 +45,13 @@ class FounderActionAuthorityService
         return config("najm-hoda-founder-action-policy.domains.{$domain}.actions.{$action}") !== null;
     }
 
-    public function mayExecute(string $domain, string $action, bool $founderApproved = false): bool
-    {
-        return (bool) $this->evaluate($domain, $action, $founderApproved)['may_execute'];
+    public function mayExecute(
+        string $domain,
+        string $action,
+        bool $founderApproved = false,
+        bool $delegationGranted = false
+    ): bool {
+        return (bool) $this->evaluate($domain, $action, $founderApproved, $delegationGranted)['may_execute'];
     }
 
     /** @return array<string,array<string,string>> */
@@ -64,35 +59,14 @@ class FounderActionAuthorityService
     {
         $domains = (array) config('najm-hoda-founder-action-policy.domains', []);
         $matrix = [];
-
         foreach ($domains as $domain => $definition) {
             if (! is_string($domain) || ! is_array($definition)) continue;
-            $actions = (array) ($definition['actions'] ?? []);
             $matrix[$domain] = [];
-            foreach ($actions as $action => $mode) {
-                if (is_string($action) && is_string($mode) && in_array($mode, self::MODES, true)) {
-                    $matrix[$domain][$action] = $mode;
-                }
+            foreach ((array) ($definition['actions'] ?? []) as $action => $mode) {
+                if (is_string($action) && is_string($mode) && in_array($mode, self::MODES, true)) $matrix[$domain][$action] = $mode;
             }
         }
-
         return $matrix;
-    }
-
-    protected function isDelegated(string $domain, string $action): bool
-    {
-        if (! (bool) config('najm-hoda-founder-action-policy.delegation.enabled', false)) {
-            return false;
-        }
-
-        $domains = array_values((array) config('najm-hoda-founder-action-policy.delegation.allowed_domains', []));
-        $actions = array_values((array) config('najm-hoda-founder-action-policy.delegation.allowed_actions', []));
-
-        $domainAllowed = in_array('*', $domains, true) || in_array($domain, $domains, true);
-        $actionRef = $domain . '.' . $action;
-        $actionAllowed = in_array('*', $actions, true) || in_array($actionRef, $actions, true);
-
-        return $domainAllowed && $actionAllowed;
     }
 
     protected function defaultMode(): string
@@ -105,9 +79,9 @@ class FounderActionAuthorityService
     {
         return match ($mode) {
             'observe' => 'read_only',
-            'propose' => 'proposal_only',
+            'propose' => 'proposal_only_no_mutation',
             'approval_required' => $founderApproved ? 'founder_approved' : 'awaiting_founder_approval',
-            'delegated_safe' => $delegated ? 'explicit_delegation_active' : 'delegation_not_enabled',
+            'delegated_safe' => $delegated ? 'explicit_delegation_active' : 'explicit_delegation_required',
             default => 'forbidden_by_policy',
         };
     }
