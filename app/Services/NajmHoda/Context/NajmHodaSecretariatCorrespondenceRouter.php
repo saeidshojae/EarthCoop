@@ -14,6 +14,7 @@ class NajmHodaSecretariatCorrespondenceRouter
         private readonly NajmHodaSecretariatReferralAssistant $referrals,
         private readonly NajmHodaSecretariatWorkQueueAssistant $workQueue,
         private readonly NajmHodaSecretariatRegistrationAdvisor $registrationAdvisor,
+        private readonly NajmHodaSecretariatRelationAdvisor $relationAdvisor,
         private readonly NajmHodaSecretariatDraftReadinessAssistant $readiness,
         private readonly NajmHodaSecretariatExecutionReportAssistant $executionReports,
         private readonly NajmHodaSecretariatGovernanceDraftAssistant $governanceDrafts,
@@ -33,6 +34,9 @@ class NajmHodaSecretariatCorrespondenceRouter
         if (is_array($response)) return $response;
 
         $response = $this->registrationAdvisor->intercept($actor, $pageContext, $message);
+        if (is_array($response)) return $response;
+
+        $response = $this->relationAdvisor->intercept($actor, $pageContext, $message);
         if (is_array($response)) return $response;
 
         $response = $this->readiness->intercept($actor, $pageContext, $message);
