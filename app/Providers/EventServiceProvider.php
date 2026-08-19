@@ -3,19 +3,26 @@
 namespace App\Providers;
 
 use App\Models\Alley;
-use App\Models\Ticket;
-use App\Models\TicketComment;
+use App\Models\Announcement;
 use App\Models\Blog;
+use App\Models\Election;
 use App\Models\EmailTemplate;
 use App\Models\ExperienceField;
 use App\Models\FaqQuestion;
+use App\Models\Group;
+use App\Models\GroupSetting;
 use App\Models\KbArticle;
 use App\Models\Neighborhood;
+use App\Models\NotificationSetting;
 use App\Models\OccupationalField;
 use App\Models\Page;
 use App\Models\Region;
+use App\Models\ReportedMessage;
 use App\Models\Rural;
+use App\Models\Setting;
 use App\Models\Street;
+use App\Models\Ticket;
+use App\Models\TicketComment;
 use App\Models\User;
 use App\Modules\Blog\Models\Post as BlogPost;
 use App\Modules\NajmBahar\Models\Account as NajmBaharAccount;
@@ -33,6 +40,7 @@ use App\Modules\NajmBahar\Models\SubAccount as NajmBaharSubAccount;
 use App\Modules\NajmBahar\Models\Transaction as NajmBaharTransaction;
 use App\Observers\NajmHoda\ContentModelObserver;
 use App\Observers\NajmHoda\FounderManagedContentObserver;
+use App\Observers\NajmHoda\FounderOperationalDomainObserver;
 use App\Observers\NajmHoda\FounderReferenceDataObserver;
 use App\Observers\NajmHoda\FounderUserObserver;
 use App\Observers\NajmHoda\NajmBaharGenericModelObserver;
@@ -48,7 +56,6 @@ use Illuminate\Auth\Events\PasswordReset as AuthPasswordReset;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
-use Illuminate\Support\Facades\Event;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -57,32 +64,18 @@ class EventServiceProvider extends ServiceProvider
             SendEmailVerificationNotification::class,
             \App\Listeners\CaptureNajmHodaAuthLifecycle::class,
         ],
-        AuthLogin::class => [
-            \App\Listeners\CaptureNajmHodaAuthLifecycle::class,
-        ],
-        AuthFailed::class => [
-            \App\Listeners\CaptureNajmHodaAuthLifecycle::class,
-        ],
-        AuthLogout::class => [
-            \App\Listeners\CaptureNajmHodaAuthLifecycle::class,
-        ],
-        AuthPasswordReset::class => [
-            \App\Listeners\CaptureNajmHodaAuthLifecycle::class,
-        ],
+        AuthLogin::class => [\App\Listeners\CaptureNajmHodaAuthLifecycle::class],
+        AuthFailed::class => [\App\Listeners\CaptureNajmHodaAuthLifecycle::class],
+        AuthLogout::class => [\App\Listeners\CaptureNajmHodaAuthLifecycle::class],
+        AuthPasswordReset::class => [\App\Listeners\CaptureNajmHodaAuthLifecycle::class],
         \App\Events\MessageCreated::class => [
             \App\Listeners\SendGroupMessageNotifications::class,
             \App\Listeners\HandleNajmHodaGroupMessage::class,
             \App\Listeners\CaptureNajmHodaRuntimeInput::class,
         ],
-        \App\Events\GroupPollUpdated::class => [
-            \App\Listeners\CaptureNajmHodaRuntimeInput::class,
-        ],
-        \App\Events\GroupFeedUpdated::class => [
-            \App\Listeners\CaptureNajmHodaRuntimeInput::class,
-        ],
-        \App\Events\UserMentioned::class => [
-            \App\Listeners\SendMentionNotification::class,
-        ],
+        \App\Events\GroupPollUpdated::class => [\App\Listeners\CaptureNajmHodaRuntimeInput::class],
+        \App\Events\GroupFeedUpdated::class => [\App\Listeners\CaptureNajmHodaRuntimeInput::class],
+        \App\Events\UserMentioned::class => [\App\Listeners\SendMentionNotification::class],
         \App\Events\BlogCreated::class => [
             \App\Listeners\SendBlogCreatedNotifications::class,
             \App\Listeners\BridgeSystemGroupArtifactToRealtimeFeed::class,
@@ -99,19 +92,13 @@ class EventServiceProvider extends ServiceProvider
             \App\Listeners\SendElectionFinishedNotifications::class,
             \App\Listeners\CaptureNajmHodaRuntimeInput::class,
         ],
-        \App\Events\CandidateAccepted::class => [
-            \App\Listeners\SendCandidateAcceptedNotifications::class,
-        ],
+        \App\Events\CandidateAccepted::class => [\App\Listeners\SendCandidateAcceptedNotifications::class],
         \App\Events\CommentCreated::class => [
             \App\Listeners\SendCommentCreatedNotifications::class,
             \App\Listeners\BridgeSystemGroupArtifactToRealtimeFeed::class,
         ],
-        \App\Events\GroupInvitation::class => [
-            \App\Listeners\SendGroupInvitationNotifications::class,
-        ],
-        \App\Events\MessageReported::class => [
-            \App\Listeners\SendMessageReportedNotifications::class,
-        ],
+        \App\Events\GroupInvitation::class => [\App\Listeners\SendGroupInvitationNotifications::class],
+        \App\Events\MessageReported::class => [\App\Listeners\SendMessageReportedNotifications::class],
         \App\Events\BidLost::class => [
             \App\Listeners\SendBidLostNotifications::class,
             \App\Listeners\CaptureNajmHodaStockRuntimeInput::class,
@@ -162,6 +149,15 @@ class EventServiceProvider extends ServiceProvider
         Rural::observe(FounderReferenceDataObserver::class);
         EmailTemplate::observe(FounderManagedContentObserver::class);
         BlogPost::observe(FounderManagedContentObserver::class);
+
+        Group::observe(FounderOperationalDomainObserver::class);
+        Election::observe(FounderOperationalDomainObserver::class);
+        ReportedMessage::observe(FounderOperationalDomainObserver::class);
+        Announcement::observe(FounderOperationalDomainObserver::class);
+        NotificationSetting::observe(FounderOperationalDomainObserver::class);
+        GroupSetting::observe(FounderOperationalDomainObserver::class);
+        Setting::observe(FounderOperationalDomainObserver::class);
+
         Ticket::observe(TicketObserver::class);
         TicketComment::observe(TicketCommentObserver::class);
         NajmBaharTransaction::observe(NajmBaharTransactionObserver::class);
