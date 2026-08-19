@@ -17,15 +17,15 @@ class SecretariatContractSignatory extends Model
 
     protected static function booted(): void
     {
-        $assertDraftVersion = static function (self $signatory): void {
-            $version = $signatory->version()->with('record')->first();
-            if ($version !== null && ($version->is_official || in_array((string) $version->record?->status, ['registered', 'active', 'closed', 'archived', 'superseded', 'voided'], true))) {
-                throw new LogicException('Formal contract signatory snapshots are immutable; create an amendment version instead.');
+        $assertMutableVersion = static function (self $signatory): void {
+            $version = $signatory->version()->first();
+            if ($version !== null && $version->is_official) {
+                throw new LogicException('Official contract signatory snapshots are immutable; create an amendment version instead.');
             }
         };
 
-        static::updating($assertDraftVersion);
-        static::deleting($assertDraftVersion);
+        static::updating($assertMutableVersion);
+        static::deleting($assertMutableVersion);
     }
 
     public function version(): BelongsTo
