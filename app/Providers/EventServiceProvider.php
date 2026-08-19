@@ -5,9 +5,12 @@ namespace App\Providers;
 use App\Models\Ticket;
 use App\Models\TicketComment;
 use App\Models\Blog;
+use App\Models\ExperienceField;
 use App\Models\FaqQuestion;
 use App\Models\KbArticle;
+use App\Models\OccupationalField;
 use App\Models\Page;
+use App\Models\User;
 use App\Modules\NajmBahar\Models\Account as NajmBaharAccount;
 use App\Modules\NajmBahar\Models\Fee as NajmBaharFee;
 use App\Modules\NajmBahar\Models\Investment as NajmBaharInvestment;
@@ -21,11 +24,13 @@ use App\Modules\NajmBahar\Models\SalaryRunItem as NajmBaharSalaryRunItem;
 use App\Modules\NajmBahar\Models\ScheduledTransaction as NajmBaharScheduledTransaction;
 use App\Modules\NajmBahar\Models\SubAccount as NajmBaharSubAccount;
 use App\Modules\NajmBahar\Models\Transaction as NajmBaharTransaction;
+use App\Observers\NajmHoda\ContentModelObserver;
+use App\Observers\NajmHoda\FounderReferenceDataObserver;
+use App\Observers\NajmHoda\FounderUserObserver;
 use App\Observers\NajmHoda\NajmBaharGenericModelObserver;
 use App\Observers\NajmHoda\NajmBaharInvestmentObserver;
 use App\Observers\NajmHoda\NajmBaharScheduledTransactionObserver;
 use App\Observers\NajmHoda\NajmBaharTransactionObserver;
-use App\Observers\NajmHoda\ContentModelObserver;
 use App\Observers\NajmHoda\TicketCommentObserver;
 use App\Observers\NajmHoda\TicketObserver;
 use Illuminate\Auth\Events\Failed as AuthFailed;
@@ -98,12 +103,12 @@ class EventServiceProvider extends ServiceProvider
             \App\Listeners\SendCommentCreatedNotifications::class,
             \App\Listeners\BridgeSystemGroupArtifactToRealtimeFeed::class,
         ],
-               \App\Events\GroupInvitation::class => [
-                   \App\Listeners\SendGroupInvitationNotifications::class,
-               ],
-               \App\Events\MessageReported::class => [
-                   \App\Listeners\SendMessageReportedNotifications::class,
-               ],
+        \App\Events\GroupInvitation::class => [
+            \App\Listeners\SendGroupInvitationNotifications::class,
+        ],
+        \App\Events\MessageReported::class => [
+            \App\Listeners\SendMessageReportedNotifications::class,
+        ],
         \App\Events\BidLost::class => [
             \App\Listeners\SendBidLostNotifications::class,
         ],
@@ -140,6 +145,9 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        User::observe(FounderUserObserver::class);
+        ExperienceField::observe(FounderReferenceDataObserver::class);
+        OccupationalField::observe(FounderReferenceDataObserver::class);
         Ticket::observe(TicketObserver::class);
         TicketComment::observe(TicketCommentObserver::class);
         NajmBaharTransaction::observe(NajmBaharTransactionObserver::class);
