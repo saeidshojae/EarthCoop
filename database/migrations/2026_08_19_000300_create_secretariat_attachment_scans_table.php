@@ -10,7 +10,10 @@ return new class extends Migration
     {
         Schema::create('secretariat_attachment_scans', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('attachment_id')->constrained('secretariat_attachments')->restrictOnDelete();
+            // Attachment hard-delete is already restricted to draft/cancelled records
+            // by the parent aggregate. Scan evidence may follow that allowed draft
+            // cleanup, while formal attachment history remains undeletable.
+            $table->foreignId('attachment_id')->constrained('secretariat_attachments')->cascadeOnDelete();
             $table->enum('status', ['clean', 'infected', 'unavailable', 'error']);
             $table->string('engine', 120);
             $table->string('signature', 255)->nullable();
