@@ -14,3 +14,11 @@ Route::middleware(['throttle:najm-hoda-autonomy-read'])
         Route::get('/approvals', [FounderOperationsController::class, 'approvals'])->name('approvals');
         Route::get('/authority', [FounderOperationsController::class, 'authority'])->name('authority');
     });
+
+Route::middleware(['throttle:najm-hoda-autonomy-write'])
+    ->prefix('admin/najm-hoda/founder-ops')
+    ->name('admin.najm-hoda.founder-ops.')
+    ->group(function (): void {
+        Route::post('/support-drafts/{draft}/request-send', [FounderOperationsController::class, 'requestSupportDraftSend'])->name('support-drafts.request-send');
+        Route::post('/support-approvals/{requestId}/decision', [FounderOperationsController::class, 'decideSupportDraft'])->name('support-approvals.decision');
+    });
