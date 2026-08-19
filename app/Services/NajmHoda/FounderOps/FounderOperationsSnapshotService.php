@@ -7,13 +7,16 @@ use App\Models\Announcement;
 use App\Models\Election;
 use App\Models\EmailTemplate;
 use App\Models\ExperienceField;
+use App\Models\FaqQuestion;
 use App\Models\Group;
 use App\Models\GroupSetting;
 use App\Models\Invitation;
 use App\Models\InvitationCode;
+use App\Models\KbArticle;
 use App\Models\Neighborhood;
 use App\Models\NotificationSetting;
 use App\Models\OccupationalField;
+use App\Models\Page;
 use App\Models\Region;
 use App\Models\ReportedMessage;
 use App\Models\Rural;
@@ -22,6 +25,13 @@ use App\Models\Street;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Modules\Blog\Models\Post as BlogPost;
+use App\Modules\NajmBahar\Models\Project as NajmBaharProject;
+use App\Modules\NajmBahar\Models\ProjectReview as NajmBaharProjectReview;
+use App\Modules\NajmBahar\Models\ScheduledTransaction as NajmBaharScheduledTransaction;
+use App\Modules\Secretariat\Models\SecretariatAttachmentScan;
+use App\Modules\Secretariat\Models\SecretariatCase;
+use App\Modules\Secretariat\Models\SecretariatDispatch;
+use App\Modules\Secretariat\Models\SecretariatRecord;
 use App\Modules\Stock\Models\Auction;
 use App\Services\NajmHoda\Runtime\NajmHodaOpsHealthMonitor;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
@@ -123,11 +133,38 @@ class FounderOperationsSnapshotService
                 'published_in_window' => BlogPost::query()->where('status', 'published')->where('published_at', '>=', $since)->count(),
                 'changed_in_window' => BlogPost::query()->where('updated_at', '>=', $since)->count(),
             ],
+            'content' => [
+                'pages_total' => Page::query()->count(),
+                'published_pages' => Page::query()->where('is_published', 1)->count(),
+                'kb_articles_total' => KbArticle::query()->count(),
+                'kb_published' => KbArticle::query()->where('status', 'published')->count(),
+                'faq_pending' => FaqQuestion::query()->whereNull('answer')->count(),
+                'faq_unpublished_answered' => FaqQuestion::query()->whereNotNull('answer')->where('is_published', 0)->count(),
+            ],
             'stock' => [
                 'running_auctions' => Auction::query()->running()->count(),
                 'scheduled_auctions' => Auction::query()->scheduled()->count(),
                 'ending_within_24h' => Auction::query()->running()->whereNotNull('ends_at')->whereBetween('ends_at', [$now, $next24h])->count(),
                 'expired_unsettled' => Auction::query()->whereNotNull('ends_at')->where('ends_at', '<', $now)->where('status', '!=', 'settled')->count(),
+            ],
+            'secretariat' => [
+                'records_total' => SecretariatRecord::query()->count(),
+                'draft_records' => SecretariatRecord::query()->where('status', 'draft')->count(),
+                'active_records' => SecretariatRecord::query()->where('status', 'active')->count(),
+                'open_cases' => SecretariatCase::query()->whereNull('closed_at')->count(),
+                'dispatches_due_within_24h' => SecretariatDispatch::query()->whereNull('completed_at')->whereNotNull('due_at')->whereBetween('due_at', [$now, $next24h])->count(),
+                'overdue_dispatches' => SecretariatDispatch::query()->whereNull('completed_at')->whereNotNull('due_at')->where('due_at', '<', $now)->count(),
+                'responses_due' => SecretariatDispatch::query()->where('expects_response', 1)->whereNull('completed_at')->count(),
+                'attachment_scans_in_window' => SecretariatAttachmentScan::query()->where('created_at', '>=', $since)->count(),
+            ],
+            'najm_bahar' => [
+                'projects_total' => NajmBaharProject::query()->count(),
+                'projects_submitted' => NajmBaharProject::query()->where('status', 'submitted')->count(),
+                'projects_under_review' => NajmBaharProject::query()->where('status', 'under_review')->count(),
+                'revision_requested' => NajmBaharProject::query()->where('status', 'revision_requested')->count(),
+                'review_events_in_window' => NajmBaharProjectReview::query()->where('created_at', '>=', $since)->count(),
+                'scheduled_due_within_24h' => NajmBaharScheduledTransaction::query()->whereNotIn('status', ['completed', 'executed', 'cancelled'])->whereBetween('execute_at', [$now, $next24h])->count(),
+                'scheduled_overdue' => NajmBaharScheduledTransaction::query()->whereNotIn('status', ['completed', 'executed', 'cancelled'])->where('execute_at', '<', $now)->count(),
             ],
             'admin_configuration' => [
                 'group_setting_records' => GroupSetting::query()->count(),
