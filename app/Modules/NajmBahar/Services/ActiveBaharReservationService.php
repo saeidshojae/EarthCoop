@@ -5,6 +5,7 @@ namespace App\Modules\NajmBahar\Services;
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\ActiveBaharReservation;
 use App\Modules\NajmBahar\Models\LedgerEntry;
+use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -12,101 +13,66 @@ class ActiveBaharReservationService
 {
     public function reserve(string $payerAccountNumber, int $amount, string $reservationKey, string $referenceType, int|string $referenceId, array $metadata = []): ActiveBaharReservation
     {
-        $this->assertPositive($amount);
-        $this->assertKey($reservationKey);
-
-        return DB::transaction(function () use ($payerAccountNumber, $amount, $reservationKey, $referenceType, $referenceId, $metadata) {
-            $existing = ActiveBaharReservation::query()->where('reservation_key', $reservationKey)->lockForUpdate()->first();
-            if ($existing) return $this->assertSameReservation($existing, $payerAccountNumber, $amount, $referenceType, $referenceId);
-
-            $payer = Account::query()->where('account_number', $payerAccountNumber)->lockForUpdate()->first();
+        $this->assertPositive($amount); $this->assertKey($reservationKey);
+        return DB::transaction(function () use ($payerAccountNumber,$amount,$reservationKey,$referenceType,$referenceId,$metadata) {
+            $existing=ActiveBaharReservation::query()->where('reservation_key',$reservationKey)->lockForUpdate()->first();
+            if ($existing) return $this->assertSameReservation($existing,$payerAccountNumber,$amount,$referenceType,$referenceId);
+            $payer=Account::query()->where('account_number',$payerAccountNumber)->lockForUpdate()->first();
             if (! $payer) throw new RuntimeException('Payer account not found.');
-
-            $available = $this->availableActive($payer);
-            if ($available < $amount) throw new RuntimeException('Insufficient available Active Bahar.');
-
-            return ActiveBaharReservation::create([
-                'payer_account_id' => $payer->id,
-                'amount' => $amount,
-                'status' => ActiveBaharReservation::RESERVED,
-                'reference_type' => $referenceType,
-                'reference_id' => (string) $referenceId,
-                'reservation_key' => $reservationKey,
-                'metadata' => $metadata,
-                'reserved_at' => now(),
-            ]);
+            if ($this->availableActive($payer)<$amount) throw new RuntimeException('Insufficient available Active Bahar.');
+            return ActiveBaharReservation::create(['payer_account_id'=>$payer->id,'amount'=>$amount,'status'=>ActiveBaharReservation::RESERVED,'reference_type'=>$referenceType,'reference_id'=>(string)$referenceId,'reservation_key'=>$reservationKey,'metadata'=>$metadata,'reserved_at'=>now()]);
         });
     }
 
-    public function release(string $reservationKey, string $releaseKey): ActiveBaharReservation
+    public function release(string $reservationKey,string $releaseKey): ActiveBaharReservation
     {
         $this->assertKey($releaseKey);
-        return DB::transaction(function () use ($reservationKey, $releaseKey) {
-            $reservation = $this->lockedReservation($reservationKey);
-            if ($reservation->release_key === $releaseKey && $reservation->status === ActiveBaharReservation::RELEASED) return $reservation;
-            if ($reservation->status !== ActiveBaharReservation::RESERVED) throw new RuntimeException('Only an active reservation can be released.');
-            $reservation->forceFill(['status'=>ActiveBaharReservation::RELEASED,'release_key'=>$releaseKey,'released_at'=>now()])->save();
-            return $reservation->fresh();
+        return DB::transaction(function () use ($reservationKey,$releaseKey) {
+            $r=$this->lockedReservation($reservationKey);
+            if ($r->release_key===$releaseKey && $r->status===ActiveBaharReservation::RELEASED) return $r;
+            if ($r->status!==ActiveBaharReservation::RESERVED) throw new RuntimeException('Only an active reservation can be released.');
+            $r->forceFill(['status'=>ActiveBaharReservation::RELEASED,'release_key'=>$releaseKey,'released_at'=>now()])->save(); return $r->fresh();
         });
     }
 
-    public function settle(string $reservationKey, string $payeeAccountNumber, string $settlementKey, array $metadata = []): ActiveBaharReservation
+    public function settle(string $reservationKey,string $payeeAccountNumber,string $settlementKey,array $metadata=[]): ActiveBaharReservation
     {
         $this->assertKey($settlementKey);
-        return DB::transaction(function () use ($reservationKey, $payeeAccountNumber, $settlementKey, $metadata) {
-            $reservation = $this->lockedReservation($reservationKey);
-            if ($reservation->settlement_key === $settlementKey && $reservation->status === ActiveBaharReservation::SETTLED) return $reservation;
-            if ($reservation->status !== ActiveBaharReservation::RESERVED) throw new RuntimeException('Only an active reservation can be settled.');
+        return DB::transaction(function () use ($reservationKey,$payeeAccountNumber,$settlementKey,$metadata) {
+            $r=$this->lockedReservation($reservationKey);
+            if ($r->settlement_key===$settlementKey && $r->status===ActiveBaharReservation::SETTLED) return $r;
+            if ($r->status!==ActiveBaharReservation::RESERVED) throw new RuntimeException('Only an active reservation can be settled.');
+            [$payer,$payee]=$this->lockAccounts((int)$r->payer_account_id,$payeeAccountNumber);
+            if ((int)$payer->balance_active<(int)$r->amount) throw new RuntimeException('Reserved Active Bahar is no longer backed by payer balance.');
 
-            $accounts = Account::query()->whereIn('id', [$reservation->payer_account_id])->lockForUpdate()->get()->keyBy('id');
-            $payer = $accounts->get($reservation->payer_account_id);
-            $payee = Account::query()->where('account_number', $payeeAccountNumber)->lockForUpdate()->first();
-            if (! $payer || ! $payee) throw new RuntimeException('Settlement account not found.');
+            $payer->balance_active=(int)$payer->balance_active-(int)$r->amount; $payer->balance=(int)$payer->balance_active+(int)$payer->balance_faded; $payer->save();
+            $payee->balance_active=(int)$payee->balance_active+(int)$r->amount; $payee->balance=(int)$payee->balance_active+(int)$payee->balance_faded; $payee->save();
 
-            if ((int)$payer->balance_active < (int)$reservation->amount) throw new RuntimeException('Reserved Active Bahar is no longer backed by payer balance.');
-
-            $payer->balance_active = (int)$payer->balance_active - (int)$reservation->amount;
-            $payer->balance = (int)$payer->balance_active + (int)$payer->balance_faded;
-            $payer->save();
-
-            $payee->balance_active = (int)$payee->balance_active + (int)$reservation->amount;
-            $payee->balance = (int)$payee->balance_active + (int)$payee->balance_faded;
-            $payee->save();
-
-            $ledgerMeta = array_merge($metadata, ['reservation_key'=>$reservationKey,'settlement_key'=>$settlementKey,'balance_type'=>'active','reference_type'=>$reservation->reference_type,'reference_id'=>$reservation->reference_id]);
-            LedgerEntry::create(['transaction_id'=>null,'account_id'=>$payer->id,'amount'=>-(int)$reservation->amount,'entry_type'=>'debit','meta'=>$ledgerMeta]);
-            LedgerEntry::create(['transaction_id'=>null,'account_id'=>$payee->id,'amount'=>(int)$reservation->amount,'entry_type'=>'credit','meta'=>$ledgerMeta]);
-
-            $reservation->forceFill(['payee_account_id'=>$payee->id,'settled_amount'=>$reservation->amount,'status'=>ActiveBaharReservation::SETTLED,'settlement_key'=>$settlementKey,'settled_at'=>now(),'metadata'=>array_merge((array)$reservation->metadata,$metadata)])->save();
-            return $reservation->fresh();
+            $meta=array_merge((array)$r->metadata,$metadata,['idempotency_key'=>$settlementKey,'reservation_key'=>$reservationKey,'balance_type'=>'active','reference_type'=>$r->reference_type,'reference_id'=>$r->reference_id]);
+            $tx=NajmTransaction::create(['idempotency_key'=>$settlementKey,'from_account_id'=>$payer->id,'to_account_id'=>$payee->id,'amount'=>(int)$r->amount,'type'=>'reservation_settlement','status'=>'completed','metadata'=>$meta,'description'=>'Active Bahar reservation settlement']);
+            LedgerEntry::create(['transaction_id'=>$tx->id,'account_id'=>$payer->id,'amount'=>-(int)$r->amount,'entry_type'=>'debit','meta'=>$meta]);
+            LedgerEntry::create(['transaction_id'=>$tx->id,'account_id'=>$payee->id,'amount'=>(int)$r->amount,'entry_type'=>'credit','meta'=>$meta]);
+            $r->forceFill(['payee_account_id'=>$payee->id,'settled_amount'=>$r->amount,'status'=>ActiveBaharReservation::SETTLED,'settlement_key'=>$settlementKey,'settled_at'=>now(),'metadata'=>$meta])->save(); return $r->fresh();
         });
     }
 
-    public function refund(string $reservationKey, int $amount, string $refundKey, array $metadata = []): ActiveBaharReservation
+    public function refund(string $reservationKey,int $amount,string $refundKey,array $metadata=[]): ActiveBaharReservation
     {
         $this->assertPositive($amount); $this->assertKey($refundKey);
-        return DB::transaction(function () use ($reservationKey, $amount, $refundKey, $metadata) {
-            $reservation = $this->lockedReservation($reservationKey);
-            $refunds = (array) data_get($reservation->metadata, 'refund_keys', []);
-            if (isset($refunds[$refundKey])) return $reservation;
-            if (! in_array($reservation->status, [ActiveBaharReservation::SETTLED, ActiveBaharReservation::PARTIALLY_REFUNDED], true)) throw new RuntimeException('Only settled reservations can be refunded.');
-            if ((int)$reservation->refunded_amount + $amount > (int)$reservation->settled_amount) throw new RuntimeException('Refund exceeds settled amount.');
-
-            $payer = Account::query()->whereKey($reservation->payer_account_id)->lockForUpdate()->first();
-            $payee = Account::query()->whereKey($reservation->payee_account_id)->lockForUpdate()->first();
-            if (! $payer || ! $payee) throw new RuntimeException('Refund account not found.');
-            if ((int)$payee->balance_active < $amount) throw new RuntimeException('Payee has insufficient Active Bahar for refund.');
+        return DB::transaction(function () use ($reservationKey,$amount,$refundKey,$metadata) {
+            $r=$this->lockedReservation($reservationKey); $refunds=(array)data_get($r->metadata,'refund_keys',[]);
+            if (isset($refunds[$refundKey])) return $r;
+            if (!in_array($r->status,[ActiveBaharReservation::SETTLED,ActiveBaharReservation::PARTIALLY_REFUNDED],true)) throw new RuntimeException('Only settled reservations can be refunded.');
+            if ((int)$r->refunded_amount+$amount>(int)$r->settled_amount) throw new RuntimeException('Refund exceeds settled amount.');
+            [$payer,$payee]=$this->lockAccountsByIds((int)$r->payer_account_id,(int)$r->payee_account_id);
+            if ((int)$payee->balance_active<$amount) throw new RuntimeException('Payee has insufficient Active Bahar for refund.');
 
             $payee->balance_active=(int)$payee->balance_active-$amount; $payee->balance=(int)$payee->balance_active+(int)$payee->balance_faded; $payee->save();
             $payer->balance_active=(int)$payer->balance_active+$amount; $payer->balance=(int)$payer->balance_active+(int)$payer->balance_faded; $payer->save();
-
-            $ledgerMeta=array_merge($metadata,['reservation_key'=>$reservationKey,'refund_key'=>$refundKey,'balance_type'=>'active']);
-            LedgerEntry::create(['transaction_id'=>null,'account_id'=>$payee->id,'amount'=>-$amount,'entry_type'=>'debit','meta'=>$ledgerMeta]);
-            LedgerEntry::create(['transaction_id'=>null,'account_id'=>$payer->id,'amount'=>$amount,'entry_type'=>'credit','meta'=>$ledgerMeta]);
-
-            $refunds[$refundKey]=$amount; $newRefunded=(int)$reservation->refunded_amount+$amount;
-            $reservation->forceFill(['refunded_amount'=>$newRefunded,'status'=>$newRefunded===(int)$reservation->settled_amount?ActiveBaharReservation::REFUNDED:ActiveBaharReservation::PARTIALLY_REFUNDED,'metadata'=>array_merge((array)$reservation->metadata,$metadata,['refund_keys'=>$refunds])])->save();
-            return $reservation->fresh();
+            $meta=array_merge($metadata,['idempotency_key'=>$refundKey,'reservation_key'=>$reservationKey,'balance_type'=>'active','refund_key'=>$refundKey]);
+            $tx=NajmTransaction::create(['idempotency_key'=>$refundKey,'from_account_id'=>$payee->id,'to_account_id'=>$payer->id,'amount'=>$amount,'type'=>'reservation_refund','status'=>'completed','metadata'=>$meta,'description'=>'Active Bahar reservation refund']);
+            LedgerEntry::create(['transaction_id'=>$tx->id,'account_id'=>$payee->id,'amount'=>-$amount,'entry_type'=>'debit','meta'=>$meta]); LedgerEntry::create(['transaction_id'=>$tx->id,'account_id'=>$payer->id,'amount'=>$amount,'entry_type'=>'credit','meta'=>$meta]);
+            $refunds[$refundKey]=$amount; $new=(int)$r->refunded_amount+$amount; $r->forceFill(['refunded_amount'=>$new,'status'=>$new===(int)$r->settled_amount?ActiveBaharReservation::REFUNDED:ActiveBaharReservation::PARTIALLY_REFUNDED,'metadata'=>array_merge((array)$r->metadata,$metadata,['refund_keys'=>$refunds])])->save(); return $r->fresh();
         });
     }
 
@@ -116,20 +82,18 @@ class ActiveBaharReservationService
         return max(0,(int)$account->balance_active-$reserved);
     }
 
-    protected function lockedReservation(string $key): ActiveBaharReservation
+    protected function lockAccounts(int $payerId,string $payeeNumber): array
     {
-        $reservation=ActiveBaharReservation::query()->where('reservation_key',$key)->lockForUpdate()->first();
-        if (! $reservation) throw new RuntimeException('Active Bahar reservation not found.');
-        return $reservation;
+        $payeeId=(int)(Account::query()->where('account_number',$payeeNumber)->value('id')??0); if ($payeeId<=0) throw new RuntimeException('Payee account not found.'); return $this->lockAccountsByIds($payerId,$payeeId);
     }
-
-    protected function assertSameReservation(ActiveBaharReservation $r,string $payer,int $amount,string $type,int|string $id): ActiveBaharReservation
+    protected function lockAccountsByIds(int $payerId,int $payeeId): array
     {
-        $r->loadMissing('payerAccount');
-        if ($r->payerAccount?->account_number!==$payer || (int)$r->amount!==$amount || $r->reference_type!==$type || $r->reference_id!==(string)$id) throw new RuntimeException('Reservation idempotency key conflicts with an existing reservation.');
-        return $r;
+        if ($payerId===$payeeId) throw new RuntimeException('Payer and payee accounts must differ.');
+        $ids=[$payerId,$payeeId]; sort($ids,SORT_NUMERIC); $locked=Account::query()->whereIn('id',$ids)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+        $payer=$locked->get($payerId); $payee=$locked->get($payeeId); if(!$payer||!$payee) throw new RuntimeException('Settlement account not found.'); return [$payer,$payee];
     }
-
-    protected function assertPositive(int $amount): void { if ($amount<=0) throw new \InvalidArgumentException('Amount must be positive integer Gol.'); }
-    protected function assertKey(string $key): void { if (trim($key)==='') throw new \InvalidArgumentException('Idempotency key is required.'); }
+    protected function lockedReservation(string $key): ActiveBaharReservation { $r=ActiveBaharReservation::query()->where('reservation_key',$key)->lockForUpdate()->first(); if(!$r) throw new RuntimeException('Active Bahar reservation not found.'); return $r; }
+    protected function assertSameReservation(ActiveBaharReservation $r,string $payer,int $amount,string $type,int|string $id): ActiveBaharReservation { $r->loadMissing('payerAccount'); if($r->payerAccount?->account_number!==$payer||(int)$r->amount!==$amount||$r->reference_type!==$type||$r->reference_id!==(string)$id) throw new RuntimeException('Reservation idempotency key conflicts with an existing reservation.'); return $r; }
+    protected function assertPositive(int $amount): void { if($amount<=0) throw new \InvalidArgumentException('Amount must be positive integer Gol.'); }
+    protected function assertKey(string $key): void { if(trim($key)==='') throw new \InvalidArgumentException('Idempotency key is required.'); }
 }
