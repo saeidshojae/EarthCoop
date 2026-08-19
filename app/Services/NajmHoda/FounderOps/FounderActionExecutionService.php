@@ -9,6 +9,7 @@ class FounderActionExecutionService
 {
     public function __construct(
         protected FounderActionAuthorityService $authority,
+        protected FounderDelegationGrantService $delegations,
         protected FounderApprovalVerifierService $approvalVerifier,
         protected RuntimeEventBus $events
     ) {}
@@ -30,6 +31,7 @@ class FounderActionExecutionService
     ): array {
         $mode = $this->authority->mode($domain, $action);
         $approval = null;
+        $delegated = false;
 
         if ($mode === 'approval_required') {
             if ($approvalRequestId === null || trim($approvalRequestId) === '') {
@@ -40,9 +42,19 @@ class FounderActionExecutionService
             if (! (bool) ($approval['valid'] ?? false)) {
                 return $this->blocked($domain, $action, (string) ($approval['reason'] ?? 'invalid_approval'));
             }
+        } elseif ($mode === 'delegated_safe') {
+            $delegated = $this->delegations->isGranted($domain, $action);
+            if (! $delegated) {
+                return $this->blocked($domain, $action, 'explicit_delegation_required');
+            }
         }
 
-        $decision = $this->authority->evaluate($domain, $action, $mode === 'approval_required');
+        $decision = $this->authority->evaluate(
+            $domain,
+            $action,
+            $mode === 'approval_required',
+            $delegated
+        );
         if (! (bool) ($decision['may_execute'] ?? false)) {
             return $this->blocked($domain, $action, (string) ($decision['reason'] ?? 'not_authorized'));
         }
@@ -53,6 +65,7 @@ class FounderActionExecutionService
             'action' => $action,
             'mode' => $mode,
             'approval_request_id' => $approvalRequestId,
+            'delegated' => $delegated,
             'context' => $safeAudit,
         ]);
 
@@ -63,6 +76,7 @@ class FounderActionExecutionService
                 'action' => $action,
                 'mode' => $mode,
                 'approval_request_id' => $approvalRequestId,
+                'delegated' => $delegated,
                 'context' => $safeAudit,
             ]);
 
@@ -73,6 +87,7 @@ class FounderActionExecutionService
                 'action' => $action,
                 'mode' => $mode,
                 'approval' => $approval,
+                'delegated' => $delegated,
                 'result' => $result,
             ];
         } catch (Throwable $e) {
@@ -81,6 +96,7 @@ class FounderActionExecutionService
                 'action' => $action,
                 'mode' => $mode,
                 'approval_request_id' => $approvalRequestId,
+                'delegated' => $delegated,
                 'exception_class' => $e::class,
                 'context' => $safeAudit,
             ]);
@@ -88,25 +104,18 @@ class FounderActionExecutionService
         }
     }
 
-    /** @return array<string,mixed> */
     protected function blocked(string $domain, string $action, string $reason): array
     {
         $this->events->emit('najm_hoda.founder_ops.execution.blocked', [
-            'domain' => $domain,
-            'action' => $action,
-            'reason' => $reason,
+            'domain' => $domain, 'action' => $action, 'reason' => $reason,
         ]);
 
         return [
-            'success' => false,
-            'status' => 'blocked',
-            'domain' => $domain,
-            'action' => $action,
-            'reason' => $reason,
+            'success' => false, 'status' => 'blocked', 'domain' => $domain,
+            'action' => $action, 'reason' => $reason,
         ];
     }
 
-    /** @param array<string,mixed> $context @return array<string,mixed> */
     protected function safeAuditContext(array $context): array
     {
         return collect($context)->only([
