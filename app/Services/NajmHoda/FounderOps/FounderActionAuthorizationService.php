@@ -9,19 +9,12 @@ class FounderActionAuthorizationService
 {
     public function __construct(
         protected FounderCapabilityGate $gate,
+        protected FounderDelegationGrantService $delegations,
         protected NajmHodaAutonomyApprovalService $approvals,
         protected RuntimeEventBus $events
     ) {}
 
-    /**
-     * Convert a proposed Founder Ops action into one of four outcomes:
-     * read/proposal only, waiting for explicit founder approval, waiting for an
-     * explicit delegation grant, or denied. This service never executes the
-     * domain mutation itself.
-     *
-     * @param array<string,mixed> $context
-     * @return array<string,mixed>
-     */
+    /** @param array<string,mixed> $context @return array<string,mixed> */
     public function authorize(string $domain, string $action, array $context = []): array
     {
         $decision = $this->gate->inspect($domain, $action);
@@ -29,30 +22,22 @@ class FounderActionAuthorizationService
 
         if ($level === FounderCapabilityGate::FORBIDDEN) {
             $this->emit('denied', $domain, $action, $decision, $context);
-            return [
-                'status' => 'denied',
-                'executable' => false,
-                'decision' => $decision,
-                'approval_request' => null,
-            ];
+            return $this->result('denied', $decision);
         }
 
         if ($level === FounderCapabilityGate::OBSERVE || $level === FounderCapabilityGate::PROPOSE) {
             $this->emit($level, $domain, $action, $decision, $context);
-            return [
-                'status' => $level,
-                'executable' => false,
-                'decision' => $decision,
-                'approval_request' => null,
-            ];
+            return $this->result($level, $decision);
         }
 
         if ($level === FounderCapabilityGate::DELEGATED_SAFE) {
-            $this->emit('delegation_required', $domain, $action, $decision, $context);
+            $granted = $this->delegations->isGranted($domain, $action);
+            $outcome = $granted ? 'delegated_authorized' : 'delegation_required';
+            $this->emit($outcome, $domain, $action, $decision, $context);
             return [
-                'status' => 'delegation_required',
-                'executable' => false,
-                'decision' => $decision,
+                'status' => $outcome,
+                'executable' => $granted,
+                'decision' => $this->gate->inspect($domain, $action, false, $granted),
                 'approval_request' => null,
             ];
         }
@@ -65,9 +50,7 @@ class FounderActionAuthorizationService
             'capability_action' => $action,
         ], $this->safeContext($context));
 
-        $this->emit('approval_requested', $domain, $action, $decision, [
-            'approval_request_id' => $request['id'] ?? null,
-        ]);
+        $this->emit('approval_requested', $domain, $action, $decision, ['approval_request_id' => $request['id'] ?? null]);
 
         return [
             'status' => 'approval_required',
@@ -77,18 +60,19 @@ class FounderActionAuthorizationService
         ];
     }
 
-    /**
-     * Re-check an action immediately before a mutation executor is called.
-     * This deliberately requires the caller to prove approval/delegation state;
-     * no approval request is treated as execution permission by itself.
-     */
-    public function mayExecute(
-        string $domain,
-        string $action,
-        bool $founderApproved = false,
-        bool $delegationGranted = false
-    ): bool {
-        return $this->gate->canExecute($domain, $action, $founderApproved, $delegationGranted);
+    public function mayExecute(string $domain, string $action, bool $founderApproved = false): bool
+    {
+        $decision = $this->gate->inspect($domain, $action);
+        $delegated = ($decision['level'] ?? null) === FounderCapabilityGate::DELEGATED_SAFE
+            && $this->delegations->isGranted($domain, $action);
+
+        return $this->gate->canExecute($domain, $action, $founderApproved, $delegated);
+    }
+
+    /** @return array<string,mixed> */
+    protected function result(string $status, array $decision): array
+    {
+        return ['status' => $status, 'executable' => false, 'decision' => $decision, 'approval_request' => null];
     }
 
     /** @param array<string,mixed> $decision @param array<string,mixed> $context */
@@ -112,21 +96,15 @@ class FounderActionAuthorizationService
     /** @param array<string,mixed> $context @return array<string,mixed> */
     protected function safeContext(array $context): array
     {
-        // Approval queue stores context. Keep only identifiers and bounded scalar
-        // metadata; never copy bodies, messages, secrets or financial payloads.
         $safe = [];
         foreach ($context as $key => $value) {
             $key = (string) $key;
-            if (preg_match('/(body|content|message|secret|token|password|payload|email|phone|note|reason)/i', $key)) {
-                continue;
-            }
+            if (preg_match('/(body|content|message|secret|token|password|payload|email|phone|note|reason)/i', $key)) continue;
             if (is_bool($value) || is_int($value) || is_float($value) || $value === null) {
                 $safe[$key] = $value;
                 continue;
             }
-            if (is_string($value)) {
-                $safe[$key] = mb_substr($value, 0, 180);
-            }
+            if (is_string($value)) $safe[$key] = mb_substr($value, 0, 180);
         }
         return $safe;
     }
