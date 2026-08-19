@@ -2,6 +2,7 @@
 
 namespace App\Services\NajmHoda\FounderOps;
 
+use App\Models\ModerationCaseSummary;
 use App\Services\Moderation\ReportManagementService;
 use App\Services\NajmHoda\Runtime\NajmHodaAutonomyApprovalService;
 
@@ -50,12 +51,19 @@ class FounderModerationDecisionService
             return ['success'=>true,'status'=>'rejected_request_only','source_type'=>$sourceType,'source_id'=>$sourceId];
         }
 
-        return $this->execution->execute(
+        $result = $this->execution->execute(
             'reports_moderation','resolve_report',
             fn()=> $this->reports->resolve($sourceType,$sourceId,$founderId,$reason),
             $requestId,
             ['entity_type'=>$sourceType,'entity_id'=>$sourceId,'requested_by'=>$founderId]
         );
+
+        if ((bool)($result['success'] ?? false)) {
+            ModerationCaseSummary::query()
+                ->where('source_type',$sourceType)->where('source_id',$sourceId)->where('status','draft')
+                ->update(['status'=>'resolved','updated_at'=>now()]);
+        }
+        return $result;
     }
 
     /** @return array<int,int> */
