@@ -3,6 +3,8 @@
 namespace App\Services\NajmHoda\FounderOps;
 
 use App\Models\Ticket;
+use App\Modules\Secretariat\Models\SecretariatDispatch;
+use App\Modules\Secretariat\Services\SecretariatFollowUpProposalService;
 use App\Services\Moderation\ModerationCaseSummaryService;
 use App\Services\NajmHoda\Runtime\NajmHodaOpsHealthMonitor;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
@@ -16,6 +18,7 @@ class FounderLowRiskDomainActionService
         protected TicketManagementService $tickets,
         protected TicketReplyDraftService $replyDrafts,
         protected ModerationCaseSummaryService $moderationCases,
+        protected SecretariatFollowUpProposalService $secretariatFollowUps,
         protected RuntimeEventBus $events
     ) {}
 
@@ -29,6 +32,7 @@ class FounderLowRiskDomainActionService
             'support.draft_reply',
             'reports_moderation.prepare_case_summary',
             'reports_moderation.classify_report',
+            'secretariat.prepare_follow_up',
         ], true);
     }
 
@@ -74,6 +78,18 @@ class FounderLowRiskDomainActionService
                 'reason_code'=>$reasonCode,'result_status'=>(string)($result['status'] ?? 'completed'),
             ]);
             return array_merge(['domain'=>$domain,'action'=>$action], $result);
+        }
+
+        if ($domain === 'secretariat') {
+            $dispatchId=(int)($context['entity_id'] ?? 0);
+            $dispatch=$dispatchId>0 ? SecretariatDispatch::query()->find($dispatchId) : null;
+            if (! $dispatch) return ['success'=>false,'status'=>'not_found','reason'=>'secretariat_dispatch_not_found'];
+            $result=$this->secretariatFollowUps->prepare($dispatch,$reasonCode);
+            $this->events->emit('najm_hoda.founder_ops.low_risk.completed',[
+                'domain'=>$domain,'action'=>$action,'entity_type'=>'secretariat_dispatch','entity_id'=>$dispatchId,
+                'reason_code'=>$reasonCode,'result_status'=>(string)($result['status'] ?? 'completed'),
+            ]);
+            return array_merge(['domain'=>$domain,'action'=>$action],$result);
         }
 
         $snapshot = $this->health->snapshot();
