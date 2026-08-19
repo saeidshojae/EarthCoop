@@ -8,17 +8,14 @@ use App\Modules\Secretariat\Models\SecretariatContractSignatory;
 use App\Modules\Secretariat\Models\SecretariatIntegrityManifest;
 use App\Modules\Secretariat\Models\SecretariatSignatureAttestation;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class SecretariatSignatureService
 {
     public function __construct(private readonly SecretariatAuditService $audit) {}
 
-    /**
-     * Records evidence without claiming cryptographic verification.
-     *
-     * @param array<string,mixed> $metadata
-     */
+    /** @param array<string,mixed> $metadata */
     public function recordEvidence(
         SecretariatIntegrityManifest $manifest,
         User $actor,
@@ -29,18 +26,11 @@ class SecretariatSignatureService
         ?string $providerReference = null,
         array $metadata = [],
     ): SecretariatSignatureAttestation {
+        $manifest = $this->authorizeManifest($manifest, $actor);
+
         return $this->persist(
-            $manifest,
-            $actor,
-            $attestationType,
-            $provider,
-            $providerReference,
-            $signerName,
-            null,
-            'recorded',
-            null,
-            $metadata,
-            $signatory,
+            $manifest, $actor, $attestationType, $provider, $providerReference,
+            $signerName, null, 'recorded', null, $metadata, $signatory,
         );
     }
 
@@ -53,6 +43,10 @@ class SecretariatSignatureService
         array $evidence,
         ?SecretariatContractSignatory $signatory = null,
     ): SecretariatSignatureAttestation {
+        // Authorize before any external/provider call to prevent a confused-deputy
+        // path from invoking signature infrastructure for an unauthorized actor.
+        $manifest = $this->authorizeManifest($manifest, $actor);
+
         $result = $adapter->verify((string) $manifest->manifest_checksum, $evidence);
         $verified = (bool) ($result['verified'] ?? false);
         $signerName = trim((string) ($result['signer_name'] ?? ''));
@@ -65,17 +59,10 @@ class SecretariatSignatureService
         $metadata = is_array($result['metadata'] ?? null) ? $result['metadata'] : [];
 
         return $this->persist(
-            $manifest,
-            $actor,
-            $attestationType,
-            $adapter->provider(),
+            $manifest, $actor, $attestationType, $adapter->provider(),
             isset($result['provider_reference']) ? (string) $result['provider_reference'] : null,
-            $signerName,
-            $identifierHash,
-            $verified ? 'verified' : 'rejected',
-            $verified ? now() : null,
-            $metadata,
-            $signatory,
+            $signerName, $identifierHash, $verified ? 'verified' : 'rejected',
+            $verified ? now() : null, $metadata, $signatory,
         );
     }
 
@@ -105,17 +92,13 @@ class SecretariatSignatureService
             throw ValidationException::withMessages(['signer_name' => 'Signer name snapshot is required and must be at most 255 characters.']);
         }
 
-        $manifest = $manifest->fresh(['version.record.office']);
-        if (! $manifest || ! $manifest->version?->is_official) {
-            throw ValidationException::withMessages(['manifest' => 'Signature evidence requires an integrity manifest of an official version.']);
-        }
-
         if ($signatory !== null && (int) $signatory->record_version_id !== (int) $manifest->record_version_id) {
             throw ValidationException::withMessages(['signatory' => 'Contract signatory must belong to the same version as the integrity manifest.']);
         }
 
         return DB::transaction(function () use ($manifest, $actor, $attestationType, $provider, $providerReference, $signerName, $signerIdentifierHash, $verificationStatus, $verifiedAt, $metadata, $signatory) {
             $locked = SecretariatIntegrityManifest::query()->with('version.record.office')->whereKey($manifest->id)->lockForUpdate()->firstOrFail();
+            Gate::forUser($actor)->authorize('transition', $locked->version->record);
 
             $attestation = SecretariatSignatureAttestation::query()->create([
                 'manifest_id' => $locked->id,
@@ -141,5 +124,15 @@ class SecretariatSignatureService
 
             return $attestation;
         });
+    }
+
+    private function authorizeManifest(SecretariatIntegrityManifest $manifest, User $actor): SecretariatIntegrityManifest
+    {
+        $manifest = $manifest->fresh(['version.record.office']);
+        if (! $manifest || ! $manifest->version?->is_official) {
+            throw ValidationException::withMessages(['manifest' => 'Signature evidence requires an integrity manifest of an official version.']);
+        }
+        Gate::forUser($actor)->authorize('transition', $manifest->version->record);
+        return $manifest;
     }
 }
