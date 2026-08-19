@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ModerationCaseSummary;
 use App\Models\SupportReplyDraft;
+use App\Modules\Secretariat\Models\SecretariatFollowUpProposal;
 use App\Services\NajmHoda\FounderOps\FounderActionAuthorityService;
 use App\Services\NajmHoda\FounderOps\FounderApprovalInboxService;
 use App\Services\NajmHoda\FounderOps\FounderAttentionService;
@@ -27,6 +28,7 @@ class FounderOperationsController extends Controller
             'approvalInbox'=>$approvals->snapshot(),'referenceCandidates'=>$referenceCandidates->candidates(10),
             'supportDrafts'=>SupportReplyDraft::query()->with(['ticket:id,tracking_code,subject,status,priority,category'])->where('status','draft')->latest('id')->limit(20)->get(),
             'moderationCases'=>ModerationCaseSummary::query()->where('status','draft')->latest('id')->limit(20)->get(),
+            'secretariatFollowUps'=>SecretariatFollowUpProposal::query()->with(['dispatch.record:id,registry_number,status'])->where('status','draft')->latest('id')->limit(20)->get(),
         ]);
     }
 
