@@ -49,32 +49,19 @@ class FounderReferenceApprovalCandidateService
 
         $near = $query->limit(250)->get(['id', 'name', 'status', 'parent_id'])
             ->map(function ($candidate) use ($normalized) {
-                $other = $this->normalize((string) $candidate->name);
-                $score = $this->similarity($normalized, $other);
-                return [
-                    'id' => (int) $candidate->id,
-                    'name' => (string) $candidate->name,
-                    'status' => (int) $candidate->status,
-                    'similarity' => $score,
-                ];
+                $score = $this->similarity($normalized, $this->normalize((string) $candidate->name));
+                return ['id'=>(int)$candidate->id,'name'=>(string)$candidate->name,'status'=>(int)$candidate->status,'similarity'=>$score];
             })
             ->filter(fn (array $candidate): bool => $candidate['similarity'] >= 0.78)
-            ->sortByDesc('similarity')
-            ->take(3)
-            ->values()
-            ->all();
+            ->sortByDesc('similarity')->take(3)->values()->all();
 
         $max = (float) collect($near)->max('similarity');
-        $recommendation = $max >= 0.94 ? 'review_duplicate' : ($max >= 0.78 ? 'review_similar' : 'likely_unique');
-
         return [
-            'type' => $type,
-            'id' => (int) $item->getKey(),
-            'name' => $name,
-            'parent_id' => is_numeric($parentId) ? (int) $parentId : null,
-            'recommendation' => $recommendation,
-            'duplicate_risk' => $max >= 0.94 ? 'high' : ($max >= 0.78 ? 'medium' : 'low'),
-            'similar' => $near,
+            'type'=>$type,'id'=>(int)$item->getKey(),'name'=>$name,
+            'parent_id'=>is_numeric($parentId)?(int)$parentId:null,
+            'recommendation'=>$max>=0.94?'review_duplicate':($max>=0.78?'review_similar':'likely_unique'),
+            'duplicate_risk'=>$max>=0.94?'high':($max>=0.78?'medium':'low'),
+            'similar'=>$near,
         ];
     }
 
@@ -92,15 +79,28 @@ class FounderReferenceApprovalCandidateService
         if ($a === '' || $b === '') return 0.0;
         if ($a === $b) return 1.0;
         if (str_contains($a, $b) || str_contains($b, $a)) {
-            $min = min(mb_strlen($a), mb_strlen($b));
-            $max = max(mb_strlen($a), mb_strlen($b));
-            return $max > 0 ? max(0.82, $min / $max) : 0.0;
+            $min=min(mb_strlen($a),mb_strlen($b)); $max=max(mb_strlen($a),mb_strlen($b));
+            return $max>0?max(0.82,$min/$max):0.0;
         }
 
-        $aa = mb_convert_encoding($a, 'ASCII', 'UTF-8');
-        $bb = mb_convert_encoding($b, 'ASCII', 'UTF-8');
-        $distance = levenshtein($aa, $bb);
-        $length = max(strlen($aa), strlen($bb), 1);
+        $aChars = preg_split('//u', $a, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $bChars = preg_split('//u', $b, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $distance = $this->unicodeLevenshtein($aChars, $bChars);
+        $length = max(count($aChars), count($bChars), 1);
         return max(0.0, 1.0 - ($distance / $length));
+    }
+
+    /** @param array<int,string> $a @param array<int,string> $b */
+    protected function unicodeLevenshtein(array $a, array $b): int
+    {
+        $previous = range(0, count($b));
+        foreach ($a as $i => $ca) {
+            $current = [$i + 1];
+            foreach ($b as $j => $cb) {
+                $current[$j + 1] = min($current[$j] + 1, $previous[$j + 1] + 1, $previous[$j] + ($ca === $cb ? 0 : 1));
+            }
+            $previous = $current;
+        }
+        return $previous[count($b)] ?? count($a);
     }
 }
