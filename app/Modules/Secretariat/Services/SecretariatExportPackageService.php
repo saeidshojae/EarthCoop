@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Modules\Secretariat\Models\SecretariatExportPackage;
 use App\Modules\Secretariat\Models\SecretariatIntegrityManifest;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -26,6 +27,10 @@ class SecretariatExportPackageService
         if (! $manifest || ! $manifest->version?->is_official) {
             throw ValidationException::withMessages(['manifest' => 'Export requires an integrity manifest of an official version.']);
         }
+
+        // Export exposes the full official package, so service-level view
+        // authorization is mandatory even when a caller forgot controller checks.
+        Gate::forUser($actor)->authorize('view', $manifest->version->record);
 
         $verification = $this->integrity->verify($manifest);
         if (! $verification['stored_payload_valid'] || ! $verification['current_version_matches']) {
@@ -132,7 +137,11 @@ class SecretariatExportPackageService
 
         try {
             return DB::transaction(function () use ($manifest, $version, $actor, $disk, $storageKey, $fileSize, $packageChecksum, $packageManifest) {
-                $lockedManifest = SecretariatIntegrityManifest::query()->whereKey($manifest->id)->lockForUpdate()->firstOrFail();
+                $lockedManifest = SecretariatIntegrityManifest::query()
+                    ->with('version.record.office')
+                    ->whereKey($manifest->id)->lockForUpdate()->firstOrFail();
+                Gate::forUser($actor)->authorize('view', $lockedManifest->version->record);
+
                 $verification = $this->integrity->verify($lockedManifest);
                 if (! $verification['stored_payload_valid'] || ! $verification['current_version_matches']) {
                     throw ValidationException::withMessages(['manifest' => 'Integrity package changed before export commit.']);
