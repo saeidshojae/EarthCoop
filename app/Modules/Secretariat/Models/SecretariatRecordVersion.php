@@ -7,6 +7,7 @@ use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use LogicException;
 
 class SecretariatRecordVersion extends Model
@@ -36,6 +37,20 @@ class SecretariatRecordVersion extends Model
 
             if (! $version->is_official || $version->approved_by === null || $version->approved_at === null) {
                 throw new LogicException('Official promotion requires official state, approver and approval time.');
+            }
+
+            $recordType = (string) $version->record()->value('record_type');
+            if (in_array($recordType, ['contract', 'memorandum_of_understanding', 'agreement'], true)) {
+                $hasDetails = SecretariatContractVersionDetail::query()
+                    ->where('record_version_id', $version->id)
+                    ->exists();
+                $hasSignatory = SecretariatContractSignatory::query()
+                    ->where('record_version_id', $version->id)
+                    ->exists();
+
+                if (! $hasDetails || ! $hasSignatory) {
+                    throw new LogicException('Formal contract/MOU/agreement versions require contract details and at least one signatory snapshot.');
+                }
             }
         });
 
@@ -73,6 +88,16 @@ class SecretariatRecordVersion extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(SecretariatAttachment::class, 'version_id')->orderBy('id');
+    }
+
+    public function contractDetails(): HasOne
+    {
+        return $this->hasOne(SecretariatContractVersionDetail::class, 'record_version_id');
+    }
+
+    public function contractSignatories(): HasMany
+    {
+        return $this->hasMany(SecretariatContractSignatory::class, 'record_version_id')->orderBy('signing_order')->orderBy('id');
     }
 
     public function createdBy(): BelongsTo
