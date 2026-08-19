@@ -2,7 +2,6 @@
 
 namespace App\Modules\Secretariat\Policies;
 
-use App\Models\Group;
 use App\Models\User;
 use App\Modules\Secretariat\Models\SecretariatRecord;
 use App\Modules\Secretariat\Services\SecretariatAclService;
@@ -12,8 +11,10 @@ class SecretariatRecordPolicy
 {
     use ResolvesGroupMembership;
 
-    public function __construct(private readonly SecretariatAclService $acl)
-    {
+    public function __construct(
+        private readonly SecretariatAclService $acl,
+        private readonly SecretariatOfficePolicy $offices,
+    ) {
     }
 
     public function view(User $user, SecretariatRecord $record): bool
@@ -22,28 +23,22 @@ class SecretariatRecordPolicy
             return true;
         }
 
-        // Sensitive records are explicit-capability resources in S2. An ACL can
-        // intentionally grant a user (or a group containing that user) access
-        // even when the principal is not an ordinary member of the office scope.
+        // Sensitive records remain explicit-capability resources. Shareholder
+        // transparency never implies exposure of personal/security/legal material
+        // that has deliberately been classified restricted or confidential.
         if (in_array($record->confidentiality, ['restricted', 'confidential'], true)) {
             return $this->acl->allows($user, $record, 'view');
         }
 
-        $group = $this->groupScope($record);
-        if ($group === null) {
+        $office = $record->relationLoaded('office') ? $record->office : $record->office()->first();
+        if ($office === null || ! $this->offices->view($user, $office)) {
             return false;
         }
 
-        $membership = $this->membership($user, $group);
-        if ($membership === null) {
-            return false;
-        }
-
-        return match ($record->confidentiality) {
-            'public', 'office_members' => true,
-            'leadership' => in_array((int) $membership->role, [2, 3], true),
-            default => false,
-        };
+        // public, office_members and leadership are all oversight-visible to a
+        // principal who can legitimately enter the office. "leadership" remains
+        // a workflow/management label, not a secrecy boundary.
+        return in_array($record->confidentiality, ['public', 'office_members', 'leadership'], true);
     }
 
     public function create(User $user, SecretariatRecord $record): bool
@@ -86,31 +81,13 @@ class SecretariatRecordPolicy
 
     private function canPrepareOfficeRecord(User $user, SecretariatRecord $record): bool
     {
-        if ($this->isAdministrator($user)) {
-            return true;
-        }
-
-        $group = $this->groupScope($record);
-        return $group !== null && in_array((int) optional($this->membership($user, $group))->role, [2, 3], true);
+        $office = $record->relationLoaded('office') ? $record->office : $record->office()->first();
+        return $office !== null && $this->offices->inspect($user, $office);
     }
 
     private function canManageOffice(User $user, SecretariatRecord $record): bool
     {
-        if ($this->isAdministrator($user)) {
-            return true;
-        }
-
-        $group = $this->groupScope($record);
-        return $group !== null && (int) optional($this->membership($user, $group))->role === 3;
-    }
-
-    private function groupScope(SecretariatRecord $record): ?Group
-    {
         $office = $record->relationLoaded('office') ? $record->office : $record->office()->first();
-        if ($office === null || $office->scope_type !== 'group' || $office->scope_id === null) {
-            return null;
-        }
-
-        return Group::query()->find($office->scope_id);
+        return $office !== null && $this->offices->manage($user, $office);
     }
 }
