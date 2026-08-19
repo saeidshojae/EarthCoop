@@ -30,7 +30,7 @@ class SecretariatS9AttachmentHardeningTest extends TestCase
             app(SecretariatAttachmentService::class)->upload(
                 $record,
                 $actor,
-                UploadedFile::fake()->create('too-large.pdf', 2, 'application/pdf'),
+                UploadedFile::fake()->create('too-large.txt', 2, 'text/plain'),
                 disk: 'local'
             );
         } finally {
@@ -39,7 +39,7 @@ class SecretariatS9AttachmentHardeningTest extends TestCase
         }
     }
 
-    public function test_mime_allowlist_rejects_script_payload_before_persistence(): void
+    public function test_mime_allowlist_uses_server_detected_type_and_rejects_disallowed_payload(): void
     {
         [$actor, $record] = $this->fixture();
         Storage::fake('local');
@@ -50,7 +50,7 @@ class SecretariatS9AttachmentHardeningTest extends TestCase
             app(SecretariatAttachmentService::class)->upload(
                 $record,
                 $actor,
-                UploadedFile::fake()->create('payload.php', 1, 'text/x-php'),
+                UploadedFile::fake()->createWithContent('payload.php', '<?php echo "unsafe";'),
                 disk: 'local'
             );
         } finally {
@@ -74,7 +74,7 @@ class SecretariatS9AttachmentHardeningTest extends TestCase
             app(SecretariatAttachmentService::class)->upload(
                 $record,
                 $actor,
-                UploadedFile::fake()->create('unsafe.pdf', 1, 'application/pdf'),
+                UploadedFile::fake()->createWithContent('unsafe.txt', 'EICAR-like-test-content'),
                 disk: 'local'
             );
         } finally {
@@ -91,7 +91,7 @@ class SecretariatS9AttachmentHardeningTest extends TestCase
         $attachment = app(SecretariatAttachmentService::class)->upload(
             $record,
             $actor,
-            UploadedFile::fake()->create('allowed.pdf', 1, 'application/pdf'),
+            UploadedFile::fake()->createWithContent('allowed.txt', 'ordinary secretariat text'),
             disk: 'local'
         );
 
@@ -116,7 +116,7 @@ class SecretariatS9AttachmentHardeningTest extends TestCase
         $attachment = $service->upload(
             $record,
             $actor,
-            UploadedFile::fake()->create('clean.pdf', 1, 'application/pdf'),
+            UploadedFile::fake()->createWithContent('clean.txt', 'clean secretariat text'),
             disk: 'local'
         );
         $scan = SecretariatAttachmentScan::query()->where('attachment_id', $attachment->id)->firstOrFail();
