@@ -42,4 +42,25 @@ return [
         'secretariat.register_formal_record' => App\Services\NajmHoda\FounderOps\FounderSecretariatDecisionService::class,
         'secretariat.close_case' => App\Services\NajmHoda\FounderOps\FounderSecretariatDecisionService::class,
     ],
+
+    /*
+     | Known architectural dependencies
+     |
+     | These actions are intentionally not counted as ordinary missing adapters.
+     | They stay non-executable until the named canonical dependency exists.
+     */
+    'blocked_actions' => [
+        'secretariat.dispatch_formal_record' => [
+            'reason' => 'real_transport_not_available',
+            'dependency' => 'Secretariat transport outbox + delivery callback/reconciliation',
+        ],
+        'governance.change_election_rules' => [
+            'reason' => 'canonical_election_rules_service_pending',
+            'dependency' => 'Permanent-election rule model/service replacing legacy GroupSetting mutation',
+        ],
+        'notifications.change_global_notification_defaults' => [
+            'reason' => 'persisted_global_defaults_missing',
+            'dependency' => 'Canonical persisted notification-default policy/state service',
+        ],
+    ],
 ];
