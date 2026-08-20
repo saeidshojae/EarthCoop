@@ -39,5 +39,7 @@ return [
         'notifications.publish_announcement' => App\Services\NajmHoda\FounderOps\FounderAnnouncementDecisionService::class,
         'invitations.issue_invitation' => App\Services\NajmHoda\FounderOps\FounderInvitationDecisionService::class,
         'invitations.reject_invitation_request' => App\Services\NajmHoda\FounderOps\FounderInvitationDecisionService::class,
+        'secretariat.register_formal_record' => App\Services\NajmHoda\FounderOps\FounderSecretariatDecisionService::class,
+        'secretariat.close_case' => App\Services\NajmHoda\FounderOps\FounderSecretariatDecisionService::class,
     ],
 ];
