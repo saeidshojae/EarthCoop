@@ -27,6 +27,9 @@ class StockPayeeAccountService
             if(!$mapping || !$mapping->account || !(bool)$mapping->account->status) {
                 throw new RuntimeException('Project Stock has no active canonical primary-capital payee account mapping.');
             }
+            if(!in_array((string)$mapping->account->type,['legal_entity','central'],true)) {
+                throw new RuntimeException('Project Stock payee mapping points to a personal or unsupported Najm Bahar account.');
+            }
             return $mapping->account;
         }
 
@@ -39,7 +42,7 @@ class StockPayeeAccountService
             throw new RuntimeException('Explicit Stock payee mapping is reserved for project issuers.');
         }
         if (!(bool)$account->status) throw new RuntimeException('Payee Najm Bahar account must be active.');
-        if (! in_array((string)$account->type,['legal_entity','project','central'],true)) {
+        if (! in_array((string)$account->type,['legal_entity','central'],true)) {
             throw new RuntimeException('Project capital payee must use a non-personal Najm Bahar account.');
         }
 
