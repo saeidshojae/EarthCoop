@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\FounderAnnouncementDraft;
 use App\Models\FounderContentDraft;
 use App\Models\FounderEmailDraft;
 use App\Models\FounderFinancialRiskFinding;
@@ -10,6 +11,7 @@ use App\Models\ModerationCaseSummary;
 use App\Models\SupportReplyDraft;
 use App\Modules\Secretariat\Models\SecretariatFollowUpProposal;
 use App\Services\NajmHoda\FounderOps\FounderActionAuthorityService;
+use App\Services\NajmHoda\FounderOps\FounderAnnouncementDecisionService;
 use App\Services\NajmHoda\FounderOps\FounderApprovalInboxService;
 use App\Services\NajmHoda\FounderOps\FounderAttentionService;
 use App\Services\NajmHoda\FounderOps\FounderAuthoritySnapshotService;
@@ -38,6 +40,7 @@ class FounderOperationsController extends Controller
             'secretariatFollowUps'=>SecretariatFollowUpProposal::query()->with(['dispatch.record:id,registry_number,status'])->where('status','draft')->latest('id')->limit(20)->get(),
             'emailDrafts'=>FounderEmailDraft::query()->where('status','draft')->latest('id')->limit(20)->get(),
             'contentDrafts'=>FounderContentDraft::query()->where('status','draft')->latest('id')->limit(20)->get(),
+            'announcementDrafts'=>FounderAnnouncementDraft::query()->where('status','draft')->latest('id')->limit(20)->get(),
             'financialRiskFindings'=>FounderFinancialRiskFinding::query()->where('status','open')
                 ->orderByRaw("CASE severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END")
                 ->latest('id')->limit(30)->get(),
@@ -61,6 +64,8 @@ class FounderOperationsController extends Controller
     public function decideEmailSend(Request $request,string $requestId,FounderEmailDecisionService $service){return $this->decisionBack($request,$service->decideAndExecute($requestId,...$this->decisionArgs($request)));}
     public function requestContentPublish(Request $request,FounderContentDraft $draft,FounderContentDecisionService $service){return $this->approvalBack($service->requestPublish($draft,(int)$request->user()->id),'درخواست انتشار محتوا در صف تأیید Founder قرار گرفت.');}
     public function decideContentPublish(Request $request,string $requestId,FounderContentDecisionService $service){return $this->decisionBack($request,$service->decideAndExecute($requestId,...$this->decisionArgs($request)));}
+    public function requestAnnouncementPublish(Request $request,FounderAnnouncementDraft $draft,FounderAnnouncementDecisionService $service){return $this->approvalBack($service->requestPublish($draft,(int)$request->user()->id),'درخواست انتشار اطلاعیه در صف تأیید Founder قرار گرفت.');}
+    public function decideAnnouncementPublish(Request $request,string $requestId,FounderAnnouncementDecisionService $service){return $this->decisionBack($request,$service->decideAndExecute($requestId,...$this->decisionArgs($request)));}
 
     private function decisionArgs(Request $request): array{$v=$request->validate(['decision'=>'required|in:approve,reject','reason'=>'nullable|string|max:500']);return [$v['decision'],(int)$request->user()->id,$v['reason']??null];}
     private function approvalBack(array $result,string $message){return back()->with(($result['status']??'')==='awaiting_approval'?'success':'error',($result['status']??'')==='awaiting_approval'?$message:'امکان ایجاد درخواست وجود ندارد.');}
