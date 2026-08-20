@@ -68,16 +68,16 @@ class SecondaryAuctionCloseService
             foreach($plan['allocations'] as $item){
                 $bid=$bids->firstWhere('id',$item['bid_id']);
                 $targetTotal=$item['price_gol']*$item['quantity'];
-                $this->moneyReservations->reduce((string)$bid->reservation_key,$targetTotal,'secondary:'.$auction->id.':bid:'.$bid->id.':allocation',['settlement_price_gol'=>$item['price_gol'],'allocated_quantity'=>$item['quantity']]);
-                if((int)$bid->price_gol!==$item['price_gol']){ $bid->price_gol=$item['price_gol']; $bid->save(); }
-                $result=$this->settlements->settle($auction,$bid,$item['quantity'],'secondary:'.$auction->id.':bid:'.$bid->id.':settle');
+                $this->moneyReservations->reduce((string)$bid->reservation_key,$targetTotal,'secondary:'.$auction->id.':bid:'.$bid->id.':allocation',[
+                    'settlement_price_gol'=>$item['price_gol'],'bid_price_gol'=>(int)$bid->price_gol,'allocated_quantity'=>$item['quantity'],
+                ]);
+                $result=$this->settlements->settle($auction,$bid,$item['quantity'],'secondary:'.$auction->id.':bid:'.$bid->id.':settle',$item['price_gol']);
                 $settled[]=$result;
             }
 
             $freshReservation=HoldingReservation::query()->whereKey($shareReservation->id)->lockForUpdate()->firstOrFail();
             $remaining=(int)$freshReservation->quantity-(int)$freshReservation->settled_quantity-(int)$freshReservation->released_quantity;
             if($remaining>0){
-                // Release the unsold remainder by closing the reservation; consumed quantity remains recorded.
                 $freshReservation->forceFill([
                     'released_quantity'=>(int)$freshReservation->released_quantity+$remaining,
                     'status'=>HoldingReservation::RELEASED,
