@@ -34,6 +34,7 @@ use App\Modules\Secretariat\Models\SecretariatDispatch;
 use App\Modules\Secretariat\Models\SecretariatRecord;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\ExternalPaymentIntent;
+use App\Modules\Stock\Models\StockSettlementAllocation;
 use App\Services\NajmHoda\Runtime\NajmHodaOpsHealthMonitor;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Carbon\CarbonImmutable;
@@ -153,6 +154,11 @@ class FounderOperationsSnapshotService
                     'confirmed' => ExternalPaymentIntent::query()->where('status', ExternalPaymentIntent::CONFIRMED)->count(),
                     'failed' => ExternalPaymentIntent::query()->where('status', ExternalPaymentIntent::FAILED)->count(),
                     'expired_non_terminal' => ExternalPaymentIntent::query()->whereIn('status', [ExternalPaymentIntent::CREATED, ExternalPaymentIntent::PENDING])->whereNotNull('expires_at')->where('expires_at', '<', $now)->count(),
+                ],
+                'settlement_allocations' => [
+                    'prepared' => StockSettlementAllocation::query()->where('state', StockSettlementAllocation::PREPARED)->count(),
+                    'settled' => StockSettlementAllocation::query()->where('state', StockSettlementAllocation::SETTLED)->count(),
+                    'reconciliation_required' => StockSettlementAllocation::query()->where('state', StockSettlementAllocation::RECONCILIATION_REQUIRED)->count(),
                 ],
             ],
             'secretariat' => [
