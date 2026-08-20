@@ -55,9 +55,16 @@ class StockBidAcceptanceService
             throw new RuntimeException('This canonical bid acceptance path is Active Bahar only.');
         }
 
-        if ((string)$auction->market_type === SettlementEligibilityPolicy::MARKET_SECONDARY
-            && (string)$auction->settlement_channel !== SettlementChannel::ACTIVE_BAHAR) {
-            throw new RuntimeException('Secondary-market bids require Active Bahar settlement.');
+        if ((string)$auction->market_type === SettlementEligibilityPolicy::MARKET_SECONDARY) {
+            if ((string)$auction->settlement_channel !== SettlementChannel::ACTIVE_BAHAR) {
+                throw new RuntimeException('Secondary-market bids require Active Bahar settlement.');
+            }
+            if ((int)($auction->seller_user_id ?? 0) === $userId) {
+                throw new RuntimeException('Seller cannot bid on their own secondary listing.');
+            }
+            if (! $auction->seller_holding_reservation_key) {
+                throw new RuntimeException('Secondary auction seller supply is not reserved.');
+            }
         }
 
         if ($priceGol <= 0 || $quantity <= 0) throw new InvalidArgumentException('Bid price and quantity must be positive integers.');
