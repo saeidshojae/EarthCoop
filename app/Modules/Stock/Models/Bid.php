@@ -7,9 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Bid extends Model
 {
     protected $table = 'bids';
-
     protected $fillable = ['auction_id','user_id','price','price_gol','quantity','status'];
-
     protected $casts = ['price'=>'decimal:2','price_gol'=>'integer','quantity'=>'integer'];
 
     protected function hasColumn(string $col): bool
@@ -48,7 +46,6 @@ class Bid extends Model
 
     public function auction(): BelongsTo { return $this->belongsTo(Auction::class); }
     public function user(): BelongsTo { return $this->belongsTo(\App\Models\User::class); }
-
     public function getTotalValueAttribute(): float { return $this->price*$this->quantity; }
 
     public function getTotalGolAttribute(): ?int
@@ -62,13 +59,18 @@ class Bid extends Model
     public function scopeWon($query){ return $query->where('status','won'); }
     public function scopeLost($query){ return $query->where('status','lost'); }
 
+    /** Legacy decimal ordering retained until the legacy AuctionService is retired. */
     public function scopeByPrice($query,$direction='desc')
     {
         try {
-            if(\Schema::hasColumn($this->getTable(),'price_gol')) return $query->orderBy('price_gol',$direction);
             if(\Schema::hasColumn($this->getTable(),'price')) return $query->orderBy('price',$direction);
             if(\Schema::hasColumn($this->getTable(),'bid_price')) return $query->orderBy('bid_price',$direction);
         } catch (\Exception $e) {}
         return $query;
+    }
+
+    public function scopeByCanonicalPrice($query,$direction='desc')
+    {
+        return $query->whereNotNull('price_gol')->orderBy('price_gol',$direction);
     }
 }
