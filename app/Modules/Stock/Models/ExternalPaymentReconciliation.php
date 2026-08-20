@@ -3,6 +3,7 @@
 namespace App\Modules\Stock\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use RuntimeException;
 
 class ExternalPaymentReconciliation extends Model
 {
@@ -15,6 +16,12 @@ class ExternalPaymentReconciliation extends Model
         'metadata' => 'array',
         'occurred_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::updating(fn () => throw new RuntimeException('External payment reconciliation history is append-only.'));
+        static::deleting(fn () => throw new RuntimeException('External payment reconciliation history cannot be deleted.'));
+    }
 
     public function paymentIntent()
     {
