@@ -24,10 +24,12 @@ class InvitationManagementService
         $email=trim((string)$invitation->email);
         $validEmail=filter_var($email,FILTER_VALIDATE_EMAIL)!==false;
         $duplicatePending=Invitation::query()->whereKeyNot($invitation->id)->where('status',0)->where('email',$email)->exists();
-        $existingActiveCode=InvitationCode::query()->whereHas('usedBy',fn($q)=>$q->where('email',$email))->where('used',0)->where(function($q){$q->whereNull('expire_at')->orWhere('expire_at','>',now());})->exists();
+        $recommendation=!$validEmail?'review_invalid_email':($duplicatePending?'review_duplicate_request':'eligible_for_issue');
 
-        $recommendation=!$validEmail?'review_invalid_email':($duplicatePending?'review_duplicate_request':($existingActiveCode?'review_existing_active_code':'eligible_for_issue'));
-        return ['success'=>true,'status'=>'completed','invitation_id'=>$invitation->id,'recommendation'=>$recommendation,'signals'=>['valid_email'=>$validEmail,'duplicate_pending'=>$duplicatePending,'existing_active_code'=>$existingActiveCode]];
+        return [
+            'success'=>true,'status'=>'completed','invitation_id'=>$invitation->id,'recommendation'=>$recommendation,
+            'signals'=>['valid_email'=>$validEmail,'duplicate_pending'=>$duplicatePending],
+        ];
     }
 
     public function issue(Invitation $invitation,int $actorId): array
