@@ -54,10 +54,14 @@ class FounderStockRiskService
                 $findings[]=$this->finding($auction,'external_capital_cutover_blocked','high','External provider/rate-source cutover is not enabled for canonical settlement.',['channel'=>$channel]);
             }
 
-            if($market===SettlementEligibilityPolicy::MARKET_PRIMARY && $supply===SettlementEligibilityPolicy::SUPPLY_TREASURY && $channel===SettlementChannel::ACTIVE_BAHAR){
+            if($issuer===SettlementEligibilityPolicy::ISSUER_EARTHCOOP && $market===SettlementEligibilityPolicy::MARKET_PRIMARY && $supply===SettlementEligibilityPolicy::SUPPLY_TREASURY && $channel===SettlementChannel::ACTIVE_BAHAR){
                 $capital=(string)config('stock.earthcoop_capital_account_number','');
                 $ok=$capital!==''&&Account::query()->where('account_number',$capital)->where('status',1)->exists();
-                if(!$ok) $findings[]=$this->finding($auction,'capital_account_missing','high','Canonical Active Bahar treasury settlement has no configured active EarthCoop capital account.',[]);
+                if(!$ok) $findings[]=$this->finding($auction,'capital_account_missing','high','Canonical EarthCoop Active Bahar treasury settlement has no configured active EarthCoop capital account.',[]);
+            }
+
+            if($issuer===SettlementEligibilityPolicy::ISSUER_PROJECT && $market===SettlementEligibilityPolicy::MARKET_PRIMARY && $supply===SettlementEligibilityPolicy::SUPPLY_TREASURY && $channel===SettlementChannel::ACTIVE_BAHAR){
+                $findings[]=$this->finding($auction,'project_payee_mapping_missing','high','Project primary Active Bahar settlement has no canonical project payee-account mapping yet.',['issuer_id'=>$auction->stock?->issuer_id]);
             }
 
             $reconciliation=StockSettlementAllocation::query()->where('auction_id',$auction->id)->where('state',StockSettlementAllocation::RECONCILIATION_REQUIRED)->count();
