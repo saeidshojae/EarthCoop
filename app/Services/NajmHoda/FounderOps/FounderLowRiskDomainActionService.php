@@ -24,6 +24,7 @@ class FounderLowRiskDomainActionService
         protected FounderStockRiskService $stockRisks,
         protected FounderNajmBaharRiskService $baharRisks,
         protected FounderReadOnlyManagementService $readOnly,
+        protected FounderReferenceApprovalCandidateService $referenceCandidates,
         protected RuntimeEventBus $events
     ) {}
 
@@ -32,6 +33,7 @@ class FounderLowRiskDomainActionService
         return in_array($domain . '.' . $action, [
             'runtime_health.collect_health_snapshot','runtime_health.classify_incident','runtime_health.run_read_only_diagnostic',
             'support.classify_ticket','support.assign_priority','support.draft_reply',
+            'reference_data.detect_duplicate','locations.detect_duplicate',
             'groups.summarize_activity','groups.propose_action_item',
             'governance.summarize_election','governance.flag_anomaly',
             'invitations.summarize_growth',
@@ -49,6 +51,15 @@ class FounderLowRiskDomainActionService
         $reasonCode=is_scalar($context['reason_code']??null)?(string)$context['reason_code']:null;
         $hours=max(1,min((int)($context['window_hours']??24),168));
 
+        if (in_array($domain,['reference_data','locations'],true) && $action==='detect_duplicate') {
+            $type=(string)($context['entity_type']??''); $id=(int)($context['entity_id']??0);
+            $allowed=$domain==='reference_data'?['occupational','experience']:['rural','region','neighborhood','street','alley'];
+            if($id<=0||!in_array($type,$allowed,true)) return ['success'=>false,'status'=>'invalid_context','reason'=>'reference_entity_required'];
+            $candidate=$this->referenceCandidates->candidate($type,$id);
+            if($candidate===null) return ['success'=>false,'status'=>'not_found','reason'=>'pending_reference_not_found'];
+            return $this->complete($domain,$action,$type,$id,$reasonCode,['success'=>true,'status'=>'completed','analysis'=>$candidate]);
+        }
+
         if (in_array($domain,['groups','governance','invitations','admin_settings'],true)) {
             $result=$this->readOnly->summarize($domain,$hours);
             if ($domain==='governance' && $action==='flag_anomaly') {
@@ -58,12 +69,7 @@ class FounderLowRiskDomainActionService
             }
             if ($domain==='groups' && $action==='propose_action_item') {
                 $summary=(array)($result['summary']??[]);
-                $result['proposal']=[
-                    'kind'=>'operational_review',
-                    'created_in_window'=>(int)($summary['created_in_window']??0),
-                    'active_in_window'=>(int)($summary['active_in_window']??0),
-                    'requires_mutation'=>false,
-                ];
+                $result['proposal']=['kind'=>'operational_review','created_in_window'=>(int)($summary['created_in_window']??0),'active_in_window'=>(int)($summary['active_in_window']??0),'requires_mutation'=>false];
             }
             return $this->complete($domain,$action,$domain,0,$reasonCode,$result);
         }
@@ -94,10 +100,7 @@ class FounderLowRiskDomainActionService
             return $this->complete($domain,$action,'auction',$id,$reasonCode,$this->stockRisks->inspect($auction));
         }
 
-        if ($domain==='najm_bahar' && $action==='summarize_financial_state') {
-            return $this->complete($domain,$action,'najm_bahar',0,$reasonCode,$this->readOnly->summarize($domain,$hours));
-        }
-
+        if ($domain==='najm_bahar' && $action==='summarize_financial_state') return $this->complete($domain,$action,'najm_bahar',0,$reasonCode,$this->readOnly->summarize($domain,$hours));
         if ($domain==='najm_bahar') {
             $id=(int)($context['entity_id']??0); $scheduled=$id>0?ScheduledTransaction::query()->find($id):null;
             if (!$scheduled) return ['success'=>false,'status'=>'not_found','reason'=>'scheduled_transaction_not_found'];
@@ -106,9 +109,7 @@ class FounderLowRiskDomainActionService
 
         $snapshot=$this->health->snapshot();
         $result=['success'=>true,'status'=>'completed','domain'=>$domain,'action'=>$action,'health_status'=>(string)($snapshot['status']??'unknown'),'metrics'=>(array)($snapshot['metrics']??[]),'generated_at'=>(string)($snapshot['generated_at']??now()->toIso8601String())];
-        if ($action==='classify_incident') {
-            $result['incident_class']=match($result['health_status']){'critical'=>'P0','warning'=>'P1','healthy'=>'none',default=>'P2'};
-        }
+        if ($action==='classify_incident') $result['incident_class']=match($result['health_status']){'critical'=>'P0','warning'=>'P1','healthy'=>'none',default=>'P2'};
         $this->events->emit('najm_hoda.founder_ops.low_risk.completed',['domain'=>$domain,'action'=>$action,'health_status'=>$result['health_status'],'reason_code'=>$reasonCode]);
         return $result;
     }
