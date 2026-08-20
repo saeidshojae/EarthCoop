@@ -100,13 +100,14 @@ class FounderUserSupportResponseService
             'users',
             'send_support_response',
             function () use ($draft, $founderId): array {
-                $comment = $this->tickets->reply($draft->ticket, $founderId, (string) $draft->body, true);
+                $reply = $this->tickets->reply($draft->ticket, $founderId, (string) $draft->body, true);
                 $draft->update(['status' => 'sent', 'sent_at' => now()]);
                 return [
                     'user_id' => (int) $draft->ticket->user_id,
-                    'ticket_id' => (int) $draft->ticket_id,
+                    'ticket_id' => (int) ($reply['ticket_id'] ?? $draft->ticket_id),
                     'draft_id' => (int) $draft->id,
-                    'comment_id' => (int) $comment->id,
+                    'comment_id' => (int) ($reply['comment_id'] ?? 0),
+                    'ticket_status' => (string) ($reply['status'] ?? $draft->ticket->fresh()->status),
                 ];
             },
             $requestId,
