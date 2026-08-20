@@ -10,6 +10,7 @@ use App\Modules\Stock\Models\Holding;
 use App\Modules\Stock\Models\Stock;
 use App\Modules\Stock\Services\CanonicalAuctionCloseService;
 use App\Modules\Stock\Services\StockBidAcceptanceService;
+use App\Modules\Stock\Services\StockPayeeAccountService;
 use App\Modules\Stock\Settlement\SettlementChannel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -46,6 +47,35 @@ class CanonicalAuctionCloseServiceTest extends TestCase
         $this->assertSame(40,(int)ActiveBaharReservation::where('reservation_key',$b2->reservation_key)->value('settled_amount'));
     }
 
+    public function test_project_primary_proceeds_go_to_project_stock_payee_not_earthcoop_capital(): void
+    {
+        $earthcoopCapital=Account::create(['account_number'=>'0000000001','name'=>'earthcoop capital','type'=>'central','balance'=>0,'balance_active'=>0,'balance_faded'=>0,'status'=>1]);
+        config(['stock.earthcoop_capital_account_number'=>$earthcoopCapital->account_number]);
+        $projectCapital=Account::create(['account_number'=>'2000000001','name'=>'project capital','type'=>'legal_entity','balance'=>0,'balance_active'=>0,'balance_faded'=>0,'status'=>1]);
+
+        $stock=Stock::create([
+            'issuer_type'=>'project','issuer_id'=>77,'startup_valuation'=>1000,'startup_valuation_gol'=>1000,
+            'total_shares'=>100,'available_shares'=>2,'base_share_price'=>1,'base_share_price_gol'=>10,
+        ]);
+        app(StockPayeeAccountService::class)->configureProject($stock,$projectCapital);
+        $auction=Auction::create([
+            'stock_id'=>$stock->id,'market_type'=>'primary','supply_source'=>'treasury',
+            'settlement_channel'=>SettlementChannel::ACTIVE_BAHAR,'quote_unit'=>'gol','shares_count'=>2,
+            'base_price'=>0,'base_price_gol'=>25,'min_bid_gol'=>25,'max_bid_gol'=>100,
+            'start_time'=>now()->subMinute(),'ends_at'=>now()->addHour(),'status'=>'running','type'=>'single_winner','lot_size'=>2,
+        ]);
+        $buyer=User::factory()->create(); $buyerAccount=$this->account($buyer,1000);
+        app(StockBidAcceptanceService::class)->acceptActiveBaharBid($buyer->id,$buyerAccount->account_number,$auction,25,2,'project:primary:1');
+
+        $result=app(CanonicalAuctionCloseService::class)->close($auction);
+
+        $this->assertSame(2,(int)$result['allocated_shares']);
+        $this->assertSame(50,(int)$projectCapital->fresh()->balance_active);
+        $this->assertSame(0,(int)$earthcoopCapital->fresh()->balance_active);
+        $this->assertSame(950,(int)$buyerAccount->fresh()->balance_active);
+        $this->assertSame(2,(int)Holding::where('user_id',$buyer->id)->where('stock_id',$stock->id)->value('quantity'));
+    }
+
     public function test_close_fails_closed_when_active_legacy_bid_exists(): void
     {
         $capital=Account::create(['account_number'=>'0000000001','name'=>'capital','type'=>'central','balance'=>0,'balance_active'=>0,'balance_faded'=>0,'status'=>1]);
@@ -53,7 +83,6 @@ class CanonicalAuctionCloseServiceTest extends TestCase
         $stock=Stock::create(['issuer_type'=>'earthcoop','startup_valuation'=>1000,'startup_valuation_gol'=>1000,'total_shares'=>100,'available_shares'=>10,'base_share_price'=>1,'base_share_price_gol'=>10]);
         $auction=Auction::create(['stock_id'=>$stock->id,'market_type'=>'primary','supply_source'=>'treasury','settlement_channel'=>SettlementChannel::ACTIVE_BAHAR,'quote_unit'=>'gol','shares_count'=>10,'base_price'=>1,'base_price_gol'=>10,'start_time'=>now()->subMinute(),'ends_at'=>now()->addHour(),'status'=>'running','type'=>'pay_as_bid','lot_size'=>10]);
 
-        // Bypass model guard to represent a legacy row that existed before cutover.
         \DB::table('bids')->insert(['auction_id'=>$auction->id,'user_id'=>User::factory()->create()->id,'price'=>10,'quantity'=>1,'status'=>'active','created_at'=>now(),'updated_at'=>now()]);
 
         $this->expectException(\RuntimeException::class);
