@@ -3,6 +3,7 @@
 namespace Tests\Feature\NajmHoda;
 
 use App\Models\Blog;
+use App\Models\Category;
 use App\Models\Group;
 use App\Models\User;
 use App\Services\NajmHoda\FounderOps\FounderExecutiveConnectivityService;
@@ -19,12 +20,14 @@ class FounderBlogConnectivityTest extends TestCase
     {
         $actor=$this->user();
         $group=Group::query()->create(['name'=>'Blog connectivity '.uniqid('',true),'is_open'=>1]);
+        $category=Category::query()->create(['name'=>'Najm Hoda connectivity '.uniqid('',true)]);
         $service=app(FounderLowRiskDomainActionService::class);
 
         $draft=$service->execute('blog','draft_post',[
             'title'=>'پیش‌نویس نجم هدا',
             'body'=>'متن پیش‌نویس',
             'group_id'=>$group->id,
+            'category_id'=>$category->id,
             'reason_code'=>'blog-draft-'.uniqid(),
             'requested_by'=>$actor->id,
         ]);
@@ -41,6 +44,7 @@ class FounderBlogConnectivityTest extends TestCase
             'title'=>'عنوان فعلی',
             'content'=>'متن فعلی',
             'group_id'=>$group->id,
+            'category_id'=>$category->id,
             'user_id'=>$actor->id,
         ]);
 
