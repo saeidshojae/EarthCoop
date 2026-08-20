@@ -4,10 +4,7 @@ namespace App\Services\NajmHoda\FounderOps;
 
 class FounderExecutiveConnectivityService
 {
-    public function __construct(
-        protected FounderActionAuthorityService $authority,
-        protected FounderLowRiskDomainActionService $lowRisk
-    ) {}
+    public function __construct(protected FounderLowRiskDomainActionService $lowRisk) {}
 
     public function report(): array
     {
