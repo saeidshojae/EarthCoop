@@ -24,4 +24,6 @@ Route::middleware(['throttle:najm-hoda-autonomy-write'])->prefix('admin/najm-hod
     Route::post('/email-approvals/{requestId}/decision', [FounderOperationsController::class, 'decideEmailSend'])->name('email-approvals.decision');
     Route::post('/content-drafts/{draft}/request-publish', [FounderOperationsController::class, 'requestContentPublish'])->name('content-drafts.request-publish');
     Route::post('/content-approvals/{requestId}/decision', [FounderOperationsController::class, 'decideContentPublish'])->name('content-approvals.decision');
+    Route::post('/announcement-drafts/{draft}/request-publish', [FounderOperationsController::class, 'requestAnnouncementPublish'])->name('announcement-drafts.request-publish');
+    Route::post('/announcement-approvals/{requestId}/decision', [FounderOperationsController::class, 'decideAnnouncementPublish'])->name('announcement-approvals.decision');
 });
