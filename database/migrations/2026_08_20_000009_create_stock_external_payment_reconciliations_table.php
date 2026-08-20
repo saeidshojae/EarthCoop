@@ -24,7 +24,7 @@ return new class extends Migration
             $table->timestamp('occurred_at')->nullable();
             $table->timestamps();
 
-            $table->index(['payment_intent_id', 'result_status']);
+            $table->index(['payment_intent_id', 'result_status'], 'stock_ext_recon_intent_status_idx');
         });
     }
 
