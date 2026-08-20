@@ -3,12 +3,30 @@ namespace App\Modules\Stock\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use RuntimeException;
 
 class Bid extends Model
 {
     protected $table = 'bids';
     protected $fillable = ['acceptance_key','auction_id','user_id','price','price_gol','reservation_key','external_payment_intent_id','quantity','status'];
     protected $casts = ['price'=>'decimal:2','price_gol'=>'integer','external_payment_intent_id'=>'integer','quantity'=>'integer'];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Bid $bid): void {
+            $auction = Auction::query()->find($bid->auction_id);
+            if (! $auction || ! $auction->hasCanonicalGolPricing()) return;
+
+            if (blank($bid->acceptance_key) || (int)($bid->price_gol ?? 0) <= 0) {
+                throw new RuntimeException('Canonical Gol auction bids must use the canonical bid acceptance service.');
+            }
+
+            if ((string)$auction->settlement_channel === \App\Modules\Stock\Settlement\SettlementChannel::ACTIVE_BAHAR
+                && blank($bid->reservation_key)) {
+                throw new RuntimeException('Canonical Active Bahar bid requires a reservation key before acceptance.');
+            }
+        });
+    }
 
     protected function hasColumn(string $col): bool
     {
