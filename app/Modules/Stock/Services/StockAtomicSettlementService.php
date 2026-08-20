@@ -33,7 +33,8 @@ class StockAtomicSettlementService
         ?string $reservationKey = null,
         ?string $payeeAccountNumber = null,
         ?ExternalPaymentIntent $externalIntent = null,
-        array $metadata = []
+        array $metadata = [],
+        ?int $settlementPriceGol = null
     ): StockSettlementAllocation {
         if ($quantity <= 0) throw new InvalidArgumentException('Settlement quantity must be positive.');
         if (trim($allocationKey) === '') throw new InvalidArgumentException('Settlement allocation key is required.');
@@ -46,7 +47,10 @@ class StockAtomicSettlementService
         if ((int)$bid->auction_id !== (int)$auction->id) throw new RuntimeException('Bid does not belong to auction.');
         if ($quantity > (int)$bid->quantity) throw new RuntimeException('Settlement quantity exceeds bid quantity.');
 
-        $totalGol = $this->pricing->canonicalBidTotal((int)$bid->price_gol, $quantity);
+        $priceGol = $settlementPriceGol ?? (int)$bid->price_gol;
+        if ($priceGol <= 0) throw new InvalidArgumentException('Settlement price must be positive integer Gol.');
+        if ($priceGol > (int)$bid->price_gol) throw new RuntimeException('Settlement price cannot exceed bidder price.');
+        $totalGol = $this->pricing->canonicalBidTotal($priceGol, $quantity);
         $channel = (string)$auction->settlement_channel;
 
         if ($channel === SettlementChannel::ACTIVE_BAHAR) {
@@ -65,9 +69,9 @@ class StockAtomicSettlementService
             if ((string)$externalIntent->reference_id !== (string)$bid->id) throw new RuntimeException('External payment intent is not bound to this bid.');
         }
 
-        return DB::transaction(function () use ($auction,$bid,$quantity,$allocationKey,$reservationKey,$payeeAccountNumber,$externalIntent,$metadata,$totalGol,$channel) {
+        return DB::transaction(function () use ($auction,$bid,$quantity,$allocationKey,$reservationKey,$payeeAccountNumber,$externalIntent,$metadata,$totalGol,$channel,$priceGol) {
             $existing = StockSettlementAllocation::query()->where('allocation_key',$allocationKey)->lockForUpdate()->first();
-            if ($existing) return $this->assertSameAllocation($existing,$auction,$bid,$quantity,$totalGol,$channel,$reservationKey,$externalIntent);
+            if ($existing) return $this->assertSameAllocation($existing,$auction,$bid,$quantity,$totalGol,$channel,$reservationKey,$externalIntent,$priceGol);
 
             return StockSettlementAllocation::create([
                 'allocation_key'=>$allocationKey,
@@ -77,7 +81,7 @@ class StockAtomicSettlementService
                 'stock_id'=>$auction->stock_id,
                 'settlement_channel'=>$channel,
                 'quantity'=>$quantity,
-                'price_gol'=>(int)$bid->price_gol,
+                'price_gol'=>$priceGol,
                 'total_gol'=>$totalGol,
                 'state'=>StockSettlementAllocation::PREPARED,
                 'money_state'=>$channel===SettlementChannel::ACTIVE_BAHAR?'reserved':($externalIntent?->status===ExternalPaymentIntent::CONFIRMED?'confirmed':'pending'),
@@ -210,9 +214,9 @@ class StockAtomicSettlementService
         }
     }
 
-    protected function assertSameAllocation(StockSettlementAllocation $a,Auction $auction,Bid $bid,int $quantity,int $totalGol,string $channel,?string $reservationKey,?ExternalPaymentIntent $intent): StockSettlementAllocation
+    protected function assertSameAllocation(StockSettlementAllocation $a,Auction $auction,Bid $bid,int $quantity,int $totalGol,string $channel,?string $reservationKey,?ExternalPaymentIntent $intent,int $priceGol): StockSettlementAllocation
     {
-        if ((int)$a->auction_id!==(int)$auction->id || (int)$a->bid_id!==(int)$bid->id || (int)$a->quantity!==$quantity || (int)$a->total_gol!==$totalGol || $a->settlement_channel!==$channel || (string)($a->reservation_key??'')!==(string)($reservationKey??'') || (int)($a->external_payment_intent_id??0)!==(int)($intent?->id??0)) {
+        if ((int)$a->auction_id!==(int)$auction->id || (int)$a->bid_id!==(int)$bid->id || (int)$a->quantity!==$quantity || (int)$a->total_gol!==$totalGol || (int)$a->price_gol!==$priceGol || $a->settlement_channel!==$channel || (string)($a->reservation_key??'')!==(string)($reservationKey??'') || (int)($a->external_payment_intent_id??0)!==(int)($intent?->id??0)) {
             throw new RuntimeException('Stock settlement allocation idempotency key conflicts with existing allocation.');
         }
         return $a;
