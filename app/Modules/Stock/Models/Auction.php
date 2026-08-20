@@ -11,13 +11,13 @@ class Auction extends Model
     protected $table = 'auctions';
 
     protected $fillable = [
-        'stock_id','market_type','supply_source','settlement_channel','quote_unit','shares_count',
+        'stock_id','seller_user_id','seller_holding_reservation_key','market_type','supply_source','settlement_channel','quote_unit','shares_count',
         'base_price','base_price_gol','start_time','end_time','ends_at','status','type','settlement_mode',
         'min_bid','min_bid_gol','max_bid','max_bid_gol','lot_size','channel_id','info',
     ];
 
     protected $casts = [
-        'base_price'=>'decimal:2','base_price_gol'=>'integer','min_bid'=>'decimal:2','min_bid_gol'=>'integer',
+        'seller_user_id'=>'integer','base_price'=>'decimal:2','base_price_gol'=>'integer','min_bid'=>'decimal:2','min_bid_gol'=>'integer',
         'max_bid'=>'decimal:2','max_bid_gol'=>'integer','start_time'=>'datetime','end_time'=>'datetime','ends_at'=>'datetime',
         'shares_count'=>'integer','lot_size'=>'integer',
     ];
@@ -25,6 +25,7 @@ class Auction extends Model
     public function stock(): BelongsTo { return $this->belongsTo(Stock::class); }
     public function bids(): HasMany { return $this->hasMany(Bid::class); }
     public function activeBids(): HasMany { return $this->hasMany(Bid::class)->where('status','active'); }
+    public function seller(): BelongsTo { return $this->belongsTo(\App\Models\User::class,'seller_user_id'); }
 
     public function assertSettlementEligible(?SettlementEligibilityPolicy $policy=null): void
     {
