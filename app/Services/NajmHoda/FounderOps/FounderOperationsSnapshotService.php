@@ -33,6 +33,7 @@ use App\Modules\Secretariat\Models\SecretariatCase;
 use App\Modules\Secretariat\Models\SecretariatDispatch;
 use App\Modules\Secretariat\Models\SecretariatRecord;
 use App\Modules\Stock\Models\Auction;
+use App\Modules\Stock\Models\ExternalPaymentIntent;
 use App\Services\NajmHoda\Runtime\NajmHodaOpsHealthMonitor;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Carbon\CarbonImmutable;
@@ -146,6 +147,13 @@ class FounderOperationsSnapshotService
                 'scheduled_auctions' => Auction::query()->scheduled()->count(),
                 'ending_within_24h' => Auction::query()->running()->whereNotNull('ends_at')->whereBetween('ends_at', [$now, $next24h])->count(),
                 'expired_unsettled' => Auction::query()->whereNotNull('ends_at')->where('ends_at', '<', $now)->where('status', '!=', 'settled')->count(),
+                'external_payment_intents' => [
+                    'created' => ExternalPaymentIntent::query()->where('status', ExternalPaymentIntent::CREATED)->count(),
+                    'pending' => ExternalPaymentIntent::query()->where('status', ExternalPaymentIntent::PENDING)->count(),
+                    'confirmed' => ExternalPaymentIntent::query()->where('status', ExternalPaymentIntent::CONFIRMED)->count(),
+                    'failed' => ExternalPaymentIntent::query()->where('status', ExternalPaymentIntent::FAILED)->count(),
+                    'expired_non_terminal' => ExternalPaymentIntent::query()->whereIn('status', [ExternalPaymentIntent::CREATED, ExternalPaymentIntent::PENDING])->whereNotNull('expires_at')->where('expires_at', '<', $now)->count(),
+                ],
             ],
             'secretariat' => [
                 'records_total' => SecretariatRecord::query()->count(),
