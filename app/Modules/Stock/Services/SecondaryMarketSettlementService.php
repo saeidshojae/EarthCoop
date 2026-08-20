@@ -35,7 +35,7 @@ class SecondaryMarketSettlementService
             throw new RuntimeException('Auction is not canonical secondary Active Bahar settlement.');
         }
         if(!$auction->seller_user_id || !$auction->seller_holding_reservation_key) throw new RuntimeException('Secondary auction seller supply is not reserved.');
-        if((int)$bid->auction_id!==(int)$auction->id || $bid->status!=='active') throw new RuntimeException('Bid is not an active bid for this auction.');
+        if((int)$bid->auction_id!==(int)$auction->id) throw new RuntimeException('Bid does not belong to this auction.');
         if((int)$bid->user_id===(int)$auction->seller_user_id) throw new RuntimeException('Seller cannot buy from self.');
         if(!$bid->reservation_key || (int)($bid->price_gol??0)<=0) throw new RuntimeException('Canonical buyer Active Bahar reservation is missing.');
         if($quantity>(int)$bid->quantity) throw new RuntimeException('Settlement quantity exceeds bid quantity.');
@@ -47,10 +47,12 @@ class SecondaryMarketSettlementService
             $existingSellerTx=HoldingTransaction::query()->where('idempotency_key',$settlementKey.':seller-asset')->lockForUpdate()->first();
             $existingBuyerTx=HoldingTransaction::query()->where('idempotency_key',$settlementKey.':buyer-asset')->lockForUpdate()->first();
             if($existingSellerTx&&$existingBuyerTx&&$bid->status==='won') {
+                if((int)$existingSellerTx->quantity!==$quantity || (int)$existingBuyerTx->quantity!==$quantity) throw new RuntimeException('Secondary settlement key conflicts with existing settlement quantity.');
                 return ['status'=>'settled','idempotent'=>true,'bid_id'=>$bid->id,'quantity'=>$quantity];
             }
+            if($bid->status!=='active') throw new RuntimeException('Bid is not settleable with this settlement key.');
 
-            $sellerAccount=Account::query()->where('user_id',$auction->seller_user_id)->where('type','user')->where('status',1)->lockForUpdate()->first();
+            $sellerAccount=Account::query()->where('user_id',$auction->seller_user_id)->where('type','user')->where('status',1)->orderBy('id')->lockForUpdate()->first();
             if(!$sellerAccount) throw new RuntimeException('Seller active Najm Bahar account not found.');
 
             $moneyReservation=ActiveBaharReservation::query()->where('reservation_key',$bid->reservation_key)->lockForUpdate()->first();
