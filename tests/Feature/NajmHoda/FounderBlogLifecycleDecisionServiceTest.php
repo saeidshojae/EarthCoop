@@ -19,7 +19,12 @@ class FounderBlogLifecycleDecisionServiceTest extends TestCase
     {
         $founder = User::factory()->create(['is_system' => false]);
         $author = User::factory()->create(['is_system' => false]);
-        $group = Group::factory()->create();
+        $group = Group::query()->create([
+            'group_type' => 'public',
+            'name' => 'Founder Ops Blog Group',
+            'location_level' => 'neighborhood',
+            'is_open' => 1,
+        ]);
         $category = Category::query()->create(['name' => 'Founder Ops Blog']);
         config(['najm-hoda-founder-action-policy.founder_approval.user_ids' => [$founder->id]]);
 
@@ -57,10 +62,10 @@ class FounderBlogLifecycleDecisionServiceTest extends TestCase
         $report = app(FounderExecutiveConnectivityService::class)->report();
 
         $this->assertSame('connected', data_get($report, 'domains.blog.actions.delete_post.state'));
-        $this->assertSame('blocked', data_get($report, 'domains.blog.actions.unpublish_post.state'));
+        $this->assertSame('blocked_dependency', data_get($report, 'domains.blog.actions.unpublish_post.state'));
         $this->assertSame(
             'publication_state_missing',
-            data_get($report, 'domains.blog.actions.unpublish_post.blocker.reason')
+            data_get($report, 'domains.blog.actions.unpublish_post.block.reason')
         );
     }
 }
