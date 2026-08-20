@@ -42,7 +42,7 @@ class FounderStockRiskService
             if($legacyBids>0) $findings[]=$this->finding($auction,'legacy_bid_in_canonical_auction','high','Canonical auction contains legacy bids and cannot be safely settled.',['count'=>$legacyBids]);
 
             if($market===SettlementEligibilityPolicy::MARKET_SECONDARY){
-                if(!config('stock.secondary_market_enabled',false)) $findings[]=$this->finding($auction,'secondary_cutover_blocked','high','Secondary settlement code exists but runtime cutover remains disabled until full validation is complete.',[]);
+                if(!config('stock.secondary_market_enabled',false)) $findings[]=$this->finding($auction,'secondary_cutover_blocked','high','Secondary seller-side backend and listing UX are implemented, but runtime activation remains disabled pending target-environment tests/readiness signoff.',[]);
                 if(!$auction->seller_user_id||!$auction->seller_holding_reservation_key) {
                     $findings[]=$this->finding($auction,'secondary_seller_supply_missing','high','Secondary auction has no canonical seller identity/share reservation.',[]);
                 } else {
