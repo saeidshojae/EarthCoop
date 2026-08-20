@@ -2,6 +2,7 @@
 
 namespace App\Services\NajmHoda\FounderOps;
 
+use App\Models\Blog;
 use App\Models\EmailTemplate;
 use App\Models\Ticket;
 use App\Modules\NajmBahar\Models\ScheduledTransaction;
@@ -27,6 +28,7 @@ class FounderLowRiskDomainActionService
         protected FounderReadOnlyManagementService $readOnly,
         protected FounderReferenceApprovalCandidateService $referenceCandidates,
         protected FounderEmailDraftService $emailDrafts,
+        protected FounderContentDraftService $contentDrafts,
         protected FounderAnnouncementDraftService $announcementDrafts,
         protected RuntimeEventBus $events
     ) {}
@@ -43,6 +45,7 @@ class FounderLowRiskDomainActionService
             'admin_settings.audit_configuration',
             'reports_moderation.prepare_case_summary','reports_moderation.classify_report',
             'email.draft_email','email.preview_template',
+            'blog.draft_post','blog.suggest_edit',
             'notifications.draft_announcement',
             'secretariat.prepare_follow_up',
             'stock.summarize_auction','stock.flag_settlement_issue',
@@ -90,6 +93,33 @@ class FounderLowRiskDomainActionService
                 is_numeric($context['requested_by']??null)?(int)$context['requested_by']:null
             );
             return $this->complete('email',$action,'founder_email_draft',(int)($result['draft_id']??0),$reasonCode,$result);
+        }
+
+        if ($domain==='blog') {
+            if ($action==='draft_post') {
+                $result=$this->contentDrafts->draft(
+                    (string)($context['title']??''),(string)($context['body']??''),
+                    is_numeric($context['group_id']??null)?(int)$context['group_id']:null,
+                    is_numeric($context['category_id']??null)?(int)$context['category_id']:null,
+                    $reasonCode,is_numeric($context['requested_by']??null)?(int)$context['requested_by']:null
+                );
+                return $this->complete('blog',$action,'founder_content_draft',(int)($result['draft_id']??0),$reasonCode,$result);
+            }
+
+            $blogId=(int)($context['entity_id']??0);
+            $blog=$blogId>0?Blog::query()->find($blogId):null;
+            if(!$blog)return ['success'=>false,'status'=>'not_found','reason'=>'blog_post_not_found'];
+            return $this->complete('blog',$action,'blog',$blogId,$reasonCode,[
+                'success'=>true,'status'=>'completed','proposal'=>[
+                    'blog_id'=>$blogId,
+                    'current_title'=>(string)$blog->title,
+                    'current_body'=>(string)$blog->content,
+                    'suggested_title'=>is_scalar($context['suggested_title']??null)?(string)$context['suggested_title']:null,
+                    'suggested_body'=>is_scalar($context['suggested_body']??null)?(string)$context['suggested_body']:null,
+                    'requires_mutation'=>true,
+                    'execution_mode'=>'approval_required_future_edit_adapter',
+                ],
+            ]);
         }
 
         if (in_array($domain,['reference_data','locations'],true) && $action==='detect_duplicate') {
