@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\FounderOperationsController;
+use App\Http\Controllers\Admin\FounderStockPayeeController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['throttle:najm-hoda-autonomy-read'])->prefix('admin/najm-hoda/founder-ops')->name('admin.najm-hoda.founder-ops.')->group(function (): void {
@@ -10,6 +11,7 @@ Route::middleware(['throttle:najm-hoda-autonomy-read'])->prefix('admin/najm-hoda
     Route::get('/autonomy-plan', [FounderOperationsController::class, 'autonomyPlan'])->name('autonomy-plan');
     Route::get('/approvals', [FounderOperationsController::class, 'approvals'])->name('approvals');
     Route::get('/authority', [FounderOperationsController::class, 'authority'])->name('authority');
+    Route::get('/stock-payees', [FounderStockPayeeController::class, 'index'])->name('stock-payees.index');
 });
 
 Route::middleware(['throttle:najm-hoda-autonomy-write'])->prefix('admin/najm-hoda/founder-ops')->name('admin.najm-hoda.founder-ops.')->group(function (): void {
@@ -23,4 +25,6 @@ Route::middleware(['throttle:najm-hoda-autonomy-write'])->prefix('admin/najm-hod
     Route::post('/email-approvals/{requestId}/decision', [FounderOperationsController::class, 'decideEmailSend'])->name('email-approvals.decision');
     Route::post('/content-drafts/{draft}/request-publish', [FounderOperationsController::class, 'requestContentPublish'])->name('content-drafts.request-publish');
     Route::post('/content-approvals/{requestId}/decision', [FounderOperationsController::class, 'decideContentPublish'])->name('content-approvals.decision');
+    Route::post('/stock-payees/{stock}/request', [FounderStockPayeeController::class, 'requestConfigure'])->name('stock-payees.request');
+    Route::post('/stock-payees/approvals/{requestId}/decision', [FounderStockPayeeController::class, 'decide'])->name('stock-payees.decision');
 });
