@@ -2,7 +2,6 @@
 
 namespace App\Modules\Stock\Services;
 
-use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Services\ActiveBaharReservationService;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Bid;
@@ -17,6 +16,7 @@ class CanonicalAuctionCloseService
     public function __construct(
         private readonly StockAtomicSettlementService $settlements,
         private readonly ActiveBaharReservationService $reservations,
+        private readonly StockPayeeAccountService $payees,
     ) {}
 
     public function close(Auction $auction): array
@@ -26,16 +26,12 @@ class CanonicalAuctionCloseService
 
         if (! $auction->hasCanonicalGolPricing()) throw new RuntimeException('Canonical close requires Gol pricing.');
         if ((string)$auction->settlement_channel !== SettlementChannel::ACTIVE_BAHAR) throw new RuntimeException('Canonical close currently supports Active Bahar only.');
-        if ((string)($auction->stock?->issuer_type ?? '') !== SettlementEligibilityPolicy::ISSUER_EARTHCOOP) {
-            throw new RuntimeException('Canonical close with EarthCoop capital account is restricted to EarthCoop-issued Stock until project payee mapping is implemented.');
-        }
         if ((string)$auction->market_type !== SettlementEligibilityPolicy::MARKET_PRIMARY || (string)$auction->supply_source !== SettlementEligibilityPolicy::SUPPLY_TREASURY) {
-            throw new RuntimeException('Canonical close currently supports EarthCoop primary treasury supply only.');
+            throw new RuntimeException('Canonical close currently supports primary treasury supply only.');
         }
 
-        $payeeAccountNumber=(string)config('stock.earthcoop_capital_account_number','');
-        if($payeeAccountNumber==='') throw new RuntimeException('EarthCoop capital Najm Bahar account is not configured.');
-        if(!Account::query()->where('account_number',$payeeAccountNumber)->where('status',1)->exists()) throw new RuntimeException('Configured EarthCoop capital Najm Bahar account does not exist or is inactive.');
+        $payee=$this->payees->resolvePrimary($auction->stock);
+        $payeeAccountNumber=(string)$payee->account_number;
 
         return DB::transaction(function () use ($auction,$payeeAccountNumber) {
             $auction=Auction::query()->whereKey($auction->id)->lockForUpdate()->firstOrFail();
@@ -74,9 +70,17 @@ class CanonicalAuctionCloseService
                 /** @var Bid $bid */
                 $bid=$bids->firstWhere('id',$item['bid_id']);
                 $targetTotal=$item['price_gol']*$item['quantity'];
-                $this->reservations->reduce((string)$bid->reservation_key,$targetTotal,'auction:'.$auction->id.':bid:'.$bid->id.':allocation',['allocated_quantity'=>$item['quantity'],'settlement_price_gol'=>$item['price_gol']]);
+                $this->reservations->reduce((string)$bid->reservation_key,$targetTotal,'auction:'.$auction->id.':bid:'.$bid->id.':allocation',[
+                    'allocated_quantity'=>$item['quantity'],'settlement_price_gol'=>$item['price_gol']
+                ]);
 
-                $allocation=$this->settlements->prepare($auction,$bid,$item['quantity'],'auction:'.$auction->id.':bid:'.$bid->id.':allocation',(string)$bid->reservation_key,$payeeAccountNumber,null,['auction_type'=>$auction->type],$item['price_gol']);
+                $allocation=$this->settlements->prepare(
+                    $auction,$bid,$item['quantity'],
+                    'auction:'.$auction->id.':bid:'.$bid->id.':allocation',
+                    (string)$bid->reservation_key,$payeeAccountNumber,null,
+                    ['auction_type'=>$auction->type,'payee_account_number'=>$payeeAccountNumber],
+                    $item['price_gol']
+                );
                 $allocation=$this->settlements->settle($allocation);
                 $settled[]=['allocation_id'=>$allocation->id,'bid_id'=>$bid->id,'user_id'=>$bid->user_id,'quantity'=>$item['quantity'],'price_gol'=>$item['price_gol'],'total_gol'=>$targetTotal];
             }
