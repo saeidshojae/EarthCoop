@@ -26,8 +26,11 @@ class CanonicalAuctionCloseService
 
         if (! $auction->hasCanonicalGolPricing()) throw new RuntimeException('Canonical close requires Gol pricing.');
         if ((string)$auction->settlement_channel !== SettlementChannel::ACTIVE_BAHAR) throw new RuntimeException('Canonical close currently supports Active Bahar only.');
+        if ((string)($auction->stock?->issuer_type ?? '') !== SettlementEligibilityPolicy::ISSUER_EARTHCOOP) {
+            throw new RuntimeException('Canonical close with EarthCoop capital account is restricted to EarthCoop-issued Stock until project payee mapping is implemented.');
+        }
         if ((string)$auction->market_type !== SettlementEligibilityPolicy::MARKET_PRIMARY || (string)$auction->supply_source !== SettlementEligibilityPolicy::SUPPLY_TREASURY) {
-            throw new RuntimeException('Canonical close currently supports primary treasury supply only.');
+            throw new RuntimeException('Canonical close currently supports EarthCoop primary treasury supply only.');
         }
 
         $payeeAccountNumber=(string)config('stock.earthcoop_capital_account_number','');
