@@ -4,6 +4,7 @@ namespace Tests\Feature\NajmHoda;
 
 use App\Services\NajmHoda\FounderOps\FounderActionAuthorityService;
 use App\Services\NajmHoda\FounderOps\FounderActionRequestService;
+use App\Services\NajmHoda\FounderOps\FounderDelegationGrantService;
 use App\Services\NajmHoda\FounderOps\FounderManagedDomainRegistry;
 use App\Services\NajmHoda\Runtime\NajmHodaAutonomyApprovalService;
 use Tests\TestCase;
@@ -34,6 +35,7 @@ class FounderActionRequestServiceTest extends TestCase
         $service = new FounderActionRequestService(
             app(FounderActionAuthorityService::class),
             app(FounderManagedDomainRegistry::class),
+            app(FounderDelegationGrantService::class),
             $approvals
         );
 
@@ -56,6 +58,7 @@ class FounderActionRequestServiceTest extends TestCase
         $service = new FounderActionRequestService(
             app(FounderActionAuthorityService::class),
             app(FounderManagedDomainRegistry::class),
+            app(FounderDelegationGrantService::class),
             $approvals
         );
 
@@ -71,12 +74,13 @@ class FounderActionRequestServiceTest extends TestCase
         $service = new FounderActionRequestService(
             app(FounderActionAuthorityService::class),
             app(FounderManagedDomainRegistry::class),
+            app(FounderDelegationGrantService::class),
             $approvals
         );
 
         $result = $service->prepare('support', 'classify_ticket');
 
-        $this->assertSame('delegation_disabled', $result['status']);
+        $this->assertSame('delegation_required', $result['status']);
         $this->assertFalse(data_get($result, 'decision.may_execute'));
     }
 }
