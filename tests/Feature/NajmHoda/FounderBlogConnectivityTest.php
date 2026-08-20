@@ -57,17 +57,22 @@ class FounderBlogConnectivityTest extends TestCase
         $this->assertSame('متن فعلی',$blog->fresh()->content);
     }
 
-    public function test_connectivity_report_marks_blog_and_notifications_managed(): void
+    public function test_connectivity_report_exposes_connected_actions_and_remaining_gaps(): void
     {
         $report=app(FounderExecutiveConnectivityService::class)->report();
 
-        $this->assertSame('managed',$report['domains']['blog']['stage']);
-        $this->assertSame('managed',$report['domains']['notifications']['stage']);
+        $this->assertSame('partial',$report['domains']['blog']['stage']);
+        $this->assertSame('partial',$report['domains']['notifications']['stage']);
+
         $this->assertSame('connected',$report['domains']['blog']['actions']['draft_post']['state']);
         $this->assertSame('connected',$report['domains']['blog']['actions']['suggest_edit']['state']);
         $this->assertSame('connected',$report['domains']['blog']['actions']['publish_post']['state']);
+        $this->assertSame('missing',$report['domains']['blog']['actions']['unpublish_post']['state']);
+        $this->assertSame('missing',$report['domains']['blog']['actions']['delete_post']['state']);
+
         $this->assertSame('connected',$report['domains']['notifications']['actions']['draft_announcement']['state']);
         $this->assertSame('connected',$report['domains']['notifications']['actions']['publish_announcement']['state']);
+        $this->assertSame('missing',$report['domains']['notifications']['actions']['change_global_notification_defaults']['state']);
     }
 
     private function user(): User
