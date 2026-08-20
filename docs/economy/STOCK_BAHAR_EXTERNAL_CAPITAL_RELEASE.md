@@ -21,9 +21,9 @@ Canonical flow:
 
 ## Current audit findings
 
-The legacy Stock wallet remains transitional and must never become a Bahar wallet. `AuctionService` still assumes the legacy wallet path, float/decimal price semantics and تومان presentation. It is intentionally not wired to the new gateway yet.
+The legacy Stock wallet remains transitional and must never become a Bahar wallet. `AuctionService` still assumes the legacy wallet path, float/decimal price semantics and تومان presentation. It is intentionally not wired to the new gateways yet.
 
-Najm Bahar already provides integer money state, account locking, idempotent transactions and double-entry ledger semantics. Stock must use Najm Bahar primitives and must not mutate its balances directly.
+Najm Bahar provides integer money state, account locking, idempotent transactions and double-entry ledger semantics. Stock must use Najm Bahar primitives and must not mutate its balances directly.
 
 ## Slice 1 implemented — settlement boundary
 
@@ -41,7 +41,7 @@ Najm Bahar already provides integer money state, account locking, idempotent tra
 
 ## Slice 2B implemented — Active Bahar reservation + gateway
 
-A canonical Najm Bahar reservation ledger now exists in `najm_active_bahar_reservations`.
+A canonical Najm Bahar reservation ledger exists in `najm_active_bahar_reservations`.
 
 Properties:
 
@@ -55,17 +55,35 @@ Properties:
 8. account locks use deterministic ordering for payer/payee settlement/refund;
 9. `NajmBaharSettlementGateway` implements the Stock settlement contract for `active_bahar` without using the legacy Stock wallet.
 
-### Deliberate boundary after Slice 2B
+## Slice 3 implemented — external capital rail
 
-`AuctionService` is still **not** connected to the gateway. That wiring is postponed until price migration and the auction allocation state machine can guarantee that the amount passed to the gateway is integer Gol and that asset allocation cannot diverge from money settlement.
+A provider-neutral external payment rail now exists for IRR/USD.
 
-The reservation primitive is therefore available and test-covered, but legacy bid settlement remains isolated rather than being partially migrated.
+### Data model
+
+`stock_external_payment_intents` stores payment intent state only. It is not a balance table and never credits Najm Bahar.
+
+`stock_external_payment_reconciliations` stores append-only provider/reconciliation events. Reconciliation rows cannot be updated or deleted through the model, and intent deletion cannot cascade-delete reconciliation history.
+
+### Boundary rules
+
+1. external intents can only be created from an Auction that passes `SettlementEligibilityPolicy`;
+2. therefore external settlement remains restricted to EarthCoop + primary + treasury;
+3. channel and currency must match exactly: `external_irr -> IRR`, `external_usd -> USD`;
+4. `amount_minor` is a positive integer external-currency amount; it is not Bahar and it is not stored-value balance;
+5. intent and reconciliation identities are idempotent and conflicting reuse fails closed;
+6. a confirmation must match the exact intent amount/currency;
+7. expired intents cannot be confirmed;
+8. provider payloads are recursively stripped of common secrets/payment credentials before persistence;
+9. confirmed external payment does not mutate any Najm Bahar account or mint Bahar.
+
+### Deliberate boundary after Slice 3
+
+The external rail is **not yet registered as an Auction settlement gateway**. Slice 4 must first create deterministic Bahar/Gol quote and fiat quote snapshot semantics so the system cannot confuse a Gol amount with an IRR/USD provider amount.
+
+A confirmed payment intent is only evidence that external funds reconciled. It does not by itself allocate Stock/Holding. Asset allocation remains deferred to the atomic settlement state machine in Slice 5.
 
 ## Next slices
-
-### Slice 3 — External capital rail
-
-Implement external payment intent/reconciliation records for IRR/USD. These records represent provider/payment state, not a stored-value wallet. No fiat balance is credited to users and no Bahar is minted.
 
 ### Slice 4 — Bahar-denominated price migration
 
@@ -73,7 +91,7 @@ Replace float/decimal auction arithmetic with integer Gol quote fields and deter
 
 ### Slice 5 — Atomic asset settlement
 
-Connect auction reservation/settlement only after successful money settlement and Stock/Holding allocation form an idempotent state machine with compensating/reconciliation handling.
+Connect bid reservation/payment confirmation and Stock/Holding allocation through one idempotent settlement state machine with reconciliation/compensation handling.
 
 ### Slice 6 — Secondary market gate
 
