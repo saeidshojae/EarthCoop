@@ -7,8 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Bid extends Model
 {
     protected $table = 'bids';
-    protected $fillable = ['auction_id','user_id','price','price_gol','quantity','status'];
-    protected $casts = ['price'=>'decimal:2','price_gol'=>'integer','quantity'=>'integer'];
+    protected $fillable = ['acceptance_key','auction_id','user_id','price','price_gol','reservation_key','external_payment_intent_id','quantity','status'];
+    protected $casts = ['price'=>'decimal:2','price_gol'=>'integer','external_payment_intent_id'=>'integer','quantity'=>'integer'];
 
     protected function hasColumn(string $col): bool
     {
@@ -46,6 +46,7 @@ class Bid extends Model
 
     public function auction(): BelongsTo { return $this->belongsTo(Auction::class); }
     public function user(): BelongsTo { return $this->belongsTo(\App\Models\User::class); }
+    public function externalPaymentIntent(): BelongsTo { return $this->belongsTo(ExternalPaymentIntent::class,'external_payment_intent_id'); }
     public function getTotalValueAttribute(): float { return $this->price*$this->quantity; }
 
     public function getTotalGolAttribute(): ?int
