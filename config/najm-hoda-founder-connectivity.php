@@ -4,9 +4,8 @@ return [
     /*
      | Executive connectivity evidence
      |
-     | This file is intentionally explicit. A policy entry alone is not proof that
-     | Najm Hoda can execute the action. Each adapter below names the canonical
-     | service that completes the action contract.
+     | A policy entry alone is not proof that Najm Hoda can execute the action.
+     | Each adapter below names the canonical service that completes the contract.
      */
     'read_domains' => [
         'users','support','reference_data','locations','groups','governance',
@@ -16,10 +15,11 @@ return [
 
     'proposal_adapters' => [
         'support.draft_reply' => App\Services\Support\TicketReplyDraftService::class,
+        'reference_data.recommend_approval' => App\Services\NajmHoda\FounderOps\FounderReferenceApprovalCandidateService::class,
+        'locations.recommend_approval' => App\Services\NajmHoda\FounderOps\FounderReferenceApprovalCandidateService::class,
         'reports_moderation.prepare_case_summary' => App\Services\Moderation\ModerationCaseSummaryService::class,
+        'invitations.recommend_request_decision' => App\Services\Invitation\InvitationManagementService::class,
         'secretariat.prepare_follow_up' => App\Modules\Secretariat\Services\SecretariatFollowUpProposalService::class,
-        'email.draft_email' => App\Services\NajmHoda\FounderOps\FounderEmailDraftService::class,
-        'blog.draft_post' => App\Services\NajmHoda\FounderOps\FounderContentDraftService::class,
     ],
 
     'approval_adapters' => [
@@ -29,5 +29,7 @@ return [
         'reports_moderation.resolve_report' => App\Services\NajmHoda\FounderOps\FounderModerationDecisionService::class,
         'email.send_email' => App\Services\NajmHoda\FounderOps\FounderEmailDecisionService::class,
         'blog.publish_post' => App\Services\NajmHoda\FounderOps\FounderContentDecisionService::class,
+        'invitations.issue_invitation' => App\Services\NajmHoda\FounderOps\FounderInvitationDecisionService::class,
+        'invitations.reject_invitation_request' => App\Services\NajmHoda\FounderOps\FounderInvitationDecisionService::class,
     ],
 ];
