@@ -24,6 +24,34 @@ class ActiveBaharReservationService
         });
     }
 
+    public function reduce(string $reservationKey, int $newAmount, string $adjustmentKey, array $metadata = []): ActiveBaharReservation
+    {
+        $this->assertPositive($newAmount); $this->assertKey($adjustmentKey);
+        return DB::transaction(function () use ($reservationKey,$newAmount,$adjustmentKey,$metadata) {
+            $r=$this->lockedReservation($reservationKey);
+            if ($r->status!==ActiveBaharReservation::RESERVED) throw new RuntimeException('Only an active reservation can be reduced.');
+
+            $adjustments=(array)data_get($r->metadata,'reservation_adjustments',[]);
+            if (isset($adjustments[$adjustmentKey])) {
+                if ((int)$adjustments[$adjustmentKey]!==$newAmount) throw new RuntimeException('Reservation adjustment key conflicts with an existing adjustment.');
+                return $r;
+            }
+            if ($newAmount>(int)$r->amount) throw new RuntimeException('Reservation reduction cannot increase reserved amount.');
+            if ($newAmount===(int)$r->amount) {
+                $adjustments[$adjustmentKey]=$newAmount;
+                $r->metadata=array_merge((array)$r->metadata,$metadata,['reservation_adjustments'=>$adjustments]); $r->save();
+                return $r->fresh();
+            }
+
+            $adjustments[$adjustmentKey]=$newAmount;
+            $r->forceFill([
+                'amount'=>$newAmount,
+                'metadata'=>array_merge((array)$r->metadata,$metadata,['reservation_adjustments'=>$adjustments]),
+            ])->save();
+            return $r->fresh();
+        });
+    }
+
     public function release(string $reservationKey,string $releaseKey): ActiveBaharReservation
     {
         $this->assertKey($releaseKey);
