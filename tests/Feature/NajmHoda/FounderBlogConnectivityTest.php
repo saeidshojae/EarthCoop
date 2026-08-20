@@ -71,12 +71,12 @@ class FounderBlogConnectivityTest extends TestCase
         $this->assertSame('connected',$report['domains']['blog']['actions']['draft_post']['state']);
         $this->assertSame('connected',$report['domains']['blog']['actions']['suggest_edit']['state']);
         $this->assertSame('connected',$report['domains']['blog']['actions']['publish_post']['state']);
-        $this->assertSame('missing',$report['domains']['blog']['actions']['unpublish_post']['state']);
-        $this->assertSame('missing',$report['domains']['blog']['actions']['delete_post']['state']);
+        $this->assertSame('blocked_dependency',$report['domains']['blog']['actions']['unpublish_post']['state']);
+        $this->assertSame('connected',$report['domains']['blog']['actions']['delete_post']['state']);
 
         $this->assertSame('connected',$report['domains']['notifications']['actions']['draft_announcement']['state']);
         $this->assertSame('connected',$report['domains']['notifications']['actions']['publish_announcement']['state']);
-        $this->assertSame('missing',$report['domains']['notifications']['actions']['change_global_notification_defaults']['state']);
+        $this->assertSame('blocked_dependency',$report['domains']['notifications']['actions']['change_global_notification_defaults']['state']);
     }
 
     private function user(): User
