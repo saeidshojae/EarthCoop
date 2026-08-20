@@ -6,16 +6,6 @@ $founderApproverIds = array_values(array_filter(array_map(
 ), static fn (?int $value): bool => $value !== null && $value > 0));
 
 return [
-    /*
-     | Founder Operations authority policy
-     |
-     | Modes:
-     |   observe            read-only visibility
-     |   propose            may prepare a recommendation/draft only
-     |   approval_required  execution requires explicit founder approval
-     |   delegated_safe     may execute only when delegation is explicitly enabled
-     |   forbidden          must never execute through Founder Ops
-     */
     'default_mode' => 'forbidden',
 
     'domains' => [
@@ -74,6 +64,7 @@ return [
         ]],
         'stock' => ['actions' => [
             'summarize_auction' => 'delegated_safe', 'flag_settlement_issue' => 'delegated_safe',
+            'configure_payee_account' => 'approval_required',
             'create_auction' => 'approval_required', 'settle_auction' => 'approval_required',
             'transfer_shares' => 'approval_required', 'alter_ownership_history' => 'forbidden',
         ]],
@@ -95,12 +86,10 @@ return [
         ]],
     ],
 
-    // Empty means approval-required actions remain non-executable even if another admin approves them.
     'founder_approval' => [
         'user_ids' => $founderApproverIds,
     ],
 
-    // Delegated-safe actions are disabled globally until the founder explicitly enables delegation.
     'delegation' => [
         'enabled' => false,
         'allowed_domains' => [],
