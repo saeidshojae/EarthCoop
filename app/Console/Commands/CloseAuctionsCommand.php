@@ -3,56 +3,66 @@ namespace App\Console\Commands;
 
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Services\AuctionService;
+use App\Modules\Stock\Services\CanonicalAuctionCloseService;
+use App\Modules\Stock\Services\SecondaryAuctionCloseService;
+use App\Modules\Stock\Settlement\SettlementChannel;
+use App\Modules\Stock\Settlement\SettlementEligibilityPolicy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
 class CloseAuctionsCommand extends Command
 {
-    protected $signature = 'auctions:close';
-    protected $description = 'Close expired auctions and settle them';
-    
-    protected $auctionService;
-    
-    public function __construct(AuctionService $auctionService)
+    protected $signature='auctions:close';
+    protected $description='Close expired legacy/canonical auctions through their authoritative settlement engine';
+
+    public function __construct(
+        protected AuctionService $legacy,
+        protected CanonicalAuctionCloseService $primaryCanonical,
+        protected SecondaryAuctionCloseService $secondaryCanonical,
+    ) { parent::__construct(); }
+
+    public function handle(): int
     {
-        parent::__construct();
-        $this->auctionService = $auctionService;
-    }
-    
-    public function handle()
-    {
-        $expiredAuctions = Auction::running()
-            ->where('ends_at', '<=', now())
-            ->get();
-        
-        $this->info("Found {$expiredAuctions->count()} expired auctions");
-        
-        foreach ($expiredAuctions as $auction) {
+        $expired=Auction::running()->where('ends_at','<=',now())->get();
+        $this->info("Found {$expired->count()} expired auctions");
+
+        foreach($expired as $auction){
             try {
-                $this->info("Closing auction #{$auction->id}...");
-                
-                $results = $this->auctionService->closeAuction($auction);
-                
-                $this->info("Auction #{$auction->id} closed successfully");
-                $this->info("Winners: " . count($results['winners']));
-                $this->info("Total settled: " . ($results['total_settled'] ?? 0));
-                
-                Log::info("Auction closed", [
-                    'auction_id' => $auction->id,
-                    'winners_count' => count($results['winners']),
-                    'total_settled' => $results['total_settled'] ?? 0,
-                ]);
-                
-            } catch (\Exception $e) {
-                $this->error("Failed to close auction #{$auction->id}: " . $e->getMessage());
-                
-                Log::error("Failed to close auction", [
-                    'auction_id' => $auction->id,
-                    'error' => $e->getMessage(),
-                ]);
+                $results=$this->close($auction);
+                $this->info("Auction #{$auction->id}: ".($results['status']??'closed'));
+                Log::info('Auction close dispatched',['auction_id'=>$auction->id,'canonical'=>$auction->hasCanonicalGolPricing(),'result'=>$this->safeResult($results)]);
+            } catch(\Throwable $e){
+                $this->error("Failed auction #{$auction->id}: {$e->getMessage()}");
+                Log::error('Auction close failed',['auction_id'=>$auction->id,'canonical'=>$auction->hasCanonicalGolPricing(),'error'=>$e->getMessage()]);
             }
         }
-        
-        $this->info("Auction closing process completed");
+        return self::SUCCESS;
+    }
+
+    private function close(Auction $auction): array
+    {
+        if(!$auction->hasCanonicalGolPricing()) return $this->legacy->closeAuction($auction);
+
+        $market=(string)$auction->market_type;
+        $supply=(string)$auction->supply_source;
+        $channel=(string)$auction->settlement_channel;
+
+        if($market===SettlementEligibilityPolicy::MARKET_SECONDARY && $supply===SettlementEligibilityPolicy::SUPPLY_HOLDER){
+            if(!config('stock.secondary_market_enabled',false)){
+                return ['status'=>'blocked','reason'=>'secondary_market_disabled','auction_id'=>$auction->id];
+            }
+            return $this->secondaryCanonical->close($auction);
+        }
+
+        if($market===SettlementEligibilityPolicy::MARKET_PRIMARY && $supply===SettlementEligibilityPolicy::SUPPLY_TREASURY && $channel===SettlementChannel::ACTIVE_BAHAR){
+            return $this->primaryCanonical->close($auction);
+        }
+
+        return ['status'=>'blocked','reason'=>'no_enabled_canonical_close_engine','auction_id'=>$auction->id,'settlement_channel'=>$channel];
+    }
+
+    private function safeResult(array $result): array
+    {
+        return array_intersect_key($result,array_flip(['status','reason','auction_id','allocated_shares','clearing_price_gol']));
     }
 }
