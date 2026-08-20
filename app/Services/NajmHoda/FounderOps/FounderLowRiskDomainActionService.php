@@ -23,6 +23,7 @@ class FounderLowRiskDomainActionService
         protected TicketReplyDraftService $replyDrafts,
         protected ModerationCaseSummaryService $moderationCases,
         protected SecretariatFollowUpProposalService $secretariatFollowUps,
+        protected FounderSecretariatCorrespondenceDraftService $secretariatDrafts,
         protected FounderStockRiskService $stockRisks,
         protected FounderNajmBaharRiskService $baharRisks,
         protected FounderReadOnlyManagementService $readOnly,
@@ -47,7 +48,7 @@ class FounderLowRiskDomainActionService
             'email.draft_email','email.preview_template',
             'blog.draft_post','blog.suggest_edit',
             'notifications.draft_announcement',
-            'secretariat.prepare_follow_up',
+            'secretariat.draft_correspondence','secretariat.prepare_follow_up',
             'stock.summarize_auction','stock.flag_settlement_issue',
             'najm_bahar.summarize_financial_state','najm_bahar.flag_transaction_anomaly',
         ], true);
@@ -160,6 +161,10 @@ class FounderLowRiskDomainActionService
         }
 
         if ($domain==='secretariat') {
+            if ($action==='draft_correspondence') {
+                $result=$this->secretariatDrafts->draft($context);
+                return $this->complete($domain,$action,'secretariat_record',(int)($result['record_id']??0),$reasonCode,$result);
+            }
             $id=(int)($context['entity_id']??0); $dispatch=$id>0?SecretariatDispatch::query()->find($id):null;
             if (!$dispatch) return ['success'=>false,'status'=>'not_found','reason'=>'secretariat_dispatch_not_found'];
             return $this->complete($domain,$action,'secretariat_dispatch',$id,$reasonCode,$this->secretariatFollowUps->prepare($dispatch,$reasonCode));
