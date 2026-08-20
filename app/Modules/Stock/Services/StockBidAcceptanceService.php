@@ -56,9 +56,6 @@ class StockBidAcceptanceService
         }
 
         if ((string)$auction->market_type === SettlementEligibilityPolicy::MARKET_SECONDARY) {
-            if ((string)$auction->settlement_channel !== SettlementChannel::ACTIVE_BAHAR) {
-                throw new RuntimeException('Secondary-market bids require Active Bahar settlement.');
-            }
             if ((int)($auction->seller_user_id ?? 0) === $userId) {
                 throw new RuntimeException('Seller cannot bid on their own secondary listing.');
             }
@@ -68,7 +65,9 @@ class StockBidAcceptanceService
         }
 
         if ($priceGol <= 0 || $quantity <= 0) throw new InvalidArgumentException('Bid price and quantity must be positive integers.');
-        if ($auction->min_bid_gol !== null && $priceGol < (int)$auction->min_bid_gol) throw new RuntimeException('Bid price below canonical minimum.');
+        $floor = max((int)($auction->base_price_gol ?? 0), (int)($auction->min_bid_gol ?? 0));
+        if ($floor <= 0) throw new RuntimeException('Canonical auction has no valid bid floor.');
+        if ($priceGol < $floor) throw new RuntimeException('Bid price below canonical floor.');
         if ($auction->max_bid_gol !== null && $priceGol > (int)$auction->max_bid_gol) throw new RuntimeException('Bid price above canonical maximum.');
         if ($quantity > (int)$auction->lot_size) throw new RuntimeException('Bid quantity exceeds lot size.');
 
