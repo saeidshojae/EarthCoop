@@ -46,7 +46,6 @@ class CloseAuctionsCommand extends Command
         $market=(string)$auction->market_type;
         $supply=(string)$auction->supply_source;
         $channel=(string)$auction->settlement_channel;
-        $issuer=(string)($auction->stock?->issuer_type??'');
 
         // Feature flags gate creation of new commitments. Existing canonical
         // auctions must always be allowed to finish their accepted lifecycle.
@@ -59,13 +58,6 @@ class CloseAuctionsCommand extends Command
         if($market===SettlementEligibilityPolicy::MARKET_PRIMARY
             && $supply===SettlementEligibilityPolicy::SUPPLY_TREASURY
             && $channel===SettlementChannel::ACTIVE_BAHAR){
-            if($issuer!==SettlementEligibilityPolicy::ISSUER_EARTHCOOP){
-                return [
-                    'status'=>'blocked',
-                    'reason'=>$issuer===SettlementEligibilityPolicy::ISSUER_PROJECT?'project_payee_mapping_missing':'unsupported_primary_issuer',
-                    'auction_id'=>$auction->id,
-                ];
-            }
             return $this->primaryCanonical->close($auction);
         }
 
