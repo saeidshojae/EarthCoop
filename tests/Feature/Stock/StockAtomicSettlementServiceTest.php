@@ -13,6 +13,7 @@ use App\Modules\Stock\Models\StockSettlementAllocation;
 use App\Modules\Stock\Pricing\FiatQuoteSnapshot;
 use App\Modules\Stock\Services\ExternalCapitalPaymentService;
 use App\Modules\Stock\Services\StockAtomicSettlementService;
+use App\Modules\Stock\Services\StockBidAcceptanceService;
 use App\Modules\Stock\Settlement\SettlementChannel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -26,14 +27,15 @@ class StockAtomicSettlementServiceTest extends TestCase
         $user=User::factory()->create();
         $stock=$this->stock(100);
         $auction=$this->auction($stock,SettlementChannel::ACTIVE_BAHAR);
-        $bid=$this->bid($auction,$user,10,5);
+        $payer=$this->payer($user,100);
+        $bid=app(StockBidAcceptanceService::class)->acceptActiveBaharBid(
+            $user->id,$payer->account_number,$auction,10,5,'accept:settlement:1'
+        );
 
-        $payer=Account::create(['account_number'=>'1000000001','name'=>'payer','type'=>'user','balance'=>100,'balance_active'=>100,'balance_faded'=>0,'status'=>1]);
         $payee=Account::create(['account_number'=>'0000000001','name'=>'treasury','type'=>'system','balance'=>0,'balance_active'=>0,'balance_faded'=>0,'status'=>1]);
-        app(ActiveBaharReservationService::class)->reserve($payer->account_number,50,'bid:1:reserve','auction_bid',$bid->id);
 
         $service=app(StockAtomicSettlementService::class);
-        $allocation=$service->prepare($auction,$bid,5,'allocation:1','bid:1:reserve',$payee->account_number);
+        $allocation=$service->prepare($auction,$bid,5,'allocation:1',$bid->reservation_key,$payee->account_number);
         $first=$service->settle($allocation);
         $second=$service->settle($first);
 
@@ -50,7 +52,7 @@ class StockAtomicSettlementServiceTest extends TestCase
         $user=User::factory()->create();
         $stock=$this->stock(2);
         $auction=$this->auction($stock,SettlementChannel::EXTERNAL_USD);
-        $bid=$this->bid($auction,$user,10,5);
+        $bid=$this->externalBid($auction,$user,10,5,'accept:external:atomic');
         $quote=FiatQuoteSnapshot::fromRate(50,'USD',25,2,'test-rate');
         $payments=app(ExternalCapitalPaymentService::class);
         $intent=$payments->createIntentForAuction($auction,$quote,'intent:atomic','auction_bid',$bid->id,'manual');
@@ -74,13 +76,16 @@ class StockAtomicSettlementServiceTest extends TestCase
     public function test_allocation_key_conflict_fails_closed(): void
     {
         $user=User::factory()->create();
-        $stock=$this->stock(100); $auction=$this->auction($stock,SettlementChannel::ACTIVE_BAHAR); $bid=$this->bid($auction,$user,10,5);
-        $payer=Account::create(['account_number'=>'1000000001','name'=>'payer','type'=>'user','balance'=>100,'balance_active'=>100,'balance_faded'=>0,'status'=>1]);
+        $stock=$this->stock(100);
+        $auction=$this->auction($stock,SettlementChannel::ACTIVE_BAHAR);
+        $payer=$this->payer($user,100);
+        $bid=app(StockBidAcceptanceService::class)->acceptActiveBaharBid(
+            $user->id,$payer->account_number,$auction,10,5,'accept:conflict'
+        );
         $payee=Account::create(['account_number'=>'0000000001','name'=>'treasury','type'=>'system','balance'=>0,'balance_active'=>0,'balance_faded'=>0,'status'=>1]);
-        app(ActiveBaharReservationService::class)->reserve($payer->account_number,50,'reserve:a','auction_bid',$bid->id);
         app(ActiveBaharReservationService::class)->reserve($payer->account_number,40,'reserve:b','auction_bid',$bid->id);
         $service=app(StockAtomicSettlementService::class);
-        $service->prepare($auction,$bid,5,'allocation:same','reserve:a',$payee->account_number);
+        $service->prepare($auction,$bid,5,'allocation:same',$bid->reservation_key,$payee->account_number);
         $this->expectException(\RuntimeException::class);
         $service->prepare($auction,$bid,4,'allocation:same','reserve:b',$payee->account_number);
     }
@@ -95,8 +100,30 @@ class StockAtomicSettlementServiceTest extends TestCase
         return Auction::create(['stock_id'=>$stock->id,'market_type'=>'primary','supply_source'=>'treasury','settlement_channel'=>$channel,'quote_unit'=>'gol','shares_count'=>100,'base_price'=>10,'base_price_gol'=>10,'start_time'=>now(),'ends_at'=>now()->addDay(),'status'=>'running','type'=>'uniform_price','lot_size'=>100]);
     }
 
-    private function bid(Auction $auction,User $user,int $priceGol,int $quantity): Bid
+    private function payer(User $user,int $active): Account
     {
-        return Bid::create(['auction_id'=>$auction->id,'user_id'=>$user->id,'price'=>1,'price_gol'=>$priceGol,'quantity'=>$quantity,'status'=>'active']);
+        return Account::create([
+            'account_number'=>'1'.str_pad((string)$user->id,9,'0',STR_PAD_LEFT),
+            'user_id'=>$user->id,
+            'name'=>'payer',
+            'type'=>'user',
+            'balance'=>$active,
+            'balance_active'=>$active,
+            'balance_faded'=>0,
+            'status'=>1,
+        ]);
+    }
+
+    private function externalBid(Auction $auction,User $user,int $priceGol,int $quantity,string $acceptanceKey): Bid
+    {
+        return Bid::create([
+            'acceptance_key'=>$acceptanceKey,
+            'auction_id'=>$auction->id,
+            'user_id'=>$user->id,
+            'price'=>0,
+            'price_gol'=>$priceGol,
+            'quantity'=>$quantity,
+            'status'=>'active',
+        ]);
     }
 }
