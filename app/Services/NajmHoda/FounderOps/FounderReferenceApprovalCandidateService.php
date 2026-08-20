@@ -69,7 +69,9 @@ class FounderReferenceApprovalCandidateService
     {
         $value = Str::lower(trim($value));
         $value = str_replace(['ي','ك','ۀ','ة','ؤ','إ','أ'], ['ی','ک','ه','ه','و','ا','ا'], $value);
-        $value = preg_replace('/[\x{200c}\x{200f}\x{202a}-\x{202e}]/u', '', $value) ?? $value;
+        // Persian ZWNJ is a word separator for duplicate detection; bidi controls are presentation-only.
+        $value = str_replace("\u{200C}", ' ', $value);
+        $value = preg_replace('/[\x{200f}\x{202a}-\x{202e}]/u', '', $value) ?? $value;
         $value = preg_replace('/[^\p{L}\p{N}]+/u', ' ', $value) ?? $value;
         return trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
     }
