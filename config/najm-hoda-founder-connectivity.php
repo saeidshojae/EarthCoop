@@ -14,6 +14,7 @@ return [
     ],
 
     'proposal_adapters' => [
+        'users.draft_support_response' => App\Services\NajmHoda\FounderOps\FounderUserSupportResponseService::class,
         'support.draft_reply' => App\Services\Support\TicketReplyDraftService::class,
         'reference_data.recommend_approval' => App\Services\NajmHoda\FounderOps\FounderReferenceApprovalCandidateService::class,
         'locations.recommend_approval' => App\Services\NajmHoda\FounderOps\FounderReferenceApprovalCandidateService::class,
@@ -26,6 +27,7 @@ return [
     ],
 
     'approval_adapters' => [
+        'users.send_support_response' => App\Services\NajmHoda\FounderOps\FounderUserSupportResponseService::class,
         'users.suspend_user' => App\Services\NajmHoda\FounderOps\FounderUserSuspensionDecisionService::class,
         'support.send_reply' => App\Services\NajmHoda\FounderOps\FounderSupportDraftApprovalService::class,
         'support.close_ticket' => App\Services\NajmHoda\FounderOps\FounderSupportTicketDecisionService::class,
