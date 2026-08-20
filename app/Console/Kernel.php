@@ -42,6 +42,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\NajmHodaShadowRollout::class,
         \App\Console\Commands\NajmHodaModerationSweep::class,
         \App\Console\Commands\NajmHodaGroupAttentionSweep::class,
+        \App\Console\Commands\StockCanonicalReadiness::class,
         \App\Console\Commands\SendElectionReminders::class,
         \App\Console\Commands\SendAuctionReminders::class,
         \App\Console\Commands\ActivateScheduledGroupSessions::class,
@@ -55,18 +56,9 @@ class Kernel extends ConsoleKernel
         $schedule->command('elections:send-reminders')->twiceDaily(0, 12);
         $schedule->command('auctions:send-reminders')->hourly();
         $schedule->command('najm-hoda:moderation-sweep --max-groups=200')->hourly();
-        $schedule->command('najm-hoda:group-attention-sweep --max-groups=200')
-            ->everyFiveMinutes()
-            ->withoutOverlapping();
+        $schedule->command('najm-hoda:group-attention-sweep --max-groups=200')->everyFiveMinutes()->withoutOverlapping();
         $schedule->command('najm-hoda:ops-monitor')->everyFiveMinutes();
-
-        // Founder Operations unified autonomous management loop. The command is
-        // fail-closed: it executes only delegated-ready actions with explicit
-        // canonical low-risk handlers; all other work remains plan/approval only.
-        $schedule->command('najm-hoda:founder-ops-tick --hours=24 --limit=12')
-            ->everyFiveMinutes()
-            ->withoutOverlapping();
-
+        $schedule->command('najm-hoda:founder-ops-tick --hours=24 --limit=12')->everyFiveMinutes()->withoutOverlapping();
         $schedule->command('najm-hoda:goal-loop')->everyTenMinutes();
         $schedule->command('najm-hoda:multi-goals --scope=global --window=24 --limit=2000')->everyThirtyMinutes();
         $schedule->command('najm-hoda:multi-goals-review --scope=global --window=24 --limit=2000')->hourly();
