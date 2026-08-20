@@ -8,12 +8,16 @@ use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Bid;
 use App\Modules\Stock\Models\HoldingReservation;
 use App\Modules\Stock\Models\StockSettlementAllocation;
+use App\Modules\Stock\Services\StockPayeeAccountService;
 use App\Modules\Stock\Settlement\SettlementEligibilityPolicy;
 use App\Modules\Stock\Settlement\SettlementChannel;
 
 class FounderStockRiskService
 {
-    public function __construct(protected SettlementEligibilityPolicy $eligibility) {}
+    public function __construct(
+        protected SettlementEligibilityPolicy $eligibility,
+        protected StockPayeeAccountService $payees,
+    ) {}
 
     public function inspect(Auction $auction): array
     {
@@ -51,13 +55,13 @@ class FounderStockRiskService
 
             if(in_array($channel,[SettlementChannel::EXTERNAL_IRR,SettlementChannel::EXTERNAL_USD],true) && !config('stock.external_capital_enabled',false)) $findings[]=$this->finding($auction,'external_capital_cutover_blocked','high','External provider/rate-source cutover is not enabled for canonical settlement.',['channel'=>$channel]);
 
-            if($issuer===SettlementEligibilityPolicy::ISSUER_EARTHCOOP && $market===SettlementEligibilityPolicy::MARKET_PRIMARY && $supply===SettlementEligibilityPolicy::SUPPLY_TREASURY && $channel===SettlementChannel::ACTIVE_BAHAR){
-                $capital=(string)config('stock.earthcoop_capital_account_number','');
-                $ok=$capital!==''&&Account::query()->where('account_number',$capital)->where('status',1)->exists();
-                if(!$ok) $findings[]=$this->finding($auction,'capital_account_missing','high','Canonical EarthCoop Active Bahar treasury settlement has no configured active EarthCoop capital account.',[]);
+            if($market===SettlementEligibilityPolicy::MARKET_PRIMARY && $supply===SettlementEligibilityPolicy::SUPPLY_TREASURY && $channel===SettlementChannel::ACTIVE_BAHAR){
+                try { $this->payees->resolvePrimary($auction->stock); }
+                catch(\Throwable $e){
+                    $code=$issuer===SettlementEligibilityPolicy::ISSUER_PROJECT?'project_payee_mapping_missing':'capital_account_missing';
+                    $findings[]=$this->finding($auction,$code,'high',$e->getMessage(),['issuer_type'=>$issuer,'issuer_id'=>$auction->stock?->issuer_id]);
+                }
             }
-
-            if($issuer===SettlementEligibilityPolicy::ISSUER_PROJECT && $market===SettlementEligibilityPolicy::MARKET_PRIMARY && $supply===SettlementEligibilityPolicy::SUPPLY_TREASURY && $channel===SettlementChannel::ACTIVE_BAHAR) $findings[]=$this->finding($auction,'project_payee_mapping_missing','high','Project primary Active Bahar settlement has no canonical project payee-account mapping yet.',['issuer_id'=>$auction->stock?->issuer_id]);
 
             $reconciliation=StockSettlementAllocation::query()->where('auction_id',$auction->id)->where('state',StockSettlementAllocation::RECONCILIATION_REQUIRED)->count();
             if($reconciliation>0) $findings[]=$this->finding($auction,'reconciliation_required','critical','Confirmed money exists while Stock allocation is incomplete.',['count'=>$reconciliation]);
