@@ -62,13 +62,14 @@ class FounderSecretariatDraftConnectivityTest extends TestCase
 
     public function test_connectivity_reports_draft_as_connected_and_dispatch_as_dependency_blocked(): void
     {
-        $snapshot = app(FounderExecutiveConnectivityService::class)->snapshot();
-        $secretariat = collect($snapshot['domains'] ?? [])->firstWhere('domain', 'secretariat');
+        $report = app(FounderExecutiveConnectivityService::class)->report();
+        $secretariat = $report['domains']['secretariat'] ?? null;
 
         $this->assertIsArray($secretariat);
-        $this->assertContains('draft_correspondence', $secretariat['connected_actions'] ?? []);
-        $this->assertContains('register_formal_record', $secretariat['connected_actions'] ?? []);
-        $this->assertContains('close_case', $secretariat['connected_actions'] ?? []);
-        $this->assertContains('dispatch_formal_record', $secretariat['blocked_actions'] ?? []);
+        $this->assertSame('connected', $secretariat['actions']['draft_correspondence']['state'] ?? null);
+        $this->assertSame('connected', $secretariat['actions']['register_formal_record']['state'] ?? null);
+        $this->assertSame('connected', $secretariat['actions']['close_case']['state'] ?? null);
+        $this->assertSame('blocked_dependency', $secretariat['actions']['dispatch_formal_record']['state'] ?? null);
+        $this->assertSame('real_transport_not_available', $secretariat['actions']['dispatch_formal_record']['block']['reason'] ?? null);
     }
 }
