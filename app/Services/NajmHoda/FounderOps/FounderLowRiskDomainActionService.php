@@ -27,6 +27,7 @@ class FounderLowRiskDomainActionService
         protected FounderReadOnlyManagementService $readOnly,
         protected FounderReferenceApprovalCandidateService $referenceCandidates,
         protected FounderEmailDraftService $emailDrafts,
+        protected FounderAnnouncementDraftService $announcementDrafts,
         protected RuntimeEventBus $events
     ) {}
 
@@ -42,6 +43,7 @@ class FounderLowRiskDomainActionService
             'admin_settings.audit_configuration',
             'reports_moderation.prepare_case_summary','reports_moderation.classify_report',
             'email.draft_email','email.preview_template',
+            'notifications.draft_announcement',
             'secretariat.prepare_follow_up',
             'stock.summarize_auction','stock.flag_settlement_issue',
             'najm_bahar.summarize_financial_state','najm_bahar.flag_transaction_anomaly',
@@ -53,6 +55,16 @@ class FounderLowRiskDomainActionService
         if (! $this->supports($domain, $action)) return ['success'=>false,'status'=>'unsupported','reason'=>'no_canonical_low_risk_handler'];
         $reasonCode=is_scalar($context['reason_code']??null)?(string)$context['reason_code']:null;
         $hours=max(1,min((int)($context['window_hours']??24),168));
+
+        if ($domain==='notifications' && $action==='draft_announcement') {
+            $attributes=is_array($context['announcement']??null)?$context['announcement']:$context;
+            $result=$this->announcementDrafts->draft(
+                $attributes,
+                $reasonCode,
+                is_numeric($context['requested_by']??null)?(int)$context['requested_by']:null
+            );
+            return $this->complete($domain,$action,'founder_announcement_draft',(int)($result['draft_id']??0),$reasonCode,$result);
+        }
 
         if ($domain==='email') {
             if ($action==='preview_template') {
