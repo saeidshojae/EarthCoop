@@ -25,6 +25,9 @@ class FounderSecretariatDecisionService
         if ($record->registry_number !== null) {
             return ['success' => false, 'status' => 'skipped', 'reason' => 'record_already_registered'];
         }
+        if ((string) $record->status !== 'pending_approval') {
+            return ['success' => false, 'status' => 'blocked', 'reason' => 'record_not_pending_approval'];
+        }
 
         return $this->requests->prepare('secretariat', 'register_formal_record', [
             'entity_type' => 'secretariat_record',
@@ -81,6 +84,37 @@ class FounderSecretariatDecisionService
             return ['success' => false, 'status' => 'invalid_request', 'reason' => 'approval_entity_mismatch'];
         }
 
+        $founder = User::query()->find($founderId);
+        if (! $founder) {
+            return ['success' => false, 'status' => 'not_found', 'reason' => 'founder_user_not_found'];
+        }
+
+        $record = null;
+        $case = null;
+        if ($action === 'register_formal_record') {
+            $record = SecretariatRecord::query()->find($entityId);
+            if (! $record) {
+                return ['success' => false, 'status' => 'not_found', 'reason' => 'secretariat_record_not_found'];
+            }
+            if ($record->registry_number !== null) {
+                return ['success' => false, 'status' => 'skipped', 'reason' => 'record_already_registered'];
+            }
+            if ((string) $record->status !== 'pending_approval') {
+                return ['success' => false, 'status' => 'blocked', 'reason' => 'record_not_pending_approval'];
+            }
+        } else {
+            $case = SecretariatCase::query()->find($entityId);
+            if (! $case) {
+                return ['success' => false, 'status' => 'not_found', 'reason' => 'secretariat_case_not_found'];
+            }
+            if ((string) $case->status === 'closed') {
+                return ['success' => false, 'status' => 'skipped', 'reason' => 'case_already_closed'];
+            }
+            if ((string) $case->status === 'archived') {
+                return ['success' => false, 'status' => 'blocked', 'reason' => 'archived_case_is_terminal'];
+            }
+        }
+
         $decisionResult = $this->approvals->decide($requestId, $decision, $founderId, $reason);
         if (! (bool) ($decisionResult['success'] ?? false)) {
             return $decisionResult;
@@ -89,17 +123,7 @@ class FounderSecretariatDecisionService
             return ['success' => true, 'status' => 'rejected', 'entity_type' => $entityType, 'entity_id' => $entityId];
         }
 
-        $founder = User::query()->find($founderId);
-        if (! $founder) {
-            return ['success' => false, 'status' => 'not_found', 'reason' => 'founder_user_not_found'];
-        }
-
         if ($action === 'register_formal_record') {
-            $record = SecretariatRecord::query()->find($entityId);
-            if (! $record) {
-                return ['success' => false, 'status' => 'not_found', 'reason' => 'secretariat_record_not_found'];
-            }
-
             return $this->execution->execute(
                 'secretariat',
                 'register_formal_record',
@@ -114,11 +138,6 @@ class FounderSecretariatDecisionService
                 $requestId,
                 ['entity_type' => 'secretariat_record', 'entity_id' => $entityId, 'requested_by' => $founderId]
             );
-        }
-
-        $case = SecretariatCase::query()->find($entityId);
-        if (! $case) {
-            return ['success' => false, 'status' => 'not_found', 'reason' => 'secretariat_case_not_found'];
         }
 
         return $this->execution->execute(
