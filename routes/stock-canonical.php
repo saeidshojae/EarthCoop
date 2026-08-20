@@ -4,11 +4,10 @@ use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\Authenticate;
 use App\Modules\Stock\Controllers\CanonicalAuctionController;
 use App\Modules\Stock\Controllers\CanonicalBidController;
+use App\Modules\Stock\Controllers\SecondaryListingController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(Authenticate::class)->group(function (): void {
-    // Loaded after routes/web.php so this canonical-aware show route becomes
-    // the authenticated display entry point while delegating legacy auctions.
     Route::get('/auctions/{auction}', [CanonicalAuctionController::class, 'show'])
         ->name('auction.show');
 
@@ -17,6 +16,13 @@ Route::middleware(Authenticate::class)->group(function (): void {
 
     Route::delete('/bids/{bid}/canonical', [CanonicalBidController::class, 'destroy'])
         ->name('bid.canonical.destroy');
+
+    Route::get('/holdings/{holding}/secondary-listing', [SecondaryListingController::class, 'create'])
+        ->name('stock.secondary-listing.create');
+    Route::post('/holdings/{holding}/secondary-listing', [SecondaryListingController::class, 'store'])
+        ->name('stock.secondary-listing.store');
+    Route::delete('/secondary-listings/{auction}', [SecondaryListingController::class, 'cancel'])
+        ->name('stock.secondary-listing.cancel');
 });
 
 Route::middleware([Authenticate::class, AdminMiddleware::class])->group(function (): void {
