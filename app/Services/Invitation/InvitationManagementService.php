@@ -15,6 +15,8 @@ use RuntimeException;
 
 class InvitationManagementService
 {
+    public function __construct(protected InvitationSystemIssuerResolver $systemIssuer) {}
+
     public function recommend(Invitation $invitation): array
     {
         if ((int)$invitation->status !== 0) {
@@ -36,14 +38,18 @@ class InvitationManagementService
     {
         if ((int)$invitation->status !== 0) return ['success'=>true,'status'=>'already_reviewed','invitation_id'=>$invitation->id];
 
-        $result=DB::transaction(function() use($invitation,$actorId){
+        // Resolve before opening the transaction so an invalid deployment config
+        // fails without creating a code or changing the invitation state.
+        $systemIssuerId=$this->systemIssuer->id();
+
+        $result=DB::transaction(function() use($invitation,$actorId,$systemIssuerId){
             $locked=Invitation::query()->whereKey($invitation->id)->lockForUpdate()->firstOrFail();
             if((int)$locked->status!==0)return ['invitation'=>$locked,'code'=>null,'already'=>true];
             $codeStr=$this->uniqueCode();
             $hours=(int)(Setting::query()->find(1)?->expire_invation_time ?? 72);
-            $code=InvitationCode::query()->create(['code'=>$codeStr,'user_id'=>171,'expire_at'=>now()->addHours(max(1,$hours))]);
+            $code=InvitationCode::query()->create(['code'=>$codeStr,'user_id'=>$systemIssuerId,'expire_at'=>now()->addHours(max(1,$hours))]);
             $locked->forceFill(['status'=>1,'reviewed_by'=>$actorId,'reviewed_at'=>now()])->save();
-            $this->log($code->id,'issue',$actorId,['invitation_id'=>$locked->id,'email'=>$locked->email]);
+            $this->log($code->id,'issue',$actorId,['invitation_id'=>$locked->id,'email'=>$locked->email,'issuer_user_id'=>$systemIssuerId]);
             return ['invitation'=>$locked,'code'=>$code,'already'=>false];
         });
 
