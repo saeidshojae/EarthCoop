@@ -6,6 +6,7 @@ use App\Models\FounderFinancialRiskFinding;
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Bid;
+use App\Modules\Stock\Models\HoldingReservation;
 use App\Modules\Stock\Models\StockSettlementAllocation;
 use App\Modules\Stock\Settlement\SettlementEligibilityPolicy;
 use App\Modules\Stock\Settlement\SettlementChannel;
@@ -27,32 +28,28 @@ class FounderStockRiskService
         try { $this->eligibility->assertAllowed($issuer,$market,$supply,$channel); }
         catch (\Throwable $e) { $findings[]=$this->finding($auction,'settlement_boundary_violation','high','Auction settlement classification violates or cannot satisfy the Stock × Najm Bahar boundary.',['issuer_type'=>$issuer,'market_type'=>$market,'supply_source'=>$supply,'settlement_channel'=>$channel]); }
 
-        if (strtolower($quote)!=='gol' || (int)($auction->base_price_gol??0)<=0) {
-            $findings[]=$this->finding($auction,'canonical_gol_pricing_missing','medium','Auction is not yet configured with canonical integer Gol pricing.',['quote_unit'=>$quote,'base_price_gol'=>$auction->base_price_gol]);
-        }
-        if ((int)($auction->stock?->base_share_price_gol??0)<=0 || (int)($auction->stock?->startup_valuation_gol??0)<=0) {
-            $findings[]=$this->finding($auction,'stock_gol_valuation_missing','medium','Underlying Stock does not yet have canonical Gol share price and valuation.',['stock_id'=>(int)$auction->stock_id]);
-        }
-        if ($auction->isExpired() && (string)$auction->status!=='settled') {
-            $findings[]=$this->finding($auction,'expired_unsettled','high','Auction is past its end time but is not settled.',['status'=>(string)$auction->status]);
-        }
-        if ($market===SettlementEligibilityPolicy::MARKET_SECONDARY && $channel!==SettlementChannel::ACTIVE_BAHAR) {
-            $findings[]=$this->finding($auction,'secondary_external_forbidden','high','Secondary-market settlement must use Active Bahar only.',['settlement_channel'=>$channel]);
-        }
+        if (strtolower($quote)!=='gol' || (int)($auction->base_price_gol??0)<=0) $findings[]=$this->finding($auction,'canonical_gol_pricing_missing','medium','Auction is not yet configured with canonical integer Gol pricing.',['quote_unit'=>$quote,'base_price_gol'=>$auction->base_price_gol]);
+        if ((int)($auction->stock?->base_share_price_gol??0)<=0 || (int)($auction->stock?->startup_valuation_gol??0)<=0) $findings[]=$this->finding($auction,'stock_gol_valuation_missing','medium','Underlying Stock does not yet have canonical Gol share price and valuation.',['stock_id'=>(int)$auction->stock_id]);
+        if ($auction->isExpired() && (string)$auction->status!=='settled') $findings[]=$this->finding($auction,'expired_unsettled','high','Auction is past its end time but is not settled.',['status'=>(string)$auction->status]);
+        if ($market===SettlementEligibilityPolicy::MARKET_SECONDARY && $channel!==SettlementChannel::ACTIVE_BAHAR) $findings[]=$this->finding($auction,'secondary_external_forbidden','high','Secondary-market settlement must use Active Bahar only.',['settlement_channel'=>$channel]);
 
         if ($auction->hasCanonicalGolPricing()) {
-            $legacyBids=Bid::query()->where('auction_id',$auction->id)->where(function($q){
-                $q->whereNull('price_gol')->orWhereNull('acceptance_key');
-            })->count();
+            $legacyBids=Bid::query()->where('auction_id',$auction->id)->where(fn($q)=>$q->whereNull('price_gol')->orWhereNull('acceptance_key'))->count();
             if($legacyBids>0) $findings[]=$this->finding($auction,'legacy_bid_in_canonical_auction','high','Canonical auction contains legacy bids and cannot be safely settled.',['count'=>$legacyBids]);
 
-            if($market===SettlementEligibilityPolicy::MARKET_SECONDARY && !config('stock.secondary_market_enabled',false)){
-                $findings[]=$this->finding($auction,'secondary_cutover_blocked','high','Secondary settlement remains disabled until seller-side Holding reservation and transfer are implemented.',[]);
+            if($market===SettlementEligibilityPolicy::MARKET_SECONDARY){
+                if(!config('stock.secondary_market_enabled',false)) $findings[]=$this->finding($auction,'secondary_cutover_blocked','high','Secondary settlement code exists but runtime cutover remains disabled until full validation is complete.',[]);
+                if(!$auction->seller_user_id||!$auction->seller_holding_reservation_key) {
+                    $findings[]=$this->finding($auction,'secondary_seller_supply_missing','high','Secondary auction has no canonical seller identity/share reservation.',[]);
+                } else {
+                    $reservation=HoldingReservation::query()->where('reservation_key',$auction->seller_holding_reservation_key)->first();
+                    if(!$reservation || (int)$reservation->seller_user_id!==(int)$auction->seller_user_id || (int)$reservation->auction_id!==(int)$auction->id) $findings[]=$this->finding($auction,'secondary_seller_reservation_invalid','high','Seller share reservation is missing or does not match the secondary auction identity.',[]);
+                    $sellerAccount=Account::query()->where('user_id',$auction->seller_user_id)->where('type','user')->where('status',1)->exists();
+                    if(!$sellerAccount) $findings[]=$this->finding($auction,'secondary_seller_bahar_account_missing','high','Secondary seller has no active Najm Bahar account for proceeds.',['seller_user_id'=>$auction->seller_user_id]);
+                }
             }
 
-            if(in_array($channel,[SettlementChannel::EXTERNAL_IRR,SettlementChannel::EXTERNAL_USD],true) && !config('stock.external_capital_enabled',false)){
-                $findings[]=$this->finding($auction,'external_capital_cutover_blocked','high','External provider/rate-source cutover is not enabled for canonical settlement.',['channel'=>$channel]);
-            }
+            if(in_array($channel,[SettlementChannel::EXTERNAL_IRR,SettlementChannel::EXTERNAL_USD],true) && !config('stock.external_capital_enabled',false)) $findings[]=$this->finding($auction,'external_capital_cutover_blocked','high','External provider/rate-source cutover is not enabled for canonical settlement.',['channel'=>$channel]);
 
             if($issuer===SettlementEligibilityPolicy::ISSUER_EARTHCOOP && $market===SettlementEligibilityPolicy::MARKET_PRIMARY && $supply===SettlementEligibilityPolicy::SUPPLY_TREASURY && $channel===SettlementChannel::ACTIVE_BAHAR){
                 $capital=(string)config('stock.earthcoop_capital_account_number','');
@@ -60,9 +57,7 @@ class FounderStockRiskService
                 if(!$ok) $findings[]=$this->finding($auction,'capital_account_missing','high','Canonical EarthCoop Active Bahar treasury settlement has no configured active EarthCoop capital account.',[]);
             }
 
-            if($issuer===SettlementEligibilityPolicy::ISSUER_PROJECT && $market===SettlementEligibilityPolicy::MARKET_PRIMARY && $supply===SettlementEligibilityPolicy::SUPPLY_TREASURY && $channel===SettlementChannel::ACTIVE_BAHAR){
-                $findings[]=$this->finding($auction,'project_payee_mapping_missing','high','Project primary Active Bahar settlement has no canonical project payee-account mapping yet.',['issuer_id'=>$auction->stock?->issuer_id]);
-            }
+            if($issuer===SettlementEligibilityPolicy::ISSUER_PROJECT && $market===SettlementEligibilityPolicy::MARKET_PRIMARY && $supply===SettlementEligibilityPolicy::SUPPLY_TREASURY && $channel===SettlementChannel::ACTIVE_BAHAR) $findings[]=$this->finding($auction,'project_payee_mapping_missing','high','Project primary Active Bahar settlement has no canonical project payee-account mapping yet.',['issuer_id'=>$auction->stock?->issuer_id]);
 
             $reconciliation=StockSettlementAllocation::query()->where('auction_id',$auction->id)->where('state',StockSettlementAllocation::RECONCILIATION_REQUIRED)->count();
             if($reconciliation>0) $findings[]=$this->finding($auction,'reconciliation_required','critical','Confirmed money exists while Stock allocation is incomplete.',['count'=>$reconciliation]);
@@ -73,10 +68,7 @@ class FounderStockRiskService
 
     protected function finding(Auction $auction,string $code,string $severity,string $summary,array $context): array
     {
-        $row=FounderFinancialRiskFinding::query()->updateOrCreate(
-            ['domain'=>'stock','entity_type'=>'auction','entity_id'=>(int)$auction->id,'risk_code'=>$code],
-            ['severity'=>$severity,'status'=>'open','summary'=>$summary,'context'=>$context,'resolved_at'=>null]
-        );
+        $row=FounderFinancialRiskFinding::query()->updateOrCreate(['domain'=>'stock','entity_type'=>'auction','entity_id'=>(int)$auction->id,'risk_code'=>$code],['severity'=>$severity,'status'=>'open','summary'=>$summary,'context'=>$context,'resolved_at'=>null]);
         return ['id'=>(int)$row->id,'risk_code'=>$code,'severity'=>$severity,'summary'=>$summary];
     }
 }
