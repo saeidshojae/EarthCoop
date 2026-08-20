@@ -26,6 +26,7 @@ return [
     ],
 
     'approval_adapters' => [
+        'users.suspend_user' => App\Services\NajmHoda\FounderOps\FounderUserSuspensionDecisionService::class,
         'support.send_reply' => App\Services\NajmHoda\FounderOps\FounderSupportDraftApprovalService::class,
         'support.close_ticket' => App\Services\NajmHoda\FounderOps\FounderSupportTicketDecisionService::class,
         'reference_data.approve' => App\Services\NajmHoda\FounderOps\FounderReferenceApprovalDecisionService::class,
