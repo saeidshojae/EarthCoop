@@ -3,6 +3,7 @@
 namespace Tests\Feature\NajmHoda;
 
 use App\Models\Announcement;
+use App\Models\Blog;
 use App\Models\FounderAnnouncementDraft;
 use App\Models\FounderContentDraft;
 use App\Models\Group;
@@ -30,7 +31,7 @@ class FounderBlogNotificationConnectivityTest extends TestCase
         ],$actor->id);
 
         $this->assertTrue((bool)$announcement->should_pin);
-        $this->assertDatabaseCount('pinned_messages',1);
+        $this->assertSame(1,PinnedMessage::query()->where('announcement_id',$announcement->id)->count());
         $pin=PinnedMessage::query()->where('announcement_id',$announcement->id)->firstOrFail();
         $this->assertSame($group->id,(int)$pin->group_id);
         $this->assertDatabaseHas('messages',['id'=>$pin->message_id,'group_id'=>$group->id]);
@@ -46,18 +47,22 @@ class FounderBlogNotificationConnectivityTest extends TestCase
     public function test_notification_and_blog_drafts_are_persistent_but_do_not_publish_anything(): void
     {
         $actor=$this->user();
+        $announcementTitle='پیش نویس اعلان '.uniqid('',true);
+        $blogTitle='پیش نویس پست '.uniqid('',true);
 
         $announcementResult=app(FounderAnnouncementDraftService::class)->draft([
-            'title'=>'پیش نویس اعلان','content'=>'فقط پیش نویس','group_level'=>'7','should_pin'=>true,
-        ],'announcement:test',$actor->id);
-        $contentResult=app(FounderContentDraftService::class)->draft('پیش نویس پست','بدنه پست',null,null,'blog:test',$actor->id);
+            'title'=>$announcementTitle,'content'=>'فقط پیش نویس','group_level'=>'7','should_pin'=>true,
+        ],'announcement:test:'.uniqid('',true),$actor->id);
+        $contentResult=app(FounderContentDraftService::class)->draft(
+            $blogTitle,'بدنه پست',null,null,'blog:test:'.uniqid('',true),$actor->id
+        );
 
         $this->assertSame('drafted',$announcementResult['status']);
         $this->assertSame('drafted',$contentResult['status']);
         $this->assertSame('draft',FounderAnnouncementDraft::query()->findOrFail($announcementResult['draft_id'])->status);
         $this->assertSame('draft',FounderContentDraft::query()->findOrFail($contentResult['draft_id'])->status);
-        $this->assertSame(0,Announcement::query()->count());
-        $this->assertSame(0,\App\Models\Blog::query()->count());
+        $this->assertFalse(Announcement::query()->where('title',$announcementTitle)->exists());
+        $this->assertFalse(Blog::query()->where('title',$blogTitle)->exists());
     }
 
     private function user(): User
