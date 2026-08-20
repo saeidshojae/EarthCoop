@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/stock-slice-6-secondary-market-gate
+  pull_request:
+    branches:
+      - agent/integration-secretariat-s9-current-main
   workflow_dispatch:
 
 permissions:
