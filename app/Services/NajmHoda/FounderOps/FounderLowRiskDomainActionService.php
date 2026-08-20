@@ -5,6 +5,7 @@ namespace App\Services\NajmHoda\FounderOps;
 use App\Models\Blog;
 use App\Models\EmailTemplate;
 use App\Models\Ticket;
+use App\Modules\NajmBahar\Models\Project;
 use App\Modules\NajmBahar\Models\ScheduledTransaction;
 use App\Modules\Secretariat\Models\SecretariatDispatch;
 use App\Modules\Secretariat\Services\SecretariatFollowUpProposalService;
@@ -26,6 +27,7 @@ class FounderLowRiskDomainActionService
         protected FounderSecretariatCorrespondenceDraftService $secretariatDrafts,
         protected FounderStockRiskService $stockRisks,
         protected FounderNajmBaharRiskService $baharRisks,
+        protected FounderNajmBaharProjectReviewDraftService $projectReviewDrafts,
         protected FounderReadOnlyManagementService $readOnly,
         protected FounderReferenceApprovalCandidateService $referenceCandidates,
         protected FounderEmailDraftService $emailDrafts,
@@ -50,7 +52,7 @@ class FounderLowRiskDomainActionService
             'notifications.draft_announcement',
             'secretariat.draft_correspondence','secretariat.prepare_follow_up',
             'stock.summarize_auction','stock.flag_settlement_issue',
-            'najm_bahar.summarize_financial_state','najm_bahar.flag_transaction_anomaly',
+            'najm_bahar.summarize_financial_state','najm_bahar.flag_transaction_anomaly','najm_bahar.draft_project_review',
         ], true);
     }
 
@@ -176,7 +178,20 @@ class FounderLowRiskDomainActionService
             return $this->complete($domain,$action,'auction',$id,$reasonCode,$this->stockRisks->inspect($auction));
         }
 
-        if ($domain==='najm_bahar' && $action==='summarize_financial_state') return $this->complete($domain,$action,'najm_bahar',0,$reasonCode,$this->readOnly->summarize($domain,$hours));
+        if ($domain==='najm_bahar' && $action==='summarize_financial_state') {
+            return $this->complete($domain,$action,'najm_bahar',0,$reasonCode,$this->readOnly->summarize($domain,$hours));
+        }
+        if ($domain==='najm_bahar' && $action==='draft_project_review') {
+            $id=(int)($context['entity_id']??$context['project_id']??0);
+            $project=$id>0?Project::query()->find($id):null;
+            if (!$project) return ['success'=>false,'status'=>'not_found','reason'=>'najm_bahar_project_not_found'];
+            $result=$this->projectReviewDrafts->draft(
+                $project,
+                is_numeric($context['requested_by']??null)?(int)$context['requested_by']:null,
+                $reasonCode
+            );
+            return $this->complete($domain,$action,'founder_najm_bahar_project_review_draft',(int)($result['draft_id']??0),$reasonCode,$result);
+        }
         if ($domain==='najm_bahar') {
             $id=(int)($context['entity_id']??0); $scheduled=$id>0?ScheduledTransaction::query()->find($id):null;
             if (!$scheduled) return ['success'=>false,'status'=>'not_found','reason'=>'scheduled_transaction_not_found'];
