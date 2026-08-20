@@ -21,7 +21,7 @@ Canonical flow:
 
 ## Transitional code warning
 
-The legacy `AuctionService` still uses decimal/float prices, the legacy Stock wallet, and تومان presentation. It remains isolated from the canonical settlement path.
+The legacy `AuctionService` still uses decimal/float prices, the legacy Stock wallet, and تومان presentation. Canonical Gol auctions are blocked from creating bids through that path.
 
 No automatic conversion from legacy decimal/toman values to Gol is performed. Existing legacy rows keep nullable Gol columns until explicitly migrated with known economic meaning.
 
@@ -74,57 +74,61 @@ Canonical nullable integer Gol fields coexist with legacy decimal fields. Legacy
 
 Canonical settlement allocations are represented by `stock_settlement_allocations` and keyed by a unique `allocation_key`.
 
-Each allocation binds:
+- Active Bahar money + Holding allocation are performed inside one database transaction;
+- Holding settlement has a unique idempotency key;
+- retry cannot consume the same money or shares twice;
+- confirmed external money followed by local asset failure becomes `reconciliation_required` rather than fake success;
+- `reconciliation_required` is P0 in Founder Operations.
 
-- auction and bid identity;
-- user and Stock identity;
-- settlement channel;
-- integer quantity, `price_gol` and `total_gol`;
-- money state and asset state;
-- Active-Bahar reservation or external-payment intent;
-- idempotent Holding transaction;
-- attempts, errors, settlement time and reconciliation-required state.
+## Slice 6 implemented — secondary-market gate and canonical bid acceptance
 
-### Idempotent asset leg
+Canonical bids now have explicit acceptance/payment references:
 
-`holding_transactions` now has a unique nullable `idempotency_key`. Canonical Holding settlement locks the holding row and credits quantity only once. Reusing the same key with different user/stock/quantity fails closed.
+- `acceptance_key` — unique idempotent bid-acceptance identity;
+- `reservation_key` — Active Bahar reservation identity;
+- `external_payment_intent_id` — reserved for eligible primary/external canonical flows.
 
-### Active Bahar atomicity
+### Active Bahar bid acceptance
 
-For Active Bahar, `StockAtomicSettlementService` performs the canonical money and asset legs inside the same database transaction:
+`StockBidAcceptanceService` provides the canonical Active-Bahar path:
 
-1. lock settlement allocation and Stock;
-2. verify treasury share availability;
-3. consume the exact Active-Bahar reservation through `ActiveBaharReservationService`;
-4. create the Najm transaction and double-entry money ledger;
-5. create the idempotent Holding settlement;
-6. decrement `available_shares`;
-7. mark the bid won;
-8. mark the allocation settled.
+1. bidder identity and payer account are validated;
+2. the payer must currently be the bidder's own main Najm Bahar user account;
+3. Auction must be active, settlement-eligible, and canonical Gol priced;
+4. settlement channel must be `active_bahar`;
+5. integer `price_gol`, quantity, min/max and lot constraints are validated;
+6. exact `total_gol` is calculated with checked integer arithmetic;
+7. Active Bahar is reserved before the Bid is accepted;
+8. reservation and Bid creation run in the same database transaction;
+9. acceptance is idempotent; conflicting reuse of an acceptance key fails closed.
 
-If any later local step fails, the surrounding transaction rolls the money and asset mutations back together. A retry returns the same settled allocation rather than consuming money/shares again.
+### Secondary-market constitutional gate
 
-### External-payment atomicity boundary
+A secondary-market order cannot be accepted on an external IRR/USD rail. `SettlementEligibilityPolicy` rejects that classification before any reservation or Bid creation. The canonical Active-Bahar acceptance service adds a second explicit guard.
 
-External money cannot be transactionally rolled back by the EarthCoop database because provider confirmation is an external fact. Therefore the canonical rule is intentionally different:
+### Canonical cancellation
 
-1. external intent must already be `confirmed`;
-2. its immutable quote snapshot must match the allocation's exact `total_gol`;
-3. Stock/Holding allocation is attempted transactionally inside EarthCoop;
-4. if asset allocation succeeds, the allocation becomes `settled`;
-5. if provider money is confirmed but local asset allocation fails, the system never pretends settlement succeeded: the allocation becomes `reconciliation_required`, with `money_state=confirmed_external` and `asset_state=failed`.
+Cancelling a canonical active bid releases its Active Bahar reservation and then marks the Bid cancelled. It never touches the legacy Stock wallet.
 
-`reconciliation_required` is a P0 Founder Operations condition because real external money exists while the corresponding asset allocation is incomplete.
+### Legacy-route isolation
 
-### Deliberate legacy boundary
+The old user bid controllers remain available only for legacy decimal auctions during migration. They explicitly reject canonical Gol auctions.
 
-The canonical path does not fabricate a decimal `StockTransaction.price` simply to satisfy the old transaction schema. Canonical audit history is represented by the settlement allocation, Holding transaction, Najm Bahar ledger or external reconciliation evidence. Legacy `StockTransaction` can be retired or migrated separately after the canonical path is complete.
+In addition, the `Bid` model itself fails closed when a canonical Gol Auction attempts to create a Bid without the canonical acceptance identity and, for Active Bahar, without a reservation key. This protects against forgotten legacy controllers or future accidental direct `Bid::create()` calls.
 
-## Next slice
+The legacy decimal `price` column remains populated only for schema compatibility in the canonical Bid row and has no canonical economic meaning. New calculations and settlement must use `price_gol` exclusively.
 
-### Slice 6 — Secondary market gate
+## Remaining migration/launch work
 
-Enforce Active Bahar as the only secondary-market settlement channel before bid/order acceptance, and ensure canonical bid acceptance reserves Active Bahar before an order is considered accepted.
+The six economic slices establish the canonical backend boundary, but the legacy UI/controller/reporting surfaces still require a deliberate cutover before production Stock launch:
+
+1. build/update canonical Gol bid UI and cancellation UI;
+2. route eligible EarthCoop primary external purchases through quote snapshot + external intent;
+3. route canonical winner/allocation processing through `StockAtomicSettlementService`;
+4. update order-book/reporting screens to display and sort `price_gol` for canonical auctions;
+5. retire legacy Stock Wallet participation in canonical auctions;
+6. add reconciliation operations for `reconciliation_required` external settlements;
+7. run migration/readiness audit over legacy Stock/Auction/Bid rows before enabling canonical trading.
 
 ## Out of scope
 
