@@ -2,6 +2,7 @@
 
 namespace App\Services\NajmHoda\FounderOps;
 
+use App\Models\EmailTemplate;
 use App\Models\Ticket;
 use App\Modules\NajmBahar\Models\ScheduledTransaction;
 use App\Modules\Secretariat\Models\SecretariatDispatch;
@@ -25,6 +26,7 @@ class FounderLowRiskDomainActionService
         protected FounderNajmBaharRiskService $baharRisks,
         protected FounderReadOnlyManagementService $readOnly,
         protected FounderReferenceApprovalCandidateService $referenceCandidates,
+        protected FounderEmailDraftService $emailDrafts,
         protected RuntimeEventBus $events
     ) {}
 
@@ -39,6 +41,7 @@ class FounderLowRiskDomainActionService
             'invitations.summarize_growth',
             'admin_settings.audit_configuration',
             'reports_moderation.prepare_case_summary','reports_moderation.classify_report',
+            'email.draft_email','email.preview_template',
             'secretariat.prepare_follow_up',
             'stock.summarize_auction','stock.flag_settlement_issue',
             'najm_bahar.summarize_financial_state','najm_bahar.flag_transaction_anomaly',
@@ -50,6 +53,32 @@ class FounderLowRiskDomainActionService
         if (! $this->supports($domain, $action)) return ['success'=>false,'status'=>'unsupported','reason'=>'no_canonical_low_risk_handler'];
         $reasonCode=is_scalar($context['reason_code']??null)?(string)$context['reason_code']:null;
         $hours=max(1,min((int)($context['window_hours']??24),168));
+
+        if ($domain==='email') {
+            if ($action==='preview_template') {
+                $templateId=(int)($context['template_id']??$context['entity_id']??0);
+                $template=$templateId>0?EmailTemplate::query()->whereKey($templateId)->where('is_active',true)->first():null;
+                if(!$template)return ['success'=>false,'status'=>'not_found','reason'=>'active_email_template_not_found'];
+                $variables=is_array($context['variables']??null)?$context['variables']:[];
+                $rendered=$template->render($variables);
+                return $this->complete('email',$action,'email_template',$templateId,$reasonCode,[
+                    'success'=>true,'status'=>'completed','template_id'=>$templateId,
+                    'subject'=>$rendered['subject'],'body'=>$rendered['body'],
+                    'unresolved_variables'=>$template->getAvailableVariables(),
+                ]);
+            }
+            $recipients=is_array($context['recipients']??null)?$context['recipients']:[];
+            $templateId=is_numeric($context['template_id']??null)?(int)$context['template_id']:null;
+            $variables=is_array($context['variables']??null)?$context['variables']:[];
+            $result=$this->emailDrafts->draft(
+                $recipients,$templateId,
+                is_scalar($context['subject']??null)?(string)$context['subject']:null,
+                is_scalar($context['body']??null)?(string)$context['body']:null,
+                $variables,$reasonCode,
+                is_numeric($context['requested_by']??null)?(int)$context['requested_by']:null
+            );
+            return $this->complete('email',$action,'founder_email_draft',(int)($result['draft_id']??0),$reasonCode,$result);
+        }
 
         if (in_array($domain,['reference_data','locations'],true) && $action==='detect_duplicate') {
             $type=(string)($context['entity_type']??''); $id=(int)($context['entity_id']??0);
