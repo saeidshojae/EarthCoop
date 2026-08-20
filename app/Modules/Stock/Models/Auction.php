@@ -11,7 +11,7 @@ class Auction extends Model
     protected $table = 'auctions';
 
     protected $fillable = [
-        'stock_id','seller_user_id','seller_holding_reservation_key','market_type','supply_source','settlement_channel','quote_unit','shares_count',
+        'stock_id','seller_user_id','seller_holding_reservation_key','listing_key','market_type','supply_source','settlement_channel','quote_unit','shares_count',
         'base_price','base_price_gol','start_time','end_time','ends_at','status','type','settlement_mode',
         'min_bid','min_bid_gol','max_bid','max_bid_gol','lot_size','channel_id','info',
     ];
