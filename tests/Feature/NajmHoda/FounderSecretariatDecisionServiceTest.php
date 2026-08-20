@@ -133,13 +133,20 @@ class FounderSecretariatDecisionServiceTest extends TestCase
         $this->assertSame(0, $record->dispatches()->count());
     }
 
-    public function test_secretariat_remains_partial_only_until_real_dispatch_transport_is_connected(): void
+    public function test_secretariat_reports_transport_dependency_instead_of_fake_missing_adapter(): void
     {
         $report = app(FounderExecutiveConnectivityService::class)->report();
 
         $this->assertSame('partial', data_get($report, 'domains.secretariat.stage'));
         $this->assertSame('connected', data_get($report, 'domains.secretariat.actions.draft_correspondence.state'));
-        $this->assertSame('missing', data_get($report, 'domains.secretariat.actions.dispatch_formal_record.state'));
+        $this->assertSame('blocked_dependency', data_get($report, 'domains.secretariat.actions.dispatch_formal_record.state'));
+        $this->assertSame(
+            'real_transport_not_available',
+            data_get($report, 'domains.secretariat.actions.dispatch_formal_record.block.reason')
+        );
         $this->assertSame('protected', data_get($report, 'domains.secretariat.actions.rewrite_history.state'));
+        $this->assertSame('managed', data_get($report, 'domains.users.stage'));
+        $this->assertSame('blocked_dependency', data_get($report, 'domains.governance.actions.change_election_rules.state'));
+        $this->assertSame('blocked_dependency', data_get($report, 'domains.notifications.actions.change_global_notification_defaults.state'));
     }
 }
