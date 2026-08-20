@@ -57,6 +57,11 @@ class AppServiceProvider extends ServiceProvider
     {
         ini_set('max_execution_time', 120);
 
+        // Stock owns migrations outside Laravel's default database/migrations path.
+        // Register them with the framework so migrate, migrate:fresh and
+        // RefreshDatabase all build the same canonical Stock schema.
+        $this->loadMigrationsFrom(base_path('app/Modules/Stock/Migrations'));
+
         app()->terminating(function () {
             if (function_exists('fastcgi_finish_request')) {
                 fastcgi_finish_request();
