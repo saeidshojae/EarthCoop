@@ -13,13 +13,13 @@ class FounderLowRiskDomainActionServiceTest extends TestCase
 
         $this->assertTrue($service->supports('runtime_health', 'run_read_only_diagnostic'));
         $this->assertTrue($service->supports('runtime_health', 'collect_health_snapshot'));
-        $this->assertFalse($service->supports('support', 'assign_priority'));
+        $this->assertTrue($service->supports('support', 'assign_priority'));
         $this->assertFalse($service->supports('najm_bahar', 'execute_transaction'));
     }
 
     public function test_unknown_low_risk_action_fails_closed(): void
     {
-        $result = app(FounderLowRiskDomainActionService::class)->execute('support', 'assign_priority');
+        $result = app(FounderLowRiskDomainActionService::class)->execute('support', 'unknown_action');
 
         $this->assertFalse($result['success']);
         $this->assertSame('unsupported', $result['status']);
