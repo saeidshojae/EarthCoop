@@ -5,6 +5,8 @@ namespace App\Modules\Stock\Services;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\ExternalPaymentIntent;
 use App\Modules\Stock\Models\ExternalPaymentReconciliation;
+use App\Modules\Stock\Pricing\FiatQuoteSnapshot;
+use App\Modules\Stock\Pricing\StockPricingService;
 use App\Modules\Stock\Settlement\SettlementChannel;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -12,34 +14,33 @@ use RuntimeException;
 
 class ExternalCapitalPaymentService
 {
+    public function __construct(private readonly StockPricingService $pricing) {}
+
     public function createIntentForAuction(
         Auction $auction,
-        int $amountMinor,
-        string $currency,
+        FiatQuoteSnapshot $quote,
         string $intentKey,
         string $referenceType,
         int|string $referenceId,
         ?string $provider = null,
-        array $quoteSnapshot = [],
         array $metadata = [],
         ?\DateTimeInterface $expiresAt = null
     ): ExternalPaymentIntent {
-        $this->assertPositive($amountMinor);
         $this->assertKey($intentKey);
         $auction->loadMissing('stock');
         $auction->assertSettlementEligible();
+        $this->pricing->assertCanonicalAuction($auction);
         $channel=(string)$auction->settlement_channel;
         $expectedCurrency=$this->currencyForChannel($channel);
-        $currency=strtoupper(trim($currency));
-        if($currency!==$expectedCurrency) throw new InvalidArgumentException("Currency {$currency} does not match settlement channel {$channel}.");
+        if($quote->currency!==$expectedCurrency) throw new InvalidArgumentException("Quote currency {$quote->currency} does not match settlement channel {$channel}.");
 
-        return DB::transaction(function () use ($amountMinor,$currency,$intentKey,$referenceType,$referenceId,$provider,$quoteSnapshot,$metadata,$expiresAt,$channel) {
+        return DB::transaction(function () use ($quote,$intentKey,$referenceType,$referenceId,$provider,$metadata,$expiresAt,$channel) {
             $existing=ExternalPaymentIntent::query()->where('intent_key',$intentKey)->lockForUpdate()->first();
-            if($existing) return $this->assertSameIntent($existing,$channel,$currency,$amountMinor,$referenceType,$referenceId);
+            if($existing) return $this->assertSameIntent($existing,$channel,$quote,$referenceType,$referenceId);
             return ExternalPaymentIntent::create([
-                'channel'=>$channel,'currency'=>$currency,'amount_minor'=>$amountMinor,'status'=>ExternalPaymentIntent::CREATED,
+                'channel'=>$channel,'currency'=>$quote->currency,'amount_minor'=>$quote->fiatAmountMinor,'status'=>ExternalPaymentIntent::CREATED,
                 'intent_key'=>$intentKey,'reference_type'=>$referenceType,'reference_id'=>(string)$referenceId,'provider'=>$provider,
-                'quote_snapshot'=>$quoteSnapshot?:null,'metadata'=>$metadata,'expires_at'=>$expiresAt,
+                'quote_snapshot'=>$quote->toArray(),'metadata'=>$metadata,'expires_at'=>$expiresAt,
             ]);
         });
     }
@@ -50,7 +51,7 @@ class ExternalCapitalPaymentService
         return DB::transaction(function () use ($intentKey,$providerIntentId,$provider) {
             $intent=$this->lockedIntent($intentKey);
             if($this->isExpired($intent)) throw new RuntimeException('Expired external payment intent cannot become pending.');
-            if($intent->status===ExternalPaymentIntent::PENDING && $intent->provider_intent_id===$providerIntentId) return $intent;
+            if($intent->status===ExternalPaymentIntent::PENDING&&$intent->provider_intent_id===$providerIntentId) return $intent;
             if($intent->status!==ExternalPaymentIntent::CREATED) throw new RuntimeException('Only a created external payment intent can become pending.');
             $intent->forceFill(['status'=>ExternalPaymentIntent::PENDING,'provider'=>$provider?:$intent->provider,'provider_intent_id'=>$providerIntentId])->save();
             return $intent->fresh();
@@ -66,16 +67,16 @@ class ExternalCapitalPaymentService
 
         return DB::transaction(function () use ($intentKey,$eventKey,$eventType,$resultStatus,$amountMinor,$currency,$providerEventId,$providerPaymentId,$provider,$providerPayload,$metadata,$occurredAt) {
             $intent=$this->lockedIntent($intentKey);
+            $this->assertStoredQuote($intent);
             $existing=ExternalPaymentReconciliation::query()->where('event_key',$eventKey)->lockForUpdate()->first();
             if($existing) return $this->assertSameReconciliation($existing,$intent,$eventType,$resultStatus,$amountMinor,$currency);
-            if($this->isExpired($intent) && $resultStatus==='confirmed') throw new RuntimeException('Expired external payment intent cannot be confirmed without a new intent.');
+            if($this->isExpired($intent)&&$resultStatus==='confirmed') throw new RuntimeException('Expired external payment intent cannot be confirmed without a new intent.');
             if($intent->currency!==$currency||(int)$intent->amount_minor!==$amountMinor) throw new RuntimeException('External reconciliation amount/currency does not match payment intent.');
             if(in_array($intent->status,[ExternalPaymentIntent::CONFIRMED,ExternalPaymentIntent::FAILED,ExternalPaymentIntent::CANCELLED],true)) throw new RuntimeException('Terminal external payment intent cannot accept a new reconciliation result.');
 
             $event=ExternalPaymentReconciliation::create([
-                'payment_intent_id'=>$intent->id,'event_key'=>$eventKey,'provider'=>$provider?:$intent->provider,
-                'provider_event_id'=>$providerEventId,'provider_payment_id'=>$providerPaymentId,'event_type'=>$eventType,
-                'currency'=>$currency,'amount_minor'=>$amountMinor,'result_status'=>$resultStatus,
+                'payment_intent_id'=>$intent->id,'event_key'=>$eventKey,'provider'=>$provider?:$intent->provider,'provider_event_id'=>$providerEventId,
+                'provider_payment_id'=>$providerPaymentId,'event_type'=>$eventType,'currency'=>$currency,'amount_minor'=>$amountMinor,'result_status'=>$resultStatus,
                 'provider_payload'=>$this->sanitizeProviderPayload($providerPayload),'metadata'=>$metadata,'occurred_at'=>$occurredAt?:now(),
             ]);
 
@@ -94,6 +95,13 @@ class ExternalCapitalPaymentService
         return ExternalPaymentIntent::query()->where('intent_key',$intentKey)->where('status',ExternalPaymentIntent::CONFIRMED)->exists();
     }
 
+    protected function assertStoredQuote(ExternalPaymentIntent $intent): FiatQuoteSnapshot
+    {
+        $quote=FiatQuoteSnapshot::fromArray((array)$intent->quote_snapshot);
+        if($quote->currency!==$intent->currency||$quote->fiatAmountMinor!==(int)$intent->amount_minor) throw new RuntimeException('Stored fiat quote snapshot does not match payment intent.');
+        return $quote;
+    }
+
     protected function currencyForChannel(string $channel): string
     {
         return match($channel){ SettlementChannel::EXTERNAL_IRR=>'IRR',SettlementChannel::EXTERNAL_USD=>'USD',default=>throw new RuntimeException('External capital rail accepts IRR/USD channels only.') };
@@ -104,9 +112,12 @@ class ExternalCapitalPaymentService
         $intent=ExternalPaymentIntent::query()->where('intent_key',$key)->lockForUpdate()->first(); if(!$intent) throw new RuntimeException('External payment intent not found.'); return $intent;
     }
 
-    protected function assertSameIntent(ExternalPaymentIntent $i,string $channel,string $currency,int $amount,string $type,int|string $id): ExternalPaymentIntent
+    protected function assertSameIntent(ExternalPaymentIntent $i,string $channel,FiatQuoteSnapshot $quote,string $type,int|string $id): ExternalPaymentIntent
     {
-        if($i->channel!==$channel||$i->currency!==$currency||(int)$i->amount_minor!==$amount||$i->reference_type!==$type||$i->reference_id!==(string)$id) throw new RuntimeException('External payment intent idempotency key conflicts with existing intent.'); return $i;
+        if($i->channel!==$channel||$i->currency!==$quote->currency||(int)$i->amount_minor!==$quote->fiatAmountMinor||$i->reference_type!==$type||$i->reference_id!==(string)$id) throw new RuntimeException('External payment intent idempotency key conflicts with existing intent.');
+        $stored=$this->assertStoredQuote($i);
+        if($stored->toArray()!==$quote->toArray()) throw new RuntimeException('External payment intent quote snapshot conflicts with existing intent.');
+        return $i;
     }
 
     protected function assertSameReconciliation(ExternalPaymentReconciliation $e,ExternalPaymentIntent $intent,string $eventType,string $status,int $amount,string $currency): ExternalPaymentReconciliation
@@ -116,10 +127,8 @@ class ExternalCapitalPaymentService
 
     protected function sanitizeProviderPayload(array $payload): array
     {
-        $sensitive=['card','card_number','pan','cvv','cvc','password','token','access_token','secret','authorization','email','phone'];
-        $clean=[];
-        foreach($payload as $key=>$value){ if(in_array(strtolower((string)$key),$sensitive,true)) continue; $clean[$key]=is_array($value)?$this->sanitizeProviderPayload($value):$value; }
-        return $clean;
+        $sensitive=['card','card_number','pan','cvv','cvc','password','token','access_token','secret','authorization','email','phone']; $clean=[];
+        foreach($payload as $key=>$value){ if(in_array(strtolower((string)$key),$sensitive,true)) continue; $clean[$key]=is_array($value)?$this->sanitizeProviderPayload($value):$value; } return $clean;
     }
 
     protected function isExpired(ExternalPaymentIntent $intent): bool { return $intent->expires_at!==null&&$intent->expires_at->isPast(); }
