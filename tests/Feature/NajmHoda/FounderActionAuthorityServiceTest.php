@@ -39,18 +39,13 @@ class FounderActionAuthorityServiceTest extends TestCase
         $this->assertTrue($after['may_execute']);
     }
 
-    public function test_delegated_safe_is_not_executable_until_explicitly_enabled_and_allowlisted(): void
+    public function test_delegated_safe_is_not_executable_until_explicit_grant_is_supplied(): void
     {
         $service = app(FounderActionAuthorityService::class);
 
         $this->assertFalse($service->mayExecute('support', 'classify_ticket'));
-
-        config()->set('najm-hoda-founder-action-policy.delegation.enabled', true);
-        config()->set('najm-hoda-founder-action-policy.delegation.allowed_domains', ['support']);
-        config()->set('najm-hoda-founder-action-policy.delegation.allowed_actions', ['support.classify_ticket']);
-
-        $this->assertTrue($service->mayExecute('support', 'classify_ticket'));
-        $this->assertFalse($service->mayExecute('support', 'draft_reply'));
+        $this->assertTrue($service->mayExecute('support', 'classify_ticket', false, true));
+        $this->assertFalse($service->mayExecute('governance', 'alter_vote', false, true));
     }
 
     public function test_proposal_mode_never_mutates(): void
