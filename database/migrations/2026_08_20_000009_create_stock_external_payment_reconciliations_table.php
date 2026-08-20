@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('stock_external_payment_reconciliations', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('payment_intent_id')->constrained('stock_external_payment_intents')->cascadeOnDelete();
+            $table->foreignId('payment_intent_id')->constrained('stock_external_payment_intents')->restrictOnDelete();
             $table->string('event_key', 191)->unique();
             $table->string('provider', 80)->nullable();
             $table->string('provider_event_id', 191)->nullable()->index();
