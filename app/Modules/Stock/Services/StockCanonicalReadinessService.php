@@ -38,7 +38,7 @@ class StockCanonicalReadinessService
             $channel=(string)$auction->settlement_channel;
 
             if($market===SettlementEligibilityPolicy::MARKET_SECONDARY){
-                if(!config('stock.secondary_market_enabled',false)) $blockers[]=$this->item('secondary_market_not_cut_over','Secondary-market cutover remains disabled until runtime validation is complete.',['auction_id'=>$auction->id]);
+                if(!config('stock.secondary_market_enabled',false)) $blockers[]=$this->item('secondary_market_not_cut_over','Secondary seller-side backend and listing UX are implemented, but runtime activation remains disabled pending target-environment tests/readiness signoff.',['auction_id'=>$auction->id]);
                 if(!$auction->seller_user_id||!$auction->seller_holding_reservation_key) $blockers[]=$this->item('secondary_seller_supply_missing','Secondary auction has no canonical seller identity/share reservation.',['auction_id'=>$auction->id]);
                 else {
                     $reservation=HoldingReservation::query()->where('reservation_key',$auction->seller_holding_reservation_key)->first();
