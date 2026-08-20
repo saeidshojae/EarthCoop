@@ -72,11 +72,14 @@ class SecondaryListingService
     {
         if ((int)$auction->seller_user_id !== $sellerUserId) throw new RuntimeException('Auction does not belong to seller.');
         if ((string)$auction->market_type !== SettlementEligibilityPolicy::MARKET_SECONDARY) throw new RuntimeException('Auction is not secondary market.');
+        if ((string)$auction->status === 'cancelled') return $auction;
         if (! in_array((string)$auction->status,['running','scheduled'],true)) throw new RuntimeException('Secondary auction cannot be cancelled in current state.');
         if ($auction->activeBids()->exists()) throw new RuntimeException('Secondary auction with active bids cannot be cancelled directly.');
 
         return DB::transaction(function () use ($auction,$cancelKey) {
             $auction=Auction::query()->whereKey($auction->id)->lockForUpdate()->firstOrFail();
+            if ((string)$auction->status === 'cancelled') return $auction;
+            if ($auction->activeBids()->lockForUpdate()->exists()) throw new RuntimeException('Secondary auction with active bids cannot be cancelled directly.');
             $this->supply->releaseSellerSupply($auction,$cancelKey.':shares');
             $auction->status='cancelled'; $auction->save();
             return $auction->fresh();
