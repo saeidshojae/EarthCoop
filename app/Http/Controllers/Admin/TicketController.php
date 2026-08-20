@@ -4,54 +4,39 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
-use App\Models\TicketComment;
 use App\Models\User;
-use App\Services\EmailTicketIntegrationService;
+use App\Services\Support\TicketManagementService;
 use Illuminate\Http\Request;
 
 class TicketController extends Controller
 {
-    protected EmailTicketIntegrationService $emailService;
-
-    public function __construct(EmailTicketIntegrationService $emailService)
+    public function __construct(protected TicketManagementService $tickets)
     {
         $this->middleware('permission:tickets.manage');
-        $this->emailService = $emailService;
     }
 
     public function index(Request $request)
     {
         $query = Ticket::query()->with(['assignee', 'user']);
 
-        // فیلتر بر اساس وضعیت
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
-
-        // فیلتر بر اساس اولویت
         if ($request->filled('priority')) {
             $query->where('priority', $request->input('priority'));
         }
-
-        // فیلتر بر اساس مسئول
         if ($request->filled('assignee_id')) {
             $query->where('assignee_id', $request->input('assignee_id'));
         }
-
-        // فیلتر بر اساس کاربر
         if ($request->filled('user_id')) {
             $query->where('user_id', $request->input('user_id'));
         }
-
-        // فیلتر بر اساس تاریخ
         if ($request->filled('from')) {
             $query->whereDate('created_at', '>=', $request->input('from'));
         }
         if ($request->filled('to')) {
             $query->whereDate('created_at', '<=', $request->input('to'));
         }
-
-        // جستجو
         if ($request->filled('q')) {
             $q = $request->input('q');
             $query->where(function($s) use ($q) {
@@ -65,7 +50,6 @@ class TicketController extends Controller
 
         $tickets = $query->orderBy('created_at', 'desc')->paginate(25)->withQueryString();
 
-        // آمار
         $stats = [
             'total' => Ticket::count(),
             'open' => Ticket::where('status', 'open')->count(),
@@ -74,12 +58,10 @@ class TicketController extends Controller
             'high_priority' => Ticket::where('priority', 'high')->whereIn('status', ['open', 'in-progress'])->count(),
         ];
 
-        // لیست مسئولان
         $assignees = User::whereHas('roles', function($q){
             $q->where('slug', 'like', '%support%');
         })->get();
 
-        // نمودار روند 12 ماهه
         $chartData = [];
         for ($i = 11; $i >= 0; $i--) {
             $date = now()->subMonths($i);
@@ -115,9 +97,7 @@ class TicketController extends Controller
             'assignee_id' => 'nullable|exists:users,id'
         ]);
 
-        $ticket->assignee_id = $data['assignee_id'] ?? null;
-        $ticket->save();
-
+        $this->tickets->assign($ticket, $data['assignee_id'] ?? null);
         return back()->with('success', 'مسئول تیکت بروزرسانی شد');
     }
 
@@ -127,45 +107,16 @@ class TicketController extends Controller
             'message' => 'required|string'
         ]);
 
-        $comment = TicketComment::create([
-            'ticket_id' => $ticket->id,
-            'user_id' => $request->user()->id,
-            'message' => $data['message']
-        ]);
-
-        // تنظیم first_response_at در صورت اولین پاسخ
-        if (!$ticket->first_response_at) {
-            $ticket->first_response_at = now();
-        }
-
-        // Optionally change status to in-progress when replying
-        if ($ticket->status === 'open') {
-            $ticket->status = 'in-progress';
-        }
-        $ticket->save();
-
-        // ارسال پاسخ به ایمیل کاربر
-        try {
-            $this->emailService->sendTicketReplyToEmail($ticket, $comment);
-        } catch (\Exception $e) {
-            // لاگ خطا اما ادامه بده
-            \Log::error('خطا در ارسال ایمیل پاسخ تیکت: ' . $e->getMessage());
-        }
-
+        $this->tickets->reply($ticket, (int) $request->user()->id, $data['message'], true);
         return back()->with('success', 'پاسخ ثبت شد');
     }
 
     public function close(Request $request, Ticket $ticket)
     {
-        $ticket->status = 'closed';
-        $ticket->save();
-
+        $this->tickets->close($ticket);
         return back()->with('success', 'تیکت بسته شد');
     }
 
-    /**
-     * Bulk actions on tickets
-     */
     public function bulkAction(Request $request)
     {
         $request->validate([
@@ -174,16 +125,18 @@ class TicketController extends Controller
             'ticket_ids.*' => 'exists:tickets,id',
         ]);
 
-        $ticketIds = is_array($request->input('ticket_ids')) 
-            ? $request->input('ticket_ids') 
+        $ticketIds = is_array($request->input('ticket_ids'))
+            ? $request->input('ticket_ids')
             : explode(',', $request->input('ticket_ids')[0] ?? '');
         $action = $request->input('action');
         $count = 0;
 
         switch ($action) {
             case 'close':
-                Ticket::whereIn('id', $ticketIds)->update(['status' => 'closed']);
-                $count = count($ticketIds);
+                foreach (Ticket::whereIn('id', $ticketIds)->get() as $ticket) {
+                    $this->tickets->close($ticket);
+                    $count++;
+                }
                 $message = "{$count} تیکت بسته شد.";
                 break;
 
@@ -197,8 +150,10 @@ class TicketController extends Controller
                 $request->validate([
                     'assignee_id' => 'required|exists:users,id',
                 ]);
-                Ticket::whereIn('id', $ticketIds)->update(['assignee_id' => $request->input('assignee_id')]);
-                $count = count($ticketIds);
+                foreach (Ticket::whereIn('id', $ticketIds)->get() as $ticket) {
+                    $this->tickets->assign($ticket, (int) $request->input('assignee_id'));
+                    $count++;
+                }
                 $message = "{$count} تیکت به مسئول اختصاص داده شد.";
                 break;
 
@@ -206,8 +161,10 @@ class TicketController extends Controller
                 $request->validate([
                     'status' => 'required|in:open,in-progress,closed',
                 ]);
-                Ticket::whereIn('id', $ticketIds)->update(['status' => $request->input('status')]);
-                $count = count($ticketIds);
+                foreach (Ticket::whereIn('id', $ticketIds)->get() as $ticket) {
+                    $this->tickets->changeStatus($ticket, (string) $request->input('status'));
+                    $count++;
+                }
                 $message = "وضعیت {$count} تیکت تغییر کرد.";
                 break;
         }
@@ -218,14 +175,10 @@ class TicketController extends Controller
         ]);
     }
 
-    /**
-     * Export tickets to CSV/Excel
-     */
     public function export(Request $request)
     {
         $query = Ticket::query()->with(['assignee', 'user']);
 
-        // اعمال همان فیلترهای index
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
@@ -258,24 +211,11 @@ class TicketController extends Controller
 
             $callback = function() use ($tickets) {
                 $file = fopen('php://output', 'w');
-                
-                // BOM برای UTF-8
                 fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-                
-                // هدرها
                 fputcsv($file, [
-                    'شناسه',
-                    'کد پیگیری',
-                    'موضوع',
-                    'وضعیت',
-                    'اولویت',
-                    'کاربر',
-                    'ایمیل',
-                    'مسئول',
-                    'تاریخ ایجاد',
+                    'شناسه','کد پیگیری','موضوع','وضعیت','اولویت','کاربر','ایمیل','مسئول','تاریخ ایجاد',
                 ]);
 
-                // داده‌ها
                 foreach ($tickets as $ticket) {
                     fputcsv($file, [
                         $ticket->id,
