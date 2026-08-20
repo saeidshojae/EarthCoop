@@ -7,6 +7,7 @@ use App\Modules\Secretariat\Services\SecretariatCaseService;
 use App\Modules\Secretariat\Services\SecretariatOfficeService;
 use App\Modules\Secretariat\Services\SecretariatRecordService;
 use App\Services\NajmHoda\FounderOps\FounderExecutiveConnectivityService;
+use App\Services\NajmHoda\FounderOps\FounderLowRiskDomainActionService;
 use App\Services\NajmHoda\FounderOps\FounderSecretariatDecisionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -87,12 +88,57 @@ class FounderSecretariatDecisionServiceTest extends TestCase
         );
     }
 
-    public function test_secretariat_remains_partial_until_real_dispatch_transport_and_draft_execution_are_connected(): void
+    public function test_delegated_safe_correspondence_action_creates_only_a_draft(): void
+    {
+        $actor = User::factory()->create(['is_system' => false]);
+        $recipient = User::factory()->create(['is_system' => false]);
+        $office = app(SecretariatOfficeService::class)->create([
+            'code' => 'NH-DRAFT',
+            'name' => 'Najm Hoda Draft Office',
+            'office_type' => 'central',
+        ]);
+
+        $service = app(FounderLowRiskDomainActionService::class);
+        $result = $service->execute('secretariat', 'draft_correspondence', [
+            'office_id' => $office->id,
+            'requested_by' => $actor->id,
+            'direction' => 'internal',
+            'attributes' => [
+                'title' => 'Draft correspondence',
+                'subject' => 'Operational follow-up',
+                'body' => 'Draft only; not registered or dispatched.',
+            ],
+            'parties' => [
+                [
+                    'role' => 'sender',
+                    'party_type' => 'user',
+                    'user_id' => $actor->id,
+                    'display_name' => $actor->email,
+                ],
+                [
+                    'role' => 'recipient',
+                    'party_type' => 'user',
+                    'user_id' => $recipient->id,
+                    'display_name' => $recipient->email,
+                ],
+            ],
+            'reason_code' => 'secretariat-draft-test',
+        ]);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame('draft_ready', $result['status']);
+        $record = \App\Modules\Secretariat\Models\SecretariatRecord::query()->findOrFail((int) $result['record_id']);
+        $this->assertSame('draft', $record->status);
+        $this->assertNull($record->registry_number);
+        $this->assertSame(0, $record->dispatches()->count());
+    }
+
+    public function test_secretariat_remains_partial_only_until_real_dispatch_transport_is_connected(): void
     {
         $report = app(FounderExecutiveConnectivityService::class)->report();
 
         $this->assertSame('partial', data_get($report, 'domains.secretariat.stage'));
-        $this->assertSame('missing', data_get($report, 'domains.secretariat.actions.draft_correspondence.state'));
+        $this->assertSame('connected', data_get($report, 'domains.secretariat.actions.draft_correspondence.state'));
         $this->assertSame('missing', data_get($report, 'domains.secretariat.actions.dispatch_formal_record.state'));
         $this->assertSame('protected', data_get($report, 'domains.secretariat.actions.rewrite_history.state'));
     }
