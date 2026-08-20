@@ -16,6 +16,7 @@ use App\Services\NajmHoda\FounderOps\FounderAuthoritySnapshotService;
 use App\Services\NajmHoda\FounderOps\FounderAutonomyBridgeService;
 use App\Services\NajmHoda\FounderOps\FounderContentDecisionService;
 use App\Services\NajmHoda\FounderOps\FounderEmailDecisionService;
+use App\Services\NajmHoda\FounderOps\FounderExecutiveConnectivityService;
 use App\Services\NajmHoda\FounderOps\FounderModerationDecisionService;
 use App\Services\NajmHoda\FounderOps\FounderOperationsSnapshotService;
 use App\Services\NajmHoda\FounderOps\FounderReferenceApprovalCandidateService;
@@ -25,11 +26,12 @@ use Illuminate\Http\Request;
 
 class FounderOperationsController extends Controller
 {
-    public function index(Request $request, FounderAttentionService $attention, FounderOperationsSnapshotService $snapshots, FounderApprovalInboxService $approvals, FounderReferenceApprovalCandidateService $referenceCandidates)
+    public function index(Request $request, FounderAttentionService $attention, FounderOperationsSnapshotService $snapshots, FounderApprovalInboxService $approvals, FounderReferenceApprovalCandidateService $referenceCandidates, FounderExecutiveConnectivityService $connectivity)
     {
         $hours=max(1,min((int)$request->integer('hours',24),168));
         return view('admin.najm-hoda.founder-ops.index',[
             'hours'=>$hours,'brief'=>$attention->brief($hours),'snapshot'=>$snapshots->snapshot($hours),
+            'executiveConnectivity'=>$connectivity->report(),
             'approvalInbox'=>$approvals->snapshot(),'referenceCandidates'=>$referenceCandidates->candidates(10),
             'supportDrafts'=>SupportReplyDraft::query()->with(['ticket:id,tracking_code,subject,status,priority,category'])->where('status','draft')->latest('id')->limit(20)->get(),
             'moderationCases'=>ModerationCaseSummary::query()->where('status','draft')->latest('id')->limit(20)->get(),
@@ -44,6 +46,7 @@ class FounderOperationsController extends Controller
 
     public function brief(Request $request, FounderAttentionService $service){return response()->json(['success'=>true,'data'=>$service->brief((int)$request->integer('hours',24))]);}
     public function snapshot(Request $request, FounderOperationsSnapshotService $service){return response()->json(['success'=>true,'data'=>$service->snapshot((int)$request->integer('hours',24))]);}
+    public function connectivity(FounderExecutiveConnectivityService $service){return response()->json(['success'=>true,'data'=>$service->report()]);}
     public function autonomyPlan(Request $request, FounderAutonomyBridgeService $service){$hours=max(1,min((int)$request->integer('hours',24),168));$limit=max(1,min((int)$request->integer('limit',12),50));return response()->json(['success'=>true,'data'=>$service->plan($hours,$limit)]);}
     public function approvals(FounderApprovalInboxService $service){return response()->json(['success'=>true,'data'=>$service->snapshot()]);}
     public function authority(FounderAuthoritySnapshotService $summary, FounderActionAuthorityService $authority){return response()->json(['success'=>true,'data'=>['summary'=>$summary->snapshot(),'matrix'=>$authority->matrix()]]);}
