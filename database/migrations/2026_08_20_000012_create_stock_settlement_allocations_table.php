@@ -23,6 +23,8 @@ return new class extends Migration
             $table->string('money_state', 32)->default('pending')->index();
             $table->string('asset_state', 32)->default('pending')->index();
             $table->string('reservation_key', 191)->nullable()->index();
+            $table->string('payee_account_number', 64)->nullable();
+            $table->string('money_settlement_key', 191)->nullable()->unique();
             $table->foreignId('external_payment_intent_id')->nullable()->constrained('stock_external_payment_intents')->restrictOnDelete();
             $table->foreignId('holding_transaction_id')->nullable()->constrained('holding_transactions')->restrictOnDelete();
             $table->unsignedInteger('attempts')->default(0);
