@@ -23,6 +23,11 @@ class FounderAttentionService
         if ($runtimeStatus === 'critical') $items[] = $this->item('P0', 'runtime_health', 'Najm Hoda runtime is critical');
         elseif ($runtimeStatus === 'warning') $items[] = $this->item('P1', 'runtime_health', 'Najm Hoda runtime needs attention');
 
+        $reconciliationRequired=(int)data_get($snapshot,'stock.settlement_allocations.reconciliation_required',0);
+        if($reconciliationRequired>0){
+            $items[]=$this->item('P0','stock','External money is confirmed but Stock allocation requires reconciliation',['count'=>$reconciliationRequired]);
+        }
+
         foreach (['critical'=>'P0','high'=>'P1','medium'=>'P2'] as $severity=>$priority) {
             $findings = FounderFinancialRiskFinding::query()->where('status','open')->where('severity',$severity)->get(['domain','risk_code']);
             if ($findings->isEmpty()) continue;
@@ -35,10 +40,7 @@ class FounderAttentionService
 
         $overdueFounderApprovals = (int) data_get($approvalSnapshot, 'overdue', 0);
         if ($overdueFounderApprovals > 0) {
-            $items[] = $this->item('P1', 'founder_approvals', 'Founder action approvals are overdue', [
-                'count' => $overdueFounderApprovals,
-                'pending_total' => (int) data_get($approvalSnapshot, 'pending', 0),
-            ]);
+            $items[] = $this->item('P1', 'founder_approvals', 'Founder action approvals are overdue', ['count'=>$overdueFounderApprovals,'pending_total'=>(int)data_get($approvalSnapshot,'pending',0)]);
         }
 
         $rules = [
@@ -66,24 +68,18 @@ class FounderAttentionService
             if ($count > 0) $items[] = $this->item($priority, $domain, $title, ['count' => $count]);
         }
 
-        $pendingFounderApprovals = (int) data_get($approvalSnapshot, 'pending', 0);
-        if ($pendingFounderApprovals > 0 && $overdueFounderApprovals === 0) {
-            $items[] = $this->item('P2', 'founder_approvals', 'Founder actions are waiting for explicit approval', [
-                'count' => $pendingFounderApprovals,
-                'by_risk' => data_get($approvalSnapshot, 'by_risk', []),
-            ]);
+        $pendingFounderApprovals=(int)data_get($approvalSnapshot,'pending',0);
+        if($pendingFounderApprovals>0&&$overdueFounderApprovals===0){
+            $items[]=$this->item('P2','founder_approvals','Founder actions are waiting for explicit approval',['count'=>$pendingFounderApprovals,'by_risk'=>data_get($approvalSnapshot,'by_risk',[])]);
         }
 
-        $pendingApprovals = (int) data_get($snapshot, 'approvals.total', 0);
-        if ($pendingApprovals > 0) $items[] = $this->item('P2', 'approvals', 'Reference-data approvals are waiting', [
-            'count' => $pendingApprovals,
-            'references' => data_get($snapshot, 'approvals.references.by_type', []),
-            'locations' => data_get($snapshot, 'approvals.locations.by_type', []),
-        ]);
+        $pendingApprovals=(int)data_get($snapshot,'approvals.total',0);
+        if($pendingApprovals>0){
+            $items[]=$this->item('P2','approvals','Reference-data approvals are waiting',['count'=>$pendingApprovals,'references'=>data_get($snapshot,'approvals.references.by_type',[]),'locations'=>data_get($snapshot,'approvals.locations.by_type',[])]);
+        }
 
-        $sensitiveConfigChanges = collect((array) data_get($snapshot, 'recent_managed_events', []))
-            ->filter(fn (array $event): bool => str_starts_with((string) ($event['event'] ?? ''), 'najm_hoda.input.admin_settings.'))->count();
-        if ($sensitiveConfigChanges > 0) $items[] = $this->item('P2', 'admin_settings', 'Sensitive admin configuration changed in the reporting window', ['events' => $sensitiveConfigChanges]);
+        $sensitiveConfigChanges=collect((array)data_get($snapshot,'recent_managed_events',[]))->filter(fn(array $event):bool=>str_starts_with((string)($event['event']??''),'najm_hoda.input.admin_settings.'))->count();
+        if($sensitiveConfigChanges>0)$items[]=$this->item('P2','admin_settings','Sensitive admin configuration changed in the reporting window',['events'=>$sensitiveConfigChanges]);
 
         foreach ([
             ['users','users.new_members','New members joined in the reporting window'],
@@ -92,56 +88,37 @@ class FounderAttentionService
             ['blog','blog.published_in_window','Blog posts were published in the reporting window'],
             ['invitations','growth.used_codes_in_window','Invitation codes converted to registrations'],
             ['najm_bahar','najm_bahar.review_events_in_window','Najm Bahar project-review events occurred in the reporting window'],
-            ['stock','stock.external_payment_intents.confirmed','External capital payments were confirmed in the reporting state'],
-        ] as [$domain, $path, $title]) {
-            $count = (int) data_get($snapshot, $path, 0);
-            if ($count > 0) $items[] = $this->item('P3', $domain, $title, ['count' => $count]);
+            ['stock','stock.external_payment_intents.confirmed','External capital payments are confirmed'],
+            ['stock','stock.settlement_allocations.settled','Canonical Stock allocations are settled'],
+        ] as [$domain,$path,$title]){
+            $count=(int)data_get($snapshot,$path,0); if($count>0)$items[]=$this->item('P3',$domain,$title,['count'=>$count]);
         }
 
-        $activeDelegations = (int) data_get($authoritySnapshot, 'active_delegations_count', 0);
-        if ($activeDelegations > 0) {
-            $items[] = $this->item('P3', 'authority', 'Delegated Founder Operations actions are active', [
-                'count' => $activeDelegations,
-                'actions' => data_get($authoritySnapshot, 'active_delegations', []),
-            ]);
+        $activeDelegations=(int)data_get($authoritySnapshot,'active_delegations_count',0);
+        if($activeDelegations>0)$items[]=$this->item('P3','authority','Delegated Founder Operations actions are active',['count'=>$activeDelegations,'actions'=>data_get($authoritySnapshot,'active_delegations',[])]);
+
+        $rolloutQueue=(array)data_get($snapshot,'management_coverage.next_domains',[]);
+        if($rolloutQueue!==[]&&is_array($rolloutQueue[0]??null)){
+            $next=$rolloutQueue[0];
+            $items[]=$this->item('P3','management_coverage','Next management domain is ready for integration work',['domain'=>$next['key']??null,'label'=>$next['label']??null,'stage'=>$next['integration_stage']??null,'risk'=>$next['risk']??null]);
         }
 
-        $rolloutQueue = (array) data_get($snapshot, 'management_coverage.next_domains', []);
-        if ($rolloutQueue !== [] && is_array($rolloutQueue[0] ?? null)) {
-            $next = $rolloutQueue[0];
-            $items[] = $this->item('P3', 'management_coverage', 'Next management domain is ready for integration work', [
-                'domain' => $next['key'] ?? null, 'label' => $next['label'] ?? null,
-                'stage' => $next['integration_stage'] ?? null, 'risk' => $next['risk'] ?? null,
-            ]);
-        }
-
-        usort($items, static function (array $a, array $b): int {
-            $rank = ['P0' => 0, 'P1' => 1, 'P2' => 2, 'P3' => 3];
-            return ($rank[$a['priority']] ?? 99) <=> ($rank[$b['priority']] ?? 99);
-        });
+        usort($items,static function(array $a,array $b):int{$rank=['P0'=>0,'P1'=>1,'P2'=>2,'P3'=>3];return($rank[$a['priority']]??99)<=>($rank[$b['priority']]??99);});
 
         return [
-            'generated_at' => data_get($snapshot, 'window.generated_at'),
-            'summary' => [
-                'total_attention_items' => count($items),
-                'P0' => $this->countPriority($items, 'P0'), 'P1' => $this->countPriority($items, 'P1'),
-                'P2' => $this->countPriority($items, 'P2'), 'P3' => $this->countPriority($items, 'P3'),
-            ],
-            'items' => $items,
-            'founder_approvals' => $approvalSnapshot,
-            'authority' => $authoritySnapshot,
-            'management_coverage' => data_get($snapshot, 'management_coverage', []),
+            'generated_at'=>data_get($snapshot,'window.generated_at'),
+            'summary'=>['total_attention_items'=>count($items),'P0'=>$this->countPriority($items,'P0'),'P1'=>$this->countPriority($items,'P1'),'P2'=>$this->countPriority($items,'P2'),'P3'=>$this->countPriority($items,'P3')],
+            'items'=>$items,'founder_approvals'=>$approvalSnapshot,'authority'=>$authoritySnapshot,'management_coverage'=>data_get($snapshot,'management_coverage',[]),
         ];
     }
 
-    protected function item(string $priority, string $domain, string $title, array $context = []): array
+    protected function item(string $priority,string $domain,string $title,array $context=[]): array
     {
-        return ['priority' => $priority, 'domain' => $domain, 'title' => $title, 'context' => $context,
-            'requires_founder_decision' => in_array($priority, ['P0', 'P1'], true) || $domain === 'founder_approvals'];
+        return ['priority'=>$priority,'domain'=>$domain,'title'=>$title,'context'=>$context,'requires_founder_decision'=>in_array($priority,['P0','P1'],true)||$domain==='founder_approvals'];
     }
 
-    protected function countPriority(array $items, string $priority): int
+    protected function countPriority(array $items,string $priority): int
     {
-        return count(array_filter($items, static fn (array $item): bool => ($item['priority'] ?? null) === $priority));
+        return count(array_filter($items,static fn(array $item):bool=>($item['priority']??null)===$priority));
     }
 }
