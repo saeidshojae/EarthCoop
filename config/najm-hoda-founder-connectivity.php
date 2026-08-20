@@ -23,6 +23,7 @@ return [
         'blog.draft_post' => App\Services\NajmHoda\FounderOps\FounderContentDraftService::class,
         'notifications.draft_announcement' => App\Services\NajmHoda\FounderOps\FounderAnnouncementDraftService::class,
         'invitations.recommend_request_decision' => App\Services\Invitation\InvitationManagementService::class,
+        'secretariat.draft_correspondence' => App\Services\NajmHoda\FounderOps\FounderSecretariatCorrespondenceDraftService::class,
         'secretariat.prepare_follow_up' => App\Modules\Secretariat\Services\SecretariatFollowUpProposalService::class,
     ],
 
