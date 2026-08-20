@@ -15,17 +15,23 @@ class StockCanonicalReadinessService
     public function audit(): array
     {
         $blockers=[]; $warnings=[]; $checks=[];
+        $canonical=Auction::query()->with('stock')->whereNotNull('base_price_gol')->get();
+        $checks['canonical_auction_count']=$canonical->count();
 
+        $capitalRequired=$canonical->contains(function(Auction $auction): bool {
+            return (string)($auction->stock?->issuer_type??'')===SettlementEligibilityPolicy::ISSUER_EARTHCOOP
+                && (string)$auction->market_type===SettlementEligibilityPolicy::MARKET_PRIMARY
+                && (string)$auction->supply_source===SettlementEligibilityPolicy::SUPPLY_TREASURY
+                && (string)$auction->settlement_channel===SettlementChannel::ACTIVE_BAHAR;
+        });
         $capital=(string)config('stock.earthcoop_capital_account_number','');
-        $capitalOk=$capital!=='' && Account::query()->where('account_number',$capital)->where('status',1)->exists();
+        $capitalOk=!$capitalRequired || ($capital!=='' && Account::query()->where('account_number',$capital)->where('status',1)->exists());
+        $checks['earthcoop_capital_account_required']=$capitalRequired;
         $checks['earthcoop_capital_account']=$capitalOk;
         if(!$capitalOk) $blockers[]=$this->item('capital_account_missing','EarthCoop capital Najm Bahar account is not configured or active.');
 
-        $canonical=Auction::query()->whereNotNull('base_price_gol')->get();
-        $checks['canonical_auction_count']=$canonical->count();
-
         foreach($canonical as $auction){
-            try { $auction->loadMissing('stock'); $auction->assertSettlementEligible(); }
+            try { $auction->assertSettlementEligible(); }
             catch(\Throwable $e){ $blockers[]=$this->item('auction_boundary_invalid','Canonical auction fails settlement eligibility.',['auction_id'=>$auction->id]); }
 
             if(strtolower((string)$auction->quote_unit)!=='gol' || (int)$auction->base_price_gol<=0){
@@ -37,16 +43,21 @@ class StockCanonicalReadinessService
             })->count();
             if($legacyBids>0) $blockers[]=$this->item('legacy_bid_in_canonical_auction','Canonical auction contains legacy bids.',['auction_id'=>$auction->id,'count'=>$legacyBids]);
 
-            if((string)$auction->market_type===SettlementEligibilityPolicy::MARKET_SECONDARY){
-                if(!config('stock.secondary_market_enabled',false)){
-                    $blockers[]=$this->item('secondary_market_not_cut_over','Secondary-market settlement is intentionally disabled until seller-side share reservation/transfer is implemented.',['auction_id'=>$auction->id]);
-                }
+            $issuer=(string)($auction->stock?->issuer_type??'');
+            $market=(string)$auction->market_type;
+            $supply=(string)$auction->supply_source;
+            $channel=(string)$auction->settlement_channel;
+
+            if($market===SettlementEligibilityPolicy::MARKET_SECONDARY && !config('stock.secondary_market_enabled',false)){
+                $blockers[]=$this->item('secondary_market_not_cut_over','Secondary-market settlement is intentionally disabled until seller-side share reservation/transfer is implemented.',['auction_id'=>$auction->id]);
             }
 
-            if(in_array((string)$auction->settlement_channel,[SettlementChannel::EXTERNAL_IRR,SettlementChannel::EXTERNAL_USD],true)){
-                if(!config('stock.external_capital_enabled',false)){
-                    $blockers[]=$this->item('external_capital_not_configured','External capital provider/rate-source cutover is disabled.',['auction_id'=>$auction->id,'channel'=>$auction->settlement_channel]);
-                }
+            if(in_array($channel,[SettlementChannel::EXTERNAL_IRR,SettlementChannel::EXTERNAL_USD],true) && !config('stock.external_capital_enabled',false)){
+                $blockers[]=$this->item('external_capital_not_configured','External capital provider/rate-source cutover is disabled.',['auction_id'=>$auction->id,'channel'=>$channel]);
+            }
+
+            if($issuer===SettlementEligibilityPolicy::ISSUER_PROJECT && $market===SettlementEligibilityPolicy::MARKET_PRIMARY && $supply===SettlementEligibilityPolicy::SUPPLY_TREASURY && $channel===SettlementChannel::ACTIVE_BAHAR){
+                $blockers[]=$this->item('project_payee_mapping_missing','Project primary Active Bahar settlement has no canonical project payee-account mapping yet.',['auction_id'=>$auction->id,'stock_id'=>$auction->stock_id,'issuer_id'=>$auction->stock?->issuer_id]);
             }
         }
 
