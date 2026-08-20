@@ -19,11 +19,11 @@ Canonical flow:
 7. Unknown/legacy issuer or auction classifications fail closed for canonical settlement.
 8. Asset ownership remains in Stock/Holding; money ownership remains in Najm Bahar or the external payment/reconciliation domain.
 
-## Current audit findings
+## Transitional code warning
 
-The legacy Stock wallet remains transitional and must never become a Bahar wallet. `AuctionService` still assumes the legacy wallet path, float/decimal price semantics and تومان presentation. It is intentionally not wired to the new gateways yet.
+The legacy `AuctionService` still uses decimal/float prices, the legacy Stock wallet, and تومان presentation. It remains isolated until the atomic settlement state machine replaces its money/asset mutation path.
 
-Najm Bahar provides integer money state, account locking, idempotent transactions and double-entry ledger semantics. Stock must use Najm Bahar primitives and must not mutate its balances directly.
+No automatic conversion from legacy decimal/toman values to Gol is performed. Existing legacy rows keep nullable Gol columns until explicitly migrated with known economic meaning.
 
 ## Slice 1 implemented — settlement boundary
 
@@ -43,51 +43,75 @@ Najm Bahar provides integer money state, account locking, idempotent transaction
 
 A canonical Najm Bahar reservation ledger exists in `najm_active_bahar_reservations`.
 
-Properties:
-
-1. reservation amounts are positive integer Gol;
-2. reservations are backed only by `balance_active`;
-3. reserving does not mutate account balances or total money supply; spendable Active Bahar is `balance_active - open reservations`;
-4. release closes the reservation and restores spendability without minting or transferring money;
-5. settlement atomically locks accounts, debits payer Active Bahar, credits payee Active Bahar, creates a canonical Najm transaction and double-entry ledger entries, then marks the reservation settled;
-6. refunds are transaction- and ledger-backed, idempotent by refund key and capped by settled amount;
-7. reservation, release and settlement keys are unique/idempotent;
-8. account locks use deterministic ordering for payer/payee settlement/refund;
-9. `NajmBaharSettlementGateway` implements the Stock settlement contract for `active_bahar` without using the legacy Stock wallet.
+- integer Gol reservation;
+- Active Bahar only;
+- reserve reduces spendable without changing total supply;
+- release restores spendability;
+- settle/refund are transaction- and double-entry-ledger-backed;
+- unique idempotency keys and deterministic account locking;
+- `NajmBaharSettlementGateway` implements the internal settlement contract without the Stock wallet.
 
 ## Slice 3 implemented — external capital rail
 
-A provider-neutral external payment rail now exists for IRR/USD.
+A provider-neutral IRR/USD payment-intent and append-only reconciliation rail exists.
 
-### Data model
+- no fiat wallet/balance;
+- no Najm Bahar credit or minting;
+- external intents only after `SettlementEligibilityPolicy` passes;
+- external settlement restricted to EarthCoop + primary + treasury;
+- currency/channel match enforced;
+- exact amount/currency reconciliation;
+- expired intents cannot confirm;
+- provider secrets are redacted before persistence;
+- confirmation is payment evidence only, not Stock/Holding allocation.
 
-`stock_external_payment_intents` stores payment intent state only. It is not a balance table and never credits Najm Bahar.
+## Slice 4 implemented — integer Gol pricing + deterministic fiat quote snapshot
 
-`stock_external_payment_reconciliations` stores append-only provider/reconciliation events. Reconciliation rows cannot be updated or deleted through the model, and intent deletion cannot cascade-delete reconciliation history.
+Canonical pricing fields now exist alongside the legacy decimal fields:
 
-### Boundary rules
+- Stock: `base_share_price_gol`, `startup_valuation_gol`;
+- Auction: `base_price_gol`, `min_bid_gol`, `max_bid_gol`;
+- Bid: `price_gol`;
+- StockTransaction: `price_gol`.
 
-1. external intents can only be created from an Auction that passes `SettlementEligibilityPolicy`;
-2. therefore external settlement remains restricted to EarthCoop + primary + treasury;
-3. channel and currency must match exactly: `external_irr -> IRR`, `external_usd -> USD`;
-4. `amount_minor` is a positive integer external-currency amount; it is not Bahar and it is not stored-value balance;
-5. intent and reconciliation identities are idempotent and conflicting reuse fails closed;
-6. a confirmation must match the exact intent amount/currency;
-7. expired intents cannot be confirmed;
-8. provider payloads are recursively stripped of common secrets/payment credentials before persistence;
-9. confirmed external payment does not mutate any Najm Bahar account or mint Bahar.
+### Canonical pricing rules
 
-### Deliberate boundary after Slice 3
+1. all canonical Stock/Auction/Bid arithmetic is positive integer Gol;
+2. bid totals use checked integer multiplication only;
+3. legacy decimal values are not automatically converted or treated as Gol;
+4. canonical auctions require `quote_unit=gol` and `base_price_gol > 0`;
+5. legacy ordering/helpers remain isolated until the old `AuctionService` is retired;
+6. Founder Ops reports auctions/stocks that are missing canonical Gol configuration.
 
-The external rail is **not yet registered as an Auction settlement gateway**. Slice 4 must first create deterministic Bahar/Gol quote and fiat quote snapshot semantics so the system cannot confuse a Gol amount with an IRR/USD provider amount.
+### Deterministic external quote snapshots
 
-A confirmed payment intent is only evidence that external funds reconciled. It does not by itself allocate Stock/Holding. Asset allocation remains deferred to the atomic settlement state machine in Slice 5.
+`FiatQuoteSnapshot` stores:
+
+- Gol amount;
+- IRR/USD currency;
+- fiat amount in integer minor units;
+- integer rate numerator/denominator;
+- deterministic `half_up_integer` rounding;
+- quote source;
+- quote timestamp.
+
+The snapshot validates that the stored fiat amount can be reproduced exactly from the Gol amount and integer ratio and rejects integer overflow.
+
+From Slice 4 forward, new external payment intents require a valid `FiatQuoteSnapshot`. A legacy decimal auction cannot create a new canonical external payment intent.
+
+## Deliberate boundary after Slice 4
+
+The legacy `AuctionService` is still not wired to the new settlement rails. The remaining dangerous boundary is atomicity between:
+
+1. bid/payment reservation or external confirmation;
+2. winner/allocation decision;
+3. Stock/Holding mutation;
+4. money settlement/release/refund;
+5. retry/reconciliation after partial failure.
+
+That is Slice 5 and must be solved as one idempotent state machine rather than by injecting a gateway into the existing legacy settlement methods.
 
 ## Next slices
-
-### Slice 4 — Bahar-denominated price migration
-
-Replace float/decimal auction arithmetic with integer Gol quote fields and deterministic fiat quote snapshots for external settlement.
 
 ### Slice 5 — Atomic asset settlement
 
