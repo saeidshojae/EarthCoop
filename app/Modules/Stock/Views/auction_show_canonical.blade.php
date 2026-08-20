@@ -9,6 +9,7 @@
 @endpush
 
 @section('content')
+@php($bidFloor = max((int)($auction->base_price_gol ?? 0), (int)($auction->min_bid_gol ?? 0), 1))
 <div class="canonical-auction">
     @if(session('success'))<div class="notice">{{ session('success') }}</div>@endif
     @if(session('error'))<div class="notice warn">{{ session('error') }}</div>@endif
@@ -32,7 +33,7 @@
         @if($auction->min_bid_gol || $auction->max_bid_gol)
             <div class="notice">
                 محدوده canonical:
-                @if($auction->min_bid_gol) حداقل {{ number_format($auction->min_bid_gol) }} Gol @endif
+                حداقل {{ number_format($bidFloor) }} Gol
                 @if($auction->max_bid_gol) — حداکثر {{ number_format($auction->max_bid_gol) }} Gol @endif
             </div>
         @endif
@@ -66,7 +67,7 @@
                         <div class="gridx">
                             <div>
                                 <label class="labelx">قیمت پیشنهادی هر سهم (Gol)</label>
-                                <input type="number" name="price_gol" min="{{ $auction->min_bid_gol ?? 1 }}" @if($auction->max_bid_gol) max="{{ $auction->max_bid_gol }}" @endif value="{{ old('price_gol', $auction->base_price_gol) }}" required>
+                                <input type="number" name="price_gol" min="{{ $bidFloor }}" @if($auction->max_bid_gol) max="{{ $auction->max_bid_gol }}" @endif value="{{ old('price_gol', $bidFloor) }}" required>
                             </div>
                             <div>
                                 <label class="labelx">تعداد سهام</label>
@@ -91,15 +92,9 @@
             <h4>پیشنهادهای شما</h4>
             @forelse($userBids as $bid)
                 <div class="bidrow">
-                    <div>
-                        <strong>{{ number_format($bid->price_gol ?? 0) }} Gol</strong>
-                        <div>تعداد: {{ number_format($bid->quantity) }} — وضعیت: {{ $bid->status }}</div>
-                    </div>
+                    <div><strong>{{ number_format($bid->price_gol ?? 0) }} Gol</strong><div>تعداد: {{ number_format($bid->quantity) }} — وضعیت: {{ $bid->status }}</div></div>
                     @if($bid->status === 'active' && $bid->reservation_key)
-                        <form method="POST" action="{{ route('bid.canonical.destroy', $bid) }}">
-                            @csrf @method('DELETE')
-                            <button class="btnx btnx-danger" type="submit" onclick="return confirm('پیشنهاد لغو و رزرو Active Bahar آزاد شود؟')">لغو پیشنهاد</button>
-                        </form>
+                        <form method="POST" action="{{ route('bid.canonical.destroy', $bid) }}">@csrf @method('DELETE')<button class="btnx btnx-danger" type="submit" onclick="return confirm('پیشنهاد لغو و رزرو Active Bahar آزاد شود؟')">لغو پیشنهاد</button></form>
                     @endif
                 </div>
             @empty
@@ -110,10 +105,7 @@
         <div class="cardx">
             <h4>Order Book canonical</h4>
             @forelse($orderBook as $bid)
-                <div class="bidrow">
-                    <div><strong>{{ number_format($bid->price_gol) }} Gol</strong><div>{{ number_format($bid->quantity) }} سهم</div></div>
-                    <div>کاربر #{{ $bid->user_id }}</div>
-                </div>
+                <div class="bidrow"><div><strong>{{ number_format($bid->price_gol) }} Gol</strong><div>{{ number_format($bid->quantity) }} سهم</div></div><div>کاربر #{{ $bid->user_id }}</div></div>
             @empty
                 <p>پیشنهاد فعالی وجود ندارد.</p>
             @endforelse
@@ -124,10 +116,7 @@
         <div class="cardx">
             <h4>تسویه canonical ادمین</h4>
             <div class="notice warn">این عملیات فقط از close engine canonical متناظر با نوع بازار عبور می‌کند و در شرایط ناقص fail-closed است.</div>
-            <form method="POST" action="{{ route('admin.stock.canonical-auction.close', $auction) }}" style="margin-top:1rem">
-                @csrf
-                <button class="btnx" type="submit" onclick="return confirm('تسویه canonical این حراج اجرا شود؟')">اجرای تسویه canonical</button>
-            </form>
+            <form method="POST" action="{{ route('admin.stock.canonical-auction.close', $auction) }}" style="margin-top:1rem">@csrf<button class="btnx" type="submit" onclick="return confirm('تسویه canonical این حراج اجرا شود؟')">اجرای تسویه canonical</button></form>
         </div>
     @endif
 </div>
