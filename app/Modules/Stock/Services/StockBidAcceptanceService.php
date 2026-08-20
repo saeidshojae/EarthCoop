@@ -2,6 +2,7 @@
 
 namespace App\Modules\Stock\Services;
 
+use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Services\ActiveBaharReservationService;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Bid;
@@ -34,6 +35,13 @@ class StockBidAcceptanceService
         if (trim($acceptanceKey) === '') throw new InvalidArgumentException('Bid acceptance key is required.');
         if (! $auction->isActive()) throw new RuntimeException('Auction is not active.');
 
+        $payer = Account::query()
+            ->where('account_number', $payerAccountNumber)
+            ->where('type', 'user')
+            ->where('user_id', $userId)
+            ->first();
+        if (! $payer) throw new RuntimeException('Payer account is not the bidder main Najm Bahar account.');
+
         $auction->loadMissing('stock');
         $this->eligibility->assertAllowed(
             (string)($auction->stock?->issuer_type ?? ''),
@@ -47,8 +55,6 @@ class StockBidAcceptanceService
             throw new RuntimeException('This canonical bid acceptance path is Active Bahar only.');
         }
 
-        // Slice 6 constitutional gate: a secondary-market order cannot even be
-        // accepted unless its settlement rail is Active Bahar.
         if ((string)$auction->market_type === SettlementEligibilityPolicy::MARKET_SECONDARY
             && (string)$auction->settlement_channel !== SettlementChannel::ACTIVE_BAHAR) {
             throw new RuntimeException('Secondary-market bids require Active Bahar settlement.');
@@ -75,8 +81,6 @@ class StockBidAcceptanceService
                 return $existing;
             }
 
-            // Reservation is inside the same DB transaction. If Bid creation
-            // fails, the reservation insert rolls back with it.
             $this->reservations->reserve(
                 $payerAccountNumber,
                 $totalGol,
@@ -90,14 +94,30 @@ class StockBidAcceptanceService
                 'acceptance_key'=>$acceptanceKey,
                 'auction_id'=>$auction->id,
                 'user_id'=>$userId,
-                // Legacy non-null column retained only for schema compatibility;
-                // canonical economic meaning is exclusively price_gol.
                 'price'=>0,
                 'price_gol'=>$priceGol,
                 'reservation_key'=>$reservationKey,
                 'quantity'=>$quantity,
                 'status'=>'active',
             ]);
+        });
+    }
+
+    public function cancelActiveBaharBid(Bid $bid, int $userId, string $cancellationKey): Bid
+    {
+        if (trim($cancellationKey) === '') throw new InvalidArgumentException('Bid cancellation key is required.');
+        if ((int)$bid->user_id !== $userId) throw new RuntimeException('Bid does not belong to user.');
+        if (! $bid->acceptance_key || ! $bid->reservation_key) throw new RuntimeException('Bid is not a canonical Active Bahar bid.');
+        if ($bid->status === 'canceled') return $bid;
+        if ($bid->status !== 'active') throw new RuntimeException('Only an active bid can be cancelled.');
+
+        return DB::transaction(function () use ($bid,$cancellationKey) {
+            $bid = Bid::query()->whereKey($bid->id)->lockForUpdate()->firstOrFail();
+            if ($bid->status === 'canceled') return $bid;
+            if ($bid->status !== 'active') throw new RuntimeException('Only an active bid can be cancelled.');
+            $this->reservations->release((string)$bid->reservation_key, $cancellationKey);
+            $bid->status='canceled'; $bid->save();
+            return $bid->fresh();
         });
     }
 }
