@@ -47,14 +47,17 @@ class CloseAuctionsCommand extends Command
         $supply=(string)$auction->supply_source;
         $channel=(string)$auction->settlement_channel;
 
-        if($market===SettlementEligibilityPolicy::MARKET_SECONDARY && $supply===SettlementEligibilityPolicy::SUPPLY_HOLDER){
-            if(!config('stock.secondary_market_enabled',false)){
-                return ['status'=>'blocked','reason'=>'secondary_market_disabled','auction_id'=>$auction->id];
-            }
+        // Feature flags gate creation of new commitments. Existing canonical
+        // auctions must always be allowed to finish their accepted lifecycle.
+        if($market===SettlementEligibilityPolicy::MARKET_SECONDARY
+            && $supply===SettlementEligibilityPolicy::SUPPLY_HOLDER
+            && $channel===SettlementChannel::ACTIVE_BAHAR){
             return $this->secondaryCanonical->close($auction);
         }
 
-        if($market===SettlementEligibilityPolicy::MARKET_PRIMARY && $supply===SettlementEligibilityPolicy::SUPPLY_TREASURY && $channel===SettlementChannel::ACTIVE_BAHAR){
+        if($market===SettlementEligibilityPolicy::MARKET_PRIMARY
+            && $supply===SettlementEligibilityPolicy::SUPPLY_TREASURY
+            && $channel===SettlementChannel::ACTIVE_BAHAR){
             return $this->primaryCanonical->close($auction);
         }
 
