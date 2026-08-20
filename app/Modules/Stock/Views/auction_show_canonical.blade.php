@@ -25,6 +25,9 @@
             <div><div class="labelx">نوع بازار</div><div class="valuex">{{ $auction->market_type }}</div></div>
             <div><div class="labelx">منبع عرضه</div><div class="valuex">{{ $auction->supply_source }}</div></div>
             <div><div class="labelx">وضعیت</div><div class="valuex">{{ $auction->status }}</div></div>
+            @if($auction->market_type === \App\Modules\Stock\Settlement\SettlementEligibilityPolicy::MARKET_SECONDARY)
+                <div><div class="labelx">فروشنده</div><div class="valuex">کاربر #{{ $auction->seller_user_id }}</div></div>
+            @endif
         </div>
         @if($auction->min_bid_gol || $auction->max_bid_gol)
             <div class="notice">
@@ -33,13 +36,27 @@
                 @if($auction->max_bid_gol) — حداکثر {{ number_format($auction->max_bid_gol) }} Gol @endif
             </div>
         @endif
+
+        @if(auth()->check() && (int)$auction->seller_user_id === (int)auth()->id() && in_array($auction->status,['running','scheduled'],true))
+            <div class="notice warn">
+                این عرضه متعلق به شماست. تا زمانی که Bid فعال وجود نداشته باشد می‌توانید آن را لغو کنید و reservation سهام آزاد می‌شود.
+                @if(!$auction->activeBids()->exists())
+                    <form method="POST" action="{{ route('stock.secondary-listing.cancel', $auction) }}" style="margin-top:.75rem">
+                        @csrf @method('DELETE')
+                        <button class="btnx btnx-danger" type="submit" onclick="return confirm('عرضه لغو و سهام رزروشده آزاد شود؟')">لغو عرضه</button>
+                    </form>
+                @endif
+            </div>
+        @endif
     </div>
 
     @if($auction->isActive() && $auction->settlement_channel === \App\Modules\Stock\Settlement\SettlementChannel::ACTIVE_BAHAR)
         <div class="cardx">
             <h4>ثبت پیشنهاد با بهار فعال</h4>
             @auth
-                @if($najmAccount)
+                @if((int)$auction->seller_user_id === (int)auth()->id())
+                    <div class="notice warn">فروشنده نمی‌تواند روی عرضه ثانویه خودش پیشنهاد ثبت کند.</div>
+                @elseif($najmAccount)
                     <div class="notice" style="margin-bottom:1rem">
                         موجودی Active: <strong>{{ number_format($najmAccount->balance_active) }} Gol</strong> — قابل خرج پس از رزروهای باز: <strong>{{ number_format($availableActive ?? 0) }} Gol</strong>
                     </div>
@@ -106,7 +123,7 @@
     @if(auth()->check() && (auth()->user()->is_admin ?? false) && $auction->hasCanonicalGolPricing() && in_array($auction->status,['running','settling'],true))
         <div class="cardx">
             <h4>تسویه canonical ادمین</h4>
-            <div class="notice warn">این عملیات فقط از CanonicalAuctionCloseService عبور می‌کند و برای شرایطی که Readiness کامل نیست fail-closed خواهد شد.</div>
+            <div class="notice warn">این عملیات فقط از close engine canonical متناظر با نوع بازار عبور می‌کند و در شرایط ناقص fail-closed است.</div>
             <form method="POST" action="{{ route('admin.stock.canonical-auction.close', $auction) }}" style="margin-top:1rem">
                 @csrf
                 <button class="btnx" type="submit" onclick="return confirm('تسویه canonical این حراج اجرا شود؟')">اجرای تسویه canonical</button>
