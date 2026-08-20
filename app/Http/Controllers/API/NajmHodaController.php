@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Services\NajmHoda\NajmHodaOrchestrator;
 use App\Services\NajmHoda\NajmHodaPrivateGroupActionItemCommandService;
+use App\Services\NajmHoda\NajmHodaChatEscalationService;
 use App\Services\NajmHoda\Context\NajmHodaPageContextResolver;
 use App\Services\NajmHoda\Context\NajmHodaSecretariatDraftAssistant;
 use App\Services\NajmHoda\Runtime\NajmHodaEntryPolicy;
@@ -28,6 +29,7 @@ class NajmHodaController extends Controller
     protected NajmHodaPageContextResolver $pageContextResolver;
     protected NajmHodaPrivateGroupActionItemCommandService $privateGroupActionItemCommandService;
     protected NajmHodaSecretariatDraftAssistant $secretariatDraftAssistant;
+    protected NajmHodaChatEscalationService $chatEscalationService;
 
     public function __construct(
         NajmHodaOrchestrator $najmHoda,
@@ -35,7 +37,8 @@ class NajmHodaController extends Controller
         NajmHodaExecutionService $executionService,
         NajmHodaPageContextResolver $pageContextResolver,
         NajmHodaPrivateGroupActionItemCommandService $privateGroupActionItemCommandService,
-        NajmHodaSecretariatDraftAssistant $secretariatDraftAssistant
+        NajmHodaSecretariatDraftAssistant $secretariatDraftAssistant,
+        NajmHodaChatEscalationService $chatEscalationService
     ) {
         $this->najmHoda = $najmHoda;
         $this->entryPolicy = $entryPolicy;
@@ -43,6 +46,7 @@ class NajmHodaController extends Controller
         $this->pageContextResolver = $pageContextResolver;
         $this->privateGroupActionItemCommandService = $privateGroupActionItemCommandService;
         $this->secretariatDraftAssistant = $secretariatDraftAssistant;
+        $this->chatEscalationService = $chatEscalationService;
     }
 
     public function welcome()
@@ -153,7 +157,45 @@ class NajmHodaController extends Controller
                 );
             }
 
+            $supportTicket = null;
+            if ($this->chatEscalationService->shouldEscalate((string) $request->message, $response)) {
+                try {
+                    $supportTicket = $this->chatEscalationService->escalate(
+                        $conversation,
+                        $user,
+                        (string) $request->message,
+                        $response
+                    );
+                } catch (\Throwable $escalationError) {
+                    Log::error('خطا در ارجاع خودکار مکالمه نجم هدا به پشتیبانی', [
+                        'conversation_id' => $conversation->id,
+                        'user_id' => auth()->id(),
+                        'error' => $escalationError->getMessage(),
+                    ]);
+                }
+            }
+
             if (!(bool) ($response['success'] ?? false)) {
+                if ($supportTicket) {
+                    return response()->json([
+                        'success' => true,
+                        'resolution' => 'escalated_to_support',
+                        'message' => 'نتوانستم این موضوع را با اطمینان حل کنم؛ مکالمه به پشتیبانی ارجاع شد.',
+                        'agent' => (string) ($response['agent'] ?? 'system'),
+                        'conversation_id' => $conversation->id,
+                        'request_id' => (string) ($response['request_id'] ?? ''),
+                        'response_time_ms' => (int) ($response['response_time_ms'] ?? 0),
+                        'escalated_to_support' => true,
+                        'ticket' => [
+                            'id' => $supportTicket->id,
+                            'tracking_code' => $supportTicket->tracking_code,
+                            'status' => $supportTicket->status,
+                            'priority' => $supportTicket->priority,
+                            'category' => $supportTicket->category,
+                        ],
+                    ], 202);
+                }
+
                 return response()->json([
                     'success' => false,
                     'message' => (string) ($response['message'] ?? 'عملیات با خطا مواجه شد. لطفاً مجدداً تلاش کنید.'),
@@ -174,6 +216,14 @@ class NajmHodaController extends Controller
                 'suggestions' => (array) ($response['suggestions'] ?? []),
                 'response_time_ms' => (int) ($response['response_time_ms'] ?? 0),
                 'request_id' => (string) ($response['request_id'] ?? ''),
+                'escalated_to_support' => (bool) $supportTicket,
+                'ticket' => $supportTicket ? [
+                    'id' => $supportTicket->id,
+                    'tracking_code' => $supportTicket->tracking_code,
+                    'status' => $supportTicket->status,
+                    'priority' => $supportTicket->priority,
+                    'category' => $supportTicket->category,
+                ] : null,
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
