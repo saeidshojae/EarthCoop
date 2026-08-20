@@ -42,6 +42,7 @@ return [
         'invitations.reject_invitation_request' => App\Services\NajmHoda\FounderOps\FounderInvitationDecisionService::class,
         'secretariat.register_formal_record' => App\Services\NajmHoda\FounderOps\FounderSecretariatDecisionService::class,
         'secretariat.close_case' => App\Services\NajmHoda\FounderOps\FounderSecretariatDecisionService::class,
+        'najm_bahar.approve_project' => App\Services\NajmHoda\FounderOps\FounderNajmBaharProjectDecisionService::class,
     ],
 
     /*
