@@ -5,6 +5,7 @@ namespace Tests\Feature\Stock;
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\ExternalPaymentIntent;
+use App\Modules\Stock\Models\ExternalPaymentReconciliation;
 use App\Modules\Stock\Models\Stock;
 use App\Modules\Stock\Services\ExternalCapitalPaymentService;
 use App\Modules\Stock\Settlement\SettlementChannel;
@@ -41,19 +42,23 @@ class ExternalCapitalPaymentServiceTest extends TestCase
         $service->createIntentForAuction($auction,500000,'USD','intent:3','auction_bid',9);
     }
 
-    public function test_confirmed_reconciliation_does_not_credit_najm_bahar(): void
+    public function test_confirmed_reconciliation_does_not_credit_najm_bahar_and_redacts_provider_secrets(): void
     {
         $account=Account::create(['account_number'=>'1000000001','name'=>'user','type'=>'user','balance'=>1000,'balance_active'=>1000,'balance_faded'=>0,'status'=>1]);
         $service=app(ExternalCapitalPaymentService::class);
         $auction=$this->auction('earthcoop','primary','treasury',SettlementChannel::EXTERNAL_IRR);
         $service->createIntentForAuction($auction,500000,'IRR','intent:4','auction_bid',10,'manual');
         $service->markPending('intent:4','provider-intent-4','manual');
-        $service->reconcile('intent:4','event:4','payment_confirmed','confirmed',500000,'IRR','provider-event-4','provider-payment-4','manual',['token'=>'must-not-persist','receipt'=>'R-4']);
+        $event=$service->reconcile('intent:4','event:4','payment_confirmed','confirmed',500000,'IRR','provider-event-4','provider-payment-4','manual',['token'=>'must-not-persist','receipt'=>'R-4','nested'=>['card_number'=>'4111111111111111','safe'=>'ok']]);
 
         $this->assertTrue($service->isConfirmed('intent:4'));
         $this->assertSame(1000,(int)$account->fresh()->balance);
         $this->assertSame(1000,(int)$account->fresh()->balance_active);
-        $this->assertDatabaseMissing('stock_external_payment_reconciliations',['provider_payload'=>'must-not-persist']);
+        $payload=(array)$event->fresh()->provider_payload;
+        $this->assertArrayNotHasKey('token',$payload);
+        $this->assertSame('R-4',$payload['receipt'] ?? null);
+        $this->assertArrayNotHasKey('card_number',(array)($payload['nested'] ?? []));
+        $this->assertSame('ok',data_get($payload,'nested.safe'));
     }
 
     public function test_reconciliation_amount_mismatch_is_rejected(): void
@@ -63,6 +68,27 @@ class ExternalCapitalPaymentServiceTest extends TestCase
         $service->createIntentForAuction($auction,12500,'USD','intent:5','auction_bid',11);
         $this->expectException(\RuntimeException::class);
         $service->reconcile('intent:5','event:5','payment_confirmed','confirmed',12499,'USD');
+    }
+
+    public function test_event_key_replay_is_idempotent_but_conflicting_reuse_fails(): void
+    {
+        $service=app(ExternalCapitalPaymentService::class);
+        $auction=$this->auction('earthcoop','primary','treasury',SettlementChannel::EXTERNAL_USD);
+        $service->createIntentForAuction($auction,12500,'USD','intent:6','auction_bid',12);
+        $first=$service->reconcile('intent:6','event:6','payment_pending','pending',12500,'USD');
+        $second=$service->reconcile('intent:6','event:6','payment_pending','pending',12500,'USD');
+        $this->assertSame($first->id,$second->id);
+        $this->expectException(\RuntimeException::class);
+        $service->reconcile('intent:6','event:6','payment_confirmed','confirmed',12500,'USD');
+    }
+
+    public function test_expired_intent_cannot_be_confirmed(): void
+    {
+        $service=app(ExternalCapitalPaymentService::class);
+        $auction=$this->auction('earthcoop','primary','treasury',SettlementChannel::EXTERNAL_IRR);
+        $service->createIntentForAuction($auction,500000,'IRR','intent:7','auction_bid',13,null,[],[],now()->subMinute());
+        $this->expectException(\RuntimeException::class);
+        $service->reconcile('intent:7','event:7','payment_confirmed','confirmed',500000,'IRR');
     }
 
     private function auction(string $issuer,string $market,string $supply,string $channel): Auction
