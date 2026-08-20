@@ -24,13 +24,10 @@ class FounderAttentionService
         elseif ($runtimeStatus === 'warning') $items[] = $this->item('P1', 'runtime_health', 'Najm Hoda runtime needs attention');
 
         foreach (['critical'=>'P0','high'=>'P1','medium'=>'P2'] as $severity=>$priority) {
-            $findings = FounderFinancialRiskFinding::query()
-                ->where('status','open')->where('severity',$severity)
-                ->get(['domain','risk_code']);
+            $findings = FounderFinancialRiskFinding::query()->where('status','open')->where('severity',$severity)->get(['domain','risk_code']);
             if ($findings->isEmpty()) continue;
             $items[] = $this->item($priority, 'financial_risk', 'Open financial integrity findings require attention', [
-                'severity'=>$severity,
-                'count'=>$findings->count(),
+                'severity'=>$severity,'count'=>$findings->count(),
                 'by_domain'=>$findings->groupBy('domain')->map->count()->all(),
                 'by_code'=>$findings->groupBy('risk_code')->map->count()->all(),
             ]);
@@ -50,6 +47,8 @@ class FounderAttentionService
             ['P1','governance','governance.overdue_open','Open elections are past their configured end time'],
             ['P1','reports_moderation','moderation.escalated_to_admin','Moderation reports are escalated to the central admin'],
             ['P1','stock','stock.expired_unsettled','Stock auctions expired without settled status'],
+            ['P1','stock','stock.external_payment_intents.failed','External capital payment intents failed'],
+            ['P1','stock','stock.external_payment_intents.expired_non_terminal','External capital payment intents expired before reconciliation'],
             ['P1','secretariat','secretariat.overdue_dispatches','Secretariat dispatches are overdue'],
             ['P1','najm_bahar','najm_bahar.scheduled_overdue','Najm Bahar scheduled transactions are overdue'],
             ['P2','governance','governance.ending_within_24h','Active elections are ending within 24 hours'],
@@ -93,6 +92,7 @@ class FounderAttentionService
             ['blog','blog.published_in_window','Blog posts were published in the reporting window'],
             ['invitations','growth.used_codes_in_window','Invitation codes converted to registrations'],
             ['najm_bahar','najm_bahar.review_events_in_window','Najm Bahar project-review events occurred in the reporting window'],
+            ['stock','stock.external_payment_intents.confirmed','External capital payments were confirmed in the reporting state'],
         ] as [$domain, $path, $title]) {
             $count = (int) data_get($snapshot, $path, 0);
             if ($count > 0) $items[] = $this->item('P3', $domain, $title, ['count' => $count]);
