@@ -37,6 +37,7 @@ return [
         'reports_moderation.resolve_report' => App\Services\NajmHoda\FounderOps\FounderModerationDecisionService::class,
         'email.send_email' => App\Services\NajmHoda\FounderOps\FounderEmailDecisionService::class,
         'blog.publish_post' => App\Services\NajmHoda\FounderOps\FounderContentDecisionService::class,
+        'blog.delete_post' => App\Services\NajmHoda\FounderOps\FounderBlogLifecycleDecisionService::class,
         'notifications.publish_announcement' => App\Services\NajmHoda\FounderOps\FounderAnnouncementDecisionService::class,
         'invitations.issue_invitation' => App\Services\NajmHoda\FounderOps\FounderInvitationDecisionService::class,
         'invitations.reject_invitation_request' => App\Services\NajmHoda\FounderOps\FounderInvitationDecisionService::class,
@@ -52,6 +53,10 @@ return [
      | They stay non-executable until the named canonical dependency exists.
      */
     'blocked_actions' => [
+        'blog.unpublish_post' => [
+            'reason' => 'publication_state_missing',
+            'dependency' => 'Canonical persisted blog publication-state lifecycle distinct from hard deletion',
+        ],
         'secretariat.dispatch_formal_record' => [
             'reason' => 'real_transport_not_available',
             'dependency' => 'Secretariat transport outbox + delivery callback/reconciliation',
@@ -63,6 +68,14 @@ return [
         'notifications.change_global_notification_defaults' => [
             'reason' => 'persisted_global_defaults_missing',
             'dependency' => 'Canonical persisted notification-default policy/state service',
+        ],
+        'najm_bahar.execute_transaction' => [
+            'reason' => 'typed_transaction_intent_missing',
+            'dependency' => 'Explicit typed economic-actor transaction intent boundary compatible with StrictTransactionService',
+        ],
+        'najm_bahar.change_monetary_policy' => [
+            'reason' => 'canonical_monetary_policy_state_missing',
+            'dependency' => 'Versioned persisted monetary-policy model/service with approval and audit trail',
         ],
     ],
 ];
