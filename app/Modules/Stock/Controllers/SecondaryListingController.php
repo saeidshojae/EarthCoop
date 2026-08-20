@@ -27,6 +27,7 @@ class SecondaryListingController extends Controller
             'holding'=>$holding,
             'availableQuantity'=>$available,
             'secondaryEnabled'=>(bool)config('stock.secondary_market_enabled',false),
+            'listingKey'=>(string)Str::uuid(),
         ]);
     }
 
@@ -34,6 +35,7 @@ class SecondaryListingController extends Controller
     {
         abort_unless((int)$holding->user_id === (int)$request->user()->id, 403);
         $data=$request->validate([
+            'listing_key'=>'required|uuid',
             'quantity'=>'required|integer|min:1',
             'base_price_gol'=>'required|integer|min:1',
             'min_bid_gol'=>'nullable|integer|min:1',
@@ -53,7 +55,7 @@ class SecondaryListingController extends Controller
                 isset($data['max_bid_gol'])?(int)$data['max_bid_gol']:null,
                 (string)$data['type'],
                 now()->addHours((int)$data['duration_hours']),
-                (string)Str::uuid(),
+                (string)$data['listing_key'],
                 $data['info']??null,
             );
             return redirect()->route('auction.show',$auction)->with('success','عرضه ثانویه ایجاد شد و سهام فروشنده برای این حراج رزرو شد.');
