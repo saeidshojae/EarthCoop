@@ -3,7 +3,10 @@
 namespace App\Services\NajmHoda\FounderOps;
 
 use App\Models\FounderFinancialRiskFinding;
+use App\Modules\NajmBahar\Models\Account;
 use App\Modules\Stock\Models\Auction;
+use App\Modules\Stock\Models\Bid;
+use App\Modules\Stock\Models\StockSettlementAllocation;
 use App\Modules\Stock\Settlement\SettlementEligibilityPolicy;
 use App\Modules\Stock\Settlement\SettlementChannel;
 
@@ -35,6 +38,30 @@ class FounderStockRiskService
         }
         if ($market===SettlementEligibilityPolicy::MARKET_SECONDARY && $channel!==SettlementChannel::ACTIVE_BAHAR) {
             $findings[]=$this->finding($auction,'secondary_external_forbidden','high','Secondary-market settlement must use Active Bahar only.',['settlement_channel'=>$channel]);
+        }
+
+        if ($auction->hasCanonicalGolPricing()) {
+            $legacyBids=Bid::query()->where('auction_id',$auction->id)->where(function($q){
+                $q->whereNull('price_gol')->orWhereNull('acceptance_key');
+            })->count();
+            if($legacyBids>0) $findings[]=$this->finding($auction,'legacy_bid_in_canonical_auction','high','Canonical auction contains legacy bids and cannot be safely settled.',['count'=>$legacyBids]);
+
+            if($market===SettlementEligibilityPolicy::MARKET_SECONDARY && !config('stock.secondary_market_enabled',false)){
+                $findings[]=$this->finding($auction,'secondary_cutover_blocked','high','Secondary settlement remains disabled until seller-side Holding reservation and transfer are implemented.',[]);
+            }
+
+            if(in_array($channel,[SettlementChannel::EXTERNAL_IRR,SettlementChannel::EXTERNAL_USD],true) && !config('stock.external_capital_enabled',false)){
+                $findings[]=$this->finding($auction,'external_capital_cutover_blocked','high','External provider/rate-source cutover is not enabled for canonical settlement.',['channel'=>$channel]);
+            }
+
+            if($market===SettlementEligibilityPolicy::MARKET_PRIMARY && $supply===SettlementEligibilityPolicy::SUPPLY_TREASURY && $channel===SettlementChannel::ACTIVE_BAHAR){
+                $capital=(string)config('stock.earthcoop_capital_account_number','');
+                $ok=$capital!==''&&Account::query()->where('account_number',$capital)->where('status',1)->exists();
+                if(!$ok) $findings[]=$this->finding($auction,'capital_account_missing','high','Canonical Active Bahar treasury settlement has no configured active EarthCoop capital account.',[]);
+            }
+
+            $reconciliation=StockSettlementAllocation::query()->where('auction_id',$auction->id)->where('state',StockSettlementAllocation::RECONCILIATION_REQUIRED)->count();
+            if($reconciliation>0) $findings[]=$this->finding($auction,'reconciliation_required','critical','Confirmed money exists while Stock allocation is incomplete.',['count'=>$reconciliation]);
         }
 
         return ['success'=>true,'status'=>'inspected','auction_id'=>(int)$auction->id,'finding_count'=>count($findings),'findings'=>$findings];
