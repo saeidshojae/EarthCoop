@@ -27,6 +27,7 @@ return [
         'invitations.recommend_request_decision' => App\Services\Invitation\InvitationManagementService::class,
         'secretariat.draft_correspondence' => App\Services\NajmHoda\FounderOps\FounderSecretariatCorrespondenceDraftService::class,
         'secretariat.prepare_follow_up' => App\Modules\Secretariat\Services\SecretariatFollowUpProposalService::class,
+        'admin_settings.recommend_change' => App\Services\NajmHoda\FounderOps\FounderAdminSettingRecommendationService::class,
     ],
 
     'approval_adapters' => [
@@ -52,6 +53,7 @@ return [
         'secretariat.close_case' => App\Services\NajmHoda\FounderOps\FounderSecretariatDecisionService::class,
         'stock.settle_auction' => App\Services\NajmHoda\FounderOps\FounderStockDecisionService::class,
         'najm_bahar.approve_project' => App\Services\NajmHoda\FounderOps\FounderNajmBaharProjectDecisionService::class,
+        'admin_settings.change_setting' => App\Services\NajmHoda\FounderOps\FounderAdminSettingDecisionService::class,
     ],
 
     /*
@@ -76,6 +78,14 @@ return [
         'runtime_health.restart_external_service' => [
             'reason' => 'external_control_plane_missing',
             'dependency' => 'Authenticated external-service control plane with bounded restart target allowlist and post-action health verification',
+        ],
+        'reports_moderation.sanction_user' => [
+            'reason' => 'canonical_sanction_lifecycle_missing',
+            'dependency' => 'Typed sanction policy and persisted sanction lifecycle distinct from generic account suspension',
+        ],
+        'admin_settings.change_role_permission' => [
+            'reason' => 'canonical_role_permission_boundary_missing',
+            'dependency' => 'Central role/permission command boundary with protected-role invariants and audit trail',
         ],
         'blog.unpublish_post' => [
             'reason' => 'publication_state_missing',
