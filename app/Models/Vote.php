@@ -34,15 +34,13 @@ class Vote extends Model
     }
 
     /**
-     * Backward-compatible alias for callers that previously expected the
-     * selected User from Vote::user(). Prefer candidateUser() in new code.
+     * Legacy selected-user relation. It intentionally remains bound to
+     * candidate_id during E2 so existing callers are not silently reinterpreted.
+     * New code must use candidateUser().
      */
     public function user()
     {
-        return $this->belongsTo(
-            User::class,
-            $this->candidate_user_id !== null ? 'candidate_user_id' : 'candidate_id'
-        );
+        return $this->belongsTo(User::class, 'candidate_id');
     }
 
     public function election()
