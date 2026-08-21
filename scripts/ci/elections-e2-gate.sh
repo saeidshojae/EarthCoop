@@ -56,7 +56,7 @@ INSERT INTO users (id, email, password, first_name, last_name, status, created_a
   (103, 'e2-voter-103@example.test', 'x', 'E2', 'Voter', 'active', NOW(), NOW());
 
 INSERT INTO groups (id, name, group_type, created_at, updated_at)
-VALUES (301, 'E2 Legacy Fixture Group', '0', NOW(), NOW());
+VALUES (301, 'E2 Legacy Fixture Group', 'Alley', NOW(), NOW());
 
 INSERT INTO elections (id, group_id, starts_at, ends_at, is_closed, created_at, updated_at)
 VALUES (201, 301, '2026-08-01 00:00:00', '2026-09-01 00:00:00', 0, NOW(), NOW());
