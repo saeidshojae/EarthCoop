@@ -101,23 +101,36 @@ class GroupSettingController extends Controller
             'second_election_time.min' => 'فاصله چرخه‌ها نمی‌تواند منفی باشد',
         ]);
 
-        $setting->update([
-            'manager_count' => $validated['manager_count'],
-            'inspector_count' => $validated['inspector_count'],
-            'election_time' => $validated['election_time'],
-            'max_for_election' => $validated['max_for_election'],
-            'second_election_time' => $validated['second_election_time'],
-        ]);
-
         $effectiveAt = ! empty($validated['effective_at']) ? Carbon::parse($validated['effective_at']) : now();
-        $policy = $this->policyVersions->publishFromSetting(
+        $snapshot = [
+            'election_status' => (bool) $setting->election_status,
+            'manager_count' => (int) $validated['manager_count'],
+            'inspector_count' => (int) $validated['inspector_count'],
+            'voting_duration_days' => (int) $validated['election_time'],
+            'start_threshold' => (int) $validated['max_for_election'],
+            'cycle_interval_months' => (int) $validated['second_election_time'],
+            'response_duration_days' => isset($validated['response_duration_days'])
+                ? (int) $validated['response_duration_days']
+                : null,
+        ];
+
+        $policy = $this->policyVersions->publishSnapshot(
             $setting,
+            $snapshot,
             $request->user()?->id,
             $validated['change_reason'] ?? 'admin_policy_update',
             $effectiveAt,
-            $validated['response_duration_days'] ?? null,
         );
 
-        return back()->with('success', "تنظیمات انتخابات برای {$setting->name()} به‌عنوان نسخه {$policy->version} ثبت شد.");
+        if (! $effectiveAt->isFuture()) {
+            $this->policyVersions->syncEffectiveMirrors(5000);
+            $setting->refresh();
+        }
+
+        $timing = $effectiveAt->isFuture()
+            ? ' برای اجرای آینده زمان‌بندی شد'
+            : ' و بلافاصله مؤثر شد';
+
+        return back()->with('success', "تنظیمات انتخابات برای {$setting->name()} به‌عنوان نسخه {$policy->version}{$timing}.");
     }
 }
