@@ -36,7 +36,6 @@ class ElectionResponsibilityOfferService
             }
 
             foreach (ElectionPosition::cases() as $position) {
-                $this->activeContract($position, $locked);
                 $this->fillOpenSlots($locked, $position);
             }
 
@@ -149,6 +148,11 @@ class ElectionResponsibilityOfferService
         $seatCount = $position === ElectionPosition::Manager
             ? $this->policyResolver->managerSeatCount($policy)
             : $this->policyResolver->inspectorSeatCount($policy);
+
+        if ($seatCount <= 0) {
+            return;
+        }
+
         $responseDays = $this->policyResolver->responseDurationDays($policy);
 
         $occupying = ElectionResponsibilityOffer::query()
@@ -170,7 +174,7 @@ class ElectionResponsibilityOfferService
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        $contract = $this->activeContract($position, $election);
+        $contract = $this->contractForElection($position, $election);
         $ranked = ElectionTallyResult::query()
             ->where('election_id', $election->id)
             ->where('position', $position->value)
@@ -214,8 +218,7 @@ class ElectionResponsibilityOfferService
                     'policy_version_id' => $election->policy_version_id,
                     'response_duration_days' => $responseDays,
                     'contract_version_id' => (int) $contract->id,
-                    'contract_frozen_by_policy' => $policy instanceof ElectionPolicyVersion
-                        && $this->frozenContractId($policy, $position) !== null,
+                    'contract_frozen_by_policy' => $policy instanceof ElectionPolicyVersion,
                 ],
             ]);
             $this->syncCandidateProjection($offer);
@@ -224,22 +227,21 @@ class ElectionResponsibilityOfferService
         }
     }
 
-    private function activeContract(ElectionPosition $position, Election $election): ElectionResponsibilityContractVersion
+    private function contractForElection(ElectionPosition $position, Election $election): ElectionResponsibilityContractVersion
     {
-        try {
+        if ($election->policy_version_id !== null) {
             $policy = $this->policyResolver->resolveForElection($election);
             $frozenId = $this->frozenContractId($policy, $position);
-            if ($frozenId !== null) {
-                $contract = ElectionResponsibilityContractVersion::query()->find($frozenId);
-                if ($contract === null || $contract->position !== $position->value || $contract->published_at === null) {
-                    throw new RuntimeException("Frozen responsibility contract [{$frozenId}] is invalid for [{$position->value}].");
-                }
-                return $contract;
+            if ($frozenId === null) {
+                throw new RuntimeException("Election [{$election->id}] policy version [{$policy->id}] has no frozen responsibility contract for [{$position->value}].");
             }
-        } catch (RuntimeException $exception) {
-            if ($election->policy_version_id !== null) {
-                throw $exception;
+
+            $contract = ElectionResponsibilityContractVersion::query()->find($frozenId);
+            if ($contract === null || $contract->position !== $position->value || $contract->published_at === null) {
+                throw new RuntimeException("Frozen responsibility contract [{$frozenId}] is invalid for [{$position->value}].");
             }
+
+            return $contract;
         }
 
         $contract = ElectionResponsibilityContractVersion::query()
