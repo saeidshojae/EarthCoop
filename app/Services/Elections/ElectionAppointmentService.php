@@ -263,7 +263,7 @@ class ElectionAppointmentService
         }
         $membership->role = $role;
         $membership->status = 1;
-        $membership->expired = 0;
+        $membership->expired = null;
         $membership->save();
     }
 
@@ -278,13 +278,11 @@ class ElectionAppointmentService
             $membership->restore();
         }
 
-        // Never downgrade an independently appointed manager/inspector. If the
-        // member was only observer/guest/non-active, representation activates it.
         if (! in_array((int) $membership->role, [self::MANAGER_ROLE, self::INSPECTOR_ROLE], true)) {
             $membership->role = self::ACTIVE_MEMBER_ROLE;
         }
         $membership->status = 1;
-        $membership->expired = 0;
+        $membership->expired = null;
         $membership->save();
     }
 
