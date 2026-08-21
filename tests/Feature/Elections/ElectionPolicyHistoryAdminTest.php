@@ -16,6 +16,7 @@ class ElectionPolicyHistoryAdminTest extends TestCase
     public function test_admin_can_view_read_only_current_and_future_policy_history(): void
     {
         $this->withoutMiddleware();
+        $this->withoutVite();
         $admin = User::factory()->create();
         $this->actingAs($admin);
 
