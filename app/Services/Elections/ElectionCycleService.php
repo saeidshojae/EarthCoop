@@ -15,15 +15,21 @@ class ElectionCycleService
     public function __construct(
         private readonly ElectionPolicyResolver $policyResolver,
         private readonly ElectionLifecycleService $lifecycle,
+        private readonly ElectionGroupHierarchyResolver $hierarchy,
     ) {
     }
 
     /**
-     * Ensure a threshold-eligible group has one active election cycle.
+     * Ensure an independently electable, threshold-eligible group has one
+     * active election cycle.
      *
-     * E4 will replace the temporary Candidate compatibility projection with
-     * frozen eligibility snapshots. Until then we preserve the legacy profile /
-     * acceptance read path without treating Candidate.position as canonical.
+     * Structural topology is evaluated before population threshold. A group
+     * with exactly one approved effective child constituency is represented by
+     * the inherited lower appointment and must not run a duplicate election.
+     *
+     * E4 replaced ballot eligibility with frozen snapshots; Candidate remains
+     * a compatibility projection for legacy profile/acceptance reads and is not
+     * canonical for office identity.
      */
     public function ensureForGroup(Group $group): ?Election
     {
@@ -43,6 +49,19 @@ class ElectionCycleService
             }
 
             if ((int) $policy->election_status !== 1) {
+                return [null, false];
+            }
+
+            // E9 continuity invariant: topology decides whether this group is
+            // an independent electoral layer before temporary EarthCoop
+            // population is considered.
+            try {
+                if (! $this->hierarchy->isIndependentElectoralLayer($lockedGroup)) {
+                    return [null, false];
+                }
+            } catch (RuntimeException) {
+                // Unsupported/non-geographic groups are not auto-elected until
+                // they have an explicit canonical topology policy.
                 return [null, false];
             }
 
