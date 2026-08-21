@@ -26,6 +26,10 @@ class ElectionGroupHierarchyResolverTest extends TestCase
 
         $neighborhood = $this->group('neighborhood', $ids['neighborhood']);
         $street = $this->group('street', 9201);
+        // The user's canonical path includes region. The group hierarchy must
+        // therefore contain the corresponding region even though compression
+        // is expected to stop before inheriting into it.
+        $this->group('region', $ids['region']);
         $resolver = app(ElectionGroupHierarchyResolver::class);
 
         $this->assertTrue($resolver->isSoleStructuralConstituency($street, $neighborhood));
