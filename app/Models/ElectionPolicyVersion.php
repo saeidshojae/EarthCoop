@@ -11,6 +11,7 @@ class ElectionPolicyVersion extends Model
         'group_setting_id', 'level_key', 'version', 'election_status',
         'manager_count', 'inspector_count', 'voting_duration_days',
         'start_threshold', 'cycle_interval_months', 'response_duration_days',
+        'manager_contract_version_id', 'inspector_contract_version_id',
         'effective_at', 'retired_at', 'created_by', 'change_reason', 'metadata',
     ];
 
@@ -47,4 +48,6 @@ class ElectionPolicyVersion extends Model
 
     public function groupSetting() { return $this->belongsTo(GroupSetting::class); }
     public function elections() { return $this->hasMany(Election::class, 'policy_version_id'); }
+    public function managerContractVersion() { return $this->belongsTo(ElectionResponsibilityContractVersion::class, 'manager_contract_version_id'); }
+    public function inspectorContractVersion() { return $this->belongsTo(ElectionResponsibilityContractVersion::class, 'inspector_contract_version_id'); }
 }
