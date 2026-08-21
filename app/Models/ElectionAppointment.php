@@ -19,6 +19,35 @@ class ElectionAppointment extends Model
         'metadata' => 'array',
     ];
 
+    protected static function booted(): void
+    {
+        static::updated(function (ElectionAppointment $appointment): void {
+            if (! $appointment->wasChanged('status')
+                || $appointment->status !== 'revoked'
+                || $appointment->appointment_kind !== 'direct') {
+                return;
+            }
+
+            ElectionVacancy::query()->firstOrCreate(
+                ['source_appointment_id' => $appointment->id],
+                [
+                    'election_id' => $appointment->election_id,
+                    'user_id' => $appointment->user_id,
+                    'group_id' => $appointment->group_id,
+                    'position' => $appointment->position,
+                    'status' => 'open',
+                    'opened_at' => $appointment->ended_at ?? now(),
+                    'actor' => $appointment->actor ?: 'election_appointment_service',
+                    'reason' => $appointment->reason ?: 'appointment_revoked',
+                    'metadata' => [
+                        'source_appointment_kind' => $appointment->appointment_kind,
+                        'source_responsibility_offer_id' => (int) $appointment->responsibility_offer_id,
+                    ],
+                ],
+            );
+        });
+    }
+
     public function election() { return $this->belongsTo(Election::class); }
     public function offer() { return $this->belongsTo(ElectionResponsibilityOffer::class, 'responsibility_offer_id'); }
     public function user() { return $this->belongsTo(User::class); }
@@ -26,4 +55,5 @@ class ElectionAppointment extends Model
     public function representation() { return $this->hasOne(ElectionRepresentationAssignment::class, 'appointment_id'); }
     public function sourceAppointment() { return $this->belongsTo(self::class, 'source_appointment_id'); }
     public function inheritedAppointments() { return $this->hasMany(self::class, 'source_appointment_id'); }
+    public function vacancy() { return $this->hasOne(ElectionVacancy::class, 'source_appointment_id'); }
 }
