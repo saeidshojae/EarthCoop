@@ -10,9 +10,9 @@ class AuditElectionData extends Command
 {
     protected $signature = 'elections:audit-data
         {--json : Emit machine-readable JSON}
-        {--fail-on-issues : Exit non-zero when unsafe or unresolved records exist}';
+        {--fail-on-issues : Exit non-zero when unsafe structural records exist}';
 
-    protected $description = 'Audit legacy election identity and lifecycle data without modifying records';
+    protected $description = 'Audit legacy election identity and raw lifecycle data without modifying records';
 
     public function handle(): int
     {
@@ -58,19 +58,10 @@ class AuditElectionData extends Command
                 ->leftJoin('elections as e', 'e.id', '=', 'c.election_id')
                 ->whereNull('e.id')
                 ->count(),
-            'candidate_acceptance' => $this->acceptanceHistogram(),
-            'closed_elections_with_pending_candidates' => DB::table('elections as e')
-                ->join('candidates as c', 'c.election_id', '=', 'e.id')
-                ->where('e.is_closed', 1)
-                ->whereNull('c.accept_status')
-                ->distinct()
-                ->count('e.id'),
-            'open_elections_with_accepted_candidates' => DB::table('elections as e')
-                ->join('candidates as c', 'c.election_id', '=', 'e.id')
-                ->where('e.is_closed', 0)
-                ->where('c.accept_status', 1)
-                ->distinct()
-                ->count('e.id'),
+            // E2 deliberately reports raw values. Legacy zero is ambiguous and
+            // lifecycle interpretation belongs to the canonical state machine.
+            'candidate_accept_status_raw' => $this->acceptanceHistogram(),
+            'election_candidate_status_matrix' => $this->electionCandidateStatusMatrix(),
         ];
 
         $hasIssues = collect([
@@ -81,9 +72,7 @@ class AuditElectionData extends Command
             $report['duplicate_vote_keys'],
             $report['candidates_missing_user'],
             $report['candidates_missing_election'],
-            $report['closed_elections_with_pending_candidates'],
-            $report['open_elections_with_accepted_candidates'],
-            $report['candidate_acceptance']['unexpected'],
+            $report['candidate_accept_status_raw']['unexpected'],
         ])->contains(fn ($value) => (int) $value > 0);
 
         return $this->finish($report, $hasIssues);
@@ -109,8 +98,9 @@ class AuditElectionData extends Command
 
         $histogram = [
             'null' => 0,
-            'zero' => 0,
-            'one' => 0,
+            'raw_0_ambiguous' => 0,
+            'raw_1_pending' => 0,
+            'raw_2_accepted' => 0,
             'unexpected' => 0,
         ];
 
@@ -118,15 +108,33 @@ class AuditElectionData extends Command
             if ($row->accept_status === null) {
                 $histogram['null'] += (int) $row->aggregate;
             } elseif ((string) $row->accept_status === '0') {
-                $histogram['zero'] += (int) $row->aggregate;
+                $histogram['raw_0_ambiguous'] += (int) $row->aggregate;
             } elseif ((string) $row->accept_status === '1') {
-                $histogram['one'] += (int) $row->aggregate;
+                $histogram['raw_1_pending'] += (int) $row->aggregate;
+            } elseif ((string) $row->accept_status === '2') {
+                $histogram['raw_2_accepted'] += (int) $row->aggregate;
             } else {
                 $histogram['unexpected'] += (int) $row->aggregate;
             }
         }
 
         return $histogram;
+    }
+
+    private function electionCandidateStatusMatrix(): array
+    {
+        $rows = DB::table('elections as e')
+            ->join('candidates as c', 'c.election_id', '=', 'e.id')
+            ->select('e.is_closed', 'c.accept_status', DB::raw('COUNT(*) as aggregate'))
+            ->groupBy('e.is_closed', 'c.accept_status')
+            ->orderBy('e.is_closed')
+            ->get();
+
+        return $rows->map(fn ($row) => [
+            'election_is_closed' => (int) $row->is_closed,
+            'candidate_accept_status' => $row->accept_status === null ? null : (int) $row->accept_status,
+            'count' => (int) $row->aggregate,
+        ])->values()->all();
     }
 
     private function finish(array $report, bool $hasIssues): int
