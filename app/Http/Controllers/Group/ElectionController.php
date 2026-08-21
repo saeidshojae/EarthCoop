@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Group;
 
+use App\Enums\Elections\ElectionBallotCommentVisibility;
 use App\Enums\Elections\ElectionLifecycleStatus;
 use App\Enums\Elections\ElectionPosition;
 use App\Http\Controllers\Controller;
@@ -13,6 +14,7 @@ use App\Services\Elections\ElectionLifecycleService;
 use App\Services\Elections\ElectionPolicyResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class ElectionController extends Controller
@@ -29,6 +31,14 @@ class ElectionController extends Controller
         $inputs = $request->validate([
             'inspector' => 'nullable|array',
             'manager' => 'nullable|array',
+            'comment' => 'nullable|string|max:4000',
+            'comment_visibility' => [
+                'nullable',
+                Rule::in(array_map(
+                    fn (ElectionBallotCommentVisibility $visibility) => $visibility->value,
+                    ElectionBallotCommentVisibility::cases(),
+                )),
+            ],
         ]);
 
         $election = Election::query()
@@ -43,12 +53,18 @@ class ElectionController extends Controller
             ]);
         }
 
+        $visibility = isset($inputs['comment_visibility'])
+            ? ElectionBallotCommentVisibility::from($inputs['comment_visibility'])
+            : null;
+
         $result = $this->ballots->submit(
             $election,
             (int) auth()->id(),
             $inputs['manager'] ?? [],
             $inputs['inspector'] ?? [],
             $request->header('Idempotency-Key') ?: null,
+            $inputs['comment'] ?? null,
+            $visibility,
         );
 
         if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
@@ -114,8 +130,6 @@ class ElectionController extends Controller
             $candidate->save();
         }
 
-        // Legacy/manual completion is now only an adapter into the canonical
-        // lifecycle state machine. It no longer mutates is_closed/status itself.
         $election = $this->lifecycle->transition(
             $election,
             ElectionLifecycleStatus::Closed,
