@@ -64,8 +64,8 @@ class FounderAcceptanceLoopTest extends TestCase
     public function test_unconfigured_outcome_verifier_never_claims_successful_verification(): void
     {
         $verification = app(\App\Services\NajmHoda\FounderOps\FounderActionOutcomeVerificationService::class)
-            ->verify('admin_settings', 'change_setting', ['setting' => 'example'], [
-                'entity_type' => 'setting',
+            ->verify('governance', 'change_election_rules', ['rule' => 'example'], [
+                'entity_type' => 'election',
                 'entity_id' => 1,
             ]);
 
