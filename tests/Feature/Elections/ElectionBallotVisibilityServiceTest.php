@@ -7,6 +7,8 @@ use App\Enums\Elections\ElectionVoteVisibility;
 use App\Models\Election;
 use App\Models\ElectionAppointment;
 use App\Models\ElectionBallotEvent;
+use App\Models\ElectionResponsibilityContractVersion;
+use App\Models\ElectionResponsibilityOffer;
 use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\User;
@@ -134,9 +136,29 @@ class ElectionBallotVisibilityServiceTest extends TestCase
             ]);
         }
 
+        $contract = ElectionResponsibilityContractVersion::create([
+            'position' => 'manager',
+            'version' => 1,
+            'body' => 'privacy test contract',
+            'is_active' => true,
+            'published_at' => now()->subDay(),
+        ]);
+        $offer = ElectionResponsibilityOffer::create([
+            'election_id' => $election->id,
+            'candidate_user_id' => $official->id,
+            'position' => 'manager',
+            'ranking_position' => 1,
+            'contract_version_id' => $contract->id,
+            'status' => 'accepted',
+            'offered_at' => now()->subHours(2),
+            'expires_at' => now()->addDays(7),
+            'responded_at' => now()->subHour(),
+            'eligibility_checked_at' => now()->subHours(2),
+            'resolution_reason' => 'privacy_test_accepted',
+        ]);
         ElectionAppointment::create([
             'election_id' => $election->id,
-            'responsibility_offer_id' => null,
+            'responsibility_offer_id' => $offer->id,
             'user_id' => $official->id,
             'group_id' => $group->id,
             'position' => 'manager',
