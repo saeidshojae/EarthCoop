@@ -23,24 +23,31 @@ class ElectionPolicyResolver
     /**
      * Preserve the legacy precedence exactly while centralising it in one
      * election-domain adapter: specialty > experience > age > gender > base.
+     *
+     * Read raw persisted attributes deliberately. Group has a legacy gender()
+     * presentation method with the same name as the `gender` column; Eloquent
+     * can otherwise interpret that method as a relationship when the attribute
+     * is absent. Election policy selection must depend only on stored identity
+     * dimensions, never model presentation magic.
      */
     public function levelKeyForGroup(Group $group): string
     {
-        $base = (string) $group->location_level;
+        $attributes = $group->getAttributes();
+        $base = (string) ($attributes['location_level'] ?? '');
 
-        if ($group->specialty_id !== null) {
+        if (($attributes['specialty_id'] ?? null) !== null) {
             return $base . '_job';
         }
 
-        if ($group->experience_id !== null) {
+        if (($attributes['experience_id'] ?? null) !== null) {
             return $base . '_experience';
         }
 
-        if ($group->age_group_id !== null) {
+        if (($attributes['age_group_id'] ?? null) !== null) {
             return $base . '_age';
         }
 
-        if ($group->gender !== null) {
+        if (($attributes['gender'] ?? null) !== null) {
             return $base . '_gender';
         }
 
