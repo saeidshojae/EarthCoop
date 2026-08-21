@@ -14,6 +14,8 @@ use Illuminate\Validation\ValidationException;
 
 class ElectionBallotService
 {
+    private const REQUEST_UUID_MAX_LENGTH = 96;
+
     public function __construct(
         private readonly ElectionPolicyResolver $policyResolver,
     ) {
@@ -101,13 +103,33 @@ class ElectionBallotService
                 ->lockForUpdate()
                 ->get();
 
+            // Never destroy unresolved legacy identity while replacing the current
+            // projection. E2 deliberately leaves ambiguous rows unresolved; E5
+            // must fail closed until reconciliation supplies candidate_user_id.
+            if ($currentVotes->contains(fn (Vote $vote) => $vote->candidate_user_id === null)) {
+                throw ValidationException::withMessages([
+                    'ballot' => 'رأی تاریخی شما شامل شناسه حل‌نشده است و تا تطبیق داده‌ها قابل تغییر نیست.',
+                ]);
+            }
+
             $current = [];
             foreach ($currentVotes as $vote) {
-                if ($vote->candidate_user_id === null) {
-                    continue;
+                try {
+                    $position = ElectionPosition::fromLegacyVotePosition($vote->position ?? '');
+                } catch (\InvalidArgumentException) {
+                    throw ValidationException::withMessages([
+                        'ballot' => 'رأی تاریخی شما شامل نقش انتخاباتی نامعتبر است و تا تطبیق داده‌ها قابل تغییر نیست.',
+                    ]);
                 }
-                $position = ElectionPosition::fromLegacyVotePosition($vote->position ?? '');
-                $current[(int) $vote->candidate_user_id] = $position;
+
+                $candidateUserId = (int) $vote->candidate_user_id;
+                if (isset($current[$candidateUserId])) {
+                    throw ValidationException::withMessages([
+                        'ballot' => 'رأی تاریخی شما شامل انتخاب تکراری است و تا تطبیق داده‌ها قابل تغییر نیست.',
+                    ]);
+                }
+
+                $current[$candidateUserId] = $position;
             }
 
             $desired = [];
@@ -118,7 +140,7 @@ class ElectionBallotService
                 $desired[$candidateUserId] = ElectionPosition::Inspector;
             }
 
-            $uuid = $requestUuid ?: (string) Str::uuid();
+            $uuid = $this->normaliseRequestUuid($requestUuid);
             $occurredAt = now();
 
             foreach ($current as $candidateUserId => $position) {
@@ -210,6 +232,22 @@ class ElectionBallotService
         }
 
         return array_values($normalised);
+    }
+
+    private function normaliseRequestUuid(?string $requestUuid): string
+    {
+        $uuid = trim((string) ($requestUuid ?: Str::uuid()));
+        if ($uuid === '') {
+            $uuid = (string) Str::uuid();
+        }
+
+        if (mb_strlen($uuid) > self::REQUEST_UUID_MAX_LENGTH) {
+            throw ValidationException::withMessages([
+                'idempotency_key' => 'شناسه یکتای درخواست بیش از حد مجاز طول دارد.',
+            ]);
+        }
+
+        return $uuid;
     }
 
     private function appendEvent(
