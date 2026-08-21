@@ -19,24 +19,6 @@ class ElectionCycleService
     ) {
     }
 
-    /**
-     * Ensure an independently electable, threshold-eligible group has one
-     * canonical election cycle at the correct systemic cadence.
-     *
-     * Structural topology is evaluated before population threshold. A group
-     * with exactly one approved effective child constituency is represented by
-     * the inherited lower appointment and must not run a duplicate election.
-     *
-     * Continuity rules:
-     * - any non-terminal latest cycle blocks a new cycle;
-     * - filled/exhausted cycles respect the configured repeat interval
-     *   (`second_election_time`, canonicalized as months);
-     * - cancelled cycles may be replaced immediately because they did not
-     *   establish a valid term.
-     *
-     * Candidate remains a compatibility projection for legacy profile /
-     * acceptance reads and is not canonical for office identity.
-     */
     public function ensureForGroup(Group $group): ?Election
     {
         [$election, $created] = DB::transaction(function () use ($group): array {
@@ -63,8 +45,6 @@ class ElectionCycleService
                     return [null, false];
                 }
             } catch (RuntimeException) {
-                // Unsupported/non-geographic groups are not auto-elected until
-                // they have an explicit canonical topology policy.
                 return [null, false];
             }
 
@@ -82,6 +62,7 @@ class ElectionCycleService
 
             $latest = Election::query()
                 ->where('group_id', $lockedGroup->id)
+                ->orderByDesc('cycle_number')
                 ->orderByDesc('id')
                 ->first();
 
@@ -92,6 +73,8 @@ class ElectionCycleService
             $startsAt = now();
             $election = Election::create([
                 'group_id' => $lockedGroup->id,
+                'cycle_number' => $latest === null ? 1 : ((int) ($latest->cycle_number ?? 0) + 1),
+                'previous_election_id' => $latest?->id,
                 'starts_at' => $startsAt,
                 'ends_at' => $startsAt->copy()->addDays(max(0, (int) $policy->election_time)),
                 'is_closed' => false,
