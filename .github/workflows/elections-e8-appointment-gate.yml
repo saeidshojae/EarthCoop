@@ -63,8 +63,11 @@ jobs:
       - name: Migrate E8 schema
         run: php artisan migrate:fresh --force
 
-      - name: Run E8 appointment and topology tests
-        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections/ElectionAppointmentServiceTest.php
+      - name: Run E8 appointment topology and lifecycle tests
+        run: |
+          php vendor/bin/phpunit --configuration phpunit.xml.dist \
+            tests/Feature/Elections/ElectionAppointmentServiceTest.php \
+            tests/Feature/Elections/ElectionAppointmentLifecycleTest.php
 
       - name: Re-run elections regression suite
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections
