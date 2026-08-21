@@ -68,6 +68,7 @@ jobs:
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/Elections/ElectionAppointmentServiceTest.php \
             tests/Feature/Elections/ElectionAppointmentLifecycleTest.php \
+            tests/Feature/Elections/ElectionAppointmentSupersessionTest.php \
             tests/Feature/Elections/ElectionGroupHierarchyResolverTest.php
 
       - name: Re-run elections regression suite
