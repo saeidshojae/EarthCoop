@@ -31,7 +31,7 @@ class AdminSettingManagementServiceTest extends TestCase
 
     public function test_recommendation_is_non_mutating_and_bounded(): void
     {
-        $setting = Setting::query()->firstOrCreate(['id'=>1]);
+        $setting = Setting::singleton();
         $setting->forceFill(['count_invation'=>10])->save();
 
         $result = app(AdminSettingManagementService::class)->recommend('count_invation', 25);
@@ -45,7 +45,7 @@ class AdminSettingManagementServiceTest extends TestCase
 
     public function test_allowed_setting_can_change_through_canonical_boundary(): void
     {
-        Setting::query()->firstOrCreate(['id'=>1]);
+        Setting::singleton();
 
         $result = app(AdminSettingManagementService::class)->change('finger_status', true);
 
@@ -65,7 +65,7 @@ class AdminSettingManagementServiceTest extends TestCase
         ]);
         config(['najm-hoda-founder-action-policy.founder_approval.user_ids'=>[$founder->id]]);
 
-        $setting = Setting::query()->firstOrCreate(['id'=>1]);
+        $setting = Setting::singleton();
         $setting->forceFill(['count_invation'=>10])->save();
 
         $service = app(FounderAdminSettingDecisionService::class);
