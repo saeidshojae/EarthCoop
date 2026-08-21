@@ -12,11 +12,53 @@ use App\Models\ElectionVacancy;
 use App\Models\GroupUser;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 use RuntimeException;
 
 class ElectionVacancyService
 {
     public function __construct(private readonly ElectionAppointmentService $appointments) {}
+
+    /**
+     * Open a planned succession without ending the incumbent appointment.
+     * The incumbent remains responsible until a replacement appointment has
+     * been successfully installed. Hard invalidation continues to use revoke().
+     */
+    public function openPlannedSuccession(
+        ElectionAppointment $appointment,
+        string $reason,
+        string $actor = 'election_vacancy_service',
+    ): ElectionVacancy {
+        if (trim($reason) === '' || trim($actor) === '') {
+            throw new InvalidArgumentException('Planned succession requires actor and reason.');
+        }
+
+        return DB::transaction(function () use ($appointment, $reason, $actor): ElectionVacancy {
+            $locked = ElectionAppointment::query()->lockForUpdate()->findOrFail($appointment->id);
+            if ($locked->appointment_kind !== 'direct' || $locked->status !== 'active') {
+                throw new RuntimeException('Planned succession requires an active direct appointment.');
+            }
+
+            return ElectionVacancy::query()->firstOrCreate(
+                ['source_appointment_id' => $locked->id],
+                [
+                    'election_id' => $locked->election_id,
+                    'user_id' => $locked->user_id,
+                    'group_id' => $locked->group_id,
+                    'position' => $locked->position,
+                    'continuity_mode' => 'planned',
+                    'status' => 'open',
+                    'opened_at' => now(),
+                    'actor' => trim($actor),
+                    'reason' => trim($reason),
+                    'metadata' => [
+                        'incumbent_remains_active_until_replacement' => true,
+                        'source_responsibility_offer_id' => (int) $locked->responsibility_offer_id,
+                    ],
+                ],
+            );
+        }, 3);
+    }
 
     public function processDue(int $limit = 100): array
     {
@@ -57,6 +99,19 @@ class ElectionVacancyService
 
                     if ($offer->status === ElectionResponsibilityOfferStatus::Accepted) {
                         $appointment = $this->appointments->appoint($offer);
+
+                        if ($vacancy->continuity_mode === 'planned') {
+                            $source = ElectionAppointment::query()->find($vacancy->source_appointment_id);
+                            if ($source !== null && $source->status === 'active') {
+                                // Install replacement first, then retire incumbent.
+                                $this->appointments->revoke(
+                                    $source,
+                                    'planned_succession_replacement_appointed',
+                                    'election_vacancy_service',
+                                );
+                            }
+                        }
+
                         $vacancy->forceFill([
                             'status' => 'filled',
                             'resolved_at' => now(),
@@ -111,6 +166,7 @@ class ElectionVacancyService
                     'response_metadata' => [
                         'vacancy_id' => (int) $vacancy->id,
                         'source_appointment_id' => (int) $vacancy->source_appointment_id,
+                        'continuity_mode' => $vacancy->continuity_mode,
                     ],
                 ]);
 
