@@ -63,18 +63,20 @@ jobs:
       - name: Migrate E9 schema
         run: php artisan migrate:fresh --force
 
-      - name: Run E9 topology, cadence and vacancy continuity tests
+      - name: Run E9 topology, cadence, vacancy, succession and lineage tests
         run: |
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/Elections/ElectionCycleServiceTest.php \
             tests/Feature/Elections/ElectionCycleTopologyContinuityTest.php \
+            tests/Feature/Elections/ElectionCycleLineageTest.php \
             tests/Feature/Elections/ElectionGroupHierarchyResolverTest.php \
-            tests/Feature/Elections/ElectionVacancyServiceTest.php
+            tests/Feature/Elections/ElectionVacancyServiceTest.php \
+            tests/Feature/Elections/ElectionPlannedSuccessionTest.php
 
       - name: Re-run elections regression suite
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections
 
-      - name: Validate systemic lifecycle command and vacancy schema
+      - name: Validate systemic lifecycle command, vacancy and lineage schema
         run: |
           php artisan list | grep -F 'elections:process-lifecycle'
-          php artisan tinker --execute="throw_unless(\Illuminate\Support\Facades\Schema::hasTable('election_vacancies')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('election_vacancies', 'replacement_offer_id')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('election_vacancies', 'replacement_appointment_id'));"
+          php artisan tinker --execute="throw_unless(\Illuminate\Support\Facades\Schema::hasTable('election_vacancies')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('election_vacancies', 'continuity_mode')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('election_vacancies', 'replacement_offer_id')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('election_vacancies', 'replacement_appointment_id')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('elections', 'cycle_number')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('elections', 'previous_election_id'));"
