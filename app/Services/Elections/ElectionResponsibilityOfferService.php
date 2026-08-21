@@ -8,6 +8,7 @@ use App\Enums\Elections\ElectionPosition;
 use App\Enums\Elections\ElectionResponsibilityOfferStatus;
 use App\Models\Candidate;
 use App\Models\Election;
+use App\Models\ElectionPolicyVersion;
 use App\Models\ElectionResponsibilityContractVersion;
 use App\Models\ElectionResponsibilityOffer;
 use App\Models\ElectionTallyResult;
@@ -35,7 +36,7 @@ class ElectionResponsibilityOfferService
             }
 
             foreach (ElectionPosition::cases() as $position) {
-                $this->activeContract($position);
+                $this->activeContract($position, $locked);
                 $this->fillOpenSlots($locked, $position);
             }
 
@@ -74,10 +75,10 @@ class ElectionResponsibilityOfferService
                 'responded_at' => now(),
                 'eligibility_checked_at' => now(),
                 'resolution_reason' => 'candidate_accepted_contract',
-                'response_metadata' => [
+                'response_metadata' => array_merge($locked->response_metadata ?? [], [
                     'candidate_user_id' => $candidateUserId,
                     'contract_version_id' => (int) $locked->contract_version_id,
-                ],
+                ]),
             ])->save();
             $this->syncCandidateProjection($locked);
 
@@ -142,8 +143,6 @@ class ElectionResponsibilityOfferService
         try {
             $policy = $this->policyResolver->resolveForElection($election);
         } catch (RuntimeException) {
-            // Compatibility for manually-created legacy/test elections. New
-            // systemic cycles always carry policy_version_id.
             $policy = $this->policyResolver->resolveForGroup($election->group);
         }
 
@@ -171,7 +170,7 @@ class ElectionResponsibilityOfferService
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        $contract = $this->activeContract($position);
+        $contract = $this->activeContract($position, $election);
         $ranked = ElectionTallyResult::query()
             ->where('election_id', $election->id)
             ->where('position', $position->value)
@@ -214,6 +213,9 @@ class ElectionResponsibilityOfferService
                 'response_metadata' => [
                     'policy_version_id' => $election->policy_version_id,
                     'response_duration_days' => $responseDays,
+                    'contract_version_id' => (int) $contract->id,
+                    'contract_frozen_by_policy' => $policy instanceof ElectionPolicyVersion
+                        && $this->frozenContractId($policy, $position) !== null,
                 ],
             ]);
             $this->syncCandidateProjection($offer);
@@ -222,8 +224,24 @@ class ElectionResponsibilityOfferService
         }
     }
 
-    private function activeContract(ElectionPosition $position): ElectionResponsibilityContractVersion
+    private function activeContract(ElectionPosition $position, Election $election): ElectionResponsibilityContractVersion
     {
+        try {
+            $policy = $this->policyResolver->resolveForElection($election);
+            $frozenId = $this->frozenContractId($policy, $position);
+            if ($frozenId !== null) {
+                $contract = ElectionResponsibilityContractVersion::query()->find($frozenId);
+                if ($contract === null || $contract->position !== $position->value || $contract->published_at === null) {
+                    throw new RuntimeException("Frozen responsibility contract [{$frozenId}] is invalid for [{$position->value}].");
+                }
+                return $contract;
+            }
+        } catch (RuntimeException $exception) {
+            if ($election->policy_version_id !== null) {
+                throw $exception;
+            }
+        }
+
         $contract = ElectionResponsibilityContractVersion::query()
             ->where('position', $position->value)
             ->where('is_active', true)
@@ -236,6 +254,15 @@ class ElectionResponsibilityOfferService
         }
 
         return $contract;
+    }
+
+    private function frozenContractId(ElectionPolicyVersion $policy, ElectionPosition $position): ?int
+    {
+        $id = $position === ElectionPosition::Manager
+            ? $policy->manager_contract_version_id
+            : $policy->inspector_contract_version_id;
+
+        return $id === null ? null : (int) $id;
     }
 
     private function assertPendingForCandidate(ElectionResponsibilityOffer $offer, int $candidateUserId): void
