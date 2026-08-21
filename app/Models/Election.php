@@ -77,6 +77,16 @@ class Election extends Model
         return $this->hasMany(ElectionLifecycleTransition::class);
     }
 
+    public function responsibilityOffers()
+    {
+        return $this->hasMany(ElectionResponsibilityOffer::class);
+    }
+
+    public function appointments()
+    {
+        return $this->hasMany(ElectionAppointment::class);
+    }
+
     public function yourVotes()
     {
         return $this->hasMany(Vote::class, 'election_id')
