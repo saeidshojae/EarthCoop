@@ -2,9 +2,11 @@
 
 namespace App\Services\Elections;
 
+use App\Enums\Elections\ElectionAcceptanceStatus;
 use App\Enums\Elections\ElectionLifecycleStatus;
 use App\Enums\Elections\ElectionPosition;
 use App\Enums\Elections\ElectionResponsibilityOfferStatus;
+use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\ElectionResponsibilityContractVersion;
 use App\Models\ElectionResponsibilityOffer;
@@ -77,6 +79,7 @@ class ElectionResponsibilityOfferService
                     'contract_version_id' => (int) $locked->contract_version_id,
                 ],
             ])->save();
+            $this->syncCandidateProjection($locked);
 
             return $locked->refresh();
         }, 3);
@@ -175,7 +178,7 @@ class ElectionResponsibilityOfferService
                 continue;
             }
             if (! $this->isCurrentlyEligible($election, (int) $row->candidate_user_id)) {
-                ElectionResponsibilityOffer::create([
+                $offer = ElectionResponsibilityOffer::create([
                     'election_id' => $election->id,
                     'candidate_user_id' => (int) $row->candidate_user_id,
                     'position' => $position->value,
@@ -188,11 +191,12 @@ class ElectionResponsibilityOfferService
                     'eligibility_checked_at' => now(),
                     'resolution_reason' => 'candidate_ineligible_before_offer',
                 ]);
+                $this->syncCandidateProjection($offer);
                 $alreadyOffered[] = (int) $row->candidate_user_id;
                 continue;
             }
 
-            ElectionResponsibilityOffer::create([
+            $offer = ElectionResponsibilityOffer::create([
                 'election_id' => $election->id,
                 'candidate_user_id' => (int) $row->candidate_user_id,
                 'position' => $position->value,
@@ -203,6 +207,7 @@ class ElectionResponsibilityOfferService
                 'expires_at' => now()->addDays(self::RESPONSE_WINDOW_DAYS),
                 'eligibility_checked_at' => now(),
             ]);
+            $this->syncCandidateProjection($offer);
             $alreadyOffered[] = (int) $row->candidate_user_id;
             $occupying++;
         }
@@ -261,5 +266,41 @@ class ElectionResponsibilityOfferService
             'responded_at' => now(),
             'resolution_reason' => $reason,
         ])->save();
+        $this->syncCandidateProjection($offer);
+    }
+
+    /**
+     * Temporary read-model bridge for the legacy profile UI only.
+     * Election decisions never read Candidate; the canonical source of truth is
+     * ElectionResponsibilityOffer. E10 can remove this projection when the UI
+     * reads offers directly.
+     */
+    private function syncCandidateProjection(ElectionResponsibilityOffer $offer): void
+    {
+        $acceptance = match ($offer->status) {
+            ElectionResponsibilityOfferStatus::Pending => ElectionAcceptanceStatus::Pending,
+            ElectionResponsibilityOfferStatus::Accepted => ElectionAcceptanceStatus::Accepted,
+            ElectionResponsibilityOfferStatus::Declined => ElectionAcceptanceStatus::Declined,
+            ElectionResponsibilityOfferStatus::Expired => ElectionAcceptanceStatus::Expired,
+            ElectionResponsibilityOfferStatus::Ineligible => null,
+        };
+
+        $legacyStatus = match ($offer->status) {
+            ElectionResponsibilityOfferStatus::Pending => '1',
+            ElectionResponsibilityOfferStatus::Accepted => '2',
+            ElectionResponsibilityOfferStatus::Declined,
+            ElectionResponsibilityOfferStatus::Expired,
+            ElectionResponsibilityOfferStatus::Ineligible => '0',
+        };
+
+        $candidate = Candidate::query()->firstOrNew([
+            'election_id' => $offer->election_id,
+            'user_id' => $offer->candidate_user_id,
+            'position' => $offer->position,
+        ]);
+
+        $candidate->accept_status = $legacyStatus;
+        $candidate->acceptance_status = $acceptance?->value;
+        $candidate->save();
     }
 }
