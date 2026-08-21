@@ -26,6 +26,11 @@ class ElectionLifecycleService
         'cancelled' => [],
     ];
 
+    public function __construct(
+        private readonly ElectionEligibilitySnapshotService $eligibilitySnapshots,
+    ) {
+    }
+
     public function canTransition(ElectionLifecycleStatus $from, ElectionLifecycleStatus $to): bool
     {
         return in_array($to->value, self::TRANSITIONS[$from->value] ?? [], true);
@@ -71,6 +76,12 @@ class ElectionLifecycleService
                 throw new InvalidArgumentException(
                     "Invalid election lifecycle transition [{$from->value} -> {$to->value}]."
                 );
+            }
+
+            // E4 invariant: eligibility is frozen before a cycle can become
+            // open. This is enforced here so no controller/job can bypass it.
+            if ($to === ElectionLifecycleStatus::Open) {
+                $this->eligibilitySnapshots->capture($locked);
             }
 
             $locked->lifecycle_status = $to;
@@ -119,7 +130,7 @@ class ElectionLifecycleService
     }
 
     /**
-     * Advance only transitions E3 can prove without borrowing unfinished E4-E8
+     * Advance only transitions E3 can prove without borrowing unfinished E6-E8
      * domain rules. Tally, offers and appointments are intentionally fail-closed
      * until their dedicated services exist.
      */
