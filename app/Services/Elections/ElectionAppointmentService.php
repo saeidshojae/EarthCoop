@@ -5,6 +5,8 @@ namespace App\Services\Elections;
 use App\Enums\Elections\ElectionLifecycleStatus;
 use App\Enums\Elections\ElectionPosition;
 use App\Enums\Elections\ElectionResponsibilityOfferStatus;
+use App\Events\Elections\ElectionAppointmentApplied;
+use App\Events\Elections\ElectionRepresentationActivated;
 use App\Models\Election;
 use App\Models\ElectionAppointment;
 use App\Models\ElectionRepresentationAssignment;
@@ -120,6 +122,7 @@ class ElectionAppointmentService
                     'contract_version_id' => (int) $lockedOffer->contract_version_id,
                 ],
             ]);
+            ElectionAppointmentApplied::dispatch($direct);
 
             $this->applyResponsibilityMembership($source, $user, $groupRole);
             $this->supersedeLowerIndependentAppointments($direct, $source, $user, $position);
@@ -144,13 +147,16 @@ class ElectionAppointmentService
                         'status' => 'active',
                         'appointed_at' => now(),
                         'actor' => 'election_appointment_service',
-                        'reason' => 'sole_effective_constituency_electoral_compression',
+                        'reason' => 'sole_structural_constituency_electoral_compression',
                         'metadata' => [
                             'inherited_from_group_id' => $currentGroup->id,
-                            'effective_constituency_count' => 1,
+                            'structural_constituency_count' => 1,
                         ],
                     ],
                 );
+                if ($inherited->wasRecentlyCreated) {
+                    ElectionAppointmentApplied::dispatch($inherited);
+                }
 
                 $this->applyResponsibilityMembership($inheritedGroup, $user, $groupRole);
                 $currentAppointment = $inherited;
@@ -161,7 +167,7 @@ class ElectionAppointmentService
             if ($representedGroup !== null) {
                 $this->applyRepresentativeMembership($representedGroup, $user);
 
-                ElectionRepresentationAssignment::query()->firstOrCreate(
+                $assignment = ElectionRepresentationAssignment::query()->firstOrCreate(
                     ['appointment_id' => $currentAppointment->id],
                     [
                         'user_id' => $user->id,
@@ -176,6 +182,9 @@ class ElectionAppointmentService
                         ],
                     ],
                 );
+                if ($assignment->wasRecentlyCreated) {
+                    ElectionRepresentationActivated::dispatch($assignment);
+                }
             }
 
             return $direct->refresh();
