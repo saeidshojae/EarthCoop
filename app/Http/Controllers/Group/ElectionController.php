@@ -8,67 +8,54 @@ use App\Http\Controllers\Controller;
 use App\Models\Election;
 use App\Models\Group;
 use App\Models\Vote;
+use App\Services\Elections\ElectionBallotService;
 use App\Services\Elections\ElectionLifecycleService;
 use App\Services\Elections\ElectionPolicyResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ElectionController extends Controller
 {
     public function __construct(
         private readonly ElectionPolicyResolver $policyResolver,
         private readonly ElectionLifecycleService $lifecycle,
+        private readonly ElectionBallotService $ballots,
     ) {
     }
 
     public function submitVote(Request $request, Group $group)
     {
-        // Resolve policy centrally even though the legacy submit path does not
-        // yet enforce every policy invariant. E5 will move ballot validation
-        // into the election domain and use this same resolver.
-        $this->policyResolver->resolveForGroup($group);
-
         $inputs = $request->validate([
             'inspector' => 'nullable|array',
             'manager' => 'nullable|array',
         ]);
 
-        $election = Election::where('group_id', $group->id)->where('is_closed', 0)->first();
-        $voteCheck = Vote::where('voter_id', auth()->user()->id)->where('election_id', $election->id)->get();
-        foreach ($voteCheck as $vote) {
-            $vote->delete();
+        $election = Election::query()
+            ->where('group_id', $group->id)
+            ->where('lifecycle_status', ElectionLifecycleStatus::Open->value)
+            ->orderByDesc('id')
+            ->first();
+
+        if ($election === null) {
+            throw ValidationException::withMessages([
+                'election' => 'در حال حاضر انتخابات بازی برای این گروه وجود ندارد.',
+            ]);
         }
 
-        if (isset($inputs['inspector'])) {
-            foreach ($inputs['inspector'] as $userId) {
-                Vote::create([
-                    'election_id' => $election->id,
-                    'voter_id' => auth()->id(),
-                    // Keep the legacy column populated during the compatibility
-                    // window; canonical election code reads candidate_user_id.
-                    'candidate_id' => $userId,
-                    'candidate_user_id' => $userId,
-                    'position' => ElectionPosition::Inspector->legacyVotePosition(),
-                ]);
-            }
-        }
-
-        if (isset($inputs['manager'])) {
-            foreach ($inputs['manager'] as $userId) {
-                Vote::create([
-                    'election_id' => $election->id,
-                    'voter_id' => auth()->id(),
-                    'candidate_id' => $userId,
-                    'candidate_user_id' => $userId,
-                    'position' => ElectionPosition::Manager->legacyVotePosition(),
-                ]);
-            }
-        }
+        $result = $this->ballots->submit(
+            $election,
+            (int) auth()->id(),
+            $inputs['manager'] ?? [],
+            $inputs['inspector'] ?? [],
+            $request->header('Idempotency-Key') ?: null,
+        );
 
         if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'status' => 'success',
                 'message' => 'رأی شما با موفقیت ثبت شد.',
+                'ballot' => $result,
             ]);
         }
 
