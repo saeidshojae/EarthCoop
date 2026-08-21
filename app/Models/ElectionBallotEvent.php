@@ -1,0 +1,41 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class ElectionBallotEvent extends Model
+{
+    protected $fillable = [
+        'election_id',
+        'voter_id',
+        'event_type',
+        'candidate_user_id',
+        'previous_candidate_user_id',
+        'position',
+        'previous_position',
+        'request_uuid',
+        'metadata',
+        'occurred_at',
+    ];
+
+    protected $casts = [
+        'metadata' => 'array',
+        'occurred_at' => 'datetime',
+    ];
+
+    public function election()
+    {
+        return $this->belongsTo(Election::class);
+    }
+
+    public function voter()
+    {
+        return $this->belongsTo(User::class, 'voter_id');
+    }
+
+    public function candidateUser()
+    {
+        return $this->belongsTo(User::class, 'candidate_user_id');
+    }
+}
