@@ -294,9 +294,11 @@ test('realtime retries and fallback pollers are owned by the page lifecycle', ()
     assert.match(index, /app\.installRealtime\(\{ debug \}\)/);
     assert.doesNotMatch(legacy, /function (?:getGroupRealtimeState|initGroupRealtimeListeners|startPolling|syncGroupDelta)\(/);
     assert.match(runtime, /lifecycle\.timeout\(syncDelta, delay\)/);
-    assert.match(runtime, /lifecycle\.interval\(pollMessages, 1000\)/);
-    assert.match(runtime, /lifecycle\.interval\(pollPosts, 3000\)/);
-    assert.match(runtime, /lifecycle\.interval\(reconcilePosts, 10000\)/);
+    assert.match(runtime, /if \(hasCanonicalSync\)/);
+    assert.match(runtime, /lifecycle\.interval\(pollSync, syncInterval\)/);
+    assert.match(runtime, /lifecycle\.interval\(pollMessages, 3000\)/);
+    assert.match(runtime, /lifecycle\.interval\(pollPosts, 5000\)/);
+    assert.match(runtime, /lifecycle\.interval\(reconcilePosts, 15000\)/);
     assert.match(runtime, /lifecycle\.on\(window, 'online'/);
     assert.doesNotMatch(runtime, /(^|[^.\w])setInterval\(/m);
     assert.doesNotMatch(runtime, /window\.addEventListener\('(online|offline)'/);
@@ -317,12 +319,16 @@ test('realtime connection state stays internal and restricted mobile composer is
 test('session participation requests notify moderators through realtime badge and polling fallback', () => {
     const realtime = readFileSync('resources/js/group-chat/realtime-runtime.js', 'utf8');
     const participation = readFileSync('resources/js/group-chat/session-participation.js', 'utf8');
+    const sessionState = readFileSync('resources/js/group-chat/session-state.js', 'utf8');
     const panel = readFileSync('resources/views/groups/partials/group_info_panel.blade.php', 'utf8');
 
     assert.match(realtime, /session_participation_requested/);
     assert.match(realtime, /sessionParticipation\?\.receiveRequest/);
     assert.match(participation, /pending_requests_count/);
-    assert.match(participation, /lifecycle\.interval\(refreshPendingCount,\s*15000\)/);
+    assert.match(participation, /listen\(window, 'group-chat:session-state'/);
+    assert.match(participation, /consumeSessionState/);
+    assert.match(sessionState, /lifecycle\.interval\(reconcile, 15000\)/);
+    assert.doesNotMatch(participation, /lifecycle\.interval\(refreshPendingCount/);
     assert.match(participation, /GroupChatFeedback\?\.toast/);
     assert.match(panel, /id="sessionParticipationBadge"/);
 });
@@ -678,8 +684,6 @@ test('all declarative chat actions use the lifecycle-owned modular dispatcher', 
     const actions = readFileSync('resources/js/group-chat/actions.js', 'utf8');
     const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
-    const adapters = readFileSync('resources/js/group-chat/legacy-renderers.js', 'utf8');
-    const composer = readFileSync('resources/js/group-chat/composer.js', 'utf8');
 
     assert.match(actions, /lifecycle\.on\(root, 'click'/);
     assert.match(actions, /\[data-group-chat-action\], \[data-legacy-chat-action\], \[data-chat-page-action\]/);
