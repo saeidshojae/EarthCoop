@@ -40,7 +40,6 @@ class ElectionBallotServiceTest extends TestCase
         ]);
         $this->assertSame(2, ElectionBallotEvent::where('request_uuid', 'req-1')->where('event_type', 'cast')->count());
 
-        // Move the manager choice to inspector and withdraw the old inspector.
         $service->submit($election, $voter->id, [], [$manager->id], 'req-2');
 
         $this->assertSame(1, Vote::where('election_id', $election->id)->where('voter_id', $voter->id)->count());
@@ -109,6 +108,51 @@ class ElectionBallotServiceTest extends TestCase
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('ballot', $e->errors());
         }
+    }
+
+    public function test_ballot_fails_closed_when_existing_legacy_vote_identity_is_unresolved(): void
+    {
+        [$election, $voter, $manager] = $this->fixture();
+        Vote::create([
+            'election_id' => $election->id,
+            'voter_id' => $voter->id,
+            'candidate_id' => 999999,
+            'candidate_user_id' => null,
+            'position' => 1,
+        ]);
+
+        $service = app(ElectionBallotService::class);
+
+        try {
+            $service->submit($election, $voter->id, [$manager->id], [], 'req-unresolved');
+            $this->fail('Expected unresolved legacy ballot validation failure.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('ballot', $e->errors());
+        }
+
+        $this->assertDatabaseHas('votes', [
+            'election_id' => $election->id,
+            'voter_id' => $voter->id,
+            'candidate_id' => 999999,
+            'candidate_user_id' => null,
+        ]);
+        $this->assertSame(0, ElectionBallotEvent::where('election_id', $election->id)->count());
+    }
+
+    public function test_ballot_rejects_oversized_idempotency_key_without_mutating_projection(): void
+    {
+        [$election, $voter, $manager] = $this->fixture();
+        $service = app(ElectionBallotService::class);
+
+        try {
+            $service->submit($election, $voter->id, [$manager->id], [], str_repeat('x', 97));
+            $this->fail('Expected idempotency key validation failure.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('idempotency_key', $e->errors());
+        }
+
+        $this->assertSame(0, Vote::where('election_id', $election->id)->where('voter_id', $voter->id)->count());
+        $this->assertSame(0, ElectionBallotEvent::where('election_id', $election->id)->count());
     }
 
     private function fixture(int $managerCount = 2, int $inspectorCount = 2): array
