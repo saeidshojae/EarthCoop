@@ -2,12 +2,16 @@
 
 namespace App\Services\Elections;
 
+use App\Models\Election;
+use App\Models\ElectionPolicyVersion;
 use App\Models\Group;
 use App\Models\GroupSetting;
+use Illuminate\Database\Eloquent\Model;
 use RuntimeException;
 
 class ElectionPolicyResolver
 {
+    /** Legacy compatibility only. New cycle/domain code should prefer versioned policy APIs. */
     public function resolveForGroup(Group $group): GroupSetting
     {
         $level = $this->levelKeyForGroup($group);
@@ -20,16 +24,34 @@ class ElectionPolicyResolver
         return $setting;
     }
 
-    /**
-     * Preserve the legacy precedence exactly while centralising it in one
-     * election-domain adapter: specialty > experience > age > gender > base.
-     *
-     * Read raw persisted attributes deliberately. Group has a legacy gender()
-     * presentation method with the same name as the `gender` column; Eloquent
-     * can otherwise interpret that method as a relationship when the attribute
-     * is absent. Election policy selection must depend only on stored identity
-     * dimensions, never model presentation magic.
-     */
+    public function resolveEffectiveForGroup(Group $group): ElectionPolicyVersion
+    {
+        $setting = $this->resolveForGroup($group);
+        $policy = ElectionPolicyVersion::query()
+            ->where('group_setting_id', $setting->id)
+            ->where('effective_at', '<=', now())
+            ->where(function ($query) {
+                $query->whereNull('retired_at')->orWhere('retired_at', '>', now());
+            })
+            ->orderByDesc('version')
+            ->first();
+
+        if ($policy === null) {
+            throw new RuntimeException("No effective election policy version exists for group setting [{$setting->id}].");
+        }
+
+        return $policy;
+    }
+
+    public function resolveForElection(Election $election): ElectionPolicyVersion
+    {
+        $policy = $election->policyVersion()->first();
+        if ($policy === null) {
+            throw new RuntimeException("Election [{$election->id}] does not have a frozen policy version.");
+        }
+        return $policy;
+    }
+
     public function levelKeyForGroup(Group $group): string
     {
         $attributes = $group->getAttributes();
@@ -38,32 +60,58 @@ class ElectionPolicyResolver
         if (($attributes['specialty_id'] ?? null) !== null) {
             return $base . '_job';
         }
-
         if (($attributes['experience_id'] ?? null) !== null) {
             return $base . '_experience';
         }
-
         if (($attributes['age_group_id'] ?? null) !== null) {
             return $base . '_age';
         }
-
         if (($attributes['gender'] ?? null) !== null) {
             return $base . '_gender';
         }
-
         return $base;
     }
 
-    public function managerSeatCount(GroupSetting $setting): int
+    public function managerSeatCount(Model $setting): int
     {
         return max(0, (int) $setting->manager_count);
     }
 
-    public function inspectorSeatCount(GroupSetting $setting): int
+    public function inspectorSeatCount(Model $setting): int
     {
-        // Canonical schema/model spelling is inspector_count. Keeping this
-        // accessor prevents the legacy ElectionController typo
-        // `insperctor_count` from leaking into future election code.
         return max(0, (int) $setting->inspector_count);
+    }
+
+    public function electionEnabled(Model $setting): bool
+    {
+        return (bool) $setting->election_status;
+    }
+
+    public function votingDurationDays(Model $setting): int
+    {
+        return $setting instanceof ElectionPolicyVersion
+            ? max(1, (int) $setting->voting_duration_days)
+            : max(1, (int) $setting->election_time);
+    }
+
+    public function startThreshold(Model $setting): int
+    {
+        return $setting instanceof ElectionPolicyVersion
+            ? max(1, (int) $setting->start_threshold)
+            : max(1, (int) $setting->max_for_election);
+    }
+
+    public function cycleIntervalMonths(Model $setting): int
+    {
+        return $setting instanceof ElectionPolicyVersion
+            ? max(0, (int) $setting->cycle_interval_months)
+            : max(0, (int) $setting->second_election_time);
+    }
+
+    public function responseDurationDays(Model $setting): int
+    {
+        return $setting instanceof ElectionPolicyVersion
+            ? max(1, (int) $setting->response_duration_days)
+            : ElectionResponsibilityOfferService::RESPONSE_WINDOW_DAYS;
     }
 }
