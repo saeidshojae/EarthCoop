@@ -4,16 +4,15 @@ namespace App\Http\Controllers\Group;
 
 use App\Enums\Elections\ElectionBallotCommentVisibility;
 use App\Enums\Elections\ElectionLifecycleStatus;
-use App\Enums\Elections\ElectionPosition;
+use App\Enums\Elections\ElectionVoteVisibility;
 use App\Http\Controllers\Controller;
 use App\Models\Election;
 use App\Models\Group;
-use App\Models\Vote;
 use App\Services\Elections\ElectionBallotService;
 use App\Services\Elections\ElectionLifecycleService;
 use App\Services\Elections\ElectionPolicyResolver;
+use App\Services\Elections\ElectionTallyService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -23,6 +22,7 @@ class ElectionController extends Controller
         private readonly ElectionPolicyResolver $policyResolver,
         private readonly ElectionLifecycleService $lifecycle,
         private readonly ElectionBallotService $ballots,
+        private readonly ElectionTallyService $tally,
     ) {
     }
 
@@ -31,6 +31,13 @@ class ElectionController extends Controller
         $inputs = $request->validate([
             'inspector' => 'nullable|array',
             'manager' => 'nullable|array',
+            'vote_visibility' => 'nullable|array',
+            'vote_visibility.*' => [
+                Rule::in(array_map(
+                    fn (ElectionVoteVisibility $visibility) => $visibility->value,
+                    ElectionVoteVisibility::cases(),
+                )),
+            ],
             'comment' => 'nullable|string|max:4000',
             'comment_visibility' => [
                 'nullable',
@@ -39,6 +46,7 @@ class ElectionController extends Controller
                     ElectionBallotCommentVisibility::cases(),
                 )),
             ],
+            'comment_anonymous' => 'nullable|boolean',
         ]);
 
         $election = Election::query()
@@ -53,7 +61,7 @@ class ElectionController extends Controller
             ]);
         }
 
-        $visibility = isset($inputs['comment_visibility'])
+        $commentVisibility = isset($inputs['comment_visibility'])
             ? ElectionBallotCommentVisibility::from($inputs['comment_visibility'])
             : null;
 
@@ -64,7 +72,9 @@ class ElectionController extends Controller
             $inputs['inspector'] ?? [],
             $request->header('Idempotency-Key') ?: null,
             $inputs['comment'] ?? null,
-            $visibility,
+            $commentVisibility,
+            $inputs['vote_visibility'] ?? [],
+            (bool) ($inputs['comment_anonymous'] ?? false),
         );
 
         if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
@@ -78,6 +88,11 @@ class ElectionController extends Controller
         return redirect()->back()->with('success', 'رأی شما با موفقیت ثبت شد.');
     }
 
+    /**
+     * Legacy endpoint adapter only. Ranking now comes exclusively from the
+     * canonical E6 stop snapshot/tally service; this controller no longer
+     * computes top-N from the live votes projection.
+     */
     public function finishElection(Election $election)
     {
         $this->authorize('manageSession', $election->group);
@@ -86,47 +101,7 @@ class ElectionController extends Controller
         $candidates = $election->candidates;
 
         foreach ($candidates as $candidate) {
-            $candidate->accept_status = null;
-            $candidate->save();
-        }
-
-        if ($candidates->isNotEmpty() && $candidates[0]->accept_status != null) {
-            return response()->json([
-                'status' => 'error',
-                'error' => 'پیش از اتمام انتخابات امکان انتخاب دیگری وجود ندارد',
-            ]);
-        }
-
-        foreach ($candidates as $candidate) {
             $candidate->accept_status = 0;
-            $candidate->save();
-        }
-
-        $topOfInspectors = Vote::select('candidate_id', DB::raw('COUNT(*) as total_votes'))
-            ->where('election_id', $election->id)
-            ->where('position', ElectionPosition::Inspector->legacyVotePosition())
-            ->groupBy('candidate_id')
-            ->orderBy('total_votes', 'desc')
-            ->take($this->policyResolver->inspectorSeatCount($groupSetting))
-            ->get()
-            ->pluck('candidate_id')
-            ->toArray();
-
-        $topOfManagers = Vote::select('candidate_id', DB::raw('COUNT(*) as total_votes'))
-            ->where('election_id', $election->id)
-            ->where('position', ElectionPosition::Manager->legacyVotePosition())
-            ->groupBy('candidate_id')
-            ->orderBy('total_votes', 'desc')
-            ->take($this->policyResolver->managerSeatCount($groupSetting))
-            ->get()
-            ->pluck('candidate_id')
-            ->toArray();
-
-        $selectedUserIds = array_merge($topOfInspectors, $topOfManagers);
-        $activeCandidates = $election->candidates()->whereIn('user_id', $selectedUserIds)->get();
-
-        foreach ($activeCandidates as $candidate) {
-            $candidate->accept_status = 1;
             $candidate->save();
         }
 
@@ -139,11 +114,27 @@ class ElectionController extends Controller
             'election-controller:finish',
         );
 
+        $tallyRows = $this->tally->tally($election);
+        $selectedUserIds = $tallyRows
+            ->where('within_seat_cutoff', true)
+            ->pluck('candidate_user_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $activeCandidates = $election->candidates()->whereIn('user_id', $selectedUserIds)->get();
+        foreach ($activeCandidates as $candidate) {
+            // Compatibility projection only; E7 moves offer/acceptance out of
+            // Candidate/ProfileController into the election domain.
+            $candidate->accept_status = 1;
+            $candidate->save();
+        }
+
         app(\App\Services\GroupChat\GroupEventPublisher::class)->publish(
             new \App\Events\GroupFeedUpdated((int) $election->group_id, 'election_finished', [
                 'election_id' => (int) $election->id,
                 'is_closed' => true,
-                'elected_candidate_ids' => $activeCandidates->pluck('user_id')->map(fn ($id) => (int) $id)->values()->all(),
+                'elected_candidate_ids' => $selectedUserIds->all(),
             ], (int) auth()->id()),
         );
 
