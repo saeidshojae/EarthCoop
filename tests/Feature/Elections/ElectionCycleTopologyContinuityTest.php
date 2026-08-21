@@ -40,7 +40,6 @@ class ElectionCycleTopologyContinuityTest extends TestCase
         $group = $this->group('neighborhood', 9701);
         $this->setting('neighborhood', 1);
 
-        // Population must not change the structural decision.
         foreach (range(1, 5) as $_) {
             $this->addActiveMember($group);
         }
@@ -171,6 +170,100 @@ class ElectionCycleTopologyContinuityTest extends TestCase
         $resolver = app(ElectionGroupHierarchyResolver::class);
         $this->assertSame(1, $resolver->effectiveStructuralChildCount($group));
         $this->assertNull(app(ElectionCycleService::class)->ensureForGroup($group));
+    }
+
+    public function test_non_terminal_cycle_blocks_new_cycle_even_after_voting_window_ends(): void
+    {
+        DB::table('neighborhoods')->insert([
+            'id' => 9741, 'name' => 'Neighborhood D', 'parent_id' => 7004, 'status' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $group = $this->group('neighborhood', 9741);
+        $this->setting('neighborhood', 1);
+        $this->addActiveMember($group);
+
+        $existing = Election::create([
+            'group_id' => $group->id,
+            'starts_at' => now()->subDays(20),
+            'ends_at' => now()->subDays(10),
+            'is_closed' => true,
+            'lifecycle_status' => ElectionLifecycleStatus::AwaitingAcceptance,
+        ]);
+
+        $result = app(ElectionCycleService::class)->ensureForGroup($group);
+
+        $this->assertSame($existing->id, $result?->id);
+        $this->assertSame(1, Election::where('group_id', $group->id)->count());
+    }
+
+    public function test_filled_cycle_waits_until_configured_repeat_interval_then_creates_next_cycle(): void
+    {
+        DB::table('neighborhoods')->insert([
+            'id' => 9751, 'name' => 'Neighborhood E', 'parent_id' => 7005, 'status' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $group = $this->group('neighborhood', 9751);
+        $this->setting('neighborhood', 1);
+        $this->addActiveMember($group);
+
+        $filled = Election::create([
+            'group_id' => $group->id,
+            'starts_at' => now()->subMonths(2)->subDays(10),
+            'ends_at' => now()->subMonths(2),
+            'is_closed' => true,
+            'lifecycle_status' => ElectionLifecycleStatus::Filled,
+        ]);
+        $filled->lifecycleTransitions()->create([
+            'from_status' => ElectionLifecycleStatus::Appointing,
+            'to_status' => ElectionLifecycleStatus::Filled,
+            'reason' => 'test_term_filled',
+            'source' => 'test',
+            'transitioned_at' => now()->subMonths(2),
+        ]);
+
+        $service = app(ElectionCycleService::class);
+        $blocked = $service->ensureForGroup($group);
+        $this->assertSame($filled->id, $blocked?->id);
+        $this->assertSame(1, Election::where('group_id', $group->id)->count());
+
+        $filled->lifecycleTransitions()->where('to_status', ElectionLifecycleStatus::Filled->value)->update([
+            'transitioned_at' => now()->subMonths(4),
+        ]);
+
+        $next = $service->ensureForGroup($group);
+
+        $this->assertNotNull($next);
+        $this->assertNotSame($filled->id, $next->id);
+        $this->assertSame(ElectionLifecycleStatus::Open, $next->lifecycle_status);
+        $this->assertSame(2, Election::where('group_id', $group->id)->count());
+    }
+
+    public function test_cancelled_cycle_can_be_replaced_immediately(): void
+    {
+        DB::table('neighborhoods')->insert([
+            'id' => 9761, 'name' => 'Neighborhood F', 'parent_id' => 7006, 'status' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $group = $this->group('neighborhood', 9761);
+        $this->setting('neighborhood', 1);
+        $this->addActiveMember($group);
+
+        $cancelled = Election::create([
+            'group_id' => $group->id,
+            'starts_at' => now()->subDay(),
+            'ends_at' => now()->addDays(9),
+            'is_closed' => true,
+            'lifecycle_status' => ElectionLifecycleStatus::Cancelled,
+        ]);
+
+        $next = app(ElectionCycleService::class)->ensureForGroup($group);
+
+        $this->assertNotNull($next);
+        $this->assertNotSame($cancelled->id, $next->id);
+        $this->assertSame(2, Election::where('group_id', $group->id)->count());
     }
 
     private function group(string $level, int $addressId): Group
