@@ -4,6 +4,7 @@ namespace Tests\Feature\NajmHoda;
 
 use App\Services\NajmHoda\FounderOps\FounderExecutiveConnectivityService;
 use App\Services\NajmHoda\FounderOps\FounderLowRiskDomainActionService;
+use App\Services\NajmHoda\FounderOps\FounderStockDecisionService;
 use Mockery;
 use Tests\TestCase;
 
@@ -30,7 +31,8 @@ class FounderExecutiveConnectivityTest extends TestCase
         $this->assertSame(17,$report['summary']['read_connected']);
         $this->assertSame('connected',$report['domains']['groups']['actions']['summarize_activity']['state']);
         $this->assertSame('connected',$report['domains']['governance']['actions']['flag_anomaly']['state']);
-        $this->assertSame('missing',$report['domains']['stock']['actions']['settle_auction']['state']);
+        $this->assertSame('connected',$report['domains']['stock']['actions']['settle_auction']['state']);
+        $this->assertSame(FounderStockDecisionService::class,$report['domains']['stock']['actions']['settle_auction']['adapter']);
         $this->assertSame('protected',$report['domains']['stock']['actions']['alter_ownership_history']['state']);
         $this->assertGreaterThan(0,$report['summary']['missing_executable_actions']);
         $this->assertNotEmpty($report['rollout_queue']);
