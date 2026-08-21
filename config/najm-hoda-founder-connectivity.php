@@ -72,6 +72,14 @@ return [
             'reason' => 'persisted_global_defaults_missing',
             'dependency' => 'Canonical persisted notification-default policy/state service',
         ],
+        'stock.create_auction' => [
+            'reason' => 'typed_supply_intent_missing',
+            'dependency' => 'Canonical auction-creation command with explicit treasury/holder supply ownership reservation and seller identity',
+        ],
+        'stock.transfer_shares' => [
+            'reason' => 'canonical_transfer_boundary_missing',
+            'dependency' => 'Canonical share-transfer/trade boundary that cannot bypass secondary-market Active Bahar settlement or ownership audit',
+        ],
         'najm_bahar.execute_transaction' => [
             'reason' => 'typed_transaction_intent_missing',
             'dependency' => 'Explicit typed economic-actor transaction intent boundary compatible with StrictTransactionService',
