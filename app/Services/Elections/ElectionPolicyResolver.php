@@ -4,6 +4,7 @@ namespace App\Services\Elections;
 
 use App\Models\Election;
 use App\Models\ElectionPolicyVersion;
+use App\Models\ElectionResponsibilityContractVersion;
 use App\Models\Group;
 use App\Models\GroupSetting;
 use Illuminate\Database\Eloquent\Model;
@@ -12,12 +13,6 @@ use RuntimeException;
 
 class ElectionPolicyResolver
 {
-    /**
-     * Compatibility read for legacy domain code. If the group currently has a
-     * non-terminal cycle with a frozen policy, return a read-only GroupSetting
-     * projection of that policy so in-flight behavior cannot drift when admin
-     * publishes a newer version.
-     */
     public function resolveForGroup(Group $group): GroupSetting
     {
         $setting = $this->baseSettingForGroup($group);
@@ -32,14 +27,9 @@ class ElectionPolicyResolver
             ->orderByDesc('id')
             ->first();
 
-        if ($active === null) {
-            return $setting;
-        }
-
+        if ($active === null) return $setting;
         $policy = $active->policyVersion()->first();
-        if ($policy === null) {
-            return $setting;
-        }
+        if ($policy === null) return $setting;
 
         $projection = new GroupSetting();
         $projection->setRawAttributes([
@@ -158,10 +148,24 @@ class ElectionPolicyResolver
                 'start_threshold' => max(1, (int) $setting->max_for_election),
                 'cycle_interval_months' => max(0, (int) $setting->second_election_time),
                 'response_duration_days' => ElectionResponsibilityOfferService::RESPONSE_WINDOW_DAYS,
+                'manager_contract_version_id' => $this->activeContractId('manager'),
+                'inspector_contract_version_id' => $this->activeContractId('inspector'),
                 'effective_at' => now(),
                 'change_reason' => 'compatibility_baseline_created_on_first_use',
                 'metadata' => ['source' => 'resolver_compatibility_fallback'],
             ]);
         }, 3);
+    }
+
+    private function activeContractId(string $position): ?int
+    {
+        $id = ElectionResponsibilityContractVersion::query()
+            ->where('position', $position)
+            ->where('is_active', true)
+            ->whereNotNull('published_at')
+            ->orderByDesc('version')
+            ->value('id');
+
+        return $id === null ? null : (int) $id;
     }
 }
