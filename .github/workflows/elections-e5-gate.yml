@@ -75,13 +75,13 @@ jobs:
       - name: Migrate ballot v2 schema
         run: php artisan migrate:fresh --force
 
-      - name: Run E5 ballot service tests
-        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections/ElectionBallotServiceTest.php
+      - name: Run E5 ballot and privacy tests
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections/ElectionBallotServiceTest.php tests/Feature/Elections/ElectionBallotPrivacyTest.php
 
       - name: Re-run election lifecycle and snapshot regression tests
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections/ElectionLifecycleServiceTest.php tests/Feature/Elections/ElectionEligibilitySnapshotServiceTest.php tests/Feature/Elections/ElectionCycleServiceTest.php
 
-      - name: Validate audit table shape
+      - name: Validate audit and privacy schema shape
         shell: bash
         run: |
-          php artisan tinker --execute="if (!Schema::hasTable('election_ballot_events')) { throw new RuntimeException('missing election_ballot_events'); }"
+          php artisan tinker --execute="if (!Schema::hasTable('election_ballot_events')) { throw new RuntimeException('missing election_ballot_events'); } if (!Schema::hasColumn('votes', 'vote_visibility')) { throw new RuntimeException('missing votes.vote_visibility'); } if (!Schema::hasColumn('election_ballot_events', 'comment_anonymous')) { throw new RuntimeException('missing comment_anonymous'); }"
