@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Elections;
 
+use App\Enums\Elections\ElectionBallotCommentVisibility;
 use App\Enums\Elections\ElectionLifecycleStatus;
 use App\Models\Election;
 use App\Models\ElectionBallotEvent;
@@ -38,7 +39,7 @@ class ElectionBallotServiceTest extends TestCase
             'candidate_user_id' => $inspector->id,
             'position' => '0',
         ]);
-        $this->assertSame(2, ElectionBallotEvent::where('request_uuid', 'req-1')->where('event_type', 'cast')->count());
+        $this->assertSame(2, ElectionBallotEvent::where('request_uuid', 'req-1')->where('event_type', 'vote_cast')->count());
 
         $service->submit($election, $voter->id, [], [$manager->id], 'req-2');
 
@@ -49,7 +50,7 @@ class ElectionBallotServiceTest extends TestCase
         ]);
         $this->assertDatabaseHas('election_ballot_events', [
             'request_uuid' => 'req-2',
-            'event_type' => 'changed',
+            'event_type' => 'vote_changed',
             'candidate_user_id' => $manager->id,
             'previous_candidate_user_id' => $manager->id,
             'position' => 'inspector',
@@ -57,11 +58,52 @@ class ElectionBallotServiceTest extends TestCase
         ]);
         $this->assertDatabaseHas('election_ballot_events', [
             'request_uuid' => 'req-2',
-            'event_type' => 'withdrawn',
+            'event_type' => 'vote_withdrawn',
             'previous_candidate_user_id' => $inspector->id,
             'previous_position' => 'inspector',
         ]);
         $this->assertSame(4, ElectionBallotEvent::where('election_id', $election->id)->count());
+    }
+
+    public function test_ballot_comment_and_visibility_are_persisted_on_generated_audit_events(): void
+    {
+        [$election, $voter, $manager] = $this->fixture();
+        $service = app(ElectionBallotService::class);
+
+        $service->submit(
+            $election,
+            $voter->id,
+            [$manager->id],
+            [],
+            'req-comment',
+            'این توضیح درباره رأی من است.',
+            ElectionBallotCommentVisibility::SubjectOnly,
+        );
+
+        $this->assertDatabaseHas('election_ballot_events', [
+            'election_id' => $election->id,
+            'voter_id' => $voter->id,
+            'candidate_user_id' => $manager->id,
+            'event_type' => 'vote_cast',
+            'comment' => 'این توضیح درباره رأی من است.',
+            'comment_visibility' => 'subject_only',
+        ]);
+    }
+
+    public function test_comment_requires_explicit_visibility(): void
+    {
+        [$election, $voter, $manager] = $this->fixture();
+        $service = app(ElectionBallotService::class);
+
+        try {
+            $service->submit($election, $voter->id, [$manager->id], [], 'req-comment-no-visibility', 'توضیح');
+            $this->fail('Expected comment visibility validation failure.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('comment_visibility', $e->errors());
+        }
+
+        $this->assertSame(0, Vote::where('election_id', $election->id)->count());
+        $this->assertSame(0, ElectionBallotEvent::where('election_id', $election->id)->count());
     }
 
     public function test_ballot_rejects_voter_or_candidate_outside_frozen_snapshot(): void
