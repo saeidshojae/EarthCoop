@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -16,6 +17,20 @@ return new class extends Migration
                 ->after('manager_contract_version_id')
                 ->constrained('election_responsibility_contract_versions')->nullOnDelete();
         });
+
+        $manager = DB::table('election_responsibility_contract_versions')
+            ->where('position', 'manager')->where('is_active', true)->whereNotNull('published_at')
+            ->orderByDesc('version')->value('id');
+        $inspector = DB::table('election_responsibility_contract_versions')
+            ->where('position', 'inspector')->where('is_active', true)->whereNotNull('published_at')
+            ->orderByDesc('version')->value('id');
+
+        if ($manager !== null || $inspector !== null) {
+            DB::table('election_policy_versions')->update([
+                'manager_contract_version_id' => $manager,
+                'inspector_contract_version_id' => $inspector,
+            ]);
+        }
     }
 
     public function down(): void
