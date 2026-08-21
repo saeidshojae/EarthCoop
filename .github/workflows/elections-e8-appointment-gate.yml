@@ -67,7 +67,8 @@ jobs:
         run: |
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/Elections/ElectionAppointmentServiceTest.php \
-            tests/Feature/Elections/ElectionAppointmentLifecycleTest.php
+            tests/Feature/Elections/ElectionAppointmentLifecycleTest.php \
+            tests/Feature/Elections/ElectionGroupHierarchyResolverTest.php
 
       - name: Re-run elections regression suite
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections
@@ -75,4 +76,4 @@ jobs:
       - name: Validate E8 schema and scheduler command
         run: |
           php artisan list | grep -F 'elections:process-lifecycle'
-          php artisan tinker --execute="throw_unless(\Illuminate\Support\Facades\Schema::hasTable('election_appointments')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('election_appointments', 'appointment_kind')); throw_unless(\Illuminate\Support\Facades\Schema::hasTable('election_representation_assignments'));"
+          php artisan tinker --execute="throw_unless(\Illuminate\Support\Facades\Schema::hasTable('election_appointments')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('election_appointments', 'appointment_kind')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('election_appointments', 'source_appointment_id')); throw_unless(\Illuminate\Support\Facades\Schema::hasTable('election_representation_assignments'));"
