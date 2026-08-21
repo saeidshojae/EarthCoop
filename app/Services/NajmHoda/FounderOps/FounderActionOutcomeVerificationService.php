@@ -5,8 +5,13 @@ namespace App\Services\NajmHoda\FounderOps;
 use App\Models\FounderAnnouncementDraft;
 use App\Models\FounderContentDraft;
 use App\Models\FounderEmailDraft;
+use App\Models\FounderNajmBaharTransactionIntent;
 use App\Models\Setting;
 use App\Models\SupportReplyDraft;
+use App\Modules\Secretariat\Models\SecretariatCase;
+use App\Modules\Secretariat\Models\SecretariatRecord;
+use App\Modules\Stock\Models\Auction;
+use App\Modules\Stock\Models\StockSettlementAllocation;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -34,6 +39,10 @@ class FounderActionOutcomeVerificationService
                 'blog.publish_post' => $this->verifyBlogPublication($result),
                 'email.send_email', 'email.bulk_send' => $this->verifyEmailSend($result),
                 'admin_settings.change_setting' => $this->verifyAdminSetting($result),
+                'secretariat.register_formal_record' => $this->verifySecretariatRegistration($result),
+                'secretariat.close_case' => $this->verifySecretariatCaseClosure($result),
+                'najm_bahar.execute_transaction' => $this->verifyNajmBaharTransaction($result),
+                'stock.settle_auction' => $this->verifyStockSettlement($result),
                 default => [
                     'verified' => false,
                     'status' => 'not_configured',
@@ -201,6 +210,125 @@ class FounderActionOutcomeVerificationService
                 'setting_key' => $key,
                 'expected_value' => $expected,
                 'persisted_value' => $actual,
+            ],
+        ];
+    }
+
+    /** @param array<string,mixed> $result */
+    protected function verifySecretariatRegistration(array $result): array
+    {
+        $recordId = (int) ($result['record_id'] ?? 0);
+        $registryNumber = (string) ($result['registry_number'] ?? '');
+        $record = $recordId > 0 ? SecretariatRecord::query()->find($recordId) : null;
+        $verified = $record !== null
+            && $registryNumber !== ''
+            && (string) ($record->registry_number ?? '') === $registryNumber
+            && (string) $record->status === (string) ($result['record_status'] ?? '');
+
+        return [
+            'verified' => $verified,
+            'status' => $verified ? 'verified' : 'failed',
+            'verification_scope' => 'internal_formal_registration',
+            'external_dispatch_confirmed' => false,
+            'evidence' => [
+                'record_id' => $recordId,
+                'registry_number' => $registryNumber,
+                'persisted_registry_number' => $record?->registry_number,
+                'persisted_status' => $record?->status,
+            ],
+        ];
+    }
+
+    /** @param array<string,mixed> $result */
+    protected function verifySecretariatCaseClosure(array $result): array
+    {
+        $caseId = (int) ($result['case_id'] ?? 0);
+        $closedBy = (int) ($result['closed_by'] ?? 0);
+        $case = $caseId > 0 ? SecretariatCase::query()->find($caseId) : null;
+        $verified = $case !== null
+            && (string) $case->status === 'closed'
+            && $closedBy > 0
+            && (int) ($case->closed_by ?? 0) === $closedBy;
+
+        return [
+            'verified' => $verified,
+            'status' => $verified ? 'verified' : 'failed',
+            'verification_scope' => 'internal_case_lifecycle',
+            'evidence' => [
+                'case_id' => $caseId,
+                'persisted_status' => $case?->status,
+                'closed_by' => $closedBy,
+                'persisted_closed_by' => $case?->closed_by,
+            ],
+        ];
+    }
+
+    /** @param array<string,mixed> $result */
+    protected function verifyNajmBaharTransaction(array $result): array
+    {
+        $intentId = (int) ($result['intent_id'] ?? 0);
+        $transactionId = (int) ($result['transaction_id'] ?? 0);
+        $intent = $intentId > 0 ? FounderNajmBaharTransactionIntent::query()->find($intentId) : null;
+        $transactionExists = $transactionId > 0
+            ? DB::table('najm_transactions')->where('id', $transactionId)->exists()
+            : false;
+        $verified = $intent !== null
+            && (string) $intent->status === 'executed'
+            && (int) ($intent->transaction_id ?? 0) === $transactionId
+            && $transactionExists;
+
+        return [
+            'verified' => $verified,
+            'status' => $verified ? 'verified' : 'failed',
+            'verification_scope' => 'canonical_internal_ledger_transaction',
+            'evidence' => [
+                'intent_id' => $intentId,
+                'intent_status' => $intent?->status,
+                'transaction_id' => $transactionId,
+                'transaction_persisted' => $transactionExists,
+                'tracking_number' => $result['tracking_number'] ?? null,
+            ],
+        ];
+    }
+
+    /** @param array<string,mixed> $result */
+    protected function verifyStockSettlement(array $result): array
+    {
+        $auctionId = (int) ($result['auction_id'] ?? 0);
+        $auction = $auctionId > 0 ? Auction::query()->find($auctionId) : null;
+        $statusVerified = $auction !== null && (string) $auction->status === 'settled';
+        $canonical = $auction?->hasCanonicalGolPricing() ?? false;
+        $allocationCount = 0;
+        $unsettledAllocationCount = 0;
+        $reconciliationRequiredCount = 0;
+
+        if ($canonical && $auction !== null) {
+            $allocations = StockSettlementAllocation::query()
+                ->where('auction_id', $auction->id)
+                ->where('state', '!=', StockSettlementAllocation::CANCELLED);
+            $allocationCount = (clone $allocations)->count();
+            $unsettledAllocationCount = (clone $allocations)
+                ->where('state', '!=', StockSettlementAllocation::SETTLED)
+                ->count();
+            $reconciliationRequiredCount = (clone $allocations)
+                ->where('state', StockSettlementAllocation::RECONCILIATION_REQUIRED)
+                ->count();
+        }
+
+        $verified = $statusVerified
+            && (! $canonical || ($allocationCount > 0 && $unsettledAllocationCount === 0 && $reconciliationRequiredCount === 0));
+
+        return [
+            'verified' => $verified,
+            'status' => $verified ? 'verified' : 'failed',
+            'verification_scope' => $canonical ? 'canonical_gol_settlement' : 'legacy_internal_settlement',
+            'evidence' => [
+                'auction_id' => $auctionId,
+                'persisted_status' => $auction?->status,
+                'canonical_gol_pricing' => $canonical,
+                'allocation_count' => $allocationCount,
+                'unsettled_allocation_count' => $unsettledAllocationCount,
+                'reconciliation_required_count' => $reconciliationRequiredCount,
             ],
         ];
     }
