@@ -8,6 +8,7 @@ use App\Models\Group;
 use App\Services\Elections\ElectionAppointmentService;
 use App\Services\Elections\ElectionCycleService;
 use App\Services\Elections\ElectionLifecycleService;
+use App\Services\Elections\ElectionPolicyVersionService;
 use App\Services\Elections\ElectionResponsibilityOfferService;
 use App\Services\Elections\ElectionVacancyService;
 use Illuminate\Console\Command;
@@ -19,11 +20,12 @@ class ProcessElectionLifecycle extends Command
         {--limit=500 : Maximum groups/elections/offers/vacancies to inspect in one tick}
         {--fail-on-error : Exit non-zero if any election action fails processing}';
 
-    protected $description = 'Create election cycles, advance due states, expire offers, apply appointments and backfill post-appointment vacancies through canonical server-side services';
+    protected $description = 'Create election cycles, activate effective policies, advance due states, expire offers, apply appointments and backfill post-appointment vacancies through canonical server-side services';
 
     public function handle(
         ElectionCycleService $cycles,
         ElectionLifecycleService $lifecycle,
+        ElectionPolicyVersionService $policyVersions,
         ElectionResponsibilityOfferService $offers,
         ElectionAppointmentService $appointments,
         ElectionVacancyService $vacancies,
@@ -33,12 +35,21 @@ class ProcessElectionLifecycle extends Command
         $cyclesCreated = 0;
         $processed = 0;
         $advanced = 0;
+        $policiesSynced = 0;
         $expiredOffers = 0;
         $appointmentElections = 0;
         $vacancyProcessed = 0;
         $vacancyFilled = 0;
         $vacancyExhausted = 0;
         $errors = 0;
+
+        try {
+            $policiesSynced = $policyVersions->syncEffectiveMirrors($limit);
+        } catch (Throwable $exception) {
+            $errors++;
+            report($exception);
+            $this->error("Election policy mirrors: {$exception->getMessage()}");
+        }
 
         Group::query()->orderBy('id')->chunkById(100, function ($groups) use (
             $cycles, $limit, &$groupsProcessed, &$cyclesCreated, &$errors,
@@ -137,7 +148,7 @@ class ProcessElectionLifecycle extends Command
         // Keep the legacy processed/advanced/errors sequence stable for operators,
         // log parsers and regression checks; append newer metrics afterwards.
         $this->line(
-            "groups={$groupsProcessed} cycles_created={$cyclesCreated} processed={$processed} advanced={$advanced} errors={$errors} expired_offers={$expiredOffers} appointment_elections={$appointmentElections} vacancy_processed={$vacancyProcessed} vacancy_filled={$vacancyFilled} vacancy_exhausted={$vacancyExhausted}"
+            "groups={$groupsProcessed} cycles_created={$cyclesCreated} processed={$processed} advanced={$advanced} errors={$errors} policies_synced={$policiesSynced} expired_offers={$expiredOffers} appointment_elections={$appointmentElections} vacancy_processed={$vacancyProcessed} vacancy_filled={$vacancyFilled} vacancy_exhausted={$vacancyExhausted}"
         );
 
         return ($errors > 0 && $this->option('fail-on-error')) ? self::FAILURE : self::SUCCESS;
