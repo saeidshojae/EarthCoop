@@ -20,7 +20,7 @@ class ElectionTallyServiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_same_input_always_produces_same_ranked_snapshot(): void
+    public function test_same_input_always_produces_same_ranked_snapshot_with_verifiable_draw_evidence(): void
     {
         [$election, $voterA, $voterB, $candidateA, $candidateB, $candidateC] = $this->fixture();
 
@@ -30,15 +30,15 @@ class ElectionTallyServiceTest extends TestCase
         $this->vote($election, $voterB, $candidateC, ElectionPosition::Manager);
 
         $service = app(ElectionTallyService::class);
-        $first = $service->tally($election)->map->only([
+        $fields = [
             'candidate_user_id', 'position', 'vote_count', 'rank',
-            'within_seat_cutoff', 'tie_break_version', 'tie_break_key',
-        ])->values()->all();
+            'within_seat_cutoff', 'cycle_identifier', 'stopped_at',
+            'vote_snapshot_hash', 'draw_seed_version', 'draw_seed',
+            'tie_break_version', 'tie_break_key',
+        ];
 
-        $second = $service->tally($election->refresh())->map->only([
-            'candidate_user_id', 'position', 'vote_count', 'rank',
-            'within_seat_cutoff', 'tie_break_version', 'tie_break_key',
-        ])->values()->all();
+        $first = $service->tally($election)->map->only($fields)->values()->all();
+        $second = $service->tally($election->refresh())->map->only($fields)->values()->all();
 
         $this->assertSame($first, $second);
         $this->assertSame(6, ElectionTallyResult::where('election_id', $election->id)->count());
@@ -52,13 +52,17 @@ class ElectionTallyServiceTest extends TestCase
         $this->assertSame(2, $managerRows[0]->vote_count);
         $this->assertTrue($managerRows[0]->within_seat_cutoff);
 
+        $evidence = $managerRows[0];
+        $this->assertSame('election:'.$election->id, $evidence->cycle_identifier);
+        $this->assertSame(ElectionTallyService::DRAW_SEED_VERSION, $evidence->draw_seed_version);
+        $this->assertSame(ElectionTallyService::TIE_BREAK_VERSION, $evidence->tie_break_version);
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $evidence->vote_snapshot_hash);
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $evidence->draw_seed);
+
         $tied = $managerRows->where('vote_count', 1)->values();
         $this->assertCount(2, $tied);
-        $this->assertLessThanOrEqual(
-            0,
-            strcmp($tied[0]->tie_break_key, $tied[1]->tie_break_key),
-        );
-        $this->assertSame(ElectionTallyService::TIE_BREAK_VERSION, $tied[0]->tie_break_version);
+        $this->assertLessThanOrEqual(0, strcmp($tied[0]->tie_break_key, $tied[1]->tie_break_key));
+        $this->assertSame($evidence->draw_seed, $tied[0]->draw_seed);
         $this->assertSame('tallying', $election->refresh()->lifecycle_status->value);
     }
 
@@ -82,6 +86,15 @@ class ElectionTallyServiceTest extends TestCase
         } finally {
             $this->assertSame(0, ElectionTallyResult::where('election_id', $election->id)->count());
         }
+    }
+
+    public function test_tally_fails_closed_when_stop_time_cannot_be_proved(): void
+    {
+        [$election] = $this->fixture();
+        $election->forceFill(['ends_at' => null])->save();
+
+        $this->expectException(RuntimeException::class);
+        app(ElectionTallyService::class)->tally($election->refresh());
     }
 
     private function fixture(): array
