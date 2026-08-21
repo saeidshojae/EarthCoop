@@ -73,6 +73,58 @@ class ElectionGroupHierarchyResolver
         return $this->higherGroup($highest, $user);
     }
 
+    /**
+     * An election layer is independent unless its approved geographic topology
+     * has exactly one effective structural child constituency. A single child
+     * means the lower elected office represents the same constituency and its
+     * appointment is inherited into this layer instead of running a duplicate
+     * election here.
+     *
+     * Zero children intentionally remains independent: it is the lowest
+     * configured geographic layer available for that branch. Population is
+     * never consulted by this decision.
+     */
+    public function isIndependentElectoralLayer(Group $group): bool
+    {
+        $count = $this->effectiveStructuralChildCount($group);
+
+        return $count === null || $count !== 1;
+    }
+
+    /**
+     * Return the number of approved direct/effective geographic constituencies
+     * under a group. Null denotes a structural leaf (alley).
+     *
+     * Optional urban/rural layers are folded without relying on current users:
+     * - section counts city + rural together;
+     * - city counts regions plus neighborhoods attached directly to the city;
+     * - rural counts villages plus neighborhoods attached directly to the rural;
+     * - region/village count their directly attached neighborhoods.
+     */
+    public function effectiveStructuralChildCount(Group $parent): ?int
+    {
+        $parentId = $parent->address_id === null ? null : (int) $parent->address_id;
+
+        return match ($parent->location_level) {
+            'global' => $this->approvedCount('continents'),
+            'continent' => $this->approvedCount('countries', 'continent_id', $parentId),
+            'country' => $this->approvedCount('provinces', 'country_id', $parentId),
+            'province' => $this->approvedCount('counties', 'province_id', $parentId),
+            'county' => $this->approvedCount('districts', 'county_id', $parentId),
+            'section' => $this->approvedCount('cities', 'district_id', $parentId)
+                + $this->approvedCount('rurals', 'district_id', $parentId),
+            'city' => $this->approvedCount('regions', 'parent_id', $parentId)
+                + $this->approvedCount('neighborhoods', 'parent_id', $parentId),
+            'rural' => $this->approvedCount('villages', 'rural_id', $parentId)
+                + $this->approvedCount('neighborhoods', 'parent_id', $parentId),
+            'region', 'village' => $this->approvedCount('neighborhoods', 'parent_id', $parentId),
+            'neighborhood' => $this->approvedCount('streets', 'parent_id', $parentId),
+            'street' => $this->approvedCount('alleies', 'parent_id', $parentId),
+            'alley' => null,
+            default => throw new RuntimeException("Unsupported election topology level [{$parent->location_level}]."),
+        };
+    }
+
     public function isSoleStructuralConstituency(Group $child, Group $parent): bool
     {
         if (! $this->sameTrack($child, $parent) || $child->address_id === null) {
@@ -144,6 +196,20 @@ class ElectionGroupHierarchyResolver
         }
 
         return true;
+    }
+
+    private function approvedCount(string $table, ?string $parentColumn = null, ?int $parentId = null): int
+    {
+        $query = $this->approved(DB::table($table), $table);
+
+        if ($parentColumn !== null) {
+            if ($parentId === null) {
+                return 0;
+            }
+            $query->where($parentColumn, $parentId);
+        }
+
+        return (int) $query->count();
     }
 
     private function childBelongsToParent(Group $child, Group $parent): bool
