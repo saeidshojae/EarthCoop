@@ -10,12 +10,6 @@ use RuntimeException;
 
 class ElectionGroupHierarchyResolver
 {
-    /**
-     * Structural child table and its parent foreign-key for the canonical
-     * geographic hierarchy. `neighborhood.parent_id` intentionally supports
-     * either region/village or a directly higher city/rural scope when an
-     * optional intermediate layer does not exist in the user's path.
-     */
     private const CHILD_TO_PARENT = [
         'alley' => ['alleies', 'parent_id'],
         'street' => ['streets', 'parent_id'],
@@ -33,11 +27,6 @@ class ElectionGroupHierarchyResolver
 
     public function __construct(private readonly GroupService $groups) {}
 
-    /**
-     * Resolve the exact corresponding group one actual user-path level above
-     * the source group, preserving the complete group subtype. Optional absent
-     * geography is naturally skipped by GroupService::getLocationLevels().
-     */
     public function higherGroup(Group $source, User $user): ?Group
     {
         if ($source->location_level === 'global') {
@@ -57,14 +46,6 @@ class ElectionGroupHierarchyResolver
         return $this->matchingGroup($source, $target['level'], $target['id']);
     }
 
-    /**
-     * Higher scopes that inherit the same elected responsibility because every
-     * parent is structurally a one-constituency scope. This rule is geographic,
-     * not population-driven: low EarthCoop adoption can never make a local
-     * manager accidentally inherit a national/global office.
-     *
-     * @return array<int, Group>
-     */
     public function compressionChain(Group $source, User $user): array
     {
         $chain = [];
@@ -82,7 +63,6 @@ class ElectionGroupHierarchyResolver
         return $chain;
     }
 
-    /** First higher scope that still requires genuine multi-constituency representation. */
     public function nextElectoralParent(Group $source, User $user): ?Group
     {
         $chain = $this->compressionChain($source, $user);
@@ -101,11 +81,6 @@ class ElectionGroupHierarchyResolver
             && $this->childBelongsToParent($child, $parent);
     }
 
-    /**
-     * Count configured geographic constituencies, irrespective of current member
-     * count. Under a `section`, city and rural are parallel child branches and
-     * must be counted together to avoid false compression.
-     */
     public function structuralConstituencyCount(Group $parent, string $childLevel): int
     {
         if ($parent->location_level === 'section' && in_array($childLevel, ['city', 'rural'], true)) {
@@ -136,7 +111,6 @@ class ElectionGroupHierarchyResolver
         return (int) $query->where($parentColumn, $parent->address_id)->count();
     }
 
-    /** Smaller index means a higher geographic seat. */
     public function hierarchyIndex(Group $group, User $user): int
     {
         $index = $this->indexFor($group, $this->pathFor($user));
@@ -149,12 +123,12 @@ class ElectionGroupHierarchyResolver
 
     public function sameTrack(Group $left, Group $right): bool
     {
-        if ((string) $left->group_type !== (string) $right->group_type) {
+        if ((string) $this->raw($left, 'group_type') !== (string) $this->raw($right, 'group_type')) {
             return false;
         }
 
         foreach (['specialty_id', 'experience_id', 'age_group_id', 'gender'] as $field) {
-            if (($left->{$field} ?? null) !== ($right->{$field} ?? null)) {
+            if ($this->raw($left, $field) !== $this->raw($right, $field)) {
                 return false;
             }
         }
@@ -186,13 +160,13 @@ class ElectionGroupHierarchyResolver
     private function matchingGroup(Group $source, string $level, ?int $addressId): Group
     {
         $query = Group::query()
-            ->where('group_type', $source->group_type)
+            ->where('group_type', $this->raw($source, 'group_type'))
             ->where('location_level', $level);
 
         $addressId === null ? $query->whereNull('address_id') : $query->where('address_id', $addressId);
 
         foreach (['specialty_id', 'experience_id', 'age_group_id', 'gender'] as $field) {
-            $value = $source->{$field};
+            $value = $this->raw($source, $field);
             $value === null ? $query->whereNull($field) : $query->where($field, $value);
         }
 
@@ -204,6 +178,12 @@ class ElectionGroupHierarchyResolver
         }
 
         return $group;
+    }
+
+    private function raw(Group $group, string $field): mixed
+    {
+        $attributes = $group->getAttributes();
+        return $attributes[$field] ?? null;
     }
 
     private function pathFor(User $user): array
