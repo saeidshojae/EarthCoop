@@ -2,6 +2,7 @@
 
 namespace App\Services\Elections;
 
+use App\Enums\Elections\ElectionBallotCommentVisibility;
 use App\Enums\Elections\ElectionLifecycleStatus;
 use App\Enums\Elections\ElectionPosition;
 use App\Models\Election;
@@ -15,6 +16,7 @@ use Illuminate\Validation\ValidationException;
 class ElectionBallotService
 {
     private const REQUEST_UUID_MAX_LENGTH = 96;
+    private const COMMENT_MAX_LENGTH = 4000;
 
     public function __construct(
         private readonly ElectionPolicyResolver $policyResolver,
@@ -34,8 +36,18 @@ class ElectionBallotService
         array $managerUserIds,
         array $inspectorUserIds,
         ?string $requestUuid = null,
+        ?string $comment = null,
+        ?ElectionBallotCommentVisibility $commentVisibility = null,
     ): array {
-        return DB::transaction(function () use ($election, $voterId, $managerUserIds, $inspectorUserIds, $requestUuid): array {
+        return DB::transaction(function () use (
+            $election,
+            $voterId,
+            $managerUserIds,
+            $inspectorUserIds,
+            $requestUuid,
+            $comment,
+            $commentVisibility,
+        ): array {
             $lockedElection = Election::query()->lockForUpdate()->findOrFail($election->id);
 
             if ((int) $lockedElection->group_id !== (int) $election->group_id) {
@@ -48,6 +60,7 @@ class ElectionBallotService
 
             $managerIds = $this->normaliseIds($managerUserIds, 'manager');
             $inspectorIds = $this->normaliseIds($inspectorUserIds, 'inspector');
+            [$normalisedComment, $normalisedVisibility] = $this->normaliseComment($comment, $commentVisibility);
 
             $duplicatesAcrossPositions = array_values(array_intersect($managerIds, $inspectorIds));
             if ($duplicatesAcrossPositions !== []) {
@@ -103,9 +116,6 @@ class ElectionBallotService
                 ->lockForUpdate()
                 ->get();
 
-            // Never destroy unresolved legacy identity while replacing the current
-            // projection. E2 deliberately leaves ambiguous rows unresolved; E5
-            // must fail closed until reconciliation supplies candidate_user_id.
             if ($currentVotes->contains(fn (Vote $vote) => $vote->candidate_user_id === null)) {
                 throw ValidationException::withMessages([
                     'ballot' => 'رأی تاریخی شما شامل شناسه حل‌نشده است و تا تطبیق داده‌ها قابل تغییر نیست.',
@@ -148,13 +158,15 @@ class ElectionBallotService
                     $this->appendEvent(
                         $lockedElection->id,
                         $voterId,
-                        'withdrawn',
+                        'vote_withdrawn',
                         null,
                         $candidateUserId,
                         null,
                         $position,
                         $uuid,
                         $occurredAt,
+                        $normalisedComment,
+                        $normalisedVisibility,
                     );
                     continue;
                 }
@@ -163,13 +175,15 @@ class ElectionBallotService
                     $this->appendEvent(
                         $lockedElection->id,
                         $voterId,
-                        'changed',
+                        'vote_changed',
                         $candidateUserId,
                         $candidateUserId,
                         $desired[$candidateUserId],
                         $position,
                         $uuid,
                         $occurredAt,
+                        $normalisedComment,
+                        $normalisedVisibility,
                     );
                 }
             }
@@ -179,13 +193,15 @@ class ElectionBallotService
                     $this->appendEvent(
                         $lockedElection->id,
                         $voterId,
-                        'cast',
+                        'vote_cast',
                         $candidateUserId,
                         null,
                         $position,
                         null,
                         $uuid,
                         $occurredAt,
+                        $normalisedComment,
+                        $normalisedVisibility,
                     );
                 }
             }
@@ -199,7 +215,6 @@ class ElectionBallotService
                 Vote::create([
                     'election_id' => $lockedElection->id,
                     'voter_id' => $voterId,
-                    // Compatibility projection only. Canonical identity is candidate_user_id.
                     'candidate_id' => $candidateUserId,
                     'candidate_user_id' => $candidateUserId,
                     'position' => $position->legacyVotePosition(),
@@ -250,6 +265,35 @@ class ElectionBallotService
         return $uuid;
     }
 
+    /** @return array{0:?string,1:?ElectionBallotCommentVisibility} */
+    private function normaliseComment(
+        ?string $comment,
+        ?ElectionBallotCommentVisibility $visibility,
+    ): array {
+        $normalised = $comment === null ? null : trim($comment);
+        if ($normalised === '') {
+            $normalised = null;
+        }
+
+        if ($normalised === null) {
+            return [null, null];
+        }
+
+        if (mb_strlen($normalised) > self::COMMENT_MAX_LENGTH) {
+            throw ValidationException::withMessages([
+                'comment' => 'متن توضیح رأی بیش از حد مجاز طول دارد.',
+            ]);
+        }
+
+        if ($visibility === null) {
+            throw ValidationException::withMessages([
+                'comment_visibility' => 'برای توضیح رأی باید سطح نمایش مشخص شود.',
+            ]);
+        }
+
+        return [$normalised, $visibility];
+    }
+
     private function appendEvent(
         int $electionId,
         int $voterId,
@@ -260,6 +304,8 @@ class ElectionBallotService
         ?ElectionPosition $previousPosition,
         string $requestUuid,
         $occurredAt,
+        ?string $comment,
+        ?ElectionBallotCommentVisibility $commentVisibility,
     ): void {
         ElectionBallotEvent::create([
             'election_id' => $electionId,
@@ -269,6 +315,8 @@ class ElectionBallotService
             'previous_candidate_user_id' => $previousCandidateUserId,
             'position' => $position?->value,
             'previous_position' => $previousPosition?->value,
+            'comment' => $comment,
+            'comment_visibility' => $commentVisibility?->value,
             'request_uuid' => $requestUuid,
             'metadata' => ['source' => 'ballot_v2'],
             'occurred_at' => $occurredAt,
