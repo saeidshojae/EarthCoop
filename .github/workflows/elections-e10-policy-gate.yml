@@ -63,11 +63,12 @@ jobs:
       - name: Migrate E10 policy schema
         run: php artisan migrate:fresh --force
 
-      - name: Run E10 policy versioning, frozen runtime, and admin history tests
+      - name: Run E10 policy versioning, frozen runtime, effective dating, and admin history tests
         run: |
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/Elections/ElectionPolicyVersioningTest.php \
             tests/Feature/Elections/ElectionPolicyResponseDurationTest.php \
+            tests/Feature/Elections/ElectionPolicyEffectiveDatingTest.php \
             tests/Feature/Elections/ElectionPolicyHistoryAdminTest.php
 
       - name: Re-run elections regression suite
