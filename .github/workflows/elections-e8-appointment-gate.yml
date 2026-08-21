@@ -69,6 +69,7 @@ jobs:
             tests/Feature/Elections/ElectionAppointmentServiceTest.php \
             tests/Feature/Elections/ElectionAppointmentLifecycleTest.php \
             tests/Feature/Elections/ElectionAppointmentSupersessionTest.php \
+            tests/Feature/Elections/ElectionAppointmentRevocationTest.php \
             tests/Feature/Elections/ElectionGroupHierarchyResolverTest.php
 
       - name: Re-run elections regression suite
