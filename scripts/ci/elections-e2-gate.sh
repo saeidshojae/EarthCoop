@@ -55,7 +55,7 @@ INSERT INTO users (id, email, password, first_name, last_name, status, created_a
   (102, 'e2-user-102@example.test', 'x', 'E2', 'CandidateTwo', 'active', NOW(), NOW()),
   (103, 'e2-voter-103@example.test', 'x', 'E2', 'Voter', 'active', NOW(), NOW());
 
-INSERT INTO groups (id, name, group_type, created_at, updated_at)
+INSERT INTO `groups` (id, name, group_type, created_at, updated_at)
 VALUES (301, 'E2 Legacy Fixture Group', 'Alley', NOW(), NOW());
 
 INSERT INTO elections (id, group_id, starts_at, ends_at, is_closed, created_at, updated_at)
