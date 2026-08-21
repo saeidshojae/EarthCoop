@@ -23,11 +23,20 @@ class AuditElectionData extends Command
             ], true);
         }
 
-        if (! Schema::hasColumn('votes', 'candidate_user_id')) {
-            return $this->finish([
-                'schema_ready' => false,
-                'error' => 'votes.candidate_user_id is missing; run migrations first.',
-            ], true);
+        $requiredColumns = [
+            ['votes', 'candidate_user_id'],
+            ['votes', 'position'],
+            ['candidates', 'acceptance_status'],
+            ['elections', 'lifecycle_status'],
+        ];
+
+        foreach ($requiredColumns as [$table, $column]) {
+            if (! Schema::hasColumn($table, $column)) {
+                return $this->finish([
+                    'schema_ready' => false,
+                    'error' => "{$table}.{$column} is missing; run migrations first.",
+                ], true);
+            }
         }
 
         $report = [
@@ -58,22 +67,34 @@ class AuditElectionData extends Command
                 ->leftJoin('elections as e', 'e.id', '=', 'c.election_id')
                 ->whereNull('e.id')
                 ->count(),
-            // E2 deliberately reports raw values. Legacy zero is ambiguous and
-            // lifecycle interpretation belongs to the canonical state machine.
+            'duplicate_candidate_memberships' => $this->duplicateCandidateMembershipCount(),
+            'elections_missing_canonical_lifecycle' => DB::table('elections')
+                ->whereNull('lifecycle_status')
+                ->count(),
             'candidate_accept_status_raw' => $this->acceptanceHistogram(),
+            'candidate_acceptance_status_canonical' => $this->canonicalAcceptanceHistogram(),
+            'election_lifecycle_status_canonical' => $this->canonicalLifecycleHistogram(),
             'election_candidate_status_matrix' => $this->electionCandidateStatusMatrix(),
         ];
 
-        $hasIssues = collect([
-            $report['votes_unresolved_candidate_user'],
-            $report['votes_missing_candidate_user'],
-            $report['votes_missing_voter'],
-            $report['votes_missing_election'],
-            $report['duplicate_vote_keys'],
-            $report['candidates_missing_user'],
-            $report['candidates_missing_election'],
-            $report['candidate_accept_status_raw']['unexpected'],
-        ])->contains(fn ($value) => (int) $value > 0);
+        $constraintBlockers = [
+            'vote_candidate_fk' => $report['votes_unresolved_candidate_user'] + $report['votes_missing_candidate_user'],
+            'vote_voter_fk' => $report['votes_missing_voter'],
+            'vote_election_fk' => $report['votes_missing_election'],
+            'candidate_user_fk' => $report['candidates_missing_user'],
+            'candidate_election_fk' => $report['candidates_missing_election'],
+            'unique_vote_key' => $report['duplicate_vote_keys'],
+            'unique_candidate_membership' => $report['duplicate_candidate_memberships'],
+        ];
+        $report['constraint_blockers'] = $constraintBlockers;
+        $report['hard_constraints_ready'] = collect($constraintBlockers)
+            ->every(fn ($value) => (int) $value === 0);
+
+        $hasIssues = ! $report['hard_constraints_ready']
+            || $report['elections_missing_canonical_lifecycle'] > 0
+            || $report['candidate_accept_status_raw']['unexpected'] > 0
+            || $report['candidate_acceptance_status_canonical']['unexpected'] > 0
+            || $report['election_lifecycle_status_canonical']['unexpected'] > 0;
 
         return $this->finish($report, $hasIssues);
     }
@@ -89,6 +110,16 @@ class AuditElectionData extends Command
         return DB::query()->fromSub($query, 'duplicate_vote_keys')->count();
     }
 
+    private function duplicateCandidateMembershipCount(): int
+    {
+        $query = DB::table('candidates')
+            ->select('election_id', 'user_id')
+            ->groupBy('election_id', 'user_id')
+            ->havingRaw('COUNT(*) > 1');
+
+        return DB::query()->fromSub($query, 'duplicate_candidate_memberships')->count();
+    }
+
     private function acceptanceHistogram(): array
     {
         $rows = DB::table('candidates')
@@ -101,21 +132,63 @@ class AuditElectionData extends Command
             'raw_0_ambiguous' => 0,
             'raw_1_pending' => 0,
             'raw_2_accepted' => 0,
+            'text_pending' => 0,
+            'text_accepted' => 0,
+            'text_declined' => 0,
+            'text_expired' => 0,
             'unexpected' => 0,
         ];
 
         foreach ($rows as $row) {
-            if ($row->accept_status === null) {
-                $histogram['null'] += (int) $row->aggregate;
-            } elseif ((string) $row->accept_status === '0') {
-                $histogram['raw_0_ambiguous'] += (int) $row->aggregate;
-            } elseif ((string) $row->accept_status === '1') {
-                $histogram['raw_1_pending'] += (int) $row->aggregate;
-            } elseif ((string) $row->accept_status === '2') {
-                $histogram['raw_2_accepted'] += (int) $row->aggregate;
-            } else {
-                $histogram['unexpected'] += (int) $row->aggregate;
-            }
+            $raw = $row->accept_status === null ? null : (string) $row->accept_status;
+            $bucket = match ($raw) {
+                null => 'null',
+                '0' => 'raw_0_ambiguous',
+                '1' => 'raw_1_pending',
+                '2' => 'raw_2_accepted',
+                'pending' => 'text_pending',
+                'accepted' => 'text_accepted',
+                'declined' => 'text_declined',
+                'expired' => 'text_expired',
+                default => 'unexpected',
+            };
+            $histogram[$bucket] += (int) $row->aggregate;
+        }
+
+        return $histogram;
+    }
+
+    private function canonicalAcceptanceHistogram(): array
+    {
+        $allowed = ['pending', 'accepted', 'declined', 'expired'];
+        $rows = DB::table('candidates')
+            ->select('acceptance_status', DB::raw('COUNT(*) as aggregate'))
+            ->groupBy('acceptance_status')
+            ->get();
+
+        $histogram = ['null' => 0, 'pending' => 0, 'accepted' => 0, 'declined' => 0, 'expired' => 0, 'unexpected' => 0];
+        foreach ($rows as $row) {
+            $raw = $row->acceptance_status === null ? null : (string) $row->acceptance_status;
+            $bucket = $raw === null ? 'null' : (in_array($raw, $allowed, true) ? $raw : 'unexpected');
+            $histogram[$bucket] += (int) $row->aggregate;
+        }
+
+        return $histogram;
+    }
+
+    private function canonicalLifecycleHistogram(): array
+    {
+        $allowed = ['scheduled', 'open', 'closed', 'tallying', 'awaiting_acceptance', 'appointing', 'filled', 'exhausted', 'cancelled'];
+        $rows = DB::table('elections')
+            ->select('lifecycle_status', DB::raw('COUNT(*) as aggregate'))
+            ->groupBy('lifecycle_status')
+            ->get();
+
+        $histogram = array_fill_keys(array_merge(['null'], $allowed, ['unexpected']), 0);
+        foreach ($rows as $row) {
+            $raw = $row->lifecycle_status === null ? null : (string) $row->lifecycle_status;
+            $bucket = $raw === null ? 'null' : (in_array($raw, $allowed, true) ? $raw : 'unexpected');
+            $histogram[$bucket] += (int) $row->aggregate;
         }
 
         return $histogram;
@@ -125,14 +198,16 @@ class AuditElectionData extends Command
     {
         $rows = DB::table('elections as e')
             ->join('candidates as c', 'c.election_id', '=', 'e.id')
-            ->select('e.is_closed', 'c.accept_status', DB::raw('COUNT(*) as aggregate'))
-            ->groupBy('e.is_closed', 'c.accept_status')
+            ->select('e.is_closed', 'e.lifecycle_status', 'c.accept_status', 'c.acceptance_status', DB::raw('COUNT(*) as aggregate'))
+            ->groupBy('e.is_closed', 'e.lifecycle_status', 'c.accept_status', 'c.acceptance_status')
             ->orderBy('e.is_closed')
             ->get();
 
         return $rows->map(fn ($row) => [
             'election_is_closed' => (int) $row->is_closed,
-            'candidate_accept_status' => $row->accept_status === null ? null : (int) $row->accept_status,
+            'election_lifecycle_status' => $row->lifecycle_status,
+            'candidate_accept_status_raw' => $row->accept_status,
+            'candidate_acceptance_status' => $row->acceptance_status,
             'count' => (int) $row->aggregate,
         ])->values()->all();
     }
@@ -143,7 +218,7 @@ class AuditElectionData extends Command
             $this->line(json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         } else {
             foreach ($report as $key => $value) {
-                $this->line($key.': '.(is_array($value) ? json_encode($value, JSON_UNESCAPED_UNICODE) : (string) $value));
+                $this->line($key.': '.(is_array($value) ? json_encode($value, JSON_UNESCAPED_UNICODE) : (is_bool($value) ? ($value ? 'true' : 'false') : (string) $value)));
             }
         }
 
