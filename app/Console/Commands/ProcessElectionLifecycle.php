@@ -9,22 +9,24 @@ use App\Services\Elections\ElectionAppointmentService;
 use App\Services\Elections\ElectionCycleService;
 use App\Services\Elections\ElectionLifecycleService;
 use App\Services\Elections\ElectionResponsibilityOfferService;
+use App\Services\Elections\ElectionVacancyService;
 use Illuminate\Console\Command;
 use Throwable;
 
 class ProcessElectionLifecycle extends Command
 {
     protected $signature = 'elections:process-lifecycle
-        {--limit=500 : Maximum groups/elections/offers to inspect in one tick}
+        {--limit=500 : Maximum groups/elections/offers/vacancies to inspect in one tick}
         {--fail-on-error : Exit non-zero if any election action fails processing}';
 
-    protected $description = 'Create election cycles, advance due states, expire offers and apply accepted appointments through canonical server-side services';
+    protected $description = 'Create election cycles, advance due states, expire offers, apply appointments and backfill post-appointment vacancies through canonical server-side services';
 
     public function handle(
         ElectionCycleService $cycles,
         ElectionLifecycleService $lifecycle,
         ElectionResponsibilityOfferService $offers,
         ElectionAppointmentService $appointments,
+        ElectionVacancyService $vacancies,
     ): int {
         $limit = max(1, min(5000, (int) $this->option('limit')));
         $groupsProcessed = 0;
@@ -33,6 +35,9 @@ class ProcessElectionLifecycle extends Command
         $advanced = 0;
         $expiredOffers = 0;
         $appointmentElections = 0;
+        $vacancyProcessed = 0;
+        $vacancyFilled = 0;
+        $vacancyExhausted = 0;
         $errors = 0;
 
         Group::query()->orderBy('id')->chunkById(100, function ($groups) use (
@@ -118,10 +123,21 @@ class ProcessElectionLifecycle extends Command
                 }
             });
 
+        try {
+            $vacancySummary = $vacancies->processDue($limit);
+            $vacancyProcessed = (int) ($vacancySummary['processed'] ?? 0);
+            $vacancyFilled = (int) ($vacancySummary['filled'] ?? 0);
+            $vacancyExhausted = (int) ($vacancySummary['exhausted'] ?? 0);
+        } catch (Throwable $exception) {
+            $errors++;
+            report($exception);
+            $this->error("Election vacancies: {$exception->getMessage()}");
+        }
+
         // Keep the legacy processed/advanced/errors sequence stable for operators,
-        // log parsers and regression checks; append newer E7/E8 metrics afterwards.
+        // log parsers and regression checks; append newer metrics afterwards.
         $this->line(
-            "groups={$groupsProcessed} cycles_created={$cyclesCreated} processed={$processed} advanced={$advanced} errors={$errors} expired_offers={$expiredOffers} appointment_elections={$appointmentElections}"
+            "groups={$groupsProcessed} cycles_created={$cyclesCreated} processed={$processed} advanced={$advanced} errors={$errors} expired_offers={$expiredOffers} appointment_elections={$appointmentElections} vacancy_processed={$vacancyProcessed} vacancy_filled={$vacancyFilled} vacancy_exhausted={$vacancyExhausted}"
         );
 
         return ($errors > 0 && $this->option('fail-on-error')) ? self::FAILURE : self::SUCCESS;
