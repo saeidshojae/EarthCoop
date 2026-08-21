@@ -63,15 +63,18 @@ jobs:
       - name: Migrate E9 schema
         run: php artisan migrate:fresh --force
 
-      - name: Run E9 topology and cycle continuity tests
+      - name: Run E9 topology, cadence and vacancy continuity tests
         run: |
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/Elections/ElectionCycleServiceTest.php \
             tests/Feature/Elections/ElectionCycleTopologyContinuityTest.php \
-            tests/Feature/Elections/ElectionGroupHierarchyResolverTest.php
+            tests/Feature/Elections/ElectionGroupHierarchyResolverTest.php \
+            tests/Feature/Elections/ElectionVacancyServiceTest.php
 
       - name: Re-run elections regression suite
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections
 
-      - name: Validate systemic lifecycle command
-        run: php artisan list | grep -F 'elections:process-lifecycle'
+      - name: Validate systemic lifecycle command and vacancy schema
+        run: |
+          php artisan list | grep -F 'elections:process-lifecycle'
+          php artisan tinker --execute="throw_unless(\Illuminate\Support\Facades\Schema::hasTable('election_vacancies')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('election_vacancies', 'replacement_offer_id')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('election_vacancies', 'replacement_appointment_id'));"
