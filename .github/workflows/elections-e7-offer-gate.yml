@@ -63,8 +63,11 @@ jobs:
       - name: Migrate E7 schema
         run: php artisan migrate:fresh --force
 
-      - name: Run E7 offer queue tests
-        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections/ElectionResponsibilityOfferServiceTest.php
+      - name: Run E7 offer queue and canonical HTTP tests
+        run: |
+          php vendor/bin/phpunit --configuration phpunit.xml.dist \
+            tests/Feature/Elections/ElectionResponsibilityOfferServiceTest.php \
+            tests/Feature/Elections/ElectionResponsibilityOfferHttpTest.php
 
       - name: Re-run elections regression suite
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections
