@@ -16,13 +16,11 @@ class ElectionCycleService
         private readonly ElectionPolicyResolver $policyResolver,
         private readonly ElectionLifecycleService $lifecycle,
         private readonly ElectionGroupHierarchyResolver $hierarchy,
-    ) {
-    }
+    ) {}
 
     public function ensureForGroup(Group $group): ?Election
     {
         [$election, $created] = DB::transaction(function () use ($group): array {
-            /** @var Group $lockedGroup */
             $lockedGroup = Group::query()->lockForUpdate()->findOrFail($group->getKey());
             $attributes = $lockedGroup->getAttributes();
 
@@ -31,12 +29,12 @@ class ElectionCycleService
             }
 
             try {
-                $policy = $this->policyResolver->resolveForGroup($lockedGroup);
+                $policy = $this->policyResolver->resolveEffectiveForGroup($lockedGroup);
             } catch (RuntimeException) {
                 return [null, false];
             }
 
-            if ((int) $policy->election_status !== 1) {
+            if (! $this->policyResolver->electionEnabled($policy)) {
                 return [null, false];
             }
 
@@ -55,8 +53,7 @@ class ElectionCycleService
                 ->where('group_user.role', '>=', 1)
                 ->where('users.is_system', false);
 
-            $threshold = max(1, (int) $policy->max_for_election);
-            if ((clone $activeMemberQuery)->count() < $threshold) {
+            if ((clone $activeMemberQuery)->count() < $this->policyResolver->startThreshold($policy)) {
                 return [null, false];
             }
 
@@ -66,7 +63,7 @@ class ElectionCycleService
                 ->orderByDesc('id')
                 ->first();
 
-            if ($latest !== null && $this->latestCycleBlocksCreation($latest, $policy->second_election_time)) {
+            if ($latest !== null && $this->latestCycleBlocksCreation($latest, $policy->cycle_interval_months)) {
                 return [$latest, false];
             }
 
@@ -75,8 +72,9 @@ class ElectionCycleService
                 'group_id' => $lockedGroup->id,
                 'cycle_number' => $latest === null ? 1 : ((int) ($latest->cycle_number ?? 0) + 1),
                 'previous_election_id' => $latest?->id,
+                'policy_version_id' => $policy->id,
                 'starts_at' => $startsAt,
-                'ends_at' => $startsAt->copy()->addDays(max(0, (int) $policy->election_time)),
+                'ends_at' => $startsAt->copy()->addDays($this->policyResolver->votingDurationDays($policy)),
                 'is_closed' => false,
                 'lifecycle_status' => ElectionLifecycleStatus::Scheduled,
             ]);
@@ -98,7 +96,6 @@ class ElectionCycleService
                             'updated_at' => $now,
                         ];
                     }
-
                     if ($rows !== []) {
                         Candidate::query()->insert($rows);
                     }
@@ -124,11 +121,9 @@ class ElectionCycleService
     private function latestCycleBlocksCreation(Election $latest, mixed $repeatInterval): bool
     {
         $status = $this->lifecycle->currentStatus($latest);
-
         if (! $status->isTerminal()) {
             return true;
         }
-
         if ($status === ElectionLifecycleStatus::Cancelled) {
             return false;
         }
@@ -155,11 +150,9 @@ class ElectionCycleService
         if ($value === null || $value === '') {
             return 3;
         }
-
         if (! is_numeric($value)) {
             throw new RuntimeException('Election repeat interval must be numeric months.');
         }
-
         return max(0, (int) $value);
     }
 }
