@@ -10,10 +10,6 @@ use InvalidArgumentException;
 
 class ElectionLifecycleService
 {
-    /**
-     * Canonical transition matrix. Downstream phase-specific services (E6-E8)
-     * must use this state machine instead of mutating lifecycle_status directly.
-     */
     private const TRANSITIONS = [
         'scheduled' => ['open', 'cancelled'],
         'open' => ['closed', 'cancelled'],
@@ -28,6 +24,7 @@ class ElectionLifecycleService
 
     public function __construct(
         private readonly ElectionEligibilitySnapshotService $eligibilitySnapshots,
+        private readonly ElectionVoteSnapshotService $voteSnapshots,
     ) {
     }
 
@@ -48,52 +45,39 @@ class ElectionLifecycleService
         if (trim($reason) === '') {
             throw new InvalidArgumentException('Election lifecycle transition reason is required.');
         }
-
         if (trim($source) === '') {
             throw new InvalidArgumentException('Election lifecycle transition source is required.');
         }
 
-        return DB::transaction(function () use (
-            $election,
-            $to,
-            $reason,
-            $source,
-            $actorUserId,
-            $reference,
-            $metadata,
-        ): Election {
+        return DB::transaction(function () use ($election, $to, $reason, $source, $actorUserId, $reference, $metadata): Election {
             /** @var Election $locked */
             $locked = Election::query()->lockForUpdate()->findOrFail($election->getKey());
             $from = $this->currentStatus($locked);
 
-            // Retry-safe: a duplicate worker invocation after a successful
-            // commit observes the target state and becomes a no-op.
             if ($from === $to) {
                 return $locked;
             }
-
             if (! $this->canTransition($from, $to)) {
-                throw new InvalidArgumentException(
-                    "Invalid election lifecycle transition [{$from->value} -> {$to->value}]."
-                );
+                throw new InvalidArgumentException("Invalid election lifecycle transition [{$from->value} -> {$to->value}].");
             }
 
-            // E4 invariant: eligibility is frozen before a cycle can become
-            // open. This is enforced here so no controller/job can bypass it.
             if ($to === ElectionLifecycleStatus::Open) {
                 $this->eligibilitySnapshots->capture($locked);
             }
 
-            $locked->lifecycle_status = $to;
+            // E0 invariant: the valid ballot set must be frozen at the exact
+            // system stop, before tally/application can mutate or outlive it.
+            $transitionedAt = now();
+            if ($from === ElectionLifecycleStatus::Open && $to === ElectionLifecycleStatus::Closed) {
+                $this->voteSnapshots->capture($locked, $transitionedAt);
+            }
 
-            // Preserve legacy read compatibility. Once voting has closed, all
-            // later canonical phases must remain closed to legacy UI/controllers.
+            $locked->lifecycle_status = $to;
             if (! in_array($to, [ElectionLifecycleStatus::Scheduled, ElectionLifecycleStatus::Open], true)) {
                 $locked->is_closed = true;
             } elseif ($to === ElectionLifecycleStatus::Open) {
                 $locked->is_closed = false;
             }
-
             $locked->save();
 
             ElectionLifecycleTransition::create([
@@ -105,7 +89,7 @@ class ElectionLifecycleService
                 'actor_user_id' => $actorUserId,
                 'reference' => $reference,
                 'metadata' => $metadata ?: null,
-                'transitioned_at' => now(),
+                'transitioned_at' => $transitionedAt,
             ]);
 
             return $locked->refresh();
@@ -121,7 +105,6 @@ class ElectionLifecycleService
         if ($raw instanceof ElectionLifecycleStatus) {
             return $raw;
         }
-
         if (is_string($raw) && $raw !== '') {
             return ElectionLifecycleStatus::from($raw);
         }
@@ -129,11 +112,6 @@ class ElectionLifecycleService
         return app(LegacyElectionPhaseResolver::class)->resolve($election);
     }
 
-    /**
-     * Advance only transitions E3 can prove without borrowing unfinished E6-E8
-     * domain rules. Tally, offers and appointments are intentionally fail-closed
-     * until their dedicated services exist.
-     */
     public function advanceDue(Election $election): Election
     {
         $status = $this->currentStatus($election);
@@ -143,24 +121,14 @@ class ElectionLifecycleService
         if ($status === ElectionLifecycleStatus::Scheduled) {
             $startsAt = $attributes['starts_at'] ?? null;
             if ($startsAt !== null && $now->greaterThanOrEqualTo($startsAt)) {
-                return $this->transition(
-                    $election,
-                    ElectionLifecycleStatus::Open,
-                    'scheduled_start_reached',
-                    'scheduler',
-                );
+                return $this->transition($election, ElectionLifecycleStatus::Open, 'scheduled_start_reached', 'scheduler');
             }
         }
 
         if ($status === ElectionLifecycleStatus::Open) {
             $endsAt = $attributes['ends_at'] ?? null;
             if ($endsAt !== null && $now->greaterThanOrEqualTo($endsAt)) {
-                return $this->transition(
-                    $election,
-                    ElectionLifecycleStatus::Closed,
-                    'voting_window_elapsed',
-                    'scheduler',
-                );
+                return $this->transition($election, ElectionLifecycleStatus::Closed, 'voting_window_elapsed', 'scheduler');
             }
         }
 
