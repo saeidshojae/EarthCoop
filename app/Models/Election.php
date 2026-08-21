@@ -16,6 +16,8 @@ class Election extends Model
         'ends_at',
         'is_closed',
         'lifecycle_status',
+        'eligibility_snapshot_captured_at',
+        'eligibility_snapshot_version',
         'second_finish_time',
     ];
 
@@ -24,6 +26,7 @@ class Election extends Model
         'ends_at' => 'datetime',
         'is_closed' => 'boolean',
         'lifecycle_status' => ElectionLifecycleStatus::class,
+        'eligibility_snapshot_captured_at' => 'datetime',
     ];
 
     /**
@@ -50,6 +53,16 @@ class Election extends Model
     public function candidates()
     {
         return $this->hasMany(Candidate::class);
+    }
+
+    public function eligibilitySnapshots()
+    {
+        return $this->hasMany(ElectionEligibilitySnapshot::class);
+    }
+
+    public function lifecycleTransitions()
+    {
+        return $this->hasMany(ElectionLifecycleTransition::class);
     }
 
     public function yourVotes()
