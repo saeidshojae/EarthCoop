@@ -4,12 +4,15 @@ namespace App\Services\NajmHoda\FounderOps;
 
 use App\Models\Blog;
 use App\Models\EmailTemplate;
+use App\Models\FaqQuestion;
+use App\Models\Page;
 use App\Models\Ticket;
 use App\Modules\NajmBahar\Models\Project;
 use App\Modules\NajmBahar\Models\ScheduledTransaction;
 use App\Modules\Secretariat\Models\SecretariatDispatch;
 use App\Modules\Secretariat\Services\SecretariatFollowUpProposalService;
 use App\Modules\Stock\Models\Auction;
+use App\Services\Content\ContentManagementService;
 use App\Services\Moderation\ModerationCaseSummaryService;
 use App\Services\NajmHoda\Runtime\NajmHodaOpsHealthMonitor;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
@@ -33,6 +36,7 @@ class FounderLowRiskDomainActionService
         protected FounderEmailDraftService $emailDrafts,
         protected FounderContentDraftService $contentDrafts,
         protected FounderAnnouncementDraftService $announcementDrafts,
+        protected ContentManagementService $contentManagement,
         protected RuntimeEventBus $events
     ) {}
 
@@ -49,6 +53,7 @@ class FounderLowRiskDomainActionService
             'reports_moderation.prepare_case_summary','reports_moderation.classify_report',
             'email.draft_email','email.preview_template',
             'blog.draft_post','blog.suggest_edit',
+            'content.draft_faq_answer','content.draft_page_update',
             'notifications.draft_announcement',
             'secretariat.draft_correspondence','secretariat.prepare_follow_up',
             'stock.summarize_auction','stock.flag_settlement_issue',
@@ -61,6 +66,26 @@ class FounderLowRiskDomainActionService
         if (! $this->supports($domain, $action)) return ['success'=>false,'status'=>'unsupported','reason'=>'no_canonical_low_risk_handler'];
         $reasonCode=is_scalar($context['reason_code']??null)?(string)$context['reason_code']:null;
         $hours=max(1,min((int)($context['window_hours']??24),168));
+
+        if ($domain==='content') {
+            $id=(int)($context['entity_id']??0);
+            if ($action==='draft_faq_answer') {
+                $question=$id>0?FaqQuestion::query()->find($id):null;
+                if(!$question)return ['success'=>false,'status'=>'not_found','reason'=>'faq_question_not_found'];
+                $answer=is_scalar($context['answer']??null)?trim((string)$context['answer']):null;
+                if($answer==='')$answer=null;
+                $category=is_scalar($context['category']??null)?trim((string)$context['category']):null;
+                $result=$this->contentManagement->draftFaqAnswer($question,$answer,$category?:null);
+                return $this->complete($domain,$action,'faq_question',$id,$reasonCode,$result);
+            }
+
+            $page=$id>0?Page::query()->find($id):null;
+            if(!$page)return ['success'=>false,'status'=>'not_found','reason'=>'page_not_found'];
+            $changes=is_array($context['changes']??null)?$context['changes']:$context;
+            unset($changes['entity_id'],$changes['reason_code'],$changes['requested_by']);
+            $result=$this->contentManagement->draftPageUpdate($page,$changes);
+            return $this->complete($domain,$action,'page',$id,$reasonCode,$result);
+        }
 
         if ($domain==='notifications' && $action==='draft_announcement') {
             $attributes=is_array($context['announcement']??null)?$context['announcement']:$context;
