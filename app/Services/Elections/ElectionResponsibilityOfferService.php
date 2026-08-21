@@ -139,10 +139,18 @@ class ElectionResponsibilityOfferService
 
     private function fillOpenSlots(Election $election, ElectionPosition $position): void
     {
-        $policy = $this->policyResolver->resolveForGroup($election->group);
+        try {
+            $policy = $this->policyResolver->resolveForElection($election);
+        } catch (RuntimeException) {
+            // Compatibility for manually-created legacy/test elections. New
+            // systemic cycles always carry policy_version_id.
+            $policy = $this->policyResolver->resolveForGroup($election->group);
+        }
+
         $seatCount = $position === ElectionPosition::Manager
             ? $this->policyResolver->managerSeatCount($policy)
             : $this->policyResolver->inspectorSeatCount($policy);
+        $responseDays = $this->policyResolver->responseDurationDays($policy);
 
         $occupying = ElectionResponsibilityOffer::query()
             ->where('election_id', $election->id)
@@ -171,12 +179,9 @@ class ElectionResponsibilityOfferService
             ->get();
 
         foreach ($ranked as $row) {
-            if ($occupying >= $seatCount) {
-                break;
-            }
-            if (in_array((int) $row->candidate_user_id, $alreadyOffered, true)) {
-                continue;
-            }
+            if ($occupying >= $seatCount) break;
+            if (in_array((int) $row->candidate_user_id, $alreadyOffered, true)) continue;
+
             if (! $this->isCurrentlyEligible($election, (int) $row->candidate_user_id)) {
                 $offer = ElectionResponsibilityOffer::create([
                     'election_id' => $election->id,
@@ -204,8 +209,12 @@ class ElectionResponsibilityOfferService
                 'contract_version_id' => $contract->id,
                 'status' => ElectionResponsibilityOfferStatus::Pending,
                 'offered_at' => now(),
-                'expires_at' => now()->addDays(self::RESPONSE_WINDOW_DAYS),
+                'expires_at' => now()->addDays($responseDays),
                 'eligibility_checked_at' => now(),
+                'response_metadata' => [
+                    'policy_version_id' => $election->policy_version_id,
+                    'response_duration_days' => $responseDays,
+                ],
             ]);
             $this->syncCandidateProjection($offer);
             $alreadyOffered[] = (int) $row->candidate_user_id;
@@ -242,18 +251,14 @@ class ElectionResponsibilityOfferService
     private function isCurrentlyEligible(Election $election, int $candidateUserId): bool
     {
         $user = User::query()->find($candidateUserId);
-        if ($user === null || (bool) $user->is_system) {
-            return false;
-        }
+        if ($user === null || (bool) $user->is_system) return false;
 
         $membership = GroupUser::query()
             ->where('group_id', $election->group_id)
             ->where('user_id', $candidateUserId)
             ->first();
 
-        if ($membership === null || (int) $membership->status !== 1) {
-            return false;
-        }
+        if ($membership === null || (int) $membership->status !== 1) return false;
 
         $role = (int) $membership->role;
         return $role >= 1 && $role !== 4;
@@ -269,12 +274,6 @@ class ElectionResponsibilityOfferService
         $this->syncCandidateProjection($offer);
     }
 
-    /**
-     * Temporary read-model bridge for the legacy profile UI only.
-     * Election decisions never read Candidate; the canonical source of truth is
-     * ElectionResponsibilityOffer. E10 can remove this projection when the UI
-     * reads offers directly.
-     */
     private function syncCandidateProjection(ElectionResponsibilityOffer $offer): void
     {
         $acceptance = match ($offer->status) {
