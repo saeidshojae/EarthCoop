@@ -14,6 +14,7 @@ class Election extends Model
         'group_id',
         'cycle_number',
         'previous_election_id',
+        'policy_version_id',
         'starts_at',
         'ends_at',
         'is_closed',
@@ -32,12 +33,6 @@ class Election extends Model
         'eligibility_snapshot_captured_at' => 'datetime',
     ];
 
-    /**
-     * Compatibility bridge for legacy callers that still close an election via
-     * is_closed. A direct legacy close may advance scheduled/open/unknown state
-     * to canonical closed, but it must never collapse a later canonical state
-     * such as tallying/awaiting_acceptance/appointing/filled back to closed.
-     */
     public function setIsClosedAttribute(mixed $value): void
     {
         $closed = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
@@ -60,50 +55,16 @@ class Election extends Model
         }
     }
 
-    public function group()
-    {
-        return $this->belongsTo(Group::class);
-    }
-
-    public function previousCycle()
-    {
-        return $this->belongsTo(self::class, 'previous_election_id');
-    }
-
-    public function nextCycle()
-    {
-        return $this->hasOne(self::class, 'previous_election_id');
-    }
-
-    public function candidates()
-    {
-        return $this->hasMany(Candidate::class);
-    }
-
-    public function eligibilitySnapshots()
-    {
-        return $this->hasMany(ElectionEligibilitySnapshot::class);
-    }
-
-    public function lifecycleTransitions()
-    {
-        return $this->hasMany(ElectionLifecycleTransition::class);
-    }
-
-    public function responsibilityOffers()
-    {
-        return $this->hasMany(ElectionResponsibilityOffer::class);
-    }
-
-    public function appointments()
-    {
-        return $this->hasMany(ElectionAppointment::class);
-    }
-
-    public function vacancies()
-    {
-        return $this->hasMany(ElectionVacancy::class);
-    }
+    public function group() { return $this->belongsTo(Group::class); }
+    public function previousCycle() { return $this->belongsTo(self::class, 'previous_election_id'); }
+    public function nextCycle() { return $this->hasOne(self::class, 'previous_election_id'); }
+    public function policyVersion() { return $this->belongsTo(ElectionPolicyVersion::class, 'policy_version_id'); }
+    public function candidates() { return $this->hasMany(Candidate::class); }
+    public function eligibilitySnapshots() { return $this->hasMany(ElectionEligibilitySnapshot::class); }
+    public function lifecycleTransitions() { return $this->hasMany(ElectionLifecycleTransition::class); }
+    public function responsibilityOffers() { return $this->hasMany(ElectionResponsibilityOffer::class); }
+    public function appointments() { return $this->hasMany(ElectionAppointment::class); }
+    public function vacancies() { return $this->hasMany(ElectionVacancy::class); }
 
     public function yourVotes()
     {
