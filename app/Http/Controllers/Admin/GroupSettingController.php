@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ElectionPolicyVersion;
 use App\Models\GroupSetting;
 use App\Services\Elections\ElectionPolicyVersionService;
 use Carbon\Carbon;
@@ -14,6 +15,30 @@ class GroupSettingController extends Controller
 
     public function index(Request $request)
     {
+        if ($request->filled('history')) {
+            $setting = GroupSetting::query()->findOrFail((int) $request->input('history'));
+            $policies = ElectionPolicyVersion::query()
+                ->with(['managerContractVersion', 'inspectorContractVersion'])
+                ->where('group_setting_id', $setting->id)
+                ->orderByDesc('version')
+                ->get();
+
+            $currentPolicy = $policies
+                ->filter(fn (ElectionPolicyVersion $policy) => $policy->effective_at !== null && $policy->effective_at->lte(now()))
+                ->first(fn (ElectionPolicyVersion $policy) => $policy->retired_at === null || $policy->retired_at->gt(now()));
+
+            $futurePolicies = $policies
+                ->filter(fn (ElectionPolicyVersion $policy) => $policy->effective_at !== null && $policy->effective_at->gt(now()))
+                ->values();
+
+            return view('admin.system-settings.elections.history', compact(
+                'setting',
+                'policies',
+                'currentPolicy',
+                'futurePolicies',
+            ));
+        }
+
         $sort = $request->get('sort');
 
         if ($sort) {
