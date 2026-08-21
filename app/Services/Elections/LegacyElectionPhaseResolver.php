@@ -17,21 +17,27 @@ class LegacyElectionPhaseResolver
      * E3 will replace this compatibility projection with a persisted state
      * machine. Until then a legacy closed election intentionally resolves only
      * to `closed`, never to awaiting_acceptance/appointing/filled.
+     *
+     * Read raw legacy attributes deliberately. This compatibility projection
+     * must not require an Eloquent connection merely to cast persisted dates;
+     * otherwise schema/data reconciliation cannot be tested independently of
+     * the application database runtime.
      */
     public function resolve(Election $election, ?CarbonInterface $now = null): ElectionLifecycleStatus
     {
         $now ??= CarbonImmutable::now();
+        $attributes = $election->getAttributes();
 
-        if ((bool) $election->is_closed) {
+        if ((bool) ($attributes['is_closed'] ?? false)) {
             return ElectionLifecycleStatus::Closed;
         }
 
-        $startsAt = $this->asImmutable($election->starts_at);
+        $startsAt = $this->asImmutable($attributes['starts_at'] ?? null);
         if ($startsAt !== null && $now->lt($startsAt)) {
             return ElectionLifecycleStatus::Scheduled;
         }
 
-        $endsAt = $this->asImmutable($election->ends_at);
+        $endsAt = $this->asImmutable($attributes['ends_at'] ?? null);
         if ($endsAt !== null && $now->gte($endsAt)) {
             return ElectionLifecycleStatus::Closed;
         }
