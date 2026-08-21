@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Group;
 
+use App\Enums\Elections\ElectionLifecycleStatus;
 use App\Enums\Elections\ElectionPosition;
 use App\Http\Controllers\Controller;
 use App\Models\Election;
 use App\Models\Group;
 use App\Models\Vote;
+use App\Services\Elections\ElectionLifecycleService;
 use App\Services\Elections\ElectionPolicyResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +17,7 @@ class ElectionController extends Controller
 {
     public function __construct(
         private readonly ElectionPolicyResolver $policyResolver,
+        private readonly ElectionLifecycleService $lifecycle,
     ) {
     }
 
@@ -84,7 +87,7 @@ class ElectionController extends Controller
             $candidate->save();
         }
 
-        if ($candidates[0]->accept_status != null) {
+        if ($candidates->isNotEmpty() && $candidates[0]->accept_status != null) {
             return response()->json([
                 'status' => 'error',
                 'error' => 'پیش از اتمام انتخابات امکان انتخاب دیگری وجود ندارد',
@@ -116,17 +119,24 @@ class ElectionController extends Controller
             ->pluck('candidate_id')
             ->toArray();
 
-        $topOfInspectors = array_merge($topOfInspectors, $topOfManagers);
-        $activeCandidates = $election->candidates()->whereIn('user_id', $topOfInspectors)->get();
+        $selectedUserIds = array_merge($topOfInspectors, $topOfManagers);
+        $activeCandidates = $election->candidates()->whereIn('user_id', $selectedUserIds)->get();
 
         foreach ($activeCandidates as $candidate) {
             $candidate->accept_status = 1;
             $candidate->save();
         }
 
-        // This remains the legacy close path until E3 replaces manual
-        // finalisation with the canonical lifecycle service/state machine.
-        $election->update(['is_closed' => 1]);
+        // Legacy/manual completion is now only an adapter into the canonical
+        // lifecycle state machine. It no longer mutates is_closed/status itself.
+        $election = $this->lifecycle->transition(
+            $election,
+            ElectionLifecycleStatus::Closed,
+            'legacy_manual_finish_adapter',
+            'legacy_controller',
+            (int) auth()->id(),
+            'election-controller:finish',
+        );
 
         app(\App\Services\GroupChat\GroupEventPublisher::class)->publish(
             new \App\Events\GroupFeedUpdated((int) $election->group_id, 'election_finished', [
