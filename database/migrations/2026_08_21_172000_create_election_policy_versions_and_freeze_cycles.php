@@ -40,9 +40,9 @@ return new class extends Migration
         });
 
         $now = now();
-        $settings = DB::table('group_setting')->orderBy('id')->get();
-        foreach ($settings as $setting) {
-            $policyId = DB::table('election_policy_versions')->insertGetId([
+        $policyByLevel = [];
+        foreach (DB::table('group_setting')->orderBy('id')->get() as $setting) {
+            $policyByLevel[$setting->level] = DB::table('election_policy_versions')->insertGetId([
                 'group_setting_id' => $setting->id,
                 'level_key' => $setting->level,
                 'version' => 1,
@@ -60,14 +60,30 @@ return new class extends Migration
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
-
-            DB::table('elections')
-                ->whereNull('policy_version_id')
-                ->whereIn('group_id', function ($query) use ($setting) {
-                    $query->select('id')->from('groups')->where('location_level', preg_replace('/_(job|experience|age|gender)$/', '', $setting->level));
-                })
-                ->update(['policy_version_id' => $policyId]);
         }
+
+        DB::table('elections')->orderBy('id')->chunkById(500, function ($elections) use ($policyByLevel): void {
+            foreach ($elections as $election) {
+                $group = DB::table('groups')->where('id', $election->group_id)->first();
+                if ($group === null) {
+                    continue;
+                }
+
+                $base = (string) $group->location_level;
+                $levelKey = match (true) {
+                    $group->specialty_id !== null => $base.'_job',
+                    $group->experience_id !== null => $base.'_experience',
+                    $group->age_group_id !== null => $base.'_age',
+                    $group->gender !== null => $base.'_gender',
+                    default => $base,
+                };
+
+                $policyId = $policyByLevel[$levelKey] ?? null;
+                if ($policyId !== null) {
+                    DB::table('elections')->where('id', $election->id)->update(['policy_version_id' => $policyId]);
+                }
+            }
+        }, 'id');
     }
 
     public function down(): void
