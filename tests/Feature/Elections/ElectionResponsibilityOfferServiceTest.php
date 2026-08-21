@@ -4,6 +4,7 @@ namespace Tests\Feature\Elections;
 
 use App\Enums\Elections\ElectionLifecycleStatus;
 use App\Enums\Elections\ElectionResponsibilityOfferStatus;
+use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\ElectionResponsibilityContractVersion;
 use App\Models\ElectionResponsibilityOffer;
@@ -37,12 +38,19 @@ class ElectionResponsibilityOfferServiceTest extends TestCase
             $managerOffer->offered_at->diffInDays($managerOffer->expires_at),
             0.000001,
         );
+        $this->assertSame('pending', Candidate::where('election_id', $election->id)
+            ->where('user_id', $managerA->id)->where('position', 'manager')->value('acceptance_status'));
 
         $service->decline($managerOffer, $managerA->id);
+        $this->assertSame('declined', Candidate::where('election_id', $election->id)
+            ->where('user_id', $managerA->id)->where('position', 'manager')->value('acceptance_status'));
+
         $replacement = ElectionResponsibilityOffer::where('election_id', $election->id)
             ->where('position', 'manager')->where('status', 'pending')->firstOrFail();
         $this->assertSame($managerB->id, $replacement->candidate_user_id);
         $this->assertSame(2, $replacement->ranking_position);
+        $this->assertSame('pending', Candidate::where('election_id', $election->id)
+            ->where('user_id', $managerB->id)->where('position', 'manager')->value('acceptance_status'));
 
         $inspectorOffer = ElectionResponsibilityOffer::where('election_id', $election->id)
             ->where('position', 'inspector')->where('status', 'pending')->firstOrFail();
@@ -51,6 +59,8 @@ class ElectionResponsibilityOfferServiceTest extends TestCase
             ElectionResponsibilityOfferStatus::Accepted,
             $inspectorOffer->refresh()->status,
         );
+        $this->assertSame('accepted', Candidate::where('election_id', $election->id)
+            ->where('user_id', $inspectorA->id)->where('position', 'inspector')->value('acceptance_status'));
 
         // Appointment is E8. E7 acceptance must not mutate group responsibility role.
         $this->assertSame(1, (int) GroupUser::where('group_id', $election->group_id)
@@ -72,10 +82,14 @@ class ElectionResponsibilityOfferServiceTest extends TestCase
 
         $this->assertSame(1, $service->expireDue());
         $this->assertSame(ElectionResponsibilityOfferStatus::Expired, $first->refresh()->status);
+        $this->assertSame('expired', Candidate::where('election_id', $election->id)
+            ->where('user_id', $managerA->id)->where('position', 'manager')->value('acceptance_status'));
 
         $second = ElectionResponsibilityOffer::where('election_id', $election->id)
             ->where('position', 'manager')->where('candidate_user_id', $managerB->id)->firstOrFail();
         $this->assertSame(ElectionResponsibilityOfferStatus::Ineligible, $second->status);
+        $this->assertNull(Candidate::where('election_id', $election->id)
+            ->where('user_id', $managerB->id)->where('position', 'manager')->value('acceptance_status'));
         $this->assertSame('awaiting_acceptance', $election->refresh()->lifecycle_status->value);
     }
 
