@@ -2,37 +2,41 @@
 
 namespace App\Services\Elections;
 
-use App\Models\Address;
 use App\Models\Group;
 use App\Models\User;
 use App\Services\GroupService;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class ElectionGroupHierarchyResolver
 {
-    private const LEVEL_COLUMNS = [
-        'global' => null,
-        'continent' => 'continent_id',
-        'country' => 'country_id',
-        'province' => 'province_id',
-        'county' => 'county_id',
-        'section' => 'section_id',
-        'city' => 'city_id',
-        'rural' => 'rural_id',
-        'village' => 'village_id',
-        'region' => 'region_id',
-        'neighborhood' => 'neighborhood_id',
-        'street' => 'street_id',
-        'alley' => 'alley_id',
+    /**
+     * Structural child table and its parent foreign-key for the canonical
+     * geographic hierarchy. `neighborhood.parent_id` intentionally supports
+     * either region/village or a directly higher city/rural scope when an
+     * optional intermediate layer does not exist in the user's path.
+     */
+    private const CHILD_TO_PARENT = [
+        'alley' => ['alleies', 'parent_id'],
+        'street' => ['streets', 'parent_id'],
+        'neighborhood' => ['neighborhoods', 'parent_id'],
+        'region' => ['regions', 'parent_id'],
+        'village' => ['villages', 'rural_id'],
+        'city' => ['cities', 'district_id'],
+        'rural' => ['rurals', 'district_id'],
+        'section' => ['districts', 'county_id'],
+        'county' => ['counties', 'province_id'],
+        'province' => ['provinces', 'country_id'],
+        'country' => ['countries', 'continent_id'],
+        'continent' => ['continents', null],
     ];
 
     public function __construct(private readonly GroupService $groups) {}
 
     /**
-     * Resolve the exact corresponding group one *actual user-path* level above
-     * the source group, preserving the complete group subtype. Missing optional
-     * geography (for example region in a one-region city) is naturally skipped.
+     * Resolve the exact corresponding group one actual user-path level above
+     * the source group, preserving the complete group subtype. Optional absent
+     * geography is naturally skipped by GroupService::getLocationLevels().
      */
     public function higherGroup(Group $source, User $user): ?Group
     {
@@ -54,15 +58,10 @@ class ElectionGroupHierarchyResolver
     }
 
     /**
-     * Return the chain of higher scopes that must inherit the same appointment
-     * because each parent currently has exactly one effective lower electoral
-     * constituency. This is generic across alley/street/neighborhood/region,
-     * village/rural/city/section/county/... and is not city-specific.
-     *
-     * "Effective" deliberately means a lower group on the same governance
-     * track with at least one active non-system member represented by current
-     * address data. If a second constituency later becomes effective, the next
-     * election cycle stops compressing that parent automatically.
+     * Higher scopes that inherit the same elected responsibility because every
+     * parent is structurally a one-constituency scope. This rule is geographic,
+     * not population-driven: low EarthCoop adoption can never make a local
+     * manager accidentally inherit a national/global office.
      *
      * @return array<int, Group>
      */
@@ -72,7 +71,7 @@ class ElectionGroupHierarchyResolver
         $current = $source;
 
         while (($parent = $this->higherGroup($current, $user)) !== null) {
-            if (! $this->isSoleEffectiveConstituency($current, $parent)) {
+            if (! $this->isSoleStructuralConstituency($current, $parent)) {
                 break;
             }
 
@@ -83,10 +82,7 @@ class ElectionGroupHierarchyResolver
         return $chain;
     }
 
-    /**
-     * Resolve the first higher scope that still needs genuine representation
-     * rather than inheriting the lower appointment. Null means global/top end.
-     */
+    /** First higher scope that still requires genuine multi-constituency representation. */
     public function nextElectoralParent(Group $source, User $user): ?Group
     {
         $chain = $this->compressionChain($source, $user);
@@ -95,25 +91,49 @@ class ElectionGroupHierarchyResolver
         return $this->higherGroup($highest, $user);
     }
 
-    public function isSoleEffectiveConstituency(Group $child, Group $parent): bool
+    public function isSoleStructuralConstituency(Group $child, Group $parent): bool
     {
-        if (! $this->sameTrack($child, $parent)) {
+        if (! $this->sameTrack($child, $parent) || $child->address_id === null) {
             return false;
         }
 
-        $ids = $this->effectiveConstituencyIds($parent, $child);
-        if ($ids->count() !== 1) {
-            return false;
-        }
-
-        return $child->address_id === null
-            ? false
-            : (int) $ids->first() === (int) $child->address_id;
+        return $this->structuralConstituencyCount($parent, $child->location_level) === 1
+            && $this->childBelongsToParent($child, $parent);
     }
 
-    public function effectiveConstituencyCount(Group $parent, Group $childPrototype): int
+    /**
+     * Count configured geographic constituencies, irrespective of current member
+     * count. Under a `section`, city and rural are parallel child branches and
+     * must be counted together to avoid false compression.
+     */
+    public function structuralConstituencyCount(Group $parent, string $childLevel): int
     {
-        return $this->effectiveConstituencyIds($parent, $childPrototype)->count();
+        if ($parent->location_level === 'section' && in_array($childLevel, ['city', 'rural'], true)) {
+            $parentId = (int) $parent->address_id;
+            return (int) DB::table('cities')->where('district_id', $parentId)->count()
+                + (int) DB::table('rurals')->where('district_id', $parentId)->count();
+        }
+
+        $mapping = self::CHILD_TO_PARENT[$childLevel] ?? null;
+        if ($mapping === null) {
+            throw new RuntimeException("Unsupported structural election child level [{$childLevel}].");
+        }
+
+        [$table, $parentColumn] = $mapping;
+        $query = DB::table($table);
+
+        if ($parent->location_level === 'global') {
+            if ($childLevel !== 'continent') {
+                throw new RuntimeException('Only continent can be a direct structural child of global.');
+            }
+            return (int) $query->count();
+        }
+
+        if ($parentColumn === null || $parent->address_id === null) {
+            return 0;
+        }
+
+        return (int) $query->where($parentColumn, $parent->address_id)->count();
     }
 
     /** Smaller index means a higher geographic seat. */
@@ -142,52 +162,25 @@ class ElectionGroupHierarchyResolver
         return true;
     }
 
-    private function effectiveConstituencyIds(Group $parent, Group $childPrototype): Collection
+    private function childBelongsToParent(Group $child, Group $parent): bool
     {
-        $parentColumn = self::LEVEL_COLUMNS[$parent->location_level] ?? '__unsupported__';
-        $childColumn = self::LEVEL_COLUMNS[$childPrototype->location_level] ?? '__unsupported__';
-
-        if ($parentColumn === '__unsupported__' || $childColumn === '__unsupported__' || $childColumn === null) {
-            throw new RuntimeException('Unsupported election geography level while resolving effective constituencies.');
+        $mapping = self::CHILD_TO_PARENT[$child->location_level] ?? null;
+        if ($mapping === null || $child->address_id === null) {
+            return false;
         }
 
-        $addresses = Address::query()->where('status', 1)->whereNotNull($childColumn);
-        if ($parentColumn !== null) {
-            if ($parent->address_id === null) {
-                return collect();
-            }
-            $addresses->where($parentColumn, $parent->address_id);
+        [$table, $parentColumn] = $mapping;
+        $query = DB::table($table)->where('id', $child->address_id);
+
+        if ($parent->location_level === 'global') {
+            return $child->location_level === 'continent' && $query->exists();
         }
 
-        $geographicIds = $addresses->distinct()->pluck($childColumn)
-            ->map(fn ($id) => (int) $id)
-            ->filter()
-            ->values();
-
-        if ($geographicIds->isEmpty()) {
-            return collect();
+        if ($parentColumn === null || $parent->address_id === null) {
+            return false;
         }
 
-        $groups = Group::query()
-            ->where('group_type', $childPrototype->group_type)
-            ->where('location_level', $childPrototype->location_level)
-            ->whereIn('address_id', $geographicIds);
-
-        foreach (['specialty_id', 'experience_id', 'age_group_id', 'gender'] as $field) {
-            $value = $childPrototype->{$field};
-            $value === null ? $groups->whereNull($field) : $groups->where($field, $value);
-        }
-
-        $groups->whereHas('groupUser', function ($query): void {
-            $query->where('status', 1)
-                ->where('role', '!=', 4)
-                ->whereHas('user', fn ($user) => $user->where('is_system', false));
-        });
-
-        return $groups->distinct()->pluck('address_id')
-            ->map(fn ($id) => (int) $id)
-            ->filter()
-            ->values();
+        return $query->where($parentColumn, $parent->address_id)->exists();
     }
 
     private function matchingGroup(Group $source, string $level, ?int $addressId): Group
