@@ -87,7 +87,7 @@ class FounderExecutiveScenarioTest extends TestCase
         $verified = collect($acceptance['items'] ?? [])->first(
             fn (array $item): bool => ($item['domain'] ?? null) === 'notifications'
                 && ($item['action'] ?? null) === 'publish_announcement'
-                && ($item['acceptance_status'] ?? null) === 'verified'
+                && ($item['acceptance'] ?? null) === 'verified'
         );
 
         $this->assertNotNull($verified);
