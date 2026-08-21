@@ -328,22 +328,68 @@ class ElectionAppointmentService
                 'reason' => 'higher_valid_election_seat_appointed',
             ])->save();
 
-            ElectionRepresentationAssignment::query()
-                ->where('appointment_id', $older->id)
-                ->where('status', 'active')
-                ->update([
-                    'status' => 'ended',
-                    'ended_at' => now(),
-                    'reason' => 'source_appointment_superseded_by_higher_valid_seat',
-                    'updated_at' => now(),
-                ]);
-
-            GroupUser::query()
-                ->where('group_id', $older->group_id)
-                ->where('user_id', $user->id)
-                ->whereIn('role', [self::MANAGER_ROLE, self::INSPECTOR_ROLE])
-                ->update(['role' => self::ACTIVE_MEMBER_ROLE, 'updated_at' => now()]);
+            $this->endRepresentation($older, 'source_appointment_superseded_by_higher_valid_seat');
+            $this->supersedeInheritedDescendants($older, $newAppointment, $user);
+            $this->demoteMembershipIfNoActiveResponsibility($user->id, $older->group_id);
         }
+    }
+
+    private function supersedeInheritedDescendants(
+        ElectionAppointment $source,
+        ElectionAppointment $superseding,
+        User $user,
+    ): void {
+        $children = ElectionAppointment::query()
+            ->where('source_appointment_id', $source->id)
+            ->where('status', 'active')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($children as $child) {
+            $this->supersedeInheritedDescendants($child, $superseding, $user);
+
+            $child->forceFill([
+                'status' => 'superseded',
+                'ended_at' => now(),
+                'superseded_by_appointment_id' => $superseding->id,
+                'reason' => 'inherited_responsibility_replaced_by_higher_valid_election_seat',
+            ])->save();
+
+            $this->endRepresentation($child, 'inherited_source_chain_superseded_by_higher_valid_seat');
+            $this->demoteMembershipIfNoActiveResponsibility($user->id, $child->group_id);
+        }
+    }
+
+    private function endRepresentation(ElectionAppointment $appointment, string $reason): void
+    {
+        ElectionRepresentationAssignment::query()
+            ->where('appointment_id', $appointment->id)
+            ->where('status', 'active')
+            ->update([
+                'status' => 'ended',
+                'ended_at' => now(),
+                'reason' => $reason,
+                'updated_at' => now(),
+            ]);
+    }
+
+    private function demoteMembershipIfNoActiveResponsibility(int $userId, int $groupId): void
+    {
+        $stillResponsible = ElectionAppointment::query()
+            ->where('user_id', $userId)
+            ->where('group_id', $groupId)
+            ->where('status', 'active')
+            ->exists();
+
+        if ($stillResponsible) {
+            return;
+        }
+
+        GroupUser::query()
+            ->where('group_id', $groupId)
+            ->where('user_id', $userId)
+            ->whereIn('role', [self::MANAGER_ROLE, self::INSPECTOR_ROLE])
+            ->update(['role' => self::ACTIVE_MEMBER_ROLE, 'updated_at' => now()]);
     }
 
     private function groupRole(ElectionPosition $position): int
