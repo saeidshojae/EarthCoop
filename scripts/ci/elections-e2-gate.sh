@@ -17,6 +17,7 @@ E2_MIGRATIONS=(
   "database/migrations/2026_08_21_150000_add_canonical_election_lifecycle_and_acceptance.php"
   "database/migrations/2026_08_21_151000_add_election_reconciliation_indexes.php"
 )
+E2_BOUNDARY_BASENAME="$(basename "${E2_MIGRATIONS[0]}")"
 
 for migration in "${E2_MIGRATIONS[@]}"; do
   [[ -f "$migration" ]] || { echo "Missing E2 migration: $migration" >&2; exit 1; }
@@ -25,8 +26,9 @@ done
 "${MYSQL[@]}" -e "DROP DATABASE IF EXISTS \`$DB_NAME\`; CREATE DATABASE \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
 tmp_dir="$(mktemp -d)"
+MOVED_MIGRATIONS=()
 restore_migrations() {
-  for migration in "${E2_MIGRATIONS[@]}"; do
+  for migration in "${MOVED_MIGRATIONS[@]}"; do
     local_name="$(basename "$migration")"
     if [[ -f "$tmp_dir/$local_name" ]]; then
       mv "$tmp_dir/$local_name" "$migration"
@@ -36,10 +38,21 @@ restore_migrations() {
 }
 trap restore_migrations EXIT
 
-# Build a true pre-E2 schema by temporarily removing only the three E2 files.
-for migration in "${E2_MIGRATIONS[@]}"; do
+# Build a true pre-E2 schema. E2 is the chronological boundary for this
+# fixture, therefore every migration at or after the first E2 migration must
+# be absent while the legacy baseline is created. This keeps the gate stable
+# as E3/E4/later migrations are added and prevents later schemas from running
+# against a database that intentionally has not received E2 yet.
+while IFS= read -r migration; do
+  migration_basename="$(basename "$migration")"
+  if [[ "$migration_basename" < "$E2_BOUNDARY_BASENAME" ]]; then
+    continue
+  fi
+
+  MOVED_MIGRATIONS+=("$migration")
   mv "$migration" "$tmp_dir/"
-done
+done < <(find database/migrations -maxdepth 1 -type f -name '*.php' | sort)
+
 DB_DATABASE="$DB_NAME" php artisan migrate --force
 restore_migrations
 trap - EXIT
