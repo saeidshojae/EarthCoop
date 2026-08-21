@@ -8,7 +8,7 @@ class ElectionVacancy extends Model
 {
     protected $fillable = [
         'election_id', 'source_appointment_id', 'user_id', 'group_id', 'position',
-        'status', 'opened_at', 'resolved_at', 'replacement_offer_id',
+        'continuity_mode', 'status', 'opened_at', 'resolved_at', 'replacement_offer_id',
         'replacement_appointment_id', 'actor', 'reason', 'metadata',
     ];
 
