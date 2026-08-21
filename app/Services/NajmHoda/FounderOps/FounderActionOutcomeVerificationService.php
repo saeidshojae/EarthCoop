@@ -6,6 +6,7 @@ use App\Models\FounderAnnouncementDraft;
 use App\Models\SupportReplyDraft;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class FounderActionOutcomeVerificationService
 {
@@ -14,7 +15,8 @@ class FounderActionOutcomeVerificationService
     /**
      * Verify the persisted outcome of an already-authorized canonical mutation.
      * Verification is read-only and fail-closed: unsupported actions are never
-     * reported as verified.
+     * reported as verified. Verification faults are contained because the
+     * canonical mutation may already have committed successfully.
      *
      * @param array<string,mixed> $result
      * @param array<string,mixed> $context
@@ -22,15 +24,24 @@ class FounderActionOutcomeVerificationService
      */
     public function verify(string $domain, string $action, array $result, array $context = []): array
     {
-        $verification = match ($domain . '.' . $action) {
-            'support.send_reply' => $this->verifySupportReply($result),
-            'notifications.publish_announcement' => $this->verifyAnnouncement($result),
-            default => [
+        try {
+            $verification = match ($domain . '.' . $action) {
+                'support.send_reply' => $this->verifySupportReply($result),
+                'notifications.publish_announcement' => $this->verifyAnnouncement($result),
+                default => [
+                    'verified' => false,
+                    'status' => 'not_configured',
+                    'reason' => 'no_canonical_outcome_verifier',
+                ],
+            };
+        } catch (Throwable $e) {
+            $verification = [
                 'verified' => false,
-                'status' => 'not_configured',
-                'reason' => 'no_canonical_outcome_verifier',
-            ],
-        };
+                'status' => 'verification_error',
+                'reason' => 'outcome_verifier_failed',
+                'exception_class' => $e::class,
+            ];
+        }
 
         $payload = [
             'domain' => $domain,
@@ -41,12 +52,24 @@ class FounderActionOutcomeVerificationService
             'entity_id' => is_numeric($context['entity_id'] ?? null) ? (int) $context['entity_id'] : null,
         ];
 
-        $this->events->emit(
-            ($verification['verified'] ?? false)
-                ? 'najm_hoda.founder_ops.outcome.verified'
-                : 'najm_hoda.founder_ops.outcome.unverified',
-            $payload
-        );
+        try {
+            $this->events->emit(
+                ($verification['verified'] ?? false)
+                    ? 'najm_hoda.founder_ops.outcome.verified'
+                    : 'najm_hoda.founder_ops.outcome.unverified',
+                $payload
+            );
+        } catch (Throwable) {
+            // Outcome telemetry is secondary to an already-committed canonical mutation.
+            if ((bool) ($verification['verified'] ?? false)) {
+                $verification = [
+                    'verified' => false,
+                    'status' => 'verification_error',
+                    'reason' => 'outcome_verification_telemetry_failed',
+                    'evidence' => $verification['evidence'] ?? [],
+                ];
+            }
+        }
 
         return $verification;
     }
