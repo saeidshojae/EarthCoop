@@ -13,7 +13,7 @@ class AdminSettingManagementService
     {
         $this->assertAllowedKey($key);
         $normalized = $this->normalize($key, $value);
-        $settings = Setting::query()->firstOrCreate(['id' => 1]);
+        $settings = Setting::singleton();
 
         return [
             'success' => true,
@@ -32,11 +32,8 @@ class AdminSettingManagementService
         $normalized = $this->normalize($key, $value);
 
         return DB::transaction(function () use ($key, $normalized): array {
-            $settings = Setting::query()->whereKey(1)->lockForUpdate()->first();
-            if (! $settings) {
-                $settings = Setting::query()->create(['id' => 1]);
-                $settings = Setting::query()->whereKey($settings->id)->lockForUpdate()->firstOrFail();
-            }
+            Setting::singleton();
+            $settings = Setting::query()->whereKey(1)->lockForUpdate()->firstOrFail();
 
             $before = $settings->getAttribute($key);
             if ($before === $normalized) {
