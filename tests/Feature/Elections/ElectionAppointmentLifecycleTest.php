@@ -69,7 +69,11 @@ class ElectionAppointmentLifecycleTest extends TestCase
         $this->assertSame(3, (int) GroupUser::where('group_id', $group->id)->where('user_id', $inspector->id)->value('role'));
         $this->assertSame(2, ElectionAppointment::where('election_id', $election->id)->where('status', 'active')->count());
 
-        $transitions = $election->lifecycleTransitions()->orderBy('id')->pluck('to_status')->all();
+        $transitions = $election->lifecycleTransitions()
+            ->orderBy('id')
+            ->get()
+            ->map(fn ($transition) => $transition->to_status->value)
+            ->all();
         $this->assertContains('appointing', $transitions);
         $this->assertContains('filled', $transitions);
     }
