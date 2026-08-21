@@ -5,7 +5,9 @@ namespace App\Services\Elections;
 use App\Models\Group;
 use App\Models\User;
 use App\Services\GroupService;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use RuntimeException;
 
 class ElectionGroupHierarchyResolver
@@ -81,12 +83,20 @@ class ElectionGroupHierarchyResolver
             && $this->childBelongsToParent($child, $parent);
     }
 
+    /**
+     * Count approved/configured geographic constituencies, irrespective of
+     * current EarthCoop population. When a location table exposes `status`, the
+     * canonical Geographic API treats only status=1 as usable; election topology
+     * follows the same rule so pending admin submissions cannot alter governance.
+     */
     public function structuralConstituencyCount(Group $parent, string $childLevel): int
     {
         if ($parent->location_level === 'section' && in_array($childLevel, ['city', 'rural'], true)) {
             $parentId = (int) $parent->address_id;
-            return (int) DB::table('cities')->where('district_id', $parentId)->count()
-                + (int) DB::table('rurals')->where('district_id', $parentId)->count();
+            $cities = $this->approved(DB::table('cities')->where('district_id', $parentId), 'cities');
+            $rurals = $this->approved(DB::table('rurals')->where('district_id', $parentId), 'rurals');
+
+            return (int) $cities->count() + (int) $rurals->count();
         }
 
         $mapping = self::CHILD_TO_PARENT[$childLevel] ?? null;
@@ -95,7 +105,7 @@ class ElectionGroupHierarchyResolver
         }
 
         [$table, $parentColumn] = $mapping;
-        $query = DB::table($table);
+        $query = $this->approved(DB::table($table), $table);
 
         if ($parent->location_level === 'global') {
             if ($childLevel !== 'continent') {
@@ -144,7 +154,7 @@ class ElectionGroupHierarchyResolver
         }
 
         [$table, $parentColumn] = $mapping;
-        $query = DB::table($table)->where('id', $child->address_id);
+        $query = $this->approved(DB::table($table)->where('id', $child->address_id), $table);
 
         if ($parent->location_level === 'global') {
             return $child->location_level === 'continent' && $query->exists();
@@ -155,6 +165,15 @@ class ElectionGroupHierarchyResolver
         }
 
         return $query->where($parentColumn, $parent->address_id)->exists();
+    }
+
+    private function approved(Builder $query, string $table): Builder
+    {
+        if (Schema::hasColumn($table, 'status')) {
+            $query->where($table.'.status', 1);
+        }
+
+        return $query;
     }
 
     private function matchingGroup(Group $source, string $level, ?int $addressId): Group
