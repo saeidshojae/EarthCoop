@@ -12,22 +12,53 @@ use RuntimeException;
 
 class ElectionPolicyResolver
 {
-    /** Legacy compatibility only. New cycle/domain code should prefer versioned policy APIs. */
+    /**
+     * Compatibility read for legacy domain code. If the group currently has a
+     * non-terminal cycle with a frozen policy, return a read-only GroupSetting
+     * projection of that policy so in-flight behavior cannot drift when admin
+     * publishes a newer version.
+     */
     public function resolveForGroup(Group $group): GroupSetting
     {
-        $level = $this->levelKeyForGroup($group);
-        $setting = GroupSetting::query()->where('level', $level)->first();
+        $setting = $this->baseSettingForGroup($group);
 
-        if ($setting === null) {
-            throw new RuntimeException("Election policy is not configured for group setting level [{$level}].");
+        $active = Election::query()
+            ->where('group_id', $group->id)
+            ->whereNotNull('policy_version_id')
+            ->whereIn('lifecycle_status', [
+                'scheduled', 'open', 'closed', 'tallying', 'awaiting_acceptance', 'appointing',
+            ])
+            ->orderByDesc('cycle_number')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($active === null) {
+            return $setting;
         }
 
-        return $setting;
+        $policy = $active->policyVersion()->first();
+        if ($policy === null) {
+            return $setting;
+        }
+
+        $projection = new GroupSetting();
+        $projection->setRawAttributes([
+            'id' => $setting->id,
+            'level' => $setting->level,
+            'manager_count' => $policy->manager_count,
+            'inspector_count' => $policy->inspector_count,
+            'election_time' => $policy->voting_duration_days,
+            'max_for_election' => $policy->start_threshold,
+            'election_status' => $policy->election_status ? 1 : 0,
+            'second_election_time' => $policy->cycle_interval_months,
+        ], true);
+
+        return $projection;
     }
 
     public function resolveEffectiveForGroup(Group $group): ElectionPolicyVersion
     {
-        $setting = $this->resolveForGroup($group);
+        $setting = $this->baseSettingForGroup($group);
         $policy = ElectionPolicyVersion::query()
             ->where('group_setting_id', $setting->id)
             ->where('effective_at', '<=', now())
@@ -53,7 +84,6 @@ class ElectionPolicyResolver
     {
         $attributes = $group->getAttributes();
         $base = (string) ($attributes['location_level'] ?? '');
-
         if (($attributes['specialty_id'] ?? null) !== null) return $base.'_job';
         if (($attributes['experience_id'] ?? null) !== null) return $base.'_experience';
         if (($attributes['age_group_id'] ?? null) !== null) return $base.'_age';
@@ -93,6 +123,16 @@ class ElectionPolicyResolver
             : ElectionResponsibilityOfferService::RESPONSE_WINDOW_DAYS;
     }
 
+    private function baseSettingForGroup(Group $group): GroupSetting
+    {
+        $level = $this->levelKeyForGroup($group);
+        $setting = GroupSetting::query()->where('level', $level)->first();
+        if ($setting === null) {
+            throw new RuntimeException("Election policy is not configured for group setting level [{$level}].");
+        }
+        return $setting;
+    }
+
     private function createCompatibilityBaseline(GroupSetting $setting): ElectionPolicyVersion
     {
         return DB::transaction(function () use ($setting): ElectionPolicyVersion {
@@ -102,9 +142,7 @@ class ElectionPolicyResolver
                 ->orderByDesc('version')
                 ->lockForUpdate()
                 ->first();
-            if ($existing !== null) {
-                return $existing;
-            }
+            if ($existing !== null) return $existing;
 
             $nextVersion = ((int) ElectionPolicyVersion::query()
                 ->where('group_setting_id', $setting->id)->max('version')) + 1;
