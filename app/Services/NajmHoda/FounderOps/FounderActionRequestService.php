@@ -76,7 +76,7 @@ class FounderActionRequestService
     {
         $allowed = [
             'entity_type', 'entity_id', 'source_event', 'attention_priority',
-            'reason_code', 'requested_by', 'correlation_id',
+            'reason_code', 'requested_by', 'correlation_id', 'review_draft_id',
         ];
 
         return collect($context)

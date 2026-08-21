@@ -39,9 +39,23 @@ class Setting extends Model
         'reputation_conversion_enabled',
     ];
 
+    public static function singleton(): self
+    {
+        $settings = self::query()->find(1);
+        if ($settings) {
+            return $settings;
+        }
+
+        $settings = new self();
+        $settings->forceFill(['id' => 1]);
+        $settings->save();
+
+        return $settings->fresh();
+    }
+
     public static function firstNajmBaharSettings(): self
     {
-        $settings = self::firstOrCreate(['id' => 1]);
+        $settings = self::singleton();
 
         if (! $settings->najm_bahar_amounts_in_gol) {
             $fields = [

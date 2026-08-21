@@ -11,6 +11,7 @@ class FounderActionExecutionService
         protected FounderActionAuthorityService $authority,
         protected FounderDelegationGrantService $delegations,
         protected FounderApprovalVerifierService $approvalVerifier,
+        protected FounderActionOutcomeVerificationService $outcomes,
         protected RuntimeEventBus $events
     ) {}
 
@@ -71,12 +72,17 @@ class FounderActionExecutionService
 
         try {
             $result = $callback();
+            $resultArray = is_array($result) ? $result : ['value' => $result];
+            $verification = $this->outcomes->verify($domain, $action, $resultArray, $safeAudit);
+
             $this->events->emit('najm_hoda.founder_ops.execution.completed', [
                 'domain' => $domain,
                 'action' => $action,
                 'mode' => $mode,
                 'approval_request_id' => $approvalRequestId,
                 'delegated' => $delegated,
+                'outcome_verified' => (bool) ($verification['verified'] ?? false),
+                'verification_status' => (string) ($verification['status'] ?? 'unknown'),
                 'context' => $safeAudit,
             ]);
 
@@ -89,6 +95,7 @@ class FounderActionExecutionService
                 'approval' => $approval,
                 'delegated' => $delegated,
                 'result' => $result,
+                'verification' => $verification,
             ];
         } catch (Throwable $e) {
             $this->events->emit('najm_hoda.founder_ops.execution.failed', [

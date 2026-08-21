@@ -3,6 +3,7 @@
 namespace App\Services\NajmHoda\FounderOps;
 
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
+use Throwable;
 
 class FounderAutonomyTickService
 {
@@ -13,7 +14,7 @@ class FounderAutonomyTickService
         protected RuntimeEventBus $events
     ) {}
 
-    public function run(int $hours = 24, int $limit = 12, bool $applyDelegated = true): array
+    public function run(int $hours = 24, int $limit = 12, bool $applyDelegated = true, bool $materializeProposals = true): array
     {
         $plan = $this->bridge->plan($hours, $limit);
         $results = [];
@@ -26,6 +27,46 @@ class FounderAutonomyTickService
             $status = (string) data_get($item, 'preparation.status', '');
             $actionContext = is_array($item['action_context'] ?? null) ? $item['action_context'] : [];
             $reasonCode = (string) ($actionContext['reason_code'] ?? data_get($item, 'preparation.decision.reason', ''));
+
+            if ($status === 'proposal_only') {
+                if (! $materializeProposals) {
+                    $results[] = ['domain'=>$domain,'action'=>$action,'status'=>'planned_only','preparation_status'=>$status];
+                    continue;
+                }
+
+                if (! $this->handlers->supports($domain, $action)) {
+                    $results[] = [
+                        'domain'=>$domain,
+                        'action'=>$action,
+                        'status'=>'proposal_not_materialized',
+                        'reason'=>'no_canonical_low_risk_handler',
+                    ];
+                    continue;
+                }
+
+                try {
+                    $proposal = $this->handlers->execute($domain, $action, $actionContext);
+                    $success = (bool) ($proposal['success'] ?? false);
+                    $proposalStatus = (string) ($proposal['status'] ?? 'completed');
+
+                    $results[] = [
+                        'domain'=>$domain,
+                        'action'=>$action,
+                        'status'=>$success ? 'proposal_materialized' : 'proposal_not_materialized',
+                        'proposal_status'=>$proposalStatus,
+                        'result'=>$proposal,
+                    ];
+                } catch (Throwable $exception) {
+                    $results[] = [
+                        'domain'=>$domain,
+                        'action'=>$action,
+                        'status'=>'proposal_not_materialized',
+                        'reason'=>'proposal_handler_failed',
+                        'error'=>$exception->getMessage(),
+                    ];
+                }
+                continue;
+            }
 
             if ($status !== 'delegated_ready' || ! $applyDelegated) {
                 $results[] = ['domain' => $domain, 'action' => $action, 'status' => 'planned_only', 'preparation_status' => $status];
@@ -54,6 +95,8 @@ class FounderAutonomyTickService
         $summary = [
             'planned' => count((array) ($plan['actions'] ?? [])),
             'executed' => count(array_filter($results, static fn (array $r): bool => ($r['status'] ?? null) === 'executed')),
+            'proposal_materialized' => count(array_filter($results, static fn (array $r): bool => ($r['status'] ?? null) === 'proposal_materialized')),
+            'proposal_not_materialized' => count(array_filter($results, static fn (array $r): bool => ($r['status'] ?? null) === 'proposal_not_materialized')),
             'planned_only' => count(array_filter($results, static fn (array $r): bool => ($r['status'] ?? null) === 'planned_only')),
             'not_executed' => count(array_filter($results, static fn (array $r): bool => ($r['status'] ?? null) === 'not_executed')),
             'blocked' => count(array_filter($results, static fn (array $r): bool => ($r['status'] ?? null) === 'blocked')),

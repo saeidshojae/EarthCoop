@@ -4,6 +4,7 @@ namespace Tests\Feature\NajmHoda;
 
 use App\Services\NajmHoda\FounderOps\FounderActionAuthorityService;
 use App\Services\NajmHoda\FounderOps\FounderActionExecutionService;
+use App\Services\NajmHoda\FounderOps\FounderActionOutcomeVerificationService;
 use App\Services\NajmHoda\FounderOps\FounderApprovalVerifierService;
 use App\Services\NajmHoda\FounderOps\FounderDelegationGrantService;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
@@ -13,10 +14,18 @@ class FounderActionExecutionServiceTest extends TestCase
 {
     protected function service($verifier, $delegations, $events): FounderActionExecutionService
     {
+        $outcomes = $this->createMock(FounderActionOutcomeVerificationService::class);
+        $outcomes->method('verify')->willReturn([
+            'verified' => false,
+            'status' => 'not_configured',
+            'reason' => 'no_canonical_outcome_verifier',
+        ]);
+
         return new FounderActionExecutionService(
             app(FounderActionAuthorityService::class),
             $delegations,
             $verifier,
+            $outcomes,
             $events
         );
     }

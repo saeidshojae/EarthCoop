@@ -7,6 +7,9 @@ Route::middleware(['throttle:najm-hoda-autonomy-read'])->prefix('admin/najm-hoda
     Route::get('/', [FounderOperationsController::class, 'index'])->name('index');
     Route::get('/brief', [FounderOperationsController::class, 'brief'])->name('brief');
     Route::get('/snapshot', [FounderOperationsController::class, 'snapshot'])->name('snapshot');
+    Route::get('/connectivity', [FounderOperationsController::class, 'connectivity'])->name('connectivity');
+    Route::get('/work-queue', [FounderOperationsController::class, 'workQueue'])->name('work-queue');
+    Route::get('/acceptance-status', [FounderOperationsController::class, 'acceptanceStatus'])->name('acceptance-status');
     Route::get('/autonomy-plan', [FounderOperationsController::class, 'autonomyPlan'])->name('autonomy-plan');
     Route::get('/approvals', [FounderOperationsController::class, 'approvals'])->name('approvals');
     Route::get('/authority', [FounderOperationsController::class, 'authority'])->name('authority');
@@ -23,4 +26,6 @@ Route::middleware(['throttle:najm-hoda-autonomy-write'])->prefix('admin/najm-hod
     Route::post('/email-approvals/{requestId}/decision', [FounderOperationsController::class, 'decideEmailSend'])->name('email-approvals.decision');
     Route::post('/content-drafts/{draft}/request-publish', [FounderOperationsController::class, 'requestContentPublish'])->name('content-drafts.request-publish');
     Route::post('/content-approvals/{requestId}/decision', [FounderOperationsController::class, 'decideContentPublish'])->name('content-approvals.decision');
+    Route::post('/announcement-drafts/{draft}/request-publish', [FounderOperationsController::class, 'requestAnnouncementPublish'])->name('announcement-drafts.request-publish');
+    Route::post('/announcement-approvals/{requestId}/decision', [FounderOperationsController::class, 'decideAnnouncementPublish'])->name('announcement-approvals.decision');
 });
