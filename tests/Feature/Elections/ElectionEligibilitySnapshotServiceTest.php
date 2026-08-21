@@ -26,6 +26,7 @@ class ElectionEligibilitySnapshotServiceTest extends TestCase
         $inactive = $this->member($group, 1, 0, false);
         $system = $this->member($group, 1, 1, true);
         $election = $this->scheduledElection($group);
+        $membershipCountAtCapture = GroupUser::where('group_id', $group->id)->count();
 
         $opened = app(ElectionLifecycleService::class)->transition(
             $election,
@@ -36,7 +37,11 @@ class ElectionEligibilitySnapshotServiceTest extends TestCase
 
         $this->assertNotNull($opened->eligibility_snapshot_captured_at);
         $this->assertSame(ElectionEligibilitySnapshotService::VERSION, $opened->eligibility_snapshot_version);
-        $this->assertSame(5, ElectionEligibilitySnapshot::where('election_id', $election->id)->count());
+        $this->assertSame(
+            $membershipCountAtCapture,
+            ElectionEligibilitySnapshot::where('election_id', $election->id)->count(),
+            'Every membership existing at capture time must receive exactly one historical eligibility row.'
+        );
 
         $this->assertDatabaseHas('election_eligibility_snapshots', [
             'election_id' => $election->id,
@@ -79,6 +84,7 @@ class ElectionEligibilitySnapshotServiceTest extends TestCase
         $election = $this->scheduledElection($group);
         $lifecycle = app(ElectionLifecycleService::class);
         $snapshots = app(ElectionEligibilitySnapshotService::class);
+        $membershipCountAtCapture = GroupUser::where('group_id', $group->id)->count();
 
         $opened = $lifecycle->transition($election, ElectionLifecycleStatus::Open, 'test_open', 'test');
         $this->assertSame([$eligible->id], $snapshots->voterIds($opened));
@@ -92,7 +98,11 @@ class ElectionEligibilitySnapshotServiceTest extends TestCase
 
         $this->assertSame([$eligible->id], $snapshots->voterIds($opened));
         $this->assertSame([$eligible->id], $snapshots->selectableUserIds($opened));
-        $this->assertSame(2, ElectionEligibilitySnapshot::where('election_id', $election->id)->count());
+        $this->assertSame(
+            $membershipCountAtCapture,
+            ElectionEligibilitySnapshot::where('election_id', $election->id)->count(),
+            'Snapshot row count must remain frozen even when membership roles/statuses change later.'
+        );
     }
 
     private function group(): Group
