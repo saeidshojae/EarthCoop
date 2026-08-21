@@ -12,6 +12,8 @@ class Election extends Model
 
     protected $fillable = [
         'group_id',
+        'cycle_number',
+        'previous_election_id',
         'starts_at',
         'ends_at',
         'is_closed',
@@ -22,6 +24,7 @@ class Election extends Model
     ];
 
     protected $casts = [
+        'cycle_number' => 'integer',
         'starts_at' => 'datetime',
         'ends_at' => 'datetime',
         'is_closed' => 'boolean',
@@ -62,6 +65,16 @@ class Election extends Model
         return $this->belongsTo(Group::class);
     }
 
+    public function previousCycle()
+    {
+        return $this->belongsTo(self::class, 'previous_election_id');
+    }
+
+    public function nextCycle()
+    {
+        return $this->hasOne(self::class, 'previous_election_id');
+    }
+
     public function candidates()
     {
         return $this->hasMany(Candidate::class);
@@ -85,6 +98,11 @@ class Election extends Model
     public function appointments()
     {
         return $this->hasMany(ElectionAppointment::class);
+    }
+
+    public function vacancies()
+    {
+        return $this->hasMany(ElectionVacancy::class);
     }
 
     public function yourVotes()
