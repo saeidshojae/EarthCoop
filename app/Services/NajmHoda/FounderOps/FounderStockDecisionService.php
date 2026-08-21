@@ -5,6 +5,8 @@ namespace App\Services\NajmHoda\FounderOps;
 use App\Models\User;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Services\AuctionService;
+use App\Modules\Stock\Services\StockCanonicalAuctionSettlementService;
+use App\Modules\Stock\Models\StockSettlementAllocation;
 use App\Services\NajmHoda\Runtime\NajmHodaAutonomyApprovalService;
 
 class FounderStockDecisionService
@@ -13,7 +15,8 @@ class FounderStockDecisionService
         protected FounderActionRequestService $requests,
         protected FounderActionExecutionService $execution,
         protected NajmHodaAutonomyApprovalService $approvals,
-        protected AuctionService $auctions
+        protected AuctionService $auctions,
+        protected StockCanonicalAuctionSettlementService $canonicalSettlements
     ) {}
 
     /** @return array<string,mixed> */
@@ -25,6 +28,16 @@ class FounderStockDecisionService
 
         if ((string) $auction->status !== 'settling' && ! $auction->isExpired()) {
             return ['success' => false, 'status' => 'blocked', 'reason' => 'auction_not_ready_for_settlement'];
+        }
+
+        if ($auction->hasCanonicalGolPricing()) {
+            $hasPreparedEnvelope = StockSettlementAllocation::query()
+                ->where('auction_id', $auction->id)
+                ->where('state', '!=', StockSettlementAllocation::CANCELLED)
+                ->exists();
+            if (! $hasPreparedEnvelope) {
+                return ['success' => false, 'status' => 'blocked', 'reason' => 'canonical_settlement_allocations_not_prepared'];
+            }
         }
 
         return $this->requests->prepare('stock', 'settle_auction', [
@@ -76,6 +89,15 @@ class FounderStockDecisionService
         if ((string) $auction->status !== 'settling' && ! $auction->isExpired()) {
             return ['success' => false, 'status' => 'blocked', 'reason' => 'auction_not_ready_for_settlement'];
         }
+        if ($auction->hasCanonicalGolPricing()) {
+            $hasPreparedEnvelope = StockSettlementAllocation::query()
+                ->where('auction_id', $auction->id)
+                ->where('state', '!=', StockSettlementAllocation::CANCELLED)
+                ->exists();
+            if (! $hasPreparedEnvelope) {
+                return ['success' => false, 'status' => 'blocked', 'reason' => 'canonical_settlement_allocations_not_prepared'];
+            }
+        }
 
         $decisionResult = $this->approvals->decide($requestId, $decision, $founderId, $reason);
         if (! (bool) ($decisionResult['success'] ?? false)) {
@@ -89,9 +111,13 @@ class FounderStockDecisionService
             'stock',
             'settle_auction',
             function () use ($auction): array {
-                $result = (string) $auction->status === 'settling'
-                    ? $this->auctions->manualSettleAuction($auction)
-                    : $this->auctions->closeAuction($auction);
+                if ($auction->hasCanonicalGolPricing()) {
+                    $result = $this->canonicalSettlements->settlePrepared($auction);
+                } else {
+                    $result = (string) $auction->status === 'settling'
+                        ? $this->auctions->manualSettleAuction($auction)
+                        : $this->auctions->closeAuction($auction);
+                }
 
                 $auction->refresh();
 
