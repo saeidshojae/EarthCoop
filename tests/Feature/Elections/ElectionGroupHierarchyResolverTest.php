@@ -24,11 +24,15 @@ class ElectionGroupHierarchyResolverTest extends TestCase
         ]);
         Address::where('user_id', $user->id)->update(['street_id' => 9201]);
 
+        // Keep the parent region genuinely multi-constituency so this test
+        // isolates only the street -> neighborhood compression rule.
+        DB::table('neighborhoods')->insert([
+            'id' => 9203, 'name' => 'Neighborhood B', 'parent_id' => $ids['region'], 'status' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
         $neighborhood = $this->group('neighborhood', $ids['neighborhood']);
         $street = $this->group('street', 9201);
-        // The user's canonical path includes region. The group hierarchy must
-        // therefore contain the corresponding region even though compression
-        // is expected to stop before inheriting into it.
         $this->group('region', $ids['region']);
         $resolver = app(ElectionGroupHierarchyResolver::class);
 
