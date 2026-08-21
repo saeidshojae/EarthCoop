@@ -3,6 +3,7 @@
 namespace App\Services\Elections;
 
 use App\Models\ElectionPolicyVersion;
+use App\Models\ElectionResponsibilityContractVersion;
 use App\Models\GroupSetting;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,9 @@ class ElectionPolicyVersionService
                 $latest->forceFill(['retired_at' => $effectiveAt])->save();
             }
 
+            $managerContractId = $this->activeContractId('manager');
+            $inspectorContractId = $this->activeContractId('inspector');
+
             return ElectionPolicyVersion::create([
                 'group_setting_id' => $locked->id,
                 'level_key' => $locked->level,
@@ -47,11 +51,29 @@ class ElectionPolicyVersionService
                 'start_threshold' => max(1, (int) $locked->max_for_election),
                 'cycle_interval_months' => max(0, (int) $locked->second_election_time),
                 'response_duration_days' => max(1, (int) ($responseDurationDays ?? 7)),
+                'manager_contract_version_id' => $managerContractId,
+                'inspector_contract_version_id' => $inspectorContractId,
                 'effective_at' => $effectiveAt,
                 'created_by' => $actorUserId,
                 'change_reason' => $reason,
-                'metadata' => ['source' => 'admin_group_setting'],
+                'metadata' => [
+                    'source' => 'admin_group_setting',
+                    'manager_contract_version_id' => $managerContractId,
+                    'inspector_contract_version_id' => $inspectorContractId,
+                ],
             ]);
         }, 3);
+    }
+
+    private function activeContractId(string $position): ?int
+    {
+        $id = ElectionResponsibilityContractVersion::query()
+            ->where('position', $position)
+            ->where('is_active', true)
+            ->whereNotNull('published_at')
+            ->orderByDesc('version')
+            ->value('id');
+
+        return $id === null ? null : (int) $id;
     }
 }
