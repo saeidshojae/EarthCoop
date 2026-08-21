@@ -7,58 +7,54 @@ use App\Models\Election;
 use App\Models\Group;
 use App\Services\Elections\ElectionCycleService;
 use App\Services\Elections\ElectionLifecycleService;
+use App\Services\Elections\ElectionResponsibilityOfferService;
 use Illuminate\Console\Command;
 use Throwable;
 
 class ProcessElectionLifecycle extends Command
 {
     protected $signature = 'elections:process-lifecycle
-        {--limit=500 : Maximum groups/elections to inspect in one tick}
-        {--fail-on-error : Exit non-zero if any election fails processing}';
+        {--limit=500 : Maximum groups/elections/offers to inspect in one tick}
+        {--fail-on-error : Exit non-zero if any election action fails processing}';
 
-    protected $description = 'Create eligible election cycles and advance due states through the canonical transactional state machine';
+    protected $description = 'Create election cycles, advance due states and expire responsibility offers through canonical server-side services';
 
-    public function handle(ElectionCycleService $cycles, ElectionLifecycleService $lifecycle): int
-    {
+    public function handle(
+        ElectionCycleService $cycles,
+        ElectionLifecycleService $lifecycle,
+        ElectionResponsibilityOfferService $offers,
+    ): int {
         $limit = max(1, min(5000, (int) $this->option('limit')));
         $groupsProcessed = 0;
         $cyclesCreated = 0;
         $processed = 0;
         $advanced = 0;
+        $expiredOffers = 0;
         $errors = 0;
 
-        Group::query()
-            ->orderBy('id')
-            ->chunkById(100, function ($groups) use (
-                $cycles,
-                $limit,
-                &$groupsProcessed,
-                &$cyclesCreated,
-                &$errors,
-            ) {
-                foreach ($groups as $group) {
-                    if ($groupsProcessed >= $limit) {
-                        return false;
-                    }
-
-                    $groupsProcessed++;
-                    $before = Election::where('group_id', $group->id)->count();
-
-                    try {
-                        $cycles->ensureForGroup($group);
-                        $after = Election::where('group_id', $group->id)->count();
-                        if ($after > $before) {
-                            $cyclesCreated += ($after - $before);
-                        }
-                    } catch (Throwable $exception) {
-                        $errors++;
-                        report($exception);
-                        $this->error("Group {$group->id}: {$exception->getMessage()}");
-                    }
+        Group::query()->orderBy('id')->chunkById(100, function ($groups) use (
+            $cycles, $limit, &$groupsProcessed, &$cyclesCreated, &$errors,
+        ) {
+            foreach ($groups as $group) {
+                if ($groupsProcessed >= $limit) {
+                    return false;
                 }
-
-                return $groupsProcessed < $limit;
-            });
+                $groupsProcessed++;
+                $before = Election::where('group_id', $group->id)->count();
+                try {
+                    $cycles->ensureForGroup($group);
+                    $after = Election::where('group_id', $group->id)->count();
+                    if ($after > $before) {
+                        $cyclesCreated += ($after - $before);
+                    }
+                } catch (Throwable $exception) {
+                    $errors++;
+                    report($exception);
+                    $this->error("Group {$group->id}: {$exception->getMessage()}");
+                }
+            }
+            return $groupsProcessed < $limit;
+        });
 
         Election::query()
             ->where(function ($query) {
@@ -66,30 +62,20 @@ class ProcessElectionLifecycle extends Command
                     ElectionLifecycleStatus::Scheduled->value,
                     ElectionLifecycleStatus::Open->value,
                 ])->orWhere(function ($legacy) {
-                    $legacy->whereNull('lifecycle_status')
-                        ->where('is_closed', false);
+                    $legacy->whereNull('lifecycle_status')->where('is_closed', false);
                 });
             })
             ->orderBy('id')
-            ->chunkById(100, function ($elections) use (
-                $lifecycle,
-                $limit,
-                &$processed,
-                &$advanced,
-                &$errors,
-            ) {
+            ->chunkById(100, function ($elections) use ($lifecycle, $limit, &$processed, &$advanced, &$errors) {
                 foreach ($elections as $election) {
                     if ($processed >= $limit) {
                         return false;
                     }
-
                     $processed++;
                     $before = $lifecycle->currentStatus($election);
-
                     try {
                         $afterElection = $lifecycle->advanceDue($election);
-                        $after = $lifecycle->currentStatus($afterElection);
-                        if ($after !== $before) {
+                        if ($lifecycle->currentStatus($afterElection) !== $before) {
                             $advanced++;
                         }
                     } catch (Throwable $exception) {
@@ -98,18 +84,21 @@ class ProcessElectionLifecycle extends Command
                         $this->error("Election {$election->id}: {$exception->getMessage()}");
                     }
                 }
-
                 return $processed < $limit;
             });
 
-        $this->line(
-            "groups={$groupsProcessed} cycles_created={$cyclesCreated} processed={$processed} advanced={$advanced} errors={$errors}"
-        );
-
-        if ($errors > 0 && $this->option('fail-on-error')) {
-            return self::FAILURE;
+        try {
+            $expiredOffers = $offers->expireDue($limit);
+        } catch (Throwable $exception) {
+            $errors++;
+            report($exception);
+            $this->error("Responsibility offers: {$exception->getMessage()}");
         }
 
-        return self::SUCCESS;
+        $this->line(
+            "groups={$groupsProcessed} cycles_created={$cyclesCreated} processed={$processed} advanced={$advanced} expired_offers={$expiredOffers} errors={$errors}"
+        );
+
+        return ($errors > 0 && $this->option('fail-on-error')) ? self::FAILURE : self::SUCCESS;
     }
 }
