@@ -29,7 +29,6 @@ enum ElectionAcceptanceStatus: string
             '1', self::Pending->value => self::Pending,
             '2', self::Accepted->value => self::Accepted,
             '0' => $wasOffered ? self::Declined : null,
-            self::Accepted->value => self::Accepted,
             self::Declined->value => self::Declined,
             self::Expired->value => self::Expired,
             default => throw new \InvalidArgumentException("Unsupported election acceptance status [{$value}]."),
