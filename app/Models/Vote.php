@@ -8,21 +8,45 @@ use Illuminate\Database\Eloquent\Model;
 class Vote extends Model
 {
     use HasFactory;
-    protected $fillable = ['voter_id', 'election_id', 'candidate_id', 'position'];
 
+    protected $fillable = [
+        'voter_id',
+        'election_id',
+        'candidate_id',
+        'candidate_user_id',
+        'position',
+    ];
+
+    /**
+     * Legacy relation only.
+     *
+     * Historical code used candidate_id both as Candidate.id and User.id. New
+     * election-domain code must prefer candidateUser() / candidate_user_id.
+     */
     public function candidate()
     {
         return $this->belongsTo(Candidate::class, 'candidate_id');
     }
 
+    public function candidateUser()
+    {
+        return $this->belongsTo(User::class, 'candidate_user_id');
+    }
+
+    /**
+     * Backward-compatible alias for callers that previously expected the
+     * selected User from Vote::user(). Prefer candidateUser() in new code.
+     */
     public function user()
     {
-        return $this->belongsTo(User::class, 'candidate_id');
+        return $this->belongsTo(
+            User::class,
+            $this->candidate_user_id !== null ? 'candidate_user_id' : 'candidate_id'
+        );
     }
 
     public function election()
     {
         return $this->belongsTo(Election::class, 'election_id');
     }
-
 }
