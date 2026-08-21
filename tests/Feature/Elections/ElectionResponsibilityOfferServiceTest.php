@@ -32,7 +32,11 @@ class ElectionResponsibilityOfferServiceTest extends TestCase
             ->where('position', 'manager')->where('status', 'pending')->firstOrFail();
         $this->assertSame($managerA->id, $managerOffer->candidate_user_id);
         $this->assertSame(1, $managerOffer->ranking_position);
-        $this->assertSame(7, $managerOffer->offered_at->diffInDays($managerOffer->expires_at));
+        $this->assertEqualsWithDelta(
+            ElectionResponsibilityOfferService::RESPONSE_WINDOW_DAYS,
+            $managerOffer->offered_at->diffInDays($managerOffer->expires_at),
+            0.000001,
+        );
 
         $service->decline($managerOffer, $managerA->id);
         $replacement = ElectionResponsibilityOffer::where('election_id', $election->id)
