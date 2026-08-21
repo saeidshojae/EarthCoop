@@ -11,6 +11,7 @@ class Setting extends Model
     use HasFactory;
     protected $table = 'setting';
     protected $fillable = [
+        'id',
         'invation_status',
         'finger_status',
         'expire_invation_time',
