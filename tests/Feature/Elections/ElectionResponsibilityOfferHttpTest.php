@@ -19,6 +19,8 @@ class ElectionResponsibilityOfferHttpTest extends TestCase
 
     public function test_legacy_get_only_shows_confirmation_and_never_mutates_offer_or_role(): void
     {
+        $this->withoutVite();
+
         [$user, $group, $candidate, $offer] = $this->fixture();
 
         $response = $this->actingAs($user)->get(route('profile.accept.candidate', [
