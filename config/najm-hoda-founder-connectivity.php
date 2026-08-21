@@ -54,6 +54,7 @@ return [
         'stock.settle_auction' => App\Services\NajmHoda\FounderOps\FounderStockDecisionService::class,
         'najm_bahar.approve_project' => App\Services\NajmHoda\FounderOps\FounderNajmBaharProjectDecisionService::class,
         'najm_bahar.execute_transaction' => App\Services\NajmHoda\FounderOps\FounderNajmBaharTransactionDecisionService::class,
+        'najm_bahar.change_monetary_policy' => App\Services\NajmHoda\FounderOps\FounderNajmBaharMonetaryPolicyDecisionService::class,
         'admin_settings.change_setting' => App\Services\NajmHoda\FounderOps\FounderAdminSettingDecisionService::class,
     ],
 
@@ -111,10 +112,6 @@ return [
         'stock.transfer_shares' => [
             'reason' => 'canonical_transfer_boundary_missing',
             'dependency' => 'Canonical share-transfer/trade boundary that cannot bypass secondary-market Active Bahar settlement or ownership audit',
-        ],
-        'najm_bahar.change_monetary_policy' => [
-            'reason' => 'canonical_monetary_policy_state_missing',
-            'dependency' => 'Versioned persisted monetary-policy model/service with approval and audit trail',
         ],
     ],
 ];
