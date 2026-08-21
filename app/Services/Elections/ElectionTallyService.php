@@ -8,13 +8,15 @@ use App\Models\Election;
 use App\Models\ElectionEligibilitySnapshot;
 use App\Models\ElectionTallyResult;
 use App\Models\Vote;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class ElectionTallyService
 {
-    public const TIE_BREAK_VERSION = 'sha256-election-position-candidate-v1';
+    public const DRAW_SEED_VERSION = 'stop-cycle-snapshot-sha256-v1';
+    public const TIE_BREAK_VERSION = 'verifiable-draw-sha256-v1';
 
     public function __construct(
         private readonly ElectionLifecycleService $lifecycle,
@@ -22,11 +24,6 @@ class ElectionTallyService
     ) {
     }
 
-    /**
-     * Produce an immutable, reproducible ranking snapshot for each position.
-     * Equal vote counts are resolved by a public deterministic SHA-256 key based
-     * only on the version, election id, position and candidate user id.
-     */
     public function tally(Election $election): Collection
     {
         $status = $this->lifecycle->currentStatus($election);
@@ -50,6 +47,16 @@ class ElectionTallyService
                 ->exists()) {
                 throw new RuntimeException('Election contains unresolved legacy vote identity; tally is fail-closed.');
             }
+
+            $stoppedAt = $this->resolveStoppedAt($locked);
+            $cycleIdentifier = 'election:'.$locked->id;
+            $snapshotHash = $this->voteSnapshotHash($locked->id);
+            $drawSeed = hash('sha256', implode('|', [
+                self::DRAW_SEED_VERSION,
+                $this->canonicalTime($stoppedAt),
+                $cycleIdentifier,
+                $snapshotHash,
+            ]));
 
             $selectableUserIds = ElectionEligibilitySnapshot::query()
                 ->where('election_id', $locked->id)
@@ -76,11 +83,11 @@ class ElectionTallyService
                     ->pluck('aggregate', 'candidate_user_id');
 
                 $ranked = $selectableUserIds
-                    ->map(function (int $candidateUserId) use ($voteCounts, $locked, $position): array {
+                    ->map(function (int $candidateUserId) use ($voteCounts, $position, $drawSeed): array {
                         return [
                             'candidate_user_id' => $candidateUserId,
                             'vote_count' => (int) ($voteCounts[$candidateUserId] ?? 0),
-                            'tie_break_key' => $this->tieBreakKey($locked->id, $position, $candidateUserId),
+                            'tie_break_key' => $this->tieBreakKey($drawSeed, $position, $candidateUserId),
                         ];
                     })
                     ->sort(function (array $a, array $b): int {
@@ -106,6 +113,11 @@ class ElectionTallyService
                         'vote_count' => $row['vote_count'],
                         'rank' => $index + 1,
                         'within_seat_cutoff' => ($index + 1) <= $seatCount,
+                        'cycle_identifier' => $cycleIdentifier,
+                        'stopped_at' => $stoppedAt,
+                        'vote_snapshot_hash' => $snapshotHash,
+                        'draw_seed_version' => self::DRAW_SEED_VERSION,
+                        'draw_seed' => $drawSeed,
                         'tie_break_version' => self::TIE_BREAK_VERSION,
                         'tie_break_key' => $row['tie_break_key'],
                     ]);
@@ -117,18 +129,22 @@ class ElectionTallyService
                 ->get();
 
             if ($existing->isNotEmpty()) {
-                $expected = $this->normaliseComparableRows(
-                    $allRows->map(fn (array $row) => $this->comparableRow($row))
-                );
-                $actual = $this->normaliseComparableRows(
-                    $existing->map(fn (ElectionTallyResult $row) => $this->comparableRow($row->toArray()))
-                );
+                $expected = $allRows
+                    ->sortBy(fn (array $row) => $row['position'].'|'.str_pad((string) $row['rank'], 10, '0', STR_PAD_LEFT))
+                    ->map(fn (array $row) => $this->comparableRow($row))
+                    ->values()
+                    ->all();
+                $actual = $existing
+                    ->sortBy(fn (ElectionTallyResult $row) => $row->position.'|'.str_pad((string) $row->rank, 10, '0', STR_PAD_LEFT))
+                    ->map(fn (ElectionTallyResult $row) => $this->comparableRow($row->toArray()))
+                    ->values()
+                    ->all();
 
                 if ($expected !== $actual) {
                     throw new RuntimeException('Stored tally snapshot differs from recomputed deterministic result.');
                 }
 
-                return $this->orderedResults($existing);
+                return $existing->sortBy(fn (ElectionTallyResult $row) => $row->position.'|'.str_pad((string) $row->rank, 10, '0', STR_PAD_LEFT))->values();
             }
 
             $talliedAt = now();
@@ -136,64 +152,86 @@ class ElectionTallyService
                 ElectionTallyResult::create($row + ['tallied_at' => $talliedAt]);
             }
 
-            return $this->orderedResults(
-                ElectionTallyResult::query()->where('election_id', $locked->id)->get()
-            );
+            return ElectionTallyResult::query()
+                ->where('election_id', $locked->id)
+                ->orderBy('position')
+                ->orderBy('rank')
+                ->get();
         }, 3);
     }
 
-    public function tieBreakKey(int $electionId, ElectionPosition $position, int $candidateUserId): string
+    public function tieBreakKey(string $drawSeed, ElectionPosition $position, int $candidateUserId): string
     {
         return hash('sha256', implode('|', [
             self::TIE_BREAK_VERSION,
-            $electionId,
+            $drawSeed,
             $position->value,
             $candidateUserId,
         ]));
     }
 
+    private function resolveStoppedAt(Election $election): CarbonInterface
+    {
+        $transition = $election->lifecycleTransitions()
+            ->where('to_status', ElectionLifecycleStatus::Closed->value)
+            ->orderBy('transitioned_at')
+            ->first();
+
+        if ($transition?->transitioned_at !== null) {
+            return $transition->transitioned_at;
+        }
+
+        if ($election->ends_at !== null) {
+            return $election->ends_at;
+        }
+
+        throw new RuntimeException('Election stop time is not provable; tally is fail-closed.');
+    }
+
+    private function voteSnapshotHash(int $electionId): string
+    {
+        $canonical = Vote::query()
+            ->where('election_id', $electionId)
+            ->orderBy('voter_id')
+            ->orderBy('candidate_user_id')
+            ->orderBy('position')
+            ->orderBy('id')
+            ->get(['voter_id', 'candidate_user_id', 'position'])
+            ->map(fn (Vote $vote) => implode(':', [
+                (int) $vote->voter_id,
+                (int) $vote->candidate_user_id,
+                (string) $vote->position,
+            ]))
+            ->implode('|');
+
+        return hash('sha256', $canonical);
+    }
+
+    private function canonicalTime(CarbonInterface $time): string
+    {
+        return $time->copy()->utc()->format('Y-m-d\\TH:i:s.u\\Z');
+    }
+
     private function comparableRow(array $row): array
     {
+        $stoppedAt = $row['stopped_at'];
+        if (! $stoppedAt instanceof CarbonInterface) {
+            $stoppedAt = \Carbon\Carbon::parse($stoppedAt);
+        }
+
         return [
             'candidate_user_id' => (int) $row['candidate_user_id'],
             'position' => (string) $row['position'],
             'vote_count' => (int) $row['vote_count'],
             'rank' => (int) $row['rank'],
             'within_seat_cutoff' => (bool) $row['within_seat_cutoff'],
+            'cycle_identifier' => (string) $row['cycle_identifier'],
+            'stopped_at' => $this->canonicalTime($stoppedAt),
+            'vote_snapshot_hash' => (string) $row['vote_snapshot_hash'],
+            'draw_seed_version' => (string) $row['draw_seed_version'],
+            'draw_seed' => (string) $row['draw_seed'],
             'tie_break_version' => (string) $row['tie_break_version'],
             'tie_break_key' => (string) $row['tie_break_key'],
         ];
-    }
-
-    private function normaliseComparableRows(Collection $rows): array
-    {
-        return $rows
-            ->sortBy(fn (array $row) => sprintf(
-                '%02d|%010d',
-                $this->positionOrder((string) $row['position']),
-                (int) $row['rank'],
-            ))
-            ->values()
-            ->all();
-    }
-
-    private function orderedResults(Collection $rows): Collection
-    {
-        return $rows
-            ->sortBy(fn (ElectionTallyResult $row) => sprintf(
-                '%02d|%010d',
-                $this->positionOrder((string) $row->position),
-                (int) $row->rank,
-            ))
-            ->values();
-    }
-
-    private function positionOrder(string $position): int
-    {
-        return match ($position) {
-            ElectionPosition::Manager->value => 0,
-            ElectionPosition::Inspector->value => 1,
-            default => 99,
-        };
     }
 }
