@@ -21,15 +21,21 @@ class ElectionCycleService
 
     /**
      * Ensure an independently electable, threshold-eligible group has one
-     * active election cycle.
+     * canonical election cycle at the correct systemic cadence.
      *
      * Structural topology is evaluated before population threshold. A group
      * with exactly one approved effective child constituency is represented by
      * the inherited lower appointment and must not run a duplicate election.
      *
-     * E4 replaced ballot eligibility with frozen snapshots; Candidate remains
-     * a compatibility projection for legacy profile/acceptance reads and is not
-     * canonical for office identity.
+     * Continuity rules:
+     * - any non-terminal latest cycle blocks a new cycle;
+     * - filled/exhausted cycles respect the configured repeat interval
+     *   (`second_election_time`, canonicalized as months);
+     * - cancelled cycles may be replaced immediately because they did not
+     *   establish a valid term.
+     *
+     * Candidate remains a compatibility projection for legacy profile /
+     * acceptance reads and is not canonical for office identity.
      */
     public function ensureForGroup(Group $group): ?Election
     {
@@ -52,9 +58,6 @@ class ElectionCycleService
                 return [null, false];
             }
 
-            // E9 continuity invariant: topology decides whether this group is
-            // an independent electoral layer before temporary EarthCoop
-            // population is considered.
             try {
                 if (! $this->hierarchy->isIndependentElectoralLayer($lockedGroup)) {
                     return [null, false];
@@ -77,22 +80,13 @@ class ElectionCycleService
                 return [null, false];
             }
 
-            $existing = Election::query()
+            $latest = Election::query()
                 ->where('group_id', $lockedGroup->id)
-                ->where(function ($query) {
-                    $query->whereIn('lifecycle_status', [
-                        ElectionLifecycleStatus::Scheduled->value,
-                        ElectionLifecycleStatus::Open->value,
-                    ])->orWhere(function ($legacy) {
-                        $legacy->whereNull('lifecycle_status')
-                            ->where('is_closed', false);
-                    });
-                })
                 ->orderByDesc('id')
                 ->first();
 
-            if ($existing !== null) {
-                return [$existing, false];
+            if ($latest !== null && $this->latestCycleBlocksCreation($latest, $policy->second_election_time)) {
+                return [$latest, false];
             }
 
             $startsAt = now();
@@ -114,8 +108,6 @@ class ElectionCycleService
                         $rows[] = [
                             'election_id' => $election->id,
                             'user_id' => (int) $member->user_id,
-                            // Compatibility-only placeholder. Legacy acceptance
-                            // resolves the actual role from Vote.position.
                             'position' => 'manager',
                             'accept_status' => null,
                             'acceptance_status' => null,
@@ -144,5 +136,47 @@ class ElectionCycleService
             null,
             'election-cycle:auto-open',
         );
+    }
+
+    private function latestCycleBlocksCreation(Election $latest, mixed $repeatInterval): bool
+    {
+        $status = $this->lifecycle->currentStatus($latest);
+
+        if (! $status->isTerminal()) {
+            return true;
+        }
+
+        if ($status === ElectionLifecycleStatus::Cancelled) {
+            return false;
+        }
+
+        $months = $this->repeatIntervalMonths($repeatInterval);
+        if ($months === 0) {
+            return false;
+        }
+
+        $terminalAt = $latest->lifecycleTransitions()
+            ->where('to_status', $status->value)
+            ->orderByDesc('transitioned_at')
+            ->value('transitioned_at');
+
+        $anchor = $terminalAt !== null
+            ? \Carbon\Carbon::parse($terminalAt)
+            : ($latest->updated_at ?? $latest->ends_at ?? $latest->starts_at ?? now());
+
+        return now()->lt($anchor->copy()->addMonthsNoOverflow($months));
+    }
+
+    private function repeatIntervalMonths(mixed $value): int
+    {
+        if ($value === null || $value === '') {
+            return 3;
+        }
+
+        if (! is_numeric($value)) {
+            throw new RuntimeException('Election repeat interval must be numeric months.');
+        }
+
+        return max(0, (int) $value);
     }
 }
