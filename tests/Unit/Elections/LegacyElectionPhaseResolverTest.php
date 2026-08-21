@@ -21,7 +21,7 @@ class LegacyElectionPhaseResolverTest extends TestCase
 
     public function test_future_election_is_scheduled(): void
     {
-        $election = new Election([
+        $election = $this->legacyElection([
             'starts_at' => '2026-08-22 10:00:00',
             'ends_at' => '2026-08-23 10:00:00',
             'is_closed' => false,
@@ -35,7 +35,7 @@ class LegacyElectionPhaseResolverTest extends TestCase
 
     public function test_election_inside_voting_window_is_open(): void
     {
-        $election = new Election([
+        $election = $this->legacyElection([
             'starts_at' => '2026-08-20 10:00:00',
             'ends_at' => '2026-08-22 10:00:00',
             'is_closed' => false,
@@ -49,7 +49,7 @@ class LegacyElectionPhaseResolverTest extends TestCase
 
     public function test_elapsed_voting_window_is_closed_even_before_legacy_flag_is_updated(): void
     {
-        $election = new Election([
+        $election = $this->legacyElection([
             'starts_at' => '2026-08-19 10:00:00',
             'ends_at' => '2026-08-20 10:00:00',
             'is_closed' => false,
@@ -63,7 +63,7 @@ class LegacyElectionPhaseResolverTest extends TestCase
 
     public function test_legacy_closed_flag_has_priority(): void
     {
-        $election = new Election([
+        $election = $this->legacyElection([
             'starts_at' => '2026-08-20 10:00:00',
             'ends_at' => '2026-08-22 10:00:00',
             'is_closed' => true,
@@ -77,7 +77,7 @@ class LegacyElectionPhaseResolverTest extends TestCase
 
     public function test_missing_legacy_timestamps_default_to_open_when_not_closed(): void
     {
-        $election = new Election([
+        $election = $this->legacyElection([
             'is_closed' => false,
         ]);
 
@@ -85,5 +85,13 @@ class LegacyElectionPhaseResolverTest extends TestCase
             ElectionLifecycleStatus::Open,
             $this->resolver->resolve($election, CarbonImmutable::parse('2026-08-21 10:00:00')),
         );
+    }
+
+    private function legacyElection(array $attributes): Election
+    {
+        $election = new Election();
+        $election->setRawAttributes($attributes, true);
+
+        return $election;
     }
 }
