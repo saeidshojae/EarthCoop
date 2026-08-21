@@ -3,6 +3,9 @@
 namespace App\Services\NajmHoda\FounderOps;
 
 use App\Models\FounderAnnouncementDraft;
+use App\Models\FounderContentDraft;
+use App\Models\FounderEmailDraft;
+use App\Models\Setting;
 use App\Models\SupportReplyDraft;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +31,9 @@ class FounderActionOutcomeVerificationService
             $verification = match ($domain . '.' . $action) {
                 'support.send_reply' => $this->verifySupportReply($result),
                 'notifications.publish_announcement' => $this->verifyAnnouncement($result),
+                'blog.publish_post' => $this->verifyBlogPublication($result),
+                'email.send_email', 'email.bulk_send' => $this->verifyEmailSend($result),
+                'admin_settings.change_setting' => $this->verifyAdminSetting($result),
                 default => [
                     'verified' => false,
                     'status' => 'not_configured',
@@ -60,7 +66,6 @@ class FounderActionOutcomeVerificationService
                 $payload
             );
         } catch (Throwable) {
-            // Outcome telemetry is secondary to an already-committed canonical mutation.
             if ((bool) ($verification['verified'] ?? false)) {
                 $verification = [
                     'verified' => false,
@@ -128,6 +133,74 @@ class FounderActionOutcomeVerificationService
                 'draft_status' => $draft?->status,
                 'announcement_id' => $announcementId,
                 'announcement_persisted' => $announcementExists,
+            ],
+        ];
+    }
+
+    /** @param array<string,mixed> $result */
+    protected function verifyBlogPublication(array $result): array
+    {
+        $draftId = (int) ($result['draft_id'] ?? 0);
+        $blogId = (int) ($result['blog_id'] ?? 0);
+        $draft = $draftId > 0 ? FounderContentDraft::query()->find($draftId) : null;
+        $blogExists = $blogId > 0 ? DB::table('blogs')->where('id', $blogId)->exists() : false;
+        $verified = $draft !== null && (string) $draft->status === 'published' && $blogExists;
+
+        return [
+            'verified' => $verified,
+            'status' => $verified ? 'verified' : 'failed',
+            'evidence' => [
+                'draft_id' => $draftId,
+                'draft_status' => $draft?->status,
+                'blog_id' => $blogId,
+                'blog_persisted' => $blogExists,
+            ],
+        ];
+    }
+
+    /** @param array<string,mixed> $result */
+    protected function verifyEmailSend(array $result): array
+    {
+        $draftId = (int) ($result['draft_id'] ?? 0);
+        $recipientCount = (int) ($result['recipient_count'] ?? 0);
+        $sentCount = (int) ($result['sent_count'] ?? 0);
+        $failedCount = (int) ($result['failed_count'] ?? 0);
+        $draft = $draftId > 0 ? FounderEmailDraft::query()->find($draftId) : null;
+        $countsConsistent = $recipientCount > 0 && ($sentCount + $failedCount) === $recipientCount;
+        $verified = $draft !== null && (string) $draft->status === 'sent' && $countsConsistent;
+
+        return [
+            'verified' => $verified,
+            'status' => $verified ? 'verified' : 'failed',
+            'verification_scope' => 'canonical_send_attempt_only',
+            'external_delivery_confirmed' => false,
+            'evidence' => [
+                'draft_id' => $draftId,
+                'draft_status' => $draft?->status,
+                'recipient_count' => $recipientCount,
+                'sent_count' => $sentCount,
+                'failed_count' => $failedCount,
+                'counts_consistent' => $countsConsistent,
+            ],
+        ];
+    }
+
+    /** @param array<string,mixed> $result */
+    protected function verifyAdminSetting(array $result): array
+    {
+        $key = (string) ($result['setting_key'] ?? '');
+        $expected = $result['new_value'] ?? null;
+        $settings = Setting::query()->find(1);
+        $actual = $settings?->getAttribute($key);
+        $verified = $key !== '' && $settings !== null && $actual === $expected;
+
+        return [
+            'verified' => $verified,
+            'status' => $verified ? 'verified' : 'failed',
+            'evidence' => [
+                'setting_key' => $key,
+                'expected_value' => $expected,
+                'persisted_value' => $actual,
             ],
         ];
     }
