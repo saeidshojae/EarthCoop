@@ -7,6 +7,7 @@ use App\Models\ElectionPolicyVersion;
 use App\Models\Group;
 use App\Models\GroupSetting;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class ElectionPolicyResolver
@@ -36,11 +37,7 @@ class ElectionPolicyResolver
             ->orderByDesc('version')
             ->first();
 
-        if ($policy === null) {
-            throw new RuntimeException("No effective election policy version exists for group setting [{$setting->id}].");
-        }
-
-        return $policy;
+        return $policy ?? $this->createCompatibilityBaseline($setting);
     }
 
     public function resolveForElection(Election $election): ElectionPolicyVersion
@@ -57,35 +54,16 @@ class ElectionPolicyResolver
         $attributes = $group->getAttributes();
         $base = (string) ($attributes['location_level'] ?? '');
 
-        if (($attributes['specialty_id'] ?? null) !== null) {
-            return $base . '_job';
-        }
-        if (($attributes['experience_id'] ?? null) !== null) {
-            return $base . '_experience';
-        }
-        if (($attributes['age_group_id'] ?? null) !== null) {
-            return $base . '_age';
-        }
-        if (($attributes['gender'] ?? null) !== null) {
-            return $base . '_gender';
-        }
+        if (($attributes['specialty_id'] ?? null) !== null) return $base.'_job';
+        if (($attributes['experience_id'] ?? null) !== null) return $base.'_experience';
+        if (($attributes['age_group_id'] ?? null) !== null) return $base.'_age';
+        if (($attributes['gender'] ?? null) !== null) return $base.'_gender';
         return $base;
     }
 
-    public function managerSeatCount(Model $setting): int
-    {
-        return max(0, (int) $setting->manager_count);
-    }
-
-    public function inspectorSeatCount(Model $setting): int
-    {
-        return max(0, (int) $setting->inspector_count);
-    }
-
-    public function electionEnabled(Model $setting): bool
-    {
-        return (bool) $setting->election_status;
-    }
+    public function managerSeatCount(Model $setting): int { return max(0, (int) $setting->manager_count); }
+    public function inspectorSeatCount(Model $setting): int { return max(0, (int) $setting->inspector_count); }
+    public function electionEnabled(Model $setting): bool { return (bool) $setting->election_status; }
 
     public function votingDurationDays(Model $setting): int
     {
@@ -113,5 +91,39 @@ class ElectionPolicyResolver
         return $setting instanceof ElectionPolicyVersion
             ? max(1, (int) $setting->response_duration_days)
             : ElectionResponsibilityOfferService::RESPONSE_WINDOW_DAYS;
+    }
+
+    private function createCompatibilityBaseline(GroupSetting $setting): ElectionPolicyVersion
+    {
+        return DB::transaction(function () use ($setting): ElectionPolicyVersion {
+            $existing = ElectionPolicyVersion::query()
+                ->where('group_setting_id', $setting->id)
+                ->where('effective_at', '<=', now())
+                ->orderByDesc('version')
+                ->lockForUpdate()
+                ->first();
+            if ($existing !== null) {
+                return $existing;
+            }
+
+            $nextVersion = ((int) ElectionPolicyVersion::query()
+                ->where('group_setting_id', $setting->id)->max('version')) + 1;
+
+            return ElectionPolicyVersion::create([
+                'group_setting_id' => $setting->id,
+                'level_key' => $setting->level,
+                'version' => max(1, $nextVersion),
+                'election_status' => (bool) $setting->election_status,
+                'manager_count' => max(0, (int) $setting->manager_count),
+                'inspector_count' => max(0, (int) $setting->inspector_count),
+                'voting_duration_days' => max(1, (int) $setting->election_time),
+                'start_threshold' => max(1, (int) $setting->max_for_election),
+                'cycle_interval_months' => max(0, (int) $setting->second_election_time),
+                'response_duration_days' => ElectionResponsibilityOfferService::RESPONSE_WINDOW_DAYS,
+                'effective_at' => now(),
+                'change_reason' => 'compatibility_baseline_created_on_first_use',
+                'metadata' => ['source' => 'resolver_compatibility_fallback'],
+            ]);
+        }, 3);
     }
 }
