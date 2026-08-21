@@ -6,6 +6,7 @@ use App\Enums\Elections\ElectionLifecycleStatus;
 use App\Enums\Elections\ElectionPosition;
 use App\Enums\Elections\ElectionResponsibilityOfferStatus;
 use App\Events\Elections\ElectionAppointmentApplied;
+use App\Events\Elections\ElectionAppointmentRevoked;
 use App\Events\Elections\ElectionRepresentationActivated;
 use App\Models\Election;
 use App\Models\ElectionAppointment;
@@ -15,6 +16,7 @@ use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 use RuntimeException;
 
 class ElectionAppointmentService
@@ -191,6 +193,27 @@ class ElectionAppointmentService
         }, 3);
     }
 
+    public function revoke(ElectionAppointment $appointment, string $reason, string $actor = 'election_appointment_service'): ElectionAppointment
+    {
+        if (trim($reason) === '') {
+            throw new InvalidArgumentException('Appointment revocation reason is required.');
+        }
+        if (trim($actor) === '') {
+            throw new InvalidArgumentException('Appointment revocation actor is required.');
+        }
+
+        return DB::transaction(function () use ($appointment, $reason, $actor): ElectionAppointment {
+            $locked = ElectionAppointment::query()->lockForUpdate()->findOrFail($appointment->id);
+            if ($locked->status !== 'active') {
+                return $locked;
+            }
+
+            $this->revokeChain($locked, trim($reason), trim($actor));
+
+            return $locked->refresh();
+        }, 3);
+    }
+
     public function summary(Election $election): array
     {
         return [
@@ -358,6 +381,30 @@ class ElectionAppointmentService
             $this->endRepresentation($child, 'inherited_source_chain_superseded_by_higher_valid_seat');
             $this->demoteMembershipIfNoActiveResponsibility($user->id, $child->group_id);
         }
+    }
+
+    private function revokeChain(ElectionAppointment $appointment, string $reason, string $actor): void
+    {
+        $children = ElectionAppointment::query()
+            ->where('source_appointment_id', $appointment->id)
+            ->where('status', 'active')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($children as $child) {
+            $this->revokeChain($child, 'source_appointment_revoked: '.$reason, $actor);
+        }
+
+        $appointment->forceFill([
+            'status' => 'revoked',
+            'ended_at' => now(),
+            'actor' => $actor,
+            'reason' => $reason,
+        ])->save();
+
+        $this->endRepresentation($appointment, 'appointment_revoked: '.$reason);
+        $this->demoteMembershipIfNoActiveResponsibility((int) $appointment->user_id, (int) $appointment->group_id);
+        ElectionAppointmentRevoked::dispatch($appointment);
     }
 
     private function endRepresentation(ElectionAppointment $appointment, string $reason): void
