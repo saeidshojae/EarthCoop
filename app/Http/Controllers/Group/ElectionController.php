@@ -41,7 +41,10 @@ class ElectionController extends Controller
                 Vote::create([
                     'election_id' => $election->id,
                     'voter_id' => auth()->id(),
+                    // Keep the legacy column populated during the compatibility
+                    // window; canonical election code reads candidate_user_id.
                     'candidate_id' => $userId,
+                    'candidate_user_id' => $userId,
                     'position' => ElectionPosition::Inspector->legacyVotePosition(),
                 ]);
             }
@@ -53,6 +56,7 @@ class ElectionController extends Controller
                     'election_id' => $election->id,
                     'voter_id' => auth()->id(),
                     'candidate_id' => $userId,
+                    'candidate_user_id' => $userId,
                     'position' => ElectionPosition::Manager->legacyVotePosition(),
                 ]);
             }
