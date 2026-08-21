@@ -30,17 +30,29 @@ class Election extends Model
     ];
 
     /**
-     * Compatibility bridge: legacy code still closes an election through
-     * is_closed. A proven close may safely advance the canonical projection to
-     * closed; writing false cannot tell scheduled from open, so it is not
-     * guessed here.
+     * Compatibility bridge for legacy callers that still close an election via
+     * is_closed. A direct legacy close may advance scheduled/open/unknown state
+     * to canonical closed, but it must never collapse a later canonical state
+     * such as tallying/awaiting_acceptance/appointing/filled back to closed.
      */
     public function setIsClosedAttribute(mixed $value): void
     {
         $closed = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
         $this->attributes['is_closed'] = $closed ?? (bool) $value;
 
-        if ((bool) $this->attributes['is_closed']) {
+        if (! (bool) $this->attributes['is_closed']) {
+            return;
+        }
+
+        $current = $this->attributes['lifecycle_status'] ?? null;
+        if ($current instanceof ElectionLifecycleStatus) {
+            $current = $current->value;
+        }
+
+        if ($current === null || $current === '' || in_array($current, [
+            ElectionLifecycleStatus::Scheduled->value,
+            ElectionLifecycleStatus::Open->value,
+        ], true)) {
             $this->attributes['lifecycle_status'] = ElectionLifecycleStatus::Closed->value;
         }
     }
