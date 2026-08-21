@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Elections\ElectionBallotCommentVisibility;
+use App\Enums\Elections\ElectionVoteVisibility;
 use Illuminate\Database\Eloquent\Model;
 use LogicException;
 
@@ -16,15 +17,19 @@ class ElectionBallotEvent extends Model
         'previous_candidate_user_id',
         'position',
         'previous_position',
+        'vote_visibility',
         'comment',
         'comment_visibility',
+        'comment_anonymous',
         'request_uuid',
         'metadata',
         'occurred_at',
     ];
 
     protected $casts = [
+        'vote_visibility' => ElectionVoteVisibility::class,
         'comment_visibility' => ElectionBallotCommentVisibility::class,
+        'comment_anonymous' => 'boolean',
         'metadata' => 'array',
         'occurred_at' => 'datetime',
     ];
