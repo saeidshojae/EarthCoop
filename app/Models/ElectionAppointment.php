@@ -35,6 +35,7 @@ class ElectionAppointment extends Model
                     'user_id' => $appointment->user_id,
                     'group_id' => $appointment->group_id,
                     'position' => $appointment->position,
+                    'continuity_mode' => 'immediate',
                     'status' => 'open',
                     'opened_at' => $appointment->ended_at ?? now(),
                     'actor' => $appointment->actor ?: 'election_appointment_service',
