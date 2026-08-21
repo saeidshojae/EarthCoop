@@ -8,6 +8,7 @@ use App\Models\FounderEmailDraft;
 use App\Models\FounderNajmBaharTransactionIntent;
 use App\Models\Setting;
 use App\Models\SupportReplyDraft;
+use App\Modules\NajmBahar\Models\MonetaryPolicyVersion;
 use App\Modules\Secretariat\Models\SecretariatCase;
 use App\Modules\Secretariat\Models\SecretariatRecord;
 use App\Modules\Stock\Models\Auction;
@@ -42,6 +43,7 @@ class FounderActionOutcomeVerificationService
                 'secretariat.register_formal_record' => $this->verifySecretariatRegistration($result),
                 'secretariat.close_case' => $this->verifySecretariatCaseClosure($result),
                 'najm_bahar.execute_transaction' => $this->verifyNajmBaharTransaction($result),
+                'najm_bahar.change_monetary_policy' => $this->verifyNajmBaharMonetaryPolicy($result),
                 'stock.settle_auction' => $this->verifyStockSettlement($result),
                 default => [
                     'verified' => false,
@@ -287,6 +289,38 @@ class FounderActionOutcomeVerificationService
                 'transaction_id' => $transactionId,
                 'transaction_persisted' => $transactionExists,
                 'tracking_number' => $result['tracking_number'] ?? null,
+            ],
+        ];
+    }
+
+    /** @param array<string,mixed> $result */
+    protected function verifyNajmBaharMonetaryPolicy(array $result): array
+    {
+        $policyVersionId = (int) ($result['policy_version_id'] ?? 0);
+        $version = (int) ($result['version'] ?? 0);
+        $approvedBy = (int) ($result['approved_by'] ?? 0);
+        $policy = $policyVersionId > 0 ? MonetaryPolicyVersion::query()->find($policyVersionId) : null;
+
+        $verified = $policy !== null
+            && (string) $policy->status === 'active'
+            && (int) $policy->version === $version
+            && $approvedBy > 0
+            && (int) ($policy->approved_by ?? 0) === $approvedBy
+            && $policy->approved_at !== null
+            && $policy->effective_from !== null;
+
+        return [
+            'verified' => $verified,
+            'status' => $verified ? 'verified' : 'failed',
+            'verification_scope' => 'versioned_monetary_policy_activation',
+            'evidence' => [
+                'policy_version_id' => $policyVersionId,
+                'version' => $version,
+                'persisted_status' => $policy?->status,
+                'approved_by' => $approvedBy,
+                'persisted_approved_by' => $policy?->approved_by,
+                'approved_at' => $policy?->approved_at?->toISOString(),
+                'effective_from' => $policy?->effective_from?->toISOString(),
             ],
         ];
     }
