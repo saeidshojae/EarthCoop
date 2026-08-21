@@ -95,8 +95,10 @@ class ProcessElectionLifecycle extends Command
             $this->error("Responsibility offers: {$exception->getMessage()}");
         }
 
+        // Keep the legacy processed/advanced/errors sequence stable for operators,
+        // log parsers and regression checks; append the E7 metric afterwards.
         $this->line(
-            "groups={$groupsProcessed} cycles_created={$cyclesCreated} processed={$processed} advanced={$advanced} expired_offers={$expiredOffers} errors={$errors}"
+            "groups={$groupsProcessed} cycles_created={$cyclesCreated} processed={$processed} advanced={$advanced} errors={$errors} expired_offers={$expiredOffers}"
         );
 
         return ($errors > 0 && $this->option('fail-on-error')) ? self::FAILURE : self::SUCCESS;
