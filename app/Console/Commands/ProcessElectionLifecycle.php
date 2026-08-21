@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Enums\Elections\ElectionLifecycleStatus;
 use App\Models\Election;
 use App\Models\Group;
+use App\Services\Elections\ElectionAppointmentService;
 use App\Services\Elections\ElectionCycleService;
 use App\Services\Elections\ElectionLifecycleService;
 use App\Services\Elections\ElectionResponsibilityOfferService;
@@ -17,12 +18,13 @@ class ProcessElectionLifecycle extends Command
         {--limit=500 : Maximum groups/elections/offers to inspect in one tick}
         {--fail-on-error : Exit non-zero if any election action fails processing}';
 
-    protected $description = 'Create election cycles, advance due states and expire responsibility offers through canonical server-side services';
+    protected $description = 'Create election cycles, advance due states, expire offers and apply accepted appointments through canonical server-side services';
 
     public function handle(
         ElectionCycleService $cycles,
         ElectionLifecycleService $lifecycle,
         ElectionResponsibilityOfferService $offers,
+        ElectionAppointmentService $appointments,
     ): int {
         $limit = max(1, min(5000, (int) $this->option('limit')));
         $groupsProcessed = 0;
@@ -30,6 +32,7 @@ class ProcessElectionLifecycle extends Command
         $processed = 0;
         $advanced = 0;
         $expiredOffers = 0;
+        $appointmentElections = 0;
         $errors = 0;
 
         Group::query()->orderBy('id')->chunkById(100, function ($groups) use (
@@ -95,10 +98,30 @@ class ProcessElectionLifecycle extends Command
             $this->error("Responsibility offers: {$exception->getMessage()}");
         }
 
+        Election::query()
+            ->whereIn('lifecycle_status', [
+                ElectionLifecycleStatus::AwaitingAcceptance->value,
+                ElectionLifecycleStatus::Appointing->value,
+            ])
+            ->whereHas('responsibilityOffers', fn ($query) => $query->where('status', 'accepted'))
+            ->orderBy('id')
+            ->limit($limit)
+            ->get()
+            ->each(function (Election $election) use ($appointments, &$appointmentElections, &$errors): void {
+                try {
+                    $appointments->process($election);
+                    $appointmentElections++;
+                } catch (Throwable $exception) {
+                    $errors++;
+                    report($exception);
+                    $this->error("Election {$election->id} appointments: {$exception->getMessage()}");
+                }
+            });
+
         // Keep the legacy processed/advanced/errors sequence stable for operators,
-        // log parsers and regression checks; append the E7 metric afterwards.
+        // log parsers and regression checks; append newer E7/E8 metrics afterwards.
         $this->line(
-            "groups={$groupsProcessed} cycles_created={$cyclesCreated} processed={$processed} advanced={$advanced} errors={$errors} expired_offers={$expiredOffers}"
+            "groups={$groupsProcessed} cycles_created={$cyclesCreated} processed={$processed} advanced={$advanced} errors={$errors} expired_offers={$expiredOffers} appointment_elections={$appointmentElections}"
         );
 
         return ($errors > 0 && $this->option('fail-on-error')) ? self::FAILURE : self::SUCCESS;
