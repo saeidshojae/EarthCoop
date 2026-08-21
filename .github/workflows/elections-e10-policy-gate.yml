@@ -63,15 +63,16 @@ jobs:
       - name: Migrate E10 policy schema
         run: php artisan migrate:fresh --force
 
-      - name: Run E10 policy versioning and frozen runtime tests
+      - name: Run E10 policy versioning, frozen runtime, and admin history tests
         run: |
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/Elections/ElectionPolicyVersioningTest.php \
-            tests/Feature/Elections/ElectionPolicyResponseDurationTest.php
+            tests/Feature/Elections/ElectionPolicyResponseDurationTest.php \
+            tests/Feature/Elections/ElectionPolicyHistoryAdminTest.php
 
       - name: Re-run elections regression suite
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections
 
       - name: Validate versioned policy schema
         run: |
-          php artisan tinker --execute="throw_unless(\Illuminate\Support\Facades\Schema::hasTable('election_policy_versions')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('elections', 'policy_version_id')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('election_policy_versions', 'effective_at')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('election_policy_versions', 'cycle_interval_months')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('election_policy_versions', 'response_duration_days'));"
+          php artisan tinker --execute="throw_unless(\Illuminate\Support\Facades\Schema::hasTable('election_policy_versions')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('elections', 'policy_version_id')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('election_policy_versions', 'effective_at')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('election_policy_versions', 'cycle_interval_months')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('election_policy_versions', 'response_duration_days')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('election_policy_versions', 'manager_contract_version_id')); throw_unless(\Illuminate\Support\Facades\Schema::hasColumn('election_policy_versions', 'inspector_contract_version_id'));"
