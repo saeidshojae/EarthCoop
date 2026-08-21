@@ -114,19 +114,21 @@ class ElectionTallyService
 
             $existing = ElectionTallyResult::query()
                 ->where('election_id', $locked->id)
-                ->orderBy('position')
-                ->orderBy('rank')
                 ->get();
 
             if ($existing->isNotEmpty()) {
-                $expected = $allRows->map(fn (array $row) => $this->comparableRow($row))->values()->all();
-                $actual = $existing->map(fn (ElectionTallyResult $row) => $this->comparableRow($row->toArray()))->values()->all();
+                $expected = $this->normaliseComparableRows(
+                    $allRows->map(fn (array $row) => $this->comparableRow($row))
+                );
+                $actual = $this->normaliseComparableRows(
+                    $existing->map(fn (ElectionTallyResult $row) => $this->comparableRow($row->toArray()))
+                );
 
                 if ($expected !== $actual) {
                     throw new RuntimeException('Stored tally snapshot differs from recomputed deterministic result.');
                 }
 
-                return $existing;
+                return $this->orderedResults($existing);
             }
 
             $talliedAt = now();
@@ -134,11 +136,9 @@ class ElectionTallyService
                 ElectionTallyResult::create($row + ['tallied_at' => $talliedAt]);
             }
 
-            return ElectionTallyResult::query()
-                ->where('election_id', $locked->id)
-                ->orderBy('position')
-                ->orderBy('rank')
-                ->get();
+            return $this->orderedResults(
+                ElectionTallyResult::query()->where('election_id', $locked->id)->get()
+            );
         }, 3);
     }
 
@@ -163,5 +163,37 @@ class ElectionTallyService
             'tie_break_version' => (string) $row['tie_break_version'],
             'tie_break_key' => (string) $row['tie_break_key'],
         ];
+    }
+
+    private function normaliseComparableRows(Collection $rows): array
+    {
+        return $rows
+            ->sortBy(fn (array $row) => sprintf(
+                '%02d|%010d',
+                $this->positionOrder((string) $row['position']),
+                (int) $row['rank'],
+            ))
+            ->values()
+            ->all();
+    }
+
+    private function orderedResults(Collection $rows): Collection
+    {
+        return $rows
+            ->sortBy(fn (ElectionTallyResult $row) => sprintf(
+                '%02d|%010d',
+                $this->positionOrder((string) $row->position),
+                (int) $row->rank,
+            ))
+            ->values();
+    }
+
+    private function positionOrder(string $position): int
+    {
+        return match ($position) {
+            ElectionPosition::Manager->value => 0,
+            ElectionPosition::Inspector->value => 1,
+            default => 99,
+        };
     }
 }
