@@ -14,6 +14,11 @@ class ElectionTallyResult extends Model
         'vote_count',
         'rank',
         'within_seat_cutoff',
+        'cycle_identifier',
+        'stopped_at',
+        'vote_snapshot_hash',
+        'draw_seed_version',
+        'draw_seed',
         'tie_break_version',
         'tie_break_key',
         'tallied_at',
@@ -23,6 +28,7 @@ class ElectionTallyResult extends Model
         'vote_count' => 'integer',
         'rank' => 'integer',
         'within_seat_cutoff' => 'boolean',
+        'stopped_at' => 'datetime',
         'tallied_at' => 'datetime',
     ];
 
