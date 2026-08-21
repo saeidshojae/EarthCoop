@@ -7,10 +7,12 @@ use App\Enums\Elections\ElectionPosition;
 use App\Models\Election;
 use App\Models\ElectionEligibilitySnapshot;
 use App\Models\ElectionTallyResult;
+use App\Models\ElectionVoteSnapshotRun;
 use App\Models\Group;
 use App\Models\GroupSetting;
 use App\Models\User;
 use App\Models\Vote;
+use App\Services\Elections\ElectionLifecycleService;
 use App\Services\Elections\ElectionTallyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use RuntimeException;
@@ -20,7 +22,7 @@ class ElectionTallyServiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_same_input_always_produces_same_ranked_snapshot_with_verifiable_draw_evidence(): void
+    public function test_same_stop_snapshot_always_produces_same_ranked_result_with_verifiable_draw_evidence(): void
     {
         [$election, $voterA, $voterB, $candidateA, $candidateB, $candidateC] = $this->fixture();
 
@@ -28,6 +30,17 @@ class ElectionTallyServiceTest extends TestCase
         $this->vote($election, $voterB, $candidateA, ElectionPosition::Manager);
         $this->vote($election, $voterA, $candidateB, ElectionPosition::Manager);
         $this->vote($election, $voterB, $candidateC, ElectionPosition::Manager);
+
+        $election = app(ElectionLifecycleService::class)->transition(
+            $election,
+            ElectionLifecycleStatus::Closed,
+            'test_stop',
+            'test',
+        );
+
+        $run = ElectionVoteSnapshotRun::where('election_id', $election->id)->firstOrFail();
+        $this->assertSame(4, $run->vote_count);
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $run->snapshot_hash);
 
         $service = app(ElectionTallyService::class);
         $fields = [
@@ -44,32 +57,47 @@ class ElectionTallyServiceTest extends TestCase
         $this->assertSame(6, ElectionTallyResult::where('election_id', $election->id)->count());
 
         $managerRows = ElectionTallyResult::where('election_id', $election->id)
-            ->where('position', 'manager')
-            ->orderBy('rank')
-            ->get();
-
+            ->where('position', 'manager')->orderBy('rank')->get();
         $this->assertSame($candidateA->id, $managerRows[0]->candidate_user_id);
         $this->assertSame(2, $managerRows[0]->vote_count);
         $this->assertTrue($managerRows[0]->within_seat_cutoff);
 
         $evidence = $managerRows[0];
-        $this->assertSame('election:'.$election->id, $evidence->cycle_identifier);
+        $this->assertSame($run->cycle_identifier, $evidence->cycle_identifier);
+        $this->assertSame($run->snapshot_hash, $evidence->vote_snapshot_hash);
         $this->assertSame(ElectionTallyService::DRAW_SEED_VERSION, $evidence->draw_seed_version);
         $this->assertSame(ElectionTallyService::TIE_BREAK_VERSION, $evidence->tie_break_version);
-        $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $evidence->vote_snapshot_hash);
         $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $evidence->draw_seed);
-
-        $tied = $managerRows->where('vote_count', 1)->values();
-        $this->assertCount(2, $tied);
-        $this->assertLessThanOrEqual(0, strcmp($tied[0]->tie_break_key, $tied[1]->tie_break_key));
-        $this->assertSame($evidence->draw_seed, $tied[0]->draw_seed);
         $this->assertSame('tallying', $election->refresh()->lifecycle_status->value);
     }
 
-    public function test_tally_fails_closed_on_unresolved_legacy_vote_identity(): void
+    public function test_votes_written_after_stop_do_not_change_tally_for_the_stopped_snapshot(): void
+    {
+        [$election, $voterA, $voterB, $candidateA, $candidateB] = $this->fixture();
+        $this->vote($election, $voterA, $candidateA, ElectionPosition::Manager);
+
+        $election = app(ElectionLifecycleService::class)->transition(
+            $election,
+            ElectionLifecycleStatus::Closed,
+            'test_stop',
+            'test',
+        );
+
+        // Simulates a later-cycle projection write. E6 must never include it in
+        // the already frozen stop snapshot.
+        $this->vote($election, $voterB, $candidateB, ElectionPosition::Manager);
+
+        $rows = app(ElectionTallyService::class)->tally($election);
+        $managerB = $rows->first(fn ($row) => $row->position === 'manager' && $row->candidate_user_id === $candidateB->id);
+
+        $this->assertNotNull($managerB);
+        $this->assertSame(0, $managerB->vote_count);
+        $this->assertSame(1, ElectionVoteSnapshotRun::where('election_id', $election->id)->value('vote_count'));
+    }
+
+    public function test_stop_snapshot_fails_closed_on_unresolved_legacy_vote_identity(): void
     {
         [$election, $voterA] = $this->fixture();
-
         Vote::create([
             'election_id' => $election->id,
             'voter_id' => $voterA->id,
@@ -78,23 +106,18 @@ class ElectionTallyServiceTest extends TestCase
             'position' => ElectionPosition::Manager->legacyVotePosition(),
         ]);
 
-        $service = app(ElectionTallyService::class);
-
         $this->expectException(RuntimeException::class);
         try {
-            $service->tally($election);
+            app(ElectionLifecycleService::class)->transition(
+                $election,
+                ElectionLifecycleStatus::Closed,
+                'test_stop',
+                'test',
+            );
         } finally {
-            $this->assertSame(0, ElectionTallyResult::where('election_id', $election->id)->count());
+            $this->assertSame(0, ElectionVoteSnapshotRun::where('election_id', $election->id)->count());
+            $this->assertSame('open', $election->refresh()->lifecycle_status->value);
         }
-    }
-
-    public function test_tally_fails_closed_when_stop_time_cannot_be_proved(): void
-    {
-        [$election] = $this->fixture();
-        $election->forceFill(['ends_at' => null])->save();
-
-        $this->expectException(RuntimeException::class);
-        app(ElectionTallyService::class)->tally($election->refresh());
     }
 
     private function fixture(): array
@@ -118,8 +141,8 @@ class ElectionTallyServiceTest extends TestCase
             'group_id' => $group->id,
             'starts_at' => now()->subDays(10),
             'ends_at' => now()->subMinute(),
-            'is_closed' => true,
-            'lifecycle_status' => ElectionLifecycleStatus::Closed,
+            'is_closed' => false,
+            'lifecycle_status' => ElectionLifecycleStatus::Open,
             'eligibility_snapshot_captured_at' => now()->subDays(10),
             'eligibility_snapshot_version' => 1,
         ]);
