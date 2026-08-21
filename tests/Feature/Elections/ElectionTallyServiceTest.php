@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\Vote;
 use App\Services\Elections\ElectionLifecycleService;
 use App\Services\Elections\ElectionTallyService;
+use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use RuntimeException;
 use Tests\TestCase;
@@ -43,15 +44,8 @@ class ElectionTallyServiceTest extends TestCase
         $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $run->snapshot_hash);
 
         $service = app(ElectionTallyService::class);
-        $fields = [
-            'candidate_user_id', 'position', 'vote_count', 'rank',
-            'within_seat_cutoff', 'cycle_identifier', 'stopped_at',
-            'vote_snapshot_hash', 'draw_seed_version', 'draw_seed',
-            'tie_break_version', 'tie_break_key',
-        ];
-
-        $first = $service->tally($election)->map->only($fields)->values()->all();
-        $second = $service->tally($election->refresh())->map->only($fields)->values()->all();
+        $first = $this->normaliseTallyRows($service->tally($election));
+        $second = $this->normaliseTallyRows($service->tally($election->refresh()));
 
         $this->assertSame($first, $second);
         $this->assertSame(6, ElectionTallyResult::where('election_id', $election->id)->count());
@@ -65,6 +59,10 @@ class ElectionTallyServiceTest extends TestCase
         $evidence = $managerRows[0];
         $this->assertSame($run->cycle_identifier, $evidence->cycle_identifier);
         $this->assertSame($run->snapshot_hash, $evidence->vote_snapshot_hash);
+        $this->assertSame(
+            $run->stopped_at->copy()->utc()->format('Y-m-d\\TH:i:s.u\\Z'),
+            $evidence->stopped_at->copy()->utc()->format('Y-m-d\\TH:i:s.u\\Z'),
+        );
         $this->assertSame(ElectionTallyService::DRAW_SEED_VERSION, $evidence->draw_seed_version);
         $this->assertSame(ElectionTallyService::TIE_BREAK_VERSION, $evidence->tie_break_version);
         $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $evidence->draw_seed);
@@ -83,8 +81,6 @@ class ElectionTallyServiceTest extends TestCase
             'test',
         );
 
-        // Simulates a later-cycle projection write. E6 must never include it in
-        // the already frozen stop snapshot.
         $this->vote($election, $voterB, $candidateB, ElectionPosition::Manager);
 
         $rows = app(ElectionTallyService::class)->tally($election);
@@ -118,6 +114,31 @@ class ElectionTallyServiceTest extends TestCase
             $this->assertSame(0, ElectionVoteSnapshotRun::where('election_id', $election->id)->count());
             $this->assertSame('open', $election->refresh()->lifecycle_status->value);
         }
+    }
+
+    private function normaliseTallyRows($rows): array
+    {
+        return $rows->map(function ($row): array {
+            $stoppedAt = $row->stopped_at;
+            $canonicalStoppedAt = $stoppedAt instanceof CarbonInterface
+                ? $stoppedAt->copy()->utc()->format('Y-m-d\\TH:i:s.u\\Z')
+                : (string) $stoppedAt;
+
+            return [
+                'candidate_user_id' => (int) $row->candidate_user_id,
+                'position' => (string) $row->position,
+                'vote_count' => (int) $row->vote_count,
+                'rank' => (int) $row->rank,
+                'within_seat_cutoff' => (bool) $row->within_seat_cutoff,
+                'cycle_identifier' => (string) $row->cycle_identifier,
+                'stopped_at' => $canonicalStoppedAt,
+                'vote_snapshot_hash' => (string) $row->vote_snapshot_hash,
+                'draw_seed_version' => (string) $row->draw_seed_version,
+                'draw_seed' => (string) $row->draw_seed,
+                'tie_break_version' => (string) $row->tie_break_version,
+                'tie_break_key' => (string) $row->tie_break_key,
+            ];
+        })->values()->all();
     }
 
     private function fixture(): array
