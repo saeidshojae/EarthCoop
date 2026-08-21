@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\Elections\LegacyVoteCandidateIdentityResolver;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -9,32 +10,38 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('votes', function (Blueprint $table) {
-            if (! Schema::hasColumn('votes', 'candidate_user_id')) {
-                $table->unsignedBigInteger('candidate_user_id')
-                    ->nullable()
-                    ->after('candidate_id')
-                    ->index('votes_candidate_user_id_index');
-            }
+        $needsCandidateUserId = ! Schema::hasColumn('votes', 'candidate_user_id');
+        $needsPosition = ! Schema::hasColumn('votes', 'position');
 
-            // The runtime has historically written a vote position even though
-            // older database snapshots did not consistently contain the column.
-            if (! Schema::hasColumn('votes', 'position')) {
-                $table->string('position', 32)->nullable()->after('candidate_user_id');
-            }
-        });
+        if ($needsCandidateUserId || $needsPosition) {
+            Schema::table('votes', function (Blueprint $table) use ($needsCandidateUserId, $needsPosition) {
+                if ($needsCandidateUserId) {
+                    $table->unsignedBigInteger('candidate_user_id')
+                        ->nullable()
+                        ->after('candidate_id')
+                        ->index('votes_candidate_user_id_index');
+                }
+
+                // The runtime has historically written a vote position even
+                // though older database snapshots did not consistently contain
+                // the column.
+                if ($needsPosition) {
+                    $table->string('position', 32)->nullable()->after('candidate_user_id');
+                }
+            });
+        }
 
         $this->backfillProvableCandidateUsers();
     }
 
     public function down(): void
     {
-        Schema::table('votes', function (Blueprint $table) {
-            if (Schema::hasColumn('votes', 'candidate_user_id')) {
+        if (Schema::hasColumn('votes', 'candidate_user_id')) {
+            Schema::table('votes', function (Blueprint $table) {
                 $table->dropIndex('votes_candidate_user_id_index');
                 $table->dropColumn('candidate_user_id');
-            }
-        });
+            });
+        }
 
         // Do not drop `position` on rollback. It predates this migration at the
         // application-contract level, and removing it could destroy valid data
@@ -52,10 +59,12 @@ return new class extends Migration
      */
     private function backfillProvableCandidateUsers(): void
     {
+        $resolver = new LegacyVoteCandidateIdentityResolver();
+
         DB::table('votes')
             ->whereNull('candidate_user_id')
             ->orderBy('id')
-            ->chunkById(500, function ($votes): void {
+            ->chunkById(500, function ($votes) use ($resolver): void {
                 foreach ($votes as $vote) {
                     $legacyId = (int) $vote->candidate_id;
 
@@ -72,30 +81,18 @@ return new class extends Migration
                         ->first(['id', 'user_id', 'election_id']);
 
                     $candidateUserId = $candidate ? (int) $candidate->user_id : null;
-                    $candidateUserExists = $candidateUserId
-                        ? DB::table('users')->where('id', $candidateUserId)->exists()
-                        : false;
+                    $candidateUserExists = $candidateUserId !== null
+                        && DB::table('users')->where('id', $candidateUserId)->exists();
+                    $candidateMatchesElection = $candidate !== null
+                        && (int) $candidate->election_id === (int) $vote->election_id;
 
-                    $candidateMatchesElection = ! $candidate
-                        || (int) $candidate->election_id === (int) $vote->election_id;
-
-                    $resolved = null;
-
-                    if ($directUserExists) {
-                        // If the same numeric id also identifies a Candidate that
-                        // points at another user in this election, interpretation
-                        // is genuinely ambiguous and must not be guessed.
-                        $conflictsWithCandidateMeaning = $candidate
-                            && $candidateMatchesElection
-                            && $candidateUserExists
-                            && $candidateUserId !== $legacyId;
-
-                        if (! $conflictsWithCandidateMeaning) {
-                            $resolved = $legacyId;
-                        }
-                    } elseif ($candidate && $candidateMatchesElection && $candidateUserExists) {
-                        $resolved = $candidateUserId;
-                    }
+                    $resolved = $resolver->resolve(
+                        legacyId: $legacyId,
+                        directUserExists: $directUserExists,
+                        candidateUserId: $candidateUserId,
+                        candidateUserExists: $candidateUserExists,
+                        candidateMatchesElection: $candidateMatchesElection,
+                    );
 
                     if ($resolved !== null) {
                         DB::table('votes')
