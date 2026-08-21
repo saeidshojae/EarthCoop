@@ -34,6 +34,7 @@ return [
         'support.close_ticket' => App\Services\NajmHoda\FounderOps\FounderSupportTicketDecisionService::class,
         'reference_data.approve' => App\Services\NajmHoda\FounderOps\FounderReferenceApprovalDecisionService::class,
         'locations.approve' => App\Services\NajmHoda\FounderOps\FounderReferenceApprovalDecisionService::class,
+        'groups.change_member_role' => App\Services\NajmHoda\FounderOps\FounderGroupDecisionService::class,
         'reports_moderation.resolve_report' => App\Services\NajmHoda\FounderOps\FounderModerationDecisionService::class,
         'email.edit_template' => App\Services\NajmHoda\FounderOps\FounderEmailTemplateDecisionService::class,
         'email.send_email' => App\Services\NajmHoda\FounderOps\FounderEmailDecisionService::class,
@@ -56,6 +57,22 @@ return [
      | They stay non-executable until the named canonical dependency exists.
      */
     'blocked_actions' => [
+        'reference_data.reject' => [
+            'reason' => 'persisted_rejection_state_missing',
+            'dependency' => 'Canonical rejected state/lifecycle for occupational and experience candidates distinct from forbidden deletion',
+        ],
+        'locations.reject' => [
+            'reason' => 'persisted_rejection_state_missing',
+            'dependency' => 'Canonical rejected state/lifecycle for location candidates distinct from forbidden deletion',
+        ],
+        'groups.close_group' => [
+            'reason' => 'canonical_group_lifecycle_missing',
+            'dependency' => 'Audited group closure transition defining membership, election, chat and representation consequences',
+        ],
+        'runtime_health.restart_external_service' => [
+            'reason' => 'external_control_plane_missing',
+            'dependency' => 'Authenticated external-service control plane with bounded restart target allowlist and post-action health verification',
+        ],
         'blog.unpublish_post' => [
             'reason' => 'publication_state_missing',
             'dependency' => 'Canonical persisted blog publication-state lifecycle distinct from hard deletion',
