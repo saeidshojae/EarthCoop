@@ -112,6 +112,8 @@ jobs:
           php artisan list > /tmp/commands.txt
           grep -F 'najm-hoda:production-readiness' /tmp/commands.txt >/dev/null
           grep -F 'najm-bahar:production-readiness' /tmp/commands.txt >/dev/null
+          grep -F 'elections:audit-data' /tmp/commands.txt >/dev/null
+          php artisan elections:audit-data --json --fail-on-issues
 
       - name: Regression — Group Chat
         id: regression_group_chat
