@@ -9,6 +9,7 @@ on:
   pull_request:
     branches:
       - main
+      - agent/integration-pre-elections-current-main
   workflow_dispatch:
 
 permissions:
