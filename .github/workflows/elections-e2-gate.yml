@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/elections-systemic-rebuild
+  pull_request:
+    branches:
+      - agent/integration-pre-elections-current-main
   workflow_dispatch:
 
 permissions:
