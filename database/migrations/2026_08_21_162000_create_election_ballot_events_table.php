@@ -17,7 +17,7 @@ return new class extends Migration
             $table->unsignedBigInteger('previous_candidate_user_id')->nullable();
             $table->string('position', 24)->nullable();
             $table->string('previous_position', 24)->nullable();
-            $table->uuid('request_uuid');
+            $table->string('request_uuid', 128);
             $table->json('metadata')->nullable();
             $table->timestamp('occurred_at');
             $table->timestamps();
