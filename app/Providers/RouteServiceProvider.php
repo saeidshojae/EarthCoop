@@ -36,6 +36,12 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
 
+            // Election compatibility/canonical routes intentionally load after
+            // web.php so legacy responsibility-response endpoints are shadowed
+            // by the E7 read-only confirmation + CSRF-protected POST flow.
+            Route::middleware('web')
+                ->group(base_path('routes/elections.php'));
+
             Route::middleware('web')
                 ->group(base_path('routes/najm-hoda-group-attention.php'));
 
