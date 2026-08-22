@@ -7,11 +7,20 @@ use App\Http\Controllers\Elections\ElectionFeedbackTopicResponseController;
 use App\Http\Controllers\Elections\ElectionProcessReviewController;
 use App\Http\Controllers\Elections\ElectionResponsibilityContractController;
 use App\Http\Controllers\Elections\ResponsibilityOfferController;
+use App\Http\Controllers\Group\SystemicElectionChatController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\Authenticate;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(Authenticate::class)->group(function () {
+    // Loaded after routes/web.php on purpose: the systemic election-aware chat
+    // presenter replaces the legacy chat GET route while all other ChatController
+    // APIs remain untouched. Opening a chat page can therefore never create,
+    // extend, close or tally an election.
+    Route::get('/groups/chat/{group}', [SystemicElectionChatController::class, 'chat'])
+        ->middleware(['group.chat.csp', 'group.chat.context'])
+        ->name('groups.chat');
+
     Route::get('/profile/accept-candidate/{type}',[ResponsibilityOfferController::class,'legacyConfirmation'])->name('profile.accept.candidate');
     Route::post('/elections/responsibility-offers/{offer}/{decision}',[ResponsibilityOfferController::class,'respond'])->whereNumber('offer')->whereIn('decision',['accept','decline'])->name('elections.responsibility-offers.respond');
     Route::get('/elections/responsibility-contracts/{contract}/download',[ElectionResponsibilityContractController::class,'download'])->whereNumber('contract')->name('elections.responsibility-contracts.download');
