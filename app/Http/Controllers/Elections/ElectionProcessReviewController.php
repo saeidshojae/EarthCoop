@@ -7,8 +7,11 @@ use App\Models\Election;
 use App\Models\ElectionProcessReview;
 use App\Services\Elections\ElectionProcessReviewService;
 use App\Services\Elections\ElectionReviewEventResolver;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 class ElectionProcessReviewController extends Controller
 {
@@ -30,11 +33,18 @@ class ElectionProcessReviewController extends Controller
 
         // User-supplied timestamps are deliberately not accepted. The seven-day
         // review deadline is anchored to immutable election evidence.
-        $evidence = $this->events->resolve(
-            $election,
-            $validated['challenged_event'],
-            (int) $validated['challenged_event_id'],
-        );
+        try {
+            $evidence = $this->events->resolve(
+                $election,
+                $validated['challenged_event'],
+                (int) $validated['challenged_event_id'],
+            );
+        } catch (InvalidArgumentException|ModelNotFoundException $exception) {
+            throw ValidationException::withMessages([
+                'challenged_event_id' => 'رویداد انتخاباتی مرجع معتبر نیست یا به این چرخه تعلق ندارد.',
+            ]);
+        }
+
         $subjectUserId = $evidence['subject_user_id'] ?? ($validated['subject_user_id'] ?? null);
         $appointmentId = $evidence['appointment_id'] ?? ($validated['appointment_id'] ?? null);
 
