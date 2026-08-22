@@ -3,6 +3,7 @@
 namespace Tests\Feature\Elections;
 
 use App\Models\Election;
+use App\Models\ElectionBallotEvent;
 use App\Models\ElectionEligibilitySnapshot;
 use App\Models\ElectionPolicyVersion;
 use App\Models\ElectionTallyResult;
@@ -13,6 +14,7 @@ use App\Models\GroupUser;
 use App\Models\User;
 use App\Services\Elections\ElectionFeedbackTopicResponseService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -26,8 +28,10 @@ class ElectionFeedbackTopicResponseTest extends TestCase
         foreach (range(1, 2) as $i) {
             $author = User::factory()->create();
             GroupUser::create(['group_id' => $election->group_id, 'user_id' => $author->id, 'role' => 1, 'status' => 1]);
+            $event = $this->ballotEvent($election, $author, $candidate, 'vote_cast');
             ElectionVoteFeedback::create([
                 'election_id' => $election->id,
+                'ballot_event_id' => $event->id,
                 'author_user_id' => $author->id,
                 'subject_user_id' => $candidate->id,
                 'event_type' => 'vote_cast',
@@ -60,8 +64,10 @@ class ElectionFeedbackTopicResponseTest extends TestCase
         foreach (range(1, 2) as $i) {
             $author = User::factory()->create();
             GroupUser::create(['group_id' => $election->group_id, 'user_id' => $author->id, 'role' => 1, 'status' => 1]);
+            $event = $this->ballotEvent($election, $author, $candidate, 'vote_withdrawn');
             ElectionVoteFeedback::create([
                 'election_id' => $election->id,
+                'ballot_event_id' => $event->id,
                 'author_user_id' => $author->id,
                 'subject_user_id' => $candidate->id,
                 'event_type' => 'vote_withdrawn',
@@ -79,6 +85,23 @@ class ElectionFeedbackTopicResponseTest extends TestCase
         $this->expectException(RuntimeException::class);
         app(ElectionFeedbackTopicResponseService::class)
             ->publish($election, $candidate, 'transparency', 'پاسخ عمومی');
+    }
+
+    private function ballotEvent(Election $election, User $author, User $candidate, string $eventType): ElectionBallotEvent
+    {
+        return ElectionBallotEvent::create([
+            'election_id' => $election->id,
+            'voter_id' => $author->id,
+            'event_type' => $eventType,
+            'candidate_user_id' => $eventType === 'vote_withdrawn' ? null : $candidate->id,
+            'previous_candidate_user_id' => $eventType === 'vote_withdrawn' ? $candidate->id : null,
+            'position' => $eventType === 'vote_withdrawn' ? null : 'manager',
+            'previous_position' => $eventType === 'vote_withdrawn' ? 'manager' : null,
+            'vote_visibility' => 'confidential',
+            'request_uuid' => (string) Str::uuid(),
+            'metadata' => ['source' => 'topic_response_test'],
+            'occurred_at' => now()->subDays(2),
+        ]);
     }
 
     private function fixture(int $minDistinct): array
