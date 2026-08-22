@@ -2,6 +2,7 @@
 
 namespace App\Services\Elections;
 
+use App\Enums\Elections\ElectionPosition;
 use App\Models\Election;
 use App\Models\ElectionBallotEvent;
 use App\Models\Vote;
@@ -32,20 +33,30 @@ class ElectionCandidateReportService
         $bucketDays = max(1, (int) ($policy?->report_bucket_days ?? 7));
         $meaningfulNet = max(1, (int) ($policy?->meaningful_trend_min_net_change ?? 3));
 
-        $legacyPosition = $position === 'inspector' ? 'inspector' : 'manager';
+        $canonicalPosition = $position === ElectionPosition::Inspector->value
+            ? ElectionPosition::Inspector
+            : ElectionPosition::Manager;
+        $positionValues = [
+            $canonicalPosition->value,
+            (string) $canonicalPosition->legacyVotePosition(),
+        ];
+
+        // Current ballots are still persisted through the legacy-compatible
+        // 0/1 position contract. Reports accept both that persisted form and
+        // canonical string rows so legacy/canonical datasets reconcile safely.
         $currentVoteRows = Vote::query()
             ->where('election_id', $election->id)
             ->where('candidate_user_id', $candidateUserId)
-            ->where('position', $legacyPosition)
+            ->whereIn('position', $positionValues)
             ->get(['voter_id']);
         $currentVotes = $currentVoteRows->count();
         $currentVoterIds = $currentVoteRows->pluck('voter_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
 
-        $cutoff = $this->selectionCutoff($election, $legacyPosition);
+        $cutoff = $this->selectionCutoff($election, $canonicalPosition);
         $base = [
             'election_id' => (int) $election->id,
             'candidate_user_id' => $candidateUserId,
-            'position' => $legacyPosition,
+            'position' => $canonicalPosition->value,
             'current_votes' => $currentVotes,
             'selection_cutoff_votes' => $cutoff,
             'margin_to_selection_cutoff' => $cutoff === null ? null : $currentVotes - $cutoff,
@@ -165,9 +176,9 @@ class ElectionCandidateReportService
         ];
     }
 
-    private function selectionCutoff(Election $election, string $position): ?int
+    private function selectionCutoff(Election $election, ElectionPosition $position): ?int
     {
-        $seatCount = $position === 'inspector'
+        $seatCount = $position === ElectionPosition::Inspector
             ? (int) ($election->policyVersion?->inspector_count ?? 0)
             : (int) ($election->policyVersion?->manager_count ?? 0);
 
@@ -177,7 +188,7 @@ class ElectionCandidateReportService
 
         $counts = Vote::query()
             ->where('election_id', $election->id)
-            ->where('position', $position)
+            ->whereIn('position', [$position->value, (string) $position->legacyVotePosition()])
             ->whereNotNull('candidate_user_id')
             ->selectRaw('candidate_user_id, COUNT(*) as vote_count')
             ->groupBy('candidate_user_id')
