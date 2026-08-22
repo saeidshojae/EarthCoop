@@ -67,7 +67,8 @@ jobs:
         run: |
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/Elections/ElectionCandidateReportPrivacyTest.php \
-            tests/Feature/Elections/ElectionCandidateReportAdvancedPrivacyTest.php
+            tests/Feature/Elections/ElectionCandidateReportAdvancedPrivacyTest.php \
+            tests/Feature/Elections/ElectionReportingPolicyAdminTest.php
 
       - name: Re-run elections regression suite
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections
