@@ -105,9 +105,11 @@ class ElectionProcessReviewAuthorizationTest extends TestCase
             'is_closed' => false,
             'lifecycle_status' => 'open',
         ]);
+        $requester = User::factory()->create(['is_system' => false]);
 
         return ElectionProcessReview::create([
             'election_id' => $election->id,
+            'requester_user_id' => $requester->id,
             'ground' => 'representation',
             'challenged_event' => 'appointment_representation',
             'event_occurred_at' => now()->subDay(),
