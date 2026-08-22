@@ -73,7 +73,15 @@ class ElectionPolicyResolver
     public function levelKeyForGroup(Group $group): string
     {
         $attributes = $group->getAttributes();
-        $base = (string) ($attributes['location_level'] ?? '');
+        $base = strtolower(trim((string) ($attributes['location_level'] ?? '')));
+
+        // Historical group data uses `section` while the canonical GroupSetting
+        // vocabulary uses `district`. Normalize once at the policy boundary so
+        // every lifecycle stage resolves the same versioned rule set.
+        if ($base === 'section') {
+            $base = 'district';
+        }
+
         if (($attributes['specialty_id'] ?? null) !== null) return $base.'_job';
         if (($attributes['experience_id'] ?? null) !== null) return $base.'_experience';
         if (($attributes['age_group_id'] ?? null) !== null) return $base.'_age';
