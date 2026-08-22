@@ -259,7 +259,15 @@ class ElectionProcessReviewService
             ->where('election_id', $election->id)
             ->where('selectable_eligible', true)
             ->pluck('user_id')->map(fn ($id) => (int) $id)->unique()->values();
-        $policy = $this->policyResolver->resolveForGroup($election->group);
+
+        // Reviews are retrospective. Recompute with the exact policy frozen
+        // into the challenged cycle, never a later admin setting. Legacy cycles
+        // without a version keep the old compatibility path.
+        try {
+            $policy = $this->policyResolver->resolveForElection($election);
+        } catch (RuntimeException) {
+            $policy = $this->policyResolver->resolveForGroup($election->group);
+        }
         $expected = collect();
 
         foreach ([ElectionPosition::Manager, ElectionPosition::Inspector] as $position) {
