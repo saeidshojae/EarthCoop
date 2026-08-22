@@ -89,7 +89,7 @@ class ElectionProcessReviewGovernanceTest extends TestCase
         $review = $service->requestHumanReview($review, $member);
 
         $this->assertSame('pending', $review->human_status);
-        $this->assertSame(14, now()->startOfDay()->diffInDays($review->decision_due_at->copy()->startOfDay()));
+        $this->assertEquals(14, now()->startOfDay()->diffInDays($review->decision_due_at->copy()->startOfDay()));
         $this->assertSame('provisional', $appointment->refresh()->review_state);
 
         $authority = User::factory()->create();
