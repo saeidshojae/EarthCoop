@@ -6,6 +6,7 @@ use App\Enums\Elections\ElectionLifecycleStatus;
 use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\ElectionLifecycleTransition;
+use App\Models\ElectionResponsibilityContractVersion;
 use App\Models\Group;
 use App\Models\GroupSetting;
 use App\Models\GroupUser;
@@ -63,6 +64,30 @@ class ElectionCycleServiceTest extends TestCase
         $this->assertSame(1, ElectionLifecycleTransition::where('election_id', $election->id)->count());
     }
 
+    public function test_required_seats_without_frozen_e0_contracts_do_not_open_a_cycle(): void
+    {
+        $group = Group::create([
+            'name' => 'Contract incomplete election group',
+            'group_type' => 'public',
+            'location_level' => 'global',
+        ]);
+        GroupSetting::create([
+            'level' => 'global',
+            'inspector_count' => 1,
+            'manager_count' => 1,
+            'election_time' => 10,
+            'max_for_election' => 1,
+            'election_status' => 1,
+            'second_election_time' => 3,
+        ]);
+        $this->addActiveMember($group);
+
+        $result = app(ElectionCycleService::class)->ensureForGroup($group);
+
+        $this->assertNull($result);
+        $this->assertSame(0, Election::where('group_id', $group->id)->count());
+    }
+
     public function test_disabled_policy_never_creates_cycle_even_above_threshold(): void
     {
         [$group, $setting] = $this->configuredGroup(1);
@@ -77,6 +102,8 @@ class ElectionCycleServiceTest extends TestCase
 
     private function configuredGroup(int $threshold): array
     {
+        $this->ensureContracts();
+
         $group = Group::create([
             'name' => 'Automatic election cycle test group',
             'group_type' => 'public',
@@ -94,6 +121,23 @@ class ElectionCycleServiceTest extends TestCase
         ]);
 
         return [$group, $setting];
+    }
+
+    private function ensureContracts(): void
+    {
+        $manifest = array_fill_keys(ElectionResponsibilityContractVersion::REQUIRED_CLAUSES, 'متن معتبر قرارداد تست چرخه');
+        foreach (['manager', 'inspector'] as $position) {
+            ElectionResponsibilityContractVersion::query()->firstOrCreate(
+                ['position' => $position, 'version' => 1],
+                [
+                    'body' => "{$position} E0 cycle fixture",
+                    'clause_manifest' => $manifest,
+                    'e0_compliant' => true,
+                    'is_active' => true,
+                    'published_at' => now()->subDay(),
+                ],
+            );
+        }
     }
 
     private function addActiveMember(Group $group): User
