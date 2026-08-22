@@ -74,12 +74,15 @@ class ElectionProcessReviewService
 
     public function requestHumanReview(ElectionProcessReview $review, User $requester): ElectionProcessReview
     {
-        return DB::transaction(function () use ($review, $requester): ElectionProcessReview {
+        $expired = false;
+
+        $result = DB::transaction(function () use ($review, $requester, &$expired): ElectionProcessReview {
             $locked = ElectionProcessReview::query()->lockForUpdate()->findOrFail($review->id);
             $this->assertActiveGroupMember($locked->election, $requester);
             if (now()->gt($locked->human_deadline_at)) {
                 $locked->forceFill(['human_status' => 'expired'])->save();
-                throw new RuntimeException('The seven-day human review request window has expired.');
+                $expired = true;
+                return $locked->refresh();
             }
             if ($locked->automatic_status === 'verified') {
                 throw new RuntimeException('Automatic verification found no unresolved measurable discrepancy.');
@@ -96,11 +99,19 @@ class ElectionProcessReviewService
             $this->endorseLocked($locked, $requester);
             return $locked->refresh();
         }, 3);
+
+        if ($expired) {
+            throw new RuntimeException('The seven-day human review request window has expired.');
+        }
+
+        return $result;
     }
 
     public function endorse(ElectionProcessReview $review, User $member): ElectionProcessReview
     {
-        return DB::transaction(function () use ($review, $member): ElectionProcessReview {
+        $expired = false;
+
+        $result = DB::transaction(function () use ($review, $member, &$expired): ElectionProcessReview {
             $locked = ElectionProcessReview::query()->lockForUpdate()->findOrFail($review->id);
             $this->assertActiveGroupMember($locked->election, $member);
             if ($locked->human_status !== 'awaiting_support') {
@@ -108,11 +119,18 @@ class ElectionProcessReviewService
             }
             if (now()->gt($locked->human_deadline_at)) {
                 $locked->forceFill(['human_status' => 'expired'])->save();
-                throw new RuntimeException('The seven-day human review request window has expired.');
+                $expired = true;
+                return $locked->refresh();
             }
             $this->endorseLocked($locked, $member);
             return $locked->refresh();
         }, 3);
+
+        if ($expired) {
+            throw new RuntimeException('The seven-day human review request window has expired.');
+        }
+
+        return $result;
     }
 
     public function setInterimStay(ElectionProcessReview $review, User $authority, string $reason): ElectionProcessReview
