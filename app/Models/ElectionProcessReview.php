@@ -12,6 +12,7 @@ class ElectionProcessReview extends Model
         'stop_time',
         'ranking',
         'tie_break',
+        'representation',
         'offer_acceptance',
         'conflict_policy',
         'technical_error',
