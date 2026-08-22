@@ -5,6 +5,7 @@ namespace Tests\Feature\Elections;
 use App\Models\Election;
 use App\Models\ElectionProcessReview;
 use App\Models\Group;
+use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -44,13 +45,22 @@ class ElectionProcessReviewAuthorizationTest extends TestCase
         $this->assertSame('none', $review->interim_state);
     }
 
-    public function test_system_admin_can_use_authorized_review_routes_and_actions_are_audited(): void
+    public function test_dedicated_review_authority_permission_can_use_routes_and_actions_are_audited(): void
     {
         $review = $this->pendingReview();
-        $admin = User::factory()->create(['is_system' => false]);
-        $admin->forceFill(['is_admin' => true])->save();
+        $authority = User::factory()->create(['is_system' => false]);
+        $role = Role::create([
+            'name' => 'Election review authority',
+            'slug' => 'election-review-authority',
+            'description' => 'Dedicated E0 human-review authority.',
+            'is_system' => false,
+            'order' => 20,
+        ]);
+        $permission = Permission::query()->where('slug', 'elections.review.manage')->firstOrFail();
+        $role->permissions()->attach($permission->id);
+        $authority->roles()->attach($role->id);
 
-        $this->actingAs($admin)
+        $this->actingAs($authority)
             ->postJson(route('admin.elections.process-reviews.stay', $review), [
                 'reason' => 'خطر فوری برای حقوق اعضا تا پایان بررسی',
             ])
@@ -59,12 +69,12 @@ class ElectionProcessReviewAuthorizationTest extends TestCase
 
         $this->assertDatabaseHas('election_review_audit_accesses', [
             'review_id' => $review->id,
-            'actor_user_id' => $admin->id,
+            'actor_user_id' => $authority->id,
             'authority_path' => 'review_authority',
             'purpose' => 'interim_stay_decision',
         ]);
 
-        $this->actingAs($admin)
+        $this->actingAs($authority)
             ->postJson(route('admin.elections.process-reviews.decision', $review->refresh()), [
                 'decision' => 'dismissed',
                 'reason' => 'بررسی مستند نشان داد مغایرت قابل اثباتی باقی نمانده است.',
@@ -75,7 +85,7 @@ class ElectionProcessReviewAuthorizationTest extends TestCase
 
         $this->assertDatabaseHas('election_review_audit_accesses', [
             'review_id' => $review->id,
-            'actor_user_id' => $admin->id,
+            'actor_user_id' => $authority->id,
             'authority_path' => 'review_authority',
             'purpose' => 'reasoned_final_decision',
         ]);
