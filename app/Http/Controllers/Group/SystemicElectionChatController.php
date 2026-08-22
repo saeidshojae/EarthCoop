@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Group;
 use App\Enums\Elections\ElectionLifecycleStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Announcement;
-use App\Models\Blog;
 use App\Models\Category;
 use App\Models\CategoryGroupSetting;
 use App\Models\ChatRequest;
+use App\Models\Delegation;
 use App\Models\Election;
 use App\Models\ExperienceField;
 use App\Models\Group;
@@ -16,7 +16,6 @@ use App\Models\GroupSetting;
 use App\Models\GroupSession;
 use App\Models\GroupSyncEvent;
 use App\Models\GroupUser;
-use App\Models\Message;
 use App\Models\PinnedMessage;
 use App\Models\PollVote;
 use App\Models\User;
@@ -124,8 +123,25 @@ class SystemicElectionChatController extends Controller
             $userVotesByPollId = PollVote::query()
                 ->whereIn('poll_id', $pollIds)->where('user_id', auth()->id())
                 ->pluck('option_id', 'poll_id')->map(fn ($v) => (int) $v)->toArray();
-            $delegationsByPollId = \App\Models\Delegation::query()
+            $delegationsByPollId = Delegation::query()
                 ->whereIn('poll_id', $pollIds)->where('user_id', auth()->id())->get()->keyBy('poll_id');
+
+            // Preserve the legacy group-chat display contract for specialized
+            // polls: delegated participation contributes to the displayed total.
+            $specializedPollIds = $polls
+                ->filter(fn ($poll) => (int) ($poll->real_type ?? 0) === 1)
+                ->pluck('id')->map(fn ($id) => (int) $id)->values();
+            if ($specializedPollIds->isNotEmpty()) {
+                $delegationTotals = Delegation::query()
+                    ->select('poll_id', DB::raw('COUNT(*) as c'))
+                    ->whereIn('poll_id', $specializedPollIds)
+                    ->groupBy('poll_id')
+                    ->pluck('c', 'poll_id');
+                foreach ($delegationTotals as $pollId => $count) {
+                    $pid = (int) $pollId;
+                    $pollTotals[$pid] = ($pollTotals[$pid] ?? 0) + (int) $count;
+                }
+            }
         }
 
         $anns = Announcement::query()->where('group_level', $group->location_level)
