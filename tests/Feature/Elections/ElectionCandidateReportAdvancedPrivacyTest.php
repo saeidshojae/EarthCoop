@@ -67,14 +67,22 @@ class ElectionCandidateReportAdvancedPrivacyTest extends TestCase
                 'comment_visibility' => 'all_members', 'comment_anonymous' => true,
                 'request_uuid' => 'topic-'.$index, 'occurred_at' => now()->subDays(4 - $index),
             ]);
-            ElectionVoteFeedback::create([
-                'election_id' => $election->id, 'ballot_event_id' => $event->id,
-                'author_user_id' => $author->id, 'subject_user_id' => $candidate->id,
-                'event_type' => 'vote_cast', 'visibility' => 'all_members', 'anonymous' => true,
-                'body' => $event->comment, 'moderation_status' => 'approved', 'moderation_source' => 'test',
-                'moderated_at' => now()->subDays(2), 'published_at' => now()->subDays(2),
+
+            $feedback = ElectionVoteFeedback::query()->where('ballot_event_id', $event->id)->firstOrFail();
+            $feedback->forceFill([
+                'election_id' => $election->id,
+                'author_user_id' => $author->id,
+                'subject_user_id' => $candidate->id,
+                'event_type' => 'vote_cast',
+                'visibility' => 'all_members',
+                'anonymous' => true,
+                'body' => $event->comment,
+                'moderation_status' => 'approved',
+                'moderation_source' => 'test',
+                'moderated_at' => now()->subDays(2),
+                'published_at' => now()->subDays(2),
                 'public_bucket_start' => now()->subDays(7)->startOfDay(),
-            ]);
+            ])->save();
         }
 
         $report = app(ElectionFeedbackTopicAggregationService::class)
