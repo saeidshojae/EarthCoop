@@ -5,9 +5,11 @@ on:
     branches:
       - agent/integration-hoda-bahar-after-groups
       - agent/integration-secretariat-s9-current-main
+      - agent/elections-systemic-rebuild
   pull_request:
     branches:
       - main
+      - agent/integration-pre-elections-current-main
   workflow_dispatch:
 
 permissions:
@@ -111,6 +113,8 @@ jobs:
           php artisan list > /tmp/commands.txt
           grep -F 'najm-hoda:production-readiness' /tmp/commands.txt >/dev/null
           grep -F 'najm-bahar:production-readiness' /tmp/commands.txt >/dev/null
+          grep -F 'elections:audit-data' /tmp/commands.txt >/dev/null
+          php artisan elections:audit-data --json --fail-on-issues
 
       - name: Regression — Group Chat
         id: regression_group_chat
