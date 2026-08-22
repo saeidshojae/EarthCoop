@@ -81,6 +81,9 @@ class GroupSettingController extends Controller
             'max_for_election' => 'required|integer|min:1',
             'second_election_time' => 'required|integer|min:0',
             'response_duration_days' => 'nullable|integer|min:1|max:365',
+            'election_report_min_distinct_voters' => 'nullable|integer|min:2|max:1000000',
+            'election_report_bucket_days' => 'nullable|integer|min:1|max:365',
+            'election_meaningful_trend_min_net_change' => 'nullable|integer|min:1|max:1000000',
             'effective_at' => 'nullable|date',
             'change_reason' => 'nullable|string|max:500',
         ], [
@@ -112,6 +115,12 @@ class GroupSettingController extends Controller
             'response_duration_days' => isset($validated['response_duration_days'])
                 ? (int) $validated['response_duration_days']
                 : null,
+            'report_min_distinct_voters' => isset($validated['election_report_min_distinct_voters'])
+                ? (int) $validated['election_report_min_distinct_voters'] : (int) ($setting->election_report_min_distinct_voters ?: 10),
+            'report_bucket_days' => isset($validated['election_report_bucket_days'])
+                ? (int) $validated['election_report_bucket_days'] : (int) ($setting->election_report_bucket_days ?: 7),
+            'meaningful_trend_min_net_change' => isset($validated['election_meaningful_trend_min_net_change'])
+                ? (int) $validated['election_meaningful_trend_min_net_change'] : (int) ($setting->election_meaningful_trend_min_net_change ?: 3),
         ];
 
         $policy = $this->policyVersions->publishSnapshot(
