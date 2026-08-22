@@ -28,7 +28,9 @@ Route::middleware(Authenticate::class)->group(function () {
         Route::post('/admin/elections/conflict-policy',[ElectionConflictPolicyController::class,'store'])->name('admin.elections.conflict-policy.store');
         Route::get('/admin/elections/{election}/policy-override',[ElectionPolicyOverrideController::class,'edit'])->whereNumber('election')->name('admin.elections.policy-override.edit');
         Route::post('/admin/elections/{election}/policy-override',[ElectionPolicyOverrideController::class,'update'])->whereNumber('election')->name('admin.elections.policy-override.update');
-        Route::post('/admin/elections/process-reviews/{review}/stay',[ElectionProcessReviewController::class,'stay'])->whereNumber('review')->name('admin.elections.process-reviews.stay');
-        Route::post('/admin/elections/process-reviews/{review}/decision',[ElectionProcessReviewController::class,'decide'])->whereNumber('review')->name('admin.elections.process-reviews.decision');
+        Route::middleware('permission:elections.review.manage')->group(function () {
+            Route::post('/admin/elections/process-reviews/{review}/stay',[ElectionProcessReviewController::class,'stay'])->whereNumber('review')->name('admin.elections.process-reviews.stay');
+            Route::post('/admin/elections/process-reviews/{review}/decision',[ElectionProcessReviewController::class,'decide'])->whereNumber('review')->name('admin.elections.process-reviews.decision');
+        });
     });
 });
