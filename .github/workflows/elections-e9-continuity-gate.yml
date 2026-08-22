@@ -63,11 +63,12 @@ jobs:
       - name: Migrate E9 schema
         run: php artisan migrate:fresh --force
 
-      - name: Run E9 topology, cadence, vacancy, succession and lineage tests
+      - name: Run E9 topology, continuous ballots, vacancy, succession and lineage tests
         run: |
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/Elections/ElectionCycleServiceTest.php \
             tests/Feature/Elections/ElectionCycleTopologyContinuityTest.php \
+            tests/Feature/Elections/ElectionContinuousBallotCollectionTest.php \
             tests/Feature/Elections/ElectionCycleLineageTest.php \
             tests/Feature/Elections/ElectionGroupHierarchyResolverTest.php \
             tests/Feature/Elections/ElectionVacancyServiceTest.php \
