@@ -39,6 +39,20 @@ class GroupSettingController extends Controller
             ));
         }
 
+        if ($request->filled('reporting')) {
+            $setting = GroupSetting::query()->findOrFail((int) $request->input('reporting'));
+            $currentPolicy = ElectionPolicyVersion::query()
+                ->where('group_setting_id', $setting->id)
+                ->where('effective_at', '<=', now())
+                ->where(function ($query) {
+                    $query->whereNull('retired_at')->orWhere('retired_at', '>', now());
+                })
+                ->orderByDesc('version')
+                ->first();
+
+            return view('admin.system-settings.elections.reporting', compact('setting', 'currentPolicy'));
+        }
+
         $sort = $request->get('sort');
 
         if ($sort) {
