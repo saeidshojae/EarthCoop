@@ -42,5 +42,9 @@ jobs:
           EOF
           php artisan key:generate --force
       - run: php artisan migrate:fresh --force
-      - run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections/ElectionContractGovernanceTest.php
+      - name: Run E0 contract and explicit acceptance evidence tests
+        run: |
+          php vendor/bin/phpunit --configuration phpunit.xml.dist \
+            tests/Feature/Elections/ElectionContractGovernanceTest.php \
+            tests/Feature/Elections/ElectionResponsibilityAcceptanceEvidenceTest.php
       - run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections
