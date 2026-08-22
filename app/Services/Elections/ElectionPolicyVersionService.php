@@ -28,6 +28,9 @@ class ElectionPolicyVersionService
                 'start_threshold' => (int) $setting->max_for_election,
                 'cycle_interval_months' => (int) $setting->second_election_time,
                 'response_duration_days' => $responseDurationDays,
+                'report_min_distinct_voters' => (int) ($setting->election_report_min_distinct_voters ?: 10),
+                'report_bucket_days' => (int) ($setting->election_report_bucket_days ?: 7),
+                'meaningful_trend_min_net_change' => (int) ($setting->election_meaningful_trend_min_net_change ?: 3),
             ],
             $actorUserId,
             $reason,
@@ -75,6 +78,9 @@ class ElectionPolicyVersionService
                 'start_threshold' => max(1, (int) ($snapshot['start_threshold'] ?? $locked->max_for_election)),
                 'cycle_interval_months' => max(0, (int) ($snapshot['cycle_interval_months'] ?? $locked->second_election_time)),
                 'response_duration_days' => max(1, (int) ($snapshot['response_duration_days'] ?? 7)),
+                'report_min_distinct_voters' => max(2, (int) ($snapshot['report_min_distinct_voters'] ?? $locked->election_report_min_distinct_voters ?? 10)),
+                'report_bucket_days' => max(1, (int) ($snapshot['report_bucket_days'] ?? $locked->election_report_bucket_days ?? 7)),
+                'meaningful_trend_min_net_change' => max(1, (int) ($snapshot['meaningful_trend_min_net_change'] ?? $locked->election_meaningful_trend_min_net_change ?? 3)),
                 'manager_contract_version_id' => $managerContractId,
                 'inspector_contract_version_id' => $inspectorContractId,
                 'effective_at' => $effectiveAt,
@@ -132,6 +138,9 @@ class ElectionPolicyVersionService
                     'election_time' => (int) $policy->voting_duration_days,
                     'max_for_election' => (int) $policy->start_threshold,
                     'second_election_time' => (int) $policy->cycle_interval_months,
+                    'election_report_min_distinct_voters' => (int) $policy->report_min_distinct_voters,
+                    'election_report_bucket_days' => (int) $policy->report_bucket_days,
+                    'election_meaningful_trend_min_net_change' => (int) $policy->meaningful_trend_min_net_change,
                 ];
 
                 $dirty = false;
