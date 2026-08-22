@@ -5,7 +5,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
         <div>
             <h1 class="h3 mb-1">انتخابات سیستمی — {{ $group->name }}</h1>
-            <p class="text-muted mb-0">وضعیت چرخه، گزارش امن، پاسخ‌های موضوعی و بازبینی رویه‌ای</p>
+            <p class="text-muted mb-0">وضعیت چرخه، بازخورد مجاز، گزارش امن، پاسخ‌های موضوعی و بازبینی رویه‌ای</p>
         </div>
         <a href="{{ route('groups.chat', $group) }}" class="btn btn-outline-primary">بازگشت به گفت‌وگوی گروه و برگه رأی</a>
     </div>
@@ -115,6 +115,37 @@
             </div>
         </section>
 
+        <section class="card mb-4" id="visible-feedback">
+            <div class="card-header fw-bold">نظرها و دلایل رأی که مجاز به دیدنشان هستید</div>
+            <div class="card-body">
+                <p class="small text-muted">این فهرست فقط از read-policy مرکزی عبور می‌کند. نظر ناشناس، هویت نویسنده را نشان نمی‌دهد و زمان دقیق رویداد رأی نیز نمایش داده نمی‌شود.</p>
+                @forelse($visibleFeedback as $feedback)
+                    <article class="border rounded p-3 mb-2">
+                        <div class="d-flex flex-wrap justify-content-between gap-2">
+                            <strong>{{ $feedback['subject_name'] }} — {{ $feedback['event_type'] }}</strong>
+                            <span class="badge bg-light text-dark">{{ $feedback['visibility'] }}</span>
+                        </div>
+                        <p class="mb-1 mt-2">{{ $feedback['body'] }}</p>
+                        <div class="small text-muted">
+                            @if($feedback['anonymous'])
+                                نویسنده: ناشناس
+                            @else
+                                نویسنده: {{ $feedback['author_name'] ?? ('عضو #'.$feedback['author_user_id']) }}
+                            @endif
+                            @if($feedback['public_bucket_start'])
+                                — بازه عمومی: {{ $feedback['public_bucket_start'] }}
+                            @endif
+                            @if(($feedback['moderation_status'] ?? 'approved') !== 'approved')
+                                — وضعیت بررسی نظر شما: {{ $feedback['moderation_status'] }}
+                            @endif
+                        </div>
+                    </article>
+                @empty
+                    <p class="text-muted mb-0">در این چرخه نظر قابل نمایشی برای شما وجود ندارد.</p>
+                @endforelse
+            </div>
+        </section>
+
         <section class="card mb-4" id="topic-responses">
             <div class="card-header fw-bold">پاسخ عمومی به موضوعات تجمیعی</div>
             <div class="card-body">
@@ -141,7 +172,7 @@
                     <article class="border rounded p-3 mb-2">
                         <div class="d-flex justify-content-between gap-2"><strong>{{ $response['topic'] }}</strong><span class="small text-muted">{{ $response['aggregate_count'] }} بازخورد تجمیعی</span></div>
                         <p class="mb-1 mt-2">{{ $response['body'] }}</p>
-                        <small class="text-muted">عضو موضوع: #{{ $response['subject_user_id'] }} — {{ $response['published_at'] }}</small>
+                        <small class="text-muted">عضو موضوع: {{ $memberNames[(int)$response['subject_user_id']] ?? ('عضو #'.$response['subject_user_id']) }} — {{ $response['published_at'] }}</small>
                     </article>
                 @empty
                     <p class="text-muted mb-0">هنوز پاسخ موضوعی عمومی ثبت نشده است.</p>
