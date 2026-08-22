@@ -172,7 +172,7 @@ class ElectionCycleTopologyContinuityTest extends TestCase
         $this->assertNull(app(ElectionCycleService::class)->ensureForGroup($group));
     }
 
-    public function test_non_terminal_cycle_blocks_new_cycle_even_after_voting_window_ends(): void
+    public function test_application_phase_opens_successor_ballot_window_instead_of_blocking_voting(): void
     {
         DB::table('neighborhoods')->insert([
             'id' => 9741, 'name' => 'Neighborhood D', 'parent_id' => 7004, 'status' => 1,
@@ -185,19 +185,25 @@ class ElectionCycleTopologyContinuityTest extends TestCase
 
         $existing = Election::create([
             'group_id' => $group->id,
+            'cycle_number' => 1,
             'starts_at' => now()->subDays(20),
             'ends_at' => now()->subDays(10),
             'is_closed' => true,
             'lifecycle_status' => ElectionLifecycleStatus::AwaitingAcceptance,
         ]);
 
-        $result = app(ElectionCycleService::class)->ensureForGroup($group);
+        $next = app(ElectionCycleService::class)->ensureForGroup($group);
 
-        $this->assertSame($existing->id, $result?->id);
-        $this->assertSame(1, Election::where('group_id', $group->id)->count());
+        $this->assertNotNull($next);
+        $this->assertNotSame($existing->id, $next->id);
+        $this->assertSame(ElectionLifecycleStatus::Open, $next->lifecycle_status);
+        $this->assertSame($existing->id, (int) $next->previous_election_id);
+        $this->assertSame(2, (int) $next->cycle_number);
+        $this->assertSame(2, Election::where('group_id', $group->id)->count());
+        $this->assertTrue($next->ends_at->greaterThan(now()->addMonths(2)));
     }
 
-    public function test_filled_cycle_waits_until_configured_repeat_interval_then_creates_next_cycle(): void
+    public function test_filled_cycle_opens_next_ballot_window_immediately_instead_of_waiting_silently(): void
     {
         DB::table('neighborhoods')->insert([
             'id' => 9751, 'name' => 'Neighborhood E', 'parent_id' => 7005, 'status' => 1,
@@ -210,6 +216,7 @@ class ElectionCycleTopologyContinuityTest extends TestCase
 
         $filled = Election::create([
             'group_id' => $group->id,
+            'cycle_number' => 1,
             'starts_at' => now()->subMonths(2)->subDays(10),
             'ends_at' => now()->subMonths(2),
             'is_closed' => true,
@@ -224,19 +231,16 @@ class ElectionCycleTopologyContinuityTest extends TestCase
         ]);
 
         $service = app(ElectionCycleService::class);
-        $blocked = $service->ensureForGroup($group);
-        $this->assertSame($filled->id, $blocked?->id);
-        $this->assertSame(1, Election::where('group_id', $group->id)->count());
-
-        $filled->lifecycleTransitions()->where('to_status', ElectionLifecycleStatus::Filled->value)->update([
-            'transitioned_at' => now()->subMonths(4),
-        ]);
-
         $next = $service->ensureForGroup($group);
 
         $this->assertNotNull($next);
         $this->assertNotSame($filled->id, $next->id);
         $this->assertSame(ElectionLifecycleStatus::Open, $next->lifecycle_status);
+        $this->assertSame($filled->id, (int) $next->previous_election_id);
+        $this->assertSame(2, Election::where('group_id', $group->id)->count());
+
+        $retry = $service->ensureForGroup($group);
+        $this->assertSame($next->id, $retry?->id);
         $this->assertSame(2, Election::where('group_id', $group->id)->count());
     }
 
@@ -253,6 +257,7 @@ class ElectionCycleTopologyContinuityTest extends TestCase
 
         $cancelled = Election::create([
             'group_id' => $group->id,
+            'cycle_number' => 1,
             'starts_at' => now()->subDay(),
             'ends_at' => now()->addDays(9),
             'is_closed' => true,
