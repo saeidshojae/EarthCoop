@@ -5,12 +5,15 @@ namespace Tests\Feature\Elections;
 use App\Enums\Elections\ElectionLifecycleStatus;
 use App\Models\Election;
 use App\Models\ElectionPolicyVersion;
+use App\Models\ElectionResponsibilityContractVersion;
 use App\Models\Group;
 use App\Models\GroupSetting;
 use App\Models\GroupUser;
 use App\Models\User;
 use App\Models\Vote;
 use App\Services\Elections\ElectionBallotService;
+use App\Services\Elections\ElectionEligibilitySnapshotService;
+use App\Services\Elections\ElectionResponsibilityContractVersionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -18,7 +21,7 @@ class ElectionContinuousBallotCollectionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_lifecycle_tick_stops_due_window_opens_successor_and_admits_late_members(): void
+    public function test_lifecycle_tick_stops_due_window_opens_successor_and_advances_stopped_cycle_to_offers(): void
     {
         $group = Group::create([
             'name' => 'Continuous E0 ballot group',
@@ -35,6 +38,25 @@ class ElectionContinuousBallotCollectionTest extends TestCase
             'election_status' => 1,
             'second_election_time' => 6,
         ]);
+
+        $voter = User::factory()->create(['is_system' => false]);
+        $candidate = User::factory()->create(['is_system' => false]);
+        foreach ([$voter, $candidate] as $user) {
+            GroupUser::create([
+                'group_id' => $group->id,
+                'user_id' => $user->id,
+                'role' => 1,
+                'status' => 1,
+            ]);
+        }
+
+        $clauses = array_fill_keys(
+            ElectionResponsibilityContractVersion::REQUIRED_CLAUSES,
+            'متن کامل قرارداد آزمون انتخابات پیوسته',
+        );
+        $managerContract = app(ElectionResponsibilityContractVersionService::class)
+            ->publish('manager', $clauses, $voter, 'continuous election manager contract');
+
         $policy = ElectionPolicyVersion::create([
             'group_setting_id' => $setting->id,
             'level_key' => 'global',
@@ -49,20 +71,10 @@ class ElectionContinuousBallotCollectionTest extends TestCase
             'report_min_distinct_voters' => 10,
             'report_bucket_days' => 7,
             'meaningful_trend_min_net_change' => 3,
+            'manager_contract_version_id' => $managerContract->id,
             'effective_at' => now()->subMonths(2),
             'change_reason' => 'continuous ballot test',
         ]);
-
-        $voter = User::factory()->create(['is_system' => false]);
-        $candidate = User::factory()->create(['is_system' => false]);
-        foreach ([$voter, $candidate] as $user) {
-            GroupUser::create([
-                'group_id' => $group->id,
-                'user_id' => $user->id,
-                'role' => 1,
-                'status' => 1,
-            ]);
-        }
 
         $old = Election::create([
             'group_id' => $group->id,
@@ -73,6 +85,7 @@ class ElectionContinuousBallotCollectionTest extends TestCase
             'is_closed' => false,
             'lifecycle_status' => ElectionLifecycleStatus::Open,
         ]);
+        app(ElectionEligibilitySnapshotService::class)->capture($old);
 
         $this->artisan('elections:process-lifecycle', ['--limit' => 100, '--fail-on-error' => true])
             ->assertExitCode(0);
@@ -80,11 +93,24 @@ class ElectionContinuousBallotCollectionTest extends TestCase
         $old->refresh();
         $next = Election::query()->where('group_id', $group->id)->where('cycle_number', 2)->firstOrFail();
 
-        $this->assertSame(ElectionLifecycleStatus::Closed, $old->lifecycle_status);
+        $this->assertSame(ElectionLifecycleStatus::AwaitingAcceptance, $old->lifecycle_status);
         $this->assertSame(ElectionLifecycleStatus::Open, $next->lifecycle_status);
         $this->assertSame($old->id, (int) $next->previous_election_id);
         $this->assertTrue($next->ends_at->greaterThan(now()->addMonths(5)));
         $this->assertDatabaseHas('election_vote_snapshot_runs', ['election_id' => $old->id, 'snapshot_version' => 1]);
+        $this->assertDatabaseHas('election_tally_results', [
+            'election_id' => $old->id,
+            'position' => 'manager',
+            'rank' => 1,
+            'within_seat_cutoff' => 1,
+        ]);
+        $this->assertDatabaseHas('election_responsibility_offers', [
+            'election_id' => $old->id,
+            'position' => 'manager',
+            'ranking_position' => 1,
+            'contract_version_id' => $managerContract->id,
+            'status' => 'pending',
+        ]);
         $this->assertDatabaseHas('election_eligibility_snapshots', [
             'election_id' => $next->id,
             'user_id' => $voter->id,
