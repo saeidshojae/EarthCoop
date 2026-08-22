@@ -34,6 +34,9 @@
                     <div><span class="text-slate-500">مدت رأی‌گیری:</span> <strong>{{ $currentPolicy->voting_duration_days }} روز</strong></div>
                     <div><span class="text-slate-500">فاصله چرخه:</span> <strong>{{ $currentPolicy->cycle_interval_months }} ماه</strong></div>
                     <div><span class="text-slate-500">مهلت پاسخ:</span> <strong>{{ $currentPolicy->response_duration_days }} روز</strong></div>
+                    <div><span class="text-slate-500">حداقل نمونه گزارش:</span> <strong>{{ $currentPolicy->report_min_distinct_voters ?? 10 }} نفر</strong></div>
+                    <div><span class="text-slate-500">بازه تجمیع گزارش:</span> <strong>{{ $currentPolicy->report_bucket_days ?? 7 }} روز</strong></div>
+                    <div><span class="text-slate-500">آستانه روند معنادار:</span> <strong>{{ $currentPolicy->meaningful_trend_min_net_change ?? 3 }}</strong></div>
                 </div>
             @else
                 <div class="text-amber-700 dark:text-amber-300">در حال حاضر نسخه مؤثر منتشرشده‌ای برای این سطح وجود ندارد.</div>
@@ -60,6 +63,7 @@
                         <th class="px-4 py-3 text-right">زمان اثر</th>
                         <th class="px-4 py-3 text-right">پایان اثر</th>
                         <th class="px-4 py-3 text-right">پارامترها</th>
+                        <th class="px-4 py-3 text-right">حریم گزارش</th>
                         <th class="px-4 py-3 text-right">قرارداد مدیر</th>
                         <th class="px-4 py-3 text-right">قرارداد بازرس</th>
                         <th class="px-4 py-3 text-right">دلیل تغییر</th>
@@ -76,6 +80,11 @@
                                 <div>مدیر {{ $policy->manager_count }} / بازرس {{ $policy->inspector_count }}</div>
                                 <div>حدنصاب {{ $policy->start_threshold }} / رأی‌گیری {{ $policy->voting_duration_days }} روز</div>
                                 <div>چرخه {{ $policy->cycle_interval_months }} ماه / پاسخ {{ $policy->response_duration_days }} روز</div>
+                            </td>
+                            <td class="px-4 py-4 min-w-[220px]">
+                                <div>نمونه ≥ {{ $policy->report_min_distinct_voters ?? 10 }} نفر</div>
+                                <div>تجمیع ≥ {{ $policy->report_bucket_days ?? 7 }} روز</div>
+                                <div>روند معنادار ≥ {{ $policy->meaningful_trend_min_net_change ?? 3 }} رأی خالص</div>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
                                 @if($policy->managerContractVersion)
@@ -95,7 +104,7 @@
                             <td class="px-4 py-4 text-center">{{ $policy->elections()->count() }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="px-4 py-8 text-center text-slate-500">هنوز نسخه‌ای برای این سطح ثبت نشده است.</td></tr>
+                        <tr><td colspan="9" class="px-4 py-8 text-center text-slate-500">هنوز نسخه‌ای برای این سطح ثبت نشده است.</td></tr>
                     @endforelse
                 </tbody>
             </table>
