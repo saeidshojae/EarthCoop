@@ -40,7 +40,12 @@ class ElectionUserSurfaceTest extends TestCase
         $this->assertStringNotContainsString('finishElectionAjax', $source);
         $this->assertStringNotContainsString('second_finish_time', $source);
         $this->assertStringNotContainsString('GroupSetting::', $source);
+        $this->assertStringNotContainsString('<script', $source);
+        $this->assertStringNotContainsString('.addEventListener(', $source);
+        $this->assertStringNotContainsString('setTimeout(', $source);
         $this->assertStringContainsString('vote_visibility[', $source);
+        $this->assertStringContainsString('data-election-role="manager"', $source);
+        $this->assertStringContainsString('data-election-role="inspector"', $source);
         $this->assertStringContainsString('comment_visibility', $source);
         $this->assertStringContainsString('comment_anonymous', $source);
         $this->assertStringContainsString('subject_only', $source);
@@ -87,21 +92,16 @@ class ElectionUserSurfaceTest extends TestCase
             'request_uuid' => 'portal-public-feedback',
             'occurred_at' => now()->subDays(2),
         ]);
-        ElectionVoteFeedback::create([
-            'election_id' => $election->id,
-            'ballot_event_id' => $publicEvent->id,
-            'author_user_id' => $author->id,
-            'subject_user_id' => $otherSubject->id,
-            'event_type' => 'vote_cast',
-            'visibility' => 'all_members',
-            'anonymous' => true,
-            'body' => 'نظر عمومی قابل مشاهده برای اعضا',
+        $publicFeedback = ElectionVoteFeedback::query()
+            ->where('ballot_event_id', $publicEvent->id)
+            ->firstOrFail();
+        $publicFeedback->forceFill([
             'moderation_status' => 'approved',
             'moderation_source' => 'test',
             'moderated_at' => now()->subDay(),
             'published_at' => now()->subDay(),
             'public_bucket_start' => now()->startOfWeek(),
-        ]);
+        ])->save();
 
         $privateEvent = ElectionBallotEvent::create([
             'election_id' => $election->id,
@@ -116,21 +116,16 @@ class ElectionUserSurfaceTest extends TestCase
             'request_uuid' => 'portal-private-feedback',
             'occurred_at' => now()->subDay(),
         ]);
-        ElectionVoteFeedback::create([
-            'election_id' => $election->id,
-            'ballot_event_id' => $privateEvent->id,
-            'author_user_id' => $author->id,
-            'subject_user_id' => $otherSubject->id,
-            'event_type' => 'vote_cast',
-            'visibility' => 'subject_only',
-            'anonymous' => false,
-            'body' => 'این متن فقط برای موضوع رأی است',
+        $privateFeedback = ElectionVoteFeedback::query()
+            ->where('ballot_event_id', $privateEvent->id)
+            ->firstOrFail();
+        $privateFeedback->forceFill([
             'moderation_status' => 'approved',
             'moderation_source' => 'test',
             'moderated_at' => now()->subDay(),
             'published_at' => now()->subDay(),
             'public_bucket_start' => now()->startOfWeek(),
-        ]);
+        ])->save();
 
         $this->actingAs($viewer)
             ->get(route('elections.portal', $group))
