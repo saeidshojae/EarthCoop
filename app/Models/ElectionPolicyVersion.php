@@ -11,6 +11,7 @@ class ElectionPolicyVersion extends Model
         'group_setting_id', 'level_key', 'version', 'election_status',
         'manager_count', 'inspector_count', 'voting_duration_days',
         'start_threshold', 'cycle_interval_months', 'response_duration_days',
+        'report_min_distinct_voters', 'report_bucket_days', 'meaningful_trend_min_net_change',
         'manager_contract_version_id', 'inspector_contract_version_id',
         'effective_at', 'retired_at', 'created_by', 'change_reason', 'metadata',
     ];
@@ -23,6 +24,9 @@ class ElectionPolicyVersion extends Model
         'start_threshold' => 'integer',
         'cycle_interval_months' => 'integer',
         'response_duration_days' => 'integer',
+        'report_min_distinct_voters' => 'integer',
+        'report_bucket_days' => 'integer',
+        'meaningful_trend_min_net_change' => 'integer',
         'effective_at' => 'datetime',
         'retired_at' => 'datetime',
         'metadata' => 'array',
