@@ -67,7 +67,15 @@ class ElectionTallyService
                 ->unique()
                 ->values();
 
-            $policy = $this->policyResolver->resolveForGroup($locked->group);
+            // E0 invariant: tally is governed by the exact policy frozen into
+            // this cycle. Later admin changes or a concurrently collecting next
+            // cycle must never alter seat cutoffs retrospectively.
+            try {
+                $policy = $this->policyResolver->resolveForElection($locked);
+            } catch (RuntimeException) {
+                // Compatibility only for pre-versioned legacy election rows.
+                $policy = $this->policyResolver->resolveForGroup($locked->group);
+            }
             $allRows = collect();
 
             foreach ([ElectionPosition::Manager, ElectionPosition::Inspector] as $position) {
