@@ -18,7 +18,7 @@ class ElectionContinuousBallotCollectionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_lifecycle_tick_stops_due_window_and_opens_successor_for_new_votes_immediately(): void
+    public function test_lifecycle_tick_stops_due_window_opens_successor_and_admits_late_members(): void
     {
         $group = Group::create([
             'name' => 'Continuous E0 ballot group',
@@ -92,17 +92,46 @@ class ElectionContinuousBallotCollectionTest extends TestCase
         ]);
 
         app(ElectionBallotService::class)->submit($next, $voter->id, [$candidate->id], []);
-
         $this->assertDatabaseHas('votes', [
             'election_id' => $next->id,
             'voter_id' => $voter->id,
             'candidate_user_id' => $candidate->id,
             'position' => 1,
         ]);
+
+        // This member joined only after cycle 2 had already opened. E0 says the
+        // permanent election must remain available to them rather than forcing
+        // them to wait until the next periodic stop.
+        $lateMember = User::factory()->create(['is_system' => false]);
+        GroupUser::create([
+            'group_id' => $group->id,
+            'user_id' => $lateMember->id,
+            'role' => 1,
+            'status' => 1,
+        ]);
+        $this->assertDatabaseMissing('election_eligibility_snapshots', [
+            'election_id' => $next->id,
+            'user_id' => $lateMember->id,
+        ]);
+
+        app(ElectionBallotService::class)->submit($next->refresh(), $lateMember->id, [$candidate->id], []);
+
+        $this->assertDatabaseHas('election_eligibility_snapshots', [
+            'election_id' => $next->id,
+            'user_id' => $lateMember->id,
+            'voter_eligible' => 1,
+            'selectable_eligible' => 1,
+        ]);
+        $this->assertDatabaseHas('votes', [
+            'election_id' => $next->id,
+            'voter_id' => $lateMember->id,
+            'candidate_user_id' => $candidate->id,
+        ]);
+
         $this->assertSame(0, Vote::where('election_id', $old->id)->count());
         $this->assertDatabaseHas('election_ballot_events', [
             'election_id' => $next->id,
-            'voter_id' => $voter->id,
+            'voter_id' => $lateMember->id,
             'candidate_user_id' => $candidate->id,
             'event_type' => 'vote_cast',
         ]);
