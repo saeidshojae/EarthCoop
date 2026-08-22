@@ -13,6 +13,7 @@ use App\Models\Vote;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 class ElectionBallotService
 {
@@ -53,7 +54,12 @@ class ElectionBallotService
                 throw ValidationException::withMessages(['ballot' => 'یک عضو نمی‌تواند همزمان برای نقش مدیر و بازرس انتخاب شود.']);
             }
 
-            $policy = $this->policyResolver->resolveForGroup($lockedElection->group);
+            try {
+                $policy = $this->policyResolver->resolveForElection($lockedElection);
+            } catch (RuntimeException) {
+                // Compatibility only for a legacy pre-versioned open election.
+                $policy = $this->policyResolver->resolveForGroup($lockedElection->group);
+            }
             if (count($managerIds) > $this->policyResolver->managerSeatCount($policy)) {
                 throw ValidationException::withMessages(['manager' => 'تعداد انتخاب‌های مدیر بیشتر از ظرفیت مجاز این انتخابات است.']);
             }
