@@ -10,6 +10,7 @@ use App\Models\GroupSetting;
 use App\Models\GroupUser;
 use App\Models\User;
 use App\Services\Elections\ElectionPolicyVersionService;
+use App\Services\Elections\ElectionResponsibilityContractVersionService;
 use App\Services\Elections\ElectionResponsibilityOfferService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -20,13 +21,7 @@ class ElectionPolicyResponseDurationTest extends TestCase
 
     public function test_responsibility_offer_deadline_uses_frozen_cycle_policy(): void
     {
-        $managerV1 = ElectionResponsibilityContractVersion::create([
-            'position' => 'manager',
-            'version' => 1,
-            'body' => 'manager contract v1',
-            'is_active' => true,
-            'published_at' => now()->subDay(),
-        ]);
+        $managerV1 = $this->publishManagerContract('manager contract v1');
 
         $setting = GroupSetting::create([
             'level' => 'global', 'manager_count' => 1, 'inspector_count' => 0,
@@ -87,13 +82,7 @@ class ElectionPolicyResponseDurationTest extends TestCase
 
     public function test_later_contract_publication_does_not_change_contract_for_existing_cycle(): void
     {
-        $managerV1 = ElectionResponsibilityContractVersion::create([
-            'position' => 'manager',
-            'version' => 1,
-            'body' => 'manager contract v1',
-            'is_active' => true,
-            'published_at' => now()->subDays(2),
-        ]);
+        $managerV1 = $this->publishManagerContract('manager contract v1');
 
         $setting = GroupSetting::create([
             'level' => 'global', 'manager_count' => 1, 'inspector_count' => 0,
@@ -104,13 +93,7 @@ class ElectionPolicyResponseDurationTest extends TestCase
             $setting, null, 'contract_freeze_test', now(), 7
         );
 
-        $managerV2 = ElectionResponsibilityContractVersion::create([
-            'position' => 'manager',
-            'version' => 2,
-            'body' => 'manager contract v2',
-            'is_active' => true,
-            'published_at' => now()->subHour(),
-        ]);
+        $managerV2 = $this->publishManagerContract('manager contract v2');
 
         $group = Group::create([
             'name' => 'Contract freeze group', 'group_type' => '0',
@@ -154,5 +137,14 @@ class ElectionPolicyResponseDurationTest extends TestCase
         $this->assertSame($managerV1->id, (int) $policy->manager_contract_version_id);
         $this->assertSame($managerV1->id, (int) $offer->contract_version_id);
         $this->assertNotSame($managerV2->id, (int) $offer->contract_version_id);
+    }
+
+    private function publishManagerContract(string $text): ElectionResponsibilityContractVersion
+    {
+        $actor = User::factory()->create();
+        $clauses = array_fill_keys(ElectionResponsibilityContractVersion::REQUIRED_CLAUSES, $text);
+
+        return app(ElectionResponsibilityContractVersionService::class)
+            ->publish('manager', $clauses, $actor, $text);
     }
 }
