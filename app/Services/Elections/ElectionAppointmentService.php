@@ -234,7 +234,16 @@ class ElectionAppointmentService
 
     private function isFilled(Election $election): bool
     {
-        $policy = $this->policyResolver->resolveForGroup($election->group);
+        // Seat completion is retrospective to the challenged cycle. A later
+        // admin policy change must never change whether this election is full.
+        try {
+            $policy = $this->policyResolver->resolveForElection($election);
+        } catch (RuntimeException) {
+            // Legacy cycles that predate policy-version linkage retain the
+            // compatibility lookup until their historical data is reconciled.
+            $policy = $this->policyResolver->resolveForGroup($election->group);
+        }
+
         $required = [
             ElectionPosition::Manager->value => $this->policyResolver->managerSeatCount($policy),
             ElectionPosition::Inspector->value => $this->policyResolver->inspectorSeatCount($policy),
