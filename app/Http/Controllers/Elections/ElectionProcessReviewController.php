@@ -6,34 +6,47 @@ use App\Http\Controllers\Controller;
 use App\Models\Election;
 use App\Models\ElectionProcessReview;
 use App\Services\Elections\ElectionProcessReviewService;
-use Carbon\Carbon;
+use App\Services\Elections\ElectionReviewEventResolver;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ElectionProcessReviewController extends Controller
 {
-    public function __construct(private readonly ElectionProcessReviewService $reviews) {}
+    public function __construct(
+        private readonly ElectionProcessReviewService $reviews,
+        private readonly ElectionReviewEventResolver $events,
+    ) {}
 
     public function store(Request $request, Election $election)
     {
         $validated = $request->validate([
             'ground' => 'required|in:'.implode(',', ElectionProcessReview::GROUNDS),
-            'challenged_event' => 'required|string|max:64',
-            'challenged_event_id' => 'nullable|integer|min:1',
-            'event_occurred_at' => 'required|date',
+            'challenged_event' => ['required', Rule::in(ElectionReviewEventResolver::TYPES)],
+            'challenged_event_id' => 'required|integer|min:1',
             'subject_user_id' => 'nullable|integer|exists:users,id',
             'appointment_id' => 'nullable|integer|exists:election_appointments,id',
             'statement' => 'nullable|string|max:5000',
         ]);
+
+        // User-supplied timestamps are deliberately not accepted. The seven-day
+        // review deadline is anchored to immutable election evidence.
+        $evidence = $this->events->resolve(
+            $election,
+            $validated['challenged_event'],
+            (int) $validated['challenged_event_id'],
+        );
+        $subjectUserId = $evidence['subject_user_id'] ?? ($validated['subject_user_id'] ?? null);
+        $appointmentId = $evidence['appointment_id'] ?? ($validated['appointment_id'] ?? null);
 
         $review = $this->reviews->openAutomaticReview(
             $election,
             $request->user(),
             $validated['ground'],
             $validated['challenged_event'],
-            Carbon::parse($validated['event_occurred_at']),
-            $validated['challenged_event_id'] ?? null,
-            $validated['subject_user_id'] ?? null,
-            $validated['appointment_id'] ?? null,
+            $evidence['occurred_at'],
+            (int) $validated['challenged_event_id'],
+            $subjectUserId,
+            $appointmentId,
             $validated['statement'] ?? null,
         );
 
@@ -85,6 +98,8 @@ class ElectionProcessReviewController extends Controller
             'election_id' => (int) $review->election_id,
             'ground' => $review->ground,
             'challenged_event' => $review->challenged_event,
+            'challenged_event_id' => $review->challenged_event_id ? (int) $review->challenged_event_id : null,
+            'event_occurred_at' => optional($review->event_occurred_at)->toISOString(),
             'automatic_status' => $review->automatic_status,
             'automatic_result' => $review->automatic_result,
             'human_status' => $review->human_status,
