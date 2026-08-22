@@ -12,6 +12,7 @@ use App\Models\ElectionProcessReview;
 use App\Models\ElectionRepresentationAssignment;
 use App\Models\ElectionResponsibilityOffer;
 use App\Models\ElectionTallyResult;
+use App\Models\ElectionVoteFeedback;
 use App\Models\ElectionVoteSnapshotRun;
 use App\Models\Group;
 use App\Models\GroupUser;
@@ -19,8 +20,8 @@ use App\Models\User;
 use App\Services\Elections\ElectionCandidateReportService;
 use App\Services\Elections\ElectionFeedbackTopicAggregationService;
 use App\Services\Elections\ElectionFeedbackTopicResponseService;
+use App\Services\Elections\ElectionVoteFeedbackReadService;
 use Illuminate\Http\Request;
-use RuntimeException;
 use Throwable;
 
 class ElectionUserPortalController extends Controller
@@ -31,6 +32,7 @@ class ElectionUserPortalController extends Controller
         ElectionCandidateReportService $reports,
         ElectionFeedbackTopicResponseService $responses,
         ElectionFeedbackTopicAggregationService $topics,
+        ElectionVoteFeedbackReadService $feedbackReader,
     ) {
         $member = GroupUser::query()
             ->where('group_id', $group->id)
@@ -57,6 +59,11 @@ class ElectionUserPortalController extends Controller
             ->select('users.id', 'users.first_name', 'users.last_name')
             ->orderBy('users.first_name')->orderBy('users.last_name')->get();
 
+        $memberNames = $members->mapWithKeys(function ($member) {
+            $name = trim(($member->first_name ?? '').' '.($member->last_name ?? ''));
+            return [(int) $member->id => $name !== '' ? $name : ('عضو #'.$member->id)];
+        })->all();
+
         $selectedSubjectId = $request->filled('subject_user_id') ? (int) $request->input('subject_user_id') : null;
         $selectedPosition = $request->input('position', 'manager') === 'inspector' ? 'inspector' : 'manager';
         $candidateReport = null;
@@ -64,6 +71,7 @@ class ElectionUserPortalController extends Controller
         $topicResponses = collect();
         $publicTopics = null;
         $mayRespondToTopics = false;
+        $visibleFeedback = collect();
 
         if ($election) {
             if ($selectedSubjectId) {
@@ -81,6 +89,28 @@ class ElectionUserPortalController extends Controller
             } catch (Throwable) {
                 $topicResponses = collect();
             }
+
+            // Ordinary feedback surface is always projected through the central
+            // E11/E12 read policy. The portal never reads author/timestamp audit
+            // columns directly and cannot bypass all_members/elected/subject_only.
+            $visibleFeedback = ElectionVoteFeedback::query()
+                ->with('election')
+                ->where('election_id', $election->id)
+                ->when($selectedSubjectId, fn ($query) => $query->where('subject_user_id', $selectedSubjectId))
+                ->orderByDesc('id')
+                ->limit(100)
+                ->get()
+                ->map(fn ($feedback) => $feedbackReader->present($feedback, $request->user()))
+                ->filter()
+                ->map(function (array $feedback) use ($memberNames): array {
+                    $feedback['subject_name'] = $feedback['subject_user_id']
+                        ? ($memberNames[$feedback['subject_user_id']] ?? ('عضو #'.$feedback['subject_user_id']))
+                        : '—';
+                    $feedback['author_name'] = $feedback['author_user_id']
+                        ? ($memberNames[$feedback['author_user_id']] ?? ('عضو #'.$feedback['author_user_id']))
+                        : null;
+                    return $feedback;
+                })->values();
 
             $mayRespondToTopics = ElectionTallyResult::query()
                 ->where('election_id', $election->id)->where('candidate_user_id', $request->user()->id)->exists()
@@ -116,8 +146,8 @@ class ElectionUserPortalController extends Controller
             : collect();
 
         return view('elections.portal', compact(
-            'group', 'election', 'cycles', 'members', 'selectedSubjectId', 'selectedPosition',
-            'candidateReport', 'candidateReportError', 'topicResponses', 'publicTopics',
+            'group', 'election', 'cycles', 'members', 'memberNames', 'selectedSubjectId', 'selectedPosition',
+            'candidateReport', 'candidateReportError', 'visibleFeedback', 'topicResponses', 'publicTopics',
             'mayRespondToTopics', 'ownReviews', 'supportableReviews', 'reviewEvents', 'offers'
         ));
     }
