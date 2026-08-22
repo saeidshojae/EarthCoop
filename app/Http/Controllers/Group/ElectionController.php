@@ -9,9 +9,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Election;
 use App\Models\Group;
 use App\Services\Elections\ElectionBallotService;
-use App\Services\Elections\ElectionLifecycleService;
-use App\Services\Elections\ElectionPolicyResolver;
-use App\Services\Elections\ElectionTallyService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -19,10 +16,7 @@ use Illuminate\Validation\ValidationException;
 class ElectionController extends Controller
 {
     public function __construct(
-        private readonly ElectionPolicyResolver $policyResolver,
-        private readonly ElectionLifecycleService $lifecycle,
         private readonly ElectionBallotService $ballots,
-        private readonly ElectionTallyService $tally,
     ) {
     }
 
@@ -89,59 +83,21 @@ class ElectionController extends Controller
     }
 
     /**
-     * Legacy endpoint adapter only. Ranking now comes exclusively from the
-     * canonical E6 stop snapshot/tally service; this controller no longer
-     * computes top-N from the live votes projection.
+     * Retired compatibility endpoint.
+     *
+     * Election closing, snapshotting, tallying and offer creation are owned
+     * exclusively by the systemic scheduler/domain lifecycle. Keeping this
+     * adapter non-mutating prevents old clients/bookmarks from bypassing the
+     * canonical state machine while the legacy route declaration remains in
+     * the compatibility route file.
      */
     public function finishElection(Election $election)
     {
         $this->authorize('manageSession', $election->group);
 
-        $groupSetting = $this->policyResolver->resolveForGroup($election->group);
-        $candidates = $election->candidates;
-
-        foreach ($candidates as $candidate) {
-            $candidate->accept_status = 0;
-            $candidate->save();
-        }
-
-        $election = $this->lifecycle->transition(
-            $election,
-            ElectionLifecycleStatus::Closed,
-            'legacy_manual_finish_adapter',
-            'legacy_controller',
-            (int) auth()->id(),
-            'election-controller:finish',
-        );
-
-        $tallyRows = $this->tally->tally($election);
-        $selectedUserIds = $tallyRows
-            ->where('within_seat_cutoff', true)
-            ->pluck('candidate_user_id')
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values();
-
-        $activeCandidates = $election->candidates()->whereIn('user_id', $selectedUserIds)->get();
-        foreach ($activeCandidates as $candidate) {
-            // Compatibility projection only; E7 moves offer/acceptance out of
-            // Candidate/ProfileController into the election domain.
-            $candidate->accept_status = 1;
-            $candidate->save();
-        }
-
-        app(\App\Services\GroupChat\GroupEventPublisher::class)->publish(
-            new \App\Events\GroupFeedUpdated((int) $election->group_id, 'election_finished', [
-                'election_id' => (int) $election->id,
-                'is_closed' => true,
-                'elected_candidate_ids' => $selectedUserIds->all(),
-            ], (int) auth()->id()),
-        );
-
         return response()->json([
-            'status' => 'success',
-            'candidates' => $activeCandidates,
-            'group_setting' => $groupSetting,
-        ]);
+            'status' => 'retired',
+            'message' => 'پایان دستی انتخابات بازنشسته شده است؛ چرخه فقط توسط سامانه انتخابات متوقف و شمارش می‌شود.',
+        ], 410);
     }
 }
