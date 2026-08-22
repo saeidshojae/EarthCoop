@@ -20,7 +20,10 @@ class ElectionBallotService
     private const REQUEST_UUID_MAX_LENGTH = 96;
     private const COMMENT_MAX_LENGTH = 4000;
 
-    public function __construct(private readonly ElectionPolicyResolver $policyResolver) {}
+    public function __construct(
+        private readonly ElectionPolicyResolver $policyResolver,
+        private readonly ElectionEligibilitySnapshotService $eligibilitySnapshots,
+    ) {}
 
     public function submit(
         Election $election,
@@ -67,13 +70,23 @@ class ElectionBallotService
                 throw ValidationException::withMessages(['inspector' => 'تعداد انتخاب‌های بازرس بیشتر از ظرفیت مجاز این انتخابات است.']);
             }
 
+            $selectedIds = array_values(array_unique(array_merge($managerIds, $inspectorIds)));
+
+            // E0 continuous elections admit members who join while the current
+            // collection window is already open. Existing snapshot rows are
+            // never rewritten; missing current members are appended before the
+            // ballot is validated, and enrollment becomes impossible at stop.
+            $this->eligibilitySnapshots->enrollOpenElectionMembers(
+                $lockedElection,
+                array_values(array_unique(array_merge([$voterId], $selectedIds))),
+            );
+
             $voterSnapshot = ElectionEligibilitySnapshot::query()
                 ->where('election_id', $lockedElection->id)->where('user_id', $voterId)->first();
             if ($voterSnapshot === null || ! $voterSnapshot->voter_eligible) {
-                throw ValidationException::withMessages(['voter' => 'شما در snapshot آغاز این انتخابات واجد شرایط رأی دادن نیستید.']);
+                throw ValidationException::withMessages(['voter' => 'شما در این بازه انتخابات پیوسته واجد شرایط رأی دادن نیستید.']);
             }
 
-            $selectedIds = array_values(array_unique(array_merge($managerIds, $inspectorIds)));
             if ($selectedIds !== []) {
                 $selectableIds = ElectionEligibilitySnapshot::query()
                     ->where('election_id', $lockedElection->id)
@@ -82,7 +95,7 @@ class ElectionBallotService
                     ->pluck('user_id')->map(fn ($id) => (int) $id)->all();
                 $invalidIds = array_values(array_diff($selectedIds, $selectableIds));
                 if ($invalidIds !== []) {
-                    throw ValidationException::withMessages(['ballot' => 'یک یا چند عضو انتخاب‌شده در snapshot آغاز انتخابات واجد شرایط انتخاب شدن نیستند.']);
+                    throw ValidationException::withMessages(['ballot' => 'یک یا چند عضو انتخاب‌شده در این بازه انتخابات پیوسته واجد شرایط انتخاب شدن نیستند.']);
                 }
             }
 
