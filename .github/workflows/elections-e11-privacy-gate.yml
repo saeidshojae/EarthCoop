@@ -63,11 +63,12 @@ jobs:
       - name: Migrate election privacy schema
         run: php artisan migrate:fresh --force
 
-      - name: Run E0 ballot write and ordinary-read privacy tests
+      - name: Run E0 ballot write, ordinary-read and user-surface privacy tests
         run: |
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/Elections/ElectionBallotPrivacyTest.php \
-            tests/Feature/Elections/ElectionBallotVisibilityServiceTest.php
+            tests/Feature/Elections/ElectionBallotVisibilityServiceTest.php \
+            tests/Feature/Elections/ElectionUserSurfaceTest.php
 
       - name: Re-run elections regression suite
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections
