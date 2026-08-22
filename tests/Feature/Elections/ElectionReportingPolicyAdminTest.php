@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Elections;
 
+use App\Http\Middleware\AdminMiddleware;
 use App\Models\ElectionPolicyVersion;
 use App\Models\GroupSetting;
 use App\Models\User;
@@ -14,7 +15,10 @@ class ElectionReportingPolicyAdminTest extends TestCase
 
     public function test_admin_can_view_and_publish_reporting_privacy_policy(): void
     {
-        $this->withoutMiddleware();
+        // Keep Laravel's normal web middleware (especially SubstituteBindings,
+        // session and shared validation errors) active. Only bypass the admin
+        // authorization wrapper so this test exercises the real bound route.
+        $this->withoutMiddleware(AdminMiddleware::class);
         $this->withoutVite();
         $admin = User::factory()->create();
         $this->actingAs($admin);
