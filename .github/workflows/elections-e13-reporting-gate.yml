@@ -63,11 +63,12 @@ jobs:
       - name: Migrate E13 reporting schema
         run: php artisan migrate:fresh --force
 
-      - name: Run E0 privacy-safe reporting tests
+      - name: Run E0 privacy-safe reporting and persisted-position compatibility tests
         run: |
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/Elections/ElectionCandidateReportPrivacyTest.php \
             tests/Feature/Elections/ElectionCandidateReportAdvancedPrivacyTest.php \
+            tests/Feature/Elections/ElectionCandidateReportPositionCompatibilityTest.php \
             tests/Feature/Elections/ElectionReportingPolicyAdminTest.php
 
       - name: Re-run elections regression suite
