@@ -59,11 +59,12 @@ jobs:
           php artisan key:generate --force
       - name: Migrate procedural review schema
         run: php artisan migrate:fresh --force
-      - name: Run E0 procedural review, deadlines and frozen recount tests
+      - name: Run E0 procedural review, authorization, deadlines and frozen recount tests
         run: |
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/Elections/ElectionProcessReviewServiceTest.php \
             tests/Feature/Elections/ElectionProcessReviewGovernanceTest.php \
+            tests/Feature/Elections/ElectionProcessReviewAuthorizationTest.php \
             tests/Feature/Elections/ElectionFrozenPolicyRecountTest.php
       - name: Re-run elections regression suite
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections
