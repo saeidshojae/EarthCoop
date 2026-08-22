@@ -1,0 +1,110 @@
+<?php
+
+namespace Tests\Feature\Elections;
+
+use App\Enums\Elections\ElectionLifecycleStatus;
+use App\Models\Election;
+use App\Models\ElectionPolicyVersion;
+use App\Models\Group;
+use App\Models\GroupSetting;
+use App\Models\GroupUser;
+use App\Models\User;
+use App\Models\Vote;
+use App\Services\Elections\ElectionBallotService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class ElectionContinuousBallotCollectionTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_lifecycle_tick_stops_due_window_and_opens_successor_for_new_votes_immediately(): void
+    {
+        $group = Group::create([
+            'name' => 'Continuous E0 ballot group',
+            'group_type' => 'public',
+            'location_level' => 'global',
+            'address_id' => null,
+        ]);
+        $setting = GroupSetting::create([
+            'level' => 'global',
+            'manager_count' => 1,
+            'inspector_count' => 0,
+            'election_time' => 30,
+            'max_for_election' => 1,
+            'election_status' => 1,
+            'second_election_time' => 6,
+        ]);
+        $policy = ElectionPolicyVersion::create([
+            'group_setting_id' => $setting->id,
+            'level_key' => 'global',
+            'version' => 1,
+            'election_status' => true,
+            'manager_count' => 1,
+            'inspector_count' => 0,
+            'voting_duration_days' => 30,
+            'start_threshold' => 1,
+            'cycle_interval_months' => 6,
+            'response_duration_days' => 7,
+            'report_min_distinct_voters' => 10,
+            'report_bucket_days' => 7,
+            'meaningful_trend_min_net_change' => 3,
+            'effective_at' => now()->subMonths(2),
+            'change_reason' => 'continuous ballot test',
+        ]);
+
+        $voter = User::factory()->create(['is_system' => false]);
+        $candidate = User::factory()->create(['is_system' => false]);
+        foreach ([$voter, $candidate] as $user) {
+            GroupUser::create([
+                'group_id' => $group->id,
+                'user_id' => $user->id,
+                'role' => 1,
+                'status' => 1,
+            ]);
+        }
+
+        $old = Election::create([
+            'group_id' => $group->id,
+            'cycle_number' => 1,
+            'policy_version_id' => $policy->id,
+            'starts_at' => now()->subDays(31),
+            'ends_at' => now()->subMinute(),
+            'is_closed' => false,
+            'lifecycle_status' => ElectionLifecycleStatus::Open,
+        ]);
+
+        $this->artisan('elections:process-lifecycle', ['--limit' => 100, '--fail-on-error' => true])
+            ->assertExitCode(0);
+
+        $old->refresh();
+        $next = Election::query()->where('group_id', $group->id)->where('cycle_number', 2)->firstOrFail();
+
+        $this->assertSame(ElectionLifecycleStatus::Closed, $old->lifecycle_status);
+        $this->assertSame(ElectionLifecycleStatus::Open, $next->lifecycle_status);
+        $this->assertSame($old->id, (int) $next->previous_election_id);
+        $this->assertTrue($next->ends_at->greaterThan(now()->addMonths(5)));
+        $this->assertDatabaseHas('election_vote_snapshot_runs', ['election_id' => $old->id, 'snapshot_version' => 1]);
+        $this->assertDatabaseHas('election_eligibility_snapshots', [
+            'election_id' => $next->id,
+            'user_id' => $voter->id,
+            'voter_eligible' => 1,
+        ]);
+
+        app(ElectionBallotService::class)->submit($next, $voter->id, [$candidate->id], []);
+
+        $this->assertDatabaseHas('votes', [
+            'election_id' => $next->id,
+            'voter_id' => $voter->id,
+            'candidate_user_id' => $candidate->id,
+            'position' => 1,
+        ]);
+        $this->assertSame(0, Vote::where('election_id', $old->id)->count());
+        $this->assertDatabaseHas('election_ballot_events', [
+            'election_id' => $next->id,
+            'voter_id' => $voter->id,
+            'candidate_user_id' => $candidate->id,
+            'event_type' => 'vote_cast',
+        ]);
+    }
+}
