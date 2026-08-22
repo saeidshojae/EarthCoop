@@ -11,6 +11,7 @@ use App\Services\Elections\ElectionLifecycleService;
 use App\Services\Elections\ElectionMeaningfulTrendNotificationService;
 use App\Services\Elections\ElectionPolicyVersionService;
 use App\Services\Elections\ElectionResponsibilityOfferService;
+use App\Services\Elections\ElectionTallyService;
 use App\Services\Elections\ElectionVacancyService;
 use Illuminate\Console\Command;
 use Throwable;
@@ -21,12 +22,13 @@ class ProcessElectionLifecycle extends Command
         {--limit=500 : Maximum groups/elections/offers/vacancies to inspect in one tick}
         {--fail-on-error : Exit non-zero if any election action fails processing}';
 
-    protected $description = 'Create election cycles, activate effective policies, advance due states, expire offers, apply appointments, backfill vacancies and emit privacy-safe meaningful trend alerts';
+    protected $description = 'Create election cycles, activate effective policies, advance due states, tally stopped cycles, start responsibility offers, expire offers, apply appointments, backfill vacancies and emit privacy-safe meaningful trend alerts';
 
     public function handle(
         ElectionCycleService $cycles,
         ElectionLifecycleService $lifecycle,
         ElectionPolicyVersionService $policyVersions,
+        ElectionTallyService $tally,
         ElectionResponsibilityOfferService $offers,
         ElectionAppointmentService $appointments,
         ElectionVacancyService $vacancies,
@@ -37,6 +39,9 @@ class ProcessElectionLifecycle extends Command
         $cyclesCreated = 0;
         $processed = 0;
         $advanced = 0;
+        $settlementProcessed = 0;
+        $tallied = 0;
+        $offersStarted = 0;
         $policiesSynced = 0;
         $expiredOffers = 0;
         $appointmentElections = 0;
@@ -55,10 +60,9 @@ class ProcessElectionLifecycle extends Command
             $this->error("Election policy mirrors: {$exception->getMessage()}");
         }
 
-        // Advance due collection windows before ensuring group cycles. This order
-        // is an E0 continuity invariant: when an open window reaches its stop in
-        // this tick, the group pass below immediately opens the successor window
-        // while tally/offers for the stopped cycle continue independently.
+        // First stop any due ballot windows. The group pass immediately below
+        // can then open the successor collection window before result processing,
+        // so a tally/offer failure never blocks continuous ballot availability.
         Election::query()
             ->where(function ($query) {
                 $query->whereIn('lifecycle_status', [
@@ -114,6 +118,41 @@ class ProcessElectionLifecycle extends Command
             return $groupsProcessed < $limit;
         });
 
+        // A stopped election must not depend on a manual HTTP endpoint to make
+        // progress. Every tick deterministically reconciles Closed/Tallying to
+        // persisted tally results and then starts the responsibility-offer chain.
+        Election::query()
+            ->whereIn('lifecycle_status', [
+                ElectionLifecycleStatus::Closed->value,
+                ElectionLifecycleStatus::Tallying->value,
+            ])
+            ->orderBy('id')
+            ->limit($limit)
+            ->get()
+            ->each(function (Election $election) use (
+                $lifecycle, $tally, $offers,
+                &$settlementProcessed, &$tallied, &$offersStarted, &$errors,
+            ): void {
+                $settlementProcessed++;
+                try {
+                    $before = $lifecycle->currentStatus($election);
+                    $tally->tally($election);
+                    if ($before === ElectionLifecycleStatus::Closed) {
+                        $tallied++;
+                    }
+
+                    $election = Election::query()->findOrFail($election->id);
+                    if ($lifecycle->currentStatus($election) === ElectionLifecycleStatus::Tallying) {
+                        $offers->start($election);
+                        $offersStarted++;
+                    }
+                } catch (Throwable $exception) {
+                    $errors++;
+                    report($exception);
+                    $this->error("Election {$election->id} tally/offers: {$exception->getMessage()}");
+                }
+            });
+
         try {
             $expiredOffers = $offers->expireDue($limit);
         } catch (Throwable $exception) {
@@ -167,7 +206,7 @@ class ProcessElectionLifecycle extends Command
         // Keep the legacy processed/advanced/errors sequence stable for operators,
         // log parsers and regression checks; append newer metrics afterwards.
         $this->line(
-            "groups={$groupsProcessed} cycles_created={$cyclesCreated} processed={$processed} advanced={$advanced} errors={$errors} policies_synced={$policiesSynced} expired_offers={$expiredOffers} appointment_elections={$appointmentElections} vacancy_processed={$vacancyProcessed} vacancy_filled={$vacancyFilled} vacancy_exhausted={$vacancyExhausted} trend_processed={$trendProcessed} trend_notified={$trendNotified}"
+            "groups={$groupsProcessed} cycles_created={$cyclesCreated} processed={$processed} advanced={$advanced} errors={$errors} settlement_processed={$settlementProcessed} tallied={$tallied} offers_started={$offersStarted} policies_synced={$policiesSynced} expired_offers={$expiredOffers} appointment_elections={$appointmentElections} vacancy_processed={$vacancyProcessed} vacancy_filled={$vacancyFilled} vacancy_exhausted={$vacancyExhausted} trend_processed={$trendProcessed} trend_notified={$trendNotified}"
         );
 
         return ($errors > 0 && $this->option('fail-on-error')) ? self::FAILURE : self::SUCCESS;
