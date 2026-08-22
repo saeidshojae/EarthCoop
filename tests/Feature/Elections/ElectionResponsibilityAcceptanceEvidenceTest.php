@@ -46,15 +46,20 @@ class ElectionResponsibilityAcceptanceEvidenceTest extends TestCase
             $this->assertArrayHasKey('contract_version_id', $exception->errors());
         }
 
-        $evidence = app(ElectionResponsibilityAcceptanceEvidenceService::class)
+        $confirmedOffer = app(ElectionResponsibilityAcceptanceEvidenceService::class)
             ->confirm($offer->refresh(), $candidate, (int) $offer->contract_version_id);
-        $accepted = $offers->accept($offer->refresh(), $candidate->id);
+        $evidence = $confirmedOffer->response_metadata['acceptance_evidence'] ?? null;
+        $accepted = $offers->accept($confirmedOffer->refresh(), $candidate->id);
 
         $this->assertSame('accepted', $accepted->status->value);
-        $this->assertSame($candidate->id, (int) $evidence->candidate_user_id);
-        $this->assertSame((int) $offer->contract_version_id, (int) $evidence->contract_version_id);
-        $this->assertNotNull($evidence->confirmed_at);
-        $this->assertNotEmpty($evidence->contract_hash);
+        $this->assertIsArray($evidence);
+        $this->assertSame($candidate->id, (int) ($evidence['candidate_user_id'] ?? 0));
+        $this->assertSame((int) $offer->contract_version_id, (int) ($evidence['contract_version_id'] ?? 0));
+        $this->assertNotEmpty($evidence['confirmed_at'] ?? null);
+        $this->assertSame(
+            hash('sha256', ElectionResponsibilityAcceptanceEvidenceService::CONFIRMATION_TEXT),
+            $evidence['confirmation_text_hash'] ?? null
+        );
     }
 
     private function fixture(): array
