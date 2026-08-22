@@ -9,13 +9,7 @@ use App\Models\Vote;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 
-/**
- * Privacy-safe aggregate reporting for E0 §7.3.
- *
- * Fine-grained breakdowns are returned only when BOTH the minimum reporting
- * window and the minimum number of distinct voters are satisfied. Otherwise
- * callers receive only non-identifying overall state.
- */
+/** Privacy-safe aggregate reporting for E0 §7.3. */
 class ElectionCandidateReportService
 {
     public function report(
@@ -36,14 +30,8 @@ class ElectionCandidateReportService
         $canonicalPosition = $position === ElectionPosition::Inspector->value
             ? ElectionPosition::Inspector
             : ElectionPosition::Manager;
-        $positionValues = [
-            $canonicalPosition->value,
-            (string) $canonicalPosition->legacyVotePosition(),
-        ];
+        $positionValues = [$canonicalPosition->value, (string) $canonicalPosition->legacyVotePosition()];
 
-        // Current ballots are still persisted through the legacy-compatible
-        // 0/1 position contract. Reports accept both that persisted form and
-        // canonical string rows so legacy/canonical datasets reconcile safely.
         $currentVoteRows = Vote::query()
             ->where('election_id', $election->id)
             ->where('candidate_user_id', $candidateUserId)
@@ -68,10 +56,7 @@ class ElectionCandidateReportService
 
         $spanDays = max(0, $from->diffInDays($to));
         if ($spanDays < $bucketDays) {
-            return $base + [
-                'details_suppressed' => true,
-                'suppression_reason' => 'reporting_window_too_small',
-            ];
+            return $base + ['details_suppressed' => true, 'suppression_reason' => 'reporting_window_too_small'];
         }
 
         $events = ElectionBallotEvent::query()
@@ -82,14 +67,23 @@ class ElectionCandidateReportService
                     ->orWhere('previous_candidate_user_id', $candidateUserId);
             })
             ->orderBy('occurred_at')
-            ->get(['voter_id', 'event_type', 'candidate_user_id', 'previous_candidate_user_id', 'occurred_at']);
+            ->get([
+                'voter_id', 'event_type', 'candidate_user_id', 'previous_candidate_user_id',
+                'position', 'previous_position', 'occurred_at',
+            ]);
 
-        $distinctVoters = $events->pluck('voter_id')->map(fn ($id) => (int) $id)->unique()->count();
+        // A candidate can move between manager/inspector across ballot edits.
+        // Reporting thresholds, trends and retention must therefore count only
+        // events that actually change the requested candidate+position pair.
+        $positionEvents = $events->filter(
+            fn (ElectionBallotEvent $event) => $this->deltaForCandidatePosition($event, $candidateUserId, $canonicalPosition) !== 0
+        )->values();
+
+        $distinctVoters = $positionEvents->pluck('voter_id')->map(fn ($id) => (int) $id)->unique()->count();
         if ($distinctVoters < $minDistinct) {
             return $base + [
                 'details_suppressed' => true,
                 'suppression_reason' => 'distinct_voter_threshold_not_met',
-                // Do not expose the exact sub-threshold count.
                 'distinct_voters' => null,
             ];
         }
@@ -100,12 +94,8 @@ class ElectionCandidateReportService
         $inflow = 0;
         $outflow = 0;
 
-        foreach ($events as $event) {
-            $delta = $this->deltaForCandidate($event, $candidateUserId);
-            if ($delta === 0) {
-                continue;
-            }
-
+        foreach ($positionEvents as $event) {
+            $delta = $this->deltaForCandidatePosition($event, $candidateUserId, $canonicalPosition);
             $seconds = max(0, CarbonImmutable::parse($event->occurred_at)->getTimestamp() - $origin->getTimestamp());
             $bucketIndex = intdiv($seconds, $bucketSeconds);
             $bucketStart = $origin->addDays($bucketIndex * $bucketDays)->toDateString();
@@ -122,7 +112,13 @@ class ElectionCandidateReportService
         }
 
         $net = $inflow - $outflow;
-        $retention = $this->retentionRate($events, $candidateUserId, $currentVoterIds, $minDistinct);
+        $retention = $this->retentionRate(
+            $positionEvents,
+            $candidateUserId,
+            $canonicalPosition,
+            $currentVoterIds,
+            $minDistinct,
+        );
 
         return $base + [
             'details_suppressed' => false,
@@ -144,15 +140,24 @@ class ElectionCandidateReportService
         ];
     }
 
-    private function retentionRate($events, int $candidateUserId, array $currentVoterIds, int $minDistinct): array
-    {
+    private function retentionRate(
+        $events,
+        int $candidateUserId,
+        ElectionPosition $position,
+        array $currentVoterIds,
+        int $minDistinct,
+    ): array {
         $atStart = array_fill_keys($currentVoterIds, true);
 
         foreach ($events->sortByDesc('occurred_at') as $event) {
             $voterId = (int) $event->voter_id;
-            if ($event->event_type === 'vote_cast' && (int) $event->candidate_user_id === $candidateUserId) {
+            $delta = $this->deltaForCandidatePosition($event, $candidateUserId, $position);
+            if ($delta > 0) {
+                // Reverse a gain: before this event the voter was not supporting
+                // this candidate in this position.
                 unset($atStart[$voterId]);
-            } elseif ($event->event_type === 'vote_withdrawn' && (int) $event->previous_candidate_user_id === $candidateUserId) {
+            } elseif ($delta < 0) {
+                // Reverse a loss: before this event the voter did support it.
                 $atStart[$voterId] = true;
             }
         }
@@ -165,15 +170,10 @@ class ElectionCandidateReportService
         $currentLookup = array_fill_keys($currentVoterIds, true);
         $retained = 0;
         foreach ($startIds as $voterId) {
-            if (isset($currentLookup[$voterId])) {
-                $retained++;
-            }
+            if (isset($currentLookup[$voterId])) $retained++;
         }
 
-        return [
-            'rate' => round($retained / count($startIds), 4),
-            'suppressed' => false,
-        ];
+        return ['rate' => round($retained / count($startIds), 4), 'suppressed' => false];
     }
 
     private function selectionCutoff(Election $election, ElectionPosition $position): ?int
@@ -181,10 +181,7 @@ class ElectionCandidateReportService
         $seatCount = $position === ElectionPosition::Inspector
             ? (int) ($election->policyVersion?->inspector_count ?? 0)
             : (int) ($election->policyVersion?->manager_count ?? 0);
-
-        if ($seatCount <= 0) {
-            return null;
-        }
+        if ($seatCount <= 0) return null;
 
         $counts = Vote::query()
             ->where('election_id', $election->id)
@@ -193,28 +190,40 @@ class ElectionCandidateReportService
             ->selectRaw('candidate_user_id, COUNT(*) as vote_count')
             ->groupBy('candidate_user_id')
             ->orderByDesc('vote_count')
-            ->pluck('vote_count')
-            ->map(fn ($count) => (int) $count)
-            ->values();
+            ->pluck('vote_count')->map(fn ($count) => (int) $count)->values();
 
-        if ($counts->isEmpty()) {
-            return 0;
-        }
-
+        if ($counts->isEmpty()) return 0;
         return (int) ($counts->get(min($seatCount, $counts->count()) - 1) ?? 0);
     }
 
-    private function deltaForCandidate(ElectionBallotEvent $event, int $candidateUserId): int
-    {
-        if ($event->event_type === 'vote_cast' && (int) $event->candidate_user_id === $candidateUserId) {
+    private function deltaForCandidatePosition(
+        ElectionBallotEvent $event,
+        int $candidateUserId,
+        ElectionPosition $position,
+    ): int {
+        $target = $position->value;
+
+        if ($event->event_type === 'vote_cast'
+            && (int) $event->candidate_user_id === $candidateUserId
+            && (string) $event->position === $target) {
             return 1;
         }
-        if ($event->event_type === 'vote_withdrawn' && (int) $event->previous_candidate_user_id === $candidateUserId) {
+
+        if ($event->event_type === 'vote_withdrawn'
+            && (int) $event->previous_candidate_user_id === $candidateUserId
+            && (string) $event->previous_position === $target) {
             return -1;
         }
 
-        // vote_changed currently represents role/visibility mutation for the same
-        // candidate and therefore does not change popularity count.
+        if ($event->event_type === 'vote_changed'
+            && (int) $event->candidate_user_id === $candidateUserId
+            && (int) $event->previous_candidate_user_id === $candidateUserId) {
+            $before = (string) $event->previous_position === $target;
+            $after = (string) $event->position === $target;
+            if (! $before && $after) return 1;
+            if ($before && ! $after) return -1;
+        }
+
         return 0;
     }
 }
