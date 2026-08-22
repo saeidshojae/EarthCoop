@@ -4,7 +4,9 @@ namespace App\Services\Elections;
 
 use App\Enums\Elections\ElectionPosition;
 use App\Enums\Elections\ElectionResponsibilityOfferStatus;
+use App\Models\Election;
 use App\Models\ElectionAppointment;
+use App\Models\ElectionPolicyVersion;
 use App\Models\ElectionResponsibilityContractVersion;
 use App\Models\ElectionResponsibilityOffer;
 use App\Models\ElectionTallyResult;
@@ -17,7 +19,10 @@ use RuntimeException;
 
 class ElectionVacancyService
 {
-    public function __construct(private readonly ElectionAppointmentService $appointments) {}
+    public function __construct(
+        private readonly ElectionAppointmentService $appointments,
+        private readonly ElectionPolicyResolver $policyResolver,
+    ) {}
 
     /**
      * Open a planned succession without ending the incumbent appointment.
@@ -128,7 +133,11 @@ class ElectionVacancyService
             }
 
             $position = ElectionPosition::from($vacancy->position);
-            $contract = $this->activeContract($position);
+            $election = Election::query()->findOrFail($vacancy->election_id);
+            $policy = $this->policyForElection($election);
+            $contract = $this->contractForElection($position, $election, $policy);
+            $responseDays = $this->policyResolver->responseDurationDays($policy);
+
             $alreadyOffered = ElectionResponsibilityOffer::query()
                 ->where('election_id', $vacancy->election_id)
                 ->where('position', $position->value)
@@ -159,7 +168,7 @@ class ElectionVacancyService
                         ? ElectionResponsibilityOfferStatus::Pending
                         : ElectionResponsibilityOfferStatus::Ineligible,
                     'offered_at' => now(),
-                    'expires_at' => $eligible ? now()->addDays(ElectionResponsibilityOfferService::RESPONSE_WINDOW_DAYS) : now(),
+                    'expires_at' => $eligible ? now()->addDays($responseDays) : now(),
                     'responded_at' => $eligible ? null : now(),
                     'eligibility_checked_at' => now(),
                     'resolution_reason' => $eligible ? 'post_appointment_vacancy_ranked_backfill' : 'candidate_ineligible_for_post_appointment_vacancy',
@@ -167,6 +176,10 @@ class ElectionVacancyService
                         'vacancy_id' => (int) $vacancy->id,
                         'source_appointment_id' => (int) $vacancy->source_appointment_id,
                         'continuity_mode' => $vacancy->continuity_mode,
+                        'policy_version_id' => $election->policy_version_id,
+                        'response_duration_days' => $responseDays,
+                        'contract_version_id' => (int) $contract->id,
+                        'contract_frozen_by_policy' => $policy instanceof ElectionPolicyVersion,
                     ],
                 ]);
 
@@ -192,8 +205,41 @@ class ElectionVacancyService
         }, 3);
     }
 
-    private function activeContract(ElectionPosition $position): ElectionResponsibilityContractVersion
+    private function policyForElection(Election $election): object
     {
+        try {
+            return $this->policyResolver->resolveForElection($election);
+        } catch (RuntimeException) {
+            return $this->policyResolver->resolveForGroup($election->group);
+        }
+    }
+
+    private function contractForElection(
+        ElectionPosition $position,
+        Election $election,
+        object $policy,
+    ): ElectionResponsibilityContractVersion {
+        if ($election->policy_version_id !== null) {
+            if (! $policy instanceof ElectionPolicyVersion) {
+                throw new RuntimeException("Election [{$election->id}] has a policy version id but no canonical policy version could be resolved.");
+            }
+
+            $frozenId = $position === ElectionPosition::Manager
+                ? $policy->manager_contract_version_id
+                : $policy->inspector_contract_version_id;
+
+            if ($frozenId === null) {
+                throw new RuntimeException("Election [{$election->id}] policy version [{$policy->id}] has no frozen responsibility contract for [{$position->value}].");
+            }
+
+            $contract = ElectionResponsibilityContractVersion::query()->find((int) $frozenId);
+            if ($contract === null || $contract->position !== $position->value || $contract->published_at === null) {
+                throw new RuntimeException("Frozen responsibility contract [{$frozenId}] is invalid for [{$position->value}].");
+            }
+
+            return $contract;
+        }
+
         $contract = ElectionResponsibilityContractVersion::query()
             ->where('position', $position->value)
             ->where('is_active', true)
