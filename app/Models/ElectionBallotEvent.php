@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\Elections\ElectionBallotCommentVisibility;
 use App\Enums\Elections\ElectionVoteVisibility;
+use App\Services\Elections\ElectionVoteFeedbackService;
 use Illuminate\Database\Eloquent\Model;
 use LogicException;
 
@@ -36,6 +37,12 @@ class ElectionBallotEvent extends Model
 
     protected static function booted(): void
     {
+        static::created(function (ElectionBallotEvent $event): void {
+            if ($event->comment !== null && trim((string) $event->comment) !== '') {
+                app(ElectionVoteFeedbackService::class)->capture($event);
+            }
+        });
+
         static::updating(function (): never {
             throw new LogicException('Election ballot audit events are append-only.');
         });
@@ -58,5 +65,10 @@ class ElectionBallotEvent extends Model
     public function candidateUser()
     {
         return $this->belongsTo(User::class, 'candidate_user_id');
+    }
+
+    public function feedback()
+    {
+        return $this->hasOne(ElectionVoteFeedback::class, 'ballot_event_id');
     }
 }
