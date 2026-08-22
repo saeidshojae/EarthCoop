@@ -55,30 +55,10 @@ class ProcessElectionLifecycle extends Command
             $this->error("Election policy mirrors: {$exception->getMessage()}");
         }
 
-        Group::query()->orderBy('id')->chunkById(100, function ($groups) use (
-            $cycles, $limit, &$groupsProcessed, &$cyclesCreated, &$errors,
-        ) {
-            foreach ($groups as $group) {
-                if ($groupsProcessed >= $limit) {
-                    return false;
-                }
-                $groupsProcessed++;
-                $before = Election::where('group_id', $group->id)->count();
-                try {
-                    $cycles->ensureForGroup($group);
-                    $after = Election::where('group_id', $group->id)->count();
-                    if ($after > $before) {
-                        $cyclesCreated += ($after - $before);
-                    }
-                } catch (Throwable $exception) {
-                    $errors++;
-                    report($exception);
-                    $this->error("Group {$group->id}: {$exception->getMessage()}");
-                }
-            }
-            return $groupsProcessed < $limit;
-        });
-
+        // Advance due collection windows before ensuring group cycles. This order
+        // is an E0 continuity invariant: when an open window reaches its stop in
+        // this tick, the group pass below immediately opens the successor window
+        // while tally/offers for the stopped cycle continue independently.
         Election::query()
             ->where(function ($query) {
                 $query->whereIn('lifecycle_status', [
@@ -109,6 +89,30 @@ class ProcessElectionLifecycle extends Command
                 }
                 return $processed < $limit;
             });
+
+        Group::query()->orderBy('id')->chunkById(100, function ($groups) use (
+            $cycles, $limit, &$groupsProcessed, &$cyclesCreated, &$errors,
+        ) {
+            foreach ($groups as $group) {
+                if ($groupsProcessed >= $limit) {
+                    return false;
+                }
+                $groupsProcessed++;
+                $before = Election::where('group_id', $group->id)->count();
+                try {
+                    $cycles->ensureForGroup($group);
+                    $after = Election::where('group_id', $group->id)->count();
+                    if ($after > $before) {
+                        $cyclesCreated += ($after - $before);
+                    }
+                } catch (Throwable $exception) {
+                    $errors++;
+                    report($exception);
+                    $this->error("Group {$group->id}: {$exception->getMessage()}");
+                }
+            }
+            return $groupsProcessed < $limit;
+        });
 
         try {
             $expiredOffers = $offers->expireDue($limit);
