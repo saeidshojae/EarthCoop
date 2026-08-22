@@ -3,6 +3,7 @@
 namespace Tests\Feature\Elections;
 
 use App\Models\Election;
+use App\Models\ElectionResponsibilityContractVersion;
 use App\Models\Group;
 use App\Models\GroupSetting;
 use App\Models\GroupUser;
@@ -17,6 +18,17 @@ class ElectionCycleLineageTest extends TestCase
 
     public function test_new_cycle_links_to_previous_historical_cycle_with_monotonic_number(): void
     {
+        $manifest = array_fill_keys(ElectionResponsibilityContractVersion::REQUIRED_CLAUSES, 'متن معتبر قرارداد تست lineage');
+        ElectionResponsibilityContractVersion::create([
+            'position' => 'manager',
+            'version' => 1,
+            'body' => 'manager E0 lineage fixture',
+            'clause_manifest' => $manifest,
+            'e0_compliant' => true,
+            'is_active' => true,
+            'published_at' => now()->subDay(),
+        ]);
+
         $group = Group::create([
             'name' => 'Historical cycle lineage group',
             'group_type' => '0',
