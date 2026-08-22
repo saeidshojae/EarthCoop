@@ -9,7 +9,7 @@ class ElectionAppointment extends Model
     protected $fillable = [
         'election_id', 'responsibility_offer_id', 'user_id', 'group_id',
         'position', 'group_role', 'appointment_kind', 'source_appointment_id',
-        'status', 'appointed_at', 'ended_at', 'superseded_by_appointment_id',
+        'status', 'review_state', 'appointed_at', 'ended_at', 'superseded_by_appointment_id',
         'actor', 'reason', 'metadata',
     ];
 
@@ -57,4 +57,5 @@ class ElectionAppointment extends Model
     public function sourceAppointment() { return $this->belongsTo(self::class, 'source_appointment_id'); }
     public function inheritedAppointments() { return $this->hasMany(self::class, 'source_appointment_id'); }
     public function vacancy() { return $this->hasOne(ElectionVacancy::class, 'source_appointment_id'); }
+    public function processReviews() { return $this->hasMany(ElectionProcessReview::class, 'appointment_id'); }
 }
