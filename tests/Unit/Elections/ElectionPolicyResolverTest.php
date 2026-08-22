@@ -14,15 +14,25 @@ class ElectionPolicyResolverTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
         $this->resolver = new ElectionPolicyResolver();
     }
 
     public function test_base_location_level_is_used_for_general_groups(): void
     {
         $group = new Group(['location_level' => 'neighborhood']);
-
         $this->assertSame('neighborhood', $this->resolver->levelKeyForGroup($group));
+    }
+
+    public function test_legacy_section_level_is_normalized_to_district_at_policy_boundary(): void
+    {
+        $this->assertSame('district', $this->resolver->levelKeyForGroup(new Group([
+            'location_level' => 'section',
+        ])));
+
+        $this->assertSame('district_job', $this->resolver->levelKeyForGroup(new Group([
+            'location_level' => 'section',
+            'specialty_id' => 11,
+        ])));
     }
 
     public function test_specialized_group_suffixes_follow_legacy_contract(): void
