@@ -161,3 +161,12 @@
         @endif
     </div>
 </div>
+
+<script type="module">
+window.GroupElectionModal = {
+    updateElectionSelect2() {},
+    openCandidatesModal() {},
+    openGuidelineModal() {},
+    openTopVotesModal() {},
+};
+</script>
