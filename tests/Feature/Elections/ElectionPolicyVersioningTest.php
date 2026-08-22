@@ -4,6 +4,7 @@ namespace Tests\Feature\Elections;
 
 use App\Models\Election;
 use App\Models\ElectionPolicyVersion;
+use App\Models\ElectionResponsibilityContractVersion;
 use App\Models\Group;
 use App\Models\GroupSetting;
 use App\Models\GroupUser;
@@ -21,6 +22,17 @@ class ElectionPolicyVersioningTest extends TestCase
 
     public function test_new_cycle_freezes_effective_policy_and_later_admin_change_does_not_mutate_it(): void
     {
+        $manifest = array_fill_keys(ElectionResponsibilityContractVersion::REQUIRED_CLAUSES, 'متن معتبر قرارداد تست policy');
+        ElectionResponsibilityContractVersion::create([
+            'position' => 'manager',
+            'version' => 1,
+            'body' => 'manager E0 policy fixture',
+            'clause_manifest' => $manifest,
+            'e0_compliant' => true,
+            'is_active' => true,
+            'published_at' => now()->subDay(),
+        ]);
+
         $setting = GroupSetting::create([
             'level' => 'global',
             'manager_count' => 1,
