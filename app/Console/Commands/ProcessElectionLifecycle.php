@@ -170,14 +170,35 @@ class ProcessElectionLifecycle extends Command
             ->orderBy('id')
             ->limit($limit)
             ->get()
-            ->each(function (Election $election) use ($appointments, &$appointmentElections, &$errors): void {
+            ->each(function (Election $election) use ($appointments, $offers, &$appointmentElections, &$errors): void {
                 try {
                     $appointments->process($election);
+                    $offers->reconcileExhaustion($election->refresh());
                     $appointmentElections++;
                 } catch (Throwable $exception) {
                     $errors++;
                     report($exception);
                     $this->error("Election {$election->id} appointments: {$exception->getMessage()}");
+                }
+            });
+
+        // Also reconcile offer chains with no accepted appointments to process
+        // (for example a cycle whose entire ranking expired or became ineligible).
+        Election::query()
+            ->whereIn('lifecycle_status', [
+                ElectionLifecycleStatus::AwaitingAcceptance->value,
+                ElectionLifecycleStatus::Appointing->value,
+            ])
+            ->orderBy('id')
+            ->limit($limit)
+            ->get()
+            ->each(function (Election $election) use ($offers, &$errors): void {
+                try {
+                    $offers->reconcileExhaustion($election);
+                } catch (Throwable $exception) {
+                    $errors++;
+                    report($exception);
+                    $this->error("Election {$election->id} exhaustion: {$exception->getMessage()}");
                 }
             });
 
