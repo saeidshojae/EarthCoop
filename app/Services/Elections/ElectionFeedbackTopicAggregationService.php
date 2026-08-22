@@ -2,6 +2,7 @@
 
 namespace App\Services\Elections;
 
+use App\Enums\Elections\ElectionBallotCommentVisibility;
 use App\Models\Election;
 use App\Models\ElectionVoteFeedback;
 use App\Models\User;
@@ -11,10 +12,9 @@ use Carbon\CarbonInterface;
 /**
  * Privacy-safe coarse topic aggregation for E0 §7.3.
  *
- * This service never returns author ids, feedback ids, ballot-event ids, or raw
- * timestamps. It aggregates only approved feedback that the viewer is allowed
- * to read under §7.2, and only after the policy minimum distinct-author sample
- * threshold has been met.
+ * Normal aggregate() respects the viewer's §7.2 visibility. publicAggregate()
+ * is stricter: it uses only feedback explicitly shared with all group members,
+ * so a candidate's public topic response cannot disclose a private topic.
  */
 class ElectionFeedbackTopicAggregationService
 {
@@ -27,6 +27,27 @@ class ElectionFeedbackTopicAggregationService
         ?CarbonInterface $from = null,
         ?CarbonInterface $to = null,
     ): array {
+        return $this->aggregateInternal($election, $subjectUserId, $viewer, $from, $to, false);
+    }
+
+    public function publicAggregate(
+        Election $election,
+        int $subjectUserId,
+        User $viewer,
+        ?CarbonInterface $from = null,
+        ?CarbonInterface $to = null,
+    ): array {
+        return $this->aggregateInternal($election, $subjectUserId, $viewer, $from, $to, true);
+    }
+
+    private function aggregateInternal(
+        Election $election,
+        int $subjectUserId,
+        User $viewer,
+        ?CarbonInterface $from,
+        ?CarbonInterface $to,
+        bool $publicOnly,
+    ): array {
         $to = CarbonImmutable::parse($to ?? now());
         $from = CarbonImmutable::parse($from ?? $to->subDays(28));
         $policy = $election->policyVersion;
@@ -38,6 +59,9 @@ class ElectionFeedbackTopicAggregationService
             'subject_user_id' => $subjectUserId,
             'min_distinct_authors' => $minDistinct,
             'min_bucket_days' => $bucketDays,
+            'aggregation_window_start' => $from->toDateString(),
+            'aggregation_window_end' => $to->toDateString(),
+            'public_only' => $publicOnly,
         ];
 
         if ($from->diffInDays($to) < $bucketDays) {
@@ -48,14 +72,18 @@ class ElectionFeedbackTopicAggregationService
             ];
         }
 
-        $feedback = ElectionVoteFeedback::query()
+        $query = ElectionVoteFeedback::query()
             ->where('election_id', $election->id)
             ->where('subject_user_id', $subjectUserId)
             ->where('moderation_status', 'approved')
             ->whereNotNull('published_at')
-            ->whereBetween('published_at', [$from, $to])
-            ->get();
+            ->whereBetween('published_at', [$from, $to]);
 
+        if ($publicOnly) {
+            $query->where('visibility', ElectionBallotCommentVisibility::AllMembers->value);
+        }
+
+        $feedback = $query->get();
         $visible = $feedback->filter(fn (ElectionVoteFeedback $item) => $this->readService->present($item, $viewer) !== null);
         $distinctAuthors = $visible->pluck('author_user_id')->map(fn ($id) => (int) $id)->unique()->count();
 
