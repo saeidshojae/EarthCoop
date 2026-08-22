@@ -65,4 +65,4 @@ jobs:
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections
       - name: Validate no author linkage exists in topic response table
         run: |
-          php artisan tinker --execute="$c=\Illuminate\Support\Facades\Schema::getColumnListing('election_feedback_topic_responses'); throw_if(in_array('feedback_id',$c,true)); throw_if(in_array('ballot_event_id',$c,true)); throw_if(in_array('author_user_id',$c,true));"
+          php artisan tinker --execute='$c=\Illuminate\Support\Facades\Schema::getColumnListing("election_feedback_topic_responses"); throw_if(in_array("feedback_id",$c,true)); throw_if(in_array("ballot_event_id",$c,true)); throw_if(in_array("author_user_id",$c,true));'
