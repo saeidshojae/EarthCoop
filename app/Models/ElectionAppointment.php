@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Elections\ElectionConflictPolicyService;
 use Illuminate\Database\Eloquent\Model;
 
 class ElectionAppointment extends Model
@@ -21,6 +22,13 @@ class ElectionAppointment extends Model
 
     protected static function booted(): void
     {
+        static::creating(function (ElectionAppointment $appointment): void {
+            if (($appointment->appointment_kind ?? 'direct') !== 'direct') return;
+            $user = User::query()->findOrFail($appointment->user_id);
+            $group = Group::query()->findOrFail($appointment->group_id);
+            app(ElectionConflictPolicyService::class)->enforceBeforeDirectAppointment($user, $group, (string) $appointment->position);
+        });
+
         static::updated(function (ElectionAppointment $appointment): void {
             if (! $appointment->wasChanged('status')
                 || $appointment->status !== 'revoked'
