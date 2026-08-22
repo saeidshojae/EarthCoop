@@ -11,6 +11,8 @@ use App\Models\Group;
 use App\Models\GroupSetting;
 use App\Models\GroupUser;
 use App\Models\User;
+use App\Services\Elections\ElectionResponsibilityAcceptanceEvidenceService;
+use App\Services\Elections\ElectionResponsibilityContractVersionService;
 use App\Services\Elections\ElectionResponsibilityOfferService;
 use App\Services\Elections\ElectionVacancyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -51,10 +53,7 @@ class ElectionPlannedSuccessionTest extends TestCase
             'is_closed' => true,
             'lifecycle_status' => 'filled',
         ]);
-        $contract = ElectionResponsibilityContractVersion::create([
-            'position' => 'manager', 'version' => 1, 'body' => 'manager contract',
-            'is_active' => true, 'published_at' => now()->subMonths(2),
-        ]);
+        $contract = $this->publishManagerContract($incumbent);
         $incumbentOffer = ElectionResponsibilityOffer::create([
             'election_id' => $election->id,
             'candidate_user_id' => $incumbent->id,
@@ -110,7 +109,9 @@ class ElectionPlannedSuccessionTest extends TestCase
         $this->assertSame($replacement->id, (int) $offer->candidate_user_id);
         $this->assertSame('active', $appointment->refresh()->status);
 
-        app(ElectionResponsibilityOfferService::class)->accept($offer, $replacement->id);
+        app(ElectionResponsibilityAcceptanceEvidenceService::class)
+            ->confirm($offer, $replacement, (int) $offer->contract_version_id);
+        app(ElectionResponsibilityOfferService::class)->accept($offer->refresh(), $replacement->id);
         $this->assertSame('filled', $vacancies->processOne($vacancy->id));
 
         $this->assertSame('revoked', $appointment->refresh()->status);
@@ -123,5 +124,13 @@ class ElectionPlannedSuccessionTest extends TestCase
             'position' => 'manager',
             'status' => 'active',
         ]);
+    }
+
+    private function publishManagerContract(User $actor): ElectionResponsibilityContractVersion
+    {
+        $clauses = array_fill_keys(ElectionResponsibilityContractVersion::REQUIRED_CLAUSES, 'متن کامل قرارداد آزمون جانشینی');
+
+        return app(ElectionResponsibilityContractVersionService::class)
+            ->publish('manager', $clauses, $actor, 'planned succession test contract');
     }
 }
