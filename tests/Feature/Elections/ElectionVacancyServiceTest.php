@@ -13,6 +13,8 @@ use App\Models\GroupSetting;
 use App\Models\GroupUser;
 use App\Models\User;
 use App\Services\Elections\ElectionAppointmentService;
+use App\Services\Elections\ElectionResponsibilityAcceptanceEvidenceService;
+use App\Services\Elections\ElectionResponsibilityContractVersionService;
 use App\Services\Elections\ElectionResponsibilityOfferService;
 use App\Services\Elections\ElectionVacancyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -59,7 +61,9 @@ class ElectionVacancyServiceTest extends TestCase
         $this->assertSame($rankThree->id, (int) $secondReplacement->candidate_user_id);
         $this->assertSame(3, (int) $secondReplacement->ranking_position);
 
-        app(ElectionResponsibilityOfferService::class)->accept($secondReplacement, $rankThree->id);
+        app(ElectionResponsibilityAcceptanceEvidenceService::class)
+            ->confirm($secondReplacement, $rankThree, (int) $secondReplacement->contract_version_id);
+        app(ElectionResponsibilityOfferService::class)->accept($secondReplacement->refresh(), $rankThree->id);
         $this->assertSame('filled', $service->processOne($vacancy->id));
 
         $vacancy->refresh();
@@ -131,13 +135,9 @@ class ElectionVacancyServiceTest extends TestCase
             'is_closed' => true,
             'lifecycle_status' => 'filled',
         ]);
-        $contract = ElectionResponsibilityContractVersion::create([
-            'position' => 'manager',
-            'version' => 1,
-            'body' => 'manager contract',
-            'is_active' => true,
-            'published_at' => now()->subMonths(2),
-        ]);
+        $clauses = array_fill_keys(ElectionResponsibilityContractVersion::REQUIRED_CLAUSES, 'متن کامل قرارداد آزمون جای‌خالی');
+        $contract = app(ElectionResponsibilityContractVersionService::class)
+            ->publish('manager', $clauses, $incumbent, 'vacancy test contract');
         $incumbentOffer = ElectionResponsibilityOffer::create([
             'election_id' => $election->id,
             'candidate_user_id' => $incumbent->id,
