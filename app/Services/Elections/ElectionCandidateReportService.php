@@ -33,11 +33,13 @@ class ElectionCandidateReportService
         $meaningfulNet = max(1, (int) ($policy?->meaningful_trend_min_net_change ?? 3));
 
         $legacyPosition = $position === 'inspector' ? 'inspector' : 'manager';
-        $currentVotes = Vote::query()
+        $currentVoteRows = Vote::query()
             ->where('election_id', $election->id)
             ->where('candidate_user_id', $candidateUserId)
             ->where('position', $legacyPosition)
-            ->count();
+            ->get(['voter_id']);
+        $currentVotes = $currentVoteRows->count();
+        $currentVoterIds = $currentVoteRows->pluck('voter_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
 
         $cutoff = $this->selectionCutoff($election, $legacyPosition);
         $base = [
@@ -109,6 +111,7 @@ class ElectionCandidateReportService
         }
 
         $net = $inflow - $outflow;
+        $retention = $this->retentionRate($events, $candidateUserId, $currentVoterIds, $minDistinct);
 
         return $base + [
             'details_suppressed' => false,
@@ -123,8 +126,42 @@ class ElectionCandidateReportService
             'outflow' => $outflow,
             'net_change' => $net,
             'trend_buckets' => array_values($buckets),
+            'retention_rate' => $retention['rate'],
+            'retention_suppressed' => $retention['suppressed'],
             'meaningful_trend' => abs($net) >= $meaningfulNet,
             'meaningful_trend_threshold' => $meaningfulNet,
+        ];
+    }
+
+    private function retentionRate($events, int $candidateUserId, array $currentVoterIds, int $minDistinct): array
+    {
+        $atStart = array_fill_keys($currentVoterIds, true);
+
+        foreach ($events->sortByDesc('occurred_at') as $event) {
+            $voterId = (int) $event->voter_id;
+            if ($event->event_type === 'vote_cast' && (int) $event->candidate_user_id === $candidateUserId) {
+                unset($atStart[$voterId]);
+            } elseif ($event->event_type === 'vote_withdrawn' && (int) $event->previous_candidate_user_id === $candidateUserId) {
+                $atStart[$voterId] = true;
+            }
+        }
+
+        $startIds = array_map('intval', array_keys($atStart));
+        if (count($startIds) < $minDistinct) {
+            return ['rate' => null, 'suppressed' => true];
+        }
+
+        $currentLookup = array_fill_keys($currentVoterIds, true);
+        $retained = 0;
+        foreach ($startIds as $voterId) {
+            if (isset($currentLookup[$voterId])) {
+                $retained++;
+            }
+        }
+
+        return [
+            'rate' => round($retained / count($startIds), 4),
+            'suppressed' => false,
         ];
     }
 
