@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\Elections\ElectionResponsibilityAcceptanceEvidenceService;
 use App\Services\Elections\ElectionResponsibilityOfferService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class ElectionResponsibilityOfferServiceTest extends TestCase
@@ -61,6 +62,48 @@ class ElectionResponsibilityOfferServiceTest extends TestCase
         $this->assertSame(ElectionResponsibilityOfferStatus::Expired,$first->refresh()->status);
         $second=ElectionResponsibilityOffer::where('election_id',$election->id)->where('position','manager')->where('candidate_user_id',$managerB->id)->firstOrFail();
         $this->assertSame(ElectionResponsibilityOfferStatus::Ineligible,$second->status);
+    }
+
+    public function test_accepting_an_expired_offer_commits_expiry_before_validation_error(): void
+    {
+        [$election,$managerA,$managerB]=$this->fixture();
+        $service=app(ElectionResponsibilityOfferService::class);
+        $service->start($election);
+        $first=ElectionResponsibilityOffer::where('election_id',$election->id)->where('position','manager')->where('status','pending')->firstOrFail();
+        $first->forceFill(['expires_at'=>now()->subSecond()])->save();
+
+        try {
+            $service->accept($first->refresh(), $managerA->id);
+            $this->fail('Expected expired offer acceptance to be rejected.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('offer', $exception->errors());
+        }
+
+        $this->assertSame(ElectionResponsibilityOfferStatus::Expired, $first->refresh()->status);
+        $replacement=ElectionResponsibilityOffer::where('election_id',$election->id)
+            ->where('position','manager')->where('status','pending')->firstOrFail();
+        $this->assertSame($managerB->id, (int) $replacement->candidate_user_id);
+    }
+
+    public function test_offer_chain_becomes_exhausted_after_all_ranked_candidates_expire_or_become_ineligible(): void
+    {
+        [$election,$managerA,$managerB,$inspectorA,$inspectorB]=$this->fixture();
+        $service=app(ElectionResponsibilityOfferService::class);
+        $service->start($election);
+
+        GroupUser::where('group_id',$election->group_id)
+            ->whereIn('user_id',[$managerB->id,$inspectorB->id])
+            ->update(['status'=>0]);
+
+        ElectionResponsibilityOffer::where('election_id',$election->id)
+            ->whereIn('candidate_user_id',[$managerA->id,$inspectorA->id])
+            ->where('status','pending')
+            ->update(['expires_at'=>now()->subSecond()]);
+
+        $this->assertSame(2,$service->expireDue(10));
+        $this->assertSame(ElectionLifecycleStatus::Exhausted, $election->refresh()->lifecycle_status);
+        $this->assertSame(0, ElectionResponsibilityOffer::where('election_id',$election->id)->where('status','pending')->count());
+        $this->assertSame(2, ElectionResponsibilityOffer::where('election_id',$election->id)->where('status','ineligible')->count());
     }
 
     private function candidateProjection(Election $election,User $user,string $position): Candidate
