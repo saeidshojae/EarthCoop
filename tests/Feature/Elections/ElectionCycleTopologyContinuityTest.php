@@ -4,6 +4,7 @@ namespace Tests\Feature\Elections;
 
 use App\Enums\Elections\ElectionLifecycleStatus;
 use App\Models\Election;
+use App\Models\ElectionResponsibilityContractVersion;
 use App\Models\Group;
 use App\Models\GroupSetting;
 use App\Models\GroupUser;
@@ -283,6 +284,8 @@ class ElectionCycleTopologyContinuityTest extends TestCase
 
     private function setting(string $level, int $threshold): GroupSetting
     {
+        $this->ensureContracts();
+
         return GroupSetting::create([
             'level' => $level,
             'inspector_count' => 3,
@@ -292,6 +295,23 @@ class ElectionCycleTopologyContinuityTest extends TestCase
             'election_status' => 1,
             'second_election_time' => 3,
         ]);
+    }
+
+    private function ensureContracts(): void
+    {
+        $manifest = array_fill_keys(ElectionResponsibilityContractVersion::REQUIRED_CLAUSES, 'متن معتبر قرارداد تست topology');
+        foreach (['manager', 'inspector'] as $position) {
+            ElectionResponsibilityContractVersion::query()->firstOrCreate(
+                ['position' => $position, 'version' => 1],
+                [
+                    'body' => "{$position} E0 topology fixture",
+                    'clause_manifest' => $manifest,
+                    'e0_compliant' => true,
+                    'is_active' => true,
+                    'published_at' => now()->subDay(),
+                ],
+            );
+        }
     }
 
     private function addActiveMember(Group $group): User
