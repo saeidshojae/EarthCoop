@@ -8,6 +8,7 @@ use App\Enums\Elections\ElectionPosition;
 use App\Enums\Elections\ElectionResponsibilityOfferStatus;
 use App\Models\Candidate;
 use App\Models\Election;
+use App\Models\ElectionAppointment;
 use App\Models\ElectionPolicyVersion;
 use App\Models\ElectionResponsibilityContractVersion;
 use App\Models\ElectionResponsibilityOffer;
@@ -45,6 +46,7 @@ class ElectionResponsibilityOfferService
                 'responsibility_offers_started',
                 'election_responsibility_offer_service',
             );
+            $locked = $this->reconcileExhaustion($locked);
 
             return $this->summary($locked);
         }, 3);
@@ -52,7 +54,7 @@ class ElectionResponsibilityOfferService
 
     public function accept(ElectionResponsibilityOffer $offer, int $candidateUserId): ElectionResponsibilityOffer
     {
-        return DB::transaction(function () use ($offer, $candidateUserId): ElectionResponsibilityOffer {
+        $result = DB::transaction(function () use ($offer, $candidateUserId): array {
             $locked = ElectionResponsibilityOffer::query()->lockForUpdate()->findOrFail($offer->id);
             $election = Election::query()->lockForUpdate()->findOrFail($locked->election_id);
             $this->assertPendingForCandidate($locked, $candidateUserId);
@@ -60,13 +62,23 @@ class ElectionResponsibilityOfferService
             if ($locked->expires_at->isPast()) {
                 $this->resolve($locked, ElectionResponsibilityOfferStatus::Expired, 'response_deadline_elapsed');
                 $this->fillOpenSlots($election, ElectionPosition::from($locked->position));
-                throw ValidationException::withMessages(['offer' => 'مهلت پذیرش این دعوت پایان یافته است.']);
+                $this->reconcileExhaustion($election->refresh());
+
+                return [
+                    'offer' => $locked->refresh(),
+                    'error' => 'مهلت پذیرش این دعوت پایان یافته است.',
+                ];
             }
 
             if (! $this->isCurrentlyEligible($election, $candidateUserId)) {
                 $this->resolve($locked, ElectionResponsibilityOfferStatus::Ineligible, 'candidate_no_longer_eligible');
                 $this->fillOpenSlots($election, ElectionPosition::from($locked->position));
-                throw ValidationException::withMessages(['offer' => 'شرایط عضویت فعال برای پذیرش این مسئولیت برقرار نیست.']);
+                $this->reconcileExhaustion($election->refresh());
+
+                return [
+                    'offer' => $locked->refresh(),
+                    'error' => 'شرایط عضویت فعال برای پذیرش این مسئولیت برقرار نیست.',
+                ];
             }
 
             $locked->forceFill([
@@ -81,8 +93,14 @@ class ElectionResponsibilityOfferService
             ])->save();
             $this->syncCandidateProjection($locked);
 
-            return $locked->refresh();
+            return ['offer' => $locked->refresh(), 'error' => null];
         }, 3);
+
+        if ($result['error'] !== null) {
+            throw ValidationException::withMessages(['offer' => $result['error']]);
+        }
+
+        return $result['offer'];
     }
 
     public function decline(ElectionResponsibilityOffer $offer, int $candidateUserId): ElectionResponsibilityOffer
@@ -94,6 +112,7 @@ class ElectionResponsibilityOfferService
 
             $this->resolve($locked, ElectionResponsibilityOfferStatus::Declined, 'candidate_declined_contract');
             $this->fillOpenSlots($election, ElectionPosition::from($locked->position));
+            $this->reconcileExhaustion($election->refresh());
 
             return $locked->refresh();
         }, 3);
@@ -119,11 +138,118 @@ class ElectionResponsibilityOfferService
                 $election = Election::query()->lockForUpdate()->findOrFail($offer->election_id);
                 $this->resolve($offer, ElectionResponsibilityOfferStatus::Expired, 'response_deadline_elapsed');
                 $this->fillOpenSlots($election, ElectionPosition::from($offer->position));
+                $this->reconcileExhaustion($election->refresh());
                 $processed++;
             }, 3);
         }
 
         return $processed;
+    }
+
+    /**
+     * Finalize an offer/appointment chain only when no response is still
+     * pending, no accepted offer is waiting to be appointed, and at least one
+     * required position can no longer reach its frozen seat count from this
+     * cycle's active appointments, reserved offers and never-offered ranking.
+     */
+    public function reconcileExhaustion(Election $election): Election
+    {
+        $election = Election::query()->findOrFail($election->id);
+        $status = $this->lifecycle->currentStatus($election);
+        if (! in_array($status, [ElectionLifecycleStatus::AwaitingAcceptance, ElectionLifecycleStatus::Appointing], true)) {
+            return $election;
+        }
+
+        if (ElectionResponsibilityOffer::query()
+            ->where('election_id', $election->id)
+            ->where('status', ElectionResponsibilityOfferStatus::Pending->value)
+            ->exists()) {
+            return $election;
+        }
+
+        $activeAppointmentKeys = ElectionAppointment::query()
+            ->where('election_id', $election->id)
+            ->where('group_id', $election->group_id)
+            ->where('appointment_kind', 'direct')
+            ->where('status', 'active')
+            ->get(['user_id', 'position'])
+            ->map(fn (ElectionAppointment $appointment) => $appointment->position.':'.(int) $appointment->user_id)
+            ->flip();
+
+        $acceptedWaiting = ElectionResponsibilityOffer::query()
+            ->where('election_id', $election->id)
+            ->where('status', ElectionResponsibilityOfferStatus::Accepted->value)
+            ->get(['candidate_user_id', 'position'])
+            ->contains(fn (ElectionResponsibilityOffer $offer) => ! $activeAppointmentKeys->has(
+                $offer->position.':'.(int) $offer->candidate_user_id
+            ));
+        if ($acceptedWaiting) {
+            return $election;
+        }
+
+        try {
+            $policy = $this->policyResolver->resolveForElection($election);
+        } catch (RuntimeException) {
+            $policy = $this->policyResolver->resolveForGroup($election->group);
+        }
+
+        foreach (ElectionPosition::cases() as $position) {
+            $seatCount = $position === ElectionPosition::Manager
+                ? $this->policyResolver->managerSeatCount($policy)
+                : $this->policyResolver->inspectorSeatCount($policy);
+            if ($seatCount <= 0) {
+                continue;
+            }
+
+            $appointedIds = ElectionAppointment::query()
+                ->where('election_id', $election->id)
+                ->where('group_id', $election->group_id)
+                ->where('position', $position->value)
+                ->where('appointment_kind', 'direct')
+                ->where('status', 'active')
+                ->pluck('user_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $reservedIds = ElectionResponsibilityOffer::query()
+                ->where('election_id', $election->id)
+                ->where('position', $position->value)
+                ->whereIn('status', [
+                    ElectionResponsibilityOfferStatus::Pending->value,
+                    ElectionResponsibilityOfferStatus::Accepted->value,
+                ])
+                ->pluck('candidate_user_id')
+                ->map(fn ($id) => (int) $id)
+                ->reject(fn (int $id) => in_array($id, $appointedIds, true))
+                ->all();
+
+            $offeredIds = ElectionResponsibilityOffer::query()
+                ->where('election_id', $election->id)
+                ->where('position', $position->value)
+                ->pluck('candidate_user_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $remainingRankedIds = ElectionTallyResult::query()
+                ->where('election_id', $election->id)
+                ->where('position', $position->value)
+                ->when($offeredIds !== [], fn ($query) => $query->whereNotIn('candidate_user_id', $offeredIds))
+                ->pluck('candidate_user_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $potential = array_unique(array_merge($appointedIds, $reservedIds, $remainingRankedIds));
+            if (count($potential) < $seatCount) {
+                return $this->lifecycle->transition(
+                    $election,
+                    ElectionLifecycleStatus::Exhausted,
+                    'ranked_responsibility_candidates_exhausted_before_all_seats_filled',
+                    'election_responsibility_offer_service',
+                );
+            }
+        }
+
+        return $election;
     }
 
     public function summary(Election $election): array
