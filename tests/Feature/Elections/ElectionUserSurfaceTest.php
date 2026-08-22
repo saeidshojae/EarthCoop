@@ -40,9 +40,9 @@ class ElectionUserSurfaceTest extends TestCase
         $this->assertStringNotContainsString('finishElectionAjax', $source);
         $this->assertStringNotContainsString('second_finish_time', $source);
         $this->assertStringNotContainsString('GroupSetting::', $source);
-        $this->assertStringNotContainsString('<script', $source);
         $this->assertStringNotContainsString('.addEventListener(', $source);
         $this->assertStringNotContainsString('setTimeout(', $source);
+        $this->assertStringContainsString('window.GroupElectionModal = {', $source);
         $this->assertStringContainsString('vote_visibility[', $source);
         $this->assertStringContainsString('data-election-role="manager"', $source);
         $this->assertStringContainsString('data-election-role="inspector"', $source);
