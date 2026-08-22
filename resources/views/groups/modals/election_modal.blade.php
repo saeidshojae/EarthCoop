@@ -46,7 +46,11 @@
                 </div>
             @endif
 
-            <form action="{{ route('vote', $group) }}" method="POST" id="electionForm" data-systemic-election-ballot>
+            <form action="{{ route('vote', $group) }}" method="POST" id="electionForm" data-systemic-election-ballot
+                data-election-manager-limit="{{ $managerLimit }}"
+                data-election-inspector-limit="{{ $inspectorLimit }}"
+                data-election-starts-at="{{ $election?->starts_at?->toIso8601String() }}"
+                data-election-ends-at="{{ $election?->ends_at?->toIso8601String() }}">
                 @csrf
 
                 <div class="mb-3">
@@ -78,7 +82,7 @@
                                         </label>
                                         <label class="small d-block ms-4">
                                             سطح افشای این رأی
-                                            <select class="form-select form-select-sm mt-1" name="vote_visibility[{{ $memberId }}]" data-vote-visibility-for="{{ $memberId }}" @disabled(!$checked)>
+                                            <select class="form-select form-select-sm mt-1" name="vote_visibility[{{ $memberId }}]" data-vote-visibility-for="{{ $memberId }}" data-election-role="manager" @disabled(!$checked)>
                                                 <option value="confidential" @selected($visibility === 'confidential')>محرمانه — هویت رأی‌دهنده در نمایش عادی پنهان</option>
                                                 <option value="all_members" @selected($visibility === 'all_members')>قابل مشاهده برای همه اعضا</option>
                                                 <option value="elected_officials" @selected($visibility === 'elected_officials')>فقط مدیران و بازرسان منتخب</option>
@@ -112,7 +116,7 @@
                                         </label>
                                         <label class="small d-block ms-4">
                                             سطح افشای این رأی
-                                            <select class="form-select form-select-sm mt-1" name="vote_visibility[{{ $memberId }}]" data-vote-visibility-for="{{ $memberId }}" @disabled(!$checked)>
+                                            <select class="form-select form-select-sm mt-1" name="vote_visibility[{{ $memberId }}]" data-vote-visibility-for="{{ $memberId }}" data-election-role="inspector" @disabled(!$checked)>
                                                 <option value="confidential" @selected($visibility === 'confidential')>محرمانه — هویت رأی‌دهنده در نمایش عادی پنهان</option>
                                                 <option value="all_members" @selected($visibility === 'all_members')>قابل مشاهده برای همه اعضا</option>
                                                 <option value="elected_officials" @selected($visibility === 'elected_officials')>فقط مدیران و بازرسان منتخب</option>
@@ -157,91 +161,3 @@
         @endif
     </div>
 </div>
-
-<script type="module">
-(() => {
-    const form = document.querySelector('[data-systemic-election-ballot]');
-    if (!form || form.dataset.bound === '1') return;
-    form.dataset.bound = '1';
-
-    const limits = { manager: {{ $managerLimit }}, inspector: {{ $inspectorLimit }} };
-    const choices = () => [...form.querySelectorAll('[data-election-choice]')];
-    const selectedFor = role => choices().filter(el => el.dataset.electionChoice === role && el.checked);
-
-    const refreshVisibility = candidateId => {
-        const selected = choices().some(el => el.dataset.candidateId === candidateId && el.checked);
-        form.querySelectorAll(`[data-vote-visibility-for="${candidateId}"]`).forEach(select => {
-            select.disabled = !selected;
-        });
-    };
-
-    const refreshCounts = () => {
-        ['manager', 'inspector'].forEach(role => {
-            const badge = form.querySelector(`[data-election-count="${role}"]`);
-            if (badge) badge.textContent = `${selectedFor(role).length}/${limits[role]}`;
-        });
-        [...new Set(choices().map(el => el.dataset.candidateId))].forEach(refreshVisibility);
-    };
-
-    choices().forEach(input => input.addEventListener('change', event => {
-        const input = event.currentTarget;
-        const role = input.dataset.electionChoice;
-        const otherRole = role === 'manager' ? 'inspector' : 'manager';
-        if (input.checked) {
-            const other = form.querySelector(`[data-election-choice="${otherRole}"][data-candidate-id="${input.dataset.candidateId}"]`);
-            if (other?.checked) other.checked = false;
-            if (selectedFor(role).length > limits[role]) {
-                input.checked = false;
-                window.GroupChatFeedback?.toast?.(`حداکثر ${limits[role]} انتخاب برای این نقش مجاز است.`, { type: 'warning' });
-            }
-        }
-        refreshCounts();
-    }));
-
-    const search = form.querySelector('#electionMemberSearch');
-    search?.addEventListener('input', () => {
-        const query = search.value.trim().toLocaleLowerCase('fa');
-        form.querySelectorAll('[data-election-member]').forEach(row => {
-            row.hidden = query !== '' && !String(row.dataset.memberName || '').includes(query);
-        });
-    });
-
-    form.querySelector('[data-election-clear]')?.addEventListener('click', () => {
-        choices().forEach(input => { input.checked = false; });
-        refreshCounts();
-    });
-
-    const comment = form.querySelector('#electionComment');
-    const commentVisibility = form.querySelector('#electionCommentVisibility');
-    const syncCommentVisibility = () => {
-        if (commentVisibility) commentVisibility.disabled = !comment?.value.trim();
-    };
-    comment?.addEventListener('input', syncCommentVisibility);
-    syncCommentVisibility();
-    refreshCounts();
-
-    const countdown = document.getElementById('countdownText');
-    const progress = document.getElementById('progressBar');
-    if (countdown?.dataset.electionEndsAt) {
-        const endsAt = new Date(countdown.dataset.electionEndsAt).getTime();
-        const startsAt = new Date(@json($election?->starts_at?->toIso8601String())).getTime();
-        const tick = () => {
-            const now = Date.now();
-            const remaining = endsAt - now;
-            const total = Math.max(1, endsAt - startsAt);
-            if (progress) progress.style.width = `${Math.max(0, Math.min(100, ((now - startsAt) / total) * 100))}%`;
-            if (remaining <= 0) {
-                countdown.textContent = 'این پنجره رأی‌گیری به زمان توقف رسیده است؛ سامانه در حال تثبیت snapshot چرخه است.';
-                form.querySelectorAll('input, select, textarea, button[type="submit"]').forEach(el => { el.disabled = true; });
-                return;
-            }
-            const days = Math.floor(remaining / 86400000);
-            const hours = Math.floor((remaining % 86400000) / 3600000);
-            const minutes = Math.floor((remaining % 3600000) / 60000);
-            countdown.textContent = `${days} روز ${hours} ساعت ${minutes} دقیقه تا توقف این پنجره رأی‌گیری`;
-            window.setTimeout(tick, 30000);
-        };
-        tick();
-    }
-})();
-</script>
