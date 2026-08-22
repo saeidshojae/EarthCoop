@@ -1,83 +1,158 @@
 # ماتریس انطباق پیاده‌سازی انتخابات با سند E0
 
-این سند وضعیت فنی پیاده‌سازی را در برابر `E0 — مشخصات حکمرانی، حقوق و سناریوهای پذیرش انتخابات پیوسته` ثبت می‌کند. E0 مرجع الزام‌آور است؛ وجود schema یا ذخیره داده به‌تنهایی به‌معنای تکمیل یک بند نیست. یک بند فقط زمانی «کامل» است که write path، read/access path، audit، policy و تست‌های لازم آن مطابق E0 بسته شده باشند.
+> وضعیت سند: **Reconciled implementation candidate — در انتظار validation نهایی یک head واحد**  
+> شاخه: `agent/elections-systemic-rebuild`  
+> PR: #81 — Draft  
+> قاعده closure: هیچ بند این ماتریس صرفاً به‌دلیل وجود migration یا enum «بسته» محسوب نمی‌شود؛ write path، read/access path، audit، policy، تست و Gate باید با هم معتبر باشند.
 
-## وضعیت کلی
+## 1. وضعیت کلی
 
-| بخش E0 | وضعیت | توضیح |
+| بخش E0 | وضعیت پیاده‌سازی | شواهد اصلی |
 |---|---|---|
-| چرخه پیوسته، snapshot، توقف و اعمال نتیجه | کامل/تثبیت‌شده | lifecycle canonical، snapshot واجدان، snapshot رأی در توقف، continuity و cycle lineage دارای Gate مستقل هستند. |
-| صلاحیت، رتبه‌بندی و تساوی | کامل/تثبیت‌شده | ranking جدا برای مدیر/بازرس، tally snapshot و قرعه قابل‌بازتولید با evidence ثبت شده‌اند. |
-| نمایندگی پلکانی و انتصاب | عمدتاً کامل | appointment/representation، بالاترین کرسی معتبر، topology compression و succession پیاده شده‌اند؛ ماتریس عمومی تعارض مسئولیت‌ها باید جداگانه با متن نهایی E0 ممیزی شود. |
-| قرارداد مسئولیت | عمدتاً کامل | قرارداد versioned/immutable، freeze per cycle، مهلت پاسخ policy-driven و offer audit شده‌اند؛ کامل‌بودن همه بندهای محتوایی قرارداد نیازمند ممیزی متن قراردادهای ادمین است. |
-| 7.1 حریم رأی | جزئی | سه visibility canonical در write model وجود دارد و audit هویت را نگه می‌دارد؛ read/access layer مرکزی که ثابت کند هویت رأی محرمانه از تمام UI/reportهای عادی پنهان است هنوز باید تکمیل و Gate شود. |
-| 7.2 دلیل تغییر/پس‌گرفتن رأی | جزئی | دلیل اختیاری، anonymous flag و سه دامنه visibility وجود دارد؛ اما reason هنوز به‌صورت جزء ballot event ذخیره می‌شود نه شیء مستقل کامل، moderation/human-review و privacy-safe read path و پاسخ موضوعی نامزد کامل نشده‌اند. |
-| 7.3 محبوبیت و رضایت | باقیمانده | analytics امن، trend روزانه/هفتگی، net flow، retention، distance-to-cutoff، topic aggregation، suppression نمونه کوچک و smart trend notifications هنوز ساخته نشده‌اند. |
-| عدالت رویه‌ای/درخواست بازبینی | باقیمانده/نیازمند فاز مستقل | audit زیرساختی وجود دارد، اما workflow رسمی درخواست بازبینی، مهلت‌ها، بازشماری و تصمیم مستند مطابق E0 هنوز به‌عنوان domain مستقل بسته نشده است. |
-| سناریوهای پذیرش E0 | جزئی تا عمدتاً کامل | سناریوهای lifecycle/offer/timeout/replacement/crash recovery تا حد زیادی تست شده‌اند؛ سناریوهای وابسته به privacy/report/review تا تکمیل بخش‌های 7 و 8 باز می‌مانند. |
-| تنظیمات نهایی E0 | جزئی | policy versioning/effective dating در E10 پیاده شده؛ تنظیمات privacy analytics مانند حداقل نمونه و بازه تجمیع هنوز اضافه نشده‌اند. |
+| چرخه پیوسته، snapshot، توقف و اعمال نتیجه | پیاده‌شده؛ validation نهایی pending | `ElectionCycleService`، `ElectionLifecycleService`، `ElectionVoteSnapshotService`، command زمان‌بندی‌شده `elections:process-lifecycle`، Gateهای E3/E5/E9 |
+| صلاحیت، رتبه‌بندی و تساوی | پیاده‌شده؛ validation نهایی pending | eligibility snapshot، tally قطعی از snapshot، tie-break قابل‌بازتولید و evidence، Gate E6 |
+| پیشنهاد مسئولیت، decline/timeout/backfill | پیاده‌شده؛ validation نهایی pending | `ElectionResponsibilityOfferService`، evidence پذیرش، vacancy/backfill، Gateهای E7/E9 |
+| انتصاب و نمایندگی پلکانی | پیاده‌شده؛ validation نهایی pending | `ElectionAppointmentService`، representation assignment، highest-valid-seat/supersession/topology rules، Gate E8 |
+| policy versioning و freeze چرخه | پیاده‌شده؛ validation نهایی pending | `ElectionPolicyVersionService`، effective dating، policy freeze per cycle، Gate E10 |
+| 7.1 حریم رأی | پیاده‌شده؛ validation نهایی pending | `ElectionBallotVisibilityService`، ordinary-read projection، negative authorization tests، Gate E11 |
+| 7.2 دلیل رأی/تغییر/پس‌گرفتن | پیاده‌شده؛ validation نهایی pending | ballot audit events + entity مستقل `ElectionVoteFeedback`، moderation، privacy-safe read service، Gate E12 |
+| 7.3 محبوبیت و رضایت | پیاده‌شده؛ validation نهایی pending | `ElectionCandidateReportService`، suppression حد نمونه/بازه، inflow/outflow/net/cutoff/retention، meaningful trend، Gate E13 |
+| عدالت رویه‌ای و بازبینی | پیاده‌شده؛ validation نهایی pending | immutable-evidence verification، human review، endorsement، interim stay، reasoned decision و protected audit access، Gate E14 |
+| پاسخ عمومی به موضوعات بازخورد | پیاده‌شده؛ validation نهایی pending | topic aggregation/response بدون افشای نویسنده ناشناس، Gate E15 |
+| تعارض مسئولیت‌ها | پیاده‌شده؛ validation نهایی pending | versioned conflict-policy matrix و اعمال در appointment، Gate E16 |
+| قرارداد مسئولیت | پیاده‌شده؛ validation نهایی pending | قرارداد versioned/immutable، admin governance، freeze در policy/cycle و acceptance evidence، Gate E17 |
+| تغییر سیاست در چرخه فعال | پیاده‌شده؛ validation نهایی pending | active-cycle override با ثبت دلیل/actor و حفاظت از policy تاریخی، Gate E18 |
+| user surface | پیاده‌شده؛ validation نهایی pending | ballot سیستمی، privacy controls، portal تاریخچه/گزارش/review، lifecycle-owned UI |
 
-## بخش 7 — حریم رأی و بازخورد
+## 2. E0 §7.1 — حریم رأی
 
-### 7.1 انتخاب افشا
+پیاده‌سازی فعلی:
 
-وضعیت فعلی:
+- `ElectionVoteVisibility` سه دامنه canonical دارد: `confidential`, `all_members`, `elected_officials`.
+- visibility برای **هر انتخاب** در ballot ذخیره می‌شود و compatibility path در نبود مقدار صریح fail-safe به `confidential` می‌افتد.
+- `ElectionBallotVisibilityService` تنها ordinary-read policy هویت رأی است.
+- رأی‌دهنده رأی خود را می‌بیند؛ برای دیگران:
+  - `confidential`: هویت همیشه پنهان؛
+  - `all_members`: فقط عضو فعال همان گروه؛
+  - `elected_officials`: فقط appointment فعال manager/inspector همان گروه.
+- audit هویت واقعی را نگه می‌دارد ولی ordinary UI/API از audit privilege ارث نمی‌برد.
+- مسیر protected audit برای review جداگانه ثبت و audit می‌شود.
 
-- `ElectionVoteVisibility` سه مقدار `confidential`, `all_members`, `elected_officials` دارد.
-- Ballot v2 visibility را برای هر انتخاب ذخیره می‌کند؛ نبود انتخاب صریح در مسیر compatibility به `confidential` می‌افتد.
-- `election_ballot_events` هویت رأی‌دهنده و رویداد را در audit append-only نگه می‌دارد.
+**Invariant:** مدیر، بازرس یا شخص منتخب به‌صرف سمت خود حق دیدن هویت یک رأی `confidential` را ندارد.
 
-باقی‌مانده الزامی:
+## 3. E0 §7.2 — دلیل رأی، تغییر و پس‌گرفتن
 
-- ایجاد یک read/access service واحد که خروجی رأی را براساس viewer، عضویت گروه، appointment فعال و visibility فیلتر کند.
-- ممنوعیت قطعی نمایش `voter_id` رأی محرمانه در تمام UI/API/reportهای عادی، حتی برای مدیر/بازرس/نامزد.
-- تست‌های negative authorization برای candidate، elected official، ordinary member و outsider.
-- جداسازی مسیر audit حفاظت‌شده از مسیر نمایش عادی.
+پیاده‌سازی فعلی:
 
-### 7.2 دلیل تغییر یا پس‌گرفتن رأی
+- دلیل اختیاری است و cast/change/withdraw در ballot event append-only ثبت می‌شود.
+- `comment_anonymous` مستقل از دامنه visibility است.
+- visibility دلیل سه حالت دارد: `all_members`, `elected_officials`, `subject_only`.
+- `ElectionVoteFeedback` projection مستقل و moderation-aware از ballot event است.
+- `ElectionVoteFeedbackReadService` در ordinary read:
+  - `ballot_event_id` را افشا نمی‌کند؛
+  - timestamp خام رویداد رأی را افشا نمی‌کند؛
+  - نویسنده feedback ناشناس را null می‌کند؛
+  - feedback تأییدنشده را برای غیرنویسنده پنهان می‌کند؛
+  - `subject_only` را فقط به همان subject نشان می‌دهد.
+- moderation pipeline، وضعیت انتشار و topic aggregation/response وجود دارد.
 
-وضعیت فعلی:
+## 4. E0 §7.3 — گزارش محبوبیت و رضایت
 
-- دلیل اختیاری است.
-- نام‌دار/ناشناس بودن (`comment_anonymous`) مستقل از دامنه نمایش است.
-- visibility دلیل سه حالت `all_members`, `elected_officials`, `subject_only` دارد.
-- cast/change/withdraw در audit trail ثبت می‌شوند.
+`ElectionCandidateReportService` گزارش aggregation-only تولید می‌کند و identity رأی‌دهندگان را خروجی نمی‌دهد. موارد پیاده‌شده:
 
-باقی‌مانده الزامی:
+- current vote count؛
+- selection cutoff و margin-to-cutoff؛
+- inflow / outflow / net change؛
+- bucketهای زمانی؛
+- retention rate؛
+- حداقل تعداد distinct voters؛
+- حداقل طول بازه گزارش؛
+- suppression خودکار در نمونه یا بازه کوچک؛
+- meaningful-trend threshold و notification service؛
+- policy-driven reporting thresholds در نسخه سیاست چرخه.
 
-- جداکردن reason/feedback به entity مستقل از vote event، با linkage کنترل‌شده و privacy-preserving.
-- read policy مستقل برای reason، شامل `subject_only` فقط برای همان مدیر/بازرس هدف.
-- جلوگیری از re-identification دلیل ناشناس از طریق timestamp، ordering، export یا joinهای گزارش.
-- moderation pipeline پیش از نمایش برای تهدید، توهین، اطلاعات شخصی، نفرت‌پراکنی و spam.
-- وضعیت `pending_review/visible/rejected/redacted` و مسیر human review برای موارد مشکوک.
-- امکان پاسخ عمومی نامزد به «موضوع» بدون exposure هویت نویسنده ناشناس.
+هدف suppression این است که گزارش aggregate به مسیر بازسازی هویت رأی‌دهنده از bucket کوچک یا timestamp تبدیل نشود.
 
-### 7.3 گزارش محبوبیت و رضایت
+## 5. عدالت رویه‌ای و بازبینی
 
-وضعیت فعلی:
+workflow بازبینی دیگر یک gap باز نیست:
 
-- داده خام لازم برای بخشی از محاسبات از ballot events/tally موجود است، اما feature گزارش E0 هنوز ساخته نشده است.
+- درخواست فقط برای عضو فعال غیرسیستمی گروه؛
+- challenged event به evidence واقعی همان election متصل می‌شود؛
+- timestamp قابل‌اعتماد از event canonical گرفته می‌شود، نه مقدار spoof‌شده client؛
+- verification خودکار از immutable vote snapshot و tally evidence بازسازی می‌شود؛
+- ranking/tie-break با policy فریز‌شده همان چرخه بازتولید می‌شود؛
+- human review window، endorsement threshold، interim stay و final reasoned decision وجود دارند؛
+- دسترسی حفاظت‌شده audit با actor/purpose/scope ثبت می‌شود؛
+- correction نتیجه تاریخی را بی‌صدا rewrite نمی‌کند و remediation reference لازم دارد.
 
-باقی‌مانده الزامی:
+## 6. قرارداد، تعارض و تغییر policy
 
-- current vote count.
-- daily/weekly trend.
-- net inflow/outflow.
-- distance to selection cutoff.
-- vote retention rate.
-- aggregate feedback topics.
-- policy versioned برای `minimum_distinct_voters` با پیش‌فرض 10.
-- policy versioned برای `minimum_aggregation_days` با پیش‌فرض 7.
-- suppression خودکار breakdownها زیر حداقل نمونه/بازه و فقط نمایش آمار کلی.
-- طراحی queryها به‌گونه‌ای که confidential voter identity از bucketهای کوچک، timestamp یا ترکیب فیلترها قابل استنتاج نباشد.
-- smart notifications فقط برای meaningful trend و نه هر تغییر لحظه‌ای.
+- متن/نسخه قرارداد مسئولیت versioned است و acceptance evidence به نسخه مشخص متصل می‌شود.
+- policy چرخه freeze می‌شود و تغییرات آینده تاریخچه چرخه را بازنویسی نمی‌کنند.
+- conflict policy به‌صورت versioned matrix اداره می‌شود.
+- تغییر policy در چرخه فعال مسیر صریح override، actor، reason و audit دارد؛ تغییر تنظیمات عمومی به‌تنهایی snapshot چرخه فعال را mutate نمی‌کند.
 
-## ترتیب تکمیل پیشنهادی
+## 7. مالکیت lifecycle و بازنشستگی legacy mutation
 
-1. بستن E10 و effective-dating/policy UI.
-2. E11-Privacy: canonical visibility read layer + مستقل‌کردن feedback + moderation/review queue.
-3. E12-Analytics: privacy-safe popularity/satisfaction reports + policy thresholds + meaningful-trend notifications.
-4. E13-Review: procedural review/recount workflow مطابق E0.
-5. اجرای یک E0 Acceptance Gate که همه سناریوهای E0 را end-to-end و fail-closed اجرا کند.
+مالک canonical تغییر وضعیت، command/service انتخابات است:
 
-هیچ بند E0 صرفاً به‌خاطر وجود migration یا enum «کامل» اعلام نمی‌شود؛ وضعیت این ماتریس باید همراه هر فاز به‌روزرسانی شود.
+`ElectionCycleService → ElectionLifecycleService → snapshot/tally → ResponsibilityOffer → Appointment → Representation`
+
+Controller/UI حق close/tally/appointment مستقیم ندارد.
+
+مسیر legacy `finish.election` فعلاً برای compatibility نام route را حفظ کرده، اما `ElectionController::finishElection()` **بازنشسته و non-mutating** است و HTTP `410 Gone` برمی‌گرداند. تست `ElectionManualFinishRetirementTest` تضمین می‌کند adapter قدیمی نتواند lifecycle transition، tally یا candidate acceptance انجام دهد.
+
+همچنین `groups.chat` در rollout فعلی از route canonical `routes/elections.php` به `SystemicElectionChatController` resolve می‌شود؛ presenter فقط read path انتخابات است و ایجاد/تمدید/توقف/tally نمی‌کند. وجود declaration قدیمی در `routes/web.php` یک compatibility declaration است و باید در cleanup پس از تثبیت rollout حذف شود؛ تا آن زمان resolved route و controller canonical با تست محافظت می‌شوند.
+
+## 8. User Surface
+
+- برگه رأی از policy فریز‌شده همان cycle ظرفیت manager/inspector را می‌خواند.
+- یک عضو در یک ballot نمی‌تواند هم‌زمان برای هر دو position انتخاب شود.
+- visibility فقط برای **position واقعاً انتخاب‌شده** قابل submit است؛ select هم‌نام position دیگر disabled می‌ماند.
+- search، count، clear و countdown توسط `resources/js/group-chat/elections.js` و lifecycle page اداره می‌شوند؛ Blade listener/timer مستقل ندارد.
+- پایان countdown در client فقط UI را غیرفعال می‌کند و lifecycle سرور را mutate نمی‌کند.
+- portal کاربر وضعیت چرخه، offer، گزارش privacy-safe، feedback/topic response و review را در مسیر read/action مجاز نشان می‌دهد.
+
+## 9. Validation Gateها
+
+Gateهای مستقل branch:
+
+- E2 — Schema Reconciliation
+- E3 — Lifecycle State Machine
+- E5 — Ballot Audit
+- E6 — Deterministic Tally
+- E7 — Responsibility Offer
+- E8 — Appointment / Representation
+- E9 — Systemic Continuity
+- E10 — Policy Versioning
+- E11 — Privacy
+- E12 — Feedback / Moderation
+- E13 — Reporting
+- E14 — Procedural Review
+- E15 — Topic Response
+- E16 — Conflict Policy
+- E17 — Contract Governance
+- E18 — Active Cycle Override
+- EarthCoop Integration Full Validation
+
+**این سند تا زمانی که همه Gateهای بالا و Full Validation روی یک head واحد سبز نشده‌اند، وضعیت «Closure Confirmed» نمی‌گیرد.**
+
+## 10. مواردی که blocker محصولی محسوب نمی‌شوند ولی باید مستند بمانند
+
+1. declaration قدیمی `groups.chat` در `routes/web.php` هنوز از طریق load-order توسط route canonical shadow می‌شود؛ رفتار resolved با تست pin شده است. حذف فیزیکی آن cleanup پس از rollout است، نه مسیر فعال انتخابات.
+2. نام route قدیمی `finish.election` باقی است، اما endpoint non-mutating و 410 است تا client/bookmark قدیمی نتواند چرخه را تغییر دهد.
+3. compatibility fields/models legacy تا پایان دوره migration برای خواندن/تطبیق داده تاریخی باقی می‌مانند؛ write path canonical نباید به semantics مبهم legacy برگردد.
+
+## 11. شرط اعلام پایان بخش انتخابات
+
+فقط وقتی همه موارد زیر همزمان برقرار باشند می‌توان این بخش را «کامل و جمع‌شده» اعلام کرد:
+
+1. E2 تا E18 روی **یک head نهایی واحد** سبز؛
+2. Full Validation همان head سبز؛
+3. `elections:audit-data --fail-on-issues` بدون blocker؛
+4. user-surface / group-chat source-contract سبز؛
+5. route دستی پایان انتخابات non-mutating؛
+6. ordinary read هیچ هویت confidential یا feedback ناشناس را افشا نکند؛
+7. docs، roadmap و implementation با همان head reconcile باشند؛
+8. هیچ gap شناخته‌شده P0/P1 برای رفتار تعریف‌شده در E0 باز نباشد.
