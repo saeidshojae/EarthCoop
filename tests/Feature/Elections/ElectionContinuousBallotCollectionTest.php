@@ -128,6 +128,29 @@ class ElectionContinuousBallotCollectionTest extends TestCase
             'candidate_user_id' => $candidate->id,
         ]);
 
+        // Eligibility is symmetric while the ballot window is open: a member
+        // joining after opening must also be selectable by another active voter,
+        // not merely allowed to cast their own ballot.
+        app(ElectionBallotService::class)->submit($next->refresh(), $voter->id, [$lateMember->id], []);
+        $this->assertDatabaseHas('election_eligibility_snapshots', [
+            'election_id' => $next->id,
+            'user_id' => $lateMember->id,
+            'voter_eligible' => 1,
+            'selectable_eligible' => 1,
+        ]);
+        $this->assertDatabaseHas('votes', [
+            'election_id' => $next->id,
+            'voter_id' => $voter->id,
+            'candidate_user_id' => $lateMember->id,
+            'position' => 1,
+        ]);
+        $this->assertDatabaseHas('election_ballot_events', [
+            'election_id' => $next->id,
+            'voter_id' => $voter->id,
+            'candidate_user_id' => $lateMember->id,
+            'event_type' => 'vote_cast',
+        ]);
+
         $this->assertSame(0, Vote::where('election_id', $old->id)->count());
         $this->assertDatabaseHas('election_ballot_events', [
             'election_id' => $next->id,
