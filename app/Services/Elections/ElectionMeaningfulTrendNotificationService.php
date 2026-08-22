@@ -5,9 +5,11 @@ namespace App\Services\Elections;
 use App\Models\Election;
 use App\Models\ElectionTrendAlert;
 use App\Models\User;
+use App\Models\Vote;
 use App\Services\NotificationService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class ElectionMeaningfulTrendNotificationService
 {
@@ -15,6 +17,46 @@ class ElectionMeaningfulTrendNotificationService
         private readonly ElectionCandidateReportService $reports,
         private readonly NotificationService $notifications,
     ) {}
+
+    public function processDue(int $limit = 100): array
+    {
+        $limit = max(1, min(1000, $limit));
+        $processed = 0;
+        $notified = 0;
+        $errors = 0;
+
+        $pairs = Vote::query()
+            ->select(['election_id', 'candidate_user_id', 'position'])
+            ->whereNotNull('candidate_user_id')
+            ->whereHas('election', fn ($query) => $query->where('lifecycle_status', 'open'))
+            ->groupBy('election_id', 'candidate_user_id', 'position')
+            ->orderBy('election_id')
+            ->limit($limit)
+            ->get();
+
+        foreach ($pairs as $pair) {
+            $processed++;
+            try {
+                $election = Election::query()->with('policyVersion')->find($pair->election_id);
+                if ($election === null) {
+                    continue;
+                }
+                $alert = $this->evaluateAndNotify(
+                    $election,
+                    (int) $pair->candidate_user_id,
+                    (string) $pair->position,
+                );
+                if ($alert !== null && $alert->wasRecentlyCreated) {
+                    $notified++;
+                }
+            } catch (Throwable $exception) {
+                $errors++;
+                report($exception);
+            }
+        }
+
+        return compact('processed', 'notified', 'errors');
+    }
 
     public function evaluateAndNotify(Election $election, int $candidateUserId, string $position): ?ElectionTrendAlert
     {
