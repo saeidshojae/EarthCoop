@@ -4,6 +4,7 @@ namespace Tests\Feature\Elections;
 
 use App\Models\Election;
 use App\Models\ElectionAppointment;
+use App\Models\ElectionPolicyVersion;
 use App\Models\ElectionResponsibilityContractVersion;
 use App\Models\ElectionResponsibilityOffer;
 use App\Models\ElectionTallyResult;
@@ -79,6 +80,55 @@ class ElectionVacancyServiceTest extends TestCase
             'appointment_kind' => 'direct',
             'status' => 'active',
         ]);
+    }
+
+    public function test_vacancy_backfill_uses_frozen_cycle_contract_and_response_window(): void
+    {
+        [$election, $direct, $rankTwo] = $this->completedElectionFixture();
+        $setting = GroupSetting::where('level', 'global')->firstOrFail();
+        $frozenContract = ElectionResponsibilityOffer::where('election_id', $election->id)
+            ->where('candidate_user_id', $direct->user_id)
+            ->firstOrFail()
+            ->contractVersion;
+
+        $policy = ElectionPolicyVersion::create([
+            'group_setting_id' => $setting->id,
+            'level_key' => 'global',
+            'version' => 1,
+            'election_status' => true,
+            'manager_count' => 1,
+            'inspector_count' => 0,
+            'voting_duration_days' => 10,
+            'start_threshold' => 1,
+            'cycle_interval_months' => 3,
+            'response_duration_days' => 4,
+            'report_min_distinct_voters' => 10,
+            'report_bucket_days' => 7,
+            'meaningful_trend_min_net_change' => 3,
+            'manager_contract_version_id' => $frozenContract->id,
+            'effective_at' => now()->subMonths(2),
+            'change_reason' => 'freeze vacancy contract fixture',
+        ]);
+        $election->forceFill(['policy_version_id' => $policy->id])->save();
+
+        $newClauses = array_fill_keys(ElectionResponsibilityContractVersion::REQUIRED_CLAUSES, 'متن قرارداد جدید که نباید به چرخه قدیمی نشت کند');
+        $newContract = app(ElectionResponsibilityContractVersionService::class)
+            ->publish('manager', $newClauses, $rankTwo, 'newer global contract');
+        $this->assertNotSame($frozenContract->id, $newContract->id);
+
+        app(ElectionAppointmentService::class)->revoke($direct, 'resigned', 'test_operator');
+        $vacancy = ElectionVacancy::where('source_appointment_id', $direct->id)->firstOrFail();
+        $before = now();
+
+        $this->assertSame('offer_pending', app(ElectionVacancyService::class)->processOne($vacancy->id));
+        $replacement = $vacancy->refresh()->replacementOffer;
+
+        $this->assertSame($rankTwo->id, (int) $replacement->candidate_user_id);
+        $this->assertSame($frozenContract->id, (int) $replacement->contract_version_id);
+        $this->assertSame($policy->id, (int) data_get($replacement->response_metadata, 'policy_version_id'));
+        $this->assertSame(4, (int) data_get($replacement->response_metadata, 'response_duration_days'));
+        $this->assertTrue((bool) data_get($replacement->response_metadata, 'contract_frozen_by_policy'));
+        $this->assertTrue($replacement->expires_at->betweenIncluded($before->copy()->addDays(4)->subMinute(), now()->addDays(4)->addMinute()));
     }
 
     public function test_vacancy_exhaustion_is_recorded_without_forcing_early_full_cycle(): void
