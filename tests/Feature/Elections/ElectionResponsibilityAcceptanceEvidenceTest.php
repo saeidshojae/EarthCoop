@@ -14,6 +14,7 @@ use App\Services\Elections\ElectionResponsibilityAcceptanceEvidenceService;
 use App\Services\Elections\ElectionResponsibilityContractVersionService;
 use App\Services\Elections\ElectionResponsibilityOfferService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -41,8 +42,8 @@ class ElectionResponsibilityAcceptanceEvidenceTest extends TestCase
             app(ElectionResponsibilityAcceptanceEvidenceService::class)
                 ->confirm($offer->refresh(), $candidate, $wrongContract->id);
             $this->fail('Confirmation against a different contract version must fail.');
-        } catch (RuntimeException $exception) {
-            $this->assertStringContainsString('contract', strtolower($exception->getMessage()));
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('contract_version_id', $exception->errors());
         }
 
         $evidence = app(ElectionResponsibilityAcceptanceEvidenceService::class)
