@@ -5,6 +5,8 @@ namespace App\Services\Elections;
 use App\Enums\Elections\ElectionLifecycleStatus;
 use App\Models\Candidate;
 use App\Models\Election;
+use App\Models\ElectionPolicyVersion;
+use App\Models\ElectionResponsibilityContractVersion;
 use App\Models\Group;
 use App\Models\GroupUser;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +37,14 @@ class ElectionCycleService
             }
 
             if (! $this->policyResolver->electionEnabled($policy)) {
+                return [null, false, false];
+            }
+
+            // A cycle must never begin if its later responsibility-offer phase is
+            // already impossible. Contracts are frozen by policy version, so a
+            // missing/invalid required contract cannot be repaired retrospectively
+            // without violating E10/E17 immutability.
+            if (! $this->policyHasOperationalContracts($policy)) {
                 return [null, false, false];
             }
 
@@ -126,6 +136,43 @@ class ElectionCycleService
             $isSuccessor ? 'election-cycle:continuous-open' : 'election-cycle:auto-open',
             $isSuccessor ? ['previous_election_id' => (int) $election->previous_election_id] : [],
         );
+    }
+
+    private function policyHasOperationalContracts(ElectionPolicyVersion $policy): bool
+    {
+        $requirements = [
+            'manager' => [
+                'seats' => $this->policyResolver->managerSeatCount($policy),
+                'contract_id' => $policy->manager_contract_version_id,
+            ],
+            'inspector' => [
+                'seats' => $this->policyResolver->inspectorSeatCount($policy),
+                'contract_id' => $policy->inspector_contract_version_id,
+            ],
+        ];
+
+        foreach ($requirements as $position => $requirement) {
+            if ($requirement['seats'] <= 0) {
+                continue;
+            }
+
+            $contractId = $requirement['contract_id'];
+            if ($contractId === null) {
+                return false;
+            }
+
+            $contract = ElectionResponsibilityContractVersion::query()->find((int) $contractId);
+            if ($contract === null
+                || $contract->position !== $position
+                || ! $contract->is_active
+                || $contract->published_at === null
+                || ! $contract->e0_compliant
+                || ! $contract->hasCompleteE0Manifest()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function latestCycleIsCollectingBallots(Election $latest): bool
