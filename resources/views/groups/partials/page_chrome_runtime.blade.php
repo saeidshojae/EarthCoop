@@ -16,6 +16,15 @@ $systemicStatus = $systemicElection
     ? ($systemicElection->lifecycle_status?->value ?? (string) $systemicElection->lifecycle_status)
     : null;
 $systemicPortalUrl = $systemicElection ? route('elections.portal', $group) : null;
+$systemicElectionPayload = $systemicElection ? [
+    'id' => (int) $systemicElection->id,
+    'cycle' => (int) ($systemicElection->cycle_number ?: 1),
+    'status' => $systemicStatus,
+    'ends_at' => optional($systemicElection->ends_at)->toIso8601String(),
+    'portal_url' => $systemicPortalUrl,
+    'can_participate' => $systemicCanParticipate,
+    'blocked' => $systemicElectionBlocked,
+] : null;
 @endphp
 <script type="module">
 function initializeGroupChatPageChrome() {
@@ -44,21 +53,10 @@ function initializeGroupChatPageChrome() {
     }
 
     function projectSystemicElectionSurface() {
-        const election = @json($systemicElection ? [
-            'id' => (int) $systemicElection->id,
-            'cycle' => (int) ($systemicElection->cycle_number ?: 1),
-            'status' => $systemicStatus,
-            'ends_at' => optional($systemicElection->ends_at)->toIso8601String(),
-            'portal_url' => $systemicPortalUrl,
-            'can_participate' => $systemicCanParticipate,
-            'blocked' => $systemicElectionBlocked,
-        ] : null);
+        const election = @json($systemicElectionPayload);
 
         if (!election) return;
 
-        // The old Blade gate used users.status, which is not part of the E0 voter
-        // eligibility contract. Normalize both mobile/desktop hero actions from the
-        // immutable eligibility snapshot of this cycle instead.
         document.querySelectorAll('[data-group-hero] button').forEach(button => {
             if (!button.querySelector('.fa-vote-yea')) return;
 
@@ -80,8 +78,6 @@ function initializeGroupChatPageChrome() {
             }
         });
 
-        // The group side panel previously treated legacy Poll(main_type=0) as an
-        // election. Replace that projection with the canonical systemic cycle.
         const electionTab = document.getElementById('election');
         if (!electionTab) return;
 
