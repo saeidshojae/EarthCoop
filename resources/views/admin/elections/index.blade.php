@@ -38,10 +38,10 @@
 
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
         @php($cards = [
-            ['label'=>'چرخه‌های باز','value'=>$stats['open_cycles'],'icon'=>'fa-play-circle','tone'=>'emerald'],
-            ['label'=>'در حال تعیین نتیجه','value'=>$stats['settling_cycles'],'icon'=>'fa-hourglass-half','tone'=>'blue'],
-            ['label'=>'سیاست‌های مؤثر','value'=>$stats['active_policies'],'icon'=>'fa-layer-group','tone'=>'indigo'],
-            ['label'=>'پرونده‌های بازبینی باز','value'=>$stats['open_reviews'],'icon'=>'fa-balance-scale','tone'=>'amber'],
+            ['label'=>'چرخه‌های باز','value'=>$stats['open_cycles'],'icon'=>'fa-play-circle'],
+            ['label'=>'در حال تعیین نتیجه','value'=>$stats['settling_cycles'],'icon'=>'fa-hourglass-half'],
+            ['label'=>'سیاست‌های مؤثر','value'=>$stats['active_policies'],'icon'=>'fa-layer-group'],
+            ['label'=>'پرونده‌های بازبینی باز','value'=>$stats['open_reviews'],'icon'=>'fa-balance-scale'],
         ])
         @foreach($cards as $card)
             <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm">
@@ -50,9 +50,7 @@
                         <div class="text-2xl font-bold text-slate-900 dark:text-white">{{ number_format($card['value']) }}</div>
                         <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ $card['label'] }}</div>
                     </div>
-                    <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300">
-                        <i class="fas {{ $card['icon'] }}"></i>
-                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300"><i class="fas {{ $card['icon'] }}"></i></div>
                 </div>
             </div>
         @endforeach
@@ -78,9 +76,15 @@
             <div class="flex items-start gap-4"><div class="w-11 h-11 rounded-xl bg-violet-50 dark:bg-violet-900/30 text-violet-600 flex items-center justify-center"><i class="fas fa-chart-bar"></i></div><div class="flex-1"><h3 class="font-bold text-slate-900 dark:text-white">حریم خصوصی و گزارش‌ها</h3><p class="text-sm text-slate-500 mt-1 leading-6">آستانه گزارش، bucket زمانی، trend معنادار و تاریخچه نسخه‌های سیاست برای هر سطح.</p><div class="mt-3 text-xs text-slate-400">از ردیف هر سطح، «گزارش» یا «تاریخچه» را باز کنید.</div></div></div>
         </a>
 
-        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-            <div class="flex items-start gap-4"><div class="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 flex items-center justify-center"><i class="fas fa-balance-scale"></i></div><div class="flex-1"><h3 class="font-bold text-slate-900 dark:text-white">بازبینی و بازشماری</h3><p class="text-sm text-slate-500 mt-1 leading-6">درخواست‌های review، stay موقت، تصمیم نهایی و audit access از مسیرهای رسمی بازبینی مدیریت می‌شوند.</p><div class="mt-3 text-xs font-semibold {{ $stats['open_reviews'] ? 'text-amber-600' : 'text-emerald-600' }}">{{ $stats['open_reviews'] ? $stats['open_reviews'].' مورد باز' : 'مورد باز وجود ندارد' }}</div></div></div>
+        @if(auth()->user()?->hasPermission('elections.review.manage'))
+        <a href="{{ route('admin.elections.reviews') }}" class="group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 hover:border-amber-300 hover:shadow-md transition-all">
+            <div class="flex items-start gap-4"><div class="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 flex items-center justify-center"><i class="fas fa-balance-scale"></i></div><div class="flex-1"><h3 class="font-bold text-slate-900 dark:text-white">بازبینی و بازشماری</h3><p class="text-sm text-slate-500 mt-1 leading-6">پرونده‌های review، stay موقت، تصمیم نهایی مستدل و audit رسیدگی.</p><div class="mt-3 text-xs font-semibold {{ $stats['open_reviews'] ? 'text-amber-600' : 'text-emerald-600' }}">{{ $stats['open_reviews'] ? $stats['open_reviews'].' مورد باز' : 'مورد باز وجود ندارد' }}</div></div></div>
+        </a>
+        @else
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 opacity-70">
+            <div class="flex items-start gap-4"><div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center"><i class="fas fa-lock"></i></div><div class="flex-1"><h3 class="font-bold text-slate-900 dark:text-white">بازبینی و بازشماری</h3><p class="text-sm text-slate-500 mt-1 leading-6">نیازمند دسترسی اختصاصی مدیریت بازبینی انتخابات است.</p></div></div>
         </div>
+        @endif
 
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
             <div class="flex items-start gap-4"><div class="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center"><i class="fas fa-shield-alt"></i></div><div class="flex-1"><h3 class="font-bold text-slate-900 dark:text-white">سلامت و آمادگی</h3><p class="text-sm text-slate-500 mt-1 leading-6">چرخه‌ها فقط با policy و قرارداد معتبر آغاز می‌شوند و تغییر سیاست بر چرخه‌های قدیمی اثر بازگشتی ندارد.</p><div class="mt-3 text-xs font-semibold text-emerald-600">کنترل‌های fail-closed فعال</div></div></div>
@@ -93,7 +97,7 @@
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500"><tr><th class="p-3 text-right">#</th><th class="p-3 text-right">گروه</th><th class="p-3 text-right">چرخه</th><th class="p-3 text-right">وضعیت</th><th class="p-3 text-right">شروع</th><th class="p-3 text-right">پایان رأی‌گیری</th></tr></thead>
+                <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500"><tr><th class="p-3 text-right">#</th><th class="p-3 text-right">گروه</th><th class="p-3 text-right">چرخه</th><th class="p-3 text-right">وضعیت</th><th class="p-3 text-right">شروع</th><th class="p-3 text-right">پایان رأی‌گیری</th><th class="p-3 text-right">عملیات</th></tr></thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                     @forelse($recentCycles as $cycle)
                         <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-700/30">
@@ -103,9 +107,10 @@
                             <td class="p-3"><span class="inline-flex px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-semibold">{{ $cycle->lifecycle_status?->value ?? $cycle->lifecycle_status ?? '—' }}</span></td>
                             <td class="p-3 text-slate-500">{{ optional($cycle->starts_at)->format('Y-m-d H:i') ?: '—' }}</td>
                             <td class="p-3 text-slate-500">{{ optional($cycle->ends_at)->format('Y-m-d H:i') ?: '—' }}</td>
+                            <td class="p-3"><a href="{{ route('admin.elections.policy-override.edit', $cycle) }}" class="text-xs font-semibold text-indigo-600 hover:underline">override چرخه</a></td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="p-10 text-center text-slate-400">هنوز چرخه انتخاباتی ایجاد نشده است.</td></tr>
+                        <tr><td colspan="7" class="p-10 text-center text-slate-400">هنوز چرخه انتخاباتی ایجاد نشده است.</td></tr>
                     @endforelse
                 </tbody>
             </table>
