@@ -161,10 +161,13 @@ class ElectionCycleService
                 return false;
             }
 
+            // `is_active` is intentionally not required here. Active decides which
+            // contract a NEW policy snapshot selects; once a policy has frozen a
+            // published E0-complete version, later retirement must not invalidate
+            // the historical contract that governs that cycle.
             $contract = ElectionResponsibilityContractVersion::query()->find((int) $contractId);
             if ($contract === null
                 || $contract->position !== $position
-                || ! $contract->is_active
                 || $contract->published_at === null
                 || ! $contract->e0_compliant
                 || ! $contract->hasCompleteE0Manifest()) {
