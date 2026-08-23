@@ -22,16 +22,22 @@ export function createElections({ api, feed, actions, lifecycle, store }) {
         candidateIds.forEach(candidateId => {
             const selectedChoice = ballotChoices(form).find(el => el.dataset.candidateId === candidateId && el.checked);
             form.querySelectorAll(`[data-vote-visibility-for="${candidateId}"]`).forEach(select => {
-                select.disabled = !selectedChoice || select.dataset.electionRole !== selectedChoice.dataset.electionChoice;
+                const active = Boolean(selectedChoice) && select.dataset.electionRole === selectedChoice.dataset.electionChoice;
+                select.disabled = !active;
+                select.style.pointerEvents = active ? 'auto' : 'none';
+                select.setAttribute('aria-disabled', active ? 'false' : 'true');
             });
         });
     };
 
     const syncCommentVisibility = form => {
         if (!form) return;
-        const comment = form.querySelector('#electionComment');
         const visibility = form.querySelector('#electionCommentVisibility');
-        if (visibility) visibility.disabled = !comment?.value.trim();
+        if (visibility) {
+            visibility.disabled = false;
+            visibility.style.pointerEvents = 'auto';
+            visibility.setAttribute('aria-disabled', 'false');
+        }
     };
 
     const updateBallotCountdown = form => {
@@ -93,7 +99,7 @@ export function createElections({ api, feed, actions, lifecycle, store }) {
         lifecycle.timeout(() => {
             window.GroupElectionModal?.updateElectionSelect2?.();
             window.dispatchEvent(new Event('electionModalOpened'));
-        }, 600);
+        }, 100);
         window.GroupChat?.actions?.closeGroupInfo();
         return true;
     };
@@ -197,7 +203,9 @@ export function createElections({ api, feed, actions, lifecycle, store }) {
     actions.register('close-election-admin', closeAdmin);
     actions.register('add-election-candidate', addCandidate);
     actions.register('remove-election-candidate', ({ target }) => Boolean(target.closest('.modal-option-row')?.remove() ?? true));
-    actions.register('election-content', ({ event }) => (event.stopPropagation(), true));
+    // Stop the backdrop click from seeing clicks inside the ballot, but do not
+    // cancel native control defaults such as <select> opening.
+    actions.register('election-content', ({ event }) => (event.stopPropagation(), false));
     actions.register('open-election-candidates', () => (window.GroupElectionModal?.openCandidatesModal?.(), true));
     actions.register('open-election-guideline', () => (window.GroupElectionModal?.openGuidelineModal?.(), true));
     actions.register('open-election-top-votes', () => (window.GroupElectionModal?.openTopVotesModal?.(), true));
@@ -216,9 +224,18 @@ export function createElections({ api, feed, actions, lifecycle, store }) {
         const role = input.dataset.electionChoice;
         const otherRole = role === 'manager' ? 'inspector' : 'manager';
         const limits = ballotLimits(form);
+
         if (input.checked) {
             const other = form.querySelector(`[data-election-choice="${otherRole}"][data-candidate-id="${input.dataset.candidateId}"]`);
-            if (other?.checked) other.checked = false;
+            if (other?.checked) {
+                // Do not silently destroy the user's existing vote. The same
+                // person cannot hold both positions on one ballot, so preserve
+                // the first choice and reject the conflicting second click.
+                input.checked = false;
+                notify('این عضو قبلاً برای نقش دیگر انتخاب شده است. برای تغییر نقش ابتدا انتخاب قبلی او را بردارید.', 'warning');
+                refreshBallot(form);
+                return;
+            }
             if (selectedFor(form, role).length > limits[role]) {
                 input.checked = false;
                 notify(`حداکثر ${limits[role]} انتخاب برای این نقش مجاز است.`, 'warning');
