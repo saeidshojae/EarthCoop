@@ -23,7 +23,7 @@ class ElectionGroupSurfaceProjectionTest extends TestCase
         $panel = file_get_contents(resource_path('views/groups/partials/group_info_panel.blade.php'));
         $runtime = file_get_contents(resource_path('views/groups/partials/page_chrome_runtime.blade.php'));
 
-        $this->assertStringContainsString("$electionPolls = $pollCollection->where('main_type', 0);", $panel);
+        $this->assertStringContainsString('$electionPolls = $pollCollection->where(\'main_type\', 0);', $panel);
         $this->assertStringContainsString('electionTab.replaceChildren(card);', $runtime);
     }
 }
