@@ -61,7 +61,9 @@
             <li><a href="{{ route('admin.groups.index') }}" class="flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg text-white hover:bg-gray-700 transition-colors {{ request()->routeIs('admin.groups.*') || request()->routeIs('admin.group.*') ? 'bg-gray-700' : '' }}"><i class="fas fa-users-cog w-5"></i><span>مدیریت گروه‌ها</span></a></li>
             @endhasPermission
 
-            <li><a href="{{ route('admin.system-settings.index') }}" class="flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg text-white hover:bg-gray-700 transition-colors {{ request()->routeIs('admin.system-settings.*') || request()->routeIs('admin.invitation_codes.*') || request()->routeIs('admin.category.*') || request()->routeIs('admin.activate.*') || request()->routeIs('admin.group.setting.*') ? 'bg-gray-700' : '' }}"><i class="fas fa-cog w-5"></i><span>تنظیمات سیستمی</span></a></li>
+            <li><a href="{{ route('admin.elections.dashboard') }}" class="flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg text-white hover:bg-gray-700 transition-colors {{ request()->routeIs('admin.elections.*') || request()->routeIs('admin.group.setting.*') ? 'bg-gray-700' : '' }}"><i class="fas fa-vote-yea w-5"></i><span>مدیریت انتخابات</span></a></li>
+
+            <li><a href="{{ route('admin.system-settings.index') }}" class="flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg text-white hover:bg-gray-700 transition-colors {{ request()->routeIs('admin.system-settings.*') || request()->routeIs('admin.invitation_codes.*') || request()->routeIs('admin.category.*') || request()->routeIs('admin.activate.*') ? 'bg-gray-700' : '' }}"><i class="fas fa-cog w-5"></i><span>تنظیمات سیستمی</span></a></li>
 
             @hasPermission('system-settings.manage')
             <li><a href="{{ route('admin.reputation.index') }}" class="flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg text-white hover:bg-gray-700 transition-colors {{ request()->routeIs('admin.reputation.*') || request()->is('admin/system-settings/reputation') ? 'bg-gray-700' : '' }}"><i class="fas fa-star w-5"></i><span>امتیازدهی (Reputation)</span></a></li>
