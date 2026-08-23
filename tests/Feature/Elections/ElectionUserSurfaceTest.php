@@ -19,6 +19,12 @@ class ElectionUserSurfaceTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutVite();
+    }
+
     public function test_group_chat_route_is_shadowed_by_read_only_systemic_election_presenter(): void
     {
         $route = Route::getRoutes()->getByName('groups.chat');
