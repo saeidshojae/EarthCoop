@@ -2,8 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Models\ElectionPolicyVersion;
 use App\Models\ElectionResponsibilityContractVersion;
+use App\Models\GroupSetting;
 use App\Models\User;
+use App\Services\Elections\ElectionPolicyVersionService;
 use Illuminate\Database\Seeder;
 
 class ElectionResponsibilityContractSeeder extends Seeder
@@ -38,6 +41,40 @@ class ElectionResponsibilityContractSeeder extends Seeder
                 'created_by' => $actorId,
                 'change_reason' => 'fresh_install_operational_baseline; replaceable only by publishing a new admin version',
             ]);
+        }
+
+        // If an operator already published an effective policy before contracts
+        // existed (common in local/bootstrap environments), never mutate that
+        // immutable policy in place. Publish a successor with identical settings
+        // and the now-available active contract versions.
+        $policyVersions = app(ElectionPolicyVersionService::class);
+        $affectedSettingIds = ElectionPolicyVersion::query()
+            ->where('effective_at', '<=', now())
+            ->where(function ($query) {
+                $query->whereNull('retired_at')->orWhere('retired_at', '>', now());
+            })
+            ->where(function ($query) {
+                $query->where(function ($q) {
+                    $q->where('manager_count', '>', 0)->whereNull('manager_contract_version_id');
+                })->orWhere(function ($q) {
+                    $q->where('inspector_count', '>', 0)->whereNull('inspector_contract_version_id');
+                });
+            })
+            ->pluck('group_setting_id')
+            ->unique();
+
+        foreach ($affectedSettingIds as $settingId) {
+            $setting = GroupSetting::query()->find($settingId);
+            if ($setting === null) {
+                continue;
+            }
+
+            $policyVersions->publishFromSetting(
+                $setting,
+                $actorId ? (int) $actorId : null,
+                'bootstrap_contract_binding_after_contract_seed',
+                now(),
+            );
         }
     }
 
