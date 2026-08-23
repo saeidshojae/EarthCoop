@@ -5,7 +5,10 @@ namespace Tests\Feature\Elections;
 use App\Enums\Elections\ElectionLifecycleStatus;
 use App\Models\Election;
 use App\Models\ElectionLifecycleTransition;
+use App\Models\ElectionPolicyVersion;
+use App\Models\ElectionResponsibilityContractVersion;
 use App\Models\Group;
+use App\Models\GroupSetting;
 use App\Services\Elections\ElectionLifecycleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use InvalidArgumentException;
@@ -112,7 +115,7 @@ class ElectionLifecycleServiceTest extends TestCase
 
     public function test_process_lifecycle_command_is_retry_safe(): void
     {
-        $election = $this->election(
+        $election = $this->operationalElection(
             ElectionLifecycleStatus::Open,
             now()->subDay(),
             now()->subMinute(),
@@ -122,11 +125,93 @@ class ElectionLifecycleServiceTest extends TestCase
             ->expectsOutputToContain('processed=1 advanced=1 errors=0')
             ->assertSuccessful();
 
+        $this->assertSame(ElectionLifecycleStatus::Exhausted, $election->fresh()->lifecycle_status);
+        $this->assertSame([
+            'closed',
+            'tallying',
+            'awaiting_acceptance',
+            'exhausted',
+        ], ElectionLifecycleTransition::where('election_id', $election->id)
+            ->orderBy('id')
+            ->pluck('to_status')
+            ->map(fn ($status) => $status instanceof ElectionLifecycleStatus ? $status->value : (string) $status)
+            ->all());
+
+        $transitionCount = ElectionLifecycleTransition::where('election_id', $election->id)->count();
+
         $this->artisan('elections:process-lifecycle --limit=50 --fail-on-error')
             ->expectsOutputToContain('processed=0 advanced=0 errors=0')
             ->assertSuccessful();
 
-        $this->assertSame(1, ElectionLifecycleTransition::where('election_id', $election->id)->count());
+        $this->assertSame($transitionCount, ElectionLifecycleTransition::where('election_id', $election->id)->count());
+        $this->assertSame(ElectionLifecycleStatus::Exhausted, $election->fresh()->lifecycle_status);
+    }
+
+    private function operationalElection(
+        ElectionLifecycleStatus $status,
+        mixed $startsAt = null,
+        mixed $endsAt = null,
+    ): Election {
+        $group = Group::create([
+            'name' => 'Operational lifecycle command group',
+            'group_type' => 'public',
+            'location_level' => 'neighborhood',
+        ]);
+
+        $setting = GroupSetting::create([
+            'level' => 'neighborhood',
+            'manager_count' => 1,
+            'inspector_count' => 0,
+            'election_time' => 10,
+            // Deliberately above current membership (zero) so the group pass does
+            // not open a successor; this test isolates retry safety of settlement.
+            'max_for_election' => 1,
+            'election_status' => 1,
+            'second_election_time' => 3,
+        ]);
+
+        $manifest = array_fill_keys(
+            ElectionResponsibilityContractVersion::REQUIRED_CLAUSES,
+            'متن معتبر قرارداد تست چرخه',
+        );
+        $contract = ElectionResponsibilityContractVersion::create([
+            'position' => 'manager',
+            'version' => 1,
+            'body' => 'manager lifecycle retry contract',
+            'clause_manifest' => $manifest,
+            'e0_compliant' => true,
+            'is_active' => true,
+            'published_at' => now()->subDay(),
+        ]);
+
+        $policy = ElectionPolicyVersion::create([
+            'group_setting_id' => $setting->id,
+            'level_key' => 'neighborhood',
+            'version' => 1,
+            'election_status' => true,
+            'manager_count' => 1,
+            'inspector_count' => 0,
+            'voting_duration_days' => 10,
+            'start_threshold' => 1,
+            'cycle_interval_months' => 3,
+            'response_duration_days' => 7,
+            'report_min_distinct_voters' => 10,
+            'report_bucket_days' => 7,
+            'meaningful_trend_min_net_change' => 3,
+            'manager_contract_version_id' => $contract->id,
+            'inspector_contract_version_id' => null,
+            'effective_at' => now()->subDay(),
+            'change_reason' => 'lifecycle retry fixture',
+        ]);
+
+        return Election::create([
+            'group_id' => $group->id,
+            'policy_version_id' => $policy->id,
+            'starts_at' => $startsAt ?? now()->addHour(),
+            'ends_at' => $endsAt ?? now()->addDay(),
+            'is_closed' => ! in_array($status, [ElectionLifecycleStatus::Scheduled, ElectionLifecycleStatus::Open], true),
+            'lifecycle_status' => $status,
+        ]);
     }
 
     private function election(
