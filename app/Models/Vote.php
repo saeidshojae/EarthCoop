@@ -23,6 +23,19 @@ class Vote extends Model
         'vote_visibility' => ElectionVoteVisibility::class,
     ];
 
+    protected static function booted(): void
+    {
+        // `votes` is the mutable current projection of the systemic ballot.
+        // Canonical ballot changes are performed by ElectionBallotService via a
+        // transactional query-level replacement *after* immutable audit events
+        // are appended. Any ad-hoc model deletion (for example from profile or
+        // membership maintenance code) would erase the projection without an
+        // audit event and can corrupt an open ballot or historical evidence.
+        // Returning false keeps such legacy direct deletes fail-closed while the
+        // canonical query-level projection replacement remains unaffected.
+        static::deleting(fn (self $vote): bool => false);
+    }
+
     public function candidate()
     {
         return $this->belongsTo(Candidate::class, 'candidate_id');
