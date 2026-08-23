@@ -21,10 +21,10 @@ class ElectionGroupSettingSeeder extends Seeder
                 GroupSetting::query()->updateOrCreate(
                     ['level' => $level.$suffix],
                     [
-                        'manager_count' => 1,
-                        'inspector_count' => 1,
+                        'manager_count' => 7,
+                        'inspector_count' => 3,
                         'election_time' => 30,
-                        'max_for_election' => 10,
+                        'max_for_election' => 20,
                         'election_status' => 1,
                         'second_election_time' => 6,
                         'election_report_min_distinct_voters' => 10,
