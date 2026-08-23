@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ElectionConflictPolicyController;
+use App\Http\Controllers\Admin\ElectionManagementController;
 use App\Http\Controllers\Admin\ElectionPolicyOverrideController;
 use App\Http\Controllers\Admin\ElectionResponsibilityContractAdminController;
 use App\Http\Controllers\Elections\ElectionFeedbackTopicResponseController;
@@ -34,7 +35,10 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::get('/elections/process-reviews/{review}',[ElectionProcessReviewController::class,'show'])->whereNumber('review')->name('elections.process-reviews.show');
     Route::post('/elections/process-reviews/{review}/human',[ElectionProcessReviewController::class,'requestHuman'])->whereNumber('review')->name('elections.process-reviews.human');
     Route::post('/elections/process-reviews/{review}/endorse',[ElectionProcessReviewController::class,'endorse'])->whereNumber('review')->name('elections.process-reviews.endorse');
+
     Route::middleware(AdminMiddleware::class)->group(function () {
+        Route::get('/admin/elections', [ElectionManagementController::class, 'index'])
+            ->name('admin.elections.dashboard');
         Route::get('/admin/elections/contracts',[ElectionResponsibilityContractAdminController::class,'index'])->name('admin.elections.contracts.index');
         Route::post('/admin/elections/contracts',[ElectionResponsibilityContractAdminController::class,'store'])->name('admin.elections.contracts.store');
         Route::get('/admin/elections/conflict-policy',[ElectionConflictPolicyController::class,'index'])->name('admin.elections.conflict-policy.index');
