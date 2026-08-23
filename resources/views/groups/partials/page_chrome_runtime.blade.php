@@ -1,3 +1,22 @@
+@php
+$systemicElection = $election ?? null;
+$systemicElectionEligibility = $systemicElection
+    ? \App\Models\ElectionEligibilitySnapshot::query()
+        ->where('election_id', $systemicElection->id)
+        ->where('user_id', auth()->id())
+        ->where('voter_eligible', true)
+        ->exists()
+    : false;
+$systemicElectionBlocked = \App\Models\Block::query()
+    ->where('user_id', auth()->id())
+    ->where('position', 'election')
+    ->exists();
+$systemicCanParticipate = (bool) ($systemicElection && $systemicElectionEligibility && ! $systemicElectionBlocked);
+$systemicStatus = $systemicElection
+    ? ($systemicElection->lifecycle_status?->value ?? (string) $systemicElection->lifecycle_status)
+    : null;
+$systemicPortalUrl = $systemicElection ? route('elections.portal', $group) : null;
+@endphp
 <script type="module">
 function initializeGroupChatPageChrome() {
     const lifecycle = window.GroupChatLifecycle;
@@ -24,6 +43,88 @@ function initializeGroupChatPageChrome() {
         chevron?.classList.toggle('rotate-180', expanded);
     }
 
+    function projectSystemicElectionSurface() {
+        const election = @json($systemicElection ? [
+            'id' => (int) $systemicElection->id,
+            'cycle' => (int) ($systemicElection->cycle_number ?: 1),
+            'status' => $systemicStatus,
+            'ends_at' => optional($systemicElection->ends_at)->toIso8601String(),
+            'portal_url' => $systemicPortalUrl,
+            'can_participate' => $systemicCanParticipate,
+            'blocked' => $systemicElectionBlocked,
+        ] : null);
+
+        if (!election) return;
+
+        // The old Blade gate used users.status, which is not part of the E0 voter
+        // eligibility contract. Normalize both mobile/desktop hero actions from the
+        // immutable eligibility snapshot of this cycle instead.
+        document.querySelectorAll('[data-group-hero] button').forEach(button => {
+            if (!button.querySelector('.fa-vote-yea')) return;
+
+            button.classList.remove('bg-slate-100', 'text-slate-500', 'cursor-not-allowed');
+            button.innerHTML = '<i class="fas fa-vote-yea"></i>' + (election.can_participate ? ' شرکت در انتخابات' : ' انتخابات فعال');
+
+            if (election.can_participate) {
+                button.disabled = false;
+                button.dataset.chatPageAction = 'open-election';
+                button.classList.add('bg-indigo-500', 'text-white', 'shadow-sm', 'hover:bg-indigo-600', 'transition');
+                button.removeAttribute('title');
+            } else {
+                button.disabled = true;
+                delete button.dataset.chatPageAction;
+                button.classList.add('bg-slate-100', 'text-slate-500', 'cursor-not-allowed');
+                button.title = election.blocked
+                    ? 'دسترسی شما به رأی‌دادن در این انتخابات مسدود شده است.'
+                    : 'برای این چرخه در snapshot واجد شرایط رأی‌دادن نیستید.';
+            }
+        });
+
+        // The group side panel previously treated legacy Poll(main_type=0) as an
+        // election. Replace that projection with the canonical systemic cycle.
+        const electionTab = document.getElementById('election');
+        if (!electionTab) return;
+
+        const card = document.createElement('div');
+        card.className = 'rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 space-y-3';
+
+        const heading = document.createElement('div');
+        heading.className = 'flex items-center justify-between gap-3';
+        const title = document.createElement('strong');
+        title.className = 'text-slate-900';
+        title.textContent = `انتخابات سیستمی · چرخه ${election.cycle}`;
+        const badge = document.createElement('span');
+        badge.className = 'inline-flex px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold';
+        badge.textContent = election.status === 'open' ? 'رأی‌گیری باز' : election.status;
+        heading.append(title, badge);
+
+        const meta = document.createElement('p');
+        meta.className = 'text-sm text-slate-600 leading-7';
+        meta.textContent = election.ends_at
+            ? `چرخه فعال است. پایان پنجره رأی‌گیری: ${new Date(election.ends_at).toLocaleString('fa-IR')}`
+            : 'چرخه انتخابات سیستمی فعال است.';
+
+        const actions = document.createElement('div');
+        actions.className = 'flex flex-wrap gap-2';
+        if (election.can_participate) {
+            const vote = document.createElement('button');
+            vote.type = 'button';
+            vote.dataset.chatPageAction = 'open-election';
+            vote.className = 'inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold';
+            vote.innerHTML = '<i class="fas fa-vote-yea"></i> شرکت در انتخابات';
+            actions.appendChild(vote);
+        }
+
+        const portal = document.createElement('a');
+        portal.href = election.portal_url;
+        portal.className = 'inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-indigo-200 text-indigo-700 text-sm font-semibold bg-white';
+        portal.innerHTML = '<i class="fas fa-circle-info"></i> جزئیات و تاریخچه انتخابات';
+        actions.appendChild(portal);
+
+        card.append(heading, meta, actions);
+        electionTab.replaceChildren(card);
+    }
+
     window.GroupChatPageChrome = Object.freeze({
         openGroupEdit() {
             setGroupEditVisible(true);
@@ -43,6 +144,8 @@ function initializeGroupChatPageChrome() {
             setGroupHeroExpanded(trigger?.getAttribute('aria-expanded') !== 'true');
         }
     });
+
+    projectSystemicElectionSurface();
 
     const pinnedMessages = document.querySelector('.pinned-messages');
     if (pinnedMessages) pinnedMessages.scrollTop = pinnedMessages.scrollHeight;
