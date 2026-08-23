@@ -15,10 +15,6 @@ use App\Http\Middleware\Authenticate;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(Authenticate::class)->group(function () {
-    // Loaded after routes/web.php on purpose: the systemic election-aware chat
-    // presenter replaces the legacy chat GET route while all other ChatController
-    // APIs remain untouched. Opening a chat page can therefore never create,
-    // extend, close or tally an election.
     Route::get('/groups/chat/{group}', [SystemicElectionChatController::class, 'chat'])
         ->middleware(['group.chat.csp', 'group.chat.context'])
         ->name('groups.chat');
@@ -45,7 +41,12 @@ Route::middleware(Authenticate::class)->group(function () {
         Route::post('/admin/elections/conflict-policy',[ElectionConflictPolicyController::class,'store'])->name('admin.elections.conflict-policy.store');
         Route::get('/admin/elections/{election}/policy-override',[ElectionPolicyOverrideController::class,'edit'])->whereNumber('election')->name('admin.elections.policy-override.edit');
         Route::post('/admin/elections/{election}/policy-override',[ElectionPolicyOverrideController::class,'update'])->whereNumber('election')->name('admin.elections.policy-override.update');
+
         Route::middleware('permission:elections.review.manage')->group(function () {
+            Route::get('/admin/elections/reviews',[ElectionManagementController::class,'reviews'])->name('admin.elections.reviews');
+            Route::post('/admin/elections/reviews/{review}/stay',[ElectionManagementController::class,'stay'])->whereNumber('review')->name('admin.elections.reviews.stay');
+            Route::post('/admin/elections/reviews/{review}/decision',[ElectionManagementController::class,'decide'])->whereNumber('review')->name('admin.elections.reviews.decision');
+
             Route::post('/admin/elections/process-reviews/{review}/stay',[ElectionProcessReviewController::class,'stay'])->whereNumber('review')->name('admin.elections.process-reviews.stay');
             Route::post('/admin/elections/process-reviews/{review}/decision',[ElectionProcessReviewController::class,'decide'])->whereNumber('review')->name('admin.elections.process-reviews.decision');
         });
