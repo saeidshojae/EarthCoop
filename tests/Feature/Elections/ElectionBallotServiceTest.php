@@ -65,6 +65,36 @@ class ElectionBallotServiceTest extends TestCase
         $this->assertSame(4, ElectionBallotEvent::where('election_id', $election->id)->count());
     }
 
+    public function test_direct_model_delete_cannot_erase_vote_projection_without_audit_path(): void
+    {
+        [$election, $voter, $manager] = $this->fixture();
+        app(ElectionBallotService::class)->submit($election, $voter->id, [$manager->id], [], 'req-protected-delete');
+
+        $vote = Vote::where('election_id', $election->id)
+            ->where('voter_id', $voter->id)
+            ->firstOrFail();
+
+        $this->assertFalse($vote->delete());
+        $this->assertDatabaseHas('votes', [
+            'id' => $vote->id,
+            'election_id' => $election->id,
+            'voter_id' => $voter->id,
+            'candidate_user_id' => $manager->id,
+        ]);
+
+        // Canonical ballot mutation still works because the service appends the
+        // immutable withdrawal event and replaces only the mutable projection.
+        app(ElectionBallotService::class)->submit($election, $voter->id, [], [], 'req-canonical-withdraw');
+
+        $this->assertDatabaseMissing('votes', ['id' => $vote->id]);
+        $this->assertDatabaseHas('election_ballot_events', [
+            'election_id' => $election->id,
+            'voter_id' => $voter->id,
+            'event_type' => 'vote_withdrawn',
+            'request_uuid' => 'req-canonical-withdraw',
+        ]);
+    }
+
     public function test_ballot_comment_and_visibility_are_persisted_on_generated_audit_events(): void
     {
         [$election, $voter, $manager] = $this->fixture();
