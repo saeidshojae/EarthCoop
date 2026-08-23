@@ -2,6 +2,78 @@ export function createElections({ api, feed, actions, lifecycle, store }) {
     let optionCount = document.querySelectorAll('#el_dynamic-inputs input[name="options[]"]').length || 1;
     const notify = (message, type = 'info') => window.GroupChatFeedback?.toast?.(message, { type });
 
+    const ballotForm = () => document.querySelector('[data-systemic-election-ballot]');
+    const ballotChoices = form => [...form.querySelectorAll('[data-election-choice]')];
+    const selectedFor = (form, role) => ballotChoices(form).filter(el => el.dataset.electionChoice === role && el.checked);
+    const ballotLimits = form => ({
+        manager: Math.max(0, Number.parseInt(form.dataset.electionManagerLimit || '0', 10) || 0),
+        inspector: Math.max(0, Number.parseInt(form.dataset.electionInspectorLimit || '0', 10) || 0),
+    });
+
+    const refreshBallot = form => {
+        if (!form) return;
+        const limits = ballotLimits(form);
+        ['manager', 'inspector'].forEach(role => {
+            const badge = form.querySelector(`[data-election-count="${role}"]`);
+            if (badge) badge.textContent = `${selectedFor(form, role).length}/${limits[role]}`;
+        });
+
+        const candidateIds = [...new Set(ballotChoices(form).map(el => el.dataset.candidateId).filter(Boolean))];
+        candidateIds.forEach(candidateId => {
+            const selectedChoice = ballotChoices(form).find(el => el.dataset.candidateId === candidateId && el.checked);
+            form.querySelectorAll(`[data-vote-visibility-for="${candidateId}"]`).forEach(select => {
+                select.disabled = !selectedChoice || select.dataset.electionRole !== selectedChoice.dataset.electionChoice;
+            });
+        });
+    };
+
+    const syncCommentVisibility = form => {
+        if (!form) return;
+        const comment = form.querySelector('#electionComment');
+        const visibility = form.querySelector('#electionCommentVisibility');
+        if (visibility) visibility.disabled = !comment?.value.trim();
+    };
+
+    const updateBallotCountdown = form => {
+        if (!form) return;
+        const countdown = form.closest('[data-election-systemic-ui]')?.querySelector('#countdownText');
+        const progress = form.closest('[data-election-systemic-ui]')?.querySelector('#progressBar');
+        const endsAt = Date.parse(form.dataset.electionEndsAt || '');
+        const startsAt = Date.parse(form.dataset.electionStartsAt || '');
+        if (!countdown || !Number.isFinite(endsAt)) return;
+
+        const tick = () => {
+            if (!document.documentElement.contains(form)) return;
+            const now = Date.now();
+            const remaining = endsAt - now;
+            const effectiveStart = Number.isFinite(startsAt) ? startsAt : now;
+            const total = Math.max(1, endsAt - effectiveStart);
+            if (progress) progress.style.width = `${Math.max(0, Math.min(100, ((now - effectiveStart) / total) * 100))}%`;
+
+            if (remaining <= 0) {
+                countdown.textContent = 'این پنجره رأی‌گیری به زمان توقف رسیده است؛ سامانه در حال تثبیت snapshot چرخه است.';
+                form.querySelectorAll('input, select, textarea, button[type="submit"]').forEach(el => { el.disabled = true; });
+                return;
+            }
+
+            const days = Math.floor(remaining / 86400000);
+            const hours = Math.floor((remaining % 86400000) / 3600000);
+            const minutes = Math.floor((remaining % 3600000) / 60000);
+            countdown.textContent = `${days} روز ${hours} ساعت ${minutes} دقیقه تا توقف این پنجره رأی‌گیری`;
+            lifecycle.timeout(tick, 30000);
+        };
+        tick();
+    };
+
+    const initializeBallot = () => {
+        const form = ballotForm();
+        if (!form || form.dataset.lifecycleBound === '1') return;
+        form.dataset.lifecycleBound = '1';
+        refreshBallot(form);
+        syncCommentVisibility(form);
+        updateBallotCountdown(form);
+    };
+
     const close = () => {
         const overlay = document.getElementById('electionVotingOverlay');
         if (overlay) overlay.style.display = 'none';
@@ -17,6 +89,7 @@ export function createElections({ api, feed, actions, lifecycle, store }) {
         overlay.scrollTop = 0;
         document.body.style.overflow = 'hidden';
         store.setState({ electionOpen: true });
+        initializeBallot();
         lifecycle.timeout(() => {
             window.GroupElectionModal?.updateElectionSelect2?.();
             window.dispatchEvent(new Event('electionModalOpened'));
@@ -135,6 +208,47 @@ export function createElections({ api, feed, actions, lifecycle, store }) {
         if (specialties) specialties.style.display = type.value === '1' ? 'block' : 'none';
     });
 
+    lifecycle.on(document, 'change', event => {
+        const input = event.target.closest?.('[data-election-choice]');
+        if (!input) return;
+        const form = input.closest('[data-systemic-election-ballot]');
+        if (!form) return;
+        const role = input.dataset.electionChoice;
+        const otherRole = role === 'manager' ? 'inspector' : 'manager';
+        const limits = ballotLimits(form);
+        if (input.checked) {
+            const other = form.querySelector(`[data-election-choice="${otherRole}"][data-candidate-id="${input.dataset.candidateId}"]`);
+            if (other?.checked) other.checked = false;
+            if (selectedFor(form, role).length > limits[role]) {
+                input.checked = false;
+                notify(`حداکثر ${limits[role]} انتخاب برای این نقش مجاز است.`, 'warning');
+            }
+        }
+        refreshBallot(form);
+    });
+
+    lifecycle.on(document, 'input', event => {
+        const form = event.target.closest?.('[data-systemic-election-ballot]');
+        if (!form) return;
+        if (event.target.id === 'electionMemberSearch') {
+            const query = event.target.value.trim().toLocaleLowerCase('fa');
+            form.querySelectorAll('[data-election-member]').forEach(row => {
+                row.hidden = query !== '' && !String(row.dataset.memberName || '').includes(query);
+            });
+        } else if (event.target.id === 'electionComment') {
+            syncCommentVisibility(form);
+        }
+    });
+
+    lifecycle.on(document, 'click', event => {
+        const clearButton = event.target.closest?.('[data-election-clear]');
+        if (!clearButton) return;
+        const form = clearButton.closest('[data-systemic-election-ballot]');
+        if (!form) return;
+        ballotChoices(form).forEach(input => { input.checked = false; });
+        refreshBallot(form);
+    });
+
     lifecycle.on(document, 'submit', event => {
         const form = event.target;
         if (!(form instanceof HTMLFormElement) || form.id !== 'electionFormModal') return;
@@ -145,10 +259,12 @@ export function createElections({ api, feed, actions, lifecycle, store }) {
     lifecycle.on(document, 'keydown', event => {
         if (event.key === 'Escape' && store.getState().electionOpen) close();
     });
+
+    initializeBallot();
     lifecycle.add(() => {
         close();
         closeAdmin();
     });
 
-    return Object.freeze({ open, close, openAdmin, closeAdmin, submitAdmin });
+    return Object.freeze({ open, close, openAdmin, closeAdmin, submitAdmin, initializeBallot });
 }

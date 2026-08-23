@@ -10,7 +10,18 @@ class GroupSetting extends Model
     use HasFactory;
 
     protected $table = 'group_setting';
-    protected $fillable = ['level', 'inspector_count', 'manager_count', 'election_time', 'max_for_election', 'election_status', 'second_election_time'];
+    protected $fillable = [
+        'level', 'inspector_count', 'manager_count', 'election_time',
+        'max_for_election', 'election_status', 'second_election_time',
+        'election_report_min_distinct_voters', 'election_report_bucket_days',
+        'election_meaningful_trend_min_net_change',
+    ];
+
+    protected $casts = [
+        'election_report_min_distinct_voters' => 'integer',
+        'election_report_bucket_days' => 'integer',
+        'election_meaningful_trend_min_net_change' => 'integer',
+    ];
     
 public function name()
 {

@@ -42,6 +42,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\NajmHodaShadowRollout::class,
         \App\Console\Commands\NajmHodaModerationSweep::class,
         \App\Console\Commands\NajmHodaGroupAttentionSweep::class,
+        \App\Console\Commands\ProcessElectionLifecycle::class,
         \App\Console\Commands\SendElectionReminders::class,
         \App\Console\Commands\SendAuctionReminders::class,
         \App\Console\Commands\ActivateScheduledGroupSessions::class,
@@ -52,6 +53,9 @@ class Kernel extends ConsoleKernel
         $schedule->command('auctions:close')->everyMinute();
         $schedule->command('group-chat:dispatch-outbox --limit=500')->everyMinute()->withoutOverlapping();
         $schedule->command('group-chat:activate-sessions')->everyMinute()->withoutOverlapping();
+        $schedule->command('elections:process-lifecycle --limit=500 --fail-on-error')
+            ->everyMinute()
+            ->withoutOverlapping();
         $schedule->command('elections:send-reminders')->twiceDaily(0, 12);
         $schedule->command('auctions:send-reminders')->hourly();
         $schedule->command('najm-hoda:moderation-sweep --max-groups=200')->hourly();
