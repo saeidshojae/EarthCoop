@@ -17,13 +17,13 @@ return new class extends Migration
             $table->string('ground', 48);
             $table->string('challenged_event', 64);
             $table->unsignedBigInteger('challenged_event_id')->nullable();
-            $table->timestamp('event_occurred_at');
+            $table->dateTime('event_occurred_at');
             $table->text('statement')->nullable();
             $table->string('automatic_status', 32)->default('pending');
             $table->json('automatic_result')->nullable();
             $table->string('human_status', 32)->default('not_requested');
             $table->unsignedInteger('support_count')->default(0);
-            $table->timestamp('human_deadline_at');
+            $table->dateTime('human_deadline_at');
             $table->timestamp('human_requested_at')->nullable();
             $table->timestamp('decision_due_at')->nullable();
             $table->string('interim_state', 24)->default('none');
@@ -44,7 +44,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('review_id')->constrained('election_process_reviews')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->timestamp('endorsed_at');
+            $table->dateTime('endorsed_at');
             $table->unique(['review_id', 'user_id'], 'election_review_endorsement_unique');
         });
 
@@ -55,7 +55,7 @@ return new class extends Migration
             $table->string('authority_path', 64);
             $table->string('purpose', 160);
             $table->json('scope')->nullable();
-            $table->timestamp('accessed_at');
+            $table->dateTime('accessed_at');
             $table->timestamps();
             $table->index(['review_id', 'accessed_at'], 'election_review_audit_access_index');
         });
