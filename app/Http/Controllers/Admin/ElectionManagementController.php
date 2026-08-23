@@ -8,10 +8,14 @@ use App\Models\ElectionPolicyVersion;
 use App\Models\ElectionProcessReview;
 use App\Models\ElectionResponsibilityContractVersion;
 use App\Models\GroupSetting;
+use App\Services\Elections\ElectionProcessReviewService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
 class ElectionManagementController extends Controller
 {
+    public function __construct(private readonly ElectionProcessReviewService $reviews) {}
+
     public function index()
     {
         $now = now();
@@ -60,5 +64,48 @@ class ElectionManagementController extends Controller
         }
 
         return view('admin.elections.index', compact('stats', 'recentCycles', 'attention'));
+    }
+
+    public function reviews(Request $request)
+    {
+        $status = $request->string('status')->toString();
+
+        $reviews = ElectionProcessReview::query()
+            ->with(['election.group:id,name', 'requester:id,name', 'subject:id,name'])
+            ->when($status !== '', fn ($q) => $q->where('human_status', $status))
+            ->orderByRaw("CASE WHEN human_status IN ('requested','in_review') THEN 0 WHEN human_status = 'not_requested' THEN 1 ELSE 2 END")
+            ->orderBy('decision_due_at')
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('admin.elections.reviews', compact('reviews', 'status'));
+    }
+
+    public function stay(Request $request, ElectionProcessReview $review)
+    {
+        $validated = $request->validate(['reason' => 'required|string|max:2000']);
+        $this->reviews->setInterimStay($review, $request->user(), $validated['reason']);
+
+        return back()->with('success', 'توقف موقت اعمال شد و در audit ثبت گردید.');
+    }
+
+    public function decide(Request $request, ElectionProcessReview $review)
+    {
+        $validated = $request->validate([
+            'decision' => 'required|in:upheld,corrected,dismissed',
+            'reason' => 'required|string|max:5000',
+            'remediation_reference' => 'nullable|string|max:255',
+        ]);
+
+        $this->reviews->decide(
+            $review,
+            $request->user(),
+            $validated['decision'],
+            $validated['reason'],
+            $validated['remediation_reference'] ?? null,
+        );
+
+        return back()->with('success', 'تصمیم نهایی بازبینی ثبت شد.');
     }
 }
