@@ -31,8 +31,8 @@ class DatabaseSeeder extends Seeder
 
             OccupationalFieldsSeeder::class,
             ExperienceFieldsSeeder::class,
-            
             SettingSeeder::class,
+            ElectionGroupSettingSeeder::class,
 
             PagesTableSeeder::class,
             FaqContactPagesSeeder::class,
