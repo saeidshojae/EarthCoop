@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('reason', 1000);
             $table->string('lifecycle_status', 48);
             $table->json('metadata')->nullable();
-            $table->timestamp('applied_at');
+            $table->dateTime('applied_at');
             $table->timestamps();
             $table->index(['election_id', 'applied_at'], 'election_policy_override_audit_index');
         });
