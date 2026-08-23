@@ -12,7 +12,7 @@ return new class extends Migration
         Schema::create('election_conflict_policy_versions', function (Blueprint $table) {
             $table->id();
             $table->unsignedInteger('version')->unique();
-            $table->timestamp('effective_at');
+            $table->dateTime('effective_at');
             $table->timestamp('retired_at')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->string('change_reason', 500);
