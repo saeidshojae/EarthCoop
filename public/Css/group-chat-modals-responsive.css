@@ -44,6 +44,7 @@ body:has(.election-voting-overlay[style*="display: flex"]) {
 
 .modal-shell__form {
   min-height: 0 !important;
+  flex: 1 1 auto !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
   overscroll-behavior: contain !important;
@@ -56,10 +57,27 @@ body:has(.election-voting-overlay[style*="display: flex"]) {
   position: sticky;
   bottom: 0;
   z-index: 4;
+  margin-top: auto !important;
   margin-inline: -2px;
   padding: 12px 2px max(4px, env(safe-area-inset-bottom));
   background: linear-gradient(to top, #fff 72%, rgba(255,255,255,.92));
   border-top: 1px solid rgba(148, 163, 184, .16);
+}
+
+/* Poll actions belong to a footer from the moment the modal opens. */
+#pollOptionsBox .modal-shell__dialog {
+  height: min(720px, 100%) !important;
+}
+
+#pollOptionsBox .modal-shell__form {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+}
+
+#pollOptionsBox .modal-shell__actions {
+  flex: 0 0 auto !important;
+  margin-top: auto !important;
 }
 
 .modal-shell__errors {
@@ -88,7 +106,7 @@ body:has(.election-voting-overlay[style*="display: flex"]) {
   height: auto !important;
   max-height: 100% !important;
   min-height: 0 !important;
-  margin: 0 !important;
+  margin: 0 auto !important;
   padding: 0 !important;
   display: flex !important;
   flex-direction: column !important;
@@ -167,25 +185,46 @@ body:has(.election-voting-overlay[style*="display: flex"]) {
   overflow-wrap: anywhere;
 }
 
+.election-role-tabs {
+  display: none;
+}
+
 @media (max-width: 767.98px) {
   .modal-shell,
   .election-voting-overlay {
     padding: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left)) !important;
-    align-items: stretch !important;
-  }
-
-  .modal-shell__dialog,
-  .election-voting-overlay .election-box,
-  .election-voting-overlay .election-card {
-    width: 100% !important;
-    max-width: 100% !important;
-    height: 100% !important;
-    max-height: 100% !important;
-    border-radius: 18px !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   .modal-shell__dialog {
+    width: calc(100vw - 12px) !important;
+    max-width: calc(100vw - 12px) !important;
+    height: calc(100dvh - 12px) !important;
+    max-height: calc(100dvh - 12px) !important;
+    margin-inline: auto !important;
+    align-self: center !important;
+    border-radius: 18px !important;
     padding: 14px !important;
+  }
+
+  .election-voting-overlay .election-box,
+  .election-voting-overlay .election-card {
+    flex: 0 1 auto !important;
+    width: calc(100vw - 12px) !important;
+    max-width: calc(100vw - 12px) !important;
+    height: calc(100dvh - 12px) !important;
+    max-height: calc(100dvh - 12px) !important;
+    margin-inline: auto !important;
+    align-self: center !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none;
+    border-radius: 18px !important;
+  }
+
+  #pollOptionsBox .modal-shell__dialog {
+    height: calc(100dvh - 12px) !important;
   }
 
   .modal-shell__header {
@@ -205,6 +244,7 @@ body:has(.election-voting-overlay[style*="display: flex"]) {
     display: grid !important;
     grid-template-columns: 1fr 1fr;
     gap: 8px !important;
+    margin-top: auto !important;
   }
 
   .modal-shell__actions .btn {
@@ -231,6 +271,57 @@ body:has(.election-voting-overlay[style*="display: flex"]) {
     padding: 12px 12px max(18px, env(safe-area-inset-bottom)) !important;
   }
 
+  .election-role-tabs {
+    position: sticky;
+    top: -1px;
+    z-index: 6;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin: 0 0 12px;
+    padding: 6px;
+    border-radius: 14px;
+    background: rgba(241,245,249,.96);
+    border: 1px solid rgba(148,163,184,.18);
+    backdrop-filter: blur(8px);
+  }
+
+  .election-role-tab {
+    min-height: 44px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: #475569;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+  }
+
+  .election-role-tab.is-active {
+    background: #fff;
+    color: #4f46e5;
+    box-shadow: 0 5px 18px -12px rgba(15,23,42,.5);
+  }
+
+  .election-role-tab__count {
+    min-width: 34px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: rgba(99,102,241,.1);
+    font-size: 11px;
+  }
+
+  #electionForm [data-election-role-panel] {
+    display: none !important;
+    width: 100% !important;
+  }
+
+  #electionForm [data-election-role-panel].is-active {
+    display: block !important;
+  }
+
   .election-member-list {
     max-height: none !important;
     overflow: visible !important;
@@ -252,7 +343,7 @@ body:has(.election-voting-overlay[style*="display: flex"]) {
 
   #electionForm > .row.g-3 {
     --bs-gutter-x: 0;
-    --bs-gutter-y: 12px;
+    --bs-gutter-y: 0;
   }
 
   #electionForm .border.rounded-3.p-3 {
