@@ -14,8 +14,11 @@ class AdminMiddleware
 
         $user = Auth::user();
 
-        // اگر Super Admin است یا دارای نقش ادمین است، اجازه دسترسی دارد
-        if ($user->is_admin || $user->hasRole('super-admin') || $user->roles()->count() > 0) {
+        // Global admin surfaces, including Founder Operations, must not become
+        // available merely because a user has an application role. Scoped roles
+        // such as support, moderator, group-manager or content-manager are not
+        // equivalent to EarthCoop administration authority.
+        if ($user->is_admin || $user->hasRole('super-admin')) {
             return $next($request);
         }
 
