@@ -21,6 +21,9 @@
             <div class="election-icon-wrapper"><i class="fas fa-vote-yea" aria-hidden="true"></i></div>
             <h2 class="election-title">انتخابات سیستمی پیوسته</h2>
             <p class="election-subtitle">چرخه {{ $cycleNumber }} — انتخاب مدیران و بازرسان از میان اعضای واجد شرایط گروه</p>
+            <a href="{{ route('elections.guideline') }}" class="btn btn-sm btn-outline-success mt-2" aria-label="مشاهده شیوه‌نامه و راهنمای کامل انتخابات">
+                <i class="fas fa-book-open ms-1" aria-hidden="true"></i> شیوه‌نامه انتخابات
+            </a>
         </div>
     </div>
 
