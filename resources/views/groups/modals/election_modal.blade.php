@@ -11,7 +11,7 @@
         && isset($yourRole) && !in_array((int) $yourRole, [0, 4], true);
 @endphp
 
-<div class="election-box election-card" data-group-chat-action="election-content" dir="rtl" data-election-systemic-ui="v1">
+<div class="election-box election-card" dir="rtl" data-election-systemic-ui="v1">
     <button type="button" class="election-close" aria-label="بستن فرم انتخابات" data-group-chat-action="close-election">
         <i class="fas fa-times" aria-hidden="true"></i>
     </button>
@@ -71,13 +71,24 @@
                                         $checked = in_array($memberId, $selectedManagers, true);
                                         $visibility = $visibilityMap[$memberId] ?? 'confidential';
                                         $memberName = trim(($member->first_name ?? '').' '.($member->last_name ?? '')) ?: ('عضو #'.$memberId);
+                                        $memberInitials = trim(mb_substr((string)($member->first_name ?? ''), 0, 1).mb_substr((string)($member->last_name ?? ''), 0, 1)) ?: mb_substr($memberName, 0, 2);
+                                        $memberAvatar = !empty($member->avatar) ? asset('storage/'.ltrim((string)$member->avatar, '/')) : null;
                                     @endphp
                                     <div class="election-member-option border-bottom py-2" data-election-member data-member-name="{{ mb_strtolower($memberName) }}">
                                         <label class="d-flex gap-2 align-items-start mb-1">
                                             <input class="form-check-input mt-1" type="checkbox" name="manager[]" value="{{ $memberId }}" data-election-choice="manager" data-candidate-id="{{ $memberId }}" @checked($checked)>
-                                            <span class="flex-grow-1">
-                                                <strong>{{ $memberName }}</strong>
-                                                <a class="small ms-1" href="{{ route('profile.member.show', $memberId) }}" target="_blank" rel="noopener">پروفایل</a>
+                                            <span class="election-member-identity">
+                                                <span class="election-member-avatar" aria-hidden="true">
+                                                    @if($memberAvatar)
+                                                        <img src="{{ $memberAvatar }}" alt="" loading="lazy">
+                                                    @else
+                                                        {{ $memberInitials }}
+                                                    @endif
+                                                </span>
+                                                <span class="election-member-copy">
+                                                    <strong>{{ $memberName }}</strong>
+                                                    <a class="small ms-1" href="{{ route('profile.member.show', $memberId) }}" target="_blank" rel="noopener">پروفایل</a>
+                                                </span>
                                             </span>
                                         </label>
                                         <label class="small d-block ms-4">
@@ -105,13 +116,24 @@
                                         $checked = in_array($memberId, $selectedInspectors, true);
                                         $visibility = $visibilityMap[$memberId] ?? 'confidential';
                                         $memberName = trim(($member->first_name ?? '').' '.($member->last_name ?? '')) ?: ('عضو #'.$memberId);
+                                        $memberInitials = trim(mb_substr((string)($member->first_name ?? ''), 0, 1).mb_substr((string)($member->last_name ?? ''), 0, 1)) ?: mb_substr($memberName, 0, 2);
+                                        $memberAvatar = !empty($member->avatar) ? asset('storage/'.ltrim((string)$member->avatar, '/')) : null;
                                     @endphp
                                     <div class="election-member-option border-bottom py-2" data-election-member data-member-name="{{ mb_strtolower($memberName) }}">
                                         <label class="d-flex gap-2 align-items-start mb-1">
                                             <input class="form-check-input mt-1" type="checkbox" name="inspector[]" value="{{ $memberId }}" data-election-choice="inspector" data-candidate-id="{{ $memberId }}" @checked($checked)>
-                                            <span class="flex-grow-1">
-                                                <strong>{{ $memberName }}</strong>
-                                                <a class="small ms-1" href="{{ route('profile.member.show', $memberId) }}" target="_blank" rel="noopener">پروفایل</a>
+                                            <span class="election-member-identity">
+                                                <span class="election-member-avatar" aria-hidden="true">
+                                                    @if($memberAvatar)
+                                                        <img src="{{ $memberAvatar }}" alt="" loading="lazy">
+                                                    @else
+                                                        {{ $memberInitials }}
+                                                    @endif
+                                                </span>
+                                                <span class="election-member-copy">
+                                                    <strong>{{ $memberName }}</strong>
+                                                    <a class="small ms-1" href="{{ route('profile.member.show', $memberId) }}" target="_blank" rel="noopener">پروفایل</a>
+                                                </span>
                                             </span>
                                         </label>
                                         <label class="small d-block ms-4">
