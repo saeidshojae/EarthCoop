@@ -1,10 +1,11 @@
 <?php
 
 use App\Http\Controllers\Admin\FounderOperationsController;
+use App\Http\Controllers\Admin\FounderOperationsDeskController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['throttle:najm-hoda-autonomy-read'])->prefix('admin/najm-hoda/founder-ops')->name('admin.najm-hoda.founder-ops.')->group(function (): void {
-    Route::get('/', [FounderOperationsController::class, 'index'])->name('index');
+    Route::get('/', FounderOperationsDeskController::class)->name('index');
     Route::get('/brief', [FounderOperationsController::class, 'brief'])->name('brief');
     Route::get('/snapshot', [FounderOperationsController::class, 'snapshot'])->name('snapshot');
     Route::get('/connectivity', [FounderOperationsController::class, 'connectivity'])->name('connectivity');
