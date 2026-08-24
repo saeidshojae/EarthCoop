@@ -16,10 +16,16 @@
                 </div>
             </div>
         </div>
-        <a href="{{ route('admin.group.setting.index') }}" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors">
-            <i class="fas fa-sliders-h"></i>
-            سیاست‌ها و سطوح انتخابات
-        </a>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('elections.guideline') }}" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 bg-white dark:bg-slate-800 text-sm font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
+                <i class="fas fa-book-open"></i>
+                شیوه‌نامه انتخابات
+            </a>
+            <a href="{{ route('admin.group.setting.index') }}" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors">
+                <i class="fas fa-sliders-h"></i>
+                سیاست‌ها و سطوح انتخابات
+            </a>
+        </div>
     </div>
 
     @if(count($attention))
