@@ -14,6 +14,10 @@ use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\Authenticate;
 use Illuminate\Support\Facades\Route;
 
+// Public, stable reference page for foundational documents, onboarding and group UI.
+Route::view('/elections/guideline', 'elections.guideline')
+    ->name('elections.guideline');
+
 Route::middleware(Authenticate::class)->group(function () {
     Route::get('/groups/chat/{group}', [SystemicElectionChatController::class, 'chat'])
         ->middleware(['group.chat.csp', 'group.chat.context'])
