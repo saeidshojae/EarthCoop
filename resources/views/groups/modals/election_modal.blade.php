@@ -59,8 +59,19 @@
                     <div class="form-text">در EarthCoop نامزدی رسمی لازم نیست؛ هر عضو واجد شرایط گروه می‌تواند انتخاب شود.</div>
                 </div>
 
-                <div class="row g-3">
-                    <div class="col-12 col-xl-6">
+                <div class="election-role-tabs" data-election-role-tabs role="tablist" aria-label="انتخاب نقش در برگه انتخابات">
+                    <button type="button" class="election-role-tab is-active" role="tab" aria-selected="true" aria-controls="electionManagerPanel" data-election-role-tab="manager">
+                        <span>مدیران</span>
+                        <span class="election-role-tab__count" data-election-role-tab-count="manager">{{ count($selectedManagers) }}/{{ $managerLimit }}</span>
+                    </button>
+                    <button type="button" class="election-role-tab" role="tab" aria-selected="false" aria-controls="electionInspectorPanel" data-election-role-tab="inspector" tabindex="-1">
+                        <span>بازرسان</span>
+                        <span class="election-role-tab__count" data-election-role-tab-count="inspector">{{ count($selectedInspectors) }}/{{ $inspectorLimit }}</span>
+                    </button>
+                </div>
+
+                <div class="row g-3 election-role-panels">
+                    <div class="col-12 col-xl-6 is-active" id="electionManagerPanel" data-election-role-panel="manager" aria-hidden="false">
                         <section class="border rounded-3 p-3 h-100" aria-labelledby="managerSelectionTitle">
                             <h3 id="managerSelectionTitle" class="h6 fw-bold mb-2">مدیران <span class="badge bg-secondary" data-election-count="manager">{{ count($selectedManagers) }}/{{ $managerLimit }}</span></h3>
                             <p class="small text-muted">حداکثر {{ $managerLimit }} نفر.</p>
@@ -93,11 +104,12 @@
                                         </label>
                                         <label class="small d-block ms-4">
                                             سطح افشای این رأی
-                                            <select class="form-select form-select-sm mt-1" name="vote_visibility[{{ $memberId }}]" data-vote-visibility-for="{{ $memberId }}" data-election-role="manager" @disabled(!$checked)>
-                                                <option value="confidential" @selected($visibility === 'confidential')>محرمانه — هویت رأی‌دهنده در نمایش عادی پنهان</option>
-                                                <option value="all_members" @selected($visibility === 'all_members')>قابل مشاهده برای همه اعضا</option>
-                                                <option value="elected_officials" @selected($visibility === 'elected_officials')>فقط مدیران و بازرسان منتخب</option>
+                                            <select class="form-select form-select-sm mt-1 election-privacy-select" name="vote_visibility[{{ $memberId }}]" data-vote-visibility-for="{{ $memberId }}" data-election-role="manager" @disabled(!$checked)>
+                                                <option value="confidential" @selected($visibility === 'confidential')>محرمانه</option>
+                                                <option value="all_members" @selected($visibility === 'all_members')>همه اعضا</option>
+                                                <option value="elected_officials" @selected($visibility === 'elected_officials')>منتخبین</option>
                                             </select>
+                                            <span class="election-privacy-help">محرمانه: هویت رأی‌دهنده در نمایش عادی پنهان می‌ماند.</span>
                                         </label>
                                     </div>
                                 @endforeach
@@ -105,7 +117,7 @@
                         </section>
                     </div>
 
-                    <div class="col-12 col-xl-6">
+                    <div class="col-12 col-xl-6" id="electionInspectorPanel" data-election-role-panel="inspector" aria-hidden="true">
                         <section class="border rounded-3 p-3 h-100" aria-labelledby="inspectorSelectionTitle">
                             <h3 id="inspectorSelectionTitle" class="h6 fw-bold mb-2">بازرسان <span class="badge bg-secondary" data-election-count="inspector">{{ count($selectedInspectors) }}/{{ $inspectorLimit }}</span></h3>
                             <p class="small text-muted">حداکثر {{ $inspectorLimit }} نفر. یک عضو را نمی‌توان همزمان مدیر و بازرس انتخاب کرد.</p>
@@ -138,11 +150,12 @@
                                         </label>
                                         <label class="small d-block ms-4">
                                             سطح افشای این رأی
-                                            <select class="form-select form-select-sm mt-1" name="vote_visibility[{{ $memberId }}]" data-vote-visibility-for="{{ $memberId }}" data-election-role="inspector" @disabled(!$checked)>
-                                                <option value="confidential" @selected($visibility === 'confidential')>محرمانه — هویت رأی‌دهنده در نمایش عادی پنهان</option>
-                                                <option value="all_members" @selected($visibility === 'all_members')>قابل مشاهده برای همه اعضا</option>
-                                                <option value="elected_officials" @selected($visibility === 'elected_officials')>فقط مدیران و بازرسان منتخب</option>
+                                            <select class="form-select form-select-sm mt-1 election-privacy-select" name="vote_visibility[{{ $memberId }}]" data-vote-visibility-for="{{ $memberId }}" data-election-role="inspector" @disabled(!$checked)>
+                                                <option value="confidential" @selected($visibility === 'confidential')>محرمانه</option>
+                                                <option value="all_members" @selected($visibility === 'all_members')>همه اعضا</option>
+                                                <option value="elected_officials" @selected($visibility === 'elected_officials')>منتخبین</option>
                                             </select>
+                                            <span class="election-privacy-help">محرمانه: هویت رأی‌دهنده در نمایش عادی پنهان می‌ماند.</span>
                                         </label>
                                     </div>
                                 @endforeach
@@ -157,11 +170,12 @@
                     <div class="row g-2 mt-2">
                         <div class="col-md-7">
                             <label for="electionCommentVisibility" class="form-label small">چه کسانی این توضیح را ببینند؟</label>
-                            <select name="comment_visibility" id="electionCommentVisibility" class="form-select">
-                                <option value="all_members">همه اعضای مجاز گروه</option>
-                                <option value="elected_officials">فقط مدیران و بازرسان منتخب</option>
-                                <option value="subject_only">فقط همان مدیری/بازرسی که رأی مربوط به اوست</option>
+                            <select name="comment_visibility" id="electionCommentVisibility" class="form-select election-privacy-select">
+                                <option value="all_members">همه اعضا</option>
+                                <option value="elected_officials">منتخبین</option>
+                                <option value="subject_only">فقط فرد مرتبط</option>
                             </select>
+                            <div class="election-comment-visibility-help">همه اعضای مجاز گروه این توضیح را می‌بینند.</div>
                         </div>
                         <div class="col-md-5 d-flex align-items-end">
                             <label class="form-check mb-2">
