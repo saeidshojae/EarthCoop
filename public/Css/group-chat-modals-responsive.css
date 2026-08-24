@@ -4,6 +4,12 @@
  * with scroll owned by the modal instead of the page behind it.
  */
 
+body:has(.modal-shell[style*="display: flex"]),
+body:has(.election-voting-overlay[style*="display: flex"]) {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
 .modal-shell,
 .election-voting-overlay {
   position: fixed !important;
