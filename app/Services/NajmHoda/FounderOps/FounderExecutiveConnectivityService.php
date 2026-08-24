@@ -73,6 +73,7 @@ class FounderExecutiveConnectivityService
             ];
         }
 
+        $totals['blocked']=$totals['missing_executable_actions']+$totals['blocked_executable_actions'];
         $totals['executive_coverage_percent']=$totals['domains']>0
             ?round((($totals['managed']+$totals['partial']*0.5)/$totals['domains'])*100,2)
             :0.0;
