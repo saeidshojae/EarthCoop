@@ -1,4 +1,6 @@
-@extends('layouts.app')
+@extends('layouts.unified')
+
+@section('title', 'پرتال انتخابات - ' . $group->name)
 
 @section('content')
 <div class="container py-4" dir="rtl" data-election-user-portal="v1">
