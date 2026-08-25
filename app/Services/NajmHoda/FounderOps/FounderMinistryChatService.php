@@ -20,6 +20,42 @@ class FounderMinistryChatService
         protected FounderOperationsSnapshotService $snapshots,
     ) {}
 
+    public function inferIntent(string $message): ?string
+    {
+        $normalized = mb_strtolower(trim($message));
+        if ($normalized === '') return null;
+
+        $rules = [
+            'morning_brief' => ['صبح مدیرکل', 'گزارش امروز', 'خلاصه امروز', 'از دیشب', 'امروز چه خبر', 'از آخرین حضورم'],
+            'end_of_day' => ['پایان روز', 'جمع‌بندی روز', 'جمع بندی روز', 'امروز چه کردی', 'چه باقی مانده', 'چه باقی‌مانده'],
+            'pending_approvals' => ['منتظر تأیید من', 'منتظر تایید من', 'تأیید من', 'تایید من', 'تصمیم من', 'approval', 'در انتظار تأیید'],
+            'communications' => ['ارتباطات', 'ایمیل', 'اطلاعیه', 'محتوا', 'پشتیبانی', 'انتشار'],
+            'system_health' => ['سلامت سامانه', 'سلامت سیستم', 'سلامت نجم', 'runtime', 'خطای سیستم', 'خطای سامانه'],
+            'urgent_items' => ['کارهای فوری', 'موارد فوری', 'فوری', 'بحرانی', 'اولویت بالا', 'مهم‌ترین', 'مهم ترین'],
+        ];
+
+        foreach ($rules as $intent => $needles) {
+            foreach ($needles as $needle) {
+                if (str_contains($normalized, mb_strtolower($needle))) return $intent;
+            }
+        }
+
+        return null;
+    }
+
+    /** @return array<string,mixed> */
+    public function unclassifiedResponse(): array
+    {
+        return $this->response(
+            false,
+            'این سؤال هنوز به یکی از خدمات امن وزارت هوشمند نگاشت نشده است. از دکمه‌های وزارت استفاده کنید یا سؤال را درباره گزارش امروز، فوری‌ها، تأییدهای شما، ارتباطات، سلامت سامانه یا پایان روز بپرسید.',
+            'unclassified',
+            [],
+            [],
+            ['reason' => 'unclassified_management_question']
+        );
+    }
+
     /** @return array<string,mixed> */
     public function respond(string $intent, int $hours = 24): array
     {
