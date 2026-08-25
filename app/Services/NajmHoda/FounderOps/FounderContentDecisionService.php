@@ -6,6 +6,7 @@ use App\Models\FounderContentDraft;
 use App\Services\Blog\BlogPublicationService;
 use App\Services\GroupChat\HtmlSanitizer;
 use App\Services\NajmHoda\Runtime\NajmHodaAutonomyApprovalService;
+use App\Services\SystemIdentityService;
 
 class FounderContentDecisionService
 {
@@ -14,7 +15,8 @@ class FounderContentDecisionService
         protected FounderActionExecutionService $execution,
         protected NajmHodaAutonomyApprovalService $approvals,
         protected BlogPublicationService $blogs,
-        protected HtmlSanitizer $sanitizer
+        protected HtmlSanitizer $sanitizer,
+        protected SystemIdentityService $systemIdentities
     ) {}
 
     public function requestPublish(FounderContentDraft $draft,int $actorId): array
@@ -42,15 +44,17 @@ class FounderContentDecisionService
             return ['success'=>true,'status'=>'rejected','draft_id'=>$draft->id];
         }
 
-        return $this->execution->execute('blog','publish_post',function()use($draft,$founderId){
+        $management = $this->systemIdentities->management();
+
+        return $this->execution->execute('blog','publish_post',function()use($draft,$management){
             $blog=$this->blogs->create([
                 'title'=>$draft->title,
                 'content'=>$this->sanitizer->sanitize($draft->body),
                 'group_id'=>(int)$draft->group_id,
                 'category_id'=>$draft->category_id,
-            ],$founderId);
-            $draft->update(['status'=>'published','approved_by'=>$founderId,'published_at'=>now()]);
-            return ['draft_id'=>$draft->id,'blog_id'=>$blog->id];
+            ],(int)$management->id);
+            $draft->update(['status'=>'published','approved_by'=>(int)data_get($this->approvals->history(1,'approved'), '0.decision_by'),'published_at'=>now()]);
+            return ['draft_id'=>$draft->id,'blog_id'=>$blog->id,'publisher_identity_id'=>(int)$management->id];
         },$requestId,['entity_type'=>'founder_content_draft','entity_id'=>$draft->id,'requested_by'=>$founderId]);
     }
 
