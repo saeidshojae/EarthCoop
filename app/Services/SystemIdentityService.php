@@ -18,14 +18,16 @@ class SystemIdentityService
         return $this->resolve('management');
     }
 
-    /** @return array{address:string,name:string} */
+    /** @return array{address:string,name:string,reply_to:string} */
     public function mailSender(string $identity): array
     {
         $user = $this->resolve($identity);
+        $address = (string) $user->email;
 
         return [
-            'address' => (string) $user->email,
+            'address' => $address,
             'name' => (string) config("system-identities.{$identity}.mail_from_name", trim($user->first_name . ' ' . $user->last_name)),
+            'reply_to' => (string) config("system-identities.{$identity}.reply_to", $address),
         ];
     }
 
