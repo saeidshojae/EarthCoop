@@ -12,13 +12,22 @@ class FounderMinistryChatController extends Controller
     public function __invoke(Request $request, FounderMinistryChatService $service)
     {
         $validated = $request->validate([
-            'intent' => ['required', 'string', Rule::in(FounderMinistryChatService::INTENTS)],
+            'intent' => ['nullable', 'required_without:message', 'string', Rule::in(FounderMinistryChatService::INTENTS)],
+            'message' => ['nullable', 'required_without:intent', 'string', 'max:5000'],
             'hours' => ['nullable', 'integer', 'min:1', 'max:168'],
         ]);
 
+        $intent = isset($validated['intent'])
+            ? (string) $validated['intent']
+            : $service->inferIntent((string) ($validated['message'] ?? ''));
+
+        if ($intent === null) {
+            return response()->json($service->unclassifiedResponse(), 422);
+        }
+
         return response()->json(
             $service->respond(
-                (string) $validated['intent'],
+                $intent,
                 (int) ($validated['hours'] ?? 24)
             )
         );
