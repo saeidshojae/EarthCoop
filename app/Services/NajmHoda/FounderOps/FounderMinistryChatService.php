@@ -22,6 +22,9 @@ class FounderMinistryChatService
         'authority',
     ];
 
+    protected array $queueCache = [];
+    protected array $briefCache = [];
+
     public function __construct(
         protected FounderAttentionService $attention,
         protected FounderExecutiveWorkQueueService $workQueue,
@@ -87,6 +90,8 @@ class FounderMinistryChatService
     public function respond(string $intent, int $hours = 24): array
     {
         $hours = max(1, min($hours, 168));
+        $this->queueCache = [];
+        $this->briefCache = [];
 
         if (! in_array($intent, self::INTENTS, true)) {
             return $this->response(false, 'این درخواست در وزارت هوشمند ثبت نشده است.', $intent, [], [], ['reason' => 'unknown_management_intent']);
@@ -111,8 +116,8 @@ class FounderMinistryChatService
         };
 
         if (($result['success'] ?? false) === true) {
-            $queue = $this->workQueue->snapshot($hours, 100);
-            $brief = $this->attention->brief($hours);
+            $queue = $this->queue($hours);
+            $brief = $this->brief($hours);
             $result['management']['global_summary_cards'] = $this->summaryCards($brief, $queue);
             $result['management']['items'] = $this->decorateItems((array) data_get($result, 'management.items', []));
         }
@@ -123,8 +128,8 @@ class FounderMinistryChatService
     /** @return array<string,mixed> */
     protected function morningBrief(int $hours): array
     {
-        $brief = $this->attention->brief($hours);
-        $queue = $this->workQueue->snapshot($hours, 100);
+        $brief = $this->brief($hours);
+        $queue = $this->queue($hours);
         $cards = $this->summaryCards($brief, $queue);
         $items = array_slice((array) data_get($queue, 'items', []), 0, 12);
         $message = sprintf('صبح بخیر. در %d ساعت اخیر %d مورد فوری/مهم، %d تصمیم منتظر شما، %d کار آماده‌شده توسط نجم هدا و %d مورد صرفاً جهت اطلاع دارم. موارد زیر به ترتیب اولویت‌اند.', $hours, (int) $cards['urgent'], (int) $cards['founder_decisions'], (int) $cards['prepared'], (int) $cards['information']);
@@ -134,7 +139,7 @@ class FounderMinistryChatService
     /** @return array<string,mixed> */
     protected function urgentItems(int $hours): array
     {
-        $queue = $this->workQueue->snapshot($hours, 100);
+        $queue = $this->queue($hours);
         $items = array_values(array_filter((array) data_get($queue, 'items', []), static fn ($item): bool => is_array($item) && in_array((string) ($item['priority'] ?? ''), ['P0', 'P1'], true)));
         return $this->response(true, count($items) > 0 ? 'این‌ها فوری‌ترین موضوعات مدیریتی فعلی هستند.' : 'در حال حاضر مورد P0 یا P1 ثبت نشده است.', 'urgent_items', ['urgent' => count($items)], array_slice($items, 0, 20), ['window_hours' => $hours]);
     }
@@ -145,14 +150,16 @@ class FounderMinistryChatService
         $approvals = $this->approvals->snapshot(100);
         $items = array_values(array_filter((array) data_get($approvals, 'items', []), 'is_array'));
         $items = array_map(static function (array $item): array {
+            $domain = (string) ($item['domain'] ?? 'unknown');
+            $action = (string) ($item['domain_action'] ?? '');
             return [
                 'kind' => 'approval',
                 'priority' => (string) (($item['sla_status'] ?? '') === 'overdue' || in_array((string) ($item['risk'] ?? ''), ['critical', 'high'], true) ? 'P0' : 'P1'),
-                'domain' => (string) ($item['domain'] ?? 'unknown'),
-                'action' => (string) ($item['domain_action'] ?? ''),
+                'domain' => $domain,
+                'action' => $action,
                 'entity_type' => data_get($item, 'context.entity_type'),
                 'entity_id' => data_get($item, 'context.entity_id'),
-                'title' => (string) ($item['title'] ?? 'تصمیم مدیریتی منتظر شماست'),
+                'title' => (string) ($item['title'] ?? self::approvalTitle($domain, $action)),
                 'status' => (string) ($item['sla_status'] ?? 'pending'),
                 'approval_request_id' => $item['id'] ?? null,
                 'risk' => $item['risk'] ?? null,
@@ -164,7 +171,7 @@ class FounderMinistryChatService
     /** @return array<string,mixed> */
     protected function communications(int $hours): array
     {
-        $queue = $this->workQueue->snapshot($hours, 100);
+        $queue = $this->queue($hours);
         $domains = ['support', 'email', 'blog', 'notifications'];
         $items = array_values(array_filter((array) data_get($queue, 'items', []), static fn ($item): bool => is_array($item) && in_array((string) ($item['domain'] ?? ''), $domains, true)));
         $approvals = count(array_filter($items, static fn (array $item): bool => ($item['kind'] ?? '') === 'approval'));
@@ -176,7 +183,7 @@ class FounderMinistryChatService
     protected function systemHealth(int $hours): array
     {
         $snapshot = $this->snapshots->snapshot($hours);
-        $brief = $this->attention->brief($hours);
+        $brief = $this->brief($hours);
         $healthItems = array_values(array_filter((array) data_get($brief, 'items', []), static fn ($item): bool => is_array($item) && in_array((string) ($item['domain'] ?? ''), ['runtime_health', 'financial_risk', 'stock', 'najm_bahar'], true)));
         $runtimeStatus = (string) data_get($snapshot, 'runtime_health.status', 'unknown');
         return $this->response(true, $runtimeStatus === 'healthy' ? 'سلامت runtime نجم هدا در snapshot فعلی سالم گزارش شده است؛ هشدارهای مرتبط در کارت‌های زیر آمده‌اند.' : 'سلامت runtime نیازمند توجه است؛ جزئیات و هشدارهای مرتبط را در کارت‌های زیر ببینید.', 'system_health', ['runtime_status' => $runtimeStatus, 'health_attention_items' => count($healthItems)], array_slice($healthItems, 0, 20), ['window_hours' => $hours]);
@@ -185,8 +192,8 @@ class FounderMinistryChatService
     /** @return array<string,mixed> */
     protected function endOfDay(int $hours): array
     {
-        $brief = $this->attention->brief($hours);
-        $queue = $this->workQueue->snapshot($hours, 100);
+        $brief = $this->brief($hours);
+        $queue = $this->queue($hours);
         $cards = $this->summaryCards($brief, $queue);
         $items = array_slice((array) data_get($queue, 'items', []), 0, 12);
         $message = sprintf('جمع‌بندی فعلی: %d تصمیم هنوز منتظر شماست، %d کار آماده بررسی است و %d مورد مدیریتی فقط برای اطلاع باقی مانده. این گزارش وضعیت اکنون است و ادعای انجام کاری خارج از رویدادهای ثبت‌شده ندارد.', (int) $cards['founder_decisions'], (int) $cards['prepared'], (int) $cards['information']);
@@ -197,7 +204,7 @@ class FounderMinistryChatService
     protected function snapshotDomain(int $hours, string $intent): array
     {
         $snapshot = $this->snapshots->snapshot($hours);
-        $queue = $this->workQueue->snapshot($hours, 100);
+        $queue = $this->queue($hours);
         $config = $this->domainConfig($intent);
         $domains = $config['domains'];
         $items = array_values(array_filter((array) data_get($queue, 'items', []), static fn ($item): bool => is_array($item) && in_array((string) ($item['domain'] ?? ''), $domains, true)));
@@ -215,11 +222,13 @@ class FounderMinistryChatService
         $items = [];
         foreach ((array) data_get($snapshot, 'active_delegations', []) as $delegation) {
             if (! is_array($delegation)) continue;
-            $items[] = ['kind'=>'attention','priority'=>'P3','domain'=>'authority','title'=>(string)($delegation['action'] ?? $delegation['label'] ?? 'اختیار واگذارشده فعال'),'status'=>'active','context'=>$delegation];
+            $items[] = ['kind'=>'attention','priority'=>'P3','domain'=>'authority','title'=>(string)($delegation['action'] ?? 'اختیار واگذارشده فعال'),'status'=>'active','context'=>$delegation];
         }
         return $this->response(true, count($items) > 0 ? 'اختیارهای واگذارشده فعال مدیرکل را جمع‌بندی کردم.' : 'در حال حاضر اختیار واگذارشده فعالی ثبت نشده است.', 'authority', [
             'active_delegations' => ['label'=>'اختیار فعال','value'=>(int) data_get($snapshot, 'active_delegations_count', count($items))],
             'total_actions' => ['label'=>'اقدام تعریف‌شده','value'=>(int) data_get($snapshot, 'total_actions', 0)],
+            'pending_approvals' => ['label'=>'تأیید منتظر','value'=>(int) data_get($snapshot, 'pending_approvals_count', 0)],
+            'overdue_approvals' => ['label'=>'تأیید عقب‌افتاده','value'=>(int) data_get($snapshot, 'overdue_approvals_count', 0)],
         ], $items, ['fail_closed'=>(bool)data_get($snapshot,'fail_closed',true),'workbench_anchor'=>'#technical-status']);
     }
 
@@ -228,26 +237,28 @@ class FounderMinistryChatService
     {
         return match ($intent) {
             'users_registration' => ['domains'=>['users','invitations'],'anchor'=>'#system-status','message'=>'وضعیت کاربران جدید، ثبت‌نام و دعوت‌ها را جمع‌بندی کردم.','metrics'=>[
-                'new_members'=>['اعضای جدید','users.new_members'], 'pending_invitations'=>['دعوت‌های منتظر','growth.pending_invitation_requests'], 'used_codes'=>['دعوت موفق','growth.used_codes_in_window'],
+                'new_members'=>['اعضای جدید','users.new_members'], 'verified'=>['عضو جدید تأییدشده','users.new_verified_members'], 'pending_invitations'=>['دعوت‌های منتظر','growth.pending_invitation_requests'], 'used_codes'=>['دعوت موفق','growth.used_codes_in_window'],
             ]],
             'reference_data' => ['domains'=>['reference_data','locations','approvals'],'anchor'=>'#reference-data','message'=>'مکان‌ها، صنف‌ها، تخصص‌ها و سایر داده‌های پایه منتظر بررسی را جمع‌بندی کردم.','metrics'=>[
                 'pending'=>['کل داده منتظر','approvals.total'], 'reference_pending'=>['صنف/تخصص و داده مرجع','approvals.references.total'], 'location_pending'=>['مکان‌های منتظر','approvals.locations.total'],
             ]],
             'support_moderation' => ['domains'=>['support','reports_moderation','moderation'],'anchor'=>'#support','message'=>'پشتیبانی، شکایات و پرونده‌های نظارتی را جمع‌بندی کردم.','metrics'=>[
-                'active_tickets'=>['تیکت فعال','support.active'], 'high_priority'=>['پشتیبانی فوری','support.high_priority_active'], 'escalated_reports'=>['گزارش ارجاع‌شده','moderation.escalated_to_admin'], 'manager_pending'=>['منتظر مدیر گروه','moderation.pending_group_manager'],
+                'open_tickets'=>['تیکت باز','support.open'], 'in_progress'=>['در حال رسیدگی','support.in_progress'], 'high_priority'=>['پشتیبانی فوری','support.high_priority_active'], 'escalated_reports'=>['گزارش ارجاع‌شده','moderation.escalated_to_admin'],
             ]],
-            'groups' => ['domains'=>['groups'],'anchor'=>'#system-status','message'=>'تغییرات و وضعیت قابل‌مشاهده گروه‌ها را جمع‌بندی کردم.','metrics'=>['created'=>['گروه جدید','groups.created_in_window']]],
+            'groups' => ['domains'=>['groups'],'anchor'=>'#system-status','message'=>'تغییرات و وضعیت قابل‌مشاهده گروه‌ها را جمع‌بندی کردم.','metrics'=>[
+                'total'=>['کل گروه‌ها','groups.total'], 'open'=>['گروه باز','groups.open'], 'active'=>['فعال در بازه','groups.active_in_window'], 'created'=>['گروه جدید','groups.created_in_window'],
+            ]],
             'governance' => ['domains'=>['governance'],'anchor'=>'#system-status','message'=>'وضعیت انتخابات و حکمرانی را جمع‌بندی کردم.','metrics'=>[
-                'active'=>['انتخابات فعال','governance.active'], 'overdue'=>['انتخابات عقب‌افتاده','governance.overdue_open'], 'ending_soon'=>['پایان تا ۲۴ ساعت','governance.ending_within_24h'],
+                'active'=>['انتخابات فعال','governance.active_elections'], 'overdue'=>['انتخابات عقب‌افتاده','governance.overdue_open'], 'ending_soon'=>['پایان تا ۲۴ ساعت','governance.ending_within_24h'], 'started'=>['شروع‌شده در بازه','governance.started_in_window'],
             ]],
             'najm_bahar' => ['domains'=>['najm_bahar','financial_risk'],'anchor'=>'#system-status','message'=>'وضعیت نجم بهار، پروژه‌ها، تراکنش‌های زمان‌بندی‌شده و هشدارهای مالی را جمع‌بندی کردم.','metrics'=>[
-                'pending_projects'=>['پروژه منتظر','najm_bahar.pending_projects'], 'scheduled_failed'=>['تراکنش ناموفق','najm_bahar.scheduled_failed'], 'scheduled_overdue'=>['تراکنش عقب‌افتاده','najm_bahar.scheduled_overdue'],
+                'submitted'=>['پروژه ارسال‌شده','najm_bahar.projects_submitted'], 'under_review'=>['پروژه در بررسی','najm_bahar.projects_under_review'], 'revision'=>['نیازمند اصلاح','najm_bahar.revision_requested'], 'scheduled_overdue'=>['تراکنش عقب‌افتاده','najm_bahar.scheduled_overdue'],
             ]],
             'stock' => ['domains'=>['stock'],'anchor'=>'#system-status','message'=>'وضعیت سهام، مزایده‌ها، پرداخت و تطبیق تسویه را جمع‌بندی کردم.','metrics'=>[
-                'running'=>['مزایده فعال','stock.auctions_running'], 'reconciliation'=>['نیازمند تطبیق','stock.reconciliation_needed'], 'expired_unsettled'=>['منقضی تسویه‌نشده','stock.expired_unsettled'], 'failed_payments'=>['پرداخت ناموفق','stock.external_payment_intents.failed'],
+                'running'=>['مزایده فعال','stock.running_auctions'], 'reconciliation'=>['نیازمند تطبیق','stock.settlement_allocations.reconciliation_required'], 'expired_unsettled'=>['منقضی تسویه‌نشده','stock.expired_unsettled'], 'failed_payments'=>['پرداخت ناموفق','stock.external_payment_intents.failed'],
             ]],
             'secretariat' => ['domains'=>['secretariat'],'anchor'=>'#secretariat','message'=>'پرونده‌ها، ارسال‌ها و پیگیری‌های دبیرخانه را جمع‌بندی کردم.','metrics'=>[
-                'overdue_dispatches'=>['ارسال عقب‌افتاده','secretariat.overdue_dispatches'], 'due_soon'=>['سررسید تا ۲۴ ساعت','secretariat.dispatches_due_within_24h'], 'responses_due'=>['پاسخ منتظر','secretariat.responses_due'],
+                'open_cases'=>['پرونده باز','secretariat.open_cases'], 'overdue_dispatches'=>['ارسال عقب‌افتاده','secretariat.overdue_dispatches'], 'due_soon'=>['سررسید تا ۲۴ ساعت','secretariat.dispatches_due_within_24h'], 'responses_due'=>['پاسخ منتظر','secretariat.responses_due'],
             ]],
             default => ['domains'=>[],'anchor'=>'#system-status','message'=>'گزارش حوزه آماده شد.','metrics'=>[]],
         };
@@ -326,8 +337,32 @@ class FounderMinistryChatService
             'email', 'blog', 'notifications' => '#communications',
             'secretariat' => '#secretariat',
             'founder_approvals' => '#decisions',
+            'authority' => '#technical-status',
             default => '#system-status',
         };
+    }
+
+    protected static function approvalTitle(string $domain, string $action): string
+    {
+        $domainLabel = match ($domain) {
+            'support'=>'پاسخ پشتیبانی','reference_data','locations'=>'داده پایه','reports_moderation','moderation'=>'پرونده نظارتی','email'=>'ایمیل','blog'=>'محتوا','notifications'=>'اطلاعیه',default=>'اقدام مدیریتی',
+        };
+        $actionLabel = match ($action) {
+            'send_reply','send_email'=>'ارسال','publish_post','publish_announcement'=>'انتشار','approve'=>'تأیید','resolve_report'=>'رسیدگی نهایی',default=>'تصمیم',
+        };
+        return $domainLabel.' — '.$actionLabel.' منتظر تصمیم شماست';
+    }
+
+    /** @return array<string,mixed> */
+    protected function queue(int $hours): array
+    {
+        return $this->queueCache[$hours] ??= $this->workQueue->snapshot($hours, 100);
+    }
+
+    /** @return array<string,mixed> */
+    protected function brief(int $hours): array
+    {
+        return $this->briefCache[$hours] ??= $this->attention->brief($hours);
     }
 
     /** @return array<string,int> */
