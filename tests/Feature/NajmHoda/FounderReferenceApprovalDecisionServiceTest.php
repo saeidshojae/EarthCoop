@@ -37,7 +37,7 @@ class FounderReferenceApprovalDecisionServiceTest extends TestCase
         $this->assertSame(0,(int)$item->fresh()->status);
     }
 
-    public function test_founder_approval_persists_reference_candidate_activation(): void
+    public function test_founder_approval_persists_and_verifies_reference_candidate_activation(): void
     {
         config()->set('najm-hoda-founder-action-policy.founder_approval.user_ids',[99]);
         $item=OccupationalField::create(['name'=>'صنف قابل تأیید','status'=>0]);
@@ -48,6 +48,8 @@ class FounderReferenceApprovalDecisionServiceTest extends TestCase
 
         $this->assertTrue($result['success']);
         $this->assertSame(1,(int)$item->fresh()->status);
+        $this->assertTrue((bool)data_get($result,'verification.verified'));
+        $this->assertSame('verified',(string)data_get($result,'verification.status'));
     }
 
     public function test_approved_reference_request_cannot_be_replayed(): void
