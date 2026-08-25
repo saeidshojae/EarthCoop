@@ -7,11 +7,15 @@ use App\Models\FounderContentDraft;
 use App\Models\FounderEmailDraft;
 use App\Models\SupportReplyDraft;
 use App\Services\NajmHoda\Runtime\NajmHodaAutonomyApprovalService;
+use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Illuminate\Database\Eloquent\Model;
 
 class FounderDraftEditingService
 {
-    public function __construct(protected NajmHodaAutonomyApprovalService $approvals) {}
+    public function __construct(
+        protected NajmHodaAutonomyApprovalService $approvals,
+        protected RuntimeEventBus $events
+    ) {}
 
     /** @return array<string,mixed> */
     public function updateSupport(SupportReplyDraft $draft, string $body, int $actorId): array
@@ -76,20 +80,15 @@ class FounderDraftEditingService
             ];
         }
 
-        $metadata = is_array($draft->getAttribute('metadata')) ? $draft->getAttribute('metadata') : [];
-        $history = is_array($metadata['founder_edit_history'] ?? null) ? $metadata['founder_edit_history'] : [];
-        $history[] = [
-            'edited_by' => $actorId,
-            'edited_at' => now()->toISOString(),
-            'fields' => $changedFields,
-        ];
-        $metadata['founder_edit_history'] = array_slice($history, -20);
-        $metadata['last_edited_by'] = $actorId;
-        $metadata['last_edited_at'] = now()->toISOString();
-
         $draft->fill($attributes);
-        $draft->setAttribute('metadata', $metadata);
         $draft->save();
+
+        $this->events->emit('najm_hoda.founder_ops.draft.edited', [
+            'entity_type' => $entityType,
+            'entity_id' => (int) $draft->getKey(),
+            'edited_by' => $actorId,
+            'changed_fields' => $changedFields,
+        ]);
 
         return [
             'success' => true,
