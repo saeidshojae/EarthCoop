@@ -63,6 +63,99 @@ class AnnouncementManagementService
         });
     }
 
+    /**
+     * Convert legacy announcement pins that were represented by synthetic chat
+     * messages into direct Announcement pins and attribute all announcements to
+     * the canonical EarthCoop management identity.
+     *
+     * @return array{announcements_reattributed:int,legacy_pins_repaired:int,legacy_messages_deleted:int,pins_created:int}
+     */
+    public function repairLegacyArtifacts(): array
+    {
+        $management = $this->systemIdentities->management();
+        $stats = [
+            'announcements_reattributed' => 0,
+            'legacy_pins_repaired' => 0,
+            'legacy_messages_deleted' => 0,
+            'pins_created' => 0,
+        ];
+
+        DB::transaction(function () use ($management, &$stats): void {
+            $stats['announcements_reattributed'] = Announcement::query()
+                ->where(function ($query) use ($management): void {
+                    $query->whereNull('created_by')->orWhere('created_by', '!=', (int) $management->id);
+                })
+                ->update(['created_by' => (int) $management->id]);
+
+            PinnedMessage::query()
+                ->whereNotNull('announcement_id')
+                ->whereNotNull('message_id')
+                ->orderBy('id')
+                ->chunkById(200, function ($pins) use ($management, &$stats): void {
+                    foreach ($pins as $pin) {
+                        $announcement = Announcement::query()->find((int) $pin->announcement_id);
+                        if (! $announcement) {
+                            continue;
+                        }
+
+                        $legacyMessageId = (int) $pin->message_id;
+                        $direct = PinnedMessage::query()
+                            ->where('group_id', (int) $pin->group_id)
+                            ->where('content_type', Announcement::class)
+                            ->where('content_id', (int) $announcement->id)
+                            ->whereKeyNot($pin->id)
+                            ->first();
+
+                        if ($direct) {
+                            $pin->delete();
+                        } else {
+                            $pin->forceFill([
+                                'message_id' => null,
+                                'announcement_id' => (int) $announcement->id,
+                                'content_type' => Announcement::class,
+                                'content_id' => (int) $announcement->id,
+                                'pinned_by' => (int) $management->id,
+                            ])->save();
+                        }
+
+                        if ($legacyMessageId > 0 && Message::query()->whereKey($legacyMessageId)->delete()) {
+                            $stats['legacy_messages_deleted']++;
+                        }
+                        $stats['legacy_pins_repaired']++;
+                    }
+                });
+
+            Announcement::query()
+                ->where('should_pin', true)
+                ->orderBy('id')
+                ->chunkById(100, function ($announcements) use ($management, &$stats): void {
+                    foreach ($announcements as $announcement) {
+                        Group::query()
+                            ->where('location_level', $announcement->group_level)
+                            ->orderBy('id')
+                            ->chunkById(200, function ($groups) use ($announcement, $management, &$stats): void {
+                                foreach ($groups as $group) {
+                                    $pin = PinnedMessage::query()->firstOrCreate([
+                                        'group_id' => $group->id,
+                                        'content_type' => Announcement::class,
+                                        'content_id' => $announcement->id,
+                                    ], [
+                                        'message_id' => null,
+                                        'pinned_by' => (int) $management->id,
+                                        'announcement_id' => $announcement->id,
+                                    ]);
+                                    if ($pin->wasRecentlyCreated) {
+                                        $stats['pins_created']++;
+                                    }
+                                }
+                            });
+                    }
+                });
+        });
+
+        return $stats;
+    }
+
     protected function syncPins(Announcement $announcement, int $systemIdentityId): void
     {
         Group::query()
