@@ -17,6 +17,7 @@ class FounderMinistryChatViewTest extends TestCase
         $this->assertStringContainsString('id="reportTitle"', $view);
         $this->assertStringContainsString('id="reportAssessment"', $view);
         $this->assertStringContainsString('id="reportAction"', $view);
+        $this->assertStringContainsString('id="conversationLabel"', $view);
         $this->assertStringContainsString('گفت‌وگو با وزیر', $view);
         $this->assertStringContainsString('دکمه‌های بالا فقط گزارش جاری را عوض می‌کنند', $view);
         $this->assertStringContainsString('data-global="urgent"', $view);
@@ -33,12 +34,16 @@ class FounderMinistryChatViewTest extends TestCase
         }
 
         $this->assertStringContainsString('رسیدگی / جزئیات', $view);
-        $this->assertStringContainsString('function renderReport(d)', $view);
+        $this->assertStringContainsString('function renderReport(data)', $view);
         $this->assertStringContainsString('function renderItems(items)', $view);
+        $this->assertStringContainsString('function switchPane(pane)', $view);
+        $this->assertStringContainsString("el.classList.toggle('active',el.id===pane)", $view);
+        $this->assertStringContainsString("conversationLabel.textContent=ministry?", $view);
         $this->assertStringContainsString("route('admin.najm-hoda.founder-ops.ministry.chat')", $view);
         $this->assertStringContainsString("route('admin.najm-hoda.chat.send')", $view);
         $this->assertStringContainsString("runMinistry({intent:'morning_brief'})", $view);
         $this->assertStringContainsString('فرمان حساس از متن آزاد استنباط نمی‌شود', $view);
         $this->assertStringContainsString('background:#1d4ed8!important;color:#fff!important', $view);
+        $this->assertStringContainsString('گفت‌وگوی آزاد — مستقل از پنل گزارش مدیریتی', $view);
     }
 }
