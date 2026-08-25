@@ -2,6 +2,7 @@
 
 namespace App\Services\NajmHoda\FounderOps;
 
+use App\Models\Category;
 use App\Models\FounderContentDraft;
 use App\Services\Blog\BlogPublicationService;
 use App\Services\GroupChat\HtmlSanitizer;
@@ -21,7 +22,8 @@ class FounderContentDecisionService
 
     public function requestPublish(FounderContentDraft $draft,int $actorId): array
     {
-        if($draft->status!=='draft'||!$draft->group_id)return ['success'=>false,'status'=>'invalid_state'];
+        if($draft->status!=='draft'||!$draft->group_id)return ['success'=>false,'status'=>'invalid_state','reason'=>'group_required'];
+        if(!$this->hasValidCategory($draft))return ['success'=>false,'status'=>'invalid_state','reason'=>'category_required'];
         return $this->requests->prepare('blog','publish_post',[
             'entity_type'=>'founder_content_draft','entity_id'=>$draft->id,'requested_by'=>$actorId,
             'reason_code'=>$draft->reason_code?:'blog-draft-'.$draft->id,
@@ -36,6 +38,7 @@ class FounderContentDecisionService
 
         $draft=FounderContentDraft::query()->whereKey((int)data_get($pending,'context.entity_id',0))->where('status','draft')->first();
         if(!$draft||!$draft->group_id)return ['success'=>false,'status'=>'not_found'];
+        if(!$this->hasValidCategory($draft))return ['success'=>false,'status'=>'invalid_state','reason'=>'category_required'];
 
         $decided=$this->approvals->decide($requestId,$decision,$founderId,$reason);
         if(!($decided['success']??false))return $decided;
@@ -51,11 +54,17 @@ class FounderContentDecisionService
                 'title'=>$draft->title,
                 'content'=>$this->sanitizer->sanitize($draft->body),
                 'group_id'=>(int)$draft->group_id,
-                'category_id'=>$draft->category_id,
+                'category_id'=>(int)$draft->category_id,
             ],(int)$management->id);
             $draft->update(['status'=>'published','approved_by'=>$founderId,'published_at'=>now()]);
             return ['draft_id'=>$draft->id,'blog_id'=>$blog->id,'publisher_identity_id'=>(int)$management->id];
         },$requestId,['entity_type'=>'founder_content_draft','entity_id'=>$draft->id,'requested_by'=>$founderId]);
+    }
+
+    protected function hasValidCategory(FounderContentDraft $draft): bool
+    {
+        $categoryId = (int) ($draft->category_id ?? 0);
+        return $categoryId > 0 && Category::query()->whereKey($categoryId)->exists();
     }
 
     protected function founderIds(): array
