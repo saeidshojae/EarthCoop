@@ -66,19 +66,22 @@ class FounderSupportDraftApprovalService
 
         $draft->update(['status' => 'approved', 'approved_at' => now()]);
 
-        $result = $this->execution->execute(
+        return $this->execution->execute(
             'support',
             'send_reply',
             function () use ($draft, $founderId) {
-                $comment = $this->tickets->reply($draft->ticket, $founderId, (string) $draft->body, true);
+                $reply = $this->tickets->reply($draft->ticket, $founderId, (string) $draft->body, true);
                 $draft->update(['status' => 'sent', 'sent_at' => now()]);
-                return ['ticket_id' => (int) $draft->ticket_id, 'draft_id' => (int) $draft->id, 'comment_id' => (int) $comment->id];
+
+                return [
+                    'ticket_id' => (int) $draft->ticket_id,
+                    'draft_id' => (int) $draft->id,
+                    'comment_id' => (int) ($reply['comment_id'] ?? 0),
+                ];
             },
             $requestId,
             ['entity_type' => 'support_reply_draft', 'entity_id' => $draftId, 'requested_by' => $founderId]
         );
-
-        return $result;
     }
 
     /** @return array<int,int> */
