@@ -36,10 +36,15 @@ class FounderEmailDraftLifecycleTest extends TestCase
             'created_by' => $founder->id,
         ]);
 
+        $expectedSender = [
+            'address' => 'management@earthcoop.ir',
+            'name' => 'تیم مدیریت EarthCoop',
+            'reply_to' => 'management@earthcoop.ir',
+        ];
         $delivery = Mockery::mock(EmailDeliveryService::class);
         $delivery->shouldReceive('sendHtml')
             ->once()
-            ->with(['member@example.test'], 'موضوع نهایی مدیرکل', '<p>متن نهایی مدیرکل</p>')
+            ->with(['member@example.test'], 'موضوع نهایی مدیرکل', '<p>متن نهایی مدیرکل</p>', $expectedSender)
             ->andReturn([
                 'sent_count' => 1,
                 'failed_count' => 0,
@@ -91,5 +96,7 @@ class FounderEmailDraftLifecycleTest extends TestCase
         $this->assertSame(1, (int) data_get($result, 'result.recipient_count'));
         $this->assertSame(1, (int) data_get($result, 'result.sent_count'));
         $this->assertSame(0, (int) data_get($result, 'result.failed_count'));
+        $this->assertSame($expectedSender['address'], data_get($result, 'result.sender_address'));
+        $this->assertSame($expectedSender['name'], data_get($result, 'result.sender_name'));
     }
 }
