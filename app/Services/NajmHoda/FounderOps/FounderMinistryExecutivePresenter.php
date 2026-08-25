@@ -252,7 +252,8 @@ class FounderMinistryExecutivePresenter
 
         $urgent = count(array_filter(
             $items,
-            static fn (array $item): bool => in_array((string) ($item['priority'] ?? ''), ['P0', 'P1'], true)
+            static fn (array $item): bool => ($item['kind'] ?? '') !== 'approval'
+                && in_array((string) ($item['priority'] ?? ''), ['P0', 'P1'], true)
         ));
         $decisions = count(array_filter(
             $items,
