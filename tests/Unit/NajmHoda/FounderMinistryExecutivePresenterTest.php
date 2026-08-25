@@ -48,7 +48,7 @@ class FounderMinistryExecutivePresenterTest extends TestCase
         $this->assertSame('پیش‌نویس', data_get($result, 'management.items.1.title'));
     }
 
-    public function test_domain_brief_turns_metrics_into_an_executive_conclusion(): void
+    public function test_quiet_domain_brief_is_concise_and_leaves_metrics_to_cards(): void
     {
         $presenter = new FounderMinistryExecutivePresenter();
         $result = $presenter->present(['success' => true, 'message' => 'old', 'management' => [
@@ -62,8 +62,9 @@ class FounderMinistryExecutivePresenterTest extends TestCase
             'items' => [],
         ]], 24);
 
-        $this->assertStringContainsString('انتخابات و حکمرانی در snapshot فعلی موردی که نیازمند اقدام مدیرکل باشد ندارد', $result['message']);
-        $this->assertStringContainsString('انتخابات فعال: 1', $result['message']);
+        $this->assertSame('انتخابات و حکمرانی در وضعیت فعلی نیازمند اقدام شما نیست. مورد کارت‌شده‌ای برای رسیدگی در این بخش وجود ندارد.', $result['message']);
+        $this->assertStringNotContainsString('انتخابات فعال: 1', $result['message']);
+        $this->assertSame(1, data_get($result, 'management.summary_cards.active.value'));
         $this->assertSame('در این حوزه اقدام مدیریتی فوری لازم نیست', data_get($result, 'management.executive.assessment'));
         $this->assertSame('intent', data_get($result, 'management.executive.scope'));
     }
@@ -84,7 +85,8 @@ class FounderMinistryExecutivePresenterTest extends TestCase
         $this->assertFalse(data_get($result, 'management.executive.action_required'));
         $this->assertSame('در این حوزه اقدام مدیریتی فوری لازم نیست', data_get($result, 'management.executive.assessment'));
         $this->assertSame('فعلاً اقدامی از شما لازم نیست.', data_get($result, 'management.executive.action_text'));
-        $this->assertStringContainsString('گروه‌ها در snapshot فعلی موردی که نیازمند اقدام مدیرکل باشد ندارد', $result['message']);
+        $this->assertStringContainsString('گروه‌ها در وضعیت فعلی نیازمند اقدام شما نیست', $result['message']);
+        $this->assertStringNotContainsString('کل گروه‌ها: 81', $result['message']);
         $this->assertStringNotContainsString('5 مورد فوری', data_get($result, 'management.executive.action_text'));
     }
 
@@ -161,5 +163,32 @@ class FounderMinistryExecutivePresenterTest extends TestCase
         $this->assertStringContainsString('84 اقدام در ماتریس اختیار تعریف شده است', $result['message']);
         $this->assertStringContainsString('این عدد به معنی واگذاری فعال نیست', $result['message']);
         $this->assertFalse(data_get($result, 'management.executive.action_required'));
+    }
+
+    public function test_presenter_preserves_backend_agency_snapshot_without_recalculating_authority(): void
+    {
+        $agency = [
+            'scope' => 'intent',
+            'domain_keys' => ['groups'],
+            'connected' => true,
+            'active_delegations' => [],
+            'may_do_now' => [],
+            'may_prepare' => [['domain' => 'groups', 'action' => 'summarize_activity']],
+            'needs_founder_decision' => [],
+            'blocked' => [],
+            'summary' => 'یک قابلیت آماده‌سازی متصل است.',
+        ];
+
+        $result = (new FounderMinistryExecutivePresenter())->present([
+            'success' => true,
+            'management' => [
+                'intent' => 'groups',
+                'summary_cards' => [],
+                'global_summary_cards' => [],
+                'items' => [],
+            ],
+        ], 24, $agency);
+
+        $this->assertSame($agency, data_get($result, 'management.executive.agency'));
     }
 }
