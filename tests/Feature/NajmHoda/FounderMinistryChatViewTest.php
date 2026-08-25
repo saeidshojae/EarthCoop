@@ -6,7 +6,7 @@ use Tests\TestCase;
 
 class FounderMinistryChatViewTest extends TestCase
 {
-    public function test_founder_ministry_phase_three_separates_current_report_from_conversation(): void
+    public function test_founder_ministry_phase_four_separates_report_conversation_and_backend_agency(): void
     {
         $view = file_get_contents(resource_path('views/admin/najm-hoda/chat.blade.php'));
 
@@ -33,6 +33,23 @@ class FounderMinistryChatViewTest extends TestCase
             $this->assertStringContainsString('data-intent="'.$intent.'"', $view);
         }
 
+        foreach ([
+            'توان اجرایی نجم هدا در این گزارش',
+            'خودم می‌توانم انجام دهم',
+            'می‌توانم آماده کنم',
+            'تصمیم شما لازم است',
+            'فعلاً مسدود است',
+        ] as $copy) {
+            $this->assertStringContainsString($copy, $view);
+        }
+
+        foreach (['may_do_now', 'may_prepare', 'needs_founder_decision', 'blocked'] as $lane) {
+            $this->assertStringContainsString('data-agency-lane="'.$lane.'"', $view);
+        }
+
+        $this->assertStringContainsString('موردی در این دسته ثبت نشده است.', $view);
+        $this->assertStringContainsString('function renderAgency(agency)', $view);
+        $this->assertStringContainsString('renderAgency(executive.agency||{})', $view);
         $this->assertStringContainsString('رسیدگی / جزئیات', $view);
         $this->assertStringContainsString('function renderReport(data)', $view);
         $this->assertStringContainsString('function renderItems(items)', $view);
@@ -45,5 +62,10 @@ class FounderMinistryChatViewTest extends TestCase
         $this->assertStringContainsString('فرمان حساس از متن آزاد استنباط نمی‌شود', $view);
         $this->assertStringContainsString('background:#1d4ed8!important;color:#fff!important', $view);
         $this->assertStringContainsString('گفت‌وگوی آزاد — مستقل از پنل گزارش مدیریتی', $view);
+
+        // Authority is calculated server-side. The view only renders the agency payload.
+        $this->assertStringNotContainsString("==='delegated_safe'", $view);
+        $this->assertStringNotContainsString("==='approval_required'", $view);
+        $this->assertStringNotContainsString('isGranted(', $view);
     }
 }
