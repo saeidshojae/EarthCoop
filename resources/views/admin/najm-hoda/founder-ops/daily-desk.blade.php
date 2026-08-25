@@ -183,8 +183,18 @@
             <div class="card mb-3 shadow-sm" id="support">
                 <div class="card-header d-flex justify-content-between"><strong>پشتیبانی کاربران</strong><span class="badge bg-secondary">{{ $supportCount + $supportApprovalItems->count() }}</span></div>
                 <div class="card-body">
+                    @if($supportCount)<div class="alert alert-light border small">پاسخ پیشنهادی نجم هدا را می‌توانید ویرایش و ذخیره کنید. پس از ارسال برای تأیید نهایی، متن تا تعیین‌تکلیف همان درخواست قفل می‌شود.</div>@endif
                     @foreach($supportDrafts ?? [] as $draft)
-                        <div class="border rounded p-3 mb-2"><div class="fw-semibold mb-1">{{ $draft->ticket?->subject ?? 'تیکت '.$draft->ticket_id }}</div><div class="small text-muted mb-2">پاسخ پیشنهادی نجم هدا</div><div class="mb-3" style="white-space:pre-wrap">{{ $draft->body }}</div><form method="POST" action="{{ route('admin.najm-hoda.founder-ops.support-drafts.request-send',$draft) }}">@csrf<button class="btn btn-sm btn-outline-primary">برای تصمیم نهایی من آماده کن</button></form></div>
+                        <div class="border rounded p-3 mb-3">
+                            <div class="fw-semibold mb-2">{{ $draft->ticket?->subject ?? 'تیکت '.$draft->ticket_id }}</div>
+                            <form method="POST" action="{{ route('admin.najm-hoda.founder-ops.support-drafts.update',$draft) }}" class="mb-2">
+                                @csrf @method('PATCH')
+                                <label class="form-label small text-muted">پاسخ پیشنهادی نجم هدا</label>
+                                <textarea name="body" rows="5" class="form-control mb-2" required>{{ old('body', $draft->body) }}</textarea>
+                                <button class="btn btn-sm btn-outline-secondary">ذخیره ویرایش</button>
+                            </form>
+                            <form method="POST" action="{{ route('admin.najm-hoda.founder-ops.support-drafts.request-send',$draft) }}">@csrf<button class="btn btn-sm btn-primary">ارسال برای تأیید نهایی</button></form>
+                        </div>
                     @endforeach
                     @foreach($supportApprovalItems as $approval)
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 border rounded p-3 mb-2 bg-light"><span class="fw-semibold">پاسخ پشتیبانی شماره {{ data_get($approval,'context.entity_id') }} آماده ارسال است.</span><div class="d-flex gap-2"><form method="POST" action="{{ route('admin.najm-hoda.founder-ops.support-approvals.decision',data_get($approval,'id')) }}">@csrf<input type="hidden" name="decision" value="approve"><button class="btn btn-sm btn-success">تأیید و ارسال</button></form><form method="POST" action="{{ route('admin.najm-hoda.founder-ops.support-approvals.decision',data_get($approval,'id')) }}">@csrf<input type="hidden" name="decision" value="reject"><button class="btn btn-sm btn-outline-danger">رد</button></form></div></div>
@@ -211,17 +221,56 @@
             <div class="card mb-3 shadow-sm" id="communications">
                 <div class="card-header"><strong>ارتباطات و انتشار</strong></div>
                 <div class="card-body">
+                    @if($emailCount || $contentCount || $announcementCount)<div class="alert alert-light border small">متن‌های پیشنهادی نجم هدا قبل از تأیید نهایی کاملاً قابل ویرایش‌اند. «ذخیره ویرایش» فقط نسخه پیشنهادی را به‌روزرسانی می‌کند و هیچ ارسال یا انتشاری انجام نمی‌دهد.</div>@endif
                     <div class="row g-3">
                         <div class="col-lg-4"><div class="border rounded p-3 h-100"><strong>ایمیل‌ها</strong>
-                            @forelse($emailDrafts ?? [] as $draft)<div class="border-top mt-2 pt-2"><div class="fw-semibold">{{ $draft->subject ?? 'ایمیل آماده' }}</div><div class="small text-muted my-2">{{ \Illuminate\Support\Str::limit($draft->body ?? '',150) }}</div><form method="POST" action="{{ route('admin.najm-hoda.founder-ops.email-drafts.request-send',$draft) }}">@csrf<button class="btn btn-sm btn-outline-primary">برای تصمیم من آماده کن</button></form></div>@empty<div class="small text-muted mt-2">پیش‌نویسی نیست.</div>@endforelse
+                            @forelse($emailDrafts ?? [] as $draft)
+                                <div class="border-top mt-3 pt-3">
+                                    <form method="POST" action="{{ route('admin.najm-hoda.founder-ops.email-drafts.update',$draft) }}" class="mb-2">
+                                        @csrf @method('PATCH')
+                                        <label class="form-label small text-muted">موضوع</label>
+                                        <input name="subject" class="form-control form-control-sm mb-2" value="{{ old('subject', $draft->subject) }}" required>
+                                        <label class="form-label small text-muted">متن پیشنهادی</label>
+                                        <textarea name="body" rows="6" class="form-control form-control-sm mb-2" required>{{ old('body', $draft->body) }}</textarea>
+                                        <button class="btn btn-sm btn-outline-secondary">ذخیره ویرایش</button>
+                                    </form>
+                                    <form method="POST" action="{{ route('admin.najm-hoda.founder-ops.email-drafts.request-send',$draft) }}">@csrf<button class="btn btn-sm btn-primary">ارسال برای تأیید نهایی</button></form>
+                                </div>
+                            @empty<div class="small text-muted mt-2">پیش‌نویسی نیست.</div>@endforelse
                             @foreach($emailApprovalItems as $approval)<div class="border-top mt-2 pt-2"><div class="small fw-semibold mb-2">ایمیل شماره {{ data_get($approval,'context.entity_id') }} منتظر تصمیم شماست.</div><div class="d-flex gap-2"><form method="POST" action="{{ route('admin.najm-hoda.founder-ops.email-approvals.decision',data_get($approval,'id')) }}">@csrf<input type="hidden" name="decision" value="approve"><button class="btn btn-sm btn-success">تأیید و ارسال</button></form><form method="POST" action="{{ route('admin.najm-hoda.founder-ops.email-approvals.decision',data_get($approval,'id')) }}">@csrf<input type="hidden" name="decision" value="reject"><button class="btn btn-sm btn-outline-danger">رد</button></form></div></div>@endforeach
                         </div></div>
+
                         <div class="col-lg-4"><div class="border rounded p-3 h-100"><strong>محتوا</strong>
-                            @forelse($contentDrafts ?? [] as $draft)<div class="border-top mt-2 pt-2"><div class="fw-semibold">{{ $draft->title ?? 'محتوای آماده' }}</div><div class="small text-muted my-2">{{ \Illuminate\Support\Str::limit($draft->body ?? $draft->content ?? '',150) }}</div><form method="POST" action="{{ route('admin.najm-hoda.founder-ops.content-drafts.request-publish',$draft) }}">@csrf<button class="btn btn-sm btn-outline-primary">برای تصمیم من آماده کن</button></form></div>@empty<div class="small text-muted mt-2">پیش‌نویسی نیست.</div>@endforelse
+                            @forelse($contentDrafts ?? [] as $draft)
+                                <div class="border-top mt-3 pt-3">
+                                    <form method="POST" action="{{ route('admin.najm-hoda.founder-ops.content-drafts.update',$draft) }}" class="mb-2">
+                                        @csrf @method('PATCH')
+                                        <label class="form-label small text-muted">عنوان</label>
+                                        <input name="title" class="form-control form-control-sm mb-2" value="{{ old('title', $draft->title) }}" required>
+                                        <label class="form-label small text-muted">متن پیشنهادی</label>
+                                        <textarea name="body" rows="6" class="form-control form-control-sm mb-2" required>{{ old('body', $draft->body) }}</textarea>
+                                        <button class="btn btn-sm btn-outline-secondary">ذخیره ویرایش</button>
+                                    </form>
+                                    <form method="POST" action="{{ route('admin.najm-hoda.founder-ops.content-drafts.request-publish',$draft) }}">@csrf<button class="btn btn-sm btn-primary">ارسال برای تأیید نهایی</button></form>
+                                </div>
+                            @empty<div class="small text-muted mt-2">پیش‌نویسی نیست.</div>@endforelse
                             @foreach($contentApprovalItems as $approval)<div class="border-top mt-2 pt-2"><div class="small fw-semibold mb-2">محتوای شماره {{ data_get($approval,'context.entity_id') }} منتظر تصمیم شماست.</div><div class="d-flex gap-2"><form method="POST" action="{{ route('admin.najm-hoda.founder-ops.content-approvals.decision',data_get($approval,'id')) }}">@csrf<input type="hidden" name="decision" value="approve"><button class="btn btn-sm btn-success">تأیید و انتشار</button></form><form method="POST" action="{{ route('admin.najm-hoda.founder-ops.content-approvals.decision',data_get($approval,'id')) }}">@csrf<input type="hidden" name="decision" value="reject"><button class="btn btn-sm btn-outline-danger">رد</button></form></div></div>@endforeach
                         </div></div>
+
                         <div class="col-lg-4"><div class="border rounded p-3 h-100"><strong>اطلاعیه‌ها</strong>
-                            @forelse($announcementDrafts ?? [] as $draft)<div class="border-top mt-2 pt-2"><div class="fw-semibold">{{ $draft->title ?? 'اطلاعیه آماده' }}</div><div class="small text-muted my-2">{{ \Illuminate\Support\Str::limit($draft->body ?? $draft->message ?? '',150) }}</div><form method="POST" action="{{ route('admin.najm-hoda.founder-ops.announcement-drafts.request-publish',$draft) }}">@csrf<button class="btn btn-sm btn-outline-primary">برای تصمیم من آماده کن</button></form></div>@empty<div class="small text-muted mt-2">پیش‌نویسی نیست.</div>@endforelse
+                            @forelse($announcementDrafts ?? [] as $draft)
+                                <div class="border-top mt-3 pt-3">
+                                    <form method="POST" action="{{ route('admin.najm-hoda.founder-ops.announcement-drafts.update',$draft) }}" class="mb-2">
+                                        @csrf @method('PATCH')
+                                        <label class="form-label small text-muted">عنوان</label>
+                                        <input name="title" class="form-control form-control-sm mb-2" value="{{ old('title', $draft->title) }}" required>
+                                        <label class="form-label small text-muted">متن پیشنهادی</label>
+                                        <textarea name="content" rows="6" class="form-control form-control-sm mb-2" required>{{ old('content', $draft->content) }}</textarea>
+                                        <button class="btn btn-sm btn-outline-secondary">ذخیره ویرایش</button>
+                                    </form>
+                                    <form method="POST" action="{{ route('admin.najm-hoda.founder-ops.announcement-drafts.request-publish',$draft) }}">@csrf<button class="btn btn-sm btn-primary">ارسال برای تأیید نهایی</button></form>
+                                </div>
+                            @empty<div class="small text-muted mt-2">پیش‌نویسی نیست.</div>@endforelse
                             @foreach($announcementApprovalItems as $approval)<div class="border-top mt-2 pt-2"><div class="small fw-semibold mb-2">اطلاعیه شماره {{ data_get($approval,'context.entity_id') }} منتظر تصمیم شماست.</div><div class="d-flex gap-2"><form method="POST" action="{{ route('admin.najm-hoda.founder-ops.announcement-approvals.decision',data_get($approval,'id')) }}">@csrf<input type="hidden" name="decision" value="approve"><button class="btn btn-sm btn-success">تأیید و انتشار</button></form><form method="POST" action="{{ route('admin.najm-hoda.founder-ops.announcement-approvals.decision',data_get($approval,'id')) }}">@csrf<input type="hidden" name="decision" value="reject"><button class="btn btn-sm btn-outline-danger">رد</button></form></div></div>@endforeach
                         </div></div>
                     </div>
