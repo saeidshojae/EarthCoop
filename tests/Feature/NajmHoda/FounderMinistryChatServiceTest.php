@@ -54,8 +54,8 @@ class FounderMinistryChatServiceTest extends TestCase
             'items' => [['kind' => 'attention', 'priority' => 'P0', 'domain' => 'support', 'title' => 'فوری']],
         ];
 
-        $attention->shouldReceive('brief')->twice()->with(24)->andReturn($brief);
-        $queue->shouldReceive('snapshot')->twice()->with(24, 100)->andReturn($workQueue);
+        $attention->shouldReceive('brief')->once()->with(24)->andReturn($brief);
+        $queue->shouldReceive('snapshot')->once()->with(24, 100)->andReturn($workQueue);
 
         $service = $this->makeService($attention, $queue, $approvals, $snapshots);
         $result = $service->respond('morning_brief', 24);
@@ -89,7 +89,7 @@ class FounderMinistryChatServiceTest extends TestCase
             ],
         ];
 
-        $queue->shouldReceive('snapshot')->twice()->with(24, 100)->andReturn($workQueue);
+        $queue->shouldReceive('snapshot')->once()->with(24, 100)->andReturn($workQueue);
         $attention->shouldReceive('brief')->once()->with(24)->andReturn(['summary'=>['P0'=>0,'P1'=>0]]);
 
         $service = $this->makeService($attention, $queue, $approvals, $snapshots);
@@ -127,7 +127,7 @@ class FounderMinistryChatServiceTest extends TestCase
                 ['kind'=>'attention','domain'=>'stock','priority'=>'P0'],
             ],
         ];
-        $queue->shouldReceive('snapshot')->twice()->with(24,100)->andReturn($workQueue);
+        $queue->shouldReceive('snapshot')->once()->with(24,100)->andReturn($workQueue);
         $attention->shouldReceive('brief')->once()->with(24)->andReturn(['summary'=>['P0'=>0,'P1'=>1]]);
 
         $service = $this->makeService($attention, $queue, $approvals, $snapshots);
@@ -205,9 +205,11 @@ class FounderMinistryChatServiceTest extends TestCase
         $this->assertTrue($payload['success']);
         $this->assertSame('founder_ministry', $payload['feature']);
         $this->assertSame(FounderMinistryChatController::UAT_VERSION, $payload['version']);
+        $this->assertSame('read_only_decision_support', $payload['mode']);
         $this->assertSame(FounderMinistryChatService::INTENTS, $payload['read_only_intents']);
         $this->assertFalse($payload['typed_execution_inference']);
         $this->assertFalse($payload['approval_bypass']);
+        $this->assertTrue($payload['action_cards']);
         $this->assertSame('existing_founder_ops_approval_authority_lifecycle', $payload['execution_boundary']);
     }
 }
