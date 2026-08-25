@@ -52,7 +52,7 @@ class FounderSupportDraftLifecycleTest extends TestCase
         $this->assertSame($editedBody, $draft->fresh()->body);
 
         $prepared = $approval->requestSend($draft->fresh(), $founder->id);
-        $this->assertTrue((bool) ($prepared['success'] ?? false));
+        $this->assertSame('awaiting_approval', $prepared['status'] ?? null);
         $requestId = (string) data_get($prepared, 'approval_request.id');
         $this->assertNotSame('', $requestId);
 
