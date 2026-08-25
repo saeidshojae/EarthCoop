@@ -103,7 +103,7 @@ class AnnouncementManagementService
                             ->where('group_id', (int) $pin->group_id)
                             ->where('content_type', Announcement::class)
                             ->where('content_id', (int) $announcement->id)
-                            ->whereKeyNot($pin->id)
+                            ->where('id', '!=', (int) $pin->id)
                             ->first();
 
                         if ($direct) {
