@@ -41,7 +41,7 @@ class FounderMinistryChatServiceTest extends TestCase
         $this->assertSame(5, data_get($result, 'management.summary_cards.founder_decisions'));
         $this->assertSame(6, data_get($result, 'management.summary_cards.prepared'));
         $this->assertSame(7, data_get($result, 'management.summary_cards.information'));
-        $this->assertStringContainsString('۵ تصمیم منتظر شما', $result['message']);
+        $this->assertStringContainsString('5 تصمیم منتظر شما', $result['message']);
     }
 
     public function test_communications_only_surfaces_communication_domains(): void
