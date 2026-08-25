@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\NajmHoda\FounderOps\FounderMinistryAgencyService;
 use App\Services\NajmHoda\FounderOps\FounderMinistryChatService;
 use App\Services\NajmHoda\FounderOps\FounderMinistryExecutivePresenter;
 use Illuminate\Http\Request;
@@ -10,7 +11,7 @@ use Illuminate\Validation\Rule;
 
 class FounderMinistryChatController extends Controller
 {
-    public const UAT_VERSION = 'founder-ministry-v3-2026-08-26';
+    public const UAT_VERSION = 'founder-ministry-v4-2026-08-26';
 
     public function readiness()
     {
@@ -25,6 +26,8 @@ class FounderMinistryChatController extends Controller
             'action_cards' => true,
             'executive_briefs' => true,
             'exception_driven_morning_brief' => true,
+            'executive_agency' => true,
+            'agency_authority_source' => 'server_side_founder_ops_evidence',
             'execution_boundary' => 'existing_founder_ops_approval_authority_lifecycle',
             'server_time' => now()->toIso8601String(),
         ]);
@@ -34,6 +37,7 @@ class FounderMinistryChatController extends Controller
         Request $request,
         FounderMinistryChatService $service,
         FounderMinistryExecutivePresenter $presenter,
+        FounderMinistryAgencyService $agency,
     ) {
         $validated = $request->validate([
             'intent' => ['nullable', 'required_without:message', 'string', Rule::in(FounderMinistryChatService::INTENTS)],
@@ -51,7 +55,11 @@ class FounderMinistryChatController extends Controller
 
         $hours = (int) ($validated['hours'] ?? 24);
         $response = $service->respond($intent, $hours);
+        $agencySnapshot = $agency->describe(
+            $intent,
+            (array) data_get($response, 'management.items', [])
+        );
 
-        return response()->json($presenter->present($response, $hours));
+        return response()->json($presenter->present($response, $hours, $agencySnapshot));
     }
 }
