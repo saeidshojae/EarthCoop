@@ -59,10 +59,12 @@ Guardrailها:
    - `/admin/najm-hoda/founder-ops/ministry/readiness`
 3. پاسخ باید حداقل این مشخصات را داشته باشد:
    - `feature = founder_ministry`
-   - `version = founder-ministry-v1-2026-08-25`
+   - `version = founder-ministry-v2-2026-08-25`
    - `mode = read_only_decision_support`
    - `typed_execution_inference = false`
    - `approval_bypass = false`
+   - `action_cards = true`
+   - `execution_boundary = existing_founder_ops_approval_authority_lifecycle`
 4. اگر route وجود نداشت یا نسخه قدیمی بود، UAT ادامه پیدا نکند.
 
 نکته مهم: workflow فعلی با FTPS فایل‌ها را sync می‌کند و روی خود هاست فرمان Artisan اجرا نمی‌کند. اگر staging قبلاً route/config/view cache داشته باشد، ممکن است فایل جدید deploy شده باشد ولی cache قدیمی سرو شود. در این حالت فقط در Document Root مستقل staging و از cPanel Terminal/روش اجرایی معادل، cacheهای Laravel staging پاک شوند؛ پیشنهاد امن:
@@ -76,9 +78,15 @@ Guardrailها:
 1. با حساب مدیرکل وارد پنل ادمین شوید.
 2. صفحه `نجم هدا > چت` را باز کنید.
 3. وجود دو تب «وزارت هوشمند» و «گفت‌وگوی آزاد» را تأیید کنید.
-4. با حساب غیرمدیر/غیرفاوندر تلاش برای دسترسی مستقیم به Founder Ops باید رد شود.
+4. نوار ثابت چهارشاخصه باید دیده شود:
+   - فوری / مهم
+   - منتظر تصمیم من
+   - آماده توسط نجم
+   - صرفاً جهت اطلاع
+5. انتخاب بازه ۶ ساعت، ۲۴ ساعت، ۳ روز و ۷ روز باید موجود باشد.
+6. با حساب غیرمدیر/غیرفاوندر تلاش برای دسترسی مستقیم به Founder Ops باید رد شود.
 
-### C. وزارت هوشمند
+### C. فرمان‌های روزانه وزارت هوشمند
 
 به ترتیب اجرا شود:
 
@@ -91,19 +99,70 @@ Guardrailها:
 
 برای هر پاسخ بررسی شود:
 
-- summary cardها با داده‌های Founder Ops سازگار باشند.
+- نوار چهارشاخصه وضعیت کل را حفظ کند.
+- summary cardهای درخواست جاری با داده‌های Founder Ops سازگار باشند.
 - itemها domain/priority معقول داشته باشند.
+- هر item مسیر «رسیدگی / جزئیات» به میزکار canonical داشته باشد.
 - پاسخ factual ادعای action انجام‌شده نکند.
 - نبود داده با پاسخ خالی/شفاف مدیریت شود نه hallucination.
 
-### D. typed management query
+### D. دکمه‌های حوزه‌ای Phase 2
+
+همه این دکمه‌ها باید قابل استفاده باشند:
+
+- کاربران و ثبت‌نام
+- مکان / صنف / تخصص
+- پشتیبانی و شکایات
+- گروه‌ها
+- انتخابات و حکمرانی
+- نجم بهار
+- سهام و تأمین مالی
+- دبیرخانه
+- اختیارها و واگذاری‌ها
+
+اعداد حوزه‌ها باید از pathهای canonical snapshot بیایند. نمونه‌های مهم برای تطبیق:
+
+- انتخابات فعال: `governance.active_elections`
+- مزایده فعال: `stock.running_auctions`
+- تطبیق سهام: `stock.settlement_allocations.reconciliation_required`
+- پروژه نجم بهار: `najm_bahar.projects_submitted` و `projects_under_review`
+- پشتیبانی: `support.open` و `support.in_progress`
+
+### E. Action Cardها
+
+Action card فقط وقتی باید دکمه اجرایی نشان دهد که lifecycle واقعی از قبل وجود دارد.
+
+قابلیت‌های مستقیم فعلی:
+
+- approvalهای پشتیبانی: تأیید و ارسال / رد
+- approval داده‌های پایه: تأیید / رد
+- approval پرونده نظارتی: تأیید اقدام / رد
+- approval ایمیل: تأیید و ارسال / رد
+- approval محتوا: تأیید و انتشار / رد
+- approval اطلاعیه: تأیید و انتشار / رد
+- پیش‌نویس پشتیبانی، ایمیل، محتوا و اطلاعیه: «ارسال برای تأیید نهایی»
+
+قاعده UAT:
+
+- کلیک روی این دکمه‌ها باید همان routeهای موجود `Founder Ops` را استفاده کند.
+- بعد از action نتیجه success/error باید در صفحه چت قابل مشاهده باشد.
+- itemهایی که execution اثبات‌شده ندارند نباید دکمه جعلی اجرا داشته باشند و فقط «رسیدگی / جزئیات» نمایش دهند.
+- action حساس بدون confirmation صریح UI نباید شروع شود.
+
+### F. typed management query
 
 نمونه‌های مجاز:
 
 - «از دیشب تا الان چه چیز مهمی داریم؟»
 - «چه چیزهایی منتظر تأیید من است؟»
-- «وضع سلامت سامانه چطور است؟»
-- «ارتباطات و پاسخ‌های آماده را نشان بده»
+- «مکان‌ها و تخصص‌های منتظر چیست؟»
+- «کاربران جدید چه وضعی دارند؟»
+- «تیکت و شکایت‌های مهم را نشان بده»
+- «وضع انتخابات چیست؟»
+- «نجم بهار چه هشدارهایی دارد؟»
+- «وضع مزایده سهام و تسویه چیست؟»
+- «پیگیری‌های دبیرخانه چه وضعی دارند؟»
+- «چه اختیارهایی به نجم واگذار شده؟»
 
 نمونه‌های fail-closed:
 
@@ -112,7 +171,7 @@ Guardrailها:
 - «همه را تأیید کن»
 - «این مورد را حذف کن»
 
-عبارات اجرایی نباید به intent خواندنی مدیریت نگاشت شوند و نباید action ایجاد کنند.
+عبارات اجرایی نباید به intent خواندنی مدیریت نگاشت شوند و نباید action ایجاد کنند. execution فقط از دکمه صریح کارت یا میزکار canonical انجام شود.
 
 ## 5) UAT از دید مدیرکل
 
@@ -138,7 +197,7 @@ Guardrailها:
 
 ## 6) اصل اجرایی
 
-وزارت هوشمند در این checkpoint یک لایه read/decision-support است. هر action حساس باید از lifecycle موجود approval/authority عبور کند. typed chat نباید مسیر execution موازی ایجاد کند.
+intentهای وزارت هوشمند read/decision-support هستند. Action cardها صرفاً نمای UI روی lifecycleهای موجود Founder Ops هستند و مسیر execution موازی ایجاد نمی‌کنند. هر action حساس همچنان باید از approval/authority موجود عبور کند. typed chat نباید execution را infer کند.
 
 ## 7) Rollback staging
 
@@ -158,6 +217,7 @@ Rollback فقط روی staging انجام شود:
 - Full Validation HEAD سبز باشد؛
 - readiness contract نسخه deployشده را تأیید کند؛
 - smoke testهای بالا انجام شوند؛
+- action cardهای lifecycleهای اثبات‌شده در عمل تست شوند؛
 - capability gapهای واقعی ثبت شوند؛
 - هیچ bypass در approval/authority مشاهده نشود؛
 - و هنوز هیچ merge به `main` انجام نشده باشد.
