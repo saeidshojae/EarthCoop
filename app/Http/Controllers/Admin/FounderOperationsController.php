@@ -18,6 +18,7 @@ use App\Services\NajmHoda\FounderOps\FounderAttentionService;
 use App\Services\NajmHoda\FounderOps\FounderAuthoritySnapshotService;
 use App\Services\NajmHoda\FounderOps\FounderAutonomyBridgeService;
 use App\Services\NajmHoda\FounderOps\FounderContentDecisionService;
+use App\Services\NajmHoda\FounderOps\FounderDraftEditingService;
 use App\Services\NajmHoda\FounderOps\FounderEmailDecisionService;
 use App\Services\NajmHoda\FounderOps\FounderExecutiveConnectivityService;
 use App\Services\NajmHoda\FounderOps\FounderExecutiveWorkQueueService;
@@ -60,6 +61,11 @@ class FounderOperationsController extends Controller
     public function approvals(FounderApprovalInboxService $service){return response()->json(['success'=>true,'data'=>$service->snapshot()]);}
     public function authority(FounderAuthoritySnapshotService $summary, FounderActionAuthorityService $authority){return response()->json(['success'=>true,'data'=>['summary'=>$summary->snapshot(),'matrix'=>$authority->matrix()]]);}
 
+    public function updateSupportDraft(Request $request,SupportReplyDraft $draft,FounderDraftEditingService $service){$v=$request->validate(['body'=>'required|string|max:20000']);return $this->draftEditBack($service->updateSupport($draft,$v['body'],(int)$request->user()->id));}
+    public function updateEmailDraft(Request $request,FounderEmailDraft $draft,FounderDraftEditingService $service){$v=$request->validate(['subject'=>'required|string|max:255','body'=>'required|string|max:100000']);return $this->draftEditBack($service->updateEmail($draft,$v['subject'],$v['body'],(int)$request->user()->id));}
+    public function updateContentDraft(Request $request,FounderContentDraft $draft,FounderDraftEditingService $service){$v=$request->validate(['title'=>'required|string|max:255','body'=>'required|string|max:100000']);return $this->draftEditBack($service->updateContent($draft,$v['title'],$v['body'],(int)$request->user()->id));}
+    public function updateAnnouncementDraft(Request $request,FounderAnnouncementDraft $draft,FounderDraftEditingService $service){$v=$request->validate(['title'=>'required|string|max:255','content'=>'required|string|max:100000']);return $this->draftEditBack($service->updateAnnouncement($draft,$v['title'],$v['content'],(int)$request->user()->id));}
+
     public function requestSupportDraftSend(Request $request, SupportReplyDraft $draft, FounderSupportDraftApprovalService $service){$result=$service->requestSend($draft,(int)$request->user()->id);return $this->approvalBack($result,'درخواست ارسال پاسخ در صف تأیید Founder قرار گرفت.');}
     public function decideSupportDraft(Request $request,string $requestId,FounderSupportDraftApprovalService $service){return $this->decisionBack($request,$service->decideAndExecute($requestId,...$this->decisionArgs($request)));}
     public function requestReferenceApprove(Request $request,string $type,int $id,FounderReferenceApprovalDecisionService $service){try{$result=$service->requestApprove($type,$id,(int)$request->user()->id);}catch(\Throwable){return back()->with('error','مورد تأیید معتبر نیست.');}return $this->approvalBack($result,'درخواست تأیید در صف Founder قرار گرفت.');}
@@ -75,5 +81,6 @@ class FounderOperationsController extends Controller
 
     private function decisionArgs(Request $request): array{$v=$request->validate(['decision'=>'required|in:approve,reject','reason'=>'nullable|string|max:500']);return [$v['decision'],(int)$request->user()->id,$v['reason']??null];}
     private function approvalBack(array $result,string $message){return back()->with(($result['status']??'')==='awaiting_approval'?'success':'error',($result['status']??'')==='awaiting_approval'?$message:'امکان ایجاد درخواست وجود ندارد.');}
+    private function draftEditBack(array $result){$ok=(bool)($result['success']??false);$blocked=($result['reason']??'')==='pending_approval_must_be_decided_first';return back()->with($ok?'success':'error',$ok?'متن پیشنهادی نجم هدا ویرایش و ذخیره شد.':($blocked?'برای حفظ یکپارچگی تأیید، ابتدا درخواست تأیید جاری را رد یا تعیین‌تکلیف کنید.':'این پیش‌نویس در وضعیت قابل ویرایش نیست.'));}
     private function decisionBack(Request $request,array $result){return back()->with((bool)($result['success']??false)?'success':'error',(bool)($result['success']??false)?'تصمیم ثبت و مطابق policy اجرا شد.':'تصمیم یا اجرای درخواست مجاز نبود.');}
 }
