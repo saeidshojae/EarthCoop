@@ -209,6 +209,7 @@ jobs:
           php artisan route:list > /tmp/route-list.txt
           php artisan list > /tmp/artisan-list.txt
           grep -q "admin.najm-hoda.founder-ops.ministry.chat" /tmp/route-list.txt
+          grep -q "admin.najm-hoda.founder-ops.ministry.readiness" /tmp/route-list.txt
 
       - name: Run Najm Hoda founder ministry tests
         run: vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda/FounderMinistryChatServiceTest.php
