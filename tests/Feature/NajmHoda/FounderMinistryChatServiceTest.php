@@ -12,6 +12,16 @@ use Tests\TestCase;
 
 class FounderMinistryChatServiceTest extends TestCase
 {
+    protected function service(): FounderMinistryChatService
+    {
+        return new FounderMinistryChatService(
+            Mockery::mock(FounderAttentionService::class),
+            Mockery::mock(FounderExecutiveWorkQueueService::class),
+            Mockery::mock(FounderApprovalInboxService::class),
+            Mockery::mock(FounderOperationsSnapshotService::class),
+        );
+    }
+
     public function test_morning_brief_uses_canonical_founder_ops_read_models(): void
     {
         $attention = Mockery::mock(FounderAttentionService::class);
@@ -27,9 +37,7 @@ class FounderMinistryChatServiceTest extends TestCase
             'needs_founder_decision' => 5,
             'prepared_by_najm_hoda' => 6,
             'attention_only' => 7,
-            'items' => [
-                ['kind' => 'approval', 'priority' => 'P0', 'domain' => 'support', 'title' => 'فوری'],
-            ],
+            'items' => [['kind' => 'approval', 'priority' => 'P0', 'domain' => 'support', 'title' => 'فوری']],
         ]);
 
         $service = new FounderMinistryChatService($attention, $queue, $approvals, $snapshots);
@@ -67,6 +75,27 @@ class FounderMinistryChatServiceTest extends TestCase
         $this->assertCount(3, data_get($result, 'management.items'));
         $this->assertSame(1, data_get($result, 'management.summary_cards.pending_decisions'));
         $this->assertSame(2, data_get($result, 'management.summary_cards.prepared'));
+    }
+
+    public function test_typed_management_questions_map_only_to_read_only_intents(): void
+    {
+        $service = $this->service();
+
+        $this->assertSame('morning_brief', $service->inferIntent('از دیشب تا الان چه خبر مهمی داریم؟'));
+        $this->assertSame('pending_approvals', $service->inferIntent('چه چیزهایی منتظر تأیید من است؟'));
+        $this->assertSame('communications', $service->inferIntent('وضعیت ایمیل‌ها و اطلاعیه‌ها چیست؟'));
+        $this->assertSame('system_health', $service->inferIntent('سلامت سامانه چطور است؟'));
+        $this->assertSame('end_of_day', $service->inferIntent('پایان روز چه باقی مانده؟'));
+        $this->assertSame('urgent_items', $service->inferIntent('کارهای فوری من چیست؟'));
+    }
+
+    public function test_executable_or_unknown_typed_request_is_not_inferred_as_an_action(): void
+    {
+        $service = $this->service();
+
+        $this->assertNull($service->inferIntent('همه کاربران را حذف کن'));
+        $this->assertNull($service->inferIntent('این ایمیل را همین الان ارسال کن'));
+        $this->assertNull($service->inferIntent('اطلاعیه شماره 12 را منتشر کن'));
     }
 
     public function test_unknown_management_intent_fails_closed_without_calling_any_read_model(): void
