@@ -247,6 +247,13 @@
                                         @csrf @method('PATCH')
                                         <label class="form-label small text-muted">عنوان</label>
                                         <input name="title" class="form-control form-control-sm mb-2" value="{{ old('title', $draft->title) }}" required>
+                                        <label class="form-label small text-muted">دسته‌بندی</label>
+                                        <select name="category_id" class="form-select form-select-sm mb-2" required>
+                                            <option value="">انتخاب دسته‌بندی</option>
+                                            @foreach($contentCategories ?? [] as $category)
+                                                <option value="{{ $category->id }}" @selected((string) old('category_id', $draft->category_id) === (string) $category->id)>{{ $category->name }}</option>
+                                            @endforeach
+                                        </select>
                                         <label class="form-label small text-muted">متن پیشنهادی</label>
                                         <textarea name="body" rows="6" class="form-control form-control-sm mb-2" required>{{ old('body', $draft->body) }}</textarea>
                                         <button class="btn btn-sm btn-outline-secondary">ذخیره ویرایش</button>
