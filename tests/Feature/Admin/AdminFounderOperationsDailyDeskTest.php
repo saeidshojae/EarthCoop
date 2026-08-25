@@ -22,13 +22,15 @@ class AdminFounderOperationsDailyDeskTest extends TestCase
 
         $this->assertStringContainsString('میز کار روزانه مدیرکل', $view);
         $this->assertStringContainsString('خلاصه اجرایی نجم هدا', $view);
-        $this->assertStringContainsString('کارهای امروز به ترتیب اولویت', $view);
-        $this->assertStringContainsString('تصمیم‌های منتظر من', $view);
-        $this->assertStringContainsString('مکان‌ها، صنف‌ها و تخصص‌های منتظر بررسی', $view);
+        $this->assertStringContainsString('کارهای امروز، به ترتیب اولویت', $view);
+        $this->assertStringContainsString('تصمیم‌های منتظر شما', $view);
+        $this->assertStringContainsString('مکان‌ها، صنف‌ها و تخصص‌ها', $view);
         $this->assertStringContainsString('پشتیبانی کاربران', $view);
         $this->assertStringContainsString('گزارش‌ها و پرونده‌های نظارتی', $view);
-        $this->assertStringContainsString('ارتباطات آماده‌شده توسط نجم هدا', $view);
+        $this->assertStringContainsString('ارتباطات و انتشار', $view);
         $this->assertStringContainsString('نمای سریع وضعیت EarthCoop', $view);
+        $this->assertStringContainsString('حوزه‌های عملیاتی آرام هستند؛ چیزی برای رسیدگی روزانه ثبت نشده است.', $view);
+        $this->assertStringContainsString('نمایش وضعیت فنی و پوشش قابلیت‌های نجم هدا', $view);
 
         $this->assertStringNotContainsString("@section('page-title', 'Founder Operations')", $view);
         $this->assertStringNotContainsString('صف تأیید Founder', $view);
