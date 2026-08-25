@@ -1,1130 +1,175 @@
-@extends('layouts.admin')
-
-
-
-@section('title', 'چت با نجم‌هدا - ' . config('app.name', 'EarthCoop'))
-
-@section('page-title', 'چت با نجم‌هدا')
-
-@section('page-description', 'دستیار هوشمند نجم‌هدا')
-
-
-
-@push('styles')
-
-<style>
-
-    .chat-container {
-
-        display: flex;
-
-        flex-direction: column;
-
-        height: calc(100vh - 250px);
-
-        min-height: 600px;
-
-        background: white;
-
-        border-radius: 16px;
-
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-
-        overflow: hidden;
-
-    }
-
-    
-
-    .chat-header {
-
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-
-        color: white;
-
-        padding: 1.5rem;
-
-        display: flex;
-
-        justify-content: space-between;
-
-        align-items: center;
-
-        flex-shrink: 0;
-
-    }
-
-    
-
-    .chat-header h3 {
-
-        margin: 0;
-
-        font-size: 1.25rem;
-
-        font-weight: 700;
-
-        display: flex;
-
-        align-items: center;
-
-        gap: 0.75rem;
-
-    }
-
-    
-
-    .chat-header select {
-
-        background: white;
-
-        border: none;
-
-        border-radius: 8px;
-
-        padding: 0.5rem 1rem;
-
-        color: #1e293b;
-
-        font-weight: 600;
-
-        cursor: pointer;
-
-    }
-
-    
-
-    .chat-messages {
-
-        flex: 1;
-
-        overflow-y: auto;
-
-        padding: 1.5rem;
-
-        background: #f8fafc;
-
-        direction: rtl;
-
-    }
-
-    
-
-    .chat-messages::-webkit-scrollbar {
-
-        width: 8px;
-
-    }
-
-    
-
-    .chat-messages::-webkit-scrollbar-track {
-
-        background: #e5e7eb;
-
-        border-radius: 4px;
-
-    }
-
-    
-
-    .chat-messages::-webkit-scrollbar-thumb {
-
-        background: #9ca3af;
-
-        border-radius: 4px;
-
-    }
-
-    
-
-    .message {
-
-        margin-bottom: 1.5rem;
-
-        animation: fadeIn 0.3s ease;
-
-    }
-
-    
-
-    @keyframes fadeIn {
-
-        from {
-
-            opacity: 0;
-
-            transform: translateY(10px);
-
-        }
-
-        to {
-
-            opacity: 1;
-
-            transform: translateY(0);
-
-        }
-
-    }
-
-    
-
-    .message-bot {
-
-        display: flex;
-
-        gap: 1rem;
-
-        align-items: flex-start;
-
-    }
-
-    
-
-    .message-user {
-
-        display: flex;
-
-        flex-direction: row-reverse;
-
-        gap: 1rem;
-
-        align-items: flex-start;
-
-    }
-
-    
-
-    .message-avatar {
-
-        width: 40px;
-
-        height: 40px;
-
-        border-radius: 50%;
-
-        display: flex;
-
-        align-items: center;
-
-        justify-content: center;
-
-        font-size: 1.25rem;
-
-        flex-shrink: 0;
-
-    }
-
-    
-
-    .message-bot .message-avatar {
-
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-
-        color: white;
-
-    }
-
-    
-
-    .message-user .message-avatar {
-
-        background: linear-gradient(135deg, #10b981 0%, #047857 100%);
-
-        color: white;
-
-    }
-
-    
-
-    .message-content {
-
-        flex: 1;
-
-        max-width: 70%;
-
-    }
-
-    
-
-    .message-bubble {
-
-        padding: 1rem 1.25rem;
-
-        border-radius: 16px;
-
-        line-height: 1.6;
-
-        word-wrap: break-word;
-
-    }
-
-    
-
-    .message-bot .message-bubble {
-
-        background: white;
-
-        color: #1e293b;
-
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-
-        border-top-right-radius: 4px;
-
-    }
-
-    
-
-    .message-user .message-bubble {
-
-        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-
-        color: white;
-
-        border-top-left-radius: 4px;
-
-    }
-
-    
-
-    .message-name {
-
-        font-weight: 700;
-
-        margin-bottom: 0.5rem;
-
-        font-size: 0.875rem;
-
-    }
-
-    
-
-    .message-text {
-
-        font-size: 0.9375rem;
-
-    }
-
-    
-
-    .message-time {
-
-        font-size: 0.75rem;
-
-        color: #9ca3af;
-
-        margin-top: 0.5rem;
-
-        text-align: left;
-
-    }
-
-    
-
-    .message-user .message-time {
-
-        text-align: right;
-
-        color: rgba(255, 255, 255, 0.8);
-
-    }
-
-    
-
-    .typing-indicator {
-
-        display: inline-flex;
-
-        gap: 0.5rem;
-
-        align-items: center;
-
-        padding: 1rem 1.25rem;
-
-        background: white;
-
-        border-radius: 16px;
-
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-
-    }
-
-    
-
-    .typing-indicator span {
-
-        width: 8px;
-
-        height: 8px;
-
-        border-radius: 50%;
-
-        background: #9ca3af;
-
-        animation: typing 1.4s infinite;
-
-    }
-
-    
-
-    .typing-indicator span:nth-child(2) {
-
-        animation-delay: 0.2s;
-
-    }
-
-    
-
-    .typing-indicator span:nth-child(3) {
-
-        animation-delay: 0.4s;
-
-    }
-
-    
-
-    @keyframes typing {
-
-        0%, 60%, 100% {
-
-            transform: translateY(0);
-
-            opacity: 0.7;
-
-        }
-
-        30% {
-
-            transform: translateY(-10px);
-
-            opacity: 1;
-
-        }
-
-    }
-
-    
-
-    .chat-footer {
-
-        padding: 1.5rem;
-
-        background: white;
-
-        border-top: 1px solid #e5e7eb;
-
-        flex-shrink: 0;
-
-    }
-
-    
-
-    .chat-input-form {
-
-        display: flex;
-
-        gap: 1rem;
-
-        align-items: flex-end;
-
-    }
-
-    
-
-    .chat-input {
-
-        flex: 1;
-
-        padding: 0.875rem 1.25rem;
-
-        border: 2px solid #e5e7eb;
-
-        border-radius: 12px;
-
-        font-size: 0.9375rem;
-
-        transition: all 0.3s ease;
-
-        resize: none;
-
-        min-height: 50px;
-
-        max-height: 150px;
-
-        direction: rtl;
-
-    }
-
-    
-
-    .chat-input:focus {
-
-        outline: none;
-
-        border-color: #667eea;
-
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-
-    }
-
-    
-
-    .chat-send-btn {
-
-        padding: 0.875rem 2rem;
-
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-
-        color: white;
-
-        border: none;
-
-        border-radius: 12px;
-
-        font-weight: 600;
-
-        cursor: pointer;
-
-        transition: all 0.3s ease;
-
-        display: flex;
-
-        align-items: center;
-
-        gap: 0.5rem;
-
-        flex-shrink: 0;
-
-    }
-
-    
-
-    .chat-send-btn:hover {
-
-        transform: translateY(-2px);
-
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-
-    }
-
-    
-
-    .chat-send-btn:disabled {
-
-        opacity: 0.5;
-
-        cursor: not-allowed;
-
-        transform: none;
-
-    }
-
-    
-
-    .suggestions {
-
-        display: flex;
-
-        flex-wrap: wrap;
-
-        gap: 0.5rem;
-
-        margin-top: 1rem;
-
-    }
-
-    
-
-    .suggestion-chip {
-
-        padding: 0.5rem 1rem;
-
-        background: #f3f4f6;
-
-        border: 1px solid #e5e7eb;
-
-        border-radius: 20px;
-
-        font-size: 0.875rem;
-
-        cursor: pointer;
-
-        transition: all 0.3s ease;
-
-        color: #1e293b;
-
-    }
-
-    
-
-    .suggestion-chip:hover {
-
-        background: #667eea;
-
-        color: white;
-
-        border-color: #667eea;
-
-        transform: translateY(-2px);
-
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-
-    }
-
-    
-
-    .welcome-message {
-
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-
-        border: 2px solid rgba(102, 126, 234, 0.2);
-
-        border-radius: 16px;
-
-        padding: 1.5rem;
-
-    }
-
-    
-
-    .welcome-message ul {
-
-        margin-top: 1rem;
-
-        padding-right: 1.5rem;
-
-    }
-
-    
-
-    .welcome-message li {
-
-        margin-bottom: 0.5rem;
-
-        color: #4b5563;
-
-    }
-
-</style>
-
-@endpush
-
-
-
-@section('content')
-
-<div class="chat-container" style="direction: rtl;">
-
-    <!-- Chat Header -->
-
-    <div class="chat-header">
-
-        <h3>
-
-            <i class="fas fa-robot"></i>
-
-            چت با نجم‌هدا (ادمین)
-
-        </h3>
-
-        <select id="agent-selector" class="form-select form-select-sm">
-
-            <option value="">انتخاب خودکار عامل</option>
-
-            @foreach($agents as $key => $agent)
-
-            <option value="{{ $key }}">{{ $agent['icon'] }} {{ $agent['name'] }}</option>
-
-            @endforeach
-
-        </select>
-
-    </div>
-
-    
-
-    <!-- Chat Messages -->
-
-    <div class="chat-messages" id="chat-messages">
-
-        <!-- Welcome Message -->
-
-        <div class="message message-bot">
-
-            <div class="message-avatar">🌟</div>
-
-            <div class="message-content">
-
-                <div class="message-bubble welcome-message">
-
-                    <div class="message-name">نجم‌هدا:</div>
-
-                    <div class="message-text">
-
-                        سلام! من نجم‌هدا هستم، دستیار هوشمند شما. 🌟<br><br>
-
-                        
-
-                        چون شما ادمین هستید، می‌تونید:
-
-                        <ul>
-
-                            <li>🔧 از مهندس بخواید کد بنویسد یا بررسی کند</li>
-
-                            <li>✈️ از خلبان گزارش پروژه بگیرید</li>
-
-                            <li>👨‍✈️ از مهماندار راهنما بخواید</li>
-
-                            <li>📖 از راهنما استراتژی بخواید</li>
-
-                            <li>🏗️ از معمار بخواید عامل جدید بسازد</li>
-
-                        </ul>
-
-                    </div>
-
-                    <div class="message-time">الان</div>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-    
-
-    <!-- Chat Footer -->
-
-    <div class="chat-footer">
-
-        <form id="chat-form" class="chat-input-form">
-
-            @csrf
-
-            <textarea id="message-input" 
-
-                      class="chat-input" 
-
-                      placeholder="پیام خود را بنویسید..."
-
-                      rows="1"
-
-                      autocomplete="off"></textarea>
-
-            <button type="submit" class="chat-send-btn" id="send-btn">
-
-                <i class="fas fa-paper-plane"></i>
-
-                ارسال
-
-            </button>
-
-        </form>
-
-        <div id="suggestions" class="suggestions"></div>
-
-    </div>
-
-</div>
-
-@endsection
-
-
-
-@push('scripts')
-
-<script>
-
-const chatMessages = document.getElementById('chat-messages');
-
-const chatForm = document.getElementById('chat-form');
-
-const messageInput = document.getElementById('message-input');
-
-const sendBtn = document.getElementById('send-btn');
-
-const agentSelector = document.getElementById('agent-selector');
-
-const suggestionsDiv = document.getElementById('suggestions');
-
-
-
-// Auto-resize textarea
-
-messageInput.addEventListener('input', function() {
-
-    this.style.height = 'auto';
-
-    this.style.height = Math.min(this.scrollHeight, 150) + 'px';
-
-});
-
-
-
-// ارسال پیام
-
-chatForm.addEventListener('submit', async (e) => {
-
-    e.preventDefault();
-
-    
-
-    const message = messageInput.value.trim();
-
-    if (!message) return;
-
-    
-
-    const agent = agentSelector.value;
-
-    
-
-    // اضافه کردن پیام کاربر
-
-    addMessage(message, 'user');
-
-    messageInput.value = '';
-
-    messageInput.style.height = 'auto';
-
-    suggestionsDiv.innerHTML = '';
-
-    
-
-    // نمایش typing indicator
-
-    showTyping();
-
-    sendBtn.disabled = true;
-
-    
-
-    try {
-
-        const response = await fetch('{{ route('admin.najm-hoda.chat.send') }}', {
-
-            method: 'POST',
-
-            headers: {
-
-                'Content-Type': 'application/json',
-
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-
-            },
-
-            body: JSON.stringify({ 
-
-                message: message,
-
-                agent: agent || null
-
-            })
-
-        });
-
-        
-
-        const data = await response.json();
-
-        
-
-        // حذف typing indicator
-
-        removeTyping();
-
-        sendBtn.disabled = false;
-
-        
-
-        if (data.success) {
-
-            // اضافه کردن پاسخ بات
-
-            addMessage(data.response, 'bot', data.agent);
-
-            
-
-            // نمایش پیشنهادات
-
-            if (data.suggestions && data.suggestions.length > 0) {
-
-                showSuggestions(data.suggestions);
-
-            }
-
-        } else {
-
-            addMessage(data.message || 'متأسفانه خطایی رخ داد. لطفاً دوباره تلاش کنید.', 'bot', 'error');
-
-        }
-
-        
-
-    } catch (error) {
-
-        console.error('خطای JavaScript:', error);
-
-        removeTyping();
-
-        sendBtn.disabled = false;
-
-        addMessage('خطا در ارتباط با سرور. لطفاً اتصال اینترنت خود را بررسی کنید.', 'bot', 'error');
-
-    }
-
-});
-
-
-
-// اضافه کردن پیام به چت
-
-function addMessage(text, sender, agent = null) {
-
-    const messageDiv = document.createElement('div');
-
-    messageDiv.className = `message message-${sender}`;
-
-    
-
-    const agentIcon = getAgentIcon(agent);
-
-    const agentName = getAgentName(agent);
-
-    
-
-    if (sender === 'user') {
-
-        messageDiv.innerHTML = `
-
-            <div class="message-avatar">
-
-                <i class="fas fa-user"></i>
-
-            </div>
-
-            <div class="message-content">
-
-                <div class="message-bubble">
-
-                    <div class="message-text">${escapeHtml(text)}</div>
-
-                    <div class="message-time">الان</div>
-
-                </div>
-
-            </div>
-
-        `;
-
-    } else {
-
-        messageDiv.innerHTML = `
-
-            <div class="message-avatar">${agentIcon}</div>
-
-            <div class="message-content">
-
-                <div class="message-bubble">
-
-                    <div class="message-name">${agentName}:</div>
-
-                    <div class="message-text">${escapeHtml(text).replace(/\n/g, '<br>')}</div>
-
-                    <div class="message-time">الان</div>
-
-                </div>
-
-            </div>
-
-        `;
-
-    }
-
-    
-
-    chatMessages.appendChild(messageDiv);
-
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-
-}
-
-
-
-// نمایش typing indicator
-
-function showTyping() {
-
-    const typingDiv = document.createElement('div');
-
-    typingDiv.id = 'typing-indicator';
-
-    typingDiv.className = 'message message-bot';
-
-    typingDiv.innerHTML = `
-
-        <div class="message-avatar">🌟</div>
-
-        <div class="message-content">
-
-            <div class="typing-indicator">
-
-                <span></span>
-
-                <span></span>
-
-                <span></span>
-
-            </div>
-
-        </div>
-
-    `;
-
-    chatMessages.appendChild(typingDiv);
-
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-
-}
-
-
-
-// حذف typing indicator
-
-function removeTyping() {
-
-    const typingDiv = document.getElementById('typing-indicator');
-
-    if (typingDiv) {
-
-        typingDiv.remove();
-
-    }
-
-}
-
-
-
-// نمایش پیشنهادات
-
-function showSuggestions(suggestions) {
-
-    suggestionsDiv.innerHTML = '';
-
-    suggestions.forEach(suggestion => {
-
-        const chip = document.createElement('span');
-
-        chip.className = 'suggestion-chip';
-
-        chip.textContent = suggestion;
-
-        chip.onclick = () => {
-
-            messageInput.value = suggestion;
-
-            messageInput.focus();
-
-            messageInput.style.height = 'auto';
-
-            messageInput.style.height = Math.min(messageInput.scrollHeight, 150) + 'px';
-
-        };
-
-        suggestionsDiv.appendChild(chip);
-
-    });
-
-}
-
-
-
-// دریافت آیکون عامل
-
-function getAgentIcon(agent) {
-
-    const icons = {
-
-        'engineer': '🔧',
-
-        'pilot': '✈️',
-
-        'steward': '👨‍✈️',
-
-        'guide': '📖',
-
-        'architect': '🏗️',
-
-    };
-
-    return icons[agent] || '🌟';
-
-}
-
-
-
-// دریافت نام عامل
-
-function getAgentName(agent) {
-
-    const names = {
-
-        'engineer': 'مهندس',
-
-        'pilot': 'خلبان',
-
-        'steward': 'مهماندار',
-
-        'guide': 'راهنما',
-
-        'architect': 'معمار',
-
-    };
-
-    return names[agent] || 'نجم‌هدا';
-
-}
-
-
-
-// Escape HTML
-
-function escapeHtml(text) {
-
-    const div = document.createElement('div');
-
-    div.textContent = text;
-
-    return div.innerHTML;
-
-}
-
-
-
-// فوکوس بر روی input
-
-messageInput.focus();
-
-
-
-// Enter برای ارسال، Shift+Enter برای خط جدید
-
-messageInput.addEventListener('keydown', function(e) {
-
-    if (e.key === 'Enter' && !e.shiftKey) {
-
-        e.preventDefault();
-
-        chatForm.dispatchEvent(new Event('submit'));
-
-    }
-
-});
-
-</script>
-
-@endpush
-
+@extends('layouts.admin')
+
+@section('title', 'چت با نجم‌هدا - ' . config('app.name', 'EarthCoop'))
+@section('page-title', 'چت با نجم‌هدا')
+@section('page-description', 'گفت‌وگوی آزاد و وزارت هوشمند مدیرکل')
+
+@push('styles')
+<style>
+    .nh-chat-shell{background:#fff;border-radius:16px;box-shadow:0 4px 20px rgba(15,23,42,.08);overflow:hidden}
+    .nh-chat-head{padding:1rem 1.25rem;border-bottom:1px solid #e5e7eb;display:flex;flex-wrap:wrap;gap:1rem;align-items:center;justify-content:space-between}
+    .nh-tabs{display:flex;gap:.5rem;flex-wrap:wrap}.nh-tab{border:1px solid #cbd5e1;background:#fff;border-radius:999px;padding:.55rem 1rem;font-weight:700;cursor:pointer}.nh-tab.active{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
+    .nh-pane{display:none}.nh-pane.active{display:block}
+    .nh-ministry{padding:1rem 1.25rem;background:#f8fafc;border-bottom:1px solid #e5e7eb}
+    .nh-ministry-actions{display:flex;gap:.5rem;flex-wrap:wrap}.nh-intent{border:1px solid #bfdbfe;background:#eff6ff;color:#1e3a8a;border-radius:10px;padding:.55rem .8rem;font-weight:700;cursor:pointer}.nh-intent:hover{background:#dbeafe}.nh-intent[disabled]{opacity:.55;cursor:wait}
+    .nh-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem;margin-top:1rem}.nh-summary-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:.8rem}.nh-summary-card .v{font-size:1.5rem;font-weight:800}.nh-summary-card .k{font-size:.8rem;color:#64748b}
+    .nh-messages{height:52vh;min-height:420px;overflow:auto;padding:1.25rem;background:#f8fafc}.nh-msg{display:flex;margin-bottom:1rem}.nh-msg.user{justify-content:flex-start}.nh-bubble{max-width:78%;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:.85rem 1rem;line-height:1.8;white-space:pre-wrap}.nh-msg.user .nh-bubble{background:#1d4ed8;color:#fff;border-color:#1d4ed8}.nh-meta{font-size:.75rem;opacity:.7;margin-top:.35rem}
+    .nh-items{margin-top:.8rem;display:grid;gap:.6rem}.nh-item{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:.7rem .8rem}.nh-item-top{display:flex;gap:.5rem;align-items:center;justify-content:space-between}.nh-badge{font-size:.72rem;border-radius:999px;padding:.2rem .5rem;background:#e2e8f0}.nh-badge.p0{background:#fee2e2;color:#991b1b}.nh-badge.p1{background:#fef3c7;color:#92400e}.nh-badge.p2{background:#dbeafe;color:#1e40af}.nh-badge.p3{background:#e2e8f0;color:#334155}
+    .nh-footer{padding:1rem 1.25rem;border-top:1px solid #e5e7eb}.nh-form{display:flex;gap:.75rem;align-items:flex-end}.nh-form textarea{flex:1;resize:none;min-height:48px;max-height:160px}.nh-status{font-size:.8rem;color:#64748b;margin-top:.5rem}.nh-ministry-note{font-size:.82rem;color:#64748b;margin-top:.65rem}.nh-link{font-size:.82rem;text-decoration:none}
+    @media(max-width:768px){.nh-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.nh-messages{height:48vh;min-height:360px}.nh-bubble{max-width:92%}.nh-chat-head{align-items:flex-start}.nh-form{flex-direction:column}.nh-form textarea,.nh-form button{width:100%}}
+</style>
+@endpush
+
+@section('content')
+<div class="container-fluid py-3" dir="rtl">
+    <div class="nh-chat-shell">
+        <div class="nh-chat-head">
+            <div>
+                <div class="fw-bold fs-5">نجم هدا</div>
+                <div class="text-muted small">همراه مدیریتی EarthCoop</div>
+            </div>
+            <div class="nh-tabs" role="tablist" aria-label="حالت گفتگو">
+                <button type="button" class="nh-tab active" data-pane="ministry">وزارت هوشمند</button>
+                <button type="button" class="nh-tab" data-pane="free-chat">گفت‌وگوی آزاد</button>
+            </div>
+            <select id="agentSelect" class="form-select form-select-sm" style="width:auto" aria-label="عامل نجم هدا">
+                <option value="steward">خادم / Steward</option>
+                <option value="guide">راهنما / Guide</option>
+                <option value="pilot">Pilot</option>
+                <option value="engineer">Engineer</option>
+                <option value="architect">Architect</option>
+            </select>
+        </div>
+
+        <div id="ministry" class="nh-pane active">
+            <div class="nh-ministry">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div>
+                        <div class="fw-bold">وزارت هوشمند مدیرکل</div>
+                        <div class="text-muted small">گزارش‌های این بخش مستقیماً از Founder Ops خوانده می‌شوند و برای پاسخ factual به مدل زبانی متکی نیستند.</div>
+                    </div>
+                    <a class="nh-link" href="{{ route('admin.najm-hoda.founder-ops.index') }}">باز کردن میز کار کامل مدیرکل ←</a>
+                </div>
+                <div class="nh-ministry-actions mt-3" id="ministryActions">
+                    <button class="nh-intent" type="button" data-intent="morning_brief">☀ صبح مدیرکل</button>
+                    <button class="nh-intent" type="button" data-intent="urgent_items">⚠ کارهای فوری من</button>
+                    <button class="nh-intent" type="button" data-intent="pending_approvals">✓ در انتظار تأیید من</button>
+                    <button class="nh-intent" type="button" data-intent="communications">✉ ارتباطات</button>
+                    <button class="nh-intent" type="button" data-intent="system_health">♡ سلامت سامانه</button>
+                    <button class="nh-intent" type="button" data-intent="end_of_day">☾ پایان روز مدیرکل</button>
+                </div>
+                <div id="summaryCards" class="nh-summary" hidden></div>
+                <div class="nh-ministry-note">عملیات حساس از این دکمه‌ها اجرا نمی‌شوند؛ تأیید/رد و ارسال/انتشار همچنان از مسیرهای approval موجود انجام می‌شود.</div>
+            </div>
+        </div>
+        <div id="free-chat" class="nh-pane"></div>
+
+        <div class="nh-messages" id="chatMessages" aria-live="polite">
+            <div class="nh-msg bot">
+                <div class="nh-bubble">
+                    <strong>نجم هدا — وزارت هوشمند</strong>
+                    <div class="mt-1">برای شروع می‌توانید «صبح مدیرکل» را بزنید تا مهم‌ترین وضعیت فعلی EarthCoop را از داده‌های واقعی مدیریتی جمع‌بندی کنم؛ یا به تب گفت‌وگوی آزاد بروید و سؤال خودتان را بنویسید.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="nh-footer">
+            <form id="chatForm" class="nh-form">
+                @csrf
+                <textarea id="messageInput" class="form-control" rows="1" maxlength="5000" placeholder="سؤال یا درخواست خود را بنویسید..."></textarea>
+                <button class="btn btn-primary px-4" type="submit" id="sendButton">ارسال</button>
+            </form>
+            <div class="nh-status" id="chatStatus">در حالت وزارت هوشمند، دکمه‌های بالا داده‌های مدیریتی grounded را می‌خوانند؛ متن آزاد از چت عمومی نجم هدا عبور می‌کند.</div>
+        </div>
+    </div>
+</div>
+@endsection
+
+@push('scripts')
+<script>
+(() => {
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || document.querySelector('#chatForm input[name="_token"]')?.value || '';
+    const messages = document.getElementById('chatMessages');
+    const form = document.getElementById('chatForm');
+    const input = document.getElementById('messageInput');
+    const sendButton = document.getElementById('sendButton');
+    const status = document.getElementById('chatStatus');
+    const agentSelect = document.getElementById('agentSelect');
+    const summaryCards = document.getElementById('summaryCards');
+    const ministryUrl = @json(route('admin.najm-hoda.founder-ops.ministry.chat'));
+    const freeChatUrl = @json(route('admin.najm-hoda.chat.send'));
+
+    const labels = {
+        urgent: 'فوری / مهم', founder_decisions: 'منتظر تصمیم من', prepared: 'آماده توسط نجم', information: 'صرفاً جهت اطلاع',
+        pending: 'منتظر', overdue: 'عقب‌افتاده', pending_decisions: 'تصمیم ارتباطی', total: 'مجموع', health_attention_items: 'هشدار سلامت', runtime_status: 'وضعیت runtime'
+    };
+
+    function escapeHtml(value) {
+        const d = document.createElement('div'); d.textContent = value == null ? '' : String(value); return d.innerHTML;
+    }
+    function addMessage(text, who='bot', management=null) {
+        const wrap = document.createElement('div'); wrap.className = `nh-msg ${who}`;
+        const bubble = document.createElement('div'); bubble.className = 'nh-bubble';
+        bubble.innerHTML = `<strong>${who === 'user' ? 'شما' : 'نجم هدا'}</strong><div class="mt-1">${escapeHtml(text)}</div>`;
+        if (management?.items?.length) {
+            const items = document.createElement('div'); items.className = 'nh-items';
+            management.items.slice(0, 12).forEach(item => {
+                const priority = String(item.priority || item.risk || 'P3').toLowerCase();
+                const title = item.title || item.label || item.domain || 'مورد مدیریتی';
+                const kind = item.kind === 'approval' ? 'منتظر تصمیم شما' : (item.kind === 'proposal' ? 'آماده بررسی' : (item.status || item.sla_status || 'جهت اطلاع'));
+                const row = document.createElement('div'); row.className = 'nh-item';
+                row.innerHTML = `<div class="nh-item-top"><span>${escapeHtml(title)}</span><span class="nh-badge ${escapeHtml(priority)}">${escapeHtml(item.priority || item.risk || '')}</span></div><div class="small text-muted mt-1">${escapeHtml(kind)}${item.domain ? ' · ' + escapeHtml(item.domain) : ''}</div>`;
+                items.appendChild(row);
+            });
+            bubble.appendChild(items);
+        }
+        wrap.appendChild(bubble); messages.appendChild(wrap); messages.scrollTop = messages.scrollHeight;
+    }
+    function renderSummary(cards) {
+        if (!cards || Object.keys(cards).length === 0) { summaryCards.hidden = true; summaryCards.innerHTML = ''; return; }
+        summaryCards.innerHTML = '';
+        Object.entries(cards).slice(0, 4).forEach(([key, value]) => {
+            const card = document.createElement('div'); card.className = 'nh-summary-card';
+            card.innerHTML = `<div class="v">${escapeHtml(value)}</div><div class="k">${escapeHtml(labels[key] || key)}</div>`;
+            summaryCards.appendChild(card);
+        });
+        summaryCards.hidden = false;
+    }
+    async function fetchJson(url, options) {
+        const response = await fetch(url, options);
+        let data = {}; try { data = await response.json(); } catch (_) {}
+        if (!response.ok) throw new Error(data.message || data.error || `HTTP ${response.status}`);
+        return data;
+    }
+    async function runIntent(button) {
+        const intent = button.dataset.intent; if (!intent) return;
+        document.querySelectorAll('.nh-intent').forEach(b => b.disabled = true); status.textContent = 'در حال خواندن وضعیت واقعی Founder Ops...';
+        try {
+            const data = await fetchJson(ministryUrl, {method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':csrf}, body:JSON.stringify({intent, hours:24})});
+            addMessage(data.message || 'گزارش آماده شد.', 'bot', data.management || null);
+            renderSummary(data.management?.summary_cards || {});
+            status.textContent = 'گزارش از داده‌های canonical Founder Ops تهیه شد.';
+        } catch (error) {
+            addMessage('امکان دریافت گزارش مدیریتی وجود نداشت: ' + error.message, 'bot'); status.textContent = 'خطا در وزارت هوشمند.';
+        } finally { document.querySelectorAll('.nh-intent').forEach(b => b.disabled = false); }
+    }
+    document.querySelectorAll('.nh-intent').forEach(button => button.addEventListener('click', () => runIntent(button)));
+    document.querySelectorAll('.nh-tab').forEach(tab => tab.addEventListener('click', () => {
+        document.querySelectorAll('.nh-tab').forEach(t => t.classList.remove('active')); tab.classList.add('active');
+        document.querySelectorAll('.nh-pane').forEach(p => p.classList.remove('active')); document.getElementById(tab.dataset.pane)?.classList.add('active');
+        status.textContent = tab.dataset.pane === 'ministry' ? 'وزارت هوشمند فعال است؛ دکمه‌های مدیریتی از Founder Ops می‌خوانند.' : 'گفت‌وگوی آزاد فعال است؛ متن شما به runtime گفت‌وگوی نجم هدا ارسال می‌شود.';
+    }));
+    form.addEventListener('submit', async event => {
+        event.preventDefault(); const text = input.value.trim(); if (!text) return;
+        addMessage(text, 'user'); input.value = ''; sendButton.disabled = true; status.textContent = 'نجم هدا در حال پاسخ است...';
+        try {
+            const data = await fetchJson(freeChatUrl, {method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':csrf}, body:JSON.stringify({message:text, agent:agentSelect.value})});
+            addMessage(data.response || data.message || 'پاسخی دریافت نشد.', 'bot'); status.textContent = 'پاسخ دریافت شد.';
+        } catch (error) {
+            addMessage('خطا در گفت‌وگو: ' + error.message, 'bot'); status.textContent = 'خطا در گفت‌وگوی آزاد.';
+        } finally { sendButton.disabled = false; input.focus(); }
+    });
+    input.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); form.requestSubmit(); } });
+})();
+</script>
+@endpush
