@@ -28,28 +28,98 @@ jobs:
     name: Validate staging boundary
     runs-on: ubuntu-latest
     steps:
-      - name: Fail closed unless explicit staging confirmation is present
+      - name: Fail closed unless explicit staging boundary is present
         env:
           CONFIRMATION: ${{ inputs.confirmation }}
           SERVER_DIR: ${{ inputs.server_dir }}
           APP_URL: ${{ inputs.app_url }}
+          REQUESTED_REF: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          test "$CONFIRMATION" = "STAGING-UAT" || { echo "Refusing deploy: confirmation must equal STAGING-UAT"; exit 1; }
-          test -n "$SERVER_DIR" || { echo "Refusing deploy: server_dir is required"; exit 1; }
-          test -n "$APP_URL" || { echo "Refusing deploy: app_url is required"; exit 1; }
+
+          test "$REQUESTED_REF" = "agent/najm-hoda-executive-uat-post-elections" || {
+            echo "Refusing deploy: workflow must run from the dedicated executive UAT branch"
+            exit 1
+          }
+
+          test "$CONFIRMATION" = "STAGING-UAT" || {
+            echo "Refusing deploy: confirmation must equal STAGING-UAT"
+            exit 1
+          }
+
+          test -n "$SERVER_DIR" || {
+            echo "Refusing deploy: server_dir is required"
+            exit 1
+          }
+
+          test -n "$APP_URL" || {
+            echo "Refusing deploy: app_url is required"
+            exit 1
+          }
+
           case "$SERVER_DIR" in
-            ./|/|public_html/|./public_html/)
+            */) ;;
+            *)
+              echo "Refusing deploy: server_dir must end with /"
+              exit 1
+              ;;
+          esac
+
+          case "$SERVER_DIR" in
+            /*|~*|*\\*|*../*|*/../*|*/..|..|./../*)
+              echo "Refusing deploy: absolute, home-relative, backslash, or traversal server_dir is not allowed"
+              exit 1
+              ;;
+          esac
+
+          NORMALIZED_SERVER_DIR="$SERVER_DIR"
+          while [ "${NORMALIZED_SERVER_DIR#./}" != "$NORMALIZED_SERVER_DIR" ]; do
+            NORMALIZED_SERVER_DIR="${NORMALIZED_SERVER_DIR#./}"
+          done
+          NORMALIZED_SERVER_DIR="${NORMALIZED_SERVER_DIR%/}"
+
+          case "$NORMALIZED_SERVER_DIR" in
+            ""|.|public_html)
               echo "Refusing deploy: production/root-like server_dir is not allowed"
               exit 1
               ;;
           esac
-          case "$APP_URL" in
-            https://earthcoop.info|https://www.earthcoop.info|http://earthcoop.info|http://www.earthcoop.info)
-              echo "Refusing deploy: production APP_URL is not allowed"
-              exit 1
-              ;;
-          esac
+
+          python3 - <<'PY'
+          import os
+          import sys
+          from urllib.parse import urlsplit
+
+          value = os.environ['APP_URL'].strip()
+          try:
+              parsed = urlsplit(value)
+          except Exception as exc:
+              print(f"Refusing deploy: invalid APP_URL ({exc})")
+              sys.exit(1)
+
+          host = (parsed.hostname or '').lower().rstrip('.')
+          if parsed.scheme != 'https':
+              print('Refusing deploy: APP_URL must use https')
+              sys.exit(1)
+          if parsed.username or parsed.password:
+              print('Refusing deploy: APP_URL must not contain credentials')
+              sys.exit(1)
+          if parsed.query or parsed.fragment:
+              print('Refusing deploy: APP_URL must not contain query or fragment')
+              sys.exit(1)
+          if parsed.path not in ('', '/'):
+              print('Refusing deploy: APP_URL must be the staging origin, without an application path')
+              sys.exit(1)
+          if host in {'earthcoop.info', 'www.earthcoop.info'}:
+              print('Refusing deploy: production APP_URL is not allowed')
+              sys.exit(1)
+          if not host.endswith('.earthcoop.info'):
+              print('Refusing deploy: APP_URL must be a dedicated earthcoop.info subdomain')
+              sys.exit(1)
+          if parsed.port not in (None, 443):
+              print('Refusing deploy: staging HTTPS origin must use the default HTTPS port')
+              sys.exit(1)
+          PY
 
   full-validation:
     name: Staging UAT safety gate
