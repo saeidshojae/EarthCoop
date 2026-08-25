@@ -33,11 +33,12 @@ class FounderDraftEditingService
     }
 
     /** @return array<string,mixed> */
-    public function updateContent(FounderContentDraft $draft, string $title, string $body, int $actorId): array
+    public function updateContent(FounderContentDraft $draft, string $title, string $body, int $actorId, ?int $categoryId = null): array
     {
         return $this->updateDraft($draft, 'founder_content_draft', [
             'title' => $title,
             'body' => $body,
+            'category_id' => $categoryId ?? $draft->category_id,
         ], $actorId);
     }
 
