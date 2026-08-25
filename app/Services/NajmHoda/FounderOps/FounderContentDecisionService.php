@@ -46,14 +46,14 @@ class FounderContentDecisionService
 
         $management = $this->systemIdentities->management();
 
-        return $this->execution->execute('blog','publish_post',function()use($draft,$management){
+        return $this->execution->execute('blog','publish_post',function()use($draft,$management,$founderId){
             $blog=$this->blogs->create([
                 'title'=>$draft->title,
                 'content'=>$this->sanitizer->sanitize($draft->body),
                 'group_id'=>(int)$draft->group_id,
                 'category_id'=>$draft->category_id,
             ],(int)$management->id);
-            $draft->update(['status'=>'published','approved_by'=>(int)data_get($this->approvals->history(1,'approved'), '0.decision_by'),'published_at'=>now()]);
+            $draft->update(['status'=>'published','approved_by'=>$founderId,'published_at'=>now()]);
             return ['draft_id'=>$draft->id,'blog_id'=>$blog->id,'publisher_identity_id'=>(int)$management->id];
         },$requestId,['entity_type'=>'founder_content_draft','entity_id'=>$draft->id,'requested_by'=>$founderId]);
     }
