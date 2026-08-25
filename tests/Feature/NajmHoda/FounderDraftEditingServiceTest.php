@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\NajmHoda;
 
+use App\Models\Category;
+use App\Models\FounderContentDraft;
 use App\Models\SupportReplyDraft;
 use App\Models\Ticket;
 use App\Services\NajmHoda\FounderOps\FounderDraftEditingService;
@@ -45,6 +47,30 @@ class FounderDraftEditingServiceTest extends TestCase
         $this->assertNotEmpty($events);
         $this->assertSame(99, (int) data_get($events[0], 'payload.edited_by'));
         $this->assertSame(['body'], data_get($events[0], 'payload.changed_fields'));
+    }
+
+    public function test_founder_can_set_content_category_before_approval(): void
+    {
+        config()->set('najm-hoda-founder-action-policy.founder_approval.user_ids', [99]);
+        app(RuntimeEventBus::class)->clear();
+        $category = Category::query()->create(['name' => 'مدیریت']);
+        $draft = FounderContentDraft::query()->create([
+            'title' => 'عنوان اولیه',
+            'body' => 'متن اولیه',
+            'status' => 'draft',
+        ]);
+
+        $result = app(FounderDraftEditingService::class)->updateContent(
+            $draft,
+            'عنوان ویرایش‌شده',
+            'متن ویرایش‌شده',
+            99,
+            (int) $category->id
+        );
+
+        $this->assertTrue($result['success']);
+        $this->assertSame((int)$category->id, (int)$draft->fresh()->category_id);
+        $this->assertContains('category_id', (array)($result['changed_fields'] ?? []));
     }
 
     public function test_non_founder_cannot_edit_draft(): void
