@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\FounderAnnouncementDraft;
 use App\Models\FounderContentDraft;
 use App\Models\FounderEmailDraft;
+use App\Models\User;
 use App\Services\NajmHoda\FounderOps\FounderAnnouncementDecisionService;
 use App\Services\NajmHoda\FounderOps\FounderContentDecisionService;
 use App\Services\NajmHoda\FounderOps\FounderEmailDecisionService;
@@ -17,11 +18,14 @@ class FounderCommunicationRejectReplayTest extends TestCase
 {
     use RefreshDatabase;
 
+    private int $founderId;
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        config(['najm-hoda-founder-action-policy.founder_approval.user_ids' => [1]]);
+        $this->founderId = (int) User::factory()->create()->id;
+        config(['najm-hoda-founder-action-policy.founder_approval.user_ids' => [$this->founderId]]);
         Cache::forget('najm_hoda:autonomy:approval:requests');
     }
 
@@ -35,17 +39,17 @@ class FounderCommunicationRejectReplayTest extends TestCase
         ]);
 
         $service = app(FounderEmailDecisionService::class);
-        $requested = $service->requestSend($draft, 1);
+        $requested = $service->requestSend($draft, $this->founderId);
         $requestId = data_get($requested, 'approval_request.id');
 
         $this->assertSame('awaiting_approval', $requested['status'] ?? null);
         $this->assertNotEmpty($requestId);
 
-        $rejected = $service->decideAndExecute((string) $requestId, 'reject', 1, 'UAT reject');
+        $rejected = $service->decideAndExecute((string) $requestId, 'reject', $this->founderId, 'UAT reject');
         $this->assertTrue((bool) ($rejected['success'] ?? false));
         $this->assertSame('rejected', $draft->fresh()->status);
 
-        $replay = $service->decideAndExecute((string) $requestId, 'approve', 1);
+        $replay = $service->decideAndExecute((string) $requestId, 'approve', $this->founderId);
         $this->assertFalse((bool) ($replay['success'] ?? true));
         $this->assertSame('invalid_request', $replay['status'] ?? null);
     }
@@ -63,17 +67,17 @@ class FounderCommunicationRejectReplayTest extends TestCase
         ]);
 
         $service = app(FounderContentDecisionService::class);
-        $requested = $service->requestPublish($draft, 1);
+        $requested = $service->requestPublish($draft, $this->founderId);
         $requestId = data_get($requested, 'approval_request.id');
 
         $this->assertSame('awaiting_approval', $requested['status'] ?? null);
         $this->assertNotEmpty($requestId);
 
-        $rejected = $service->decideAndExecute((string) $requestId, 'reject', 1, 'UAT reject');
+        $rejected = $service->decideAndExecute((string) $requestId, 'reject', $this->founderId, 'UAT reject');
         $this->assertTrue((bool) ($rejected['success'] ?? false));
         $this->assertSame('rejected', $draft->fresh()->status);
 
-        $replay = $service->decideAndExecute((string) $requestId, 'approve', 1);
+        $replay = $service->decideAndExecute((string) $requestId, 'approve', $this->founderId);
         $this->assertFalse((bool) ($replay['success'] ?? true));
         $this->assertSame('invalid_request', $replay['status'] ?? null);
     }
@@ -87,21 +91,21 @@ class FounderCommunicationRejectReplayTest extends TestCase
             'should_pin' => false,
             'status' => 'draft',
             'reason_code' => 'announcement-uat-replay',
-            'created_by' => 1,
+            'created_by' => $this->founderId,
         ]);
 
         $service = app(FounderAnnouncementDecisionService::class);
-        $requested = $service->requestPublish($draft, 1);
+        $requested = $service->requestPublish($draft, $this->founderId);
         $requestId = data_get($requested, 'approval_request.id');
 
         $this->assertSame('awaiting_approval', $requested['status'] ?? null);
         $this->assertNotEmpty($requestId);
 
-        $rejected = $service->decideAndExecute((string) $requestId, 'reject', 1, 'UAT reject');
+        $rejected = $service->decideAndExecute((string) $requestId, 'reject', $this->founderId, 'UAT reject');
         $this->assertTrue((bool) ($rejected['success'] ?? false));
         $this->assertSame('rejected', $draft->fresh()->status);
 
-        $replay = $service->decideAndExecute((string) $requestId, 'approve', 1);
+        $replay = $service->decideAndExecute((string) $requestId, 'approve', $this->founderId);
         $this->assertFalse((bool) ($replay['success'] ?? true));
         $this->assertSame('invalid_request', $replay['status'] ?? null);
     }
