@@ -117,4 +117,35 @@ class FounderMinistryAgencyServiceTest extends TestCase
         $this->assertFalse(in_array('governance', $agency['domain_keys'], true));
         $this->assertFalse(in_array('email', $agency['domain_keys'], true));
     }
+
+    public function test_agency_items_expose_human_presentation_without_losing_audit_codes(): void
+    {
+        $agency = app(FounderMinistryAgencyService::class)->describe('users_registration', []);
+
+        $supportDraft = collect($agency['may_prepare'])->first(
+            fn (array $item): bool => ($item['domain'] ?? null) === 'users'
+                && ($item['action'] ?? null) === 'draft_support_response'
+        );
+
+        $this->assertIsArray($supportDraft);
+        $this->assertSame('draft_support_response', $supportDraft['action']);
+        $this->assertSame('پاسخ پشتیبانی را آماده کنم', $supportDraft['display_title']);
+        $this->assertStringContainsString('پاسخ مناسب', $supportDraft['display_explanation']);
+    }
+
+    public function test_blocked_items_explain_the_reason_in_manager_language(): void
+    {
+        $agency = app(FounderMinistryAgencyService::class)->describe('communications', []);
+
+        $blocked = collect($agency['blocked'])->first(
+            fn (array $item): bool => ($item['domain'] ?? null) === 'notifications'
+                && ($item['action'] ?? null) === 'change_global_notification_defaults'
+        );
+
+        $this->assertIsArray($blocked);
+        $this->assertSame('persisted_global_defaults_missing', $blocked['reason']);
+        $this->assertSame('تنظیمات عمومی اعلان‌ها را تغییر دهم', $blocked['display_title']);
+        $this->assertStringContainsString('ذخیره پایدار', $blocked['display_explanation']);
+        $this->assertStringNotContainsString('persisted_global_defaults_missing', $blocked['display_explanation']);
+    }
 }
