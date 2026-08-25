@@ -8,17 +8,16 @@ class AdminMiddleware
 {
     public function handle($request, Closure $next)
     {
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return redirect('/home')->with('error', 'لطفا ابتدا وارد شوید');
         }
 
         $user = Auth::user();
 
-        // Global admin surfaces, including Founder Operations, must not become
-        // available merely because a user has an application role. Scoped roles
-        // such as support, moderator, group-manager or content-manager are not
-        // equivalent to EarthCoop administration authority.
-        if ($user->is_admin || $user->hasRole('super-admin')) {
+        // Generic admin surfaces remain accessible to explicitly assigned
+        // application roles. Sensitive Founder Operations is protected by its
+        // own stricter middleware and must never rely on this generic gate.
+        if ($user->is_admin || $user->hasRole('super-admin') || $user->roles()->exists()) {
             return $next($request);
         }
 
