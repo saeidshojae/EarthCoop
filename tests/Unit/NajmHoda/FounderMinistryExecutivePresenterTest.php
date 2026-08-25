@@ -122,7 +122,7 @@ class FounderMinistryExecutivePresenterTest extends TestCase
         $this->assertStringContainsString('وضعیت runtime «degraded»', $result['message']);
     }
 
-    public function test_pending_decisions_are_explicitly_called_out(): void
+    public function test_pending_decisions_are_explicitly_called_out_without_being_relabelled_as_urgent(): void
     {
         $presenter = new FounderMinistryExecutivePresenter();
         $result = $presenter->present(['success' => true, 'message' => 'old', 'management' => [
@@ -138,8 +138,9 @@ class FounderMinistryExecutivePresenterTest extends TestCase
 
         $this->assertStringContainsString('3 تصمیم منتظر', $result['message']);
         $this->assertTrue(data_get($result, 'management.executive.action_required'));
-        $this->assertSame('نیازمند توجه فوری مدیرکل', data_get($result, 'management.executive.assessment'));
-        $this->assertStringContainsString('3 مورد فوری', data_get($result, 'management.executive.action_text'));
+        $this->assertSame('نیازمند تصمیم یا پیگیری مدیرکل', data_get($result, 'management.executive.assessment'));
+        $this->assertSame('درباره 3 تصمیم منتظر نظر بدهید.', data_get($result, 'management.executive.action_text'));
+        $this->assertStringNotContainsString('مورد فوری', data_get($result, 'management.executive.action_text'));
     }
 
     public function test_authority_brief_explains_defined_actions_are_not_active_delegations(): void
