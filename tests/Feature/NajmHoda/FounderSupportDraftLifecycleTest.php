@@ -9,11 +9,22 @@ use App\Models\User;
 use App\Services\NajmHoda\FounderOps\FounderDraftEditingService;
 use App\Services\NajmHoda\FounderOps\FounderSupportDraftApprovalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class FounderSupportDraftLifecycleTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Approval requests are cache-backed and intentionally survive DB transactions.
+        // RefreshDatabase can reuse entity IDs between tests, so stale pending requests
+        // must not leak into this lifecycle scenario and impersonate a real approval lock.
+        Cache::forget('najm_hoda:autonomy:approval:requests');
+    }
 
     public function test_edited_support_draft_is_frozen_during_approval_and_the_approved_version_is_sent(): void
     {
