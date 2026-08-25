@@ -22,13 +22,15 @@ Workflow: `.github/workflows/staging-uat-deploy.yml`
 
 - `confirmation`: دقیقاً `STAGING-UAT`
 - `server_dir`: مسیر FTP واقعی staging با `/` انتهایی
-- `app_url`: URL واقعی staging
+- `app_url`: origin واقعی staging، مانند `https://new.earthcoop.info`
 
 Guardrailها:
 
-- مسیرهای root-like مانند `./`، `/`، `public_html/` و `./public_html/` رد می‌شوند.
-- URL production یعنی `earthcoop.info` و `www.earthcoop.info` رد می‌شود.
-- deployment فقط بعد از safety gate و تست‌های Najm Hoda انجام می‌شود.
+- workflow فقط از branch `agent/najm-hoda-executive-uat-post-elections` اجازه ادامه دارد.
+- `server_dir` باید relative و دارای `/` انتهایی باشد؛ pathهای root-like، absolute، home-relative، backslash و traversal رد می‌شوند.
+- `app_url` باید HTTPS و یک subdomain مستقل از `earthcoop.info` باشد؛ خود `earthcoop.info` و `www.earthcoop.info` تحت هر شکل متعارف رد می‌شوند.
+- deployment فقط بعد از safety gate، route boot و تست‌های Najm Hoda انجام می‌شود.
+- routeهای `admin.najm-hoda.founder-ops.ministry.chat` و `admin.najm-hoda.founder-ops.ministry.readiness` باید قبل از deploy قابل register باشند.
 - `dangerous-clean-slate` خاموش است.
 - `.env`، `storage`، `tests`، `.github` و dependency treeهای محلی sync نمی‌شوند.
 
@@ -50,14 +52,33 @@ Guardrailها:
 
 ## 4) Smoke Test بعد از deploy
 
-### A. ورود و boundary
+### A. اثبات اینکه نسخه درست deploy شده است
+
+1. با حساب مدیرکل وارد staging شوید.
+2. endpoint محافظت‌شده زیر را باز کنید:
+   - `/admin/najm-hoda/founder-ops/ministry/readiness`
+3. پاسخ باید حداقل این مشخصات را داشته باشد:
+   - `feature = founder_ministry`
+   - `version = founder-ministry-v1-2026-08-25`
+   - `mode = read_only_decision_support`
+   - `typed_execution_inference = false`
+   - `approval_bypass = false`
+4. اگر route وجود نداشت یا نسخه قدیمی بود، UAT ادامه پیدا نکند.
+
+نکته مهم: workflow فعلی با FTPS فایل‌ها را sync می‌کند و روی خود هاست فرمان Artisan اجرا نمی‌کند. اگر staging قبلاً route/config/view cache داشته باشد، ممکن است فایل جدید deploy شده باشد ولی cache قدیمی سرو شود. در این حالت فقط در Document Root مستقل staging و از cPanel Terminal/روش اجرایی معادل، cacheهای Laravel staging پاک شوند؛ پیشنهاد امن:
+
+`php artisan optimize:clear`
+
+سپس readiness endpoint دوباره بررسی شود. این فرمان نباید در production اجرا شود مگر در فرآیند مستقل production.
+
+### B. ورود و boundary
 
 1. با حساب مدیرکل وارد پنل ادمین شوید.
 2. صفحه `نجم هدا > چت` را باز کنید.
 3. وجود دو تب «وزارت هوشمند» و «گفت‌وگوی آزاد» را تأیید کنید.
 4. با حساب غیرمدیر/غیرفاوندر تلاش برای دسترسی مستقیم به Founder Ops باید رد شود.
 
-### B. وزارت هوشمند
+### C. وزارت هوشمند
 
 به ترتیب اجرا شود:
 
@@ -75,7 +96,7 @@ Guardrailها:
 - پاسخ factual ادعای action انجام‌شده نکند.
 - نبود داده با پاسخ خالی/شفاف مدیریت شود نه hallucination.
 
-### C. typed management query
+### D. typed management query
 
 نمونه‌های مجاز:
 
@@ -127,6 +148,7 @@ Rollback فقط روی staging انجام شود:
 2. همان ref را با workflow staging و همان مسیر staging deploy کنید.
 3. `.env` و دیتابیس production تغییر نکنند.
 4. اگر migration جدیدی در آینده به UAT اضافه شد، rollback دیتابیس باید runbook مستقل migration داشته باشد و با reverse-deploy فایل‌ها جایگزین نشود.
+5. پس از rollback، readiness endpoint باید دوباره نسخه مورد انتظار checkpoint rollback را نشان دهد.
 
 ## 8) معیار خروج از این مرحله
 
@@ -134,6 +156,7 @@ Rollback فقط روی staging انجام شود:
 
 - staging مستقل قابل دسترس باشد؛
 - Full Validation HEAD سبز باشد؛
+- readiness contract نسخه deployشده را تأیید کند؛
 - smoke testهای بالا انجام شوند؛
 - capability gapهای واقعی ثبت شوند؛
 - هیچ bypass در approval/authority مشاهده نشود؛
