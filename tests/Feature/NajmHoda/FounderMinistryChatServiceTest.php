@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\NajmHoda;
 
+use App\Http\Controllers\Admin\FounderMinistryChatController;
 use App\Services\NajmHoda\FounderOps\FounderApprovalInboxService;
 use App\Services\NajmHoda\FounderOps\FounderAttentionService;
 use App\Services\NajmHoda\FounderOps\FounderExecutiveWorkQueueService;
@@ -117,11 +118,31 @@ class FounderMinistryChatServiceTest extends TestCase
         $this->assertSame('unknown_management_intent', data_get($result, 'management.meta.reason'));
     }
 
-    public function test_ministry_route_is_registered_under_founder_ops_boundary(): void
+    public function test_ministry_routes_are_registered_under_founder_ops_boundary(): void
     {
         $this->assertSame(
             url('/admin/najm-hoda/founder-ops/ministry/chat'),
             route('admin.najm-hoda.founder-ops.ministry.chat')
         );
+
+        $this->assertSame(
+            url('/admin/najm-hoda/founder-ops/ministry/readiness'),
+            route('admin.najm-hoda.founder-ops.ministry.readiness')
+        );
+    }
+
+    public function test_readiness_contract_identifies_deployed_ministry_and_preserves_execution_boundary(): void
+    {
+        $response = app(FounderMinistryChatController::class)->readiness();
+        $payload = $response->getData(true);
+
+        $this->assertTrue($payload['success']);
+        $this->assertSame('founder_ministry', $payload['feature']);
+        $this->assertSame(FounderMinistryChatController::UAT_VERSION, $payload['version']);
+        $this->assertSame('read_only_decision_support', $payload['mode']);
+        $this->assertSame(FounderMinistryChatService::INTENTS, $payload['read_only_intents']);
+        $this->assertFalse($payload['typed_execution_inference']);
+        $this->assertFalse($payload['approval_bypass']);
+        $this->assertSame('existing_founder_ops_approval_authority_lifecycle', $payload['execution_boundary']);
     }
 }
