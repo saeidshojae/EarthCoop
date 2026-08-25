@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['throttle:najm-hoda-autonomy-read'])->prefix('admin/najm-hoda/founder-ops')->name('admin.najm-hoda.founder-ops.')->group(function (): void {
     Route::get('/', FounderOperationsDeskController::class)->name('index');
+    Route::get('/ministry/readiness', [FounderMinistryChatController::class, 'readiness'])->name('ministry.readiness');
     Route::post('/ministry/chat', FounderMinistryChatController::class)->name('ministry.chat');
     Route::get('/brief', [FounderOperationsController::class, 'brief'])->name('brief');
     Route::get('/snapshot', [FounderOperationsController::class, 'snapshot'])->name('snapshot');
