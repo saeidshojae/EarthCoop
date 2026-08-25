@@ -6,6 +6,7 @@ use App\Models\SupportReplyDraft;
 use App\Models\Ticket;
 use App\Services\NajmHoda\FounderOps\FounderDraftEditingService;
 use App\Services\NajmHoda\FounderOps\FounderSupportDraftApprovalService;
+use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -16,6 +17,7 @@ class FounderDraftEditingServiceTest extends TestCase
     public function test_founder_can_edit_support_draft_before_requesting_approval_and_edit_is_audited(): void
     {
         config()->set('najm-hoda-founder-action-policy.founder_approval.user_ids', [99]);
+        app(RuntimeEventBus::class)->clear();
         $ticket = Ticket::create([
             'tracking_code' => 'T-EDIT-1',
             'subject' => 'test',
@@ -36,12 +38,13 @@ class FounderDraftEditingServiceTest extends TestCase
             99
         );
 
-        $fresh = $draft->fresh();
+        $events = app(RuntimeEventBus::class)->recent('najm_hoda.founder_ops.draft.edited', 5);
         $this->assertTrue($result['success']);
         $this->assertSame('updated', $result['status']);
-        $this->assertSame('متن ویرایش‌شده مدیرکل', $fresh->body);
-        $this->assertSame(99, (int) data_get($fresh->metadata, 'last_edited_by'));
-        $this->assertSame(['body'], data_get($fresh->metadata, 'founder_edit_history.0.fields'));
+        $this->assertSame('متن ویرایش‌شده مدیرکل', $draft->fresh()->body);
+        $this->assertNotEmpty($events);
+        $this->assertSame(99, (int) data_get($events[0], 'payload.edited_by'));
+        $this->assertSame(['body'], data_get($events[0], 'payload.changed_fields'));
     }
 
     public function test_non_founder_cannot_edit_draft(): void
