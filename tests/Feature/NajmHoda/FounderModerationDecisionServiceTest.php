@@ -31,6 +31,7 @@ class FounderModerationDecisionServiceTest extends TestCase
         ModerationCaseSummary::create([
             'source_type' => 'report',
             'source_id' => $report->id,
+            'summary' => 'خلاصه اولیه نجم هدا برای بررسی گزارش',
             'status' => 'draft',
         ]);
 
