@@ -5,6 +5,7 @@ namespace App\Services\NajmHoda\FounderOps;
 use App\Models\FounderEmailDraft;
 use App\Services\Email\EmailDeliveryService;
 use App\Services\NajmHoda\Runtime\NajmHodaAutonomyApprovalService;
+use App\Services\SystemIdentityService;
 
 class FounderEmailDecisionService
 {
@@ -13,6 +14,7 @@ class FounderEmailDecisionService
         protected FounderActionExecutionService $execution,
         protected NajmHodaAutonomyApprovalService $approvals,
         protected EmailDeliveryService $delivery,
+        protected SystemIdentityService $systemIdentities,
     ) {}
 
     public function requestSend(FounderEmailDraft $draft, int $actorId): array
@@ -80,14 +82,17 @@ class FounderEmailDecisionService
             return ['success' => true, 'status' => 'rejected', 'draft_id' => $draft->id];
         }
 
+        $sender = $this->systemIdentities->mailSender('management');
+
         return $this->execution->execute(
             'email',
             $action,
-            function () use ($draft, $founderId): array {
+            function () use ($draft, $founderId, $sender): array {
                 $delivery = $this->delivery->sendHtml(
                     (array) $draft->recipients,
                     (string) $draft->subject,
-                    (string) $draft->body
+                    (string) $draft->body,
+                    $sender
                 );
 
                 $draft->update([
@@ -101,6 +106,8 @@ class FounderEmailDecisionService
                     'recipient_count' => count((array) $draft->recipients),
                     'sent_count' => (int) $delivery['sent_count'],
                     'failed_count' => (int) $delivery['failed_count'],
+                    'sender_address' => $sender['address'],
+                    'sender_name' => $sender['name'],
                 ];
             },
             $requestId,
