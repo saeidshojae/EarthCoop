@@ -17,7 +17,7 @@ class FounderMinistryChatController extends Controller
             'success' => true,
             'feature' => 'founder_ministry',
             'version' => self::UAT_VERSION,
-            'mode' => 'decision_support_with_canonical_action_cards',
+            'mode' => 'read_only_decision_support',
             'read_only_intents' => FounderMinistryChatService::INTENTS,
             'typed_execution_inference' => false,
             'approval_bypass' => false,
