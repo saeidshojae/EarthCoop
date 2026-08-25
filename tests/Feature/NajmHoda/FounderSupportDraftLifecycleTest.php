@@ -19,10 +19,6 @@ class FounderSupportDraftLifecycleTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        // Approval requests are cache-backed and intentionally survive DB transactions.
-        // RefreshDatabase can reuse entity IDs between tests, so stale pending requests
-        // must not leak into this lifecycle scenario and impersonate a real approval lock.
         Cache::forget('najm_hoda:autonomy:approval:requests');
     }
 
@@ -58,12 +54,12 @@ class FounderSupportDraftLifecycleTest extends TestCase
         $editedBody = 'نسخه ویرایش‌شده و مورد نظر مدیرکل';
         $editResult = $editing->updateSupport($draft, $editedBody, $founder->id);
 
-        $this->assertTrue((bool) ($editResult['success'] ?? false));
+        $this->assertTrue((bool) ($editResult['success'] ?? false), json_encode($editResult, JSON_UNESCAPED_UNICODE));
         $this->assertSame('updated', $editResult['status']);
         $this->assertSame($editedBody, $draft->fresh()->body);
 
         $prepared = $approval->requestSend($draft->fresh(), $founder->id);
-        $this->assertSame('awaiting_approval', $prepared['status'] ?? null);
+        $this->assertSame('awaiting_approval', $prepared['status'] ?? null, json_encode($prepared, JSON_UNESCAPED_UNICODE));
         $requestId = (string) data_get($prepared, 'approval_request.id');
         $this->assertNotSame('', $requestId);
 
@@ -79,17 +75,21 @@ class FounderSupportDraftLifecycleTest extends TestCase
 
         $result = $approval->decideAndExecute($requestId, 'approve', $founder->id, 'نسخه ویرایش‌شده تأیید شد');
 
-        $this->assertTrue((bool) ($result['success'] ?? false));
+        $this->assertTrue((bool) ($result['success'] ?? false), json_encode($result, JSON_UNESCAPED_UNICODE));
         $this->assertSame('executed', $result['status']);
         $this->assertSame('sent', $draft->fresh()->status);
         $this->assertNotNull($draft->fresh()->approved_at);
         $this->assertNotNull($draft->fresh()->sent_at);
-        $this->assertTrue((bool) data_get($result, 'verification.verified'));
+        $this->assertTrue((bool) data_get($result, 'verification.verified'), json_encode($result, JSON_UNESCAPED_UNICODE));
         $this->assertSame('verified', (string) data_get($result, 'verification.status'));
 
         $commentId = (int) data_get($result, 'result.comment_id', 0);
         $this->assertGreaterThan(0, $commentId);
-        $this->assertSame($editedBody, TicketComment::findOrFail($commentId)->message);
+        $comment = TicketComment::findOrFail($commentId);
+        $this->assertSame($editedBody, $comment->message);
+        $this->assertSame('support@earthcoop.ir', $comment->user->email);
+        $this->assertTrue($comment->user->isSystemIdentity());
+        $this->assertNotSame($founder->id, $comment->user_id);
         $this->assertSame('in-progress', $ticket->fresh()->status);
     }
 
