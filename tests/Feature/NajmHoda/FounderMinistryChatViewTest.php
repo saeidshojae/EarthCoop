@@ -6,13 +6,19 @@ use Tests\TestCase;
 
 class FounderMinistryChatViewTest extends TestCase
 {
-    public function test_founder_ministry_phase_two_surface_is_present_in_admin_chat(): void
+    public function test_founder_ministry_phase_three_separates_current_report_from_conversation(): void
     {
         $view = file_get_contents(resource_path('views/admin/najm-hoda/chat.blade.php'));
 
         $this->assertIsString($view);
         $this->assertStringContainsString('وزارت هوشمند مدیرکل', $view);
         $this->assertStringContainsString('گفت‌وگوی آزاد', $view);
+        $this->assertStringContainsString('id="executiveReport"', $view);
+        $this->assertStringContainsString('id="reportTitle"', $view);
+        $this->assertStringContainsString('id="reportAssessment"', $view);
+        $this->assertStringContainsString('id="reportAction"', $view);
+        $this->assertStringContainsString('گفت‌وگو با وزیر', $view);
+        $this->assertStringContainsString('دکمه‌های بالا فقط گزارش جاری را عوض می‌کنند', $view);
         $this->assertStringContainsString('data-global="urgent"', $view);
         $this->assertStringContainsString('data-global="founder_decisions"', $view);
         $this->assertStringContainsString('data-global="prepared"', $view);
@@ -27,10 +33,12 @@ class FounderMinistryChatViewTest extends TestCase
         }
 
         $this->assertStringContainsString('رسیدگی / جزئیات', $view);
-        $this->assertStringContainsString('actionForm(action)', $view);
+        $this->assertStringContainsString('function renderReport(d)', $view);
+        $this->assertStringContainsString('function renderItems(items)', $view);
         $this->assertStringContainsString("route('admin.najm-hoda.founder-ops.ministry.chat')", $view);
         $this->assertStringContainsString("route('admin.najm-hoda.chat.send')", $view);
         $this->assertStringContainsString("runMinistry({intent:'morning_brief'})", $view);
-        $this->assertStringContainsString('هیچ approval یا authority را دور نمی‌زند', $view);
+        $this->assertStringContainsString('فرمان حساس از متن آزاد استنباط نمی‌شود', $view);
+        $this->assertStringContainsString('background:#1d4ed8!important;color:#fff!important', $view);
     }
 }
