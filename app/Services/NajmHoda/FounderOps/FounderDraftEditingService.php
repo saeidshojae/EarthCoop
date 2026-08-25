@@ -49,6 +49,10 @@ class FounderDraftEditingService
     /** @param array<string,mixed> $attributes @return array<string,mixed> */
     protected function updateDraft(Model $draft, string $entityType, array $attributes, int $actorId): array
     {
+        if (! in_array($actorId, $this->founderIds(), true)) {
+            return ['success' => false, 'status' => 'forbidden', 'reason' => 'founder_not_authorized'];
+        }
+
         if ((string) $draft->getAttribute('status') !== 'draft') {
             return ['success' => false, 'status' => 'invalid_state', 'reason' => 'draft_not_editable'];
         }
@@ -57,7 +61,34 @@ class FounderDraftEditingService
             return ['success' => false, 'status' => 'blocked', 'reason' => 'pending_approval_must_be_decided_first'];
         }
 
+        $changedFields = array_keys(array_filter(
+            $attributes,
+            fn ($value, $key): bool => $draft->getAttribute($key) !== $value,
+            ARRAY_FILTER_USE_BOTH
+        ));
+        if ($changedFields === []) {
+            return [
+                'success' => true,
+                'status' => 'unchanged',
+                'entity_type' => $entityType,
+                'entity_id' => (int) $draft->getKey(),
+                'edited_by' => $actorId,
+            ];
+        }
+
+        $metadata = is_array($draft->getAttribute('metadata')) ? $draft->getAttribute('metadata') : [];
+        $history = is_array($metadata['founder_edit_history'] ?? null) ? $metadata['founder_edit_history'] : [];
+        $history[] = [
+            'edited_by' => $actorId,
+            'edited_at' => now()->toISOString(),
+            'fields' => $changedFields,
+        ];
+        $metadata['founder_edit_history'] = array_slice($history, -20);
+        $metadata['last_edited_by'] = $actorId;
+        $metadata['last_edited_at'] = now()->toISOString();
+
         $draft->fill($attributes);
+        $draft->setAttribute('metadata', $metadata);
         $draft->save();
 
         return [
@@ -66,6 +97,7 @@ class FounderDraftEditingService
             'entity_type' => $entityType,
             'entity_id' => (int) $draft->getKey(),
             'edited_by' => $actorId,
+            'changed_fields' => $changedFields,
         ];
     }
 
@@ -75,5 +107,14 @@ class FounderDraftEditingService
             return (string) data_get($item, 'context.entity_type') === $entityType
                 && (int) data_get($item, 'context.entity_id', 0) === $entityId;
         });
+    }
+
+    /** @return array<int,int> */
+    protected function founderIds(): array
+    {
+        return array_values(array_filter(array_map(
+            'intval',
+            (array) config('najm-hoda-founder-action-policy.founder_approval.user_ids', [])
+        )));
     }
 }
