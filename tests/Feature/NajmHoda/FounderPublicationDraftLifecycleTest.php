@@ -4,6 +4,7 @@ namespace Tests\Feature\NajmHoda;
 
 use App\Models\Announcement;
 use App\Models\Blog;
+use App\Models\Category;
 use App\Models\FounderAnnouncementDraft;
 use App\Models\FounderContentDraft;
 use App\Models\Group;
@@ -11,6 +12,7 @@ use App\Models\User;
 use App\Services\NajmHoda\FounderOps\FounderAnnouncementDecisionService;
 use App\Services\NajmHoda\FounderOps\FounderContentDecisionService;
 use App\Services\NajmHoda\FounderOps\FounderDraftEditingService;
+use App\Services\SystemIdentityService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -29,6 +31,7 @@ class FounderPublicationDraftLifecycleTest extends TestCase
     {
         $founder = User::factory()->create();
         config()->set('najm-hoda-founder-action-policy.founder_approval.user_ids', [$founder->id]);
+        $category = Category::query()->create(['name'=>'محتوای مدیریت']);
 
         $group = Group::query()->create([
             'group_type' => 'public',
@@ -40,6 +43,7 @@ class FounderPublicationDraftLifecycleTest extends TestCase
         $draft = FounderContentDraft::query()->create([
             'content_type' => 'blog_post',
             'group_id' => $group->id,
+            'category_id' => $category->id,
             'title' => 'عنوان اولیه',
             'body' => '<p>متن اولیه</p>',
             'status' => 'draft',
@@ -84,10 +88,13 @@ class FounderPublicationDraftLifecycleTest extends TestCase
 
         $blogId = (int) data_get($result, 'result.blog_id', 0);
         $blog = Blog::query()->findOrFail($blogId);
+        $management = app(SystemIdentityService::class)->management();
         $this->assertSame($editedTitle, $blog->title);
         $this->assertSame($editedBody, $blog->content);
         $this->assertSame($group->id, (int) $blog->group_id);
-        $this->assertSame($founder->id, (int) $blog->user_id);
+        $this->assertSame((int)$category->id, (int)$blog->category_id);
+        $this->assertSame((int)$management->id, (int)$blog->user_id);
+        $this->assertNotSame((int)$founder->id, (int)$blog->user_id);
     }
 
     public function test_edited_announcement_draft_is_frozen_and_exact_approved_version_is_published(): void
@@ -144,10 +151,12 @@ class FounderPublicationDraftLifecycleTest extends TestCase
 
         $announcementId = (int) data_get($result, 'result.announcement_id', 0);
         $announcement = Announcement::query()->findOrFail($announcementId);
+        $management = app(SystemIdentityService::class)->management();
         $this->assertSame($editedTitle, $announcement->title);
         $this->assertSame($editedContent, $announcement->content);
         $this->assertSame('neighborhood', $announcement->group_level);
-        $this->assertSame($founder->id, (int) $announcement->created_by);
+        $this->assertSame((int)$management->id, (int)$announcement->created_by);
+        $this->assertNotSame((int)$founder->id, (int)$announcement->created_by);
         $this->assertSame($announcement->id, (int) $draft->fresh()->announcement_id);
     }
 }
