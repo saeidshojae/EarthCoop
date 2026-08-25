@@ -22,7 +22,7 @@ class FounderMinistryExecutivePresenter
         'authority' => 'اختیارها و واگذاری‌ها',
     ];
 
-    public function present(array $response, int $hours): array
+    public function present(array $response, int $hours, ?array $agency = null): array
     {
         if (($response['success'] ?? false) !== true) {
             return $response;
@@ -57,6 +57,9 @@ class FounderMinistryExecutivePresenter
             'checked_without_action' => ! $actionRequired,
             'scope' => $this->usesGlobalScope($intent) ? 'global' : 'intent',
         ];
+        if ($agency !== null) {
+            $response['management']['executive']['agency'] = $agency;
+        }
 
         return $response;
     }
@@ -157,15 +160,13 @@ class FounderMinistryExecutivePresenter
             );
         }
 
-        $facts = $this->facts($summary);
         $title = self::TITLES[$intent] ?? 'این حوزه';
         $conclusion = $domainNeeds
             ? $title.' نیازمند پیگیری مدیرکل است.'
-            : $title.' در snapshot فعلی موردی که نیازمند اقدام مدیرکل باشد ندارد.';
-        $factText = $facts === [] ? ' شاخص قابل‌نمایش دیگری ثبت نشده است.' : ' '.implode('، ', $facts).'.';
+            : $title.' در وضعیت فعلی نیازمند اقدام شما نیست.';
         $relevant = count($items);
 
-        return $conclusion.$factText.($relevant > 0
+        return $conclusion.($relevant > 0
             ? sprintf(' %d مورد مرتبط برای رسیدگی/جزئیات در ادامه آمده است.', $relevant)
             : ' مورد کارت‌شده‌ای برای رسیدگی در این بخش وجود ندارد.');
     }
@@ -272,29 +273,6 @@ class FounderMinistryExecutivePresenter
         return in_array($intent, ['morning_brief', 'end_of_day'], true);
     }
 
-    private function facts(array $summary): array
-    {
-        $facts = [];
-        foreach ($summary as $key => $card) {
-            if (is_array($card) && array_key_exists('value', $card)) {
-                $label = trim((string) ($card['label'] ?? $key));
-                $value = $card['value'];
-            } elseif (is_scalar($card) || $card === null) {
-                $label = (string) $key;
-                $value = $card;
-            } else {
-                continue;
-            }
-
-            if ($label === '' || in_array($label, ['urgent', 'founder_decisions', 'prepared', 'information'], true)) {
-                continue;
-            }
-            $facts[] = $label.': '.$this->displayValue($value);
-        }
-
-        return array_slice($facts, 0, 6);
-    }
-
     private function metric(array $summary, string $key): int
     {
         return (int) $this->rawMetric($summary, $key);
@@ -304,17 +282,5 @@ class FounderMinistryExecutivePresenter
     {
         $value = $summary[$key] ?? 0;
         return is_array($value) && array_key_exists('value', $value) ? $value['value'] : $value;
-    }
-
-    private function displayValue(mixed $value): string
-    {
-        if (is_bool($value)) {
-            return $value ? 'بله' : 'خیر';
-        }
-        if ($value === null || $value === '') {
-            return '—';
-        }
-
-        return (string) $value;
     }
 }
