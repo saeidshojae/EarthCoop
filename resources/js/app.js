@@ -1,5 +1,6 @@
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../css/app.css";
+import "../css/header-mobile-polish.css";
 import "bootstrap";
 import "./bootstrap";
 import $ from "jquery";
