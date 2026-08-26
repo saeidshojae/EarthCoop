@@ -73,7 +73,7 @@ class MobileNavigationContractTest extends TestCase
         $this->assertStringNotContainsString("route('secretariat.directory')", $account);
     }
 
-    public function test_back_navigation_is_server_rendered_and_uses_same_tab_navigation_stack(): void
+    public function test_back_navigation_is_server_rendered_and_uses_same_tab_logical_stack(): void
     {
         $header = file_get_contents(resource_path('views/components/header-unified.blade.php'));
         $history = file_get_contents(resource_path('js/site-navigation-history.js'));
@@ -89,7 +89,9 @@ class MobileNavigationContractTest extends TestCase
 
         $this->assertStringContainsString('sessionStorage', $history);
         $this->assertStringContainsString('earthcoop.navigation.stack', $history);
-        $this->assertStringContainsString('history.back()', $history);
+        $this->assertStringContainsString('const previousUrl = stack[stack.length - 1];', $history);
+        $this->assertStringContainsString('window.location.assign(previousUrl);', $history);
+        $this->assertStringNotContainsString('history.back()', $history);
         $this->assertStringNotContainsString('sameOriginReferrer()', $history);
         $this->assertStringContainsString('data-earthcoop-history-back', $history);
         $this->assertStringContainsString('import "./site-navigation-history.js";', $app);
@@ -111,6 +113,16 @@ class MobileNavigationContractTest extends TestCase
         $this->assertStringContainsString('nth-child(1)', $polish);
         $this->assertStringContainsString('nth-child(2)', $polish);
         $this->assertStringContainsString('nth-child(3)', $polish);
+    }
+
+    public function test_welcome_loads_the_same_header_polish_contract_as_unified_layout(): void
+    {
+        $welcome = file_get_contents(resource_path('views/welcome.blade.php'));
+        $unified = file_get_contents(resource_path('views/layouts/unified.blade.php'));
+        $stylesheet = "asset('Css/header-mobile-polish.css')";
+
+        $this->assertStringContainsString($stylesheet, $welcome);
+        $this->assertStringContainsString($stylesheet, $unified);
     }
 
     public function test_guest_header_is_balanced_cloaked_and_all_header_logos_animate(): void
