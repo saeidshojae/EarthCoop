@@ -42,7 +42,8 @@ class SecretariatDashboardUatTest extends TestCase
             ->assertSee('داشبورد دبیرخانه')
             ->assertSee('دبیرخانه مرکزی EarthCoop')
             ->assertSee('ثبت سند رسمی')
-            ->assertSee('تنظیمات دبیرخانه');
+            ->assertSee('تنظیمات دبیرخانه')
+            ->assertSee('اسناد بنیادین EarthCoop');
     }
 
     public function test_non_admin_cannot_provision_central_office(): void
@@ -54,23 +55,15 @@ class SecretariatDashboardUatTest extends TestCase
         $this->assertDatabaseMissing('secretariat_offices', ['office_type' => 'central']);
     }
 
-    public function test_group_manager_provisions_canonical_group_office_and_member_cannot_trigger_provisioning(): void
+    public function test_active_group_member_can_trigger_canonical_group_office_provisioning_and_open_read_only_dashboard(): void
     {
-        $manager = User::factory()->create();
         $member = User::factory()->create();
         $group = Group::query()->create(['name' => 'گروه UAT دبیرخانه', 'group_type' => '0']);
-
-        $this->attachMember($group, $manager, 3);
         $this->attachMember($group, $member, 1);
 
-        $this->actingAs($member)->get(route('secretariat.group', $group))->assertForbidden();
-        $this->assertDatabaseMissing('secretariat_offices', [
-            'office_type' => 'group',
-            'scope_type' => 'group',
-            'scope_id' => $group->id,
-        ]);
-
-        $this->actingAs($manager)->get(route('secretariat.group', $group))->assertRedirect();
+        $this->actingAs($member)
+            ->get(route('secretariat.group', $group))
+            ->assertRedirect();
 
         $office = SecretariatOffice::query()
             ->where('office_type', 'group')
@@ -85,12 +78,30 @@ class SecretariatDashboardUatTest extends TestCase
             ->where('scope_id', $group->id)
             ->count());
 
-        $this->actingAs($manager)
+        $this->actingAs($member)
             ->get(route('secretariat.index', $office))
             ->assertOk()
             ->assertSee('داشبورد دبیرخانه')
-            ->assertSee('ثبت سند رسمی')
-            ->assertSee('تنظیمات دبیرخانه');
+            ->assertSee('حالت مشاهده')
+            ->assertDontSee('ثبت سند رسمی')
+            ->assertDontSee('تنظیمات دبیرخانه');
+    }
+
+    public function test_group_manager_dashboard_uses_group_specific_operational_guidance_not_central_foundational_documents_copy(): void
+    {
+        $manager = User::factory()->create();
+        $group = Group::query()->create(['name' => 'گروه مدیریت دبیرخانه', 'group_type' => '0']);
+        $this->attachMember($group, $manager, 3);
+        $office = app(SecretariatOfficeService::class)->ensureGroup($group);
+
+        $this->actingAs($manager)
+            ->get(route('secretariat.index', $office))
+            ->assertOk()
+            ->assertSee('دفتر گروه')
+            ->assertSee('حالت مدیریت')
+            ->assertSee('کار فوری دبیرخانه')
+            ->assertSee('امور رسمی این گروه')
+            ->assertDontSee('اسناد بنیادین EarthCoop');
     }
 
     public function test_group_inspector_can_open_existing_dashboard_but_cannot_open_office_settings(): void
