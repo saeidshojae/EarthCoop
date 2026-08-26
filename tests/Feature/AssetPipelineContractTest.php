@@ -31,17 +31,15 @@ class AssetPipelineContractTest extends TestCase
         $this->assertStringNotContainsString('document.createElement(\'link\')', $app);
     }
 
-    public function test_header_component_owns_one_canonical_non_vite_polish_stylesheet(): void
+    public function test_unified_layout_owns_one_canonical_non_vite_header_polish_stylesheet(): void
     {
         $this->assertFileExists(public_path('Css/header-mobile-polish.css'));
         $this->assertFileDoesNotExist(resource_path('css/header-mobile-polish.css'));
 
-        $header = file_get_contents(resource_path('views/components/header-unified.blade.php'));
         $unified = file_get_contents(resource_path('views/layouts/unified.blade.php'));
-
         $assetReference = "asset('Css/header-mobile-polish.css')";
-        $this->assertSame(1, substr_count($header, $assetReference));
-        $this->assertStringNotContainsString($assetReference, $unified);
+
+        $this->assertSame(1, substr_count($unified, $assetReference));
     }
 
     public function test_validation_and_production_use_the_same_node_major_and_deploy_the_fresh_vite_build(): void
