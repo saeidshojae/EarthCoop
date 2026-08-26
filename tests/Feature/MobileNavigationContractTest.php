@@ -58,25 +58,32 @@ class MobileNavigationContractTest extends TestCase
     public function test_mobile_account_menu_is_scoped_to_account_actions_and_viewport_anchored(): void
     {
         $account = file_get_contents(resource_path('views/components/mobile-account-menu.blade.php'));
+        $polish = file_get_contents(public_path('Css/header-mobile-polish.css'));
 
         $this->assertStringContainsString("route('profile.show')", $account);
         $this->assertStringContainsString("route('profile.edit')", $account);
         $this->assertStringContainsString("route('logout')", $account);
         $this->assertStringContainsString('mobile-account-dropdown', $account);
+        $this->assertStringContainsString('position: fixed !important;', $polish);
+        $this->assertStringContainsString('top: 68px !important;', $polish);
+        $this->assertStringContainsString('z-index: 1400 !important;', $polish);
         $this->assertStringNotContainsString("route('auction.index')", $account);
         $this->assertStringNotContainsString("route('support.kb.index')", $account);
         $this->assertStringNotContainsString("route('secretariat.directory')", $account);
     }
 
-    public function test_back_navigation_uses_browser_history_instead_of_server_previous_url(): void
+    public function test_back_navigation_uses_browser_history_with_safe_home_fallback(): void
     {
-        $header = file_get_contents(resource_path('views/components/header-unified.blade.php'));
+        $history = file_get_contents(resource_path('js/site-navigation-history.js'));
+        $app = file_get_contents(resource_path('js/app.js'));
+        $polish = file_get_contents(public_path('Css/header-mobile-polish.css'));
 
-        $this->assertStringContainsString('earthcoopNavigateBack', $header);
-        $this->assertStringContainsString('window.history.back()', $header);
-        $this->assertStringContainsString("route('home')", $header);
-        $this->assertStringContainsString('site-header-mobile-back', $header);
-        $this->assertStringNotContainsString('url()->previous()', $header);
-        $this->assertStringNotContainsString('$backUrl', $header);
+        $this->assertStringContainsString('window.history.back()', $history);
+        $this->assertStringContainsString('sameOriginReferrer()', $history);
+        $this->assertStringContainsString("new URL('/home'", $history);
+        $this->assertStringContainsString('site-header-mobile-back', $history);
+        $this->assertStringContainsString('data.earthcoopHistoryBack', str_replace('dataset.', 'data.', $history));
+        $this->assertStringContainsString('import "./site-navigation-history.js";', $app);
+        $this->assertStringContainsString('.site-header-mobile-back', $polish);
     }
 }
