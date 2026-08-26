@@ -3,8 +3,6 @@
     $isWelcomeHeader = $headerContext === 'welcome';
     $isAuth = auth()->check();
     $isHome = request()->routeIs('home');
-    $previousUrl = url()->previous();
-    $backUrl = $previousUrl === url()->current() ? route('home') : $previousUrl;
     $logoTarget = $isAuth && !$isWelcomeHeader ? route('home') : route('welcome');
     $currentLocale = app()->getLocale();
     $locales = [
@@ -286,7 +284,11 @@
     <div class="site-header-row container mx-auto hidden 2xl:flex items-center justify-between gap-3 flex-nowrap">
         <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-shrink-0">
             @if(!$isWelcomeHeader && !$isHome)
-                <a href="{{ $backUrl }}" class="flex-shrink-0 text-gray-600 hover:text-earth-green transition p-1" aria-label="بازگشت">
+                <a href="{{ route('home') }}"
+                   data-earthcoop-history-back="true"
+                   class="flex-shrink-0 text-gray-600 hover:text-earth-green transition p-1"
+                   aria-label="بازگشت"
+                   title="بازگشت">
                     <i class="fas fa-arrow-left text-lg" aria-hidden="true"></i>
                 </a>
             @endif
@@ -365,6 +367,16 @@
         </a>
 
         <div class="site-header-mobile-menu-slot">
+            @if(!$isWelcomeHeader && !$isHome)
+                <a href="{{ route('home') }}"
+                   data-earthcoop-history-back="true"
+                   class="site-header-mobile-back"
+                   aria-label="بازگشت"
+                   title="بازگشت">
+                    <i class="fas fa-arrow-left" aria-hidden="true"></i>
+                </a>
+            @endif
+
             <button type="button"
                     @click="headerMenuOpen = !headerMenuOpen"
                     :class="{ 'is-open': headerMenuOpen }"
