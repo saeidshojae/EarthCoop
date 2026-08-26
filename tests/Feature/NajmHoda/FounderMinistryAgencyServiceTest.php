@@ -78,7 +78,8 @@ class FounderMinistryAgencyServiceTest extends TestCase
 
         $this->assertIsArray($blocked);
         $this->assertSame('blocked_dependency', $blocked['state']);
-        $this->assertSame('real_transport_not_available', $blocked['reason']);
+        $this->assertSame('real_transport_not_available', $blocked['reason_code']);
+        $this->assertStringContainsString('ارسال واقعی', $blocked['reason']);
         $this->assertFalse(collect($agency['may_do_now'])->contains(
             fn (array $item): bool => ($item['action'] ?? null) === 'dispatch_formal_record'
         ));
@@ -129,7 +130,8 @@ class FounderMinistryAgencyServiceTest extends TestCase
 
         $this->assertIsArray($supportDraft);
         $this->assertSame('draft_support_response', $supportDraft['action']);
-        $this->assertSame('پاسخ پشتیبانی را آماده کنم', $supportDraft['display_title']);
+        $this->assertSame('پاسخ پشتیبانی را آماده کنم', $supportDraft['title']);
+        $this->assertSame($supportDraft['title'], $supportDraft['display_title']);
         $this->assertStringContainsString('پاسخ مناسب', $supportDraft['display_explanation']);
     }
 
@@ -143,9 +145,11 @@ class FounderMinistryAgencyServiceTest extends TestCase
         );
 
         $this->assertIsArray($blocked);
-        $this->assertSame('persisted_global_defaults_missing', $blocked['reason']);
-        $this->assertSame('تنظیمات عمومی اعلان‌ها را تغییر دهم', $blocked['display_title']);
-        $this->assertStringContainsString('ذخیره پایدار', $blocked['display_explanation']);
-        $this->assertStringNotContainsString('persisted_global_defaults_missing', $blocked['display_explanation']);
+        $this->assertSame('persisted_global_defaults_missing', $blocked['reason_code']);
+        $this->assertSame('تنظیمات عمومی اعلان‌ها را تغییر دهم', $blocked['title']);
+        $this->assertSame($blocked['title'], $blocked['display_title']);
+        $this->assertStringContainsString('ذخیره پایدار', $blocked['reason']);
+        $this->assertSame($blocked['reason'], $blocked['display_explanation']);
+        $this->assertStringNotContainsString('persisted_global_defaults_missing', $blocked['reason']);
     }
 }
