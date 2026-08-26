@@ -57,6 +57,15 @@ header.site-header-unified[data-auth-state="guest"] .mobile-navigation-drawer__b
         overflow: visible !important;
     }
 
+    /* Give the left-side action rail slightly more breathing room from the brand
+       while keeping a safe viewport gutter. */
+    html[dir="rtl"] header.site-header-unified[data-auth-state="authenticated"] .site-header-mobile-menu-slot {
+        transform: translateX(-4px);
+    }
+    html[dir="ltr"] header.site-header-unified[data-auth-state="authenticated"] .site-header-mobile-menu-slot {
+        transform: translateX(4px);
+    }
+
     header.site-header-unified[data-auth-state="authenticated"] .site-header-mobile-menu-slot:has(.site-header-mobile-back) {
         box-sizing: border-box;
         width: 96px !important;
