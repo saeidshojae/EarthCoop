@@ -1,4 +1,4 @@
-@extends('layouts.unified')
+@extends('layouts.admin')
 
 @section('title', 'مدیریت صفحه نجم بهار - ' . config('app.name', 'EarthCoop'))
 
