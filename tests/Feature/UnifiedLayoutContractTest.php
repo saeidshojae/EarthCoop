@@ -9,16 +9,11 @@ use Tests\TestCase;
 
 class UnifiedLayoutContractTest extends TestCase
 {
-    public function test_only_unified_general_layout_remains_and_no_blade_view_references_retired_layouts(): void
+    public function test_legacy_app_layout_is_removed_and_no_blade_view_extends_it(): void
     {
-        $retiredLayouts = ['app', 'master', 'admin', 'chat'];
+        $legacyLayout = resource_path('views/layouts/app.blade.php');
 
-        foreach ($retiredLayouts as $layout) {
-            $this->assertFileDoesNotExist(
-                resource_path("views/layouts/{$layout}.blade.php"),
-                "Retired layouts.{$layout} must not exist after consolidation onto layouts.unified."
-            );
-        }
+        $this->assertFileDoesNotExist($legacyLayout, 'Legacy layouts.app must be removed after migration to layouts.unified.');
 
         $offenders = [];
         $iterator = new RecursiveIteratorIterator(
@@ -32,14 +27,25 @@ class UnifiedLayoutContractTest extends TestCase
 
             $contents = file_get_contents($file->getPathname());
 
-            foreach ($retiredLayouts as $layout) {
-                if (str_contains($contents, "layouts.{$layout}")) {
-                    $offenders[] = str_replace(base_path().DIRECTORY_SEPARATOR, '', $file->getPathname())." -> layouts.{$layout}";
-                }
+            if (str_contains($contents, "layouts.app")) {
+                $offenders[] = str_replace(base_path().DIRECTORY_SEPARATOR, '', $file->getPathname());
             }
         }
 
-        $this->assertSame([], $offenders, 'Blade views still referencing retired layouts: '.implode(', ', $offenders));
+        $this->assertSame([], $offenders, 'Blade views still referencing layouts.app: '.implode(', ', $offenders));
+    }
+
+    public function test_specialized_layouts_required_by_live_views_still_exist(): void
+    {
+        $this->assertFileExists(resource_path('views/layouts/chat.blade.php'));
+        $this->assertFileExists(resource_path('views/layouts/admin.blade.php'));
+        $this->assertFileExists(resource_path('views/layouts/master.blade.php'));
+
+        $groupChat = file_get_contents(resource_path('views/groups/chat.blade.php'));
+        $adminDashboard = file_get_contents(resource_path('views/admin/dashboard.blade.php'));
+
+        $this->assertStringContainsString("@extends('layouts.chat')", $groupChat);
+        $this->assertStringContainsString("@extends('layouts.admin')", $adminDashboard);
     }
 
     public function test_unified_layout_does_not_use_a_wildcard_header_class_selector(): void
