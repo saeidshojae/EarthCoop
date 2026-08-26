@@ -2,6 +2,7 @@
 
 @media (max-width: 1023px) {
     header.site-header-unified .site-header-mobile-bar {
+        position: relative;
         height: 100%;
         min-height: 60px;
         align-items: center;
@@ -18,7 +19,8 @@
         align-self: center;
     }
 
-    header.site-header-unified .site-header-mobile-account-slot > .relative {
+    header.site-header-unified .site-header-mobile-account-slot > .relative,
+    header.site-header-unified .site-header-mobile-account-slot > .mobile-account-root {
         width: 40px;
         height: 40px;
         display: flex;
@@ -26,10 +28,31 @@
         justify-content: center;
     }
 
+    header.site-header-unified .mobile-account-root {
+        z-index: 1350;
+    }
+
     header.site-header-unified .mobile-account-trigger {
         margin: 0 !important;
         align-self: center;
         flex: 0 0 auto;
+    }
+
+    header.site-header-unified .mobile-account-dropdown {
+        position: fixed !important;
+        top: 68px !important;
+        right: 12px !important;
+        left: auto !important;
+        margin: 0 !important;
+        z-index: 1400 !important;
+        max-width: calc(100vw - 24px);
+        transform-origin: top right;
+    }
+
+    html[dir="ltr"] header.site-header-unified .mobile-account-dropdown {
+        right: auto !important;
+        left: 12px !important;
+        transform-origin: top left;
     }
 
     header.site-header-unified .site-header-mobile-menu-slot .site-header-hamburger {
@@ -59,6 +82,51 @@
         align-items: center;
         min-height: 31px;
         line-height: 1;
+    }
+
+    header.site-header-unified .site-header-mobile-back {
+        position: absolute;
+        left: 48px;
+        top: 50%;
+        width: 36px;
+        height: 36px;
+        margin: 0;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: #475569;
+        transform: translateY(-50%);
+        z-index: 2;
+        transition: background-color .15s ease, color .15s ease;
+    }
+
+    html[dir="ltr"] header.site-header-unified .site-header-mobile-back {
+        left: auto;
+        right: 48px;
+    }
+
+    header.site-header-unified .site-header-mobile-back:hover,
+    header.site-header-unified .site-header-mobile-back:focus-visible {
+        background: rgba(15, 23, 42, .06);
+        color: var(--color-earth-green);
+        outline: none;
+    }
+}
+
+@media (max-width: 359px) {
+    header.site-header-unified .site-header-mobile-back {
+        left: 44px;
+        width: 32px;
+        height: 32px;
+    }
+
+    html[dir="ltr"] header.site-header-unified .site-header-mobile-back {
+        left: auto;
+        right: 44px;
     }
 }
 
