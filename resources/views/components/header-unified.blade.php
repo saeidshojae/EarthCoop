@@ -118,31 +118,28 @@
         .site-header-mobile-menu-slot { justify-self: end; }
         html[dir="rtl"] .site-header-mobile-menu-slot { justify-self: start; }
 
-        header.site-header-unified[data-header-context="welcome"] .site-header-mobile-bar {
+        header.site-header-unified[data-auth-state="guest"] .site-header-mobile-bar {
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
-        html[dir="rtl"] header.site-header-unified[data-header-context="welcome"] .site-header-mobile-bar {
+        html[dir="rtl"] header.site-header-unified[data-auth-state="guest"] .site-header-mobile-bar {
             direction: rtl;
         }
 
-        html[dir="ltr"] header.site-header-unified[data-header-context="welcome"] .site-header-mobile-bar {
+        html[dir="ltr"] header.site-header-unified[data-auth-state="guest"] .site-header-mobile-bar {
             direction: ltr;
         }
 
-        header.site-header-unified[data-header-context="welcome"] .site-header-mobile-account-slot {
+        header.site-header-unified[data-auth-state="guest"] .site-header-mobile-account-slot {
             display: none !important;
         }
 
-        header.site-header-unified[data-header-context="welcome"] .site-header-mobile-brand {
+        header.site-header-unified[data-auth-state="guest"] .site-header-mobile-brand,
+        header.site-header-unified[data-auth-state="guest"] .site-header-mobile-menu-slot {
             justify-self: auto;
             margin: 0;
-        }
-
-        header.site-header-unified[data-header-context="welcome"] .site-header-mobile-menu-slot {
-            justify-self: auto;
         }
 
         .site-header-hamburger {
@@ -336,7 +333,8 @@
         @keydown.escape.window="headerMenuOpen = false; localeOpen = false"
         class="site-header-unified bg-pure-white shadow-md font-vazirmatn"
         style="background-color: var(--color-pure-white);"
-        data-header-context="{{ $headerContext }}">
+        data-header-context="{{ $headerContext }}"
+        data-auth-state="{{ $isAuth ? 'authenticated' : 'guest' }}">
 
     <div class="site-header-row container mx-auto hidden 2xl:flex items-center justify-between gap-3 flex-nowrap">
         <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-shrink-0">
