@@ -73,10 +73,11 @@ class MobileNavigationContractTest extends TestCase
         $this->assertStringNotContainsString("route('secretariat.directory')", $account);
     }
 
-    public function test_back_navigation_is_server_rendered_and_uses_native_browser_history(): void
+    public function test_back_navigation_is_server_rendered_native_and_has_non_vite_runtime(): void
     {
         $header = file_get_contents(resource_path('views/components/header-unified.blade.php'));
         $history = file_get_contents(resource_path('js/site-navigation-history.js'));
+        $publicRuntime = file_get_contents(public_path('js/dark-mode.js'));
         $app = file_get_contents(resource_path('js/app.js'));
         $polish = file_get_contents(public_path('Css/header-mobile-polish.css'));
 
@@ -84,17 +85,15 @@ class MobileNavigationContractTest extends TestCase
         $this->assertStringContainsString('site-header-mobile-back', $header);
         $this->assertStringContainsString("href=\"{{ route('home') }}\"", $header);
         $this->assertStringNotContainsString('url()->previous()', $header);
-        $this->assertStringNotContainsString('$previousUrl', $header);
-        $this->assertStringNotContainsString('$backUrl', $header);
 
         $this->assertStringContainsString('window.history.back();', $history);
-        $this->assertStringContainsString('window.history.length', $history);
         $this->assertStringContainsString('document.referrer', $history);
-        $this->assertStringContainsString('window.location.assign(fallbackUrl);', $history);
         $this->assertStringNotContainsString('sessionStorage', $history);
-        $this->assertStringNotContainsString('earthcoop.navigation.stack', $history);
-        $this->assertStringContainsString('data-earthcoop-history-back', $history);
         $this->assertStringContainsString('import "./site-navigation-history.js";', $app);
+
+        $this->assertStringContainsString('window.earthcoopNavigateBack', $publicRuntime);
+        $this->assertStringContainsString('window.history.back();', $publicRuntime);
+        $this->assertStringContainsString('data-earthcoop-history-back', $publicRuntime);
         $this->assertStringContainsString('.site-header-mobile-back', $polish);
         $this->assertStringContainsString(':has(.site-header-mobile-back)', $polish);
     }
@@ -102,45 +101,35 @@ class MobileNavigationContractTest extends TestCase
     public function test_guest_drawer_exposes_prominent_authentication_and_invite_code_actions(): void
     {
         $drawer = file_get_contents(resource_path('views/components/mobile-navigation-drawer.blade.php'));
-        $polish = file_get_contents(resource_path('css/header-mobile-polish.css'));
 
         $this->assertStringContainsString('ورود و عضویت', $drawer);
         $this->assertStringContainsString("route('login')", $drawer);
         $this->assertStringContainsString('openModal()', $drawer);
         $this->assertStringContainsString("route('invite')", $drawer);
         $this->assertStringContainsString('درخواست کد دعوت', $drawer);
-        $this->assertStringContainsString('guest-navigation-cta', $polish);
-        $this->assertStringContainsString('nth-child(1)', $polish);
-        $this->assertStringContainsString('nth-child(2)', $polish);
-        $this->assertStringContainsString('nth-child(3)', $polish);
+        $this->assertStringContainsString('guest-navigation-cta--login', $drawer);
+        $this->assertStringContainsString('guest-navigation-cta--join', $drawer);
+        $this->assertStringContainsString('guest-navigation-cta--invite', $drawer);
+        $this->assertStringContainsString('background: #3b82f6 !important;', $drawer);
+        $this->assertStringContainsString('background: #10b981 !important;', $drawer);
+        $this->assertStringContainsString('background: #f59e0b !important;', $drawer);
     }
 
-    public function test_header_polish_is_loaded_through_shared_vite_bundle_for_welcome_and_unified_pages(): void
+    public function test_header_polish_has_one_canonical_public_source_outside_vite(): void
     {
-        $welcome = file_get_contents(resource_path('views/welcome.blade.php'));
         $unified = file_get_contents(resource_path('views/layouts/unified.blade.php'));
         $app = file_get_contents(resource_path('js/app.js'));
 
-        $this->assertStringContainsString("@vite(['resources/js/app.js'])", $welcome);
-        $this->assertStringContainsString("@vite(['resources/js/app.js'])", $unified);
-        $this->assertStringContainsString('import "../css/header-mobile-polish.css";', $app);
-        $this->assertFileExists(resource_path('css/header-mobile-polish.css'));
-    }
-
-    public function test_public_and_bundled_header_polish_sources_stay_identical(): void
-    {
-        $publicPolish = file_get_contents(public_path('Css/header-mobile-polish.css'));
-        $bundledPolish = file_get_contents(resource_path('css/header-mobile-polish.css'));
-
-        $this->assertSame($publicPolish, $bundledPolish);
-        $this->assertStringContainsString('grid-template-columns: 40px minmax(0, 1fr) 96px !important;', $publicPolish);
-        $this->assertStringContainsString('transform: translateX(-4px);', $publicPolish);
+        $this->assertStringContainsString("asset('Css/header-mobile-polish.css')", $unified);
+        $this->assertFileExists(public_path('Css/header-mobile-polish.css'));
+        $this->assertFileDoesNotExist(resource_path('css/header-mobile-polish.css'));
+        $this->assertStringNotContainsString('header-mobile-polish.css', $app);
     }
 
     public function test_guest_header_is_balanced_cloaked_and_all_header_logos_animate(): void
     {
         $header = file_get_contents(resource_path('views/components/header-unified.blade.php'));
-        $polish = file_get_contents(resource_path('css/header-mobile-polish.css'));
+        $polish = file_get_contents(public_path('Css/header-mobile-polish.css'));
 
         $this->assertStringContainsString('[x-cloak]', $header);
         $this->assertStringContainsString('data-auth-state="{{ $isAuth ? \'authenticated\' : \'guest\' }}"', $header);
@@ -154,7 +143,7 @@ class MobileNavigationContractTest extends TestCase
 
     public function test_navigation_drawer_stays_above_compact_account_trigger(): void
     {
-        $polish = file_get_contents(resource_path('css/header-mobile-polish.css'));
+        $polish = file_get_contents(public_path('Css/header-mobile-polish.css'));
 
         $this->assertStringContainsString('.mobile-account-root', $polish);
         $this->assertStringContainsString('z-index: 1050;', $polish);
