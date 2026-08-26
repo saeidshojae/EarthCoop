@@ -52,7 +52,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '20'
           cache: npm
 
       - name: Prepare Laravel directories
@@ -70,6 +70,8 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm run build
+          test -f public/build/manifest.json
+          grep -F 'resources/js/app.js' public/build/manifest.json >/dev/null
 
       - name: Create isolated test environment
         run: |
