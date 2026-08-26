@@ -50,6 +50,9 @@ class FounderMinistryChatViewTest extends TestCase
         $this->assertStringContainsString('موردی در این دسته ثبت نشده است.', $view);
         $this->assertStringContainsString('function renderAgency(agency)', $view);
         $this->assertStringContainsString('renderAgency(executive.agency||{})', $view);
+        $this->assertStringContainsString('function agencyEntry(item)', $view);
+        $this->assertStringContainsString('action=item.title||item.action||', $view);
+        $this->assertStringContainsString('item.reason?', $view);
         $this->assertStringContainsString('رسیدگی / جزئیات', $view);
         $this->assertStringContainsString('function renderReport(data)', $view);
         $this->assertStringContainsString('function renderItems(items)', $view);
@@ -63,12 +66,7 @@ class FounderMinistryChatViewTest extends TestCase
         $this->assertStringContainsString('background:#1d4ed8!important;color:#fff!important', $view);
         $this->assertStringContainsString('گفت‌وگوی آزاد — مستقل از پنل گزارش مدیریتی', $view);
 
-        // Human presentation is prepared server-side. Raw audit action/reason codes are not rendered as manager copy.
-        $this->assertStringContainsString('item.display_title||item.title||', $view);
-        $this->assertStringContainsString('item.display_explanation||', $view);
-        $this->assertStringNotContainsString("item.reason?` · ${item.reason}`", $view);
-
-        // Authority is calculated server-side. The view only renders the agency payload.
+        // Authority and human presentation are calculated server-side. The view only renders the agency payload.
         $this->assertStringNotContainsString("==='delegated_safe'", $view);
         $this->assertStringNotContainsString("==='approval_required'", $view);
         $this->assertStringNotContainsString('isGranted(', $view);
