@@ -158,13 +158,13 @@ class FounderMinistryAgencyService
                 }
 
                 if (in_array($state, ['missing', 'blocked_dependency', 'protected'], true)) {
-                    $reason = $this->blockedReason($state, $evidence);
+                    $reasonCode = $this->blockedReason($state, $evidence);
                     $blocked[] = $this->presentItem($base + [
-                        'reason' => $reason,
+                        'reason_code' => $reasonCode,
                         'dependency' => $state === 'blocked_dependency'
                             ? (string) data_get($evidence, 'block.dependency', '')
                             : null,
-                    ], $reason);
+                    ], $reasonCode);
                 }
             }
         }
@@ -259,11 +259,17 @@ class FounderMinistryAgencyService
         $action = (string) ($item['action'] ?? '');
         $mode = (string) ($item['mode'] ?? '');
         $key = $domain.'.'.$action;
-
-        $item['display_title'] = $preferredTitle ?: (self::ACTION_TITLES[$key] ?? 'اقدام مرتبط این حوزه');
-        $item['display_explanation'] = $blockedReason !== null
+        $title = $preferredTitle ?: (self::ACTION_TITLES[$key] ?? 'اقدام مرتبط این حوزه');
+        $explanation = $blockedReason !== null
             ? $this->blockedExplanation($blockedReason)
             : $this->capabilityExplanation($key, $mode, (string) ($item['state'] ?? ''));
+
+        $item['title'] = $title;
+        $item['display_title'] = $title;
+        $item['display_explanation'] = $explanation;
+        if ($blockedReason !== null) {
+            $item['reason'] = $explanation;
+        }
 
         return $item;
     }
