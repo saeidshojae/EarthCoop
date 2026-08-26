@@ -114,6 +114,33 @@
 
         <hr class="my-1 border-gray-200">
 
+        @php
+            $currentGroupForSecretariat = request()->route('group');
+            if (! $currentGroupForSecretariat instanceof \App\Models\Group) {
+                $currentGroupForSecretariat = null;
+            }
+        @endphp
+
+        <h6 class="px-4 py-2 text-sm font-bold text-right" style="color: var(--color-ocean-blue); text-align: right !important;">دبیرخانه</h6>
+
+        <a href="{{ route('secretariat.directory') }}"
+           class="block px-4 py-2 hover:bg-gray-50 transition duration-200 flex items-center gap-3"
+           style="color: var(--color-gentle-black);">
+            <i class="fas fa-box-archive"></i>
+            <span class="text-right">دبیرخانه‌های من</span>
+        </a>
+
+        @if($currentGroupForSecretariat)
+            <a href="{{ route('secretariat.group', $currentGroupForSecretariat) }}"
+               class="block px-4 py-2 hover:bg-gray-50 transition duration-200 flex items-center gap-3"
+               style="color: var(--color-gentle-black);">
+                <i class="fas fa-people-group"></i>
+                <span class="text-right">دبیرخانه گروه</span>
+            </a>
+        @endif
+
+        <hr class="my-1 border-gray-200">
+
         <h6 class="px-4 py-2 text-sm font-bold text-right" style="color: var(--color-ocean-blue); text-align: right !important;">پشتیبانی</h6>
 
         <a href="{{ route('support.kb.index') }}"
@@ -170,6 +197,12 @@
                style="color: var(--color-gentle-black);">
                 <i class="fas fa-cog"></i>
                 <span class="text-right">{{ __('navigation.admin_dashboard') }}</span>
+            </a>
+            <a href="{{ route('secretariat.central') }}"
+               class="block px-4 py-2 hover:bg-gray-50 transition duration-200 flex items-center gap-3"
+               style="color: var(--color-gentle-black);">
+                <i class="fas fa-building-columns"></i>
+                <span class="text-right">دبیرخانه مرکزی</span>
             </a>
             <a href="{{ route('admin.blog.dashboard') }}" 
                class="block px-4 py-2 hover:bg-gray-50 transition duration-200 flex items-center gap-3" 
