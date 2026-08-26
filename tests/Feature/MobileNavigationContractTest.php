@@ -28,31 +28,42 @@ class MobileNavigationContractTest extends TestCase
             $this->assertStringContainsString($routeContract, $drawer);
         }
 
+        foreach (['primary', 'participation', 'economy', 'organization', 'support', 'explore'] as $section) {
+            $this->assertStringContainsString("openSection === '{$section}'", $drawer);
+        }
+
         $this->assertStringContainsString('x-data="{ openSection:', $drawer);
         $this->assertStringContainsString('@click="openSection = openSection ===', $drawer);
         $this->assertStringContainsString('navigation-section', $drawer);
     }
 
-    public function test_public_sidebar_is_desktop_only_after_mobile_navigation_consolidation(): void
+    public function test_public_sidebar_is_hidden_on_mobile_after_navigation_consolidation(): void
     {
-        $sidebar = file_get_contents(resource_path('views/partials/sidebar-unified.blade.php'));
+        $header = file_get_contents(resource_path('views/components/header-unified.blade.php'));
 
-        $this->assertStringContainsString('hidden lg:block', $sidebar);
+        $this->assertStringContainsString('.unified-public-sidebar { display: none !important; }', $header);
+        $this->assertStringContainsString('@media (max-width: 1023px)', $header);
     }
 
-    public function test_mobile_header_uses_the_navigation_drawer_component(): void
+    public function test_mobile_header_uses_the_navigation_drawer_and_account_components(): void
     {
         $header = file_get_contents(resource_path('views/components/header-unified.blade.php'));
 
         $this->assertStringContainsString("@include('components.mobile-navigation-drawer'", $header);
+        $this->assertStringContainsString("@include('components.mobile-account-menu')", $header);
         $this->assertStringContainsString('site-header-mobile-bar', $header);
+        $this->assertStringContainsString('height: 60px !important', $header);
     }
 
-    public function test_mobile_profile_menu_is_scoped_to_account_actions(): void
+    public function test_mobile_account_menu_is_scoped_to_account_actions(): void
     {
-        $profile = file_get_contents(resource_path('views/components/user-dropdown-unified.blade.php'));
+        $account = file_get_contents(resource_path('views/components/mobile-account-menu.blade.php'));
 
-        $this->assertStringContainsString('mobile-account-only', $profile);
-        $this->assertStringContainsString('desktop-expanded-nav', $profile);
+        $this->assertStringContainsString("route('profile.show')", $account);
+        $this->assertStringContainsString("route('profile.edit')", $account);
+        $this->assertStringContainsString("route('logout')", $account);
+        $this->assertStringNotContainsString("route('auction.index')", $account);
+        $this->assertStringNotContainsString("route('support.kb.index')", $account);
+        $this->assertStringNotContainsString("route('secretariat.directory')", $account);
     }
 }
