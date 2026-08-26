@@ -37,6 +37,7 @@
 
     <!-- Unified Styles - بر اساس طراحی Home -->
     <link rel="stylesheet" href="{{ asset('Css/unified-styles.css') }}">
+    <link rel="stylesheet" href="{{ asset('Css/header-mobile-polish.css') }}">
 
     <!-- Page Specific Styles -->
     @stack('styles')
