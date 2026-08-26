@@ -94,6 +94,23 @@
     });
   }
 
+  function installHeaderActionRailNudge() {
+    if (document.getElementById("earthcoop-header-action-rail-nudge")) return;
+    const style = document.createElement("style");
+    style.id = "earthcoop-header-action-rail-nudge";
+    style.textContent = `
+      @media (max-width: 1023px) {
+        html[dir="rtl"] header.site-header-unified[data-auth-state="authenticated"] .site-header-mobile-menu-slot {
+          transform: translateX(-8px) !important;
+        }
+        html[dir="ltr"] header.site-header-unified[data-auth-state="authenticated"] .site-header-mobile-menu-slot {
+          transform: translateX(8px) !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function initialize() {
     if (savedTheme === "dark") {
       document.documentElement.classList.add("dark-mode");
@@ -115,6 +132,7 @@
       });
     });
 
+    installHeaderActionRailNudge();
     bindHeaderBackControls();
   }
 
