@@ -1,28 +1,83 @@
-const sameOriginReferrer = () => {
-    if (!document.referrer) return false;
+const NAVIGATION_STACK_KEY = 'earthcoop.navigation.stack';
+const NAVIGATION_STACK_LIMIT = 50;
 
+const normalizeUrl = (value) => {
     try {
-        return new URL(document.referrer).origin === window.location.origin;
+        const url = new URL(value, window.location.origin);
+        return url.origin === window.location.origin ? url.href : null;
     } catch {
-        return false;
+        return null;
+    }
+};
+
+const readStack = () => {
+    try {
+        const parsed = JSON.parse(window.sessionStorage.getItem(NAVIGATION_STACK_KEY) || '[]');
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map(normalizeUrl).filter(Boolean).slice(-NAVIGATION_STACK_LIMIT);
+    } catch {
+        return [];
+    }
+};
+
+const writeStack = (stack) => {
+    try {
+        window.sessionStorage.setItem(NAVIGATION_STACK_KEY, JSON.stringify(stack.slice(-NAVIGATION_STACK_LIMIT)));
+    } catch {
+        // sessionStorage can be unavailable in restrictive/private contexts.
+    }
+};
+
+const currentNavigationType = () => {
+    try {
+        return window.performance.getEntriesByType('navigation')[0]?.type || 'navigate';
+    } catch {
+        return 'navigate';
+    }
+};
+
+const registerCurrentPage = () => {
+    const current = normalizeUrl(window.location.href);
+    if (!current) return;
+
+    const stack = readStack();
+    const navigationType = currentNavigationType();
+
+    if (navigationType === 'back_forward') {
+        const existingIndex = stack.lastIndexOf(current);
+        if (existingIndex >= 0) {
+            writeStack(stack.slice(0, existingIndex + 1));
+            return;
+        }
+    }
+
+    if (stack[stack.length - 1] !== current) {
+        stack.push(current);
+        writeStack(stack);
     }
 };
 
 const navigateBack = (fallbackUrl, event = null) => {
     event?.preventDefault?.();
 
-    // Traverse the browser's real history stack. Unlike a server-generated
-    // previous URL, this does not create a new history entry and therefore
-    // cannot ping-pong between the last two pages.
-    if (window.history.length > 1 && sameOriginReferrer()) {
+    const stack = readStack();
+    const current = normalizeUrl(window.location.href);
+
+    if (current && stack[stack.length - 1] === current && stack.length > 1) {
+        stack.pop();
+        writeStack(stack);
         window.history.back();
         return;
     }
 
+    // If the stack was lost or this page was opened directly, never send the
+    // user to an arbitrary external referrer. Home is the deterministic fallback.
     window.location.assign(fallbackUrl);
 };
 
 const installUnifiedHeaderBackNavigation = () => {
+    registerCurrentPage();
+
     const header = document.querySelector('header.site-header-unified');
     if (!header) return;
 
