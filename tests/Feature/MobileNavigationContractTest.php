@@ -93,4 +93,27 @@ class MobileNavigationContractTest extends TestCase
         $this->assertStringContainsString('import "./site-navigation-history.js";', $app);
         $this->assertStringContainsString('.site-header-mobile-back', $polish);
     }
+
+    public function test_guest_drawer_exposes_authentication_and_invite_code_actions(): void
+    {
+        $drawer = file_get_contents(resource_path('views/components/mobile-navigation-drawer.blade.php'));
+
+        $this->assertStringContainsString('ورود و عضویت', $drawer);
+        $this->assertStringContainsString("route('login')", $drawer);
+        $this->assertStringContainsString('openModal()', $drawer);
+        $this->assertStringContainsString("route('invite')", $drawer);
+        $this->assertStringContainsString('درخواست کد دعوت', $drawer);
+    }
+
+    public function test_guest_header_is_balanced_cloaked_and_all_header_logos_animate(): void
+    {
+        $header = file_get_contents(resource_path('views/components/header-unified.blade.php'));
+
+        $this->assertStringContainsString('[x-cloak]', $header);
+        $this->assertStringContainsString('data-header-context="{{ $headerContext }}"', $header);
+        $this->assertStringContainsString('[data-header-context="welcome"] .site-header-mobile-bar', $header);
+        $this->assertStringContainsString('[data-header-context="welcome"] .site-header-mobile-account-slot', $header);
+        $this->assertStringContainsString('animation: brand-logo-float 3s infinite ease-in-out', $header);
+        $this->assertGreaterThanOrEqual(2, substr_count($header, 'brand-logo-animated'));
+    }
 }
