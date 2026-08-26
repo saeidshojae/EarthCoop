@@ -6,6 +6,7 @@ on:
       - agent/integration-hoda-bahar-after-groups
       - agent/integration-secretariat-s9-current-main
       - agent/elections-systemic-rebuild
+      - agent/pre-main-ui-polish
   pull_request:
     branches:
       - main
