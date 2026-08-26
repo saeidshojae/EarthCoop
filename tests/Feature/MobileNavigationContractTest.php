@@ -73,7 +73,7 @@ class MobileNavigationContractTest extends TestCase
         $this->assertStringNotContainsString("route('secretariat.directory')", $account);
     }
 
-    public function test_back_navigation_is_server_rendered_and_uses_same_tab_logical_stack(): void
+    public function test_back_navigation_is_server_rendered_and_uses_native_browser_history(): void
     {
         $header = file_get_contents(resource_path('views/components/header-unified.blade.php'));
         $history = file_get_contents(resource_path('js/site-navigation-history.js'));
@@ -87,12 +87,12 @@ class MobileNavigationContractTest extends TestCase
         $this->assertStringNotContainsString('$previousUrl', $header);
         $this->assertStringNotContainsString('$backUrl', $header);
 
-        $this->assertStringContainsString('sessionStorage', $history);
-        $this->assertStringContainsString('earthcoop.navigation.stack', $history);
-        $this->assertStringContainsString('const previousUrl = stack[stack.length - 1];', $history);
-        $this->assertStringContainsString('window.location.assign(previousUrl);', $history);
-        $this->assertStringNotContainsString('history.back()', $history);
-        $this->assertStringNotContainsString('sameOriginReferrer()', $history);
+        $this->assertStringContainsString('window.history.back();', $history);
+        $this->assertStringContainsString('window.history.length', $history);
+        $this->assertStringContainsString('document.referrer', $history);
+        $this->assertStringContainsString('window.location.assign(fallbackUrl);', $history);
+        $this->assertStringNotContainsString('sessionStorage', $history);
+        $this->assertStringNotContainsString('earthcoop.navigation.stack', $history);
         $this->assertStringContainsString('data-earthcoop-history-back', $history);
         $this->assertStringContainsString('import "./site-navigation-history.js";', $app);
         $this->assertStringContainsString('.site-header-mobile-back', $polish);
@@ -125,6 +125,16 @@ class MobileNavigationContractTest extends TestCase
         $this->assertStringContainsString("@vite(['resources/js/app.js'])", $unified);
         $this->assertStringContainsString('import "../css/header-mobile-polish.css";', $app);
         $this->assertFileExists(resource_path('css/header-mobile-polish.css'));
+    }
+
+    public function test_public_and_bundled_header_polish_sources_stay_identical(): void
+    {
+        $publicPolish = file_get_contents(public_path('Css/header-mobile-polish.css'));
+        $bundledPolish = file_get_contents(resource_path('css/header-mobile-polish.css'));
+
+        $this->assertSame($publicPolish, $bundledPolish);
+        $this->assertStringContainsString('grid-template-columns: 40px minmax(0, 1fr) 96px !important;', $publicPolish);
+        $this->assertStringContainsString('transform: translateX(-4px);', $publicPolish);
     }
 
     public function test_guest_header_is_balanced_cloaked_and_all_header_logos_animate(): void
