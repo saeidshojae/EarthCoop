@@ -12,6 +12,12 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::get('/secretariat', [SecretariatDirectoryController::class, 'index'])
         ->name('secretariat.directory');
 
+    Route::get('/secretariat/central', [SecretariatDirectoryController::class, 'central'])
+        ->name('secretariat.central');
+
+    Route::get('/secretariat/groups/{group}', [SecretariatDirectoryController::class, 'group'])
+        ->name('secretariat.group');
+
     Route::prefix('secretariat/offices/{office}')
         ->name('secretariat.')
         ->group(function () {
