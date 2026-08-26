@@ -22,13 +22,15 @@ class GuestHeaderSelfContainedContractTest extends TestCase
         $this->assertStringContainsString('earthcoop-header-logo-float-soft', $drawer);
     }
 
-    public function test_back_navigation_has_component_level_same_tab_fallback(): void
+    public function test_back_navigation_has_a_non_vite_same_origin_fallback_runtime(): void
     {
-        $drawer = file_get_contents(resource_path('views/components/mobile-navigation-drawer.blade.php'));
+        $runtime = file_get_contents(public_path('js/dark-mode.js'));
 
-        $this->assertStringContainsString("'earthcoop.navigation.stack'", $drawer);
-        $this->assertStringContainsString('$mobileBackFallback = $isAuth ? route(\'home\') : route(\'welcome\');', $drawer);
-        $this->assertStringContainsString('event.stopImmediatePropagation();', $drawer);
-        $this->assertStringContainsString('window.location.assign(target);', $drawer);
+        $this->assertStringContainsString('window.earthcoopNavigateBack', $runtime);
+        $this->assertStringContainsString('document.referrer', $runtime);
+        $this->assertStringContainsString('window.history.back();', $runtime);
+        $this->assertStringContainsString('data-earthcoop-history-back', $runtime);
+        $this->assertStringNotContainsString('sessionStorage', $runtime);
+        $this->assertStringNotContainsString('earthcoop.navigation.stack', $runtime);
     }
 }
