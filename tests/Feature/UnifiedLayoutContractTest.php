@@ -9,11 +9,16 @@ use Tests\TestCase;
 
 class UnifiedLayoutContractTest extends TestCase
 {
-    public function test_legacy_app_layout_is_removed_and_no_blade_view_extends_it(): void
+    public function test_only_unified_general_layout_remains_and_no_blade_view_references_retired_layouts(): void
     {
-        $legacyLayout = resource_path('views/layouts/app.blade.php');
+        $retiredLayouts = ['app', 'master', 'admin', 'chat'];
 
-        $this->assertFileDoesNotExist($legacyLayout, 'Legacy layouts.app must be removed after migration to layouts.unified.');
+        foreach ($retiredLayouts as $layout) {
+            $this->assertFileDoesNotExist(
+                resource_path("views/layouts/{$layout}.blade.php"),
+                "Retired layouts.{$layout} must not exist after consolidation onto layouts.unified."
+            );
+        }
 
         $offenders = [];
         $iterator = new RecursiveIteratorIterator(
@@ -27,12 +32,14 @@ class UnifiedLayoutContractTest extends TestCase
 
             $contents = file_get_contents($file->getPathname());
 
-            if (str_contains($contents, "layouts.app")) {
-                $offenders[] = str_replace(base_path().DIRECTORY_SEPARATOR, '', $file->getPathname());
+            foreach ($retiredLayouts as $layout) {
+                if (str_contains($contents, "layouts.{$layout}")) {
+                    $offenders[] = str_replace(base_path().DIRECTORY_SEPARATOR, '', $file->getPathname())." -> layouts.{$layout}";
+                }
             }
         }
 
-        $this->assertSame([], $offenders, 'Blade views still referencing layouts.app: '.implode(', ', $offenders));
+        $this->assertSame([], $offenders, 'Blade views still referencing retired layouts: '.implode(', ', $offenders));
     }
 
     public function test_unified_layout_does_not_use_a_wildcard_header_class_selector(): void
