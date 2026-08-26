@@ -43,6 +43,19 @@
 
 @once
     <style>
+        [x-cloak] { display: none !important; }
+
+        @keyframes brand-logo-float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .brand-logo-animated {
+            animation: brand-logo-float 3s infinite ease-in-out;
+            transform-origin: center;
+            will-change: transform;
+        }
+
         html[dir="rtl"] .site-header-row,
         html[dir="ltr"] .site-header-row { flex-direction: row-reverse; }
         html[dir="rtl"] .site-header-row > * { direction: rtl; }
@@ -104,6 +117,33 @@
         html[dir="rtl"] .site-header-mobile-account-slot { justify-self: end; }
         .site-header-mobile-menu-slot { justify-self: end; }
         html[dir="rtl"] .site-header-mobile-menu-slot { justify-self: start; }
+
+        header.site-header-unified[data-header-context="welcome"] .site-header-mobile-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        html[dir="rtl"] header.site-header-unified[data-header-context="welcome"] .site-header-mobile-bar {
+            direction: rtl;
+        }
+
+        html[dir="ltr"] header.site-header-unified[data-header-context="welcome"] .site-header-mobile-bar {
+            direction: ltr;
+        }
+
+        header.site-header-unified[data-header-context="welcome"] .site-header-mobile-account-slot {
+            display: none !important;
+        }
+
+        header.site-header-unified[data-header-context="welcome"] .site-header-mobile-brand {
+            justify-self: auto;
+            margin: 0;
+        }
+
+        header.site-header-unified[data-header-context="welcome"] .site-header-mobile-menu-slot {
+            justify-self: auto;
+        }
 
         .site-header-hamburger {
             position: relative;
@@ -249,6 +289,19 @@
         }
         .navigation-badge--alert { background: var(--color-red-tomato); }
 
+        @media (max-width: 1535px) {
+            header.site-header-unified .site-header-mobile-bar {
+                align-items: center;
+                align-content: center;
+            }
+
+            header.site-header-unified .site-header-mobile-brand,
+            header.site-header-unified .site-header-mobile-menu-slot,
+            header.site-header-unified .site-header-mobile-account-slot {
+                align-self: center;
+            }
+        }
+
         @media (max-width: 1023px) {
             header.site-header-unified {
                 box-sizing: border-box;
@@ -271,6 +324,10 @@
             }
             header.site-header-unified .site-header-row { height: 45px; }
             .site-header-spacer { height: 84px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .brand-logo-animated { animation: none !important; }
         }
     </style>
 @endonce
@@ -338,7 +395,7 @@
             @if($isWelcomeHeader)
                 <button type="button" onclick="openModal()" class="bg-earth-green text-white px-6 py-2 rounded-full shadow-md hover:bg-dark-green transition font-medium">{{ __('langWelcome.btn_join') }}</button>
                 <a href="{{ route('login') }}" class="bg-ocean-blue text-white px-6 py-2 rounded-full shadow-md hover:bg-dark-blue transition font-medium">{{ __('langWelcome.btn_login') }}</a>
-                <a href="{{ route('invite') }}" class="bg-digital-gold text-white px-6 py-2 rounded-full shadow-md transition font-medium">{{ __('langWelcome.btn_invite') }}</a>
+                <a href="{{ route('invite') }}" class="bg-digital-gold text-white px-6 py-2 rounded-full shadow-md transition font-medium">درخواست کد دعوت</a>
             @elseif($isAuth)
                 <a href="{{ route('support.kb.index') }}" class="inline-flex w-10 h-10 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm" title="پایگاه دانش"><i class="fas fa-circle-question text-ocean-blue"></i></a>
                 @include('components.user-dropdown-unified')
@@ -359,7 +416,7 @@
         </div>
 
         <a href="{{ $logoTarget }}" class="site-header-mobile-brand" aria-label="EarthCoop">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <svg class="brand-logo-animated" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#10b981" opacity="0.8"/>
                 <path d="M12 2C10.5 4 8 6 8 9C8 12 12 14 12 14C12 14 16 12 16 9C16 6 13.5 4 12 2ZM12 14C12 14 10 16 10 18C10 20 12 22 12 22" fill="#047857"/>
             </svg>
