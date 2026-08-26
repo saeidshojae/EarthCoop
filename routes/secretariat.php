@@ -6,6 +6,7 @@ use App\Modules\Secretariat\Controllers\SecretariatCaseController;
 use App\Modules\Secretariat\Controllers\SecretariatController;
 use App\Modules\Secretariat\Controllers\SecretariatCorrespondenceController;
 use App\Modules\Secretariat\Controllers\SecretariatDirectoryController;
+use App\Modules\Secretariat\Controllers\SecretariatOfficeSettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(Authenticate::class)->group(function () {
@@ -22,6 +23,11 @@ Route::middleware(Authenticate::class)->group(function () {
         ->name('secretariat.')
         ->group(function () {
             Route::get('/', [SecretariatController::class, 'index'])->name('index');
+
+            Route::get('/settings', [SecretariatOfficeSettingsController::class, 'edit'])->name('settings.edit');
+            Route::put('/settings', [SecretariatOfficeSettingsController::class, 'update'])
+                ->middleware('throttle:20,1')
+                ->name('settings.update');
 
             Route::get('/cases', [SecretariatCaseController::class, 'index'])->name('cases.index');
             Route::get('/cases/create', [SecretariatCaseController::class, 'create'])->name('cases.create');
