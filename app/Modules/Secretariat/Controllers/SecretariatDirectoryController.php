@@ -71,7 +71,12 @@ class SecretariatDirectoryController extends Controller
                 'scope_id' => $group->id,
                 'status' => 'active',
             ]);
-            $this->authorize('manage', $probe);
+
+            // Provisioning a canonical group office is an idempotent infrastructure
+            // operation, not a grant of management authority. Any active member who
+            // is already entitled to view the office may trigger its lazy creation;
+            // manage/inspect capabilities remain enforced by the office policies.
+            $this->authorize('view', $probe);
             $office = $this->offices->ensureGroup($group);
         } else {
             $this->authorize('view', $office);
