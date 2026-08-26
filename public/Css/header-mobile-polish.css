@@ -1,4 +1,4 @@
-/* Final mobile header alignment polish for unified layout. */
+/* Final mobile + compact header polish for unified layout. */
 
 @media (max-width: 1023px) {
     header.site-header-unified .site-header-mobile-bar {
@@ -100,7 +100,8 @@
         background: transparent;
         color: #475569;
         transform: translateY(-50%);
-        z-index: 2;
+        z-index: 3;
+        text-decoration: none;
         transition: background-color .15s ease, color .15s ease;
     }
 
@@ -114,6 +115,86 @@
         background: rgba(15, 23, 42, .06);
         color: var(--color-earth-green);
         outline: none;
+    }
+}
+
+@media (min-width: 1024px) and (max-width: 1535px) {
+    header.site-header-unified .site-header-mobile-bar {
+        position: relative;
+        height: 45px;
+        align-items: center;
+        align-content: center;
+    }
+
+    header.site-header-unified .site-header-mobile-account-slot,
+    header.site-header-unified .site-header-mobile-menu-slot {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        align-self: center;
+    }
+
+    header.site-header-unified .mobile-account-root {
+        position: relative;
+        z-index: 1350;
+    }
+
+    header.site-header-unified .mobile-account-dropdown {
+        position: fixed !important;
+        top: 92px !important;
+        right: 32px !important;
+        left: auto !important;
+        margin: 0 !important;
+        z-index: 1400 !important;
+        max-width: min(22rem, calc(100vw - 64px));
+        transform-origin: top right;
+    }
+
+    html[dir="ltr"] header.site-header-unified .mobile-account-dropdown {
+        right: auto !important;
+        left: 32px !important;
+        transform-origin: top left;
+    }
+
+    header.site-header-unified .site-header-mobile-back {
+        position: absolute;
+        left: 68px;
+        top: 50%;
+        width: 36px;
+        height: 36px;
+        margin: 0;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: #475569;
+        transform: translateY(-50%);
+        z-index: 3;
+        text-decoration: none;
+        transition: background-color .15s ease, color .15s ease;
+    }
+
+    html[dir="ltr"] header.site-header-unified .site-header-mobile-back {
+        left: auto;
+        right: 68px;
+    }
+
+    header.site-header-unified .site-header-mobile-back:hover,
+    header.site-header-unified .site-header-mobile-back:focus-visible {
+        background: rgba(15, 23, 42, .06);
+        color: var(--color-earth-green);
+        outline: none;
+    }
+
+    header.site-header-unified .site-header-mobile-brand svg {
+        animation: brand-logo-float 3s infinite ease-in-out;
+        transform-origin: center;
+        will-change: transform;
     }
 }
 
