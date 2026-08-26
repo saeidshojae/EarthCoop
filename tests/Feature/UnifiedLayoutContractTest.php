@@ -13,7 +13,7 @@ class UnifiedLayoutContractTest extends TestCase
     {
         $legacyLayout = resource_path('views/layouts/app.blade.php');
 
-        $this->assertFileDoesNotExist($legacyLayout, 'Legacy layouts.app must be removed after migration to layouts.unified.');
+        $this->assertFileDoesNotExist($legacyLayout, 'Legacy layouts.app must be removed after migration away from layouts.app.');
 
         $offenders = [];
         $iterator = new RecursiveIteratorIterator(
@@ -27,7 +27,7 @@ class UnifiedLayoutContractTest extends TestCase
 
             $contents = file_get_contents($file->getPathname());
 
-            if (str_contains($contents, "layouts.app")) {
+            if (str_contains($contents, 'layouts.app')) {
                 $offenders[] = str_replace(base_path().DIRECTORY_SEPARATOR, '', $file->getPathname());
             }
         }
@@ -43,9 +43,11 @@ class UnifiedLayoutContractTest extends TestCase
 
         $groupChat = file_get_contents(resource_path('views/groups/chat.blade.php'));
         $adminDashboard = file_get_contents(resource_path('views/admin/dashboard.blade.php'));
+        $adminNajmPage = file_get_contents(resource_path('views/admin/najm/index.blade.php'));
 
         $this->assertStringContainsString("@extends('layouts.chat')", $groupChat);
         $this->assertStringContainsString("@extends('layouts.admin')", $adminDashboard);
+        $this->assertStringContainsString("@extends('layouts.admin')", $adminNajmPage);
     }
 
     public function test_unified_layout_does_not_use_a_wildcard_header_class_selector(): void
