@@ -1,5 +1,45 @@
 /* Final mobile + compact header polish for unified layout. */
 
+/* Drawer must always cover account/profile affordances when it is open. */
+header.site-header-unified .mobile-navigation-drawer {
+    z-index: 1500 !important;
+}
+
+header.site-header-unified .mobile-account-root {
+    z-index: 1050;
+}
+
+/* Guest CTA treatment: keep the welcome actions visually prominent. */
+header.site-header-unified[data-auth-state="guest"] .mobile-navigation-drawer__body > .navigation-section:first-child .navigation-section__links > :nth-child(1),
+header.site-header-unified[data-auth-state="guest"] .mobile-navigation-drawer__body > .navigation-section:first-child .navigation-section__links > :nth-child(2),
+header.site-header-unified[data-auth-state="guest"] .mobile-navigation-drawer__body > .navigation-section:first-child .navigation-section__links > :nth-child(3) {
+    margin: 7px 8px;
+    min-height: 46px;
+    border-radius: 12px;
+    font-weight: 800;
+    color: #fff !important;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, .10);
+}
+
+/* guest-navigation-cta: login */
+header.site-header-unified[data-auth-state="guest"] .mobile-navigation-drawer__body > .navigation-section:first-child .navigation-section__links > :nth-child(1) {
+    background: var(--color-ocean-blue) !important;
+}
+
+/* guest-navigation-cta: membership */
+header.site-header-unified[data-auth-state="guest"] .mobile-navigation-drawer__body > .navigation-section:first-child .navigation-section__links > :nth-child(2) {
+    background: var(--color-earth-green) !important;
+}
+
+/* guest-navigation-cta: invite-code request */
+header.site-header-unified[data-auth-state="guest"] .mobile-navigation-drawer__body > .navigation-section:first-child .navigation-section__links > :nth-child(3) {
+    background: var(--color-digital-gold) !important;
+}
+
+header.site-header-unified[data-auth-state="guest"] .mobile-navigation-drawer__body > .navigation-section:first-child .navigation-section__links > :nth-child(-n+3) i {
+    color: #fff !important;
+}
+
 @media (max-width: 1023px) {
     header.site-header-unified .site-header-mobile-bar {
         position: relative;
@@ -7,6 +47,13 @@
         min-height: 60px;
         align-items: center;
         align-content: center;
+    }
+
+    header.site-header-unified[data-auth-state="guest"] .site-header-mobile-bar {
+        height: 60px;
+        min-height: 60px;
+        align-items: center;
+        justify-content: space-between;
     }
 
     header.site-header-unified .site-header-mobile-account-slot,
@@ -19,6 +66,16 @@
         align-self: center;
     }
 
+    header.site-header-unified[data-auth-state="guest"] .site-header-mobile-brand,
+    header.site-header-unified[data-auth-state="guest"] .site-header-mobile-menu-slot {
+        height: 40px;
+        min-height: 40px;
+        align-self: center !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
     header.site-header-unified .site-header-mobile-account-slot > .relative,
     header.site-header-unified .site-header-mobile-account-slot > .mobile-account-root {
         width: 40px;
@@ -26,10 +83,6 @@
         display: flex;
         align-items: center;
         justify-content: center;
-    }
-
-    header.site-header-unified .mobile-account-root {
-        z-index: 1350;
     }
 
     header.site-header-unified .mobile-account-trigger {
@@ -61,6 +114,19 @@
         flex: 0 0 auto;
     }
 
+    /* When Back exists, make it the outermost control: Back | Hamburger in RTL. */
+    html[dir="rtl"] header.site-header-unified .site-header-mobile-menu-slot:has(.site-header-mobile-back) {
+        width: 76px;
+        direction: ltr;
+        justify-content: space-between;
+    }
+
+    html[dir="ltr"] header.site-header-unified .site-header-mobile-menu-slot:has(.site-header-mobile-back) {
+        width: 76px;
+        direction: rtl;
+        justify-content: space-between;
+    }
+
     header.site-header-unified .site-header-mobile-brand {
         height: 40px;
         display: inline-flex;
@@ -85,10 +151,8 @@
     }
 
     header.site-header-unified .site-header-mobile-back {
-        position: absolute;
-        left: 48px;
-        top: 50%;
-        width: 36px;
+        position: static;
+        width: 32px;
         height: 36px;
         margin: 0;
         padding: 0;
@@ -99,15 +163,11 @@
         border-radius: 999px;
         background: transparent;
         color: #475569;
-        transform: translateY(-50%);
+        transform: none;
         z-index: 3;
         text-decoration: none;
+        flex: 0 0 32px;
         transition: background-color .15s ease, color .15s ease;
-    }
-
-    html[dir="ltr"] header.site-header-unified .site-header-mobile-back {
-        left: auto;
-        right: 48px;
     }
 
     header.site-header-unified .site-header-mobile-back:hover,
@@ -126,6 +186,13 @@
         align-content: center;
     }
 
+    header.site-header-unified[data-auth-state="guest"] .site-header-mobile-bar {
+        height: 45px;
+        min-height: 45px;
+        align-items: center;
+        justify-content: space-between;
+    }
+
     header.site-header-unified .site-header-mobile-account-slot,
     header.site-header-unified .site-header-mobile-menu-slot {
         width: 40px;
@@ -136,9 +203,19 @@
         align-self: center;
     }
 
+    header.site-header-unified[data-auth-state="guest"] .site-header-mobile-brand,
+    header.site-header-unified[data-auth-state="guest"] .site-header-mobile-menu-slot {
+        height: 40px;
+        min-height: 40px;
+        align-self: center !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
     header.site-header-unified .mobile-account-root {
         position: relative;
-        z-index: 1350;
+        z-index: 1050;
     }
 
     header.site-header-unified .mobile-account-dropdown {
@@ -158,11 +235,21 @@
         transform-origin: top left;
     }
 
+    html[dir="rtl"] header.site-header-unified .site-header-mobile-menu-slot:has(.site-header-mobile-back) {
+        width: 80px;
+        direction: ltr;
+        justify-content: space-between;
+    }
+
+    html[dir="ltr"] header.site-header-unified .site-header-mobile-menu-slot:has(.site-header-mobile-back) {
+        width: 80px;
+        direction: rtl;
+        justify-content: space-between;
+    }
+
     header.site-header-unified .site-header-mobile-back {
-        position: absolute;
-        left: 68px;
-        top: 50%;
-        width: 36px;
+        position: static;
+        width: 34px;
         height: 36px;
         margin: 0;
         padding: 0;
@@ -173,15 +260,11 @@
         border-radius: 999px;
         background: transparent;
         color: #475569;
-        transform: translateY(-50%);
+        transform: none;
         z-index: 3;
         text-decoration: none;
+        flex: 0 0 34px;
         transition: background-color .15s ease, color .15s ease;
-    }
-
-    html[dir="ltr"] header.site-header-unified .site-header-mobile-back {
-        left: auto;
-        right: 68px;
     }
 
     header.site-header-unified .site-header-mobile-back:hover,
@@ -199,15 +282,15 @@
 }
 
 @media (max-width: 359px) {
-    header.site-header-unified .site-header-mobile-back {
-        left: 44px;
-        width: 32px;
-        height: 32px;
+    html[dir="rtl"] header.site-header-unified .site-header-mobile-menu-slot:has(.site-header-mobile-back),
+    html[dir="ltr"] header.site-header-unified .site-header-mobile-menu-slot:has(.site-header-mobile-back) {
+        width: 70px;
     }
 
-    html[dir="ltr"] header.site-header-unified .site-header-mobile-back {
-        left: auto;
-        right: 44px;
+    header.site-header-unified .site-header-mobile-back {
+        width: 30px;
+        height: 32px;
+        flex-basis: 30px;
     }
 }
 
