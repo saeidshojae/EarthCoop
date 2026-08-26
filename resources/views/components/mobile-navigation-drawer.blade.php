@@ -28,21 +28,46 @@
     }
 
     header.site-header-unified .guest-navigation-cta {
+        box-sizing: border-box !important;
+        width: calc(100% - 16px) !important;
+        height: 46px !important;
         min-height: 46px !important;
         margin: 7px 8px !important;
-        padding: 10px 14px !important;
+        padding: 0 14px !important;
+        border: 0 !important;
         border-radius: 12px !important;
         display: grid !important;
-        grid-template-columns: 22px minmax(0, 1fr) !important;
+        grid-template-columns: 22px minmax(0, 1fr) 22px !important;
         align-items: center !important;
         gap: 9px !important;
         color: #fff !important;
+        font: inherit !important;
         font-weight: 800 !important;
+        line-height: 1 !important;
+        text-align: center !important;
         text-decoration: none !important;
         box-shadow: 0 8px 18px rgba(15, 23, 42, .12) !important;
+        appearance: none !important;
+        -webkit-appearance: none !important;
     }
-    header.site-header-unified .guest-navigation-cta > i,
-    header.site-header-unified .guest-navigation-cta > span { color: #fff !important; }
+    header.site-header-unified .guest-navigation-cta > i {
+        grid-column: 1 !important;
+        width: 22px !important;
+        text-align: center !important;
+        color: #fff !important;
+    }
+    header.site-header-unified .guest-navigation-cta > span {
+        grid-column: 2 !important;
+        justify-self: center !important;
+        width: 100% !important;
+        text-align: center !important;
+        color: #fff !important;
+    }
+    header.site-header-unified .guest-navigation-cta::after {
+        content: '';
+        grid-column: 3;
+        width: 22px;
+    }
     header.site-header-unified .guest-navigation-cta--login { background: #3b82f6 !important; }
     header.site-header-unified .guest-navigation-cta--join { background: #10b981 !important; }
     header.site-header-unified .guest-navigation-cta--invite { background: #f59e0b !important; }
@@ -132,7 +157,7 @@
                             <i class="fas fa-right-to-bracket" aria-hidden="true"></i>
                             <span>ورود</span>
                         </a>
-                        <button type="button" onclick="openModal()" @click="headerMenuOpen = false" class="navigation-link guest-navigation-cta guest-navigation-cta--join w-full text-right">
+                        <button type="button" onclick="openModal()" @click="headerMenuOpen = false" class="navigation-link guest-navigation-cta guest-navigation-cta--join">
                             <i class="fas fa-user-plus" aria-hidden="true"></i>
                             <span>عضویت</span>
                         </button>
@@ -252,9 +277,9 @@
                 <section class="navigation-section">
                     <div class="px-3 pt-3 pb-1 text-xs font-extrabold text-gray-500">ورود و عضویت</div>
                     <div class="navigation-section__links">
-                        <a href="{{ route('login') }}" class="navigation-link guest-navigation-cta guest-navigation-cta--login"><i class="fas fa-right-to-bracket"></i><span>ورود</span></a>
-                        <a href="{{ route('terms') }}#terms-acceptance" class="navigation-link guest-navigation-cta guest-navigation-cta--join"><i class="fas fa-user-plus"></i><span>عضویت</span></a>
-                        <a href="{{ route('invite') }}" class="navigation-link guest-navigation-cta guest-navigation-cta--invite"><i class="fas fa-ticket"></i><span>درخواست کد دعوت</span></a>
+                        <a href="{{ route('login') }}" class="navigation-link"><i class="fas fa-right-to-bracket"></i><span>ورود</span></a>
+                        <a href="{{ route('terms') }}#terms-acceptance" class="navigation-link"><i class="fas fa-user-plus"></i><span>عضویت</span></a>
+                        <a href="{{ route('invite') }}" class="navigation-link"><i class="fas fa-ticket"></i><span>درخواست کد دعوت</span></a>
                     </div>
                 </section>
                 <section class="navigation-section">
@@ -281,51 +306,3 @@
         </div>
     </aside>
 </div>
-
-@once
-<script>
-(() => {
-    const key = 'earthcoop.navigation.stack';
-    const limit = 50;
-    const fallback = @json($mobileBackFallback);
-    const normalize = (value) => {
-        try {
-            const url = new URL(value, window.location.origin);
-            return url.origin === window.location.origin ? url.href : null;
-        } catch (_) { return null; }
-    };
-    const read = () => {
-        try {
-            const value = JSON.parse(sessionStorage.getItem(key) || '[]');
-            return Array.isArray(value) ? value.map(normalize).filter(Boolean).slice(-limit) : [];
-        } catch (_) { return []; }
-    };
-    const write = (stack) => {
-        try { sessionStorage.setItem(key, JSON.stringify(stack.slice(-limit))); } catch (_) {}
-    };
-
-    const current = normalize(window.location.href);
-    let stack = read();
-    if (current && stack[stack.length - 1] !== current) {
-        stack.push(current);
-        write(stack);
-    }
-
-    document.querySelectorAll('[data-earthcoop-history-back="true"]').forEach((control) => {
-        control.setAttribute('href', fallback);
-        if (control.dataset.earthcoopInlineBackBound === 'true') return;
-        control.dataset.earthcoopInlineBackBound = 'true';
-        control.addEventListener('click', (event) => {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            let historyStack = read();
-            const here = normalize(window.location.href);
-            while (historyStack.length && historyStack[historyStack.length - 1] === here) historyStack.pop();
-            const target = historyStack[historyStack.length - 1] || fallback;
-            write(historyStack);
-            window.location.assign(target);
-        });
-    });
-})();
-</script>
-@endonce
