@@ -87,7 +87,11 @@
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
                     <h3 class="font-bold text-lg">کار فوری دبیرخانه</h3>
-                    <p class="text-sm text-gray-500 mt-1">برای اسناد بنیادین EarthCoop از «ثبت سند رسمی» استفاده کنید و نوع سند را «سند بنیادین / سیاست» انتخاب کنید.</p>
+                    @if($isCentral)
+                        <p class="text-sm text-gray-500 mt-1">برای اسناد بنیادین EarthCoop از «ثبت سند رسمی» استفاده کنید و نوع سند را «سند بنیادین / سیاست» انتخاب کنید.</p>
+                    @else
+                        <p class="text-sm text-gray-500 mt-1">برای ثبت مصوبات، تصمیم‌ها، صورت‌جلسه‌ها و سایر امور رسمی این گروه از «ثبت سند رسمی» استفاده کنید؛ مکاتبات و پرونده‌های گروه نیز از همین داشبورد قابل پیگیری‌اند.</p>
+                    @endif
                 </div>
                 <a href="{{ route('secretariat.records.create', ['office' => $office, 'record_type' => 'policy']) }}" class="rounded-xl bg-gray-900 text-white px-5 py-3 text-center whitespace-nowrap">شروع ثبت سند</a>
             </div>
