@@ -5,10 +5,15 @@ namespace App\Modules\Secretariat\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Group;
 use App\Modules\Secretariat\Models\SecretariatOffice;
+use App\Modules\Secretariat\Services\SecretariatOfficeService;
 use Illuminate\Http\Request;
 
 class SecretariatDirectoryController extends Controller
 {
+    public function __construct(private readonly SecretariatOfficeService $offices)
+    {
+    }
+
     public function index(Request $request)
     {
         $offices = SecretariatOffice::query()
@@ -33,12 +38,17 @@ class SecretariatDirectoryController extends Controller
             ->first();
 
         if ($office === null) {
-            return redirect()
-                ->route('secretariat.directory')
-                ->with('warning', 'دبیرخانه مرکزی هنوز راه‌اندازی نشده است.');
+            $probe = new SecretariatOffice([
+                'code' => 'EARTHCOOP-CENTRAL',
+                'name' => 'دبیرخانه مرکزی EarthCoop',
+                'office_type' => 'central',
+                'status' => 'active',
+            ]);
+            $this->authorize('manage', $probe);
+            $office = $this->offices->ensureCentral();
+        } else {
+            $this->authorize('view', $office);
         }
-
-        $this->authorize('view', $office);
 
         return redirect()->route('secretariat.index', $office);
     }
@@ -53,12 +63,19 @@ class SecretariatDirectoryController extends Controller
             ->first();
 
         if ($office === null) {
-            return redirect()
-                ->route('secretariat.directory')
-                ->with('warning', 'دبیرخانه این گروه هنوز راه‌اندازی نشده است.');
+            $probe = new SecretariatOffice([
+                'code' => 'GROUP-' . $group->id,
+                'name' => 'دبیرخانه ' . $group->name,
+                'office_type' => 'group',
+                'scope_type' => 'group',
+                'scope_id' => $group->id,
+                'status' => 'active',
+            ]);
+            $this->authorize('manage', $probe);
+            $office = $this->offices->ensureGroup($group);
+        } else {
+            $this->authorize('view', $office);
         }
-
-        $this->authorize('view', $office);
 
         return redirect()->route('secretariat.index', $office);
     }
