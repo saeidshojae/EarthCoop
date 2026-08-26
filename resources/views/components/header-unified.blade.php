@@ -307,6 +307,10 @@
                 padding: 0 14px !important;
                 overflow: visible !important;
             }
+            header.site-header-unified .site-header-mobile-menu-slot:has(.site-header-mobile-back) {
+                gap: 10px !important;
+                width: 84px !important;
+            }
             .site-header-spacer { height: 60px; }
             .unified-public-sidebar { display: none !important; }
         }
@@ -320,6 +324,10 @@
                 overflow: visible !important;
             }
             header.site-header-unified .site-header-row { height: 45px; }
+            header.site-header-unified .site-header-mobile-menu-slot:has(.site-header-mobile-back) {
+                gap: 12px !important;
+                width: 90px !important;
+            }
             .site-header-spacer { height: 84px; }
         }
 
