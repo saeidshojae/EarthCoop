@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use Tests\TestCase;
 
 class AssetPipelineContractTest extends TestCase
@@ -18,29 +20,58 @@ class AssetPipelineContractTest extends TestCase
         $this->assertStringNotContainsString('preflight: true', $config);
     }
 
-    public function test_app_entry_keeps_one_css_stack_and_normalizes_vite_dev_injection_order(): void
+    public function test_css_is_a_first_class_vite_entry_and_never_runtime_injected_from_app_js(): void
     {
+        $vite = file_get_contents(base_path('vite.config.js'));
         $app = file_get_contents(resource_path('js/app.js'));
+        $cssEntry = file_get_contents(resource_path('css/vite.css'));
 
-        $this->assertStringContainsString('import "bootstrap/dist/css/bootstrap.min.css";', $app);
-        $this->assertStringContainsString('import "../css/app.css";', $app);
+        $this->assertStringContainsString('"resources/css/vite.css"', $vite);
+        $this->assertStringContainsString('"resources/js/app.js"', $vite);
+
+        $this->assertStringContainsString('@import "bootstrap/dist/css/bootstrap.min.css";', $cssEntry);
+        $this->assertStringContainsString('@import "./app.css";', $cssEntry);
+        $this->assertStringContainsString('@import "select2/dist/css/select2.min.css";', $cssEntry);
+
+        $this->assertStringNotContainsString('bootstrap/dist/css/bootstrap.min.css', $app);
+        $this->assertStringNotContainsString('../css/app.css', $app);
+        $this->assertStringNotContainsString('select2/dist/css/select2.min.css', $app);
+        $this->assertStringNotContainsString('style[data-vite-dev-id]', $app);
+        $this->assertStringNotContainsString('normalizeViteDevStyleOrder', $app);
+        $this->assertStringNotContainsString('new MutationObserver', $app);
         $this->assertStringContainsString('import "./bootstrap";', $app);
         $this->assertStringNotContainsString('import "bootstrap";', $app);
-
-        $this->assertStringContainsString('normalizeViteDevStyleOrder', $app);
-        $this->assertStringContainsString('style[data-vite-dev-id]', $app);
-        $this->assertStringContainsString('/resources/js/app.js', $app);
-        $this->assertStringContainsString('insertBefore(style, appEntryScript)', $app);
-        $this->assertStringContainsString('new MutationObserver', $app);
-        $this->assertStringContainsString('import.meta.hot', $app);
     }
 
-    public function test_app_entry_has_no_duplicate_header_stylesheet_loading(): void
+    public function test_every_blade_view_loading_app_js_loads_the_css_entry_first(): void
     {
-        $app = file_get_contents(resource_path('js/app.js'));
+        $root = resource_path('views');
+        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root));
+        $offenders = [];
 
-        $this->assertStringNotContainsString('header-mobile-polish.css', $app);
-        $this->assertStringNotContainsString('document.createElement(\'link\')', $app);
+        foreach ($iterator as $file) {
+            if (! $file->isFile() || ! str_ends_with($file->getFilename(), '.blade.php')) {
+                continue;
+            }
+
+            $contents = file_get_contents($file->getPathname());
+            if (! str_contains($contents, 'resources/js/app.js')) {
+                continue;
+            }
+
+            $cssPosition = strpos($contents, 'resources/css/vite.css');
+            $jsPosition = strpos($contents, 'resources/js/app.js');
+
+            if ($cssPosition === false || $cssPosition > $jsPosition) {
+                $offenders[] = str_replace(base_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $offenders,
+            "Every Blade view that loads app.js must load resources/css/vite.css first. Offenders:\n" . implode("\n", $offenders)
+        );
     }
 
     public function test_unified_layout_owns_one_canonical_non_vite_header_polish_stylesheet(): void
