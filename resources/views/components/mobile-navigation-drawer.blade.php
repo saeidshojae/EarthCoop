@@ -32,7 +32,26 @@
 
         <div class="mobile-navigation-drawer__body">
             @if($isWelcomeHeader)
-                <div class="navigation-section">
+                <section class="navigation-section">
+                    <div class="px-3 pt-3 pb-1 text-xs font-extrabold text-gray-500">ورود و عضویت</div>
+                    <div class="navigation-section__links">
+                        <a href="{{ route('login') }}" @click="headerMenuOpen = false" class="navigation-link">
+                            <i class="fas fa-right-to-bracket text-ocean-blue" aria-hidden="true"></i>
+                            <span>ورود</span>
+                        </a>
+                        <button type="button" onclick="openModal()" @click="headerMenuOpen = false" class="navigation-link w-full text-right">
+                            <i class="fas fa-user-plus text-earth-green" aria-hidden="true"></i>
+                            <span>عضویت</span>
+                        </button>
+                        <a href="{{ route('invite') }}" @click="headerMenuOpen = false" class="navigation-link">
+                            <i class="fas fa-ticket text-digital-gold" aria-hidden="true"></i>
+                            <span>درخواست کد دعوت</span>
+                        </a>
+                    </div>
+                </section>
+
+                <section class="navigation-section">
+                    <div class="px-3 pt-3 pb-1 text-xs font-extrabold text-gray-500">آشنایی با EarthCoop</div>
                     <div class="navigation-section__links">
                         @foreach($navLinks as $link)
                             <a href="{{ $link['url'] }}" @click="headerMenuOpen = false" class="navigation-link">
@@ -41,7 +60,7 @@
                             </a>
                         @endforeach
                     </div>
-                </div>
+                </section>
             @elseif($isAuth)
                 <section class="navigation-section">
                     <button type="button" class="navigation-section__toggle" @click="openSection = openSection === 'primary' ? null : 'primary'">
@@ -137,13 +156,21 @@
                     </section>
                 @endif
             @else
-                <div class="navigation-section">
+                <section class="navigation-section">
+                    <div class="px-3 pt-3 pb-1 text-xs font-extrabold text-gray-500">ورود و عضویت</div>
+                    <div class="navigation-section__links">
+                        <a href="{{ route('login') }}" class="navigation-link"><i class="fas fa-right-to-bracket"></i><span>ورود</span></a>
+                        <a href="{{ route('terms') }}#terms-acceptance" class="navigation-link"><i class="fas fa-user-plus"></i><span>عضویت</span></a>
+                        <a href="{{ route('invite') }}" class="navigation-link"><i class="fas fa-ticket"></i><span>درخواست کد دعوت</span></a>
+                    </div>
+                </section>
+                <section class="navigation-section">
                     <div class="navigation-section__links">
                         @foreach($navLinks as $link)
                             <a href="{{ $link['url'] }}" class="navigation-link"><i class="fas {{ $link['icon'] }}"></i><span>{{ $link['label'] }}</span></a>
                         @endforeach
                     </div>
-                </div>
+                </section>
             @endif
         </div>
 
