@@ -63,6 +63,11 @@ class FounderMinistryChatViewTest extends TestCase
         $this->assertStringContainsString('background:#1d4ed8!important;color:#fff!important', $view);
         $this->assertStringContainsString('گفت‌وگوی آزاد — مستقل از پنل گزارش مدیریتی', $view);
 
+        // Human presentation is prepared server-side. Raw audit action/reason codes are not rendered as manager copy.
+        $this->assertStringContainsString('item.display_title||item.title||', $view);
+        $this->assertStringContainsString('item.display_explanation||', $view);
+        $this->assertStringNotContainsString("item.reason?` · ${item.reason}`", $view);
+
         // Authority is calculated server-side. The view only renders the agency payload.
         $this->assertStringNotContainsString("==='delegated_safe'", $view);
         $this->assertStringNotContainsString("==='approval_required'", $view);
