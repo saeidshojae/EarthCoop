@@ -9,7 +9,100 @@
     if (! $mobileCurrentGroup instanceof \App\Models\Group) {
         $mobileCurrentGroup = null;
     }
+    $mobileBackFallback = $isAuth ? route('home') : route('welcome');
 @endphp
+
+@once
+<style>
+    /* Critical unified-header polish lives with the component so Welcome/Login/Home
+       do not depend on Vite availability for navigation usability. */
+    @keyframes earthcoop-header-logo-float-soft {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-3px); }
+    }
+
+    header.site-header-unified .brand-logo-animated {
+        animation: earthcoop-header-logo-float-soft 3s infinite ease-in-out !important;
+        transform-origin: center;
+        will-change: transform;
+    }
+
+    header.site-header-unified .guest-navigation-cta {
+        min-height: 46px !important;
+        margin: 7px 8px !important;
+        padding: 10px 14px !important;
+        border-radius: 12px !important;
+        display: grid !important;
+        grid-template-columns: 22px minmax(0, 1fr) !important;
+        align-items: center !important;
+        gap: 9px !important;
+        color: #fff !important;
+        font-weight: 800 !important;
+        text-decoration: none !important;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, .12) !important;
+    }
+    header.site-header-unified .guest-navigation-cta > i,
+    header.site-header-unified .guest-navigation-cta > span { color: #fff !important; }
+    header.site-header-unified .guest-navigation-cta--login { background: #3b82f6 !important; }
+    header.site-header-unified .guest-navigation-cta--join { background: #10b981 !important; }
+    header.site-header-unified .guest-navigation-cta--invite { background: #f59e0b !important; }
+
+    @media (max-width: 1023px) {
+        header.site-header-unified[data-auth-state="guest"] {
+            height: 60px !important;
+            min-height: 60px !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+        header.site-header-unified[data-auth-state="guest"] .site-header-mobile-bar {
+            height: 60px !important;
+            min-height: 60px !important;
+            width: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        header.site-header-unified[data-auth-state="guest"] .site-header-mobile-brand,
+        header.site-header-unified[data-auth-state="guest"] .site-header-mobile-menu-slot {
+            height: 40px !important;
+            min-height: 40px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            align-self: center !important;
+            line-height: 1 !important;
+        }
+        header.site-header-unified[data-auth-state="guest"] .site-header-mobile-brand span {
+            display: inline-flex !important;
+            align-items: center !important;
+            height: 40px !important;
+            min-height: 40px !important;
+            line-height: 1 !important;
+            margin: 0 !important;
+        }
+        header.site-header-unified[data-auth-state="guest"] .site-header-mobile-brand svg {
+            width: 28px !important;
+            height: 28px !important;
+            flex: 0 0 28px !important;
+            margin: 0 !important;
+        }
+        header.site-header-unified[data-auth-state="guest"] .site-header-hamburger {
+            margin: 0 !important;
+            align-self: center !important;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        header.site-header-unified .brand-logo-animated { animation: none !important; }
+    }
+</style>
+@endonce
 
 <div class="mobile-navigation-drawer" x-data="{ openSection: 'primary' }">
     <div class="mobile-navigation-drawer__backdrop" @click="headerMenuOpen = false" aria-hidden="true"></div>
@@ -35,16 +128,16 @@
                 <section class="navigation-section">
                     <div class="px-3 pt-3 pb-1 text-xs font-extrabold text-gray-500">ورود و عضویت</div>
                     <div class="navigation-section__links">
-                        <a href="{{ route('login') }}" @click="headerMenuOpen = false" class="navigation-link">
-                            <i class="fas fa-right-to-bracket text-ocean-blue" aria-hidden="true"></i>
+                        <a href="{{ route('login') }}" @click="headerMenuOpen = false" class="navigation-link guest-navigation-cta guest-navigation-cta--login">
+                            <i class="fas fa-right-to-bracket" aria-hidden="true"></i>
                             <span>ورود</span>
                         </a>
-                        <button type="button" onclick="openModal()" @click="headerMenuOpen = false" class="navigation-link w-full text-right">
-                            <i class="fas fa-user-plus text-earth-green" aria-hidden="true"></i>
+                        <button type="button" onclick="openModal()" @click="headerMenuOpen = false" class="navigation-link guest-navigation-cta guest-navigation-cta--join w-full text-right">
+                            <i class="fas fa-user-plus" aria-hidden="true"></i>
                             <span>عضویت</span>
                         </button>
-                        <a href="{{ route('invite') }}" @click="headerMenuOpen = false" class="navigation-link">
-                            <i class="fas fa-ticket text-digital-gold" aria-hidden="true"></i>
+                        <a href="{{ route('invite') }}" @click="headerMenuOpen = false" class="navigation-link guest-navigation-cta guest-navigation-cta--invite">
+                            <i class="fas fa-ticket" aria-hidden="true"></i>
                             <span>درخواست کد دعوت</span>
                         </a>
                     </div>
@@ -159,9 +252,9 @@
                 <section class="navigation-section">
                     <div class="px-3 pt-3 pb-1 text-xs font-extrabold text-gray-500">ورود و عضویت</div>
                     <div class="navigation-section__links">
-                        <a href="{{ route('login') }}" class="navigation-link"><i class="fas fa-right-to-bracket"></i><span>ورود</span></a>
-                        <a href="{{ route('terms') }}#terms-acceptance" class="navigation-link"><i class="fas fa-user-plus"></i><span>عضویت</span></a>
-                        <a href="{{ route('invite') }}" class="navigation-link"><i class="fas fa-ticket"></i><span>درخواست کد دعوت</span></a>
+                        <a href="{{ route('login') }}" class="navigation-link guest-navigation-cta guest-navigation-cta--login"><i class="fas fa-right-to-bracket"></i><span>ورود</span></a>
+                        <a href="{{ route('terms') }}#terms-acceptance" class="navigation-link guest-navigation-cta guest-navigation-cta--join"><i class="fas fa-user-plus"></i><span>عضویت</span></a>
+                        <a href="{{ route('invite') }}" class="navigation-link guest-navigation-cta guest-navigation-cta--invite"><i class="fas fa-ticket"></i><span>درخواست کد دعوت</span></a>
                     </div>
                 </section>
                 <section class="navigation-section">
@@ -188,3 +281,51 @@
         </div>
     </aside>
 </div>
+
+@once
+<script>
+(() => {
+    const key = 'earthcoop.navigation.stack';
+    const limit = 50;
+    const fallback = @json($mobileBackFallback);
+    const normalize = (value) => {
+        try {
+            const url = new URL(value, window.location.origin);
+            return url.origin === window.location.origin ? url.href : null;
+        } catch (_) { return null; }
+    };
+    const read = () => {
+        try {
+            const value = JSON.parse(sessionStorage.getItem(key) || '[]');
+            return Array.isArray(value) ? value.map(normalize).filter(Boolean).slice(-limit) : [];
+        } catch (_) { return []; }
+    };
+    const write = (stack) => {
+        try { sessionStorage.setItem(key, JSON.stringify(stack.slice(-limit))); } catch (_) {}
+    };
+
+    const current = normalize(window.location.href);
+    let stack = read();
+    if (current && stack[stack.length - 1] !== current) {
+        stack.push(current);
+        write(stack);
+    }
+
+    document.querySelectorAll('[data-earthcoop-history-back="true"]').forEach((control) => {
+        control.setAttribute('href', fallback);
+        if (control.dataset.earthcoopInlineBackBound === 'true') return;
+        control.dataset.earthcoopInlineBackBound = 'true';
+        control.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            let historyStack = read();
+            const here = normalize(window.location.href);
+            while (historyStack.length && historyStack[historyStack.length - 1] === here) historyStack.pop();
+            const target = historyStack[historyStack.length - 1] || fallback;
+            write(historyStack);
+            window.location.assign(target);
+        });
+    });
+})();
+</script>
+@endonce
