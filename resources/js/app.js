@@ -13,6 +13,7 @@ import "./najm-hoda-management-content-tools.js";
 import "./najm-hoda-management-native-tools.js";
 import "./najm-hoda-management-live-attention.js";
 import "./najm-hoda-attention-panel.js";
+import "./site-navigation-history.js";
 import { register } from "swiper/element/bundle";
 import "./group-chat/index.js";
 import "./group-comment-form-fallback.js";
