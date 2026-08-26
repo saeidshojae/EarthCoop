@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
+use App\Support\EarthCoopVite;
+use Illuminate\Foundation\Vite;
 use Tests\TestCase;
 
 class AssetPipelineContractTest extends TestCase
@@ -43,34 +43,26 @@ class AssetPipelineContractTest extends TestCase
         $this->assertStringNotContainsString('import "bootstrap";', $app);
     }
 
-    public function test_every_blade_view_loading_app_js_loads_the_css_entry_first(): void
+    public function test_every_app_js_request_is_centrally_normalized_to_css_then_js(): void
     {
-        $root = resource_path('views');
-        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root));
-        $offenders = [];
+        $vite = app(Vite::class);
 
-        foreach ($iterator as $file) {
-            if (! $file->isFile() || ! str_ends_with($file->getFilename(), '.blade.php')) {
-                continue;
-            }
-
-            $contents = file_get_contents($file->getPathname());
-            if (! str_contains($contents, 'resources/js/app.js')) {
-                continue;
-            }
-
-            $cssPosition = strpos($contents, 'resources/css/vite.css');
-            $jsPosition = strpos($contents, 'resources/js/app.js');
-
-            if ($cssPosition === false || $cssPosition > $jsPosition) {
-                $offenders[] = str_replace(base_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
-            }
-        }
-
+        $this->assertInstanceOf(EarthCoopVite::class, $vite);
         $this->assertSame(
-            [],
-            $offenders,
-            "Every Blade view that loads app.js must load resources/css/vite.css first. Offenders:\n" . implode("\n", $offenders)
+            ['resources/css/vite.css', 'resources/js/app.js'],
+            $vite->normalizeEntrypoints(['resources/js/app.js'])
+        );
+        $this->assertSame(
+            ['resources/css/other.css'],
+            $vite->normalizeEntrypoints(['resources/css/other.css'])
+        );
+        $this->assertSame(
+            ['resources/css/other.css', 'resources/css/vite.css', 'resources/js/app.js'],
+            $vite->normalizeEntrypoints([
+                'resources/css/other.css',
+                'resources/js/app.js',
+                'resources/css/vite.css',
+            ])
         );
     }
 
