@@ -55,15 +55,28 @@ class MobileNavigationContractTest extends TestCase
         $this->assertStringContainsString('height: 60px !important', $header);
     }
 
-    public function test_mobile_account_menu_is_scoped_to_account_actions(): void
+    public function test_mobile_account_menu_is_scoped_to_account_actions_and_viewport_anchored(): void
     {
         $account = file_get_contents(resource_path('views/components/mobile-account-menu.blade.php'));
 
         $this->assertStringContainsString("route('profile.show')", $account);
         $this->assertStringContainsString("route('profile.edit')", $account);
         $this->assertStringContainsString("route('logout')", $account);
+        $this->assertStringContainsString('mobile-account-dropdown', $account);
         $this->assertStringNotContainsString("route('auction.index')", $account);
         $this->assertStringNotContainsString("route('support.kb.index')", $account);
         $this->assertStringNotContainsString("route('secretariat.directory')", $account);
+    }
+
+    public function test_back_navigation_uses_browser_history_instead_of_server_previous_url(): void
+    {
+        $header = file_get_contents(resource_path('views/components/header-unified.blade.php'));
+
+        $this->assertStringContainsString('earthcoopNavigateBack', $header);
+        $this->assertStringContainsString('window.history.back()', $header);
+        $this->assertStringContainsString("route('home')", $header);
+        $this->assertStringContainsString('site-header-mobile-back', $header);
+        $this->assertStringNotContainsString('url()->previous()', $header);
+        $this->assertStringNotContainsString('$backUrl', $header);
     }
 }
