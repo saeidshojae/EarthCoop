@@ -65,13 +65,13 @@ const navigateBack = (fallbackUrl, event = null) => {
 
     if (current && stack[stack.length - 1] === current && stack.length > 1) {
         stack.pop();
+        const previousUrl = stack[stack.length - 1];
         writeStack(stack);
-        window.history.back();
+        window.location.assign(previousUrl);
         return;
     }
 
-    // If the stack was lost or this page was opened directly, never send the
-    // user to an arbitrary external referrer. Home is the deterministic fallback.
+    // Direct entry/new tab or lost stack: deterministic safe fallback.
     window.location.assign(fallbackUrl);
 };
 
