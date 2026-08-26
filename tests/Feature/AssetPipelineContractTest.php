@@ -31,17 +31,17 @@ class AssetPipelineContractTest extends TestCase
         $this->assertStringNotContainsString('document.createElement(\'link\')', $app);
     }
 
-    public function test_header_polish_has_one_canonical_source_loaded_directly_by_supported_layouts(): void
+    public function test_header_component_owns_one_canonical_non_vite_polish_stylesheet(): void
     {
         $this->assertFileExists(public_path('Css/header-mobile-polish.css'));
         $this->assertFileDoesNotExist(resource_path('css/header-mobile-polish.css'));
 
+        $header = file_get_contents(resource_path('views/components/header-unified.blade.php'));
         $unified = file_get_contents(resource_path('views/layouts/unified.blade.php'));
-        $welcome = file_get_contents(resource_path('views/welcome.blade.php'));
 
         $assetReference = "asset('Css/header-mobile-polish.css')";
-        $this->assertStringContainsString($assetReference, $unified);
-        $this->assertStringContainsString($assetReference, $welcome);
+        $this->assertSame(1, substr_count($header, $assetReference));
+        $this->assertStringNotContainsString($assetReference, $unified);
     }
 
     public function test_validation_and_production_use_the_same_node_major_and_deploy_the_fresh_vite_build(): void
@@ -54,5 +54,7 @@ class AssetPipelineContractTest extends TestCase
         $this->assertStringContainsString('npm run build', $validation);
         $this->assertStringContainsString('npm run build', $deploy);
         $this->assertStringNotContainsString('**/public/build/**', $deploy, 'Fresh Vite build artifacts must be uploaded with the deployment.');
+        $this->assertStringContainsString('test -f public/build/manifest.json', $validation);
+        $this->assertStringContainsString('test -f public/build/manifest.json', $deploy);
     }
 }
