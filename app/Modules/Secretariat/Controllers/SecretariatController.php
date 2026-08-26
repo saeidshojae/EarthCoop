@@ -5,6 +5,7 @@ namespace App\Modules\Secretariat\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Modules\Secretariat\Models\SecretariatAttachment;
+use App\Modules\Secretariat\Models\SecretariatCase;
 use App\Modules\Secretariat\Models\SecretariatOffice;
 use App\Modules\Secretariat\Models\SecretariatRecord;
 use App\Modules\Secretariat\Services\SecretariatAclService;
@@ -53,10 +54,29 @@ class SecretariatController extends Controller
         $filters['office_id'] = $office->id;
 
         $records = $this->search->search($request->user(), $filters, 100);
+        $visibleRecords = $this->search->search($request->user(), ['office_id' => $office->id], 200);
+
         $counts = [
-            'draft' => $records->where('status', 'draft')->count(),
-            'pending_approval' => $records->where('status', 'pending_approval')->count(),
-            'registered' => $records->whereIn('status', ['registered', 'active', 'closed', 'archived'])->count(),
+            'draft' => $visibleRecords->where('status', 'draft')->count(),
+            'pending_approval' => $visibleRecords->where('status', 'pending_approval')->count(),
+            'registered' => $visibleRecords->whereIn('status', ['registered', 'active', 'closed', 'archived'])->count(),
+        ];
+
+        $visibleCases = SecretariatCase::query()
+            ->with('office')
+            ->where('office_id', $office->id)
+            ->orderByDesc('id')
+            ->limit(200)
+            ->get()
+            ->filter(fn (SecretariatCase $case): bool => $request->user()->can('view', $case))
+            ->values();
+
+        $dashboard = [
+            'visible_records' => $visibleRecords->count(),
+            'correspondence' => $visibleRecords->whereIn('record_type', [
+                'incoming_letter', 'outgoing_letter', 'internal_correspondence',
+            ])->count(),
+            'open_cases' => $visibleCases->whereNotIn('status', ['closed', 'archived', 'cancelled'])->count(),
         ];
 
         return view('secretariat.index', [
@@ -64,6 +84,11 @@ class SecretariatController extends Controller
             'records' => $records,
             'filters' => $filters,
             'counts' => $counts,
+            'dashboard' => $dashboard,
+            'recentRecords' => $visibleRecords->take(8),
+            'recentCases' => $visibleCases->take(6),
+            'canManageOffice' => $request->user()->can('manage', $office),
+            'canInspectOffice' => $request->user()->can('inspect', $office),
             'recordTypes' => self::RECORD_TYPES,
         ]);
     }
