@@ -13,9 +13,8 @@
     <title>@yield('title', 'New Earth Coop')</title>
 
     @vite(['resources/js/app.js'])
-
-    <script defer src="{{ asset('vendor/alpinejs/cdn.min.js') }}"></script>
-    <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
+    <script defer src="{{ asset("vendor/alpinejs/cdn.min.js") }}"></script>
+    <link rel="stylesheet" href="{{ asset("vendor/fontawesome/css/all.min.css") }}">
     <link rel="stylesheet" href="{{ asset('Css/fonts-local.css') }}">
     <link rel="stylesheet" href="{{ asset('Css/dark-mode.css') }}">
     <link rel="stylesheet" href="{{ asset('Css/dark-mode-enhanced.css') }}">
@@ -28,9 +27,7 @@
     @yield('head-tag')
 
     <style>
-        [x-cloak] {
-            display: none !important;
-        }
+        [x-cloak] { display: none !important; }
 
         html, body {
             margin: 0 !important;
@@ -48,11 +45,8 @@
             padding: 0 !important;
         }
 
-        body.dark-mode {
-            background: var(--bg-gradient-dark);
-        }
+        body.dark-mode { background: var(--bg-gradient-dark); }
 
-        /* Header reset must stay scoped to the actual unified site header. */
         header.site-header-unified {
             margin: 0 !important;
             border: none !important;
@@ -60,11 +54,10 @@
             top: 0;
         }
 
-        header.site-header-unified > .container {
-            margin-left: auto !important;
-            margin-right: auto !important;
-            width: 100% !important;
+        header.site-header-unified .container {
+            margin: 0 auto !important;
             max-width: 1320px !important;
+            width: 100% !important;
         }
 
         .container {
@@ -77,46 +70,24 @@
     </style>
 </head>
 <body class="font-vazirmatn leading-relaxed flex flex-col"
-      x-data="{
-          mobileMenuOpen: false,
-          userDropdownOpen: false,
-          sidebarOpen: false
-      }">
+      x-data="{ mobileMenuOpen: false, userDropdownOpen: false, sidebarOpen: false }">
     @include('components.pwa-splash')
     @include('components.header-unified', ['headerContext' => 'default'])
 
     @if(session('success'))
-        <div class="container mx-auto mt-3 px-4">
-            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
-                <span class="block sm:inline">{{ session('success') }}</span>
-            </div>
-        </div>
+        <div class="container mx-auto mt-3 px-4"><div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert"><span class="block sm:inline">{{ session('success') }}</span></div></div>
     @endif
     @if(session('error'))
-        <div class="container mx-auto mt-3 px-4">
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                <span class="block sm:inline">{{ session('error') }}</span>
-            </div>
-        </div>
+        <div class="container mx-auto mt-3 px-4"><div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert"><span class="block sm:inline">{{ session('error') }}</span></div></div>
     @endif
     @if(session('warning'))
-        <div class="container mx-auto mt-3 px-4">
-            <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative" role="alert">
-                <span class="block sm:inline">{{ session('warning') }}</span>
-            </div>
-        </div>
+        <div class="container mx-auto mt-3 px-4"><div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative" role="alert"><span class="block sm:inline">{{ session('warning') }}</span></div></div>
     @endif
     @if(session('info'))
-        <div class="container mx-auto mt-3 px-4">
-            <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative" role="alert">
-                <span class="block sm:inline">{{ session('info') }}</span>
-            </div>
-        </div>
+        <div class="container mx-auto mt-3 px-4"><div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative" role="alert"><span class="block sm:inline">{{ session('info') }}</span></div></div>
     @endif
 
-    <main class="flex-grow">
-        @yield('content')
-    </main>
+    <main class="flex-grow">@yield('content')</main>
 
     @include('components.footer-unified', ['footerContext' => 'default'])
 
@@ -130,30 +101,15 @@
     <script>
         function showAlert(message, type = 'info') {
             if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    text: message,
-                    icon: type,
-                    confirmButtonText: 'باشه',
-                    customClass: {
-                        confirmButton: 'btn btn-primary'
-                    }
-                });
+                Swal.fire({ text: message, icon: type, confirmButtonText: 'باشه', customClass: { confirmButton: 'btn btn-primary' } });
             } else {
                 alert(message);
             }
         }
-        function showSuccessAlert(message) {
-            showAlert(message, 'success');
-        }
-        function showErrorAlert(message) {
-            showAlert(message, 'error');
-        }
-        function showWarningAlert(message) {
-            showAlert(message, 'warning');
-        }
-        function showInfoAlert(message) {
-            showAlert(message, 'info');
-        }
+        function showSuccessAlert(message) { showAlert(message, 'success'); }
+        function showErrorAlert(message) { showAlert(message, 'error'); }
+        function showWarningAlert(message) { showAlert(message, 'warning'); }
+        function showInfoAlert(message) { showAlert(message, 'info'); }
     </script>
 </body>
 </html>
