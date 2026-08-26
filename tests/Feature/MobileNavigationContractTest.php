@@ -110,9 +110,9 @@ class MobileNavigationContractTest extends TestCase
         $header = file_get_contents(resource_path('views/components/header-unified.blade.php'));
 
         $this->assertStringContainsString('[x-cloak]', $header);
-        $this->assertStringContainsString('data-header-context="{{ $headerContext }}"', $header);
-        $this->assertStringContainsString('[data-header-context="welcome"] .site-header-mobile-bar', $header);
-        $this->assertStringContainsString('[data-header-context="welcome"] .site-header-mobile-account-slot', $header);
+        $this->assertStringContainsString('data-auth-state="{{ $isAuth ? \'authenticated\' : \'guest\' }}"', $header);
+        $this->assertStringContainsString('[data-auth-state="guest"] .site-header-mobile-bar', $header);
+        $this->assertStringContainsString('[data-auth-state="guest"] .site-header-mobile-account-slot', $header);
         $this->assertStringContainsString('animation: brand-logo-float 3s infinite ease-in-out', $header);
         $this->assertGreaterThanOrEqual(2, substr_count($header, 'brand-logo-animated'));
     }
