@@ -18,15 +18,32 @@ class AssetPipelineContractTest extends TestCase
         $this->assertStringNotContainsString('preflight: true', $config);
     }
 
-    public function test_app_entry_has_one_bootstrap_runtime_and_no_duplicate_header_stylesheet_loading(): void
+    public function test_css_is_a_first_class_vite_entry_instead_of_being_injected_from_javascript(): void
+    {
+        $app = file_get_contents(resource_path('js/app.js'));
+        $css = file_get_contents(resource_path('css/app.css'));
+        $vite = file_get_contents(base_path('vite.config.js'));
+        $unified = file_get_contents(resource_path('views/layouts/unified.blade.php'));
+        $welcome = file_get_contents(resource_path('views/welcome.blade.php'));
+
+        $this->assertStringNotContainsString('bootstrap/dist/css/bootstrap.min.css', $app);
+        $this->assertStringNotContainsString('../css/app.css', $app);
+        $this->assertStringContainsString('import "./bootstrap";', $app);
+        $this->assertStringNotContainsString('import "bootstrap";', $app);
+
+        $this->assertStringContainsString("@import 'bootstrap/dist/css/bootstrap.min.css';", $css);
+        $this->assertStringContainsString('"resources/css/app.css"', $vite);
+        $this->assertStringContainsString('"resources/js/app.js"', $vite);
+
+        $viteDirective = "@vite(['resources/css/app.css', 'resources/js/app.js'])";
+        $this->assertStringContainsString($viteDirective, $unified);
+        $this->assertStringContainsString($viteDirective, $welcome);
+    }
+
+    public function test_app_entry_has_no_duplicate_header_stylesheet_loading(): void
     {
         $app = file_get_contents(resource_path('js/app.js'));
 
-        $this->assertStringContainsString('import "bootstrap/dist/css/bootstrap.min.css";', $app);
-        $this->assertStringContainsString('import "../css/app.css";', $app);
-        $this->assertStringContainsString('import "./bootstrap";', $app);
-
-        $this->assertStringNotContainsString('import "bootstrap";', $app);
         $this->assertStringNotContainsString('header-mobile-polish.css', $app);
         $this->assertStringNotContainsString('document.createElement(\'link\')', $app);
     }
