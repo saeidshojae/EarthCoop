@@ -32,6 +32,40 @@ class SecretariatS2AccessDirectoryTest extends TestCase
             ->assertDontSee($otherOffice->name);
     }
 
+    public function test_authenticated_user_dropdown_exposes_my_secretariats_entry(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $html = view('components.user-dropdown-unified')->render();
+
+        $this->assertStringContainsString('دبیرخانه‌های من', $html);
+        $this->assertStringContainsString(route('secretariat.directory'), $html);
+    }
+
+    public function test_group_shortcut_redirects_member_to_canonical_group_office(): void
+    {
+        [$manager, $office, $group] = $this->managerOffice('DIR-SHORTCUT');
+
+        $this->actingAs($manager)
+            ->get(route('secretariat.group', $group))
+            ->assertRedirect(route('secretariat.index', $office));
+    }
+
+    public function test_central_shortcut_redirects_admin_to_central_office(): void
+    {
+        $admin = User::factory()->create(['is_admin' => 1]);
+        $office = app(SecretariatOfficeService::class)->create([
+            'code' => 'CENTRAL-UAT',
+            'name' => 'EarthCoop Central Secretariat',
+            'office_type' => 'central',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('secretariat.central'))
+            ->assertRedirect(route('secretariat.index', $office));
+    }
+
     public function test_manager_can_grant_and_revoke_explicit_view_access_through_http_ui(): void
     {
         [$manager, $office, $group] = $this->managerOffice('ACL-HTTP');

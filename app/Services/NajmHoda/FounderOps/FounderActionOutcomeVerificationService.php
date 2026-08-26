@@ -13,13 +13,19 @@ use App\Modules\Secretariat\Models\SecretariatCase;
 use App\Modules\Secretariat\Models\SecretariatRecord;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\StockSettlementAllocation;
+use App\Services\Moderation\ReportManagementService;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
+use App\Services\ReferenceData\ReferenceDataApprovalService;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class FounderActionOutcomeVerificationService
 {
-    public function __construct(protected RuntimeEventBus $events) {}
+    public function __construct(
+        protected RuntimeEventBus $events,
+        protected ReferenceDataApprovalService $references,
+        protected ReportManagementService $reports
+    ) {}
 
     /**
      * Verify the persisted outcome of an already-authorized canonical mutation.
@@ -39,6 +45,8 @@ class FounderActionOutcomeVerificationService
                 'notifications.publish_announcement' => $this->verifyAnnouncement($result),
                 'blog.publish_post' => $this->verifyBlogPublication($result),
                 'email.send_email', 'email.bulk_send' => $this->verifyEmailSend($result),
+                'reference_data.approve', 'locations.approve' => $this->verifyReferenceApproval($result),
+                'reports_moderation.resolve_report' => $this->verifyModerationResolution($result),
                 'admin_settings.change_setting' => $this->verifyAdminSetting($result),
                 'secretariat.register_formal_record' => $this->verifySecretariatRegistration($result),
                 'secretariat.close_case' => $this->verifySecretariatCaseClosure($result),
@@ -192,6 +200,51 @@ class FounderActionOutcomeVerificationService
                 'sent_count' => $sentCount,
                 'failed_count' => $failedCount,
                 'counts_consistent' => $countsConsistent,
+            ],
+        ];
+    }
+
+    /** @param array<string,mixed> $result */
+    protected function verifyReferenceApproval(array $result): array
+    {
+        $type = (string) ($result['type'] ?? '');
+        $id = (int) ($result['id'] ?? 0);
+        $model = $type !== '' && $id > 0 ? $this->references->find($type, $id) : null;
+        $persistedStatus = $model?->getAttribute('status');
+        $verified = $model !== null && (int) $persistedStatus === 1;
+
+        return [
+            'verified' => $verified,
+            'status' => $verified ? 'verified' : 'failed',
+            'verification_scope' => 'canonical_reference_status',
+            'evidence' => [
+                'type' => $type,
+                'id' => $id,
+                'persisted_status' => $persistedStatus,
+                'operation_status' => $result['status'] ?? null,
+            ],
+        ];
+    }
+
+    /** @param array<string,mixed> $result */
+    protected function verifyModerationResolution(array $result): array
+    {
+        $sourceType = (string) ($result['source_type'] ?? '');
+        $sourceId = (int) ($result['source_id'] ?? 0);
+        $report = $sourceType !== '' && $sourceId > 0 ? $this->reports->find($sourceType, $sourceId) : null;
+        $expected = $sourceType === 'report' ? 'resolved' : 'resolved_by_admin';
+        $persistedStatus = $report?->getAttribute('status');
+        $verified = $report !== null && (string) $persistedStatus === $expected;
+
+        return [
+            'verified' => $verified,
+            'status' => $verified ? 'verified' : 'failed',
+            'verification_scope' => 'canonical_moderation_resolution',
+            'evidence' => [
+                'source_type' => $sourceType,
+                'source_id' => $sourceId,
+                'expected_status' => $expected,
+                'persisted_status' => $persistedStatus,
             ],
         ];
     }

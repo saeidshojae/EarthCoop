@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ElectionConflictPolicyController;
+use App\Http\Controllers\Admin\ElectionManagementController;
 use App\Http\Controllers\Admin\ElectionPolicyOverrideController;
 use App\Http\Controllers\Admin\ElectionResponsibilityContractAdminController;
 use App\Http\Controllers\Elections\ElectionFeedbackTopicResponseController;
@@ -13,11 +14,11 @@ use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\Authenticate;
 use Illuminate\Support\Facades\Route;
 
+// Public, stable reference page for foundational documents, onboarding and group UI.
+Route::view('/elections/guideline', 'elections.guideline')
+    ->name('elections.guideline');
+
 Route::middleware(Authenticate::class)->group(function () {
-    // Loaded after routes/web.php on purpose: the systemic election-aware chat
-    // presenter replaces the legacy chat GET route while all other ChatController
-    // APIs remain untouched. Opening a chat page can therefore never create,
-    // extend, close or tally an election.
     Route::get('/groups/chat/{group}', [SystemicElectionChatController::class, 'chat'])
         ->middleware(['group.chat.csp', 'group.chat.context'])
         ->name('groups.chat');
@@ -34,14 +35,22 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::get('/elections/process-reviews/{review}',[ElectionProcessReviewController::class,'show'])->whereNumber('review')->name('elections.process-reviews.show');
     Route::post('/elections/process-reviews/{review}/human',[ElectionProcessReviewController::class,'requestHuman'])->whereNumber('review')->name('elections.process-reviews.human');
     Route::post('/elections/process-reviews/{review}/endorse',[ElectionProcessReviewController::class,'endorse'])->whereNumber('review')->name('elections.process-reviews.endorse');
+
     Route::middleware(AdminMiddleware::class)->group(function () {
+        Route::get('/admin/elections', [ElectionManagementController::class, 'index'])
+            ->name('admin.elections.dashboard');
         Route::get('/admin/elections/contracts',[ElectionResponsibilityContractAdminController::class,'index'])->name('admin.elections.contracts.index');
         Route::post('/admin/elections/contracts',[ElectionResponsibilityContractAdminController::class,'store'])->name('admin.elections.contracts.store');
         Route::get('/admin/elections/conflict-policy',[ElectionConflictPolicyController::class,'index'])->name('admin.elections.conflict-policy.index');
         Route::post('/admin/elections/conflict-policy',[ElectionConflictPolicyController::class,'store'])->name('admin.elections.conflict-policy.store');
         Route::get('/admin/elections/{election}/policy-override',[ElectionPolicyOverrideController::class,'edit'])->whereNumber('election')->name('admin.elections.policy-override.edit');
         Route::post('/admin/elections/{election}/policy-override',[ElectionPolicyOverrideController::class,'update'])->whereNumber('election')->name('admin.elections.policy-override.update');
+
         Route::middleware('permission:elections.review.manage')->group(function () {
+            Route::get('/admin/elections/reviews',[ElectionManagementController::class,'reviews'])->name('admin.elections.reviews');
+            Route::post('/admin/elections/reviews/{review}/stay',[ElectionManagementController::class,'stay'])->whereNumber('review')->name('admin.elections.reviews.stay');
+            Route::post('/admin/elections/reviews/{review}/decision',[ElectionManagementController::class,'decide'])->whereNumber('review')->name('admin.elections.reviews.decision');
+
             Route::post('/admin/elections/process-reviews/{review}/stay',[ElectionProcessReviewController::class,'stay'])->whereNumber('review')->name('admin.elections.process-reviews.stay');
             Route::post('/admin/elections/process-reviews/{review}/decision',[ElectionProcessReviewController::class,'decide'])->whereNumber('review')->name('admin.elections.process-reviews.decision');
         });

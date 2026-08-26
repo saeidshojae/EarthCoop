@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\NajmHoda\Runtime\NajmHodaAutonomyApprovalService;
 use App\Services\Support\TicketManagementService;
 use App\Services\Support\TicketReplyDraftService;
+use App\Services\SystemIdentityService;
 
 class FounderUserSupportResponseService
 {
@@ -16,7 +17,8 @@ class FounderUserSupportResponseService
         protected FounderActionExecutionService $execution,
         protected NajmHodaAutonomyApprovalService $approvals,
         protected TicketReplyDraftService $drafts,
-        protected TicketManagementService $tickets
+        protected TicketManagementService $tickets,
+        protected SystemIdentityService $systemIdentities
     ) {}
 
     /** @return array<string,mixed> */
@@ -94,13 +96,14 @@ class FounderUserSupportResponseService
             return ['success' => true, 'status' => 'rejected', 'draft_id' => $draftId];
         }
 
+        $supportIdentity = $this->systemIdentities->support();
         $draft->update(['status' => 'approved', 'approved_at' => now()]);
 
         return $this->execution->execute(
             'users',
             'send_support_response',
-            function () use ($draft, $founderId): array {
-                $reply = $this->tickets->reply($draft->ticket, $founderId, (string) $draft->body, true);
+            function () use ($draft, $supportIdentity): array {
+                $reply = $this->tickets->reply($draft->ticket, (int) $supportIdentity->id, (string) $draft->body, true);
                 $draft->update(['status' => 'sent', 'sent_at' => now()]);
                 return [
                     'user_id' => (int) $draft->ticket->user_id,
@@ -108,6 +111,7 @@ class FounderUserSupportResponseService
                     'draft_id' => (int) $draft->id,
                     'comment_id' => (int) ($reply['comment_id'] ?? 0),
                     'ticket_status' => (string) ($reply['status'] ?? $draft->ticket->fresh()->status),
+                    'sender_identity_id' => (int) $supportIdentity->id,
                 ];
             },
             $requestId,

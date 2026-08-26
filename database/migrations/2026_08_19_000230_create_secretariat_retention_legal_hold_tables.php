@@ -18,7 +18,7 @@ return new class extends Migration
             $table->text('reason')->nullable();
             $table->json('metadata')->nullable();
             $table->foreignId('assigned_by')->constrained('users')->restrictOnDelete();
-            $table->timestamp('assigned_at');
+            $table->timestamp('assigned_at')->useCurrent();
             $table->timestamps();
 
             $table->unique(['record_id', 'assignment_sequence'], 'secretariat_retention_record_seq_uq');
@@ -32,7 +32,7 @@ return new class extends Migration
             $table->text('reason');
             $table->json('metadata')->nullable();
             $table->foreignId('placed_by')->constrained('users')->restrictOnDelete();
-            $table->timestamp('placed_at');
+            $table->timestamp('placed_at')->useCurrent();
             $table->foreignId('released_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('released_at')->nullable();
             $table->text('release_reason')->nullable();

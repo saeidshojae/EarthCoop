@@ -36,4 +36,35 @@ class FounderReferenceApprovalDecisionServiceTest extends TestCase
         $this->assertSame('rejected_request_only',$result['status']);
         $this->assertSame(0,(int)$item->fresh()->status);
     }
+
+    public function test_founder_approval_persists_and_verifies_reference_candidate_activation(): void
+    {
+        config()->set('najm-hoda-founder-action-policy.founder_approval.user_ids',[99]);
+        $item=OccupationalField::create(['name'=>'صنف قابل تأیید','status'=>0]);
+        $prepared=app(FounderReferenceApprovalDecisionService::class)->requestApprove('occupational',$item->id,99);
+        $requestId=(string)data_get($prepared,'approval_request.id');
+
+        $result=app(FounderReferenceApprovalDecisionService::class)->decideAndExecute($requestId,'approve',99);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(1,(int)$item->fresh()->status);
+        $this->assertTrue((bool)data_get($result,'verification.verified'));
+        $this->assertSame('verified',(string)data_get($result,'verification.status'));
+    }
+
+    public function test_approved_reference_request_cannot_be_replayed(): void
+    {
+        config()->set('najm-hoda-founder-action-policy.founder_approval.user_ids',[99]);
+        $item=OccupationalField::create(['name'=>'صنف یکبار تأیید','status'=>0]);
+        $prepared=app(FounderReferenceApprovalDecisionService::class)->requestApprove('occupational',$item->id,99);
+        $requestId=(string)data_get($prepared,'approval_request.id');
+
+        $first=app(FounderReferenceApprovalDecisionService::class)->decideAndExecute($requestId,'approve',99);
+        $second=app(FounderReferenceApprovalDecisionService::class)->decideAndExecute($requestId,'approve',99);
+
+        $this->assertTrue($first['success']);
+        $this->assertFalse($second['success']);
+        $this->assertSame('approval_request_not_pending',$second['reason']);
+        $this->assertSame(1,(int)$item->fresh()->status);
+    }
 }

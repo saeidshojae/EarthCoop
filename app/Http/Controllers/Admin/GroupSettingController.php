@@ -54,17 +54,26 @@ class GroupSettingController extends Controller
         }
 
         $sort = $request->get('sort');
+        $baseLevels = [
+            'global', 'continent', 'country', 'province', 'county', 'district',
+            'city', 'region', 'neighborhood', 'street', 'alley',
+        ];
 
-        if ($sort) {
-            if (in_array($sort, ['experience', 'job', 'age', 'gender'])) {
-                $groupSettings = GroupSetting::where('level', 'LIKE', '%' . $sort . '%')
-                    ->orderBy('created_at', 'asc')->get();
-            } else {
-                $groupSettings = GroupSetting::where('id', '<=', 10)
-                    ->orWhere('id', 42)->orderBy('created_at', 'desc')->get();
-            }
+        if (in_array($sort, ['experience', 'job', 'age', 'gender'], true)) {
+            $groupSettings = GroupSetting::query()
+                ->where('level', 'like', '%_'.$sort)
+                ->orderByRaw("FIELD(SUBSTRING_INDEX(level, '_', 1), 'global','continent','country','province','county','district','city','region','neighborhood','street','alley')")
+                ->get();
         } else {
-            $groupSettings = GroupSetting::orderBy('created_at', 'desc')->get();
+            // Public/general groups are exactly the canonical unsuffixed levels.
+            // Do not rely on historical IDs: fresh seeds and later inserts make
+            // ID-based filtering unstable and caused specialized settings to leak
+            // into the public tab.
+            $groupSettings = GroupSetting::query()
+                ->whereIn('level', $baseLevels)
+                ->orderByRaw("FIELD(level, 'global','continent','country','province','county','district','city','region','neighborhood','street','alley')")
+                ->get();
+            $sort = 'public';
         }
 
         return view('admin.system-settings.elections.index', compact('groupSettings', 'sort'));

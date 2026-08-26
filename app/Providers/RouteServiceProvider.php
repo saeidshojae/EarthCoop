@@ -30,8 +30,11 @@ class RouteServiceProvider extends ServiceProvider
                 ->name('admin.najm-hoda.n8n.')
                 ->group(base_path('routes/najm-hoda-admin-n8n.php'));
 
-            Route::middleware(['web', \App\Http\Middleware\AdminMiddleware::class])
-                ->group(base_path('routes/najm-hoda-founder-ops.php'));
+            Route::middleware([
+                'web',
+                \App\Http\Middleware\AdminMiddleware::class,
+                \App\Http\Middleware\FounderOperationsMiddleware::class,
+            ])->group(base_path('routes/najm-hoda-founder-ops.php'));
 
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));

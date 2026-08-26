@@ -1,4 +1,6 @@
-@extends('layouts.app')
+@extends('layouts.unified')
+
+@section('title', 'پرتال انتخابات - ' . $group->name)
 
 @section('content')
 <div class="container py-4" dir="rtl" data-election-user-portal="v1">
@@ -7,7 +9,10 @@
             <h1 class="h3 mb-1">انتخابات سیستمی — {{ $group->name }}</h1>
             <p class="text-muted mb-0">وضعیت چرخه، بازخورد مجاز، گزارش امن، پاسخ‌های موضوعی و بازبینی رویه‌ای</p>
         </div>
-        <a href="{{ route('groups.chat', $group) }}" class="btn btn-outline-primary">بازگشت به گفت‌وگوی گروه و برگه رأی</a>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('elections.guideline') }}" class="btn btn-outline-success"><i class="fas fa-book-open ms-1"></i>شیوه‌نامه انتخابات</a>
+            <a href="{{ route('groups.chat', $group) }}" class="btn btn-outline-primary">بازگشت به گفت‌وگوی گروه و برگه رأی</a>
+        </div>
     </div>
 
     @if(!$election)

@@ -20,7 +20,7 @@ return new class extends Migration
             $table->unsignedInteger('min_bucket_days');
             $table->text('body');
             $table->string('status', 24)->default('published');
-            $table->timestamp('published_at');
+            $table->dateTime('published_at');
             $table->timestamps();
 
             $table->index(['election_id', 'subject_user_id', 'topic_key'], 'election_topic_response_subject_topic_index');

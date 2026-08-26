@@ -30,8 +30,10 @@ return new class extends Migration
             $table->unsignedInteger('ranking_position');
             $table->unsignedBigInteger('contract_version_id');
             $table->string('status', 24)->default('pending');
-            $table->timestamp('offered_at');
-            $table->timestamp('expires_at');
+            // DATETIME keeps these fields required while avoiding legacy MySQL's
+            // implicit zero-TIMESTAMP default behavior for multiple NOT NULL timestamps.
+            $table->dateTime('offered_at');
+            $table->dateTime('expires_at');
             $table->timestamp('responded_at')->nullable();
             $table->timestamp('eligibility_checked_at')->nullable();
             $table->string('resolution_reason', 96)->nullable();

@@ -5,6 +5,7 @@ namespace App\Services\NajmHoda\FounderOps;
 use App\Models\SupportReplyDraft;
 use App\Services\NajmHoda\Runtime\NajmHodaAutonomyApprovalService;
 use App\Services\Support\TicketManagementService;
+use App\Services\SystemIdentityService;
 
 class FounderSupportDraftApprovalService
 {
@@ -12,7 +13,8 @@ class FounderSupportDraftApprovalService
         protected FounderActionRequestService $requests,
         protected FounderActionExecutionService $execution,
         protected NajmHodaAutonomyApprovalService $approvals,
-        protected TicketManagementService $tickets
+        protected TicketManagementService $tickets,
+        protected SystemIdentityService $systemIdentities
     ) {}
 
     /** @return array<string,mixed> */
@@ -64,21 +66,26 @@ class FounderSupportDraftApprovalService
             return ['success' => true, 'status' => 'rejected', 'draft_id' => $draftId];
         }
 
+        $supportIdentity = $this->systemIdentities->support();
         $draft->update(['status' => 'approved', 'approved_at' => now()]);
 
-        $result = $this->execution->execute(
+        return $this->execution->execute(
             'support',
             'send_reply',
-            function () use ($draft, $founderId) {
-                $comment = $this->tickets->reply($draft->ticket, $founderId, (string) $draft->body, true);
+            function () use ($draft, $supportIdentity) {
+                $reply = $this->tickets->reply($draft->ticket, (int) $supportIdentity->id, (string) $draft->body, true);
                 $draft->update(['status' => 'sent', 'sent_at' => now()]);
-                return ['ticket_id' => (int) $draft->ticket_id, 'draft_id' => (int) $draft->id, 'comment_id' => (int) $comment->id];
+
+                return [
+                    'ticket_id' => (int) $draft->ticket_id,
+                    'draft_id' => (int) $draft->id,
+                    'comment_id' => (int) ($reply['comment_id'] ?? 0),
+                    'sender_identity_id' => (int) $supportIdentity->id,
+                ];
             },
             $requestId,
             ['entity_type' => 'support_reply_draft', 'entity_id' => $draftId, 'requested_by' => $founderId]
         );
-
-        return $result;
     }
 
     /** @return array<int,int> */

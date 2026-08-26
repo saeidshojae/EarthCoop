@@ -33,14 +33,16 @@ class FounderExecutiveWorkQueueService
             $overdue = (string) ($approval['sla_status'] ?? '') === 'overdue';
             $risk = (string) ($approval['risk'] ?? 'unknown');
             $priority = $overdue || in_array($risk, ['critical', 'high'], true) ? 'P0' : 'P1';
+            $domain = (string) ($approval['domain'] ?? 'unknown');
+            $action = (string) ($approval['domain_action'] ?? '');
             $items->push([
                 'kind' => 'approval',
                 'priority' => $priority,
-                'domain' => (string) ($approval['domain'] ?? 'unknown'),
-                'action' => (string) ($approval['domain_action'] ?? ''),
+                'domain' => $domain,
+                'action' => $action,
                 'entity_type' => data_get($approval, 'context.entity_type'),
                 'entity_id' => data_get($approval, 'context.entity_id'),
-                'title' => $overdue ? 'تصمیم عقب‌افتاده از SLA' : 'تصمیم نیازمند تأیید Founder',
+                'title' => $this->approvalTitle($domain, $action, $overdue),
                 'status' => (string) ($approval['sla_status'] ?? 'pending'),
                 'requested_at' => $approval['requested_at'] ?? null,
                 'deadline_at' => $approval['deadline_at'] ?? null,
@@ -99,24 +101,24 @@ class FounderExecutiveWorkQueueService
     protected function appendDraftItems(Collection $items): void
     {
         foreach (SupportReplyDraft::query()->where('status', 'draft')->latest('id')->limit(10)->get() as $draft) {
-            $items->push($this->proposal('support', 'send_reply', 'support_reply_draft', (int) $draft->id, 'پاسخ پشتیبانی آماده بررسی', $draft->created_at?->toIso8601String()));
+            $items->push($this->proposal('support', 'send_reply', 'support_reply_draft', (int) $draft->id, 'پاسخ پشتیبانی آماده بررسی است', $draft->created_at?->toIso8601String()));
         }
         foreach (ModerationCaseSummary::query()->where('status', 'draft')->latest('id')->limit(10)->get() as $case) {
             $priority = (string) $case->severity === 'high' ? 'P1' : 'P2';
-            $items->push($this->proposal('reports_moderation', 'resolve_report', 'moderation_case_summary', (int) $case->id, 'پرونده Moderation آماده بررسی', $case->created_at?->toIso8601String(), $priority));
+            $items->push($this->proposal('reports_moderation', 'resolve_report', 'moderation_case_summary', (int) $case->id, 'پرونده نظارتی آماده بررسی است', $case->created_at?->toIso8601String(), $priority));
         }
         foreach (SecretariatFollowUpProposal::query()->where('status', 'draft')->latest('id')->limit(10)->get() as $proposal) {
             $priority = (string) $proposal->urgency === 'high' ? 'P1' : 'P2';
             $items->push($this->proposal('secretariat', 'prepare_follow_up', 'secretariat_follow_up_proposal', (int) $proposal->id, 'پیشنهاد پیگیری دبیرخانه آماده است', $proposal->created_at?->toIso8601String(), $priority));
         }
         foreach (FounderEmailDraft::query()->where('status', 'draft')->latest('id')->limit(10)->get() as $draft) {
-            $items->push($this->proposal('email', 'send_email', 'founder_email_draft', (int) $draft->id, 'پیش‌نویس ایمیل آماده بررسی', $draft->created_at?->toIso8601String()));
+            $items->push($this->proposal('email', 'send_email', 'founder_email_draft', (int) $draft->id, 'پیش‌نویس ایمیل آماده بررسی است', $draft->created_at?->toIso8601String()));
         }
         foreach (FounderContentDraft::query()->where('status', 'draft')->latest('id')->limit(10)->get() as $draft) {
-            $items->push($this->proposal('blog', 'publish_post', 'founder_content_draft', (int) $draft->id, 'پیش‌نویس محتوا آماده بررسی', $draft->created_at?->toIso8601String()));
+            $items->push($this->proposal('blog', 'publish_post', 'founder_content_draft', (int) $draft->id, 'پیش‌نویس محتوا آماده بررسی است', $draft->created_at?->toIso8601String()));
         }
         foreach (FounderAnnouncementDraft::query()->where('status', 'draft')->latest('id')->limit(10)->get() as $draft) {
-            $items->push($this->proposal('notifications', 'publish_announcement', 'founder_announcement_draft', (int) $draft->id, 'پیش‌نویس اطلاعیه آماده بررسی', $draft->created_at?->toIso8601String()));
+            $items->push($this->proposal('notifications', 'publish_announcement', 'founder_announcement_draft', (int) $draft->id, 'پیش‌نویس اطلاعیه آماده بررسی است', $draft->created_at?->toIso8601String()));
         }
         foreach (FounderFinancialRiskFinding::query()->where('status', 'open')->latest('id')->limit(10)->get() as $finding) {
             $severity = (string) $finding->severity;
@@ -124,10 +126,41 @@ class FounderExecutiveWorkQueueService
             $items->push([
                 'kind'=>'attention','priority'=>$priority,'domain'=>'najm_bahar','action'=>null,
                 'entity_type'=>'founder_financial_risk_finding','entity_id'=>(int)$finding->id,
-                'title'=>'یافته ریسک مالی باز','status'=>'open','requested_at'=>$finding->created_at?->toIso8601String(),
+                'title'=>'یک هشدار باز در سلامت مالی نیازمند بررسی است','status'=>'open','requested_at'=>$finding->created_at?->toIso8601String(),
                 'deadline_at'=>null,'score'=>$this->priorityScore($priority) + ($severity === 'critical' ? 50 : 0),
             ]);
         }
+    }
+
+    protected function approvalTitle(string $domain, string $action, bool $overdue): string
+    {
+        $domainLabel = match ($domain) {
+            'support' => 'پاسخ پشتیبانی',
+            'reference_data', 'locations' => 'داده پایه',
+            'reports_moderation' => 'پرونده نظارتی',
+            'email' => 'ایمیل',
+            'blog' => 'محتوا',
+            'notifications' => 'اطلاعیه',
+            'secretariat' => 'دبیرخانه',
+            'najm_bahar' => 'نجم بهار',
+            'stock' => 'سهام و تأمین مالی',
+            'governance' => 'حکمرانی و انتخابات',
+            'admin_settings' => 'تنظیمات مدیریتی',
+            default => 'اقدام مدیریتی',
+        };
+
+        $actionLabel = match ($action) {
+            'send_reply' => 'ارسال پاسخ',
+            'approve' => 'تأیید',
+            'resolve_report' => 'رسیدگی نهایی',
+            'send_email' => 'ارسال',
+            'publish_post', 'publish_announcement' => 'انتشار',
+            'register_formal_record' => 'ثبت رسمی',
+            'close_case' => 'بستن پرونده',
+            default => 'تصمیم',
+        };
+
+        return ($overdue ? 'عقب‌افتاده: ' : '') . $domainLabel . ' — ' . $actionLabel . ' منتظر تصمیم شماست';
     }
 
     /** @return array<string,mixed> */

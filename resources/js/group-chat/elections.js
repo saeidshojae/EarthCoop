@@ -16,22 +16,76 @@ export function createElections({ api, feed, actions, lifecycle, store }) {
         ['manager', 'inspector'].forEach(role => {
             const badge = form.querySelector(`[data-election-count="${role}"]`);
             if (badge) badge.textContent = `${selectedFor(form, role).length}/${limits[role]}`;
+            const tabCount = form.querySelector(`[data-election-role-tab-count="${role}"]`);
+            if (tabCount) tabCount.textContent = `${selectedFor(form, role).length}/${limits[role]}`;
         });
 
         const candidateIds = [...new Set(ballotChoices(form).map(el => el.dataset.candidateId).filter(Boolean))];
         candidateIds.forEach(candidateId => {
             const selectedChoice = ballotChoices(form).find(el => el.dataset.candidateId === candidateId && el.checked);
             form.querySelectorAll(`[data-vote-visibility-for="${candidateId}"]`).forEach(select => {
-                select.disabled = !selectedChoice || select.dataset.electionRole !== selectedChoice.dataset.electionChoice;
+                const active = Boolean(selectedChoice) && select.dataset.electionRole === selectedChoice.dataset.electionChoice;
+                select.disabled = !active;
+                select.style.pointerEvents = active ? 'auto' : 'none';
+                select.setAttribute('aria-disabled', active ? 'false' : 'true');
             });
         });
     };
 
+    const activateRoleTab = (form, role) => {
+        if (!form) return;
+        form.querySelectorAll('[data-election-role-tab]').forEach(tab => {
+            const active = tab.dataset.electionRoleTab === role;
+            tab.classList.toggle('is-active', active);
+            tab.setAttribute('aria-selected', active ? 'true' : 'false');
+            tab.tabIndex = active ? 0 : -1;
+        });
+        form.querySelectorAll('[data-election-role-panel]').forEach(panel => {
+            const active = panel.dataset.electionRolePanel === role;
+            panel.classList.toggle('is-active', active);
+            panel.setAttribute('aria-hidden', active ? 'false' : 'true');
+        });
+    };
+
+    const setupMobileRoleTabs = form => {
+        if (!form || form.querySelector('[data-election-role-tabs]')) return;
+        const managerList = form.querySelector('[data-election-list="manager"]');
+        const inspectorList = form.querySelector('[data-election-list="inspector"]');
+        const managerPanel = managerList?.closest('.col-12');
+        const inspectorPanel = inspectorList?.closest('.col-12');
+        const row = managerPanel?.parentElement;
+        if (!managerPanel || !inspectorPanel || !row || row !== inspectorPanel.parentElement) return;
+
+        managerPanel.dataset.electionRolePanel = 'manager';
+        inspectorPanel.dataset.electionRolePanel = 'inspector';
+        managerPanel.id = managerPanel.id || 'electionManagerPanel';
+        inspectorPanel.id = inspectorPanel.id || 'electionInspectorPanel';
+
+        const limits = ballotLimits(form);
+        const tabs = document.createElement('div');
+        tabs.className = 'election-role-tabs';
+        tabs.dataset.electionRoleTabs = 'true';
+        tabs.setAttribute('role', 'tablist');
+        tabs.setAttribute('aria-label', 'انتخاب نقش در برگه انتخابات');
+        tabs.innerHTML = `
+            <button type="button" class="election-role-tab is-active" role="tab" aria-selected="true" aria-controls="${managerPanel.id}" data-election-role-tab="manager">
+                <span>مدیران</span><span class="election-role-tab__count" data-election-role-tab-count="manager">${selectedFor(form, 'manager').length}/${limits.manager}</span>
+            </button>
+            <button type="button" class="election-role-tab" role="tab" aria-selected="false" aria-controls="${inspectorPanel.id}" data-election-role-tab="inspector" tabindex="-1">
+                <span>بازرسان</span><span class="election-role-tab__count" data-election-role-tab-count="inspector">${selectedFor(form, 'inspector').length}/${limits.inspector}</span>
+            </button>`;
+        row.before(tabs);
+        activateRoleTab(form, 'manager');
+    };
+
     const syncCommentVisibility = form => {
         if (!form) return;
-        const comment = form.querySelector('#electionComment');
         const visibility = form.querySelector('#electionCommentVisibility');
-        if (visibility) visibility.disabled = !comment?.value.trim();
+        if (visibility) {
+            visibility.disabled = false;
+            visibility.style.pointerEvents = 'auto';
+            visibility.setAttribute('aria-disabled', 'false');
+        }
     };
 
     const updateBallotCountdown = form => {
@@ -69,6 +123,7 @@ export function createElections({ api, feed, actions, lifecycle, store }) {
         const form = ballotForm();
         if (!form || form.dataset.lifecycleBound === '1') return;
         form.dataset.lifecycleBound = '1';
+        setupMobileRoleTabs(form);
         refreshBallot(form);
         syncCommentVisibility(form);
         updateBallotCountdown(form);
@@ -93,7 +148,7 @@ export function createElections({ api, feed, actions, lifecycle, store }) {
         lifecycle.timeout(() => {
             window.GroupElectionModal?.updateElectionSelect2?.();
             window.dispatchEvent(new Event('electionModalOpened'));
-        }, 600);
+        }, 100);
         window.GroupChat?.actions?.closeGroupInfo();
         return true;
     };
@@ -197,7 +252,7 @@ export function createElections({ api, feed, actions, lifecycle, store }) {
     actions.register('close-election-admin', closeAdmin);
     actions.register('add-election-candidate', addCandidate);
     actions.register('remove-election-candidate', ({ target }) => Boolean(target.closest('.modal-option-row')?.remove() ?? true));
-    actions.register('election-content', ({ event }) => (event.stopPropagation(), true));
+    actions.register('election-content', ({ event }) => (event.stopPropagation(), false));
     actions.register('open-election-candidates', () => (window.GroupElectionModal?.openCandidatesModal?.(), true));
     actions.register('open-election-guideline', () => (window.GroupElectionModal?.openGuidelineModal?.(), true));
     actions.register('open-election-top-votes', () => (window.GroupElectionModal?.openTopVotesModal?.(), true));
@@ -216,9 +271,15 @@ export function createElections({ api, feed, actions, lifecycle, store }) {
         const role = input.dataset.electionChoice;
         const otherRole = role === 'manager' ? 'inspector' : 'manager';
         const limits = ballotLimits(form);
+
         if (input.checked) {
             const other = form.querySelector(`[data-election-choice="${otherRole}"][data-candidate-id="${input.dataset.candidateId}"]`);
-            if (other?.checked) other.checked = false;
+            if (other?.checked) {
+                input.checked = false;
+                notify('این عضو قبلاً برای نقش دیگر انتخاب شده است. برای تغییر نقش ابتدا انتخاب قبلی او را بردارید.', 'warning');
+                refreshBallot(form);
+                return;
+            }
             if (selectedFor(form, role).length > limits[role]) {
                 input.checked = false;
                 notify(`حداکثر ${limits[role]} انتخاب برای این نقش مجاز است.`, 'warning');
@@ -241,6 +302,16 @@ export function createElections({ api, feed, actions, lifecycle, store }) {
     });
 
     lifecycle.on(document, 'click', event => {
+        const roleTab = event.target.closest?.('[data-election-role-tab]');
+        if (roleTab) {
+            const form = roleTab.closest('[data-systemic-election-ballot]');
+            if (form) {
+                event.preventDefault();
+                activateRoleTab(form, roleTab.dataset.electionRoleTab);
+            }
+            return;
+        }
+
         const clearButton = event.target.closest?.('[data-election-clear]');
         if (!clearButton) return;
         const form = clearButton.closest('[data-systemic-election-ballot]');
@@ -249,15 +320,24 @@ export function createElections({ api, feed, actions, lifecycle, store }) {
         refreshBallot(form);
     });
 
+    lifecycle.on(document, 'keydown', event => {
+        const tab = event.target.closest?.('[data-election-role-tab]');
+        if (tab && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+            const form = tab.closest('[data-systemic-election-ballot]');
+            const nextRole = tab.dataset.electionRoleTab === 'manager' ? 'inspector' : 'manager';
+            event.preventDefault();
+            activateRoleTab(form, nextRole);
+            form?.querySelector(`[data-election-role-tab="${nextRole}"]`)?.focus();
+            return;
+        }
+        if (event.key === 'Escape' && store.getState().electionOpen) close();
+    });
+
     lifecycle.on(document, 'submit', event => {
         const form = event.target;
         if (!(form instanceof HTMLFormElement) || form.id !== 'electionFormModal') return;
         event.preventDefault();
         void submitAdmin(form);
-    });
-
-    lifecycle.on(document, 'keydown', event => {
-        if (event.key === 'Escape' && store.getState().electionOpen) close();
     });
 
     initializeBallot();

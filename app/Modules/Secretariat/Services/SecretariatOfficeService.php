@@ -2,6 +2,7 @@
 
 namespace App\Modules\Secretariat\Services;
 
+use App\Models\Group;
 use App\Modules\Secretariat\Models\SecretariatOffice;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +12,62 @@ class SecretariatOfficeService
 {
     private const TYPES = ['central', 'group', 'project', 'legal_entity', 'committee', 'other'];
     private const CONFIDENTIALITIES = ['public', 'office_members', 'leadership', 'restricted', 'confidential'];
+
+    public function ensureCentral(): SecretariatOffice
+    {
+        $existing = SecretariatOffice::query()
+            ->where('office_type', 'central')
+            ->orderBy('id')
+            ->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        return $this->create([
+            'code' => 'EARTHCOOP-CENTRAL',
+            'name' => 'دبیرخانه مرکزی EarthCoop',
+            'office_type' => 'central',
+            'default_confidentiality' => 'office_members',
+            'numbering_policy' => [
+                'format' => '{OFFICE}/{YEAR}/{FAMILY}/{SEQ}',
+                'sequence_width' => 6,
+            ],
+            'metadata' => [
+                'provisioning' => 'canonical_uat',
+            ],
+        ]);
+    }
+
+    public function ensureGroup(Group $group): SecretariatOffice
+    {
+        $existing = SecretariatOffice::query()
+            ->where('office_type', 'group')
+            ->where('scope_type', 'group')
+            ->where('scope_id', $group->id)
+            ->orderBy('id')
+            ->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        return $this->create([
+            'code' => 'GROUP-' . $group->id,
+            'name' => 'دبیرخانه ' . $group->name,
+            'office_type' => 'group',
+            'scope_type' => 'group',
+            'scope_id' => $group->id,
+            'default_confidentiality' => 'office_members',
+            'numbering_policy' => [
+                'format' => '{OFFICE}/{YEAR}/{FAMILY}/{SEQ}',
+                'sequence_width' => 6,
+            ],
+            'metadata' => [
+                'provisioning' => 'canonical_uat',
+            ],
+        ]);
+    }
 
     public function create(array $attributes): SecretariatOffice
     {
