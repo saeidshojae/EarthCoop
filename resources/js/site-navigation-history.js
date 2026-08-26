@@ -1,6 +1,3 @@
-const NAVIGATION_STACK_KEY = 'earthcoop.navigation.stack';
-const NAVIGATION_STACK_LIMIT = 50;
-
 const normalizeUrl = (value) => {
     try {
         const url = new URL(value, window.location.origin);
@@ -10,74 +7,31 @@ const normalizeUrl = (value) => {
     }
 };
 
-const readStack = () => {
+const canUseNativeBack = () => {
     try {
-        const parsed = JSON.parse(window.sessionStorage.getItem(NAVIGATION_STACK_KEY) || '[]');
-        if (!Array.isArray(parsed)) return [];
-        return parsed.map(normalizeUrl).filter(Boolean).slice(-NAVIGATION_STACK_LIMIT);
+        // A same-origin referrer is the strongest signal that this tab arrived
+        // here through EarthCoop navigation. history.length protects normal
+        // multi-step navigation even when the browser omits referrer details.
+        const referrer = document.referrer ? normalizeUrl(document.referrer) : null;
+        return window.history.length > 1 && (Boolean(referrer) || window.history.length > 2);
     } catch {
-        return [];
-    }
-};
-
-const writeStack = (stack) => {
-    try {
-        window.sessionStorage.setItem(NAVIGATION_STACK_KEY, JSON.stringify(stack.slice(-NAVIGATION_STACK_LIMIT)));
-    } catch {
-        // sessionStorage can be unavailable in restrictive/private contexts.
-    }
-};
-
-const currentNavigationType = () => {
-    try {
-        return window.performance.getEntriesByType('navigation')[0]?.type || 'navigate';
-    } catch {
-        return 'navigate';
-    }
-};
-
-const registerCurrentPage = () => {
-    const current = normalizeUrl(window.location.href);
-    if (!current) return;
-
-    const stack = readStack();
-    const navigationType = currentNavigationType();
-
-    if (navigationType === 'back_forward') {
-        const existingIndex = stack.lastIndexOf(current);
-        if (existingIndex >= 0) {
-            writeStack(stack.slice(0, existingIndex + 1));
-            return;
-        }
-    }
-
-    if (stack[stack.length - 1] !== current) {
-        stack.push(current);
-        writeStack(stack);
+        return false;
     }
 };
 
 const navigateBack = (fallbackUrl, event = null) => {
     event?.preventDefault?.();
 
-    const stack = readStack();
-    const current = normalizeUrl(window.location.href);
-
-    if (current && stack[stack.length - 1] === current && stack.length > 1) {
-        stack.pop();
-        const previousUrl = stack[stack.length - 1];
-        writeStack(stack);
-        window.location.assign(previousUrl);
+    if (canUseNativeBack()) {
+        window.history.back();
         return;
     }
 
-    // Direct entry/new tab or lost stack: deterministic safe fallback.
+    // Direct entry/new tab: deterministic safe fallback.
     window.location.assign(fallbackUrl);
 };
 
 const installUnifiedHeaderBackNavigation = () => {
-    registerCurrentPage();
-
     const header = document.querySelector('header.site-header-unified');
     if (!header) return;
 
