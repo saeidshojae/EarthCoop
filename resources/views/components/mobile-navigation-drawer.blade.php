@@ -48,7 +48,7 @@
                         <span><i class="fas fa-compass" aria-hidden="true"></i> اصلی</span>
                         <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'primary' }" aria-hidden="true"></i>
                     </button>
-                    <div x-show="openSection === 'primary'" x-collapse class="navigation-section__links">
+                    <div x-show="openSection === 'primary'" x-transition class="navigation-section__links">
                         <a href="{{ route('home') }}" class="navigation-link"><i class="fas fa-home"></i><span>خانه</span></a>
                         <a href="{{ route('groups.index') }}" class="navigation-link"><i class="fas fa-users"></i><span>{{ __('navigation.footer_my_groups') }}</span><span class="navigation-badge">{{ $mobileNavGroups->count() }}</span></a>
                         <a href="{{ route('notifications.index') }}" class="navigation-link"><i class="fas fa-bell"></i><span>اعلان‌ها</span>@if($mobileUnreadNotifications > 0)<span class="navigation-badge navigation-badge--alert">{{ $mobileUnreadNotifications }}</span>@endif</a>
@@ -61,7 +61,7 @@
                         <span><i class="fas fa-people-arrows" aria-hidden="true"></i> مشارکت</span>
                         <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'participation' }"></i>
                     </button>
-                    <div x-show="openSection === 'participation'" x-collapse class="navigation-section__links">
+                    <div x-show="openSection === 'participation'" x-transition class="navigation-section__links">
                         <a href="{{ route('history.index') }}" class="navigation-link"><i class="fas fa-handshake"></i><span>مشارکت‌های من</span></a>
                         <a href="{{ route('history.election') }}" class="navigation-link"><i class="fas fa-vote-yea"></i><span>انتخابات جاری</span></a>
                         <a href="{{ route('history.poll') }}" class="navigation-link"><i class="fas fa-chart-pie"></i><span>نظرسنجی‌های جاری</span></a>
@@ -73,7 +73,7 @@
                         <span><i class="fas fa-coins" aria-hidden="true"></i> اقتصاد</span>
                         <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'economy' }"></i>
                     </button>
-                    <div x-show="openSection === 'economy'" x-collapse class="navigation-section__links">
+                    <div x-show="openSection === 'economy'" x-transition class="navigation-section__links">
                         <a href="{{ route('najm-bahar.dashboard') }}" class="navigation-link"><i class="fas fa-wallet"></i><span>حساب مالی نجم بهار</span></a>
                         <a href="{{ route('stock.book') }}" class="navigation-link"><i class="fas fa-chart-line"></i><span>{{ __('navigation.stock_office') }}</span></a>
                         <a href="{{ route('auction.index') }}" class="navigation-link"><i class="fas fa-gavel"></i><span>{{ __('navigation.auctions') }}</span></a>
@@ -87,7 +87,7 @@
                         <span><i class="fas fa-sitemap" aria-hidden="true"></i> سازمان و ارتباطات</span>
                         <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'organization' }"></i>
                     </button>
-                    <div x-show="openSection === 'organization'" x-collapse class="navigation-section__links">
+                    <div x-show="openSection === 'organization'" x-transition class="navigation-section__links">
                         <a href="{{ route('secretariat.directory') }}" class="navigation-link"><i class="fas fa-box-archive"></i><span>دبیرخانه‌های من</span></a>
                         @if($mobileCurrentGroup)
                             <a href="{{ route('secretariat.group', $mobileCurrentGroup) }}" class="navigation-link"><i class="fas fa-people-group"></i><span>دبیرخانه گروه</span></a>
@@ -101,7 +101,7 @@
                         <span><i class="fas fa-headset" aria-hidden="true"></i> راهنما و پشتیبانی</span>
                         <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'support' }"></i>
                     </button>
-                    <div x-show="openSection === 'support'" x-collapse class="navigation-section__links">
+                    <div x-show="openSection === 'support'" x-transition class="navigation-section__links">
                         <a href="{{ route('support.kb.index') }}" class="navigation-link"><i class="fas fa-book"></i><span>پایگاه دانش</span></a>
                         <a href="{{ route('user.tickets.create') }}" class="navigation-link"><i class="fas fa-plus-circle"></i><span>ارسال تیکت</span></a>
                         <a href="{{ route('user.tickets.index') }}" class="navigation-link"><i class="fas fa-ticket-alt"></i><span>تیکت‌های من</span></a>
@@ -114,7 +114,7 @@
                         <span><i class="fas fa-earth-americas" aria-hidden="true"></i> کاوش EarthCoop</span>
                         <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'explore' }"></i>
                     </button>
-                    <div x-show="openSection === 'explore'" x-collapse class="navigation-section__links">
+                    <div x-show="openSection === 'explore'" x-transition class="navigation-section__links">
                         @foreach($navLinks as $link)
                             <a href="{{ $link['url'] }}" class="navigation-link"><i class="fas {{ $link['icon'] }}"></i><span>{{ $link['label'] }}</span></a>
                         @endforeach
@@ -129,7 +129,7 @@
                             <span><i class="fas fa-user-shield" aria-hidden="true"></i> مدیریت</span>
                             <i class="fas fa-chevron-down" :class="{ 'rotate-180': openSection === 'admin' }"></i>
                         </button>
-                        <div x-show="openSection === 'admin'" x-collapse class="navigation-section__links">
+                        <div x-show="openSection === 'admin'" x-transition class="navigation-section__links">
                             <a href="{{ route('admin.dashboard') }}" class="navigation-link"><i class="fas fa-gauge-high"></i><span>{{ __('navigation.admin_dashboard') }}</span></a>
                             <a href="{{ route('secretariat.central') }}" class="navigation-link"><i class="fas fa-building-columns"></i><span>دبیرخانه مرکزی</span></a>
                             <a href="{{ route('admin.blog.dashboard') }}" class="navigation-link"><i class="fas fa-blog"></i><span>{{ __('navigation.admin_blog') }}</span></a>
