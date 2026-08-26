@@ -1,9 +1,6 @@
-import "bootstrap/dist/css/bootstrap.min.css";
-import "../css/app.css";
 import "./bootstrap";
 import $ from "jquery";
 import installSelect2 from "select2";
-import "select2/dist/css/select2.min.css";
 import "./najm-bahar.js";
 import "./najm-bahar-membership-source.js";
 import "./najm-hoda-context.js";
@@ -16,36 +13,6 @@ import "./site-navigation-history.js";
 import { register } from "swiper/element/bundle";
 import "./group-chat/index.js";
 import "./group-comment-form-fallback.js";
-
-// Laravel's Vite helper emits extracted CSS before this module in production,
-// but Vite injects imported CSS as <style data-vite-dev-id> nodes at the end
-// of <head> in dev mode. That reverses the cascade against the public/inline
-// styles that follow @vite and makes dev render differently from production.
-// Keep Vite's dev-only style nodes anchored where the production CSS link sits.
-const normalizeViteDevStyleOrder = () => {
-    if (!import.meta.hot) return;
-
-    const appEntryScript = Array.from(document.scripts).find((script) =>
-        script.src.includes('/resources/js/app.js')
-    );
-    if (!appEntryScript || appEntryScript.parentNode !== document.head) return;
-
-    const moveViteStylesBeforeEntry = () => {
-        const viteStyles = Array.from(document.head.querySelectorAll('style[data-vite-dev-id]'));
-        viteStyles.forEach((style) => {
-            if (style.compareDocumentPosition(appEntryScript) & Node.DOCUMENT_POSITION_PRECEDING) {
-                document.head.insertBefore(style, appEntryScript);
-            }
-        });
-    };
-
-    moveViteStylesBeforeEntry();
-
-    const observer = new MutationObserver(() => moveViteStylesBeforeEntry());
-    observer.observe(document.head, { childList: true });
-};
-
-normalizeViteDevStyleOrder();
 
 register();
 
