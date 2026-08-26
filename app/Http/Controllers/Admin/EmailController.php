@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\EmailTemplate;
 use App\Models\User;
+use App\Services\Email\EmailDeliveryService;
+use App\Services\Email\EmailTemplateManagementService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Log;
 
 class EmailController extends Controller
 {
@@ -59,8 +59,11 @@ class EmailController extends Controller
     /**
      * Update the specified email template
      */
-    public function update(Request $request, EmailTemplate $email)
-    {
+    public function update(
+        Request $request,
+        EmailTemplate $email,
+        EmailTemplateManagementService $templates
+    ) {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'subject' => 'required|string|max:255',
@@ -70,7 +73,7 @@ class EmailController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        $email->update($validated);
+        $templates->update($email, $validated);
 
         return redirect()->route('admin.emails.index')
             ->with('success', 'قالب ایمیل با موفقیت به‌روزرسانی شد.');
@@ -94,14 +97,14 @@ class EmailController extends Controller
     {
         $templates = EmailTemplate::where('is_active', true)->get();
         $users = User::select('id', 'first_name', 'last_name', 'email')->get();
-        
+
         return view('admin.emails.send', compact('templates', 'users'));
     }
 
     /**
      * Send email using a template
      */
-    public function sendTemplate(Request $request)
+    public function sendTemplate(Request $request, EmailDeliveryService $delivery)
     {
         $validated = $request->validate([
             'template_id' => 'required|exists:email_templates,id',
@@ -111,45 +114,17 @@ class EmailController extends Controller
         ]);
 
         $template = EmailTemplate::findOrFail($validated['template_id']);
-        
-        if (!$template->is_active) {
+        if (! $template->is_active) {
             return back()->withErrors(['template_id' => 'این قالب غیرفعال است.']);
         }
 
         $rendered = $template->render($validated['variables'] ?? []);
-
-        // Parse recipients (support both comma-separated and newline-separated)
-        $recipientsList = [];
-        foreach ($validated['recipients'] as $recipient) {
-            // Split by comma or newline
-            $emails = preg_split('/[,\n]/', $recipient);
-            foreach ($emails as $email) {
-                $email = trim($email);
-                if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    $recipientsList[] = $email;
-                }
-            }
-        }
-
-        if (empty($recipientsList)) {
+        $recipients = $delivery->parseRecipients($validated['recipients']);
+        if ($recipients === []) {
             return back()->withErrors(['recipients' => 'لطفاً حداقل یک ایمیل معتبر وارد کنید.']);
         }
 
-        $recipientsList = array_unique($recipientsList);
-
-        foreach ($recipientsList as $recipient) {
-            try {
-                Mail::html($rendered['body'], function ($message) use ($recipient, $rendered) {
-                    $message->to($recipient)
-                        ->subject($rendered['subject']);
-                });
-            } catch (\Exception $e) {
-                Log::error('Failed to send email', [
-                    'recipient' => $recipient,
-                    'error' => $e->getMessage()
-                ]);
-            }
-        }
+        $delivery->sendHtml($recipients, $rendered['subject'], $rendered['body']);
 
         return redirect()->route('admin.emails.send')
             ->with('success', 'ایمیل‌ها با موفقیت ارسال شدند.');
@@ -158,7 +133,7 @@ class EmailController extends Controller
     /**
      * Send a custom email (without template)
      */
-    public function sendCustom(Request $request)
+    public function sendCustom(Request $request, EmailDeliveryService $delivery)
     {
         $validated = $request->validate([
             'recipients' => 'required|array|min:1',
@@ -167,38 +142,12 @@ class EmailController extends Controller
             'body' => 'required|string',
         ]);
 
-        // Parse recipients (support both comma-separated and newline-separated)
-        $recipientsList = [];
-        foreach ($validated['recipients'] as $recipient) {
-            // Split by comma or newline
-            $emails = preg_split('/[,\n]/', $recipient);
-            foreach ($emails as $email) {
-                $email = trim($email);
-                if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    $recipientsList[] = $email;
-                }
-            }
-        }
-
-        if (empty($recipientsList)) {
+        $recipients = $delivery->parseRecipients($validated['recipients']);
+        if ($recipients === []) {
             return back()->withErrors(['recipients' => 'لطفاً حداقل یک ایمیل معتبر وارد کنید.']);
         }
 
-        $recipientsList = array_unique($recipientsList);
-
-        foreach ($recipientsList as $recipient) {
-            try {
-                Mail::html($validated['body'], function ($message) use ($recipient, $validated) {
-                    $message->to($recipient)
-                        ->subject($validated['subject']);
-                });
-            } catch (\Exception $e) {
-                Log::error('Failed to send custom email', [
-                    'recipient' => $recipient,
-                    'error' => $e->getMessage()
-                ]);
-            }
-        }
+        $delivery->sendHtml($recipients, $validated['subject'], $validated['body']);
 
         return redirect()->route('admin.emails.send')
             ->with('success', 'ایمیل‌های سفارشی با موفقیت ارسال شدند.');
@@ -218,4 +167,3 @@ class EmailController extends Controller
         ]);
     }
 }
-

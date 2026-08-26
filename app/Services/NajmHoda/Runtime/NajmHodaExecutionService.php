@@ -6,6 +6,7 @@ use App\Models\Conversation;
 use App\Models\User;
 use App\Services\NajmHoda\Context\NajmHodaGroundedPageResponder;
 use App\Services\NajmHoda\Context\NajmHodaPageContextResolver;
+use App\Services\NajmHoda\Context\NajmHodaSecretariatGroundedResponder;
 use App\Services\NajmHoda\NajmHodaInteractionBoundaryService;
 use App\Services\NajmHoda\NajmHodaOrchestrator;
 use App\Services\NajmHoda\NajmHodaPrivateGroupCommandService;
@@ -24,7 +25,8 @@ class NajmHodaExecutionService
         protected ?NajmHodaPrivateGroupCommandService $privateGroupCommandService = null,
         protected ?NajmHodaPrivateGroupCommentCommandService $privateGroupCommentCommandService = null,
         protected ?NajmHodaPrivateGroupReactionCommandService $privateGroupReactionCommandService = null,
-        protected ?NajmHodaGroundedPageResponder $groundedPageResponder = null
+        protected ?NajmHodaGroundedPageResponder $groundedPageResponder = null,
+        protected ?NajmHodaSecretariatGroundedResponder $secretariatGroundedResponder = null
     ) {
         $this->resourceAuthorization = $this->resourceAuthorization ?? new NajmHodaResourceAuthorizationService();
         $this->pageContextResolver = $this->pageContextResolver ?? new NajmHodaPageContextResolver();
@@ -32,6 +34,7 @@ class NajmHodaExecutionService
         $this->privateGroupCommentCommandService = $this->privateGroupCommentCommandService ?? app(NajmHodaPrivateGroupCommentCommandService::class);
         $this->privateGroupReactionCommandService = $this->privateGroupReactionCommandService ?? app(NajmHodaPrivateGroupReactionCommandService::class);
         $this->groundedPageResponder = $this->groundedPageResponder ?? new NajmHodaGroundedPageResponder();
+        $this->secretariatGroundedResponder = $this->secretariatGroundedResponder ?? app(NajmHodaSecretariatGroundedResponder::class);
     }
 
     public function executeChat(NajmHodaOrchestrator $orchestrator, string $message, array $context = []): array
@@ -86,6 +89,23 @@ class NajmHodaExecutionService
                     $privateGroupResponse['response_time_ms'] = (int) round((microtime(true) - $start) * 1000);
                     $privateGroupResponse['request_id'] = $requestId;
                     return $privateGroupResponse;
+                }
+            }
+
+            // Explicit Secretariat knowledge requests use the authenticated actor
+            // object resolved by this server boundary. They never trust browser
+            // actor hints and never fall through to an unscoped model retrieval.
+            if ($actor) {
+                $secretariatResponse = $this->secretariatGroundedResponder?->respond(
+                    $actor,
+                    $message,
+                    is_array($context['page_context'] ?? null) ? (array) $context['page_context'] : []
+                );
+
+                if (is_array($secretariatResponse)) {
+                    $secretariatResponse['response_time_ms'] = (int) round((microtime(true) - $start) * 1000);
+                    $secretariatResponse['request_id'] = $requestId;
+                    return $secretariatResponse;
                 }
             }
 

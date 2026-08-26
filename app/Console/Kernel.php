@@ -26,6 +26,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\NajmHodaCoverageProbe::class,
         \App\Console\Commands\NajmHodaDelegationAudit::class,
         \App\Console\Commands\NajmHodaDelegationGrant::class,
+        \App\Console\Commands\NajmHodaFounderOpsTick::class,
         \App\Console\Commands\NajmHodaGameDay::class,
         \App\Console\Commands\NajmHodaGraphQuery::class,
         \App\Console\Commands\NajmHodaGoalLoop::class,
@@ -41,6 +42,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\NajmHodaShadowRollout::class,
         \App\Console\Commands\NajmHodaModerationSweep::class,
         \App\Console\Commands\NajmHodaGroupAttentionSweep::class,
+        \App\Console\Commands\ProcessElectionLifecycle::class,
         \App\Console\Commands\SendElectionReminders::class,
         \App\Console\Commands\SendAuctionReminders::class,
         \App\Console\Commands\ActivateScheduledGroupSessions::class,
@@ -48,32 +50,27 @@ class Kernel extends ConsoleKernel
 
     protected function schedule(Schedule $schedule)
     {
-        // Close expired auctions every minute
         $schedule->command('auctions:close')->everyMinute();
-
-        // Group chat transactional outbox and scheduled sessions from the post-groups main baseline.
         $schedule->command('group-chat:dispatch-outbox --limit=500')->everyMinute()->withoutOverlapping();
         $schedule->command('group-chat:activate-sessions')->everyMinute()->withoutOverlapping();
-
-        // Laravel 12 no longer exposes everyTwelveHours(); twiceDaily preserves
-        // the intended 12-hour cadence without relying on a removed macro.
+        $schedule->command('elections:process-lifecycle --limit=500 --fail-on-error')
+            ->everyMinute()
+            ->withoutOverlapping();
         $schedule->command('elections:send-reminders')->twiceDaily(0, 12);
-
-        // Send auction reminders every hour
         $schedule->command('auctions:send-reminders')->hourly();
-
-        // Najm Hoda scheduled group moderation cleanup (respects per-group interval)
         $schedule->command('najm-hoda:moderation-sweep --max-groups=200')->hourly();
-
-        // Najm Hoda proactive leadership attention for group action queues.
         $schedule->command('najm-hoda:group-attention-sweep --max-groups=200')
             ->everyFiveMinutes()
             ->withoutOverlapping();
-
-        // Najm Hoda operational health monitor + auto triage
         $schedule->command('najm-hoda:ops-monitor')->everyFiveMinutes();
 
-        // Najm Hoda autonomous goal loop (phase 4 skeleton)
+        // Founder Operations unified autonomous management loop. The command is
+        // fail-closed: it executes only delegated-ready actions with explicit
+        // canonical low-risk handlers; all other work remains plan/approval only.
+        $schedule->command('najm-hoda:founder-ops-tick --hours=24 --limit=12')
+            ->everyFiveMinutes()
+            ->withoutOverlapping();
+
         $schedule->command('najm-hoda:goal-loop')->everyTenMinutes();
         $schedule->command('najm-hoda:multi-goals --scope=global --window=24 --limit=2000')->everyThirtyMinutes();
         $schedule->command('najm-hoda:multi-goals-review --scope=global --window=24 --limit=2000')->hourly();
@@ -85,8 +82,6 @@ class Kernel extends ConsoleKernel
         $schedule->command('najm-hoda:ops-activation --tick')->everyTenMinutes();
         $schedule->command('najm-hoda:shadow-rollout --evaluate --window=24')->hourly();
         $schedule->command('najm-hoda:phase6-signoff --report --window=24')->dailyAt('04:00');
-
-        // Najm Hoda coverage probes + KPI snapshot for Phase-6 critical path tracking
         $schedule->command('najm-hoda:coverage-heartbeat')->hourly();
         $schedule->command('najm-hoda:coverage-probe')->hourly();
         $schedule->command('najm-hoda:coverage-kpi --window=24 --limit=5000')->hourly();
@@ -97,7 +92,6 @@ class Kernel extends ConsoleKernel
     protected function commands()
     {
         $this->load(__DIR__.'/Commands');
-
         require base_path('routes/console.php');
     }
 }
