@@ -43,4 +43,16 @@ class AssetPipelineContractTest extends TestCase
         $this->assertStringContainsString($assetReference, $unified);
         $this->assertStringContainsString($assetReference, $welcome);
     }
+
+    public function test_validation_and_production_use_the_same_node_major_and_deploy_the_fresh_vite_build(): void
+    {
+        $validation = file_get_contents(base_path('.github/workflows/integration-full-validation.yml'));
+        $deploy = file_get_contents(base_path('.github/workflows/deploy.yml'));
+
+        $this->assertStringContainsString("node-version: '20'", $validation);
+        $this->assertStringContainsString("node-version: '20'", $deploy);
+        $this->assertStringContainsString('npm run build', $validation);
+        $this->assertStringContainsString('npm run build', $deploy);
+        $this->assertStringNotContainsString('**/public/build/**', $deploy, 'Fresh Vite build artifacts must be uploaded with the deployment.');
+    }
 }
