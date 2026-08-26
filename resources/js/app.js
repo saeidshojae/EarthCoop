@@ -19,6 +19,20 @@ import { register } from "swiper/element/bundle";
 import "./group-chat/index.js";
 import "./group-comment-form-fallback.js";
 
+// Header polish is also available as a public stylesheet. Load it explicitly
+// so standalone pages such as Welcome receive the exact same header contract
+// as layouts.unified, independent of Vite CSS extraction/cascade behaviour.
+(() => {
+    const id = 'earthcoop-header-mobile-polish';
+    if (document.getElementById(id)) return;
+
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = '/Css/header-mobile-polish.css';
+    document.head.appendChild(link);
+})();
+
 register();
 
 const appJQuery = window.jQuery || $;
