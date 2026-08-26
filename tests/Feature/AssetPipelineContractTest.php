@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Support\EarthCoopVite;
 use Illuminate\Foundation\Vite;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use Tests\TestCase;
 
 class AssetPipelineContractTest extends TestCase
@@ -41,6 +43,29 @@ class AssetPipelineContractTest extends TestCase
         $this->assertStringNotContainsString('new MutationObserver', $app);
         $this->assertStringContainsString('import "./bootstrap";', $app);
         $this->assertStringNotContainsString('import "bootstrap";', $app);
+    }
+
+    public function test_no_vite_javascript_module_imports_css_at_runtime(): void
+    {
+        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(resource_path('js')));
+        $offenders = [];
+
+        foreach ($iterator as $file) {
+            if (! $file->isFile() || ! str_ends_with($file->getFilename(), '.js')) {
+                continue;
+            }
+
+            $contents = file_get_contents($file->getPathname());
+            if (preg_match('/import\s+[\'\"][^\'\"]+\.css[\'\"]\s*;?/m', $contents) === 1) {
+                $offenders[] = str_replace(base_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $offenders,
+            "CSS must be loaded as first-class Vite entries, never injected from JavaScript. Offenders:\n" . implode("\n", $offenders)
+        );
     }
 
     public function test_every_app_js_request_is_centrally_normalized_to_css_then_js(): void
