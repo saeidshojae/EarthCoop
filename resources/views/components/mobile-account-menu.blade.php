@@ -2,7 +2,7 @@
     $mobileAccountUser = auth()->user();
 @endphp
 
-<div class="relative" x-data="{ accountOpen: false }" @click.outside="accountOpen = false">
+<div class="mobile-account-root relative" x-data="{ accountOpen: false }" @click.outside="accountOpen = false">
     <button type="button"
             @click.stop="accountOpen = !accountOpen"
             class="mobile-account-trigger inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full shadow-sm ring-1 ring-black/5"
@@ -26,7 +26,7 @@
          x-transition:leave="transition ease-in duration-100"
          x-transition:leave-start="opacity-100 scale-100"
          x-transition:leave-end="opacity-0 scale-95"
-         class="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-gray-200 bg-white py-2 text-right shadow-2xl z-[1200]"
+         class="mobile-account-dropdown w-56 overflow-hidden rounded-2xl border border-gray-200 bg-white py-2 text-right shadow-2xl"
          role="menu">
         <div class="border-b border-gray-100 px-4 py-3">
             <div class="truncate text-sm font-bold text-gentle-black">{{ $mobileAccountUser?->fullName() }}</div>
