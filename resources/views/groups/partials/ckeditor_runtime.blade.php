@@ -22,6 +22,7 @@ function initializeGroupChatCkeditorRuntime(lifecycle) {
                 .map(plugin => plugin.trim())
                 .filter(Boolean);
             if (!currentRemove.includes('uploadimage')) currentRemove.push('uploadimage');
+            if (!currentRemove.includes('elementspath')) currentRemove.push('elementspath');
             ckeditor.config.removePlugins = currentRemove.join(',');
 
             const originalWarn = ckeditor.warn;
@@ -45,21 +46,20 @@ function initializeGroupChatCkeditorRuntime(lifecycle) {
             filebrowserUploadUrl: "{{ route('admin.pages.upload') }}?_token={{ csrf_token() }}",
             filebrowserUploadMethod: 'form',
             language: 'fa',
-            height: 400,
-            removePlugins: 'uploadimage',
-            removeButtons: '',
-            toolbarGroups: [
-                { name: 'basicstyles', groups: ['basicstyles', 'cleanup'] },
-                { name: 'paragraph', groups: ['list', 'indent', 'blocks', 'align'] },
-                { name: 'styles' }, { name: 'colors' }, { name: 'insert' }, { name: 'tools' },
-                { name: 'editing' }, { name: 'document', groups: ['mode', 'document'] },
-                { name: 'clipboard', groups: ['clipboard', 'undo'] }, { name: 'links' }
+            height: 180,
+            resize_enabled: false,
+            removePlugins: 'uploadimage,elementspath',
+            toolbar: [
+                { name: 'basicstyles', items: ['Bold', 'Italic', 'Underline'] },
+                { name: 'links', items: ['Link', 'Unlink'] },
+                { name: 'paragraph', items: ['BulletedList', 'NumberedList'] },
+                { name: 'clipboard', items: ['Undo', 'Redo'] }
             ]
         });
 
         if (instance && typeof instance.on === 'function') {
             instance.on('instanceReady', function() {
-                instance.resize('100%', 400);
+                instance.resize('100%', 180);
             });
         }
         return Boolean(instance);
