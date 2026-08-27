@@ -1,5 +1,14 @@
 <link rel="stylesheet" href="{{ asset('Css/group-chat-modals-responsive.css') }}?v={{ filemtime(public_path('Css/group-chat-modals-responsive.css')) }}">
 
+<style>
+/* The chat page historically hides CKEditor chrome globally for compact editors.
+   Post composition is a rich-text workflow, so restore the editor chrome only here. */
+#postFormBox .cke_top,
+#postFormBox .cke_bottom {
+    display: block !important;
+}
+</style>
+
 <div id="postFormBox" class="modal-shell" style="display: none;" dir="rtl" data-composer-modal="post">
     <div class="modal-shell__dialog">
         <div class="modal-shell__header">
