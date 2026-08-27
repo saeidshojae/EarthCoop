@@ -6,48 +6,42 @@ const read = path => readFileSync(path, 'utf8');
 
 const hero = read('resources/views/groups/partials/group_hero.blade.php');
 const panel = read('resources/views/groups/partials/group_info_panel.blade.php');
+const shell = read('resources/views/groups/partials/group_control_center_shell.blade.php');
 const dashboard = read('resources/views/groups/show.blade.php');
 const webRoutes = read('routes/web.php');
 const secretariatRoutes = read('routes/secretariat.php');
 
-test('legacy group controls remain present until control center parity is proven', () => {
-    for (const action of [
-        'open-group-info',
-        'open-blog',
-        'open-poll',
-        'open-election',
-        'open-election-admin',
-        'manage-members',
-        'manage-reports',
-        'group-settings',
-    ]) {
+test('chat hero stays compact while every migrated capability remains discoverable in control center', () => {
+    for (const action of ['open-group-info', 'open-blog', 'open-poll']) {
         assert.match(hero, new RegExp(`data-chat-page-action=["']${action}["']`), action);
     }
 
-    for (const hook of [
-        'addUserButton',
-        'addChatRequestButton',
-        'data-session-toggle',
-        'data-session-admin-open',
-    ]) {
+    for (const action of ['open-election', 'open-election-admin', 'manage-members', 'manage-reports', 'group-settings']) {
+        assert.match(panel, new RegExp(`data-chat-page-action=["']${action}["']`), action);
+    }
+
+    for (const hook of ['addUserButton', 'addChatRequestButton', 'data-session-toggle', 'data-session-admin-open']) {
         assert.match(panel, new RegExp(hook), hook);
     }
 });
 
-test('legacy panel tab inventory remains available during migration', () => {
-    for (const tab of ['group', 'members', 'admins', 'post', 'poll', 'election']) {
-        assert.match(panel, new RegExp(`data-tab=["']${tab}["']`), tab);
+test('control center uses the four canonical top-level tabs without restoring legacy panel navigation', () => {
+    for (const tab of ['content', 'members', 'governance', 'tools']) {
+        assert.match(panel, new RegExp(`data-control-center-tab=["']${tab}["']`), tab);
     }
-    assert.match(panel, /data-tab=["']stats["']/);
+    for (const legacyTab of ['group', 'admins', 'post', 'poll', 'election', 'stats']) {
+        assert.doesNotMatch(panel, new RegExp(`data-tab=["']${legacyTab}["']`), legacyTab);
+    }
+    assert.match(shell, /secondaryTabDefinitions/);
 });
 
-test('group panel search affordances remain available during migration', () => {
+test('group panel search affordances remain available with encoded canonical requests', () => {
     for (const id of ['groupSearch', 'searchType', 'membersSearch', 'searchManagers']) {
         assert.match(panel, new RegExp(`id=["']${id}["']`), id);
     }
 
     assert.match(panel, /\/api\/groups\/search\?q=/);
-    assert.match(panel, /type=\$\{type\}/);
+    assert.match(panel, /type=\$\{encodeURIComponent\(type\)\}/);
     assert.match(panel, /data-name/);
     assert.match(panel, /data-role/);
     assert.match(panel, /data-email/);
