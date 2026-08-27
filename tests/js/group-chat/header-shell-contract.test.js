@@ -24,17 +24,29 @@ test('group chat shell starts with unified site header visually hidden and no re
     assert.match(layout, /--chat-site-header-offset/);
 });
 
-test('group chat page boots a dedicated direction-aware unified header controller', () => {
+test('group hero remains sticky beneath the optional unified header', () => {
+    const layout = read('resources/views/layouts/chat.blade.php');
+
+    assert.match(layout, /body\.chat-layout \[data-group-hero\]/);
+    assert.match(layout, /position:\s*sticky\s*!important/);
+    assert.match(layout, /top:\s*var\(--chat-site-header-offset,\s*0px\)\s*!important/);
+});
+
+test('group chat header gestures are scoped to the group hero rather than page scrolling', () => {
     const pageEntry = read('resources/js/group-chat-page.js');
     const controller = read('resources/js/group-chat-header-controller.js');
 
     assert.match(pageEntry, /group-chat-header-controller\.js/);
     assert.match(pageEntry, /createGroupChatHeaderController/);
     assert.match(controller, /CHAT_HEADER_GESTURE_THRESHOLD\s*=\s*10/);
-    assert.match(controller, /addEventListener\('scroll'/);
-    assert.match(controller, /addEventListener\('wheel'/);
-    assert.match(controller, /addEventListener\('touchstart'/);
-    assert.match(controller, /addEventListener\('touchmove'/);
+    assert.match(controller, /querySelector\(['"]\[data-group-hero\]['"]\)/);
+    assert.match(controller, /gestureSurface\.addEventListener\('wheel'/);
+    assert.match(controller, /gestureSurface\.addEventListener\('touchstart'/);
+    assert.match(controller, /gestureSurface\.addEventListener\('touchmove'/);
+    assert.doesNotMatch(controller, /runtimeWindow\.addEventListener\('scroll'/);
+    assert.doesNotMatch(controller, /runtimeWindow\.addEventListener\('wheel'/);
+    assert.doesNotMatch(controller, /runtimeWindow\.addEventListener\('touchstart'/);
+    assert.doesNotMatch(controller, /runtimeWindow\.addEventListener\('touchmove'/);
     assert.match(controller, /chat-site-header-visible/);
 });
 
