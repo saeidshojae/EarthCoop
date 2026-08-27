@@ -1,6 +1,6 @@
 <style>
     /* Adaptive presentation layer for the existing #groupInfoPanel.
-       Content/permissions stay owned by group_info_panel; this file only owns shell geometry. */
+       Content/permissions stay owned by group_info_panel; this file only owns shell geometry and secondary presentation. */
     #groupInfoPanel.group-info-panel {
         position: fixed !important;
         z-index: 1250 !important;
@@ -35,6 +35,70 @@
         min-height: 0;
     }
 
+    #groupInfoPanel .control-center-secondary-tabs {
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+        margin: -.15rem 0 .85rem;
+        padding: .28rem;
+        max-width: 100%;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        scrollbar-width: thin;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        background: #f8fafc;
+    }
+
+    #groupInfoPanel .control-center-secondary-tab {
+        flex: 0 0 auto;
+        min-height: 36px;
+        padding: .42rem .72rem;
+        border: 0;
+        border-radius: 10px;
+        background: transparent;
+        color: #64748b;
+        font-size: .72rem;
+        font-weight: 850;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: background-color .16s ease, color .16s ease, box-shadow .16s ease;
+    }
+
+    #groupInfoPanel .control-center-secondary-tab:hover {
+        color: #0f766e;
+        background: #ecfdf5;
+    }
+
+    #groupInfoPanel .control-center-secondary-tab.is-active {
+        color: #047857;
+        background: #fff;
+        box-shadow: 0 6px 18px -15px rgba(15, 23, 42, .8);
+    }
+
+    #groupInfoPanel .control-center-secondary-pane[hidden] {
+        display: none !important;
+    }
+
+    #groupInfoPanel .control-center-secondary-pane--synthetic {
+        margin-top: .2rem;
+        padding: .9rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        background: #fff;
+    }
+
+    #groupInfoPanel .control-center-secondary-pane--synthetic > p {
+        margin: 0 0 .75rem;
+        color: #64748b;
+        font-size: .74rem;
+        line-height: 1.8;
+    }
+
+    #groupInfoPanel .control-center-secondary-pane > .control-center-action-grid {
+        margin-bottom: .9rem;
+    }
+
     @media (max-width: 767px) {
         #groupInfoPanel.group-info-panel {
             top: auto !important;
@@ -67,6 +131,16 @@
         #groupInfoPanel .group-info-panel__inner {
             padding-top: .75rem;
         }
+
+        #groupInfoPanel .control-center-secondary-tabs {
+            margin-inline: -.05rem;
+        }
+
+        #groupInfoPanel .control-center-secondary-tab {
+            min-height: 34px;
+            padding: .4rem .62rem;
+            font-size: .68rem;
+        }
     }
 
     @media (min-width: 768px) {
@@ -94,7 +168,8 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-        #groupInfoPanel.group-info-panel {
+        #groupInfoPanel.group-info-panel,
+        #groupInfoPanel .control-center-secondary-tab {
             transition: none !important;
         }
     }
@@ -116,5 +191,210 @@
             tablist.setAttribute('role', 'tablist');
             tablist.setAttribute('aria-label', 'بخش‌های پنل گروه');
         }
+
+        const lifecycle = window.GroupChatLifecycle;
+        if (!lifecycle) throw new Error('GroupChatLifecycle is required by Group Control Center shell');
+
+        const normalize = value => String(value ?? '').trim().toLocaleLowerCase('fa');
+        const subsectionByTitle = (section, text) => Array.from(section.querySelectorAll(':scope > .control-center-subsection'))
+            .find(item => item.querySelector('.control-center-subsection__title h4')?.textContent.trim().includes(text));
+
+        const secondaryTabDefinitions = {
+            content: [
+                { key: 'posts', label: 'پست‌ها', source: section => subsectionByTitle(section, 'پست‌ها'), search: 'content' },
+                { key: 'polls', label: 'نظرسنجی‌ها', source: section => subsectionByTitle(section, 'نظرسنجی‌ها'), search: 'content' },
+            ],
+            members: [
+                { key: 'people', label: 'اعضا', source: section => subsectionByTitle(section, 'اعضای گروه'), search: 'members' },
+                { key: 'leaders', label: 'مدیران و بازرسان', source: section => subsectionByTitle(section, 'مدیران و بازرسان'), search: 'members' },
+                { key: 'connections', label: 'ارتباطات', synthetic: true, search: null },
+            ],
+            governance: [
+                { key: 'elections', label: 'انتخابات', synthetic: true, search: null },
+                { key: 'sessions', label: 'نشست‌ها', synthetic: true, search: null },
+                { key: 'management', label: 'مدیریت', synthetic: true, search: null },
+            ],
+            tools: [
+                { key: 'systems', label: 'سامانه‌های گروه', source: section => section.querySelector(':scope > .control-center-action-grid'), search: null },
+                { key: 'my-groups', label: 'گروه‌های من', source: section => subsectionByTitle(section, 'گروه‌های من'), search: null },
+            ],
+        };
+
+        const createSyntheticPane = (section, definition) => {
+            const pane = document.createElement('div');
+            pane.className = 'control-center-secondary-pane control-center-secondary-pane--synthetic';
+
+            if (section.id === 'members' && definition.key === 'connections') {
+                const intro = document.createElement('p');
+                intro.textContent = 'ارتباط مدیریتی با مدیران گروه‌های دیگر و پیگیری درخواست‌های گفت‌وگو از همین بخش انجام می‌شود.';
+                pane.appendChild(intro);
+                const button = section.querySelector('#addChatRequestButton');
+                if (button) pane.appendChild(button);
+            }
+
+            if (section.id === 'governance') {
+                const grid = document.createElement('div');
+                grid.className = 'control-center-action-grid';
+                pane.appendChild(grid);
+            }
+
+            return pane;
+        };
+
+        const organizeGovernance = (section, panes) => {
+            const originalGrid = Array.from(section.children).find(child => child.classList?.contains('control-center-action-grid'));
+            if (originalGrid) {
+                Array.from(originalGrid.children).forEach(card => {
+                    const titleText = card.querySelector('strong')?.textContent.trim() || '';
+                    const destination = card.matches('[data-session-toggle], [data-session-admin-open]')
+                        ? panes.sessions
+                        : card.matches('[data-chat-page-action="open-election"], [data-chat-page-action="open-election-admin"]') || titleText.includes('انتخابات')
+                            ? panes.elections
+                            : panes.management;
+                    destination.querySelector('.control-center-action-grid')?.appendChild(card);
+                });
+                originalGrid.remove();
+            }
+
+            const electionSection = subsectionByTitle(section, 'انتخابات گروه');
+            if (electionSection) panes.elections.appendChild(electionSection);
+            const statsSection = subsectionByTitle(section, 'آمار عملیاتی');
+            if (statsSection) panes.management.appendChild(statsSection);
+        };
+
+        const activateSecondaryTab = (section, key, focus = false) => {
+            const buttons = Array.from(section.querySelectorAll(':scope > .control-center-secondary-tabs [data-control-center-subtab]'));
+            const panes = Array.from(section.querySelectorAll(':scope > [data-control-center-subpane]'));
+            const button = buttons.find(item => item.dataset.controlCenterSubtab === key);
+            const activeSubpane = panes.find(item => item.dataset.controlCenterSubpane === key);
+            if (!button || !activeSubpane) return false;
+
+            buttons.forEach(item => {
+                const active = item === button;
+                item.classList.toggle('is-active', active);
+                item.setAttribute('aria-selected', String(active));
+                item.tabIndex = active ? 0 : -1;
+            });
+            panes.forEach(item => {
+                const active = item === activeSubpane;
+                item.hidden = !active;
+                item.classList.toggle('is-active', active);
+            });
+            section.dataset.activeControlCenterSubtab = key;
+            if (focus) button.focus();
+            section.dispatchEvent(new CustomEvent('control-center:subtab-changed', { detail: { key, activeSubpane } }));
+            return true;
+        };
+
+        const installSecondaryTabs = section => {
+            const definitions = secondaryTabDefinitions[section.id];
+            if (!definitions?.length || section.querySelector(':scope > .control-center-secondary-tabs')) return;
+
+            const heading = section.querySelector(':scope > .control-center-section-heading');
+            if (!heading) return;
+
+            const nav = document.createElement('div');
+            nav.className = 'control-center-secondary-tabs';
+            nav.dataset.controlCenterSubtabs = section.id;
+            nav.setAttribute('role', 'tablist');
+            nav.setAttribute('aria-label', `زیر‌بخش‌های ${heading.querySelector('h3')?.textContent.trim() || section.id}`);
+
+            const panes = {};
+            definitions.forEach((definition, index) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'control-center-secondary-tab';
+                button.dataset.controlCenterSubtab = definition.key;
+                button.setAttribute('role', 'tab');
+                button.id = `control-center-${section.id}-${definition.key}-tab`;
+                button.textContent = definition.label;
+                nav.appendChild(button);
+
+                const pane = definition.synthetic ? createSyntheticPane(section, definition) : definition.source?.(section);
+                if (!pane) {
+                    button.disabled = true;
+                    return;
+                }
+                pane.classList.add('control-center-secondary-pane');
+                pane.dataset.controlCenterSubpane = definition.key;
+                pane.dataset.controlCenterSearchScope = definition.search || 'none';
+                pane.setAttribute('role', 'tabpanel');
+                pane.id = `control-center-${section.id}-${definition.key}-pane`;
+                pane.setAttribute('aria-labelledby', button.id);
+                button.setAttribute('aria-controls', pane.id);
+                panes[definition.key] = pane;
+
+                lifecycle.on(button, 'click', () => activateSecondaryTab(section, definition.key));
+                lifecycle.on(button, 'keydown', event => {
+                    if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
+                    event.preventDefault();
+                    const enabled = Array.from(nav.querySelectorAll('[data-control-center-subtab]:not(:disabled)'));
+                    const current = enabled.indexOf(button);
+                    const next = event.key === 'Home' ? 0
+                        : event.key === 'End' ? enabled.length - 1
+                            : (current + (event.key === 'ArrowRight' ? -1 : 1) + enabled.length) % enabled.length;
+                    activateSecondaryTab(section, enabled[next].dataset.controlCenterSubtab, true);
+                });
+
+                if (definition.synthetic) section.appendChild(pane);
+                if (index > 0) pane.hidden = true;
+            });
+
+            heading.after(nav);
+            if (section.id === 'governance') organizeGovernance(section, panes);
+            const first = definitions.find(definition => panes[definition.key]);
+            if (first) activateSecondaryTab(section, first.key);
+        };
+
+        const installScopedSearch = (section, searchName, itemSelector) => {
+            const input = section.querySelector(`[data-control-center-search="${searchName}"]`);
+            if (!input) return;
+            const searchBlock = input.closest('.panel-search');
+            const count = searchName === 'members' ? section.querySelector('#membersCount') : null;
+            const empty = searchName === 'members' ? section.querySelector('#membersSearchEmpty') : section.querySelector('#contentSearchEmpty');
+
+            const filterActiveSubpane = event => {
+                event?.stopImmediatePropagation();
+                const activeSubpane = section.querySelector(':scope > [data-control-center-subpane]:not([hidden])');
+                const searchEnabled = activeSubpane?.dataset.controlCenterSearchScope === searchName;
+                if (searchBlock) searchBlock.hidden = !searchEnabled;
+                if (count) count.hidden = !searchEnabled;
+                if (empty && !searchEnabled) empty.hidden = true;
+                if (!searchEnabled || !activeSubpane) return;
+
+                const query = normalize(input.value);
+                let shown = 0;
+                const allItems = Array.from(section.querySelectorAll(itemSelector));
+                allItems.forEach(item => {
+                    if (!activeSubpane.contains(item)) {
+                        item.hidden = false;
+                        return;
+                    }
+                    const haystack = searchName === 'members'
+                        ? normalize(`${item.dataset.name || ''} ${item.dataset.role || ''} ${item.dataset.email || ''}`)
+                        : normalize(item.dataset.controlCenterSearchText || item.textContent);
+                    const hit = !query || haystack.includes(query);
+                    item.hidden = !hit;
+                    if (hit) shown++;
+                });
+                if (count) count.textContent = `نمایش ${shown} از ${activeSubpane.querySelectorAll(itemSelector).length}`;
+                if (empty) empty.hidden = shown !== 0 || !query;
+            };
+
+            lifecycle.on(input, 'input', filterActiveSubpane, { capture: true });
+            lifecycle.on(section, 'control-center:subtab-changed', () => {
+                input.dispatchEvent(new Event('input', { bubbles: false }));
+            });
+            input.dispatchEvent(new Event('input', { bubbles: false }));
+        };
+
+        ['content', 'members', 'governance', 'tools'].forEach(id => {
+            const section = panel.querySelector(`#${id}`);
+            if (section) installSecondaryTabs(section);
+        });
+        const contentSection = panel.querySelector('#content');
+        const membersSection = panel.querySelector('#members');
+        if (contentSection) installScopedSearch(contentSection, 'content', '[data-control-center-content-item]');
+        if (membersSection) installScopedSearch(membersSection, 'members', '.control-center-member-item');
     }
 </script>
