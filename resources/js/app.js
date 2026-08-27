@@ -1,20 +1,7 @@
 import "./bootstrap";
+import "./site-navigation-history.js";
 import $ from "jquery";
 import installSelect2 from "select2";
-import "./najm-bahar.js";
-import "./najm-bahar-membership-source.js";
-import "./najm-hoda-context.js";
-import "./najm-hoda-management-console-v2.js";
-import "./najm-hoda-management-content-tools.js";
-import "./najm-hoda-management-native-tools.js";
-import "./najm-hoda-management-live-attention.js";
-import "./najm-hoda-attention-panel.js";
-import "./site-navigation-history.js";
-import { register } from "swiper/element/bundle";
-import "./group-chat/index.js";
-import "./group-comment-form-fallback.js";
-
-register();
 
 const appJQuery = window.jQuery || $;
 window.$ = appJQuery;
@@ -22,10 +9,74 @@ window.jQuery = appJQuery;
 installSelect2(window, appJQuery);
 
 if (appJQuery.fn.select2?.defaults) {
-	appJQuery.fn.select2.defaults.set("language", {
-		noResults: () => "نتیجه‌ای یافت نشد",
-		searching: () => "در حال جستجو...",
-	});
+    appJQuery.fn.select2.defaults.set("language", {
+        noResults: () => "نتیجه‌ای یافت نشد",
+        searching: () => "در حال جستجو...",
+    });
+}
+
+const importFeature = (loader, label) => {
+    void loader().catch((error) => {
+        console.warn(`EarthCoop ${label} runtime could not be loaded:`, error);
+    });
+};
+
+const loadGroupChatRuntime = () => {
+    if (!document.querySelector('meta[name="group-chat-id"]')) return;
+
+    importFeature(async () => {
+        await import("./group-chat/index.js");
+        await Promise.all([
+            import("./group-comment-form-fallback.js"),
+            import("./najm-hoda-management-console-v2.js"),
+            import("./najm-hoda-management-content-tools.js"),
+            import("./najm-hoda-management-native-tools.js"),
+            import("./najm-hoda-management-live-attention.js"),
+        ]);
+    }, "group-chat");
+};
+
+const loadNajmHodaRuntime = () => {
+    if (document.querySelector('#najm-hoda-widget')) {
+        importFeature(() => import("./najm-hoda-context.js"), "Najm Hoda continuity");
+    }
+
+    if (/^\/groups\/\d+\/najm-hoda\/panel\/?$/.test(window.location.pathname)) {
+        importFeature(() => import("./najm-hoda-attention-panel.js"), "Najm Hoda attention panel");
+    }
+};
+
+const loadNajmBaharRuntime = () => {
+    const onNajmBaharPage = window.location.pathname.startsWith('/najm-bahar');
+    const hasNajmBaharUi = Boolean(document.querySelector('[data-najm-bahar], #payMembershipForm, .nb-card, .nb-stat'));
+    if (!onNajmBaharPage && !hasNajmBaharUi) return;
+
+    importFeature(async () => {
+        await import("./najm-bahar.js");
+        await import("./najm-bahar-membership-source.js");
+    }, "Najm Bahar");
+};
+
+const loadSwiperRuntime = () => {
+    if (!document.querySelector('swiper-container')) return;
+
+    importFeature(async () => {
+        const { register } = await import("swiper/element/bundle");
+        register();
+    }, "Swiper");
+};
+
+const loadPageScopedRuntime = () => {
+    loadGroupChatRuntime();
+    loadNajmHodaRuntime();
+    loadNajmBaharRuntime();
+    loadSwiperRuntime();
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadPageScopedRuntime, { once: true });
+} else {
+    loadPageScopedRuntime();
 }
 
 const localDevelopmentHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
