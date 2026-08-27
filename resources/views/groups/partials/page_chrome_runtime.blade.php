@@ -32,11 +32,23 @@ function initializeGroupChatPageChrome() {
     if (!lifecycle || lifecycle.destroyed) return;
 
     const groupEditForm = document.getElementById('groupEditFormBox');
-    const backdrop = document.getElementById('back');
+    let groupEditLastFocus = null;
 
     function setGroupEditVisible(visible) {
-        if (groupEditForm) groupEditForm.style.display = visible ? 'block' : 'none';
-        if (backdrop) backdrop.style.display = visible ? 'block' : 'none';
+        if (!groupEditForm) return;
+        if (visible) groupEditLastFocus = document.activeElement;
+        groupEditForm.style.display = visible ? 'flex' : 'none';
+        groupEditForm.setAttribute('aria-hidden', visible ? 'false' : 'true');
+        document.body.classList.toggle('group-edit-modal-open', visible);
+        if (visible) {
+            window.requestAnimationFrame(() => {
+                groupEditForm.querySelector('.group-edit-modal__close, textarea, input, button')?.focus?.();
+            });
+        } else {
+            const target = groupEditLastFocus;
+            groupEditLastFocus = null;
+            if (target?.isConnected) window.requestAnimationFrame(() => target.focus?.());
+        }
     }
 
     function setGroupHeroExpanded(expanded) {
@@ -140,6 +152,16 @@ function initializeGroupChatPageChrome() {
             setGroupHeroExpanded(trigger?.getAttribute('aria-expanded') !== 'true');
         }
     });
+
+    if (groupEditForm) {
+        lifecycle.on(document, 'keydown', event => {
+            if (event.key === 'Escape' && groupEditForm.getAttribute('aria-hidden') === 'false') {
+                event.preventDefault();
+                event.stopPropagation();
+                setGroupEditVisible(false);
+            }
+        });
+    }
 
     projectSystemicElectionSurface();
 
