@@ -158,6 +158,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
     </div>
 
     @include('groups.partials.group_control_center_shell')
+    @include('groups.partials.group_control_center_polish')
 
     <div id="groupInfoBackdrop" class="group-info-backdrop hidden"></div>
     <div id="categoryBlogsOverlay" class="category-browser__overlay"></div>
