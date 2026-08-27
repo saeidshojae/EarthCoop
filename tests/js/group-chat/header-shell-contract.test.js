@@ -36,7 +36,11 @@ test('group chat page boots a dedicated direction-aware unified header controlle
     assert.match(controller, /addEventListener\('touchstart'/);
     assert.match(controller, /addEventListener\('touchmove'/);
     assert.match(controller, /chat-site-header-visible/);
-    assert.match(controller, /#site-header-mobile-menu/);
-    assert.match(controller, /#user-dropdown-menu/);
-    assert.match(controller, /\.mobile-account-dropdown/);
+});
+
+test('chat header auto-hide is blocked only by an actually expanded header control', () => {
+    const controller = read('resources/js/group-chat-header-controller.js');
+
+    assert.match(controller, /querySelector\(['"]\[aria-expanded=[\\"']true[\\"']\]['"]\)/);
+    assert.doesNotMatch(controller, /querySelectorAll\(['"]\[x-show\]['"]\)/);
 });
