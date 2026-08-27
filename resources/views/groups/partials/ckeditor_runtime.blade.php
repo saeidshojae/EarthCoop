@@ -2,7 +2,8 @@
 let lifecycleWaitFrames = 0;
 let ckeditorRuntimeInitialized = false;
 
-function initializeGroupChatCkeditorRuntime(lifecycle) {
+function initializeGroupChatCkeditorRuntime() {
+    const lifecycle = window.GroupChatLifecycle;
     if (!lifecycle || lifecycle.destroyed || ckeditorRuntimeInitialized) return;
     ckeditorRuntimeInitialized = true;
 
@@ -162,7 +163,7 @@ function initializeGroupChatCkeditorRuntime(lifecycle) {
 function waitForGroupChatLifecycle() {
     const lifecycle = window.GroupChatLifecycle;
     if (lifecycle && !lifecycle.destroyed) {
-        initializeGroupChatCkeditorRuntime(lifecycle);
+        initializeGroupChatCkeditorRuntime();
         return;
     }
 
