@@ -1,7 +1,10 @@
 <script type="module">
-function initializeGroupChatCkeditorRuntime() {
-    const lifecycle = window.GroupChatLifecycle;
-    if (!lifecycle || lifecycle.destroyed) return;
+let lifecycleWaitFrames = 0;
+let ckeditorRuntimeInitialized = false;
+
+function initializeGroupChatCkeditorRuntime(lifecycle) {
+    if (!lifecycle || lifecycle.destroyed || ckeditorRuntimeInitialized) return;
+    ckeditorRuntimeInitialized = true;
 
     let loaderPromise = null;
     let ckeditorWait = null;
@@ -38,7 +41,7 @@ function initializeGroupChatCkeditorRuntime() {
         if (!ckeditor || !editor || !modal || getComputedStyle(modal).display === 'none') return false;
         if (ckeditor.instances?.post_editor) return true;
 
-        ckeditor.replace('post_editor', {
+        const instance = ckeditor.replace('post_editor', {
             filebrowserUploadUrl: "{{ route('admin.pages.upload') }}?_token={{ csrf_token() }}",
             filebrowserUploadMethod: 'form',
             language: 'fa',
@@ -53,7 +56,13 @@ function initializeGroupChatCkeditorRuntime() {
                 { name: 'clipboard', groups: ['clipboard', 'undo'] }, { name: 'links' }
             ]
         });
-        return true;
+
+        if (instance && typeof instance.on === 'function') {
+            instance.on('instanceReady', function() {
+                instance.resize('100%', 400);
+            });
+        }
+        return Boolean(instance);
     }
 
     function stopEditorWait() {
@@ -67,7 +76,7 @@ function initializeGroupChatCkeditorRuntime() {
         let attempts = 0;
         ckeditorWait = lifecycle.interval(function() {
             attempts += 1;
-            if (initializePostEditor() || attempts >= 20) stopEditorWait();
+            if (initializePostEditor() || attempts >= 40) stopEditorWait();
         }, 50);
     }
 
@@ -81,6 +90,18 @@ function initializeGroupChatCkeditorRuntime() {
         if (loaderPromise) return loaderPromise;
 
         loaderPromise = new Promise((resolve, reject) => {
+            const existingScript = document.querySelector('script[data-group-chat-ckeditor="true"]');
+            if (existingScript) {
+                existingScript.addEventListener('load', () => {
+                    installChatConfig();
+                    initializePostEditor();
+                    waitForEditorReady();
+                    resolve(window.CKEDITOR);
+                }, { once: true });
+                existingScript.addEventListener('error', () => reject(new Error('CKEditor failed to load')), { once: true });
+                return;
+            }
+
             const script = document.createElement('script');
             script.src = @json(asset('vendor/ckeditor/ckeditor.js'));
             script.async = true;
@@ -108,6 +129,11 @@ function initializeGroupChatCkeditorRuntime() {
 
     window.GroupChatPostEditor = Object.freeze({ loadPostEditor });
 
+    const modal = document.getElementById('postFormBox');
+    if (modal && getComputedStyle(modal).display !== 'none') {
+        void loadPostEditor().catch(() => {});
+    }
+
     lifecycle.add(function() {
         stopEditorWait();
         const instance = window.CKEDITOR?.instances?.post_editor;
@@ -116,5 +142,18 @@ function initializeGroupChatCkeditorRuntime() {
     });
 }
 
-initializeGroupChatCkeditorRuntime();
+function waitForGroupChatLifecycle() {
+    const lifecycle = window.GroupChatLifecycle;
+    if (lifecycle && !lifecycle.destroyed) {
+        initializeGroupChatCkeditorRuntime(lifecycle);
+        return;
+    }
+
+    lifecycleWaitFrames += 1;
+    if (lifecycleWaitFrames < 180) {
+        window.requestAnimationFrame(waitForGroupChatLifecycle);
+    }
+}
+
+waitForGroupChatLifecycle();
 </script>
