@@ -48,13 +48,16 @@ const loadNajmHodaRuntime = () => {
 
 const loadNajmBaharRuntime = () => {
     const onNajmBaharPage = window.location.pathname.startsWith('/najm-bahar');
-    const hasNajmBaharUi = Boolean(document.querySelector('[data-najm-bahar], #payMembershipForm, .nb-card, .nb-stat'));
-    if (!onNajmBaharPage && !hasNajmBaharUi) return;
+    const hasMembershipForm = Boolean(document.querySelector('#payMembershipForm'));
+    if (!onNajmBaharPage && !hasMembershipForm) return;
 
-    importFeature(async () => {
-        await import("./najm-bahar.js");
-        await import("./najm-bahar-membership-source.js");
-    }, "Najm Bahar");
+    if (onNajmBaharPage) {
+        importFeature(() => import("./najm-bahar.js"), "Najm Bahar");
+    }
+
+    if (hasMembershipForm) {
+        importFeature(() => import("./najm-bahar-membership-source.js"), "Najm Bahar membership source");
+    }
 };
 
 const loadSwiperRuntime = () => {
