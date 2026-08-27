@@ -104,13 +104,15 @@ test('chat page uses only locally bundled library assets', () => {
     const chat = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
     const layout = readFileSync('resources/views/layouts/chat.blade.php', 'utf8');
     const app = readFileSync('resources/js/app.js', 'utf8');
+    const viteCss = readFileSync('resources/css/vite.css', 'utf8');
 
     assert.doesNotMatch(chat, /<(?:script|link)\b[^>]+https?:\/\//i);
     assert.match(layout, /vendor\/fontawesome\/css\/all\.min\.css/);
     assert.match(app, /import \$ from "jquery"/);
     assert.match(app, /import installSelect2 from "select2"/);
     assert.match(app, /installSelect2\(window, appJQuery\)/);
-    assert.match(app, /select2\/dist\/css\/select2\.min\.css/);
+    assert.match(viteCss, /select2\/dist\/css\/select2\.min\.css/);
+    assert.doesNotMatch(app, /select2\/dist\/css\/select2\.min\.css/);
 });
 
 test('delta synchronization follows the server-side feature flag', () => {
@@ -817,7 +819,6 @@ test('group info and election panel handlers are lifecycle-owned and declarative
     const panel = readFileSync('resources/views/groups/partials/group_info_panel.blade.php', 'utf8');
     const election = readFileSync('resources/views/groups/modals/election_modal.blade.php', 'utf8');
     const elections = readFileSync('resources/js/group-chat/elections.js', 'utf8');
-
     assert.match(panel, /<script type="module">/);
     assert.match(panel, /const groupInfoLifecycle = window\.GroupChatLifecycle/);
     assert.match(panel, /window\.GroupInfoPanel = Object\.freeze/);
