@@ -88,12 +88,11 @@
         .chat-content-wrapper {
             margin: 0 !important;
             padding: 0 !important;
-            padding-top: var(--chat-site-header-offset, 0px) !important;
+            padding-top: 0 !important;
             flex: 1 0 auto !important;
             width: 100% !important;
             max-width: 100% !important;
             display: block !important;
-            transition: padding-top .25s cubic-bezier(.4, 0, .2, 1);
         }
 
         .chat-content-wrapper > * {
@@ -101,8 +100,7 @@
         }
 
         @media (prefers-reduced-motion: reduce) {
-            body.chat-layout header.site-header-unified[data-header-context="chat"],
-            body.chat-layout .chat-content-wrapper {
+            body.chat-layout header.site-header-unified[data-header-context="chat"] {
                 transition: none !important;
             }
         }
