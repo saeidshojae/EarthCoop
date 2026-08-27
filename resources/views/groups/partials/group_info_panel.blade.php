@@ -611,7 +611,7 @@
     .manager-request-card__person strong { font-size:.76rem; overflow-wrap:anywhere; }
     .manager-request-card__person span { color:#64748b; font-size:.67rem; }
     .manager-request-form__submit { min-height:2.5rem; border:0; border-radius:11px; background:#7c3aed; color:#fff; font-size:.72rem; font-weight:800; }
-    @media (max-width:767px) {
+    @media (max-width: 767px) {
         .group-info-panel__inner { padding:.75rem .85rem max(1rem,env(safe-area-inset-bottom)); }
         .control-center-header { grid-template-columns:auto minmax(0,1fr); padding-inline:2.65rem 0; min-height:60px; }
         .panel-hero__avatar { width:46px; height:46px; border-radius:15px; }
@@ -633,7 +633,7 @@
         .stats-container { grid-template-columns:1fr 1fr; }
         #chatRequestModal { padding:.55rem; }
         #chatRequestModal .panel-modal__dialog { width:100%; max-height:calc(100dvh - 1.1rem); padding:.9rem; }
-        .manager-item { grid-template-columns:1fr; gap:.7rem; }
+        .manager-item { grid-template-columns: 1fr; gap:.7rem; }
         .guest-duration-row { grid-template-columns:1fr; }
     }
 </style>
