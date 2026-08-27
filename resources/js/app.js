@@ -21,21 +21,6 @@ const importFeature = (loader, label) => {
     });
 };
 
-const loadGroupChatRuntime = () => {
-    if (!document.querySelector('meta[name="group-chat-id"]')) return;
-
-    importFeature(async () => {
-        await import("./group-chat/index.js");
-        await Promise.all([
-            import("./group-comment-form-fallback.js"),
-            import("./najm-hoda-management-console-v2.js"),
-            import("./najm-hoda-management-content-tools.js"),
-            import("./najm-hoda-management-native-tools.js"),
-            import("./najm-hoda-management-live-attention.js"),
-        ]);
-    }, "group-chat");
-};
-
 const loadNajmHodaRuntime = () => {
     if (document.querySelector('#najm-hoda-widget')) {
         importFeature(() => import("./najm-hoda-context.js"), "Najm Hoda continuity");
@@ -70,7 +55,6 @@ const loadSwiperRuntime = () => {
 };
 
 const loadPageScopedRuntime = () => {
-    loadGroupChatRuntime();
     loadNajmHodaRuntime();
     loadNajmBaharRuntime();
     loadSwiperRuntime();
