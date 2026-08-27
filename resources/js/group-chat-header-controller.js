@@ -57,6 +57,13 @@ export function createGroupChatHeaderController({
         pageBody.style.setProperty('--chat-site-header-offset', `${Math.max(0, value)}px`);
     };
 
+    // The group hero is the only gesture surface for revealing the global
+    // EarthCoop header, and it remains pinned above the scrolling conversation.
+    gestureSurface.style.setProperty('position', 'sticky', 'important');
+    gestureSurface.style.setProperty('top', 'var(--chat-site-header-offset, 0px)', 'important');
+    gestureSurface.style.setProperty('z-index', '900', 'important');
+    gestureSurface.style.setProperty('transition', 'top .25s cubic-bezier(.4, 0, .2, 1)', 'important');
+
     const show = () => {
         if (destroyed || visible) return;
         measure();
@@ -129,6 +136,10 @@ export function createGroupChatHeaderController({
             gestureSurface.removeEventListener('touchend', onTouchEnd);
             gestureSurface.removeEventListener('touchcancel', onTouchEnd);
             runtimeWindow.removeEventListener('resize', onResize);
+            gestureSurface.style.removeProperty('position');
+            gestureSurface.style.removeProperty('top');
+            gestureSurface.style.removeProperty('z-index');
+            gestureSurface.style.removeProperty('transition');
             siteHeader.classList.remove('chat-site-header-visible');
             setOffset(0);
         },
