@@ -8,11 +8,16 @@ class EarthCoopVite extends Vite
 {
     public const CSS_ENTRY = 'resources/css/vite.css';
     public const JS_ENTRY = 'resources/js/app.js';
+    public const GROUP_CHAT_ENTRY = 'resources/js/group-chat-page.js';
 
     /**
      * Keep the app stylesheet as an explicit HTML entry immediately before the
      * JavaScript entry. This makes Vite dev and production build use the same
      * cascade position instead of injecting CSS from app.js at runtime.
+     *
+     * Group chat receives its own page entry after the shared runtime. Keeping
+     * this decision in the resolver avoids duplicating Vite directives across
+     * large Blade views and guarantees the same order in dev and build modes.
      *
      * @param  string|array<int, string>  $entrypoints
      * @return array<int, string>
@@ -32,6 +37,10 @@ class EarthCoopVite extends Vite
 
         $jsIndex = array_search(self::JS_ENTRY, $entries, true);
         array_splice($entries, $jsIndex === false ? 0 : $jsIndex, 0, [self::CSS_ENTRY]);
+
+        if (app()->bound('request') && request()->is('groups/chat/*')) {
+            $entries[] = self::GROUP_CHAT_ENTRY;
+        }
 
         return array_values(array_unique($entries));
     }
