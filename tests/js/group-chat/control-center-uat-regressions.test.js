@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const panel = readFileSync('resources/views/groups/partials/group_info_panel.blade.php', 'utf8');
 const polish = readFileSync('resources/views/groups/partials/group_control_center_polish.blade.php', 'utf8');
 const editModal = readFileSync('resources/views/groups/modals/group_edit_form.blade.php', 'utf8');
 const pageChrome = readFileSync('resources/views/groups/partials/page_chrome_runtime.blade.php', 'utf8');
@@ -30,11 +29,9 @@ test('floating Najm Hoda launcher cannot cover an open control center', () => {
     assert.match(polish, /body:has\(#groupInfoPanel\.is-open\) \.najm-hoda-widget \{[\s\S]*?visibility: hidden !important[\s\S]*?pointer-events: none !important/);
 });
 
-test('group exit action is placed before the my-groups list rather than after all tabs', () => {
-    const exit = panel.indexOf('control-center-exit-row');
-    const list = panel.indexOf('id="groupsList"');
-    assert.ok(exit > -1 && list > -1 && exit < list);
-    assert.doesNotMatch(panel, /<footer class="control-center-footer">/);
+test('group exit action is moved before the my-groups search and list', () => {
+    assert.match(polish, /footer\.classList\.add\('control-center-exit-row'\)/);
+    assert.match(polish, /myGroupsSection\.insertBefore\(footer, searchBlock \|\| groupsList\)/);
 });
 
 test('operational stats use the canonical blog media column and independent query builders', () => {
@@ -44,12 +41,13 @@ test('operational stats use the canonical blog media column and independent quer
     assert.match(controller, /\(clone \$postsQuery\)->whereMonth/);
     assert.match(controller, /\(clone \$pollsQuery\)->where\('end_time'/);
     assert.match(controller, /\(clone \$electionsQuery\)->where\('end_time'/);
+    assert.match(controller, /\(clone \$reportsQuery\)->where\('status'/);
 });
 
 test('stats failures shown to users are Persian-safe instead of leaking SQL details', () => {
-    assert.match(panel, /throw new Error\('بارگذاری آمار گروه با خطا مواجه شد\.'\)/);
-    assert.match(panel, /errorText\.textContent='بارگذاری آمار گروه با خطا مواجه شد\. لطفاً دوباره تلاش کنید\.'/);
-    assert.doesNotMatch(panel, /errorText\.textContent=exception\.message/);
+    assert.match(polish, /const statsErrorText = panel\.querySelector\('#stats-error-text'\)/);
+    assert.match(polish, /SQLSTATE\|Unknown column\|select\\s\|connection\|database/i);
+    assert.match(polish, /'بارگذاری آمار گروه با خطا مواجه شد\. لطفاً دوباره تلاش کنید\.'/);
 });
 
 test('desktop group hero owns balanced action spacing explicitly', () => {
