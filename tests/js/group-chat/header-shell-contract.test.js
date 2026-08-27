@@ -24,6 +24,16 @@ test('group chat shell starts with unified site header visually hidden and no re
     assert.match(layout, /--chat-site-header-offset/);
 });
 
+test('group chat roots clip horizontal overflow without becoming a scroll container', () => {
+    const layout = read('resources/views/layouts/chat.blade.php');
+    const rootRule = layout.match(/html,\s*\n\s*body\s*\{([\s\S]*?)\n\s*\}/)?.[1] ?? '';
+
+    assert.ok(rootRule, 'expected html/body root rule');
+    assert.match(rootRule, /overflow-x\s*:\s*clip\s*!important/);
+    assert.match(rootRule, /overflow-y\s*:\s*visible\s*!important/);
+    assert.doesNotMatch(rootRule, /overflow-x\s*:\s*hidden\s*!important/);
+});
+
 test('group chat body does not become a competing vertical scroll container', () => {
     const layout = read('resources/views/layouts/chat.blade.php');
     const chatBodyRule = layout.match(/body\.chat-layout\s*\{([\s\S]*?)\n\s*\}/)?.[1] ?? '';
