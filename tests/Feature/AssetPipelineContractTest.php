@@ -10,16 +10,16 @@ use Tests\TestCase;
 
 class AssetPipelineContractTest extends TestCase
 {
-    public function test_tailwind_does_not_apply_global_preflight_over_legacy_bootstrap_views(): void
+    public function test_tailwind_preflight_remains_enabled_for_utility_authored_controls(): void
     {
         $config = file_get_contents(base_path('tailwind.config.js'));
 
         $this->assertStringContainsString(
-            'preflight: false',
+            'preflight: true',
             $config,
-            'EarthCoop mixes legacy Bootstrap views with Tailwind utilities; global Tailwind Preflight must stay disabled.'
+            'EarthCoop utility-authored buttons, images, and form controls rely on Tailwind Preflight for normalized native element defaults.'
         );
-        $this->assertStringNotContainsString('preflight: true', $config);
+        $this->assertStringNotContainsString('preflight: false', $config);
     }
 
     public function test_css_is_a_first_class_vite_entry_and_never_runtime_injected_from_app_js(): void
