@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const panel = readFileSync('resources/views/groups/partials/group_info_panel.blade.php', 'utf8');
+const shell = readFileSync('resources/views/groups/partials/group_control_center_shell.blade.php', 'utf8');
 
 test('group control center exposes the four canonical tabs', () => {
     for (const tab of ['content', 'members', 'governance', 'tools']) {
@@ -38,4 +39,29 @@ test('group control center preserves current high-value action handlers', () => 
     assert.match(panel, /data-session-admin-open/);
     assert.match(panel, /id="addUserButton"/);
     assert.match(panel, /id="addChatRequestButton"/);
+});
+
+test('control center presentation shell defines one capability-based secondary tab layer', () => {
+    for (const tab of ['content', 'members', 'governance', 'tools']) {
+        assert.match(shell, new RegExp(`secondaryTabDefinitions[\\s\\S]*?${tab}:`), tab);
+    }
+
+    for (const label of [
+        'پست‌ها', 'نظرسنجی‌ها',
+        'اعضا', 'مدیران و بازرسان', 'ارتباطات',
+        'انتخابات', 'نشست‌ها', 'مدیریت',
+        'سامانه‌های گروه', 'گروه‌های من',
+    ]) {
+        assert.match(shell, new RegExp(label), label);
+    }
+
+    assert.match(shell, /data-control-center-subtab/);
+    assert.match(shell, /data-control-center-subpane/);
+    assert.match(shell, /control-center:subtab-changed/);
+});
+
+test('secondary tabs preserve contextual search by scoping results to the active subpane', () => {
+    assert.match(shell, /data-control-center-search/);
+    assert.match(shell, /activeSubpane/);
+    assert.match(shell, /input\.dispatchEvent\(new Event\('input'/);
 });
