@@ -21,13 +21,14 @@ class PostEditorUxContractTest extends TestCase
         $this->assertStringNotContainsString("instance.resize('100%', 400)", $runtime);
     }
 
-    public function test_group_post_editor_toolbar_visibility_is_scoped_to_post_modal(): void
+    public function test_group_post_editor_chrome_is_scoped_to_post_modal(): void
     {
-        $css = file_get_contents(public_path('Css/group-chat-modals-responsive.css'));
+        $modal = file_get_contents(resource_path('views/groups/modals/post_form.blade.php'));
 
-        $this->assertStringContainsString('#postFormBox .cke_top', $css);
-        $this->assertStringContainsString('#postFormBox .cke_bottom', $css);
-        $this->assertStringContainsString('display: none !important;', $css);
-        $this->assertStringContainsString('#postFormBox .cke_contents', $css);
+        $this->assertStringContainsString('#postFormBox .cke_top', $modal);
+        $this->assertStringContainsString('#postFormBox .cke_bottom', $modal);
+        $this->assertStringContainsString('display: none !important;', $modal);
+        $this->assertStringContainsString('#postFormBox .cke_contents', $modal);
+        $this->assertStringNotContainsString('.cke_top {', preg_replace('/#postFormBox \.cke_top/', '', $modal) ?? $modal);
     }
 }
