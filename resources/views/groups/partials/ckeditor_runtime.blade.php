@@ -90,18 +90,6 @@ function initializeGroupChatCkeditorRuntime(lifecycle) {
         if (loaderPromise) return loaderPromise;
 
         loaderPromise = new Promise((resolve, reject) => {
-            const existingScript = document.querySelector('script[data-group-chat-ckeditor="true"]');
-            if (existingScript) {
-                existingScript.addEventListener('load', () => {
-                    installChatConfig();
-                    initializePostEditor();
-                    waitForEditorReady();
-                    resolve(window.CKEDITOR);
-                }, { once: true });
-                existingScript.addEventListener('error', () => reject(new Error('CKEditor failed to load')), { once: true });
-                return;
-            }
-
             const script = document.createElement('script');
             script.src = @json(asset('vendor/ckeditor/ckeditor.js'));
             script.async = true;
