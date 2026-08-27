@@ -68,6 +68,7 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
+        $this->registerGroupChatViewData();
         $this->registerGroupChatPerformanceInstrumentation();
 
         View::addNamespace('Stock', base_path('app/Modules/Stock/Views'));
@@ -94,6 +95,57 @@ class AppServiceProvider extends ServiceProvider
         Blog::observe(BlogObserver::class);
         FaqQuestion::observe(FaqQuestionObserver::class);
         StewardKnowledgeFile::observe(StewardKnowledgeFileObserver::class);
+    }
+
+    /**
+     * Supply the canonical chat Blade with request data that historically came
+     * from inline model queries. This preserves the exact rendering contract
+     * while collapsing membership/block lookups and keeping database access out
+     * of the presentation layer.
+     */
+    private function registerGroupChatViewData(): void
+    {
+        View::composer('groups.chat', function ($view): void {
+            $data = $view->getData();
+            $group = $data['group'] ?? null;
+            $userId = (int) Auth::id();
+
+            if (! $group instanceof Group || $userId <= 0) {
+                return;
+            }
+
+            $membership = \App\Models\GroupUser::query()
+                ->where('group_id', $group->id)
+                ->where('user_id', $userId)
+                ->first();
+
+            $membershipCounts = DB::table('group_user')
+                ->join('users', 'users.id', '=', 'group_user.user_id')
+                ->where('group_user.group_id', $group->id)
+                ->where('group_user.status', 1)
+                ->where('users.is_system', false)
+                ->selectRaw('SUM(CASE WHEN group_user.role = 4 THEN 1 ELSE 0 END) as guest_count')
+                ->selectRaw('SUM(CASE WHEN group_user.role <> 4 THEN 1 ELSE 0 END) as member_count')
+                ->first();
+
+            $blocks = \App\Models\Block::query()
+                ->where('user_id', $userId)
+                ->whereIn('position', ['election', 'message', 'post', 'poll'])
+                ->get()
+                ->keyBy('position');
+
+            $view->with([
+                'memberCount' => (int) ($membershipCounts->member_count ?? 0),
+                'guestCount' => (int) ($membershipCounts->guest_count ?? 0),
+                'blogCount' => (int) DB::table('blogs')->where('group_id', $group->id)->count(),
+                'pollCount' => (int) DB::table('polls')->where('group_id', $group->id)->count(),
+                'pivotUser' => $membership,
+                'checkBlockElection' => $blocks->get('election'),
+                'checkBlockMessage' => $blocks->get('message'),
+                'checkBlockPost' => $blocks->get('post'),
+                'checkBlockPoll' => $blocks->get('poll'),
+            ]);
+        });
     }
 
     /**
