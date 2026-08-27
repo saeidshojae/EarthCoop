@@ -10,6 +10,56 @@ class EarthCoopVite extends Vite
     public const JS_ENTRY = 'resources/js/app.js';
     public const GROUP_CHAT_ENTRY = 'resources/js/group-chat-page.js';
 
+    private ?bool $earthCoopHotState = null;
+
+    /**
+     * Keep local development from getting stuck on a stale public/hot file after
+     * the Vite dev server is stopped. Production keeps Laravel's native hot-file
+     * behaviour untouched; local/testing first verifies that the advertised dev
+     * server still accepts TCP connections, otherwise the stale marker is removed
+     * and Laravel falls back to the existing manifest build.
+     */
+    public function isRunningHot()
+    {
+        if (! parent::isRunningHot()) {
+            return false;
+        }
+
+        if (! app()->environment(['local', 'testing'])) {
+            return true;
+        }
+
+        if ($this->earthCoopHotState !== null) {
+            return $this->earthCoopHotState;
+        }
+
+        $hotFile = $this->hotFile();
+        $hotUrl = trim((string) @file_get_contents($hotFile));
+        $parts = $hotUrl !== '' ? parse_url($hotUrl) : false;
+        $host = is_array($parts) ? ($parts['host'] ?? null) : null;
+        $scheme = is_array($parts) ? strtolower((string) ($parts['scheme'] ?? 'http')) : 'http';
+        $port = is_array($parts) && isset($parts['port'])
+            ? (int) $parts['port']
+            : ($scheme === 'https' ? 443 : 80);
+
+        if (! is_string($host) || $host === '' || $port <= 0) {
+            @unlink($hotFile);
+            return $this->earthCoopHotState = false;
+        }
+
+        $errno = 0;
+        $error = '';
+        $socket = @fsockopen($host, $port, $errno, $error, 0.15);
+
+        if (is_resource($socket)) {
+            fclose($socket);
+            return $this->earthCoopHotState = true;
+        }
+
+        @unlink($hotFile);
+        return $this->earthCoopHotState = false;
+    }
+
     /**
      * Keep the app stylesheet as an explicit HTML entry immediately before the
      * JavaScript entry. This makes Vite dev and production build use the same
