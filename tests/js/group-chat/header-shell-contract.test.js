@@ -24,6 +24,14 @@ test('group chat shell starts with unified site header visually hidden and no re
     assert.match(layout, /--chat-site-header-offset/);
 });
 
+test('group chat body does not become a competing vertical scroll container', () => {
+    const layout = read('resources/views/layouts/chat.blade.php');
+    const chatBodyRule = layout.match(/body\.chat-layout\s*\{([\s\S]*?)\n\s*\}/)?.[1] ?? '';
+
+    assert.ok(chatBodyRule, 'expected body.chat-layout rule');
+    assert.doesNotMatch(chatBodyRule, /overflow-y\s*:\s*auto\s*!important/);
+});
+
 test('group hero remains sticky beneath the optional unified header', () => {
     const controller = read('resources/js/group-chat-header-controller.js');
 
