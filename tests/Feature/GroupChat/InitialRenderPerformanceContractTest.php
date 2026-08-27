@@ -18,21 +18,13 @@ class InitialRenderPerformanceContractTest extends TestCase
         $this->assertStringNotContainsString('$group->guestsCount()', $source);
     }
 
-    public function test_controller_reuses_the_initial_poll_collection_for_the_view(): void
+    public function test_chat_view_data_is_centralized_and_block_lookups_are_batched(): void
     {
-        $source = file_get_contents(app_path('Http/Controllers/Group/ChatController.php'));
+        $source = file_get_contents(app_path('Providers/AppServiceProvider.php'));
 
-        $this->assertStringContainsString("'polls' => $polls", $source);
-        $this->assertStringNotContainsString("'polls' => $group->polls()->with('options')->latest('id')->limit($initialPollLimit)->get()", $source);
-    }
-
-    public function test_group_info_panel_has_no_model_queries_in_its_bootstrap_block(): void
-    {
-        $source = file_get_contents(resource_path('views/groups/partials/group_info_panel.blade.php'));
-        $bootstrap = strstr($source, '<div id="groupInfoPanel"', true) ?: $source;
-
-        $this->assertStringNotContainsString('\\App\\Models\\Blog::', $bootstrap);
-        $this->assertStringNotContainsString('\\App\\Models\\GroupUser::', $bootstrap);
-        $this->assertStringNotContainsString('$group2->users()', $bootstrap);
+        $this->assertStringContainsString("View::composer('groups.chat'", $source);
+        $this->assertStringContainsString("->whereIn('position', ['election', 'message', 'post', 'poll'])", $source);
+        $this->assertStringContainsString("SUM(CASE WHEN group_user.role = 4 THEN 1 ELSE 0 END) as guest_count", $source);
+        $this->assertStringContainsString("SUM(CASE WHEN group_user.role <> 4 THEN 1 ELSE 0 END) as member_count", $source);
     }
 }
