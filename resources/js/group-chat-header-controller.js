@@ -43,6 +43,21 @@ export function createGroupChatHeaderController({
     let headerHeight = 0;
     let lastTouchY = null;
 
+    const previousHeroInline = {
+        position: gestureSurface.style.position,
+        top: gestureSurface.style.top,
+        zIndex: gestureSurface.style.zIndex,
+        transition: gestureSurface.style.transition,
+    };
+
+    // The group hero is the persistent chat chrome. Conversation scrolling must
+    // happen beneath it, while the optional global header may temporarily sit
+    // above it when explicitly revealed from the hero itself.
+    gestureSurface.style.setProperty('position', 'sticky');
+    gestureSurface.style.setProperty('top', 'var(--chat-site-header-offset, 0px)');
+    gestureSurface.style.setProperty('z-index', '950');
+    gestureSurface.style.setProperty('transition', 'top .25s cubic-bezier(.4, 0, .2, 1)');
+
     const measure = () => {
         if (destroyed) return 0;
         const measured = Number(siteHeader.getBoundingClientRect?.().height || siteHeader.offsetHeight || 0);
@@ -56,13 +71,6 @@ export function createGroupChatHeaderController({
     const setOffset = value => {
         pageBody.style.setProperty('--chat-site-header-offset', `${Math.max(0, value)}px`);
     };
-
-    // The group hero is the only gesture surface for revealing the global
-    // EarthCoop header, and it remains pinned above the scrolling conversation.
-    gestureSurface.style.setProperty('position', 'sticky', 'important');
-    gestureSurface.style.setProperty('top', 'var(--chat-site-header-offset, 0px)', 'important');
-    gestureSurface.style.setProperty('z-index', '900', 'important');
-    gestureSurface.style.setProperty('transition', 'top .25s cubic-bezier(.4, 0, .2, 1)', 'important');
 
     const show = () => {
         if (destroyed || visible) return;
@@ -136,12 +144,12 @@ export function createGroupChatHeaderController({
             gestureSurface.removeEventListener('touchend', onTouchEnd);
             gestureSurface.removeEventListener('touchcancel', onTouchEnd);
             runtimeWindow.removeEventListener('resize', onResize);
-            gestureSurface.style.removeProperty('position');
-            gestureSurface.style.removeProperty('top');
-            gestureSurface.style.removeProperty('z-index');
-            gestureSurface.style.removeProperty('transition');
             siteHeader.classList.remove('chat-site-header-visible');
             setOffset(0);
+            gestureSurface.style.position = previousHeroInline.position;
+            gestureSurface.style.top = previousHeroInline.top;
+            gestureSurface.style.zIndex = previousHeroInline.zIndex;
+            gestureSurface.style.transition = previousHeroInline.transition;
         },
     });
 }
