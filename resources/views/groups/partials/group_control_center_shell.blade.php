@@ -141,6 +141,32 @@
             padding: .4rem .62rem;
             font-size: .68rem;
         }
+
+        [data-group-hero-content] {
+            max-height: min(42dvh, 300px);
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            padding-top: .65rem !important;
+            padding-bottom: .7rem !important;
+        }
+
+        [data-group-hero-content] .grid.grid-cols-1 {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: .45rem !important;
+        }
+
+        [data-group-hero-content] .grid.grid-cols-1 > * {
+            min-width: 0;
+            padding: .55rem .45rem !important;
+            font-size: .72rem;
+        }
+
+        [data-group-hero-content] p {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            overflow: hidden;
+        }
     }
 
     @media (min-width: 768px) {
