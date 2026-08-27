@@ -39,7 +39,8 @@
             padding: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
-            overflow-x: hidden !important;
+            overflow-x: clip !important;
+            overflow-y: visible !important;
         }
 
         body.chat-layout {
