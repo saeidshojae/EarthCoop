@@ -23,3 +23,20 @@ test('group chat shell starts with unified site header visually hidden and no re
     assert.match(layout, /\.site-header-spacer[^}]*height:\s*0\s*!important/s);
     assert.match(layout, /--chat-site-header-offset/);
 });
+
+test('group chat page boots a dedicated direction-aware unified header controller', () => {
+    const pageEntry = read('resources/js/group-chat-page.js');
+    const controller = read('resources/js/group-chat-header-controller.js');
+
+    assert.match(pageEntry, /group-chat-header-controller\.js/);
+    assert.match(pageEntry, /createGroupChatHeaderController/);
+    assert.match(controller, /CHAT_HEADER_GESTURE_THRESHOLD\s*=\s*10/);
+    assert.match(controller, /addEventListener\('scroll'/);
+    assert.match(controller, /addEventListener\('wheel'/);
+    assert.match(controller, /addEventListener\('touchstart'/);
+    assert.match(controller, /addEventListener\('touchmove'/);
+    assert.match(controller, /chat-site-header-visible/);
+    assert.match(controller, /#site-header-mobile-menu/);
+    assert.match(controller, /#user-dropdown-menu/);
+    assert.match(controller, /\.mobile-account-dropdown/);
+});
