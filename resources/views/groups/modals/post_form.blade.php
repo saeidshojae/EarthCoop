@@ -2,10 +2,43 @@
 
 <style>
 /* The chat page historically hides CKEditor chrome globally for compact editors.
-   Post composition is a rich-text workflow, so restore the editor chrome only here. */
-#postFormBox .cke_top,
-#postFormBox .cke_bottom {
+   Post composition is intentionally richer, but keep its editor compact and scoped here. */
+#postFormBox .cke {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+#postFormBox .cke_top {
     display: block !important;
+    padding: 6px 8px !important;
+}
+
+#postFormBox .cke_bottom {
+    display: none !important;
+}
+
+#postFormBox .cke_contents {
+    min-height: 180px !important;
+    height: 180px !important;
+}
+
+#postFormBox .cke_toolgroup {
+    margin: 0 4px 4px 0 !important;
+}
+
+#postFormBox .cke_button {
+    padding: 4px 5px !important;
+}
+
+@media (max-width: 767.98px) {
+    #postFormBox .cke_top {
+        padding: 5px 6px !important;
+    }
+
+    #postFormBox .cke_contents {
+        min-height: 160px !important;
+        height: 160px !important;
+    }
 }
 </style>
 
@@ -35,7 +68,7 @@
             <div class="modal-field">
                 <label for="post_editor" class="modal-label">متن پست</label>
                 <textarea name="content" id="post_editor" class="modal-textarea" placeholder="متن پست را اینجا بنویسید…" required></textarea>
-                <p class="modal-hint">می‌توانید از ویرایشگر برای افزودن لینک، لیست و استایل‌ها استفاده کنید.</p>
+                <p class="modal-hint">برای تأکید، لینک و فهرست‌ها از ویرایشگر ساده متن استفاده کنید.</p>
             </div>
 
             <div class="modal-field">
