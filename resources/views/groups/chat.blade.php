@@ -157,6 +157,8 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
         </aside>
     </div>
 
+    @include('groups.partials.group_control_center_shell')
+
     <div id="groupInfoBackdrop" class="group-info-backdrop hidden"></div>
     <div id="categoryBlogsOverlay" class="category-browser__overlay"></div>
     <div id="categoryBlogsModal" class="category-browser" role="dialog" aria-modal="true" aria-labelledby="catModalTitle" aria-hidden="true">
