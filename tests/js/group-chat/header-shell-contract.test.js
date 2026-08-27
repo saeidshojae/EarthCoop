@@ -25,11 +25,10 @@ test('group chat shell starts with unified site header visually hidden and no re
 });
 
 test('group hero remains sticky beneath the optional unified header', () => {
-    const layout = read('resources/views/layouts/chat.blade.php');
+    const controller = read('resources/js/group-chat-header-controller.js');
 
-    assert.match(layout, /body\.chat-layout \[data-group-hero\]/);
-    assert.match(layout, /position:\s*sticky\s*!important/);
-    assert.match(layout, /top:\s*var\(--chat-site-header-offset,\s*0px\)\s*!important/);
+    assert.match(controller, /gestureSurface\.style\.setProperty\(['"]position['"],\s*['"]sticky['"]/);
+    assert.match(controller, /gestureSurface\.style\.setProperty\(['"]top['"],\s*['"]var\(--chat-site-header-offset, 0px\)['"]/);
 });
 
 test('group chat header gestures are scoped to the group hero rather than page scrolling', () => {
