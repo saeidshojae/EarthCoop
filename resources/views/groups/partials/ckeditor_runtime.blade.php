@@ -8,6 +8,7 @@ function initializeGroupChatCkeditorRuntime(lifecycle) {
 
     let loaderPromise = null;
     let ckeditorWait = null;
+    let idleWarmHandle = null;
 
     function installChatConfig() {
         const ckeditor = window.CKEDITOR;
@@ -79,11 +80,9 @@ function initializeGroupChatCkeditorRuntime(lifecycle) {
         }, 50);
     }
 
-    function loadPostEditor() {
+    function ensureCkeditorLibrary() {
         if (window.CKEDITOR) {
             installChatConfig();
-            initializePostEditor();
-            waitForEditorReady();
             return Promise.resolve(window.CKEDITOR);
         }
         if (loaderPromise) return loaderPromise;
@@ -95,8 +94,6 @@ function initializeGroupChatCkeditorRuntime(lifecycle) {
             script.dataset.groupChatCkeditor = 'true';
             script.onload = () => {
                 installChatConfig();
-                initializePostEditor();
-                waitForEditorReady();
                 resolve(window.CKEDITOR);
             };
             script.onerror = () => {
@@ -108,21 +105,54 @@ function initializeGroupChatCkeditorRuntime(lifecycle) {
         return loaderPromise;
     }
 
+    function loadPostEditor() {
+        return ensureCkeditorLibrary().then((ckeditor) => {
+            initializePostEditor();
+            waitForEditorReady();
+            return ckeditor;
+        });
+    }
+
+    function warmPostEditorLibrary() {
+        if (window.CKEDITOR || loaderPromise) return;
+        void ensureCkeditorLibrary().catch(() => {});
+    }
+
+    function scheduleEditorWarmup() {
+        const warm = () => {
+            idleWarmHandle = null;
+            warmPostEditorLibrary();
+        };
+
+        if ('requestIdleCallback' in window) {
+            idleWarmHandle = window.requestIdleCallback(warm, { timeout: 2500 });
+        } else {
+            idleWarmHandle = window.setTimeout(warm, 1400);
+        }
+    }
+
     lifecycle.on(window, 'group-chat:post-modal-opened', () => {
         void loadPostEditor().catch(() => {
             window.GroupChatFeedback?.toast?.('ویرایشگر متن بارگذاری نشد؛ لطفاً دوباره تلاش کنید.', { type: 'error' });
         });
     });
 
-    window.GroupChatPostEditor = Object.freeze({ loadPostEditor });
+    window.GroupChatPostEditor = Object.freeze({ loadPostEditor, warmPostEditorLibrary });
 
     const modal = document.getElementById('postFormBox');
     if (modal && getComputedStyle(modal).display !== 'none') {
         void loadPostEditor().catch(() => {});
+    } else {
+        scheduleEditorWarmup();
     }
 
     lifecycle.add(function() {
         stopEditorWait();
+        if (idleWarmHandle !== null) {
+            if ('cancelIdleCallback' in window) window.cancelIdleCallback(idleWarmHandle);
+            else window.clearTimeout(idleWarmHandle);
+            idleWarmHandle = null;
+        }
         const instance = window.CKEDITOR?.instances?.post_editor;
         if (instance && typeof instance.destroy === 'function') instance.destroy(true);
         delete window.GroupChatPostEditor;
