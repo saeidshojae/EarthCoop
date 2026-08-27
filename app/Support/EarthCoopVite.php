@@ -14,19 +14,13 @@ class EarthCoopVite extends Vite
 
     /**
      * Keep local development from getting stuck on a stale public/hot file after
-     * the Vite dev server is stopped. Production keeps Laravel's native hot-file
-     * behaviour untouched; local/testing first verifies that the advertised dev
-     * server still accepts TCP connections, otherwise the stale marker is removed
-     * and Laravel falls back to the existing manifest build.
+     * the Vite dev server is stopped. Only loopback hot URLs are actively probed;
+     * non-loopback hot URLs retain Laravel's native behaviour unchanged.
      */
     public function isRunningHot()
     {
         if (! parent::isRunningHot()) {
             return false;
-        }
-
-        if (! app()->environment(['local', 'testing'])) {
-            return true;
         }
 
         if ($this->earthCoopHotState !== null) {
@@ -47,9 +41,16 @@ class EarthCoopVite extends Vite
             return $this->earthCoopHotState = false;
         }
 
+        $normalizedHost = strtolower(trim($host, '[]'));
+        $loopbackHosts = ['localhost', '127.0.0.1', '::1'];
+        if (! in_array($normalizedHost, $loopbackHosts, true)) {
+            return $this->earthCoopHotState = true;
+        }
+
         $errno = 0;
         $error = '';
-        $socket = @fsockopen($host, $port, $errno, $error, 0.15);
+        $socketHost = $normalizedHost === '::1' ? '[::1]' : $normalizedHost;
+        $socket = @fsockopen($socketHost, $port, $errno, $error, 0.15);
 
         if (is_resource($socket)) {
             fclose($socket);
