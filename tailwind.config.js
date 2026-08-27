@@ -26,10 +26,9 @@ export default {
     // Add any dynamic classes here that Tailwind might not detect
   ],
   corePlugins: {
-    // EarthCoop still contains Bootstrap/legacy views. Tailwind's global
-    // Preflight reset changes native and Bootstrap element defaults when the
-    // Vite bundle is live, making dev/build rendering diverge from the stable
-    // public/legacy cascade. Utilities/components remain enabled.
-    preflight: false,
+    // Utility-authored EarthCoop controls rely on Tailwind's native element
+    // normalization (buttons, images and form controls). Keep Preflight on;
+    // dev/build parity is handled by the dedicated CSS Vite entry instead.
+    preflight: true,
   },
 };
