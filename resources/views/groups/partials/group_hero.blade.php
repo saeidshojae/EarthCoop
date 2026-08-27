@@ -74,7 +74,7 @@
     </div>
 
     {{-- Desktop: compact app-style hero. Deep management now lives in Control Center. --}}
-    <div class="hidden lg:flex relative z-10 items-center justify-between gap-5 px-6 py-4">
+    <div class="group-hero__desktop hidden lg:flex relative z-10 items-center justify-between gap-5 px-6 py-4">
         <div class="flex items-center gap-4 min-w-0">
             <div class="group-hero__avatar w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl font-black shadow-inner">
                 @if($group->avatar)
@@ -106,7 +106,7 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-2 flex-shrink-0">
+        <div class="group-hero__desktop-actions flex items-center gap-2 flex-shrink-0">
             <button type="button"
                 class="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 transition"
                 data-chat-page-action="open-group-info">
