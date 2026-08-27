@@ -128,6 +128,14 @@ class AppServiceProvider extends ServiceProvider
                 ->selectRaw('SUM(CASE WHEN group_user.role <> 4 THEN 1 ELSE 0 END) as member_count')
                 ->first();
 
+            $memberCount = (int) ($membershipCounts->member_count ?? 0);
+            $guestCount = (int) ($membershipCounts->guest_count ?? 0);
+            // The same Group instance is subsequently rendered by the information
+            // panel. Store request-local aggregates on it so userCount()/guestsCount()
+            // reuse this query instead of issuing their own counts.
+            $group->setAttribute('active_members_count', $memberCount);
+            $group->setAttribute('active_guests_count', $guestCount);
+
             $blocks = \App\Models\Block::query()
                 ->where('user_id', $userId)
                 ->whereIn('position', ['election', 'message', 'post', 'poll'])
@@ -135,8 +143,8 @@ class AppServiceProvider extends ServiceProvider
                 ->keyBy('position');
 
             $view->with([
-                'memberCount' => (int) ($membershipCounts->member_count ?? 0),
-                'guestCount' => (int) ($membershipCounts->guest_count ?? 0),
+                'memberCount' => $memberCount,
+                'guestCount' => $guestCount,
                 'blogCount' => (int) DB::table('blogs')->where('group_id', $group->id)->count(),
                 'pollCount' => (int) DB::table('polls')->where('group_id', $group->id)->count(),
                 'pivotUser' => $membership,
