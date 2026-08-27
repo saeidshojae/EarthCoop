@@ -31,4 +31,14 @@ class PostEditorUxContractTest extends TestCase
         $this->assertStringContainsString('#postFormBox .cke_contents', $modal);
         $this->assertStringNotContainsString('.cke_top {', preg_replace('/#postFormBox \.cke_top/', '', $modal) ?? $modal);
     }
+
+    public function test_group_post_editor_warms_library_after_initial_page_interactivity(): void
+    {
+        $runtime = file_get_contents(resource_path('views/groups/partials/ckeditor_runtime.blade.php'));
+
+        $this->assertStringContainsString('function warmPostEditorLibrary()', $runtime);
+        $this->assertStringContainsString('requestIdleCallback', $runtime);
+        $this->assertStringContainsString('warmPostEditorLibrary', $runtime);
+        $this->assertStringContainsString('initializePostEditor();', $runtime);
+    }
 }
