@@ -41,6 +41,16 @@ class ViteRuntimePerformanceContractTest extends TestCase
         $this->assertStringContainsString('import("./najm-bahar.js")', $app);
     }
 
+    public function test_najm_bahar_runtime_is_not_triggered_by_generic_card_classes(): void
+    {
+        $app = file_get_contents(resource_path('js/app.js'));
+
+        $this->assertStringNotContainsString('.nb-card', $app);
+        $this->assertStringNotContainsString('.nb-stat', $app);
+        $this->assertStringContainsString("window.location.pathname.startsWith('/najm-bahar')", $app);
+        $this->assertStringContainsString("document.querySelector('#payMembershipForm')", $app);
+    }
+
     public function test_global_entry_keeps_only_shared_navigation_and_foundation_runtime_eager(): void
     {
         $app = file_get_contents(resource_path('js/app.js'));
