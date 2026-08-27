@@ -6,25 +6,13 @@ export function classifyGroupChatHeaderGesture(delta, threshold = CHAT_HEADER_GE
     return delta > 0 ? 'hide' : 'show';
 }
 
-function isElementVisible(element, win) {
-    if (!element) return false;
-    const style = typeof win.getComputedStyle === 'function' ? win.getComputedStyle(element) : null;
-    if (style && (style.display === 'none' || style.visibility === 'hidden')) return false;
-    return !element.hidden;
-}
-
-function headerInteractionIsOpen(header, win) {
+function headerInteractionIsOpen(header) {
     if (!header) return false;
 
-    const explicitMenus = [
-        header.querySelector('#site-header-mobile-menu'),
-        header.querySelector('#user-dropdown-menu'),
-        header.querySelector('.mobile-account-dropdown'),
-    ];
-
-    if (explicitMenus.some(element => isElementVisible(element, win))) return true;
-
-    return Array.from(header.querySelectorAll('[x-show]')).some(element => isElementVisible(element, win));
+    // Only top-level header controls should suspend auto-hide. Looking at every
+    // descendant with x-show is incorrect because the mobile drawer contains
+    // expanded accordion sections even while the drawer itself is closed.
+    return Boolean(header.querySelector('[aria-expanded="true"]'));
 }
 
 export function createGroupChatHeaderController({
@@ -87,7 +75,7 @@ export function createGroupChatHeaderController({
 
     const hide = ({ force = false } = {}) => {
         if (destroyed || (!visible && !force)) return;
-        if (!force && headerInteractionIsOpen(siteHeader, runtimeWindow)) return;
+        if (!force && headerInteractionIsOpen(siteHeader)) return;
         visible = false;
         siteHeader.classList.remove('chat-site-header-visible');
         setOffset(0);
