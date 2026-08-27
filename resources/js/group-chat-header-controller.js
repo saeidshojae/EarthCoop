@@ -1,4 +1,5 @@
 export const CHAT_HEADER_GESTURE_THRESHOLD = 10;
+const CHAT_HEADER_SCROLL_SETTLE_MS = 320;
 
 export function classifyGroupChatHeaderGesture(delta, threshold = CHAT_HEADER_GESTURE_THRESHOLD) {
     if (!Number.isFinite(delta) || Math.abs(delta) < threshold) return 'idle';
@@ -51,8 +52,11 @@ export function createGroupChatHeaderController({
     let destroyed = false;
     let visible = false;
     let headerHeight = 0;
+    let ignoreScrollUntil = 0;
     let lastScrollY = Math.max(0, Number(runtimeWindow.scrollY || runtimeWindow.pageYOffset || 0));
     let lastTouchY = null;
+
+    const now = () => runtimeWindow.performance?.now?.() ?? Date.now();
 
     const measure = () => {
         if (destroyed) return 0;
@@ -68,12 +72,17 @@ export function createGroupChatHeaderController({
         pageBody.style.setProperty('--chat-site-header-offset', `${Math.max(0, value)}px`);
     };
 
+    const settleScrollAnchoring = () => {
+        ignoreScrollUntil = now() + CHAT_HEADER_SCROLL_SETTLE_MS;
+    };
+
     const show = () => {
         if (destroyed || visible) return;
         measure();
         visible = true;
         siteHeader.classList.add('chat-site-header-visible');
         setOffset(headerHeight);
+        settleScrollAnchoring();
     };
 
     const hide = ({ force = false } = {}) => {
@@ -82,6 +91,7 @@ export function createGroupChatHeaderController({
         visible = false;
         siteHeader.classList.remove('chat-site-header-visible');
         setOffset(0);
+        settleScrollAnchoring();
     };
 
     const applyGesture = delta => {
@@ -92,7 +102,9 @@ export function createGroupChatHeaderController({
 
     const onScroll = () => {
         const currentScrollY = Math.max(0, Number(runtimeWindow.scrollY || runtimeWindow.pageYOffset || 0));
-        applyGesture(currentScrollY - lastScrollY);
+        if (now() >= ignoreScrollUntil) {
+            applyGesture(currentScrollY - lastScrollY);
+        }
         lastScrollY = currentScrollY;
     };
 
