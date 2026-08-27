@@ -117,11 +117,11 @@ export function createActions({ lifecycle, root = document }) {
         lastGroupInfoTrigger = null;
         if (trigger?.isConnected) requestAnimationFrame(() => trigger.focus?.());
     };
-    const openGroupInfo = trigger => {
+    const openGroupInfo = () => {
         const panel = document.getElementById('groupInfoPanel');
         const backdrop = document.getElementById('groupInfoBackdrop');
         if (!panel) return;
-        lastGroupInfoTrigger = trigger || document.activeElement;
+        if (!lastGroupInfoTrigger) lastGroupInfoTrigger = document.activeElement;
         panel.classList.add('is-open');
         panel.setAttribute('aria-hidden', 'false');
         backdrop?.classList.remove('hidden');
@@ -165,7 +165,10 @@ export function createActions({ lifecycle, root = document }) {
         const context = { event, target };
         const handler = handlers.get(action);
         const ownedHandler = action === 'open-group-info'
-            ? () => openGroupInfo(target)
+            ? () => {
+                lastGroupInfoTrigger = target || document.activeElement;
+                openGroupInfo();
+            }
             : action === 'close-group-info'
                 ? closeGroupInfo
                 : null;
