@@ -18,12 +18,13 @@ class ElectionGroupSurfaceProjectionTest extends TestCase
         $this->assertStringContainsString("document.getElementById('election')", $runtime);
     }
 
-    public function test_legacy_group_panel_election_poll_is_overridden_by_canonical_projection(): void
+    public function test_group_panel_keeps_election_polls_separate_for_canonical_projection(): void
     {
         $panel = file_get_contents(resource_path('views/groups/partials/group_info_panel.blade.php'));
         $runtime = file_get_contents(resource_path('views/groups/partials/page_chrome_runtime.blade.php'));
 
-        $this->assertStringContainsString('$electionPolls = $pollCollection->where(\'main_type\', 0);', $panel);
+        $this->assertStringContainsString('$electionPolls = $pollCollection->filter', $panel);
+        $this->assertStringContainsString('(int)($poll->main_type ?? 1) === 0', $panel);
         $this->assertStringContainsString('electionTab.replaceChildren(card);', $runtime);
     }
 }
