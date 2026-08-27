@@ -28,3 +28,9 @@ test('control center opens at every viewport size and restores accessible state 
     assert.match(actions, /lastGroupInfoTrigger/);
     assert.match(actions, /groupInfoBackdrop.*closeGroupInfo/s);
 });
+
+test('expanded mobile group hero stays compact instead of consuming the viewport', () => {
+    assert.match(shell, /\[data-group-hero-content\][\s\S]*?max-height: min\(42dvh, 300px\)/);
+    assert.match(shell, /\[data-group-hero-content\] \.grid\.grid-cols-1[\s\S]*?grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+    assert.match(shell, /-webkit-line-clamp: 2/);
+});
