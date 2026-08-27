@@ -4,6 +4,7 @@ function initializeGroupChatCkeditorRuntime() {
     if (!lifecycle || lifecycle.destroyed) return;
 
     let loaderPromise = null;
+    let ckeditorWait = null;
 
     function installChatConfig() {
         const ckeditor = window.CKEDITOR;
@@ -55,10 +56,26 @@ function initializeGroupChatCkeditorRuntime() {
         return true;
     }
 
+    function stopEditorWait() {
+        if (ckeditorWait === null) return;
+        lifecycle.clearInterval(ckeditorWait);
+        ckeditorWait = null;
+    }
+
+    function waitForEditorReady() {
+        stopEditorWait();
+        let attempts = 0;
+        ckeditorWait = lifecycle.interval(function() {
+            attempts += 1;
+            if (initializePostEditor() || attempts >= 20) stopEditorWait();
+        }, 50);
+    }
+
     function loadPostEditor() {
         if (window.CKEDITOR) {
             installChatConfig();
             initializePostEditor();
+            waitForEditorReady();
             return Promise.resolve(window.CKEDITOR);
         }
         if (loaderPromise) return loaderPromise;
@@ -71,6 +88,7 @@ function initializeGroupChatCkeditorRuntime() {
             script.onload = () => {
                 installChatConfig();
                 initializePostEditor();
+                waitForEditorReady();
                 resolve(window.CKEDITOR);
             };
             script.onerror = () => {
@@ -91,6 +109,7 @@ function initializeGroupChatCkeditorRuntime() {
     window.GroupChatPostEditor = Object.freeze({ loadPostEditor });
 
     lifecycle.add(function() {
+        stopEditorWait();
         const instance = window.CKEDITOR?.instances?.post_editor;
         if (instance && typeof instance.destroy === 'function') instance.destroy(true);
         delete window.GroupChatPostEditor;
