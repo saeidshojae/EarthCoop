@@ -32,13 +32,15 @@ $lastReadMessageId = $lastReadMessageId ?? null;
 
 @section('content')
 @php
-$memberCount = $group->userCount();
-$guestCount = $group->guestsCount();
-$blogCount = \App\Models\Blog::where('group_id', $group->id)->count();
-$pollCount = $group->polls()->count();
-// از $yourRole که controller محاسبه کرده استفاده می‌کنیم
-// دیگر نیازی به کوئری users() در blade نیست
-$pivotUser = \App\Models\GroupUser::where('group_id', $group->id)->where('user_id', auth()->id())->first();
+$memberCount = $memberCount ?? 0;
+$guestCount = $guestCount ?? 0;
+$blogCount = $blogCount ?? 0;
+$pollCount = $pollCount ?? 0;
+$pivotUser = $pivotUser ?? null;
+$checkBlockElection = $checkBlockElection ?? null;
+$checkBlockMessage = $checkBlockMessage ?? null;
+$checkBlockPost = $checkBlockPost ?? null;
+$checkBlockPoll = $checkBlockPoll ?? null;
 $roleValue = $yourRole;
 
 $roleTitle = match($roleValue) {
@@ -51,7 +53,6 @@ $roleTitle = match($roleValue) {
 default => 'عضو'
 };
 $membershipStatusLabel = (int)($pivotUser?->status ?? 0) === 1 ? 'فعال' : 'غیرفعال';
-$checkBlockElection = \App\Models\Block::where('user_id', auth()->id())->where('position', 'election')->first();
 $electionAvailable = ($election ?? null) && optional($groupSetting)->election_status == 1;
 $canParticipateElection = $electionAvailable && !$checkBlockElection && optional(auth()->user())->status == 1;
 @endphp
@@ -83,15 +84,6 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
             <button id="scroll-toggle-btn" class="chat-scroll-btn">
                 <i class="fas fa-arrow-up"></i>
             </button>
-
-            @php
-            $checkBlockMessage = \App\Models\Block::where('user_id', auth()->user()->id)->where('position',
-            'message')->first();
-            $checkBlockPost = \App\Models\Block::where('user_id', auth()->user()->id)->where('position',
-            'post')->first();
-            $checkBlockPoll = \App\Models\Block::where('user_id', auth()->user()->id)->where('position',
-            'poll')->first();
-            @endphp
 
             <div class="chat-composer-shell @cannot('participate', $group) chat-composer-shell--restricted @endcannot bg-white border border-emerald-100 rounded-3xl shadow-sm p-5 w-full">
                 @cannot('participate', $group)
