@@ -80,6 +80,10 @@ class Group extends Model
             ->count();
     }
     public function guestsCount(){
+        if (array_key_exists('active_guests_count', $this->attributes)) {
+            return (int) $this->attributes['active_guests_count'];
+        }
+
         return $this->hasMany(GroupUser::class)
             ->whereHas('user', fn ($query) => $query->where('is_system', false))
             ->where('status', 1)
