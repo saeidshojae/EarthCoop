@@ -48,7 +48,6 @@
             min-height: 100dvh !important;
             display: flex !important;
             flex-direction: column !important;
-            overflow-y: auto !important;
             -webkit-overflow-scrolling: touch !important;
             background: linear-gradient(135deg, #f5f7fa 0%, #e8f5e9 100%) !important;
             font-family: var(--font-vazirmatn), system-ui, sans-serif !important;
