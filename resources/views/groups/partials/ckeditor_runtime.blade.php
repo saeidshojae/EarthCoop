@@ -22,7 +22,6 @@ function initializeGroupChatCkeditorRuntime(lifecycle) {
                 .map(plugin => plugin.trim())
                 .filter(Boolean);
             if (!currentRemove.includes('uploadimage')) currentRemove.push('uploadimage');
-            if (!currentRemove.includes('elementspath')) currentRemove.push('elementspath');
             ckeditor.config.removePlugins = currentRemove.join(',');
 
             const originalWarn = ckeditor.warn;
