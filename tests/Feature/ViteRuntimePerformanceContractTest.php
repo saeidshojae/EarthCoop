@@ -32,13 +32,25 @@ class ViteRuntimePerformanceContractTest extends TestCase
             );
         }
 
-        $this->assertStringContainsString('import("./group-chat/index.js")', $app);
-        $this->assertStringContainsString('meta[name="group-chat-id"]', $app);
+        $this->assertStringNotContainsString('import("./group-chat/index.js")', $app);
+        $this->assertStringNotContainsString('meta[name="group-chat-id"]', $app);
         $this->assertStringContainsString('import("swiper/element/bundle")', $app);
         $this->assertStringContainsString('swiper-container', $app);
         $this->assertStringContainsString('import("./najm-hoda-context.js")', $app);
         $this->assertStringContainsString('#najm-hoda-widget', $app);
         $this->assertStringContainsString('import("./najm-bahar.js")', $app);
+    }
+
+    public function test_group_chat_uses_a_dedicated_vite_entry_instead_of_global_dynamic_import(): void
+    {
+        $viteConfig = file_get_contents(base_path('vite.config.js'));
+        $resolver = file_get_contents(app_path('Support/EarthCoopVite.php'));
+        $entry = file_get_contents(resource_path('js/group-chat-page.js'));
+
+        $this->assertStringContainsString('resources/js/group-chat-page.js', $viteConfig);
+        $this->assertStringContainsString("public const GROUP_CHAT_ENTRY = 'resources/js/group-chat-page.js';", $resolver);
+        $this->assertStringContainsString("request()->is('groups/chat/*')", $resolver);
+        $this->assertStringContainsString('import "./group-chat/index.js";', $entry);
     }
 
     public function test_najm_bahar_runtime_is_not_triggered_by_generic_card_classes(): void
