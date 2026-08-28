@@ -3,6 +3,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node -e \"require('fs').rmSync('public/hot',{force:true})\"",
     "build": "vite build",
     "test:group-chat": "node --test tests/js/group-chat",
     "realtime": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-soketi.ps1",

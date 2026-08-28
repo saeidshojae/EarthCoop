@@ -10,20 +10,8 @@ use Illuminate\Support\Facades\Route;
 
 class RouteServiceProvider extends ServiceProvider
 {
-    /**
-     * The path to the "home" route for your application.
-     *
-     * Typically, users are redirected here after authentication.
-     *
-     * @var string
-     */
     public const HOME = '/home';
 
-    /**
-     * Define your route model bindings, pattern filters, and other route configuration.
-     *
-     * @return void
-     */
     public function boot()
     {
         $this->configureRateLimiting();
@@ -42,26 +30,45 @@ class RouteServiceProvider extends ServiceProvider
                 ->name('admin.najm-hoda.n8n.')
                 ->group(base_path('routes/najm-hoda-admin-n8n.php'));
 
+            Route::middleware([
+                'web',
+                \App\Http\Middleware\AdminMiddleware::class,
+                \App\Http\Middleware\FounderOperationsMiddleware::class,
+            ])->group(base_path('routes/najm-hoda-founder-ops.php'));
+
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
 
+            // Canonical authenticated My Groups route intentionally loads after
+            // web.php so the legacy public /groups definition is shadowed. Guests
+            // must be redirected before GroupController@index can dereference user().
+            Route::middleware(['web', \App\Http\Middleware\Authenticate::class])
+                ->group(base_path('routes/groups-index.php'));
+
+            // Election compatibility/canonical routes intentionally load after
+            // web.php so legacy responsibility-response endpoints are shadowed
+            // by the E7 read-only confirmation + CSRF-protected POST flow.
+            Route::middleware('web')
+                ->group(base_path('routes/elections.php'));
+
+            Route::middleware('web')
+                ->group(base_path('routes/group-election-surface.php'));
+
             Route::middleware('web')
                 ->group(base_path('routes/najm-hoda-group-attention.php'));
-                
+
             Route::middleware('web')
                 ->group(base_path('routes/najm-bahar.php'));
+
+            Route::middleware('web')
+                ->group(base_path('routes/secretariat.php'));
         });
     }
 
-    /**
-     * Configure the rate limiters.
-     *
-     * @return void
-     */
     protected function configureRateLimiting()
     {
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+            return Limit::perMinute(60)->by('api:' . ($request->user()?->id ?: $request->ip()));
         });
 
         RateLimiter::for('najm-hoda-autonomy-read', function (Request $request) {

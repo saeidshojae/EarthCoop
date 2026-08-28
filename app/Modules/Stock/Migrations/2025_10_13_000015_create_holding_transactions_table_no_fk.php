@@ -16,14 +16,15 @@ return new class extends Migration {
                 $table->json('meta')->nullable();
                 $table->text('description')->nullable();
                 $table->timestamps();
-                
+
                 $table->index(['ref_type', 'ref_id']);
                 $table->index(['type', 'created_at']);
             });
         }
     }
-    
+
     public function down() {
-        Schema::dropIfExists('holding_transactions');
+        // Historical no-FK fallback only. The canonical holding_transactions
+        // table is owned by the base Stock migration and must survive rollback.
     }
 };

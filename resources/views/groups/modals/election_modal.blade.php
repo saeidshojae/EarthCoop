@@ -1,1567 +1,211 @@
-<style>
-
-  /* مطمئن شو مودال بالاتر از هر چیز دیگه‌ست */
-
-  .modal { z-index: 10001 !important; }
-
-  .modal-backdrop { z-index: 10000 !important; }
-
-  #topVotesModal,
-
-  #candidatesModal,
-
-  #guidelineModal {
-
-    z-index: 10002 !important;
-
-  }
-
-  
-
-  .tab-content {
-
-    display: block !important;
-
-  }
-
-</style>
-
-
-
-<div class="election-box election-card" data-group-chat-action="election-content" dir="rtl">
-
-  <button type="button" class="election-close" aria-label="بستن فرم انتخابات" data-group-chat-action="close-election">
-
-    <i class="fas fa-times"></i>
-
-  </button>
-
-  
-
-  <div class="election-modal-header">
-
-    @php 
-
-      $groupId = isset($election) && $election ? ($election->group_id ?? null) : null;
-
-      if (!$groupId && isset($group) && $group) {
-
-        $groupId = $group->id;
-
-      }
-
-      $groupUser = null;
-
-      if ($groupId) {
-
-        $groupUser = \App\Models\GroupUser::where('group_id', $groupId)
-
-          ->where('user_id', auth()->id())
-
-          ->first();
-
-      }
-
-    @endphp 
-
-      
-
-    @if(!$groupUser || $groupUser->role == 0 || $groupUser->role == 4)
-
-      <div class="election-not-allowed">
-
-        <i class="fas fa-exclamation-triangle"></i>
-
-        <h3>شما مجاز به شرکت در انتخابات نیستید</h3>
-
-        <p>شما در این گروه دارای نقش ناظر می‌باشید</p>
-
-      </div>
-
-    @else
-
-      <div class="election-title-section">
-
-        @if(isset($election) && $election && $election->second_finish_time == null)
-
-          <div class="election-icon-wrapper">
-
-            <i class="fas fa-vote-yea"></i>
-
-          </div>
-
-          <h2 class="election-title">فرم انتخابات</h2>
-
-          <p class="election-subtitle">انتخاب هیأت مدیره و بازرسان گروه</p>
-
-        @else 
-
-          <div class="election-icon-wrapper election-icon-wrapper--warning">
-
-            <i class="fas fa-redo"></i>
-
-          </div>
-
-          <h2 class="election-title">فرم مجدد انتخابات</h2>
-
-          <p class="election-subtitle">انتخاب مجدد هیأت مدیره و بازرسان</p>
-
-        @endif
-
-      </div>
-
-    @endif
-
-  </div>
-
-  
-
-  @if($groupUser && !in_array($groupUser->role, [0, 4]))
-
-    <div class="election-modal-body">
-
-    <form action="{{ route('vote', $group) }}" method="POST" id="electionForm">
-
-        @csrf
-
-  @if (isset($election) && $election)
-
-
-
-        <div id="countdownText" style="direction: rtl; text-align: center; width: 100%;"></div>
-
-        <div style="background: rgba(236, 253, 245, 0.5); border-radius: 12px; overflow: hidden; width: 100%; margin: 1rem 0; height: 8px;">
-
-          <div id="progressBar"></div>
-
-        </div>
-
-        
-
-          <script type="module">
-
-              const startsAt = new Date("{{ $election->starts_at ?? '' }}").getTime();
-
-              const endsAt = new Date("{{ $election->ends_at ?? '' }}").getTime();
-
-              const countdownText = document.getElementById('countdownText');
-
-              const progressBar = document.getElementById('progressBar');
-
-              const timer = window.GroupChatLifecycle.interval(() => {
-
-                const now = new Date().getTime();
-
-                const total = endsAt - startsAt;
-
-                const elapsed = now - startsAt;
-
-                const remaining = endsAt - now;
-
-
-
-                // درصد پیشرفت
-
-                const progress = Math.min(100, (elapsed / total) * 100);
-
-                document.querySelector('#progressBar').style.width = progress + '%'
-
-
-
-                // محاسبه زمان باقی‌مانده
-
-                if (remaining <= 0) {
-
-                  window.GroupChatLifecycle.clearInterval(timer);
-
-                  countdownText.innerHTML = "⏰ انتخابات به پایان رسید";
-
-                  progressBar.style.width = '100%';
-
-                // همهٔ فیلدها را disabled کن
-
-                const formElements = electionForm.querySelectorAll('input, select, textarea, button');
-
-                // formElements.forEach(el => el.disabled = true);
-
-                let electionId = "{{ $election->id ?? '' }}";
-
-                console.log('pokl')
-
-                finishElectionAjax(electionId);
-
-
-
-                return;
-
-                }
-
-                const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
-
-                const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-                const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-
-                const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
-
-        
-
-                document.querySelector('#countdownText').innerHTML = `${days} روز ${hours} ساعت ${minutes} دقیقه ${seconds} ثانیه باقی مانده تا اتمام انتخابات`;
-
-              }, 1000);
-
-        
-
-              function finishElectionAjax(electionId) {
-
-                    $.ajax({
-
-                        url: '/finish-election/' + electionId,
-
-                        type: 'POST',
-
-                        dataType: 'json',
-
-                        headers: {
-
-                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-
-                        },
-
-                        data: {
-
-                        election_id: electionId
-
-                        },
-
-                        success: function(data) {
-
-                        console.log('نتیجه:', data);
-
-                        // در صورت نیاز:
-
-                        // window.location.href = '/somewhere';
-
-                        },
-
-                        error: function(xhr, status, error) {
-
-                        console.error('خطا در ارسال درخواست پایان انتخابات:', error);
-
-                        }
-
-                    });
-
-                }
-
-
-
-
-
-
-
-          </script>
-
-        
-
-        
-
-          @endif
-
-          
-
-        @php
-
-        
-
-        $groupSetting = \App\Models\GroupSetting::where('level', $group->location_level)->first();
-
-        
-
-        if($group->specialty_id != null){
-
-            $groupSetting = \App\Models\GroupSetting::where('level', $group->location_level . '_job')->first();
-
-        }elseif($group->experience_id != null){
-
-            $groupSetting = \App\Models\GroupSetting::where('level', $group->location_level . '_experience')->first();
-
-        }elseif($group->age_group_id != null){
-
-            $groupSetting = \App\Models\GroupSetting::where('level', $group->location_level . '_age')->first();
-
-        }elseif($group->gender != null){
-
-            $groupSetting = \App\Models\GroupSetting::where('level', $group->location_level . '_gender')->first();
-
-        }
-
-        @endphp
-
-<div class="election-action-buttons">
-
-<button type="button"
-
-          class="election-action-btn election-action-btn--resume"
-
-          data-group-chat-action="open-election-candidates">
-
-    <i class="fas fa-user-tie"></i>
-
-  مشاهده رزومه کاندیدها
-
-</button>
-
-
-
-<button type="button"
-
-          class="election-action-btn election-action-btn--guideline"
-
-          data-group-chat-action="open-election-guideline">
-
-    <i class="fas fa-book"></i>
-
-  شیوه‌نامه انتخابات
-
-</button>
-
-
-
-@if($election && $election->second_finish_time)
-
-    <button type="button"
-
-            class="election-action-btn election-action-btn--votes"
-
-            data-group-chat-action="open-election-top-votes">
-
-      <i class="fas fa-chart-bar"></i>
-
-    نمایش بیشترین آرا
-
-  </button>
-
-@endif
-
-</div>
-
-
-
-<div class="modal fade" id="topVotesModal" tabindex="-1" aria-labelledby="topVotesModalLabel" aria-hidden="true">
-
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
-
-    <div class="modal-content" style="direction: rtl; text-align: right;">
-
-      <div class="modal-header" style="display:flex; justify-content:space-between;">
-
-        <h5 class="modal-title" id="topVotesModalLabel">لیست آرا (مرتب‌شده)</h5>
-
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
-
-      </div>
-
-
-
-      <div class="modal-body">
-
-          <ul class="nav nav-tabs" role="tablist" style="margin-bottom:1rem;">
-
-  <li class="nav-item">
-
-    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#managers-pane" type="button" role="tab">
-
-      هیات‌مدیره
-
-    </button>
-
-  </li>
-
-  <li class="nav-item">
-
-    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#inspectors-pane" type="button" role="tab">
-
-      بازرس
-
-    </button>
-
-  </li>
-
-</ul>
-
-
-
-<!-- این خط باید دقیقا tab-content باشد -->
-
-<div class="tab-content">
-
-  <div class="tab-pane fade show active" id="managers-pane" role="tabpanel">
-
-    <div class="table-responsive">
-
-              <table class="table table-striped table-hover align-middle">
-
-                <thead>
-
-                  <tr>
-
-                    <th style="width:60px">#</th>
-
-                    <th>نام</th>
-
-                    <th style="white-space:nowrap">تعداد رأی</th>
-
-                    <th style="width:160px">اقدامات</th>
-
-                  </tr>
-
-                </thead>
-
-                <tbody>
-
-  @foreach($managersSorted as $i => $u)
-
-    @php
-
-      $name = is_array($u) ? ($u['name'] ?? (trim(($u['first_name'] ?? '').' '.($u['last_name'] ?? '')) ?: '—'))
-
-                           : (trim(($u->name ?? '') ?: ( ($u->first_name ?? '').' '.($u->last_name ?? '') )) ?: '—');
-
-
-
-      $votes = is_array($u) ? ($u['manager_votes'] ?? $u['votes'] ?? 0)
-
-                            : ($u->manager_votes ?? $u->votes ?? 0);
-
-
-
-      $id = is_array($u) ? ($u['id'] ?? null) : ($u->id ?? null);
-
-    @endphp
-
-    @if($votes != 0)
-
-    <tr>
-
-      <td>{{ $i+1 }}</td>
-
-      <td>{{ $name }}</td>
-
-      <td>{{ (int)$votes }}</td>
-
-      <td>
-
-        @if($id)
-
-          <a href="{{ url('/profile-member/'.$id) }}" target="_blank"
-
-             class="btn btn-sm btn-outline-primary btn-primary">مشاهده پروفایل</a>
-
-        @endif
-
-      </td>
-
-    </tr>
-
-    @endif
-
-  @endforeach
-
-</tbody>
-
-
-
-              </table>
-
-            </div>
-
-  </div>
-
-
-
-  <div class="tab-pane fade" id="inspectors-pane" role="tabpanel">
-
-    <div class="table-responsive">
-
-              <table class="table table-striped table-hover align-middle">
-
-                <thead>
-
-                  <tr>
-
-                    <th style="width:60px">#</th>
-
-                    <th>نام</th>
-
-                    <th style="white-space:nowrap">تعداد رأی</th>
-
-                    <th style="width:160px">اقدامات</th>
-
-                  </tr>
-
-                </thead>
-
-               <tbody>
-
-  @foreach($inspectorsSorted as $i => $u)
-
-    @php
-
-      $name = is_array($u) ? ($u['name'] ?? (trim(($u['first_name'] ?? '').' '.($u['last_name'] ?? '')) ?: '—'))
-
-                           : (trim(($u->name ?? '') ?: ( ($u->first_name ?? '').' '.($u->last_name ?? '') )) ?: '—');
-
-
-
-      $votes = is_array($u) ? ($u['inspector_votes'] ?? $u['votes'] ?? 0)
-
-                            : ($u->inspector_votes ?? $u->votes ?? 0);
-
-
-
-      $id = is_array($u) ? ($u['id'] ?? null) : ($u->id ?? null);
-
-    @endphp
-
-    @if($votes != 0)
-
-    <tr>
-
-      <td>{{ $i+1 }}</td>
-
-      <td>{{ $name }}</td>
-
-      <td>{{ (int)$votes }}</td>
-
-      <td>
-
-        @if($id)
-
-          <a href="{{ url('/profile-member/'.$id) }}" target="_blank"
-
-             class="btn btn-sm btn-outline-primary btn-primary">مشاهده پروفایل</a>
-
-        @endif
-
-      </td>
-
-    </tr>
-
-     @endif
-
-  @endforeach
-
-</tbody>
-
-
-
-              </table>
-
-            </div>
-
-  </div>
-
-</div>
-
-
-
-      </div>
-
-
-
-      <div class="modal-footer">
-
-        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">بستن</button>
-
-      </div>
-
-    </div>
-
-  </div>
-
-</div>
-
-
-
-
-
-<div class="modal fade" id="guidelineModal" tabindex="-1" aria-labelledby="guidelineModalLabel" aria-hidden="true">
-
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
-
-    <div class="modal-content" style="direction: rtl; text-align: right;">
-
-      <div class="modal-header" style="display:flex; justify-content:space-between;">
-
-        <h5 class="modal-title" id="guidelineModalLabel">شیوه‌نامه انتخابات</h5>
-
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
-
-      </div>
-
-      <div class="modal-body" style="line-height:1.8;">
-
-        <p>
-
-          🔹 <strong>بند ۱:</strong> هر عضو فقط می‌تواند تا سقف تعداد مشخص‌شده در آیین‌نامه رأی دهد.
-
-        </p>
-
-        <p>
-
-          🔹 <strong>بند ۲:</strong> رأی‌ها محرمانه هستند و تنها نتایج نهایی منتشر خواهد شد.
-
-        </p>
-
-        <p>
-
-          🔹 <strong>بند ۳:</strong> هرگونه تخلف در روند رأی‌گیری طبق قوانین گروه بررسی خواهد شد.
-
-        </p>
-
-        <p>
-
-          🔹 <strong>بند ۴:</strong> اعضا موظف به مطالعه کامل این شیوه‌نامه قبل از شرکت در انتخابات هستند.
-
-        </p>
-
-        <p class="text-muted">
-
-          (اینجا می‌تونی متن کامل شیوه‌نامه‌ی واقعی خودتون رو بذاری یا از دیتابیس بخونی)
-
-        </p>
-
-      </div>
-
-      <div class="modal-footer">
-
-        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">بستن</button>
-
-      </div>
-
-    </div>
-
-  </div>
-
-</div>
-
-
-
-
-
-<div class="modal fade" id="candidatesModal" tabindex="-1" aria-labelledby="candidatesModalLabel" aria-hidden="true">
-
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
-
-    <div class="modal-content" style="direction: rtl; text-align: right;">
-
-      <div class="modal-header" style='    display: flex;
-
-    justify-content: space-between;'>
-
-        <h5 class="modal-title" id="candidatesModalLabel">رزومه کاندیدها</h5>
-
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
-
-      </div>
-
-      <div class="modal-body">
-
-        <div class="d-flex align-items-center gap-2 mb-3">
-
-          <input type="text" id="candidateSearch" class="form-control" placeholder="جستجو بر اساس نام...">
-
-
-
-        </div>
-
-
-
-        <div class="table-responsive">
-
-          <table class="table table-striped table-hover align-middle" id="candidatesTable">
-
-            <thead>
-
-              <tr>
-
-                <th style="width:60px">#</th>
-
-                <th>نام</th>
-
-                <th style="white-space:nowrap">رأی مدیر</th>
-
-                <th style="white-space:nowrap">رأی بازرس</th>
-
-                <th style="width:160px">اقدامات</th>
-
-              </tr>
-
-            </thead>
-
-            <tbody><!-- با JS پر می‌شود --></tbody>
-
-          </table>
-
-        </div>
-
-      </div>
-
-      <div class="modal-footer">
-
-        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">بستن</button>
-
-      </div>
-
-    </div>
-
-  </div>
-
-</div>
-
-
-
-<div class="form-group mt-3" style="direction: rtl; text-align: right; margin-bottom: 1.5rem;">
-
-    <label style="display: block; font-size: 0.95rem; font-weight: 600; color: #0f172a; margin-bottom: 0.75rem; direction: rtl; text-align: right;">
-
-        هیات مدیره (حداکثر {{ $groupSetting ? $groupSetting->manager_count : 0 }} نفر را انتخاب کنید)
-
-    </label>
-
-  @php
-
-    $rolesByUser = \App\Models\GroupUser::where('group_id', $group->id)->pluck('role','user_id');
-
-  @endphp
-
-  <select id="manager_vote" name="manager[]" multiple class="form-control" style="direction: rtl; text-align: right; width: 100%; padding: 0.75rem 1rem; border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 14px; background: rgba(248, 250, 252, 0.95); font-size: 0.9rem;">
-
-    @foreach ($group->users as $user)
-
-      @php $role = $rolesByUser[$user->id] ?? null; @endphp
-
-      @if(($role !== 4) && ($role !== 0))
-
-                <option value="{{ $user->id }}"
-
-                        @if (in_array($user->id, $selectedVotesManager)) selected @endif
-
-                        style="direction: rtl; text-align: right;">
-
-                    {{ $user->first_name . ' ' . $user->last_name }}
-
-                    ({{ $managerCounts[$user->id] ?? 0 }} رأی)
-
-                </option>
-
-            @endif
-
-        @endforeach
-
-    </select>
-
-</div>
-
-
-
-<div class="form-group" style="direction: rtl; text-align: right; margin-bottom: 1.5rem;">
-
-    <label style="display: block; font-size: 0.95rem; font-weight: 600; color: #0f172a; margin-bottom: 0.75rem; direction: rtl; text-align: right;">
-
-        بازرس ها (حداکثر {{ $groupSetting ? $groupSetting->inspector_count : 0 }} نفر را انتخاب کنید)
-
-    </label>
-
-  <select id="inspector_vote" name="inspector[]" multiple class="form-control" style="direction: rtl; text-align: right; width: 100%; padding: 0.75rem 1rem; border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 14px; background: rgba(248, 250, 252, 0.95); font-size: 0.9rem;">
-
-    @foreach ($group->users as $user)
-
-      @php $role = $rolesByUser[$user->id] ?? null; @endphp
-
-      @if(($role !== 4) && ($role !== 0))
-
-                <option value="{{ $user->id }}"
-
-                        @if (in_array($user->id, $selectedVotesInspector)) selected @endif
-
-                        style="direction: rtl; text-align: right;">
-
-                    {{ $user->first_name . ' ' . $user->last_name }}
-
-                    ({{ $inspectorCounts[$user->id] ?? 0 }} رأی)
-
-                </option>
-
-            @endif
-
-        @endforeach
-
-    </select>
-
-</div>
-
-
-
-
-
-                  <input type="submit" value="ثبت" class="election-submit-btn">
-
-
-
-    </form>
-
-    
-
-    @endif
-
-</div>
-
-@php
-
-$allOptions = $group->users->map(function ($u) use ($managerCounts, $inspectorCounts) {
-
-    return [
-
-        'id' => $u->id,
-
-        'text' => trim($u->first_name . ' ' . $u->last_name),
-
-        'role' => $u->pivot->role ?? $u->role,
-
-        'manager_votes'   => (int)($managerCounts[$u->id] ?? 0),
-
-        'inspector_votes' => (int)($inspectorCounts[$u->id] ?? 0),
-
-    ];
-
-});
-
-@endphp
-
-
-
+@php
+    $policy = $electionPolicy ?? $election?->policyVersion;
+    $managerLimit = max(0, (int) ($policy?->manager_count ?? 0));
+    $inspectorLimit = max(0, (int) ($policy?->inspector_count ?? 0));
+    $cycleNumber = (int) ($election?->cycle_number ?? 1);
+    $selectedManagers = array_map('intval', $selectedVotesManager ?? []);
+    $selectedInspectors = array_map('intval', $selectedVotesInspector ?? []);
+    $visibilityMap = $voteVisibilityByCandidate ?? [];
+    $canVote = isset($election) && $election
+        && ($election->lifecycle_status?->value ?? $election->lifecycle_status) === 'open'
+        && isset($yourRole) && !in_array((int) $yourRole, [0, 4], true);
+@endphp
+
+<div class="election-box election-card" dir="rtl" data-election-systemic-ui="v1">
+    <button type="button" class="election-close" aria-label="بستن فرم انتخابات" data-group-chat-action="close-election">
+        <i class="fas fa-times" aria-hidden="true"></i>
+    </button>
+
+    <div class="election-modal-header">
+        <div class="election-title-section">
+            <div class="election-icon-wrapper"><i class="fas fa-vote-yea" aria-hidden="true"></i></div>
+            <h2 class="election-title">انتخابات سیستمی پیوسته</h2>
+            <p class="election-subtitle">چرخه {{ $cycleNumber }} — انتخاب مدیران و بازرسان از میان اعضای واجد شرایط گروه</p>
+            <a href="{{ route('elections.guideline') }}" class="btn btn-sm btn-outline-success mt-2" aria-label="مشاهده شیوه‌نامه و راهنمای کامل انتخابات">
+                <i class="fas fa-book-open ms-1" aria-hidden="true"></i> شیوه‌نامه انتخابات
+            </a>
+        </div>
+    </div>
+
+    <div class="election-modal-body">
+        @if(!$canVote)
+            <div class="election-not-allowed" role="status">
+                <i class="fas fa-info-circle" aria-hidden="true"></i>
+                <h3>این فرم اکنون در وضعیت دریافت رأی نیست</h3>
+                <p>چرخه‌های انتخابات توسط سامانه باز و متوقف می‌شوند. مشاهده این صفحه هیچ تغییری در زمان‌بندی یا نتیجه ایجاد نمی‌کند.</p>
+            </div>
+        @else
+            <div class="alert alert-info mb-3" role="status">
+                <strong>رأی شما تا پایان این پنجره قابل تغییر یا پس‌گرفتن است.</strong>
+                <div class="small mt-1">ظرفیت این چرخه از نسخه سیاست فریز‌شده خوانده می‌شود: {{ $managerLimit }} مدیر و {{ $inspectorLimit }} بازرس.</div>
+            </div>
+
+            @if($election->ends_at)
+                <div class="mb-3" aria-live="polite">
+                    <div id="countdownText" class="text-center fw-semibold" data-election-ends-at="{{ $election->ends_at->toIso8601String() }}"></div>
+                    <div class="mt-2" style="background:rgba(236,253,245,.6);border-radius:999px;overflow:hidden;height:8px;">
+                        <div id="progressBar" style="height:100%;width:0%;background:currentColor;opacity:.35"></div>
+                    </div>
+                </div>
+            @endif
+
+            <form action="{{ route('vote', $group) }}" method="POST" id="electionForm" data-systemic-election-ballot
+                data-election-manager-limit="{{ $managerLimit }}"
+                data-election-inspector-limit="{{ $inspectorLimit }}"
+                data-election-starts-at="{{ $election?->starts_at?->toIso8601String() }}"
+                data-election-ends-at="{{ $election?->ends_at?->toIso8601String() }}">
+                @csrf
+
+                <div class="mb-3">
+                    <label for="electionMemberSearch" class="form-label fw-semibold">جست‌وجوی عضو</label>
+                    <input id="electionMemberSearch" type="search" class="form-control" placeholder="نام عضو را جست‌وجو کنید…" autocomplete="off">
+                    <div class="form-text">در EarthCoop نامزدی رسمی لازم نیست؛ هر عضو واجد شرایط گروه می‌تواند انتخاب شود.</div>
+                </div>
+
+                <div class="election-role-tabs" data-election-role-tabs role="tablist" aria-label="انتخاب نقش در برگه انتخابات">
+                    <button type="button" class="election-role-tab is-active" role="tab" aria-selected="true" aria-controls="electionManagerPanel" data-election-role-tab="manager">
+                        <span>مدیران</span>
+                        <span class="election-role-tab__count" data-election-role-tab-count="manager">{{ count($selectedManagers) }}/{{ $managerLimit }}</span>
+                    </button>
+                    <button type="button" class="election-role-tab" role="tab" aria-selected="false" aria-controls="electionInspectorPanel" data-election-role-tab="inspector" tabindex="-1">
+                        <span>بازرسان</span>
+                        <span class="election-role-tab__count" data-election-role-tab-count="inspector">{{ count($selectedInspectors) }}/{{ $inspectorLimit }}</span>
+                    </button>
+                </div>
+
+                <div class="row g-3 election-role-panels">
+                    <div class="col-12 col-xl-6 is-active" id="electionManagerPanel" data-election-role-panel="manager" aria-hidden="false">
+                        <section class="border rounded-3 p-3 h-100" aria-labelledby="managerSelectionTitle">
+                            <h3 id="managerSelectionTitle" class="h6 fw-bold mb-2">مدیران <span class="badge bg-secondary" data-election-count="manager">{{ count($selectedManagers) }}/{{ $managerLimit }}</span></h3>
+                            <p class="small text-muted">حداکثر {{ $managerLimit }} نفر.</p>
+                            <div class="election-member-list" data-election-list="manager" style="max-height:42vh;overflow:auto;">
+                                @foreach(($electionMembers ?? collect()) as $member)
+                                    @php
+                                        $memberId = (int) $member->id;
+                                        $checked = in_array($memberId, $selectedManagers, true);
+                                        $visibility = $visibilityMap[$memberId] ?? 'confidential';
+                                        $memberName = trim(($member->first_name ?? '').' '.($member->last_name ?? '')) ?: ('عضو #'.$memberId);
+                                        $memberInitials = trim(mb_substr((string)($member->first_name ?? ''), 0, 1).mb_substr((string)($member->last_name ?? ''), 0, 1)) ?: mb_substr($memberName, 0, 2);
+                                        $memberAvatar = !empty($member->avatar) ? asset('storage/'.ltrim((string)$member->avatar, '/')) : null;
+                                    @endphp
+                                    <div class="election-member-option border-bottom py-2" data-election-member data-member-name="{{ mb_strtolower($memberName) }}">
+                                        <label class="d-flex gap-2 align-items-start mb-1">
+                                            <input class="form-check-input mt-1" type="checkbox" name="manager[]" value="{{ $memberId }}" data-election-choice="manager" data-candidate-id="{{ $memberId }}" @checked($checked)>
+                                            <span class="election-member-identity">
+                                                <span class="election-member-avatar" aria-hidden="true">
+                                                    @if($memberAvatar)
+                                                        <img src="{{ $memberAvatar }}" alt="" loading="lazy">
+                                                    @else
+                                                        {{ $memberInitials }}
+                                                    @endif
+                                                </span>
+                                                <span class="election-member-copy">
+                                                    <strong>{{ $memberName }}</strong>
+                                                    <a class="small ms-1" href="{{ route('profile.member.show', $memberId) }}" target="_blank" rel="noopener">پروفایل</a>
+                                                </span>
+                                            </span>
+                                        </label>
+                                        <label class="small d-block ms-4">
+                                            سطح افشای این رأی
+                                            <select class="form-select form-select-sm mt-1 election-privacy-select" name="vote_visibility[{{ $memberId }}]" data-vote-visibility-for="{{ $memberId }}" data-election-role="manager" @disabled(!$checked)>
+                                                <option value="confidential" @selected($visibility === 'confidential')>محرمانه</option>
+                                                <option value="all_members" @selected($visibility === 'all_members')>همه اعضا</option>
+                                                <option value="elected_officials" @selected($visibility === 'elected_officials')>منتخبین</option>
+                                            </select>
+                                            <span class="election-privacy-help">محرمانه: هویت رأی‌دهنده در نمایش عادی پنهان می‌ماند.</span>
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="col-12 col-xl-6" id="electionInspectorPanel" data-election-role-panel="inspector" aria-hidden="true">
+                        <section class="border rounded-3 p-3 h-100" aria-labelledby="inspectorSelectionTitle">
+                            <h3 id="inspectorSelectionTitle" class="h6 fw-bold mb-2">بازرسان <span class="badge bg-secondary" data-election-count="inspector">{{ count($selectedInspectors) }}/{{ $inspectorLimit }}</span></h3>
+                            <p class="small text-muted">حداکثر {{ $inspectorLimit }} نفر. یک عضو را نمی‌توان همزمان مدیر و بازرس انتخاب کرد.</p>
+                            <div class="election-member-list" data-election-list="inspector" style="max-height:42vh;overflow:auto;">
+                                @foreach(($electionMembers ?? collect()) as $member)
+                                    @php
+                                        $memberId = (int) $member->id;
+                                        $checked = in_array($memberId, $selectedInspectors, true);
+                                        $visibility = $visibilityMap[$memberId] ?? 'confidential';
+                                        $memberName = trim(($member->first_name ?? '').' '.($member->last_name ?? '')) ?: ('عضو #'.$memberId);
+                                        $memberInitials = trim(mb_substr((string)($member->first_name ?? ''), 0, 1).mb_substr((string)($member->last_name ?? ''), 0, 1)) ?: mb_substr($memberName, 0, 2);
+                                        $memberAvatar = !empty($member->avatar) ? asset('storage/'.ltrim((string)$member->avatar, '/')) : null;
+                                    @endphp
+                                    <div class="election-member-option border-bottom py-2" data-election-member data-member-name="{{ mb_strtolower($memberName) }}">
+                                        <label class="d-flex gap-2 align-items-start mb-1">
+                                            <input class="form-check-input mt-1" type="checkbox" name="inspector[]" value="{{ $memberId }}" data-election-choice="inspector" data-candidate-id="{{ $memberId }}" @checked($checked)>
+                                            <span class="election-member-identity">
+                                                <span class="election-member-avatar" aria-hidden="true">
+                                                    @if($memberAvatar)
+                                                        <img src="{{ $memberAvatar }}" alt="" loading="lazy">
+                                                    @else
+                                                        {{ $memberInitials }}
+                                                    @endif
+                                                </span>
+                                                <span class="election-member-copy">
+                                                    <strong>{{ $memberName }}</strong>
+                                                    <a class="small ms-1" href="{{ route('profile.member.show', $memberId) }}" target="_blank" rel="noopener">پروفایل</a>
+                                                </span>
+                                            </span>
+                                        </label>
+                                        <label class="small d-block ms-4">
+                                            سطح افشای این رأی
+                                            <select class="form-select form-select-sm mt-1 election-privacy-select" name="vote_visibility[{{ $memberId }}]" data-vote-visibility-for="{{ $memberId }}" data-election-role="inspector" @disabled(!$checked)>
+                                                <option value="confidential" @selected($visibility === 'confidential')>محرمانه</option>
+                                                <option value="all_members" @selected($visibility === 'all_members')>همه اعضا</option>
+                                                <option value="elected_officials" @selected($visibility === 'elected_officials')>منتخبین</option>
+                                            </select>
+                                            <span class="election-privacy-help">محرمانه: هویت رأی‌دهنده در نمایش عادی پنهان می‌ماند.</span>
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
+                <section class="border rounded-3 p-3 mt-3" aria-labelledby="ballotReasonTitle">
+                    <h3 id="ballotReasonTitle" class="h6 fw-bold">دلیل اختیاری برای رأی، تغییر یا پس‌گرفتن رأی</h3>
+                    <textarea name="comment" id="electionComment" class="form-control" maxlength="4000" rows="3" placeholder="در صورت تمایل دلیل خود را بنویسید…"></textarea>
+                    <div class="row g-2 mt-2">
+                        <div class="col-md-7">
+                            <label for="electionCommentVisibility" class="form-label small">چه کسانی این توضیح را ببینند؟</label>
+                            <select name="comment_visibility" id="electionCommentVisibility" class="form-select election-privacy-select">
+                                <option value="all_members">همه اعضا</option>
+                                <option value="elected_officials">منتخبین</option>
+                                <option value="subject_only">فقط فرد مرتبط</option>
+                            </select>
+                            <div class="election-comment-visibility-help">همه اعضای مجاز گروه این توضیح را می‌بینند.</div>
+                        </div>
+                        <div class="col-md-5 d-flex align-items-end">
+                            <label class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="comment_anonymous" value="1">
+                                <span class="form-check-label">توضیح به‌صورت ناشناس نمایش داده شود</span>
+                            </label>
+                        </div>
+                    </div>
+                    <p class="form-text mb-0">ناشناس بودن توضیح مستقل از دامنه نمایش است. هویت لازم برای audit حفاظت‌شده نگهداری می‌شود و در مسیر عادی نمایش داده نمی‌شود.</p>
+                </section>
+
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <button type="submit" class="btn btn-primary flex-grow-1" data-election-submit>ثبت / به‌روزرسانی برگه رأی</button>
+                    <button type="button" class="btn btn-outline-secondary" data-election-clear>پس‌گرفتن همه انتخاب‌ها</button>
+                    <button type="button" class="btn btn-outline-secondary" data-group-chat-action="close-election">بستن</button>
+                </div>
+                <p class="small text-muted mt-2 mb-0">پس‌گرفتن رأی نتیجه تاریخی را حذف نمی‌کند؛ رویداد تغییر/پس‌گرفتن در audit ثبت می‌شود.</p>
+            </form>
+        @endif
+    </div>
+</div>
+
 <script type="module">
-
-// تعریف global برای allOptions
-
-const electionAllOptions = @json($allOptions);
-
-
-
-$(document).ready(function(){
-
-  // انتقال مدال‌ها به body برای جلوگیری از مشکلات z-index
-
-  $('#candidatesModal').appendTo('body');
-
-  $('#guidelineModal').appendTo('body');
-
-  $('#topVotesModal').appendTo('body');
-
-  
-
-  // مقداردهی اولیه جدول کاندیدها
-
-  if (typeof applyFilters === 'function') {
-
-    applyFilters();
-
-  }
-
-});
-
-
-
-// تابع‌های باز کردن مدال‌ها - باید global باشند و بعد از لود شدن Bootstrap
-
-function openCandidatesModal() {
-
-  console.log('openCandidatesModal called');
-
-  try {
-
-    // ریست فیلترها
-
-    if (jQuery && jQuery('#candidateSearch').length) {
-
-      jQuery('#candidateSearch').val('');
-
-    }
-
-    if (typeof window.GroupElectionModal?.applyFilters === 'function') {
-
-      window.GroupElectionModal.applyFilters();
-
-    }
-
-    // استفاده از Bootstrap modal
-
-    const modalElement = document.getElementById('candidatesModal');
-
-    if (modalElement) {
-
-      if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-
-        console.log('Using Bootstrap 5 Modal');
-
-        const modal = new bootstrap.Modal(modalElement);
-
-        modal.show();
-
-      } else if (typeof jQuery !== 'undefined' && jQuery.fn.modal) {
-
-        console.log('Using jQuery Bootstrap Modal');
-
-        jQuery(modalElement).modal('show');
-
-      } else {
-
-        console.error('No modal library found');
-
-        // Fallback: نمایش ساده
-
-        modalElement.style.display = 'block';
-
-        modalElement.classList.add('show');
-
-        document.body.classList.add('modal-open');
-
-        const backdrop = document.createElement('div');
-
-        backdrop.className = 'modal-backdrop fade show';
-
-        backdrop.id = 'modalBackdrop';
-
-        document.body.appendChild(backdrop);
-
-      }
-
-    } else {
-
-      console.error('candidatesModal element not found');
-
-    }
-
-  } catch(e) {
-
-    console.error('Error opening candidates modal:', e);
-
-  }
-
-};
-
-
-
-function openGuidelineModal() {
-
-  console.log('openGuidelineModal called');
-
-  try {
-
-    const modalElement = document.getElementById('guidelineModal');
-
-    if (modalElement) {
-
-      if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-
-        const modal = new bootstrap.Modal(modalElement);
-
-        modal.show();
-
-      } else if (typeof jQuery !== 'undefined' && jQuery.fn.modal) {
-
-        jQuery(modalElement).modal('show');
-
-      } else {
-
-        modalElement.style.display = 'block';
-
-        modalElement.classList.add('show');
-
-        document.body.classList.add('modal-open');
-
-        const backdrop = document.createElement('div');
-
-        backdrop.className = 'modal-backdrop fade show';
-
-        backdrop.id = 'modalBackdrop2';
-
-        document.body.appendChild(backdrop);
-
-      }
-
-    }
-
-  } catch(e) {
-
-    console.error('Error opening guideline modal:', e);
-
-  }
-
-};
-
-
-
-function openTopVotesModal() {
-
-  console.log('openTopVotesModal called');
-
-  try {
-
-    const modalElement = document.getElementById('topVotesModal');
-
-    if (modalElement) {
-
-      if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-
-        const modal = new bootstrap.Modal(modalElement);
-
-        modal.show();
-
-      } else if (typeof jQuery !== 'undefined' && jQuery.fn.modal) {
-
-        jQuery(modalElement).modal('show');
-
-      } else {
-
-        modalElement.style.display = 'block';
-
-        modalElement.classList.add('show');
-
-        document.body.classList.add('modal-open');
-
-        const backdrop = document.createElement('div');
-
-        backdrop.className = 'modal-backdrop fade show';
-
-        backdrop.id = 'modalBackdrop3';
-
-        document.body.appendChild(backdrop);
-
-      }
-
-    }
-
-  } catch(e) {
-
-    console.error('Error opening top votes modal:', e);
-
-  }
-
-};
-
-
-
-window.GroupElectionModal = { electionAllOptions, openCandidatesModal, openGuidelineModal, openTopVotesModal };
+window.GroupElectionModal = {
+    updateElectionSelect2() {},
+    openCandidatesModal() {},
+    openGuidelineModal() {},
+    openTopVotesModal() {},
+};
 </script>
-
-
-
-<script type="module">
-
-  // تابع profileUrlOf - باید global باشد
-
-  const profileUrlOf = function(id){
-
-      return '/profile-member/' + id; 
-
-  };
-
-
-
-  // تعریف توابع برای جدول کاندیدها
-
-  (function(){
-
-    // استفاده از allOptions global
-
-    const allOptions = window.GroupElectionModal?.electionAllOptions || @json($allOptions);
-
-
-
-    // فقط کاندیدهای فعال (role == 1)
-
-    function candidatesBase(){
-
-      return allOptions.filter(u => String(u.role) === '1');
-
-    }
-
-
-
-    function renderTable(rows){
-
-      const $tbody = $('#candidatesTable tbody');
-
-      $tbody.empty();
-
-      if(!rows.length){
-
-        $tbody.append('<tr><td colspan="5" class="text-center text-muted">چیزی یافت نشد</td></tr>');
-
-        return;
-
-      }
-
-      rows.forEach((u, idx) => {
-
-        const tr = `
-
-          <tr>
-
-            <td>${idx+1}</td>
-
-            <td>${u.text}</td>
-
-            <td>${u.manager_votes ?? 0}</td>
-
-            <td>${u.inspector_votes ?? 0}</td>
-
-            <td>
-
-              <a href="${profileUrlOf(u.id)}" target="_blank" class="btn btn-sm btn-outline-primary btn-primary">
-
-                مشاهده پروفایل
-
-              </a>
-
-            </td>
-
-          </tr>
-
-        `;
-
-        $tbody.append(tr);
-
-      });
-
-    }
-
-
-
-    // تعریف global برای applyFilters
-
-    const applyFilters = function(){
-
-      const q = ($('#candidateSearch').val() || '').trim();
-
-      const f = $('#candidateFilter').val() || 'all'; // all | manager | inspector
-
-
-
-      let list = candidatesBase();
-
-
-
-      if (q.length){
-
-        const qn = q.toLowerCase();
-
-        list = list.filter(u => (u.text || '').toLowerCase().includes(qn));
-
-      }
-
-
-
-      if (f === 'manager'){
-
-        // فقط کسانی که حداقل یک رأی مدیر دارند
-
-        list = list.filter(u => Number(u.manager_votes || 0) > 0);
-
-      } else if (f === 'inspector'){
-
-        list = list.filter(u => Number(u.inspector_votes || 0) > 0);
-
-      }
-
-
-
-      renderTable(list);
-
-    };
-
-
-
-    // سرچ و فیلتر زنده
-
-    $(document).on('input', '#candidateSearch', applyFilters);
-
-    $(document).on('change', '#candidateFilter', applyFilters);
-
-
-
-    // مقداردهی اولیه
-
-    if ($('#candidatesModal').length) {
-
-      applyFilters();
-
-    }
-
-
-
-  })();
-
-    Object.assign(window.GroupElectionModal, { applyFilters, profileUrlOf });
-</script>
-
-
-
-
-
-<script type="module">
-
-// تابع برای بروزرسانی Select2 با نمایش تعداد رأی - باید global باشد
-
-const electionLifecycle = window.GroupChatLifecycle;
-const updateElectionSelect2 = function() {
-
-  console.log('updateElectionSelect2 called');
-
-  
-
-  if (typeof jQuery === 'undefined' || !jQuery.fn.select2) {
-
-    console.error('jQuery or Select2 not loaded');
-
-    electionLifecycle.timeout(updateElectionSelect2, 500);
-
-    return;
-
-  }
-
-  
-
-  const $inspector = jQuery('#inspector_vote');
-
-  const $manager = jQuery('#manager_vote');
-
-  const allOptions = window.GroupElectionModal?.electionAllOptions || [];
-
-  
-
-  console.log('Inspector element:', $inspector.length, 'Manager element:', $manager.length);
-
-  console.log('All options:', allOptions.length);
-
-  
-
-  if (!$inspector.length || !$manager.length) {
-
-    console.error('Select elements not found in DOM');
-
-    return;
-
-        }
-
-  
-
-  // نابود کردن Select2 قبلی اگر وجود دارد
-
-  try {
-
-    if ($inspector.data('select2')) {
-
-      $inspector.select2('destroy');
-
-    }
-
-    if ($manager.data('select2')) {
-
-      $manager.select2('destroy');
-
-    }
-
-  } catch(e) {
-
-    console.warn('Error destroying select2:', e);
-
-  }
-
-  
-
-  // تابع برای بروزرسانی Select boxes
-
-  function updateSelectBoxes() {
-
-    const selectedInspectors = ($inspector.val() || []).map(String);
-
-    const selectedManagers = ($manager.val() || []).map(String);
-
-    
-
-    console.log('Selected inspectors:', selectedInspectors);
-
-    console.log('Selected managers:', selectedManagers);
-
-    
-
-          // بروزرسانی لیست بازرس‌ها
-
-            $inspector.empty();
-
-            allOptions.forEach(user => {
-
-      if (String(user.role) === '1' && !selectedManagers.includes(String(user.id))) {
-
-        const votes = user.inspector_votes || 0;
-
-        const label = `${user.text} (${votes} رأی)`;
-
-        const isSelected = selectedInspectors.includes(String(user.id));
-
-        const newOption = new Option(label, user.id, isSelected, isSelected);
-
-                    $inspector.append(newOption);
-
-                }
-
-            });
-
-            
-
-            // بروزرسانی لیست مدیرها
-
-            $manager.empty();
-
-            allOptions.forEach(user => {
-
-      if (String(user.role) === '1' && !selectedInspectors.includes(String(user.id))) {
-
-        const votes = user.manager_votes || 0;
-
-        const label = `${user.text} (${votes} رأی)`;
-
-        const isSelected = selectedManagers.includes(String(user.id));
-
-        const newOption = new Option(label, user.id, isSelected, isSelected);
-
-                    $manager.append(newOption);
-
-                }
-
-            });
-
-  }
-
-  
-
-  // مقداردهی اولیه Select boxes
-
-  updateSelectBoxes();
-
-  
-
-  // راه‌اندازی Select2 با تنظیمات RTL
-
-  try {
-
-    $inspector.select2({
-
-      dir: "rtl",
-
-      placeholder: "انتخاب بازرس",
-
-      language: {
-
-        noResults: function() { return "نتیجه‌ای یافت نشد"; },
-
-        searching: function() { return "در حال جستجو..."; }
-
-      },
-
-      width: '100%',
-
-      dropdownAutoWidth: true
-
-    });
-
-    
-
-    $manager.select2({
-
-      dir: "rtl",
-
-      placeholder: "انتخاب مدیر",
-
-      language: {
-
-        noResults: function() { return "نتیجه‌ای یافت نشد"; },
-
-        searching: function() { return "در حال جستجو..."; }
-
-      },
-
-      width: '100%',
-
-      dropdownAutoWidth: true
-
-    });
-
-    
-
-    console.log('Select2 initialized successfully');
-
-    
-
-    // Event listener برای تغییرات
-
-    $inspector.off('change.select2-update').on('change.select2-update', function() {
-
-      console.log('🔄 Inspector changed');
-
-      updateSelectBoxes();
-
-      // تریگر مجدد برای refresh
-
-      electionLifecycle.timeout(function() {
-
-            $inspector.trigger('change.select2');
-
-            $manager.trigger('change.select2');
-
-      }, 100);
-
-    });
-
-    
-
-    $manager.off('change.select2-update').on('change.select2-update', function() {
-
-      console.log('🔄 Manager changed');
-
-      updateSelectBoxes();
-
-      // تریگر مجدد برای refresh
-
-      electionLifecycle.timeout(function() {
-
-        $inspector.trigger('change.select2');
-
-        $manager.trigger('change.select2');
-
-      }, 100);
-
-    });
-
-    
-
-    // رفع مشکل نمایش dropdown و راست‌چین
-
-    $inspector.on('select2:open', function() {
-
-      console.log('📂 Inspector dropdown opened');
-
-      electionLifecycle.timeout(function() {
-
-        jQuery('.select2-dropdown').css({
-
-          'direction': 'rtl',
-
-          'text-align': 'right'
-
-        });
-
-        jQuery('.select2-results__option').css({
-
-          'direction': 'rtl',
-
-          'text-align': 'right'
-
-        });
-
-        jQuery('.select2-search__field').css({
-
-          'direction': 'rtl',
-
-          'text-align': 'right'
-
-        });
-
-      }, 10);
-
-    });
-
-    
-
-    $manager.on('select2:open', function() {
-
-      console.log('📂 Manager dropdown opened');
-
-      electionLifecycle.timeout(function() {
-
-        jQuery('.select2-dropdown').css({
-
-          'direction': 'rtl',
-
-          'text-align': 'right'
-
-        });
-
-        jQuery('.select2-results__option').css({
-
-          'direction': 'rtl',
-
-          'text-align': 'right'
-
-        });
-
-        jQuery('.select2-search__field').css({
-
-          'direction': 'rtl',
-
-          'text-align': 'right'
-
-        });
-
-      }, 10);
-
-    });
-
-  } catch(e) {
-
-    console.error('Error initializing Select2:', e);
-
-  }
-
-};
-
-
-
-// اجرای کد بعد از لود شدن کامل صفحه
-
-if (document.readyState === 'loading') {
-
-  electionLifecycle.on(document, 'DOMContentLoaded', function() {
-
-    electionLifecycle.timeout(updateElectionSelect2, 500);
-
-  });
-
-} else {
-
-  electionLifecycle.timeout(updateElectionSelect2, 500);
-
-}
-
-
-
-// همچنین بعد از باز شدن مدال انتخابات
-
-electionLifecycle.on(window, 'electionModalOpened', function() {
-
-  electionLifecycle.timeout(updateElectionSelect2, 300);
-
-});
-
-
-
-Object.assign(window.GroupElectionModal, { updateElectionSelect2 });
-    </script>
-
-
-
-    
