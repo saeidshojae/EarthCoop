@@ -5,6 +5,7 @@ namespace App\Modules\Stock\Services;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\ExternalPaymentIntent;
 use App\Modules\Stock\Models\ExternalPaymentReconciliation;
+use App\Modules\Stock\Models\StockSettlementAllocation;
 use App\Modules\Stock\Pricing\ExternalCapitalQuotePolicy;
 use App\Modules\Stock\Pricing\FiatQuoteSnapshot;
 use App\Modules\Stock\Pricing\StockPricingService;
@@ -70,7 +71,7 @@ class ExternalCapitalPaymentService
         ?string $providerEventId=null,?string $providerPaymentId=null,?string $provider=null,array $providerPayload=[],array $metadata=[],?\DateTimeInterface $occurredAt=null
     ): ExternalPaymentReconciliation {
         $this->assertKey($eventKey); $this->assertPositive($amountMinor); $currency=strtoupper(trim($currency));
-        if(!in_array($resultStatus,['pending','confirmed','failed','cancelled'],true)) throw new InvalidArgumentException('Unknown external reconciliation result status.');
+        if(!in_array($resultStatus,['pending','confirmed','failed','cancelled','refunded','reversed'],true)) throw new InvalidArgumentException('Unknown external reconciliation result status.');
 
         return DB::transaction(function () use ($intentKey,$eventKey,$eventType,$resultStatus,$amountMinor,$currency,$providerEventId,$providerPaymentId,$provider,$providerPayload,$metadata,$occurredAt) {
             $intent=$this->lockedIntent($intentKey);
@@ -78,9 +79,14 @@ class ExternalCapitalPaymentService
             $this->assertStoredQuote($intent);
             $existing=ExternalPaymentReconciliation::query()->where('event_key',$eventKey)->lockForUpdate()->first();
             if($existing) return $this->assertSameReconciliation($existing,$intent,$eventType,$resultStatus,$amountMinor,$currency);
-            if($this->isExpired($intent)&&$resultStatus==='confirmed') throw new RuntimeException('Expired external payment intent cannot be confirmed without a new intent.');
-            if($intent->currency!==$currency||(int)$intent->amount_minor!==$amountMinor) throw new RuntimeException('External reconciliation amount/currency does not match payment intent.');
-            if(in_array($intent->status,[ExternalPaymentIntent::CONFIRMED,ExternalPaymentIntent::FAILED,ExternalPaymentIntent::CANCELLED],true)) throw new RuntimeException('Terminal external payment intent cannot accept a new reconciliation result.');
+
+            if($this->isPostConfirmationAdjustment($resultStatus)) {
+                $this->assertPostConfirmationAdjustment($intent,$eventType,$resultStatus,$amountMinor,$currency);
+            } else {
+                if($this->isExpired($intent)&&$resultStatus==='confirmed') throw new RuntimeException('Expired external payment intent cannot be confirmed without a new intent.');
+                if($intent->currency!==$currency||(int)$intent->amount_minor!==$amountMinor) throw new RuntimeException('External reconciliation amount/currency does not match payment intent.');
+                if(in_array($intent->status,[ExternalPaymentIntent::CONFIRMED,ExternalPaymentIntent::FAILED,ExternalPaymentIntent::CANCELLED,ExternalPaymentIntent::REFUNDED,ExternalPaymentIntent::REVERSED],true)) throw new RuntimeException('Terminal external payment intent cannot accept a new reconciliation result.');
+            }
 
             $event=ExternalPaymentReconciliation::create([
                 'payment_intent_id'=>$intent->id,'event_key'=>$eventKey,'provider'=>$resolvedProvider,'provider_event_id'=>$providerEventId,
@@ -92,6 +98,8 @@ class ExternalCapitalPaymentService
             if($resultStatus==='confirmed'){ $changes['status']=ExternalPaymentIntent::CONFIRMED; $changes['confirmed_at']=now(); }
             elseif($resultStatus==='failed'){ $changes['status']=ExternalPaymentIntent::FAILED; $changes['failed_at']=now(); }
             elseif($resultStatus==='cancelled'){ $changes['status']=ExternalPaymentIntent::CANCELLED; $changes['cancelled_at']=now(); }
+            elseif($resultStatus==='refunded'){ $changes['status']=ExternalPaymentIntent::REFUNDED; $this->cancelUnsettledAllocations($intent,'refunded_external'); }
+            elseif($resultStatus==='reversed'){ $changes['status']=ExternalPaymentIntent::REVERSED; $this->cancelUnsettledAllocations($intent,'reversed_external'); }
             else { $changes['status']=ExternalPaymentIntent::PENDING; }
             $intent->forceFill($changes)->save();
             return $event;
@@ -132,6 +140,41 @@ class ExternalCapitalPaymentService
     protected function assertSameReconciliation(ExternalPaymentReconciliation $e,ExternalPaymentIntent $intent,string $eventType,string $status,int $amount,string $currency): ExternalPaymentReconciliation
     {
         if((int)$e->payment_intent_id!==(int)$intent->id||$e->event_type!==$eventType||$e->result_status!==$status||(int)$e->amount_minor!==$amount||$e->currency!==$currency) throw new RuntimeException('External reconciliation event key conflicts with an existing event.'); return $e;
+    }
+
+    protected function isPostConfirmationAdjustment(string $status): bool
+    {
+        return in_array($status,[ExternalPaymentIntent::REFUNDED,ExternalPaymentIntent::REVERSED],true);
+    }
+
+    protected function assertPostConfirmationAdjustment(ExternalPaymentIntent $intent,string $eventType,string $status,int $amount,string $currency): void
+    {
+        if($intent->status!==ExternalPaymentIntent::CONFIRMED) throw new RuntimeException('External refund/reversal requires a confirmed payment intent.');
+        if($intent->currency!==$currency||(int)$intent->amount_minor!==$amount) throw new RuntimeException('External refund/reversal must cover the full amount and original currency.');
+        $requiredEventType=$status===ExternalPaymentIntent::REFUNDED?'payment_refunded':'payment_reversed';
+        if($eventType!==$requiredEventType) throw new RuntimeException('External refund/reversal event type does not match result status.');
+        $settledAllocation=StockSettlementAllocation::query()
+            ->where('external_payment_intent_id',$intent->id)
+            ->where(function($query){ $query->where('state',StockSettlementAllocation::SETTLED)->orWhere('asset_state','settled'); })
+            ->lockForUpdate()
+            ->exists();
+        if($settledAllocation) throw new RuntimeException('External refund/reversal is blocked after asset settlement; explicit asset reversal is required.');
+    }
+
+    protected function cancelUnsettledAllocations(ExternalPaymentIntent $intent,string $moneyState): void
+    {
+        StockSettlementAllocation::query()
+            ->where('external_payment_intent_id',$intent->id)
+            ->where('state','!=',StockSettlementAllocation::SETTLED)
+            ->where('asset_state','!=','settled')
+            ->lockForUpdate()
+            ->get()
+            ->each(function(StockSettlementAllocation $allocation) use ($moneyState): void {
+                $allocation->forceFill([
+                    'state'=>StockSettlementAllocation::CANCELLED,
+                    'money_state'=>$moneyState,
+                ])->save();
+            });
     }
 
     protected function resolveProvider(ExternalPaymentIntent $intent,?string $provider): ?string
