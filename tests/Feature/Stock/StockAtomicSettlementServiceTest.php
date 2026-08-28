@@ -22,6 +22,15 @@ class StockAtomicSettlementServiceTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set('stock.external_capital.authoritative_quote_sources', ['test-rate', 'manual']);
+        config()->set('stock.external_capital.quote_max_age_seconds', 600);
+        config()->set('stock.external_capital.quote_future_tolerance_seconds', 30);
+    }
+
     public function test_active_bahar_money_and_asset_settle_atomically_and_retry_is_idempotent(): void
     {
         $user=User::factory()->create();
