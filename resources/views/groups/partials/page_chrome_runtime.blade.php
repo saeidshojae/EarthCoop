@@ -48,7 +48,9 @@ function initializeGroupChatPageChrome() {
             groupEditLastFocus = document.activeElement;
             ensureGroupEditPortal();
         }
-        groupEditForm.style.display = visible ? 'flex' : 'none';
+        groupEditForm.style.cssText = visible
+            ? 'display: flex; position: fixed; inset: 0; z-index: 9999; align-items: center; justify-content: center; padding: 1.5rem; direction: rtl;'
+            : 'display: none;';
         groupEditForm.setAttribute('aria-hidden', visible ? 'false' : 'true');
         document.body.classList.toggle('group-edit-modal-open', visible);
         if (visible) {
@@ -165,6 +167,11 @@ function initializeGroupChatPageChrome() {
     });
 
     if (groupEditForm) {
+        lifecycle.on(groupEditForm, 'click', event => {
+            if (event.target === groupEditForm) {
+                setGroupEditVisible(false);
+            }
+        });
         lifecycle.on(document, 'keydown', event => {
             if (event.key === 'Escape' && groupEditForm.getAttribute('aria-hidden') === 'false') {
                 event.preventDefault();
