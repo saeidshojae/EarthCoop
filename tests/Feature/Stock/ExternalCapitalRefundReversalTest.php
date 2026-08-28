@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Stock;
 
+use App\Models\User;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Bid;
 use App\Modules\Stock\Models\ExternalPaymentIntent;
@@ -174,9 +175,11 @@ class ExternalCapitalRefundReversalTest extends TestCase
 
     private function allocation(Auction $auction, ExternalPaymentIntent $intent, string $state): StockSettlementAllocation
     {
+        $user = User::factory()->create();
         $bid = Bid::create([
+            'acceptance_key' => 'acceptance:' . $intent->intent_key,
             'auction_id' => $auction->id,
-            'user_id' => 1,
+            'user_id' => $user->id,
             'price' => 10,
             'price_gol' => 10,
             'quantity' => 100,
@@ -187,7 +190,7 @@ class ExternalCapitalRefundReversalTest extends TestCase
             'allocation_key' => 'allocation:' . $intent->intent_key,
             'auction_id' => $auction->id,
             'bid_id' => $bid->id,
-            'user_id' => 1,
+            'user_id' => $user->id,
             'stock_id' => $auction->stock_id,
             'settlement_channel' => SettlementChannel::EXTERNAL_USD,
             'quantity' => 100,
