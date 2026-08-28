@@ -9,6 +9,7 @@ const basic = read('resources/views/groups/partials/table-basic.blade.php');
 const managed = read('resources/views/groups/partials/table-managed.blade.php');
 const unifiedLayout = read('resources/views/layouts/unified.blade.php');
 const responsive = read('public/Css/responsive-system.css');
+const responsiveRuntime = read('public/js/responsive-system.js');
 
 test('responsive system exposes scoped opt-in primitives without blanket global rewrites', () => {
     for (const selector of [
@@ -28,21 +29,25 @@ test('responsive system exposes scoped opt-in primitives without blanket global 
     }
 
     assert.match(unifiedLayout, /Css\/responsive-system\.css/);
+    assert.match(unifiedLayout, /js\/responsive-system\.js/);
     assert.doesNotMatch(responsive, /(^|\})\s*\.container\s*\{/m);
     assert.doesNotMatch(responsive, /(^|\})\s*(?:h1|h2|h3)\s*\{/m);
     assert.doesNotMatch(responsive, /(^|\})\s*table\s*\{/m);
 });
 
-test('My Groups opts into responsive page shell surface and title primitives', () => {
-    assert.match(index, /groups-page-shell[^"']*ec-page-shell|ec-page-shell[^"']*groups-page-shell/);
-    assert.match(index, /dashboard-content[^"']*ec-surface|ec-surface[^"']*dashboard-content/);
-    assert.match(index, /<h2[^>]*ec-page-title/);
-    assert.match(index, /@media\s*\(max-width:\s*767px\)/);
+test('My Groups uses its existing semantic root as an explicit responsive opt-in scope', () => {
+    assert.match(index, /class="groups-page-shell[^"]*"/);
+    assert.match(index, /class="dashboard-content"/);
+    assert.match(index, /<h2>\{\{ __\('navigation\.footer_my_groups'\) \}\}<\/h2>/);
+    assert.match(responsive, /\.groups-page-shell \.dashboard-content/);
+    assert.match(responsive, /\.groups-page-shell \.groups-section h2/);
+    assert.match(responsive, /@media\s*\(max-width:\s*767px\)[\s\S]*?\.groups-page-shell/);
 });
 
 test('basic groups keep desktop table and expose a mobile-native entity list', () => {
     assert.match(basic, /data-desktop-group-table/);
     assert.match(basic, /data-mobile-group-list/);
+    assert.match(basic, /data-mobile-filter-target/);
     assert.match(basic, /ec-entity-card/);
     assert.match(basic, /\$group->avatar_url/);
     assert.match(basic, /groups\.chat/);
@@ -67,4 +72,12 @@ test('mobile entity-list contract avoids horizontal-scroll dependency and protec
     assert.doesNotMatch(responsive, /\.ec-entity-list\s*\{[^}]*overflow-x:\s*auto/s);
     assert.match(responsive, /@media\s*\(max-width:\s*767px\)[\s\S]*?\.ec-page-shell\s*\{[^}]*padding-inline:\s*(?:0?\.75rem|0?\.875rem|1rem)/);
     assert.match(responsive, /@media\s*\(max-width:\s*767px\)[\s\S]*?\.ec-page-title\s*\{[^}]*font-size:/);
+});
+
+test('responsive filter bridge updates cards and tables inside the clicked local scope', () => {
+    assert.match(responsiveRuntime, /\.filter-buttons\[data-target\]/);
+    assert.match(responsiveRuntime, /data-mobile-filter-target/);
+    assert.match(responsiveRuntime, /querySelectorAll\('\[data-filter-value\]'\)/);
+    assert.match(responsiveRuntime, /closest\('\.filter-buttons\[data-target\]'\)/);
+    assert.doesNotMatch(responsiveRuntime, /document\.getElementById\(targetId\)/);
 });
