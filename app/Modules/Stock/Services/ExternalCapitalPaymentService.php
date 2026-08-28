@@ -18,7 +18,8 @@ class ExternalCapitalPaymentService
 {
     public function __construct(
         private readonly StockPricingService $pricing,
-        private readonly ExternalCapitalQuotePolicy $quotePolicy
+        private readonly ExternalCapitalQuotePolicy $quotePolicy,
+        private readonly EarthCoopPrimaryOfferingPolicy $offeringPolicy
     ) {}
 
     public function createIntentForAuction(
@@ -36,6 +37,8 @@ class ExternalCapitalPaymentService
         $auction->assertSettlementEligible();
         $this->pricing->assertCanonicalAuction($auction);
         $this->quotePolicy->assertEligible($quote);
+        $offeringEvidence=$this->offeringPolicy->assertEligible($auction);
+        $metadata=array_merge($metadata,['earthcoop_primary_offering'=>$offeringEvidence]);
         $channel=(string)$auction->settlement_channel;
         $expectedCurrency=$this->currencyForChannel($channel);
         $provider=$this->normalizeProvider($provider);
