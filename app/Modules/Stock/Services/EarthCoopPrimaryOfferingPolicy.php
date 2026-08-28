@@ -3,6 +3,7 @@
 namespace App\Modules\Stock\Services;
 
 use App\Modules\Stock\Models\Auction;
+use App\Modules\Stock\Models\StockSettlementAllocation;
 use RuntimeException;
 
 final class EarthCoopPrimaryOfferingPolicy
@@ -43,8 +44,16 @@ final class EarthCoopPrimaryOfferingPolicy
             throw new RuntimeException('EarthCoop offering exceeds real treasury available shares.');
         }
 
-        $distributedShares = $totalShares - $availableShares;
-        $otherOpenShares = Auction::query()
+        $settledPrimaryShares = (int) StockSettlementAllocation::query()
+            ->where('stock_id', $stock->id)
+            ->where('state', StockSettlementAllocation::SETTLED)
+            ->whereHas('auction', function ($query): void {
+                $query->where('market_type', 'primary')
+                    ->where('supply_source', 'treasury');
+            })
+            ->sum('quantity');
+
+        $otherOpenShares = (int) Auction::query()
             ->where('stock_id', $stock->id)
             ->where('market_type', 'primary')
             ->where('supply_source', 'treasury')
@@ -52,7 +61,12 @@ final class EarthCoopPrimaryOfferingPolicy
             ->when($auction->exists, fn ($query) => $query->where('id', '!=', $auction->getKey()))
             ->sum('shares_count');
 
-        if ($distributedShares + (int) $otherOpenShares + $offeringShares > $maxPrimaryShares) {
+        if ($settledPrimaryShares > PHP_INT_MAX - $otherOpenShares
+            || $settledPrimaryShares + $otherOpenShares > PHP_INT_MAX - $offeringShares) {
+            throw new RuntimeException('EarthCoop primary offering envelope exceeds integer range.');
+        }
+
+        if ($settledPrimaryShares + $otherOpenShares + $offeringShares > $maxPrimaryShares) {
             throw new RuntimeException('EarthCoop open offerings would oversubscribe the primary allocation cap.');
         }
 
@@ -67,9 +81,10 @@ final class EarthCoopPrimaryOfferingPolicy
             'disclosure_version' => $disclosureVersion,
             'max_allocation_bps' => $maxBps,
             'max_primary_shares' => $maxPrimaryShares,
-            'distributed_shares' => $distributedShares,
-            'other_open_offering_shares' => (int) $otherOpenShares,
+            'settled_primary_shares' => $settledPrimaryShares,
+            'other_open_offering_shares' => $otherOpenShares,
             'offering_shares' => $offeringShares,
+            'treasury_available_shares' => $availableShares,
         ];
     }
 }
