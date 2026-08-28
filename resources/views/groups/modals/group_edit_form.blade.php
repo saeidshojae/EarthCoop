@@ -55,3 +55,49 @@
         </form>
     </div>
 </div>
+
+<style>
+    /* Keep this geometry with the modal itself so later Control Center styles
+       cannot move it into a partial viewport or corner. */
+    html body #groupEditFormBox.modal-shell {
+        position: fixed !important;
+        inset: 0 !important;
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        z-index: 100100 !important;
+        width: auto !important;
+        height: auto !important;
+        max-width: none !important;
+        max-height: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        background: rgba(15, 23, 42, .52) !important;
+        backdrop-filter: blur(4px);
+    }
+
+    html body #groupEditFormBox.modal-shell > .group-edit-modal__dialog {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        right: auto !important;
+        bottom: auto !important;
+        transform: translate(-50%, -50%) !important;
+        margin: 0 !important;
+        z-index: 100101 !important;
+        width: min(560px, calc(100% - 2rem)) !important;
+        max-width: 560px !important;
+        max-height: calc(100% - 2rem) !important;
+        overflow-y: auto !important;
+    }
+
+    @media (max-width: 767px) {
+        html body #groupEditFormBox.modal-shell > .group-edit-modal__dialog {
+            width: calc(100% - 1.25rem) !important;
+            max-width: none !important;
+            max-height: calc(100% - 1.25rem) !important;
+        }
+    }
+</style>
