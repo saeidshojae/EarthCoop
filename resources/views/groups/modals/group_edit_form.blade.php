@@ -1,10 +1,5 @@
-<div id="groupEditFormBox" class="group-edit-modal" style="display: none;" aria-hidden="true">
-    <button type="button"
-            class="group-edit-modal__backdrop"
-            data-group-chat-action="cancel-group-edit"
-            aria-label="بستن ویرایش گروه"></button>
-
-    <div class="group-edit-modal__dialog"
+<div id="groupEditFormBox" class="modal-shell group-edit-modal" style="display: none;" aria-hidden="true">
+    <div class="modal-shell__dialog group-edit-modal__dialog"
          role="dialog"
          aria-modal="true"
          aria-labelledby="groupEditModalTitle">
