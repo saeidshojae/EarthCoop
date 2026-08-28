@@ -9,7 +9,15 @@
     ];
     $currentUserId = auth()->id();
 
-    $groupRows = $groups->map(function ($group) use ($currentUserId, $roleLabels) {
+    $memberCounts = $groups->isEmpty()
+        ? collect()
+        : \App\Models\GroupUser::query()
+            ->whereIn('group_id', $groups->pluck('id'))
+            ->selectRaw('group_id, COUNT(*) as aggregate')
+            ->groupBy('group_id')
+            ->pluck('aggregate', 'group_id');
+
+    $groupRows = $groups->map(function ($group) use ($currentUserId, $roleLabels, $memberCounts) {
         $pivot = $group->pivot ?? \App\Models\GroupUser::where('group_id', $group->id)
             ->where('user_id', $currentUserId)
             ->first();
@@ -17,7 +25,7 @@
         return [
             'group' => $group,
             'roleText' => $roleLabels[(int) ($pivot->role ?? 3)] ?? 'مدیر',
-            'memberCount' => isset($group->users_count) ? (int) $group->users_count : $group->users()->count(),
+            'memberCount' => (int) ($memberCounts[$group->id] ?? 0),
         ];
     })->values();
 @endphp
