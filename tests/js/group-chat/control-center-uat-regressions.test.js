@@ -19,17 +19,17 @@ test('content primary action keeps a clear green treatment', () => {
     assert.match(polish, /#groupInfoPanel \.panel-action-btn--primary \{[\s\S]*?background: #10b981 !important[\s\S]*?color: #fff !important/);
 });
 
+test('group edit uses a fresh modal-shell id so legacy #groupEditFormBox geometry cannot match it', () => {
+    assert.match(editModal, /id="groupEditModalShell"\s+class="modal-shell group-edit-modal"/);
+    assert.doesNotMatch(editModal, /groupEditFormBox/);
+    assert.match(pageChrome, /document\.getElementById\('groupEditModalShell'\)/);
+    assert.doesNotMatch(pageChrome, /getElementById\('groupEditFormBox'\)/);
+});
+
 test('group edit reuses the proven group-settings modal shell geometry exactly', () => {
-    assert.match(editModal, /id="groupEditFormBox"\s+class="modal-shell group-edit-modal"/);
     assert.match(editModal, /class="modal-shell__dialog group-edit-modal__dialog"[\s\S]*?style="position: relative; width: min\(500px, 94vw\); background: #fff; border-radius: 28px; padding: 1\.75rem; box-shadow: 0 45px 95px -45px rgba\(15, 23, 42, 0\.6\);"/);
     assert.match(chatFeatures, /modal\.style\.cssText = 'display: flex; position: fixed; inset: 0; z-index: 9999; align-items: center; justify-content: center; padding: 1\.5rem; direction: rtl;'/);
     assert.match(pageChrome, /groupEditForm\.style\.cssText = visible[\s\S]*?'display: flex; position: fixed; inset: 0; z-index: 9999; align-items: center; justify-content: center; padding: 1\.5rem; direction: rtl;'[\s\S]*?: 'display: none;'/);
-});
-
-test('group edit final geometry neutralizes prior corner positioning without manual viewport transforms', () => {
-    assert.doesNotMatch(editModal, /top:\s*50%|translate\(-50%,\s*-50%\)|100d?v[wh]/);
-    assert.match(editModal, /html body #groupEditFormBox\.modal-shell \{[\s\S]*?inset: 0 !important[\s\S]*?align-items: center !important[\s\S]*?justify-content: center !important/);
-    assert.match(editModal, /html body #groupEditFormBox\.modal-shell > \.modal-shell__dialog\.group-edit-modal__dialog \{[\s\S]*?position: relative !important[\s\S]*?top: auto !important[\s\S]*?left: auto !important[\s\S]*?transform: none !important[\s\S]*?width: min\(500px, 94vw\) !important/);
 });
 
 test('group edit is portaled to body and closes when the shell backdrop itself is clicked', () => {
