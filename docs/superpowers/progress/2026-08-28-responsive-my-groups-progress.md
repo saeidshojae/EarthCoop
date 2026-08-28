@@ -44,6 +44,13 @@ This is the persistent recovery checkpoint for the responsive-system rollout. Up
 - Authentication regression test added first at `04f3ebcca57aca3f914391acb4e88b851dab7531` (`tests/Feature/GroupsIndexAuthenticationTest.php`). **RED evidence:** Full Validation run `33204762653`, job `98962877103`: Full Project PHPUnit failed exactly one test, `GroupsIndexAuthenticationTest::test_guest_is_redirected_to_login_from_groups_index`; expected redirect but received 500 with `Call to a member function groups() on null` at `GroupController.php:61`.
 - Root cause: legacy `/groups` route in monolithic `routes/web.php` was outside `Authenticate` middleware. The fix is deliberately at the route boundary, not a controller null-guard.
 - Canonical authenticated route file added at `1f8eeec24da27c37ecea93de8afef23a5e3f8cb3` (`routes/groups-index.php`). `RouteServiceProvider` now loads that canonical `/groups` route after `web.php` under `['web', Authenticate::class]`, shadowing the legacy public registration; fix commit `846e1f4bddeaf323188904ae5612bc20b3c27e64`.
+- 2026-08-28 23:26 +03:30 — Founder UAT confirmed the mobile My Groups visual redesign is substantially improved but found specialty geographic filter chips did not filter the mobile cards.
+- Root-cause trace: the new shared `public/js/responsive-system.js` filter bridge correctly knows both `data-mobile-filter-target` cards and the desktop table, but the legacy inline `initializeFilters()` in `resources/views/groups/index.blade.php` clones the same filter buttons, installs a table-only click handler and calls `event.stopPropagation()`. Consequently the click never reached the document-level responsive bridge in bubble phase; only the hidden/desktop table handler ran, while mobile cards remained unchanged.
+- Initial regression contract commit `2a32f5679ffcc0a70f9221e035603031bb31faf5`; **RED evidence:** Responsive Contract Validation run `33206255966`, job `98967945106`, 8 pass / 1 fail.
+- Exact event-boundary regression refined at `ff0e7a84d8b7b0f7b0b6e81ee8d40e7ac2d16c1f`; **RED evidence:** Responsive Contract Validation run `33206349150`, job `98968261948`, failed because the shared document filter listener was still bubble-phase while the legacy handler stops propagation.
+- Minimal root-cause fix: shared filter bridge now owns filter clicks in capture phase (`document.addEventListener('click', ..., true)`), so local legacy bubbling handlers cannot prevent mobile-card filtering. Runtime fix commit: `fce88d73c49f65e76a20095f08a0484b3876c3b6`.
+- **FOCUSED GREEN:** Responsive Contract Validation run `33206399442`, job `98968437378`, completed `success` on `fce88d73c49f65e76a20095f08a0484b3876c3b6`.
+- **FULL GREEN:** EarthCoop Integration Full Validation run `33206397902`, job `98968434814`, completed `success` on the same runtime checkpoint. Every gate was green, including route boot, Group Chat, Group Admin/Identity, Najm Hoda+n8n, Governance, Najm Bahar, Stock, Group Chat JavaScript, Full Project PHPUnit, and the final regression gate. This also validates the earlier `/groups` authentication fix in the integrated branch state.
 
 ## Current implementation behavior
 - Desktop keeps comparative tables.
@@ -53,31 +60,36 @@ This is the persistent recovery checkpoint for the responsive-system rollout. Up
 - Pending groups are visibly non-clickable; inactive memberships retain the restore action.
 - Mobile entity lists do not horizontally scroll.
 - Page gutter, dashboard surface, page title, accordion, inner toggles and filters are deliberately reduced on mobile.
-- Responsive filter runtime filters the clicked local desktop/mobile representation and avoids global `getElementById` dependency on duplicated rendered IDs.
+- Responsive specialty filter runtime filters the clicked local mobile-card list and desktop table representation. Its click listener runs in capture phase so pre-existing legacy `stopPropagation()` cannot block the responsive bridge.
 - Member counts are loaded in one grouped query per rendered group collection rather than one count query per group. Specialty/experience approval relations are bulk-loaded only for specialty lists.
 - Shared responsive primitives are additive/opt-in; there is no blanket `.container`, all-heading or all-table rewrite.
-- `/groups` is now an authenticated boundary: unauthenticated requests should redirect to login before `GroupController@index` executes.
+- `/groups` is now an authenticated boundary: unauthenticated requests redirect to login before `GroupController@index` executes.
 
 ## Verification state
-**AUTH ROUTE FIX IMPLEMENTED — FRESH GREEN VALIDATION PENDING.**
+**READY FOR FOUNDER UAT — AUTH ROUTE + SPECIALTY MOBILE FILTER FIXED.**
 
-Previously validated responsive implementation checkpoint:
-`7d699ac636871389eba715db30bc020376181a9d`
+Validated runtime checkpoint:
+`fce88d73c49f65e76a20095f08a0484b3876c3b6`
 
-Current auth-fix runtime checkpoint:
-`846e1f4bddeaf323188904ae5612bc20b3c27e64`
+Focused validation:
+- Workflow: EarthCoop Responsive Contract Validation
+- Run: `33206399442`
+- Job: `98968437378`
+- Conclusion: `success`
 
-Current fresh validation:
-- Responsive Contract Validation runs `33205354861` / `33205354992` started on the auth-fix checkpoint.
-- EarthCoop Integration Full Validation run `33205355087`, job `98964888990`, is running on the auth-fix checkpoint.
-- Do not mark the UAT defect closed until the new Full Project PHPUnit and regression gate are green.
+Full integration validation:
+- Workflow: EarthCoop Integration Full Validation
+- Run: `33206397902`
+- Job: `98968434814`
+- Conclusion: `success`
+- All regression gates completed successfully.
 
 ## Founder UAT checklist
-After the auth-fix validation turns green, pull the latest branch and test at 360px, 390px, 768px and desktop:
+Pull the latest branch and test at 360px, 390px, 768px and desktop:
 1. If logged out, `/groups` redirects to login instead of throwing 500.
 2. After login, `/groups?tab=public` loads normally.
 3. Public, specialty, exclusive and managed group sections/accordions.
-4. Specialty filter chips and correct local filtering.
+4. In both specialty subsections, click geographic filters such as `استان`, `شهرستان`, `بخش`, `شهر / دهستان`, `منطقه / روستا`, and `محله`; only matching cards should remain visible, and `همه گروه‌های شما` should restore all cards.
 5. Active, pending and inactive group states.
 6. Group avatar and initials fallback.
 7. Restore-membership action for inactive groups.
@@ -87,10 +99,7 @@ After the auth-fix validation turns green, pull the latest branch and test at 36
 11. Persian group names wrap naturally and do not stack word-by-word vertically.
 
 ## Next exact action
-1. Fetch the final result of Full Validation run `33205355087` on `846e1f4bddeaf323188904ae5612bc20b3c27e64`.
-2. If red, inspect exact log and fix before UAT.
-3. If green, record GREEN evidence here and mark `READY FOR FOUNDER UAT — AUTH ROUTE FIXED`.
-4. Founder pulls the branch, signs in if necessary, and resumes mobile UAT.
+Founder pulls the branch, hard-refreshes the browser to replace the cached `responsive-system.js`, and resumes mobile UAT. If another visual or behavioral defect appears, reproduce it with a focused regression before changing runtime code.
 
 ## Merge safety
 No merge to `main` is authorized. This branch is for implementation/UAT only.
