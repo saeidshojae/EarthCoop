@@ -18,11 +18,13 @@ test('content primary action keeps a clear green treatment', () => {
     assert.match(polish, /#groupInfoPanel \.panel-action-btn--primary \{[\s\S]*?background: #10b981 !important[\s\S]*?color: #fff !important/);
 });
 
-test('group edit uses the canonical fullscreen modal shell above the control center', () => {
+test('group edit uses a canonical inset fullscreen modal shell above the control center', () => {
     assert.match(editModal, /id="groupEditFormBox"\s+class="modal-shell group-edit-modal"/);
     assert.match(editModal, /class="modal-shell__dialog group-edit-modal__dialog"/);
     assert.doesNotMatch(editModal, /group-edit-modal__backdrop/);
-    assert.match(polish, /#groupEditFormBox\.modal-shell \{[\s\S]*?position: fixed !important[\s\S]*?inset: 0 !important[\s\S]*?z-index: 100100 !important[\s\S]*?width: 100vw !important[\s\S]*?height: 100dvh !important/);
+    assert.match(polish, /#groupEditFormBox\.modal-shell \{[\s\S]*?position: fixed !important[\s\S]*?inset: 0 !important[\s\S]*?z-index: 100100 !important[\s\S]*?width: auto !important[\s\S]*?height: auto !important/);
+    assert.doesNotMatch(polish, /#groupEditFormBox\.modal-shell \{[\s\S]*?width: 100vw !important/);
+    assert.doesNotMatch(polish, /#groupEditFormBox\.modal-shell \{[\s\S]*?height: 100dvh !important/);
     assert.match(pageChrome, /groupEditForm\.style\.display = visible \? 'flex' : 'none'/);
 });
 
