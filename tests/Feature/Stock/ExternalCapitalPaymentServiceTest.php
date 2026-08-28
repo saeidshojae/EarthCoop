@@ -16,6 +16,15 @@ class ExternalCapitalPaymentServiceTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set('stock.external_capital.authoritative_quote_sources', ['test-rate', 'manual', 'official-fx']);
+        config()->set('stock.external_capital.quote_max_age_seconds', 600);
+        config()->set('stock.external_capital.quote_future_tolerance_seconds', 30);
+    }
+
     public function test_external_intent_requires_eligible_canonical_gol_auction(): void
     {
         $service=app(ExternalCapitalPaymentService::class);
@@ -26,6 +35,41 @@ class ExternalCapitalPaymentServiceTest extends TestCase
         $this->assertSame('USD',$intent->currency);
         $this->assertSame(12500,(int)$intent->amount_minor);
         $this->assertSame(1000,(int)data_get($intent->quote_snapshot,'gol_amount'));
+    }
+
+    public function test_external_intent_rejects_quote_from_unapproved_source(): void
+    {
+        config()->set('stock.external_capital.authoritative_quote_sources', ['official-fx']);
+
+        $service=app(ExternalCapitalPaymentService::class);
+        $auction=$this->auction('earthcoop','primary','treasury',SettlementChannel::EXTERNAL_USD);
+        $quote=FiatQuoteSnapshot::fromRate(1000,'USD',25,2,'manual');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('authoritative');
+        $service->createIntentForAuction($auction,$quote,'intent:source','auction_bid',70,'provider-x');
+    }
+
+    public function test_external_intent_rejects_stale_quote(): void
+    {
+        $service=app(ExternalCapitalPaymentService::class);
+        $auction=$this->auction('earthcoop','primary','treasury',SettlementChannel::EXTERNAL_USD);
+        $quote=FiatQuoteSnapshot::fromRate(1000,'USD',25,2,'official-fx',now()->subMinutes(11));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('expired');
+        $service->createIntentForAuction($auction,$quote,'intent:stale','auction_bid',71,'provider-x');
+    }
+
+    public function test_external_intent_rejects_quote_timestamp_too_far_in_future(): void
+    {
+        $service=app(ExternalCapitalPaymentService::class);
+        $auction=$this->auction('earthcoop','primary','treasury',SettlementChannel::EXTERNAL_USD);
+        $quote=FiatQuoteSnapshot::fromRate(1000,'USD',25,2,'official-fx',now()->addMinutes(2));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('future');
+        $service->createIntentForAuction($auction,$quote,'intent:future','auction_bid',72,'provider-x');
     }
 
     public function test_secondary_market_external_intent_fails_closed(): void
