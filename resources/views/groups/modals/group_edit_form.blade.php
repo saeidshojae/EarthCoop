@@ -25,17 +25,30 @@
             @csrf
             @method('PUT')
 
+            @if($errors->any())
+                <div class="alert alert-danger mb-3" role="alert">
+                    <strong>تغییرات ذخیره نشد.</strong>
+                    <ul class="mb-0 mt-2">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             <div class="form-group mb-3">
                 <label for="description">توضیحات گروه</label>
-                <textarea name="description" id="description" class="form-control" rows="4">{{ $group->description }}</textarea>
+                <textarea name="description" id="description" class="form-control" rows="4">{{ old('description', $group->description) }}</textarea>
+                @error('description')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
             </div>
 
             <div class="form-group mb-3">
                 <label for="avatar">آواتار گروه</label>
                 <input type="file" name="avatar" id="avatar" class="form-control" accept="image/*">
-                @if($group->avatar)
+                @error('avatar')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                @if($group->avatar_url)
                     <div class="group-edit-modal__current-avatar mt-2">
-                        <img src="{{ asset('images/groups/' . $group->avatar) }}" alt="آواتار فعلی گروه">
+                        <img src="{{ $group->avatar_url }}" alt="آواتار فعلی گروه">
                     </div>
                 @endif
             </div>
