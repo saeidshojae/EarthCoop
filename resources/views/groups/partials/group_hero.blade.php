@@ -34,7 +34,7 @@
         </div>
     </button>
 
-    {{-- Mobile expanded context: identity details + only the three high-value entry points. --}}
+    {{-- Mobile expanded context: identity details + the highest-value group entry points. --}}
     <div class="relative z-10 px-5 py-4 collapse-content lg:hidden border-t border-emerald-100/60"
         data-group-hero-content hidden>
         <div class="space-y-4">
@@ -60,18 +60,27 @@
                     data-chat-page-action="open-group-info">
                     <i class="fas fa-layer-group"></i><span>پنل گروه</span>
                 </button>
-                @if(($yourRole ?? 0) !== 5)
-                    <button type="button"
-                        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl border border-emerald-200 text-emerald-700 bg-white hover:bg-emerald-50 transition"
-                        data-chat-page-action="open-blog">
-                        <i class="far fa-pen-to-square"></i><span>ایجاد پست</span>
-                    </button>
-                    <button type="button"
-                        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl border border-emerald-200 text-emerald-700 bg-white hover:bg-emerald-50 transition"
-                        data-chat-page-action="open-poll">
-                        <i class="fas fa-chart-simple"></i><span>نظرسنجی</span>
-                    </button>
+
+                @if($electionAvailable)
+                    @if($canParticipateElection ?? false)
+                        <button type="button"
+                            class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl border border-amber-300 bg-gradient-to-l from-amber-50 to-emerald-50 text-emerald-800 shadow-sm hover:shadow-md hover:border-amber-400 transition"
+                            data-chat-page-action="open-election"
+                            title="شرکت در انتخابات سیستمی جاری">
+                            <i class="fas fa-check-to-slot text-amber-600"></i><span class="font-black">شرکت در انتخابات</span>
+                        </button>
+                    @else
+                        <a href="{{ route('elections.portal', $group) }}"
+                           class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 transition">
+                            <i class="fas fa-chart-column"></i><span>مشاهده انتخابات</span>
+                        </a>
+                    @endif
                 @endif
+
+                <a href="{{ route('groups.najm-bahar.reports', $group) }}"
+                   class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl border border-emerald-200 text-emerald-700 bg-white hover:bg-emerald-50 transition">
+                    <i class="fas fa-file-invoice-dollar"></i><span>گزارش مالی گروه</span>
+                </a>
             </div>
         </div>
     </div>
@@ -118,18 +127,29 @@
                 data-chat-page-action="open-group-info">
                 <i class="fas fa-layer-group"></i><span>پنل گروه</span>
             </button>
-            @if(($yourRole ?? 0) !== 5)
-                <button type="button"
-                    class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl border border-emerald-200 text-emerald-700 bg-white hover:bg-emerald-50 transition"
-                    data-chat-page-action="open-blog" title="ایجاد پست">
-                    <i class="far fa-pen-to-square"></i><span class="hidden xl:inline">ایجاد پست</span>
-                </button>
-                <button type="button"
-                    class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl border border-emerald-200 text-emerald-700 bg-white hover:bg-emerald-50 transition"
-                    data-chat-page-action="open-poll" title="ساخت نظرسنجی">
-                    <i class="fas fa-chart-simple"></i><span class="hidden xl:inline">نظرسنجی</span>
-                </button>
+
+            @if($electionAvailable)
+                @if($canParticipateElection ?? false)
+                    <button type="button"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-amber-300 bg-gradient-to-l from-amber-50 to-emerald-50 text-emerald-800 shadow-sm hover:shadow-md hover:border-amber-400 transition"
+                        data-chat-page-action="open-election"
+                        title="شرکت در انتخابات سیستمی جاری">
+                        <i class="fas fa-check-to-slot text-amber-600"></i><span class="font-black">شرکت در انتخابات</span>
+                    </button>
+                @else
+                    <a href="{{ route('elections.portal', $group) }}"
+                       class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 transition"
+                       title="مشاهده انتخابات سیستمی جاری">
+                        <i class="fas fa-chart-column"></i><span class="hidden xl:inline">مشاهده انتخابات</span>
+                    </a>
+                @endif
             @endif
+
+            <a href="{{ route('groups.najm-bahar.reports', $group) }}"
+               class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl border border-emerald-200 text-emerald-700 bg-white hover:bg-emerald-50 transition"
+               title="گزارش مالی گروه">
+                <i class="fas fa-file-invoice-dollar"></i><span class="hidden xl:inline">گزارش مالی گروه</span>
+            </a>
         </div>
     </div>
 </section>
