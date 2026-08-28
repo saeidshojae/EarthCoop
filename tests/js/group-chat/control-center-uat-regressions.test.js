@@ -7,6 +7,8 @@ const editModal = readFileSync('resources/views/groups/modals/group_edit_form.bl
 const pageChrome = readFileSync('resources/views/groups/partials/page_chrome_runtime.blade.php', 'utf8');
 const hero = readFileSync('resources/views/groups/partials/group_hero.blade.php', 'utf8');
 const controller = readFileSync('app/Http/Controllers/Group/GroupController.php', 'utf8');
+const groupModel = readFileSync('app/Models/Group.php', 'utf8');
+const adminManage = readFileSync('resources/views/admin/groups/manage.blade.php', 'utf8');
 
 test('primary control-center tabs use full centered card geometry', () => {
     assert.match(polish, /#groupInfoPanel \.panel-tabs \.tab \{[\s\S]*?width: 100%[\s\S]*?min-height: 44px[\s\S]*?text-align: center/);
@@ -23,6 +25,12 @@ test('group edit opens as a true overlay above the control center', () => {
     assert.match(editModal, /class="group-edit-modal__dialog"/);
     assert.match(polish, /\.group-edit-modal \{[\s\S]*?position: fixed[\s\S]*?z-index: 1400/);
     assert.match(pageChrome, /groupEditForm\.style\.display = visible \? 'flex' : 'none'/);
+});
+
+test('group edit is portaled to document body so ancestor stacking contexts cannot trap it', () => {
+    assert.match(pageChrome, /const groupEditOriginalParent = groupEditForm\?\.parentNode/);
+    assert.match(pageChrome, /document\.body\.appendChild\(groupEditForm\)/);
+    assert.match(pageChrome, /groupEditOriginalParent\.insertBefore\(groupEditForm, groupEditOriginalNextSibling\)/);
 });
 
 test('floating Najm Hoda launcher cannot cover an open control center', () => {
@@ -55,4 +63,18 @@ test('desktop group hero owns balanced action spacing explicitly', () => {
     assert.match(hero, /group-hero__desktop-actions/);
     assert.match(polish, /\.group-hero__desktop \{[\s\S]*?padding-inline: 2rem !important/);
     assert.match(polish, /\.group-hero__desktop-actions \{[\s\S]*?margin-inline-start: 1rem/);
+});
+
+test('group description remains visible after the compact hero redesign', () => {
+    assert.match(hero, /group-hero__description--mobile/);
+    assert.match(hero, /group-hero__description--desktop/);
+    assert.match(hero, /\$group->description/);
+});
+
+test('group avatar rendering uses one normalized URL contract across chat and admin surfaces', () => {
+    assert.match(groupModel, /function getAvatarUrlAttribute\(\): \?string/);
+    assert.match(groupModel, /images\/groups/);
+    assert.match(hero, /\$group->avatar_url/);
+    assert.match(editModal, /\$group->avatar_url/);
+    assert.match(adminManage, /\$group->avatar_url/);
 });
