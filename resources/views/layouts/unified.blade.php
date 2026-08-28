@@ -37,6 +37,7 @@
 
     <!-- Unified Styles - بر اساس طراحی Home -->
     <link rel="stylesheet" href="{{ asset('Css/unified-styles.css') }}">
+    <link rel="stylesheet" href="{{ asset('Css/responsive-system.css') }}">
     <link rel="stylesheet" href="{{ asset('Css/header-mobile-polish.css') }}">
 
     <!-- Page Specific Styles -->
@@ -167,6 +168,9 @@
 
     <!-- Unified Footer -->
     @include('components.footer-unified', ['footerContext' => 'default'])
+
+    <!-- Responsive shared runtime -->
+    <script src="{{ asset('js/responsive-system.js') }}" defer></script>
 
     <!-- Scripts -->
     @stack('scripts')
