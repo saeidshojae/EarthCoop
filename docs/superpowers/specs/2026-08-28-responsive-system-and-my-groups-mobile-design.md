@@ -183,8 +183,16 @@ Run the existing full integration validation after focused tests pass.
 
 - **2026-08-28 19:16 +03:30 — STARTED.** Founder approved execution and explicitly required every milestone to be recorded so work can resume without duplication after interruptions/new chats.
 - Isolated implementation branch: `agent/pre-main-ui-polish-responsive`.
-- Baseline source branch: `agent/pre-main-ui-polish` at the responsive branch creation checkpoint.
+- Baseline source branch: `agent/pre-main-ui-polish` at commit `cf239a34d57e4977657a54030c14bd17965bc388`.
 - Design commit: `6ac031a7207a35be4e5d9fe28a7334a0722ed4c3`.
-- Implementation plan: `docs/superpowers/plans/2026-08-28-responsive-system-my-groups-implementation.md`.
-- Plan commit: `9afd22a4ca306ec5400dd55225361b548063e6fa`.
-- Current execution state: **Task 1 — regression contract, about to write RED test.**
+- Implementation plan: `docs/superpowers/plans/2026-08-28-responsive-system-my-groups-implementation.md`; plan commit `9afd22a4ca306ec5400dd55225361b548063e6fa`.
+- Persistent recovery ledger: `docs/superpowers/progress/2026-08-28-responsive-my-groups-progress.md`.
+- **Task 1 / TDD RED:** focused contract created at `54283983e13d755f416d855bc5782c3999c8564f`. Run `33187171198`, job `98903057580` produced the intended `5/5` failures before implementation.
+- **Task 2 / foundation:** `public/Css/responsive-system.css` introduced at `9a6fca09f758a40db93429f549450d698c845972`; unified layout load at `ab8cd15b48c52688e0adbc655496a930f5cf2613`. Shared primitives are scoped and do not globally override `.container`, headings, or tables.
+- **Task 3 / mobile group cards:** basic cards at `b6984034cfcd65a13b1b8b362b6247b0789ac07f`; managed cards at `82fb6224d89ce89bef8a74bfb64bf33ec0a78a5f`. Mobile cards use canonical avatar URL, title, role, status, member count, whole-card navigation where allowed, and restore action for inactive membership. Desktop tables remain intact.
+- **Task 4 / page chrome:** local-scope responsive filter runtime added at `11c6de22fbbd38ad86ee65bd7d5664ca5b07c262`; layout integration at `ce65bc3700d454a263422a6c1cd1e67bc3ef07a5`; My Groups mobile spacing/typography/accordion/filter/dark-mode rules at `ab13a4c24ffba46986a2bbe51eadbd5c87406699`.
+- **Focused GREEN:** run `33188114972`, job `98906298465` completed successfully after the first complete responsive slice.
+- **Cascade root check:** a later review found that the generic `.ec-entity-list { display:grid }` could outrank Tailwind `lg:hidden` because the responsive stylesheet loads later than Vite. A new regression test was committed at `06a9ad98b5f6ea478a3d8df295b1c42fe5654da3`; run `33188338628`, job `98907059274` correctly went RED. Explicit `[data-mobile-group-list]` / `[data-desktop-group-table]` breakpoint ownership was then added at `353dba8a0a23289db46425881549a69682e4ee25`; focused run `33188444138`, job `98907421494` returned GREEN.
+- **Performance root check:** existing list rendering used `users()->count()` per group. A regression contract requiring bulk counts was committed at `888616fa92ba7aa4e68dce77d65c105223251669`; run `33188539633`, job `98907755047` correctly went RED. Basic list bulk member counts + specialty relation loading were implemented at `b599590cf951aad627405cb20bb4d531331775a1`; managed bulk counts at `132d4be4e0dc0baccfeaa93fa0918ff38a938f9e`. Focused run `33188653223`, job `98908151038` returned GREEN.
+- Accidental `docs/superpowers/specs/.keep` was removed at `36cebeaed2149dd6e19d061a431ab1315756cf87`.
+- **Current state:** code slice is focused-contract GREEN. Full integration validation is still being observed on the final documentation/checkpoint head before founder UAT. No merge to `main` has occurred or is authorized.
