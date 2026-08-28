@@ -31,7 +31,7 @@ function initializeGroupChatPageChrome() {
     const lifecycle = window.GroupChatLifecycle;
     if (!lifecycle || lifecycle.destroyed) return;
 
-    const groupEditForm = document.getElementById('groupEditFormBox');
+    const groupEditForm = document.getElementById('groupEditModalShell');
     const groupEditOriginalParent = groupEditForm?.parentNode || null;
     const groupEditOriginalNextSibling = groupEditForm?.nextSibling || null;
     let groupEditLastFocus = null;
