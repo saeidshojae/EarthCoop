@@ -4,33 +4,34 @@ import { readFileSync } from 'node:fs';
 
 const read = path => readFileSync(path, 'utf8');
 
-test('group election statistics combine systemic cycles and internal group elections without conflating them', () => {
-    const controller = read('app/Http/Controllers/Group/GroupController.php');
-    const panel = read('resources/views/groups/partials/group_info_panel.blade.php');
+test('election surface bridge keeps systemic and internal elections as separate first-class sources', () => {
+    const bridge = read('resources/views/groups/partials/election_surface_bridge.blade.php');
+    const routeProvider = read('app/Providers/RouteServiceProvider.php');
+    const routes = read('routes/group-election-surface.php');
+    const controller = read('app/Http/Controllers/Group/GroupElectionSurfaceController.php');
 
+    assert.match(routeProvider, /routes\/group-election-surface\.php/);
+    assert.match(routes, /GroupElectionSurfaceController::class,\s*'stats'/);
     assert.match(controller, /\$systemicElectionsQuery\s*=\s*\$group->elections\(\)/);
     assert.match(controller, /\$internalElectionsQuery\s*=\s*\$group->polls\(\)->where\('main_type',\s*0\)/);
-    assert.match(controller, /'systemic'\s*=>\s*\$systemicElectionsStats/);
-    assert.match(controller, /'internal'\s*=>\s*\$internalElectionsStats/);
-    assert.match(controller, /'total'\s*=>\s*\$systemicElectionsStats\['total'\]\s*\+\s*\$internalElectionsStats\['total'\]/);
-
-    assert.match(panel, /\$systemicElectionCount\s*=\s*\$group2->elections\(\)->count\(\)/);
-    assert.match(panel, /\$internalElectionCount\s*=\s*\$electionPolls->count\(\)/);
-    assert.match(panel, /\{\{\s*\$systemicElectionCount\s*\+\s*\$internalElectionCount\s*\}\}/);
+    assert.match(controller, /'systemic'\s*=>\s*\$systemic/);
+    assert.match(controller, /'internal'\s*=>\s*\$internal/);
+    assert.match(controller, /'total'\s*=>\s*\$systemic\['total'\]\s*\+\s*\$internal\['total'\]/);
+    assert.match(bridge, /data-election-kind-tab="systemic"/);
+    assert.match(bridge, /data-election-kind-tab="internal"/);
+    assert.match(bridge, /data-election-kind-pane="systemic"/);
+    assert.match(bridge, /data-election-kind-pane="internal"/);
 });
 
-test('governance election area exposes distinct systemic and internal election panes', () => {
-    const panel = read('resources/views/groups/partials/group_info_panel.blade.php');
-    const polish = read('resources/views/groups/partials/group_control_center_polish.blade.php');
+test('governance election bridge keeps internal election cards and gives systemic election a live participation entry point', () => {
+    const bridge = read('resources/views/groups/partials/election_surface_bridge.blade.php');
+    const chat = read('resources/views/groups/chat.blade.php');
 
-    assert.match(panel, /data-election-kind-tabs/);
-    assert.match(panel, /data-election-kind-tab="systemic"/);
-    assert.match(panel, /data-election-kind-tab="internal"/);
-    assert.match(panel, /data-election-kind-pane="systemic"/);
-    assert.match(panel, /data-election-kind-pane="internal"/);
-    assert.match(panel, /data-chat-page-action="open-election"/);
-    assert.match(panel, /@include\('groups\.partials\.poll',\s*\['item'\s*=>\s*\$item/);
-    assert.match(polish, /data-election-kind-tab/);
+    assert.match(chat, /@include\('groups\.partials\.election_surface_bridge'\)/);
+    assert.match(bridge, /data-chat-page-action="open-election"/);
+    assert.match(bridge, /data-internal-election-host/);
+    assert.match(bridge, /legacyElectionSection/);
+    assert.match(bridge, /data-election-surface-stats-url/);
 });
 
 test('group hero prioritizes systemic election participation and financial reporting over content creation', () => {
@@ -44,10 +45,9 @@ test('group hero prioritizes systemic election participation and financial repor
     assert.match(hero, /گزارش مالی گروه/);
 });
 
-test('systemic election participation gate is derived from active membership and election block state', () => {
+test('systemic election participation gate uses active group membership and election block state', () => {
     const chat = read('resources/views/groups/chat.blade.php');
-    const controller = read('app/Http/Controllers/Group/ChatController.php');
 
-    assert.match(controller, /Block::where\('user_id',\s*auth\(\)->id\(\)\)->where\('position',\s*'election'\)/);
+    assert.match(chat, /Block::where\('user_id',\s*auth\(\)->id\(\)\)->where\('position',\s*'election'\)/);
     assert.match(chat, /\$canParticipateElection\s*=\s*\$electionAvailable\s*&&\s*!\$checkBlockElection\s*&&\s*\(int\)\(\$pivotUser\?->status/);
 });
