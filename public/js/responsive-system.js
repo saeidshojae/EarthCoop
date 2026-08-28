@@ -71,7 +71,7 @@
         if (!filterContainer) return;
 
         applyFilter(filterContainer, button.dataset.filter || 'all');
-    });
+    }, true);
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initialize, { once: true });
