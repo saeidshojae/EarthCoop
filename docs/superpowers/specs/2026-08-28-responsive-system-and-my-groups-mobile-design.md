@@ -178,3 +178,13 @@ Run the existing full integration validation after focused tests pass.
 3. Polish mobile spacing, typography, accordion density, dark mode, and avatar fallback.
 4. Validate desktop parity and mobile UAT.
 5. Use this implementation as the reference pattern for the next mobile-deficient pages, migrating them deliberately rather than through blanket CSS overrides.
+
+## Implementation Progress
+
+- **2026-08-28 19:16 +03:30 — STARTED.** Founder approved execution and explicitly required every milestone to be recorded so work can resume without duplication after interruptions/new chats.
+- Isolated implementation branch: `agent/pre-main-ui-polish-responsive`.
+- Baseline source branch: `agent/pre-main-ui-polish` at the responsive branch creation checkpoint.
+- Design commit: `6ac031a7207a35be4e5d9fe28a7334a0722ed4c3`.
+- Implementation plan: `docs/superpowers/plans/2026-08-28-responsive-system-my-groups-implementation.md`.
+- Plan commit: `9afd22a4ca306ec5400dd55225361b548063e6fa`.
+- Current execution state: **Task 1 — regression contract, about to write RED test.**
