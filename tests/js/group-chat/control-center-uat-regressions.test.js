@@ -26,9 +26,10 @@ test('group edit reuses the proven group-settings modal shell geometry exactly',
     assert.match(pageChrome, /groupEditForm\.style\.cssText = visible[\s\S]*?'display: flex; position: fixed; inset: 0; z-index: 9999; align-items: center; justify-content: center; padding: 1\.5rem; direction: rtl;'[\s\S]*?: 'display: none;'/);
 });
 
-test('group edit has no competing custom viewport positioning rules', () => {
+test('group edit final geometry neutralizes prior corner positioning without manual viewport transforms', () => {
     assert.doesNotMatch(editModal, /top:\s*50%|translate\(-50%,\s*-50%\)|100d?v[wh]/);
-    assert.doesNotMatch(polish, /#groupEditFormBox\.modal-shell|\.group-edit-modal__dialog\s*\{[\s\S]*?(?:position:\s*fixed|top:\s*50%|100d?v[wh])/);
+    assert.match(editModal, /html body #groupEditFormBox\.modal-shell \{[\s\S]*?inset: 0 !important[\s\S]*?align-items: center !important[\s\S]*?justify-content: center !important/);
+    assert.match(editModal, /html body #groupEditFormBox\.modal-shell > \.modal-shell__dialog\.group-edit-modal__dialog \{[\s\S]*?position: relative !important[\s\S]*?top: auto !important[\s\S]*?left: auto !important[\s\S]*?transform: none !important[\s\S]*?width: min\(500px, 94vw\) !important/);
 });
 
 test('group edit is portaled to body and closes when the shell backdrop itself is clicked', () => {
