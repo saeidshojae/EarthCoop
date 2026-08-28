@@ -169,6 +169,9 @@
     <!-- Unified Footer -->
     @include('components.footer-unified', ['footerContext' => 'default'])
 
+    <!-- Responsive shared runtime -->
+    <script src="{{ asset('js/responsive-system.js') }}" defer></script>
+
     <!-- Scripts -->
     @stack('scripts')
     @yield('scripts')
