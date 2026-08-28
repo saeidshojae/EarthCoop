@@ -39,7 +39,11 @@ This is the persistent recovery checkpoint for the responsive-system rollout. Up
 - Spec brought up to date at `b73f122d28600fda3f6fa471455908cb1475dec7`.
 - **FINAL FOCUSED GREEN on implementation checkpoint `7d699ac636871389eba715db30bc020376181a9d`:** Responsive Contract Validation run `33188810838` completed `success`.
 - **FINAL FULL GREEN on the same implementation checkpoint `7d699ac636871389eba715db30bc020376181a9d`:** EarthCoop Integration Full Validation run `33188809778`, job `98908702129`, completed `success`. Every gate was green: install/build, migrations, route boot, Group Chat, Group Admin/Identity, Najm Hoda+n8n, Governance, Najm Bahar, Stock, Group Chat JavaScript, and Full Project PHPUnit.
-- 2026-08-28 19:56 +03:30 — Responsive My Groups implementation marked **READY FOR FOUNDER UAT**. This ledger update is documentation-only and does not alter runtime implementation validated at `7d699ac636871389eba715db30bc020376181a9d`.
+- 2026-08-28 19:56 +03:30 — Responsive My Groups implementation marked **READY FOR FOUNDER UAT**.
+- 2026-08-28 23:07 +03:30 — Founder UAT exposed a pre-existing authentication-route defect on `/groups`: when the local session was unauthenticated, `GroupController@index` received `auth()->user() === null` and crashed at `$user->groups()` instead of redirecting to login.
+- Authentication regression test added first at `04f3ebcca57aca3f914391acb4e88b851dab7531` (`tests/Feature/GroupsIndexAuthenticationTest.php`). **RED evidence:** Full Validation run `33204762653`, job `98962877103`: Full Project PHPUnit failed exactly one test, `GroupsIndexAuthenticationTest::test_guest_is_redirected_to_login_from_groups_index`; expected redirect but received 500 with `Call to a member function groups() on null` at `GroupController.php:61`.
+- Root cause: legacy `/groups` route in monolithic `routes/web.php` was outside `Authenticate` middleware. The fix is deliberately at the route boundary, not a controller null-guard.
+- Canonical authenticated route file added at `1f8eeec24da27c37ecea93de8afef23a5e3f8cb3` (`routes/groups-index.php`). `RouteServiceProvider` now loads that canonical `/groups` route after `web.php` under `['web', Authenticate::class]`, shadowing the legacy public registration; fix commit `846e1f4bddeaf323188904ae5612bc20b3c27e64`.
 
 ## Current implementation behavior
 - Desktop keeps comparative tables.
@@ -52,39 +56,41 @@ This is the persistent recovery checkpoint for the responsive-system rollout. Up
 - Responsive filter runtime filters the clicked local desktop/mobile representation and avoids global `getElementById` dependency on duplicated rendered IDs.
 - Member counts are loaded in one grouped query per rendered group collection rather than one count query per group. Specialty/experience approval relations are bulk-loaded only for specialty lists.
 - Shared responsive primitives are additive/opt-in; there is no blanket `.container`, all-heading or all-table rewrite.
+- `/groups` is now an authenticated boundary: unauthenticated requests should redirect to login before `GroupController@index` executes.
 
 ## Verification state
-**READY FOR FOUNDER UAT.**
+**AUTH ROUTE FIX IMPLEMENTED — FRESH GREEN VALIDATION PENDING.**
 
-Validated implementation checkpoint:
+Previously validated responsive implementation checkpoint:
 `7d699ac636871389eba715db30bc020376181a9d`
 
-Focused validation:
-- Workflow: EarthCoop Responsive Contract Validation
-- Run: `33188810838`
-- Conclusion: `success`
+Current auth-fix runtime checkpoint:
+`846e1f4bddeaf323188904ae5612bc20b3c27e64`
 
-Full integration validation:
-- Workflow: EarthCoop Integration Full Validation
-- Run: `33188809778`
-- Job: `98908702129`
-- Conclusion: `success`
-- All regression gates completed successfully.
+Current fresh validation:
+- Responsive Contract Validation runs `33205354861` / `33205354992` started on the auth-fix checkpoint.
+- EarthCoop Integration Full Validation run `33205355087`, job `98964888990`, is running on the auth-fix checkpoint.
+- Do not mark the UAT defect closed until the new Full Project PHPUnit and regression gate are green.
 
 ## Founder UAT checklist
-Test at 360px, 390px, 768px and desktop:
-1. Public, specialty, exclusive and managed group sections/accordions.
-2. Specialty filter chips and correct local filtering.
-3. Active, pending and inactive group states.
-4. Group avatar and initials fallback.
-5. Restore-membership action for inactive groups.
-6. Dark mode.
-7. No horizontal group-list scrolling.
-8. Desktop still shows comparative tables only; mobile/tablet shows cards only.
-9. Persian group names wrap naturally and do not stack word-by-word vertically.
+After the auth-fix validation turns green, pull the latest branch and test at 360px, 390px, 768px and desktop:
+1. If logged out, `/groups` redirects to login instead of throwing 500.
+2. After login, `/groups?tab=public` loads normally.
+3. Public, specialty, exclusive and managed group sections/accordions.
+4. Specialty filter chips and correct local filtering.
+5. Active, pending and inactive group states.
+6. Group avatar and initials fallback.
+7. Restore-membership action for inactive groups.
+8. Dark mode.
+9. No horizontal group-list scrolling.
+10. Desktop still shows comparative tables only; mobile/tablet shows cards only.
+11. Persian group names wrap naturally and do not stack word-by-word vertically.
 
 ## Next exact action
-Founder performs local UAT on `agent/pre-main-ui-polish-responsive`. Any visual or behavioral defects found during UAT are fixed on this branch, documented here, and revalidated before any integration decision.
+1. Fetch the final result of Full Validation run `33205355087` on `846e1f4bddeaf323188904ae5612bc20b3c27e64`.
+2. If red, inspect exact log and fix before UAT.
+3. If green, record GREEN evidence here and mark `READY FOR FOUNDER UAT — AUTH ROUTE FIXED`.
+4. Founder pulls the branch, signs in if necessary, and resumes mobile UAT.
 
 ## Merge safety
 No merge to `main` is authorized. This branch is for implementation/UAT only.
