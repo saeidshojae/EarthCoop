@@ -26,6 +26,10 @@ test('group edit uses the canonical fullscreen modal shell above the control cen
     assert.match(pageChrome, /groupEditForm\.style\.display = visible \? 'flex' : 'none'/);
 });
 
+test('group edit dialog is pinned to the viewport center independently of parent flex geometry', () => {
+    assert.match(polish, /#groupEditFormBox \.group-edit-modal__dialog \{[\s\S]*?position: fixed !important[\s\S]*?top: 50% !important[\s\S]*?left: 50% !important[\s\S]*?transform: translate\(-50%, -50%\) !important[\s\S]*?margin: 0 !important/);
+});
+
 test('group edit is portaled to document body so ancestor stacking contexts cannot trap it', () => {
     assert.match(pageChrome, /const groupEditOriginalParent = groupEditForm\?\.parentNode/);
     assert.match(pageChrome, /document\.body\.appendChild\(groupEditForm\)/);
