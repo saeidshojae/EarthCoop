@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Stock;
 
+use App\Models\User;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Stock;
 use App\Modules\Stock\Models\StockSettlementAllocation;
@@ -60,12 +61,13 @@ class EarthCoopPrimaryOfferingPolicyTest extends TestCase
 
     public function test_canonical_settled_primary_allocations_consume_cap(): void
     {
+        $user = User::factory()->create();
         $stock = $this->stock(1000, 1000);
         $settledAuction = $this->auction($stock, 90, 'settled');
         StockSettlementAllocation::create([
             'allocation_key' => 'settled-cap-1',
             'auction_id' => $settledAuction->id,
-            'user_id' => 1,
+            'user_id' => $user->id,
             'stock_id' => $stock->id,
             'settlement_channel' => SettlementChannel::EXTERNAL_USD,
             'quantity' => 90,
