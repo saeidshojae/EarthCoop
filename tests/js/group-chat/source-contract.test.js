@@ -669,8 +669,10 @@ test('group hero markup is loaded through its dedicated partial', () => {
     assert.doesNotMatch(blade, /class="[^"]*group-info-card/);
     assert.match(hero, /class="[^"]*group-info-card/);
     assert.match(hero, /data-chat-page-action="open-group-info"/);
-    assert.match(hero, /data-chat-page-action="open-blog"/);
-    assert.match(hero, /data-chat-page-action="open-poll"/);
+    assert.match(hero, /data-chat-page-action="open-election"/);
+    assert.match(hero, /route\('groups\.najm-bahar\.reports', \$group\)/);
+    assert.doesNotMatch(hero, /data-chat-page-action="open-blog"/);
+    assert.doesNotMatch(hero, /data-chat-page-action="open-poll"/);
     assert.match(hero, /data-group-chat-action="toggle-group-hero"/);
     assert.match(hero, /aria-expanded="false"/);
     assert.match(hero, /group-hero__avatar w-16 h-16/);
