@@ -31,6 +31,9 @@ final class EarthCoopPrimaryOfferingPolicy
         if ($maxBps <= 0 || $maxBps > 10000) {
             throw new RuntimeException('EarthCoop primary allocation cap configuration is invalid.');
         }
+        if ($totalShares > intdiv(PHP_INT_MAX, $maxBps)) {
+            throw new RuntimeException('EarthCoop primary allocation cap exceeds integer range.');
+        }
 
         $maxPrimaryShares = intdiv($totalShares * $maxBps, 10000);
         if ($maxPrimaryShares <= 0 || $offeringShares > $maxPrimaryShares) {
@@ -46,7 +49,7 @@ final class EarthCoopPrimaryOfferingPolicy
             ->where('market_type', 'primary')
             ->where('supply_source', 'treasury')
             ->whereIn('status', ['scheduled', 'running', 'settling'])
-            ->when($auction->exists, fn ($query) => $query->whereKeyNot($auction->getKey()))
+            ->when($auction->exists, fn ($query) => $query->where('id', '!=', $auction->getKey()))
             ->sum('shares_count');
 
         if ($distributedShares + (int) $otherOpenShares + $offeringShares > $maxPrimaryShares) {
