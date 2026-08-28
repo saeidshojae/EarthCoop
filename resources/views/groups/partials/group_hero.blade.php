@@ -10,8 +10,8 @@
         class="lg:hidden w-full relative z-10 flex items-center justify-between gap-3 px-5 py-4 hover:bg-emerald-50/50 active:bg-emerald-50 transition-colors">
         <div class="flex items-center gap-4 flex-1 min-w-0">
             <div class="group-hero__avatar group-hero__avatar--mobile w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl font-black shadow-md flex-shrink-0 border border-emerald-200/60">
-                @if($group->avatar)
-                    <img src="{{ asset('images/groups/' . $group->avatar) }}" alt="{{ $group->name }}" class="w-full h-full object-cover rounded-2xl">
+                @if($group->avatar_url)
+                    <img src="{{ $group->avatar_url }}" alt="{{ $group->name }}" class="w-full h-full object-cover rounded-2xl">
                 @else
                     {{ Str::upper(Str::substr($group->name, 0, 2)) }}
                 @endif
@@ -24,6 +24,9 @@
                     </span>
                     <span class="text-xs text-slate-500 font-medium">{{ $memberCount }} عضو</span>
                 </div>
+                @if(!empty($group->description))
+                    <p class="group-hero__description--mobile mt-1.5 mb-0 text-[11px] leading-5 text-slate-500 truncate">{{ Str::limit(strip_tags($group->description), 90) }}</p>
+                @endif
             </div>
         </div>
         <div class="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 transition-colors ml-2">
@@ -77,8 +80,8 @@
     <div class="group-hero__desktop hidden lg:flex relative z-10 items-center justify-between gap-5 px-6 py-4">
         <div class="flex items-center gap-4 min-w-0">
             <div class="group-hero__avatar w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl font-black shadow-inner">
-                @if($group->avatar)
-                    <img src="{{ asset('images/groups/' . $group->avatar) }}" alt="{{ $group->name }}" class="w-full h-full object-cover rounded-3xl">
+                @if($group->avatar_url)
+                    <img src="{{ $group->avatar_url }}" alt="{{ $group->name }}" class="w-full h-full object-cover rounded-3xl">
                 @else
                     {{ Str::upper(Str::substr($group->name, 0, 2)) }}
                 @endif
@@ -103,6 +106,9 @@
                     @endif
                     <span class="inline-flex items-center gap-1.5"><i class="fas fa-clock text-emerald-500"></i>{{ verta($group->updated_at)->formatDifference() }}</span>
                 </div>
+                @if(!empty($group->description))
+                    <p class="group-hero__description--desktop mt-2 mb-0 max-w-2xl text-xs leading-6 text-slate-500">{{ Str::limit(strip_tags($group->description), 150) }}</p>
+                @endif
             </div>
         </div>
 
