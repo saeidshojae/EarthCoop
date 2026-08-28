@@ -35,12 +35,12 @@ test('expanded mobile group hero stays compact instead of consuming the viewport
     assert.match(shell, /-webkit-line-clamp: 2/);
 });
 
-test('final mobile polish keeps the sheet dense, cards aligned, and floating assistant behind the open sheet', () => {
+test('final mobile polish keeps the sheet dense, cards aligned, and hides the floating assistant while the sheet owns the screen', () => {
     assert.match(chat, /@include\('groups\.partials\.group_control_center_polish'\)/);
     const polish = readFileSync('resources/views/groups/partials/group_control_center_polish.blade.php', 'utf8');
     assert.match(polish, /@media \(max-width: 767px\)/);
     assert.match(polish, /#groupInfoPanel \.control-center-header[\s\S]*?min-height: 58px/);
     assert.match(polish, /#groupInfoPanel \.panel-metrics[\s\S]*?gap: \.3rem/);
     assert.match(polish, /#groupInfoPanel \.control-center-tool-card[\s\S]*?height: 100%/);
-    assert.match(polish, /body:has\(#groupInfoPanel\.is-open\) \.najm-hoda-widget[\s\S]*?z-index: 1200/);
+    assert.match(polish, /body:has\(#groupInfoPanel\.is-open\) \.najm-hoda-widget[\s\S]*?visibility: hidden !important[\s\S]*?pointer-events: none !important/);
 });
