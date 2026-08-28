@@ -8,14 +8,16 @@ class AdminMiddleware
 {
     public function handle($request, Closure $next)
     {
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return redirect('/home')->with('error', 'لطفا ابتدا وارد شوید');
         }
 
         $user = Auth::user();
 
-        // اگر Super Admin است یا دارای نقش ادمین است، اجازه دسترسی دارد
-        if ($user->is_admin || $user->hasRole('super-admin') || $user->roles()->count() > 0) {
+        // Generic admin surfaces remain accessible to explicitly assigned
+        // application roles. Sensitive Founder Operations is protected by its
+        // own stricter middleware and must never rely on this generic gate.
+        if ($user->is_admin || $user->hasRole('super-admin') || $user->roles()->exists()) {
             return $next($request);
         }
 

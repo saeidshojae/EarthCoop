@@ -1,271 +1,52 @@
 export function createComposer({ api, store, lifecycle, actions }) {
-    const escape = value => {
-        const element = document.createElement('div');
-        element.textContent = String(value || '');
-        return element.innerHTML;
-    };
-    const cancelReply = () => {
-        const container = document.getElementById('reply-indicator-container');
-        if (container) {
-            container.replaceChildren();
-            container.style.display = 'none';
-        }
-        const input = document.getElementById('parent_id');
-        if (input) input.value = '';
-        store.setState({ composerReply: null });
-        return true;
-    };
-    const setReply = ({ id, sender = '', content = '' }) => {
-        const messageId = String(id || '').trim();
-        const container = document.getElementById('reply-indicator-container');
-        const input = document.getElementById('parent_id');
-        if (!messageId || !container || !input) return false;
-        const normalizedSender = String(sender || 'کاربر').trim() || 'کاربر';
-        const preview = String(content || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().slice(0, 120);
-        container.innerHTML = `<div class="reply-info"><div class="reply-arrow"></div><div style="flex:1;min-width:0"><div class="reply-sender-name">${escape(normalizedSender)}</div><div class="reply-content">${escape(preview)}</div></div></div><button type="button" class="btn-cancel-reply" data-legacy-chat-action="cancel-reply" aria-label="لغو پاسخ" title="لغو پاسخ"><i class="fas fa-times" aria-hidden="true"></i></button>`;
-        container.style.display = 'flex';
-        input.value = messageId;
-        store.setState({ composerReply: Object.freeze({ id: messageId, sender: normalizedSender, content: preview }) });
-        document.getElementById('chatForm')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        return true;
-    };
-    const replyFromTarget = target => {
-        const bubble = target?.closest('.message-bubble');
-        const row = target?.closest('.message-row');
-        return setReply({
-            id: target?.dataset.messageId || bubble?.dataset.messageId || row?.dataset.messageId,
-            sender: bubble?.querySelector('.message-sender')?.textContent || (bubble?.classList.contains('you') ? 'شما' : 'کاربر'),
-            content: bubble?.dataset.contentRaw || bubble?.querySelector('.message-content')?.textContent || '',
-        });
-    };
-    const setMenuOpen = open => {
-        const menu = document.getElementById('createMenu');
-        if (menu) menu.style.display = open ? 'block' : 'none';
-        store.setState({ composerMenuOpen: Boolean(open) });
-    };
-    const setModal = (type, open) => {
-        const modal = document.getElementById(type === 'post' ? 'postFormBox' : 'pollOptionsBox');
-        if (!modal) return false;
-        modal.style.setProperty('display', open ? 'flex' : 'none', 'important');
-        if (open) {
-            const back = document.getElementById('back');
-            if (back) back.style.display = 'none';
-        }
-        store.setState({ composerModal: open ? type : null });
-        return true;
-    };
-    const openPost = () => setModal('post', true);
+    const escape = value => { const element = document.createElement('div'); element.textContent = String(value || ''); return element.innerHTML; };
+    const cancelReply = () => { const container = document.getElementById('reply-indicator-container'); if (container) { container.replaceChildren(); container.style.display = 'none'; } const input = document.getElementById('parent_id'); if (input) input.value = ''; store.setState({ composerReply: null }); return true; };
+    const setReply = ({ id, sender = '', content = '' }) => { const messageId = String(id || '').trim(); const container = document.getElementById('reply-indicator-container'); const input = document.getElementById('parent_id'); if (!messageId || !container || !input) return false; const normalizedSender = String(sender || 'کاربر').trim() || 'کاربر'; const preview = String(content || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().slice(0, 120); container.innerHTML = `<div class="reply-info"><div class="reply-arrow"></div><div style="flex:1;min-width:0"><div class="reply-sender-name">${escape(normalizedSender)}</div><div class="reply-content">${escape(preview)}</div></div></div><button type="button" class="btn-cancel-reply" data-legacy-chat-action="cancel-reply" aria-label="لغو پاسخ" title="لغو پاسخ"><i class="fas fa-times" aria-hidden="true"></i></button>`; container.style.display = 'flex'; input.value = messageId; store.setState({ composerReply: Object.freeze({ id: messageId, sender: normalizedSender, content: preview }) }); document.getElementById('chatForm')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return true; };
+    const replyFromTarget = target => { const bubble = target?.closest('.message-bubble'); const row = target?.closest('.message-row'); return setReply({ id: target?.dataset.messageId || bubble?.dataset.messageId || row?.dataset.messageId, sender: bubble?.querySelector('.message-sender')?.textContent || (bubble?.classList.contains('you') ? 'شما' : 'کاربر'), content: bubble?.dataset.contentRaw || bubble?.querySelector('.message-content')?.textContent || '' }); };
+    const setMenuOpen = open => { const menu = document.getElementById('createMenu'); if (menu) menu.style.display = open ? 'block' : 'none'; store.setState({ composerMenuOpen: Boolean(open) }); };
+    const setModal = (type, open) => { const modal = document.getElementById(type === 'post' ? 'postFormBox' : 'pollOptionsBox'); if (!modal) return false; modal.style.setProperty('display', open ? 'flex' : 'none', 'important'); if (open) { const back = document.getElementById('back'); if (back) back.style.display = 'none'; } store.setState({ composerModal: open ? type : null }); return true; };
+    const openPost = () => { const opened = setModal('post', true); if (opened) window.dispatchEvent(new CustomEvent('group-chat:post-modal-opened')); return opened; };
     const closePost = () => setModal('post', false);
     const openPoll = () => setModal('poll', true);
     const closePoll = () => setModal('poll', false);
     const notify = (message, type = 'info') => window.GroupChatFeedback?.toast?.(message, { type });
-    const clientMessageId = form => {
-        let input = form.querySelector('input[name="client_message_id"]');
-        if (!input) {
-            input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'client_message_id';
-            form.appendChild(input);
-        }
-        if (!input.value) input.value = window.crypto?.randomUUID?.() || `cmid_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-        return input;
-    };
-    const editorContent = () => {
-        const editor = window.CKEDITOR?.instances?.message_editor;
-        if (!editor) return { editor: null, html: '', text: document.getElementById('message_editor')?.value.trim() || '' };
-        editor.updateElement();
-        const html = editor.getData().trim();
-        const holder = document.createElement('div');
-        holder.innerHTML = html;
-        holder.querySelectorAll('br').forEach(node => node.replaceWith('\n'));
-        holder.querySelectorAll('p, div').forEach(node => node.nextSibling && node.appendChild(document.createTextNode('\n')));
-        return { editor, html, text: (holder.textContent || holder.innerText || '').trim() };
-    };
-    const voicePreview = file => {
-        const preview = document.getElementById('voice-file-preview');
-        if (!preview) return;
-        const name = document.getElementById('voice-file-name');
-        const size = document.getElementById('voice-file-size');
-        if (name) name.textContent = file?.name || '';
-        if (size) {
-            const units = ['بایت', 'کیلوبایت', 'مگابایت', 'گیگابایت'];
-            const index = file?.size ? Math.floor(Math.log(file.size) / Math.log(1024)) : 0;
-            size.textContent = file ? `${Math.round(file.size / (1024 ** index) * 100) / 100} ${units[index]}` : '';
-        }
-        preview.style.setProperty('display', file ? 'flex' : 'none', 'important');
-        store.setState({ composerVoiceFile: file ? Object.freeze({ name: file.name, size: file.size }) : null });
-    };
+    const clientMessageId = form => { let input = form.querySelector('input[name="client_message_id"]'); if (!input) { input = document.createElement('input'); input.type = 'hidden'; input.name = 'client_message_id'; form.appendChild(input); } if (!input.value) input.value = window.crypto?.randomUUID?.() || `cmid_${Date.now()}_${Math.random().toString(16).slice(2)}`; return input; };
+    const editorContent = () => { const editor = window.CKEDITOR?.instances?.message_editor; if (!editor) return { editor: null, html: '', text: document.getElementById('message_editor')?.value.trim() || '' }; editor.updateElement(); const html = editor.getData().trim(); const holder = document.createElement('div'); holder.innerHTML = html; holder.querySelectorAll('br').forEach(node => node.replaceWith('\n')); holder.querySelectorAll('p, div').forEach(node => node.nextSibling && node.appendChild(document.createTextNode('\n'))); return { editor, html, text: (holder.textContent || holder.innerText || '').trim() }; };
+    const voicePreview = file => { const preview = document.getElementById('voice-file-preview'); if (!preview) return; const name = document.getElementById('voice-file-name'); const size = document.getElementById('voice-file-size'); if (name) name.textContent = file?.name || ''; if (size) { const units = ['بایت', 'کیلوبایت', 'مگابایت', 'گیگابایت']; const index = file?.size ? Math.floor(Math.log(file.size) / Math.log(1024)) : 0; size.textContent = file ? `${Math.round(file.size / (1024 ** index) * 100) / 100} ${units[index]}` : ''; } preview.style.setProperty('display', file ? 'flex' : 'none', 'important'); store.setState({ composerVoiceFile: file ? Object.freeze({ name: file.name, size: file.size }) : null }); };
 
-    actions.register('open-blog', openPost);
-    actions.register('open-poll', openPoll);
-    actions.register('close-post-modal', closePost);
-    actions.register('close-poll-modal', closePoll);
-    actions.register('reply', ({ target }) => replyFromTarget(target));
-    actions.register('cancel-reply', cancelReply);
-    actions.register('reply-content', ({ target }) => setReply({ id: target.dataset.replyTarget, content: target.dataset.replyText || '' }));
-
-    const plusButton = document.getElementById('chatCreateToggle');
-    const menu = document.getElementById('createMenu');
-    const wrapper = plusButton?.closest('.telegram-attach-btn-wrapper');
-    const textarea = document.getElementById('message_editor');
-    const resize = () => {
-        if (!textarea?.scrollHeight) return;
-        textarea.style.height = 'auto';
-        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-    };
+    actions.register('open-blog', openPost); actions.register('open-poll', openPoll); actions.register('close-post-modal', closePost); actions.register('close-poll-modal', closePoll); actions.register('reply', ({ target }) => replyFromTarget(target)); actions.register('cancel-reply', cancelReply); actions.register('reply-content', ({ target }) => setReply({ id: target.dataset.replyTarget, content: target.dataset.replyText || '' }));
+    const plusButton = document.getElementById('chatCreateToggle'); const menu = document.getElementById('createMenu'); const wrapper = plusButton?.closest('.telegram-attach-btn-wrapper'); const textarea = document.getElementById('message_editor');
+    const resize = () => { if (!textarea?.scrollHeight) return; textarea.style.height = 'auto'; textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px'; };
     if (textarea) lifecycle.on(textarea, 'input', resize);
-    if (plusButton) lifecycle.on(plusButton, 'click', event => {
-        event.preventDefault();
-        event.stopPropagation();
-        setMenuOpen(store.getState().composerMenuOpen !== true);
-    });
-    lifecycle.on(document, 'click', event => {
-        const modal = event.target.closest?.('[data-composer-modal]');
-        if (modal && event.target === modal) setModal(modal.dataset.composerModal, false);
-        if (menu && !wrapper?.contains(event.target) && !menu.contains(event.target)) setMenuOpen(false);
-    });
-    lifecycle.on(document, 'keydown', event => {
-        if (event.key !== 'Escape') return;
-        setMenuOpen(false);
-        closePost();
-        closePoll();
-        cancelReply();
-    });
-    const audioTrigger = document.getElementById('audio-upload-trigger');
-    if (audioTrigger) lifecycle.on(audioTrigger, 'click', event => {
-        event.preventDefault();
-        setMenuOpen(false);
-        document.getElementById('voice-file-input')?.click();
-    });
-    const postTrigger = document.getElementById('create-post-btn');
-    if (postTrigger) lifecycle.on(postTrigger, 'click', event => {
-        event.preventDefault();
-        setMenuOpen(false);
-        openPost();
-    });
-    const pollTrigger = document.getElementById('create-poll-btn');
-    if (pollTrigger) lifecycle.on(pollTrigger, 'click', event => {
-        event.preventDefault();
-        setMenuOpen(false);
-        openPoll();
-    });
-    lifecycle.add(() => {
-        setMenuOpen(false);
-        closePost();
-        closePoll();
-        if (textarea) textarea.style.height = '';
-    });
+    if (plusButton) lifecycle.on(plusButton, 'click', event => { event.preventDefault(); event.stopPropagation(); setMenuOpen(store.getState().composerMenuOpen !== true); });
+    lifecycle.on(document, 'click', event => { const modal = event.target.closest?.('[data-composer-modal]'); if (modal && event.target === modal) setModal(modal.dataset.composerModal, false); if (menu && !wrapper?.contains(event.target) && !menu.contains(event.target)) setMenuOpen(false); });
+    lifecycle.on(document, 'keydown', event => { if (event.key !== 'Escape') return; setMenuOpen(false); closePost(); closePoll(); cancelReply(); });
+    const audioTrigger = document.getElementById('audio-upload-trigger'); if (audioTrigger) lifecycle.on(audioTrigger, 'click', event => { event.preventDefault(); setMenuOpen(false); document.getElementById('voice-file-input')?.click(); });
+    const postTrigger = document.getElementById('create-post-btn'); if (postTrigger) lifecycle.on(postTrigger, 'click', event => { event.preventDefault(); setMenuOpen(false); openPost(); });
+    const pollTrigger = document.getElementById('create-poll-btn'); if (pollTrigger) lifecycle.on(pollTrigger, 'click', event => { event.preventDefault(); setMenuOpen(false); openPoll(); });
+    lifecycle.add(() => { setMenuOpen(false); closePost(); closePoll(); if (textarea) textarea.style.height = ''; });
 
     return Object.freeze({
-        async submit(url, body, options = {}) {
-            store.setState({ composerStatus: 'sending', composerError: null });
-            try {
-                const data = await api.json(url, { method: 'POST', body, ...options });
-                store.setState({ composerStatus: 'idle' });
-                return data;
-            } catch (error) {
-                store.setState({ composerStatus: 'error', composerError: error });
-                throw error;
-            }
-        },
-        openPost,
-        closePost,
-        openPoll,
-        closePoll,
-        setReply,
-        cancelReply,
+        async submit(url, body, options = {}) { store.setState({ composerStatus: 'sending', composerError: null }); try { const data = await api.json(url, { method: 'POST', body, ...options }); store.setState({ composerStatus: 'idle' }); return data; } catch (error) { store.setState({ composerStatus: 'error', composerError: error }); throw error; } },
+        openPost, closePost, openPoll, closePoll, setReply, cancelReply,
         initializeSubmission({ feed, realtime }) {
-            const form = document.getElementById('chatForm');
-            const voiceInput = document.getElementById('voice-file-input');
-            const removeVoice = document.getElementById('voice-file-remove');
+            const form = document.getElementById('chatForm'); const voiceInput = document.getElementById('voice-file-input'); const removeVoice = document.getElementById('voice-file-remove');
             if (voiceInput) lifecycle.on(voiceInput, 'change', () => voicePreview(voiceInput.files?.[0] || null));
-            if (removeVoice) lifecycle.on(removeVoice, 'click', event => {
-                event.preventDefault();
-                if (voiceInput) voiceInput.value = '';
-                voicePreview(null);
-            });
+            if (removeVoice) lifecycle.on(removeVoice, 'click', event => { event.preventDefault(); if (voiceInput) voiceInput.value = ''; voicePreview(null); });
             if (!form) return;
             lifecycle.on(form, 'submit', async event => {
-                event.preventDefault();
-                if (store.getState().composerStatus === 'sending') return;
-                const { editor, html, text } = editorContent();
-                const hasVoice = Boolean(voiceInput?.files?.length);
-                if (!text && !hasVoice) return notify('پیام نمی‌تواند خالی باشد.', 'error');
-                const formData = new FormData(form);
-                const idInput = clientMessageId(form);
-                formData.set('client_message_id', idInput.value);
-                const reply = store.getState().composerReply;
-                if (reply?.id && document.getElementById(`msg-${reply.id}`)) formData.set('parent_id', reply.id);
-                else formData.delete('parent_id');
-                const message = text || '🎤 پیام صوتی';
-                formData.set('message', message);
-                const temporaryId = `temp_${Date.now()}`;
-                const [temporary] = feed.apply([{
-                    content_type: 'message', id: temporaryId, user_id: window.authUserId,
-                    sender: 'شما', message: html || message, reactions: [], parent_id: reply?.id || null,
-                    created_at: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }), state: 'pending',
-                }], 'optimistic');
-                if (temporary) temporary.dataset.deliveryState = 'pending';
-                store.setState({ composerStatus: 'sending', composerError: null });
-                try {
-                    const data = await api.json(form.action, { method: 'POST', body: formData });
-                    const storedMessage = data?.message;
-                    if (!storedMessage?.id || !storedMessage?.user_id) {
-                        throw new Error('Invalid stored message response');
-                    }
-                    document.getElementById(`msg-${temporaryId}`)?.remove();
-                    const [rendered] = feed.apply([{ ...storedMessage, content_type: 'message' }], 'submit-response');
-                    if (rendered) rendered.dataset.deliveryState = storedMessage.state || 'sent';
-                    realtime?.advanceMessage(storedMessage.id);
-                    form.reset();
-                    idInput.value = '';
-                    if (voiceInput) voiceInput.value = '';
-                    voicePreview(null);
-                    editor?.setData('');
-                    cancelReply();
-                    const chatBox = document.getElementById('chat-box');
-                    if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
-                    store.setState({ composerStatus: 'idle', composerError: null });
-                } catch (error) {
-                    document.getElementById(`msg-${temporaryId}`)?.remove();
-                    store.setState({ composerStatus: 'error', composerError: error });
-                    if (error?.code === 'group_session_closed') {
-                        window.dispatchEvent(new CustomEvent('group-chat:session-closed', { detail: error }));
-                        return;
-                    }
-                    const details = error?.details ? Object.values(error.details).flat().join('\n') : '';
-                    notify(details || error?.message || 'خطا در ارسال پیام. لطفاً دوباره تلاش کنید.', 'error');
-                }
+                event.preventDefault(); if (store.getState().composerStatus === 'sending') return; const { editor, html, text } = editorContent(); const hasVoice = Boolean(voiceInput?.files?.length); if (!text && !hasVoice) return notify('پیام نمی‌تواند خالی باشد.', 'error'); const formData = new FormData(form); const idInput = clientMessageId(form); formData.set('client_message_id', idInput.value); const reply = store.getState().composerReply; if (reply?.id && document.getElementById(`msg-${reply.id}`)) formData.set('parent_id', reply.id); else formData.delete('parent_id'); const message = text || '🎤 پیام صوتی'; formData.set('message', message); const temporaryId = `temp_${Date.now()}`; const [temporary] = feed.apply([{ content_type: 'message', id: temporaryId, user_id: window.authUserId, sender: 'شما', message: html || message, reactions: [], parent_id: reply?.id || null, created_at: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }), state: 'pending' }], 'optimistic'); if (temporary) temporary.dataset.deliveryState = 'pending'; store.setState({ composerStatus: 'sending', composerError: null });
+                try { const data = await api.json(form.action, { method: 'POST', body: formData }); const storedMessage = data?.message; if (!storedMessage?.id || !storedMessage?.user_id) throw new Error('Invalid stored message response'); document.getElementById(`msg-${temporaryId}`)?.remove(); const [rendered] = feed.apply([{ ...storedMessage, content_type: 'message' }], 'submit-response'); if (rendered) rendered.dataset.deliveryState = storedMessage.state || 'sent'; realtime?.advanceMessage(storedMessage.id); form.reset(); idInput.value = ''; if (voiceInput) voiceInput.value = ''; voicePreview(null); editor?.setData(''); cancelReply(); const chatBox = document.getElementById('chat-box'); if (chatBox) chatBox.scrollTop = chatBox.scrollHeight; store.setState({ composerStatus: 'idle', composerError: null }); }
+                catch (error) { document.getElementById(`msg-${temporaryId}`)?.remove(); store.setState({ composerStatus: 'error', composerError: error }); if (error?.code === 'group_session_closed') { window.dispatchEvent(new CustomEvent('group-chat:session-closed', { detail: error })); return; } const details = error?.details ? Object.values(error.details).flat().join('\n') : ''; notify(details || error?.message || 'خطا در ارسال پیام. لطفاً دوباره تلاش کنید.', 'error'); }
             });
         },
         initializePostSubmission({ feedBridge }) {
-            const form = document.getElementById('postForm');
-            if (!form) return;
+            const form = document.getElementById('postForm'); if (!form) return;
             lifecycle.on(form, 'submit', async event => {
-                event.preventDefault();
-                const button = form.querySelector('button[type="submit"]');
-                if (button?.disabled) return;
-                const label = button?.textContent;
-                if (button) { button.disabled = true; button.textContent = 'در حال ارسال...'; }
-                Object.values(window.CKEDITOR?.instances || {}).forEach(editor => editor.updateElement());
-                store.setState({ composerPostStatus: 'sending', composerPostError: null });
-                try {
-                    const data = await api.json(form.action, { method: 'POST', body: new FormData(form) });
-                    if (data?.status && data.status !== 'success') throw new Error(data.message || 'خطا در ارسال پست');
-                    if (!data?.post?.html) throw new Error('پاسخ پست فاقد محتوای قابل نمایش است');
-                    const rendered = feedBridge.create('post', data.post, 'local-post-submit');
-                    form.reset();
-                    Object.values(window.CKEDITOR?.instances || {}).forEach(editor => editor.setData(''));
-                    closePost();
-                    const root = document.getElementById('chat-box');
-                    if (rendered && root) root.scrollTop = root.scrollHeight;
-                    store.setState({ composerPostStatus: 'idle', composerPostError: null });
-                } catch (error) {
-                    store.setState({ composerPostStatus: 'error', composerPostError: error });
-                    notify(error.message || 'خطا در ارتباط با سرور', 'error');
-                } finally {
-                    if (button) { button.disabled = false; button.textContent = label; }
-                }
+                event.preventDefault(); const button = form.querySelector('button[type="submit"]'); if (button?.disabled) return; const label = button?.textContent; if (button) { button.disabled = true; button.textContent = 'در حال ارسال...'; } Object.values(window.CKEDITOR?.instances || {}).forEach(editor => editor.updateElement()); store.setState({ composerPostStatus: 'sending', composerPostError: null });
+                try { const data = await api.json(form.action, { method: 'POST', body: new FormData(form) }); if (data?.status && data.status !== 'success') throw new Error(data.message || 'خطا در ارسال پست'); if (!data?.post?.html) throw new Error('پاسخ پست فاقد محتوای قابل نمایش است'); const rendered = feedBridge.create('post', data.post, 'local-post-submit'); form.reset(); Object.values(window.CKEDITOR?.instances || {}).forEach(editor => editor.setData('')); closePost(); const root = document.getElementById('chat-box'); if (rendered && root) root.scrollTop = root.scrollHeight; store.setState({ composerPostStatus: 'idle', composerPostError: null }); }
+                catch (error) { store.setState({ composerPostStatus: 'error', composerPostError: error }); notify(error.message || 'خطا در ارتباط با سرور', 'error'); }
+                finally { if (button) { button.disabled = false; button.textContent = label; } }
             });
         },
     });

@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - agent/integration-hoda-bahar-after-groups
+      - agent/integration-secretariat-s9-current-main
+      - agent/elections-systemic-rebuild
+      - agent/pre-main-ui-polish
+  pull_request:
+    branches:
+      - main
+      - agent/integration-pre-elections-current-main
   workflow_dispatch:
 
 permissions:
@@ -45,12 +52,12 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '20'
           cache: npm
 
       - name: Prepare Laravel directories
         run: |
-          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs regression-logs
           chmod -R 775 bootstrap/cache storage/framework storage/logs
 
       - name: Install backend dependencies from lock
@@ -63,6 +70,8 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm run build
+          test -f public/build/manifest.json
+          grep -F 'resources/js/app.js' public/build/manifest.json >/dev/null
 
       - name: Create isolated test environment
         run: |
@@ -91,8 +100,13 @@ jobs:
           EOF
           php artisan key:generate --force
 
-      - name: Migrate full integrated schema
-        run: php artisan migrate --force
+      - name: Provision phpunit forced database
+        run: mysql --host=127.0.0.1 --port=3306 --user=root -e 'CREATE DATABASE IF NOT EXISTS `newearthcoop-test` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
+
+      - name: Migrate full integrated schemas
+        run: |
+          php artisan migrate --force
+          DB_DATABASE=newearthcoop-test php artisan migrate --force
 
       - name: Validate route and command boot
         run: |
@@ -102,43 +116,125 @@ jobs:
           php artisan list > /tmp/commands.txt
           grep -F 'najm-hoda:production-readiness' /tmp/commands.txt >/dev/null
           grep -F 'najm-bahar:production-readiness' /tmp/commands.txt >/dev/null
+          grep -F 'elections:audit-data' /tmp/commands.txt >/dev/null
+          php artisan elections:audit-data --json --fail-on-issues
 
-      - name: Run all integration regression suites
+      - name: Regression — Group Chat
+        id: regression_group_chat
         shell: bash
         run: |
-          set +e
-          status=0
+          set -o pipefail
+          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/GroupChat 2>&1 | tee regression-logs/group-chat.log
 
-          echo '=== GROUP CHAT ==='
-          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/GroupChat || status=1
-
-          echo '=== GROUP ADMIN / IDENTITY ==='
+      - name: Regression — Group Admin / Identity
+        id: regression_group_admin_identity
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -o pipefail
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/Admin/GlobalGroupRoleManagementTest.php \
             tests/Feature/Admin/GroupRoleManagementTest.php \
             tests/Feature/Admin/RealtimeSettingsTest.php \
             tests/Feature/SystemIdentityIsolationTest.php \
-            tests/Feature/ChatRequestFlowTest.php || status=1
+            tests/Feature/ChatRequestFlowTest.php 2>&1 | tee regression-logs/group-admin-identity.log
 
-          echo '=== NAJM HODA + N8N ==='
-          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda || status=1
+      - name: Regression — Najm Hoda + n8n
+        id: regression_najm_hoda
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -o pipefail
+          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/NajmHoda 2>&1 | tee regression-logs/najm-hoda.log
 
-          echo '=== GOVERNANCE ==='
-          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Governance || status=1
+      - name: Regression — Governance
+        id: regression_governance
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -o pipefail
+          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Governance 2>&1 | tee regression-logs/governance.log
 
-          echo '=== NAJM BAHAR ==='
+      - name: Regression — Najm Bahar
+        id: regression_najm_bahar
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -o pipefail
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/NajmBahar \
             tests/Unit/NajmBahar \
-            tests/Architecture/NajmBaharFinancialMutationBoundaryTest.php || status=1
+            tests/Architecture/NajmBaharFinancialMutationBoundaryTest.php 2>&1 | tee regression-logs/najm-bahar.log
 
-          echo '=== STOCK ==='
-          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Unit/Stock || status=1
+      - name: Regression — Stock
+        id: regression_stock
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -o pipefail
+          php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Unit/Stock 2>&1 | tee regression-logs/stock.log
 
-          echo '=== GROUP CHAT JAVASCRIPT ==='
-          npm run test:group-chat || status=1
+      - name: Regression — Group Chat JavaScript
+        id: regression_group_chat_js
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:group-chat 2>&1 | tee regression-logs/group-chat-js.log
 
-          echo '=== FULL PROJECT PHPUNIT REGRESSION ==='
-          php vendor/bin/phpunit --configuration phpunit.xml.dist || status=1
+      - name: Reset phpunit database for full suite
+        if: ${{ !cancelled() }}
+        run: DB_DATABASE=newearthcoop-test php artisan migrate:fresh --force
 
-          exit $status
+      - name: Regression — Full Project PHPUnit
+        id: regression_full_phpunit
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -o pipefail
+          php vendor/bin/phpunit --configuration phpunit.xml.dist 2>&1 | tee regression-logs/full-phpunit.log
+
+      - name: Upload regression diagnostics
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-regression-logs
+          path: regression-logs/*.log
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Enforce regression gate
+        if: ${{ !cancelled() }}
+        shell: bash
+        env:
+          GROUP_CHAT: ${{ steps.regression_group_chat.outcome }}
+          GROUP_ADMIN_IDENTITY: ${{ steps.regression_group_admin_identity.outcome }}
+          NAJM_HODA: ${{ steps.regression_najm_hoda.outcome }}
+          GOVERNANCE: ${{ steps.regression_governance.outcome }}
+          NAJM_BAHAR: ${{ steps.regression_najm_bahar.outcome }}
+          STOCK: ${{ steps.regression_stock.outcome }}
+          GROUP_CHAT_JS: ${{ steps.regression_group_chat_js.outcome }}
+          FULL_PHPUNIT: ${{ steps.regression_full_phpunit.outcome }}
+        run: |
+          printf '%-28s %s\n' \
+            'Group Chat' "$GROUP_CHAT" \
+            'Group Admin / Identity' "$GROUP_ADMIN_IDENTITY" \
+            'Najm Hoda + n8n' "$NAJM_HODA" \
+            'Governance' "$GOVERNANCE" \
+            'Najm Bahar' "$NAJM_BAHAR" \
+            'Stock' "$STOCK" \
+            'Group Chat JavaScript' "$GROUP_CHAT_JS" \
+            'Full Project PHPUnit' "$FULL_PHPUNIT"
+
+          if printf '%s\n' \
+            "$GROUP_CHAT" \
+            "$GROUP_ADMIN_IDENTITY" \
+            "$NAJM_HODA" \
+            "$GOVERNANCE" \
+            "$NAJM_BAHAR" \
+            "$STOCK" \
+            "$GROUP_CHAT_JS" \
+            "$FULL_PHPUNIT" | grep -qv '^success$'; then
+            echo 'One or more regression suites failed.'
+            exit 1
+          fi

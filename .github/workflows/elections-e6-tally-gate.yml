@@ -1,0 +1,77 @@
+name: Elections E6 Deterministic Tally Gate
+
+on:
+  pull_request:
+    branches:
+      - agent/integration-pre-elections-current-main
+  push:
+    branches:
+      - agent/elections-systemic-rebuild
+
+jobs:
+  e6-deterministic-tally:
+    runs-on: ubuntu-24.04
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: newearthcoop_elections_e6
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout elections branch
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo, pdo_mysql, bcmath, openssl, fileinfo, zip, curl, json
+          coverage: none
+
+      - name: Prepare Laravel runtime
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          chmod -R 775 bootstrap/cache storage/framework storage/logs
+          composer install --prefer-dist --no-interaction --no-progress
+          cat > .env <<'EOF'
+          APP_NAME=EarthCoop
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          LOG_CHANNEL=stack
+          DB_CONNECTION=mysql
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_DATABASE=newearthcoop_elections_e6
+          DB_USERNAME=root
+          DB_PASSWORD=
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          MAIL_MAILER=array
+          BROADCAST_DRIVER=log
+          FILESYSTEM_DISK=local
+          EOF
+          php artisan key:generate --force
+
+      - name: Migrate E6 snapshot and tally schema
+        run: php artisan migrate:fresh --force
+
+      - name: Run E6 tally and verifiable draw tests
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections/ElectionTallyServiceTest.php
+
+      - name: Re-run elections regression suite
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections
+
+      - name: Validate E6 schema shape
+        run: |
+          php artisan tinker --execute="throw_unless(\Illuminate\Support\Facades\Schema::hasTable('election_vote_snapshot_runs')); throw_unless(\Illuminate\Support\Facades\Schema::hasTable('election_vote_snapshot_entries')); throw_unless(\Illuminate\Support\Facades\Schema::hasTable('election_tally_results'));"
