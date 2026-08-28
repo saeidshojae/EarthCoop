@@ -11,12 +11,14 @@ const dashboard = read('resources/views/groups/show.blade.php');
 const webRoutes = read('routes/web.php');
 const secretariatRoutes = read('routes/secretariat.php');
 
-test('chat hero stays compact while every migrated capability remains discoverable in control center', () => {
-    for (const action of ['open-group-info', 'open-blog', 'open-poll']) {
-        assert.match(hero, new RegExp(`data-chat-page-action=["']${action}["']`), action);
-    }
+test('chat hero prioritizes governance while content creation remains discoverable in control center', () => {
+    assert.match(hero, /data-chat-page-action=["']open-group-info["']/);
+    assert.match(hero, /data-chat-page-action=["']open-election["']/);
+    assert.match(hero, /route\('groups\.najm-bahar\.reports', \$group\)/);
+    assert.doesNotMatch(hero, /data-chat-page-action=["']open-blog["']/);
+    assert.doesNotMatch(hero, /data-chat-page-action=["']open-poll["']/);
 
-    for (const action of ['open-election', 'open-election-admin', 'manage-members', 'manage-reports', 'group-settings']) {
+    for (const action of ['open-blog', 'open-poll', 'open-election', 'open-election-admin', 'manage-members', 'manage-reports', 'group-settings']) {
         assert.match(panel, new RegExp(`data-chat-page-action=["']${action}["']`), action);
     }
 
