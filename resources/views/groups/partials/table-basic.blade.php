@@ -16,9 +16,25 @@
     ];
     $currentUserId = auth()->id();
 
+    // This partial renders both desktop and mobile representations. Resolve
+    // shared metadata once so responsive rendering never multiplies queries.
+    $memberCounts = $groups->isEmpty()
+        ? collect()
+        : \App\Models\GroupUser::query()
+            ->whereIn('group_id', $groups->pluck('id'))
+            ->selectRaw('group_id, COUNT(*) as aggregate')
+            ->groupBy('group_id')
+            ->pluck('aggregate', 'group_id');
+
+    // Only specialty lists need these approval relations. Bulk-load them once
+    // instead of lazy-loading one relation per card/table row.
+    if ($type === 'specialty' && $groups->isNotEmpty()) {
+        $groups->loadMissing(['specialty', 'experience']);
+    }
+
     // Normalize each group once so desktop and mobile representations reuse the
     // exact same membership/status business rules without doubling queries.
-    $groupRows = $groups->map(function ($group) use ($currentUserId, $roleLabels, $type, $levelKey, $filters) {
+    $groupRows = $groups->map(function ($group) use ($currentUserId, $roleLabels, $type, $levelKey, $filters, $memberCounts) {
         $pivot = $group->pivot ?? \App\Models\GroupUser::where('group_id', $group->id)
             ->where('user_id', $currentUserId)
             ->first();
@@ -57,8 +73,9 @@
         }
 
         $specialtyApproved = true;
-        if (($group->specialty && (int) ($group->specialty->status ?? 1) === 0)
-            || ($group->experience && (int) ($group->experience->status ?? 1) === 0)) {
+        if ($type === 'specialty'
+            && (($group->specialty && (int) ($group->specialty->status ?? 1) === 0)
+                || ($group->experience && (int) ($group->experience->status ?? 1) === 0))) {
             $specialtyApproved = false;
         }
 
@@ -108,7 +125,7 @@
             'isActiveMembership' => $isActiveMembership,
             'canAccess' => $canAccess,
             'filterValue' => $filterValue,
-            'memberCount' => isset($group->users_count) ? (int) $group->users_count : $group->users()->count(),
+            'memberCount' => (int) ($memberCounts[$group->id] ?? 0),
         ];
     })->filter()->values();
 @endphp
