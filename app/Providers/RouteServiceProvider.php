@@ -46,6 +46,9 @@ class RouteServiceProvider extends ServiceProvider
                 ->group(base_path('routes/elections.php'));
 
             Route::middleware('web')
+                ->group(base_path('routes/group-election-surface.php'));
+
+            Route::middleware('web')
                 ->group(base_path('routes/najm-hoda-group-attention.php'));
 
             Route::middleware('web')
