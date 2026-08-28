@@ -5,6 +5,7 @@ namespace App\Modules\Stock\Services;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\ExternalPaymentIntent;
 use App\Modules\Stock\Models\ExternalPaymentReconciliation;
+use App\Modules\Stock\Pricing\ExternalCapitalQuotePolicy;
 use App\Modules\Stock\Pricing\FiatQuoteSnapshot;
 use App\Modules\Stock\Pricing\StockPricingService;
 use App\Modules\Stock\Settlement\SettlementChannel;
@@ -14,7 +15,10 @@ use RuntimeException;
 
 class ExternalCapitalPaymentService
 {
-    public function __construct(private readonly StockPricingService $pricing) {}
+    public function __construct(
+        private readonly StockPricingService $pricing,
+        private readonly ExternalCapitalQuotePolicy $quotePolicy
+    ) {}
 
     public function createIntentForAuction(
         Auction $auction,
@@ -30,6 +34,7 @@ class ExternalCapitalPaymentService
         $auction->loadMissing('stock');
         $auction->assertSettlementEligible();
         $this->pricing->assertCanonicalAuction($auction);
+        $this->quotePolicy->assertEligible($quote);
         $channel=(string)$auction->settlement_channel;
         $expectedCurrency=$this->currencyForChannel($channel);
         if($quote->currency!==$expectedCurrency) throw new InvalidArgumentException("Quote currency {$quote->currency} does not match settlement channel {$channel}.");
