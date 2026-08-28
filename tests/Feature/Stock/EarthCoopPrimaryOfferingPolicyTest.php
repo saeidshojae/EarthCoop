@@ -4,6 +4,7 @@ namespace Tests\Feature\Stock;
 
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Stock;
+use App\Modules\Stock\Models\StockSettlementAllocation;
 use App\Modules\Stock\Services\EarthCoopPrimaryOfferingPolicy;
 use App\Modules\Stock\Settlement\SettlementChannel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -46,10 +47,34 @@ class EarthCoopPrimaryOfferingPolicyTest extends TestCase
         app(EarthCoopPrimaryOfferingPolicy::class)->assertEligible($auction);
     }
 
-    public function test_existing_distribution_plus_open_offerings_cannot_oversubscribe_cap(): void
+    public function test_open_offerings_cannot_oversubscribe_cap(): void
     {
-        $stock = $this->stock(1000, 950); // 50 shares already left treasury.
-        $this->auction($stock, 40, 'scheduled');
+        $stock = $this->stock(1000, 1000);
+        $this->auction($stock, 90, 'scheduled');
+        $candidate = $this->auction($stock, 20, 'running');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('oversubscribe');
+        app(EarthCoopPrimaryOfferingPolicy::class)->assertEligible($candidate);
+    }
+
+    public function test_canonical_settled_primary_allocations_consume_cap(): void
+    {
+        $stock = $this->stock(1000, 1000);
+        $settledAuction = $this->auction($stock, 90, 'settled');
+        StockSettlementAllocation::create([
+            'allocation_key' => 'settled-cap-1',
+            'auction_id' => $settledAuction->id,
+            'user_id' => 1,
+            'stock_id' => $stock->id,
+            'settlement_channel' => SettlementChannel::EXTERNAL_USD,
+            'quantity' => 90,
+            'price_gol' => 10,
+            'total_gol' => 900,
+            'state' => StockSettlementAllocation::SETTLED,
+            'money_state' => 'confirmed_external',
+            'asset_state' => 'settled',
+        ]);
         $candidate = $this->auction($stock, 20, 'running');
 
         $this->expectException(RuntimeException::class);
