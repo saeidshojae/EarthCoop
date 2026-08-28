@@ -13,6 +13,33 @@ class Group extends Model
         'last_activity_at' => 'datetime',
     ];
 
+    public function getAvatarUrlAttribute(): ?string
+    {
+        $avatar = trim((string) ($this->attributes['avatar'] ?? ''));
+        if ($avatar === '') {
+            return null;
+        }
+
+        if (preg_match('#^(?:https?:)?//#i', $avatar) || str_starts_with($avatar, 'data:')) {
+            return $avatar;
+        }
+
+        $path = ltrim(str_replace('\\', '/', $avatar), '/');
+        if (str_starts_with($path, 'public/')) {
+            $path = substr($path, strlen('public/'));
+        }
+
+        if (str_starts_with($path, 'images/groups/')) {
+            return asset($path);
+        }
+
+        if (str_contains($path, '/')) {
+            return asset($path);
+        }
+
+        return asset('images/groups/' . $path);
+    }
+
     public function users()
     {
         return $this->belongsToMany(User::class, 'group_user')
