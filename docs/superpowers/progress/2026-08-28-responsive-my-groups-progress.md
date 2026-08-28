@@ -37,6 +37,9 @@ This is the persistent recovery checkpoint for the responsive-system rollout. Up
 - Performance review found pre-existing `users()->count()` N+1. Bulk-count regression commit `888616fa92ba7aa4e68dce77d65c105223251669`; **RED** run `33188539633`, job `98907755047` → failure as intended. Basic list bulk member counts + specialty/experience bulk-load: `b599590cf951aad627405cb20bb4d531331775a1`; managed bulk member counts: `132d4be4e0dc0baccfeaa93fa0918ff38a938f9e`; **GREEN** run `33188653223`, job `98908151038` → success.
 - Accidental `.keep` file removed at `36cebeaed2149dd6e19d061a431ab1315756cf87`.
 - Spec brought up to date at `b73f122d28600fda3f6fa471455908cb1475dec7`.
+- **FINAL FOCUSED GREEN on implementation checkpoint `7d699ac636871389eba715db30bc020376181a9d`:** Responsive Contract Validation run `33188810838` completed `success`.
+- **FINAL FULL GREEN on the same implementation checkpoint `7d699ac636871389eba715db30bc020376181a9d`:** EarthCoop Integration Full Validation run `33188809778`, job `98908702129`, completed `success`. Every gate was green: install/build, migrations, route boot, Group Chat, Group Admin/Identity, Najm Hoda+n8n, Governance, Najm Bahar, Stock, Group Chat JavaScript, and Full Project PHPUnit.
+- 2026-08-28 19:56 +03:30 — Responsive My Groups implementation marked **READY FOR FOUNDER UAT**. This ledger update is documentation-only and does not alter runtime implementation validated at `7d699ac636871389eba715db30bc020376181a9d`.
 
 ## Current implementation behavior
 - Desktop keeps comparative tables.
@@ -50,19 +53,38 @@ This is the persistent recovery checkpoint for the responsive-system rollout. Up
 - Member counts are loaded in one grouped query per rendered group collection rather than one count query per group. Specialty/experience approval relations are bulk-loaded only for specialty lists.
 - Shared responsive primitives are additive/opt-in; there is no blanket `.container`, all-heading or all-table rewrite.
 
-## Current verification state
-- Focused responsive contract is GREEN on the code slice through `132d4be4e0dc0baccfeaa93fa0918ff38a938f9e`.
-- Latest documentation commits do not change runtime code but trigger fresh branch validation. Final Full Validation result still must be fetched before the slice is declared complete.
+## Verification state
+**READY FOR FOUNDER UAT.**
 
-## Current task
-**Task 5 — final Full Validation + founder UAT checkpoint.**
+Validated implementation checkpoint:
+`7d699ac636871389eba715db30bc020376181a9d`
+
+Focused validation:
+- Workflow: EarthCoop Responsive Contract Validation
+- Run: `33188810838`
+- Conclusion: `success`
+
+Full integration validation:
+- Workflow: EarthCoop Integration Full Validation
+- Run: `33188809778`
+- Job: `98908702129`
+- Conclusion: `success`
+- All regression gates completed successfully.
+
+## Founder UAT checklist
+Test at 360px, 390px, 768px and desktop:
+1. Public, specialty, exclusive and managed group sections/accordions.
+2. Specialty filter chips and correct local filtering.
+3. Active, pending and inactive group states.
+4. Group avatar and initials fallback.
+5. Restore-membership action for inactive groups.
+6. Dark mode.
+7. No horizontal group-list scrolling.
+8. Desktop still shows comparative tables only; mobile/tablet shows cards only.
+9. Persian group names wrap naturally and do not stack word-by-word vertically.
 
 ## Next exact action
-1. Fetch the latest head SHA after this ledger commit.
-2. Wait for/fetch Responsive Contract Validation and EarthCoop Integration Full Validation on that exact head.
-3. If either is red, inspect the exact failing job/log and fix before UAT.
-4. If both are green, update this ledger one last time with head/run IDs and mark the implementation `READY FOR FOUNDER UAT`.
-5. Founder UAT: 360px, 390px, 768px and desktop; verify public/specialty/exclusive/managed accordions, filter chips, active/pending/inactive groups, avatars, restore action, dark mode and no horizontal list scroll.
+Founder performs local UAT on `agent/pre-main-ui-polish-responsive`. Any visual or behavioral defects found during UAT are fixed on this branch, documented here, and revalidated before any integration decision.
 
 ## Merge safety
 No merge to `main` is authorized. This branch is for implementation/UAT only.
