@@ -29,8 +29,10 @@ $memberCount = $memberCount ?? 0;
 $guestCount = $guestCount ?? 0;
 $blogCount = $blogCount ?? 0;
 $pollCount = $pollCount ?? 0;
-$pivotUser = $pivotUser ?? null;
-$checkBlockElection = $checkBlockElection ?? null;
+$pivotUser = $pivotUser ?? \App\Models\GroupUser::where('group_id', $group->id)
+    ->where('user_id', auth()->id())
+    ->first();
+$checkBlockElection = \App\Models\Block::where('user_id', auth()->id())->where('position', 'election')->first();
 $checkBlockMessage = $checkBlockMessage ?? null;
 $checkBlockPost = $checkBlockPost ?? null;
 $checkBlockPoll = $checkBlockPoll ?? null;
@@ -47,7 +49,7 @@ default => 'عضو'
 };
 $membershipStatusLabel = (int)($pivotUser?->status ?? 0) === 1 ? 'فعال' : 'غیرفعال';
 $electionAvailable = ($election ?? null) && optional($groupSetting)->election_status == 1;
-$canParticipateElection = $electionAvailable && !$checkBlockElection && optional(auth()->user())->status == 1;
+$canParticipateElection = $electionAvailable && !$checkBlockElection && (int)($pivotUser?->status ?? 0) === 1;
 @endphp
 <div id="group-chat-main-container"
     class="container mx-auto max-w-7xl px-4 md:px-8 pt-0 pb-8 space-y-6 md:space-y-10 group-chat-container"
@@ -159,6 +161,7 @@ $canParticipateElection = $electionAvailable && !$checkBlockElection && optional
 
     @include('groups.partials.group_control_center_shell')
     @include('groups.partials.group_control_center_polish')
+    @include('groups.partials.election_surface_bridge')
 
     <div id="groupInfoBackdrop" class="group-info-backdrop hidden"></div>
     <div id="categoryBlogsOverlay" class="category-browser__overlay"></div>
