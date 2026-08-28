@@ -54,7 +54,6 @@ test('basic groups keep desktop table and expose a mobile-native entity list', (
     assert.match(basic, /groups\.relogout/);
     assert.match(basic, /\$roleText/);
     assert.match(basic, /\$statusLabel/);
-    assert.match(basic, /users_count|users\(\)->count\(\)/);
 });
 
 test('managed groups keep desktop table and expose a mobile-native entity list', () => {
@@ -63,7 +62,15 @@ test('managed groups keep desktop table and expose a mobile-native entity list',
     assert.match(managed, /ec-entity-card/);
     assert.match(managed, /\$group->avatar_url/);
     assert.match(managed, /groups\.chat/);
-    assert.match(managed, /users_count|users\(\)->count\(\)/);
+});
+
+test('My Groups list presenters bulk-load member counts and specialty relations instead of per-card queries', () => {
+    for (const source of [basic, managed]) {
+        assert.match(source, /whereIn\('group_id',\s*\$groups->pluck\('id'\)\)/);
+        assert.match(source, /COUNT\(\*\) as aggregate/);
+        assert.doesNotMatch(source, /users\(\)->count\(\)/);
+    }
+    assert.match(basic, /\$groups->loadMissing\(\['specialty',\s*'experience'\]\)/);
 });
 
 test('mobile and desktop group representations have an explicit cascade-safe breakpoint contract', () => {
