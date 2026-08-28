@@ -8,6 +8,7 @@ const pageChrome = readFileSync('resources/views/groups/partials/page_chrome_run
 const hero = readFileSync('resources/views/groups/partials/group_hero.blade.php', 'utf8');
 const controller = readFileSync('app/Http/Controllers/Group/GroupController.php', 'utf8');
 const groupModel = readFileSync('app/Models/Group.php', 'utf8');
+const chatFeatures = readFileSync('public/js/chat-features.js', 'utf8');
 
 test('primary control-center tabs use full centered card geometry', () => {
     assert.match(polish, /#groupInfoPanel \.panel-tabs \.tab \{[\s\S]*?width: 100%[\s\S]*?min-height: 44px[\s\S]*?text-align: center/);
@@ -18,22 +19,21 @@ test('content primary action keeps a clear green treatment', () => {
     assert.match(polish, /#groupInfoPanel \.panel-action-btn--primary \{[\s\S]*?background: #10b981 !important[\s\S]*?color: #fff !important/);
 });
 
-test('group edit uses an inset fullscreen modal shell above the control center', () => {
+test('group edit reuses the proven group-settings modal shell geometry exactly', () => {
     assert.match(editModal, /id="groupEditFormBox"\s+class="modal-shell group-edit-modal"/);
-    assert.match(editModal, /class="modal-shell__dialog group-edit-modal__dialog"/);
-    assert.doesNotMatch(editModal, /group-edit-modal__backdrop/);
-    assert.match(editModal, /html body #groupEditFormBox\.modal-shell \{[\s\S]*?position: fixed !important[\s\S]*?inset: 0 !important[\s\S]*?z-index: 100100 !important[\s\S]*?width: auto !important[\s\S]*?height: auto !important/);
-    assert.match(pageChrome, /groupEditForm\.style\.display = visible \? 'flex' : 'none'/);
+    assert.match(editModal, /class="modal-shell__dialog group-edit-modal__dialog"[\s\S]*?style="position: relative; width: min\(500px, 94vw\); background: #fff; border-radius: 28px; padding: 1\.75rem; box-shadow: 0 45px 95px -45px rgba\(15, 23, 42, 0\.6\);"/);
+    assert.match(chatFeatures, /modal\.style\.cssText = 'display: flex; position: fixed; inset: 0; z-index: 9999; align-items: center; justify-content: center; padding: 1\.5rem; direction: rtl;'/);
+    assert.match(pageChrome, /groupEditForm\.style\.cssText = visible[\s\S]*?'display: flex; position: fixed; inset: 0; z-index: 9999; align-items: center; justify-content: center; padding: 1\.5rem; direction: rtl;'[\s\S]*?: 'display: none;'/);
 });
 
-test('group edit dialog is pinned to the viewport center independently of parent flex geometry', () => {
-    assert.match(editModal, /html body #groupEditFormBox\.modal-shell > \.group-edit-modal__dialog \{[\s\S]*?position: fixed !important[\s\S]*?top: 50% !important[\s\S]*?left: 50% !important[\s\S]*?transform: translate\(-50%, -50%\) !important[\s\S]*?margin: 0 !important/);
+test('group edit has no competing custom viewport positioning rules', () => {
+    assert.doesNotMatch(editModal, /top:\s*50%|translate\(-50%,\s*-50%\)|100d?v[wh]/);
+    assert.doesNotMatch(polish, /#groupEditFormBox\.modal-shell|\.group-edit-modal__dialog\s*\{[\s\S]*?(?:position:\s*fixed|top:\s*50%|100d?v[wh])/);
 });
 
-test('group edit is portaled to document body so ancestor stacking contexts cannot trap it', () => {
-    assert.match(pageChrome, /const groupEditOriginalParent = groupEditForm\?\.parentNode/);
+test('group edit is portaled to body and closes when the shell backdrop itself is clicked', () => {
     assert.match(pageChrome, /document\.body\.appendChild\(groupEditForm\)/);
-    assert.match(pageChrome, /groupEditOriginalParent\.insertBefore\(groupEditForm, groupEditOriginalNextSibling\)/);
+    assert.match(pageChrome, /lifecycle\.on\(groupEditForm, 'click', event => \{[\s\S]*?if \(event\.target === groupEditForm\)[\s\S]*?setGroupEditVisible\(false\)/);
 });
 
 test('floating Najm Hoda launcher cannot cover an open control center', () => {
