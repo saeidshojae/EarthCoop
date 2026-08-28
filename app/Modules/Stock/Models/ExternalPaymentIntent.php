@@ -11,6 +11,8 @@ class ExternalPaymentIntent extends Model
     public const CONFIRMED = 'confirmed';
     public const FAILED = 'failed';
     public const CANCELLED = 'cancelled';
+    public const REFUNDED = 'refunded';
+    public const REVERSED = 'reversed';
 
     protected $table = 'stock_external_payment_intents';
     protected $guarded = [];
