@@ -66,17 +66,39 @@
 - `.github/workflows/stock-secondary-market-gate.yml`
 
 ## Validation posture at handoff
-- baseline SHA before docs: `ce6b93da48b5b9a68b2b86eadf955b667404dd1a`
-- Responsive Contract Validation on that SHA: success
-- Integration Full Validation on that exact SHA: cancelled, not failed; therefore it must be rerun/observed on the first code-bearing commit of the next session before declaring the new economic integration green.
-- docs-only handoff commits did not create a new PR-triggered validation run.
+Validation-only Draft PR: `#88` (DO NOT MERGE)
+
+Head validated before this documentation-only update:
+`9e3bd98394ee53581d0b365b636906dc9a4a3ea8`
+
+GitHub Actions:
+- EarthCoop Responsive Contract Validation #61: **SUCCESS**
+- EarthCoop Integration Full Validation #1695: **SUCCESS**
+
+Full Validation #1695 completed successfully through all enforced stages:
+- full schema migration
+- route and command boot
+- Group Chat regression
+- Group Admin / Identity regression
+- Najm Hoda + n8n regression
+- Governance regression
+- Najm Bahar regression
+- Stock regression
+- Group Chat JavaScript regression
+- Full Project PHPUnit
+- regression gate enforcement
+
+The current change to this document is documentation-only. The next code-bearing commit must re-run the relevant Stock/Najm Bahar/integration gates before any completion claim for new implementation work.
 
 ## Start point for next chat
 Branch:
 `agent/economic-system-current-integration`
 
-Draft PR:
+Preparation Draft PR:
 `#87`
+
+Validation-only Draft PR:
+`#88` — DO NOT MERGE
 
 First implementation task:
 1. re-read these two economy handoff docs;
