@@ -60,32 +60,28 @@
         color: #fff !important;
     }
 
-    /* Group edit is a modal above the Control Center, not an in-flow block
-       hidden behind it. */
-    .group-edit-modal {
-        position: fixed;
-        inset: 0;
-        z-index: 1400;
+    /* Group edit now uses the same canonical fullscreen shell contract as the
+       other Group Chat modals. These explicit viewport dimensions protect it
+       from legacy modal rules and keep it above the Control Center surface. */
+    #groupEditFormBox.modal-shell {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 100100 !important;
+        width: 100vw !important;
+        height: 100dvh !important;
+        max-width: none !important;
+        max-height: none !important;
+        margin: 0 !important;
         align-items: center;
         justify-content: center;
         padding: 1rem;
         direction: rtl;
-    }
-
-    .group-edit-modal__backdrop {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        border: 0;
-        background: rgba(15, 23, 42, .5);
-        backdrop-filter: blur(2px);
-        cursor: default;
+        background: rgba(15, 23, 42, .52) !important;
+        backdrop-filter: blur(4px);
     }
 
     .group-edit-modal__dialog {
         position: relative;
-        z-index: 1;
         width: min(560px, calc(100vw - 2rem));
         max-height: min(760px, calc(100dvh - 2rem));
         overflow-y: auto;
@@ -306,7 +302,7 @@
             padding: .45rem .65rem;
         }
 
-        .group-edit-modal {
+        #groupEditFormBox.modal-shell {
             align-items: flex-end;
             padding: .65rem;
         }
