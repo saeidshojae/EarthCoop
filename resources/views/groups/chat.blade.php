@@ -29,10 +29,8 @@ $memberCount = $memberCount ?? 0;
 $guestCount = $guestCount ?? 0;
 $blogCount = $blogCount ?? 0;
 $pollCount = $pollCount ?? 0;
-$pivotUser = $pivotUser ?? \App\Models\GroupUser::where('group_id', $group->id)
-    ->where('user_id', auth()->id())
-    ->first();
-$checkBlockElection = \App\Models\Block::where('user_id', auth()->id())->where('position', 'election')->first();
+$pivotUser = $pivotUser ?? null;
+$checkBlockElection = $checkBlockElection ?? null;
 $checkBlockMessage = $checkBlockMessage ?? null;
 $checkBlockPost = $checkBlockPost ?? null;
 $checkBlockPoll = $checkBlockPoll ?? null;
