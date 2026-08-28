@@ -66,6 +66,13 @@ test('managed groups keep desktop table and expose a mobile-native entity list',
     assert.match(managed, /users_count|users\(\)->count\(\)/);
 });
 
+test('mobile and desktop group representations have an explicit cascade-safe breakpoint contract', () => {
+    assert.match(responsive, /\.groups-page-shell \[data-mobile-group-list\]\s*\{[^}]*display:\s*none/s);
+    assert.match(responsive, /\.groups-page-shell \[data-desktop-group-table\]\s*\{[^}]*display:\s*block/s);
+    assert.match(responsive, /@media\s*\(max-width:\s*1023px\)[\s\S]*?\.groups-page-shell \[data-mobile-group-list\]\s*\{[^}]*display:\s*grid/s);
+    assert.match(responsive, /@media\s*\(max-width:\s*1023px\)[\s\S]*?\.groups-page-shell \[data-desktop-group-table\]\s*\{[^}]*display:\s*none/s);
+});
+
 test('mobile entity-list contract avoids horizontal-scroll dependency and protects Persian titles', () => {
     assert.match(responsive, /\.ec-entity-card__body\s*\{[^}]*min-width:\s*0/s);
     assert.match(responsive, /\.ec-entity-card__title\s*\{[^}]*word-break:\s*normal/s);
