@@ -96,8 +96,10 @@ test('responsive filter bridge updates cards and tables inside the clicked local
     assert.doesNotMatch(responsiveRuntime, /document\.getElementById\(targetId\)/);
 });
 
-test('My Groups does not intercept specialty filter clicks before the responsive filter bridge can handle mobile cards', () => {
-    assert.doesNotMatch(index, /function\s+initializeFilters\s*\(/);
-    assert.doesNotMatch(index, /Filter button clicked:/);
-    assert.doesNotMatch(index, /event\.stopPropagation\(\)/);
+test('responsive filter bridge captures specialty filter clicks before legacy local handlers can stop bubbling', () => {
+    assert.match(index, /event\.stopPropagation\(\)/);
+    assert.match(
+        responsiveRuntime,
+        /document\.addEventListener\('click',\s*event\s*=>\s*\{[\s\S]*?applyFilter\(filterContainer,\s*button\.dataset\.filter\s*\|\|\s*'all'\);[\s\S]*?\},\s*true\);/
+    );
 });
