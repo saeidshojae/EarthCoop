@@ -46,13 +46,16 @@ test('group exit action is moved before the my-groups search and list', () => {
     assert.match(polish, /myGroupsSection\.insertBefore\(footer, searchBlock \|\| groupsList\)/);
 });
 
-test('operational stats use the canonical blog media column and independent query builders', () => {
+test('operational stats use canonical persisted columns and independent query builders', () => {
     assert.match(controller, /whereNotNull\('img'\)/);
     assert.doesNotMatch(controller, /whereNotNull\('image'\)/);
     assert.match(controller, /\(clone \$messagesQuery\)->whereDate/);
     assert.match(controller, /\(clone \$postsQuery\)->whereMonth/);
-    assert.match(controller, /\(clone \$pollsQuery\)->where\('end_time'/);
-    assert.match(controller, /\(clone \$electionsQuery\)->where\('end_time'/);
+    assert.match(controller, /\$pollsQuery/);
+    assert.match(controller, /\$electionsQuery/);
+    assert.match(controller, /whereNull\('expires_at'\)[\s\S]*?orWhere\('expires_at', '>', now\(\)\)/);
+    assert.match(controller, /whereNotNull\('expires_at'\)[\s\S]*?where\('expires_at', '<=', now\(\)\)/);
+    assert.doesNotMatch(controller, /where\('end_time'/);
     assert.match(controller, /\(clone \$reportsQuery\)->where\('status'/);
 });
 
