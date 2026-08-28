@@ -18,11 +18,11 @@ test('content primary action keeps a clear green treatment', () => {
     assert.match(polish, /#groupInfoPanel \.panel-action-btn--primary \{[\s\S]*?background: #10b981 !important[\s\S]*?color: #fff !important/);
 });
 
-test('group edit opens as a true overlay above the control center', () => {
-    assert.match(editModal, /class="group-edit-modal"/);
-    assert.match(editModal, /class="group-edit-modal__backdrop"/);
-    assert.match(editModal, /class="group-edit-modal__dialog"/);
-    assert.match(polish, /\.group-edit-modal \{[\s\S]*?position: fixed[\s\S]*?z-index: 1400/);
+test('group edit uses the canonical fullscreen modal shell above the control center', () => {
+    assert.match(editModal, /id="groupEditFormBox"\s+class="modal-shell group-edit-modal"/);
+    assert.match(editModal, /class="modal-shell__dialog group-edit-modal__dialog"/);
+    assert.doesNotMatch(editModal, /group-edit-modal__backdrop/);
+    assert.match(polish, /#groupEditFormBox\.modal-shell \{[\s\S]*?position: fixed !important[\s\S]*?inset: 0 !important[\s\S]*?z-index: 100100 !important[\s\S]*?width: 100vw !important[\s\S]*?height: 100dvh !important/);
     assert.match(pageChrome, /groupEditForm\.style\.display = visible \? 'flex' : 'none'/);
 });
 
