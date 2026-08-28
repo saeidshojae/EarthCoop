@@ -420,7 +420,7 @@ class GroupController extends Controller
             ->where('user_id', auth()->id())
             ->value('role');
 
-        if ($managerRole !== 3) {
+        if ((int) $managerRole !== 3) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'شما دسترسی لازم را ندارید.'
@@ -454,15 +454,31 @@ class GroupController extends Controller
         $pollsQuery = $group->polls()->where('main_type', 1);
         $pollsStats = [
             'total' => (clone $pollsQuery)->count(),
-            'active' => (clone $pollsQuery)->where('end_time', '>', now())->count(),
-            'expired' => (clone $pollsQuery)->where('end_time', '<=', now())->count(),
+            'active' => (clone $pollsQuery)
+                ->where(function ($query) {
+                    $query->whereNull('expires_at')
+                        ->orWhere('expires_at', '>', now());
+                })
+                ->count(),
+            'expired' => (clone $pollsQuery)
+                ->whereNotNull('expires_at')
+                ->where('expires_at', '<=', now())
+                ->count(),
         ];
 
         $electionsQuery = $group->polls()->where('main_type', 0);
         $electionsStats = [
             'total' => (clone $electionsQuery)->count(),
-            'active' => (clone $electionsQuery)->where('end_time', '>', now())->count(),
-            'closed' => (clone $electionsQuery)->where('end_time', '<=', now())->count(),
+            'active' => (clone $electionsQuery)
+                ->where(function ($query) {
+                    $query->whereNull('expires_at')
+                        ->orWhere('expires_at', '>', now());
+                })
+                ->count(),
+            'closed' => (clone $electionsQuery)
+                ->whereNotNull('expires_at')
+                ->where('expires_at', '<=', now())
+                ->count(),
         ];
 
         $reportsQuery = ReportedMessage::where('group_id', $group->id);
