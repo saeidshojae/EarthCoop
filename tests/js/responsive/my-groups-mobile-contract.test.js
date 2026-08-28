@@ -65,6 +65,6 @@ test('mobile entity-list contract avoids horizontal-scroll dependency and protec
     assert.match(responsive, /\.ec-entity-card__body\s*\{[^}]*min-width:\s*0/s);
     assert.match(responsive, /\.ec-entity-card__title\s*\{[^}]*word-break:\s*normal/s);
     assert.doesNotMatch(responsive, /\.ec-entity-list\s*\{[^}]*overflow-x:\s*auto/s);
-    assert.match(responsive, /@media\s*\(max-width:\s*767px\)[\s\S]*?\.ec-page-shell\s*\{[^}]*padding-inline:\s*(?:\.75rem|\.875rem|1rem)/);
+    assert.match(responsive, /@media\s*\(max-width:\s*767px\)[\s\S]*?\.ec-page-shell\s*\{[^}]*padding-inline:\s*(?:0?\.75rem|0?\.875rem|1rem)/);
     assert.match(responsive, /@media\s*\(max-width:\s*767px\)[\s\S]*?\.ec-page-title\s*\{[^}]*font-size:/);
 });
