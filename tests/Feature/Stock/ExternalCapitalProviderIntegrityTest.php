@@ -23,6 +23,18 @@ class ExternalCapitalProviderIntegrityTest extends TestCase
         config()->set('stock.external_capital.quote_future_tolerance_seconds', 30);
     }
 
+    public function test_intent_idempotency_key_cannot_be_replayed_with_different_provider(): void
+    {
+        $service = app(ExternalCapitalPaymentService::class);
+        $auction = $this->auction();
+        $quote = FiatQuoteSnapshot::fromRate(1000, 'USD', 25, 2, 'official-fx');
+        $service->createIntentForAuction($auction, $quote, 'intent:provider:0', 'auction_bid', 800, 'provider-a');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('provider');
+        $service->createIntentForAuction($auction, $quote, 'intent:provider:0', 'auction_bid', 800, 'provider-b');
+    }
+
     public function test_pending_transition_cannot_switch_payment_provider(): void
     {
         $service = app(ExternalCapitalPaymentService::class);
