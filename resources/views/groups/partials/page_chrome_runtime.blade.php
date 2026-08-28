@@ -32,11 +32,22 @@ function initializeGroupChatPageChrome() {
     if (!lifecycle || lifecycle.destroyed) return;
 
     const groupEditForm = document.getElementById('groupEditFormBox');
+    const groupEditOriginalParent = groupEditForm?.parentNode || null;
+    const groupEditOriginalNextSibling = groupEditForm?.nextSibling || null;
     let groupEditLastFocus = null;
+
+    function ensureGroupEditPortal() {
+        if (groupEditForm && groupEditForm.parentNode !== document.body) {
+            document.body.appendChild(groupEditForm);
+        }
+    }
 
     function setGroupEditVisible(visible) {
         if (!groupEditForm) return;
-        if (visible) groupEditLastFocus = document.activeElement;
+        if (visible) {
+            groupEditLastFocus = document.activeElement;
+            ensureGroupEditPortal();
+        }
         groupEditForm.style.display = visible ? 'flex' : 'none';
         groupEditForm.setAttribute('aria-hidden', visible ? 'false' : 'true');
         document.body.classList.toggle('group-edit-modal-open', visible);
@@ -183,6 +194,13 @@ function initializeGroupChatPageChrome() {
 
     lifecycle.add(function() {
         setGroupEditVisible(false);
+        if (groupEditOriginalParent && groupEditForm?.parentNode === document.body) {
+            if (groupEditOriginalNextSibling?.parentNode === groupEditOriginalParent) {
+                groupEditOriginalParent.insertBefore(groupEditForm, groupEditOriginalNextSibling);
+            } else {
+                groupEditOriginalParent.appendChild(groupEditForm);
+            }
+        }
         setGroupHeroExpanded(false);
         document.querySelectorAll('[id^="edit-poll-box-"]').forEach(editBox => {
             editBox.style.display = 'none';
