@@ -356,7 +356,26 @@ body .groups-page-shell {
     min-width: 0;
 }
 
+/* Do not rely on Tailwind utility order for the mutually exclusive group
+ * representations: responsive-system.css loads after Vite and owns this
+ * breakpoint explicitly. */
+.groups-page-shell [data-mobile-group-list] {
+    display: none;
+}
+
+.groups-page-shell [data-desktop-group-table] {
+    display: block;
+}
+
 @media (max-width: 1023px) {
+    .groups-page-shell [data-mobile-group-list] {
+        display: grid;
+    }
+
+    .groups-page-shell [data-desktop-group-table] {
+        display: none;
+    }
+
     body .groups-page-shell {
         width: 100%;
         max-width: 100%;
