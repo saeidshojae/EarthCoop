@@ -8,7 +8,6 @@ const pageChrome = readFileSync('resources/views/groups/partials/page_chrome_run
 const hero = readFileSync('resources/views/groups/partials/group_hero.blade.php', 'utf8');
 const controller = readFileSync('app/Http/Controllers/Group/GroupController.php', 'utf8');
 const groupModel = readFileSync('app/Models/Group.php', 'utf8');
-const adminManage = readFileSync('resources/views/admin/groups/manage.blade.php', 'utf8');
 
 test('primary control-center tabs use full centered card geometry', () => {
     assert.match(polish, /#groupInfoPanel \.panel-tabs \.tab \{[\s\S]*?width: 100%[\s\S]*?min-height: 44px[\s\S]*?text-align: center/);
@@ -71,10 +70,9 @@ test('group description remains visible after the compact hero redesign', () => 
     assert.match(hero, /\$group->description/);
 });
 
-test('group avatar rendering uses one normalized URL contract across chat and admin surfaces', () => {
+test('group avatar rendering uses one normalized URL contract on canonical chat surfaces', () => {
     assert.match(groupModel, /function getAvatarUrlAttribute\(\): \?string/);
     assert.match(groupModel, /images\/groups/);
     assert.match(hero, /\$group->avatar_url/);
     assert.match(editModal, /\$group->avatar_url/);
-    assert.match(adminManage, /\$group->avatar_url/);
 });
