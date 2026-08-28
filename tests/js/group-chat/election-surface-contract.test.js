@@ -45,9 +45,13 @@ test('group hero prioritizes systemic election participation and financial repor
     assert.match(hero, /گزارش مالی گروه/);
 });
 
-test('systemic election participation gate uses active group membership and election block state', () => {
+test('systemic election participation gate uses composer-provided active membership and batched election block state', () => {
     const chat = read('resources/views/groups/chat.blade.php');
+    const provider = read('app/Providers/AppServiceProvider.php');
 
-    assert.match(chat, /Block::where\('user_id',\s*auth\(\)->id\(\)\)->where\('position',\s*'election'\)/);
+    assert.match(provider, /->whereIn\('position',\s*\['election',\s*'message',\s*'post',\s*'poll'\]\)/);
+    assert.match(provider, /'checkBlockElection'\s*=>\s*\$blocks->get\('election'\)/);
+    assert.match(chat, /\$pivotUser\s*=\s*\$pivotUser\s*\?\?\s*null/);
+    assert.match(chat, /\$checkBlockElection\s*=\s*\$checkBlockElection\s*\?\?\s*null/);
     assert.match(chat, /\$canParticipateElection\s*=\s*\$electionAvailable\s*&&\s*!\$checkBlockElection\s*&&\s*\(int\)\(\$pivotUser\?->status/);
 });
