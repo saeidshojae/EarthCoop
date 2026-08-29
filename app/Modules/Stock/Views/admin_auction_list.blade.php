@@ -2,7 +2,7 @@
 
 @section('title', 'مدیریت عرضه‌های سهام - ' . config('app.name', 'EarthCoop'))
 @section('page-title', 'مدیریت عرضه‌های سهام')
-@section('page-description', 'نمایش حراج‌ها با هویت بازار، منبع عرضه و قیمت‌گذاری canonical در گل')
+@section('page-description', 'نمایش حراج‌ها با هویت بازار، منبع عرضه و قیمت‌گذاری مرجع بر حسب گل')
 
 @php
     $fa = static function ($value, int $decimals = 0): string {
@@ -11,6 +11,10 @@
         ]);
     };
     $statusLabels = ['scheduled'=>'برنامه‌ریزی‌شده','running'=>'در حال اجرا','settling'=>'در حال تسویه','settled'=>'تسویه‌شده','completed'=>'تکمیل‌شده','canceled'=>'لغوشده','cancelled'=>'لغوشده'];
+    $typeLabels = ['single_winner'=>'تک‌برنده','uniform_price'=>'قیمت یکسان','pay_as_bid'=>'پرداخت به قیمت پیشنهادی'];
+    $marketLabels = ['primary'=>'بازار اولیه','secondary'=>'بازار ثانویه'];
+    $sourceLabels = ['treasury'=>'خزانه EarthCoop'];
+    $settlementLabels = ['external_capital'=>'تسویه خارجی','active_bahar'=>'تسویه با بهار فعال'];
 @endphp
 
 @push('styles')
@@ -24,7 +28,7 @@
     <div class="auction-admin-head">
         <div>
             <h2 class="text-xl font-extrabold text-slate-900 dark:text-white">عرضه‌ها و حراج‌های سهام</h2>
-            <p class="text-sm text-slate-500 mt-1">قیمت پایه (گل) منبع اصلی قیمت‌گذاری است؛ معادل بهار فقط برای خوانایی نمایش داده می‌شود.</p>
+            <p class="text-sm text-slate-500 mt-1">قیمت پایه بر حسب گل، منبع اصلی قیمت‌گذاری است؛ معادل بهار فقط برای خوانایی نمایش داده می‌شود.</p>
         </div>
         <a href="{{ route('admin.auction.create') }}" class="auction-create">ایجاد عرضه اولیه</a>
     </div>
@@ -43,10 +47,10 @@
                     <div>
                         <div class="auction-id">حراج #{{ $fa($auction->id) }}</div>
                         <div class="auction-tags">
-                            <span class="auction-tag">{{ ($auction->market_type ?? '') === 'primary' ? 'بازار اولیه' : ($auction->market_type ?: 'بازار تعیین‌نشده') }}</span>
-                            <span class="auction-tag">{{ ($auction->supply_source ?? '') === 'treasury' ? 'خزانه EarthCoop' : ($auction->supply_source ?: 'منبع تعیین‌نشده') }}</span>
-                            <span class="auction-tag">{{ ($auction->settlement_channel ?? '') === 'external_capital' ? 'تسویه خارجی' : ($auction->settlement_channel ?: 'کانال تسویه تعیین‌نشده') }}</span>
-                            <span class="auction-tag">{{ $statusLabels[$auction->status] ?? $auction->status }}</span>
+                            <span class="auction-tag">{{ $marketLabels[$auction->market_type] ?? 'بازار تعیین‌نشده' }}</span>
+                            <span class="auction-tag">{{ $sourceLabels[$auction->supply_source] ?? 'منبع تعیین‌نشده' }}</span>
+                            <span class="auction-tag">{{ $settlementLabels[$auction->settlement_channel] ?? 'روش تسویه تعیین‌نشده' }}</span>
+                            <span class="auction-tag">{{ $statusLabels[$auction->status] ?? 'وضعیت نامشخص' }}</span>
                         </div>
                     </div>
                     <div>
@@ -58,7 +62,7 @@
 
                 <div class="auction-meta">
                     <div>تعداد سهام<strong>{{ $fa($auction->shares_count ?? 0) }}</strong></div>
-                    <div>نوع حراج<strong>{{ $auction->type ?? '—' }}</strong></div>
+                    <div>نوع حراج<strong>{{ $typeLabels[$auction->type] ?? 'نامشخص' }}</strong></div>
                     <div>زمان شروع<strong>{{ $auction->start_time ? verta($auction->start_time)->format('Y/m/d H:i') : '—' }}</strong></div>
                     <div>زمان پایان<strong>{{ $auction->ends_at ? verta($auction->ends_at)->format('Y/m/d H:i') : '—' }}</strong></div>
                 </div>
