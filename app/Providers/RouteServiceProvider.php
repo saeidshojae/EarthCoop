@@ -62,6 +62,11 @@ class RouteServiceProvider extends ServiceProvider
 
             Route::middleware('web')
                 ->group(base_path('routes/secretariat.php'));
+
+            // Canonical Stock admin write routes intentionally load last so the
+            // legacy rial-priced create/edit endpoints in web.php are shadowed.
+            Route::middleware('web')
+                ->group(base_path('routes/stock-canonical-admin.php'));
         });
     }
 
