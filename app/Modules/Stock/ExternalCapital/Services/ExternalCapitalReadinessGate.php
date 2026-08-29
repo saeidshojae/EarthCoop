@@ -4,6 +4,7 @@ namespace App\Modules\Stock\ExternalCapital\Services;
 
 use App\Modules\Stock\ExternalCapital\Contracts\AuthoritativeRateProvider;
 use App\Modules\Stock\ExternalCapital\Contracts\ExternalPaymentProvider;
+use InvalidArgumentException;
 use RuntimeException;
 
 final class ExternalCapitalReadinessGate
@@ -22,6 +23,7 @@ final class ExternalCapitalReadinessGate
             (array) config('stock.external_capital.authoritative_quote_sources', [])
         )));
         $paymentProvider = trim($this->payments->providerIdentifier());
+        $enabledCurrencies = $this->enabledCurrencies();
 
         $maxAllocationBps = (int) config('stock.primary_offering.max_allocation_bps', 0);
         $policyVersion = trim((string) config('stock.primary_offering.policy_version', ''));
@@ -77,6 +79,7 @@ final class ExternalCapitalReadinessGate
             'evidence' => [
                 'rate_source' => $rateSource,
                 'payment_provider' => $paymentProvider,
+                'enabled_currencies' => $enabledCurrencies,
                 'primary_offering_max_allocation_bps' => $maxAllocationBps,
                 'primary_offering_policy_version' => $policyVersion,
                 'primary_offering_disclosure_version' => $disclosureVersion,
@@ -99,5 +102,27 @@ final class ExternalCapitalReadinessGate
         throw new RuntimeException(
             'External capital readiness gate blocked operation: ' . implode(', ', $report['blockers'])
         );
+    }
+
+    public function assertReadyForCurrency(string $currency): void
+    {
+        $this->assertReady();
+
+        $currency = strtoupper(trim($currency));
+        if (! in_array($currency, ['IRR', 'USD'], true)) {
+            throw new InvalidArgumentException('External capital currency must be IRR or USD.');
+        }
+
+        if (! in_array($currency, $this->enabledCurrencies(), true)) {
+            throw new RuntimeException('External capital readiness gate blocked operation: external_currency_not_enabled');
+        }
+    }
+
+    private function enabledCurrencies(): array
+    {
+        return array_values(array_unique(array_filter(array_map(
+            static fn ($currency): string => strtoupper(trim((string) $currency)),
+            (array) config('stock.external_capital.enabled_currencies', [])
+        ), static fn (string $currency): bool => in_array($currency, ['IRR', 'USD'], true))));
     }
 }
