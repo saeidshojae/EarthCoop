@@ -34,7 +34,6 @@ final class ExternalCapitalBidCheckoutService
         int $quantity,
         string $acceptanceKey,
         array $metadata = [],
-        ?\DateTimeInterface $expiresAt = null,
     ): ExternalCapitalBidCheckout {
         if (! $auction->isActive()) {
             throw new RuntimeException('Auction is not active.');
@@ -76,7 +75,6 @@ final class ExternalCapitalBidCheckoutService
             $quote,
             $provider,
             $metadata,
-            $expiresAt,
         );
 
         $intent = $bid->fresh()->externalPaymentIntent;
