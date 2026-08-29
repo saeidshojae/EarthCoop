@@ -20,7 +20,7 @@ final class UnavailableExternalPaymentProvider implements ExternalPaymentProvide
         throw new RuntimeException('External payment provider is unavailable and external capital must remain fail-closed.');
     }
 
-    public function verifyWebhook(string $payload, array $headers = []): VerifiedPaymentEvent
+    public function verifyWebhook(ExternalPaymentIntent $intent, string $payload, array $headers = []): VerifiedPaymentEvent
     {
         throw new RuntimeException('External payment provider is unavailable; webhook verification cannot proceed.');
     }
