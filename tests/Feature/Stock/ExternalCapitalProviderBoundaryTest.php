@@ -166,6 +166,7 @@ class ExternalCapitalProviderBoundaryTest extends TestCase
     private function configureReadyState(): void
     {
         config()->set('stock.external_capital.enabled', true);
+        config()->set('stock.external_capital.enabled_currencies', ['USD']);
         config()->set('stock.external_capital.readiness.rate_provider_uat_passed', true);
         config()->set('stock.external_capital.readiness.payment_provider_uat_passed', true);
         config()->set('stock.external_capital.readiness.refund_reversal_gameday_passed', true);
