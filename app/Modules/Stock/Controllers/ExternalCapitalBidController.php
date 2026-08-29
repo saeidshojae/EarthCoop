@@ -51,7 +51,7 @@ final class ExternalCapitalBidController extends Controller
         Request $request,
         ExternalCapitalBidCheckoutService $checkout,
     ): RedirectResponse {
-        $intentKey = trim((string) $request->query('intent_key', ''));
+        $intentKey = trim((string) $request->query('intent', $request->query('intent_key', '')));
         if ($intentKey === '') {
             throw new RuntimeException('External payment callback intent key is required.');
         }
