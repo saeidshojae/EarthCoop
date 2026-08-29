@@ -67,6 +67,12 @@ class RouteServiceProvider extends ServiceProvider
             // legacy rial-priced create/edit endpoints in web.php are shadowed.
             Route::middleware('web')
                 ->group(base_path('routes/stock-canonical-admin.php'));
+
+            // Canonical Stock Book intentionally shadows the legacy book action so
+            // opening the asset ledger never creates a money wallet or recalculates
+            // legacy rial market data as a read-side effect.
+            Route::middleware('web')
+                ->group(base_path('routes/stock-canonical-book.php'));
         });
     }
 
