@@ -53,13 +53,13 @@ class StockBaharValuationTest extends TestCase
 
         $configured = app(StockValuationService::class)->configure(
             $stock,
-            '12500000',
+            '12000000',
             100_000_000,
             10_000_000,
             'EarthCoop canonical valuation'
         );
 
-        $this->assertSame(1_250_000_000, (int) $configured->startup_valuation_gol);
+        $this->assertSame(1_200_000_000, (int) $configured->startup_valuation_gol);
         $this->assertSame(100_000_000, (int) $configured->total_shares);
         $this->assertSame(10_000_000, (int) $configured->available_shares);
         $this->assertSame(12, (int) $configured->base_share_price_gol);
