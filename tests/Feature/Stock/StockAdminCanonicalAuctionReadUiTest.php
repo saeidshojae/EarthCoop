@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Stock;
 
+use App\Models\User;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Stock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -11,6 +12,12 @@ use Tests\TestCase;
 class StockAdminCanonicalAuctionReadUiTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->actingAs(User::factory()->create());
+    }
 
     private function auction(): Auction
     {
