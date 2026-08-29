@@ -51,26 +51,27 @@ class ExternalCapitalProviderBoundaryTest extends TestCase
         app(ExternalPaymentProvider::class)->createIntent($intent);
     }
 
+    public function test_orchestrator_fails_closed_when_rollout_readiness_is_incomplete(): void
+    {
+        $this->bindReadyProviders();
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('external_capital_disabled');
+
+        app(ExternalCapitalProviderOrchestrator::class)->createPaymentIntentForAuction(
+            $this->auction(),
+            1000,
+            'USD',
+            'intent:provider-boundary:not-ready',
+            'auction_bid',
+            500
+        );
+    }
+
     public function test_orchestrator_binds_authoritative_quote_and_provider_intent_without_crediting_bahar(): void
     {
-        $this->app->instance(AuthoritativeRateProvider::class, new class implements AuthoritativeRateProvider {
-            public function sourceIdentifier(): string { return 'fake-rate'; }
-            public function quote(int $golAmount, string $currency): FiatQuoteSnapshot
-            {
-                return FiatQuoteSnapshot::fromRate($golAmount, $currency, 25, 2, $this->sourceIdentifier());
-            }
-        });
-        $this->app->instance(ExternalPaymentProvider::class, new class implements ExternalPaymentProvider {
-            public function providerIdentifier(): string { return 'fake-psp'; }
-            public function createIntent(ExternalPaymentIntent $intent): ProviderPaymentIntent
-            {
-                return new ProviderPaymentIntent('psp-' . $intent->intent_key, $intent->currency, (int) $intent->amount_minor, ['safe_reference' => 'R-1']);
-            }
-            public function verifyWebhook(string $payload, array $headers = []): VerifiedPaymentEvent
-            {
-                throw new RuntimeException('unused');
-            }
-        });
+        $this->bindReadyProviders();
+        $this->configureReadyState();
 
         $auction = $this->auction();
         $intent = app(ExternalCapitalProviderOrchestrator::class)->createPaymentIntentForAuction(
@@ -98,6 +99,8 @@ class ExternalCapitalProviderBoundaryTest extends TestCase
                 return FiatQuoteSnapshot::fromRate($golAmount, $currency, 25, 2, 'spoofed-rate');
             }
         });
+        $this->bindReadyPaymentProvider();
+        $this->configureReadyState();
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('source identifier');
@@ -140,6 +143,7 @@ class ExternalCapitalProviderBoundaryTest extends TestCase
                 );
             }
         });
+        $this->configureReadyState();
 
         $orchestrator = app(ExternalCapitalProviderOrchestrator::class);
         $intent = $orchestrator->createPaymentIntentForAuction(
@@ -156,6 +160,46 @@ class ExternalCapitalProviderBoundaryTest extends TestCase
         $this->assertSame('confirmed', $event->result_status);
         $this->assertSame(ExternalPaymentIntent::CONFIRMED, $intent->fresh()->status);
         $this->assertSame('provider-event-1', $event->provider_event_id);
+    }
+
+    private function bindReadyProviders(): void
+    {
+        $this->app->instance(AuthoritativeRateProvider::class, new class implements AuthoritativeRateProvider {
+            public function sourceIdentifier(): string { return 'fake-rate'; }
+            public function quote(int $golAmount, string $currency): FiatQuoteSnapshot
+            {
+                return FiatQuoteSnapshot::fromRate($golAmount, $currency, 25, 2, $this->sourceIdentifier());
+            }
+        });
+        $this->bindReadyPaymentProvider();
+    }
+
+    private function bindReadyPaymentProvider(): void
+    {
+        $this->app->instance(ExternalPaymentProvider::class, new class implements ExternalPaymentProvider {
+            public function providerIdentifier(): string { return 'fake-psp'; }
+            public function createIntent(ExternalPaymentIntent $intent): ProviderPaymentIntent
+            {
+                return new ProviderPaymentIntent('psp-' . $intent->intent_key, $intent->currency, (int) $intent->amount_minor, ['safe_reference' => 'R-1']);
+            }
+            public function verifyWebhook(string $payload, array $headers = []): VerifiedPaymentEvent
+            {
+                throw new RuntimeException('unused');
+            }
+        });
+    }
+
+    private function configureReadyState(): void
+    {
+        config()->set('stock.external_capital.enabled', true);
+        config()->set('stock.external_capital.readiness.rate_provider_uat_passed', true);
+        config()->set('stock.external_capital.readiness.payment_provider_uat_passed', true);
+        config()->set('stock.external_capital.readiness.refund_reversal_gameday_passed', true);
+        config()->set('stock.external_capital.readiness.offering_policy_validated', true);
+        config()->set('stock.external_capital.readiness.stock_regression_passed', true);
+        config()->set('stock.external_capital.readiness.najm_bahar_regression_passed', true);
+        config()->set('stock.external_capital.readiness.full_validation_passed', true);
+        config()->set('stock.external_capital.readiness.founder_rollout_approved', true);
     }
 
     private function auction(): Auction
