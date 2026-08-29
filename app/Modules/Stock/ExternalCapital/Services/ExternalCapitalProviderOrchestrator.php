@@ -29,7 +29,7 @@ final class ExternalCapitalProviderOrchestrator
         array $metadata = [],
         ?\DateTimeInterface $expiresAt = null,
     ): ExternalPaymentIntent {
-        $this->readiness->assertReady();
+        $this->readiness->assertReadyForCurrency($currency);
 
         $quote = $this->rates->quote($golAmount, $currency);
         if ($quote->source !== $this->rates->sourceIdentifier()) {
@@ -69,16 +69,16 @@ final class ExternalCapitalProviderOrchestrator
         string $payload,
         array $headers = [],
     ): ExternalPaymentReconciliation {
-        $this->readiness->assertReady();
+        $intent = ExternalPaymentIntent::query()->where('intent_key', $intentKey)->first();
+        if (! $intent) {
+            throw new RuntimeException('External payment intent not found for provider verification.');
+        }
+
+        $this->readiness->assertReadyForCurrency((string) $intent->currency);
 
         $provider = trim($this->payments->providerIdentifier());
         if ($provider === '' || $provider === 'unavailable') {
             throw new RuntimeException('External payment provider is unavailable.');
-        }
-
-        $intent = ExternalPaymentIntent::query()->where('intent_key', $intentKey)->first();
-        if (! $intent) {
-            throw new RuntimeException('External payment intent not found for provider verification.');
         }
         if (trim((string) $intent->provider) !== $provider) {
             throw new RuntimeException('External payment provider does not match the canonical EarthCoop payment intent.');
