@@ -22,7 +22,6 @@ class ExternalCapitalBidHttpFlowTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->withoutMiddleware();
         $this->bindProviders();
         $this->configureReadyIrrState();
     }
