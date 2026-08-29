@@ -5,6 +5,10 @@ return [
         // Rollout is fail-closed. Enabling the flag alone is never sufficient: the readiness gate also requires provider evidence, UAT attestations and explicit founder approval.
         'enabled' => filter_var(env('STOCK_EXTERNAL_CAPITAL_ENABLED', false), FILTER_VALIDATE_BOOL),
 
+        // Provider selection is also fail-closed. Unknown or omitted selectors resolve to unavailable adapters.
+        'rate_provider' => trim((string) env('STOCK_EXTERNAL_RATE_PROVIDER', 'unavailable')),
+        'payment_provider' => trim((string) env('STOCK_EXTERNAL_PAYMENT_PROVIDER', 'unavailable')),
+
         // Fail closed by default. Production/UAT must explicitly declare trusted rate-source identifiers.
         'authoritative_quote_sources' => array_values(array_filter(array_map(
             static fn (string $source): string => trim($source),
@@ -12,6 +16,22 @@ return [
         ))),
         'quote_max_age_seconds' => (int) env('STOCK_EXTERNAL_QUOTE_MAX_AGE_SECONDS', 300),
         'quote_future_tolerance_seconds' => (int) env('STOCK_EXTERNAL_QUOTE_FUTURE_TOLERANCE_SECONDS', 30),
+
+        'providers' => [
+            'servix' => [
+                'base_url' => trim((string) env('STOCK_SERVIX_BASE_URL', 'https://servix.cc/api/v1')),
+                'api_key' => trim((string) env('STOCK_SERVIX_API_KEY', '')),
+                'timeout_seconds' => (int) env('STOCK_SERVIX_TIMEOUT_SECONDS', 8),
+            ],
+            'zarinpal' => [
+                'base_url' => trim((string) env('STOCK_ZARINPAL_BASE_URL', 'https://api.zarinpal.com/pg/v4')),
+                'gateway_url' => trim((string) env('STOCK_ZARINPAL_GATEWAY_URL', 'https://www.zarinpal.com/pg/StartPay')),
+                'merchant_id' => trim((string) env('STOCK_ZARINPAL_MERCHANT_ID', '')),
+                'callback_url' => trim((string) env('STOCK_ZARINPAL_CALLBACK_URL', '')),
+                'description' => trim((string) env('STOCK_ZARINPAL_DESCRIPTION', 'EarthCoop primary treasury share purchase')),
+                'timeout_seconds' => (int) env('STOCK_ZARINPAL_TIMEOUT_SECONDS', 8),
+            ],
+        ],
 
         'readiness' => [
             'rate_provider_uat_passed' => filter_var(env('STOCK_EXTERNAL_RATE_PROVIDER_UAT_PASSED', false), FILTER_VALIDATE_BOOL),
