@@ -2,6 +2,9 @@
 
 namespace Tests\Feature\Stock;
 
+use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\PermissionMiddleware;
+use App\Models\User;
 use App\Modules\Stock\Models\Stock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -10,10 +13,15 @@ class StockAdminCanonicalValuationTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->actingAs(User::factory()->create());
+        $this->withoutMiddleware([AdminMiddleware::class, PermissionMiddleware::class]);
+    }
+
     public function test_admin_stock_form_is_bahar_facing_and_does_not_offer_rial_price_inputs(): void
     {
-        $this->withoutMiddleware();
-
         $response = $this->get('/admin/stock/create');
 
         $response->assertOk();
@@ -28,8 +36,6 @@ class StockAdminCanonicalValuationTest extends TestCase
 
     public function test_admin_can_persist_bahar_valuation_as_exact_canonical_gol(): void
     {
-        $this->withoutMiddleware();
-
         $response = $this->post('/admin/stock', [
             'startup_valuation_bahar' => '12000000',
             'total_shares' => 100_000_000,
@@ -49,8 +55,6 @@ class StockAdminCanonicalValuationTest extends TestCase
 
     public function test_admin_edit_form_reads_existing_canonical_value_back_as_bahar_not_legacy_decimal(): void
     {
-        $this->withoutMiddleware();
-
         Stock::create([
             'issuer_type' => 'earthcoop',
             'startup_valuation' => 999999999,
@@ -70,8 +74,6 @@ class StockAdminCanonicalValuationTest extends TestCase
 
     public function test_admin_rejects_valuation_that_cannot_produce_exact_integer_gol_per_share(): void
     {
-        $this->withoutMiddleware();
-
         $response = $this->from('/admin/stock/create')->post('/admin/stock', [
             'startup_valuation_bahar' => '1',
             'total_shares' => 3,
