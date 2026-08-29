@@ -42,10 +42,10 @@ class StockRemainingCanonicalUiContractTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('ارزش‌گذاری کل', $html);
-        $this->assertStringContainsString('۲۰۰,۰۰۰ بهار', $html);
+        $this->assertStringContainsString('200,000 بهار', $html);
         $this->assertStringContainsString('قیمت پایه هر سهم', $html);
-        $this->assertStringContainsString('۱ گل', $html);
-        $this->assertStringContainsString('۰٫۰۱ بهار', $html);
+        $this->assertStringContainsString('1 گل', $html);
+        $this->assertStringContainsString('0.01 بهار', $html);
         $this->assertStringNotContainsString('ارزش پایه استارتاپ', $html);
         $this->assertStringNotContainsString('ریال', $html);
     }
@@ -77,8 +77,8 @@ class StockRemainingCanonicalUiContractTest extends TestCase
             'userBids' => collect(),
         ])->render();
 
-        $this->assertStringContainsString('۱ گل', $html);
-        $this->assertStringContainsString('۰٫۰۱ بهار', $html);
+        $this->assertStringContainsString('1 گل', $html);
+        $this->assertStringContainsString('0.01 بهار', $html);
         $this->assertStringContainsString('عرضه اولیه خزانه EarthCoop', $html);
         $this->assertStringContainsString('تسویه خارجی', $html);
         $this->assertStringNotContainsString('ریال', $html);
