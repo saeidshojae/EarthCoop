@@ -53,7 +53,7 @@ class StockAuctionPersianUiContractTest extends TestCase
         foreach ([
             "->base_share_price ?? 0",
             "pluck('price')->",
-            "($bid->price ?? 0)",
+            '(\$bid->price ?? 0)',
             "->max('price')",
         ] as $legacyRead) {
             $this->assertStringNotContainsString($legacyRead, $controller, "Legacy monetary read remains in StockReportController: {$legacyRead}");
