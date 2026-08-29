@@ -6,8 +6,8 @@ use App\Models\User;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Stock;
 use App\Modules\Stock\Services\AuctionService;
-use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use RuntimeException;
 use Tests\TestCase;
 
 class ExternalCapitalLegacyBidBoundaryTest extends TestCase
@@ -48,9 +48,9 @@ class ExternalCapitalLegacyBidBoundaryTest extends TestCase
         try {
             app(AuctionService::class)->validateAndPlaceBid($user->id, $auction, 1.0, 1);
             $this->fail('External-capital auction reached the legacy Stock Wallet bid path.');
-        } catch (DomainException $e) {
+        } catch (RuntimeException $e) {
             $this->assertSame(
-                'External-capital auctions must use the external payment intent flow.',
+                'Legacy bid placement is disabled for canonical Gol auctions. Use canonical Stock services.',
                 $e->getMessage()
             );
         }
