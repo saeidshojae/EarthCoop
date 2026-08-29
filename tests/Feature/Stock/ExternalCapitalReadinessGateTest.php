@@ -119,7 +119,7 @@ class ExternalCapitalReadinessGateTest extends TestCase
             {
                 return new ProviderPaymentIntent('fake-' . $intent->intent_key, $intent->currency, (int) $intent->amount_minor);
             }
-            public function verifyWebhook(string $payload, array $headers = []): VerifiedPaymentEvent
+            public function verifyWebhook(ExternalPaymentIntent $intent, string $payload, array $headers = []): VerifiedPaymentEvent
             {
                 throw new RuntimeException('unused');
             }
