@@ -59,12 +59,7 @@ class ExternalCapitalProviderBoundaryTest extends TestCase
         $this->expectExceptionMessage('external_capital_disabled');
 
         app(ExternalCapitalProviderOrchestrator::class)->createPaymentIntentForAuction(
-            $this->auction(),
-            1000,
-            'USD',
-            'intent:provider-boundary:not-ready',
-            'auction_bid',
-            500
+            $this->auction(), 1000, 'USD', 'intent:provider-boundary:not-ready', 'auction_bid', 500
         );
     }
 
@@ -73,14 +68,8 @@ class ExternalCapitalProviderBoundaryTest extends TestCase
         $this->bindReadyProviders();
         $this->configureReadyState();
 
-        $auction = $this->auction();
         $intent = app(ExternalCapitalProviderOrchestrator::class)->createPaymentIntentForAuction(
-            $auction,
-            1000,
-            'USD',
-            'intent:provider-boundary:1',
-            'auction_bid',
-            501
+            $this->auction(), 1000, 'USD', 'intent:provider-boundary:1', 'auction_bid', 501
         );
 
         $this->assertSame(ExternalPaymentIntent::PENDING, $intent->status);
@@ -106,12 +95,7 @@ class ExternalCapitalProviderBoundaryTest extends TestCase
         $this->expectExceptionMessage('source identifier');
 
         app(ExternalCapitalProviderOrchestrator::class)->createPaymentIntentForAuction(
-            $this->auction(),
-            1000,
-            'USD',
-            'intent:provider-boundary:spoof',
-            'auction_bid',
-            502
+            $this->auction(), 1000, 'USD', 'intent:provider-boundary:spoof', 'auction_bid', 502
         );
     }
 
@@ -130,16 +114,11 @@ class ExternalCapitalProviderBoundaryTest extends TestCase
             {
                 return new ProviderPaymentIntent('psp-' . $intent->intent_key, $intent->currency, (int) $intent->amount_minor);
             }
-            public function verifyWebhook(string $payload, array $headers = []): VerifiedPaymentEvent
+            public function verifyWebhook(ExternalPaymentIntent $intent, string $payload, array $headers = []): VerifiedPaymentEvent
             {
                 return new VerifiedPaymentEvent(
-                    'provider-event-1',
-                    'payment_confirmed',
-                    'confirmed',
-                    12500,
-                    'USD',
-                    'provider-payment-1',
-                    ['receipt' => 'SAFE-1']
+                    'provider-event-1', 'payment_confirmed', 'confirmed', 12500, 'USD',
+                    'provider-payment-1', ['receipt' => 'SAFE-1']
                 );
             }
         });
@@ -147,12 +126,7 @@ class ExternalCapitalProviderBoundaryTest extends TestCase
 
         $orchestrator = app(ExternalCapitalProviderOrchestrator::class);
         $intent = $orchestrator->createPaymentIntentForAuction(
-            $this->auction(),
-            1000,
-            'USD',
-            'intent:provider-boundary:webhook',
-            'auction_bid',
-            503
+            $this->auction(), 1000, 'USD', 'intent:provider-boundary:webhook', 'auction_bid', 503
         );
 
         $event = $orchestrator->reconcileVerifiedWebhook($intent->intent_key, '{}', ['X-Signature' => 'valid']);
@@ -182,7 +156,7 @@ class ExternalCapitalProviderBoundaryTest extends TestCase
             {
                 return new ProviderPaymentIntent('psp-' . $intent->intent_key, $intent->currency, (int) $intent->amount_minor, ['safe_reference' => 'R-1']);
             }
-            public function verifyWebhook(string $payload, array $headers = []): VerifiedPaymentEvent
+            public function verifyWebhook(ExternalPaymentIntent $intent, string $payload, array $headers = []): VerifiedPaymentEvent
             {
                 throw new RuntimeException('unused');
             }
