@@ -2,80 +2,155 @@
 
 تاریخ: 2026-08-29
 
-## نتیجه ممیزی مقدماتی
+## وضعیت canonical فعلی
 
-### 1) lineage معتبر فعلی
-شاخه `agent/economic-system-current-integration` از `agent/pre-main-ui-polish-responsive-docfix` ساخته شده و همه workهای frozen نجم بهار را در ancestry خود دارد.
+شاخه عملیاتی این workstream:
+`agent/economic-system-current-integration`
 
-### 2) Stock slices
-`agent/stock-slice-6-secondary-market-gate` ancestor مستقیم baseline فعلی است؛ baseline نسبت به آن 991 commit جلوتر و 0 commit عقب‌تر است. بنابراین Slice 2b تا Slice 6 در lineage فعلی گم نشده‌اند و نباید دوباره cherry-pick شوند.
+PRهای ایزوله:
+- `#87` — Draft integration surface
+- `#88` — **VALIDATION ONLY — DO NOT MERGE** علیه `main`
 
-### 3) Stock canonical cutover branch
-`agent/stock-canonical-cutover-readiness` یک شاخه validation-only تاریخی است و با lineage فعلی diverge شده است. PR #73 صراحتاً برای validation ساخته شده و DO NOT MERGE بوده است. آن PR scope زیر را validate می‌کرد:
-- canonical Gol pricing / bid acceptance
-- Active Bahar reservation / settlement
-- primary treasury canonical close
-- external capital intent/reconciliation boundary
-- secondary seller reservation/listing/settlement/UX
-- project payee mapping
-- stock readiness gate
-- Founder Ops risk visibility
+هیچ merge یا deploy به `main` در این workstream مجاز یا انجام‌شده نیست.
 
-همزمان در همان PR دو feature flag عمداً خاموش مانده بودند:
-- `STOCK_SECONDARY_MARKET_ENABLED=false`
-- `STOCK_EXTERNAL_CAPITAL_ENABLED=false`
+## قواعد اقتصادی canonical که باید حفظ شوند
 
-### 4) چرا merge مستقیم canonical cutover ممنوع است
-در شاخه فعلی implementationهای جدیدتری وجود دارد که در شاخه canonical cutover اصلاً وجود ندارند، از جمله `StockCanonicalAuctionSettlementService` و مجموعه serviceهای settlement جدید. همچنین migration external reconciliation در شاخه فعلی explicit short index names دارد و از نسخه تاریخی canonical مقاوم‌تر است.
+1. ارزش‌گذاری EarthCoop و قیمت پایه سهام در واحد صحیح **Gol** نگهداری می‌شود و معادل Bahar برای خوانایی نمایش داده می‌شود.
+2. `1 Bahar = 100 Gol`.
+3. مبنای قراردادی فعلی یعنی `1 Gol = 0.001 g` طلای خالص 24K.
+4. عرضه‌ای که امکان تسویه خارجی دارد فقط عرضه **EarthCoop + primary + treasury** است.
+5. fiat فقط quote/settlement است؛ fiat وارد موجودی Najm Bahar نمی‌شود و Bahar جدید ایجاد نمی‌کند.
+6. Stock wallet نباید به سیستم پولی دوم تبدیل شود.
+7. secondary market و ناشران/پروژه‌های دیگر فقط با **Active Bahar** تسویه می‌شوند.
+8. ledger پول و ledger دارایی مستقل و audit-friendly باقی می‌مانند.
+9. حداکثر برنامه عرضه اولیه EarthCoop برابر **10% کل سهام** است.
+10. feature flagهای external capital و secondary market تا عبور از readiness/UAT/approval نهایی fail-closed باقی می‌مانند.
 
-بنابراین 87 commit اختصاصی canonical-cutover به‌عنوان یک merge payload معتبر تلقی نمی‌شوند. آن branch باید reference/validation history باشد، نه source branch برای merge bulk.
+## وضعیت provider و quote
 
-## Reconciliation classification
+### Authoritative rate provider
+پیاده‌سازی production adapter برای **Servix** وجود دارد:
+- asset: `GOLD_24_RLS`
+- source identifier: `servix:gold24:irr:v1`
+- quote مستقیم قیمت یک گرم طلای خالص 24K به IRR
+- `businessTime` به‌عنوان زمان quote
+- API key از config/environment؛ هیچ secret در repository ثبت نشده است.
 
-### Already incorporated
-- Active Bahar reservation model/service
-- external payment intent/reconciliation domain
-- integer/Gol pricing foundation
-- atomic stock settlement foundation
-- secondary-market gate lineage
-- canonical settlement gateway foundation
-- Stock/Najm Hoda runtime visibility foundation
+فرمول canonical IRR:
+- اگر `P` قیمت مستقیم یک گرم طلای خالص 24K به IRR باشد، `1 Gol = P / 1000 IRR`.
+- هیچ تبدیل 18K→24K و هیچ محاسبه float-based در منبع authoritative مجاز نیست.
 
-### Superseded on current lineage
-- historical canonical cutover wiring that predates `StockCanonicalAuctionSettlementService`
-- historical external reconciliation index form
-- historical validation-only workflow/diagnostic commits where equivalent/newer validation exists in current lineage
+### External payment provider
+adapter برای **ZarinPal** وجود دارد:
+- rollout نخست فقط IRR است.
+- verification سمت سرور با merchant id + authority + مبلغ canonical انجام می‌شود.
+- callback status به‌تنهایی trusted نیست.
 
-### Still intentionally pending product completion
-- real external payment provider integration
-- authoritative gold/FX rate source and quote policy
-- enabling external-capital feature flag after provider/rate-source validation
-- enabling secondary market only after current-lineage validation/signoff
-- final EarthCoop primary offering policy/cap enforcement and operational UI/UAT
-- end-to-end reconciliation/refund/reversal UAT on current lineage
+### Currency scope
+- rollout نخست: **IRR**.
+- enabled currencies به‌صورت config-scoped و default-empty/fail-closed هستند.
+- **USD همچنان disabled/fail-closed** است تا provider و UAT مستقل خود را داشته باشد.
 
-### Semantic conflict watchlist for next implementation session
-- `app/Modules/Stock/*`
-- `app/Modules/NajmBahar/Services/MonetaryPolicyService.php`
-- `app/Providers/AppServiceProvider.php`
-- `app/Providers/AssetPipelineServiceProvider.php`
-- `app/Providers/RouteServiceProvider.php`
-- Stock migrations duplicated under module/database migration paths
-- Stock/FounderOps authority and risk surfaces
-- `.github/workflows/integration-full-validation.yml`
-- `.github/workflows/stock-secondary-market-gate.yml`
+وجود adapter به‌معنای تأیید حقوقی فروش سهام یا merchant approval نیست؛ requirements حقوقی، securities/KYC/AML و پذیرش provider مستقل باقی می‌مانند.
 
-## Validation posture at handoff
-Validation-only Draft PR: `#88` (DO NOT MERGE)
+## EarthCoop Primary Offering Policy
 
-Head validated before this documentation-only update:
-`9e3bd98394ee53581d0b365b636906dc9a4a3ea8`
+`EarthCoopPrimaryOfferingPolicy` منبع حقیقت سقف عرضه اولیه است و موارد زیر را enforce می‌کند:
+- issuer = `earthcoop`
+- market = `primary`
+- supply source = `treasury`
+- سقف پیش‌فرض `1000 bps = 10%`
+- offering <= treasury `available_shares`
+- settled primary allocations + other open commitments + current offering <= policy envelope
+- policy/disclosure version در evidence ثبت می‌شود.
 
-GitHub Actions:
-- EarthCoop Responsive Contract Validation #61: **SUCCESS**
-- EarthCoop Integration Full Validation #1695: **SUCCESS**
+در محاسبه cap، `total_shares - available_shares` به‌عنوان فروش تاریخی فرض نمی‌شود؛ settled allocations canonical مبنای مصرف cap هستند.
 
-Full Validation #1695 completed successfully through all enforced stages:
+## Canonical Stock UI Cutover — تکمیل‌شده در current lineage
+
+### Admin Stock valuation
+فرم ادمین دیگر valuation یا base share price ریالی دریافت نمی‌کند.
+- ورودی اصلی: `startup_valuation_bahar`
+- تبدیل: Bahar → integer Gol
+- قیمت پایه هر سهم از valuation Gol / total shares محاسبه می‌شود.
+- اگر تقسیم به integer Gol/share دقیق نباشد، درخواست reject می‌شود.
+- legacy decimal columns فقط برای compatibility داخلی transitional باقی مانده‌اند و منبع canonical UI نیستند.
+
+### Admin auction create/edit
+write path ادمین به controller canonical اختصاصی منتقل شده است.
+- input قیمت: `base_price_gol` integer
+- server-side identity locked to:
+  - `market_type=primary`
+  - `supply_source=treasury`
+  - `quote_unit=gol`
+  - `settlement_channel=external_capital`
+- hidden UI fields authority محسوب نمی‌شوند؛ server contract تعیین‌کننده است.
+- `EarthCoopPrimaryOfferingPolicy` در create/update reuse می‌شود و سقف 10% enforce می‌شود.
+
+### Admin auction list/show
+سطوح خواندنی ادمین اکنون صریحاً نمایش می‌دهند:
+- قیمت پایه در Gol و معادل Bahar
+- market type
+- treasury supply source
+- settlement channel
+- وضعیت حراج/تسویه
+
+عبارت و ورودی «قیمت پایه ریالی» از این سطوح canonical حذف شده است.
+
+### Stock Book
+Stock Book به دفتر دارایی سهام بازطراحی شده و نه wallet پولی:
+- valuation کل: Bahar + Gol
+- price/share: Gol + Bahar
+- total shares و treasury available shares
+- max 10% primary envelope
+- open primary commitments و remaining envelope
+- active/scheduled primary auctions
+- user holdings به‌عنوان ownership asset
+- secondary market به‌صورت صریح disabled تا rollout رسمی
+- external settlement status به‌صورت مستقل و fail-closed
+
+read path Stock Book از legacy side effectها جدا شده است:
+- `WalletService` اجرا نمی‌شود.
+- بازکردن Stock Book wallet پولی ایجاد نمی‌کند.
+- `recalculateMarketData()` legacy در read اجرا نمی‌شود.
+
+## External Capital Readiness
+
+`ExternalCapitalReadinessGate` همچنان fail-closed است و برای rollout واقعی حداقل موارد زیر باید سبز/attested باشند:
+- external-capital feature flag
+- authoritative rate provider availability + allowlist
+- payment provider availability
+- primary offering policy/disclosure configuration
+- rate provider UAT
+- payment provider UAT
+- refund/reversal GameDay
+- offering-policy validation
+- Stock regression
+- Najm Bahar regression
+- Full Validation
+- founder rollout approval
+
+بنابراین **وجود UI canonical یا adapterها به‌معنای فعال‌شدن خرید خارجی در production نیست**.
+
+## Refund / reversal / reconciliation
+
+- provider identity پس از binding immutable است.
+- idempotent replay اجازه provider switch نمی‌دهد.
+- reconciliation append-only است.
+- refund/reversal eventهای صریح و جدید هستند.
+- partial refund فعلاً fail-closed است.
+- پس از asset settlement، refund/reversal بدون asset reversal صریح مجاز نیست.
+
+## Validation evidence
+
+آخرین **code-bearing** head که قبل از این documentation update به‌طور کامل validate شد:
+`32139c5cda2efe28afe7a7cc55964bffcff193ae`
+
+GitHub Actions روی همان head:
+- EarthCoop Responsive Contract Validation #144: **SUCCESS**
+- EarthCoop Integration Full Validation #1778: **SUCCESS**
+
+Full Validation #1778 با success از همه gateهای enforce‌شده عبور کرد:
 - full schema migration
 - route and command boot
 - Group Chat regression
@@ -88,30 +163,34 @@ Full Validation #1695 completed successfully through all enforced stages:
 - Full Project PHPUnit
 - regression gate enforcement
 
-The current change to this document is documentation-only. The next code-bearing commit must re-run the relevant Stock/Najm Bahar/integration gates before any completion claim for new implementation work.
+در Full Project PHPUnit، testهای canonical valuation، admin auction UI/write/read surfaces و Stock Book نیز پس از اصلاح test context سبز شدند.
 
-## Start point for next chat
+## موارد واقعاً باز قبل از production rollout
+
+- تنظیم credential واقعی Servix و UAT نرخ مستقیم 24K.
+- تنظیم merchant credential واقعی ZarinPal و UAT request/verify/callback/reconciliation.
+- اجرای refund/reversal GameDay end-to-end.
+- تأیید حقوقی/عملیاتی عرضه سهام، securities/KYC/AML و پذیرش provider برای jurisdiction هدف.
+- Founder rollout approval.
+- فعال‌کردن explicit IRR در enabled currencies فقط پس از readiness کامل.
+- USD provider/rate/UAT مستقل؛ تا آن زمان fail-closed.
+- secondary market rollout مستقل؛ تا آن زمان disabled.
+- reconciliation/migration صریح برای هر فروش primary تاریخی پیش از canonical ledger، اگر چنین داده‌ای در production وجود داشته باشد.
+
+## Start point for next implementation/UAT session
+
 Branch:
 `agent/economic-system-current-integration`
 
-Preparation Draft PR:
-`#87`
+Validation-only PR:
+`#88` — **DO NOT MERGE**
 
-Validation-only Draft PR:
-`#88` — DO NOT MERGE
-
-First implementation task:
-1. re-read these two economy handoff docs;
-2. inspect current Stock feature flags/config/provider/rate-source boundaries;
-3. write a focused implementation plan for the remaining Stock × Najm Bahar × External Capital completion work;
-4. implement only on this branch;
-5. run Stock gates + Najm Bahar regression gates + Integration Full Validation;
-6. do not merge to `main`.
-
-## Canonical economic rules to preserve
-- EarthCoop share valuation/auction price may be Bahar-denominated.
-- fiat is only quote/settlement for EarthCoop primary/treasury share offering.
-- fiat does not become Bahar and does not mint Bahar.
-- Stock wallet is not a parallel monetary system.
-- project shares and secondary market settle only with Active Bahar.
-- money ledger and asset ledger remain separate and auditable.
+گام منطقی بعدی دیگر بازنویسی معماری Stock نیست. مرحله بعد باید **UAT عملی UI + provider readiness** باشد:
+1. UAT فرم Admin Stock valuation؛
+2. UAT create/edit/list/show حراج primary treasury؛
+3. UAT Stock Book به‌عنوان asset ledger؛
+4. تهیه/اعمال credentialهای sandbox/test provider در محیط امن، نه repository؛
+5. rate/payment provider UAT و reconciliation/refund/reversal GameDay؛
+6. بررسی حقوقی rollout؛
+7. فقط پس از همه این موارد، تصمیم Founder درباره فعال‌کردن feature flag؛
+8. همچنان هیچ merge به `main` بدون تصمیم صریح Founder انجام نشود.
