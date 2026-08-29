@@ -12,5 +12,5 @@ interface ExternalPaymentProvider
 
     public function createIntent(ExternalPaymentIntent $intent): ProviderPaymentIntent;
 
-    public function verifyWebhook(string $payload, array $headers = []): VerifiedPaymentEvent;
+    public function verifyWebhook(ExternalPaymentIntent $intent, string $payload, array $headers = []): VerifiedPaymentEvent;
 }
