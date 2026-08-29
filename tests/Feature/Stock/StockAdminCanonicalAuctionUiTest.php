@@ -2,6 +2,9 @@
 
 namespace Tests\Feature\Stock;
 
+use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\PermissionMiddleware;
+use App\Models\User;
 use App\Modules\Stock\Models\Stock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -12,7 +15,8 @@ class StockAdminCanonicalAuctionUiTest extends TestCase
 
     public function test_admin_primary_auction_form_is_gol_bahar_facing_and_not_rial_priced(): void
     {
-        $this->withoutMiddleware();
+        $this->actingAs(User::factory()->create());
+        $this->withoutMiddleware([AdminMiddleware::class, PermissionMiddleware::class]);
 
         Stock::create([
             'issuer_type' => 'earthcoop',
