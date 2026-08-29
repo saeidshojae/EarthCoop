@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Modules\Stock\Controllers\CanonicalStockAdminController;
+use App\Modules\Stock\Controllers\ExternalCapitalBidController;
 use App\Modules\Stock\Controllers\StockController;
 use App\Modules\Stock\ExternalCapital\Adapters\ServixGold24AuthoritativeRateProvider;
 use App\Modules\Stock\ExternalCapital\Adapters\UnavailableAuthoritativeRateProvider;
@@ -10,6 +11,7 @@ use App\Modules\Stock\ExternalCapital\Adapters\UnavailableExternalPaymentProvide
 use App\Modules\Stock\ExternalCapital\Adapters\ZarinpalExternalPaymentProvider;
 use App\Modules\Stock\ExternalCapital\Contracts\AuthoritativeRateProvider;
 use App\Modules\Stock\ExternalCapital\Contracts\ExternalPaymentProvider;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 final class StockExternalCapitalServiceProvider extends ServiceProvider
@@ -34,5 +36,17 @@ final class StockExternalCapitalServiceProvider extends ServiceProvider
                 ? ZarinpalExternalPaymentProvider::class
                 : UnavailableExternalPaymentProvider::class,
         );
+    }
+
+    public function boot(): void
+    {
+        Route::middleware('web')->group(function (): void {
+            Route::post('/auctions/{auction}/external-checkout', [ExternalCapitalBidController::class, 'store'])
+                ->middleware('auth')
+                ->name('stock.external-bid.checkout');
+
+            Route::get('/stock/external-payment/callback', [ExternalCapitalBidController::class, 'callback'])
+                ->name('stock.external-payment.callback');
+        });
     }
 }
