@@ -5,6 +5,12 @@ return [
         // Rollout is fail-closed. Enabling the flag alone is never sufficient: the readiness gate also requires provider evidence, UAT attestations and explicit founder approval.
         'enabled' => filter_var(env('STOCK_EXTERNAL_CAPITAL_ENABLED', false), FILTER_VALIDATE_BOOL),
 
+        // Currency rollout is independently fail-closed. The first production/UAT rail is IRR; USD remains disabled unless it is explicitly attested and enabled later.
+        'enabled_currencies' => array_values(array_unique(array_filter(array_map(
+            static fn (string $currency): string => strtoupper(trim($currency)),
+            explode(',', (string) env('STOCK_EXTERNAL_ENABLED_CURRENCIES', ''))
+        )))),
+
         // Provider selection is also fail-closed. Unknown or omitted selectors resolve to unavailable adapters.
         'rate_provider' => trim((string) env('STOCK_EXTERNAL_RATE_PROVIDER', 'unavailable')),
         'payment_provider' => trim((string) env('STOCK_EXTERNAL_PAYMENT_PROVIDER', 'unavailable')),
