@@ -10,25 +10,26 @@
 $baseGol=(int)($auction->base_price_gol??0);$baseBahar=$baseGol/100;
 $isPrimaryTreasury=strtolower((string)$auction->market_type)==='primary'&&strtolower((string)$auction->supply_source)==='treasury';
 $isExternal=strtolower((string)$auction->settlement_channel)==='external_capital';
+$statusLabels=['scheduled'=>'برنامه‌ریزی‌شده','running'=>'در حال اجرا','settling'=>'در حال تسویه','settled'=>'تسویه‌شده','completed'=>'تکمیل‌شده','canceled'=>'لغوشده','cancelled'=>'لغوشده'];
 @endphp
 <div class="auction-show-container">
 <div class="auction-card">
 <div class="auction-title"><i class="fas fa-gavel"></i><h1>{{ $isPrimaryTreasury ? 'عرضه اولیه خزانه EarthCoop' : 'جزئیات عرضه سهام' }}</h1></div>
-<div class="canonical-badges">@if($isPrimaryTreasury)<span class="canonical-badge">بازار اولیه</span><span class="canonical-badge">خزانه EarthCoop</span>@endif<span class="canonical-badge">واحد قیمت‌گذاری: گل</span><span class="canonical-badge">{{ $isExternal ? 'تسویه خارجی' : 'تسویه با Active Bahar' }}</span></div>
+<div class="canonical-badges">@if($isPrimaryTreasury)<span class="canonical-badge">بازار اولیه</span><span class="canonical-badge">خزانه EarthCoop</span>@endif<span class="canonical-badge">واحد قیمت‌گذاری: گل</span><span class="canonical-badge">{{ $isExternal ? 'تسویه خارجی' : 'تسویه با بهار فعال' }}</span></div>
 <div class="info-grid">
 <div class="info-item"><span class="info-label">تعداد سهام</span><span class="info-value">{{ number_format($auction->shares_count) }} سهم</span></div>
 <div class="info-item"><span class="info-label">قیمت پایه</span><span class="info-value">{{ number_format($baseGol) }} گل</span><span class="subvalue">{{ number_format($baseBahar,2) }} بهار</span></div>
-<div class="info-item"><span class="info-label">نوع حراج</span><span class="info-value">@switch($auction->type)@case('single_winner') تک‌برنده @break @case('uniform_price') قیمت یکسان @break @case('pay_as_bid') پرداخت به قیمت پیشنهادی @break @default {{ $auction->type??'-' }} @endswitch</span></div>
+<div class="info-item"><span class="info-label">نوع حراج</span><span class="info-value">@switch($auction->type)@case('single_winner') تک‌برنده @break @case('uniform_price') قیمت یکسان @break @case('pay_as_bid') پرداخت به قیمت پیشنهادی @break @default نامشخص @endswitch</span></div>
 <div class="info-item"><span class="info-label">شروع</span><span class="info-value">{{ $auction->start_time?verta($auction->start_time)->format('Y/m/d H:i'):'-' }}</span></div>
 <div class="info-item"><span class="info-label">پایان</span><span class="info-value">{{ $auction->ends_at?verta($auction->ends_at)->format('Y/m/d H:i'):'-' }}</span></div>
-<div class="info-item"><span class="info-label">وضعیت</span><span class="status {{ $auction->status==='running'?'running':'' }}">{{ $auction->status==='running'?'فعال':($auction->status==='scheduled'?'برنامه‌ریزی‌شده':$auction->status) }}</span></div>
+<div class="info-item"><span class="info-label">وضعیت</span><span class="status {{ $auction->status==='running'?'running':'' }}">{{ $statusLabels[$auction->status] ?? 'نامشخص' }}</span></div>
 </div>
-@if($isPrimaryTreasury&&$isExternal)<div class="notice">تسویه خارجی فقط برای عرضه اولیه خزانه EarthCoop مجاز است. مبلغ وجه خارجی در زمان پرداخت از قیمت canonical گل با quote معتبر محاسبه می‌شود و وارد موجودی Najm Bahar نمی‌شود و Bahar جدید ایجاد نمی‌کند.</div>@endif
+@if($isPrimaryTreasury&&$isExternal)<div class="notice">تسویه خارجی فقط برای عرضه اولیه خزانه EarthCoop مجاز است. مبلغ وجه خارجی در زمان پرداخت، از قیمت مرجع سهم بر حسب گل و با نرخ معتبر و زمان‌دار محاسبه می‌شود. این مبلغ وارد موجودی نجم بهار نمی‌شود و بهار جدیدی نیز ایجاد نمی‌کند.</div>@endif
 @if($auction->info)<div class="notice"><strong>توضیحات:</strong> {{ $auction->info }}</div>@endif
 </div>
 @if($auction->isActive())
 <div class="bid-form-card"><h2 style="font-size:1.2rem;font-weight:800;margin-bottom:1rem;">ثبت پیشنهاد خرید</h2>
-@if($isExternal)<div class="notice" style="margin-bottom:1rem;">مسیر پرداخت خارجی تا تکمیل readiness عملیاتی غیرفعال است. قیمت بنیادی این عرضه همچنان بر حسب گل ثبت می‌شود.</div>@endif
+@if($isExternal)<div class="notice" style="margin-bottom:1rem;">مسیر پرداخت خارجی تا تکمیل آمادگی عملیاتی غیرفعال است. قیمت پایه این عرضه همچنان بر حسب گل ثبت و نگهداری می‌شود.</div>@endif
 <form method="POST" action="{{ route('auction.bid',$auction) }}">@csrf<div class="form-row"><div class="form-group"><label for="quantity">تعداد سهم</label><input class="form-control" id="quantity" name="quantity" type="number" min="1" max="{{ $auction->shares_count }}" required></div>@if(!$isExternal)<div class="form-group"><label for="price">قیمت پیشنهادی (گل)</label><input class="form-control" id="price" name="price" type="number" min="1" step="1" value="{{ $baseGol }}" required></div>@endif</div><button class="btn-primary" type="submit" {{ $isExternal?'disabled':'' }}>{{ $isExternal?'خرید پس از فعال‌شدن تسویه خارجی':'ثبت پیشنهاد' }}</button></form></div>
 @endif
 <div class="auction-card"><h2 style="font-size:1.1rem;font-weight:800;margin-bottom:1rem;">پیشنهادهای شما</h2>@forelse($userBids??[] as $bid)<div class="info-item" style="margin-bottom:.75rem;">{{ number_format((int)($bid->quantity??0)) }} سهم — {{ number_format((int)($bid->price_gol??0)) }} گل</div>@empty<div class="empty-state">هنوز پیشنهادی ثبت نکرده‌اید.</div>@endforelse</div>
