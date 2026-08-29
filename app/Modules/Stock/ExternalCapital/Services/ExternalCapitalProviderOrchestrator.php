@@ -76,7 +76,15 @@ final class ExternalCapitalProviderOrchestrator
             throw new RuntimeException('External payment provider is unavailable.');
         }
 
-        $event = $this->payments->verifyWebhook($payload, $headers);
+        $intent = ExternalPaymentIntent::query()->where('intent_key', $intentKey)->first();
+        if (! $intent) {
+            throw new RuntimeException('External payment intent not found for provider verification.');
+        }
+        if (trim((string) $intent->provider) !== $provider) {
+            throw new RuntimeException('External payment provider does not match the canonical EarthCoop payment intent.');
+        }
+
+        $event = $this->payments->verifyWebhook($intent, $payload, $headers);
 
         return $this->domain->reconcile(
             $intentKey,
