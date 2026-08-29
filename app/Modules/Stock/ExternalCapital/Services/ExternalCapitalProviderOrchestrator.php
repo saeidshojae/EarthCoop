@@ -16,6 +16,7 @@ final class ExternalCapitalProviderOrchestrator
         private readonly AuthoritativeRateProvider $rates,
         private readonly ExternalPaymentProvider $payments,
         private readonly ExternalCapitalPaymentService $domain,
+        private readonly ExternalCapitalReadinessGate $readiness,
     ) {}
 
     public function createPaymentIntentForAuction(
@@ -28,6 +29,8 @@ final class ExternalCapitalProviderOrchestrator
         array $metadata = [],
         ?\DateTimeInterface $expiresAt = null,
     ): ExternalPaymentIntent {
+        $this->readiness->assertReady();
+
         $quote = $this->rates->quote($golAmount, $currency);
         if ($quote->source !== $this->rates->sourceIdentifier()) {
             throw new RuntimeException('Authoritative rate provider source identifier does not match quote snapshot source.');
@@ -66,6 +69,8 @@ final class ExternalCapitalProviderOrchestrator
         string $payload,
         array $headers = [],
     ): ExternalPaymentReconciliation {
+        $this->readiness->assertReady();
+
         $provider = trim($this->payments->providerIdentifier());
         if ($provider === '' || $provider === 'unavailable') {
             throw new RuntimeException('External payment provider is unavailable.');
