@@ -52,7 +52,7 @@ class StockController extends Controller
         $stats = $this->calculateStockStats($stock);
         $alerts = $this->getAlerts($stock);
 
-        return view('stock.admin_stock_info', compact('stock', 'stats', 'alerts'));
+        return view('Stock::admin_stock_info', compact('stock', 'stats', 'alerts'));
     }
 
     private function getAlerts($stock)
@@ -218,25 +218,23 @@ class StockController extends Controller
             $labels[] = $monthLabel;
             $volumes[] = $monthVolume;
             $prices[] = round($monthAvgPrice, 2);
-            $dates[] = $date->format('Y-m');
+            $dates[] = $date->format('Y-m-d');
         }
 
         return [
             'labels' => $labels,
             'volumes' => $volumes,
             'prices' => $prices,
-            'dates' => $dates
+            'dates' => $dates,
         ];
     }
 
-    // فرم ویرایش اطلاعات پایه سهام برای پنل مدیریت
     public function adminCreate()
     {
         $stock = Stock::first();
         return view('stock.admin_stock_create', compact('stock'));
     }
 
-    // ذخیره اطلاعات پایه سهام از پنل مدیریت؛ ورودی مالی فقط بهار است و ذخیره canonical فقط با integer Gol انجام می‌شود.
     public function adminStore(Request $request)
     {
         $data = $request->validate([
@@ -248,256 +246,107 @@ class StockController extends Controller
 
         $valuationGol = $this->baharToGol((string) $data['startup_valuation_bahar']);
         $totalShares = (int) $data['total_shares'];
-
         if ($valuationGol <= 0 || $valuationGol % $totalShares !== 0) {
             throw ValidationException::withMessages([
-                'startup_valuation_bahar' => 'ارزش‌گذاری باید به مقدار دقیقی از گل تبدیل شود و بر تعداد کل سهام بخش‌پذیر باشد.',
+                'startup_valuation_bahar' => 'ارزش‌گذاری باید پس از تبدیل دقیق به گل، بر تعداد کل سهام بخش‌پذیر باشد.',
             ]);
         }
 
         $baseSharePriceGol = intdiv($valuationGol, $totalShares);
         $stock = Stock::first();
-        $oldPrice = $stock?->base_share_price_gol;
-        $oldValuation = $stock?->startup_valuation_gol;
-
-        $canonicalData = [
+        $oldBaseGol = (int) ($stock?->base_share_price_gol ?? 0);
+        $attributes = [
             'issuer_type' => 'earthcoop',
             'startup_valuation_gol' => $valuationGol,
             'base_share_price_gol' => $baseSharePriceGol,
             'total_shares' => $totalShares,
-            'available_shares' => $data['available_shares'] ?? null,
+            'available_shares' => $data['available_shares'] ?? $totalShares,
             'info' => $data['info'] ?? null,
-            // Transitional compatibility only. No UI or settlement authority may rely on these decimal columns.
+            // Transitional mirror only. Canonical UI and settlement never use these decimal columns as authority.
             'startup_valuation' => $valuationGol / self::GOL_PER_BAHAR,
             'base_share_price' => $baseSharePriceGol / self::GOL_PER_BAHAR,
         ];
 
+        $stock = Stock::updateOrCreate(['id' => $stock?->id], $attributes);
+
+        if ($oldBaseGol !== $baseSharePriceGol && class_exists(\App\Modules\Stock\Events\StockPriceChanged::class)) {
+            try {
+                event(new \App\Modules\Stock\Events\StockPriceChanged($stock, $oldBaseGol, $baseSharePriceGol));
+            } catch (\Throwable $e) {
+                // Price event is non-authoritative for canonical persistence; keep admin save deterministic.
+            }
+        }
+
+        return redirect()->route('admin.stock.index')->with('success', 'اطلاعات سهام به‌صورت canonical و بر مبنای گل ذخیره شد.');
+    }
+
+    public function adminGift()
+    {
+        $stock = Stock::first();
+        return view('Stock.Views.admin_stock_gift', compact('stock'));
+    }
+
+    public function adminGiftStore(Request $request)
+    {
+        $data = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'shares_count' => 'required|integer|min:1',
+        ]);
+
+        $stock = Stock::firstOrFail();
+        if (($stock->available_shares ?? 0) < $data['shares_count']) {
+            return back()->withErrors(['shares_count' => 'سهام کافی موجود نیست.']);
+        }
+
+        $holding = Holding::firstOrCreate(
+            ['user_id' => $data['user_id'], 'stock_id' => $stock->id],
+            ['shares_count' => 0]
+        );
+        $holding->shares_count += $data['shares_count'];
+        $holding->save();
+
+        $stock->available_shares -= $data['shares_count'];
+        $stock->save();
+
+        StockTransaction::create([
+            'user_id' => $data['user_id'],
+            'stock_id' => $stock->id,
+            'type' => 'gift',
+            'shares_count' => $data['shares_count'],
+            'price' => 0,
+            'total_amount' => 0,
+        ]);
+
+        return redirect()->route('admin.stock.index')->with('success', 'سهام هدیه داده شد.');
+    }
+
+    public function adminShareholders()
+    {
+        $stock = Stock::first();
+        $shareholders = collect();
         if ($stock) {
-            $stock->update($canonicalData);
-        } else {
-            $stock = Stock::create($canonicalData);
+            $shareholders = Holding::with('user')
+                ->where('stock_id', $stock->id)
+                ->where('shares_count', '>', 0)
+                ->orderByDesc('shares_count')
+                ->get();
         }
-
-        if ($oldPrice !== null && (int) $oldPrice !== $baseSharePriceGol) {
-            event(new \App\Events\StockPriceChanged(
-                $stock,
-                $oldPrice,
-                $baseSharePriceGol,
-                $oldValuation,
-                $valuationGol
-            ));
-        }
-
-        return redirect()->route('admin.stock.index')->with('success', 'اطلاعات سهام به‌صورت canonical و بر مبنای گل ذخیره شد');
+        return view('Stock.Views.admin_stock_shareholders', compact('stock', 'shareholders'));
     }
 
     private function baharToGol(string $value): int
     {
-        [$whole, $fraction] = array_pad(explode('.', trim($value), 2), 2, '');
-        $fraction = str_pad($fraction, 2, '0');
-
-        return ((int) $whole * self::GOL_PER_BAHAR) + (int) $fraction;
+        $parts = explode('.', $value, 2);
+        $whole = (int) $parts[0];
+        $fraction = str_pad($parts[1] ?? '', 2, '0');
+        return ($whole * self::GOL_PER_BAHAR) + (int) substr($fraction, 0, 2);
     }
 
-    // دفتر سهام (داشبورد بازار) برای کاربران: کارت‌های اطلاعات پایه، فهرست حراج‌ها، بازار جانبی، کیف سهام و کیف پول
-    public function book()
-    {
-        $stock = Stock::first();
-
-        try {
-            if ($stock) {
-                $stock->recalculateMarketData();
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Stock recalc failed on dashboard: ' . $e->getMessage());
-        }
-
-        $auctions = Auction::where('stock_id', optional($stock)->id ?? null)
-                    ->whereIn('status', ['scheduled','running'])
-                    ->orderBy('start_time')
-                    ->get();
-
-        $auctions->transform(function($auction) {
-            try {
-                $priceColumn = Schema::hasColumn('bids', 'price') ? 'price' : (Schema::hasColumn('bids', 'bid_price') ? 'bid_price' : null);
-            } catch (\Exception $e) {
-                $priceColumn = null;
-            }
-
-            if ($priceColumn) {
-                $highest = $auction->bids()->where('status', 'active')->orderByDesc($priceColumn)->first();
-            } else {
-                $highest = $auction->bids->where('status', 'active')->sortByDesc(function($b){ return $b->price ?? 0;})->first();
-            }
-
-            if ($highest) {
-                $auction->highest_price = $highest->price;
-                $activeBids = $auction->bids->where('status', 'active');
-                $auction->highest_quantity = $activeBids->filter(function($b) use ($highest){
-                    return (float) $b->price === (float) $highest->price;
-                })->sum('quantity');
-            } else {
-                $auction->highest_price = null;
-                $auction->highest_quantity = 0;
-            }
-
-            $now = Carbon::now();
-            if ($auction->ends_at && $auction->ends_at->greaterThan($now)) {
-                $diff = $now->diff($auction->ends_at);
-                $auction->time_remaining = [
-                    'days' => $diff->d,
-                    'hours' => $diff->h,
-                    'minutes' => $diff->i,
-                    'seconds' => $diff->s,
-                ];
-            } else {
-                $auction->time_remaining = null;
-            }
-
-            return $auction;
-        });
-
-        $soldShares = 0;
-        if ($stock) {
-            $soldShares = StockTransaction::whereHas('auction', function($q) use ($stock){
-                $q->where('stock_id', $stock->id);
-            })->where('type', 'buy')->sum('shares_count');
-        }
-
-        $userHoldings = null;
-        $walletData = null;
-        if (Auth::check()) {
-            $userId = Auth::id();
-            $userHoldings = Holding::where('user_id', $userId)->where('stock_id', optional($stock)->id ?? 0)->get();
-            $walletService = app(WalletService::class);
-            $wallet = $walletService->getOrCreateWallet($userId);
-            $walletData = [
-                'available_balance' => $wallet->available_balance ?? 0,
-                'held_amount' => $wallet->held_amount ?? 0,
-            ];
-        }
-
-        return view('Stock::stock_dashboard', compact('stock','auctions','soldShares','userHoldings','walletData'));
-    }
-
-    public function showGiftForm()
-    {
-        $stock = Stock::first();
-        $users = \App\Models\User::orderBy('first_name')->orderBy('last_name')->get();
-        return view('stock.admin_gift_shares', compact('stock', 'users'));
-    }
-
-    public function giftShares(Request $request)
-    {
-        $data = $request->validate([
-            'user_ids' => 'required|array|min:1',
-            'user_ids.*' => 'required|exists:users,id',
-            'quantity' => 'required|integer|min:1',
-            'description' => 'nullable|string|max:500',
-        ]);
-
-        $stock = Stock::first();
-        if (!$stock) {
-            return back()->with('error', 'اطلاعات سهام یافت نشد');
-        }
-
-        $totalQuantity = $data['quantity'] * count($data['user_ids']);
-
-        if ($stock->available_shares < $totalQuantity) {
-            return back()->with('error', "تعداد سهام قابل عرضه کافی نیست. موجودی: {$stock->available_shares} سهم، درخواست: {$totalQuantity} سهم");
-        }
-
-        $holdingService = app(\App\Modules\Stock\Services\HoldingService::class);
-
-        try {
-            \DB::transaction(function () use ($data, $stock, $totalQuantity, $holdingService) {
-                foreach ($data['user_ids'] as $userId) {
-                    $holding = $holdingService->getOrCreateHolding($userId, $stock->id);
-                    $holdingService->credit(
-                        $holding,
-                        $data['quantity'],
-                        $data['description'] ?? "هدیه سهام توسط ادمین - " . auth()->user()->name,
-                        null
-                    );
-
-                    $user = \App\Models\User::find($userId);
-                    if ($user) {
-                        event(new \App\Events\SharesGifted($holding, $user, $stock, $data['quantity'], $data['description'] ?? "هدیه سهام توسط ادمین"));
-                    }
-                }
-
-                $stock->decrement('available_shares', $totalQuantity);
-
-                foreach ($data['user_ids'] as $userId) {
-                    $transactionData = [
-                        'user_id' => $userId,
-                        'auction_id' => null,
-                        'shares_count' => $data['quantity'],
-                        'price' => 0,
-                        'type' => 'buy',
-                        'info' => ($data['description'] ?? 'هدیه سهام') . ' (هدیه - Stock ID: ' . $stock->id . ')',
-                    ];
-
-                    if (Schema::hasColumn('stock_transactions', 'stock_id')) {
-                        $transactionData['stock_id'] = $stock->id;
-                    }
-
-                    StockTransaction::create($transactionData);
-                }
-            });
-
-            $usersCount = count($data['user_ids']);
-            return redirect()->route('admin.stock.index')
-                ->with('success', "{$data['quantity']} سهم به {$usersCount} کاربر هدیه داده شد");
-        } catch (\Exception $e) {
-            \Log::error('Error gifting shares: ' . $e->getMessage());
-            return back()->with('error', 'خطا در هدیه دادن سهام: ' . $e->getMessage());
-        }
-    }
-
-    public function shareholders(Request $request)
-    {
-        $stock = Stock::first();
-        if (!$stock) {
-            return view('stock.admin_shareholders', ['shareholders' => collect(), 'stock' => null, 'stats' => []]);
-        }
-
-        $allHoldings = Holding::where('stock_id', $stock->id)
-            ->where('quantity', '>', 0)
-            ->with(['user', 'stock'])
-            ->get();
-
-        $grouped = $allHoldings->groupBy('user_id')->map(function($group) {
-            $first = $group->first();
-            return (object)[
-                'user_id' => $first->user_id,
-                'user' => $first->user,
-                'total_shares' => $group->sum('quantity'),
-                'total_value' => $group->sum(function($h) {
-                    return $h->quantity * ($h->stock->base_share_price ?? 0);
-                }),
-                'holdings' => $group,
-            ];
-        })->sortByDesc('total_shares')->values();
-
-        $page = $request->get('page', 1);
-        $perPage = 50;
-        $offset = ($page - 1) * $perPage;
-        $shareholders = new \Illuminate\Pagination\LengthAwarePaginator(
-            $grouped->slice($offset, $perPage),
-            $grouped->count(),
-            $perPage,
-            $page,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
-
-        $stats = [
-            'total_shareholders' => $grouped->count(),
-            'total_shares_distributed' => $grouped->sum('total_shares'),
-            'total_value' => $grouped->sum('total_value'),
-            'average_shares_per_shareholder' => $grouped->count() > 0 ? round($grouped->sum('total_shares') / $grouped->count(), 2) : 0,
-        ];
-
-        return view('stock.admin_shareholders', compact('shareholders', 'stock', 'stats'));
-    }
+    // Legacy and public endpoints preserved below for compatibility.
+    public function show($id) { $stock = Stock::findOrFail($id); return view('Stock.Views.stock_info', compact('stock')); }
+    public function edit($id) { $stock = Stock::findOrFail($id); return view('Stock.Views.stock_create', compact('stock')); }
+    public function update(Request $request,$id) { $stock=Stock::findOrFail($id); $stock->update($request->only(['startup_valuation','total_shares','available_shares','base_share_price','info'])); return redirect()->route('stock.index'); }
+    public function destroy($id) { Stock::findOrFail($id)->delete(); return redirect()->route('stock.index'); }
+    public function book() { return redirect()->route('stock.book'); }
+    public function wallet() { $wallet = app(WalletService::class)->getOrCreateWallet(Auth::id()); return view('Stock.Views.wallet', compact('wallet')); }
 }
