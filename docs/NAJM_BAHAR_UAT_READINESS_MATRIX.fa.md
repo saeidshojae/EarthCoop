@@ -13,15 +13,15 @@ UAT branch: `agent/najm-bahar-uat`
 
 | حوزه | وضعیت | شواهد runtime/test | UAT بعدی |
 |---|---|---|---|
-| Agreement / account creation | PARTIAL | `NajmBaharController::processAgreement`, `AccountService` | eligibility/profile enforcement و replay |
-| Initial issuance | IMPLEMENTED | `NajmBaharConstitution`, `MonetaryService::issueMembershipCredit`, `InitialMembershipCreditTest`, `MonetaryServiceTest` | ownership invariant + concurrency/replay |
+| Agreement / account creation | IMPLEMENTED/PENDING-CI | `MembershipEligibilityService`, `NajmBaharController::processAgreement`, `MembershipEligibilityServiceTest`, `MembershipIssuanceEligibilityTest` | fresh CI + manual onboarding replay |
+| Initial issuance | IMPLEMENTED/PENDING-CI | `NajmBaharConstitution`, `MonetaryService::issueMembershipCredit`, `InitialMembershipCreditTest`, ownership guard | concurrency/replay + fresh CI |
 | 10,000 Bahar = 1,000,000 Gol, 100% Dim | IMPLEMENTED | constitutional constant, zero initial active, integer Gol | DB/UAT fixture confirmation |
 | Money ledger/events | IMPLEMENTED | `MonetaryEventRecorder`, `Transaction`, `LedgerEntry` | conservation/reconciliation scenarios |
 | Active / Dim | IMPLEMENTED | `balance_active`, `balance_faded`, `AccountBalanceService` | display/runtime reconciliation |
 | Committed Dim | IMPLEMENTED | `committed_dim`, `DimCommitmentService` | commit/release/activation lifecycle |
-| Reserved Active | PARTIAL | `ActiveBaharReservationService` | reserve/release/settle UI + aggregate visibility |
+| Reserved Active | PARTIAL/RED-UAT | `ActiveBaharReservationService`; internal account transfer is reservation-aware on UAT branch; generic `TransactionService::transfer` still has a RED regression contract | close `TransactionReservationProtectionTest` without weakening reservation semantics |
 | Activation | IMPLEMENTED | `MonetaryService::activateDim`, `MonetaryPolicyService`, scheduler `najm-bahar:activate-faded` | policy-period UAT and replay |
-| Transfers | IMPLEMENTED | canonical transaction/internal transfer services + invariant tests | user-to-user, subaccount, cross-owner UAT |
+| Transfers | PARTIAL/RED-UAT | canonical transaction/internal transfer services + invariant tests; `TransactionReservationProtectionTest` exposes generic-transfer double-spend path against reserved Active | make generic Active debit use spendable Active after reservations |
 | Scheduled transfers | PARTIAL -> FIX IN UAT BRANCH | `NajmBaharProcessScheduled`, `ScheduledSubAccountTransferExecutor`; baseline lacked scheduler wiring | validate scheduler contract/CI |
 | Membership fee | IMPLEMENTED | explicit Dim/Active source, activation-on-Dim, treasury split, idempotency tests | manual UI UAT after core gates |
 | Treasury/system funds | IMPLEMENTED | Operations/Salary, Central Insurance, Money Destruction, Idle Tax via `TreasuryService` | reserves/surplus/interfund UAT |
@@ -47,13 +47,25 @@ Contract:
 6. idempotent replay;
 7. zero-balance precondition;
 8. membership credit may only be issued to that member's own user account;
-9. activation must conserve total monetary ownership.
+9. activation must conserve total monetary ownership;
+10. initial membership credit is only reachable for a valid member: non-system identity, active status, Terms accepted, verified email, and completed canonical profile.
 
-Baseline already contained explicit tests for 1–7 and 9. During UAT, item 8 was found missing inside `MonetaryService` and a regression contract plus ownership guard were added on the UAT branch. This fix is not considered verified until fresh CI evidence exists for the resulting head.
+Baseline already contained explicit tests for 1–7 and 9. During UAT, item 8 was found missing inside `MonetaryService` and a regression contract plus ownership guard were added on the UAT branch. Item 10 was then reconciled with the real registration lifecycle and centralized in `MembershipEligibilityService`; the agreement GET/POST and lazy `ensureInitialFunding()` issuance path now use that policy. These changes are not considered verified until fresh CI evidence exists for the resulting head.
 
-## Known UAT contract gap — membership eligibility
+## UAT Gate 2 — Reservation / spendability invariant
 
-The agreement GET computes profile-completeness signals, while the POST account-creation path itself currently relies on authentication + agreement acceptance (and rejects system identities) rather than enforcing the same full profile eligibility server-side. Treat this as an open UAT contract gap until the exact canonical definition of a valid/verified member is reconciled with registration state and enforced by a dedicated test.
+Contract:
+
+1. reservation reduces spendable Active without changing monetary ownership or nominal Active;
+2. release restores spendability without mint/burn;
+3. settlement consumes reserved Active exactly once and records double-entry ledger entries;
+4. no other transfer path may spend Active already reserved by `ActiveBaharReservationService`.
+
+Items 1–3 are represented by existing reservation service tests. UAT found item 4 violated in two paths: internal main/sub transfer and generic `TransactionService::transfer`. Internal transfer was hardened to use reservation-aware spendable Active. The generic transfer defect remains intentionally RED under `TransactionReservationProtectionTest` until its debit check is made reservation-aware and fresh validation is available.
+
+## Validation state
+
+Current UAT head has no GitHub Actions workflow run or combined status evidence yet. Therefore no new UAT change on this branch is described as green/validated solely from code inspection.
 
 ## Safety
 
