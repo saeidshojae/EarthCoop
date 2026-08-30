@@ -70,6 +70,24 @@ class StockRemainingCanonicalUiContractTest extends TestCase
         $this->assertStringNotContainsString('ریال', $html);
     }
 
+    public function test_admin_stock_dashboard_restores_operational_and_reporting_navigation(): void
+    {
+        $stock = $this->stock();
+        $html = view('Stock::admin_stock_info', ['stock' => $stock, 'alerts' => [], 'stats' => null])->render();
+
+        $this->assertStringContainsString(route('admin.stock.external-payments.index'), $html);
+        $this->assertStringContainsString('تسویه‌های خارجی', $html);
+
+        $this->assertStringContainsString(route('admin.stock-reports.auction-performance'), $html);
+        $this->assertStringContainsString('گزارش عملکرد حراج‌ها', $html);
+
+        $this->assertStringContainsString(route('admin.stock-reports.investors'), $html);
+        $this->assertStringContainsString('گزارش سهامداران', $html);
+
+        $this->assertStringContainsString(route('admin.stock-reports.financial'), $html);
+        $this->assertStringContainsString('گزارش مالی', $html);
+    }
+
     public function test_public_primary_auction_show_does_not_fall_back_to_legacy_rial_price(): void
     {
         $auction = $this->auction($this->stock());
