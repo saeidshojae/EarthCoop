@@ -33,7 +33,7 @@ class ExternalCapitalBidHttpFlowTest extends TestCase
         // Route model binding may hand the controller an Auction instance. Keep a deliberately
         // inactive lower-id auction so an accidental object-to-int cast cannot silently pass.
         $decoyAuction = $this->auction();
-        $decoyAuction->update(['status' => 'completed']);
+        $decoyAuction->update(['status' => 'settled']);
 
         $auction = $this->auction();
         $persistedAuction = $auction->fresh();
