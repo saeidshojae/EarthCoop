@@ -75,7 +75,7 @@ class ProductionExternalCapitalAdaptersTest extends TestCase
         app(ServixGold24AuthoritativeRateProvider::class)->quote(1000, 'USD');
     }
 
-    public function test_zarinpal_creates_only_irr_intents_and_exposes_redirect_url(): void
+    public function test_zarinpal_creates_only_irr_intents_and_exposes_redirect_url_with_intent_specific_callback(): void
     {
         Http::fake([
             'https://api.zarinpal.com/pg/v4/payment/request.json' => Http::response([
@@ -109,7 +109,7 @@ class ProductionExternalCapitalAdaptersTest extends TestCase
             return $request->url() === 'https://api.zarinpal.com/pg/v4/payment/request.json'
                 && $data['merchant_id'] === 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
                 && $data['amount'] === 288881000
-                && $data['callback_url'] === 'https://earthcoop.ir/stock/external-capital/zarinpal/callback';
+                && $data['callback_url'] === 'https://earthcoop.ir/stock/external-capital/zarinpal/callback?intent=intent%3Azarinpal%3A1';
         });
     }
 
@@ -156,6 +156,33 @@ class ProductionExternalCapitalAdaptersTest extends TestCase
                 && $data['amount'] === 288881000
                 && $data['amount'] !== 1;
         });
+    }
+
+    public function test_zarinpal_cancelled_callback_becomes_canonical_cancelled_event_without_verify_request(): void
+    {
+        Http::fake();
+
+        $intent = ExternalPaymentIntent::make([
+            'intent_key' => 'intent:zarinpal:cancelled',
+            'currency' => 'IRR',
+            'amount_minor' => 288881000,
+            'provider_intent_id' => 'A00000000000000000000000000123456789',
+        ]);
+
+        $event = app(ZarinpalExternalPaymentProvider::class)->verifyWebhook(
+            $intent,
+            http_build_query([
+                'Status' => 'NOK',
+                'Authority' => 'A00000000000000000000000000123456789',
+            ])
+        );
+
+        $this->assertSame('payment_cancelled', $event->eventType);
+        $this->assertSame('cancelled', $event->resultStatus);
+        $this->assertSame(288881000, $event->amountMinor);
+        $this->assertSame('IRR', $event->currency);
+        $this->assertNull($event->providerPaymentId);
+        Http::assertNothingSent();
     }
 
     public function test_zarinpal_rejects_usd_intents(): void
