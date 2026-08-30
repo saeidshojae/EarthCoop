@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Stock;
 
+use App\Models\User;
 use App\Modules\Stock\Models\ExternalPaymentIntent;
 use App\Modules\Stock\Models\ExternalPaymentReconciliation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,6 +13,12 @@ use Tests\TestCase;
 class ExternalCapitalOperationsConsoleTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->actingAs(User::factory()->create());
+    }
 
     public function test_admin_operations_routes_are_registered(): void
     {
