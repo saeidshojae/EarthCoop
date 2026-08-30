@@ -27,7 +27,9 @@ final class ExternalCapitalBidController extends Controller
             abort(401);
         }
 
-        $canonicalAuction = Auction::query()->findOrFail((int) $auction);
+        $canonicalAuction = $auction instanceof Auction
+            ? $auction
+            : Auction::query()->findOrFail((int) $auction);
 
         $idempotencyKey = trim((string) $request->header('Idempotency-Key', ''));
         if ($idempotencyKey === '') {
