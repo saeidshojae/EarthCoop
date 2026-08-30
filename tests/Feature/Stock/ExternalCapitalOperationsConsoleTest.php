@@ -39,7 +39,7 @@ class ExternalCapitalOperationsConsoleTest extends TestCase
         $response->assertDontSee('api-secret-value');
     }
 
-    public function test_show_exposes_append_only_reconciliation_history_but_no_manual_confirmation_action(): void
+    public function test_show_exposes_append_only_reconciliation_history_but_no_mutation_form(): void
     {
         $this->withoutMiddleware();
         $intent = $this->intent();
@@ -65,7 +65,7 @@ class ExternalCapitalOperationsConsoleTest extends TestCase
         $response->assertSee('payment_pending');
         $response->assertSee('authority-safe-id');
         $response->assertSee('فقط خواندنی');
-        $response->assertDontSee('تأیید دستی پرداخت');
+        $response->assertDontSee('<form', false);
         $response->assertDontSee('merchant-secret-value');
         $response->assertDontSee('api-secret-value');
     }
