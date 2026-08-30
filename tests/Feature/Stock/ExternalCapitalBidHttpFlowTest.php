@@ -91,6 +91,38 @@ class ExternalCapitalBidHttpFlowTest extends TestCase
         $this->assertSame('confirmed', $intent->fresh()->status);
     }
 
+    public function test_cancelled_provider_callback_persists_cancellation_and_never_activates_bid(): void
+    {
+        $user = User::factory()->create();
+        $auction = $this->auction();
+        $this->actingAs($user)->post("/auctions/{$auction->id}/external-checkout", [
+            'price_gol' => 120,
+            'quantity' => 2,
+            'checkout_key' => 'browser-checkout-cancelled',
+        ])->assertRedirect();
+        auth()->logout();
+
+        $intent = ExternalPaymentIntent::query()->firstOrFail();
+        $response = $this->get('/stock/external-payment/callback?' . http_build_query([
+            'intent' => $intent->intent_key,
+            'Status' => 'NOK',
+            'Authority' => $intent->provider_intent_id,
+        ]));
+
+        $response->assertRedirect(route('auction.show', $auction));
+        $this->assertSame('cancelled', $intent->fresh()->status);
+        $this->assertDatabaseHas('bids', [
+            'auction_id' => $auction->id,
+            'external_payment_intent_id' => $intent->id,
+            'status' => 'awaiting_funding',
+        ]);
+        $this->assertDatabaseMissing('bids', [
+            'auction_id' => $auction->id,
+            'external_payment_intent_id' => $intent->id,
+            'status' => 'active',
+        ]);
+    }
+
     private function configureReadyIrrState(): void
     {
         config()->set('stock.external_capital.enabled', true);
@@ -130,15 +162,16 @@ class ExternalCapitalBidHttpFlowTest extends TestCase
                 if ((string) ($callback['Authority'] ?? '') !== (string) $intent->provider_intent_id) {
                     throw new \RuntimeException('Authority mismatch.');
                 }
+                $cancelled = strtoupper((string) ($callback['Status'] ?? '')) !== 'OK';
                 return new VerifiedPaymentEvent(
-                    'fake-http-event-' . $intent->id,
-                    'payment_confirmed',
-                    'confirmed',
+                    'fake-http-event-' . $intent->id . ($cancelled ? '-cancelled' : '-confirmed'),
+                    $cancelled ? 'payment_cancelled' : 'payment_confirmed',
+                    $cancelled ? 'cancelled' : 'confirmed',
                     (int) $intent->amount_minor,
                     (string) $intent->currency,
-                    'fake-ref-' . $intent->id,
-                    ['authority' => $callback['Authority'] ?? null],
-                    ['verification' => 'verified']
+                    $cancelled ? null : 'fake-ref-' . $intent->id,
+                    ['authority' => $callback['Authority'] ?? null, 'status' => $callback['Status'] ?? null],
+                    ['verification' => $cancelled ? 'cancelled' : 'verified']
                 );
             }
         });
