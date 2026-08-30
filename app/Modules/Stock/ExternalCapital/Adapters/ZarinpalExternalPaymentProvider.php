@@ -31,7 +31,7 @@ final class ZarinpalExternalPaymentProvider implements ExternalPaymentProvider
                     'merchant_id' => $config['merchant_id'],
                     'amount' => (int) $intent->amount_minor,
                     'description' => $config['description'],
-                    'callback_url' => $config['callback_url'],
+                    'callback_url' => $this->intentCallbackUrl($config['callback_url'], (string) $intent->intent_key),
                 ]);
         } catch (Throwable $e) {
             throw new RuntimeException('ZarinPal payment intent request failed.', 0, $e);
@@ -164,6 +164,30 @@ final class ZarinpalExternalPaymentProvider implements ExternalPaymentProvider
             'description' => $description,
             'timeout_seconds' => $timeout,
         ];
+    }
+
+    private function intentCallbackUrl(string $callbackUrl, string $intentKey): string
+    {
+        $intentKey = trim($intentKey);
+        if ($intentKey === '') {
+            throw new RuntimeException('ZarinPal callback requires the canonical EarthCoop payment intent key.');
+        }
+
+        $fragment = '';
+        $fragmentPosition = strpos($callbackUrl, '#');
+        if ($fragmentPosition !== false) {
+            $fragment = substr($callbackUrl, $fragmentPosition);
+            $callbackUrl = substr($callbackUrl, 0, $fragmentPosition);
+        }
+
+        $separator = str_contains($callbackUrl, '?')
+            ? (str_ends_with($callbackUrl, '?') || str_ends_with($callbackUrl, '&') ? '' : '&')
+            : '?';
+
+        return $callbackUrl
+            . $separator
+            . http_build_query(['intent' => $intentKey], '', '&', PHP_QUERY_RFC3986)
+            . $fragment;
     }
 
     private function parseCallback(string $payload): array
