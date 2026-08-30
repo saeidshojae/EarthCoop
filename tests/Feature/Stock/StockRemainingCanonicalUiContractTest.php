@@ -3,10 +3,12 @@
 namespace Tests\Feature\Stock;
 
 use App\Models\User;
+use App\Modules\Stock\Controllers\AuctionController;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Stock;
 use App\Modules\Stock\Settlement\SettlementChannel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Tests\TestCase;
 
 class StockRemainingCanonicalUiContractTest extends TestCase
@@ -125,5 +127,65 @@ class StockRemainingCanonicalUiContractTest extends TestCase
         $this->assertStringContainsString('تسویه خارجی با ریال', $html);
         $this->assertStringNotContainsString('value="external_capital"', $html);
         $this->assertStringNotContainsString('value="external_usd"', $html);
+    }
+
+    public function test_admin_store_persists_canonical_external_irr_offering_from_gol_input(): void
+    {
+        $stock = $this->stock();
+        $request = Request::create('/admin/auctions', 'POST', [
+            'stock_id' => $stock->id,
+            'shares_count' => 500,
+            'base_price_gol' => 1,
+            'settlement_channel' => SettlementChannel::EXTERNAL_IRR,
+            'start_time' => now()->addHour()->format('Y-m-d H:i:s'),
+            'end_time' => now()->addDays(2)->format('Y-m-d H:i:s'),
+            'ends_at' => now()->addDays(2)->format('Y-m-d H:i:s'),
+            'type' => 'uniform_price',
+            'settlement_mode' => 'manual',
+            'lot_size' => 1,
+            'info' => 'UAT external offering',
+        ]);
+        $request->setContainer($this->app);
+        $request->setRedirector($this->app['redirect']);
+
+        app(AuctionController::class)->adminStore($request);
+
+        $this->assertDatabaseHas('auctions', [
+            'stock_id' => $stock->id,
+            'market_type' => 'primary',
+            'supply_source' => 'treasury',
+            'settlement_channel' => SettlementChannel::EXTERNAL_IRR,
+            'quote_unit' => 'gol',
+            'shares_count' => 500,
+            'base_price_gol' => 1,
+            'status' => 'scheduled',
+        ]);
+    }
+
+    public function test_stock_book_does_not_present_expired_running_auction_as_active(): void
+    {
+        $stock = $this->stock();
+        $expired = $this->auction($stock, [
+            'shares_count' => 321,
+            'end_time' => now()->subMinute(),
+            'ends_at' => now()->subMinute(),
+        ]);
+        $active = $this->auction($stock, [
+            'shares_count' => 654,
+            'end_time' => now()->addDay(),
+            'ends_at' => now()->addDay(),
+        ]);
+
+        $html = view('Stock::stock_dashboard', [
+            'stock' => $stock,
+            'auctions' => collect([$expired, $active]),
+            'soldShares' => 0,
+            'userHoldings' => collect(),
+            'walletData' => null,
+        ])->render();
+
+        $this->assertStringNotContainsString(route('auction.show', $expired), $html);
+        $this->assertStringContainsString(route('auction.show', $active), $html);
+        $this->assertStringContainsString('تسویه خارجی با ریال', $html);
     }
 }
