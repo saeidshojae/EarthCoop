@@ -21,7 +21,7 @@ class ProductionExternalCapitalAdaptersTest extends TestCase
         config()->set('stock.external_capital.providers.zarinpal.merchant_id', 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
         config()->set('stock.external_capital.providers.zarinpal.base_url', 'https://api.zarinpal.com/pg/v4');
         config()->set('stock.external_capital.providers.zarinpal.gateway_url', 'https://www.zarinpal.com/pg/StartPay');
-        config()->set('stock.external_capital.providers.zarinpal.callback_url', 'https://earthcoop.ir/stock/external-capital/zarinpal/callback');
+        config()->set('stock.external_capital.providers.zarinpal.callback_url', 'https://earthcoop.ir/stock/external-payment/callback');
         config()->set('stock.external_capital.providers.zarinpal.description', 'EarthCoop primary treasury share purchase');
     }
 
@@ -109,7 +109,7 @@ class ProductionExternalCapitalAdaptersTest extends TestCase
             return $request->url() === 'https://api.zarinpal.com/pg/v4/payment/request.json'
                 && $data['merchant_id'] === 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
                 && $data['amount'] === 288881000
-                && $data['callback_url'] === 'https://earthcoop.ir/stock/external-capital/zarinpal/callback?intent=intent%3Azarinpal%3A1';
+                && $data['callback_url'] === 'https://earthcoop.ir/stock/external-payment/callback?intent=intent%3Azarinpal%3A1';
         });
     }
 
