@@ -15,6 +15,14 @@ Schedule::command('najm-bahar:activate-faded')
     ->dailyAt('02:30')
     ->withoutOverlapping();
 
+// Execute due scheduled Najm Bahar transfers through the canonical transaction
+// services. The command itself is retry-safe and bounds each run to 100 due
+// items; scheduler overlap is forbidden so the same queue is not raced by two
+// application scheduler processes.
+Schedule::command('najm-bahar:process-scheduled')
+    ->everyMinute()
+    ->withoutOverlapping();
+
 // Retry only already-failed monetary operations that are due under the bounded
 // backoff policy. Dead-letter recovery is intentionally never scheduled and
 // remains an explicit operator action after reviewing the monetary report.
