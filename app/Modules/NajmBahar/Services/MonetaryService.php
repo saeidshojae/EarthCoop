@@ -93,7 +93,9 @@ class MonetaryService
             $amount = $allowPartial ? min($requestedAmount, $available) : $requestedAmount;
             $locked->balance_faded = $available - $amount;
             $locked->balance_active = (int) ($locked->balance_active ?? 0) + $amount;
-            $locked->balance = (int) $locked->balance_faded + (int) $locked->balance_active;
+            $locked->balance = (int) $locked->balance_faded
+                + (int) $locked->balance_active
+                + (int) ($locked->committed_dim ?? 0);
             $locked->save();
             $this->syncSubAccountMirror($locked);
 
