@@ -78,13 +78,10 @@ class StockRemainingCanonicalUiContractTest extends TestCase
 
         $this->assertStringContainsString(route('admin.stock.external-payments.index'), $html);
         $this->assertStringContainsString('تسویه‌های خارجی', $html);
-
         $this->assertStringContainsString(route('admin.stock-reports.auction-performance'), $html);
         $this->assertStringContainsString('گزارش عملکرد حراج‌ها', $html);
-
         $this->assertStringContainsString(route('admin.stock-reports.investors'), $html);
         $this->assertStringContainsString('گزارش سهامداران', $html);
-
         $this->assertStringContainsString(route('admin.stock-reports.financial'), $html);
         $this->assertStringContainsString('گزارش مالی', $html);
     }
@@ -93,14 +90,7 @@ class StockRemainingCanonicalUiContractTest extends TestCase
     {
         $stock = $this->stock();
         $auction = $this->auction($stock);
-
-        $html = view('Stock::stock_dashboard', [
-            'stock' => $stock,
-            'auctions' => collect([$auction]),
-            'soldShares' => 0,
-            'userHoldings' => collect(),
-            'walletData' => null,
-        ])->render();
+        $html = view('Stock::stock_dashboard', ['stock' => $stock, 'auctions' => collect([$auction]), 'soldShares' => 0, 'userHoldings' => collect(), 'walletData' => null])->render();
 
         $this->assertStringContainsString('data-stockbook-tab="stock-info"', $html);
         $this->assertStringContainsString('اطلاعات پایه سهام', $html);
@@ -119,11 +109,7 @@ class StockRemainingCanonicalUiContractTest extends TestCase
     {
         $stock = $this->stock();
         $auction = $this->auction($stock);
-
-        $html = view('Stock::auction_list', [
-            'stock' => $stock,
-            'auctions' => collect([$auction]),
-        ])->render();
+        $html = view('Stock::auction_list', ['stock' => $stock, 'auctions' => collect([$auction])])->render();
 
         $this->assertStringContainsString('20,000,000 گل', $html);
         $this->assertStringContainsString('200,000 بهار', $html);
@@ -133,7 +119,11 @@ class StockRemainingCanonicalUiContractTest extends TestCase
         $this->assertStringContainsString(route('stock.book'), $html);
         $this->assertStringContainsString('دفتر سهام', $html);
         $this->assertStringContainsString(route('holding.index'), $html);
-        $this->assertStringNotContainsString(route('wallet.index'), $html);
+        // The unified application layout legitimately contains the user's Najm Bahar
+        // wallet navigation. Stock-specific wallet retirement is guarded separately by
+        // StockAdminWalletRetirementContractTest, so a rendered-page URL absence check
+        // here would conflate global money navigation with the retired Stock wallet.
+        $this->assertStringNotContainsString('کیف پول سهام', $html);
         $this->assertStringNotContainsString('ارزش پایه پلتفرم:', $html);
         $this->assertStringNotContainsString('قیمت پایه</strong> ریال', $html);
         $this->assertStringNotContainsString('ریال</td>', $html);
@@ -143,7 +133,6 @@ class StockRemainingCanonicalUiContractTest extends TestCase
     {
         $auction = $this->auction($this->stock());
         $html = view('Stock::auction_show', ['auction' => $auction, 'orderBook' => collect(), 'userBids' => collect()])->render();
-
         $this->assertStringContainsString('1 گل', $html);
         $this->assertStringContainsString('0.01 بهار', $html);
         $this->assertStringContainsString('عرضه اولیه خزانه EarthCoop', $html);
@@ -158,7 +147,6 @@ class StockRemainingCanonicalUiContractTest extends TestCase
     {
         $auction = $this->auction($this->stock(), ['end_time' => now()->subMinute(), 'ends_at' => now()->subMinute()]);
         $html = view('Stock::auction_show', ['auction' => $auction, 'orderBook' => collect(), 'userBids' => collect()])->render();
-
         $this->assertStringContainsString('مهلت ثبت پیشنهاد پایان یافته است', $html);
         $this->assertStringContainsString('پایان‌یافته؛ در انتظار بستن و تسویه', $html);
         $this->assertStringNotContainsString('ثبت پیشنهاد خرید', $html);
@@ -167,11 +155,7 @@ class StockRemainingCanonicalUiContractTest extends TestCase
     public function test_admin_primary_offering_form_exposes_canonical_settlement_choice(): void
     {
         $stock = $this->stock();
-        $html = view('Stock::admin_auction_create', [
-            'stock' => $stock,
-            'errors' => new ViewErrorBag(),
-        ])->render();
-
+        $html = view('Stock::admin_auction_create', ['stock' => $stock, 'errors' => new ViewErrorBag()])->render();
         $this->assertStringContainsString('name="settlement_channel"', $html);
         $this->assertStringContainsString('value="active_bahar"', $html);
         $this->assertStringContainsString('value="external_irr"', $html);
@@ -185,30 +169,19 @@ class StockRemainingCanonicalUiContractTest extends TestCase
     {
         $stock = $this->stock();
         $request = Request::create('/admin/auctions', 'POST', [
-            'stock_id' => $stock->id,
-            'shares_count' => 500,
-            'base_price_gol' => 1,
+            'stock_id' => $stock->id, 'shares_count' => 500, 'base_price_gol' => 1,
             'settlement_channel' => SettlementChannel::EXTERNAL_IRR,
             'start_time' => now()->addHour()->format('Y-m-d H:i:s'),
             'end_time' => now()->addDays(2)->format('Y-m-d H:i:s'),
             'ends_at' => now()->addDays(2)->format('Y-m-d H:i:s'),
-            'type' => 'uniform_price',
-            'settlement_mode' => 'manual',
-            'lot_size' => 1,
+            'type' => 'uniform_price', 'settlement_mode' => 'manual', 'lot_size' => 1,
             'info' => 'UAT external offering',
         ]);
-
         app(AuctionController::class)->adminStore($request);
-
         $this->assertDatabaseHas('auctions', [
-            'stock_id' => $stock->id,
-            'market_type' => 'primary',
-            'supply_source' => 'treasury',
-            'settlement_channel' => SettlementChannel::EXTERNAL_IRR,
-            'quote_unit' => 'gol',
-            'shares_count' => 500,
-            'base_price_gol' => 1,
-            'status' => 'scheduled',
+            'stock_id' => $stock->id, 'market_type' => 'primary', 'supply_source' => 'treasury',
+            'settlement_channel' => SettlementChannel::EXTERNAL_IRR, 'quote_unit' => 'gol',
+            'shares_count' => 500, 'base_price_gol' => 1, 'status' => 'scheduled',
         ]);
     }
 
@@ -217,15 +190,7 @@ class StockRemainingCanonicalUiContractTest extends TestCase
         $stock = $this->stock();
         $expired = $this->auction($stock, ['shares_count' => 321, 'end_time' => now()->subMinute(), 'ends_at' => now()->subMinute()]);
         $active = $this->auction($stock, ['shares_count' => 654, 'end_time' => now()->addDay(), 'ends_at' => now()->addDay()]);
-
-        $html = view('Stock::stock_dashboard', [
-            'stock' => $stock,
-            'auctions' => collect([$expired, $active]),
-            'soldShares' => 0,
-            'userHoldings' => collect(),
-            'walletData' => null,
-        ])->render();
-
+        $html = view('Stock::stock_dashboard', ['stock' => $stock, 'auctions' => collect([$expired, $active]), 'soldShares' => 0, 'userHoldings' => collect(), 'walletData' => null])->render();
         $this->assertStringNotContainsString(route('auction.show', $expired), $html);
         $this->assertStringContainsString(route('auction.show', $active), $html);
         $this->assertStringContainsString('تسویه خارجی با ریال', $html);
