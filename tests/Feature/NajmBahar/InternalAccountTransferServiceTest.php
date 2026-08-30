@@ -6,6 +6,7 @@ use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\LedgerEntry;
 use App\Modules\NajmBahar\Services\AccountBalanceService;
 use App\Modules\NajmBahar\Services\AccountService;
+use App\Modules\NajmBahar\Services\ActiveBaharReservationService;
 use App\Modules\NajmBahar\Services\InternalAccountTransferService;
 use App\Modules\NajmBahar\Services\MonetaryService;
 use App\Models\User;
@@ -103,5 +104,48 @@ class InternalAccountTransferServiceTest extends TestCase
         $this->assertSame($transaction->id, $replay->id);
         $this->assertSame(300, (int) $sub->fresh()->balance_active);
         $this->assertSame(500, (int) $main->fresh()->balance_active);
+    }
+
+    public function test_reserved_active_on_main_account_cannot_be_double_spent_into_subaccount(): void
+    {
+        $user = User::factory()->create();
+        $accounts = app(AccountService::class);
+        $main = $accounts->createMainAccountForUser($user->id, 'Reserved member');
+        app(MonetaryService::class)->issueMembershipCredit($main, $user->id);
+        app(MonetaryService::class)->activateDim($main, 800, 'Test activation', ['type' => 'test'], 'activate-reserved-800');
+
+        $sub = app(\App\Modules\NajmBahar\Services\SubAccountService::class)
+            ->createSubAccount($main->id, 'Reserved child');
+
+        app(ActiveBaharReservationService::class)->reserve(
+            $main->account_number,
+            600,
+            'reservation:internal-double-spend',
+            'uat',
+            1
+        );
+
+        $beforeMain = $main->fresh();
+        $beforeSub = $sub->fresh();
+        $beforeLedger = LedgerEntry::count();
+
+        try {
+            app(InternalAccountTransferService::class)->mainToSub(
+                $main,
+                $sub,
+                300,
+                'active',
+                'Must not spend reserved Active',
+                'internal-reserved-double-spend'
+            );
+            $this->fail('Expected reserved Active protection to reject the transfer.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('Insufficient active funds', $exception->getMessage());
+        }
+
+        $this->assertSame((int) $beforeMain->balance_active, (int) $main->fresh()->balance_active);
+        $this->assertSame((int) $beforeSub->balance_active, (int) $sub->fresh()->balance_active);
+        $this->assertSame($beforeLedger, LedgerEntry::count());
+        $this->assertSame(200, app(ActiveBaharReservationService::class)->availableActive($main->fresh()));
     }
 }
