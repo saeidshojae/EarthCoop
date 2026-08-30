@@ -82,6 +82,9 @@ class StockRemainingCanonicalUiContractTest extends TestCase
         $this->assertStringContainsString('0.01 بهار', $html);
         $this->assertStringContainsString('عرضه اولیه خزانه EarthCoop', $html);
         $this->assertStringContainsString('تسویه خارجی', $html);
-        $this->assertStringNotContainsString('ریال', $html);
+        $this->assertStringContainsString('مبلغ ریالی/دلاری از قیمت گل و نرخ مرجع معتبر در سمت سرور محاسبه می‌شود', $html);
+        $this->assertStringNotContainsString('قیمت پایه (ریال)', $html);
+        $this->assertStringNotContainsString('قیمت پیشنهادی (ریال)', $html);
+        $this->assertStringNotContainsString('قیمت هر سهم (ریال)', $html);
     }
 }
