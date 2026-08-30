@@ -35,6 +35,45 @@ final class ExternalCapitalBidCheckoutService
         string $acceptanceKey,
         array $metadata = [],
     ): ExternalCapitalBidCheckout {
+        return $this->beginCheckout(
+            $userId,
+            $auction,
+            $priceGol,
+            $quantity,
+            $acceptanceKey,
+            $metadata,
+            false,
+        );
+    }
+
+    public function beginUat(
+        int $userId,
+        Auction $auction,
+        int $priceGol,
+        int $quantity,
+        string $acceptanceKey,
+        array $metadata = [],
+    ): ExternalCapitalBidCheckout {
+        return $this->beginCheckout(
+            $userId,
+            $auction,
+            $priceGol,
+            $quantity,
+            $acceptanceKey,
+            array_merge($metadata, ['external_capital_uat' => true]),
+            true,
+        );
+    }
+
+    private function beginCheckout(
+        int $userId,
+        Auction $auction,
+        int $priceGol,
+        int $quantity,
+        string $acceptanceKey,
+        array $metadata,
+        bool $uat,
+    ): ExternalCapitalBidCheckout {
         if (! $auction->isActive()) {
             throw new RuntimeException('Auction is not active.');
         }
@@ -53,7 +92,12 @@ final class ExternalCapitalBidCheckoutService
             SettlementChannel::EXTERNAL_USD => 'USD',
             default => throw new RuntimeException('Unsupported external settlement channel.'),
         };
-        $this->readiness->assertReadyForCurrency($currency);
+
+        if ($uat) {
+            $this->readiness->assertUatReadyForCurrency($currency);
+        } else {
+            $this->readiness->assertReadyForCurrency($currency);
+        }
 
         $totalGol = $this->pricing->canonicalBidTotal($priceGol, $quantity);
         $quote = $this->rates->quote($totalGol, $currency);
