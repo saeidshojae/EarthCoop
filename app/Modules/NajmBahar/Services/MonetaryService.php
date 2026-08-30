@@ -20,6 +20,11 @@ class MonetaryService
             }
 
             $locked = Account::whereKey($account->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->type !== 'user' || (int) $locked->user_id !== $userId) {
+                throw new \RuntimeException('Membership issuance requires an account owned by the member.');
+            }
+
             $amount = NajmBaharConstitution::initialMembershipGol();
 
             if ((int) $locked->balance !== 0
