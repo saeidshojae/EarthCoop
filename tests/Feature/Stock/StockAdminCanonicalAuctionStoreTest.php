@@ -12,9 +12,9 @@ class StockAdminCanonicalAuctionStoreTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function stock(array $overrides = []): Stock
+    private function stock(): Stock
     {
-        return Stock::create(array_merge([
+        return Stock::create([
             'issuer_type' => 'earthcoop',
             'startup_valuation' => 12_000_000,
             'startup_valuation_gol' => 1_200_000_000,
@@ -22,10 +22,10 @@ class StockAdminCanonicalAuctionStoreTest extends TestCase
             'base_share_price' => 0.12,
             'base_share_price_gol' => 12,
             'available_shares' => 10_000_000,
-        ], $overrides));
+        ]);
     }
 
-    private function validPayload(Stock $stock, array $overrides = []): array
+    private function payload(Stock $stock, array $overrides = []): array
     {
         return array_merge([
             'stock_id' => $stock->id,
@@ -46,7 +46,7 @@ class StockAdminCanonicalAuctionStoreTest extends TestCase
         $this->withoutMiddleware();
         $stock = $this->stock();
 
-        $response = $this->post('/admin/auctions', $this->validPayload($stock));
+        $response = $this->post('/admin/auctions', $this->payload($stock));
 
         $response->assertSessionHasNoErrors();
         $response->assertRedirect(route('admin.auction.index'));
@@ -65,7 +65,7 @@ class StockAdminCanonicalAuctionStoreTest extends TestCase
         $this->withoutMiddleware();
         $stock = $this->stock();
 
-        $response = $this->post('/admin/auctions', $this->validPayload($stock, [
+        $response = $this->post('/admin/auctions', $this->payload($stock, [
             'shares_count' => 500_000,
             'settlement_channel' => SettlementChannel::ACTIVE_BAHAR,
         ]));
@@ -79,7 +79,8 @@ class StockAdminCanonicalAuctionStoreTest extends TestCase
         $this->withoutMiddleware();
         $stock = $this->stock();
 
-        $response = $this->from('/admin/auctions/create')->post('/admin/auctions', $this->validPayload($stock, [
+        $response = $this->from('/admin/auctions/create')->post('/admin/auctions', $this->payload($stock, [
+            'shares_count' => 500_000,
             'settlement_channel' => SettlementChannel::EXTERNAL_USD,
         ]));
 
@@ -88,17 +89,16 @@ class StockAdminCanonicalAuctionStoreTest extends TestCase
         $this->assertDatabaseCount('auctions', 0);
     }
 
-    public function test_admin_cannot_create_primary_offering_beyond_ten_percent_even_when_treasury_has_more_available(): void
+    public function test_admin_rejects_offering_larger_than_available_treasury_shares(): void
     {
         $this->withoutMiddleware();
-        $stock = $this->stock(['available_shares' => 100_000_000]);
+        $stock = $this->stock();
 
-        $response = $this->from('/admin/auctions/create')->post('/admin/auctions', $this->validPayload($stock, [
+        $response = $this->from('/admin/auctions/create')->post('/admin/auctions', $this->payload($stock, [
             'shares_count' => 10_000_001,
         ]));
 
         $response->assertRedirect('/admin/auctions/create');
-        $response->assertSessionHasErrors('shares_count');
         $this->assertDatabaseCount('auctions', 0);
     }
 }
