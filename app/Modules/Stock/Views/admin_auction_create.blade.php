@@ -2,7 +2,7 @@
 
 @section('title', (isset($auction) ? 'ویرایش' : 'ایجاد') . ' عرضه اولیه سهام - ' . config('app.name', 'EarthCoop'))
 @section('page-title', (isset($auction) ? 'ویرایش' : 'ایجاد') . ' عرضه اولیه سهام')
-@section('page-description', 'عرضه اولیه خزانه EarthCoop با قیمت‌گذاری پایه در گل و نمایش معادل بهار')
+@section('page-description', 'عرضه اولیه خزانه EarthCoop با قیمت‌گذاری پایه در گل و انتخاب مسیر تسویه')
 
 @php
     $isEdit = isset($auction);
@@ -10,6 +10,7 @@
     $basePriceGol = old('base_price_gol', $auction->base_price_gol ?? $stock->base_share_price_gol ?? '');
     $basePriceBahar = is_numeric($basePriceGol) ? ((int) $basePriceGol / 100) : null;
     $maxPrimaryShares = $stock ? intdiv(((int) $stock->total_shares) * 1000, 10000) : 0;
+    $selectedSettlementChannel = old('settlement_channel', $auction->settlement_channel ?? 'active_bahar');
 @endphp
 
 @push('styles')
@@ -36,11 +37,11 @@
         <header class="canonical-auction-header">
             <div class="text-sm font-bold text-emerald-700 dark:text-emerald-300 mb-2">عرضه اولیه خزانه EarthCoop</div>
             <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white mb-2">{{ $isEdit ? 'ویرایش حراج عرضه اولیه' : 'ایجاد حراج عرضه اولیه' }}</h1>
-            <p class="text-sm text-slate-600 dark:text-slate-300 leading-7 mb-0">قیمت پایه دارایی در دفتر سهام فقط با واحد صحیح «گل» ثبت می‌شود. معادل بهار صرفاً برای خوانایی نمایش داده می‌شود و قیمت تسویه فیات از نرخ زنده و معتبر در زمان پرداخت محاسبه خواهد شد.</p>
+            <p class="text-sm text-slate-600 dark:text-slate-300 leading-7 mb-0">قیمت پایه دارایی در دفتر سهام فقط با واحد صحیح «گل» ثبت می‌شود. معادل بهار صرفاً برای خوانایی نمایش داده می‌شود. مسیر تسویه را نیز صریحاً برای همین عرضه انتخاب کنید.</p>
         </header>
 
         <div class="canonical-note">
-            <strong>حداکثر عرضه اولیه: ۱۰٪</strong> از کل سهام EarthCoop. تسویه خارجی فقط برای عرضه اولیه خزانه EarthCoop مجاز است؛ این مسیر Bahar جدید ایجاد نمی‌کند و موجودی Najm Bahar را با پول فیات مخلوط نمی‌کند.
+            <strong>حداکثر عرضه اولیه: ۱۰٪</strong> از کل سهام EarthCoop. تسویه خارجی فقط برای عرضه اولیه خزانه EarthCoop مجاز است؛ این مسیر Bahar جدید ایجاد نمی‌کند و موجودی Najm Bahar را با پول فیات مخلوط نمی‌کند. در حال حاضر فقط مسیر ریالی برای UAT خارجی قابل انتخاب است و USD عمداً بسته می‌ماند.
         </div>
 
         @if ($errors->any())
@@ -54,10 +55,6 @@
             @if($isEdit) @method('PUT') @endif
 
             <input type="hidden" name="stock_id" value="{{ $stock->id ?? '' }}">
-            <input type="hidden" name="market_type" value="primary">
-            <input type="hidden" name="supply_source" value="treasury">
-            <input type="hidden" name="quote_unit" value="gol">
-            <input type="hidden" name="settlement_channel" value="external_capital">
 
             <div class="canonical-grid">
                 <div class="canonical-card">
@@ -72,6 +69,16 @@
                     <input id="base_price_gol" class="canonical-input" type="number" name="base_price_gol" min="1" step="1" value="{{ $basePriceGol }}" required>
                     <div class="canonical-help">هر ۱ بهار = ۱۰۰ گل. @if($basePriceBahar !== null) معادل فعلی: {{ rtrim(rtrim(number_format($basePriceBahar, 2, '.', ''), '0'), '.') }} بهار برای هر سهم. @endif</div>
                     @error('base_price_gol')<div class="text-sm text-red-500 mt-1">{{ $message }}</div>@enderror
+                </div>
+
+                <div class="canonical-card">
+                    <label for="settlement_channel" class="canonical-label">روش پرداخت / مسیر تسویه</label>
+                    <select id="settlement_channel" name="settlement_channel" class="canonical-input" required>
+                        <option value="active_bahar" {{ $selectedSettlementChannel === 'active_bahar' ? 'selected' : '' }}>تسویه با بهار فعال</option>
+                        <option value="external_irr" {{ $selectedSettlementChannel === 'external_irr' ? 'selected' : '' }}>تسویه خارجی با ریال (IRR)</option>
+                    </select>
+                    <div class="canonical-help">«بهار فعال» از موجودی Active Bahar خریدار تسویه می‌شود. «تسویه خارجی با ریال» فقط برای عرضه اولیه خزانه EarthCoop است و تا عبور readiness gate ممکن است در صفحه کاربر غیرفعال بماند.</div>
+                    @error('settlement_channel')<div class="text-sm text-red-500 mt-1">{{ $message }}</div>@enderror
                 </div>
 
                 <div class="canonical-card">
