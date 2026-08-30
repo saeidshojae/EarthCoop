@@ -18,7 +18,8 @@
     $totalShares = (int) ($stock->total_shares ?? 0);
     $availableShares = (int) ($stock->available_shares ?? 0);
     $maxPrimaryShares = $totalShares > 0 ? intdiv($totalShares * 1000, 10000) : 0;
-    $primaryOpenShares = collect($auctions ?? [])->filter(fn($auction) => ($auction->market_type ?? null) === 'primary' && ($auction->supply_source ?? null) === 'treasury')->sum('shares_count');
+    $visibleAuctions = collect($auctions ?? [])->filter(fn($auction) => !$auction->isExpired())->values();
+    $primaryOpenShares = $visibleAuctions->filter(fn($auction) => ($auction->market_type ?? null) === 'primary' && ($auction->supply_source ?? null) === 'treasury')->sum('shares_count');
     $primaryRemainingEnvelope = max(0, $maxPrimaryShares - $primaryOpenShares);
 @endphp
 
@@ -85,9 +86,9 @@
 
         <section class="stockbook-section">
             <h2>حراج‌های فعال و برنامه‌ریزی‌شده</h2>
-            @if(($auctions ?? collect())->count())
+            @if($visibleAuctions->count())
                 <div class="auction-list">
-                    @foreach($auctions as $auction)
+                    @foreach($visibleAuctions as $auction)
                         <article class="auction-item">
                             <div class="auction-top">
                                 <div>
@@ -97,6 +98,7 @@
                                         <span>{{ ($auction->supply_source ?? '') === 'treasury' ? 'خزانه EarthCoop' : 'منبع دیگر' }}</span>
                                         <span>قیمت پایه: {{ $fa($auction->base_price_gol ?? 0) }} گل</span>
                                         <span>معادل: {{ $fa(((int)($auction->base_price_gol ?? 0))/100, 2) }} بهار</span>
+                                        <span>{{ ($auction->settlement_channel ?? '') === 'external_irr' ? 'تسویه خارجی با ریال' : 'تسویه با بهار فعال' }}</span>
                                     </div>
                                 </div>
                                 <span class="status-off">{{ $auction->status === 'running' ? 'در حال اجرا' : 'برنامه‌ریزی‌شده' }}</span>
