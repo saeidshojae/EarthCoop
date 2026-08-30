@@ -118,22 +118,31 @@ final class ExternalCapitalBidCheckoutService
             if (! $intent) {
                 throw new RuntimeException('External payment intent not found after provider reconciliation.');
             }
-            if ($intent->status !== ExternalPaymentIntent::CONFIRMED) {
-                throw new RuntimeException('External bid cannot activate until its payment intent is confirmed.');
-            }
 
             $bid = Bid::query()
                 ->where('external_payment_intent_id', $intent->id)
                 ->lockForUpdate()
                 ->first();
             if (! $bid) {
-                throw new RuntimeException('Confirmed external payment intent is not linked to a bid.');
+                throw new RuntimeException('External payment intent is not linked to a bid.');
             }
             if ((string) $intent->reference_type !== 'stock_bid' || (string) $intent->reference_id !== (string) $bid->id) {
-                throw new RuntimeException('Confirmed external payment intent reference does not match its bid.');
+                throw new RuntimeException('External payment intent reference does not match its bid.');
             }
 
-            return $this->bids->activateExternallyFundedBid($bid);
+            if ($intent->status === ExternalPaymentIntent::CONFIRMED) {
+                return $this->bids->activateExternallyFundedBid($bid);
+            }
+
+            if (in_array($intent->status, [
+                ExternalPaymentIntent::PENDING,
+                ExternalPaymentIntent::FAILED,
+                ExternalPaymentIntent::CANCELLED,
+            ], true)) {
+                return $bid->fresh();
+            }
+
+            throw new RuntimeException('External bid callback produced an unsupported payment intent state.');
         });
     }
 }
