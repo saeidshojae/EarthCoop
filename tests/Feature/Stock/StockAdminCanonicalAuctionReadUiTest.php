@@ -5,6 +5,7 @@ namespace Tests\Feature\Stock;
 use App\Models\User;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Stock;
+use App\Modules\Stock\Settlement\SettlementChannel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Tests\TestCase;
@@ -35,7 +36,7 @@ class StockAdminCanonicalAuctionReadUiTest extends TestCase
             'stock_id' => $stock->id,
             'market_type' => 'primary',
             'supply_source' => 'treasury',
-            'settlement_channel' => 'external_capital',
+            'settlement_channel' => SettlementChannel::EXTERNAL_IRR,
             'quote_unit' => 'gol',
             'shares_count' => 1_000_000,
             'base_price' => 0.12,
@@ -66,7 +67,7 @@ class StockAdminCanonicalAuctionReadUiTest extends TestCase
         $this->assertStringContainsString('قیمت پایه (گل)', $html);
         $this->assertStringContainsString('بازار اولیه', $html);
         $this->assertStringContainsString('خزانه EarthCoop', $html);
-        $this->assertStringContainsString('تسویه خارجی', $html);
+        $this->assertStringContainsString('تسویه خارجی ریالی', $html);
         $this->assertStringNotContainsString('قیمت پایه (ریال)', $html);
     }
 
