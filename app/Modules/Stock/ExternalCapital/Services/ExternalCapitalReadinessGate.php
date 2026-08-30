@@ -19,30 +19,15 @@ final class ExternalCapitalReadinessGate
     public function report(): array
     {
         $enabled = (bool) config('stock.external_capital.enabled', false);
-        $rateSource = trim($this->rates->sourceIdentifier());
-        $allowedRateSources = array_values(array_filter(array_map(
-            static fn ($source): string => trim((string) $source),
-            (array) config('stock.external_capital.authoritative_quote_sources', [])
-        )));
-        $paymentProvider = trim($this->payments->providerIdentifier());
-        $enabledCurrencies = $this->enabledCurrencies();
-
-        $maxAllocationBps = (int) config('stock.primary_offering.max_allocation_bps', 0);
-        $policyVersion = trim((string) config('stock.primary_offering.policy_version', ''));
-        $disclosureVersion = trim((string) config('stock.primary_offering.disclosure_version', ''));
+        $runtime = $this->runtimeEvidence();
 
         $checks = [
             'feature_enabled' => $enabled,
-            'authoritative_rate_provider' => $rateSource !== ''
-                && $rateSource !== 'unavailable'
-                && in_array($rateSource, $allowedRateSources, true),
-            'authoritative_rate_provider_configuration' => $this->rateProviderConfigurationReady($rateSource),
-            'external_payment_provider' => $paymentProvider !== '' && $paymentProvider !== 'unavailable',
-            'external_payment_provider_configuration' => $this->paymentProviderConfigurationReady($paymentProvider),
-            'primary_offering_configuration' => $maxAllocationBps > 0
-                && $maxAllocationBps <= 10000
-                && $policyVersion !== ''
-                && $disclosureVersion !== '',
+            'authoritative_rate_provider' => $runtime['rate_provider_ready'],
+            'authoritative_rate_provider_configuration' => $runtime['rate_provider_configuration_ready'],
+            'external_payment_provider' => $runtime['payment_provider_ready'],
+            'external_payment_provider_configuration' => $runtime['payment_provider_configuration_ready'],
+            'primary_offering_configuration' => $runtime['primary_offering_configuration_ready'],
             'rate_provider_uat' => (bool) config('stock.external_capital.readiness.rate_provider_uat_passed', false),
             'payment_provider_uat' => (bool) config('stock.external_capital.readiness.payment_provider_uat_passed', false),
             'refund_reversal_gameday' => (bool) config('stock.external_capital.readiness.refund_reversal_gameday_passed', false),
@@ -70,18 +55,120 @@ final class ExternalCapitalReadinessGate
             'founder_rollout_approval' => 'founder_rollout_approval_missing',
         ];
 
-        $blockers = [];
-        foreach ($checks as $check => $passed) {
-            if (! $passed) {
-                $blockers[] = $blockerMap[$check];
-            }
-        }
+        $blockers = $this->collectBlockers($checks, $blockerMap);
 
         return [
             'enabled' => $enabled,
             'ready' => $blockers === [],
             'checks' => $checks,
             'blockers' => $blockers,
+            'evidence' => $runtime['evidence'],
+        ];
+    }
+
+    /**
+     * Provider-UAT readiness is deliberately distinct from production rollout.
+     * It can only run outside production and never relies on rollout attestations
+     * that the UAT itself is intended to establish.
+     */
+    public function uatReport(): array
+    {
+        $uatEnabled = (bool) config('stock.external_capital.uat.enabled', false);
+        $nonProduction = ! app()->environment('production');
+        $runtime = $this->runtimeEvidence();
+        $enabledCurrencies = $this->enabledCurrencies();
+
+        $checks = [
+            'uat_enabled' => $uatEnabled,
+            'non_production_environment' => $nonProduction,
+            'authoritative_rate_provider' => $runtime['rate_provider_ready'],
+            'authoritative_rate_provider_configuration' => $runtime['rate_provider_configuration_ready'],
+            'external_payment_provider' => $runtime['payment_provider_ready'],
+            'external_payment_provider_configuration' => $runtime['payment_provider_configuration_ready'],
+            'primary_offering_configuration' => $runtime['primary_offering_configuration_ready'],
+            'external_currency_enabled' => $enabledCurrencies !== [],
+            'authoritative_quote_source_configured' => $runtime['allowed_rate_sources'] !== [],
+        ];
+
+        $blockerMap = [
+            'uat_enabled' => 'external_uat_disabled',
+            'non_production_environment' => 'external_uat_forbidden_in_production',
+            'authoritative_rate_provider' => 'authoritative_rate_provider_unavailable',
+            'authoritative_rate_provider_configuration' => 'authoritative_rate_provider_configuration_invalid',
+            'external_payment_provider' => 'external_payment_provider_unavailable',
+            'external_payment_provider_configuration' => 'external_payment_provider_configuration_invalid',
+            'primary_offering_configuration' => 'primary_offering_configuration_invalid',
+            'external_currency_enabled' => 'no_external_currency_enabled',
+            'authoritative_quote_source_configured' => 'no_authoritative_quote_source_configured',
+        ];
+
+        $blockers = $this->collectBlockers($checks, $blockerMap);
+
+        return [
+            'enabled' => $uatEnabled,
+            'ready' => $blockers === [],
+            'checks' => $checks,
+            'blockers' => $blockers,
+            'evidence' => array_merge($runtime['evidence'], [
+                'environment' => app()->environment(),
+                'uat_only' => true,
+                'production_feature_enabled' => (bool) config('stock.external_capital.enabled', false),
+            ]),
+        ];
+    }
+
+    public function isReady(): bool
+    {
+        return $this->report()['ready'];
+    }
+
+    public function assertReady(): void
+    {
+        $this->assertReportReady($this->report(), 'External capital readiness gate blocked operation: ');
+    }
+
+    public function assertReadyForCurrency(string $currency): void
+    {
+        $this->assertReady();
+        $this->assertCurrencyEnabled($currency, 'External capital readiness gate blocked operation: ');
+    }
+
+    public function assertUatReady(): void
+    {
+        $this->assertReportReady($this->uatReport(), 'External capital UAT readiness gate blocked operation: ');
+    }
+
+    public function assertUatReadyForCurrency(string $currency): void
+    {
+        $this->assertUatReady();
+        $this->assertCurrencyEnabled($currency, 'External capital UAT readiness gate blocked operation: ');
+    }
+
+    private function runtimeEvidence(): array
+    {
+        $rateSource = trim($this->rates->sourceIdentifier());
+        $allowedRateSources = array_values(array_filter(array_map(
+            static fn ($source): string => trim((string) $source),
+            (array) config('stock.external_capital.authoritative_quote_sources', [])
+        )));
+        $paymentProvider = trim($this->payments->providerIdentifier());
+        $enabledCurrencies = $this->enabledCurrencies();
+        $maxAllocationBps = (int) config('stock.primary_offering.max_allocation_bps', 0);
+        $policyVersion = trim((string) config('stock.primary_offering.policy_version', ''));
+        $disclosureVersion = trim((string) config('stock.primary_offering.disclosure_version', ''));
+
+        return [
+            'rate_provider_ready' => $rateSource !== ''
+                && $rateSource !== 'unavailable'
+                && in_array($rateSource, $allowedRateSources, true),
+            'rate_provider_configuration_ready' => $this->rateProviderConfigurationReady($rateSource),
+            'payment_provider_ready' => $paymentProvider !== '' && $paymentProvider !== 'unavailable',
+            'payment_provider_configuration_ready' => $this->paymentProviderConfigurationReady($paymentProvider),
+            'primary_offering_configuration_ready' => $maxAllocationBps > 0
+                && $maxAllocationBps <= 10000
+                && $policyVersion !== ''
+                && $disclosureVersion !== '',
+            'allowed_rate_sources' => $allowedRateSources,
             'evidence' => [
                 'rate_source' => $rateSource,
                 'payment_provider' => $paymentProvider,
@@ -94,34 +181,36 @@ final class ExternalCapitalReadinessGate
         ];
     }
 
-    public function isReady(): bool
+    private function collectBlockers(array $checks, array $blockerMap): array
     {
-        return $this->report()['ready'];
+        $blockers = [];
+        foreach ($checks as $check => $passed) {
+            if (! $passed) {
+                $blockers[] = $blockerMap[$check];
+            }
+        }
+
+        return $blockers;
     }
 
-    public function assertReady(): void
+    private function assertReportReady(array $report, string $prefix): void
     {
-        $report = $this->report();
         if ($report['ready']) {
             return;
         }
 
-        throw new RuntimeException(
-            'External capital readiness gate blocked operation: ' . implode(', ', $report['blockers'])
-        );
+        throw new RuntimeException($prefix . implode(', ', $report['blockers']));
     }
 
-    public function assertReadyForCurrency(string $currency): void
+    private function assertCurrencyEnabled(string $currency, string $prefix): void
     {
-        $this->assertReady();
-
         $currency = strtoupper(trim($currency));
         if (! in_array($currency, ['IRR', 'USD'], true)) {
             throw new InvalidArgumentException('External capital currency must be IRR or USD.');
         }
 
         if (! in_array($currency, $this->enabledCurrencies(), true)) {
-            throw new RuntimeException('External capital readiness gate blocked operation: external_currency_not_enabled');
+            throw new RuntimeException($prefix . 'external_currency_not_enabled');
         }
     }
 
