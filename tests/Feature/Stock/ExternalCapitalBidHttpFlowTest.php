@@ -29,6 +29,12 @@ class ExternalCapitalBidHttpFlowTest extends TestCase
     public function test_authenticated_external_bid_checkout_redirects_to_provider_and_never_accepts_manual_fiat_amount(): void
     {
         $user = User::factory()->create();
+
+        // Route model binding may hand the controller an Auction instance. Keep a deliberately
+        // inactive lower-id auction so an accidental object-to-int cast cannot silently pass.
+        $decoyAuction = $this->auction();
+        $decoyAuction->update(['status' => 'completed']);
+
         $auction = $this->auction();
         $persistedAuction = $auction->fresh();
 
