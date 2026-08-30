@@ -129,6 +129,48 @@ class MonetaryServiceTest extends TestCase
         );
     }
 
+    public function test_cancelling_available_dim_preserves_committed_dim_and_reduces_total_only_by_cancelled_amount(): void
+    {
+        $user = User::factory()->create();
+        $account = Account::create([
+            'account_number' => '9100000006',
+            'user_id' => $user->id,
+            'name' => 'Committed Dim Cancellation Account',
+            'type' => 'user',
+            'balance' => 1_000,
+            'balance_active' => 100,
+            'balance_faded' => 600,
+            'committed_dim' => 300,
+        ]);
+
+        $result = app(MonetaryService::class)->cancelDim(
+            $account,
+            200,
+            'cancel only available dim',
+            ['type' => 'uat_dim_cancellation'],
+            'uat-cancel-preserves-committed-' . $user->id,
+            false
+        );
+
+        $account->refresh();
+
+        $this->assertTrue($result['applied']);
+        $this->assertSame(200, (int) $result['amount']);
+        $this->assertSame(100, (int) $account->balance_active);
+        $this->assertSame(400, (int) $account->balance_faded);
+        $this->assertSame(300, (int) $account->committed_dim);
+        $this->assertSame(800, (int) $account->balance);
+        $this->assertSame(
+            (int) $account->balance,
+            (int) $account->balance_active + (int) $account->balance_faded + (int) $account->committed_dim
+        );
+
+        $entries = LedgerEntry::where('transaction_id', $result['transaction']->id)->get();
+        $this->assertCount(1, $entries);
+        $this->assertSame(-200, (int) $entries->first()->amount);
+        $this->assertSame('faded', data_get($entries->first()->meta, 'balance_bucket'));
+    }
+
     public function test_activation_is_idempotent_and_partial_activation_never_exceeds_dim_balance(): void
     {
         $user = User::factory()->create();
