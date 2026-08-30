@@ -2,6 +2,7 @@
 
 namespace App\Modules\NajmBahar\Services;
 
+use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\LedgerEntry;
 use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
@@ -67,10 +68,18 @@ class InternalSubAccountTransferService
                 }
 
                 if ($moneyState === 'active') {
-                    if ((int) ($source->balance_active ?? 0) < $amount) {
+                    $sourceMirrorAccount = Account::query()
+                        ->where('account_number', $source->sub_account_code)
+                        ->where('type', 'subaccount')
+                        ->lockForUpdate()
+                        ->firstOrFail();
+
+                    $active = (int) ($source->balance_active ?? 0);
+                    $availableActive = app(ActiveBaharReservationService::class)->availableActive($sourceMirrorAccount);
+                    if ($active < $amount || $availableActive < $amount) {
                         throw new \RuntimeException('Insufficient active funds in sub-account');
                     }
-                    $source->balance_active = (int) ($source->balance_active ?? 0) - $amount;
+                    $source->balance_active = $active - $amount;
                     $destination->balance_active = (int) ($destination->balance_active ?? 0) + $amount;
                 } else {
                     if ((int) ($source->balance_faded ?? 0) < $amount) {
