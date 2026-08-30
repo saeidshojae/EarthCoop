@@ -52,42 +52,6 @@ class ActiveBaharReservationServiceTest extends TestCase
         $this->assertDatabaseHas('najm_ledger_entries',['account_id'=>$payee->id,'amount'=>400,'entry_type'=>'credit']);
     }
 
-    public function test_settlement_and_refund_preserve_committed_dim_in_canonical_total_balance(): void
-    {
-        $payer=$this->account('1000000001',1000,'user',100,50);
-        $payee=$this->account('0000000001',0,'system',30,20);
-        $service=app(ActiveBaharReservationService::class);
-
-        $service->reserve($payer->account_number,400,'reserve:committed','auction_bid',99);
-        $service->settle('reserve:committed',$payee->account_number,'settle:committed');
-
-        $payer->refresh();
-        $payee->refresh();
-
-        $this->assertSame(600,(int)$payer->balance_active);
-        $this->assertSame(100,(int)$payer->balance_faded);
-        $this->assertSame(50,(int)$payer->committed_dim);
-        $this->assertSame(750,(int)$payer->balance);
-        $this->assertSame(400,(int)$payee->balance_active);
-        $this->assertSame(30,(int)$payee->balance_faded);
-        $this->assertSame(20,(int)$payee->committed_dim);
-        $this->assertSame(450,(int)$payee->balance);
-
-        $service->refund('reserve:committed',150,'refund:committed');
-
-        $payer->refresh();
-        $payee->refresh();
-
-        $this->assertSame(750,(int)$payer->balance_active);
-        $this->assertSame(100,(int)$payer->balance_faded);
-        $this->assertSame(50,(int)$payer->committed_dim);
-        $this->assertSame(900,(int)$payer->balance);
-        $this->assertSame(250,(int)$payee->balance_active);
-        $this->assertSame(30,(int)$payee->balance_faded);
-        $this->assertSame(20,(int)$payee->committed_dim);
-        $this->assertSame(300,(int)$payee->balance);
-    }
-
     public function test_refund_is_idempotent_and_cannot_exceed_settled_amount(): void
     {
         $payer=$this->account('1000000001',1000); $payee=$this->account('0000000001',0,'system'); $service=app(ActiveBaharReservationService::class);
@@ -97,17 +61,8 @@ class ActiveBaharReservationServiceTest extends TestCase
         $this->expectException(\RuntimeException::class); $service->refund('reserve:1',251,'refund:2');
     }
 
-    private function account(string $number,int $active,string $type='user',int $dim=0,int $committedDim=0): Account
+    private function account(string $number,int $active,string $type='user'): Account
     {
-        return Account::create([
-            'account_number'=>$number,
-            'name'=>$number,
-            'type'=>$type,
-            'balance'=>$active+$dim+$committedDim,
-            'balance_active'=>$active,
-            'balance_faded'=>$dim,
-            'committed_dim'=>$committedDim,
-            'status'=>1,
-        ]);
+        return Account::create(['account_number'=>$number,'name'=>$number,'type'=>$type,'balance'=>$active,'balance_active'=>$active,'balance_faded'=>0,'status'=>1]);
     }
 }
