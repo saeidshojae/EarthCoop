@@ -18,16 +18,31 @@ class ExternalCapitalAuctionUiContractTest extends TestCase
         $this->assertStringNotContainsString('name="amount_irr"', $source);
         $this->assertStringNotContainsString('name="currency"', $source);
         $this->assertStringContainsString('آمادگی تسویه خارجی', $source);
+        $this->assertStringContainsString("'external_irr'", $source);
+        $this->assertStringContainsString("'external_usd'", $source);
     }
 
-    public function test_auction_show_controller_exposes_currency_scoped_external_checkout_readiness(): void
+    public function test_external_auction_view_state_owns_currency_scoped_readiness(): void
     {
-        $source = file_get_contents(base_path('app/Modules/Stock/Controllers/AuctionController.php'));
+        $path = base_path('app/Modules/Stock/ExternalCapital/Services/ExternalCapitalAuctionViewState.php');
+
+        $this->assertFileExists($path);
+        $source = file_get_contents($path);
 
         $this->assertIsString($source);
         $this->assertStringContainsString('ExternalCapitalReadinessGate', $source);
         $this->assertStringContainsString('assertReadyForCurrency', $source);
         $this->assertStringContainsString("'IRR'", $source);
+        $this->assertStringContainsString("'USD'", $source);
         $this->assertStringContainsString('externalCheckoutReady', $source);
+    }
+
+    public function test_stock_provider_composes_external_checkout_state_into_auction_view(): void
+    {
+        $source = file_get_contents(base_path('app/Providers/StockExternalCapitalServiceProvider.php'));
+
+        $this->assertIsString($source);
+        $this->assertStringContainsString("View::composer('Stock::auction_show'", $source);
+        $this->assertStringContainsString('ExternalCapitalAuctionViewState', $source);
     }
 }
