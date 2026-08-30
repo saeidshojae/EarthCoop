@@ -13,7 +13,8 @@ class InternalAccountTransferService
 {
     public function __construct(
         private readonly AccountService $accountService,
-        private readonly FinancialIdempotencyReplayService $idempotencyReplay
+        private readonly FinancialIdempotencyReplayService $idempotencyReplay,
+        private readonly ActiveBaharReservationService $reservationService
     ) {
     }
 
@@ -91,7 +92,13 @@ class InternalAccountTransferService
 
                 $column = $moneyState === 'active' ? 'balance_active' : 'balance_faded';
                 $source = $toSub ? $lockedMain : $lockedSub;
-                $available = (int) ($source->{$column} ?? 0);
+                if ($moneyState === 'active') {
+                    $reservationAccount = $toSub ? $lockedMain : $lockedMirror;
+                    $available = $this->reservationService->availableActive($reservationAccount);
+                } else {
+                    $available = (int) ($source->{$column} ?? 0);
+                }
+
                 if ($available < $amount) {
                     throw new \RuntimeException("Insufficient {$moneyState} funds for internal transfer.");
                 }
