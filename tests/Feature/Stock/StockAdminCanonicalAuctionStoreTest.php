@@ -12,9 +12,9 @@ class StockAdminCanonicalAuctionStoreTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function stock(): Stock
+    private function stock(array $overrides = []): Stock
     {
-        return Stock::create([
+        return Stock::create(array_merge([
             'issuer_type' => 'earthcoop',
             'startup_valuation' => 12_000_000,
             'startup_valuation_gol' => 1_200_000_000,
@@ -22,15 +22,12 @@ class StockAdminCanonicalAuctionStoreTest extends TestCase
             'base_share_price' => 0.12,
             'base_share_price_gol' => 12,
             'available_shares' => 10_000_000,
-        ]);
+        ], $overrides));
     }
 
-    public function test_admin_stores_primary_treasury_auction_with_integer_gol_pricing_and_selected_settlement(): void
+    private function validPayload(Stock $stock, array $overrides = []): array
     {
-        $this->withoutMiddleware();
-        $stock = $this->stock();
-
-        $response = $this->post('/admin/auctions', [
+        return array_merge([
             'stock_id' => $stock->id,
             'shares_count' => 1_000_000,
             'base_price_gol' => 12,
@@ -41,7 +38,15 @@ class StockAdminCanonicalAuctionStoreTest extends TestCase
             'type' => 'uniform_price',
             'settlement_mode' => 'manual',
             'lot_size' => 100,
-        ]);
+        ], $overrides);
+    }
+
+    public function test_admin_stores_primary_treasury_auction_with_integer_gol_pricing_and_selected_settlement(): void
+    {
+        $this->withoutMiddleware();
+        $stock = $this->stock();
+
+        $response = $this->post('/admin/auctions', $this->validPayload($stock));
 
         $response->assertSessionHasNoErrors();
         $response->assertRedirect(route('admin.auction.index'));
@@ -60,18 +65,10 @@ class StockAdminCanonicalAuctionStoreTest extends TestCase
         $this->withoutMiddleware();
         $stock = $this->stock();
 
-        $response = $this->post('/admin/auctions', [
-            'stock_id' => $stock->id,
+        $response = $this->post('/admin/auctions', $this->validPayload($stock, [
             'shares_count' => 500_000,
-            'base_price_gol' => 12,
             'settlement_channel' => SettlementChannel::ACTIVE_BAHAR,
-            'start_time' => now()->addDay()->format('Y-m-d H:i:s'),
-            'end_time' => now()->addDays(2)->format('Y-m-d H:i:s'),
-            'ends_at' => now()->addDays(2)->format('Y-m-d H:i:s'),
-            'type' => 'uniform_price',
-            'settlement_mode' => 'manual',
-            'lot_size' => 100,
-        ]);
+        ]));
 
         $response->assertSessionHasNoErrors();
         $this->assertSame(SettlementChannel::ACTIVE_BAHAR, Auction::query()->firstOrFail()->settlement_channel);
@@ -82,41 +79,23 @@ class StockAdminCanonicalAuctionStoreTest extends TestCase
         $this->withoutMiddleware();
         $stock = $this->stock();
 
-        $response = $this->from('/admin/auctions/create')->post('/admin/auctions', [
-            'stock_id' => $stock->id,
-            'shares_count' => 500_000,
-            'base_price_gol' => 12,
+        $response = $this->from('/admin/auctions/create')->post('/admin/auctions', $this->validPayload($stock, [
             'settlement_channel' => SettlementChannel::EXTERNAL_USD,
-            'start_time' => now()->addDay()->format('Y-m-d H:i:s'),
-            'end_time' => now()->addDays(2)->format('Y-m-d H:i:s'),
-            'ends_at' => now()->addDays(2)->format('Y-m-d H:i:s'),
-            'type' => 'uniform_price',
-            'settlement_mode' => 'manual',
-            'lot_size' => 100,
-        ]);
+        ]));
 
         $response->assertRedirect('/admin/auctions/create');
         $response->assertSessionHasErrors('settlement_channel');
         $this->assertDatabaseCount('auctions', 0);
     }
 
-    public function test_admin_cannot_create_primary_offering_beyond_ten_percent_envelope(): void
+    public function test_admin_cannot_create_primary_offering_beyond_ten_percent_even_when_treasury_has_more_available(): void
     {
         $this->withoutMiddleware();
-        $stock = $this->stock();
+        $stock = $this->stock(['available_shares' => 100_000_000]);
 
-        $response = $this->from('/admin/auctions/create')->post('/admin/auctions', [
-            'stock_id' => $stock->id,
+        $response = $this->from('/admin/auctions/create')->post('/admin/auctions', $this->validPayload($stock, [
             'shares_count' => 10_000_001,
-            'base_price_gol' => 12,
-            'settlement_channel' => SettlementChannel::EXTERNAL_IRR,
-            'start_time' => now()->addDay()->format('Y-m-d H:i:s'),
-            'end_time' => now()->addDays(2)->format('Y-m-d H:i:s'),
-            'ends_at' => now()->addDays(2)->format('Y-m-d H:i:s'),
-            'type' => 'uniform_price',
-            'settlement_mode' => 'manual',
-            'lot_size' => 100,
-        ]);
+        ]));
 
         $response->assertRedirect('/admin/auctions/create');
         $response->assertSessionHasErrors('shares_count');
