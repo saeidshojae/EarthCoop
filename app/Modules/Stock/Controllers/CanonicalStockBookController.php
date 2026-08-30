@@ -21,6 +21,7 @@ final class CanonicalStockBookController extends Controller
             $auctions = Auction::query()
                 ->where('stock_id', $stock->id)
                 ->whereIn('status', ['scheduled', 'running'])
+                ->where('ends_at', '>', now())
                 ->orderBy('start_time')
                 ->get();
 
