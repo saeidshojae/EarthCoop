@@ -5,6 +5,7 @@ namespace Tests\Feature\Stock;
 use App\Models\User;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Stock;
+use App\Modules\Stock\Settlement\SettlementChannel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -57,7 +58,7 @@ class StockRemainingCanonicalUiContractTest extends TestCase
             'stock_id' => $stock->id,
             'market_type' => 'primary',
             'supply_source' => 'treasury',
-            'settlement_channel' => 'external_capital',
+            'settlement_channel' => SettlementChannel::EXTERNAL_IRR,
             'quote_unit' => 'gol',
             'shares_count' => 2_000,
             'base_price' => 0.01,
