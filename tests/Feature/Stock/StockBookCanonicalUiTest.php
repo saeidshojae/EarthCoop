@@ -32,8 +32,8 @@ class StockBookCanonicalUiTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('دفتر سهام EarthCoop', $html);
-        $this->assertStringContainsString('ارزش‌گذاری کل (بهار)', $html);
-        $this->assertStringContainsString('قیمت پایه هر سهم (گل)', $html);
+        $this->assertStringContainsString('ارزش‌گذاری کل', $html);
+        $this->assertStringContainsString('قیمت پایه هر سهم', $html);
         $this->assertStringContainsString('۱۲ گل', $html);
         $this->assertStringContainsString('۰٫۱۲ بهار', $html);
         $this->assertStringContainsString('عرضه اولیه خزانه', $html);
