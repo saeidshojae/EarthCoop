@@ -12,9 +12,9 @@ class StockAdminCanonicalAuctionStoreTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function stock(): Stock
+    private function stock(array $overrides = []): Stock
     {
-        return Stock::create([
+        return Stock::create(array_merge([
             'issuer_type' => 'earthcoop',
             'startup_valuation' => 12_000_000,
             'startup_valuation_gol' => 1_200_000_000,
@@ -22,7 +22,7 @@ class StockAdminCanonicalAuctionStoreTest extends TestCase
             'base_share_price' => 0.12,
             'base_share_price_gol' => 12,
             'available_shares' => 10_000_000,
-        ]);
+        ], $overrides));
     }
 
     private function payload(Stock $stock, array $overrides = []): array
@@ -100,5 +100,37 @@ class StockAdminCanonicalAuctionStoreTest extends TestCase
 
         $response->assertRedirect('/admin/auctions/create');
         $this->assertDatabaseCount('auctions', 0);
+    }
+
+    public function test_admin_rejects_new_open_offering_when_cumulative_primary_envelope_would_exceed_ten_percent(): void
+    {
+        $this->withoutMiddleware();
+        $stock = $this->stock(['available_shares' => 20_000_000]);
+
+        Auction::create([
+            'stock_id' => $stock->id,
+            'market_type' => 'primary',
+            'supply_source' => 'treasury',
+            'settlement_channel' => SettlementChannel::EXTERNAL_IRR,
+            'quote_unit' => 'gol',
+            'shares_count' => 6_000_000,
+            'base_price' => 0.12,
+            'base_price_gol' => 12,
+            'start_time' => now()->addDay(),
+            'end_time' => now()->addDays(2),
+            'ends_at' => now()->addDays(2),
+            'status' => 'scheduled',
+            'type' => 'uniform_price',
+            'settlement_mode' => 'manual',
+            'lot_size' => 100,
+        ]);
+
+        $response = $this->from('/admin/auctions/create')->post('/admin/auctions', $this->payload($stock, [
+            'shares_count' => 5_000_000,
+        ]));
+
+        $response->assertRedirect('/admin/auctions/create');
+        $response->assertSessionHasErrors('shares_count');
+        $this->assertDatabaseCount('auctions', 1);
     }
 }
