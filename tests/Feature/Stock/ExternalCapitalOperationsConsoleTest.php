@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Stock;
 
+use App\Http\Middleware\AdminMiddleware;
 use App\Models\User;
 use App\Modules\Stock\Models\ExternalPaymentIntent;
 use App\Modules\Stock\Models\ExternalPaymentReconciliation;
@@ -31,7 +32,7 @@ class ExternalCapitalOperationsConsoleTest extends TestCase
 
     public function test_index_lists_operational_payment_state_without_provider_secrets(): void
     {
-        $this->withoutMiddleware();
+        $this->withoutMiddleware(AdminMiddleware::class);
         $intent = $this->intent();
 
         $response = $this->get('/admin/stock/external-payments');
@@ -48,7 +49,10 @@ class ExternalCapitalOperationsConsoleTest extends TestCase
 
     public function test_show_exposes_append_only_reconciliation_history_but_no_mutation_form(): void
     {
-        $this->withoutMiddleware();
+        // Disable only the admin authorization boundary. Keeping the rest of the
+        // middleware stack active is intentional: SubstituteBindings must resolve
+        // {paymentIntent} to the real model or this test would exercise an empty model.
+        $this->withoutMiddleware(AdminMiddleware::class);
         $intent = $this->intent();
         ExternalPaymentReconciliation::create([
             'payment_intent_id' => $intent->id,
