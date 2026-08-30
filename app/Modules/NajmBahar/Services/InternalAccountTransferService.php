@@ -111,7 +111,9 @@ class InternalAccountTransferService
                     $lockedMain->{$column} = (int) ($lockedMain->{$column} ?? 0) + $amount;
                 }
 
-                $lockedMain->balance = (int) ($lockedMain->balance_active ?? 0) + (int) ($lockedMain->balance_faded ?? 0);
+                $lockedMain->balance = (int) ($lockedMain->balance_active ?? 0)
+                    + (int) ($lockedMain->balance_faded ?? 0)
+                    + (int) ($lockedMain->committed_dim ?? 0);
                 $lockedSub->balance = (int) ($lockedSub->balance_active ?? 0) + (int) ($lockedSub->balance_faded ?? 0);
                 $lockedMain->save();
                 $lockedSub->save();
