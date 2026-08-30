@@ -32,6 +32,27 @@ class StockRemainingCanonicalUiContractTest extends TestCase
         ]);
     }
 
+    private function auction(Stock $stock, array $overrides = []): Auction
+    {
+        return Auction::create(array_merge([
+            'stock_id' => $stock->id,
+            'market_type' => 'primary',
+            'supply_source' => 'treasury',
+            'settlement_channel' => SettlementChannel::EXTERNAL_IRR,
+            'quote_unit' => 'gol',
+            'shares_count' => 2_000,
+            'base_price' => 0.01,
+            'base_price_gol' => 1,
+            'start_time' => now()->subMinute(),
+            'end_time' => now()->addDay(),
+            'ends_at' => now()->addDay(),
+            'status' => 'running',
+            'type' => 'uniform_price',
+            'settlement_mode' => 'manual',
+            'lot_size' => 1,
+        ], $overrides))->load('stock');
+    }
+
     public function test_admin_stock_dashboard_uses_only_canonical_gol_bahar_vocabulary(): void
     {
         $stock = $this->stock();
@@ -53,24 +74,7 @@ class StockRemainingCanonicalUiContractTest extends TestCase
 
     public function test_public_primary_auction_show_does_not_fall_back_to_legacy_rial_price(): void
     {
-        $stock = $this->stock();
-        $auction = Auction::create([
-            'stock_id' => $stock->id,
-            'market_type' => 'primary',
-            'supply_source' => 'treasury',
-            'settlement_channel' => SettlementChannel::EXTERNAL_IRR,
-            'quote_unit' => 'gol',
-            'shares_count' => 2_000,
-            'base_price' => 0.01,
-            'base_price_gol' => 1,
-            'start_time' => now()->subMinute(),
-            'end_time' => now()->addDay(),
-            'ends_at' => now()->addDay(),
-            'status' => 'running',
-            'type' => 'uniform_price',
-            'settlement_mode' => 'manual',
-            'lot_size' => 1,
-        ])->load('stock');
+        $auction = $this->auction($this->stock());
 
         $html = view('Stock::auction_show', [
             'auction' => $auction,
@@ -86,5 +90,40 @@ class StockRemainingCanonicalUiContractTest extends TestCase
         $this->assertStringNotContainsString('قیمت پایه (ریال)', $html);
         $this->assertStringNotContainsString('قیمت پیشنهادی (ریال)', $html);
         $this->assertStringNotContainsString('قیمت هر سهم (ریال)', $html);
+    }
+
+    public function test_expired_running_auction_explains_why_bidding_is_unavailable(): void
+    {
+        $auction = $this->auction($this->stock(), [
+            'end_time' => now()->subMinute(),
+            'ends_at' => now()->subMinute(),
+        ]);
+
+        $html = view('Stock::auction_show', [
+            'auction' => $auction,
+            'orderBook' => collect(),
+            'userBids' => collect(),
+        ])->render();
+
+        $this->assertStringContainsString('مهلت ثبت پیشنهاد پایان یافته است', $html);
+        $this->assertStringContainsString('پایان‌یافته؛ در انتظار بستن و تسویه', $html);
+        $this->assertStringNotContainsString('ثبت پیشنهاد خرید', $html);
+    }
+
+    public function test_admin_primary_offering_form_exposes_canonical_settlement_choice(): void
+    {
+        $stock = $this->stock();
+
+        $html = view('Stock::admin_auction_create', [
+            'stock' => $stock,
+        ])->render();
+
+        $this->assertStringContainsString('name="settlement_channel"', $html);
+        $this->assertStringContainsString('value="active_bahar"', $html);
+        $this->assertStringContainsString('value="external_irr"', $html);
+        $this->assertStringContainsString('تسویه با بهار فعال', $html);
+        $this->assertStringContainsString('تسویه خارجی با ریال', $html);
+        $this->assertStringNotContainsString('value="external_capital"', $html);
+        $this->assertStringNotContainsString('value="external_usd"', $html);
     }
 }
