@@ -11,7 +11,10 @@ use App\Modules\Stock\ExternalCapital\Adapters\UnavailableExternalPaymentProvide
 use App\Modules\Stock\ExternalCapital\Adapters\ZarinpalExternalPaymentProvider;
 use App\Modules\Stock\ExternalCapital\Contracts\AuthoritativeRateProvider;
 use App\Modules\Stock\ExternalCapital\Contracts\ExternalPaymentProvider;
+use App\Modules\Stock\ExternalCapital\Services\ExternalCapitalAuctionViewState;
+use App\Modules\Stock\Models\Auction;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 final class StockExternalCapitalServiceProvider extends ServiceProvider
@@ -40,6 +43,17 @@ final class StockExternalCapitalServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        View::composer('Stock::auction_show', function ($view): void {
+            $auction = $view->getData()['auction'] ?? null;
+            if (! $auction instanceof Auction) {
+                return;
+            }
+
+            $view->with(
+                $this->app->make(ExternalCapitalAuctionViewState::class)->forAuction($auction),
+            );
+        });
+
         Route::middleware('web')->group(function (): void {
             Route::post('/auctions/{auction}/external-checkout', [ExternalCapitalBidController::class, 'store'])
                 ->middleware('auth')
