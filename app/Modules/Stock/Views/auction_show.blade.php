@@ -9,7 +9,8 @@
 @php
 $baseGol=(int)($auction->base_price_gol??0);$baseBahar=$baseGol/100;
 $isPrimaryTreasury=strtolower((string)$auction->market_type)==='primary'&&strtolower((string)$auction->supply_source)==='treasury';
-$isExternal=strtolower((string)$auction->settlement_channel)==='external_capital';
+$isExternal=$isPrimaryTreasury&&in_array(strtolower((string)$auction->settlement_channel),['external_irr','external_usd'],true);
+$externalCheckoutReady=(bool)($externalCheckoutReady??false);
 $statusLabels=['scheduled'=>'برنامه‌ریزی‌شده','running'=>'در حال اجرا','settling'=>'در حال تسویه','settled'=>'تسویه‌شده','completed'=>'تکمیل‌شده','canceled'=>'لغوشده','cancelled'=>'لغوشده'];
 @endphp
 <div class="auction-show-container">
@@ -29,8 +30,19 @@ $statusLabels=['scheduled'=>'برنامه‌ریزی‌شده','running'=>'در 
 </div>
 @if($auction->isActive())
 <div class="bid-form-card"><h2 style="font-size:1.2rem;font-weight:800;margin-bottom:1rem;">ثبت پیشنهاد خرید</h2>
-@if($isExternal)<div class="notice" style="margin-bottom:1rem;">مسیر پرداخت خارجی تا تکمیل آمادگی عملیاتی غیرفعال است. قیمت پایه این عرضه همچنان بر حسب گل ثبت و نگهداری می‌شود.</div>@endif
-<form method="POST" action="{{ route('auction.bid',$auction) }}">@csrf<div class="form-row"><div class="form-group"><label for="quantity">تعداد سهم</label><input class="form-control" id="quantity" name="quantity" type="number" min="1" max="{{ $auction->shares_count }}" required></div>@if(!$isExternal)<div class="form-group"><label for="price">قیمت پیشنهادی (گل)</label><input class="form-control" id="price" name="price" type="number" min="1" step="1" value="{{ $baseGol }}" required></div>@endif</div><button class="btn-primary" type="submit" {{ $isExternal?'disabled':'' }}>{{ $isExternal?'خرید پس از فعال‌شدن تسویه خارجی':'ثبت پیشنهاد' }}</button></form></div>
+@if($isExternal)
+<div class="notice" style="margin-bottom:1rem;"><strong>آمادگی تسویه خارجی:</strong> {{ $externalCheckoutReady ? 'آماده' : 'غیرفعال تا تکمیل الزامات عملیاتی' }}. مبلغ ریالی/دلاری از قیمت گل و نرخ مرجع معتبر در سمت سرور محاسبه می‌شود؛ مرورگر مبلغ وجه یا ارز تسویه را تعیین نمی‌کند.</div>
+<form method="POST" action="{{ url('/auctions/'.$auction->id.'/external-checkout') }}">@csrf
+<div class="form-row">
+<div class="form-group"><label for="quantity">تعداد سهم</label><input class="form-control" id="quantity" name="quantity" type="number" min="1" max="{{ $auction->shares_count }}" required></div>
+<div class="form-group"><label for="price_gol">قیمت پیشنهادی هر سهم (گل)</label><input class="form-control" id="price_gol" name="price_gol" type="number" min="{{ max(1,$baseGol) }}" step="1" value="{{ $baseGol }}" required><span class="subvalue">معادل نمایشی: {{ number_format($baseBahar,2) }} بهار برای هر سهم در قیمت پایه</span></div>
+</div>
+<button class="btn-primary" type="submit" {{ $externalCheckoutReady ? '' : 'disabled' }}>{{ $externalCheckoutReady ? 'ادامه به درگاه پرداخت' : 'تسویه خارجی هنوز آماده نیست' }}</button>
+</form>
+@else
+<form method="POST" action="{{ route('auction.bid',$auction) }}">@csrf<div class="form-row"><div class="form-group"><label for="quantity">تعداد سهم</label><input class="form-control" id="quantity" name="quantity" type="number" min="1" max="{{ $auction->shares_count }}" required></div><div class="form-group"><label for="price">قیمت پیشنهادی (گل)</label><input class="form-control" id="price" name="price" type="number" min="1" step="1" value="{{ $baseGol }}" required></div></div><button class="btn-primary" type="submit">ثبت پیشنهاد</button></form>
+@endif
+</div>
 @endif
 <div class="auction-card"><h2 style="font-size:1.1rem;font-weight:800;margin-bottom:1rem;">پیشنهادهای شما</h2>@forelse($userBids??[] as $bid)<div class="info-item" style="margin-bottom:.75rem;">{{ number_format((int)($bid->quantity??0)) }} سهم — {{ number_format((int)($bid->price_gol??0)) }} گل</div>@empty<div class="empty-state">هنوز پیشنهادی ثبت نکرده‌اید.</div>@endforelse</div>
 </div>
