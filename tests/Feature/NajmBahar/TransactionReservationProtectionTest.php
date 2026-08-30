@@ -83,4 +83,55 @@ class TransactionReservationProtectionTest extends TestCase
         $this->assertSame($beforeLedger, LedgerEntry::count());
         $this->assertSame(100, app(ActiveBaharReservationService::class)->availableActive($mirror->fresh()));
     }
+
+    public function test_reserved_active_on_main_account_cannot_be_double_spent_to_system(): void
+    {
+        $user = User::factory()->create();
+        $main = app(AccountService::class)->createMainAccountForUser($user->id, 'Member');
+        app(MonetaryService::class)->issueMembershipCredit($main, $user->id);
+        app(MonetaryService::class)->activateDim($main, 500, 'UAT activation', ['type' => 'uat'], 'uat-main-reservation-activation');
+
+        $system = Account::create([
+            'account_number' => '0000000998',
+            'name' => 'UAT main system destination',
+            'type' => 'system',
+            'balance' => 0,
+            'balance_active' => 0,
+            'balance_faded' => 0,
+            'status' => 1,
+        ]);
+
+        app(ActiveBaharReservationService::class)->reserve(
+            $main->account_number,
+            400,
+            'reservation:main-system-double-spend',
+            'uat',
+            3
+        );
+
+        $beforeMain = $main->fresh();
+        $beforeSystem = $system->fresh();
+        $beforeLedger = LedgerEntry::count();
+
+        try {
+            app(TransactionService::class)->transfer(
+                $main->account_number,
+                $system->account_number,
+                200,
+                'Must not spend reserved Active from main',
+                ['system_operation' => true, 'type' => 'uat_main_reserved_double_spend'],
+                'uat-main-reserved-system-transfer',
+                'active'
+            );
+            $this->fail('Expected main-to-system transfer to reject spending reserved Active Bahar.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('Insufficient active funds', $exception->getMessage());
+        }
+
+        $this->assertSame((int) $beforeMain->balance_active, (int) $main->fresh()->balance_active);
+        $this->assertSame((int) $beforeMain->balance, (int) $main->fresh()->balance);
+        $this->assertSame((int) $beforeSystem->balance_active, (int) $system->fresh()->balance_active);
+        $this->assertSame($beforeLedger, LedgerEntry::count());
+        $this->assertSame(100, app(ActiveBaharReservationService::class)->availableActive($main->fresh()));
+    }
 }
