@@ -9,6 +9,8 @@ use RuntimeException;
 
 final class ExternalCapitalReadinessGate
 {
+    private const CANONICAL_CALLBACK_PATH = '/stock/external-payment/callback';
+
     public function __construct(
         private readonly AuthoritativeRateProvider $rates,
         private readonly ExternalPaymentProvider $payments,
@@ -34,7 +36,9 @@ final class ExternalCapitalReadinessGate
             'authoritative_rate_provider' => $rateSource !== ''
                 && $rateSource !== 'unavailable'
                 && in_array($rateSource, $allowedRateSources, true),
+            'authoritative_rate_provider_configuration' => $this->rateProviderConfigurationReady($rateSource),
             'external_payment_provider' => $paymentProvider !== '' && $paymentProvider !== 'unavailable',
+            'external_payment_provider_configuration' => $this->paymentProviderConfigurationReady($paymentProvider),
             'primary_offering_configuration' => $maxAllocationBps > 0
                 && $maxAllocationBps <= 10000
                 && $policyVersion !== ''
@@ -52,7 +56,9 @@ final class ExternalCapitalReadinessGate
         $blockerMap = [
             'feature_enabled' => 'external_capital_disabled',
             'authoritative_rate_provider' => 'authoritative_rate_provider_unavailable',
+            'authoritative_rate_provider_configuration' => 'authoritative_rate_provider_configuration_invalid',
             'external_payment_provider' => 'external_payment_provider_unavailable',
+            'external_payment_provider_configuration' => 'external_payment_provider_configuration_invalid',
             'primary_offering_configuration' => 'primary_offering_configuration_invalid',
             'rate_provider_uat' => 'rate_provider_uat_missing',
             'payment_provider_uat' => 'payment_provider_uat_missing',
@@ -83,6 +89,7 @@ final class ExternalCapitalReadinessGate
                 'primary_offering_max_allocation_bps' => $maxAllocationBps,
                 'primary_offering_policy_version' => $policyVersion,
                 'primary_offering_disclosure_version' => $disclosureVersion,
+                'canonical_callback_path' => self::CANONICAL_CALLBACK_PATH,
             ],
         ];
     }
@@ -124,5 +131,69 @@ final class ExternalCapitalReadinessGate
             static fn ($currency): string => strtoupper(trim((string) $currency)),
             (array) config('stock.external_capital.enabled_currencies', [])
         ), static fn (string $currency): bool => in_array($currency, ['IRR', 'USD'], true))));
+    }
+
+    private function rateProviderConfigurationReady(string $rateSource): bool
+    {
+        if ($rateSource === '' || $rateSource === 'unavailable') {
+            return false;
+        }
+
+        if ($rateSource !== 'servix:gold24:irr:v1') {
+            return true;
+        }
+
+        $apiKey = trim((string) config('stock.external_capital.providers.servix.api_key', ''));
+        $baseUrl = trim((string) config('stock.external_capital.providers.servix.base_url', ''));
+
+        return $apiKey !== '' && $this->isHttpsUrl($baseUrl);
+    }
+
+    private function paymentProviderConfigurationReady(string $paymentProvider): bool
+    {
+        if ($paymentProvider === '' || $paymentProvider === 'unavailable') {
+            return false;
+        }
+
+        if ($paymentProvider !== 'zarinpal') {
+            return true;
+        }
+
+        $merchantId = trim((string) config('stock.external_capital.providers.zarinpal.merchant_id', ''));
+        $baseUrl = trim((string) config('stock.external_capital.providers.zarinpal.base_url', ''));
+        $gatewayUrl = trim((string) config('stock.external_capital.providers.zarinpal.gateway_url', ''));
+        $callbackUrl = trim((string) config('stock.external_capital.providers.zarinpal.callback_url', ''));
+        $description = trim((string) config('stock.external_capital.providers.zarinpal.description', ''));
+
+        if ($merchantId === '' || $description === '') {
+            return false;
+        }
+        if (! $this->isHttpsUrl($baseUrl) || ! $this->isHttpsUrl($gatewayUrl) || ! $this->isHttpsUrl($callbackUrl)) {
+            return false;
+        }
+
+        $callbackPath = parse_url($callbackUrl, PHP_URL_PATH);
+        if (! is_string($callbackPath) || rtrim($callbackPath, '/') !== self::CANONICAL_CALLBACK_PATH) {
+            return false;
+        }
+
+        $callbackQuery = parse_url($callbackUrl, PHP_URL_QUERY);
+        if (is_string($callbackQuery) && $callbackQuery !== '') {
+            parse_str($callbackQuery, $query);
+            if (array_key_exists('intent', $query) || array_key_exists('intent_key', $query)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function isHttpsUrl(string $url): bool
+    {
+        if ($url === '' || filter_var($url, FILTER_VALIDATE_URL) === false) {
+            return false;
+        }
+
+        return strtolower((string) parse_url($url, PHP_URL_SCHEME)) === 'https';
     }
 }
