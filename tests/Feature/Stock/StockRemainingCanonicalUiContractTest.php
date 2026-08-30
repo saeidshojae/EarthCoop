@@ -32,6 +32,7 @@ class StockRemainingCanonicalUiContractTest extends TestCase
             'base_share_price' => 0.01,
             'base_share_price_gol' => 1,
             'available_shares' => 20_000,
+            'info' => 'اطلاعات پایه عمومی سهام EarthCoop برای کاربران',
         ]);
     }
 
@@ -86,6 +87,56 @@ class StockRemainingCanonicalUiContractTest extends TestCase
 
         $this->assertStringContainsString(route('admin.stock-reports.financial'), $html);
         $this->assertStringContainsString('گزارش مالی', $html);
+    }
+
+    public function test_stock_book_exposes_four_responsive_tabs_public_stock_info_and_full_auction_navigation(): void
+    {
+        $stock = $this->stock();
+        $auction = $this->auction($stock);
+
+        $html = view('Stock::stock_dashboard', [
+            'stock' => $stock,
+            'auctions' => collect([$auction]),
+            'soldShares' => 0,
+            'userHoldings' => collect(),
+            'walletData' => null,
+        ])->render();
+
+        $this->assertStringContainsString('data-stockbook-tab="stock-info"', $html);
+        $this->assertStringContainsString('اطلاعات پایه سهام', $html);
+        $this->assertStringContainsString('data-stockbook-tab="auctions"', $html);
+        $this->assertStringContainsString('حراج‌های فعال و برنامه‌ریزی‌شده', $html);
+        $this->assertStringContainsString('data-stockbook-tab="holdings"', $html);
+        $this->assertStringContainsString('دارایی سهام من', $html);
+        $this->assertStringContainsString('data-stockbook-tab="market-settlement"', $html);
+        $this->assertStringContainsString('بازار ثانویه و تسویه', $html);
+        $this->assertStringContainsString($stock->info, $html);
+        $this->assertStringContainsString(route('auction.index'), $html);
+        $this->assertStringContainsString('مشاهده همه حراج‌ها', $html);
+    }
+
+    public function test_public_auction_list_uses_canonical_gol_bahar_and_stock_ownership_navigation(): void
+    {
+        $stock = $this->stock();
+        $auction = $this->auction($stock);
+
+        $html = view('Stock::auction_list', [
+            'stock' => $stock,
+            'auctions' => collect([$auction]),
+        ])->render();
+
+        $this->assertStringContainsString('20,000,000 گل', $html);
+        $this->assertStringContainsString('200,000 بهار', $html);
+        $this->assertStringContainsString('1 گل', $html);
+        $this->assertStringContainsString('0.01 بهار', $html);
+        $this->assertStringContainsString('تسویه خارجی با ریال', $html);
+        $this->assertStringContainsString(route('stock.book'), $html);
+        $this->assertStringContainsString('دفتر سهام', $html);
+        $this->assertStringContainsString(route('holding.index'), $html);
+        $this->assertStringNotContainsString(route('wallet.index'), $html);
+        $this->assertStringNotContainsString('ارزش پایه پلتفرم:', $html);
+        $this->assertStringNotContainsString('قیمت پایه</strong> ریال', $html);
+        $this->assertStringNotContainsString('ریال</td>', $html);
     }
 
     public function test_public_primary_auction_show_does_not_fall_back_to_legacy_rial_price(): void
