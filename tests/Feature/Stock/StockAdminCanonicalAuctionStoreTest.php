@@ -2,10 +2,13 @@
 
 namespace Tests\Feature\Stock;
 
+use App\Modules\Stock\Controllers\CanonicalAdminAuctionController;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Stock;
 use App\Modules\Stock\Settlement\SettlementChannel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class StockAdminCanonicalAuctionStoreTest extends TestCase
@@ -39,6 +42,16 @@ class StockAdminCanonicalAuctionStoreTest extends TestCase
             'settlement_mode' => 'manual',
             'lot_size' => 100,
         ], $overrides);
+    }
+
+    public function test_runtime_admin_store_route_resolves_to_canonical_controller(): void
+    {
+        $route = Route::getRoutes()->match(Request::create('/admin/auctions', 'POST'));
+
+        $this->assertSame(
+            CanonicalAdminAuctionController::class . '@store',
+            $route->getActionName()
+        );
     }
 
     public function test_admin_stores_primary_treasury_auction_with_integer_gol_pricing_and_selected_settlement(): void
@@ -99,6 +112,9 @@ class StockAdminCanonicalAuctionStoreTest extends TestCase
         ]));
 
         $response->assertRedirect('/admin/auctions/create');
+        $response->assertSessionHasErrors([
+            'shares_count' => 'EarthCoop offering exceeds the configured primary allocation cap.',
+        ]);
         $this->assertDatabaseCount('auctions', 0);
     }
 
@@ -130,7 +146,9 @@ class StockAdminCanonicalAuctionStoreTest extends TestCase
         ]));
 
         $response->assertRedirect('/admin/auctions/create');
-        $response->assertSessionHasErrors('shares_count');
+        $response->assertSessionHasErrors([
+            'shares_count' => 'EarthCoop open offerings would oversubscribe the primary allocation cap.',
+        ]);
         $this->assertDatabaseCount('auctions', 1);
     }
 }
