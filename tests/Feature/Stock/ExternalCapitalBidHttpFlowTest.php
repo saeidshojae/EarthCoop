@@ -30,6 +30,12 @@ class ExternalCapitalBidHttpFlowTest extends TestCase
     {
         $user = User::factory()->create();
         $auction = $this->auction();
+        $persistedAuction = $auction->fresh();
+
+        $this->assertNotNull($persistedAuction);
+        $this->assertSame('running', $persistedAuction->status);
+        $this->assertTrue($persistedAuction->ends_at->isFuture(), 'Persisted auction end time must remain in the future before HTTP checkout.');
+        $this->assertTrue($persistedAuction->isActive(), 'Persisted auction must be active before HTTP checkout begins.');
 
         $response = $this->actingAs($user)->post("/auctions/{$auction->id}/external-checkout", [
             'price_gol' => 120,
