@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Stock;
 
+use App\Modules\Stock\ExternalCapital\Adapters\ServixGold24AuthoritativeRateProvider;
+use App\Modules\Stock\ExternalCapital\Adapters\ZarinpalExternalPaymentProvider;
 use App\Modules\Stock\ExternalCapital\Contracts\AuthoritativeRateProvider;
 use App\Modules\Stock\ExternalCapital\Contracts\ExternalPaymentProvider;
 use App\Modules\Stock\ExternalCapital\Dto\ProviderPaymentIntent;
@@ -67,8 +69,70 @@ class ExternalCapitalReadinessGateTest extends TestCase
         $this->assertSame([], $report['blockers']);
         $this->assertTrue($report['checks']['authoritative_rate_provider']);
         $this->assertTrue($report['checks']['external_payment_provider']);
+        $this->assertTrue($report['checks']['authoritative_rate_provider_configuration']);
+        $this->assertTrue($report['checks']['external_payment_provider_configuration']);
         $this->assertTrue($report['checks']['full_validation']);
         $this->assertTrue($report['checks']['founder_rollout_approval']);
+    }
+
+    public function test_real_servix_adapter_is_blocked_when_its_runtime_configuration_is_incomplete(): void
+    {
+        $this->configureReadyState();
+        config()->set('stock.external_capital.authoritative_quote_sources', ['servix:gold24:irr:v1']);
+        config()->set('stock.external_capital.providers.servix.api_key', '');
+        config()->set('stock.external_capital.providers.servix.base_url', 'https://servix.cc/api/v1');
+        $this->app->instance(AuthoritativeRateProvider::class, new ServixGold24AuthoritativeRateProvider());
+        $this->app->instance(ExternalPaymentProvider::class, $this->fakePaymentProvider());
+
+        $report = app(ExternalCapitalReadinessGate::class)->report();
+
+        $this->assertFalse($report['ready']);
+        $this->assertTrue($report['checks']['authoritative_rate_provider']);
+        $this->assertFalse($report['checks']['authoritative_rate_provider_configuration']);
+        $this->assertContains('authoritative_rate_provider_configuration_invalid', $report['blockers']);
+    }
+
+    public function test_real_zarinpal_adapter_is_blocked_when_callback_is_not_canonical(): void
+    {
+        $this->configureReadyState();
+        $this->app->instance(AuthoritativeRateProvider::class, $this->fakeRateProvider());
+        $this->app->instance(ExternalPaymentProvider::class, new ZarinpalExternalPaymentProvider());
+        config()->set('stock.external_capital.providers.zarinpal.merchant_id', 'merchant-test');
+        config()->set('stock.external_capital.providers.zarinpal.base_url', 'https://api.zarinpal.com/pg/v4');
+        config()->set('stock.external_capital.providers.zarinpal.gateway_url', 'https://www.zarinpal.com/pg/StartPay');
+        config()->set('stock.external_capital.providers.zarinpal.callback_url', 'https://earthcoop.ir/wrong/callback');
+        config()->set('stock.external_capital.providers.zarinpal.description', 'EarthCoop primary treasury share purchase');
+
+        $report = app(ExternalCapitalReadinessGate::class)->report();
+
+        $this->assertFalse($report['ready']);
+        $this->assertTrue($report['checks']['external_payment_provider']);
+        $this->assertFalse($report['checks']['external_payment_provider_configuration']);
+        $this->assertContains('external_payment_provider_configuration_invalid', $report['blockers']);
+    }
+
+    public function test_real_servix_and_zarinpal_configuration_can_pass_without_exposing_secrets_in_evidence(): void
+    {
+        $this->configureReadyState();
+        config()->set('stock.external_capital.authoritative_quote_sources', ['servix:gold24:irr:v1']);
+        config()->set('stock.external_capital.providers.servix.api_key', 'servix-secret-key');
+        config()->set('stock.external_capital.providers.servix.base_url', 'https://servix.cc/api/v1');
+        config()->set('stock.external_capital.providers.zarinpal.merchant_id', 'merchant-secret-id');
+        config()->set('stock.external_capital.providers.zarinpal.base_url', 'https://api.zarinpal.com/pg/v4');
+        config()->set('stock.external_capital.providers.zarinpal.gateway_url', 'https://www.zarinpal.com/pg/StartPay');
+        config()->set('stock.external_capital.providers.zarinpal.callback_url', 'https://earthcoop.ir/stock/external-payment/callback');
+        config()->set('stock.external_capital.providers.zarinpal.description', 'EarthCoop primary treasury share purchase');
+        $this->app->instance(AuthoritativeRateProvider::class, new ServixGold24AuthoritativeRateProvider());
+        $this->app->instance(ExternalPaymentProvider::class, new ZarinpalExternalPaymentProvider());
+
+        $report = app(ExternalCapitalReadinessGate::class)->report();
+
+        $this->assertTrue($report['checks']['authoritative_rate_provider_configuration']);
+        $this->assertTrue($report['checks']['external_payment_provider_configuration']);
+        $this->assertTrue($report['ready']);
+        $evidence = json_encode($report['evidence'], JSON_THROW_ON_ERROR);
+        $this->assertStringNotContainsString('servix-secret-key', $evidence);
+        $this->assertStringNotContainsString('merchant-secret-id', $evidence);
     }
 
     public function test_assert_ready_throws_with_blocker_codes_when_not_ready(): void
@@ -105,15 +169,24 @@ class ExternalCapitalReadinessGateTest extends TestCase
 
     private function bindReadyProviders(): void
     {
-        $this->app->instance(AuthoritativeRateProvider::class, new class implements AuthoritativeRateProvider {
+        $this->app->instance(AuthoritativeRateProvider::class, $this->fakeRateProvider());
+        $this->app->instance(ExternalPaymentProvider::class, $this->fakePaymentProvider());
+    }
+
+    private function fakeRateProvider(): AuthoritativeRateProvider
+    {
+        return new class implements AuthoritativeRateProvider {
             public function sourceIdentifier(): string { return 'fake-rate'; }
             public function quote(int $golAmount, string $currency): FiatQuoteSnapshot
             {
                 return FiatQuoteSnapshot::fromRate($golAmount, $currency, 25, 2, $this->sourceIdentifier());
             }
-        });
+        };
+    }
 
-        $this->app->instance(ExternalPaymentProvider::class, new class implements ExternalPaymentProvider {
+    private function fakePaymentProvider(): ExternalPaymentProvider
+    {
+        return new class implements ExternalPaymentProvider {
             public function providerIdentifier(): string { return 'fake-psp'; }
             public function createIntent(ExternalPaymentIntent $intent): ProviderPaymentIntent
             {
@@ -123,6 +196,6 @@ class ExternalCapitalReadinessGateTest extends TestCase
             {
                 throw new RuntimeException('unused');
             }
-        });
+        };
     }
 }
