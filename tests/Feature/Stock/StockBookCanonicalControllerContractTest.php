@@ -15,6 +15,7 @@ class StockBookCanonicalControllerContractTest extends TestCase
         $this->assertStringNotContainsString('getOrCreateWallet', $source);
         $this->assertStringNotContainsString('recalculateMarketData', $source);
         $this->assertStringContainsString("whereIn('status', ['scheduled', 'running'])", $source);
+        $this->assertStringContainsString("where('ends_at', '>', now())", $source);
         $this->assertStringContainsString("view('Stock::stock_dashboard'", $source);
     }
 }
