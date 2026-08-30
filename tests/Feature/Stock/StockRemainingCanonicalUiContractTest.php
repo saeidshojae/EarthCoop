@@ -9,6 +9,7 @@ use App\Modules\Stock\Models\Stock;
 use App\Modules\Stock\Settlement\SettlementChannel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\ViewErrorBag;
 use Tests\TestCase;
 
 class StockRemainingCanonicalUiContractTest extends TestCase
@@ -58,12 +59,7 @@ class StockRemainingCanonicalUiContractTest extends TestCase
     public function test_admin_stock_dashboard_uses_only_canonical_gol_bahar_vocabulary(): void
     {
         $stock = $this->stock();
-
-        $html = view('Stock::admin_stock_info', [
-            'stock' => $stock,
-            'alerts' => [],
-            'stats' => null,
-        ])->render();
+        $html = view('Stock::admin_stock_info', ['stock' => $stock, 'alerts' => [], 'stats' => null])->render();
 
         $this->assertStringContainsString('ارزش‌گذاری کل', $html);
         $this->assertStringContainsString('200,000 بهار', $html);
@@ -77,12 +73,7 @@ class StockRemainingCanonicalUiContractTest extends TestCase
     public function test_public_primary_auction_show_does_not_fall_back_to_legacy_rial_price(): void
     {
         $auction = $this->auction($this->stock());
-
-        $html = view('Stock::auction_show', [
-            'auction' => $auction,
-            'orderBook' => collect(),
-            'userBids' => collect(),
-        ])->render();
+        $html = view('Stock::auction_show', ['auction' => $auction, 'orderBook' => collect(), 'userBids' => collect()])->render();
 
         $this->assertStringContainsString('1 گل', $html);
         $this->assertStringContainsString('0.01 بهار', $html);
@@ -96,16 +87,8 @@ class StockRemainingCanonicalUiContractTest extends TestCase
 
     public function test_expired_running_auction_explains_why_bidding_is_unavailable(): void
     {
-        $auction = $this->auction($this->stock(), [
-            'end_time' => now()->subMinute(),
-            'ends_at' => now()->subMinute(),
-        ]);
-
-        $html = view('Stock::auction_show', [
-            'auction' => $auction,
-            'orderBook' => collect(),
-            'userBids' => collect(),
-        ])->render();
+        $auction = $this->auction($this->stock(), ['end_time' => now()->subMinute(), 'ends_at' => now()->subMinute()]);
+        $html = view('Stock::auction_show', ['auction' => $auction, 'orderBook' => collect(), 'userBids' => collect()])->render();
 
         $this->assertStringContainsString('مهلت ثبت پیشنهاد پایان یافته است', $html);
         $this->assertStringContainsString('پایان‌یافته؛ در انتظار بستن و تسویه', $html);
@@ -115,9 +98,9 @@ class StockRemainingCanonicalUiContractTest extends TestCase
     public function test_admin_primary_offering_form_exposes_canonical_settlement_choice(): void
     {
         $stock = $this->stock();
-
         $html = view('Stock::admin_auction_create', [
             'stock' => $stock,
+            'errors' => new ViewErrorBag(),
         ])->render();
 
         $this->assertStringContainsString('name="settlement_channel"', $html);
@@ -145,8 +128,6 @@ class StockRemainingCanonicalUiContractTest extends TestCase
             'lot_size' => 1,
             'info' => 'UAT external offering',
         ]);
-        $request->setContainer($this->app);
-        $request->setRedirector($this->app['redirect']);
 
         app(AuctionController::class)->adminStore($request);
 
@@ -165,16 +146,8 @@ class StockRemainingCanonicalUiContractTest extends TestCase
     public function test_stock_book_does_not_present_expired_running_auction_as_active(): void
     {
         $stock = $this->stock();
-        $expired = $this->auction($stock, [
-            'shares_count' => 321,
-            'end_time' => now()->subMinute(),
-            'ends_at' => now()->subMinute(),
-        ]);
-        $active = $this->auction($stock, [
-            'shares_count' => 654,
-            'end_time' => now()->addDay(),
-            'ends_at' => now()->addDay(),
-        ]);
+        $expired = $this->auction($stock, ['shares_count' => 321, 'end_time' => now()->subMinute(), 'ends_at' => now()->subMinute()]);
+        $active = $this->auction($stock, ['shares_count' => 654, 'end_time' => now()->addDay(), 'ends_at' => now()->addDay()]);
 
         $html = view('Stock::stock_dashboard', [
             'stock' => $stock,
