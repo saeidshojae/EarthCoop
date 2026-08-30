@@ -93,6 +93,42 @@ class MonetaryServiceTest extends TestCase
         $this->assertSame(0, (int) $entries->sum('amount'));
     }
 
+    public function test_activation_preserves_committed_dim_and_stored_total_on_main_account(): void
+    {
+        $user = User::factory()->create();
+        $account = Account::create([
+            'account_number' => '9100000005',
+            'user_id' => $user->id,
+            'name' => 'Committed Dim Activation Account',
+            'type' => 'user',
+            'balance' => 1_000,
+            'balance_active' => 100,
+            'balance_faded' => 600,
+            'committed_dim' => 300,
+        ]);
+
+        $result = app(MonetaryService::class)->activateDim(
+            $account,
+            200,
+            'activation with committed dim present',
+            ['type' => 'uat_committed_dim_activation'],
+            'uat-activation-preserves-committed-' . $user->id,
+            false
+        );
+
+        $account->refresh();
+
+        $this->assertTrue($result['applied']);
+        $this->assertSame(300, (int) $account->balance_active);
+        $this->assertSame(400, (int) $account->balance_faded);
+        $this->assertSame(300, (int) $account->committed_dim);
+        $this->assertSame(1_000, (int) $account->balance);
+        $this->assertSame(
+            (int) $account->balance,
+            (int) $account->balance_active + (int) $account->balance_faded + (int) $account->committed_dim
+        );
+    }
+
     public function test_activation_is_idempotent_and_partial_activation_never_exceeds_dim_balance(): void
     {
         $user = User::factory()->create();
