@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Stock\Models\Auction;
 use App\Modules\Stock\Models\Stock;
 use App\Modules\Stock\Services\EarthCoopPrimaryOfferingPolicy;
+use App\Modules\Stock\Settlement\SettlementChannel;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
@@ -39,7 +40,7 @@ final class CanonicalAdminAuctionController extends Controller
         $auction->market_type = 'primary';
         $auction->supply_source = 'treasury';
         $auction->quote_unit = 'gol';
-        $auction->settlement_channel = 'external_capital';
+        $auction->settlement_channel = $data['settlement_channel'];
         $auction->base_price = $this->legacyBaharPrice((int) $data['base_price_gol']);
         $auction->setRelation('stock', $stock);
 
@@ -58,7 +59,7 @@ final class CanonicalAdminAuctionController extends Controller
         $auction->market_type = 'primary';
         $auction->supply_source = 'treasury';
         $auction->quote_unit = 'gol';
-        $auction->settlement_channel = 'external_capital';
+        $auction->settlement_channel = $data['settlement_channel'];
         $auction->base_price = $this->legacyBaharPrice((int) $data['base_price_gol']);
         $auction->setRelation('stock', $stock);
 
@@ -71,10 +72,11 @@ final class CanonicalAdminAuctionController extends Controller
     /** @return array<string,mixed> */
     private function validatedCanonicalPayload(Request $request, bool $creating): array
     {
-        $rules = [
+        return $request->validate([
             'stock_id' => ['required', 'integer', 'exists:stocks,id'],
             'shares_count' => ['required', 'integer', 'min:1'],
             'base_price_gol' => ['required', 'integer', 'min:1'],
+            'settlement_channel' => ['required', 'in:' . SettlementChannel::ACTIVE_BAHAR . ',' . SettlementChannel::EXTERNAL_IRR],
             'start_time' => ['required', 'date'],
             'end_time' => ['required', 'date', 'after:start_time'],
             'ends_at' => [$creating ? 'required' : 'nullable', 'date', 'after:start_time'],
@@ -83,9 +85,7 @@ final class CanonicalAdminAuctionController extends Controller
             'lot_size' => ['required', 'integer', 'min:1'],
             'channel_id' => ['nullable', 'exists:groups,id'],
             'info' => ['nullable', 'string'],
-        ];
-
-        return $request->validate($rules);
+        ]);
     }
 
     private function assertOfferingPolicy(Auction $auction): void
