@@ -10,10 +10,10 @@ use App\Models\Setting;
 use App\Modules\NajmBahar\Policy\NajmBaharConstitution;
 use App\Modules\NajmBahar\Services\AccountBalanceService;
 use App\Modules\NajmBahar\Services\AccountService;
+use App\Modules\NajmBahar\Services\MembershipEligibilityService;
 use App\Modules\NajmBahar\Services\TransactionService;
 use App\Modules\NajmBahar\Services\MonetaryService;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
-use App\Services\ProfileCompletionService;
 use App\Services\ReputationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +27,7 @@ class NajmBaharController extends Controller
         protected TransactionService $transactionService,
         protected MonetaryService $monetaryService,
         protected ReputationService $reputationService,
-        protected ProfileCompletionService $profileCompletionService,
+        protected MembershipEligibilityService $membershipEligibilityService,
     ) {
     }
 
@@ -43,7 +43,7 @@ class NajmBaharController extends Controller
             ->with('descendants')
             ->orderBy('order')
             ->get();
-        $isProfileComplete = $this->profileCompletionService->isComplete($user);
+        $isProfileComplete = $this->membershipEligibilityService->isEligibleForInitialMembershipCredit($user);
 
         return view('najm-bahar.agreement', compact('agreements', 'isProfileComplete', 'hasAcceptedAgreement'));
     }
@@ -65,9 +65,9 @@ class NajmBaharController extends Controller
                 ->with('info', 'شما قبلاً حساب نجم بهار دارید.');
         }
 
-        if (! $this->profileCompletionService->isComplete($user)) {
+        if (! $this->membershipEligibilityService->isEligibleForInitialMembershipCredit($user)) {
             return redirect()->route('najm-bahar.agreement')
-                ->with('error', 'برای ایجاد حساب نجم بهار، ابتدا اطلاعات هویتی، تجربه و نشانی خود را کامل کنید.');
+                ->with('error', 'برای ایجاد حساب نجم بهار، عضویت شما باید فعال و تأییدشده باشد و اطلاعات هویتی، تجربه و نشانی نیز کامل شده باشند.');
         }
 
         try {
@@ -242,6 +242,10 @@ class NajmBaharController extends Controller
             ->exists();
 
         if (! $hasInitialFunding) {
+            if (! $this->membershipEligibilityService->isEligibleForInitialMembershipCredit($user)) {
+                return;
+            }
+
             $this->monetaryService->issueMembershipCredit($account, $user->id);
             return;
         }
