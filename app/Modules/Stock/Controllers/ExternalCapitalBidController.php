@@ -14,7 +14,7 @@ final class ExternalCapitalBidController extends Controller
 {
     public function store(
         Request $request,
-        Auction $auction,
+        $auction,
         ExternalCapitalBidCheckoutService $checkout,
     ): RedirectResponse {
         $validated = $request->validate([
@@ -27,6 +27,8 @@ final class ExternalCapitalBidController extends Controller
             abort(401);
         }
 
+        $canonicalAuction = Auction::query()->findOrFail((int) $auction);
+
         $idempotencyKey = trim((string) $request->header('Idempotency-Key', ''));
         if ($idempotencyKey === '') {
             $idempotencyKey = (string) Str::uuid();
@@ -34,7 +36,7 @@ final class ExternalCapitalBidController extends Controller
 
         $result = $checkout->begin(
             $userId,
-            $auction,
+            $canonicalAuction,
             (int) $validated['price_gol'],
             (int) $validated['quantity'],
             'stock-bid:' . $idempotencyKey,
