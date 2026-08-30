@@ -23,10 +23,6 @@ class ExternalCapitalReadinessGateTest extends TestCase
 
     public function test_default_configuration_fails_closed_with_explicit_blockers(): void
     {
-        if (! class_exists(ExternalCapitalReadinessGate::class)) {
-            $this->markTestSkipped('Readiness gate not implemented yet.');
-        }
-
         $report = app(ExternalCapitalReadinessGate::class)->report();
 
         $this->assertFalse($report['ready']);
@@ -40,10 +36,6 @@ class ExternalCapitalReadinessGateTest extends TestCase
 
     public function test_enabled_flag_alone_never_makes_external_capital_ready(): void
     {
-        if (! class_exists(ExternalCapitalReadinessGate::class)) {
-            $this->markTestSkipped('Readiness gate not implemented yet.');
-        }
-
         config()->set('stock.external_capital.enabled', true);
 
         $report = app(ExternalCapitalReadinessGate::class)->report();
@@ -55,10 +47,6 @@ class ExternalCapitalReadinessGateTest extends TestCase
 
     public function test_gate_is_ready_only_when_runtime_evidence_and_rollout_attestations_are_complete(): void
     {
-        if (! class_exists(ExternalCapitalReadinessGate::class)) {
-            $this->markTestSkipped('Readiness gate not implemented yet.');
-        }
-
         $this->bindReadyProviders();
         $this->configureReadyState();
 
@@ -114,16 +102,7 @@ class ExternalCapitalReadinessGateTest extends TestCase
     public function test_real_servix_and_zarinpal_configuration_can_pass_without_exposing_secrets_in_evidence(): void
     {
         $this->configureReadyState();
-        config()->set('stock.external_capital.authoritative_quote_sources', ['servix:gold24:irr:v1']);
-        config()->set('stock.external_capital.providers.servix.api_key', 'servix-secret-key');
-        config()->set('stock.external_capital.providers.servix.base_url', 'https://servix.cc/api/v1');
-        config()->set('stock.external_capital.providers.zarinpal.merchant_id', 'merchant-secret-id');
-        config()->set('stock.external_capital.providers.zarinpal.base_url', 'https://api.zarinpal.com/pg/v4');
-        config()->set('stock.external_capital.providers.zarinpal.gateway_url', 'https://www.zarinpal.com/pg/StartPay');
-        config()->set('stock.external_capital.providers.zarinpal.callback_url', 'https://earthcoop.ir/stock/external-payment/callback');
-        config()->set('stock.external_capital.providers.zarinpal.description', 'EarthCoop primary treasury share purchase');
-        $this->app->instance(AuthoritativeRateProvider::class, new ServixGold24AuthoritativeRateProvider());
-        $this->app->instance(ExternalPaymentProvider::class, new ZarinpalExternalPaymentProvider());
+        $this->configureRealProviders();
 
         $report = app(ExternalCapitalReadinessGate::class)->report();
 
@@ -135,12 +114,43 @@ class ExternalCapitalReadinessGateTest extends TestCase
         $this->assertStringNotContainsString('merchant-secret-id', $evidence);
     }
 
+    public function test_uat_readiness_is_fail_closed_and_never_available_in_production(): void
+    {
+        $this->configureRealProviders();
+        config()->set('stock.external_capital.enabled_currencies', ['IRR']);
+        config()->set('stock.external_capital.uat.enabled', true);
+        $this->app['env'] = 'production';
+
+        $report = app(ExternalCapitalReadinessGate::class)->uatReport();
+
+        $this->assertFalse($report['ready']);
+        $this->assertContains('external_uat_forbidden_in_production', $report['blockers']);
+    }
+
+    public function test_uat_readiness_allows_real_provider_exercise_without_faking_production_attestations(): void
+    {
+        $this->configureRealProviders();
+        config()->set('stock.external_capital.enabled', false);
+        config()->set('stock.external_capital.enabled_currencies', ['IRR']);
+        config()->set('stock.external_capital.uat.enabled', true);
+        config()->set('stock.external_capital.readiness.rate_provider_uat_passed', false);
+        config()->set('stock.external_capital.readiness.payment_provider_uat_passed', false);
+        config()->set('stock.external_capital.readiness.founder_rollout_approved', false);
+        $this->app['env'] = 'testing';
+
+        $report = app(ExternalCapitalReadinessGate::class)->uatReport();
+
+        $this->assertTrue($report['ready']);
+        $this->assertSame([], $report['blockers']);
+        $this->assertFalse(config('stock.external_capital.enabled'));
+        $this->assertFalse(config('stock.external_capital.readiness.rate_provider_uat_passed'));
+        $this->assertFalse(config('stock.external_capital.readiness.payment_provider_uat_passed'));
+        $this->assertFalse(config('stock.external_capital.readiness.founder_rollout_approved'));
+        app(ExternalCapitalReadinessGate::class)->assertUatReadyForCurrency('IRR');
+    }
+
     public function test_assert_ready_throws_with_blocker_codes_when_not_ready(): void
     {
-        if (! class_exists(ExternalCapitalReadinessGate::class)) {
-            $this->markTestSkipped('Readiness gate not implemented yet.');
-        }
-
         try {
             app(ExternalCapitalReadinessGate::class)->assertReady();
             $this->fail('Expected external capital readiness gate to fail closed.');
@@ -165,6 +175,23 @@ class ExternalCapitalReadinessGateTest extends TestCase
         config()->set('stock.primary_offering.max_allocation_bps', 1000);
         config()->set('stock.primary_offering.policy_version', 'earthcoop-primary-v1');
         config()->set('stock.primary_offering.disclosure_version', 'earthcoop-primary-disclosure-v1');
+    }
+
+    private function configureRealProviders(): void
+    {
+        config()->set('stock.external_capital.authoritative_quote_sources', ['servix:gold24:irr:v1']);
+        config()->set('stock.external_capital.providers.servix.api_key', 'servix-secret-key');
+        config()->set('stock.external_capital.providers.servix.base_url', 'https://servix.cc/api/v1');
+        config()->set('stock.external_capital.providers.zarinpal.merchant_id', 'merchant-secret-id');
+        config()->set('stock.external_capital.providers.zarinpal.base_url', 'https://api.zarinpal.com/pg/v4');
+        config()->set('stock.external_capital.providers.zarinpal.gateway_url', 'https://www.zarinpal.com/pg/StartPay');
+        config()->set('stock.external_capital.providers.zarinpal.callback_url', 'https://earthcoop.ir/stock/external-payment/callback');
+        config()->set('stock.external_capital.providers.zarinpal.description', 'EarthCoop primary treasury share purchase');
+        config()->set('stock.primary_offering.max_allocation_bps', 1000);
+        config()->set('stock.primary_offering.policy_version', 'earthcoop-primary-v1');
+        config()->set('stock.primary_offering.disclosure_version', 'earthcoop-primary-disclosure-v1');
+        $this->app->instance(AuthoritativeRateProvider::class, new ServixGold24AuthoritativeRateProvider());
+        $this->app->instance(ExternalPaymentProvider::class, new ZarinpalExternalPaymentProvider());
     }
 
     private function bindReadyProviders(): void
