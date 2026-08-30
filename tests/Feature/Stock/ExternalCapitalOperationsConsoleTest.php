@@ -49,7 +49,7 @@ class ExternalCapitalOperationsConsoleTest extends TestCase
         $response->assertDontSee('api-secret-value');
     }
 
-    public function test_show_exposes_append_only_reconciliation_history_but_no_mutation_form(): void
+    public function test_show_exposes_append_only_reconciliation_history_but_no_payment_mutation_controls(): void
     {
         $intent = $this->intent();
         ExternalPaymentReconciliation::create([
@@ -74,7 +74,14 @@ class ExternalCapitalOperationsConsoleTest extends TestCase
         $response->assertSee('payment_pending');
         $response->assertSee('authority-safe-id');
         $response->assertSee('فقط خواندنی');
-        $response->assertDontSee('<form', false);
+
+        // The unified admin layout legitimately owns a logout form. The console
+        // contract is narrower: it must expose no payment-state mutation controls.
+        $response->assertDontSee('تأیید پرداخت');
+        $response->assertDontSee('تایید پرداخت');
+        $response->assertDontSee('لغو پرداخت');
+        $response->assertDontSee('بازپرداخت');
+        $response->assertDontSee('برگشت پرداخت');
         $response->assertDontSee('merchant-secret-value');
         $response->assertDontSee('api-secret-value');
     }
