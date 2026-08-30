@@ -14,6 +14,7 @@
     .stock-action-btn.primary { background:linear-gradient(135deg,#3b82f6 0%,#1d4ed8 100%); }
     .stock-action-btn.success { background:linear-gradient(135deg,#10b981 0%,#047857 100%); }
     .stock-action-btn.info { background:linear-gradient(135deg,#3b82f6 0%,#1d4ed8 100%); }
+    .stock-action-btn.operations { background:linear-gradient(135deg,#475569 0%,#1e293b 100%); }
     .stock-info-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1.5rem; margin-bottom:2rem; }
     .stock-info-card { border-radius:12px; padding:1.5rem; color:white; position:relative; overflow:hidden; }
     .stock-info-card.primary { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); }
@@ -36,6 +37,25 @@
     .stock-stat-card { border-radius:12px; padding:1.25rem; background:#f8fafc; border:1px solid #e2e8f0; }
     .stock-stat-label { color:#64748b; font-size:.8rem; margin-bottom:.4rem; }
     .stock-stat-value { color:#0f172a; font-size:1.35rem; font-weight:800; }
+    .stock-reporting-section { margin-top:2rem; padding-top:1.5rem; border-top:1px solid #e2e8f0; }
+    .stock-reporting-title { display:flex; align-items:center; gap:.6rem; color:#1e293b; font-size:1.2rem; font-weight:800; margin-bottom:.4rem; }
+    .stock-reporting-description { color:#64748b; font-size:.875rem; margin-bottom:1rem; }
+    .stock-reporting-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; }
+    .stock-report-card { display:flex; min-height:150px; flex-direction:column; justify-content:space-between; border-radius:14px; padding:1.25rem; color:white; text-decoration:none; transition:transform .2s ease, box-shadow .2s ease; box-shadow:0 4px 14px rgba(15,23,42,.12); }
+    .stock-report-card:hover { transform:translateY(-3px); color:white; box-shadow:0 8px 22px rgba(15,23,42,.18); }
+    .stock-report-card.auctions { background:linear-gradient(135deg,#3b82f6 0%,#1d4ed8 100%); }
+    .stock-report-card.shareholders { background:linear-gradient(135deg,#10b981 0%,#047857 100%); }
+    .stock-report-card.financial { background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%); }
+    .stock-report-icon { font-size:1.8rem; opacity:.95; }
+    .stock-report-name { font-size:1.05rem; font-weight:800; margin-top:1rem; }
+    .stock-report-copy { font-size:.8rem; line-height:1.7; opacity:.9; margin-top:.35rem; }
+    .dark .stock-management-card { background:#0f172a; }
+    .dark .stock-header { border-bottom-color:#334155; }
+    .dark .stock-header h3,.dark .stock-details-title,.dark .stock-reporting-title,.dark .stock-stat-value { color:#f8fafc; }
+    .dark .stock-details-card,.dark .stock-stat-card { background:#111827; border-color:#334155; }
+    .dark .stock-details-content,.dark .stock-reporting-description,.dark .stock-stat-label { color:#cbd5e1; }
+    .dark .stock-reporting-section { border-top-color:#334155; }
+    @media(max-width:900px){ .stock-reporting-grid{grid-template-columns:1fr} }
     @media(max-width:768px){ .stock-management-card{padding:1rem}.stock-header{align-items:flex-start}.stock-header-actions{width:100%}.stock-action-btn{flex:1 1 auto;justify-content:center} }
 </style>
 @endpush
@@ -56,8 +76,8 @@
                 <a href="{{ route('admin.stock.shareholders') }}" class="stock-action-btn primary"><i class="fas fa-users"></i> لیست سهامداران</a>
                 <a href="{{ route('admin.auction.create') }}" class="stock-action-btn" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);"><i class="fas fa-plus-circle"></i> ایجاد عرضه اولیه</a>
                 <a href="{{ route('admin.auction.index') }}" class="stock-action-btn primary"><i class="fas fa-gavel"></i> مدیریت عرضه‌ها</a>
+                <a href="{{ route('admin.stock.external-payments.index') }}" class="stock-action-btn operations"><i class="fas fa-receipt"></i> تسویه‌های خارجی</a>
                 <a href="{{ route('admin.stock.create') }}" class="stock-action-btn success"><i class="fas fa-edit"></i> ویرایش اطلاعات</a>
-                <a href="{{ route('admin.stock-reports.auction-performance') }}" class="stock-action-btn info"><i class="fas fa-chart-bar"></i> گزارش‌ها</a>
             </div>
         </div>
 
@@ -121,6 +141,36 @@
                     </div>
                 </div>
             @endif
+
+            <section class="stock-reporting-section" aria-labelledby="stock-reporting-title">
+                <h4 id="stock-reporting-title" class="stock-reporting-title"><i class="fas fa-chart-bar"></i> گزارش‌گیری و تحلیل</h4>
+                <p class="stock-reporting-description">دسترسی مستقیم به گزارش‌های اصلی عملکرد عرضه، سهامداران و وضعیت مالی سهام.</p>
+                <div class="stock-reporting-grid">
+                    <a href="{{ route('admin.stock-reports.auction-performance') }}" class="stock-report-card auctions">
+                        <div class="stock-report-icon"><i class="fas fa-chart-line"></i></div>
+                        <div>
+                            <div class="stock-report-name">گزارش عملکرد حراج‌ها</div>
+                            <div class="stock-report-copy">تحلیل عملکرد عرضه‌ها و حراج‌ها در بازه زمانی انتخابی.</div>
+                        </div>
+                    </a>
+
+                    <a href="{{ route('admin.stock-reports.investors') }}" class="stock-report-card shareholders">
+                        <div class="stock-report-icon"><i class="fas fa-user-friends"></i></div>
+                        <div>
+                            <div class="stock-report-name">گزارش سهامداران</div>
+                            <div class="stock-report-copy">نمای کلی سهامداران، میزان مالکیت و مشارکت آنان در عرضه‌ها.</div>
+                        </div>
+                    </a>
+
+                    <a href="{{ route('admin.stock-reports.financial') }}" class="stock-report-card financial">
+                        <div class="stock-report-icon"><i class="fas fa-chart-pie"></i></div>
+                        <div>
+                            <div class="stock-report-name">گزارش مالی</div>
+                            <div class="stock-report-copy">تحلیل مالی عرضه‌ها، فروش سهام و جریان‌های مرتبط با سرمایه.</div>
+                        </div>
+                    </a>
+                </div>
+            </section>
         @else
             <div class="stock-details-card">
                 <div class="stock-details-title">اطلاعات سهام هنوز ثبت نشده است.</div>
