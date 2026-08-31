@@ -2,14 +2,14 @@
     const pathname = window.location.pathname;
     const isDashboard = pathname === '/najm-bahar/dashboard';
     const isPersonalWallet = pathname === '/najm-bahar/wallet';
-    if (!isDashboard && !isPersonalWallet) return;
 
     const mobileQuery = window.matchMedia('(max-width: 1023px)');
-    const dashboard = document.querySelector('.nb-dashboard');
-    const sidebarHost = document.querySelector('.nb-sidebar');
     const sidebar = document.getElementById('najm-bahar-sidebar');
+    if (!sidebar) return;
+    const sidebarHost = sidebar.closest('.nb-sidebar');
+    const dashboard = sidebar.closest('.nb-dashboard') || document.querySelector('.nb-dashboard');
     const main = dashboard?.querySelector('main');
-    if (!dashboard || !sidebarHost || !sidebar || !main) return;
+    if (!dashboard || !sidebarHost || !main) return;
 
     const style = document.createElement('style');
     style.setAttribute('data-nb-mobile-nav-style', 'true');
