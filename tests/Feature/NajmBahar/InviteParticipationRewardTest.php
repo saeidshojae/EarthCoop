@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\NajmBahar;
 
+use App\Http\Controllers\Admin\ReputationController;
 use App\Models\InvitationCode;
 use App\Models\ReputationRule;
 use App\Models\User;
@@ -58,7 +59,7 @@ class InviteParticipationRewardTest extends TestCase
 
     public function test_invite_member_is_bootstrapped_as_an_admin_managed_convertible_rule(): void
     {
-        $this->get('/admin/system-settings/reputation');
+        app(ReputationController::class)->index();
 
         $rule = ReputationRule::where('key', 'invite_member')->firstOrFail();
 
