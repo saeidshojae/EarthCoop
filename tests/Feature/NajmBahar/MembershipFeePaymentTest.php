@@ -3,7 +3,9 @@
 namespace Tests\Feature\NajmBahar;
 
 use App\Helpers\BaharMoney;
+use App\Models\ReputationRule;
 use App\Models\User;
+use App\Models\UserPointTransaction;
 use App\Modules\NajmBahar\Models\LedgerEntry;
 use App\Modules\NajmBahar\Models\MonetaryPolicyVersion;
 use App\Modules\NajmBahar\Models\Transaction;
@@ -81,6 +83,47 @@ class MembershipFeePaymentTest extends TestCase
         $this->assertSame(2, LedgerEntry::where('transaction_id', $activation->id)->count());
 
         $this->assertTreasurySplit();
+    }
+
+    public function test_successful_membership_fee_payment_awards_configured_participation_points_once_for_the_payment_year(): void
+    {
+        [$user] = $this->memberWithCredit();
+        $paymentYear = now()->year;
+        if (now()->lessThan($user->created_at->copy()->setYear($paymentYear))) {
+            $paymentYear--;
+        }
+
+        ReputationRule::create([
+            'key' => 'membership_fee_paid',
+            'label' => 'Membership fee paid',
+            'weight' => 12,
+            'active' => true,
+            'daily_cap' => null,
+            'dimension' => 'participation',
+            'convertible' => true,
+            'repeat_policy' => 'once_per_context',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('najm-bahar.membership-fee.pay'), ['payment_source' => 'dim'])
+            ->assertRedirect(route('najm-bahar.dashboard'));
+
+        $reward = UserPointTransaction::where('user_id', $user->id)
+            ->where('action', 'membership_fee_paid')
+            ->firstOrFail();
+
+        $this->assertSame(12, (int) $reward->delta);
+        $this->assertSame('participation', $reward->dimension);
+        $this->assertTrue((bool) $reward->convertible);
+        $this->assertSame($paymentYear, (int) ($reward->metadata['payment_year'] ?? 0));
+
+        $this->actingAs($user)
+            ->post(route('najm-bahar.membership-fee.pay'), ['payment_source' => 'dim']);
+
+        $this->assertSame(1, UserPointTransaction::where('user_id', $user->id)
+            ->where('action', 'membership_fee_paid')
+            ->where('reference_id', $paymentYear)
+            ->count());
     }
 
     public function test_member_can_choose_to_pay_annual_fee_from_existing_active_money(): void
