@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\UserPoint;
+use App\Models\UserPointConsumption;
 use App\Models\UserPointTransaction;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\MonetaryPolicyService;
@@ -28,6 +29,16 @@ class ReputationConversionController extends Controller
         $this->monetaryPolicyService = $monetaryPolicyService;
     }
 
+    private function convertibleTransactions(int $userId)
+    {
+        return UserPointTransaction::where('user_id', $userId)
+            ->where('delta', '>', 0)
+            ->where('convertible', true)
+            ->where('dimension', 'participation')
+            ->withSum('consumptions as consumptions_sum_points_consumed', 'points_consumed')
+            ->orderBy('created_at', 'asc');
+    }
+
     public function getInfo()
     {
         $user = Auth::user();
@@ -45,19 +56,13 @@ class ReputationConversionController extends Controller
 
         $userPoint = UserPoint::where('user_id', $user->id)->first();
         $totalPoints = $userPoint ? $userPoint->points : 0;
-
-        $cashedPoints = UserPointTransaction::where('user_id', $user->id)
-            ->where('is_cashed', true)
-            ->where('delta', '>', 0)
-            ->sum('delta');
-
-        $uncashedPoints = UserPointTransaction::where('user_id', $user->id)
-            ->where('is_cashed', false)
-            ->where('delta', '>', 0)
-            ->sum('delta');
+        $transactions = $this->convertibleTransactions($user->id)->get();
+        $convertibleAwarded = (int) $transactions->sum('delta');
+        $cashedPoints = (int) $transactions->sum(fn ($tx) => (int) ($tx->consumptions_sum_points_consumed ?? 0));
+        $uncashedPoints = max(0, $convertibleAwarded - $cashedPoints);
 
         $ratio = max(1, (int) data_get($policy, 'parameters.reputation_to_gol_ratio', 100));
-        $hasEnoughFaded = $account->balance_faded >= intval($uncashedPoints / $ratio);
+        $hasEnoughFaded = $account->balance_faded >= intdiv($uncashedPoints, $ratio);
 
         return response()->json([
             'total_points' => $totalPoints,
@@ -83,7 +88,7 @@ class ReputationConversionController extends Controller
         ]);
 
         $user = Auth::user();
-        $pointsToConvert = $request->points;
+        $pointsToConvert = (int) $request->points;
         $policy = $this->monetaryPolicyService->current();
         $enabled = (bool) data_get($policy, 'parameters.reputation_conversion_enabled', false);
 
@@ -99,89 +104,100 @@ class ReputationConversionController extends Controller
         $ratio = max(1, (int) data_get($policy, 'parameters.reputation_to_gol_ratio', 100));
         $policyVersionId = $policy['version_id'];
         $policyVersion = $policy['version'];
+        $convertiblePoints = intdiv($pointsToConvert, $ratio) * $ratio;
+        $amountInGol = intdiv($convertiblePoints, $ratio);
+
+        if ($amountInGol <= 0) {
+            return back()->with('error', "امتیازات وارد شده برای تبدیل کافی نیست. حداقل {$ratio} امتیاز نیاز است.");
+        }
 
         try {
             DB::transaction(function () use (
                 $user,
                 $account,
-                $pointsToConvert,
+                $convertiblePoints,
+                $amountInGol,
                 $ratio,
                 $policyVersionId,
                 $policyVersion
             ) {
-                $uncashedTransactions = UserPointTransaction::where('user_id', $user->id)
-                    ->where('is_cashed', false)
-                    ->where('delta', '>', 0)
-                    ->orderBy('created_at', 'asc')
+                $transactions = $this->convertibleTransactions($user->id)
                     ->lockForUpdate()
                     ->get();
 
-                $availablePoints = $uncashedTransactions->sum('delta');
+                $availablePoints = (int) $transactions->sum(function ($tx) {
+                    return max(0, (int) $tx->delta - (int) ($tx->consumptions_sum_points_consumed ?? 0));
+                });
 
-                if ($pointsToConvert > $availablePoints) {
+                if ($convertiblePoints > $availablePoints) {
                     throw new \Exception("امتیازات قابل نقد کافی نیست. امتیاز قابل نقد: {$availablePoints}");
-                }
-
-                $amountInGol = intval($pointsToConvert / $ratio);
-
-                if ($amountInGol <= 0) {
-                    throw new \Exception("امتیازات وارد شده برای تبدیل کافی نیست. حداقل {$ratio} امتیاز نیاز است.");
                 }
 
                 if ($account->balance_faded < $amountInGol) {
                     throw new \Exception('موجودی کمرنگ شما برای تبدیل کافی نیست');
                 }
 
-                $remaining = $pointsToConvert;
-                foreach ($uncashedTransactions as $tx) {
+                $conversionKey = 'reputation-conversion-' . $user->id . '-' . now()->format('YmdHisv');
+                $remaining = $convertiblePoints;
+
+                foreach ($transactions as $tx) {
                     if ($remaining <= 0) {
                         break;
                     }
 
-                    $toMark = min($tx->delta, $remaining);
-                    $tx->is_cashed = true;
-                    $tx->cashed_at = now();
-                    $tx->cashed_amount_gol = intval($toMark / $ratio);
-                    $tx->save();
+                    $alreadyConsumed = (int) ($tx->consumptions_sum_points_consumed ?? 0);
+                    $availableFromTransaction = max(0, (int) $tx->delta - $alreadyConsumed);
+                    $toConsume = min($availableFromTransaction, $remaining);
 
-                    $remaining -= $toMark;
+                    if ($toConsume <= 0) {
+                        continue;
+                    }
+
+                    UserPointConsumption::create([
+                        'user_id' => $user->id,
+                        'user_point_transaction_id' => $tx->id,
+                        'points_consumed' => $toConsume,
+                        'conversion_key' => $conversionKey,
+                        'policy_version_id' => $policyVersionId,
+                        'policy_version' => $policyVersion,
+                    ]);
+
+                    $remaining -= $toConsume;
                 }
-
-                $idempotencyKey = 'reputation-conversion-' . $user->id . '-' . now()->format('YmdHisv');
 
                 $this->monetaryService->activateDim(
                     $account,
                     $amountInGol,
-                    "تبدیل {$pointsToConvert} امتیاز به پول فعال",
+                    "تبدیل {$convertiblePoints} امتیاز به پول فعال",
                     [
                         'type' => 'reputation_conversion',
                         'user_id' => $user->id,
-                        'points_converted' => $pointsToConvert,
+                        'points_converted' => $convertiblePoints,
                         'ratio' => $ratio,
                         'policy_version_id' => $policyVersionId,
                         'policy_version' => $policyVersion,
                     ],
-                    $idempotencyKey,
+                    $conversionKey,
                     false
                 );
 
                 Log::info('Reputation converted to active money', [
                     'user_id' => $user->id,
-                    'points' => $pointsToConvert,
+                    'points' => $convertiblePoints,
                     'amount_gol' => $amountInGol,
                     'ratio' => $ratio,
                     'policy_version_id' => $policyVersionId,
                 ]);
             });
 
-            $amountFormatted = \App\Helpers\BaharMoney::formatDecimal(intval($pointsToConvert / $ratio));
+            $amountFormatted = \App\Helpers\BaharMoney::formatDecimal($amountInGol);
             return redirect()->route('najm-bahar.wallet')
-                ->with('success', "{$pointsToConvert} امتیاز با موفقیت به {$amountFormatted} بهار پول فعال تبدیل شد!");
+                ->with('success', "{$convertiblePoints} امتیاز با موفقیت به {$amountFormatted} بهار پول فعال تبدیل شد!");
 
         } catch (\Exception $e) {
             Log::error('Reputation conversion failed', [
                 'user_id' => $user->id,
-                'points' => $pointsToConvert,
+                'points' => $convertiblePoints,
                 'error' => $e->getMessage(),
             ]);
 

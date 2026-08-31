@@ -22,4 +22,9 @@ class UserPointTransaction extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function consumptions()
+    {
+        return $this->hasMany(UserPointConsumption::class, 'user_point_transaction_id');
+    }
 }
