@@ -38,11 +38,11 @@ class NajmBaharDashboardMobileUxContractTest extends TestCase
     {
         $coin = file_get_contents(resource_path('views/components/bahar-coin.blade.php'));
 
-        $this->assertStringContainsString('--bahar-coin-depth', $coin);
-        $this->assertStringContainsString('--bahar-coin-edge-step', $coin);
-        $this->assertStringContainsString('translateZ(var(--bahar-coin-depth, 9px))', $coin);
-        $this->assertStringContainsString('--bahar-coin-depth: 5.75px', $coin);
-        $this->assertStringContainsString('--bahar-coin-edge-step: 0.64px', $coin);
+        $this->assertStringContainsString('--bahar-coin-depth-scale: 1', $coin);
+        $this->assertStringContainsString('--bahar-coin-depth-scale: 0.64', $coin);
+        $this->assertStringContainsString('scaleZ(var(--bahar-coin-depth-scale))', $coin);
+        $this->assertStringContainsString('transform: translate(-50%, -48%);', $coin);
+        $this->assertStringContainsString('transform: none;', $coin);
         $this->assertStringNotContainsString('rotate(-8deg)', $coin);
         $this->assertStringNotContainsString('rotate(-10deg)', $coin);
     }
