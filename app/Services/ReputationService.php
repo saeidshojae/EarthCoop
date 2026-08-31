@@ -10,9 +10,13 @@ use Illuminate\Support\Facades\DB;
 
 class ReputationService
 {
-    public function addPoints(User $user, int $delta, string $action, array $meta = [], $referenceId = null, $source = null, string $dimension = 'participation', bool $convertible = false)
+    public function addPoints(User $user, int $delta, string $action, array $meta = [], $referenceId = null, $source = null, string $dimension = 'participation', bool $convertible = false, ?string $eventKey = null)
     {
-        return DB::transaction(function () use ($user, $delta, $action, $meta, $referenceId, $source, $dimension, $convertible) {
+        return DB::transaction(function () use ($user, $delta, $action, $meta, $referenceId, $source, $dimension, $convertible, $eventKey) {
+            if ($eventKey !== null && UserPointTransaction::where('event_key', $eventKey)->exists()) {
+                return null;
+            }
+
             $point = UserPoint::firstOrCreate(['user_id' => $user->id], ['points' => 0]);
             $newBalance = $point->points + $delta;
             $point->points = $newBalance;
@@ -22,13 +26,17 @@ class ReputationService
             return UserPointTransaction::create([
                 'user_id' => $user->id, 'delta' => $delta, 'balance_after' => $newBalance,
                 'action' => $action, 'dimension' => $dimension, 'convertible' => $convertible,
-                'source' => $source, 'reference_id' => $referenceId, 'metadata' => $meta,
+                'source' => $source, 'reference_id' => $referenceId, 'event_key' => $eventKey, 'metadata' => $meta,
             ]);
         });
     }
 
-    public function applyAction(User $user, string $actionKey, array $meta = [], $referenceId = null, $source = null)
+    public function applyAction(User $user, string $actionKey, array $meta = [], $referenceId = null, $source = null, ?string $eventKey = null)
     {
+        if ($eventKey !== null && UserPointTransaction::where('event_key', $eventKey)->exists()) {
+            return null;
+        }
+
         $rule = ReputationRule::where('key', $actionKey)->first();
         if ($rule) {
             if (! $rule->active) return null;
@@ -53,10 +61,10 @@ class ReputationService
             $award = min($weight, $remaining);
             return $this->addPoints($user, $award, $actionKey, array_merge($meta, [
                 'capped_award' => $award, 'cap' => $dailyCap, 'already_awarded' => $already,
-            ]), $referenceId, $source, $dimension, $convertible);
+            ]), $referenceId, $source, $dimension, $convertible, $eventKey);
         }
 
-        return $this->addPoints($user, $weight, $actionKey, $meta, $referenceId, $source, $dimension, $convertible);
+        return $this->addPoints($user, $weight, $actionKey, $meta, $referenceId, $source, $dimension, $convertible, $eventKey);
     }
 
     public function getPoints(User $user): int
