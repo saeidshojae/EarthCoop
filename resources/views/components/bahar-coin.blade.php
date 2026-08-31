@@ -20,3 +20,27 @@
     </div>
     <span class="bahar-coin__shadow"></span>
 </figure>
+
+@if ($variant === 'hero')
+    @once
+        <style>
+            .bahar-coin--hero {
+                --bahar-coin-depth-scale: 1;
+                transform: translate(-50%, -48%);
+            }
+
+            .bahar-coin--hero .bahar-coin__scene {
+                transform-style: preserve-3d;
+                -webkit-transform-style: preserve-3d;
+                transform: scaleZ(var(--bahar-coin-depth-scale));
+            }
+
+            @media (max-width: 767px) {
+                .bahar-coin--hero {
+                    --bahar-coin-depth-scale: 0.64;
+                    transform: none;
+                }
+            }
+        </style>
+    @endonce
+@endif
