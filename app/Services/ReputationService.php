@@ -38,26 +38,33 @@ class ReputationService
     }
 
     /**
-     * Apply a configured action key: read weight from DB (reputation_rules) or config and apply.
+     * Apply a configured action key. Existing DB rules are authoritative;
+     * config is only the fallback for action keys that have not been persisted.
      */
     public function applyAction(User $user, string $actionKey, array $meta = [], $referenceId = null, $source = null)
     {
-        // Prefer DB rule if exists
-        $rule = \App\Models\ReputationRule::where('key', $actionKey)->where('active', true)->first();
+        $rule = \App\Models\ReputationRule::where('key', $actionKey)->first();
+
         if ($rule) {
-            $weight = (int)$rule->weight;
+            if (! $rule->active) {
+                return null;
+            }
+
+            $weight = (int) $rule->weight;
+            $dailyCap = $rule->daily_cap !== null ? (int) $rule->daily_cap : null;
         } else {
-            $weight = (int)config("reputation.weights.{$actionKey}", 0);
+            $weight = (int) config("reputation.weights.{$actionKey}", 0);
+            $configuredCap = config("reputation.daily_caps.{$actionKey}");
+            $dailyCap = $configuredCap !== null ? (int) $configuredCap : null;
         }
 
         if ($weight === 0) {
             return null; // nothing to do
         }
 
-        // Enforce daily caps for positive-weight actions
-        $dailyCaps = config('reputation.daily_caps', []);
-        if ($weight > 0 && isset($dailyCaps[$actionKey])) {
-            $cap = (int)$dailyCaps[$actionKey];
+        // Enforce daily caps for positive-weight actions.
+        if ($weight > 0 && $dailyCap !== null) {
+            $cap = $dailyCap;
 
             // sum of positive deltas for this action in the last 24 hours
             $since = now()->subDay();
@@ -72,9 +79,13 @@ class ReputationService
                 return null; // cap exhausted
             }
 
-            // If the configured weight exceeds remaining cap, award only the remainder
+            // If the configured weight exceeds remaining cap, award only the remainder.
             $award = min($weight, $remaining);
-            return $this->addPoints($user, $award, $actionKey, array_merge($meta, ['capped_award' => $award, 'cap' => $cap, 'already_awarded' => $already]), $referenceId, $source);
+            return $this->addPoints($user, $award, $actionKey, array_merge($meta, [
+                'capped_award' => $award,
+                'cap' => $cap,
+                'already_awarded' => $already,
+            ]), $referenceId, $source);
         }
 
         return $this->addPoints($user, $weight, $actionKey, $meta, $referenceId, $source);
