@@ -60,7 +60,8 @@ class ViteRuntimePerformanceContractTest extends TestCase
         $this->assertStringNotContainsString('.nb-card', $app);
         $this->assertStringNotContainsString('.nb-stat', $app);
         $this->assertStringContainsString("window.location.pathname.startsWith('/najm-bahar')", $app);
-        $this->assertStringContainsString("document.querySelector('#payMembershipForm')", $app);
+        $this->assertStringContainsString("document.querySelector('#membershipFeeModal, #payMembershipForm')", $app);
+        $this->assertStringContainsString("document.querySelector('#najm-bahar-sidebar')", $app);
     }
 
     public function test_global_entry_keeps_only_shared_navigation_and_foundation_runtime_eager(): void
