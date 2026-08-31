@@ -24,7 +24,26 @@ class NajmBaharSettingsController extends Controller
         $settings->setAttribute('najm_bahar_initial_active_type', 'fixed_amount');
         $settings->setAttribute('najm_bahar_initial_active_fixed_amount', 0);
 
-        return view('admin.najm-bahar.settings.index', compact('settings'));
+        $html = view('admin.najm-bahar.settings.index', compact('settings'))->render();
+
+        return response($this->stripLegacySettingsScript($html));
+    }
+
+    /**
+     * The legacy Blade contains one malformed inline script block. Removing only
+     * that block at render time avoids a large formatting rewrite of the view;
+     * the page-scoped Vite runtime owns these handlers now.
+     */
+    private function stripLegacySettingsScript(string $html): string
+    {
+        $cleaned = preg_replace(
+            '/<script>\s*function toggleActiveType\(\).*?<\/script>/s',
+            '',
+            $html,
+            1
+        );
+
+        return $cleaned ?? $html;
     }
 
     /**
