@@ -32,10 +32,11 @@ const loadNajmHodaRuntime = () => {
 const loadNajmBaharRuntime = () => {
     const onNajmBaharPage = window.location.pathname.startsWith('/najm-bahar');
     const hasMembershipFeeUi = Boolean(document.querySelector('#membershipFeeModal, #payMembershipForm'));
+    const mobileUxPaths = ['/najm-bahar/dashboard', '/najm-bahar/wallet'];
     if (!onNajmBaharPage && !hasMembershipFeeUi) return;
     if (onNajmBaharPage) importFeature(() => import("./najm-bahar.js"), "Najm Bahar");
-    if (window.location.pathname === '/najm-bahar/dashboard') {
-        importFeature(() => import("./najm-bahar-dashboard-mobile.js"), "Najm Bahar dashboard mobile UX");
+    if (mobileUxPaths.includes(window.location.pathname)) {
+        importFeature(() => import("./najm-bahar-dashboard-mobile.js"), "Najm Bahar mobile UX");
     }
     if (hasMembershipFeeUi) importFeature(() => import("./najm-bahar-membership-source.js"), "Najm Bahar membership source");
 };
