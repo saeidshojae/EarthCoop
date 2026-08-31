@@ -27,15 +27,67 @@
             box-shadow: 0 10px 30px rgba(217, 154, 22, 0.52), 0 0 20px rgba(246, 196, 83, 0.38), inset 0 0 0 1px rgba(255, 248, 214, 0.95);
         }
         @keyframes nb-mobile-menu-glow {
-            0%, 100% {
-                box-shadow: 0 8px 20px rgba(217, 154, 22, 0.25), 0 0 6px rgba(246, 196, 83, 0.16), inset 0 0 0 1px rgba(255, 246, 199, 0.76);
-            }
-            50% {
-                box-shadow: 0 10px 30px rgba(217, 154, 22, 0.48), 0 0 18px rgba(246, 196, 83, 0.38), inset 0 0 0 1px rgba(255, 249, 222, 0.95);
-            }
+            0%, 100% { box-shadow: 0 8px 20px rgba(217, 154, 22, 0.25), 0 0 6px rgba(246, 196, 83, 0.16), inset 0 0 0 1px rgba(255, 246, 199, 0.76); }
+            50% { box-shadow: 0 10px 30px rgba(217, 154, 22, 0.48), 0 0 18px rgba(246, 196, 83, 0.38), inset 0 0 0 1px rgba(255, 249, 222, 0.95); }
         }
         @media (prefers-reduced-motion: reduce) {
             [data-nb-mobile-nav-trigger] { animation: none; }
+        }
+
+        @media (max-width: 1023px) {
+            .nb-wallet-hero-compact {
+                padding: 16px 18px 15px !important;
+                border-radius: 22px !important;
+                min-height: 0 !important;
+            }
+            .nb-wallet-hero-compact h1 { font-size: 1.42rem !important; margin-top: .55rem !important; line-height: 1.45 !important; }
+            .nb-wallet-hero-compact p { font-size: .78rem !important; line-height: 1.7 !important; }
+            .nb-wallet-hero-compact .nb-action-outline { padding: 7px 12px !important; font-size: .76rem !important; }
+            .nb-wallet-hero-compact .nb-chip { padding: 5px 10px !important; font-size: .72rem !important; }
+
+            [data-nb-wallet-tabs] {
+                position: sticky;
+                top: var(--unified-header-height, 64px);
+                z-index: 40;
+                margin: 10px 0 12px;
+            }
+            [data-nb-wallet-balance] {
+                padding: 16px !important;
+                border-radius: 20px !important;
+            }
+            [data-nb-wallet-balance] .nb-metric { font-size: 1.34rem !important; }
+            [data-nb-wallet-balance] .nb-stat { padding: 12px !important; border-radius: 14px !important; }
+
+            [data-nb-wallet-points] { padding: 15px !important; border-radius: 20px !important; }
+            [data-nb-wallet-points] [data-nb-wallet-convert] {
+                width: 100% !important;
+                min-height: 42px;
+                margin-top: 12px;
+                padding: 9px 14px !important;
+                border-radius: 14px !important;
+                font-size: .82rem !important;
+                display: inline-flex !important;
+                align-items: center;
+                justify-content: center;
+            }
+
+            [data-nb-wallet-transactions] { padding: 15px !important; border-radius: 20px !important; }
+            [data-nb-wallet-transactions] table { display: none !important; }
+            .nb-wallet-transaction-list { display: grid; gap: 8px; margin-top: 10px; }
+            .nb-wallet-transaction-item {
+                display: grid;
+                gap: 7px;
+                padding: 11px 12px;
+                border: 1px solid rgba(226, 232, 240, .9);
+                border-radius: 14px;
+                background: linear-gradient(135deg, #fff, #f8fafc);
+            }
+            .nb-wallet-transaction-primary { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+            .nb-wallet-transaction-title { color: #0f172a; font-size: .8rem; font-weight: 800; line-height: 1.55; }
+            .nb-wallet-transaction-amount { white-space: nowrap; font-size: .8rem; font-weight: 900; color: #0f766e; }
+            .nb-wallet-transaction-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 9px; color: #64748b; font-size: .67rem; }
+            .nb-wallet-transaction-status { padding: 3px 8px; border-radius: 999px; background: #dcfce7; color: #15803d; font-weight: 800; }
+            .nb-wallet-mobile-service-duplicate { display: none !important; }
         }
     `;
     document.head.appendChild(style);
@@ -82,7 +134,6 @@
         trigger.setAttribute('aria-expanded', 'false');
         document.body.style.overflow = '';
     };
-
     const openSheet = () => {
         sheet.classList.remove('hidden');
         trigger.setAttribute('aria-expanded', 'true');
@@ -93,43 +144,37 @@
     trigger.addEventListener('click', openSheet);
     sheet.querySelector('[data-nb-mobile-nav-close]')?.addEventListener('click', closeSheet);
     sheet.querySelector('[data-nb-mobile-nav-backdrop]')?.addEventListener('click', closeSheet);
-    sheet.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') closeSheet();
-    });
-    sheet.addEventListener('click', (event) => {
-        if (event.target.closest('a')) closeSheet();
-    });
+    sheet.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeSheet(); });
+    sheet.addEventListener('click', (event) => { if (event.target.closest('a')) closeSheet(); });
 
     let accountCard = null;
     let systemCard = null;
-    let tabs = null;
-    let activeTab = 'account';
+    let dashboardTabs = null;
+    let activeDashboardTab = 'account';
 
     const createDashboardTabs = () => {
         if (!isDashboard) return;
-
         const findDashboardCard = (title) => Array.from(main.querySelectorAll('.nb-card')).find((card) =>
             Array.from(card.querySelectorAll('h2')).some((heading) => heading.textContent.trim().includes(title))
         );
-
         accountCard = findDashboardCard('نمای کلی حساب شما');
         systemCard = findDashboardCard('گزارش کلی سامانه');
         if (!accountCard || !systemCard) return;
 
-        tabs = document.createElement('div');
-        tabs.setAttribute('data-nb-dashboard-tabs', 'true');
-        tabs.className = 'hidden lg:hidden grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1';
-        tabs.innerHTML = `
+        dashboardTabs = document.createElement('div');
+        dashboardTabs.setAttribute('data-nb-dashboard-tabs', 'true');
+        dashboardTabs.className = 'hidden lg:hidden grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1';
+        dashboardTabs.innerHTML = `
             <button type="button" data-nb-tab="account" class="rounded-xl px-3 py-3 text-sm font-bold transition" aria-selected="true">حساب من</button>
             <button type="button" data-nb-tab="system" class="rounded-xl px-3 py-3 text-sm font-bold transition" aria-selected="false">وضعیت سامانه</button>`;
-        accountCard.parentNode?.insertBefore(tabs, accountCard);
+        accountCard.parentNode?.insertBefore(dashboardTabs, accountCard);
 
-        const renderTabs = () => {
-            const accountActive = activeTab === 'account';
+        dashboardTabs._render = () => {
+            const accountActive = activeDashboardTab === 'account';
             accountCard.classList.toggle('hidden', !accountActive && mobileQuery.matches);
             systemCard.classList.toggle('hidden', accountActive && mobileQuery.matches);
-            tabs.querySelectorAll('[data-nb-tab]').forEach((button) => {
-                const selected = button.dataset.nbTab === activeTab;
+            dashboardTabs.querySelectorAll('[data-nb-tab]').forEach((button) => {
+                const selected = button.dataset.nbTab === activeDashboardTab;
                 button.setAttribute('aria-selected', selected ? 'true' : 'false');
                 button.classList.toggle('bg-white', selected);
                 button.classList.toggle('text-emerald-700', selected);
@@ -137,23 +182,126 @@
                 button.classList.toggle('text-slate-500', !selected);
             });
         };
-
-        tabs.addEventListener('click', (event) => {
+        dashboardTabs.addEventListener('click', (event) => {
             const button = event.target.closest('[data-nb-tab]');
             if (!button) return;
-            activeTab = button.dataset.nbTab;
-            renderTabs();
+            activeDashboardTab = button.dataset.nbTab;
+            dashboardTabs._render();
+        });
+    };
+
+    let walletTabs = null;
+    let walletCards = [];
+    let walletBalanceCard = null;
+    let walletPointsCard = null;
+    let walletTransactionsCard = null;
+    let activeWalletTab = 'account';
+    let pointsButton = null;
+    let pointsButtonDesktopHtml = '';
+
+    const normalize = (value) => (value || '').replace(/\s+/g, ' ').trim();
+    const findCardByText = (needle) => Array.from(main.querySelectorAll('.nb-card')).find((card) => normalize(card.textContent).includes(needle));
+
+    const buildMobileTransactionList = (card) => {
+        const table = card?.querySelector('table');
+        if (!table || card.querySelector('.nb-wallet-transaction-list')) return;
+
+        const headers = Array.from(table.querySelectorAll('thead th')).map((cell) => normalize(cell.textContent));
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        const list = document.createElement('div');
+        list.className = 'nb-wallet-transaction-list';
+
+        rows.forEach((row) => {
+            const cells = Array.from(row.querySelectorAll('td')).map((cell) => normalize(cell.textContent));
+            if (!cells.length) return;
+            const record = Object.fromEntries(cells.map((value, index) => [headers[index] || `field-${index}`, value]));
+            const valueFor = (token) => Object.entries(record).find(([key]) => key.includes(token))?.[1] || '';
+            const description = valueFor('شرح') || cells.find((value) => value.length > 12) || cells[0];
+            const amount = valueFor('مبلغ') || cells.find((value) => /بهار/.test(value)) || '';
+            const status = valueFor('وضعیت') || cells.find((value) => /تکمیل|موفق|در انتظار|ناموفق/.test(value)) || '';
+            const date = valueFor('تاریخ') || cells.find((value) => /\d{2,4}[\/\-]\d{1,2}[\/\-]\d{1,2}/.test(value)) || '';
+
+            const item = document.createElement('article');
+            item.className = 'nb-wallet-transaction-item';
+            item.innerHTML = `
+                <div class="nb-wallet-transaction-primary">
+                    <div class="nb-wallet-transaction-title"></div>
+                    <div class="nb-wallet-transaction-amount"></div>
+                </div>
+                <div class="nb-wallet-transaction-meta">
+                    ${status ? '<span class="nb-wallet-transaction-status"></span>' : ''}
+                    ${date ? '<span class="nb-wallet-transaction-date"></span>' : ''}
+                </div>`;
+            item.querySelector('.nb-wallet-transaction-title').textContent = description;
+            item.querySelector('.nb-wallet-transaction-amount').textContent = amount;
+            if (status) item.querySelector('.nb-wallet-transaction-status').textContent = status;
+            if (date) item.querySelector('.nb-wallet-transaction-date').textContent = date;
+            list.appendChild(item);
         });
 
-        tabs._render = renderTabs;
+        if (list.children.length) table.insertAdjacentElement('afterend', list);
+    };
+
+    const createWalletTabs = () => {
+        if (!isPersonalWallet) return;
+
+        dashboard.querySelector('.nb-hero')?.classList.add('nb-wallet-hero-compact');
+        walletCards = Array.from(main.querySelectorAll('.nb-card'));
+        walletBalanceCard = findCardByText('موجودی کل حساب');
+        walletPointsCard = findCardByText('امتیازات نقد');
+        walletTransactionsCard = findCardByText('تراکنش‌های اخیر');
+
+        walletBalanceCard?.setAttribute('data-nb-wallet-balance', 'true');
+        walletPointsCard?.setAttribute('data-nb-wallet-points', 'true');
+        walletTransactionsCard?.setAttribute('data-nb-wallet-transactions', 'true');
+
+        pointsButton = walletPointsCard ? Array.from(walletPointsCard.querySelectorAll('button, a')).find((element) => normalize(element.textContent).includes('نقد')) : null;
+        if (pointsButton) {
+            pointsButton.setAttribute('data-nb-wallet-convert', 'true');
+            pointsButtonDesktopHtml = pointsButton.innerHTML;
+        }
+        buildMobileTransactionList(walletTransactionsCard);
+
+        if (!walletCards.length) return;
+        walletTabs = document.createElement('div');
+        walletTabs.setAttribute('data-nb-wallet-tabs', 'true');
+        walletTabs.className = 'hidden lg:hidden grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1 shadow-sm';
+        walletTabs.innerHTML = `
+            <button type="button" data-nb-wallet-tab="account" class="rounded-xl px-3 py-2.5 text-sm font-bold transition" aria-selected="true">حساب</button>
+            <button type="button" data-nb-wallet-tab="activity" class="rounded-xl px-3 py-2.5 text-sm font-bold transition" aria-selected="false">فعالیت</button>`;
+        walletCards[0].parentNode?.insertBefore(walletTabs, walletCards[0]);
+
+        walletTabs._render = () => {
+            const activityActive = activeWalletTab === 'activity';
+            walletCards.forEach((card) => {
+                const isActivityCard = card === walletPointsCard || card === walletTransactionsCard;
+                card.classList.toggle('hidden', mobileQuery.matches && (activityActive ? !isActivityCard : isActivityCard));
+            });
+            walletTabs.querySelectorAll('[data-nb-wallet-tab]').forEach((button) => {
+                const selected = button.dataset.nbWalletTab === activeWalletTab;
+                button.setAttribute('aria-selected', selected ? 'true' : 'false');
+                button.classList.toggle('bg-white', selected);
+                button.classList.toggle('text-emerald-700', selected);
+                button.classList.toggle('shadow-sm', selected);
+                button.classList.toggle('text-slate-500', !selected);
+            });
+        };
+        walletTabs.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-nb-wallet-tab]');
+            if (!button) return;
+            activeWalletTab = button.dataset.nbWalletTab;
+            walletTabs._render();
+        });
     };
 
     createDashboardTabs();
+    createWalletTabs();
 
     const applyResponsiveState = () => {
         if (mobileQuery.matches) {
             trigger.classList.remove('hidden');
-            tabs?.classList.remove('hidden');
+            dashboardTabs?.classList.remove('hidden');
+            walletTabs?.classList.remove('hidden');
             sidebarHost.classList.add('hidden');
             if (sheetContent && sidebar.parentElement !== sheetContent) sheetContent.appendChild(sidebar);
             if (originalToggle) originalToggle.style.display = 'none';
@@ -162,13 +310,17 @@
             sidebar.style.boxShadow = 'none';
             sidebar.style.border = '0';
             sidebar.style.borderRadius = '0';
-            tabs?._render?.();
+            dashboardTabs?._render?.();
+            walletTabs?._render?.();
+            if (pointsButton) pointsButton.textContent = 'تبدیل امتیاز به بهار';
+            if (isPersonalWallet) main.querySelectorAll('.nb-quick').forEach((item) => item.classList.add('nb-wallet-mobile-service-duplicate'));
             return;
         }
 
         closeSheet();
         trigger.classList.add('hidden');
-        tabs?.classList.add('hidden');
+        dashboardTabs?.classList.add('hidden');
+        walletTabs?.classList.add('hidden');
         sidebarHost.classList.remove('hidden');
         if (sidebarPlaceholder.parentNode && sidebar.parentElement !== sidebarPlaceholder.parentNode) {
             sidebarPlaceholder.parentNode.insertBefore(sidebar, sidebarPlaceholder.nextSibling);
@@ -180,6 +332,9 @@
         sidebar.style.borderRadius = '';
         accountCard?.classList.remove('hidden');
         systemCard?.classList.remove('hidden');
+        walletCards.forEach((card) => card.classList.remove('hidden'));
+        main.querySelectorAll('.nb-quick').forEach((item) => item.classList.remove('nb-wallet-mobile-service-duplicate'));
+        if (pointsButton && pointsButtonDesktopHtml) pointsButton.innerHTML = pointsButtonDesktopHtml;
     };
 
     applyResponsiveState();
