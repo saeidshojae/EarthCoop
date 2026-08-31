@@ -5,6 +5,7 @@ return [
     'weights' => [
         'email_verified' => 50,
         'profile_completed' => 30,
+        'invite_member' => 10,
         'post_created' => 10,
         'post_upvoted' => 5,
         'comment_created' => 2,
@@ -28,6 +29,16 @@ return [
         'election_candidate' => 10,
         'elected_inspector' => 50,
         'elected_manager' => 100,
+    ],
+
+    // Policy defaults are used only when a rule is first bootstrapped into the database.
+    // Existing database rules remain authoritative and are never overwritten by config.
+    'policy_defaults' => [
+        'invite_member' => [
+            'dimension' => 'participation',
+            'convertible' => true,
+            'repeat_policy' => 'once_per_context',
+        ],
     ],
 
     // Tier thresholds
