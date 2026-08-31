@@ -165,6 +165,22 @@ class NajmBaharReportController extends Controller
                     $q->whereNull('to_account_id')
                       ->orWhereNotIn('to_account_id', $accountIds);
                 });
+        } else {
+            $query->where(function ($q) use ($accountIds) {
+                $q->where(function ($incoming) use ($accountIds) {
+                    $incoming->whereIn('to_account_id', $accountIds)
+                        ->where(function ($outside) use ($accountIds) {
+                            $outside->whereNull('from_account_id')
+                                ->orWhereNotIn('from_account_id', $accountIds);
+                        });
+                })->orWhere(function ($outgoing) use ($accountIds) {
+                    $outgoing->whereIn('from_account_id', $accountIds)
+                        ->where(function ($outside) use ($accountIds) {
+                            $outside->whereNull('to_account_id')
+                                ->orWhereNotIn('to_account_id', $accountIds);
+                        });
+                });
+            });
         }
 
         return $query;
@@ -209,7 +225,7 @@ class NajmBaharReportController extends Controller
             ];
         }
 
-        $transactions = Transaction::where(function($q) use ($accountIds) {
+        $query = Transaction::where(function($q) use ($accountIds) {
             $q->whereIn('from_account_id', $accountIds)
               ->orWhereIn('to_account_id', $accountIds);
         })
@@ -217,21 +233,13 @@ class NajmBaharReportController extends Controller
             Carbon::parse($dateFrom)->startOfDay(),
             Carbon::parse($dateTo)->endOfDay()
         ])
-        ->where('status', 'completed')
-        ->get();
+        ->where('status', 'completed');
 
-        $totalIn = $transactions->filter(function ($transaction) use ($accountIds) {
-            $toOwned = $transaction->to_account_id !== null && in_array((int) $transaction->to_account_id, $accountIds, true);
-            $fromOwned = $transaction->from_account_id !== null && in_array((int) $transaction->from_account_id, $accountIds, true);
-            return $toOwned && ! $fromOwned;
-        })->sum('amount');
+        $this->applyDirectionFilter($query, 'all', $accountIds);
+        $transactions = $query->get();
 
-        $totalOut = $transactions->filter(function ($transaction) use ($accountIds) {
-            $fromOwned = $transaction->from_account_id !== null && in_array((int) $transaction->from_account_id, $accountIds, true);
-            $toOwned = $transaction->to_account_id !== null && in_array((int) $transaction->to_account_id, $accountIds, true);
-            return $fromOwned && ! $toOwned;
-        })->sum('amount');
-
+        $totalIn = $transactions->whereIn('to_account_id', $accountIds)->sum('amount');
+        $totalOut = $transactions->whereIn('from_account_id', $accountIds)->sum('amount');
         $count = $transactions->count();
 
         return [
