@@ -10,8 +10,7 @@ class ReputationController extends Controller
 {
     public function index()
     {
-        // Ensure rules are upserted from config so new keys appear in the UI
-        // (updateOrCreate inside seedFromConfig makes this idempotent)
+        // Ensure config-defined rules exist without overwriting admin-authored DB values.
         $this->seedFromConfig();
 
         $rules = ReputationRule::orderBy('module')->orderBy('key')->get();
@@ -129,11 +128,11 @@ class ReputationController extends Controller
 
     protected function seedFromConfig()
     {
-        // Upsert rules from config so new keys are added and existing keys are preserved/updated
+        // Config is a bootstrap catalogue only. Existing DB rules are runtime/admin source of truth.
         $weights = config('reputation.weights', []);
         $dailyCaps = config('reputation.daily_caps', []);
         foreach ($weights as $key => $w) {
-            ReputationRule::updateOrCreate(
+            ReputationRule::firstOrCreate(
                 ['key' => $key],
                 [
                     'label' => str_replace('_', ' ', ucfirst($key)),
