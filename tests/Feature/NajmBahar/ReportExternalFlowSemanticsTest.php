@@ -9,6 +9,7 @@ use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\Transaction;
 use App\Modules\NajmBahar\Services\AccountNumberService;
 use App\Modules\NajmBahar\Services\AccountService;
+use App\Modules\NajmBahar\Services\TransactionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -34,7 +35,21 @@ class ReportExternalFlowSemanticsTest extends TestCase
         $response->assertViewHas('summary', function (array $summary): bool {
             return (int) $summary['totalIn'] === BaharMoney::toGolFromBahar(10_000)
                 && (int) $summary['totalOut'] === BaharMoney::toGolFromBahar(12)
-                && (int) $summary['net'] === BaharMoney::toGolFromBahar(9_988);
+                && (int) $summary['net'] === BaharMoney::toGolFromBahar(9_988)
+                && (int) $summary['count'] === 4;
+        });
+        $response->assertViewHas('transactions', function ($transactions) use ($user): bool {
+            $accountIds = app(TransactionService::class)->getUserAccountIds($user->id);
+
+            return $transactions->count() === 4
+                && $transactions->every(function ($transaction) use ($accountIds): bool {
+                    $fromOwned = $transaction->from_account_id !== null
+                        && in_array((int) $transaction->from_account_id, $accountIds, true);
+                    $toOwned = $transaction->to_account_id !== null
+                        && in_array((int) $transaction->to_account_id, $accountIds, true);
+
+                    return $fromOwned xor $toOwned;
+                });
         });
     }
 
@@ -63,7 +78,7 @@ class ReportExternalFlowSemanticsTest extends TestCase
         );
     }
 
-    public function test_transfer_between_main_and_owned_subaccount_does_not_change_external_flow_totals(): void
+    public function test_transfer_between_main_and_owned_subaccount_does_not_change_external_flow_totals_or_list(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user)->post(route('najm-bahar.agreement.process'), [
@@ -96,8 +111,13 @@ class ReportExternalFlowSemanticsTest extends TestCase
         $response->assertOk()->assertViewHas('summary', function (array $summary): bool {
             return (int) $summary['totalIn'] === BaharMoney::toGolFromBahar(10_000)
                 && (int) $summary['totalOut'] === 0
-                && (int) $summary['net'] === BaharMoney::toGolFromBahar(10_000);
+                && (int) $summary['net'] === BaharMoney::toGolFromBahar(10_000)
+                && (int) $summary['count'] === 1;
         });
+        $response->assertViewHas('transactions', fn ($transactions): bool =>
+            $transactions->count() === 1
+            && ($transactions->first()?->metadata['type'] ?? null) === 'initial_funding'
+        );
 
         $this->actingAs($user)->get(route('najm-bahar.reports', ['type' => 'in']))
             ->assertViewHas('transactions', fn ($transactions): bool => $transactions->count() === 1);
