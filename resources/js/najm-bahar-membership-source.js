@@ -6,6 +6,10 @@
         const modal = document.getElementById('membershipFeeModal');
         if (!modal) return;
 
+        if (modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+        modal.style.zIndex = '2147483000';
         modal.style.overflowY = 'auto';
         modal.style.overscrollBehavior = 'contain';
 
