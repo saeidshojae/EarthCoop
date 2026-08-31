@@ -8,6 +8,7 @@ use App\Modules\NajmBahar\Models\Transaction;
 use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\Fee;
 use App\Modules\NajmBahar\Models\ScheduledTransaction;
+use App\Modules\NajmBahar\Policy\NajmBaharConstitution;
 use App\Models\AdminActionLog;
 use App\Models\Setting;
 use App\Models\User;
@@ -19,7 +20,6 @@ use Illuminate\Http\Request;
 class NajmBaharDashboardController extends Controller
 {
     private const DEFAULT_USER_THRESHOLD = 1111111;
-    private const DEFAULT_INITIAL_AMOUNT = 1000000;
 
     /**
      * نمایش Dashboard ادمین
@@ -28,7 +28,7 @@ class NajmBaharDashboardController extends Controller
     {
         $settings = Setting::firstNajmBaharSettings();
         $userThreshold = (int) ($settings->najm_bahar_user_threshold ?? self::DEFAULT_USER_THRESHOLD);
-        $initialAmount = (int) ($settings->najm_bahar_initial_amount ?? self::DEFAULT_INITIAL_AMOUNT);
+        $initialAmount = NajmBaharConstitution::initialMembershipGol();
         $userCount = User::members()->count();
         $isThresholdMet = $userCount >= $userThreshold;
         $totalMinted = $userCount * $initialAmount;
@@ -152,26 +152,13 @@ class NajmBaharDashboardController extends Controller
     }
 
     /**
-     * بروزرسانی مبلغ واریز اولیه نجم بهار
+     * مبلغ صدور اولیه عضو یک invariant قانون اساسی نجم بهار است و از پنل ادمین قابل تغییر نیست.
+     * endpoint قدیمی عمداً برای سازگاری فرم‌های موجود باقی می‌ماند اما هیچ state مالی را تغییر نمی‌دهد.
      */
     public function updateInitialAmount(Request $request)
     {
-        $validated = $request->validate([
-            'najm_bahar_initial_amount' => ['required', 'regex:/^\d+(\.\d{1,2})?$/'],
-        ]);
-
-        $initialAmount = BaharMoney::parseToGol($validated['najm_bahar_initial_amount']);
-        if ($initialAmount <= 0) {
-            return redirect()->route('admin.najm-bahar.dashboard')
-                ->with('error', 'مبلغ واریز اولیه باید بزرگتر از صفر باشد.');
-        }
-
-        $settings = Setting::firstNajmBaharSettings();
-        $settings->najm_bahar_initial_amount = $initialAmount;
-        $settings->save();
-
         return redirect()->route('admin.najm-bahar.dashboard')
-            ->with('success', 'مبلغ واریز اولیه نجم بهار بروزرسانی شد.');
+            ->with('info', 'مبلغ صدور اولیه هر عضو طبق قانون اساسی نجم بهار ثابت و غیرقابل تغییر است.');
     }
 
     /**
