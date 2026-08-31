@@ -43,7 +43,7 @@ class AdminInitialMembershipAmountInvariantTest extends TestCase
         $view = file_get_contents(resource_path('views/admin/najm-bahar/dashboard.blade.php'));
 
         $this->assertStringContainsString('NajmBaharConstitution::initialMembershipGol()', $controller);
-        $this->assertStringNotContainsString("$settings->najm_bahar_initial_amount", $controller);
+        $this->assertStringNotContainsString('$settings->najm_bahar_initial_amount', $controller);
         $this->assertStringNotContainsString("route('admin.najm-bahar.initial-amount.update')", $view);
         $this->assertStringNotContainsString('name="najm_bahar_initial_amount"', $view);
     }
