@@ -81,17 +81,31 @@ class AdminInitialMembershipAmountInvariantTest extends TestCase
         $this->assertSame(3, (int) $fresh->reputation_to_gol_ratio);
     }
 
-    public function test_admin_dashboard_uses_constitutional_amount_without_disturbing_adjacent_controls(): void
+    public function test_admin_surfaces_show_constitutional_issuance_read_only_without_disturbing_adjacent_controls(): void
     {
         $controller = file_get_contents(app_path('Http/Controllers/Admin/NajmBaharDashboardController.php'));
-        $view = file_get_contents(resource_path('views/admin/najm-bahar/dashboard.blade.php'));
+        $dashboard = file_get_contents(resource_path('views/admin/najm-bahar/dashboard.blade.php'));
+        $settingsView = file_get_contents(resource_path('views/admin/najm-bahar/settings/index.blade.php'));
 
         $this->assertStringContainsString('NajmBaharConstitution::initialMembershipGol()', $controller);
         $this->assertStringNotContainsString('$settings->najm_bahar_initial_amount', $controller);
 
+        $this->assertStringNotContainsString("route('admin.najm-bahar.initial-amount.update')", $dashboard);
+        $this->assertStringNotContainsString('name="najm_bahar_initial_amount"', $dashboard);
+        $this->assertStringNotContainsString('name="najm_bahar_initial_amount"', $settingsView);
+        $this->assertStringNotContainsString('name="najm_bahar_initial_active_percentage"', $settingsView);
+        $this->assertStringNotContainsString('name="najm_bahar_initial_active_type"', $settingsView);
+        $this->assertStringNotContainsString('name="najm_bahar_initial_active_fixed_amount"', $settingsView);
+
         // Regression guards: this fix must not remove or rename unrelated admin capabilities.
-        $this->assertStringContainsString("route('admin.najm-bahar.threshold.update')", $view);
-        $this->assertStringContainsString("route('admin.najm-bahar.settings.index')", $view);
-        $this->assertStringContainsString("route('admin.najm-bahar.membership-split.update')", $view);
+        $this->assertStringContainsString("route('admin.najm-bahar.threshold.update')", $dashboard);
+        $this->assertStringContainsString("route('admin.najm-bahar.settings.index')", $dashboard);
+        $this->assertStringContainsString("route('admin.najm-bahar.membership-split.update')", $dashboard);
+        $this->assertStringContainsString("route('admin.najm-bahar.settings.update')", $settingsView);
+        $this->assertStringContainsString('name="najm_bahar_auto_activation_enabled"', $settingsView);
+        $this->assertStringContainsString('name="najm_bahar_auto_activation_period"', $settingsView);
+        $this->assertStringContainsString('name="najm_bahar_auto_activation_amount"', $settingsView);
+        $this->assertStringContainsString('name="reputation_conversion_enabled"', $settingsView);
+        $this->assertStringContainsString('name="reputation_to_gol_ratio"', $settingsView);
     }
 }
