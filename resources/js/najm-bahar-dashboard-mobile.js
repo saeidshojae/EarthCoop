@@ -1,4 +1,9 @@
 (() => {
+    const pathname = window.location.pathname;
+    const isDashboard = pathname === '/najm-bahar/dashboard';
+    const isPersonalWallet = pathname === '/najm-bahar/wallet';
+    if (!isDashboard && !isPersonalWallet) return;
+
     const mobileQuery = window.matchMedia('(max-width: 1023px)');
     const dashboard = document.querySelector('.nb-dashboard');
     const sidebarHost = document.querySelector('.nb-sidebar');
@@ -6,6 +11,34 @@
     const main = dashboard?.querySelector('main');
 
     if (!dashboard || !sidebarHost || !sidebar || !main) return;
+
+    const style = document.createElement('style');
+    style.setAttribute('data-nb-mobile-nav-style', 'true');
+    style.textContent = `
+        [data-nb-mobile-nav-trigger] {
+            background: linear-gradient(135deg, #fff7cc 0%, #f6c453 45%, #d99a16 100%);
+            border-color: rgba(180, 121, 12, 0.68) !important;
+            color: #5b3a00 !important;
+            box-shadow: 0 8px 24px rgba(217, 154, 22, 0.34), inset 0 0 0 1px rgba(255, 246, 199, 0.82);
+            animation: nb-mobile-menu-glow 2.4s ease-in-out infinite;
+        }
+        [data-nb-mobile-nav-trigger]:hover,
+        [data-nb-mobile-nav-trigger]:focus-visible {
+            box-shadow: 0 10px 30px rgba(217, 154, 22, 0.52), 0 0 20px rgba(246, 196, 83, 0.38), inset 0 0 0 1px rgba(255, 248, 214, 0.95);
+        }
+        @keyframes nb-mobile-menu-glow {
+            0%, 100% {
+                box-shadow: 0 8px 20px rgba(217, 154, 22, 0.25), 0 0 6px rgba(246, 196, 83, 0.16), inset 0 0 0 1px rgba(255, 246, 199, 0.76);
+            }
+            50% {
+                box-shadow: 0 10px 30px rgba(217, 154, 22, 0.48), 0 0 18px rgba(246, 196, 83, 0.38), inset 0 0 0 1px rgba(255, 249, 222, 0.95);
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            [data-nb-mobile-nav-trigger] { animation: none; }
+        }
+    `;
+    document.head.appendChild(style);
 
     const sidebarPlaceholder = document.createComment('najm-bahar-sidebar-home');
     sidebar.parentNode?.insertBefore(sidebarPlaceholder, sidebar);
@@ -15,7 +48,7 @@
     trigger.setAttribute('data-nb-mobile-nav-trigger', 'true');
     trigger.setAttribute('aria-expanded', 'false');
     trigger.setAttribute('aria-controls', 'nb-mobile-nav-sheet');
-    trigger.className = 'lg:hidden fixed bottom-5 left-5 z-[1200] inline-flex items-center gap-2 rounded-full bg-white px-4 py-3 font-bold text-slate-800 shadow-xl border border-slate-200';
+    trigger.className = 'lg:hidden fixed bottom-5 left-5 z-[1200] inline-flex items-center gap-2 rounded-full px-4 py-3 font-bold shadow-xl border';
     trigger.innerHTML = '<i class="fas fa-wallet" aria-hidden="true"></i><span>منوی نجم بهار</span>';
 
     const sheet = document.createElement('div');
@@ -67,17 +100,22 @@
         if (event.target.closest('a')) closeSheet();
     });
 
-    const findDashboardCard = (title) => Array.from(main.querySelectorAll('.nb-card')).find((card) =>
-        Array.from(card.querySelectorAll('h2')).some((heading) => heading.textContent.trim().includes(title))
-    );
-
-    const accountCard = findDashboardCard('نمای کلی حساب شما');
-    const systemCard = findDashboardCard('گزارش کلی سامانه');
-
+    let accountCard = null;
+    let systemCard = null;
     let tabs = null;
     let activeTab = 'account';
 
-    if (accountCard && systemCard) {
+    const createDashboardTabs = () => {
+        if (!isDashboard) return;
+
+        const findDashboardCard = (title) => Array.from(main.querySelectorAll('.nb-card')).find((card) =>
+            Array.from(card.querySelectorAll('h2')).some((heading) => heading.textContent.trim().includes(title))
+        );
+
+        accountCard = findDashboardCard('نمای کلی حساب شما');
+        systemCard = findDashboardCard('گزارش کلی سامانه');
+        if (!accountCard || !systemCard) return;
+
         tabs = document.createElement('div');
         tabs.setAttribute('data-nb-dashboard-tabs', 'true');
         tabs.className = 'hidden lg:hidden grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1';
@@ -108,7 +146,9 @@
         });
 
         tabs._render = renderTabs;
-    }
+    };
+
+    createDashboardTabs();
 
     const applyResponsiveState = () => {
         if (mobileQuery.matches) {
