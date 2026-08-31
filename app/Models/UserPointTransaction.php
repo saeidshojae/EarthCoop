@@ -10,7 +10,7 @@ class UserPointTransaction extends Model
 
     protected $fillable = [
         'user_id', 'delta', 'balance_after', 'action', 'dimension', 'convertible',
-        'source', 'reference_id', 'metadata',
+        'source', 'reference_id', 'event_key', 'metadata',
     ];
 
     protected $casts = [
