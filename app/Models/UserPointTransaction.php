@@ -9,17 +9,13 @@ class UserPointTransaction extends Model
     protected $table = 'user_point_transactions';
 
     protected $fillable = [
-        'user_id',
-        'delta',
-        'balance_after',
-        'action',
-        'source',
-        'reference_id',
-        'metadata',
+        'user_id', 'delta', 'balance_after', 'action', 'dimension', 'convertible',
+        'source', 'reference_id', 'metadata',
     ];
 
     protected $casts = [
         'metadata' => 'array',
+        'convertible' => 'boolean',
     ];
 
     public function user()
