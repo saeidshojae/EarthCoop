@@ -34,6 +34,9 @@ const loadNajmBaharRuntime = () => {
     const hasMembershipFeeUi = Boolean(document.querySelector('#membershipFeeModal, #payMembershipForm'));
     if (!onNajmBaharPage && !hasMembershipFeeUi) return;
     if (onNajmBaharPage) importFeature(() => import("./najm-bahar.js"), "Najm Bahar");
+    if (window.location.pathname === '/najm-bahar/dashboard') {
+        importFeature(() => import("./najm-bahar-dashboard-mobile.js"), "Najm Bahar dashboard mobile UX");
+    }
     if (hasMembershipFeeUi) importFeature(() => import("./najm-bahar-membership-source.js"), "Najm Bahar membership source");
 };
 
