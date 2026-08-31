@@ -6,6 +6,7 @@ return [
         'email_verified' => 50,
         'profile_completed' => 30,
         'invite_member' => 10,
+        'membership_fee_paid' => 12,
         'post_created' => 10,
         'post_upvoted' => 5,
         'comment_created' => 2,
@@ -35,6 +36,11 @@ return [
     // Existing database rules remain authoritative and are never overwritten by config.
     'policy_defaults' => [
         'invite_member' => [
+            'dimension' => 'participation',
+            'convertible' => true,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'membership_fee_paid' => [
             'dimension' => 'participation',
             'convertible' => true,
             'repeat_policy' => 'once_per_context',
