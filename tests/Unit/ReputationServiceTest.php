@@ -142,4 +142,18 @@ class ReputationServiceTest extends TestCase
         $this->assertFalse((bool) $rule->convertible);
         $this->assertSame('once_per_context', $rule->repeat_policy);
     }
+
+    public function test_admin_reputation_view_exposes_policy_controls(): void
+    {
+        $source = file_get_contents(resource_path('views/admin/system-settings/reputation/index.blade.php'));
+
+        $this->assertStringContainsString('name="dimension[{{ $rule->key }}]"', $source);
+        $this->assertStringContainsString('name="convertible[{{ $rule->key }}]"', $source);
+        $this->assertStringContainsString('name="repeat_policy[{{ $rule->key }}]"', $source);
+        $this->assertStringContainsString("'participation'", $source);
+        $this->assertStringContainsString("'reliability'", $source);
+        $this->assertStringContainsString("'expertise'", $source);
+        $this->assertStringContainsString("'civic_trust'", $source);
+        $this->assertStringContainsString("'once_per_context'", $source);
+    }
 }
