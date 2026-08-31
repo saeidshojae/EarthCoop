@@ -49,12 +49,30 @@ class ReportExternalFlowSemanticsTest extends TestCase
 
         $incoming->assertOk()->assertViewHas('transactions', fn ($transactions): bool =>
             $transactions->count() === 1
-            && $transactions->first()?->metadata['type'] === 'initial_funding'
+            && ($transactions->first()?->metadata['type'] ?? null) === 'initial_funding'
         );
 
         $outgoing->assertOk()->assertViewHas('transactions', fn ($transactions): bool =>
             $transactions->count() === 3
             && $transactions->every(fn ($transaction): bool => ($transaction->metadata['type'] ?? null) === 'membership_fee')
         );
+    }
+
+    public function test_all_transactions_marks_bucket_activation_as_internal_movement(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post(route('najm-bahar.agreement.process'), [
+            'agreement_accepted' => '1',
+        ]);
+        $this->actingAs($user)->post(route('najm-bahar.membership-fee.pay'), [
+            'payment_source' => 'dim',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('najm-bahar.reports'));
+
+        $response->assertOk();
+        $response->assertViewHas('reportAccountIds', fn (array $ids): bool => count($ids) >= 1);
+        $response->assertSee('انتقال داخلی');
     }
 }
