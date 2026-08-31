@@ -128,7 +128,8 @@ class NajmBaharController extends Controller
                 'economic_rule' => 'participation_points_only_no_dim_transfer',
             ],
             $invitationCheck->id,
-            'najm_bahar_membership'
+            'najm_bahar_membership',
+            'invite_member:referrer:' . $referrer->id . ':member:' . $user->id
         );
     }
 
