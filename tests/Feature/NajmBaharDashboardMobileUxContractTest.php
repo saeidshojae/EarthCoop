@@ -6,16 +6,18 @@ use Tests\TestCase;
 
 class NajmBaharDashboardMobileUxContractTest extends TestCase
 {
-    public function test_mobile_runtime_is_scoped_to_dashboard_and_personal_wallet_only(): void
+    public function test_mobile_navigation_runtime_is_loaded_by_sidebar_presence_not_path_allowlist(): void
     {
         $app = file_get_contents(resource_path('js/app.js'));
         $runtime = file_get_contents(resource_path('js/najm-bahar-dashboard-mobile.js'));
 
-        $this->assertStringContainsString("'/najm-bahar/dashboard'", $app);
-        $this->assertStringContainsString("'/najm-bahar/wallet'", $app);
+        $this->assertStringContainsString("document.querySelector('#najm-bahar-sidebar')", $app);
+        $this->assertStringNotContainsString('const mobileUxPaths', $app);
         $this->assertStringContainsString('najm-bahar-dashboard-mobile.js', $app);
         $this->assertStringContainsString("pathname === '/najm-bahar/dashboard'", $runtime);
         $this->assertStringContainsString("pathname === '/najm-bahar/wallet'", $runtime);
+        $this->assertStringContainsString("document.getElementById('najm-bahar-sidebar')", $runtime);
+        $this->assertStringNotContainsString('if (!isDashboard && !isPersonalWallet) return;', $runtime);
         $this->assertStringContainsString('data-nb-mobile-nav-trigger', $runtime);
         $this->assertStringContainsString('data-nb-mobile-nav-sheet', $runtime);
         $this->assertStringContainsString('nb-mobile-menu-glow', $runtime);
