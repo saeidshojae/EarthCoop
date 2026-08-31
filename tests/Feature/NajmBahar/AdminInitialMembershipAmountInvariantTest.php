@@ -84,6 +84,7 @@ class AdminInitialMembershipAmountInvariantTest extends TestCase
     public function test_admin_runtime_makes_constitutional_controls_read_only_without_touching_adjacent_capabilities(): void
     {
         $controller = file_get_contents(app_path('Http/Controllers/Admin/NajmBaharDashboardController.php'));
+        $settingsController = file_get_contents(app_path('Http/Controllers/Admin/NajmBaharSettingsController.php'));
         $dashboard = file_get_contents(resource_path('views/admin/najm-bahar/dashboard.blade.php'));
         $settingsView = file_get_contents(resource_path('views/admin/najm-bahar/settings/index.blade.php'));
         $appJs = file_get_contents(resource_path('js/app.js'));
@@ -102,6 +103,11 @@ class AdminInitialMembershipAmountInvariantTest extends TestCase
         $this->assertStringContainsString('name="najm_bahar_auto_activation_amount"', $settingsView);
         $this->assertStringContainsString('name="reputation_conversion_enabled"', $settingsView);
         $this->assertStringContainsString('name="reputation_to_gol_ratio"', $settingsView);
+
+        // The legacy malformed inline script must be stripped at render time rather than rewriting the Blade.
+        $this->assertStringContainsString('stripLegacySettingsScript', $settingsController);
+        $this->assertStringContainsString('preg_replace', $settingsController);
+        $this->assertStringContainsString('function toggleActiveType', $settingsController);
 
         $this->assertStringContainsString('./najm-bahar-admin-settings.js', $appJs);
         $this->assertFileExists($runtimePath);
