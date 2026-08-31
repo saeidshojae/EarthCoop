@@ -122,7 +122,11 @@ class ReputationController extends Controller
     {
         $weights = config('reputation.weights', []);
         $dailyCaps = config('reputation.daily_caps', []);
+        $policyDefaults = config('reputation.policy_defaults', []);
+
         foreach ($weights as $key => $w) {
+            $policy = $policyDefaults[$key] ?? [];
+
             ReputationRule::firstOrCreate(
                 ['key' => $key],
                 [
@@ -132,6 +136,9 @@ class ReputationController extends Controller
                     'module' => null,
                     'active' => true,
                     'daily_cap' => isset($dailyCaps[$key]) ? (int) $dailyCaps[$key] : null,
+                    'dimension' => $policy['dimension'] ?? 'participation',
+                    'convertible' => (bool) ($policy['convertible'] ?? false),
+                    'repeat_policy' => $policy['repeat_policy'] ?? null,
                 ]
             );
         }
