@@ -37,7 +37,7 @@
 
             @media (max-width: 767px) {
                 .bahar-coin--hero {
-                    --bahar-coin-depth-scale: 0.64;
+                    --bahar-coin-depth-scale: 0.30;
                     transform: none;
                 }
             }
