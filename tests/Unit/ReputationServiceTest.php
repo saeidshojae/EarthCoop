@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserPointTransaction;
 use App\Services\ReputationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Tests\TestCase;
 
 class ReputationServiceTest extends TestCase
@@ -114,5 +115,31 @@ class ReputationServiceTest extends TestCase
         $this->assertFalse((bool) $rule->convertible);
         $this->assertSame(13, (int) $rule->weight);
         $this->assertSame(26, (int) $rule->daily_cap);
+    }
+
+    public function test_admin_can_update_dimension_convertibility_and_repeat_policy(): void
+    {
+        $rule = ReputationRule::create([
+            'key'=>'governance_role','label'=>'Governance role','weight'=>50,'daily_cap'=>null,'active'=>true,
+            'dimension'=>'participation','convertible'=>true,'repeat_policy'=>null,
+        ]);
+
+        $request = Request::create('/admin/reputation', 'POST', [
+            'weights' => ['governance_role' => 75],
+            'active' => ['governance_role' => '1'],
+            'description' => ['governance_role' => 'Role policy'],
+            'daily_cap' => ['governance_role' => null],
+            'dimension' => ['governance_role' => 'civic_trust'],
+            'convertible' => [],
+            'repeat_policy' => ['governance_role' => 'once_per_context'],
+        ]);
+
+        app(ReputationController::class)->update($request);
+        $rule->refresh();
+
+        $this->assertSame(75, (int) $rule->weight);
+        $this->assertSame('civic_trust', $rule->dimension);
+        $this->assertFalse((bool) $rule->convertible);
+        $this->assertSame('once_per_context', $rule->repeat_policy);
     }
 }
