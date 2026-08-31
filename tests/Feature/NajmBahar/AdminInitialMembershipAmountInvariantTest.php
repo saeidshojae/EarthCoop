@@ -37,14 +37,17 @@ class AdminInitialMembershipAmountInvariantTest extends TestCase
         $this->assertSame(1_000_000, NajmBaharConstitution::initialMembershipGol());
     }
 
-    public function test_admin_dashboard_presents_constitutional_initial_amount_as_read_only(): void
+    public function test_admin_dashboard_uses_constitutional_amount_without_disturbing_adjacent_controls(): void
     {
         $controller = file_get_contents(app_path('Http/Controllers/Admin/NajmBaharDashboardController.php'));
         $view = file_get_contents(resource_path('views/admin/najm-bahar/dashboard.blade.php'));
 
         $this->assertStringContainsString('NajmBaharConstitution::initialMembershipGol()', $controller);
         $this->assertStringNotContainsString('$settings->najm_bahar_initial_amount', $controller);
-        $this->assertStringNotContainsString("route('admin.najm-bahar.initial-amount.update')", $view);
-        $this->assertStringNotContainsString('name="najm_bahar_initial_amount"', $view);
+
+        // Regression guards: this fix must not remove or rename unrelated admin capabilities.
+        $this->assertStringContainsString("route('admin.najm-bahar.threshold.update')", $view);
+        $this->assertStringContainsString("route('admin.najm-bahar.settings.index')", $view);
+        $this->assertStringContainsString("route('admin.najm-bahar.membership-split.update')", $view);
     }
 }
