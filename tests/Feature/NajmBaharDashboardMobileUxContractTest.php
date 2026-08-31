@@ -34,12 +34,27 @@ class NajmBaharDashboardMobileUxContractTest extends TestCase
         $this->assertStringContainsString('if (!isDashboard)', $runtime);
     }
 
+    public function test_personal_wallet_mobile_information_architecture_is_compact_and_tabbed(): void
+    {
+        $runtime = file_get_contents(resource_path('js/najm-bahar-dashboard-mobile.js'));
+
+        $this->assertStringContainsString('data-nb-wallet-tabs', $runtime);
+        $this->assertStringContainsString('data-nb-wallet-balance', $runtime);
+        $this->assertStringContainsString('data-nb-wallet-points', $runtime);
+        $this->assertStringContainsString('data-nb-wallet-transactions', $runtime);
+        $this->assertStringContainsString('nb-wallet-transaction-list', $runtime);
+        $this->assertStringContainsString('nb-wallet-hero-compact', $runtime);
+        $this->assertStringContainsString('تبدیل امتیاز به بهار', $runtime);
+        $this->assertStringContainsString('حساب', $runtime);
+        $this->assertStringContainsString('فعالیت', $runtime);
+    }
+
     public function test_hero_coin_uses_canonical_float_and_spin_without_tilt_and_scales_depth_on_mobile(): void
     {
         $coin = file_get_contents(resource_path('views/components/bahar-coin.blade.php'));
 
         $this->assertStringContainsString('--bahar-coin-depth-scale: 1', $coin);
-        $this->assertStringContainsString('--bahar-coin-depth-scale: 0.64', $coin);
+        $this->assertStringContainsString('--bahar-coin-depth-scale: 0.30', $coin);
         $this->assertStringContainsString('scaleZ(var(--bahar-coin-depth-scale))', $coin);
         $this->assertStringContainsString('transform: translate(-50%, -48%);', $coin);
         $this->assertStringContainsString('transform: none;', $coin);
