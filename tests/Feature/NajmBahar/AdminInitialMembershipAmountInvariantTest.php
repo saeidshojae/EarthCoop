@@ -81,23 +81,18 @@ class AdminInitialMembershipAmountInvariantTest extends TestCase
         $this->assertSame(3, (int) $fresh->reputation_to_gol_ratio);
     }
 
-    public function test_admin_surfaces_show_constitutional_issuance_read_only_without_disturbing_adjacent_controls(): void
+    public function test_admin_runtime_makes_constitutional_controls_read_only_without_touching_adjacent_capabilities(): void
     {
         $controller = file_get_contents(app_path('Http/Controllers/Admin/NajmBaharDashboardController.php'));
         $dashboard = file_get_contents(resource_path('views/admin/najm-bahar/dashboard.blade.php'));
         $settingsView = file_get_contents(resource_path('views/admin/najm-bahar/settings/index.blade.php'));
+        $appJs = file_get_contents(resource_path('js/app.js'));
+        $runtimePath = resource_path('js/najm-bahar-admin-settings.js');
 
         $this->assertStringContainsString('NajmBaharConstitution::initialMembershipGol()', $controller);
         $this->assertStringNotContainsString('$settings->najm_bahar_initial_amount', $controller);
 
-        $this->assertStringNotContainsString("route('admin.najm-bahar.initial-amount.update')", $dashboard);
-        $this->assertStringNotContainsString('name="najm_bahar_initial_amount"', $dashboard);
-        $this->assertStringNotContainsString('name="najm_bahar_initial_amount"', $settingsView);
-        $this->assertStringNotContainsString('name="najm_bahar_initial_active_percentage"', $settingsView);
-        $this->assertStringNotContainsString('name="najm_bahar_initial_active_type"', $settingsView);
-        $this->assertStringNotContainsString('name="najm_bahar_initial_active_fixed_amount"', $settingsView);
-
-        // Regression guards: this fix must not remove or rename unrelated admin capabilities.
+        // Existing page markup and neighboring capabilities must remain intact.
         $this->assertStringContainsString("route('admin.najm-bahar.threshold.update')", $dashboard);
         $this->assertStringContainsString("route('admin.najm-bahar.settings.index')", $dashboard);
         $this->assertStringContainsString("route('admin.najm-bahar.membership-split.update')", $dashboard);
@@ -107,5 +102,22 @@ class AdminInitialMembershipAmountInvariantTest extends TestCase
         $this->assertStringContainsString('name="najm_bahar_auto_activation_amount"', $settingsView);
         $this->assertStringContainsString('name="reputation_conversion_enabled"', $settingsView);
         $this->assertStringContainsString('name="reputation_to_gol_ratio"', $settingsView);
+
+        $this->assertStringContainsString('./najm-bahar-admin-settings.js', $appJs);
+        $this->assertFileExists($runtimePath);
+
+        $runtime = file_get_contents($runtimePath);
+        foreach ([
+            'najm_bahar_initial_amount',
+            'najm_bahar_initial_active_percentage',
+            'najm_bahar_initial_active_type',
+            'najm_bahar_initial_active_fixed_amount',
+        ] as $field) {
+            $this->assertStringContainsString($field, $runtime);
+        }
+        $this->assertStringContainsString('element.disabled = true', $runtime);
+        $this->assertStringContainsString('window.toggleAutoActivation', $runtime);
+        $this->assertStringContainsString('window.toggleReputationConversion', $runtime);
+        $this->assertStringContainsString('window.updateReputationPreview', $runtime);
     }
 }
