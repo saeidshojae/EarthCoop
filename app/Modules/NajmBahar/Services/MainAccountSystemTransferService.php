@@ -26,7 +26,8 @@ class MainAccountSystemTransferService
                 $lockedSource = $locked[(int) $source->id]; $lockedSystem = $locked[(int) $systemAccount->id];
 
                 $active = (int) ($lockedSource->balance_active ?? 0);
-                if ($active < $amount) throw new \RuntimeException('Insufficient active funds');
+                $availableActive = app(ActiveBaharReservationService::class)->availableActive($lockedSource);
+                if ($active < $amount || $availableActive < $amount) throw new \RuntimeException('Insufficient active funds');
 
                 $lockedSource->balance_active = $active - $amount;
                 $lockedSource->balance = (int) $lockedSource->balance_active + (int) ($lockedSource->balance_faded ?? 0) + (int) ($lockedSource->committed_dim ?? 0);

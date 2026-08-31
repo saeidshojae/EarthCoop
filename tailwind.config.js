@@ -26,6 +26,9 @@ export default {
     // Add any dynamic classes here that Tailwind might not detect
   ],
   corePlugins: {
+    // Utility-authored EarthCoop controls rely on Tailwind's native element
+    // normalization (buttons, images and form controls). Keep Preflight on;
+    // dev/build parity is handled by the dedicated CSS Vite entry instead.
     preflight: true,
   },
 };

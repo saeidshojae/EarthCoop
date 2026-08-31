@@ -260,26 +260,17 @@ class NajmBaharMembershipFeeController extends Controller
     ): int {
         $membershipFee = $this->membershipFeeAmount();
         $total = $operationsAmount + $insuranceAmount + $burnAmount;
-        $funds = $this->treasuryService->ensureDefaultFunds();
 
-        $transfers = $total === $membershipFee && $total > 0
-            ? [
-                [$funds[TreasuryService::OPERATIONS_SALARY]->account->account_number, $operationsAmount, 'operations_salary'],
-                [$funds[TreasuryService::CENTRAL_INSURANCE]->account->account_number, $insuranceAmount, 'central_insurance'],
-                [$funds[TreasuryService::MONEY_DESTRUCTION]->account->account_number, $burnAmount, 'money_destruction'],
-            ]
-            : [
-                [$funds[TreasuryService::OPERATIONS_SALARY]->account->account_number, $membershipFee, 'operations_salary'],
-            ];
-
-        if ($total !== $membershipFee) {
-            Log::warning('NajmBahar membership split mismatch; falling back to operations/salary fund.', [
-                'user_id' => $userId,
-                'split_total' => $total,
-                'membership_fee' => $membershipFee,
-                'policy_version_id' => $policyVersionId,
-            ]);
+        if ($membershipFee <= 0 || $total !== $membershipFee) {
+            throw new \RuntimeException('Membership fee policy split must exactly equal the declared annual fee.');
         }
+
+        $funds = $this->treasuryService->ensureDefaultFunds();
+        $transfers = [
+            [$funds[TreasuryService::OPERATIONS_SALARY]->account->account_number, $operationsAmount, 'operations_salary'],
+            [$funds[TreasuryService::CENTRAL_INSURANCE]->account->account_number, $insuranceAmount, 'central_insurance'],
+            [$funds[TreasuryService::MONEY_DESTRUCTION]->account->account_number, $burnAmount, 'money_destruction'],
+        ];
 
         foreach ($transfers as [$targetAccount, $amount, $suffix]) {
             if ($amount <= 0) {

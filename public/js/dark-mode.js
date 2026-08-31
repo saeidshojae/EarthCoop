@@ -1,300 +1,144 @@
-// Dark Mode Toggle Script - Enhanced Version
-
-(function () {
-
-  "use strict";
-
-
-
-  // Check for saved theme preference or default to 'light'
-
-  const savedTheme = localStorage.getItem("theme") || "light";
-
-
-
-  // Apply theme on page load IMMEDIATELY (before DOM loads to prevent flash)
-
-  if (savedTheme === "dark") {
-
-    document.documentElement.classList.add("dark-mode");
-
-    if (document.body) {
-
-      document.body.classList.add("dark-mode");
-
-    }
-
-  }
-
-
-
-  // Function to toggle theme
-
-  window.toggleTheme = function () {
-
-    const body = document.body;
-
-    const html = document.documentElement;
-
-    const isDark = body.classList.toggle("dark-mode");
-
-    html.classList.toggle("dark-mode", isDark);
-
-
-
-    const theme = isDark ? "dark" : "light";
-
-
-
-    // Save preference to localStorage
-
-    localStorage.setItem("theme", theme);
-
-
-
-    // Add visual feedback - spin the slider
-
-    const sliders = document.querySelectorAll(".theme-toggle-slider");
-
-    sliders.forEach((slider) => {
-
-      slider.style.animation = "toggle-spin 0.6s ease-in-out";
-
-      setTimeout(() => {
-
-        slider.style.animation = "";
-
-      }, 600);
-
-    });
-
-
-
-    // Update all toggle buttons if exist
-
-    updateToggleButtons(isDark);
-
-
-
-    // Dispatch custom event for other scripts that might need to know
-
-    const event = new CustomEvent("themeChanged", {
-
-      detail: {
-
-        theme: theme,
-
-        isDark: isDark,
-
-      },
-
-    });
-
-    window.dispatchEvent(event);
-
-
-
-    // فقط در حالت development لاگ کنسول را نمایش بده
-
-    // این لاگ را کامنت کردیم تا کنسول تمیزتر باشد
-
-    // if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-
-    //     console.log('Theme changed to:', theme);
-
-    // }
-
-  };
-
-
-
-  // Function to update all toggle button states
-
-  function updateToggleButtons(isDark) {
-
-    // Update class-based toggles
-
-    const toggleBtns = document.querySelectorAll(".theme-toggle");
-
-    toggleBtns.forEach((btn) => {
-
-      if (isDark) {
-
-        btn.classList.add("dark");
-
-      } else {
-
-        btn.classList.remove("dark");
-
-      }
-
-    });
-
-
-
-    // Update icon visibility
-
-    updateIconVisibility(isDark);
-
-  }
-
-
-
-  // Function to update icon visibility
-
-  function updateIconVisibility(isDark) {
-
-    const sunIcons = document.querySelectorAll(".theme-toggle-icon.sun");
-
-    const moonIcons = document.querySelectorAll(".theme-toggle-icon.moon");
-
-
-
-    sunIcons.forEach((icon) => {
-
-      icon.style.opacity = isDark ? "0.3" : "1";
-
-    });
-
-
-
-    moonIcons.forEach((icon) => {
-
-      icon.style.opacity = isDark ? "1" : "0.3";
-
-    });
-
-  }
-
-
-
-  // Initialize on DOM ready
-
-  function initializeDarkMode() {
-
-    // Ensure body has the correct class
-
-    if (savedTheme === "dark") {
-
-      document.body.classList.add("dark-mode");
-
-      document.documentElement.classList.add("dark-mode");
-
-    }
-
-
-
-    // Initialize all toggle buttons
-
-    updateToggleButtons(savedTheme === "dark");
-
-
-
-    // Add click handlers to all theme toggle buttons
-
-    const toggleBtns = document.querySelectorAll(
-
-      '.theme-toggle, [onclick*="toggleTheme"]',
-
-    );
-
-    toggleBtns.forEach((btn) => {
-
-      // Remove inline onclick if exists to prevent double firing
-
-      if (btn.getAttribute("onclick")) {
-
-        btn.removeAttribute("onclick");
-
-      }
-
-      btn.addEventListener("click", function (e) {
-
-        e.preventDefault();
-
-        toggleTheme();
-
-      });
-
-    });
-
-
-
-    // فقط در حالت development لاگ کنسول را نمایش بده
-
-    // این لاگ را کامنت کردیم تا کنسول تمیزتر باشد
-
-    // if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-
-    //     console.log('Dark mode initialized. Current theme:', savedTheme);
-
-    // }
-
-  }
-
-
-
-  // Initialize when DOM is ready
-
-  if (document.readyState === "loading") {
-
-    document.addEventListener("DOMContentLoaded", initializeDarkMode);
-
-  } else {
-
-    // DOM is already ready
-
-    initializeDarkMode();
-
-  }
-
-
-
-  // Export function to get current theme
-
-  window.getCurrentTheme = function () {
-
-    return localStorage.getItem("theme") || "light";
-
-  };
-
-
-
-  // Export function to set theme programmatically
-
-  window.setTheme = function (theme) {
-
-    if (theme !== "light" && theme !== "dark") {
-
-      console.error('Invalid theme. Use "light" or "dark"');
-
-      return;
-
-    }
-
-
-
-    const isDark = theme === "dark";
-
-    document.body.classList.toggle("dark-mode", isDark);
-
-    document.documentElement.classList.toggle("dark-mode", isDark);
-
-    localStorage.setItem("theme", theme);
-
-    updateToggleButtons(isDark);
-
-
-
-    const event = new CustomEvent("themeChanged", {
-
-      detail: { theme: theme, isDark: isDark },
-
-    });
-
-    window.dispatchEvent(event);
-
-  };
-
-})();
-
+// EarthCoop theme runtime + critical header navigation fallback.
+(function () {
+  "use strict";
+
+  const THEME_KEY = "theme";
+  const savedTheme = localStorage.getItem(THEME_KEY) || "light";
+
+  function dispatchThemeChanged(theme) {
+    window.dispatchEvent(new CustomEvent("themeChanged", {
+      detail: { theme, isDark: theme === "dark" },
+    }));
+  }
+
+  function updateIconVisibility(isDark) {
+    document.querySelectorAll(".theme-toggle-icon.sun").forEach((icon) => {
+      icon.style.opacity = isDark ? "0.3" : "1";
+    });
+    document.querySelectorAll(".theme-toggle-icon.moon").forEach((icon) => {
+      icon.style.opacity = isDark ? "1" : "0.3";
+    });
+  }
+
+  function updateToggleButtons(isDark) {
+    document.querySelectorAll(".theme-toggle").forEach((button) => {
+      button.classList.toggle("dark", isDark);
+    });
+    updateIconVisibility(isDark);
+  }
+
+  function applyTheme(theme, withFeedback) {
+    const isDark = theme === "dark";
+    document.documentElement.classList.toggle("dark-mode", isDark);
+    if (document.body) {
+      document.body.classList.toggle("dark-mode", isDark);
+    }
+    localStorage.setItem(THEME_KEY, theme);
+    updateToggleButtons(isDark);
+
+    if (withFeedback) {
+      document.querySelectorAll(".theme-toggle-slider").forEach((slider) => {
+        slider.style.animation = "toggle-spin 0.6s ease-in-out";
+        window.setTimeout(() => { slider.style.animation = ""; }, 600);
+      });
+    }
+
+    dispatchThemeChanged(theme);
+  }
+
+  if (savedTheme === "dark") {
+    document.documentElement.classList.add("dark-mode");
+  }
+
+  window.toggleTheme = function () {
+    const current = document.documentElement.classList.contains("dark-mode") ? "dark" : "light";
+    applyTheme(current === "dark" ? "light" : "dark", true);
+  };
+
+  window.getCurrentTheme = function () {
+    return localStorage.getItem(THEME_KEY) || "light";
+  };
+
+  window.setTheme = function (theme) {
+    if (theme !== "light" && theme !== "dark") {
+      console.error('Invalid theme. Use "light" or "dark"');
+      return;
+    }
+    applyTheme(theme, false);
+  };
+
+  // Critical navigation must work even when the Vite dev server is unavailable.
+  // Use the browser's native history when the current document was reached from
+  // another EarthCoop page; otherwise leave the anchor href as the safe fallback.
+  function hasInternalReferrer() {
+    if (!document.referrer) return false;
+    try {
+      return new URL(document.referrer, window.location.href).origin === window.location.origin;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  window.earthcoopNavigateBack = function (event) {
+    if (!hasInternalReferrer()) return true;
+    event?.preventDefault?.();
+    window.history.back();
+    return false;
+  };
+
+  function bindHeaderBackControls() {
+    document.querySelectorAll('[data-earthcoop-history-back="true"]').forEach((control) => {
+      if (control.dataset.earthcoopBackBound === "true") return;
+      control.dataset.earthcoopBackBound = "true";
+      control.addEventListener("click", window.earthcoopNavigateBack);
+    });
+  }
+
+  function installHeaderActionRailNudge() {
+    if (document.getElementById("earthcoop-header-action-rail-nudge")) return;
+    const style = document.createElement("style");
+    style.id = "earthcoop-header-action-rail-nudge";
+    style.textContent = `
+      @media (max-width: 1023px) {
+        html[dir="rtl"] header.site-header-unified[data-auth-state="authenticated"] .site-header-mobile-menu-slot {
+          transform: translateX(-8px) !important;
+        }
+        html[dir="ltr"] header.site-header-unified[data-auth-state="authenticated"] .site-header-mobile-menu-slot {
+          transform: translateX(8px) !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function initialize() {
+    if (savedTheme === "dark") {
+      document.documentElement.classList.add("dark-mode");
+      document.body?.classList.add("dark-mode");
+    } else {
+      document.documentElement.classList.remove("dark-mode");
+      document.body?.classList.remove("dark-mode");
+    }
+
+    updateToggleButtons(savedTheme === "dark");
+
+    document.querySelectorAll('.theme-toggle, [onclick*="toggleTheme"]').forEach((button) => {
+      if (button.dataset.earthcoopThemeBound === "true") return;
+      button.dataset.earthcoopThemeBound = "true";
+      if (button.getAttribute("onclick")) button.removeAttribute("onclick");
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        window.toggleTheme();
+      });
+    });
+
+    installHeaderActionRailNudge();
+    bindHeaderBackControls();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initialize, { once: true });
+  } else {
+    initialize();
+  }
+})();

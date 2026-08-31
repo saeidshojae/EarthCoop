@@ -72,7 +72,8 @@ class PublicExecutionPaymentService
                 if ($payee->type === 'subaccount') {
                     throw new \RuntimeException('Public execution payment payee must use a canonical main or legal-entity account.');
                 }
-                if ((int) ($source->balance_active ?? 0) < $amount) {
+                $availableActive = app(ActiveBaharReservationService::class)->availableActive($source);
+                if ($availableActive < $amount) {
                     throw new \RuntimeException('Execution account has insufficient Active Bahar for payment.');
                 }
 

@@ -18,6 +18,12 @@ use App\Modules\NajmBahar\Services\SubAccountService;
 use App\Modules\NajmBahar\Services\SafeSubAccountService;
 use App\Modules\NajmBahar\Services\TransactionService;
 use App\Modules\NajmBahar\Services\StrictTransactionService;
+use App\Modules\Secretariat\Contracts\SecretariatKnowledgeRanker;
+use App\Modules\Secretariat\Contracts\SecretariatMalwareScanner;
+use App\Modules\Secretariat\Services\DeterministicSecretariatKnowledgeRanker;
+use App\Modules\Secretariat\Services\UnavailableSecretariatMalwareScanner;
+use App\Modules\Stock\Services\AuctionService;
+use App\Modules\Stock\Services\CanonicalAwareAuctionService;
 use App\Observers\NajmBaharTransactionObserver;
 use App\Models\Group;
 use App\Observers\GroupObserver;
@@ -40,11 +46,21 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(TransactionService::class, StrictTransactionService::class);
         $this->app->bind(UserController::class, SafeUserController::class);
         $this->app->bind(NajmHodaPrivateGroupMeetingCommandService::class, NajmHodaPrivateGroupMeetingDecisionCommandService::class);
+        $this->app->bind(SecretariatKnowledgeRanker::class, DeterministicSecretariatKnowledgeRanker::class);
+        $this->app->bind(AuctionService::class, CanonicalAwareAuctionService::class);
+        // Production deployments may replace this binding with ClamAV or another
+        // scanner adapter. The default is explicitly unavailable, never fake-clean.
+        $this->app->bind(SecretariatMalwareScanner::class, UnavailableSecretariatMalwareScanner::class);
     }
 
     public function boot()
     {
         ini_set('max_execution_time', 120);
+
+        // Stock owns migrations outside Laravel's default database/migrations path.
+        // Register them with the framework so migrate, migrate:fresh and
+        // RefreshDatabase all build the same canonical Stock schema.
+        $this->loadMigrationsFrom(base_path('app/Modules/Stock/Migrations'));
 
         app()->terminating(function () {
             if (function_exists('fastcgi_finish_request')) {
@@ -52,6 +68,7 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
+        $this->registerGroupChatViewData();
         $this->registerGroupChatPerformanceInstrumentation();
 
         View::addNamespace('Stock', base_path('app/Modules/Stock/Views'));
@@ -78,6 +95,65 @@ class AppServiceProvider extends ServiceProvider
         Blog::observe(BlogObserver::class);
         FaqQuestion::observe(FaqQuestionObserver::class);
         StewardKnowledgeFile::observe(StewardKnowledgeFileObserver::class);
+    }
+
+    /**
+     * Supply the canonical chat Blade with request data that historically came
+     * from inline model queries. This preserves the exact rendering contract
+     * while collapsing membership/block lookups and keeping database access out
+     * of the presentation layer.
+     */
+    private function registerGroupChatViewData(): void
+    {
+        View::composer('groups.chat', function ($view): void {
+            $data = $view->getData();
+            $group = $data['group'] ?? null;
+            $userId = (int) Auth::id();
+
+            if (! $group instanceof Group || $userId <= 0) {
+                return;
+            }
+
+            $membership = \App\Models\GroupUser::query()
+                ->where('group_id', $group->id)
+                ->where('user_id', $userId)
+                ->first();
+
+            $membershipCounts = DB::table('group_user')
+                ->join('users', 'users.id', '=', 'group_user.user_id')
+                ->where('group_user.group_id', $group->id)
+                ->where('group_user.status', 1)
+                ->where('users.is_system', false)
+                ->selectRaw('SUM(CASE WHEN group_user.role = 4 THEN 1 ELSE 0 END) as guest_count')
+                ->selectRaw('SUM(CASE WHEN group_user.role <> 4 THEN 1 ELSE 0 END) as member_count')
+                ->first();
+
+            $memberCount = (int) ($membershipCounts->member_count ?? 0);
+            $guestCount = (int) ($membershipCounts->guest_count ?? 0);
+            // The same Group instance is subsequently rendered by the information
+            // panel. Store request-local aggregates on it so userCount()/guestsCount()
+            // reuse this query instead of issuing their own counts.
+            $group->setAttribute('active_members_count', $memberCount);
+            $group->setAttribute('active_guests_count', $guestCount);
+
+            $blocks = \App\Models\Block::query()
+                ->where('user_id', $userId)
+                ->whereIn('position', ['election', 'message', 'post', 'poll'])
+                ->get()
+                ->keyBy('position');
+
+            $view->with([
+                'memberCount' => $memberCount,
+                'guestCount' => $guestCount,
+                'blogCount' => (int) DB::table('blogs')->where('group_id', $group->id)->count(),
+                'pollCount' => (int) DB::table('polls')->where('group_id', $group->id)->count(),
+                'pivotUser' => $membership,
+                'checkBlockElection' => $blocks->get('election'),
+                'checkBlockMessage' => $blocks->get('message'),
+                'checkBlockPost' => $blocks->get('post'),
+                'checkBlockPoll' => $blocks->get('poll'),
+            ]);
+        });
     }
 
     /**

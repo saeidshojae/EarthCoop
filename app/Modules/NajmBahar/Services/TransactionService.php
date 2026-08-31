@@ -182,7 +182,8 @@ class TransactionService
                 $fromAcc = $accounts[$fromAccountNumber];
                 if ($balanceType === 'active') {
                     $activeBalance = $fromSubAccount ? intval($fromSubAccount->balance_active ?? 0) : intval($fromAcc->balance_active ?? 0);
-                    if ($activeBalance < $amount) {
+                    $availableActive = app(ActiveBaharReservationService::class)->availableActive($fromAcc);
+                    if ($activeBalance < $amount || $availableActive < $amount) {
                         throw new \RuntimeException('Insufficient active funds');
                     }
                     if ($fromSubAccount) {

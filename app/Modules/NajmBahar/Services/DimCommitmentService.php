@@ -152,6 +152,16 @@ class DimCommitmentService
             }
 
             $locked = Account::whereKey($account->id)->lockForUpdate()->firstOrFail();
+
+            // The transitional Release-C model stores committed Dim only on main/legal
+            // accounts. Sub-account mirrors are reconciled from SubAccount and reset
+            // committed_dim to zero, so accepting a new commitment here would create
+            // state that a later reconciliation silently erases. Reject only new
+            // commitments; releases remain available for recovery of any legacy drift.
+            if ($toCommitted && $locked->type === 'subaccount') {
+                throw new \RuntimeException('Dim commitment is not supported on sub-account mirrors.');
+            }
+
             $availableDim = (int) ($locked->balance_faded ?? 0);
             $committedDim = (int) ($locked->committed_dim ?? 0);
 

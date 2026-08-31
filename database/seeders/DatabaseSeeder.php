@@ -6,19 +6,9 @@ use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
         $this->call([
-
-            /*
-            |--------------------------------------------------------------------------
-            | Lookup Data
-            |--------------------------------------------------------------------------
-            */
-
             AgeGroupsSeeder::class,
             ContinentsSeeder::class,
             CountriesSeeder::class,
@@ -28,36 +18,21 @@ class DatabaseSeeder extends Seeder
             CitiesSeeder::class,
             RegionsSeeder::class,
             NeighborhoodsSeeder::class,
-
             OccupationalFieldsSeeder::class,
             ExperienceFieldsSeeder::class,
-            
             SettingSeeder::class,
-
+            ElectionGroupSettingSeeder::class,
             PagesTableSeeder::class,
             FaqContactPagesSeeder::class,
 
-            /*
-            |--------------------------------------------------------------------------
-            | Authorization
-            |--------------------------------------------------------------------------
-            */
-
             RolePermissionSeeder::class,
             SystemUserSeeder::class,
+            ElectionResponsibilityContractSeeder::class,
 
             KnowledgeBaseSeeder::class,
             EarthCoopBlogSeeder::class,
-
-            /*
-            |--------------------------------------------------------------------------
-            | Core System
-            |--------------------------------------------------------------------------
-            */
-
             NajmBaharSeeder::class,
             NajmBaharProjectCategorySeeder::class,
-
         ]);
     }
 }
