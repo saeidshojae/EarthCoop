@@ -73,12 +73,14 @@ class PrivateMessagingUiContractTest extends TestCase
 
     public function test_reaction_picker_is_viewport_clamped_and_cannot_create_horizontal_scroll(): void
     {
-        $view = file_get_contents(resource_path('views/private-chats/show.blade.php'));
+        $runtime = file_get_contents(resource_path('js/private-messaging-reaction-picker.js'));
+        $app = file_get_contents(resource_path('js/app.js'));
 
-        $this->assertStringContainsString('positionReactionPicker', $view);
-        $this->assertStringContainsString('getBoundingClientRect()', $view);
-        $this->assertStringContainsString('document.documentElement.clientWidth', $view);
-        $this->assertStringContainsString('overflow-x: hidden', $view);
+        $this->assertStringContainsString('positionReactionPicker', $runtime);
+        $this->assertStringContainsString('getBoundingClientRect()', $runtime);
+        $this->assertStringContainsString('document.documentElement.clientWidth', $runtime);
+        $this->assertStringContainsString('document.body.appendChild(picker)', $runtime);
+        $this->assertStringContainsString('private-messaging-reaction-picker.js', $app);
     }
 
     public function test_profile_request_flow_is_state_aware_and_mobile_bottom_sheet_ready(): void
