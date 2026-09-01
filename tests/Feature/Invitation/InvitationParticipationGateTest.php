@@ -10,6 +10,7 @@ use App\Modules\NajmBahar\Services\MonetaryService;
 use App\Services\InvitationLifecycleService;
 use App\Services\MembershipFeeStatusService;
 use App\Services\MembershipParticipationEligibilityService;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -32,12 +33,24 @@ class InvitationParticipationGateTest extends TestCase
         $this->assertSame(10, $service->quota());
         $this->assertFalse($service->canIssueMemberInvitation($user->fresh()));
 
+        $settingWrites = [];
+        DB::listen(function (QueryExecuted $query) use (&$settingWrites): void {
+            $sql = strtolower($query->sql);
+            if (str_contains($sql, 'setting') && (str_contains($sql, 'update') || str_contains($sql, 'insert'))) {
+                $settingWrites[] = ['sql' => $query->sql, 'bindings' => $query->bindings];
+            }
+        });
+
         $this->actingAs($user)
             ->post(route('najm-bahar.membership-fee.pay'), ['payment_source' => 'dim'])
             ->assertRedirect(route('najm-bahar.dashboard'));
 
         $freshUser = $user->fresh();
-        $this->assertSame(10, $service->quota());
+        $this->assertSame(
+            10,
+            $service->quota(),
+            'Membership fee payment mutated invitation settings. Writes: ' . json_encode($settingWrites, JSON_UNESCAPED_UNICODE)
+        );
         $this->assertTrue(app(MembershipFeeStatusService::class)->hasPaidCurrentMembershipFee($freshUser));
         $this->assertTrue(app(MembershipParticipationEligibilityService::class)->isEligible($freshUser));
         $this->assertTrue($service->isEligibleMember($freshUser));
