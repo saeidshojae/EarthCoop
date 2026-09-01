@@ -212,11 +212,13 @@ class InvitationLifecycleServiceTest extends TestCase
 
     private function configureInvitationPolicy(int $quota): void
     {
-        Setting::query()->updateOrCreate(['id' => 1], [
+        $setting = Setting::singleton();
+        $setting->fill([
             'invation_status' => true,
             'count_invation' => $quota,
             'expire_invation_time' => 72,
         ]);
+        $setting->save();
     }
 
     private function configureInviteReward(int $weight): void
@@ -272,8 +274,9 @@ class InvitationLifecycleServiceTest extends TestCase
 
     private function activateParticipation(User $user): void
     {
-        $account = app(AccountService::class)->createMainAccountForUser($user->id, 'Invitation lifecycle');
+        $account = app(AccountService::class)->createMainAccountForUser($user->id, 'Invitation test');
         app(MonetaryService::class)->issueMembershipCredit($account, $user->id);
+
         $this->actingAs($user)
             ->post(route('najm-bahar.membership-fee.pay'), ['payment_source' => 'dim'])
             ->assertRedirect(route('najm-bahar.dashboard'));
