@@ -80,4 +80,16 @@ class PrivateMessagingUiContractTest extends TestCase
         $this->assertStringNotContainsString('.btn {', $legacyPartial);
         $this->assertStringNotContainsString('.list-group-item {', $legacyPartial);
     }
+
+    public function test_private_message_read_receipts_have_realtime_and_polling_runtime(): void
+    {
+        $runtime = file_get_contents(resource_path('js/private-messaging-read-receipts.js'));
+        $app = file_get_contents(resource_path('js/app.js'));
+
+        $this->assertStringContainsString('.private-messages.read', $runtime);
+        $this->assertStringContainsString('.private-message.created', $runtime);
+        $this->assertStringContainsString('/info', $runtime);
+        $this->assertStringContainsString('document.hidden', $runtime);
+        $this->assertStringContainsString('private-messaging-read-receipts.js', $app);
+    }
 }
