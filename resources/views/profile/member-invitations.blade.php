@@ -71,7 +71,7 @@
                         <p class="mt-1 text-emerald-800 mb-0">{{ $occupiedSlots }} سهمیه در حال استفاده یا تکمیل‌شده است و {{ $remainingSlots }} سهمیه آزاد دارید.</p>
                     </div>
                     @if($canIssueInvitation)
-                        <form method="POST" action="{{ route('profile.generate-code') }}" class="m-0">
+                        <form method="POST" action="{{ route('profile.member-invitations.store') }}" class="m-0">
                             @csrf
                             <button type="submit" class="inline-flex justify-center items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-white font-bold border-0 cursor-pointer">
                                 <i class="fas fa-plus-circle"></i> ساخت کد دعوت جدید
