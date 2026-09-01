@@ -111,7 +111,14 @@ class ReputationConversionController extends Controller
             return back()->with('error', "امتیازات وارد شده برای تبدیل کافی نیست. حداقل {$ratio} امتیاز نیاز است.");
         }
 
+        $requestedConversionKey = trim((string) $request->header('Idempotency-Key', ''));
+        $conversionKey = $requestedConversionKey !== ''
+            ? $requestedConversionKey
+            : 'reputation-conversion-' . $user->id . '-' . now()->format('YmdHisv');
+
         try {
+            $alreadyConverted = false;
+
             DB::transaction(function () use (
                 $user,
                 $account,
@@ -119,8 +126,17 @@ class ReputationConversionController extends Controller
                 $amountInGol,
                 $ratio,
                 $policyVersionId,
-                $policyVersion
+                $policyVersion,
+                $conversionKey,
+                &$alreadyConverted
             ) {
+                if (UserPointConsumption::where('user_id', $user->id)
+                    ->where('conversion_key', $conversionKey)
+                    ->exists()) {
+                    $alreadyConverted = true;
+                    return;
+                }
+
                 $transactions = $this->convertibleTransactions($user->id)
                     ->lockForUpdate()
                     ->get();
@@ -137,7 +153,6 @@ class ReputationConversionController extends Controller
                     throw new \Exception('موجودی کمرنگ شما برای تبدیل کافی نیست');
                 }
 
-                $conversionKey = 'reputation-conversion-' . $user->id . '-' . now()->format('YmdHisv');
                 $remaining = $convertiblePoints;
 
                 foreach ($transactions as $tx) {
@@ -187,17 +202,22 @@ class ReputationConversionController extends Controller
                     'amount_gol' => $amountInGol,
                     'ratio' => $ratio,
                     'policy_version_id' => $policyVersionId,
+                    'conversion_key' => $conversionKey,
                 ]);
             });
 
             $amountFormatted = \App\Helpers\BaharMoney::formatDecimal($amountInGol);
-            return redirect()->route('najm-bahar.wallet')
-                ->with('success', "{$convertiblePoints} امتیاز با موفقیت به {$amountFormatted} بهار پول فعال تبدیل شد!");
+            $message = $alreadyConverted
+                ? "درخواست تبدیل {$convertiblePoints} امتیاز قبلاً با موفقیت انجام شده است."
+                : "{$convertiblePoints} امتیاز با موفقیت به {$amountFormatted} بهار پول فعال تبدیل شد!";
+
+            return redirect()->route('najm-bahar.wallet')->with('success', $message);
 
         } catch (\Exception $e) {
             Log::error('Reputation conversion failed', [
                 'user_id' => $user->id,
                 'points' => $convertiblePoints,
+                'conversion_key' => $conversionKey,
                 'error' => $e->getMessage(),
             ]);
 
