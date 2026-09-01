@@ -71,9 +71,12 @@
                         <p class="mt-1 text-emerald-800 mb-0">{{ $occupiedSlots }} سهمیه در حال استفاده یا تکمیل‌شده است و {{ $remainingSlots }} سهمیه آزاد دارید.</p>
                     </div>
                     @if($canIssueInvitation)
-                        <a href="{{ route('profile.generate-code') }}" class="inline-flex justify-center items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-white font-bold no-underline">
-                            <i class="fas fa-plus-circle"></i> ساخت کد دعوت جدید
-                        </a>
+                        <form method="POST" action="{{ route('profile.generate-code') }}" class="m-0">
+                            @csrf
+                            <button type="submit" class="inline-flex justify-center items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-white font-bold border-0 cursor-pointer">
+                                <i class="fas fa-plus-circle"></i> ساخت کد دعوت جدید
+                            </button>
+                        </form>
                     @else
                         <span class="inline-flex justify-center items-center rounded-xl bg-slate-200 px-5 py-3 text-slate-600 font-bold">فعلاً سهمیه آزاد ندارید</span>
                     @endif
