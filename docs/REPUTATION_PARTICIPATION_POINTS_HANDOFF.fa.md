@@ -3,197 +3,262 @@
 **Working branch:** `agent/r3-reputation-close`  
 **Integration base:** `agent/economic-system-current-integration`  
 **Do not merge to:** `main`  
+**Functional Draft PR:** #91 → `agent/economic-system-current-integration`  
+**Validation-only Draft PR:** #92 → `main` — **هرگز merge نشود**  
 **Spec:** `docs/REPUTATION_PARTICIPATION_POINTS_AUDIT.fa.md`  
-**Implementation plan:** `docs/superpowers/plans/2026-08-31-reputation-participation-points-hardening.md`
+**Plan:** `docs/superpowers/plans/2026-08-31-reputation-participation-points-hardening.md`
 
-## هدف
+## وضعیت نهایی
 
-بستن subsystem امتیاز در شش مرحله R1 تا R6 به‌نحوی که policy در DB قابل مدیریت، audit-friendly و امن برای اتصال Points → Dim → Active باشد. Reputation/Trust/Expertise از Participation اقتصادی جدا هستند و هر Rule می‌تواند به‌صورت مستقل convertible یا non-convertible باشد.
+R1 تا R6 برای دامنه فعلی evidence-backed بسته شده‌اند.
 
-## تصمیم‌های authoritative
+**R6 implementation freeze checkpoint:** `8503e2c73b20dbca5a915190f052a75610822320`  
+**Full Validation #2051:** SUCCESS  
+**Responsive #417:** SUCCESS  
+**Full Project PHPUnit:** SUCCESS  
+**Specialty gates:** Route/Command Boot، Group Chat، Group Admin/Identity، Najm Hoda+n8n، Governance، Najm Bahar، Stock و Group Chat JavaScript همگی SUCCESS.
+
+این checkpoint شامل public profile Reputation، تب خصوصی «امتیازات من»، canonical conversion summary، legacy deprecation، admin audit و فارسی‌سازی semantic UI است. commit مستندات پس از این checkpoint باید دوباره exact-head validate شود و فقط در صورت سبز بودن به‌عنوان freeze نهایی handoff ثبت شود.
+
+## اصول authoritative
 
 1. DB runtime source of truth است؛ config فقط bootstrap/default است و existing DB rule را overwrite نمی‌کند.
-2. transaction اقتصادی snapshot زمان award را با `dimension` و `convertible` نگه می‌دارد؛ تغییر policy آینده history را بازنویسی نمی‌کند.
-3. conversion فقط positive `participation + convertible=true` را مصرف می‌کند و Bahar جدید mint نمی‌کند؛ فقط Dim همان عضو از مسیر `MonetaryService::activateDim()` به Active تبدیل می‌شود.
-4. penalty فقط وقتی entitlement اقتصادی Participation را کم می‌کند که transaction منفی هم `dimension=participation` و هم `convertible=true` باشد؛ clawback از Active قبلاً فعال‌شده انجام نمی‌شود.
-5. self-like در UI مجاز است. رخداد self-like می‌تواند reputation غیرمالی ثبت کند، اما snapshot آن اجباراً `convertible=false` است و هیچ ظرفیت Points→Bahar ایجاد نمی‌کند.
-6. پاداش outcome انتخابات فقط از direct active appointment واقعی پس از پذیرش مسئولیت می‌آید؛ inherited appointment پاداش مستقل ندارد. هویت اقتصادی `user + role + governance level` است.
-7. هیچ status یا activity صرفاً بر اساس اسمش به reward وصل نمی‌شود؛ R5 فقط outcomeهایی را wire کرده که actor/recipient و completion evidence صریح در domain دارند.
+2. هر award transaction snapshot زمان صدور را با `dimension` و `convertible` نگه می‌دارد؛ تغییر policy آینده history را بازنویسی نمی‌کند.
+3. Reputation اجتماعی از conversion اقتصادی جدا است. تبدیل امتیاز، `UserPoint.points` و اعتبار تاریخی را کم نمی‌کند.
+4. conversion فقط positive `participation + convertible=true` را مصرف می‌کند، Bahar جدید mint نمی‌کند و فقط Dim همان عضو را با `MonetaryService::activateDim()` به Active تبدیل می‌کند.
+5. exact consumption در `user_point_consumptions` ثبت می‌شود؛ partial consumption remainder را حفظ می‌کند و retry با request identity یکسان دوباره مصرف/فعال‌سازی نمی‌کند.
+6. negative economic Participation reversal فقط ظرفیت آینده را کم می‌کند؛ clawback از Active قبلی نداریم.
+7. self-like در UI مجاز است اما snapshot reward آن اجباراً `convertible=false` است.
+8. outcome انتخابات فقط direct active appointment واقعی پس از پذیرش مسئولیت را reward می‌کند؛ inherited appointment reward مستقل ندارد.
+9. هیچ status/activity صرفاً به‌خاطر نامش reward اقتصادی نمی‌گیرد؛ recipient، evidence، event identity و reversal semantics باید روشن باشند.
+10. public profile فقط داده public-safe Reputation را دریافت می‌کند و هیچ داده conversion/cashability به آن منتقل نمی‌شود.
 
 ## R1 — Rule Control Plane & Runtime Source of Truth
 
 Status: **GREEN / COMPLETE**
 
-Established:
-- DB rule authoritative even when inactive.
-- inactive DB rule هرگز به config fallback نمی‌کند.
+- DB rule authoritative حتی در حالت inactive.
+- inactive DB rule به config fallback نمی‌کند.
 - DB daily cap runtime-authoritative است.
-- bootstrap insert-only است و policy ادمین را حفظ می‌کند.
+- bootstrap insert-only است.
 
-Reference validation: Full #1945 / Responsive #311 — success.
+Reference: Full #1945 / Responsive #311 — SUCCESS.
 
-## R2 — Policy Dimensions, Convertibility & Admin Control Plane
-
-Status: **GREEN / COMPLETE**
-
-Established:
-- dimensions: `participation`, `reliability`, `expertise`, `civic_trust`.
-- Rule policy: active, weight, dimension, convertible, daily_cap, repeat_policy.
-- award transaction snapshot: dimension + convertible.
-- admin edits future policy without rewriting history.
-- `invite_member`: weight 10, participation, convertible, once_per_context.
-- `membership_fee_paid`: weight 12, participation, convertible, once_per_context.
-
-Presentation/semantic cleanup remains R6 work, not R2 ledger debt.
-
-## R3 — Event Idempotency, Anti-Farming & Correct Recipients
+## R2 — Dimensions, Convertibility & Admin Policy
 
 Status: **GREEN / COMPLETE**
 
-Closed items:
-- generic unique `event_key` ledger and idempotent pre-check.
-- graceful duplicate-key race handling for SQLSTATE `23000` / `23505`, only when canonical event row exists after rollback; unrelated DB errors rethrow.
-- stable post/comment creation keys.
-- stable onboarding/email/profile keys.
-- verified invitation key: `invite_member:referrer:{referrer}:member:{member}`.
-- membership fee key: `membership_fee_paid:user:{user}:year:{paymentYear}`.
-- Stock keys per bid+recipient for `bid_placed`, `bid_won`, `successful_settlement`.
-- raw creation anti-farming bootstrap caps: post 50 points/day, comment 20 points/day.
-- self-like policy: UI allowed; award snapshot forced `convertible=false` for reactor and owner-side like/upvote events.
+ابعاد canonical:
+- `participation` — مشارکت
+- `reliability` — اعتمادپذیری
+- `expertise` — تخصص
+- `civic_trust` — اعتماد مدنی
 
-Important limitation: no synthetic high-load concurrency benchmark was run; race invariant is enforced structurally by DB uniqueness and graceful duplicate handling plus tests.
+Rule policy شامل active، weight، dimension، convertible، daily_cap و repeat_policy است. transactionها dimension/convertibility را snapshot می‌کنند.
 
-R3 closure evidence is included in the later R5 production checkpoint Full #2025, which is fully green.
+Defaults مهم:
+- `invite_member`: weight 10، participation، convertible، once_per_context.
+- `membership_fee_paid`: weight 12، participation، convertible، once_per_context.
 
-## R4 — Financial Conversion Ledger & Consumption Safety
+## R3 — Event Identity, Anti-Farming & Recipients
 
 Status: **GREEN / COMPLETE**
 
-Established:
-- exact point-consumption ledger; no whole-source false cashing.
-- exact ratio remainder preservation.
-- only positive `convertible=true + dimension=participation` snapshots are eligible.
-- canonical user-scoped parent identity in `user_point_conversions` with uniqueness on `(user_id, request_key)`.
-- child `user_point_consumptions` record exact source-point consumption.
-- same-user/same-key retry replays applied parent rather than consuming/activating twice.
-- legacy `is_cashed=true` convertible Participation rows remain historical and are conservatively excluded from future capacity.
-- non-convertible and wrong-dimension snapshots are excluded.
-- negative economic Participation reversals reduce remaining future capacity only.
-- activation remains exclusively through `MonetaryService::activateDim()`.
+- unique `event_key` ledger.
+- duplicate-key race فقط برای SQLSTATE `23000`/`23505` و فقط در صورت وجود canonical event بعد از rollback به‌عنوان duplicate پذیرفته می‌شود؛ خطاهای نامرتبط rethrow می‌شوند.
+- stable keys برای onboarding، profile، post/comment، invitation، membership fee و Stock.
+- membership fee: `membership_fee_paid:user:{user_id}:year:{paymentYear}`.
+- Stock:
+  - `bid_placed:bid:{bid_id}:user:{user_id}`
+  - `bid_won:bid:{bid_id}:user:{user_id}`
+  - `successful_settlement:bid:{bid_id}:user:{user_id}`
+- post_created: weight 10، cap 50 points/day.
+- comment_created: weight 2، cap 20 points/day.
+- self-like may create non-economic reputation but never convertible capacity.
 
-Final R4 validation: Full #2006 / Responsive #372 — success.
+محدودیت مستند: synthetic high-load true-concurrency benchmark انجام نشده؛ invariant با DB uniqueness + duplicate handling + tests بسته شده است.
 
-Core invariant suite:
-- `ParticipationConversionLedgerContractTest`
-- `ParticipationConversionBehaviorTest`
-- `ParticipationConversionAtomicIdentityTest`
-- `ParticipationConversionLegacyCompatibilityTest`
-- `ParticipationConversionEligibilityTest`
-- `ParticipationConversionUiIdempotencyContractTest`
-- `ParticipationConversionPenaltySemanticsTest`
+## R4 — Financial Conversion Ledger
 
-## R5 — Bootstrap + Outcome Participation Catalogue & Runtime Wiring
+Status: **GREEN / COMPLETE**
+
+- parent identity: `user_point_conversions`, unique `(user_id, request_key)`.
+- exact child consumption: `user_point_consumptions`.
+- فقط positive convertible Participation eligible است.
+- legacy `is_cashed=true` historical باقی می‌ماند و دوباره convert نمی‌شود.
+- negative convertible Participation reversals ظرفیت آینده را کم می‌کنند.
+- conversion فقط از `MonetaryService::activateDim()` عبور می‌کند.
+- same key retry replay می‌شود و double activation ندارد.
+
+Final R4 validation: Full #2006 / Responsive #372 — SUCCESS.
+
+## R5 — Evidence-backed Runtime Catalogue
 
 Status: **GREEN / COMPLETE FOR CURRENT EVIDENCE-BACKED DOMAIN**
 
-**Freeze production checkpoint:** `f11c2418a553bcaaae999921a5c19a252e2ab14d`  
-**Full Validation #2025:** success  
-**Full Project PHPUnit:** success  
-All specialty gates (Group Chat, Group Admin/Identity, Najm Hoda, Governance, Najm Bahar, Stock, JS) also passed.
+**R5 freeze:** `f11c2418a553bcaaae999921a5c19a252e2ab14d`  
+**Full #2025:** SUCCESS.
 
-### Normal group polls
+### Normal polls
 
-Only `main_type=1` normal polls participate in generic poll rewards. `main_type=0` election-style polls are explicitly excluded.
+فقط `main_type=1` normal poll reward دارد؛ election-style `main_type=0` excluded است.
 
-Stable identities:
 - `poll_created:poll:{poll_id}:creator:{user_id}`
 - `poll_participated:poll:{poll_id}:user:{user_id}`
-
-Vote removal does not award. Re-vote/re-add cannot mint another reward for the same poll+user.
-
-Bootstrap defaults:
-- `poll_created`: weight 5, daily cap 25, participation, convertible, once_per_context.
-- `poll_participated`: weight 2, daily cap 100, participation, convertible, once_per_context.
+- vote removal reward ندارد؛ re-vote/re-add duplicate نمی‌سازد.
+- `poll_created`: weight 5، cap 25، participation، convertible.
+- `poll_participated`: weight 2، cap 100، participation، convertible.
 
 ### Verified invitation
 
-Reward is bound to the actually consumed `InvitationCode.used_by` path, not a claimed/referral parameter. Historical system invitation issuer is excluded by the existing runtime guard. Stable identity is referrer+new member. Default remains weight 10, participation, convertible, once_per_context.
+Reward به `InvitationCode.used_by` واقعی متصل است. historical system issuer guard فعلی حفظ شده است. Stable key:
 
-### Systemic election outcome
+`invite_member:referrer:{referrer_id}:member:{user_id}`
 
-Reward source is existing after-commit `ElectionAppointmentApplied`.
+### Systemic election outcomes
 
-Only `direct + active` appointments award. Inherited appointments from electoral compression are excluded.
+Reward فقط `direct + active` appointment واقعی است.
 
 Actions:
 - `elected_manager`
 - `elected_inspector`
 
-Stable identity:
-- `elected_{role}:user:{user_id}:level:{location_level}`
+Identity:
+`{action}:user:{user_id}:level:{location_level}`
 
-Thus re-election to the same role/level does not create a new economic event; another role or governance level is independent.
+Default هر دو non-convertible است؛ admin فقط با تصمیم صریح آینده می‌تواند policy را تغییر دهد.
 
-Both rules are `participation + once_per_context` but **convertible=false by bootstrap default**. Admin may deliberately enable convertibility later.
+### Completed professional referral
 
-### Completed professional referral outcome
+Reward فقط بعد از completion واقعی Governance و خارج از transaction governance به‌صورت fail-open صادر می‌شود.
 
-`ProposalReferral` provides real domain evidence: pending → in_review → completed, with target-group manager/inspector authorization, `completed_by`, `assessment`, and `completed_at`.
+- action: `professional_referral_completed`
+- key: `professional_referral_completed:referral:{referral_id}`
+- default: weight 10، cap 50، participation، non-convertible، once_per_context.
 
-Reward is emitted only after the Governance transaction has completed. Reputation failure is fail-open and cannot roll back Governance completion.
+### Intentionally unwired
 
-Action:
-- `professional_referral_completed`
+این موارد عمداً reward ندارند تا domain evidence روشن شود:
+- Najm Bahar project assignment review.
+- Najm Hoda group action item `done`.
+- generic milestone/report.
+- secretariat/formal-record completion.
+- Najm Bahar project admin approval.
 
-Stable identity:
-- `professional_referral_completed:referral:{referral_id}`
+برای wire شدن هر مورد باید recipient، completion evidence، idempotency identity و reversal semantics صریح باشد.
 
-Bootstrap default:
-- weight 10
-- daily cap 50
-- participation
-- convertible=false
-- once_per_context
+## R6 — Migration, Transparency UI, Admin/UAT & Freeze
 
-### Deliberately unwired candidates
+Status: **GREEN / COMPLETE**
 
-These were audited and intentionally NOT connected because economic recipient/evidence is ambiguous:
-- Najm Bahar project assignment review: completion fields exist, but actor/recipient entitlement is ambiguous (assignee vs reviewer vs owner).
-- Najm Hoda group action item `done`: assigned user exists, but manager/inspector can mark done and no independent assignee-completion acceptance/evidence exists.
-- generic milestone/report: no canonical verified member-earned outcome surface was found.
-- secretariat/formal-record completion: no independent canonical member-earned outcome surface was found in current implementation.
-- Najm Bahar project admin approval: administrative approval alone is not member participation entitlement.
+### Canonical summary boundary
 
-These must stay unwired until their domain contract identifies recipient, completion evidence, idempotency identity and reversal semantics.
+`app/Services/ParticipationPointSummaryService.php` مرجع مشترک است.
 
-### Legacy catalogue debt deferred to R6
+Private summary (`forUser`) شامل:
+- durable `total_points`
+- level + Persian level label
+- reputation dimension breakdown
+- convertible awarded Participation
+- exact ledger consumed points
+- legacy cashed points
+- Participation reversals
+- remaining convertible capacity
 
-- `election_candidate` and `election_participated` have no current runtime call-sites and survive as legacy catalogue/config/admin concepts.
-- `election_candidate` is semantically incompatible with the current systemic election architecture, which has no formal candidacy flow.
-- bootstrap uses `firstOrCreate`; therefore removing config keys would not delete historical DB rows. R6 must deprecate/inactivate/present these rows without destroying audit history.
+`ReputationConversionController` و Najm Bahar wallet هر دو همین boundary را مصرف می‌کنند؛ محاسبه اقتصادی موازی وجود ندارد.
 
-## R6 — Migration, Transparency UI, Admin/UAT & Final Constitution
+### Durable reputation semantics
 
-Status: **IN PROGRESS — AUDIT STARTED**
+مدل قدیمی «پررنگ/کمرنگ» به semantics شفاف‌تر تبدیل شد:
+- اعتبار تاریخی/اجتماعی: `total_points`
+- ظرفیت اقتصادی باقی‌مانده: `remaining_convertible_points`
+- مصرف‌شده در conversion: exact ledger consumptions + legacy historical cashed rows.
 
-First confirmed debt:
-- `NajmBaharController::wallet()` currently calculates `cashedPoints` / `uncashedPoints` from raw positive `is_cashed` rows.
-- this is not the R4 economic truth because it ignores dimension, convertibility, exact consumption ledger and Participation reversals.
-- `ReputationConversionController` already contains the canonical eligibility calculation: positive convertible Participation snapshots, exact consumptions, economic reversals and historical cashed compatibility.
+مثال canonical: اگر عضو 100 امتیاز convertible کسب کند و 40 را تبدیل کند، اعتبار تاریخی او 100 باقی می‌ماند، 40 مصرف‌شده و 60 remaining conversion capacity است.
 
-Required first R6 implementation:
-1. extract canonical point/conversion summary into one reusable service/query boundary;
-2. make `ReputationConversionController::getInfo()` consume that boundary;
-3. make Najm Bahar wallet consume the same boundary instead of ad-hoc `is_cashed` sums;
-4. surface clear concepts separately: total reputation/activity points, economically eligible Participation, consumed/historical cashed, and remaining conversion capacity;
-5. cover with behavioral tests before UI wording/polish.
+`total_points` الزاماً برابر consumed+remaining نیست، چون می‌تواند non-convertible و ابعاد دیگر Reputation را نیز شامل شود.
 
-Further R6 work:
-- legacy rule migration/deprecation without deleting audit history;
-- semantic Persian labels/grouping in admin UI;
-- user/admin transparency around dimension/convertibility/caps/source;
-- invariant suite and UAT;
-- final launch policy/constitution/freeze document.
+### Dimension breakdown
+
+`reputationBreakdown()` مجموع signed transaction snapshots را برای چهار بُعد محاسبه می‌کند:
+- مشارکت
+- اعتمادپذیری
+- تخصص
+- اعتماد مدنی
+
+null/unknown historical dimensions حدس زده نمی‌شوند و در bucket صریح `legacy_other` / «سابقه قدیمی / سایر» قرار می‌گیرند.
+
+### Public profile
+
+Public member profile اکنون یک کارت Reputation responsive و فارسی دارد:
+- امتیاز کل اعتبار و مشارکت
+- سطح
+- breakdown چهار بُعد
+- سابقه قدیمی/سایر، فقط اگر non-zero باشد.
+
+Privacy invariant: public view از `publicReputationSummary()` استفاده می‌کند که عمداً هیچ‌یک از این موارد را برنمی‌گرداند:
+- remaining convertible capacity
+- ledger consumption
+- legacy cashed
+- convertible awarded
+- reversal/cashability data.
+
+بنابراین privacy در data boundary برقرار است، نه با CSS مخفی.
+
+برای حفظ UI قدیمی، view قبلی profile بدون بازنویسی به `profile-member-base.blade.php` منتقل شده و wrapper جدید همان layout/content را با `@parent` حفظ می‌کند.
+
+### «مشارکت‌های من» → «امتیازات من»
+
+صفحه جدید موازی ساخته نشده است. surface موجود History حفظ شده و tab موجود `امتیازات من` کامل شده است.
+
+نمایش خصوصی:
+- امتیاز اعتبار و مشارکت
+- سطح
+- breakdown چهار بُعد
+- مشارکت قابل تبدیل کسب‌شده
+- مصرف‌شده در تبدیل
+- مشارکت قابل تبدیل باقی‌مانده
+- legacy/reversal note فقط هنگام نیاز.
+
+CTA:
+`تبدیل امتیاز مشارکت به بهار`
+
+فرم مستقیم به route موجود `reputation.conversion.convert` متصل است؛ conversion algorithm یا endpoint دوم ساخته نشده است.
+
+برای حفظ markup/navigation قدیمی، History view قبلی عیناً در `history/index-base.blade.php` نگه داشته شده و wrapper جدید summary را در همان `#tab-points` قرار می‌دهد.
+
+### Najm Bahar wallet
+
+Wallet همان canonical summary را مصرف می‌کند و wording روشن دارد:
+- مجموع امتیاز اعتبار و مشارکت
+- مشارکت قابل تبدیل کسب‌شده
+- مصرف‌شده در تبدیل
+- مشارکت قابل تبدیل باقی‌مانده.
+
+### Legacy election catalogue
+
+`election_candidate` و `election_participated` دیگر bootstrap نمی‌شوند. Existing DB rows حذف نمی‌شوند، بلکه audit-only می‌مانند و forced inactive/non-convertible هستند. Admin نمی‌تواند آن‌ها را دوباره فعال اقتصادی کند.
+
+### Admin Reputation UI
+
+- قواعد semantic grouping فارسی دارند.
+- deprecated rules صریحاً «منسوخ» و فقط‌خواندنی‌اند.
+- recent point events و recent conversions audit-only هستند.
+- dimension labels، action labels و conversion statuses فارسی شده‌اند.
+- headers فنی نیز فارسی‌اند؛ technical IDs/keys فقط برای trace در code-style/LTR باقی می‌مانند و معنای اصلی UI نیستند.
+- `reliability` در UI یکدست «اعتمادپذیری» نمایش داده می‌شود.
+
+### R6 contract coverage
+
+مهم‌ترین قراردادهای closure:
+- `ParticipationSummaryBoundaryContractTest`
+- `WalletPointTransparencyContractTest`
+- `LegacyElectionRuleDeprecationContractTest`
+- `ReputationAdminSemanticLabelsContractTest`
+- `ReputationUserSurfacesContractTest`
+- `ReputationAdminPersianAuditContractTest`
+
+R6 implementation checkpoint `8503e2c73b20dbca5a915190f052a75610822320` با Full #2051 و Responsive #417 کاملاً سبز است.
 
 ## Six-task ledger
 
@@ -202,20 +267,24 @@ Further R6 work:
 - [x] R3 — Event Idempotency, Anti-Farming & Correct Recipients
 - [x] R4 — Financial Conversion Ledger & Consumption Safety
 - [x] R5 — Evidence-backed Catalogue & Runtime Wiring
-- [ ] R6 — Migration, Transparency UI, Admin/UAT & Final Constitution
+- [x] R6 — Migration, Transparency UI, Admin/UAT & Final Freeze
 
-## Constitutional/economic invariants
+## Final constitutional/economic invariants
 
 - conversion never mints Bahar.
 - only the member's own Dim can be activated.
-- only snapshots explicitly `convertible=true` and `dimension=participation` enter economic conversion.
+- only `convertible=true + dimension=participation` snapshots enter economic conversion.
+- durable Reputation does not disappear after economic conversion.
+- public profile never exposes private conversion/cashability state.
 - self-like never creates convertible capacity.
 - exact consumption preserves remainder; duplicate/retry cannot double-consume.
 - policy edits affect future awards, not historical snapshots.
 - historical audit trail survives migration/deprecation.
 - non-Participation penalties do not silently reduce Participation entitlement.
-- ambiguous activity/status transitions do not become economic rewards without domain evidence.
+- ambiguous status/activity transitions do not become economic rewards without domain evidence.
 
-## New-chat continuation prompt
+## Continuation / UAT note
 
-«ادامه سخت‌سازی Reputation/Participation Points را از branch `agent/r3-reputation-close` و R5 freeze checkpoint `f11c2418a553bcaaae999921a5c19a252e2ab14d` ادامه بده. Full Validation #2025 روی این checkpoint کاملاً سبز است. R1 تا R5 بسته‌اند؛ آن‌ها را بدون evidence جدید بازطراحی نکن. ابتدا `docs/REPUTATION_PARTICIPATION_POINTS_HANDOFF.fa.md` و plan را بخوان و سپس R6 را از استخراج canonical Participation conversion summary و حذف محاسبه legacy `is_cashed` از Najm Bahar wallet ادامه بده. بعد legacy catalogue migration/deprecation، semantic transparency UI، UAT و final freeze را ببند. هیچ merge یا تغییر مستقیمی روی main انجام نده.»
+کد R1–R6 بسته است. گام بعدی توسعه عمیق Reputation نیست؛ در صورت نیاز UAT دستی UI روی محیط واقعی/لوکال انجام شود: public member profile، «مشارکت‌های من → امتیازات من»، conversion CTA، Najm Bahar wallet و admin Reputation audit. هر defect مشاهده‌شده باید با test/contract مستقل باز شود.
+
+هیچ merge به `main` در این closure انجام نشده است. PR #92 validation-only است و **نباید merge شود**.
