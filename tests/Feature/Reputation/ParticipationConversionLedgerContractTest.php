@@ -27,10 +27,13 @@ class ParticipationConversionLedgerContractTest extends TestCase
 
     public function test_available_convertible_points_are_calculated_from_policy_snapshot_minus_consumption(): void
     {
-        $source = file_get_contents(app_path('Http/Controllers/ReputationConversionController.php'));
+        $controller = file_get_contents(app_path('Http/Controllers/ReputationConversionController.php'));
+        $summaryService = file_get_contents(app_path('Services/ParticipationPointSummaryService.php'));
 
-        $this->assertStringContainsString("->where('convertible', true)", $source);
-        $this->assertStringContainsString("->where('dimension', 'participation')", $source);
-        $this->assertStringContainsString('consumptions_sum_points_consumed', $source);
+        $this->assertStringContainsString('->convertibleTransactionsQuery($user->id)', $controller);
+        $this->assertStringContainsString("->where('convertible', true)", $summaryService);
+        $this->assertStringContainsString("->where('dimension', 'participation')", $summaryService);
+        $this->assertStringContainsString("->where('is_cashed', false)", $summaryService);
+        $this->assertStringContainsString('consumptions_sum_points_consumed', $summaryService);
     }
 }

@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\ReputationRule;
+use App\Models\UserPointConversion;
+use App\Models\UserPointTransaction;
+use Illuminate\Http\Request;
 
 class ReputationController extends Controller
 {
+    private const DEPRECATED_RULE_KEYS = ['election_candidate', 'election_participated'];
+
     public function index()
     {
         // Ensure config-defined rules exist without overwriting admin-authored DB values.
@@ -22,9 +26,13 @@ class ReputationController extends Controller
             'social_links_added' => 'افزودن لینک شبکه‌های اجتماعی',
             'documents_uploaded' => 'آپلود مدارک',
             'bio_added' => 'افزودن بیوگرافی',
+            'invite_member' => 'دعوت موفق عضو جدید',
+            'membership_fee_paid' => 'پرداخت حق عضویت سالانه',
             'post_created' => 'ایجاد پست',
+            'post_liked' => 'پسند پست',
             'post_upvoted' => 'پسندیدن پست',
             'comment_created' => 'ایجاد دیدگاه',
+            'comment_liked' => 'پسند دیدگاه',
             'comment_upvoted' => 'پسندیدن دیدگاه',
             'bid_placed' => 'ثبت پیشنهاد',
             'bid_won' => 'برنده در مناقصه',
@@ -34,16 +42,34 @@ class ReputationController extends Controller
             'fraud' => 'تقلب',
             'poll_created' => 'ایجاد نظرسنجی',
             'poll_participated' => 'شرکت در نظرسنجی',
-            'election_participated' => 'شرکت در انتخابات',
-            'election_candidate' => 'نامزد انتخابات',
+            'election_participated' => 'منسوخ — مشارکت عمومی انتخابات قدیمی',
+            'election_candidate' => 'منسوخ — نامزدی در مدل قدیمی انتخابات',
             'elected_inspector' => 'انتخاب‌شده به عنوان بازرس',
             'elected_manager' => 'انتخاب‌شده به عنوان مدیر',
+            'professional_referral_completed' => 'تکمیل ارجاع تخصصی تأییدشده',
+        ];
+
+        $dimensionLabels = [
+            'participation' => 'مشارکت',
+            'reliability' => 'اعتمادپذیری',
+            'expertise' => 'تخصص',
+            'civic_trust' => 'اعتماد مدنی',
+        ];
+
+        $conversionStatusLabels = [
+            'pending' => 'در انتظار',
+            'applied' => 'انجام‌شده',
+            'failed' => 'ناموفق',
+            'cancelled' => 'لغوشده',
+            'canceled' => 'لغوشده',
         ];
 
         $groupDefinitions = [
+            'membership' => ['label' => 'عضویت و دعوت', 'prefixes' => ['invite_member', 'membership_fee_paid']],
             'stock' => ['label' => 'سهام و حراج', 'prefixes' => ['bid_', 'successful_settlement', 'bid_won', 'bid_canceled']],
             'profile' => ['label' => 'ثبت‌نام و پروفایل', 'prefixes' => ['profile_', 'email_verified', 'profile_photo', 'social_links', 'documents_', 'bio_']],
-            'groups' => ['label' => 'گروه‌ها و نظرسنجی‌ها', 'prefixes' => ['poll_', 'election_', 'elected_']],
+            'groups' => ['label' => 'گروه‌ها و نظرسنجی‌ها', 'prefixes' => ['poll_']],
+            'governance' => ['label' => 'حاکمیت و انتخابات', 'prefixes' => ['election_', 'elected_', 'professional_referral_']],
             'content' => ['label' => 'محتوا و بازخورد', 'prefixes' => ['post_', 'comment_', 'post', 'comment']],
             'moderation' => ['label' => 'نظارتی و گزارش‌ها', 'prefixes' => ['report_', 'fraud']],
         ];
@@ -70,7 +96,30 @@ class ReputationController extends Controller
             }
         }
 
-        return view('admin.system-settings.reputation.index', compact('rules', 'faLabels', 'grouped'));
+        // Read-only audit models. Historical rows are intentionally exposed for
+        // verification but are never edited from the policy form.
+        $recentPointEvents = UserPointTransaction::query()
+            ->with('user:id,first_name,last_name,email')
+            ->withSum('consumptions as consumed_points_total', 'points_consumed')
+            ->latest('id')
+            ->limit(50)
+            ->get();
+
+        $recentConversions = UserPointConversion::query()
+            ->withSum('consumptions as consumed_points_total', 'points_consumed')
+            ->latest('id')
+            ->limit(30)
+            ->get();
+
+        return view('admin.system-settings.reputation.index', compact(
+            'rules',
+            'faLabels',
+            'dimensionLabels',
+            'conversionStatusLabels',
+            'grouped',
+            'recentPointEvents',
+            'recentConversions'
+        ));
     }
 
     public function update(Request $request)
@@ -92,6 +141,15 @@ class ReputationController extends Controller
         foreach ($data['weights'] as $key => $weight) {
             $rule = ReputationRule::where('key', $key)->first();
             if (! $rule) {
+                continue;
+            }
+
+            if (in_array($key, self::DEPRECATED_RULE_KEYS, true)) {
+                // Historical election rules are kept for audit only. They must
+                // never regain runtime or economic effect through admin edits.
+                $rule->active = false;
+                $rule->convertible = false;
+                $rule->save();
                 continue;
             }
 

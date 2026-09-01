@@ -273,7 +273,8 @@ class NajmBaharMembershipFeeController extends Controller
                 'policy_version_id' => $policyVersionId,
             ],
             $paymentYear,
-            'najm_bahar_membership'
+            'najm_bahar_membership',
+            'membership_fee_paid:user:' . $user->id . ':year:' . $paymentYear
         );
     }
 

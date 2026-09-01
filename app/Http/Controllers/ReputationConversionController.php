@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\UserPoint;
 use App\Models\UserPointConsumption;
 use App\Models\UserPointConversion;
-use App\Models\UserPointTransaction;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\MonetaryPolicyService;
 use App\Modules\NajmBahar\Services\MonetaryService;
+use App\Services\ParticipationPointSummaryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -20,45 +19,18 @@ class ReputationConversionController extends Controller
     protected $accountService;
     protected $monetaryService;
     protected $monetaryPolicyService;
+    protected $participationPointSummaryService;
 
     public function __construct(
         AccountService $accountService,
         MonetaryService $monetaryService,
-        MonetaryPolicyService $monetaryPolicyService
+        MonetaryPolicyService $monetaryPolicyService,
+        ParticipationPointSummaryService $participationPointSummaryService
     ) {
         $this->accountService = $accountService;
         $this->monetaryService = $monetaryService;
         $this->monetaryPolicyService = $monetaryPolicyService;
-    }
-
-    private function convertibleTransactions(int $userId)
-    {
-        return UserPointTransaction::where('user_id', $userId)
-            ->where('delta', '>', 0)
-            ->where('convertible', true)
-            ->where('dimension', 'participation')
-            ->where('is_cashed', false)
-            ->withSum('consumptions as consumptions_sum_points_consumed', 'points_consumed')
-            ->orderBy('created_at', 'asc');
-    }
-
-    private function participationReversalPoints(int $userId): int
-    {
-        return abs((int) UserPointTransaction::where('user_id', $userId)
-            ->where('delta', '<', 0)
-            ->where('convertible', true)
-            ->where('dimension', 'participation')
-            ->sum('delta'));
-    }
-
-    private function legacyCashedPoints(int $userId): int
-    {
-        return (int) UserPointTransaction::where('user_id', $userId)
-            ->where('delta', '>', 0)
-            ->where('convertible', true)
-            ->where('dimension', 'participation')
-            ->where('is_cashed', true)
-            ->sum('delta');
+        $this->participationPointSummaryService = $participationPointSummaryService;
     }
 
     public function getInfo()
@@ -76,15 +48,10 @@ class ReputationConversionController extends Controller
             return response()->json(['error' => 'حساب نجم بهار یافت نشد'], 404);
         }
 
-        $userPoint = UserPoint::where('user_id', $user->id)->first();
-        $totalPoints = $userPoint ? $userPoint->points : 0;
-        $transactions = $this->convertibleTransactions($user->id)->get();
-        $convertibleAwarded = (int) $transactions->sum('delta');
-        $ledgerConsumedPoints = (int) $transactions->sum(fn ($tx) => (int) ($tx->consumptions_sum_points_consumed ?? 0));
-        $participationReversalPoints = $this->participationReversalPoints($user->id);
-        $legacyCashedPoints = $this->legacyCashedPoints($user->id);
-        $cashedPoints = $legacyCashedPoints + $ledgerConsumedPoints;
-        $uncashedPoints = max(0, $convertibleAwarded - $participationReversalPoints - $ledgerConsumedPoints);
+        $pointSummary = $this->participationPointSummaryService->forUser($user->id);
+        $totalPoints = $pointSummary['total_points'];
+        $uncashedPoints = $pointSummary['remaining_convertible_points'];
+        $cashedPoints = $pointSummary['cashed_points'];
 
         $ratio = max(1, (int) data_get($policy, 'parameters.reputation_to_gol_ratio', 100));
         $hasEnoughFaded = $account->balance_faded >= intdiv($uncashedPoints, $ratio);
@@ -93,6 +60,11 @@ class ReputationConversionController extends Controller
             'total_points' => $totalPoints,
             'uncashed_points' => $uncashedPoints,
             'cashed_points' => $cashedPoints,
+            'convertible_awarded_points' => $pointSummary['convertible_awarded_points'],
+            'ledger_consumed_points' => $pointSummary['ledger_consumed_points'],
+            'legacy_cashed_points' => $pointSummary['legacy_cashed_points'],
+            'participation_reversal_points' => $pointSummary['participation_reversal_points'],
+            'remaining_convertible_points' => $pointSummary['remaining_convertible_points'],
             'conversion_ratio' => $ratio,
             'conversion_ratio_text' => "هر {$ratio} امتیاز = 1 گل",
             'policy_version' => $policy['version'],
@@ -102,7 +74,7 @@ class ReputationConversionController extends Controller
             'balance_active' => $account->balance_active,
             'balance_active_formatted' => \App\Helpers\BaharMoney::formatDecimal($account->balance_active),
             'has_enough_faded' => $hasEnoughFaded,
-            'level' => $userPoint ? $userPoint->level : 'Bronze',
+            'level' => $pointSummary['level'],
         ]);
     }
 
@@ -193,14 +165,19 @@ class ReputationConversionController extends Controller
                     return;
                 }
 
-                $transactions = $this->convertibleTransactions($user->id)
+                $transactions = $this->participationPointSummaryService
+                    ->convertibleTransactionsQuery($user->id)
                     ->lockForUpdate()
                     ->get();
 
                 $positiveRemainingPoints = (int) $transactions->sum(function ($tx) {
                     return max(0, (int) $tx->delta - (int) ($tx->consumptions_sum_points_consumed ?? 0));
                 });
-                $availablePoints = max(0, $positiveRemainingPoints - $this->participationReversalPoints($user->id));
+                $availablePoints = max(
+                    0,
+                    $positiveRemainingPoints
+                        - $this->participationPointSummaryService->participationReversalPoints($user->id)
+                );
 
                 if ($convertiblePoints > $availablePoints) {
                     throw new \Exception("امتیازات قابل نقد کافی نیست. امتیاز قابل نقد: {$availablePoints}");

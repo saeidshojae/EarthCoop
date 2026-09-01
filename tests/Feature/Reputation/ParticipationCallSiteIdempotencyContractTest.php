@@ -21,4 +21,11 @@ class ParticipationCallSiteIdempotencyContractTest extends TestCase
 
         $this->assertStringContainsString("'invite_member:referrer:' . \$referrer->id . ':member:' . \$user->id", $source);
     }
+
+    public function test_membership_fee_award_uses_member_and_payment_year_as_stable_business_event_key(): void
+    {
+        $source = file_get_contents(app_path('Http/Controllers/NajmBaharMembershipFeeController.php'));
+
+        $this->assertStringContainsString("'membership_fee_paid:user:' . \$user->id . ':year:' . \$paymentYear", $source);
+    }
 }
