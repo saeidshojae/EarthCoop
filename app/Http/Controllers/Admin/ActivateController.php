@@ -13,7 +13,7 @@ class ActivateController extends Controller
      */
     public function index()
     {
-        $setting = Setting::find(1);
+        $setting = Setting::singleton();
         return view('admin.system-settings.activate.index', compact('setting'));
     }
 
@@ -31,17 +31,17 @@ class ActivateController extends Controller
             'expire_invation_time.integer' => 'زمان انقضا باید عدد باشد',
             'expire_invation_time.min' => 'زمان انقضا باید حداقل 1 ساعت باشد',
             'expire_invation_time.max' => 'زمان انقضا نمی‌تواند بیشتر از 8760 ساعت (یک سال) باشد',
-            'count_invation.integer' => 'تعداد کد دعوت باید عدد باشد',
-            'count_invation.min' => 'تعداد کد دعوت نمی‌تواند منفی باشد',
+            'count_invation.integer' => 'سهمیه دعوت موفق باید عدد باشد',
+            'count_invation.min' => 'سهمیه دعوت موفق نمی‌تواند منفی باشد',
         ]);
 
-        $setting = Setting::find(1);
-        
+        $setting = Setting::singleton();
+
         $inputs = [
             'invation_status' => $request->has('invation_status') ? 1 : 0,
             'finger_status' => $request->has('finger_status') ? 1 : 0,
             'expire_invation_time' => $validated['expire_invation_time'] ?? $setting->expire_invation_time ?? 72,
-            'count_invation' => $validated['count_invation'] ?? $setting->count_invation ?? 0,
+            'count_invation' => $validated['count_invation'] ?? $setting->count_invation ?? 10,
         ];
 
         $setting->update($inputs);

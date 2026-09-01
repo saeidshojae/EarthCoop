@@ -6,7 +6,6 @@ use App\Models\Address;
 use App\Models\User;
 use App\Models\UserExperience;
 use App\Models\UserPointTransaction;
-use App\Services\ReputationService;
 use Illuminate\Support\Facades\Log;
 
 class ProfileCompletionService
@@ -21,20 +20,44 @@ class ProfileCompletionService
             return false;
         }
 
+        $changed = false;
+
         $alreadyAwarded = UserPointTransaction::where('user_id', $user->id)
             ->where('action', 'profile_completed')
             ->exists();
 
-        if ($alreadyAwarded) {
-            return false;
+        if (! $alreadyAwarded) {
+            try {
+                app(ReputationService::class)->applyAction(
+                    $user,
+                    'profile_completed',
+                    [],
+                    null,
+                    'profile',
+                    'profile_completed:user:' . $user->id
+                );
+                $changed = true;
+            } catch (\Throwable $e) {
+                Log::error('Reputation applyAction failed (profile_completed): ' . $e->getMessage());
+            }
         }
 
+        // Registration completion is also the canonical success boundary for a
+        // member referral. This is intentionally independent of Najm Bahar
+        // account creation or agreement acceptance.
         try {
-            app(ReputationService::class)->applyAction($user, 'profile_completed', [], null, 'profile');
-            return true;
+            if (app(InvitationLifecycleService::class)->completeSuccessfulInvitation($user)) {
+                $changed = true;
+            }
         } catch (\Throwable $e) {
-            Log::error('Reputation applyAction failed (profile_completed): ' . $e->getMessage());
-            return false;
+            // Do not block registration completion if the referral reward path
+            // is temporarily unavailable. Because completed_at is transactional
+            // with the reward, a later maybeAward() call can safely retry it.
+            Log::error('Invitation completion failed: ' . $e->getMessage(), [
+                'user_id' => $user->id,
+            ]);
         }
+
+        return $changed;
     }
 }

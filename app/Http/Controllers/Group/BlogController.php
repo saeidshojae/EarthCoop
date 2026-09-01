@@ -9,22 +9,22 @@ use App\Http\Requests\Group\UpdatePostRequest;
 use App\Models\Blog;
 use App\Models\Category;
 use App\Models\Group;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Storage;
+use App\Services\Blog\BlogLifecycleService;
+use App\Services\Blog\BlogPublicationService;
 use App\Services\GroupChat\HtmlSanitizer;
-use App\Services\GroupChat\GroupFeedService;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class BlogController extends Controller
 {
-    public function store(Group $group, StorePostRequest $request, HtmlSanitizer $sanitizer)
-    {
+    public function store(
+        Group $group,
+        StorePostRequest $request,
+        HtmlSanitizer $sanitizer,
+        BlogPublicationService $publication
+    ) {
         $inputs = $request->validated();
         $inputs['content'] = $sanitizer->sanitize($inputs['content']);
-
         $inputs['group_id'] = $group->id;
-        $inputs['user_id'] = auth()->id();
 
         if ($request->hasFile('img') && $request->file('img')->isValid()) {
             $file = $request->file('img');
@@ -36,18 +36,20 @@ class BlogController extends Controller
             );
         }
 
-        $blog = DB::transaction(function () use ($inputs, $group): Blog {
-            $blog = Blog::create($inputs);
-            app(GroupFeedService::class)->record((int) $group->id, 'post', (int) $blog->id, (int) auth()->id(), $blog->created_at);
-
-            return $blog->refresh();
-        });
+        $blog = $publication->create($inputs, (int) auth()->id());
 
         $this->dispatchGroupEvent(new \App\Events\BlogCreated($blog, $group, auth()->user()));
 
         try {
             $service = app(\App\Services\ReputationService::class);
-            $service->applyAction(auth()->user(), 'post_created', ['blog_id' => $blog->id], $blog->id, 'groups');
+            $service->applyAction(
+                auth()->user(),
+                'post_created',
+                ['blog_id' => $blog->id],
+                $blog->id,
+                'groups',
+                'post_created:' . $blog->id . ':author:' . auth()->id()
+            );
         } catch (\Throwable $e) {
             // ignore reputation failures
         }
@@ -79,27 +81,11 @@ class BlogController extends Controller
         return redirect()->back()->with('success', 'پست شما با موفقیت ارسال شد');
     }
 
-    public function destroy(Blog $blog)
+    public function destroy(Blog $blog, BlogLifecycleService $lifecycle)
     {
         $this->authorize('delete', $blog);
 
-        if (false && $blog->user_id !== auth()->id()) {
-            return response()->json(['status' => 'error', 'message' => 'شما مجوز حذف این پست را ندارید.'], 403);
-        }
-
-        $groupId = (int) $blog->group_id;
-        $blogId = (int) $blog->id;
-        $blog->delete();
-
-        // Cache deleted post ID so polling can detect it (10 min TTL)
-        $cacheKey = 'group.' . $groupId . '.deleted_post_ids';
-        $existing = Cache::get($cacheKey, []);
-        $existing[] = $blogId;
-        Cache::put($cacheKey, array_values(array_unique(array_slice($existing, -200))), 600);
-
-        $this->dispatchGroupEvent(new GroupFeedUpdated($groupId, 'post_deleted', [
-            'post_id' => $blogId,
-        ], (int) auth()->id()));
+        $lifecycle->delete($blog, (int) auth()->id());
 
         return response()->json([
             'status' => 'success',
@@ -158,7 +144,7 @@ class BlogController extends Controller
     {
         $this->authorize('view', $blog);
         $user = auth()->user();
-        
+
         // Don't mark own posts as read
         if ($blog->user_id === $user->id) {
             return response()->json(['status' => 'ignored']);
@@ -197,4 +183,3 @@ class BlogController extends Controller
         app(\App\Services\GroupChat\GroupEventPublisher::class)->publish($event);
     }
 }
-

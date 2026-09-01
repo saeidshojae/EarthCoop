@@ -5,9 +5,13 @@ return [
     'weights' => [
         'email_verified' => 50,
         'profile_completed' => 30,
+        'invite_member' => 100,
+        'membership_fee_paid' => 12,
         'post_created' => 10,
+        'post_liked' => 1,
         'post_upvoted' => 5,
         'comment_created' => 2,
+        'comment_liked' => 1,
         'comment_upvoted' => 1,
         'bid_placed' => 1,
         'bid_won' => 20,
@@ -30,6 +34,41 @@ return [
         'elected_manager' => 100,
     ],
 
+    // Policy defaults are used only when a rule is first bootstrapped into the database.
+    // Existing database rules remain authoritative and are never overwritten by config.
+    'policy_defaults' => [
+        'invite_member' => [
+            'dimension' => 'participation',
+            'convertible' => true,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'membership_fee_paid' => [
+            'dimension' => 'participation',
+            'convertible' => true,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'post_liked' => [
+            'dimension' => 'participation',
+            'convertible' => true,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'post_upvoted' => [
+            'dimension' => 'participation',
+            'convertible' => true,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'comment_liked' => [
+            'dimension' => 'participation',
+            'convertible' => true,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'comment_upvoted' => [
+            'dimension' => 'participation',
+            'convertible' => true,
+            'repeat_policy' => 'once_per_context',
+        ],
+    ],
+
     // Tier thresholds
     'tiers' => [
         'Bronze' => 0,
@@ -40,7 +79,9 @@ return [
 
     // Daily caps to prevent abuse (per action-key)
     'daily_caps' => [
+        'post_liked' => 20,
         'post_upvoted' => 50,
+        'comment_liked' => 20,
         'comment_upvoted' => 100,
         'bid_placed' => 500,
         // limit poll participation abuse

@@ -104,13 +104,15 @@ test('chat page uses only locally bundled library assets', () => {
     const chat = readFileSync('resources/views/groups/chat.blade.php', 'utf8');
     const layout = readFileSync('resources/views/layouts/chat.blade.php', 'utf8');
     const app = readFileSync('resources/js/app.js', 'utf8');
+    const viteCss = readFileSync('resources/css/vite.css', 'utf8');
 
     assert.doesNotMatch(chat, /<(?:script|link)\b[^>]+https?:\/\//i);
     assert.match(layout, /vendor\/fontawesome\/css\/all\.min\.css/);
     assert.match(app, /import \$ from "jquery"/);
     assert.match(app, /import installSelect2 from "select2"/);
     assert.match(app, /installSelect2\(window, appJQuery\)/);
-    assert.match(app, /select2\/dist\/css\/select2\.min\.css/);
+    assert.match(viteCss, /select2\/dist\/css\/select2\.min\.css/);
+    assert.doesNotMatch(app, /select2\/dist\/css\/select2\.min\.css/);
 });
 
 test('delta synchronization follows the server-side feature flag', () => {
@@ -294,9 +296,11 @@ test('realtime retries and fallback pollers are owned by the page lifecycle', ()
     assert.match(index, /app\.installRealtime\(\{ debug \}\)/);
     assert.doesNotMatch(legacy, /function (?:getGroupRealtimeState|initGroupRealtimeListeners|startPolling|syncGroupDelta)\(/);
     assert.match(runtime, /lifecycle\.timeout\(syncDelta, delay\)/);
-    assert.match(runtime, /lifecycle\.interval\(pollMessages, 1000\)/);
-    assert.match(runtime, /lifecycle\.interval\(pollPosts, 3000\)/);
-    assert.match(runtime, /lifecycle\.interval\(reconcilePosts, 10000\)/);
+    assert.match(runtime, /if \(hasCanonicalSync\)/);
+    assert.match(runtime, /lifecycle\.interval\(pollSync, syncInterval\)/);
+    assert.match(runtime, /lifecycle\.interval\(pollMessages, 3000\)/);
+    assert.match(runtime, /lifecycle\.interval\(pollPosts, 5000\)/);
+    assert.match(runtime, /lifecycle\.interval\(reconcilePosts, 15000\)/);
     assert.match(runtime, /lifecycle\.on\(window, 'online'/);
     assert.doesNotMatch(runtime, /(^|[^.\w])setInterval\(/m);
     assert.doesNotMatch(runtime, /window\.addEventListener\('(online|offline)'/);
@@ -317,12 +321,16 @@ test('realtime connection state stays internal and restricted mobile composer is
 test('session participation requests notify moderators through realtime badge and polling fallback', () => {
     const realtime = readFileSync('resources/js/group-chat/realtime-runtime.js', 'utf8');
     const participation = readFileSync('resources/js/group-chat/session-participation.js', 'utf8');
+    const sessionState = readFileSync('resources/js/group-chat/session-state.js', 'utf8');
     const panel = readFileSync('resources/views/groups/partials/group_info_panel.blade.php', 'utf8');
 
     assert.match(realtime, /session_participation_requested/);
     assert.match(realtime, /sessionParticipation\?\.receiveRequest/);
     assert.match(participation, /pending_requests_count/);
-    assert.match(participation, /lifecycle\.interval\(refreshPendingCount,\s*15000\)/);
+    assert.match(participation, /listen\(window, 'group-chat:session-state'/);
+    assert.match(participation, /consumeSessionState/);
+    assert.match(sessionState, /lifecycle\.interval\(reconcile, 15000\)/);
+    assert.doesNotMatch(participation, /lifecycle\.interval\(refreshPendingCount/);
     assert.match(participation, /GroupChatFeedback\?\.toast/);
     assert.match(panel, /id="sessionParticipationBadge"/);
 });
@@ -661,8 +669,10 @@ test('group hero markup is loaded through its dedicated partial', () => {
     assert.doesNotMatch(blade, /class="[^"]*group-info-card/);
     assert.match(hero, /class="[^"]*group-info-card/);
     assert.match(hero, /data-chat-page-action="open-group-info"/);
-    assert.match(hero, /data-chat-page-action="open-blog"/);
-    assert.match(hero, /data-chat-page-action="open-poll"/);
+    assert.match(hero, /data-chat-page-action="open-election"/);
+    assert.match(hero, /route\('groups\.najm-bahar\.reports', \$group\)/);
+    assert.doesNotMatch(hero, /data-chat-page-action="open-blog"/);
+    assert.doesNotMatch(hero, /data-chat-page-action="open-poll"/);
     assert.match(hero, /data-group-chat-action="toggle-group-hero"/);
     assert.match(hero, /aria-expanded="false"/);
     assert.match(hero, /group-hero__avatar w-16 h-16/);
@@ -678,8 +688,6 @@ test('all declarative chat actions use the lifecycle-owned modular dispatcher', 
     const actions = readFileSync('resources/js/group-chat/actions.js', 'utf8');
     const index = readFileSync('resources/js/group-chat/index.js', 'utf8');
     const groupChat = readFileSync('public/js/group-chat.js', 'utf8');
-    const adapters = readFileSync('resources/js/group-chat/legacy-renderers.js', 'utf8');
-    const composer = readFileSync('resources/js/group-chat/composer.js', 'utf8');
 
     assert.match(actions, /lifecycle\.on\(root, 'click'/);
     assert.match(actions, /\[data-group-chat-action\], \[data-legacy-chat-action\], \[data-chat-page-action\]/);
@@ -813,7 +821,6 @@ test('group info and election panel handlers are lifecycle-owned and declarative
     const panel = readFileSync('resources/views/groups/partials/group_info_panel.blade.php', 'utf8');
     const election = readFileSync('resources/views/groups/modals/election_modal.blade.php', 'utf8');
     const elections = readFileSync('resources/js/group-chat/elections.js', 'utf8');
-
     assert.match(panel, /<script type="module">/);
     assert.match(panel, /const groupInfoLifecycle = window\.GroupChatLifecycle/);
     assert.match(panel, /window\.GroupInfoPanel = Object\.freeze/);

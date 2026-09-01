@@ -15,6 +15,7 @@ class PinnedMessage extends Model
         'message' => Message::class,
         'post' => Blog::class,
         'poll' => Poll::class,
+        'announcement' => Announcement::class,
     ];
 
     public function announcement()

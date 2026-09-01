@@ -199,20 +199,8 @@ class StartController extends Controller
         $invitationCode = $invitationRequired
             ? $request->session()->get('registration_invitation_code')
             : null;
-        $invartion = null;
 
-        if ($invitationRequired) {
-            $invartion = InvitationCode::where('code', $invitationCode)
-                ->where('used', 0)
-                ->where('expire_at', '>=', now())
-                ->first();
-
-            if (!$invartion) {
-                return redirect()->route('welcome')->withErrors([
-                    'invite_code' => 'کد دعوت معتبر نیست یا منقضی شده است. لطفاً دوباره کد دعوت را وارد کنید.',
-                ]);
-            }
-        } else {
+        if (!$invitationRequired) {
             $request->session()->forget('registration_invitation_code');
         }
 
@@ -222,19 +210,48 @@ class StartController extends Controller
             'password' => 'required|min:6|confirmed',
         ]);
 
-        $user = User::create([
-            'email'          => $request->email,
-            'phone'          => $request->phone,
-            'password'       => Hash::make($request->password),
-            'fingerprint_id' => session('fingerprint_id'),
-            'terms_accepted_at' => now(),
-        ]);
-        
-        if ($invartion) {
-            $invartion->update([
-                'used' => 1,
-                'used_by' => $user->id,
-                'used_at' => now(),
+        $user = DB::transaction(function () use ($request, $invitationRequired, $invitationCode) {
+            $invitation = null;
+
+            if ($invitationRequired) {
+                // The lock makes the final validity check + claim a single atomic
+                // operation. Two concurrent registrations cannot consume one code.
+                $invitation = InvitationCode::where('code', $invitationCode)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$invitation
+                    || $invitation->used
+                    || !$invitation->expire_at
+                    || $invitation->expire_at->lt(now())) {
+                    return null;
+                }
+            }
+
+            $newUser = User::create([
+                'email'          => $request->email,
+                'phone'          => $request->phone,
+                'password'       => Hash::make($request->password),
+                'fingerprint_id' => session('fingerprint_id'),
+                'terms_accepted_at' => now(),
+            ]);
+
+            if ($invitation) {
+                $invitation->forceFill([
+                    'used' => true,
+                    'used_by' => $newUser->id,
+                    'used_at' => now(),
+                ])->save();
+            }
+
+            return $newUser;
+        });
+
+        if (!$user) {
+            $request->session()->forget('registration_invitation_code');
+
+            return redirect()->route('welcome')->withErrors([
+                'invite_code' => 'کد دعوت معتبر نیست، منقضی شده یا هم‌زمان توسط عضو دیگری استفاده شده است. لطفاً کد دعوت دیگری وارد کنید.',
             ]);
         }
 

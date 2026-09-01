@@ -3,305 +3,262 @@
 namespace App\Modules\Stock\Controllers;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Modules\Stock\Models\Auction;
-use App\Modules\Stock\Models\Bid;
-use App\Modules\Stock\Models\Stock;
 use App\Modules\Stock\Models\Holding;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Morilog\Jalali\Jalalian;
 
 class StockReportController extends Controller
 {
-    // گزارش عملکرد حراج‌ها
     public function auctionPerformance(Request $request)
     {
-        $dateFrom = $request->input('date_from') ? 
-            (strpos($request->input('date_from'), '/') !== false ? 
-                Jalalian::fromFormat('Y/m/d', $request->input('date_from'))->toCarbon() : 
-                Carbon::parse($request->input('date_from'))
-            ) : now()->subMonths(6);
-            
-        $dateTo = $request->input('date_to') ? 
-            (strpos($request->input('date_to'), '/') !== false ? 
-                Jalalian::fromFormat('Y/m/d', $request->input('date_to'))->toCarbon()->endOfDay() : 
-                Carbon::parse($request->input('date_to'))->endOfDay()
-            ) : now();
-        
+        [$dateFrom, $dateTo] = $this->dateRange($request);
+
         $auctions = Auction::whereBetween('start_time', [$dateFrom, $dateTo])
             ->with(['bids', 'stock'])
             ->get();
-        
-        // محاسبه آمار
+
+        $allBids = $auctions->flatMap(fn ($auction) => $auction->bids);
+        $wonBids = $allBids->where('status', 'won');
+        $pricedBids = $allBids->filter(fn ($bid) => (int) ($bid->price_gol ?? 0) > 0);
+
         $stats = [
             'total_auctions' => $auctions->count(),
             'completed_auctions' => $auctions->whereIn('status', ['settled', 'completed'])->count(),
             'canceled_auctions' => $auctions->whereIn('status', ['canceled', 'cancelled'])->count(),
             'total_shares_offered' => $auctions->sum('shares_count'),
-            'total_shares_sold' => $auctions->whereIn('status', ['settled', 'completed'])->sum('shares_count'),
-            'total_bids' => $auctions->sum(fn($a) => $a->bids->count()),
-            'total_volume' => $auctions->sum(fn($a) => $a->bids->sum('quantity')),
-            'total_capital' => $auctions->sum(fn($a) => $a->bids->sum(fn($b) => ($b->price ?? 0) * ($b->quantity ?? 0))),
-            'average_price' => $auctions->flatMap(fn($a) => $a->bids)->pluck('price')->filter()->avg() ?? 0,
+            'total_shares_sold' => $wonBids->sum('quantity'),
+            'total_bids' => $allBids->count(),
+            'total_volume' => $allBids->sum('quantity'),
+            'total_capital_gol' => $wonBids->sum(fn ($bid) => $this->bidTotalGol($bid)),
+            'average_price_gol' => $pricedBids->avg('price_gol') ?? 0,
         ];
-        
+
         return view('Stock::admin_reports.auction_performance', compact('auctions', 'stats', 'dateFrom', 'dateTo'));
     }
-    
-    // گزارش سرمایه‌گذاران
+
     public function investors(Request $request)
     {
-        // ابتدا تمام holdings را با relationships بگیریم
         $allHoldings = Holding::with(['user', 'stock'])->get();
-        
-        // گروه‌بندی و محاسبه
-        $grouped = $allHoldings->groupBy(function($holding) {
-            return $holding->user_id . '_' . $holding->stock_id;
-        })->map(function($group) {
-            $first = $group->first();
-            return (object)[
-                'user_id' => $first->user_id,
-                'stock_id' => $first->stock_id,
-                'user' => $first->user,
-                'stock' => $first->stock,
-                'total_shares' => $group->sum('quantity'),
-                'total_investment' => $group->sum(function($h) {
-                    return $h->quantity * ($h->stock->base_share_price ?? 0);
-                }),
-            ];
-        })->sortByDesc('total_investment')->values();
-        
-        // Pagination دستی
-        $page = $request->get('page', 1);
+
+        $grouped = $allHoldings->groupBy(fn ($holding) => $holding->user_id . '_' . $holding->stock_id)
+            ->map(function ($group) {
+                $first = $group->first();
+                $shares = (int) $group->sum('quantity');
+                $baseSharePriceGol = (int) ($first->stock->base_share_price_gol ?? 0);
+
+                return (object) [
+                    'user_id' => $first->user_id,
+                    'stock_id' => $first->stock_id,
+                    'user' => $first->user,
+                    'stock' => $first->stock,
+                    'total_shares' => $shares,
+                    'base_asset_value_gol' => $shares * $baseSharePriceGol,
+                ];
+            })
+            ->sortByDesc('base_asset_value_gol')
+            ->values();
+
+        $page = (int) $request->get('page', 1);
         $perPage = 50;
-        $offset = ($page - 1) * $perPage;
-        $investors = new \Illuminate\Pagination\LengthAwarePaginator(
-            $grouped->slice($offset, $perPage),
+        $investors = new LengthAwarePaginator(
+            $grouped->slice(($page - 1) * $perPage),
             $grouped->count(),
             $perPage,
             $page,
             ['path' => $request->url(), 'query' => $request->query()]
         );
-        
+
         $totalInvestors = Holding::distinct('user_id')->count('user_id');
-        $totalInvestment = $allHoldings->sum(function($holding) {
-            return $holding->quantity * ($holding->stock->base_share_price ?? 0);
-        });
-        
-        return view('Stock::admin_reports.investors', compact('investors', 'totalInvestors', 'totalInvestment'));
+        $totalAssetValueGol = $allHoldings->sum(fn ($holding) =>
+            (int) $holding->quantity * (int) ($holding->stock->base_share_price_gol ?? 0)
+        );
+
+        return view('Stock::admin_reports.investors', compact('investors', 'totalInvestors', 'totalAssetValueGol'));
     }
-    
-    // گزارش مالی
+
     public function financial(Request $request)
     {
-        $dateFrom = $request->input('date_from') ? 
-            (strpos($request->input('date_from'), '/') !== false ? 
-                Jalalian::fromFormat('Y/m/d', $request->input('date_from'))->toCarbon() : 
-                Carbon::parse($request->input('date_from'))
-            ) : now()->subMonths(6);
-            
-        $dateTo = $request->input('date_to') ? 
-            (strpos($request->input('date_to'), '/') !== false ? 
-                Jalalian::fromFormat('Y/m/d', $request->input('date_to'))->toCarbon()->endOfDay() : 
-                Carbon::parse($request->input('date_to'))->endOfDay()
-            ) : now();
-        
+        [$dateFrom, $dateTo] = $this->dateRange($request);
+
         $auctions = Auction::whereBetween('start_time', [$dateFrom, $dateTo])
             ->whereIn('status', ['settled', 'completed'])
             ->with('bids')
             ->get();
-        
-        // محاسبه درآمدها
-        $revenue = $auctions->sum(function($auction) {
-            return $auction->bids->where('status', 'won')->sum(function($bid) {
-                return ($bid->price ?? 0) * ($bid->quantity ?? 0);
-            });
-        });
-        
-        // آمار فروش
+
+        $wonBids = $auctions->flatMap(fn ($auction) => $auction->bids->where('status', 'won'));
+        $pricedWonBids = $wonBids->filter(fn ($bid) => (int) ($bid->price_gol ?? 0) > 0);
+
         $sales = [
-            'total_sales' => $revenue,
-            'total_shares_sold' => $auctions->sum('shares_count'),
-            'average_price' => $auctions->flatMap(fn($a) => $a->bids->where('status', 'won'))->pluck('price')->filter()->avg() ?? 0,
-            'total_transactions' => $auctions->sum(fn($a) => $a->bids->where('status', 'won')->count()),
+            'total_sales_gol' => $wonBids->sum(fn ($bid) => $this->bidTotalGol($bid)),
+            'total_shares_sold' => $wonBids->sum('quantity'),
+            'average_price_gol' => $pricedWonBids->avg('price_gol') ?? 0,
+            'total_transactions' => $wonBids->count(),
         ];
-        
+
         return view('Stock::admin_reports.financial', compact('sales', 'auctions', 'dateFrom', 'dateTo'));
     }
-    
-    // Export گزارش عملکرد حراج‌ها
+
     public function exportAuctionPerformance(Request $request)
     {
-        $dateFrom = $request->input('date_from') ? 
-            (strpos($request->input('date_from'), '/') !== false ? 
-                Jalalian::fromFormat('Y/m/d', $request->input('date_from'))->toCarbon() : 
-                Carbon::parse($request->input('date_from'))
-            ) : now()->subMonths(6);
-            
-        $dateTo = $request->input('date_to') ? 
-            (strpos($request->input('date_to'), '/') !== false ? 
-                Jalalian::fromFormat('Y/m/d', $request->input('date_to'))->toCarbon()->endOfDay() : 
-                Carbon::parse($request->input('date_to'))->endOfDay()
-            ) : now();
-        
-        $auctions = Auction::whereBetween('start_time', [$dateFrom, $dateTo])
-            ->with(['bids', 'stock'])
-            ->get();
-        
-        $filename = 'auction_performance_' . date('Y-m-d_H-i-s') . '.csv';
-        $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-        ];
-        
-        $callback = function() use ($auctions) {
+        [$dateFrom, $dateTo] = $this->dateRange($request);
+        $auctions = Auction::whereBetween('start_time', [$dateFrom, $dateTo])->with(['bids', 'stock'])->get();
+
+        return response()->stream(function () use ($auctions) {
             $file = fopen('php://output', 'w');
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM for UTF-8
-            
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
             fputcsv($file, [
-                'شناسه حراج', 'تعداد سهام', 'قیمت پایه', 'وضعیت', 'نوع', 
-                'تعداد پیشنهادها', 'بالاترین پیشنهاد', 'میانگین قیمت', 
-                'حجم پیشنهادها', 'تاریخ شروع', 'تاریخ پایان'
+                'شناسه حراج', 'تعداد سهام', 'قیمت پایه (گل)', 'معادل پایه (بهار)', 'وضعیت', 'نوع',
+                'تعداد پیشنهادها', 'بالاترین پیشنهاد (گل)', 'میانگین قیمت (گل)', 'حجم پیشنهادها', 'تاریخ شروع', 'تاریخ پایان',
             ]);
-            
+
             foreach ($auctions as $auction) {
                 $bids = $auction->bids;
-                $highestBid = $bids->max('price') ?? 0;
-                $avgPrice = $bids->pluck('price')->filter()->avg() ?? 0;
-                
+                $canonicalBids = $bids->filter(fn ($bid) => (int) ($bid->price_gol ?? 0) > 0);
+                $baseGol = (int) ($auction->base_price_gol ?? 0);
                 fputcsv($file, [
                     $auction->id,
                     $auction->shares_count,
-                    $auction->base_price,
-                    $auction->status,
-                    $auction->type,
+                    $baseGol,
+                    $baseGol / 100,
+                    $this->statusLabel($auction->status),
+                    $this->typeLabel($auction->type),
                     $bids->count(),
-                    $highestBid,
-                    round($avgPrice, 2),
+                    $canonicalBids->max('price_gol') ?? 0,
+                    round((float) ($canonicalBids->avg('price_gol') ?? 0), 2),
                     $bids->sum('quantity'),
                     $auction->start_time ? Jalalian::fromCarbon($auction->start_time)->format('Y/m/d H:i') : '',
                     $auction->ends_at ? Jalalian::fromCarbon($auction->ends_at)->format('Y/m/d H:i') : '',
                 ]);
             }
-            
             fclose($file);
-        };
-        
-        return response()->stream($callback, 200, $headers);
+        }, 200, $this->csvHeaders('auction_performance'));
     }
-    
-    // Export گزارش سرمایه‌گذاران
+
     public function exportInvestors()
     {
-        // ابتدا تمام holdings را با relationships بگیریم
         $allHoldings = Holding::with(['user', 'stock'])->get();
-        
-        // گروه‌بندی و محاسبه
-        $investors = $allHoldings->groupBy(function($holding) {
-            return $holding->user_id . '_' . $holding->stock_id;
-        })->map(function($group) {
-            $first = $group->first();
-            return (object)[
-                'user_id' => $first->user_id,
-                'stock_id' => $first->stock_id,
-                'user' => $first->user,
-                'stock' => $first->stock,
-                'total_shares' => $group->sum('quantity'),
-                'total_investment' => $group->sum(function($h) {
-                    return $h->quantity * ($h->stock->base_share_price ?? 0);
-                }),
-            ];
-        })->sortByDesc('total_investment')->values();
-        
-        $filename = 'investors_report_' . date('Y-m-d_H-i-s') . '.csv';
-        $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-        ];
-        
-        $callback = function() use ($investors) {
+        $investors = $allHoldings->groupBy(fn ($holding) => $holding->user_id . '_' . $holding->stock_id)
+            ->map(function ($group) {
+                $first = $group->first();
+                $shares = (int) $group->sum('quantity');
+                $baseSharePriceGol = (int) ($first->stock->base_share_price_gol ?? 0);
+                return (object) [
+                    'user_id' => $first->user_id,
+                    'stock_id' => $first->stock_id,
+                    'user' => $first->user,
+                    'total_shares' => $shares,
+                    'base_asset_value_gol' => $shares * $baseSharePriceGol,
+                ];
+            })
+            ->sortByDesc('base_asset_value_gol')
+            ->values();
+
+        return response()->stream(function () use ($investors) {
             $file = fopen('php://output', 'w');
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM for UTF-8
-            
-            fputcsv($file, [
-                'شناسه کاربر', 'نام', 'ایمیل', 'شناسه سهام', 
-                'تعداد کل سهام', 'کل سرمایه‌گذاری (تومان)'
-            ]);
-            
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($file, ['شناسه کاربر', 'نام', 'ایمیل', 'شناسه سهام', 'تعداد کل سهام', 'ارزش پایه دارایی (گل)', 'معادل (بهار)']);
+
             foreach ($investors as $investor) {
                 $user = $investor->user;
                 fputcsv($file, [
                     $user->id ?? '',
-                    ($user->first_name ?? '') . ' ' . ($user->last_name ?? ''),
+                    trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
                     $user->email ?? '',
                     $investor->stock_id ?? '',
                     $investor->total_shares ?? 0,
-                    ($investor->total_investment ?? 0),
+                    $investor->base_asset_value_gol ?? 0,
+                    ($investor->base_asset_value_gol ?? 0) / 100,
                 ]);
             }
-            
             fclose($file);
-        };
-        
-        return response()->stream($callback, 200, $headers);
+        }, 200, $this->csvHeaders('investors_report'));
     }
-    
-    // Export گزارش مالی
+
     public function exportFinancial(Request $request)
     {
-        $dateFrom = $request->input('date_from') ? 
-            (strpos($request->input('date_from'), '/') !== false ? 
-                Jalalian::fromFormat('Y/m/d', $request->input('date_from'))->toCarbon() : 
-                Carbon::parse($request->input('date_from'))
-            ) : now()->subMonths(6);
-            
-        $dateTo = $request->input('date_to') ? 
-            (strpos($request->input('date_to'), '/') !== false ? 
-                Jalalian::fromFormat('Y/m/d', $request->input('date_to'))->toCarbon()->endOfDay() : 
-                Carbon::parse($request->input('date_to'))->endOfDay()
-            ) : now();
-        
+        [$dateFrom, $dateTo] = $this->dateRange($request);
         $auctions = Auction::whereBetween('start_time', [$dateFrom, $dateTo])
             ->whereIn('status', ['settled', 'completed'])
             ->with('bids')
             ->get();
-        
-        $filename = 'financial_report_' . date('Y-m-d_H-i-s') . '.csv';
-        $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-        ];
-        
-        $callback = function() use ($auctions) {
+
+        return response()->stream(function () use ($auctions) {
             $file = fopen('php://output', 'w');
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM for UTF-8
-            
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
             fputcsv($file, [
-                'شناسه حراج', 'تعداد سهام فروخته شده', 'کل درآمد (تومان)', 
-                'تعداد تراکنش‌ها', 'میانگین قیمت فروش (تومان)', 'تاریخ'
+                'شناسه حراج', 'تعداد سهام فروخته‌شده', 'ارزش فروش (گل)', 'معادل فروش (بهار)',
+                'تعداد تراکنش‌ها', 'میانگین قیمت فروش (گل)', 'تاریخ',
             ]);
-            
+
             foreach ($auctions as $auction) {
                 $wonBids = $auction->bids->where('status', 'won');
-                $revenue = $wonBids->sum(function($bid) {
-                    return ($bid->price ?? 0) * ($bid->quantity ?? 0);
-                });
-                $avgPrice = $wonBids->pluck('price')->filter()->avg() ?? 0;
-                
+                $revenueGol = $wonBids->sum(fn ($bid) => $this->bidTotalGol($bid));
+                $pricedWonBids = $wonBids->filter(fn ($bid) => (int) ($bid->price_gol ?? 0) > 0);
                 fputcsv($file, [
                     $auction->id,
-                    $auction->shares_count,
-                    $revenue,
+                    $wonBids->sum('quantity'),
+                    $revenueGol,
+                    $revenueGol / 100,
                     $wonBids->count(),
-                    round($avgPrice, 2),
+                    round((float) ($pricedWonBids->avg('price_gol') ?? 0), 2),
                     $auction->start_time ? Jalalian::fromCarbon($auction->start_time)->format('Y/m/d') : '',
                 ]);
             }
-            
             fclose($file);
-        };
-        
-        return response()->stream($callback, 200, $headers);
+        }, 200, $this->csvHeaders('financial_report'));
+    }
+
+    private function dateRange(Request $request): array
+    {
+        $dateFrom = $request->input('date_from')
+            ? $this->parseDate($request->input('date_from'), false)
+            : now()->subMonths(6);
+        $dateTo = $request->input('date_to')
+            ? $this->parseDate($request->input('date_to'), true)
+            : now();
+
+        return [$dateFrom, $dateTo];
+    }
+
+    private function parseDate(string $value, bool $endOfDay): Carbon
+    {
+        $date = str_contains($value, '/')
+            ? Jalalian::fromFormat('Y/m/d', $value)->toCarbon()
+            : Carbon::parse($value);
+
+        return $endOfDay ? $date->endOfDay() : $date;
+    }
+
+    private function bidTotalGol($bid): int
+    {
+        $priceGol = (int) ($bid->price_gol ?? 0);
+        $quantity = (int) ($bid->quantity ?? 0);
+        return $priceGol > 0 && $quantity > 0 ? $priceGol * $quantity : 0;
+    }
+
+    private function statusLabel(?string $status): string
+    {
+        return [
+            'scheduled' => 'برنامه‌ریزی‌شده', 'running' => 'در حال اجرا', 'settling' => 'در حال تسویه',
+            'settled' => 'تسویه‌شده', 'completed' => 'تکمیل‌شده', 'canceled' => 'لغوشده', 'cancelled' => 'لغوشده',
+        ][$status] ?? 'نامشخص';
+    }
+
+    private function typeLabel(?string $type): string
+    {
+        return [
+            'single_winner' => 'تک‌برنده', 'uniform_price' => 'قیمت یکسان', 'pay_as_bid' => 'پرداخت به قیمت پیشنهادی',
+        ][$type] ?? 'نامشخص';
+    }
+
+    private function csvHeaders(string $prefix): array
+    {
+        return [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $prefix . '_' . date('Y-m-d_H-i-s') . '.csv"',
+        ];
     }
 }
-

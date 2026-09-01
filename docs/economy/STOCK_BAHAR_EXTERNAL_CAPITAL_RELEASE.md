@@ -13,101 +13,123 @@ Canonical flow:
 1. Stock purchase never creates Bahar.
 2. External fiat never credits a Najm Bahar account or balance.
 3. The legacy Stock `Wallet` is not a Bahar wallet and must not become a parallel money ledger.
-4. External IRR/USD settlement is allowed only when all three conditions are true:
-   - issuer = EarthCoop;
-   - market = primary;
-   - supply source = EarthCoop treasury.
+4. External IRR/USD settlement is allowed only for EarthCoop + primary market + EarthCoop treasury supply.
 5. Secondary-market settlement is Active Bahar only.
 6. Project/non-EarthCoop stock settlement is Active Bahar only.
 7. Unknown/legacy issuer or auction classifications fail closed for canonical settlement.
-8. Asset ownership remains in Stock/Holding (and later the generic Asset Ledger); money ownership remains in Najm Bahar or the external payment provider/reconciliation domain.
+8. Asset ownership remains in Stock/Holding; money ownership remains in Najm Bahar or the external payment/reconciliation domain.
 
-## Current audit findings
+## Transitional code warning
 
-### Stock wallet
+The legacy `AuctionService` still uses decimal/float prices, the legacy Stock wallet, and تومان presentation. Canonical Gol auctions are blocked from creating bids through that path.
 
-The legacy `WalletService` stores fiat-like balances using decimal/float semantics. It therefore cannot be reused as a Najm Bahar balance.
-
-A critical legacy settlement defect was also found: the old `settle()` path reduced `held_amount` but did not consume `balance`. This release patches that defect defensively while the wallet remains legacy code. The canonical settlement path will replace it with explicit gateways.
-
-### Auction
-
-`AuctionService` currently assumes one wallet-based settlement path and contains hard-coded تومان presentation. Price and payment rail are coupled.
-
-The target design separates them:
-
-- quote/value unit: Bahar;
-- settlement channel: Active Bahar, external IRR, or external USD;
-- eligibility policy: independent, fail-closed domain rule;
-- asset transfer: Stock/Holding only after confirmed settlement.
-
-### Najm Bahar
-
-Najm Bahar already has the correct primitive for immediate internal money movement: integer amounts, account locking, idempotency, ledger-backed transactions, and an explicit `active` balance type through `TransactionService`.
-
-The Stock integration must call Najm Bahar primitives; it must not mutate Najm Bahar balances directly.
-
-The audit also confirmed an important missing primitive: there is currently no canonical `reserved_active` balance or equivalent Active-Bahar reservation service. Auctions require reservation at bid time. Therefore Stock must not be wired directly to immediate `transfer()` as a substitute for reservation.
+No automatic conversion from legacy decimal/toman values to Gol is performed. Existing legacy rows keep nullable Gol columns until explicitly migrated with known economic meaning.
 
 ## Slice 1 implemented — settlement boundary
 
-- `SettlementChannel` defines canonical settlement channels.
-- `SettlementEligibilityPolicy` enforces the external-capital boundary.
-- Stock issuer metadata is explicit (`issuer_type`, `issuer_id`).
-- Auction settlement metadata is explicit (`market_type`, `supply_source`, `settlement_channel`, `quote_unit`).
-- Legacy rows receive no permissive classification defaults.
-- Unit tests cover allowed and forbidden settlement combinations.
-- Legacy wallet settlement now consumes both held amount and underlying balance under a row lock.
+- canonical settlement channels;
+- fail-closed settlement eligibility policy;
+- explicit issuer, market, supply, channel and quote metadata;
+- no permissive legacy classification defaults.
 
 ## Slice 2 implemented — gateway contract
 
-The canonical settlement abstraction is now explicit:
+- `SettlementGateway`: reserve/release/settle/refund;
+- positive integer `SettlementRequest` amounts;
+- canonical `SettlementReceipt`;
+- fail-closed `SettlementGatewayRegistry`.
 
-- `SettlementGateway` defines `reserve`, `release`, `settle`, and `refund`.
-- `SettlementRequest` requires a positive integer amount and non-empty idempotency/reference identity.
-- `SettlementReceipt` reports the canonical result state without exposing a stored-value wallet model.
-- `SettlementGatewayRegistry` resolves gateways by settlement channel and fails closed when a channel is unknown, unregistered, or duplicated.
-- Unit coverage verifies request invariants and fail-closed registry behavior.
+## Slice 2B implemented — Active Bahar reservation + gateway
 
-The abstraction is intentionally not yet injected into `AuctionService`: doing so before Active Bahar has a real reservation primitive would either weaken auction guarantees or silently keep the legacy wallet as the monetary authority.
+A canonical Najm Bahar reservation ledger exists in `najm_active_bahar_reservations`.
 
-## Required Najm Bahar dependency before Active-Bahar auction wiring
+- integer Gol reservation;
+- Active Bahar only;
+- reserve reduces spendable without changing total supply;
+- release restores spendability;
+- settle/refund are transaction- and double-entry-ledger-backed;
+- unique idempotency keys and deterministic account locking;
+- `NajmBaharSettlementGateway` implements internal settlement without the Stock wallet.
 
-Add a canonical Active-Bahar reservation primitive with all of these properties:
+## Slice 3 implemented — external capital rail
 
-1. amounts are integer Gol;
-2. only Active Bahar can be reserved;
-3. reservation reduces spendable Active Bahar without changing total money supply;
-4. release restores spendable Active Bahar;
-5. settlement consumes a reservation and credits the destination atomically;
-6. refund is idempotent and cannot exceed the settled amount;
-7. all operations are ledger-backed and use unique idempotency keys;
-8. account/sub-account invariants remain valid under retries and concurrency.
+A provider-neutral IRR/USD payment-intent and append-only reconciliation rail exists.
 
-The preferred account model is explicit `available_active` + `reserved_active` semantics (or an equivalent reservation ledger that produces the same invariants). This is a Najm Bahar capability, not a Stock wallet capability.
+- no fiat wallet/balance;
+- no Najm Bahar credit or minting;
+- external intents only after `SettlementEligibilityPolicy` passes;
+- external settlement restricted to EarthCoop + primary + treasury;
+- exact amount/currency reconciliation;
+- expired intents cannot confirm;
+- provider secrets are redacted before persistence;
+- confirmation is payment evidence only, not Stock/Holding allocation.
 
-## Next slices
+## Slice 4 implemented — integer Gol pricing + deterministic fiat quote snapshot
 
-### Slice 2B — Active Bahar reservation + gateway
+Canonical nullable integer Gol fields coexist with legacy decimal fields. Legacy values are never silently treated as Gol.
 
-Implement the Najm Bahar Active-Bahar reservation primitive, then implement `NajmBaharSettlementGateway` against it. Auction/bid/allocation identities will produce deterministic idempotency keys.
+`FiatQuoteSnapshot` records Gol amount, IRR/USD minor-unit amount, integer rate numerator/denominator, deterministic half-up integer rounding, source and timestamp. New canonical external payment intents require a reproducible quote snapshot and a canonical Gol auction.
 
-### Slice 3 — External capital rail
+## Slice 5 implemented — atomic asset settlement state machine
 
-Implement external payment intent/reconciliation records for IRR/USD. These records represent provider/payment state, not a stored-value wallet. No fiat balance is credited to users and no Bahar is minted.
+Canonical settlement allocations are represented by `stock_settlement_allocations` and keyed by a unique `allocation_key`.
 
-### Slice 4 — Bahar-denominated price migration
+- Active Bahar money + Holding allocation are performed inside one database transaction;
+- Holding settlement has a unique idempotency key;
+- retry cannot consume the same money or shares twice;
+- confirmed external money followed by local asset failure becomes `reconciliation_required` rather than fake success;
+- `reconciliation_required` is P0 in Founder Operations.
 
-Replace float/decimal auction arithmetic with integer Gol quote fields and deterministic fiat quote snapshots for external settlement.
+## Slice 6 implemented — secondary-market gate and canonical bid acceptance
 
-### Slice 5 — Atomic asset settlement
+Canonical bids now have explicit acceptance/payment references:
 
-Make successful money settlement and Stock/Holding allocation an idempotent state machine with compensating/reconciliation handling for external payment failures.
+- `acceptance_key` — unique idempotent bid-acceptance identity;
+- `reservation_key` — Active Bahar reservation identity;
+- `external_payment_intent_id` — reserved for eligible primary/external canonical flows.
 
-### Slice 6 — Secondary market gate
+### Active Bahar bid acceptance
 
-Enforce `Active Bahar` as the only secondary-market channel and reject external settlement before bid reservation/order acceptance.
+`StockBidAcceptanceService` provides the canonical Active-Bahar path:
 
-## Out of scope for this release
+1. bidder identity and payer account are validated;
+2. the payer must currently be the bidder's own main Najm Bahar user account;
+3. Auction must be active, settlement-eligible, and canonical Gol priced;
+4. settlement channel must be `active_bahar`;
+5. integer `price_gol`, quantity, min/max and lot constraints are validated;
+6. exact `total_gol` is calculated with checked integer arithmetic;
+7. Active Bahar is reserved before the Bid is accepted;
+8. reservation and Bid creation run in the same database transaction;
+9. acceptance is idempotent; conflicting reuse of an acceptance key fails closed.
 
-Securities offering eligibility, KYC/AML, investor eligibility, disclosures, payment-provider licensing/compliance, and jurisdiction-specific trading restrictions are not solved by this software boundary and require the separate legal adapter/compliance workstream.
+### Secondary-market constitutional gate
+
+A secondary-market order cannot be accepted on an external IRR/USD rail. `SettlementEligibilityPolicy` rejects that classification before any reservation or Bid creation. The canonical Active-Bahar acceptance service adds a second explicit guard.
+
+### Canonical cancellation
+
+Cancelling a canonical active bid releases its Active Bahar reservation and then marks the Bid cancelled. It never touches the legacy Stock wallet.
+
+### Legacy-route isolation
+
+The old user bid controllers remain available only for legacy decimal auctions during migration. They explicitly reject canonical Gol auctions.
+
+In addition, the `Bid` model itself fails closed when a canonical Gol Auction attempts to create a Bid without the canonical acceptance identity and, for Active Bahar, without a reservation key. This protects against forgotten legacy controllers or future accidental direct `Bid::create()` calls.
+
+The legacy decimal `price` column remains populated only for schema compatibility in the canonical Bid row and has no canonical economic meaning. New calculations and settlement must use `price_gol` exclusively.
+
+## Remaining migration/launch work
+
+The six economic slices establish the canonical backend boundary, but the legacy UI/controller/reporting surfaces still require a deliberate cutover before production Stock launch:
+
+1. build/update canonical Gol bid UI and cancellation UI;
+2. route eligible EarthCoop primary external purchases through quote snapshot + external intent;
+3. route canonical winner/allocation processing through `StockAtomicSettlementService`;
+4. update order-book/reporting screens to display and sort `price_gol` for canonical auctions;
+5. retire legacy Stock Wallet participation in canonical auctions;
+6. add reconciliation operations for `reconciliation_required` external settlements;
+7. run migration/readiness audit over legacy Stock/Auction/Bid rows before enabling canonical trading.
+
+## Out of scope
+
+Securities offering eligibility, KYC/AML, investor eligibility, disclosures, payment-provider licensing/compliance, and jurisdiction-specific trading restrictions require the separate legal/compliance workstream.
