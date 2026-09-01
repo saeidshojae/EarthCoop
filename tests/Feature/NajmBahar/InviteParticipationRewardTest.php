@@ -14,7 +14,7 @@ class InviteParticipationRewardTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_successful_invite_awards_referrer_once_for_the_invited_member_with_managed_policy(): void
+    public function test_najm_bahar_agreement_does_not_award_invitation_points(): void
     {
         $referrer = User::factory()->create();
         $newMember = User::factory()->create();
@@ -22,7 +22,7 @@ class InviteParticipationRewardTest extends TestCase
         ReputationRule::create([
             'key' => 'invite_member',
             'label' => 'Invite member',
-            'weight' => 10,
+            'weight' => 100,
             'active' => true,
             'daily_cap' => null,
             'dimension' => 'participation',
@@ -30,7 +30,7 @@ class InviteParticipationRewardTest extends TestCase
             'repeat_policy' => 'once_per_context',
         ]);
 
-        $invitation = InvitationCode::create([
+        InvitationCode::create([
             'code' => 'INV-' . $newMember->id,
             'user_id' => $referrer->id,
             'used' => true,
@@ -42,18 +42,8 @@ class InviteParticipationRewardTest extends TestCase
             ->post(route('najm-bahar.agreement.process'), ['agreement_accepted' => '1'])
             ->assertRedirect(route('najm-bahar.dashboard'));
 
-        $reward = UserPointTransaction::where('user_id', $referrer->id)
+        $this->assertSame(0, UserPointTransaction::where('user_id', $referrer->id)
             ->where('action', 'invite_member')
-            ->firstOrFail();
-
-        $this->assertSame(10, (int) $reward->delta);
-        $this->assertSame('participation', $reward->dimension);
-        $this->assertTrue((bool) $reward->convertible);
-        $this->assertSame($newMember->id, (int) ($reward->metadata['new_user_id'] ?? 0));
-        $this->assertSame($invitation->id, (int) $reward->reference_id);
-        $this->assertSame(1, UserPointTransaction::where('user_id', $referrer->id)
-            ->where('action', 'invite_member')
-            ->where('reference_id', $invitation->id)
             ->count());
     }
 
@@ -64,7 +54,7 @@ class InviteParticipationRewardTest extends TestCase
         $rule = ReputationRule::where('key', 'invite_member')->firstOrFail();
 
         $this->assertTrue((bool) $rule->active);
-        $this->assertSame(10, (int) $rule->weight);
+        $this->assertSame(100, (int) $rule->weight);
         $this->assertSame('participation', $rule->dimension);
         $this->assertTrue((bool) $rule->convertible);
         $this->assertSame('once_per_context', $rule->repeat_policy);
