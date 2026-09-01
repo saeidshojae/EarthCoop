@@ -3,6 +3,7 @@
 namespace Tests\Feature\NajmBahar;
 
 use App\Models\User;
+use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\MonetaryService;
 use App\Services\MembershipParticipationEligibilityService;
@@ -43,6 +44,33 @@ class MembershipParticipationEligibilityTest extends TestCase
             ->assertRedirect(route('najm-bahar.dashboard'));
 
         $service = app(MembershipParticipationEligibilityService::class);
+        $this->assertSame(MembershipParticipationEligibilityService::ELIGIBLE, $service->status($user->fresh()));
+        $this->assertTrue($service->isEligible($user->fresh()));
+    }
+
+    public function test_official_single_operations_fallback_payment_counts_as_current_membership_fee(): void
+    {
+        $user = User::factory()->create();
+        $account = app(AccountService::class)->createMainAccountForUser($user->id, 'Fallback eligibility test');
+        $service = app(MembershipParticipationEligibilityService::class);
+        $paymentYear = $service->membershipPaymentYear($user);
+
+        NajmTransaction::query()->create([
+            'from_account_id' => $account->id,
+            'to_account_id' => $account->id,
+            'amount' => 1200,
+            'fee' => 0,
+            'type' => 'membership_fee',
+            'status' => 'completed',
+            'description' => 'Membership fee fallback regression fixture',
+            'metadata' => [
+                'type' => 'membership_fee',
+                'user_id' => $user->id,
+                'split' => 'operations_salary',
+                'payment_year' => $paymentYear,
+            ],
+        ]);
+
         $this->assertSame(MembershipParticipationEligibilityService::ELIGIBLE, $service->status($user->fresh()));
         $this->assertTrue($service->isEligible($user->fresh()));
     }
