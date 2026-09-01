@@ -30,9 +30,8 @@ class ReactionController extends Controller
             } else {
                 // اگه نوعش فرق داره، آپدیت کن
                 $existing->update(['type' => $type]);
-                // award if switched to like
                 if ($type == 1) {
-                    $this->awardPostUpvoteAfterResponse($user, (int) $blog->id);
+                    $this->awardPostLikeAfterResponse($blog, $user);
                 }
             }
         } else {
@@ -44,7 +43,7 @@ class ReactionController extends Controller
             ]);
 
             if ($type == 1) {
-                $this->awardPostUpvoteAfterResponse($user, (int) $blog->id);
+                $this->awardPostLikeAfterResponse($blog, $user);
             }
         }
     
@@ -107,11 +106,8 @@ class ReactionController extends Controller
             'react_type' => 1
         ]);
 
-        // award for comment upvote
         if ($type == 1) {
-            try {
-                app(\App\Services\ReputationService::class)->applyAction(auth()->user(), 'comment_upvoted', ['comment_id' => $comment->id], $comment->id, 'groups');
-            } catch (\Throwable $e) {}
+            $this->awardCommentLike($comment, $user);
         }
 
         // Touch comment for real-time updates to other users
@@ -144,24 +140,81 @@ class ReactionController extends Controller
         ], $actorId));
     }
 
-    private function awardPostUpvoteAfterResponse($user, int $blogId): void
+    private function awardPostLikeAfterResponse(Blog $blog, $reactor): void
     {
-        dispatch(static function () use ($user, $blogId): void {
+        $blogId = (int) $blog->id;
+        $reactorId = (int) $reactor->id;
+        $owner = $blog->user;
+        $selfLike = $owner && (int) $owner->id === $reactorId;
+
+        dispatch(static function () use ($reactor, $owner, $blogId, $reactorId, $selfLike): void {
             try {
-                app(\App\Services\ReputationService::class)->applyAction(
-                    $user,
-                    'post_upvoted',
-                    ['blog_id' => $blogId],
+                $reputation = app(\App\Services\ReputationService::class);
+                $reputation->applyAction(
+                    $reactor,
+                    'post_liked',
+                    ['blog_id' => $blogId, 'reactor_id' => $reactorId, 'self_like' => (bool) $selfLike],
                     $blogId,
-                    'groups'
+                    'groups',
+                    'post_liked:' . $blogId . ':reactor:' . $reactorId,
+                    $selfLike ? false : null
                 );
+                if ($owner) {
+                    $reputation->applyAction(
+                        $owner,
+                        'post_upvoted',
+                        ['blog_id' => $blogId, 'reactor_id' => $reactorId, 'self_like' => (bool) $selfLike],
+                        $blogId,
+                        'groups',
+                        'post_upvoted:' . $blogId . ':reactor:' . $reactorId,
+                        $selfLike ? false : null
+                    );
+                }
             } catch (\Throwable $exception) {
                 \Illuminate\Support\Facades\Log::warning('post_reaction_reputation_failed', [
                     'blog_id' => $blogId,
+                    'reactor_id' => $reactorId,
                     'message' => $exception->getMessage(),
                 ]);
             }
         })->afterResponse();
+    }
+
+    private function awardCommentLike(Comment $comment, $reactor): void
+    {
+        $reactorId = (int) $reactor->id;
+        $owner = $comment->user;
+        $selfLike = $owner && (int) $owner->id === $reactorId;
+
+        try {
+            $reputation = app(\App\Services\ReputationService::class);
+            $reputation->applyAction(
+                $reactor,
+                'comment_liked',
+                ['comment_id' => $comment->id, 'reactor_id' => $reactorId, 'self_like' => (bool) $selfLike],
+                $comment->id,
+                'groups',
+                'comment_liked:' . $comment->id . ':reactor:' . $reactorId,
+                $selfLike ? false : null
+            );
+            if ($owner) {
+                $reputation->applyAction(
+                    $owner,
+                    'comment_upvoted',
+                    ['comment_id' => $comment->id, 'reactor_id' => $reactorId, 'self_like' => (bool) $selfLike],
+                    $comment->id,
+                    'groups',
+                    'comment_upvoted:' . $comment->id . ':reactor:' . $reactorId,
+                    $selfLike ? false : null
+                );
+            }
+        } catch (\Throwable $exception) {
+            \Illuminate\Support\Facades\Log::warning('comment_reaction_reputation_failed', [
+                'comment_id' => $comment->id,
+                'reactor_id' => $reactorId,
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
     
 }

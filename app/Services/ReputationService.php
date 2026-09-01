@@ -2,82 +2,83 @@
 
 namespace App\Services;
 
+use App\Models\ReputationRule;
 use App\Models\User;
 use App\Models\UserPoint;
 use App\Models\UserPointTransaction;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 class ReputationService
 {
-    public function addPoints(User $user, int $delta, string $action, array $meta = [], $referenceId = null, $source = null)
+    public function addPoints(User $user, int $delta, string $action, array $meta = [], $referenceId = null, $source = null, string $dimension = 'participation', bool $convertible = false, ?string $eventKey = null)
     {
-        return DB::transaction(function () use ($user, $delta, $action, $meta, $referenceId, $source) {
-            $point = UserPoint::firstOrCreate([
-                'user_id' => $user->id,
-            ], [
-                'points' => 0,
-            ]);
+        try {
+            return DB::transaction(function () use ($user, $delta, $action, $meta, $referenceId, $source, $dimension, $convertible, $eventKey) {
+                if ($eventKey !== null && UserPointTransaction::where('event_key', $eventKey)->exists()) {
+                    return null;
+                }
 
-            $newBalance = $point->points + $delta;
-            $point->points = $newBalance;
-            $point->level = $this->determineLevel($newBalance);
-            $point->save();
+                $point = UserPoint::firstOrCreate(['user_id' => $user->id], ['points' => 0]);
+                $newBalance = $point->points + $delta;
+                $point->points = $newBalance;
+                $point->level = $this->determineLevel($newBalance);
+                $point->save();
 
-            $tx = UserPointTransaction::create([
-                'user_id' => $user->id,
-                'delta' => $delta,
-                'balance_after' => $newBalance,
-                'action' => $action,
-                'source' => $source,
-                'reference_id' => $referenceId,
-                'metadata' => $meta,
-            ]);
-
-            return $tx;
-        });
-    }
-
-    /**
-     * Apply a configured action key: read weight from DB (reputation_rules) or config and apply.
-     */
-    public function applyAction(User $user, string $actionKey, array $meta = [], $referenceId = null, $source = null)
-    {
-        // Prefer DB rule if exists
-        $rule = \App\Models\ReputationRule::where('key', $actionKey)->where('active', true)->first();
-        if ($rule) {
-            $weight = (int)$rule->weight;
-        } else {
-            $weight = (int)config("reputation.weights.{$actionKey}", 0);
-        }
-
-        if ($weight === 0) {
-            return null; // nothing to do
-        }
-
-        // Enforce daily caps for positive-weight actions
-        $dailyCaps = config('reputation.daily_caps', []);
-        if ($weight > 0 && isset($dailyCaps[$actionKey])) {
-            $cap = (int)$dailyCaps[$actionKey];
-
-            // sum of positive deltas for this action in the last 24 hours
-            $since = now()->subDay();
-            $already = (int) UserPointTransaction::where('user_id', $user->id)
-                ->where('action', $actionKey)
-                ->where('created_at', '>=', $since)
-                ->where('delta', '>', 0)
-                ->sum('delta');
-
-            $remaining = $cap - $already;
-            if ($remaining <= 0) {
-                return null; // cap exhausted
+                return UserPointTransaction::create([
+                    'user_id' => $user->id, 'delta' => $delta, 'balance_after' => $newBalance,
+                    'action' => $action, 'dimension' => $dimension, 'convertible' => $convertible,
+                    'source' => $source, 'reference_id' => $referenceId, 'event_key' => $eventKey, 'metadata' => $meta,
+                ]);
+            });
+        } catch (QueryException $e) {
+            if (
+                $eventKey !== null
+                && in_array((string) $e->getCode(), ['23000', '23505'], true)
+                && UserPointTransaction::where('event_key', $eventKey)->exists()
+            ) {
+                return null;
             }
 
-            // If the configured weight exceeds remaining cap, award only the remainder
-            $award = min($weight, $remaining);
-            return $this->addPoints($user, $award, $actionKey, array_merge($meta, ['capped_award' => $award, 'cap' => $cap, 'already_awarded' => $already]), $referenceId, $source);
+            throw $e;
+        }
+    }
+
+    public function applyAction(User $user, string $actionKey, array $meta = [], $referenceId = null, $source = null, ?string $eventKey = null, ?bool $convertibleOverride = null)
+    {
+        if ($eventKey !== null && UserPointTransaction::where('event_key', $eventKey)->exists()) {
+            return null;
         }
 
-        return $this->addPoints($user, $weight, $actionKey, $meta, $referenceId, $source);
+        $rule = ReputationRule::where('key', $actionKey)->first();
+        if ($rule) {
+            if (! $rule->active) return null;
+            $weight = (int) $rule->weight;
+            $dailyCap = $rule->daily_cap !== null ? (int) $rule->daily_cap : null;
+            $dimension = $rule->dimension ?: 'participation';
+            $convertible = (bool) $rule->convertible;
+        } else {
+            $weight = (int) config("reputation.weights.{$actionKey}", 0);
+            $configuredCap = config("reputation.daily_caps.{$actionKey}");
+            $dailyCap = $configuredCap !== null ? (int) $configuredCap : null;
+            $dimension = (string) config("reputation.dimensions.{$actionKey}", 'participation');
+            $convertible = (bool) config("reputation.convertible.{$actionKey}", false);
+        }
+        $convertible = $convertibleOverride ?? $convertible;
+        if ($weight === 0) return null;
+
+        if ($weight > 0 && $dailyCap !== null) {
+            $already = (int) UserPointTransaction::where('user_id', $user->id)->where('action', $actionKey)
+                ->where('created_at', '>=', now()->subDay())->where('delta', '>', 0)->sum('delta');
+            $remaining = $dailyCap - $already;
+            if ($remaining <= 0) return null;
+            $award = min($weight, $remaining);
+            return $this->addPoints($user, $award, $actionKey, array_merge($meta, [
+                'capped_award' => $award, 'cap' => $dailyCap, 'already_awarded' => $already,
+            ]), $referenceId, $source, $dimension, $convertible, $eventKey);
+        }
+
+        return $this->addPoints($user, $weight, $actionKey, $meta, $referenceId, $source, $dimension, $convertible, $eventKey);
     }
 
     public function getPoints(User $user): int
@@ -87,13 +88,8 @@ class ReputationService
 
     public function determineLevel(int $points): ?string
     {
-        $tiers = config('reputation.tiers', []);
         $level = null;
-        foreach ($tiers as $name => $threshold) {
-            if ($points >= $threshold) {
-                $level = $name;
-            }
-        }
+        foreach (config('reputation.tiers', []) as $name => $threshold) if ($points >= $threshold) $level = $name;
         return $level;
     }
 }

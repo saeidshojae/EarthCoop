@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\BaharMoney;
 use App\Models\User;
+use App\Models\UserPointTransaction;
 use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use App\Modules\NajmBahar\Services\AccountBalanceService;
@@ -13,6 +14,7 @@ use App\Modules\NajmBahar\Services\MonetaryPolicyService;
 use App\Modules\NajmBahar\Services\MonetaryService;
 use App\Modules\NajmBahar\Services\TransactionService;
 use App\Modules\NajmBahar\Services\TreasuryService;
+use App\Services\ReputationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +29,8 @@ class NajmBaharMembershipFeeController extends Controller
         protected FeeService $feeService,
         protected MonetaryService $monetaryService,
         protected MonetaryPolicyService $monetaryPolicy,
-        protected TreasuryService $treasuryService
+        protected TreasuryService $treasuryService,
+        protected ReputationService $reputationService
     ) {
     }
 
@@ -233,6 +236,8 @@ class NajmBaharMembershipFeeController extends Controller
                     $paymentSource,
                     $policyVersionId
                 );
+
+                $this->awardMembershipFeeParticipation($user, $currentYear, $paymentSource, $policyVersionId);
             });
 
             return redirect()->route('najm-bahar.dashboard')
@@ -246,6 +251,31 @@ class NajmBaharMembershipFeeController extends Controller
 
             return back()->with('error', 'خطا در پرداخت حق عضویت: ' . $e->getMessage());
         }
+    }
+
+    private function awardMembershipFeeParticipation(User $user, int $paymentYear, string $paymentSource, ?int $policyVersionId): void
+    {
+        $alreadyAwarded = UserPointTransaction::where('user_id', $user->id)
+            ->where('action', 'membership_fee_paid')
+            ->where('reference_id', $paymentYear)
+            ->exists();
+
+        if ($alreadyAwarded) {
+            return;
+        }
+
+        $this->reputationService->applyAction(
+            $user,
+            'membership_fee_paid',
+            [
+                'payment_year' => $paymentYear,
+                'payment_source' => $paymentSource,
+                'policy_version_id' => $policyVersionId,
+            ],
+            $paymentYear,
+            'najm_bahar_membership',
+            'membership_fee_paid:user:' . $user->id . ':year:' . $paymentYear
+        );
     }
 
     private function distributeMembershipFee(

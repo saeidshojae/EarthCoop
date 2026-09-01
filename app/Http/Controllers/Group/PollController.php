@@ -37,6 +37,7 @@ class PollController extends Controller
             return $poll->refresh();
         });
 
+        $this->awardNormalPollCreated($poll, auth()->user());
         $this->dispatchGroupEvent(new \App\Events\PollCreated($poll, $group, auth()->user()));
 
         $payload = [
@@ -92,6 +93,10 @@ class PollController extends Controller
 
             return false;
         }, 3);
+
+        if (! $voteRemoved) {
+            $this->awardNormalPollParticipation($poll, auth()->user());
+        }
 
         $activeMemberIdsSubquery = GroupUser::query()
             ->select('user_id')
@@ -258,6 +263,54 @@ class PollController extends Controller
             'userVotesByPollId' => $userVotesByPollId,
             'delegationsByPollId' => $delegationsByPollId,
         ])->render();
+    }
+
+    private function awardNormalPollCreated(Poll $poll, $user): void
+    {
+        if (! $user || (int) $poll->main_type !== 1) {
+            return;
+        }
+
+        try {
+            app(\App\Services\ReputationService::class)->applyAction(
+                $user,
+                'poll_created',
+                ['poll_id' => (int) $poll->id, 'group_id' => (int) $poll->group_id],
+                $poll->id,
+                'groups.poll',
+                'poll_created:poll:' . $poll->id . ':creator:' . $poll->created_by
+            );
+        } catch (\Throwable $exception) {
+            \Illuminate\Support\Facades\Log::warning('poll_created_reputation_failed', [
+                'poll_id' => (int) $poll->id,
+                'user_id' => (int) $user->id,
+                'message' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    private function awardNormalPollParticipation(Poll $poll, $user): void
+    {
+        if (! $user || (int) $poll->main_type !== 1) {
+            return;
+        }
+
+        try {
+            app(\App\Services\ReputationService::class)->applyAction(
+                $user,
+                'poll_participated',
+                ['poll_id' => (int) $poll->id, 'group_id' => (int) $poll->group_id],
+                $poll->id,
+                'groups.poll',
+                'poll_participated:poll:' . $poll->id . ':user:' . $user->id
+            );
+        } catch (\Throwable $exception) {
+            \Illuminate\Support\Facades\Log::warning('poll_participated_reputation_failed', [
+                'poll_id' => (int) $poll->id,
+                'user_id' => (int) $user->id,
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
 
     private function dispatchGroupEvent(object $event): void

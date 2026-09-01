@@ -13,6 +13,33 @@ class Group extends Model
         'last_activity_at' => 'datetime',
     ];
 
+    public function getAvatarUrlAttribute(): ?string
+    {
+        $avatar = trim((string) ($this->attributes['avatar'] ?? ''));
+        if ($avatar === '') {
+            return null;
+        }
+
+        if (preg_match('#^(?:https?:)?//#i', $avatar) || str_starts_with($avatar, 'data:')) {
+            return $avatar;
+        }
+
+        $path = ltrim(str_replace('\\', '/', $avatar), '/');
+        if (str_starts_with($path, 'public/')) {
+            $path = substr($path, strlen('public/'));
+        }
+
+        if (str_starts_with($path, 'images/groups/')) {
+            return asset($path);
+        }
+
+        if (str_contains($path, '/')) {
+            return asset($path);
+        }
+
+        return asset('images/groups/' . $path);
+    }
+
     public function users()
     {
         return $this->belongsToMany(User::class, 'group_user')
@@ -80,6 +107,10 @@ class Group extends Model
             ->count();
     }
     public function guestsCount(){
+        if (array_key_exists('active_guests_count', $this->attributes)) {
+            return (int) $this->attributes['active_guests_count'];
+        }
+
         return $this->hasMany(GroupUser::class)
             ->whereHas('user', fn ($query) => $query->where('is_system', false))
             ->where('status', 1)

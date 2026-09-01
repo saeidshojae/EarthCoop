@@ -64,7 +64,14 @@ class EmailVerificationController extends Controller
 
         // award reputation for email verification
         try {
-            app(\App\Services\ReputationService::class)->applyAction($user, 'email_verified', ['email' => $email], null, 'auth');
+            app(\App\Services\ReputationService::class)->applyAction(
+                $user,
+                'email_verified',
+                ['email' => $email],
+                null,
+                'auth',
+                'email_verified:user:' . $user->id
+            );
         } catch (\Throwable $e) {
             \Log::error('Reputation applyAction failed (email_verified): ' . $e->getMessage());
         }

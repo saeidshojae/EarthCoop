@@ -30,7 +30,14 @@ class ProfileCompletionService
         }
 
         try {
-            app(ReputationService::class)->applyAction($user, 'profile_completed', [], null, 'profile');
+            app(ReputationService::class)->applyAction(
+                $user,
+                'profile_completed',
+                [],
+                null,
+                'profile',
+                'profile_completed:user:' . $user->id
+            );
             return true;
         } catch (\Throwable $e) {
             Log::error('Reputation applyAction failed (profile_completed): ' . $e->getMessage());

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Group;
 
 use App\Events\GroupFeedUpdated;
 use App\Http\Controllers\Controller;
+use App\Models\Announcement;
 use App\Models\Blog;
 use App\Models\Group;
 use App\Models\GroupUser;
@@ -21,6 +22,7 @@ class PinController extends Controller
         'message' => Message::class,
         'post' => Blog::class,
         'poll' => Poll::class,
+        'announcement' => Announcement::class,
     ];
 
     public function index(Group $group): JsonResponse
@@ -41,6 +43,7 @@ class PinController extends Controller
             'content_id' => $content->getKey(),
         ], [
             'message_id' => $type === 'message' ? $content->getKey() : null,
+            'announcement_id' => $type === 'announcement' ? $content->getKey() : null,
             'pinned_by' => auth()->id(),
         ]);
 
@@ -74,7 +77,12 @@ class PinController extends Controller
         ]);
         $type = $validated['content_type'];
         $content = self::TYPES[$type]::findOrFail($validated['content_id']);
-        abort_unless((int) $content->group_id === (int) $group->id, 404);
+
+        if ($type === 'announcement') {
+            abort_unless((string) $content->group_level === (string) $group->location_level, 404);
+        } else {
+            abort_unless((int) $content->group_id === (int) $group->id, 404);
+        }
 
         return [$type, $content];
     }
@@ -106,17 +114,20 @@ class PinController extends Controller
             ->filter(fn ($pin) => $pin->content)
             ->map(function ($pin) {
                 $type = array_search($pin->content_type, self::TYPES, true);
-                return $this->serializeContent($type ?: 'message', $pin->content) + [
+                if ($type === false) return null;
+
+                return $this->serializeContent($type, $pin->content) + [
                     'pinned_at' => optional($pin->created_at)->toIso8601String(),
                     'pinned_by' => trim(($pin->pinnedBy->first_name ?? '') . ' ' . ($pin->pinnedBy->last_name ?? '')),
                 ];
-            })->values()->all();
+            })->filter()->values()->all();
     }
 
     private function serializeContent(string $type, Model $content): array
     {
         $isElection = $type === 'poll' && (int) ($content->main_type ?? 1) === 0;
         $label = match (true) {
+            $type === 'announcement' => 'اطلاعیه',
             $type === 'post' => 'پست',
             $isElection => 'انتخابات',
             $type === 'poll' => 'نظرسنجی',
@@ -124,6 +135,7 @@ class PinController extends Controller
             default => 'پیام متنی',
         };
         $raw = match ($type) {
+            'announcement' => trim(($content->title ? $content->title . ' — ' : '') . strip_tags((string) $content->content)),
             'post' => trim(($content->title ? $content->title . ' — ' : '') . strip_tags((string) $content->content)),
             'poll' => (string) $content->question,
             default => !empty($content->voice_message) ? ((string) $content->message ?: 'فایل صوتی') : (string) $content->message,
@@ -135,7 +147,13 @@ class PinController extends Controller
             'content_id' => (int) $content->getKey(),
             'label' => $label,
             'preview' => Str::limit(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($raw))), 150),
-            'anchor' => match ($type) { 'post' => 'blog-', 'poll' => 'poll-', default => 'msg-' } . $content->getKey(),
+            'anchor' => match ($type) {
+                'announcement' => 'announcement-',
+                'post' => 'blog-',
+                'poll' => 'poll-',
+                default => 'msg-',
+            } . $content->getKey(),
+            'image_url' => $type === 'announcement' && $content->image ? asset($content->image) : null,
             'created_at' => optional($content->created_at)->toIso8601String(),
         ];
     }
