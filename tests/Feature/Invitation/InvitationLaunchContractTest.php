@@ -46,6 +46,18 @@ class InvitationLaunchContractTest extends TestCase
     }
 
     #[Test]
+    public function member_invitation_issuance_rechecks_quota_under_a_referrer_lock(): void
+    {
+        $service = file_get_contents(app_path('Services/InvitationLifecycleService.php'));
+
+        $this->assertStringContainsString('public function issueMemberInvitation', $service);
+        $this->assertStringContainsString('DB::transaction', $service);
+        $this->assertStringContainsString('User::whereKey($referrer->id)', $service);
+        $this->assertStringContainsString('lockForUpdate()', $service);
+        $this->assertStringContainsString('$this->occupiedSlots($lockedReferrer) >= $this->quota()', $service);
+    }
+
+    #[Test]
     public function canonical_member_invitation_route_shadows_the_legacy_profile_action(): void
     {
         $route = app('router')->getRoutes()->getByName('profile.generate-code');
