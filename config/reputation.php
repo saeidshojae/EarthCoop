@@ -67,6 +67,16 @@ return [
             'convertible' => true,
             'repeat_policy' => 'once_per_context',
         ],
+        'poll_created' => [
+            'dimension' => 'participation',
+            'convertible' => true,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'poll_participated' => [
+            'dimension' => 'participation',
+            'convertible' => true,
+            'repeat_policy' => 'once_per_context',
+        ],
     ],
 
     // Tier thresholds
@@ -78,7 +88,7 @@ return [
     ],
 
     // Daily caps are expressed in awarded points over a rolling day, not event counts.
-    // Content-creation defaults bound bootstrap farming while remaining admin-manageable after seeding.
+    // Bootstrap creation/participation defaults bound farming while remaining admin-manageable after seeding.
     'daily_caps' => [
         'post_created' => 50,
         'comment_created' => 20,
@@ -87,7 +97,7 @@ return [
         'comment_liked' => 20,
         'comment_upvoted' => 100,
         'bid_placed' => 500,
-        // limit poll participation abuse
+        'poll_created' => 25,
         'poll_participated' => 100,
     ],
 
