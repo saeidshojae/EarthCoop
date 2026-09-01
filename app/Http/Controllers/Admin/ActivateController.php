@@ -13,7 +13,7 @@ class ActivateController extends Controller
      */
     public function index()
     {
-        $setting = Setting::find(1);
+        $setting = Setting::singleton();
         return view('admin.system-settings.activate.index', compact('setting'));
     }
 
@@ -35,8 +35,8 @@ class ActivateController extends Controller
             'count_invation.min' => 'سهمیه دعوت موفق نمی‌تواند منفی باشد',
         ]);
 
-        $setting = Setting::find(1);
-        
+        $setting = Setting::singleton();
+
         $inputs = [
             'invation_status' => $request->has('invation_status') ? 1 : 0,
             'finger_status' => $request->has('finger_status') ? 1 : 0,
