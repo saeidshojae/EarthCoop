@@ -2,10 +2,18 @@
 
 namespace Tests\Feature\GroupChat;
 
+use App\Http\Middleware\EnsureMembershipParticipation;
+use App\Models\User;
+use App\Modules\NajmBahar\Services\AccountService;
+use App\Modules\NajmBahar\Services\MonetaryService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Tests\TestCase;
 
 class MembershipParticipationGateContractTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_group_chat_runtime_exposes_membership_participation_and_loads_dedicated_gate_script(): void
     {
         $runtime = file_get_contents(resource_path('views/groups/partials/chat_runtime.blade.php'));
@@ -42,5 +50,33 @@ class MembershipParticipationGateContractTest extends TestCase
         $this->assertStringContainsString('agreementUrl', $script);
         $this->assertStringContainsString('dashboardUrl', $script);
         $this->assertStringNotContainsString('chat-box', $script);
+    }
+
+    public function test_participation_middleware_blocks_until_real_current_membership_fee_is_paid(): void
+    {
+        $user = User::factory()->create();
+        $middleware = app(EnsureMembershipParticipation::class);
+
+        $request = Request::create('/messages/send', 'POST');
+        $request->setUserResolver(fn () => $user);
+
+        $blockedWithoutAccount = $middleware->handle($request, fn () => response()->json(['ok' => true]));
+        $this->assertSame(403, $blockedWithoutAccount->getStatusCode());
+        $this->assertStringContainsString('no_najm_bahar_account', $blockedWithoutAccount->getContent());
+
+        $account = app(AccountService::class)->createMainAccountForUser($user->id, 'Chat gate');
+        app(MonetaryService::class)->issueMembershipCredit($account, $user->id);
+
+        $blockedFeeDue = $middleware->handle($request, fn () => response()->json(['ok' => true]));
+        $this->assertSame(403, $blockedFeeDue->getStatusCode());
+        $this->assertStringContainsString('membership_fee_due', $blockedFeeDue->getContent());
+
+        $this->actingAs($user)
+            ->post(route('najm-bahar.membership-fee.pay'), ['payment_source' => 'dim'])
+            ->assertRedirect(route('najm-bahar.dashboard'));
+
+        $allowed = $middleware->handle($request, fn () => response()->json(['ok' => true]));
+        $this->assertSame(200, $allowed->getStatusCode());
+        $this->assertStringContainsString('"ok":true', $allowed->getContent());
     }
 }
