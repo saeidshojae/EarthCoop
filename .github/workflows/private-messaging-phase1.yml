@@ -45,7 +45,7 @@ jobs:
 
       - name: Prepare Laravel directories
         run: |
-          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs regression-logs
           chmod -R 775 bootstrap/cache storage/framework storage/logs
 
       - name: Install backend dependencies
@@ -89,8 +89,19 @@ jobs:
           grep -F 'chat-requests' /tmp/routes.txt >/dev/null
 
       - name: Private messaging targeted tests
+        shell: bash
         run: |
+          set -o pipefail
           php vendor/bin/phpunit --configuration phpunit.xml.dist \
             tests/Feature/PrivateMessagingReadStateTest.php \
             tests/Feature/PrivateMessagingUiContractTest.php \
-            tests/Feature/ChatRequestFlowTest.php
+            tests/Feature/ChatRequestFlowTest.php 2>&1 | tee regression-logs/private-messaging.log
+
+      - name: Upload private messaging diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: private-messaging-phase1-diagnostics
+          path: regression-logs/private-messaging.log
+          if-no-files-found: warn
+          retention-days: 7
