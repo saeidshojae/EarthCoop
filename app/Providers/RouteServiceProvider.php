@@ -45,6 +45,16 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware(['web', \App\Http\Middleware\Authenticate::class])
                 ->group(base_path('routes/groups-index.php'));
 
+            // Canonical member invitation issuance/page intentionally shadow only
+            // the legacy member endpoints. Public invitation requests stay intact.
+            Route::middleware('web')
+                ->group(base_path('routes/member-invitations.php'));
+
+            // Canonical group-message write route adds the shared paid-membership
+            // participation gate while preserving the existing chat middleware.
+            Route::middleware('web')
+                ->group(base_path('routes/membership-participation.php'));
+
             // Election compatibility/canonical routes intentionally load after
             // web.php so legacy responsibility-response endpoints are shadowed
             // by the E7 read-only confirmation + CSRF-protected POST flow.
@@ -62,6 +72,17 @@ class RouteServiceProvider extends ServiceProvider
 
             Route::middleware('web')
                 ->group(base_path('routes/secretariat.php'));
+
+            // Canonical Stock admin write routes intentionally load last so the
+            // legacy rial-priced create/edit endpoints in web.php are shadowed.
+            Route::middleware('web')
+                ->group(base_path('routes/stock-canonical-admin.php'));
+
+            // Canonical Stock Book intentionally shadows the legacy book action so
+            // opening the asset ledger never creates a money wallet or recalculates
+            // legacy rial market data as a read-side effect.
+            Route::middleware('web')
+                ->group(base_path('routes/stock-canonical-book.php'));
         });
     }
 

@@ -22,6 +22,15 @@ class StockAtomicSettlementServiceTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set('stock.external_capital.authoritative_quote_sources', ['test-rate', 'manual']);
+        config()->set('stock.external_capital.quote_max_age_seconds', 600);
+        config()->set('stock.external_capital.quote_future_tolerance_seconds', 30);
+    }
+
     public function test_active_bahar_money_and_asset_settle_atomically_and_retry_is_idempotent(): void
     {
         $user=User::factory()->create();
@@ -50,8 +59,8 @@ class StockAtomicSettlementServiceTest extends TestCase
     public function test_external_confirmed_payment_with_asset_failure_requires_reconciliation_without_creating_holding(): void
     {
         $user=User::factory()->create();
-        $stock=$this->stock(2);
-        $auction=$this->auction($stock,SettlementChannel::EXTERNAL_USD);
+        $stock=$this->stock(10);
+        $auction=$this->auction($stock,SettlementChannel::EXTERNAL_USD,10);
         $bid=$this->externalBid($auction,$user,10,5,'accept:external:atomic');
         $quote=FiatQuoteSnapshot::fromRate(50,'USD',25,2,'test-rate');
         $payments=app(ExternalCapitalPaymentService::class);
@@ -61,6 +70,11 @@ class StockAtomicSettlementServiceTest extends TestCase
 
         $service=app(StockAtomicSettlementService::class);
         $allocation=$service->prepare($auction,$bid,5,'allocation:external',null,null,$intent->fresh());
+
+        // Model a real post-confirmation inventory race: the offering and payment
+        // were policy-compliant when created, but treasury inventory shrank before
+        // the asset leg could settle.
+        $stock->forceFill(['available_shares'=>2])->save();
 
         try { $service->settle($allocation); $this->fail('Expected settlement failure.'); }
         catch (\RuntimeException $e) { $this->assertStringContainsString('insufficient treasury shares',strtolower($e->getMessage())); }
@@ -95,9 +109,9 @@ class StockAtomicSettlementServiceTest extends TestCase
         return Stock::create(['issuer_type'=>'earthcoop','startup_valuation'=>1000,'startup_valuation_gol'=>1000,'total_shares'=>100,'available_shares'=>$available,'base_share_price'=>1,'base_share_price_gol'=>10]);
     }
 
-    private function auction(Stock $stock,string $channel): Auction
+    private function auction(Stock $stock,string $channel,int $sharesCount=100): Auction
     {
-        return Auction::create(['stock_id'=>$stock->id,'market_type'=>'primary','supply_source'=>'treasury','settlement_channel'=>$channel,'quote_unit'=>'gol','shares_count'=>100,'base_price'=>10,'base_price_gol'=>10,'start_time'=>now(),'ends_at'=>now()->addDay(),'status'=>'running','type'=>'uniform_price','lot_size'=>100]);
+        return Auction::create(['stock_id'=>$stock->id,'market_type'=>'primary','supply_source'=>'treasury','settlement_channel'=>$channel,'quote_unit'=>'gol','shares_count'=>$sharesCount,'base_price'=>10,'base_price_gol'=>10,'start_time'=>now(),'ends_at'=>now()->addDay(),'status'=>'running','type'=>'uniform_price','lot_size'=>100]);
     }
 
     private function payer(User $user,int $active): Account

@@ -106,6 +106,12 @@
 
                                     <th class="py-2">سقف روزانه</th>
 
+                                    <th class="py-2">بُعد</th>
+
+                                    <th class="py-2">قابل تبدیل</th>
+
+                                    <th class="py-2">سیاست تکرار</th>
+
                                     <th class="py-2">فعال</th>
 
                                     <th class="py-2">توضیحات</th>
@@ -137,6 +143,62 @@
                                     <td class="py-3">
 
                                         <input type="number" name="daily_cap[{{ $rule->key }}]" value="{{ $rule->daily_cap ?? '' }}" class="px-3 py-2 border rounded-md w-28" placeholder="بدون سقف">
+
+                                    </td>
+
+                                    <td class="py-3">
+
+                                        <select name="dimension[{{ $rule->key }}]" class="px-3 py-2 border rounded-md">
+
+                                            @foreach([
+
+                                                'participation' => 'مشارکت',
+
+                                                'reliability' => 'قابلیت اتکا',
+
+                                                'expertise' => 'تخصص',
+
+                                                'civic_trust' => 'اعتماد مدنی',
+
+                                            ] as $dimension => $label)
+
+                                                <option value="{{ $dimension }}" {{ $rule->dimension === $dimension ? 'selected' : '' }}>{{ $label }}</option>
+
+                                            @endforeach
+
+                                        </select>
+
+                                    </td>
+
+                                    <td class="py-3">
+
+                                        <input type="checkbox" name="convertible[{{ $rule->key }}]" value="1" {{ $rule->convertible ? 'checked' : '' }}>
+
+                                    </td>
+
+                                    <td class="py-3">
+
+                                        <select name="repeat_policy[{{ $rule->key }}]" class="px-3 py-2 border rounded-md">
+
+                                            <option value="" {{ empty($rule->repeat_policy) ? 'selected' : '' }}>بدون سیاست</option>
+
+                                            @foreach([
+
+                                                'once' => 'یک‌بار',
+
+                                                'once_per_context' => 'یک‌بار در هر زمینه',
+
+                                                'daily' => 'روزانه',
+
+                                                'repeatable' => 'تکرارپذیر',
+
+                                            ] as $repeatPolicy => $label)
+
+                                                <option value="{{ $repeatPolicy }}" {{ $rule->repeat_policy === $repeatPolicy ? 'selected' : '' }}>{{ $label }}</option>
+
+                                            @endforeach
+
+                                        </select>
 
                                     </td>
 

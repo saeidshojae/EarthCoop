@@ -42,7 +42,14 @@ class BlogController extends Controller
 
         try {
             $service = app(\App\Services\ReputationService::class);
-            $service->applyAction(auth()->user(), 'post_created', ['blog_id' => $blog->id], $blog->id, 'groups');
+            $service->applyAction(
+                auth()->user(),
+                'post_created',
+                ['blog_id' => $blog->id],
+                $blog->id,
+                'groups',
+                'post_created:' . $blog->id . ':author:' . auth()->id()
+            );
         } catch (\Throwable $e) {
             // ignore reputation failures
         }

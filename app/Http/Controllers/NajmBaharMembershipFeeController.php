@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Helpers\BaharMoney;
 use App\Models\User;
+use App\Models\UserPointTransaction;
 use App\Modules\NajmBahar\Models\SubAccount;
-use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
 use App\Modules\NajmBahar\Services\AccountBalanceService;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\FeeService;
@@ -13,6 +13,8 @@ use App\Modules\NajmBahar\Services\MonetaryPolicyService;
 use App\Modules\NajmBahar\Services\MonetaryService;
 use App\Modules\NajmBahar\Services\TransactionService;
 use App\Modules\NajmBahar\Services\TreasuryService;
+use App\Services\MembershipFeeStatusService;
+use App\Services\ReputationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +29,9 @@ class NajmBaharMembershipFeeController extends Controller
         protected FeeService $feeService,
         protected MonetaryService $monetaryService,
         protected MonetaryPolicyService $monetaryPolicy,
-        protected TreasuryService $treasuryService
+        protected TreasuryService $treasuryService,
+        protected ReputationService $reputationService,
+        protected MembershipFeeStatusService $membershipFeeStatus
     ) {
     }
 
@@ -40,7 +44,7 @@ class NajmBaharMembershipFeeController extends Controller
             return response()->json(['error' => 'حساب نجم بهار یافت نشد'], 404);
         }
 
-        $hasPaid = $this->hasPaidCurrentYearMembershipFee($user->id, $account->id);
+        $hasPaid = $this->membershipFeeStatus->hasPaidCurrentMembershipFee($user);
         $wallet = $this->balanceService->aggregate($account);
 
         $membershipDate = $user->created_at;
@@ -51,7 +55,7 @@ class NajmBaharMembershipFeeController extends Controller
         }
 
         [$operationsAmount, $insuranceAmount, $burnAmount] = $this->membershipSplit();
-        $total = $operationsAmount + $insuranceAmount + $burnAmount;
+        $total = $this->membershipFeeAmount();
 
         $subAccounts = SubAccount::where('account_id', $account->id)
             ->where('status', 1)
@@ -153,13 +157,13 @@ class NajmBaharMembershipFeeController extends Controller
             return back()->with('error', 'حساب نجم بهار یافت نشد');
         }
 
-        if ($this->hasPaidCurrentYearMembershipFee($user->id, $account->id)) {
+        if ($this->membershipFeeStatus->hasPaidCurrentMembershipFee($user)) {
             return back()->with('error', 'شما برای سال جاری حق عضویت سالانه را پرداخت کرده‌اید');
         }
 
         [$operationsAmount, $insuranceAmount, $burnAmount] = $this->membershipSplit();
-        $total = $operationsAmount + $insuranceAmount + $burnAmount;
-        $currentYear = $this->membershipPaymentYear($user);
+        $total = $this->membershipFeeAmount();
+        $currentYear = $this->membershipFeeStatus->membershipPaymentYear($user);
         $policyVersionId = $this->monetaryPolicy->versionId();
         $paymentSource = $validated['payment_source'];
 
@@ -233,6 +237,8 @@ class NajmBaharMembershipFeeController extends Controller
                     $paymentSource,
                     $policyVersionId
                 );
+
+                $this->awardMembershipFeeParticipation($user, $currentYear, $paymentSource, $policyVersionId);
             });
 
             return redirect()->route('najm-bahar.dashboard')
@@ -246,6 +252,30 @@ class NajmBaharMembershipFeeController extends Controller
 
             return back()->with('error', 'خطا در پرداخت حق عضویت: ' . $e->getMessage());
         }
+    }
+
+    private function awardMembershipFeeParticipation(User $user, int $paymentYear, string $paymentSource, ?int $policyVersionId): void
+    {
+        $alreadyAwarded = UserPointTransaction::where('user_id', $user->id)
+            ->where('action', 'membership_fee_paid')
+            ->where('reference_id', $paymentYear)
+            ->exists();
+
+        if ($alreadyAwarded) {
+            return;
+        }
+
+        $this->reputationService->applyAction(
+            $user,
+            'membership_fee_paid',
+            [
+                'payment_year' => $paymentYear,
+                'payment_source' => $paymentSource,
+                'policy_version_id' => $policyVersionId,
+            ],
+            $paymentYear,
+            'najm_bahar_membership'
+        );
     }
 
     private function distributeMembershipFee(
@@ -323,41 +353,5 @@ class NajmBaharMembershipFeeController extends Controller
     {
         $policyAmount = (int) $this->monetaryPolicy->parameter('membership_fee_gol', 0);
         return $policyAmount > 0 ? $policyAmount : $this->feeService->getMembershipFee();
-    }
-
-    private function membershipPaymentYear(User $user): int
-    {
-        $currentYear = now()->year;
-        $currentAnniversary = $user->created_at->copy()->setYear($currentYear);
-
-        return now()->lessThan($currentAnniversary) ? $currentYear - 1 : $currentYear;
-    }
-
-    private function hasPaidCurrentYearMembershipFee(int $userId, int $accountId): bool
-    {
-        $user = User::find($userId);
-        if (! $user) {
-            return false;
-        }
-
-        $paymentYear = $this->membershipPaymentYear($user);
-        $expected = ['operations_salary', 'central_insurance', 'money_destruction'];
-
-        $actual = NajmTransaction::where('metadata->type', 'membership_fee')
-            ->where('metadata->user_id', $userId)
-            ->where('metadata->payment_year', $paymentYear)
-            ->pluck('metadata')
-            ->map(fn ($m) => $m['split'] ?? null)
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
-
-        $legacy = ['membership', 'insurance', 'burn'];
-        sort($expected);
-        sort($legacy);
-        sort($actual);
-
-        return $expected === $actual || $legacy === $actual;
     }
 }
