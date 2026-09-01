@@ -66,15 +66,22 @@
             line-height: 1.7;
         }
 
+        body.pm-private-request-open {
+            overflow: hidden !important;
+            overscroll-behavior: none;
+        }
+
         .pm-request-sheet-overlay {
             position: fixed;
             inset: 0;
-            z-index: 1150;
+            z-index: 20000;
             display: none;
             padding: 0;
             align-items: flex-end;
             justify-content: center;
+            overflow: hidden;
             background: rgba(16, 29, 23, .52);
+            transform: none !important;
         }
 
         .pm-request-sheet-overlay.is-open {
@@ -86,9 +93,11 @@
             max-height: min(88dvh, 44rem);
             padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
             overflow-y: auto;
+            overscroll-behavior: contain;
             border-radius: 24px 24px 0 0;
             background: #fff;
             box-shadow: 0 -16px 42px rgba(18, 33, 26, .18);
+            transform: none !important;
         }
 
         .pm-request-sheet__handle {
@@ -230,12 +239,13 @@
             }
 
             .pm-request-sheet-overlay {
-                padding: 1.25rem;
+                padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem 1.5rem;
                 align-items: center;
             }
 
             .pm-request-sheet {
                 max-width: 31rem;
+                max-height: calc(100dvh - 3rem);
                 padding: 1.15rem;
                 border-radius: 22px;
                 box-shadow: 0 22px 60px rgba(18, 33, 26, .2);
@@ -334,12 +344,19 @@
         let activeSheet = null;
         let returnFocusTo = null;
 
+        // The profile card uses hover transforms. A fixed-position dialog inside a
+        // transformed ancestor is no longer viewport-fixed and can jitter as the
+        // hover state changes. Portal every request sheet directly under <body>.
+        document.querySelectorAll('[data-private-request-sheet]').forEach(function(sheet) {
+            document.body.appendChild(sheet);
+        });
+
         function closeSheet(sheet) {
             if (!sheet) return;
             sheet.classList.remove('is-open');
             sheet.setAttribute('aria-hidden', 'true');
-            document.documentElement.style.overflow = '';
-            if (returnFocusTo) returnFocusTo.focus();
+            document.body.classList.remove('pm-private-request-open');
+            if (returnFocusTo && document.contains(returnFocusTo)) returnFocusTo.focus();
             activeSheet = null;
             returnFocusTo = null;
         }
@@ -353,8 +370,8 @@
                 activeSheet = sheet;
                 sheet.classList.add('is-open');
                 sheet.setAttribute('aria-hidden', 'false');
-                document.documentElement.style.overflow = 'hidden';
-                requestAnimationFrame(() => sheet.querySelector('textarea')?.focus());
+                document.body.classList.add('pm-private-request-open');
+                requestAnimationFrame(() => sheet.querySelector('textarea')?.focus({ preventScroll: true }));
                 return;
             }
 
