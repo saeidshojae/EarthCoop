@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\ReputationRule;
+use App\Models\UserPointConversion;
+use App\Models\UserPointTransaction;
+use Illuminate\Http\Request;
 
 class ReputationController extends Controller
 {
@@ -77,7 +79,28 @@ class ReputationController extends Controller
             }
         }
 
-        return view('admin.system-settings.reputation.index', compact('rules', 'faLabels', 'grouped'));
+        // Read-only audit models. Historical rows are intentionally exposed for
+        // verification but are never edited from the policy form.
+        $recentPointEvents = UserPointTransaction::query()
+            ->with('user:id,first_name,last_name,email')
+            ->withSum('consumptions as consumed_points_total', 'points_consumed')
+            ->latest('id')
+            ->limit(50)
+            ->get();
+
+        $recentConversions = UserPointConversion::query()
+            ->withSum('consumptions as consumed_points_total', 'points_consumed')
+            ->latest('id')
+            ->limit(30)
+            ->get();
+
+        return view('admin.system-settings.reputation.index', compact(
+            'rules',
+            'faLabels',
+            'grouped',
+            'recentPointEvents',
+            'recentConversions'
+        ));
     }
 
     public function update(Request $request)
