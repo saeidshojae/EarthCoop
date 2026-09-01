@@ -127,6 +127,9 @@ class ReputationConversionController extends Controller
         }
 
         $requestedConversionKey = trim((string) $request->header('Idempotency-Key', ''));
+        if ($requestedConversionKey === '') {
+            $requestedConversionKey = trim((string) $request->input('idempotency_key', ''));
+        }
         $requestKey = $requestedConversionKey !== ''
             ? $requestedConversionKey
             : (string) Str::uuid();
