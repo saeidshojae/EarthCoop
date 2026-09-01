@@ -17,16 +17,26 @@ class InvitationLifecycleServiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_expired_unused_code_releases_slot_but_active_or_claimed_code_reserves_it(): void
+    public function test_expired_unused_or_abandoned_claim_releases_slot_while_live_code_reserves_it(): void
     {
         $this->configureInvitationPolicy(2);
         $referrer = $this->completeMember();
+        $abandonedInvitee = User::factory()->create();
 
         InvitationCode::create([
             'code' => 'EXPIRED1',
             'user_id' => $referrer->id,
             'used' => false,
             'expire_at' => now()->subMinute(),
+        ]);
+
+        InvitationCode::create([
+            'code' => 'ABANDON1',
+            'user_id' => $referrer->id,
+            'used' => true,
+            'used_by' => $abandonedInvitee->id,
+            'used_at' => now()->subHours(73),
+            'expire_at' => now()->subHour(),
         ]);
 
         InvitationCode::create([
@@ -134,14 +144,14 @@ class InvitationLifecycleServiceTest extends TestCase
         ]);
     }
 
-    public function test_lowering_future_quota_does_not_break_a_code_already_claimed_under_the_previous_quota(): void
+    public function test_late_completion_cannot_create_more_successful_rewards_than_the_configured_quota(): void
     {
-        $this->configureInvitationPolicy(2);
+        $this->configureInvitationPolicy(1);
         $this->configureInviteReward(100);
 
         $referrer = $this->completeMember();
         $firstInvitee = $this->completeMember();
-        $secondInvitee = $this->completeMember();
+        $lateInvitee = $this->completeMember();
 
         InvitationCode::create([
             'code' => 'DONE0001',
@@ -150,28 +160,24 @@ class InvitationLifecycleServiceTest extends TestCase
             'used_by' => $firstInvitee->id,
             'used_at' => now()->subDay(),
             'completed_at' => now()->subDay(),
-            'expire_at' => now()->addHour(),
+            'expire_at' => now()->subHour(),
         ]);
 
-        $claimed = InvitationCode::create([
-            'code' => 'CLAIM002',
+        $late = InvitationCode::create([
+            'code' => 'LATE0001',
             'user_id' => $referrer->id,
             'used' => true,
-            'used_by' => $secondInvitee->id,
-            'used_at' => now(),
-            'expire_at' => now()->addHour(),
+            'used_by' => $lateInvitee->id,
+            'used_at' => now()->subHours(73),
+            'expire_at' => now()->subHour(),
         ]);
 
-        // Administrators may lower the quota for future issuance. An already
-        // claimed invitation remains valid and must complete normally.
-        $this->configureInvitationPolicy(1);
-
-        $this->assertTrue(app(InvitationLifecycleService::class)->completeSuccessfulInvitation($secondInvitee));
-        $this->assertNotNull($claimed->fresh()->completed_at);
-        $this->assertDatabaseHas('user_point_transactions', [
+        $this->assertFalse(app(InvitationLifecycleService::class)->completeSuccessfulInvitation($lateInvitee));
+        $this->assertNull($late->fresh()->completed_at);
+        $this->assertDatabaseMissing('user_point_transactions', [
             'user_id' => $referrer->id,
             'action' => 'invite_member',
-            'delta' => 100,
+            'reference_id' => $late->id,
         ]);
     }
 
