@@ -77,6 +77,16 @@ return [
             'convertible' => true,
             'repeat_policy' => 'once_per_context',
         ],
+        'elected_manager' => [
+            'dimension' => 'participation',
+            'convertible' => false,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'elected_inspector' => [
+            'dimension' => 'participation',
+            'convertible' => false,
+            'repeat_policy' => 'once_per_context',
+        ],
     ],
 
     // Tier thresholds
