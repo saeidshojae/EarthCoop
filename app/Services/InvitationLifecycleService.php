@@ -110,6 +110,10 @@ class InvitationLifecycleService
      */
     public function completeSuccessfulInvitation(User $invitee): bool
     {
+        if (! $this->isEligibleMember($invitee)) {
+            return false;
+        }
+
         return DB::transaction(function () use ($invitee) {
             $invitation = InvitationCode::where('used_by', $invitee->id)
                 ->lockForUpdate()
@@ -136,16 +140,9 @@ class InvitationLifecycleService
                 return true;
             }
 
-            $completedBefore = InvitationCode::where('user_id', $referrer->id)
-                ->whereNotNull('completed_at')
-                ->where('id', '!=', $invitation->id)
-                ->lockForUpdate()
-                ->count();
-
-            if ($completedBefore >= $this->quota()) {
-                throw new RuntimeException('Successful invitation quota has already been exhausted.');
-            }
-
+            // Quota is enforced when the member issues a code. Once a code has
+            // been validly claimed, later administrative quota changes apply to
+            // future issuance only and must not invalidate an in-flight signup.
             $this->reputationService->applyAction(
                 $referrer,
                 'invite_member',
