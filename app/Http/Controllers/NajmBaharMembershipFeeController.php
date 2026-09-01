@@ -55,7 +55,7 @@ class NajmBaharMembershipFeeController extends Controller
         }
 
         [$operationsAmount, $insuranceAmount, $burnAmount] = $this->membershipSplit();
-        $total = $operationsAmount + $insuranceAmount + $burnAmount;
+        $total = $this->membershipFeeAmount();
 
         $subAccounts = SubAccount::where('account_id', $account->id)
             ->where('status', 1)
@@ -162,7 +162,7 @@ class NajmBaharMembershipFeeController extends Controller
         }
 
         [$operationsAmount, $insuranceAmount, $burnAmount] = $this->membershipSplit();
-        $total = $operationsAmount + $insuranceAmount + $burnAmount;
+        $total = $this->membershipFeeAmount();
         $currentYear = $this->membershipFeeStatus->membershipPaymentYear($user);
         $policyVersionId = $this->monetaryPolicy->versionId();
         $paymentSource = $validated['payment_source'];
