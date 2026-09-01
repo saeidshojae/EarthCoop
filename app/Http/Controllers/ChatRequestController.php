@@ -22,11 +22,13 @@ class ChatRequestController extends Controller
             $section = 'requests';
         }
 
-        $status = strtolower((string) $request->query('status', 'pending'));
-        if (!in_array($status, ['pending', 'accepted', 'rejected'], true)) {
-            $status = 'pending';
+        $box = strtolower((string) $request->query('box', 'received'));
+        if (!in_array($box, ['received', 'sent'], true)) {
+            $box = 'received';
         }
-        if (!in_array($status, ['pending', 'accepted', 'rejected'], true)) {
+
+        $status = strtolower((string) $request->query('status', 'pending'));
+        if (!in_array($status, ['all', 'pending', 'accepted', 'rejected'], true)) {
             $status = 'pending';
         }
 
@@ -40,18 +42,46 @@ class ChatRequestController extends Controller
             ->with(['receiver'])
             ->latest();
 
+        // Keep the legacy flat received counts for compatibility while exposing
+        // direction-aware counts to the new mobile-first request shell.
         $counts = [
             'pending' => (clone $receivedQuery)->where('status', 'pending')->count(),
             'accepted' => (clone $receivedQuery)->where('status', 'accepted')->count(),
             'rejected' => (clone $receivedQuery)->where('status', 'rejected')->count(),
         ];
 
-        $received = (clone $receivedQuery)->where('status', $status)->get();
-        $sent = (clone $sentQuery)->where('status', $status)->get();
+        $requestCounts = [
+            'received' => [
+                'all' => (clone $receivedQuery)->count(),
+                'pending' => $counts['pending'],
+                'accepted' => $counts['accepted'],
+                'rejected' => $counts['rejected'],
+            ],
+            'sent' => [
+                'all' => (clone $sentQuery)->count(),
+                'pending' => (clone $sentQuery)->where('status', 'pending')->count(),
+                'accepted' => (clone $sentQuery)->where('status', 'accepted')->count(),
+                'rejected' => (clone $sentQuery)->where('status', 'rejected')->count(),
+            ],
+        ];
+
+        $received = $status === 'all'
+            ? (clone $receivedQuery)->get()
+            : (clone $receivedQuery)->where('status', $status)->get();
+
+        $sent = $status === 'all'
+            ? (clone $sentQuery)->get()
+            : (clone $sentQuery)->where('status', $status)->get();
 
         $conversations = PrivateConversation::whereHas('users', function ($query) use ($currentUser) {
                 $query->where('users.id', $currentUser->id);
             })
+            ->withCount([
+                'messages as unread_count' => function ($query) use ($currentUser) {
+                    $query->where('sender_id', '!=', $currentUser->id)
+                        ->whereNull('read_at');
+                },
+            ])
             ->with([
                 'users:id,first_name,last_name,avatar',
                 'messages' => function ($query) {
@@ -64,7 +94,16 @@ class ChatRequestController extends Controller
             })
             ->values();
 
-        $viewData = compact('section', 'status', 'counts', 'received', 'sent', 'conversations');
+        $viewData = compact(
+            'section',
+            'box',
+            'status',
+            'counts',
+            'requestCounts',
+            'received',
+            'sent',
+            'conversations'
+        );
 
         if ($request->ajax()) {
             return view('chat-requests.partials.body', $viewData);
@@ -111,7 +150,7 @@ class ChatRequestController extends Controller
                 return redirect()->route('private-chats.show', $existingRequest->private_conversation_id);
             }
 
-                if ($existingRequest->status === 'accepted' && ! $existingRequest->private_conversation_id) {
+            if ($existingRequest->status === 'accepted' && ! $existingRequest->private_conversation_id) {
                 $conversation = $this->ensurePrivateConversationForRequest($existingRequest);
 
                 return redirect()->route('private-chats.show', $conversation->id);
@@ -141,7 +180,6 @@ class ChatRequestController extends Controller
             'status' => 'pending',
         ]);
 
-        // Send notification to receiver
         Notification::send($user, new ChatRequestNotification(
             $chatRequest->id,
             $currentUser->fullName(),
@@ -228,9 +266,6 @@ class ChatRequestController extends Controller
         return response()->json($pendingRequests);
     }
 
-    /**
-     * API: Get pending chat request count for badge display
-     */
     public function pendingCount()
     {
         $currentUser = request()->user();
