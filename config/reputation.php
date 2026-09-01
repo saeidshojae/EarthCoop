@@ -5,7 +5,7 @@ return [
     'weights' => [
         'email_verified' => 50,
         'profile_completed' => 30,
-        'invite_member' => 10,
+        'invite_member' => 100,
         'membership_fee_paid' => 12,
         'post_created' => 10,
         'post_liked' => 1,
