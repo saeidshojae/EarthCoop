@@ -68,7 +68,7 @@ class ParticipationConversionLegacyCompatibilityTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $tx = UserPointTransaction::create([
+        $txId = DB::table('user_point_transactions')->insertGetId([
             'user_id' => $user->id,
             'delta' => $points,
             'balance_after' => $points,
@@ -80,7 +80,10 @@ class ParticipationConversionLegacyCompatibilityTest extends TestCase
             'is_cashed' => true,
             'cashed_at' => now(),
             'cashed_amount_gol' => intdiv($points, 100),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
+        $tx = UserPointTransaction::findOrFail($txId);
 
         return [$user, $account->fresh(), $tx];
     }
