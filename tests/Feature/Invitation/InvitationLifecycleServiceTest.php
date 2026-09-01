@@ -144,6 +144,32 @@ class InvitationLifecycleServiceTest extends TestCase
         ]);
     }
 
+    public function test_expired_claim_cannot_receive_a_late_success_reward_even_when_quota_is_available(): void
+    {
+        $this->configureInvitationPolicy(10);
+        $this->configureInviteReward(100);
+
+        $referrer = $this->completeMember();
+        $lateInvitee = $this->completeMember();
+
+        $late = InvitationCode::create([
+            'code' => 'LATEFREE',
+            'user_id' => $referrer->id,
+            'used' => true,
+            'used_by' => $lateInvitee->id,
+            'used_at' => now()->subHours(73),
+            'expire_at' => now()->subHour(),
+        ]);
+
+        $this->assertFalse(app(InvitationLifecycleService::class)->completeSuccessfulInvitation($lateInvitee));
+        $this->assertNull($late->fresh()->completed_at);
+        $this->assertDatabaseMissing('user_point_transactions', [
+            'user_id' => $referrer->id,
+            'action' => 'invite_member',
+            'reference_id' => $late->id,
+        ]);
+    }
+
     public function test_late_completion_cannot_create_more_successful_rewards_than_the_configured_quota(): void
     {
         $this->configureInvitationPolicy(1);
