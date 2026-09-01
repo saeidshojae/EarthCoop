@@ -79,8 +79,11 @@ jobs:
           EOF
           php artisan key:generate --force
 
-      - name: Migrate database
-        run: php artisan migrate --force
+      - name: Provision databases
+        run: |
+          mysql --host=127.0.0.1 --port=3306 --user=root -e 'CREATE DATABASE IF NOT EXISTS `newearthcoop-test` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
+          php artisan migrate --force
+          DB_DATABASE=newearthcoop-test php artisan migrate --force
 
       - name: Validate routes boot
         run: |
