@@ -3,6 +3,7 @@
 namespace Tests\Feature\Invitation;
 
 use App\Http\Controllers\Admin\ReputationController;
+use App\Http\Controllers\Profile\MemberInvitationController;
 use App\Models\ReputationRule;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -42,6 +43,17 @@ class InvitationLaunchContractTest extends TestCase
         $this->assertStringContainsString('issueMemberInvitation', $controller);
         $this->assertStringContainsString("/profile/invation-code-generate", $routes);
         $this->assertStringContainsString("profile.generate-code", $routes);
+    }
+
+    #[Test]
+    public function canonical_member_invitation_route_shadows_the_legacy_profile_action(): void
+    {
+        $route = app('router')->getRoutes()->getByName('profile.generate-code');
+
+        $this->assertNotNull($route);
+        $this->assertSame(MemberInvitationController::class, $route->getActionName());
+        $this->assertContains('web', $route->gatherMiddleware());
+        $this->assertContains(\App\Http\Middleware\Authenticate::class, $route->gatherMiddleware());
     }
 
     #[Test]
