@@ -7,7 +7,6 @@ use App\Models\NajmBaharAgreement;
 use App\Models\User;
 use App\Models\UserExperience;
 use App\Models\Address;
-use App\Models\InvitationCode;
 use App\Models\Setting;
 use App\Modules\NajmBahar\Policy\NajmBaharConstitution;
 use App\Modules\NajmBahar\Services\AccountBalanceService;
@@ -15,7 +14,6 @@ use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\TransactionService;
 use App\Modules\NajmBahar\Services\MonetaryService;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
-use App\Services\ReputationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +25,6 @@ class NajmBaharController extends Controller
         protected AccountBalanceService $balanceService,
         protected TransactionService $transactionService,
         protected MonetaryService $monetaryService,
-        protected ReputationService $reputationService,
     ) {
     }
 
@@ -76,7 +73,6 @@ class NajmBaharController extends Controller
                 );
 
                 $this->ensureInitialFunding($user, $userAccount);
-                $this->processReferralParticipation($user);
 
                 $user->update([
                     'najm_bahar_agreement_accepted_at' => now()
@@ -100,37 +96,6 @@ class NajmBaharController extends Controller
             return redirect()->back()
                 ->with('error', 'خطا در ایجاد حساب نجم بهار. لطفاً مجدداً تلاش کنید.');
         }
-    }
-
-    /**
-     * Referral is participation, not a transfer of the new member's dim money.
-     * The reputation rule remains configurable; conversion later activates the
-     * referrer's own constitutional dim balance through MonetaryService.
-     */
-    protected function processReferralParticipation(User $user): void
-    {
-        $invitationCheck = InvitationCode::where('used_by', $user->id)->first();
-        if (! $invitationCheck || (int) $invitationCheck->user_id === 171) {
-            return;
-        }
-
-        $referrer = User::find($invitationCheck->user_id);
-        if (! $referrer) {
-            return;
-        }
-
-        $this->reputationService->applyAction(
-            $referrer,
-            'invite_member',
-            [
-                'new_user_id' => $user->id,
-                'invitation_code_id' => $invitationCheck->id,
-                'economic_rule' => 'participation_points_only_no_dim_transfer',
-            ],
-            $invitationCheck->id,
-            'najm_bahar_membership',
-            'invite_member:referrer:' . $referrer->id . ':member:' . $user->id
-        );
     }
 
     public function dashboard()
