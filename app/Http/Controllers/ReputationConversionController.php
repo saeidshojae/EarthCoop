@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\UserPoint;
 use App\Models\UserPointConsumption;
+use App\Models\UserPointConversion;
 use App\Models\UserPointTransaction;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\MonetaryPolicyService;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class ReputationConversionController extends Controller
 {
@@ -112,28 +114,56 @@ class ReputationConversionController extends Controller
         }
 
         $requestedConversionKey = trim((string) $request->header('Idempotency-Key', ''));
-        $conversionKey = $requestedConversionKey !== ''
-            ? 'reputation-conversion:' . $user->id . ':' . $requestedConversionKey
-            : 'reputation-conversion:' . $user->id . ':' . now()->format('YmdHisv');
+        $requestKey = $requestedConversionKey !== ''
+            ? $requestedConversionKey
+            : (string) Str::uuid();
+        $conversionKey = 'reputation-conversion:' . $user->id . ':' . $requestKey;
 
         try {
             $alreadyConverted = false;
+            $completedPoints = $convertiblePoints;
+            $completedAmountInGol = $amountInGol;
 
             DB::transaction(function () use (
                 $user,
                 $account,
+                $pointsToConvert,
                 $convertiblePoints,
                 $amountInGol,
                 $ratio,
                 $policyVersionId,
                 $policyVersion,
+                $requestKey,
                 $conversionKey,
-                &$alreadyConverted
+                &$alreadyConverted,
+                &$completedPoints,
+                &$completedAmountInGol
             ) {
-                if (UserPointConsumption::where('user_id', $user->id)
-                    ->where('conversion_key', $conversionKey)
-                    ->exists()) {
+                $identity = UserPointConversion::firstOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'request_key' => $requestKey,
+                    ],
+                    [
+                        'conversion_key' => $conversionKey,
+                        'requested_points' => $pointsToConvert,
+                        'consumed_points' => 0,
+                        'amount_gol' => $amountInGol,
+                        'ratio' => $ratio,
+                        'policy_version_id' => $policyVersionId,
+                        'policy_version' => $policyVersion,
+                        'status' => 'pending',
+                    ]
+                );
+
+                $identity = UserPointConversion::whereKey($identity->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($identity->status === 'applied') {
                     $alreadyConverted = true;
+                    $completedPoints = (int) $identity->consumed_points;
+                    $completedAmountInGol = (int) $identity->amount_gol;
                     return;
                 }
 
@@ -170,6 +200,7 @@ class ReputationConversionController extends Controller
 
                     UserPointConsumption::create([
                         'user_id' => $user->id,
+                        'user_point_conversion_id' => $identity->id,
                         'user_point_transaction_id' => $tx->id,
                         'points_consumed' => $toConsume,
                         'conversion_key' => $conversionKey,
@@ -178,6 +209,10 @@ class ReputationConversionController extends Controller
                     ]);
 
                     $remaining -= $toConsume;
+                }
+
+                if ($remaining !== 0) {
+                    throw new \Exception('ثبت مصرف امتیاز ناقص ماند و تبدیل لغو شد');
                 }
 
                 $this->monetaryService->activateDim(
@@ -191,13 +226,23 @@ class ReputationConversionController extends Controller
                         'ratio' => $ratio,
                         'policy_version_id' => $policyVersionId,
                         'policy_version' => $policyVersion,
+                        'user_point_conversion_id' => $identity->id,
                     ],
                     $conversionKey,
                     false
                 );
 
+                $identity->update([
+                    'consumed_points' => $convertiblePoints,
+                    'status' => 'applied',
+                ]);
+
+                $completedPoints = $convertiblePoints;
+                $completedAmountInGol = $amountInGol;
+
                 Log::info('Reputation converted to active money', [
                     'user_id' => $user->id,
+                    'user_point_conversion_id' => $identity->id,
                     'points' => $convertiblePoints,
                     'amount_gol' => $amountInGol,
                     'ratio' => $ratio,
@@ -206,10 +251,10 @@ class ReputationConversionController extends Controller
                 ]);
             });
 
-            $amountFormatted = \App\Helpers\BaharMoney::formatDecimal($amountInGol);
+            $amountFormatted = \App\Helpers\BaharMoney::formatDecimal($completedAmountInGol);
             $message = $alreadyConverted
-                ? "درخواست تبدیل {$convertiblePoints} امتیاز قبلاً با موفقیت انجام شده است."
-                : "{$convertiblePoints} امتیاز با موفقیت به {$amountFormatted} بهار پول فعال تبدیل شد!";
+                ? "درخواست تبدیل {$completedPoints} امتیاز قبلاً با موفقیت انجام شده است."
+                : "{$completedPoints} امتیاز با موفقیت به {$amountFormatted} بهار پول فعال تبدیل شد!";
 
             return redirect()->route('najm-bahar.wallet')->with('success', $message);
 
