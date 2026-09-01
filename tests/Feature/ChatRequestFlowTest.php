@@ -208,6 +208,35 @@ class ChatRequestFlowTest extends TestCase
         ]);
     }
 
+    public function test_accepting_request_notifies_original_sender_with_conversation_link(): void
+    {
+        $sender = $this->makeUser('notify-sender@example.com');
+        $receiver = $this->makeUser('notify-receiver@example.com');
+
+        $request = ChatRequest::create([
+            'sender_id' => $sender->id,
+            'receiver_id' => $receiver->id,
+            'status' => 'pending',
+            'message' => 'please accept',
+        ]);
+
+        $this->actingAs($receiver)
+            ->post(route('chat-requests.accept', $request))
+            ->assertRedirect();
+
+        $request->refresh();
+        $sender->refresh();
+        $notification = $sender->notifications()->latest()->first();
+
+        $this->assertNotNull($notification, 'The original sender must receive an acceptance notification.');
+        $this->assertSame('chat_request_accepted', $notification->data['type'] ?? null);
+        $this->assertSame($request->id, (int) ($notification->data['chat_request_id'] ?? 0));
+        $this->assertSame(
+            route('private-chats.show', $request->private_conversation_id),
+            $notification->data['url'] ?? null
+        );
+    }
+
     public function test_non_receiver_cannot_accept_request(): void
     {
         $sender = $this->makeUser('sender4@example.com');
