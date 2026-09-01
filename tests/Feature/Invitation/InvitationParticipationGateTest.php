@@ -25,6 +25,7 @@ class InvitationParticipationGateTest extends TestCase
         $user = $this->completeMember();
         $service = app(InvitationLifecycleService::class);
 
+        $this->assertSame(1, (int) Setting::singleton()->id);
         $this->assertSame(10, $service->quota());
         $this->assertFalse($service->canIssueMemberInvitation($user));
 
@@ -114,11 +115,14 @@ class InvitationParticipationGateTest extends TestCase
 
     private function configureInvitationPolicy(): void
     {
-        Setting::query()->updateOrCreate(['id' => 1], [
+        $setting = Setting::singleton();
+        $setting->fill([
             'invation_status' => true,
             'count_invation' => 10,
             'expire_invation_time' => 72,
         ]);
+        $setting->save();
+
         ReputationRule::query()->updateOrCreate(['key' => 'invite_member'], [
             'label' => 'Invite member', 'weight' => 100, 'active' => true,
             'daily_cap' => null, 'dimension' => 'participation',
