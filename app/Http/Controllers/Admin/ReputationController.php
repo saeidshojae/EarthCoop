@@ -49,6 +49,21 @@ class ReputationController extends Controller
             'professional_referral_completed' => 'تکمیل ارجاع تخصصی تأییدشده',
         ];
 
+        $dimensionLabels = [
+            'participation' => 'مشارکت',
+            'reliability' => 'اعتمادپذیری',
+            'expertise' => 'تخصص',
+            'civic_trust' => 'اعتماد مدنی',
+        ];
+
+        $conversionStatusLabels = [
+            'pending' => 'در انتظار',
+            'applied' => 'انجام‌شده',
+            'failed' => 'ناموفق',
+            'cancelled' => 'لغوشده',
+            'canceled' => 'لغوشده',
+        ];
+
         $groupDefinitions = [
             'membership' => ['label' => 'عضویت و دعوت', 'prefixes' => ['invite_member', 'membership_fee_paid']],
             'stock' => ['label' => 'سهام و حراج', 'prefixes' => ['bid_', 'successful_settlement', 'bid_won', 'bid_canceled']],
@@ -99,6 +114,8 @@ class ReputationController extends Controller
         return view('admin.system-settings.reputation.index', compact(
             'rules',
             'faLabels',
+            'dimensionLabels',
+            'conversionStatusLabels',
             'grouped',
             'recentPointEvents',
             'recentConversions'
