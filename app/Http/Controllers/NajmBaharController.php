@@ -205,6 +205,8 @@ class NajmBaharController extends Controller
         $cashedPoints = $pointSummary['cashed_points'];
         $uncashedPoints = $pointSummary['remaining_convertible_points'];
         $convertibleAwardedPoints = $pointSummary['convertible_awarded_points'];
+        $ledgerConsumedPoints = $pointSummary['ledger_consumed_points'];
+        $legacyCashedPoints = $pointSummary['legacy_cashed_points'];
         $participationReversalPoints = $pointSummary['participation_reversal_points'];
 
         return view('najm-bahar.wallet', compact(
@@ -217,6 +219,8 @@ class NajmBaharController extends Controller
             'cashedPoints',
             'uncashedPoints',
             'convertibleAwardedPoints',
+            'ledgerConsumedPoints',
+            'legacyCashedPoints',
             'participationReversalPoints'
         ));
     }
