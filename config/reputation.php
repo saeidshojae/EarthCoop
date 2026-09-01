@@ -77,8 +77,11 @@ return [
         'Platinum' => 5000,
     ],
 
-    // Daily caps to prevent abuse (per action-key)
+    // Daily caps are expressed in awarded points over a rolling day, not event counts.
+    // Content-creation defaults bound bootstrap farming while remaining admin-manageable after seeding.
     'daily_caps' => [
+        'post_created' => 50,
+        'comment_created' => 20,
         'post_liked' => 20,
         'post_upvoted' => 50,
         'comment_liked' => 20,
