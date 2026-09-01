@@ -46,19 +46,18 @@ class InvitationLifecycleService
     }
 
     /**
-     * A member has a configurable number of invitation slots. A completed
-     * invitation permanently consumes one slot. A currently usable code or a
-     * code already claimed by an incomplete registrant temporarily reserves a
-     * slot. An expired, unclaimed code releases its slot automatically.
+     * Successful referrals permanently consume a slot. A not-yet-completed
+     * invitation reserves a slot only while its configured validity window is
+     * still open. Therefore unused or abandoned/claimed registrations release
+     * their slot after expiry and can be replaced by a new invitation.
      */
     public function occupiedSlots(User $referrer): int
     {
         return InvitationCode::where('user_id', $referrer->id)
             ->where(function ($query) {
                 $query->whereNotNull('completed_at')
-                    ->orWhereNotNull('used_by')
-                    ->orWhere(function ($active) {
-                        $active->where('used', false)
+                    ->orWhere(function ($live) {
+                        $live->whereNull('completed_at')
                             ->whereNotNull('expire_at')
                             ->where('expire_at', '>=', now());
                     });
@@ -119,7 +118,11 @@ class InvitationLifecycleService
                 ->lockForUpdate()
                 ->first();
 
-            if (! $invitation || $invitation->completed_at !== null || ! $invitation->user_id) {
+            if (! $invitation
+                || $invitation->completed_at !== null
+                || ! $invitation->user_id
+                || ! $invitation->expire_at
+                || $invitation->expire_at->lt(now())) {
                 return false;
             }
 
@@ -140,9 +143,18 @@ class InvitationLifecycleService
                 return true;
             }
 
-            // Quota is enforced when the member issues a code. Once a code has
-            // been validly claimed, later administrative quota changes apply to
-            // future issuance only and must not invalidate an in-flight signup.
+            // The quota represents successful referrals, not generated codes.
+            // Re-check it under the same transaction so late/concurrent profile
+            // completions cannot create more rewards than the configured limit.
+            $successfulBefore = InvitationCode::where('user_id', $referrer->id)
+                ->whereNotNull('completed_at')
+                ->lockForUpdate()
+                ->count();
+
+            if ($successfulBefore >= $this->quota()) {
+                return false;
+            }
+
             $this->reputationService->applyAction(
                 $referrer,
                 'invite_member',
