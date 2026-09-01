@@ -36,7 +36,8 @@ class ParticipationConversionBehaviorTest extends TestCase
     public function test_retry_with_same_conversion_request_key_cannot_consume_or_activate_twice(): void
     {
         [$user, $account, $tx] = $this->memberWithConvertiblePoints(100);
-        $requestKey = 'conversion-request-' . $user->id . '-fixed';
+        $requestKey = 'fixed-retry-key';
+        $conversionKey = 'reputation-conversion:' . $user->id . ':' . $requestKey;
 
         $this->actingAs($user)
             ->withHeader('Idempotency-Key', $requestKey)
@@ -49,22 +50,52 @@ class ParticipationConversionBehaviorTest extends TestCase
             ->assertRedirect(route('najm-bahar.wallet'));
 
         $this->assertSame(100, (int) UserPointConsumption::where('user_point_transaction_id', $tx->id)->sum('points_consumed'));
-        $this->assertSame(1, UserPointConsumption::where('conversion_key', $requestKey)->count());
-        $this->assertSame(1, Transaction::where('metadata->idempotency_key', $requestKey)->count());
+        $this->assertSame(1, UserPointConsumption::where('conversion_key', $conversionKey)->count());
+        $this->assertSame(1, Transaction::where('metadata->idempotency_key', $conversionKey)->count());
         $this->assertSame(1, (int) $account->fresh()->balance_active);
+    }
+
+    public function test_same_client_request_key_is_isolated_between_users(): void
+    {
+        [$firstUser, $firstAccount] = $this->memberWithConvertiblePoints(100);
+        [$secondUser, $secondAccount] = $this->memberWithConvertiblePoints(100);
+        $requestKey = 'shared-client-key';
+
+        $this->actingAs($firstUser)
+            ->withHeader('Idempotency-Key', $requestKey)
+            ->post(route('reputation.conversion.convert'), ['points' => 100])
+            ->assertRedirect(route('najm-bahar.wallet'));
+
+        $this->actingAs($secondUser)
+            ->withHeader('Idempotency-Key', $requestKey)
+            ->post(route('reputation.conversion.convert'), ['points' => 100])
+            ->assertRedirect(route('najm-bahar.wallet'));
+
+        $firstKey = 'reputation-conversion:' . $firstUser->id . ':' . $requestKey;
+        $secondKey = 'reputation-conversion:' . $secondUser->id . ':' . $requestKey;
+
+        $this->assertNotSame($firstKey, $secondKey);
+        $this->assertSame(1, UserPointConsumption::where('conversion_key', $firstKey)->count());
+        $this->assertSame(1, UserPointConsumption::where('conversion_key', $secondKey)->count());
+        $this->assertSame(1, Transaction::where('metadata->idempotency_key', $firstKey)->count());
+        $this->assertSame(1, Transaction::where('metadata->idempotency_key', $secondKey)->count());
+        $this->assertSame(1, (int) $firstAccount->fresh()->balance_active);
+        $this->assertSame(1, (int) $secondAccount->fresh()->balance_active);
     }
 
     private function memberWithConvertiblePoints(int $points): array
     {
-        MonetaryPolicyVersion::create([
-            'version' => 1,
-            'status' => 'active',
-            'parameters' => [
-                'reputation_conversion_enabled' => true,
-                'reputation_to_gol_ratio' => 100,
-            ],
-            'effective_from' => now()->subMinute(),
-        ]);
+        if (! MonetaryPolicyVersion::where('status', 'active')->exists()) {
+            MonetaryPolicyVersion::create([
+                'version' => 1,
+                'status' => 'active',
+                'parameters' => [
+                    'reputation_conversion_enabled' => true,
+                    'reputation_to_gol_ratio' => 100,
+                ],
+                'effective_from' => now()->subMinute(),
+            ]);
+        }
 
         $user = User::factory()->create(['email_verified_at' => now()]);
         $account = app(AccountService::class)->createMainAccountForUser($user->id, 'Member');
