@@ -16,7 +16,7 @@ class DeprecatedElectionRuleAdminGuardContractTest extends TestCase
         $this->assertStringContainsString('$rule->active = false;', $controller);
         $this->assertStringContainsString('$rule->convertible = false;', $controller);
 
-        $this->assertStringContainsString("$isDeprecated = in_array($rule->key, ['election_candidate', 'election_participated'], true);", $view);
+        $this->assertStringContainsString("\$isDeprecated = in_array(\$rule->key, ['election_candidate', 'election_participated'], true);", $view);
         $this->assertStringContainsString('قاعده منسوخ؛ فقط برای سابقه نگهداری می‌شود', $view);
         $this->assertStringContainsString('{{ $isDeprecated ? \'disabled\' : \'\' }}', $view);
     }
