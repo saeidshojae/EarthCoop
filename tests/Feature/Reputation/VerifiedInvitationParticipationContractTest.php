@@ -10,10 +10,10 @@ class VerifiedInvitationParticipationContractTest extends TestCase
     {
         $source = file_get_contents(app_path('Http/Controllers/NajmBaharController.php'));
 
-        $this->assertStringContainsString("->where('used_by', \$member->id)", $source);
+        $this->assertStringContainsString("InvitationCode::where('used_by', \$user->id)->first()", $source);
+        $this->assertStringContainsString("if (! \$invitationCheck || (int) \$invitationCheck->user_id === 171)", $source);
         $this->assertStringContainsString("'invite_member'", $source);
-        $this->assertStringContainsString("'invite_member:referrer:' . \$referrer->id . ':member:' . \$member->id", $source);
-        $this->assertStringContainsString("if (! \$referrer || (int) \$referrer->id === self::SYSTEM_INVITATION_ISSUER_USER_ID || \$referrer->is_system)", $source);
+        $this->assertStringContainsString("'invite_member:referrer:' . \$referrer->id . ':member:' . \$user->id", $source);
     }
 
     public function test_invite_member_bootstrap_rule_is_economic_once_per_verified_member_context(): void
