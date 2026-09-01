@@ -1,13 +1,13 @@
-const conversionForm = document.querySelector('form#conversionForm');
+const form = document.querySelector('form#conversionForm');
 
-if (conversionForm) {
-    let idempotencyInput = conversionForm.querySelector('input[name="idempotency_key"]');
+if (form) {
+    let idempotencyInput = form.querySelector('input[name="idempotency_key"]');
 
     if (!idempotencyInput) {
         idempotencyInput = document.createElement('input');
         idempotencyInput.type = 'hidden';
         idempotencyInput.name = 'idempotency_key';
-        conversionForm.appendChild(idempotencyInput);
+        form.appendChild(idempotencyInput);
     }
 
     const ensureStableKey = () => {
@@ -20,5 +20,5 @@ if (conversionForm) {
         return idempotencyInput.value;
     };
 
-    conversionForm.addEventListener('submit', ensureStableKey);
+    form.addEventListener('submit', ensureStableKey);
 }
