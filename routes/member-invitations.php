@@ -12,5 +12,5 @@ Route::middleware(Authenticate::class)
     ->name('my-invation-code');
 
 Route::middleware(Authenticate::class)
-    ->get('/profile/invation-code-generate', MemberInvitationController::class)
+    ->post('/profile/invation-code-generate', MemberInvitationController::class)
     ->name('profile.generate-code');
