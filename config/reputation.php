@@ -28,8 +28,6 @@ return [
         // Group polls, elections & verified governance outcomes
         'poll_created' => 5,
         'poll_participated' => 2,
-        'election_participated' => 5,
-        'election_candidate' => 10,
         'elected_inspector' => 50,
         'elected_manager' => 100,
         'professional_referral_completed' => 10,
