@@ -5,7 +5,6 @@ namespace Tests\Feature\NajmBahar;
 use App\Helpers\BaharMoney;
 use App\Http\Controllers\Admin\ReputationController;
 use App\Models\ReputationRule;
-use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserPointTransaction;
 use App\Modules\NajmBahar\Models\LedgerEntry;
@@ -140,11 +139,16 @@ class MembershipFeePaymentTest extends TestCase
 
     public function test_fallback_membership_payment_is_recognized_and_cannot_be_charged_twice(): void
     {
-        Setting::updateOrCreate(['id' => 1], [
-            'najm_bahar_membership_fee_amount' => 12,
-            'najm_bahar_membership_operations_amount' => 0,
-            'najm_bahar_membership_insurance_amount' => 0,
-            'najm_bahar_membership_burn_amount' => 0,
+        MonetaryPolicyVersion::create([
+            'version' => 78,
+            'status' => 'active',
+            'effective_from' => now()->subMinute(),
+            'parameters' => [
+                'membership_fee_gol' => BaharMoney::toGolFromBahar(12),
+                'membership_operations_gol' => 0,
+                'membership_insurance_gol' => 0,
+                'membership_burn_gol' => 0,
+            ],
         ]);
 
         [$user, $account] = $this->memberWithCredit();
