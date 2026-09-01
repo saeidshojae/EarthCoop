@@ -37,8 +37,19 @@ class ReputationConversionController extends Controller
             ->where('delta', '>', 0)
             ->where('convertible', true)
             ->where('dimension', 'participation')
+            ->where('is_cashed', false)
             ->withSum('consumptions as consumptions_sum_points_consumed', 'points_consumed')
             ->orderBy('created_at', 'asc');
+    }
+
+    private function legacyCashedPoints(int $userId): int
+    {
+        return (int) UserPointTransaction::where('user_id', $userId)
+            ->where('delta', '>', 0)
+            ->where('convertible', true)
+            ->where('dimension', 'participation')
+            ->where('is_cashed', true)
+            ->sum('delta');
     }
 
     public function getInfo()
@@ -60,8 +71,10 @@ class ReputationConversionController extends Controller
         $totalPoints = $userPoint ? $userPoint->points : 0;
         $transactions = $this->convertibleTransactions($user->id)->get();
         $convertibleAwarded = (int) $transactions->sum('delta');
-        $cashedPoints = (int) $transactions->sum(fn ($tx) => (int) ($tx->consumptions_sum_points_consumed ?? 0));
-        $uncashedPoints = max(0, $convertibleAwarded - $cashedPoints);
+        $ledgerConsumedPoints = (int) $transactions->sum(fn ($tx) => (int) ($tx->consumptions_sum_points_consumed ?? 0));
+        $legacyCashedPoints = $this->legacyCashedPoints($user->id);
+        $cashedPoints = $legacyCashedPoints + $ledgerConsumedPoints;
+        $uncashedPoints = max(0, $convertibleAwarded - $ledgerConsumedPoints);
 
         $ratio = max(1, (int) data_get($policy, 'parameters.reputation_to_gol_ratio', 100));
         $hasEnoughFaded = $account->balance_faded >= intdiv($uncashedPoints, $ratio);
