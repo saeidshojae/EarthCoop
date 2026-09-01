@@ -19,6 +19,7 @@ class PrivateMessagingReadStateTest extends TestCase
     {
         parent::setUp();
         $this->withoutMiddleware(UpdateLastSeen::class);
+        $this->withoutVite();
 
         if (! Schema::hasTable('private_conversations')) {
             Schema::create('private_conversations', function (Blueprint $table) {
