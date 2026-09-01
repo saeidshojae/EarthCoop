@@ -92,6 +92,9 @@ class EventServiceProvider extends ServiceProvider
             \App\Listeners\SendElectionFinishedNotifications::class,
             \App\Listeners\CaptureNajmHodaRuntimeInput::class,
         ],
+        \App\Events\Elections\ElectionAppointmentApplied::class => [
+            \App\Listeners\AwardElectionAppointmentParticipation::class,
+        ],
         \App\Events\CandidateAccepted::class => [\App\Listeners\SendCandidateAcceptedNotifications::class],
         \App\Events\CommentCreated::class => [
             \App\Listeners\SendCommentCreatedNotifications::class,
