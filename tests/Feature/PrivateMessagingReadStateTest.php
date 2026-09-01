@@ -179,6 +179,55 @@ class PrivateMessagingReadStateTest extends TestCase
             ->assertJsonPath('conversation.last_read_outgoing_message_id', $readMessage->id);
     }
 
+    public function test_conversation_list_counts_only_unread_incoming_messages_and_clears_after_view(): void
+    {
+        [$sender, $receiver, $conversation] = $this->makeConversation();
+
+        PrivateMessage::create([
+            'private_conversation_id' => $conversation->id,
+            'sender_id' => $sender->id,
+            'message' => 'خوانده نشده یک',
+        ]);
+        PrivateMessage::create([
+            'private_conversation_id' => $conversation->id,
+            'sender_id' => $sender->id,
+            'message' => 'خوانده نشده دو',
+        ]);
+
+        $alreadyRead = PrivateMessage::create([
+            'private_conversation_id' => $conversation->id,
+            'sender_id' => $sender->id,
+            'message' => 'قبلاً خوانده شده',
+        ]);
+        $alreadyRead->forceFill(['read_at' => now()])->save();
+
+        PrivateMessage::create([
+            'private_conversation_id' => $conversation->id,
+            'sender_id' => $receiver->id,
+            'message' => 'پیام خود گیرنده',
+        ]);
+
+        $this->actingAs($receiver)
+            ->get(route('private-chats.index'))
+            ->assertOk()
+            ->assertViewHas('conversations', function ($conversations) use ($conversation) {
+                $row = $conversations->firstWhere('id', $conversation->id);
+                return $row && (int) $row->unread_count === 2;
+            });
+
+        $this->actingAs($receiver)
+            ->get(route('private-chats.show', $conversation->id))
+            ->assertOk();
+
+        $this->actingAs($receiver)
+            ->get(route('private-chats.index'))
+            ->assertOk()
+            ->assertViewHas('conversations', function ($conversations) use ($conversation) {
+                $row = $conversations->firstWhere('id', $conversation->id);
+                return $row && (int) $row->unread_count === 0;
+            });
+    }
+
     private function makeConversation(): array
     {
         $sender = $this->makeUser('sender');
