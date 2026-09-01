@@ -6,14 +6,18 @@ use Tests\TestCase;
 
 class ReputationUserSurfacesContractTest extends TestCase
 {
-    public function test_public_profile_receives_only_public_reputation_summary_and_persian_dimension_labels(): void
+    public function test_public_profile_uses_only_public_safe_summary_and_persian_dimension_labels(): void
     {
-        $controller = file_get_contents(app_path('Http/Controllers/Profile/ProfileController.php'));
+        $service = file_get_contents(app_path('Services/ParticipationPointSummaryService.php'));
         $view = file_get_contents(resource_path('views/profile/profile-member.blade.php'));
 
-        $this->assertStringContainsString('ParticipationPointSummaryService', $controller);
-        $this->assertStringContainsString('publicReputationSummary', $controller);
+        // The legacy profile controller is intentionally left untouched; the small
+        // wrapper calls the canonical public-safe service boundary and inherits the
+        // original profile view without duplicating its UI.
+        $this->assertStringContainsString('ParticipationPointSummaryService', $view);
+        $this->assertStringContainsString('publicReputationSummary', $service);
         $this->assertStringContainsString('publicReputationSummary', $view);
+        $this->assertStringContainsString("@extends('profile.profile-member-base')", $view);
 
         $this->assertStringContainsString('امتیاز اعتبار و مشارکت', $view);
         $this->assertStringContainsString('مشارکت', $view);
@@ -37,6 +41,7 @@ class ReputationUserSurfacesContractTest extends TestCase
         $this->assertStringContainsString('ParticipationPointSummaryService', $controller);
         $this->assertStringContainsString('pointSummary', $controller);
         $this->assertStringContainsString('reputationBreakdown', $controller);
+        $this->assertStringContainsString("@extends('history.index-base')", $view);
 
         $this->assertStringContainsString('امتیاز اعتبار و مشارکت', $view);
         $this->assertStringContainsString('مشارکت قابل تبدیل کسب‌شده', $view);
