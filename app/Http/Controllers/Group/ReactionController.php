@@ -146,6 +146,11 @@ class ReactionController extends Controller
         $reactorId = (int) $reactor->id;
         $owner = $blog->user;
 
+        if ($owner && (int) $owner->id === $reactorId) {
+            // Self-like is allowed in UI, but it is not an economic participation event.
+            return;
+        }
+
         dispatch(static function () use ($reactor, $owner, $blogId, $reactorId): void {
             try {
                 $reputation = app(\App\Services\ReputationService::class);
@@ -181,6 +186,11 @@ class ReactionController extends Controller
     {
         $reactorId = (int) $reactor->id;
         $owner = $comment->user;
+
+        if ($owner && (int) $owner->id === $reactorId) {
+            // Self-like is allowed in UI, but it is not an economic participation event.
+            return;
+        }
 
         try {
             $reputation = app(\App\Services\ReputationService::class);
