@@ -46,6 +46,14 @@ class PrivateMessagingUiContractTest extends TestCase
         $this->assertStringNotContainsString('درخواست‌های چت', $view);
     }
 
+    public function test_unified_sidebar_uses_private_conversation_language(): void
+    {
+        $sidebar = file_get_contents(resource_path('views/partials/sidebar-unified.blade.php'));
+
+        $this->assertStringContainsString('گفتگوهای خصوصی', $sidebar);
+        $this->assertStringNotContainsString('درخواست‌های چت', $sidebar);
+    }
+
     public function test_conversation_screen_is_mobile_viewport_first_and_text_only(): void
     {
         $view = file_get_contents(resource_path('views/private-chats/show.blade.php'));
@@ -63,6 +71,16 @@ class PrivateMessagingUiContractTest extends TestCase
         $this->assertStringNotContainsString('fa-microphone', $view);
     }
 
+    public function test_reaction_picker_is_viewport_clamped_and_cannot_create_horizontal_scroll(): void
+    {
+        $view = file_get_contents(resource_path('views/private-chats/show.blade.php'));
+
+        $this->assertStringContainsString('positionReactionPicker', $view);
+        $this->assertStringContainsString('getBoundingClientRect()', $view);
+        $this->assertStringContainsString('document.documentElement.clientWidth', $view);
+        $this->assertStringContainsString('overflow-x: hidden', $view);
+    }
+
     public function test_profile_request_flow_is_state_aware_and_mobile_bottom_sheet_ready(): void
     {
         $profileAction = file_get_contents(resource_path('views/chat-requests/partials/profile-action.blade.php'));
@@ -77,6 +95,9 @@ class PrivateMessagingUiContractTest extends TestCase
         $this->assertStringContainsString('role="dialog"', $profileAction);
         $this->assertStringContainsString('data-private-request-sheet', $profileAction);
         $this->assertStringContainsString('@media (min-width: 769px)', $profileAction);
+        $this->assertStringContainsString('document.body.appendChild(sheet)', $profileAction);
+        $this->assertStringContainsString('document.body.classList.add', $profileAction);
+        $this->assertStringNotContainsString('document.documentElement.style.overflow', $profileAction);
         $this->assertStringNotContainsString('.btn {', $legacyPartial);
         $this->assertStringNotContainsString('.list-group-item {', $legacyPartial);
     }
