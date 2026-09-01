@@ -45,11 +45,15 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware(['web', \App\Http\Middleware\Authenticate::class])
                 ->group(base_path('routes/groups-index.php'));
 
-            // Canonical member invitation issuance intentionally shadows the
-            // legacy ProfileController action. The public non-member invitation
-            // request routes in web.php remain available for launch.
+            // Canonical member invitation issuance/page intentionally shadow only
+            // the legacy member endpoints. Public invitation requests stay intact.
             Route::middleware('web')
                 ->group(base_path('routes/member-invitations.php'));
+
+            // Canonical group-message write route adds the shared paid-membership
+            // participation gate while preserving the existing chat middleware.
+            Route::middleware('web')
+                ->group(base_path('routes/membership-participation.php'));
 
             // Election compatibility/canonical routes intentionally load after
             // web.php so legacy responsibility-response endpoints are shadowed
