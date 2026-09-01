@@ -86,20 +86,31 @@ class InvitationLifecycleService
 
     public function issueMemberInvitation(User $referrer): InvitationCode
     {
-        if (! $this->canIssueMemberInvitation($referrer)) {
-            throw new RuntimeException('Invitation quota is exhausted or member is not eligible.');
-        }
+        return DB::transaction(function () use ($referrer) {
+            // Serialize issuance per referrer. The public canIssue... method is
+            // only a preview for UI; this locked check is the authority.
+            $lockedReferrer = User::whereKey($referrer->id)
+                ->lockForUpdate()
+                ->first();
 
-        do {
-            $code = Str::upper(Str::random(8));
-        } while (InvitationCode::where('code', $code)->exists());
+            if (! $lockedReferrer
+                || ! $this->isEligibleMember($lockedReferrer)
+                || $this->quota() <= 0
+                || $this->occupiedSlots($lockedReferrer) >= $this->quota()) {
+                throw new RuntimeException('Invitation quota is exhausted or member is not eligible.');
+            }
 
-        return InvitationCode::create([
-            'code' => $code,
-            'user_id' => $referrer->id,
-            'used' => false,
-            'expire_at' => now()->addHours($this->expiryHours()),
-        ]);
+            do {
+                $code = Str::upper(Str::random(8));
+            } while (InvitationCode::where('code', $code)->exists());
+
+            return InvitationCode::create([
+                'code' => $code,
+                'user_id' => $lockedReferrer->id,
+                'used' => false,
+                'expire_at' => now()->addHours($this->expiryHours()),
+            ]);
+        });
     }
 
     /**
