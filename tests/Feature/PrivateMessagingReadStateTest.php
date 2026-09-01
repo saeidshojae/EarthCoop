@@ -164,8 +164,8 @@ class PrivateMessagingReadStateTest extends TestCase
             'private_conversation_id' => $conversation->id,
             'sender_id' => $sender->id,
             'message' => 'خوانده شده',
-            'read_at' => now(),
         ]);
+        $readMessage->forceFill(['read_at' => now()])->save();
 
         PrivateMessage::create([
             'private_conversation_id' => $conversation->id,
