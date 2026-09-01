@@ -42,7 +42,7 @@ class InvitationLaunchContractTest extends TestCase
         $this->assertStringContainsString('canIssueMemberInvitation', $controller);
         $this->assertStringContainsString('issueMemberInvitation', $controller);
         $this->assertStringContainsString("/profile/invation-code-generate", $routes);
-        $this->assertStringContainsString("profile.generate-code", $routes);
+        $this->assertStringContainsString("profile.member-invitations.store", $routes);
     }
 
     #[Test]
@@ -60,13 +60,18 @@ class InvitationLaunchContractTest extends TestCase
     #[Test]
     public function canonical_member_invitation_route_is_authenticated_and_post_only(): void
     {
-        $route = app('router')->getRoutes()->getByName('profile.generate-code');
+        $route = app('router')->getRoutes()->getByName('profile.member-invitations.store');
 
         $this->assertNotNull($route);
         $this->assertSame(MemberInvitationController::class, $route->getActionName());
         $this->assertSame(['POST'], $route->methods());
         $this->assertContains('web', $route->gatherMiddleware());
         $this->assertContains(\App\Http\Middleware\Authenticate::class, $route->gatherMiddleware());
+
+        $legacyGet = app('router')->getRoutes()->getByName('profile.generate-code');
+        $this->assertNotNull($legacyGet);
+        $this->assertSame(['GET', 'HEAD'], $legacyGet->methods());
+        $this->assertNotSame('App\\Http\\Controllers\\Profile\\ProfileController@generateInvationCode', $legacyGet->getActionName());
 
         $view = file_get_contents(resource_path('views/profile/member-invitations.blade.php'));
         $this->assertStringContainsString('method="POST"', $view);
