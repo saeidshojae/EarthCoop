@@ -11,13 +11,22 @@ use Illuminate\Support\Facades\Log;
 
 class ProfileCompletionService
 {
-    public function maybeAward(User $user): bool
+    public function isComplete(User $user): bool
     {
-        $step1Complete = $user->first_name && $user->last_name && $user->gender && $user->national_id && $user->phone;
+        $step1Complete = $user->first_name
+            && $user->last_name
+            && $user->gender
+            && $user->national_id
+            && $user->phone;
         $hasExperience = UserExperience::where('user_id', $user->id)->exists();
         $hasAddress = Address::where('user_id', $user->id)->exists();
 
-        if (! $step1Complete || ! $hasExperience || ! $hasAddress) {
+        return (bool) ($step1Complete && $hasExperience && $hasAddress);
+    }
+
+    public function maybeAward(User $user): bool
+    {
+        if (! $this->isComplete($user)) {
             return false;
         }
 

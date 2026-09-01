@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Helpers\BaharMoney;
+use App\Modules\NajmBahar\Policy\NajmBaharConstitution;
 use Illuminate\Http\Request;
 
 class NajmBaharSettingsController extends Controller
@@ -16,37 +17,50 @@ class NajmBaharSettingsController extends Controller
     {
         $settings = Setting::firstNajmBaharSettings();
 
-        return view('admin.najm-bahar.settings.index', compact('settings'));
+        // Constitutional issuance is immutable. Keep legacy persisted fields
+        // untouched for compatibility, but never present them as policy truth.
+        $settings->setAttribute('najm_bahar_initial_amount', NajmBaharConstitution::initialMembershipGol());
+        $settings->setAttribute('najm_bahar_initial_active_percentage', 0);
+        $settings->setAttribute('najm_bahar_initial_active_type', 'fixed_amount');
+        $settings->setAttribute('najm_bahar_initial_active_fixed_amount', 0);
+
+        $html = view('admin.najm-bahar.settings.index', compact('settings'))->render();
+
+        return response($this->stripLegacySettingsScript($html));
     }
 
     /**
-     * ذخیره تنظیمات نجم بهار
+     * The legacy Blade contains one malformed inline script block. Removing only
+     * that block at render time avoids a large formatting rewrite of the view;
+     * the page-scoped Vite runtime owns these handlers now.
+     */
+    private function stripLegacySettingsScript(string $html): string
+    {
+        $cleaned = preg_replace(
+            '/<script>\s*function toggleActiveType\(\).*?<\/script>/s',
+            '',
+            $html,
+            1
+        );
+
+        return $cleaned ?? $html;
+    }
+
+    /**
+     * ذخیره تنظیمات عملیاتی نجم بهار.
+     *
+     * مبلغ صدور اولیه و وضعیت Active اولیه از قانون اساسی می‌آیند و عمداً
+     * در write-set این endpoint نیستند. سایر کنترل‌های عملیاتی حفظ می‌شوند.
      */
     public function update(Request $request)
     {
         $validated = $request->validate([
-            'najm_bahar_initial_amount' => ['required', 'regex:/^\d+(\.\d{1,2})?$/'],
-            'najm_bahar_initial_active_percentage' => 'required|integer|min:0|max:100',
-            'najm_bahar_initial_active_type' => 'required|in:percentage,fixed_amount',
-            'najm_bahar_initial_active_fixed_amount' => 'nullable|regex:/^\d+(\.\d{1,2})?$/',
             'najm_bahar_auto_activation_enabled' => 'nullable|boolean',
             'najm_bahar_auto_activation_period' => 'required_if:najm_bahar_auto_activation_enabled,1|in:monthly,yearly',
             'najm_bahar_auto_activation_amount' => 'nullable|regex:/^\d+(\.\d{1,2})?$/',
             'reputation_conversion_enabled' => 'nullable|boolean',
             'reputation_to_gol_ratio' => 'required|integer|min:1',
         ]);
-
-        // تبدیل مقدار اولیه به گل
-        $validated['najm_bahar_initial_amount'] = BaharMoney::parseToGol(
-            $validated['najm_bahar_initial_amount']
-        );
-
-        // تبدیل مبلغ ثابت اکتیو به گل
-        if (isset($validated['najm_bahar_initial_active_fixed_amount'])) {
-            $validated['najm_bahar_initial_active_fixed_amount'] = BaharMoney::parseToGol(
-                $validated['najm_bahar_initial_active_fixed_amount']
-            );
-        }
 
         // تبدیل مقدار فعال‌سازی خودکار به گل
         if (isset($validated['najm_bahar_auto_activation_amount'])) {
@@ -63,6 +77,6 @@ class NajmBaharSettingsController extends Controller
         $settings->update($validated);
 
         return redirect()->route('admin.najm-bahar.settings.index')
-            ->with('success', 'تنظیمات نجم بهار با موفقیت ذخیره شد.');
+            ->with('success', 'تنظیمات عملیاتی نجم بهار با موفقیت ذخیره شد. مقادیر صدور اولیه طبق قانون اساسی ثابت هستند.');
     }
 }

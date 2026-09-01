@@ -41,12 +41,18 @@ const loadNajmBaharRuntime = () => {
     if (hasMembershipFeeUi) importFeature(() => import("./najm-bahar-membership-source.js"), "Najm Bahar membership source");
 };
 
+const loadNajmBaharAdminRuntime = () => {
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    if (!['/admin/najm-bahar/dashboard', '/admin/najm-bahar/settings'].includes(path)) return;
+    importFeature(() => import("./najm-bahar-admin-settings.js"), "Najm Bahar admin settings");
+};
+
 const loadSwiperRuntime = () => {
     if (!document.querySelector('swiper-container')) return;
     importFeature(async () => { const { register } = await import("swiper/element/bundle"); register(); }, "Swiper");
 };
 
-const loadPageScopedRuntime = () => { loadNajmHodaRuntime(); loadNajmBaharRuntime(); loadSwiperRuntime(); };
+const loadPageScopedRuntime = () => { loadNajmHodaRuntime(); loadNajmBaharRuntime(); loadNajmBaharAdminRuntime(); loadSwiperRuntime(); };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadPageScopedRuntime, { once: true }); else loadPageScopedRuntime();
 
 const localDevelopmentHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
