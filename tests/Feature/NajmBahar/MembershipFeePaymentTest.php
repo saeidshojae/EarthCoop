@@ -5,6 +5,7 @@ namespace Tests\Feature\NajmBahar;
 use App\Helpers\BaharMoney;
 use App\Http\Controllers\Admin\ReputationController;
 use App\Models\ReputationRule;
+use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserPointTransaction;
 use App\Modules\NajmBahar\Models\LedgerEntry;
@@ -80,10 +81,10 @@ class MembershipFeePaymentTest extends TestCase
         $paymentYear = now()->year;
         if (now()->lessThan($user->created_at->copy()->setYear($paymentYear))) $paymentYear--;
 
-        ReputationRule::create([
-            'key'=>'membership_fee_paid','label'=>'Membership fee paid','weight'=>12,'active'=>true,
-            'daily_cap'=>null,'dimension'=>'participation','convertible'=>true,'repeat_policy'=>'once_per_context',
-        ]);
+        ReputationRule::updateOrCreate(
+            ['key' => 'membership_fee_paid'],
+            ['label'=>'Membership fee paid','weight'=>12,'active'=>true,'daily_cap'=>null,'dimension'=>'participation','convertible'=>true,'repeat_policy'=>'once_per_context']
+        );
 
         $this->actingAs($user)->post(route('najm-bahar.membership-fee.pay'), ['payment_source'=>'dim'])
             ->assertRedirect(route('najm-bahar.dashboard'));
@@ -135,6 +136,30 @@ class MembershipFeePaymentTest extends TestCase
         $this->actingAs($user)->post(route('najm-bahar.membership-fee.pay'),['payment_source'=>'dim']);
         $this->assertSame($balanceAfterFirst,(int)$account->fresh()->balance);
         $this->assertSame(3,Transaction::where('metadata->type','membership_fee')->count());
+    }
+
+    public function test_fallback_membership_payment_is_recognized_and_cannot_be_charged_twice(): void
+    {
+        Setting::updateOrCreate(['id' => 1], [
+            'najm_bahar_membership_fee_amount' => 12,
+            'najm_bahar_membership_operations_amount' => 0,
+            'najm_bahar_membership_insurance_amount' => 0,
+            'najm_bahar_membership_burn_amount' => 0,
+        ]);
+
+        [$user, $account] = $this->memberWithCredit();
+
+        $this->actingAs($user)->post(route('najm-bahar.membership-fee.pay'), ['payment_source' => 'dim'])
+            ->assertRedirect(route('najm-bahar.dashboard'));
+
+        $balanceAfterFirst = (int) $account->fresh()->balance;
+        $this->assertSame(1, Transaction::where('metadata->type', 'membership_fee')->count());
+        $this->assertSame('operations_salary', Transaction::where('metadata->type', 'membership_fee')->firstOrFail()->metadata['split'] ?? null);
+
+        $this->actingAs($user)->post(route('najm-bahar.membership-fee.pay'), ['payment_source' => 'dim']);
+
+        $this->assertSame($balanceAfterFirst, (int) $account->fresh()->balance);
+        $this->assertSame(1, Transaction::where('metadata->type', 'membership_fee')->count());
     }
 
     public function test_versioned_policy_controls_membership_allocation_and_is_recorded(): void
