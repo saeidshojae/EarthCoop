@@ -138,7 +138,7 @@ class InvitationLifecycleService
 
             $completedBefore = InvitationCode::where('user_id', $referrer->id)
                 ->whereNotNull('completed_at')
-                ->whereKeyNot($invitation->id)
+                ->where('id', '!=', $invitation->id)
                 ->lockForUpdate()
                 ->count();
 
