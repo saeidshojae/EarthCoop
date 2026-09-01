@@ -6,13 +6,14 @@ use Tests\TestCase;
 
 class SelfReactionNoRewardContractTest extends TestCase
 {
-    public function test_self_like_remains_allowed_but_creates_no_reputation_awards(): void
+    public function test_self_like_remains_allowed_but_is_forced_non_convertible(): void
     {
-        $source = file_get_contents(app_path('Http/Controllers/Group/ReactionController.php'));
+        $reaction = file_get_contents(app_path('Http/Controllers/Group/ReactionController.php'));
+        $service = file_get_contents(app_path('Services/ReputationService.php'));
 
-        $guard = 'if ($owner && (int) $owner->id === $reactorId) {';
-
-        $this->assertGreaterThanOrEqual(2, substr_count($source, $guard));
-        $this->assertGreaterThanOrEqual(2, substr_count($source, '// Self-like is allowed in UI, but it is not an economic participation event.'));
+        $this->assertGreaterThanOrEqual(2, substr_count($reaction, '$selfLike = $owner && (int) $owner->id === $reactorId;'));
+        $this->assertGreaterThanOrEqual(4, substr_count($reaction, '$selfLike ? false : null'));
+        $this->assertStringContainsString('?bool $convertibleOverride = null', $service);
+        $this->assertStringContainsString('$convertible = $convertibleOverride ?? $convertible;', $service);
     }
 }
