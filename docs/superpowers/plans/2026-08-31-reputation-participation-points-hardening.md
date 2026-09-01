@@ -7,7 +7,7 @@
 **Tech Stack:** Laravel/PHP, Eloquent, PHPUnit, MySQL/PostgreSQL-compatible migrations, Najm Bahar MonetaryService/MonetaryPolicyService.
 
 **Spec:** `docs/REPUTATION_PARTICIPATION_POINTS_AUDIT.fa.md`  
-**Live handoff / authoritative product decisions:** `docs/REPUTATION_PARTICIPATION_POINTS_HANDOFF.fa.md`
+**Live handoff / authoritative current state:** `docs/REPUTATION_PARTICIPATION_POINTS_HANDOFF.fa.md`
 
 ## Global Constraints
 
@@ -38,73 +38,67 @@ Established contracts:
 
 ---
 
-### Task R2: Policy Dimensions, Convertibility & Admin Control Plane
+### Task R2: Policy Dimensions, Convertibility & Admin Control Plane — CORE COMPLETE
 
-**Files:**
-- Create migration adding rule/transaction policy fields.
-- Modify `app/Models/ReputationRule.php`, `app/Models/UserPointTransaction.php`, `app/Services/ReputationService.php`, `config/reputation.php`.
-- Modify `app/Http/Controllers/Admin/ReputationController.php` and `resources/views/admin/system-settings/reputation/index.blade.php`.
-- Add focused Unit/Feature tests.
+Core/admin GREEN through `caf05273c3f541f9c3915b49decc8fed52998167`  
+Full #1965 / Responsive #331: success
 
-**Interfaces:**
-- Dimensions initially: `participation`, `reliability`, `expertise`, `civic_trust`.
-- Rule properties: `active`, `weight`, `dimension`, `convertible`, `daily_cap`, and repeat-policy metadata appropriate to the rule.
-- Transaction snapshots dimension + convertible + relevant policy version/metadata.
-- Admin can manage policy without deploy; edits affect future awards, not historical transaction eligibility snapshots.
+Established:
+- dimensions: participation/reliability/expertise/civic_trust;
+- active, weight, dimension, convertible, daily_cap, repeat_policy admin-managed;
+- transaction snapshot of dimension + convertible;
+- DB authoritative, config bootstrap only;
+- invite/member-fee bootstrap + runtime rules present.
 
-- [ ] **Step 1: RED — transaction policy snapshot**
-Prove a transaction records dimension and convertible status from the rule at award time and later rule edits do not mutate history.
-
-- [ ] **Step 2: RED — full admin policy persistence**
-Prove admin can persist active, weight, dimension, convertible and daily_cap independently and page reload preserves them.
-
-- [ ] **Step 3: RED — active and convertible independence**
-An active/non-convertible rule may still award social reputation; a disabled rule awards nothing.
-
-- [ ] **Step 4: RED — election trust eligibility identity**
-Prove economic election reward identity is `user + role + governance level`: same manager/same level only once; inspector at same level independently eligible; same role at another level independently eligible.
-
-- [ ] **Step 5: GREEN — schema/models/runtime snapshots**
-Add minimal schema and model/runtime support satisfying Steps 1–4.
-
-- [ ] **Step 6: GREEN — admin control plane**
-Expose active, weight, dimension, convertible, daily cap and rule repeat policy in a clear admin UI; DB remains authoritative.
-
-- [ ] **Step 7: bootstrap catalogue classification**
-Current real group activity such as post/comment/poll/reaction may be convertible during bootstrap when enabled by policy. Assign conservative defaults/caps; do not hard-code a permanent economic judgement into service code.
-
-- [ ] **Step 8: focused tests + Full/Responsive Validation; update handoff**
-
-Commit family: `feat(reputation): add managed incentive policy dimensions`
+Deferred to R5/R6 rather than blocking R2 core:
+- systemic election role+level wiring;
+- final catalogue classification;
+- semantic Persian labels/grouping.
 
 ---
 
-### Task R3: Event Idempotency, Anti-Farming & Correct Recipients
+### Task R3: Event Idempotency, Anti-Farming & Correct Recipients — CORE GREEN, CLOSURE REMAINS
 
-**Files:** point transaction event identity migration; `ReputationService`; Group reaction/blog/comment/poll call-sites; focused tests.
+Core event-key ledger GREEN: `bbdf87c84fe6306464ecde1c463789638ae0107b`, Full #1969 / Responsive #335.
 
-- [ ] RED duplicate/retry tests for post/comment/poll events.
-- [ ] RED reaction toggle farming tests.
-- [ ] Define recipient semantics per Rule explicitly; do not assume every reaction rewards the same party.
-- [ ] Add stable event key and concurrency-safe duplicate handling.
-- [ ] Add caps/cooldowns for bootstrap activities so enabled convertible click/activity rewards remain bounded.
-- [ ] Verify toggle/retry/double-submit/worker duplication cannot duplicate economic reward.
+Major GREEN checkpoints:
+- two-sided reactions: `f044b8f8b7cf3ff14a3cbd80fe049b341af5573f`, `aa5cd4aeea68643c9b68de08a43128a25b91c4ff`, structural/behavioral verification through Full #1975.
+- post/comment/referral keys through `e2086b1fdaeb7fc26791e8bb2745684d8ab7a761`, Full #1979 / Responsive #345.
+- email/profile onboarding keys through `2e80ee9c5b8703f49dfce38374183b70af65ae2c`, Full #1982 / Responsive #348.
 
-Commit family: `fix(reputation): make participation awards idempotent`
+Still open before R3 final freeze:
+- membership fee explicit generic event key;
+- Stock bid/win/settlement event keys if retained;
+- final spam/cap policy for raw content;
+- self-like business policy;
+- graceful true-race duplicate handling if needed.
 
 ---
 
-### Task R4: Financial Conversion Ledger & Consumption Safety
+### Task R4: Financial Conversion Ledger & Consumption Safety — CURRENT PRIORITY
 
-**Files:** consumption ledger migration/model; `ReputationConversionController`; `UserPointTransaction`; Najm Bahar integration tests.
+Current verified financial checkpoint: `f6f4ba997fcbd548edd673226eca1efb7452cd3f`  
+Full Validation #1988: success  
+Responsive #354: success
 
-- [ ] RED partial transaction consumption.
-- [ ] RED ratio remainder preservation.
-- [ ] RED duplicate/concurrent conversion safety.
-- [ ] RED non-convertible transaction exclusion.
-- [ ] Implement exact consumption ledger and available-convertible-points query from transaction snapshots.
-- [ ] Activation exclusively through `MonetaryService::activateDim()` with policy/version metadata and idempotency.
-- [ ] Economic invariant suite + Full Validation.
+Already GREEN:
+- [x] RED partial transaction consumption.
+- [x] RED ratio remainder preservation.
+- [x] exact consumption ledger via `user_point_consumptions`.
+- [x] eligible sources require positive + `convertible=true` + `dimension=participation`.
+- [x] exact partial consumption; source transaction is not falsely fully cashed.
+- [x] ratio remainder preserved.
+- [x] sequential same-key retry does not double-consume/activate.
+- [x] canonical conversion key is scoped by user, preventing cross-user Idempotency-Key collision.
+- [x] activation exclusively through `MonetaryService::activateDim()`.
+
+Remaining R4 execution order:
+- [ ] **R4-A RED/GREEN — atomic conversion request identity**: add a parent conversion identity with unique user/request identity so two concurrent same-user/same-key requests cannot both become owners. Child consumption rows must belong to one conversion operation; retry replays existing completed request rather than consuming again.
+- [ ] **R4-B RED/GREEN — legacy cashing compatibility**: historical `is_cashed=true` source rows must never become newly convertible under the consumption ledger. Use a conservative deterministic rule/backfill; never guess a historical remainder that was previously lost.
+- [ ] **R4-C behavioral eligibility suite**: prove non-convertible and non-participation snapshots are excluded from `getInfo()` and `convert()` and consumed ledger remainder is reported exactly.
+- [ ] **R4-D end-to-end UI idempotency**: inspect current wallet/conversion UI; if browser submits do not send stable Idempotency-Key, add a minimal stable request token/double-submit contract without redesigning UI.
+- [ ] **R4-E penalty semantics decision**: negative Participation/reputation effect on conversion capacity is economically material. Do not silently decide. If current R4 technical invariants are otherwise complete, surface the exact alternatives to product owner and record decision before final financial freeze.
+- [ ] **R4-F final invariant suite + Full Validation + handoff update**.
 
 Commit family: `fix(reputation): make point conversion lossless and auditable`
 
@@ -114,11 +108,11 @@ Commit family: `fix(reputation): make point conversion lossless and auditable`
 
 **Principle:** EarthCoop در دوره bootstrap هم فعالیت اجتماعی را تشویق می‌کند و هم به‌تدریج rewardهای outcome-based اضافه می‌کند. این دو دسته در catalogue مشخص و از پنل قابل مدیریت‌اند.
 
-- [ ] Wire current legitimate group activities that already have real domain events: post, comment, poll participation/creation, reactions and other verified group actions where implementation supports a stable event identity.
-- [ ] Make `invite_member` explicit, bounded, verified and once-only after the membership condition is satisfied.
-- [ ] Wire election reward to actual systemic-election outcome: `elected_manager` and `elected_inspector` can be convertible, with once-per-user-role-level eligibility. Re-election same role+level adds no second cashable reward; other role or level is independent.
-- [ ] Add outcome-based set where current domains can prove completion: fulfilled action item, on-time public contribution obligation, verified milestone/report, accepted specialist review, approved documentation/secretariat follow-up.
-- [ ] Wealth amount, money transfer amount, raw bid amount and login must not automatically create scalable cashable points. Any future exception must be an explicit admin policy/rule with anti-abuse semantics.
+- [ ] Wire legitimate normal group poll create/participate with stable event identity; avoid treating election/governance poll path as generic participation unless explicitly classified.
+- [ ] Keep `invite_member` bounded/verified/once-only and close its final presentation contracts.
+- [ ] Wire systemic-election outcome: `elected_manager` and `elected_inspector`, convertible if admin policy says so, once per `user + role + governance level`.
+- [ ] Add outcome-based events where domain evidence exists: fulfilled action item, on-time public contribution obligation, verified milestone/report, accepted specialist review, approved documentation/secretariat follow-up.
+- [ ] Wealth amount, money transfer amount, raw bid amount and login must not automatically create scalable cashable points.
 - [ ] Every new convertible action specifies recipient, source, event identity, award moment, cap/cooldown/repeat policy, reversal policy and evidence/reference.
 
 Commit family: `feat(reputation): expand managed participation catalogue`
@@ -127,11 +121,11 @@ Commit family: `feat(reputation): expand managed participation catalogue`
 
 ### Task R6: Migration, Transparency UI, Admin/UAT & Final Constitution
 
-- [ ] Define/test deterministic legacy backfill policy.
-- [ ] Backfill historical rows without erasing original action/source/reference metadata.
+- [ ] Final deterministic legacy/backfill review after R4 compatibility rule.
 - [ ] User UI distinguishes total/social reputation, convertible participation, consumed and remaining convertible points.
 - [ ] Admin UI exposes complete current policy and audit trail.
 - [ ] Add immutable transaction/consumption views needed for support/admin.
+- [ ] Semantic Persian labels/grouping for reaction/invite/membership and final catalogue.
 - [ ] Full invariant suite + Full Validation + Responsive + manual UAT.
 - [ ] Update handoff FINAL with freeze commit/workflows.
 
@@ -149,9 +143,9 @@ Commit family: `docs(reputation): freeze participation accounting subsystem`
 6. Conversion loses no points/remainder and is concurrent/idempotent.
 7. Only transactions explicitly convertible at award time can activate Dim through MonetaryService.
 8. Bootstrap activity catalogue and outcome catalogue are both explicit and admin-manageable.
-9. Historical migration is explicit/audit-friendly.
+9. Historical migration/compatibility is explicit and audit-friendly.
 10. Admin/user UI is unambiguous and focused + Full + Responsive validation and UAT are recorded.
 
 ## Continuation Protocol
 
-In every new chat: verify branch/head/CI; read audit, this plan and `docs/REPUTATION_PARTICIPATION_POINTS_HANDOFF.fa.md`; treat the handoff product-decision section as authoritative; continue from first open step; never merge to main without explicit user approval.
+In every new chat: verify branch/head/CI; read audit, this plan and `docs/REPUTATION_PARTICIPATION_POINTS_HANDOFF.fa.md`; treat handoff product decisions as authoritative; continue from first open step; never merge to main without explicit user approval.
