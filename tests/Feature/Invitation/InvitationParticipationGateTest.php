@@ -33,11 +33,32 @@ class InvitationParticipationGateTest extends TestCase
         $this->assertSame(10, $service->quota());
         $this->assertFalse($service->canIssueMemberInvitation($user->fresh()));
 
+        $connection = DB::connection();
+        $beforeRequest = [
+            'connection_name' => $connection->getName(),
+            'database' => $connection->getDatabaseName(),
+            'pdo_id' => spl_object_id($connection->getPdo()),
+            'transaction_level' => $connection->transactionLevel(),
+            'setting_id' => Setting::query()->find(1)?->id,
+            'quota' => Setting::query()->find(1)?->count_invation,
+        ];
         $settingWrites = [];
         DB::listen(function (QueryExecuted $query) use (&$settingWrites): void {
             $sql = strtolower($query->sql);
-            if (str_contains($sql, 'setting') && (str_contains($sql, 'update') || str_contains($sql, 'insert'))) {
-                $settingWrites[] = ['sql' => $query->sql, 'bindings' => $query->bindings];
+            if (str_contains($sql, 'setting') && (
+                str_contains($sql, 'update')
+                || str_contains($sql, 'insert')
+                || str_contains($sql, 'delete')
+                || str_contains($sql, 'truncate')
+            )) {
+                $settingWrites[] = [
+                    'sql' => $query->sql,
+                    'bindings' => $query->bindings,
+                    'connection_name' => $query->connectionName,
+                    'database' => $query->connection->getDatabaseName(),
+                    'pdo_id' => spl_object_id($query->connection->getPdo()),
+                    'transaction_level' => $query->connection->transactionLevel(),
+                ];
             }
         });
 
@@ -45,11 +66,25 @@ class InvitationParticipationGateTest extends TestCase
             ->post(route('najm-bahar.membership-fee.pay'), ['payment_source' => 'dim'])
             ->assertRedirect(route('najm-bahar.dashboard'));
 
+        $afterConnection = DB::connection();
+        $afterRequest = [
+            'connection_name' => $afterConnection->getName(),
+            'database' => $afterConnection->getDatabaseName(),
+            'pdo_id' => spl_object_id($afterConnection->getPdo()),
+            'transaction_level' => $afterConnection->transactionLevel(),
+            'setting_id' => Setting::query()->find(1)?->id,
+            'quota' => Setting::query()->find(1)?->count_invation,
+        ];
+
         $freshUser = $user->fresh();
         $this->assertSame(
             10,
             $service->quota(),
-            'Membership fee payment mutated invitation settings. Writes: ' . json_encode($settingWrites, JSON_UNESCAPED_UNICODE)
+            'Membership fee payment mutated invitation settings. Context: ' . json_encode([
+                'before' => $beforeRequest,
+                'writes' => $settingWrites,
+                'after' => $afterRequest,
+            ], JSON_UNESCAPED_UNICODE)
         );
         $this->assertTrue(app(MembershipFeeStatusService::class)->hasPaidCurrentMembershipFee($freshUser));
         $this->assertTrue(app(MembershipParticipationEligibilityService::class)->isEligible($freshUser));
