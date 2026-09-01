@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 
 class ReputationController extends Controller
 {
+    private const DEPRECATED_RULE_KEYS = ['election_candidate', 'election_participated'];
+
     public function index()
     {
         // Ensure config-defined rules exist without overwriting admin-authored DB values.
@@ -122,6 +124,15 @@ class ReputationController extends Controller
         foreach ($data['weights'] as $key => $weight) {
             $rule = ReputationRule::where('key', $key)->first();
             if (! $rule) {
+                continue;
+            }
+
+            if (in_array($key, self::DEPRECATED_RULE_KEYS, true)) {
+                // Historical election rules are kept for audit only. They must
+                // never regain runtime or economic effect through admin edits.
+                $rule->active = false;
+                $rule->convertible = false;
+                $rule->save();
                 continue;
             }
 
