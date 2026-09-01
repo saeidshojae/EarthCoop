@@ -6,6 +6,7 @@ use App\Models\ChatRequest;
 use App\Models\PrivateConversation;
 use App\Models\User;
 use App\Models\GroupUser;
+use App\Notifications\ChatRequestAcceptedNotification;
 use App\Notifications\ChatRequestNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -42,8 +43,6 @@ class ChatRequestController extends Controller
             ->with(['receiver'])
             ->latest();
 
-        // Keep the legacy flat received counts for compatibility while exposing
-        // direction-aware counts to the new mobile-first request shell.
         $counts = [
             'pending' => (clone $receivedQuery)->where('status', 'pending')->count(),
             'accepted' => (clone $receivedQuery)->where('status', 'accepted')->count(),
@@ -234,6 +233,15 @@ class ChatRequestController extends Controller
 
         if (!$conversation) {
             return back()->with('error', 'Unauthorized');
+        }
+
+        $originalSender = User::find($chatRequest->sender_id);
+        if ($originalSender && (int) $originalSender->id !== (int) $currentUser->id) {
+            Notification::send($originalSender, new ChatRequestAcceptedNotification(
+                (int) $chatRequest->id,
+                (int) $conversation->id,
+                $currentUser->fullName()
+            ));
         }
 
         return redirect()->route('private-chats.show', $conversation->id);
