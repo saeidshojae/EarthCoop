@@ -15,6 +15,7 @@ class InvitationLifecycleService
 {
     public function __construct(
         protected ReputationService $reputationService,
+        protected MembershipParticipationEligibilityService $participationEligibility,
     ) {
     }
 
@@ -80,6 +81,7 @@ class InvitationLifecycleService
     public function canIssueMemberInvitation(User $referrer): bool
     {
         return $this->isEligibleMember($referrer)
+            && $this->participationEligibility->isEligible($referrer)
             && $this->quota() > 0
             && $this->occupiedSlots($referrer) < $this->quota();
     }
@@ -95,6 +97,7 @@ class InvitationLifecycleService
 
             if (! $lockedReferrer
                 || ! $this->isEligibleMember($lockedReferrer)
+                || ! $this->participationEligibility->isEligible($lockedReferrer)
                 || $this->quota() <= 0
                 || $this->occupiedSlots($lockedReferrer) >= $this->quota()) {
                 throw new RuntimeException('Invitation quota is exhausted or member is not eligible.');
