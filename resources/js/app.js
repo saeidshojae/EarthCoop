@@ -33,12 +33,14 @@ const loadNajmBaharRuntime = () => {
     const onNajmBaharPage = window.location.pathname.startsWith('/najm-bahar');
     const hasMembershipFeeUi = Boolean(document.querySelector('#membershipFeeModal, #payMembershipForm'));
     const hasNajmBaharSidebar = Boolean(document.querySelector('#najm-bahar-sidebar'));
-    if (!onNajmBaharPage && !hasMembershipFeeUi && !hasNajmBaharSidebar) return;
+    const hasReputationConversion = Boolean(document.querySelector('form#conversionForm'));
+    if (!onNajmBaharPage && !hasMembershipFeeUi && !hasNajmBaharSidebar && !hasReputationConversion) return;
     if (onNajmBaharPage) importFeature(() => import("./najm-bahar.js"), "Najm Bahar");
     if (hasNajmBaharSidebar) {
         importFeature(() => import("./najm-bahar-dashboard-mobile.js"), "Najm Bahar mobile UX");
     }
     if (hasMembershipFeeUi) importFeature(() => import("./najm-bahar-membership-source.js"), "Najm Bahar membership source");
+    if (hasReputationConversion) importFeature(() => import("./najm-bahar-conversion-idempotency.js"), "Najm Bahar conversion idempotency");
 };
 
 const loadSwiperRuntime = () => {
