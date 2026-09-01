@@ -1,0 +1,21 @@
+<?php
+
+namespace Tests\Feature;
+
+use Tests\TestCase;
+
+class PrivateMessagingUiContractTest extends TestCase
+{
+    public function test_conversation_list_is_mobile_first_and_uses_private_conversation_language(): void
+    {
+        $view = file_get_contents(resource_path('views/private-chats/index.blade.php'));
+
+        $this->assertStringContainsString('گفتگوهای خصوصی', $view);
+        $this->assertStringContainsString('data-private-messaging-list', $view);
+        $this->assertStringContainsString('data-unread-count', $view);
+        $this->assertStringContainsString('unread_count', $view);
+        $this->assertStringContainsString('@media (min-width: 769px)', $view);
+        $this->assertStringNotContainsString('چت‌های خصوصی', $view);
+        $this->assertStringNotContainsString('list-group-item-action private-chat-card mb-3', $view);
+    }
+}
