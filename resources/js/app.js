@@ -46,6 +46,7 @@ const loadNajmBaharRuntime = () => {
 const loadPrivateMessagingRuntime = () => {
     if (!document.querySelector('[data-private-conversation]')) return;
     importFeature(() => import("./private-messaging-read-receipts.js"), "private messaging read receipts");
+    importFeature(() => import("./private-messaging-reaction-picker.js"), "private messaging reaction picker");
 };
 
 const loadSwiperRuntime = () => {
