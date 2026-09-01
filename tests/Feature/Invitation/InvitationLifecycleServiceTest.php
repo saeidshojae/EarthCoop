@@ -109,6 +109,72 @@ class InvitationLifecycleServiceTest extends TestCase
         $this->assertNull($invitation->fresh()->completed_at);
     }
 
+    public function test_lifecycle_service_itself_refuses_to_complete_an_incomplete_invitee(): void
+    {
+        $this->configureInvitationPolicy(10);
+        $this->configureInviteReward(100);
+
+        $referrer = $this->completeMember();
+        $invitee = User::factory()->create();
+
+        $invitation = InvitationCode::create([
+            'code' => 'DIRECT01',
+            'user_id' => $referrer->id,
+            'used' => true,
+            'used_by' => $invitee->id,
+            'used_at' => now(),
+            'expire_at' => now()->addHour(),
+        ]);
+
+        $this->assertFalse(app(InvitationLifecycleService::class)->completeSuccessfulInvitation($invitee));
+        $this->assertNull($invitation->fresh()->completed_at);
+        $this->assertDatabaseMissing('user_point_transactions', [
+            'user_id' => $referrer->id,
+            'action' => 'invite_member',
+        ]);
+    }
+
+    public function test_lowering_future_quota_does_not_break_a_code_already_claimed_under_the_previous_quota(): void
+    {
+        $this->configureInvitationPolicy(2);
+        $this->configureInviteReward(100);
+
+        $referrer = $this->completeMember();
+        $firstInvitee = $this->completeMember();
+        $secondInvitee = $this->completeMember();
+
+        InvitationCode::create([
+            'code' => 'DONE0001',
+            'user_id' => $referrer->id,
+            'used' => true,
+            'used_by' => $firstInvitee->id,
+            'used_at' => now()->subDay(),
+            'completed_at' => now()->subDay(),
+            'expire_at' => now()->addHour(),
+        ]);
+
+        $claimed = InvitationCode::create([
+            'code' => 'CLAIM002',
+            'user_id' => $referrer->id,
+            'used' => true,
+            'used_by' => $secondInvitee->id,
+            'used_at' => now(),
+            'expire_at' => now()->addHour(),
+        ]);
+
+        // Administrators may lower the quota for future issuance. An already
+        // claimed invitation remains valid and must complete normally.
+        $this->configureInvitationPolicy(1);
+
+        $this->assertTrue(app(InvitationLifecycleService::class)->completeSuccessfulInvitation($secondInvitee));
+        $this->assertNotNull($claimed->fresh()->completed_at);
+        $this->assertDatabaseHas('user_point_transactions', [
+            'user_id' => $referrer->id,
+            'action' => 'invite_member',
+            'delta' => 100,
+        ]);
+    }
+
     private function configureInvitationPolicy(int $quota): void
     {
         Setting::query()->updateOrCreate(['id' => 1], [
