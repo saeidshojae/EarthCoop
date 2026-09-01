@@ -25,13 +25,14 @@ return [
         'documents_uploaded' => 20,
         'bio_added' => 5,
 
-        // Group polls & elections
+        // Group polls, elections & verified governance outcomes
         'poll_created' => 5,
         'poll_participated' => 2,
         'election_participated' => 5,
         'election_candidate' => 10,
         'elected_inspector' => 50,
         'elected_manager' => 100,
+        'professional_referral_completed' => 10,
     ],
 
     // Policy defaults are used only when a rule is first bootstrapped into the database.
@@ -87,6 +88,11 @@ return [
             'convertible' => false,
             'repeat_policy' => 'once_per_context',
         ],
+        'professional_referral_completed' => [
+            'dimension' => 'participation',
+            'convertible' => false,
+            'repeat_policy' => 'once_per_context',
+        ],
     ],
 
     // Tier thresholds
@@ -109,6 +115,7 @@ return [
         'bid_placed' => 500,
         'poll_created' => 25,
         'poll_participated' => 100,
+        'professional_referral_completed' => 50,
     ],
 
     // Decay settings (monthly percentage to remove)
