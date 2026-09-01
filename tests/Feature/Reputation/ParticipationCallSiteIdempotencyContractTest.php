@@ -17,8 +17,8 @@ class ParticipationCallSiteIdempotencyContractTest extends TestCase
 
     public function test_verified_referral_award_uses_member_identity_as_stable_business_event_key(): void
     {
-        $source = file_get_contents(app_path('Http/Controllers/NajmBaharController.php'));
+        $source = file_get_contents(app_path('Services/InvitationLifecycleService.php'));
 
-        $this->assertStringContainsString("'invite_member:referrer:' . \$referrer->id . ':member:' . \$user->id", $source);
+        $this->assertStringContainsString("'invite_member:referrer:' . \$referrer->id . ':member:' . \$invitee->id", $source);
     }
 }
