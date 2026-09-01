@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Events\PrivateMessagesRead;
 use App\Http\Middleware\UpdateLastSeen;
 use App\Models\PrivateConversation;
 use App\Models\PrivateMessage;
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -127,6 +129,54 @@ class PrivateMessagingReadStateTest extends TestCase
             ->assertJsonPath('messages.0.is_read', true);
 
         $this->assertNotNull($incoming->fresh()->read_at);
+    }
+
+    public function test_marking_messages_read_dispatches_private_read_receipt_event(): void
+    {
+        Event::fake([PrivateMessagesRead::class]);
+        [$sender, $receiver, $conversation] = $this->makeConversation();
+
+        $incoming = PrivateMessage::create([
+            'private_conversation_id' => $conversation->id,
+            'sender_id' => $sender->id,
+            'message' => 'برای رسید خواندن',
+        ]);
+
+        $this->actingAs($receiver)
+            ->getJson(route('private-chats.messages', [
+                'conversation' => $conversation->id,
+                'after_id' => 0,
+            ]))
+            ->assertOk();
+
+        Event::assertDispatched(PrivateMessagesRead::class, function ($event) use ($conversation, $incoming, $receiver) {
+            return (int) $event->conversation->id === (int) $conversation->id
+                && $event->messageIds === [$incoming->id]
+                && (int) $event->readerId === (int) $receiver->id;
+        });
+    }
+
+    public function test_conversation_info_exposes_latest_read_outgoing_message_for_polling_fallback(): void
+    {
+        [$sender, $receiver, $conversation] = $this->makeConversation();
+
+        $readMessage = PrivateMessage::create([
+            'private_conversation_id' => $conversation->id,
+            'sender_id' => $sender->id,
+            'message' => 'خوانده شده',
+            'read_at' => now(),
+        ]);
+
+        PrivateMessage::create([
+            'private_conversation_id' => $conversation->id,
+            'sender_id' => $sender->id,
+            'message' => 'هنوز خوانده نشده',
+        ]);
+
+        $this->actingAs($sender)
+            ->getJson(route('private-chats.info', $conversation->id))
+            ->assertOk()
+            ->assertJsonPath('conversation.last_read_outgoing_message_id', $readMessage->id);
     }
 
     private function makeConversation(): array
