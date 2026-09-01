@@ -19,16 +19,18 @@ class InviteParticipationRewardTest extends TestCase
         $referrer = User::factory()->create();
         $newMember = User::factory()->create();
 
-        ReputationRule::create([
-            'key' => 'invite_member',
-            'label' => 'Invite member',
-            'weight' => 100,
-            'active' => true,
-            'daily_cap' => null,
-            'dimension' => 'participation',
-            'convertible' => true,
-            'repeat_policy' => 'once_per_context',
-        ]);
+        ReputationRule::updateOrCreate(
+            ['key' => 'invite_member'],
+            [
+                'label' => 'Invite member',
+                'weight' => 100,
+                'active' => true,
+                'daily_cap' => null,
+                'dimension' => 'participation',
+                'convertible' => true,
+                'repeat_policy' => 'once_per_context',
+            ]
+        );
 
         InvitationCode::create([
             'code' => 'INV-' . $newMember->id,
