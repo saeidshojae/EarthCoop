@@ -12,10 +12,10 @@ class ParticipationSummaryBoundaryContractTest extends TestCase
         $conversionController = file_get_contents(app_path('Http/Controllers/ReputationConversionController.php'));
 
         $this->assertStringContainsString('ParticipationPointSummaryService', $walletController);
-        $this->assertStringContainsString('->forUser($user->id)', $walletController);
+        $this->assertStringContainsString('participationPointSummaryService->forUser', $walletController);
 
         $this->assertStringContainsString('ParticipationPointSummaryService', $conversionController);
-        $this->assertStringContainsString('->forUser($user->id)', $conversionController);
+        $this->assertStringContainsString('participationPointSummaryService->forUser', $conversionController);
         $this->assertStringContainsString('->convertibleTransactionsQuery($user->id)', $conversionController);
         $this->assertStringContainsString('->participationReversalPoints($user->id)', $conversionController);
 
