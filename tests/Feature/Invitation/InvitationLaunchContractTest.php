@@ -58,14 +58,20 @@ class InvitationLaunchContractTest extends TestCase
     }
 
     #[Test]
-    public function canonical_member_invitation_route_shadows_the_legacy_profile_action(): void
+    public function canonical_member_invitation_route_is_authenticated_and_post_only(): void
     {
         $route = app('router')->getRoutes()->getByName('profile.generate-code');
 
         $this->assertNotNull($route);
         $this->assertSame(MemberInvitationController::class, $route->getActionName());
+        $this->assertSame(['POST'], $route->methods());
         $this->assertContains('web', $route->gatherMiddleware());
         $this->assertContains(\App\Http\Middleware\Authenticate::class, $route->gatherMiddleware());
+
+        $view = file_get_contents(resource_path('views/profile/member-invitations.blade.php'));
+        $this->assertStringContainsString('method="POST"', $view);
+        $this->assertStringContainsString('@csrf', $view);
+        $this->assertStringNotContainsString('href="{{ route(\'profile.generate-code\') }}"', $view);
     }
 
     #[Test]
