@@ -7,6 +7,8 @@ use App\Models\ReputationRule;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserPointTransaction;
+use App\Modules\NajmBahar\Services\AccountService;
+use App\Modules\NajmBahar\Services\MonetaryService;
 use App\Services\InvitationLifecycleService;
 use App\Services\ProfileCompletionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,6 +23,7 @@ class InvitationLifecycleServiceTest extends TestCase
     {
         $this->configureInvitationPolicy(2);
         $referrer = $this->completeMember();
+        $this->activateParticipation($referrer);
         $abandonedInvitee = User::factory()->create();
 
         InvitationCode::create([
@@ -265,5 +268,14 @@ class InvitationLifecycleServiceTest extends TestCase
         ]);
 
         return $user->fresh();
+    }
+
+    private function activateParticipation(User $user): void
+    {
+        $account = app(AccountService::class)->createMainAccountForUser($user->id, 'Invitation lifecycle');
+        app(MonetaryService::class)->issueMembershipCredit($account, $user->id);
+        $this->actingAs($user)
+            ->post(route('najm-bahar.membership-fee.pay'), ['payment_source' => 'dim'])
+            ->assertRedirect(route('najm-bahar.dashboard'));
     }
 }
