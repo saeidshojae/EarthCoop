@@ -75,30 +75,38 @@ Still open before R3 final freeze:
 
 ---
 
-### Task R4: Financial Conversion Ledger & Consumption Safety — CURRENT PRIORITY
+### Task R4: Financial Conversion Ledger & Consumption Safety — COMPLETE
 
-Current verified financial checkpoint: `f6f4ba997fcbd548edd673226eca1efb7452cd3f`  
-Full Validation #1988: success  
-Responsive #354: success
+Final verified financial checkpoint: `bc8883093767ccd60980f5395fc2687e125bf0fa`  
+Full Validation #2006: success  
+Responsive #372: success
 
-Already GREEN:
-- [x] RED partial transaction consumption.
-- [x] RED ratio remainder preservation.
-- [x] exact consumption ledger via `user_point_consumptions`.
-- [x] eligible sources require positive + `convertible=true` + `dimension=participation`.
-- [x] exact partial consumption; source transaction is not falsely fully cashed.
-- [x] ratio remainder preserved.
-- [x] sequential same-key retry does not double-consume/activate.
-- [x] canonical conversion key is scoped by user, preventing cross-user Idempotency-Key collision.
-- [x] activation exclusively through `MonetaryService::activateDim()`.
+Established contracts:
+- [x] exact consumption ledger via `user_point_consumptions`; partial source rows are not falsely marked fully cashed.
+- [x] ratio remainder is preserved exactly; conversion consumes only whole-ratio points.
+- [x] eligible sources require positive + `convertible=true` + `dimension=participation` snapshots.
+- [x] sequential same-key retry does not double-consume or double-activate.
+- [x] canonical conversion identity is user-scoped; same client key across users cannot collide.
+- [x] parent `user_point_conversions` identity plus unique `(user_id, request_key)` and row locking establish one atomic owner for a same-user/same-key request; no synthetic parallel stress benchmark was claimed.
+- [x] child consumptions belong to the parent conversion operation and applied retries replay the completed identity.
+- [x] historical `is_cashed=true` positive convertible Participation rows are conservatively excluded from new conversion and counted as historical cashed; old lossy partial remainder is never guessed or re-credited.
+- [x] behavioral eligibility suite proves non-convertible and non-Participation snapshots cannot enter conversion.
+- [x] browser/UI conversion submits a stable form request identity, accepted by the controller alongside the HTTP header contract, without redesigning wallet/dashboard UI.
+- [x] activation remains exclusively through `MonetaryService::activateDim()`; conversion never mints Bahar.
+- [x] approved penalty semantics: only an explicit negative transaction that is both `dimension=participation` and `convertible=true` reduces future conversion capacity. Reliability/Civic Trust/Expertise penalties do not silently claw back Participation economic entitlement. Reversal does not claw back already-applied Active money.
+- [x] final conversion invariant family is covered by `ParticipationConversionLedgerContractTest`, `ParticipationConversionBehaviorTest`, `ParticipationConversionAtomicIdentityTest`, `ParticipationConversionLegacyCompatibilityTest`, `ParticipationConversionEligibilityTest`, `ParticipationConversionUiIdempotencyContractTest`, and `ParticipationConversionPenaltySemanticsTest`; Full Project PHPUnit passed at #2006.
 
-Remaining R4 execution order:
-- [ ] **R4-A RED/GREEN — atomic conversion request identity**: add a parent conversion identity with unique user/request identity so two concurrent same-user/same-key requests cannot both become owners. Child consumption rows must belong to one conversion operation; retry replays existing completed request rather than consuming again.
-- [ ] **R4-B RED/GREEN — legacy cashing compatibility**: historical `is_cashed=true` source rows must never become newly convertible under the consumption ledger. Use a conservative deterministic rule/backfill; never guess a historical remainder that was previously lost.
-- [ ] **R4-C behavioral eligibility suite**: prove non-convertible and non-participation snapshots are excluded from `getInfo()` and `convert()` and consumed ledger remainder is reported exactly.
-- [ ] **R4-D end-to-end UI idempotency**: inspect current wallet/conversion UI; if browser submits do not send stable Idempotency-Key, add a minimal stable request token/double-submit contract without redesigning UI.
-- [ ] **R4-E penalty semantics decision**: negative Participation/reputation effect on conversion capacity is economically material. Do not silently decide. If current R4 technical invariants are otherwise complete, surface the exact alternatives to product owner and record decision before final financial freeze.
-- [ ] **R4-F final invariant suite + Full Validation + handoff update**.
+Key R4 checkpoints:
+- lossless ledger: `7bbab2168bf6de4d55c5ba3ccfcf30cc2beb5510` — Full #1984 / Responsive #350.
+- retry exactness: `93cf58b74154ea636c80324f66625a018eb7e114` — Full #1986 / Responsive #352.
+- cross-user isolation: `f6f4ba997fcbd548edd673226eca1efb7452cd3f` — Full #1988 / Responsive #354.
+- atomic request identity RED `c6e867c0c7ab3b478782a7578e77322ee2f3c585`; final atomic production through `dc8828ba481132d3ca2648ac0f73c154ce8e41cf` — Full #1995 / Responsive #361.
+- legacy cashing compatibility production `5118a6d6fb1deaae59db72d8a667091934141ae0`, fixture correction `23db91a443b7b0c70e1a9bde4431b97f9fc8173e` — Full #1998 / Responsive #364.
+- behavioral eligibility characterization `fc85652179522a67334bf5d700aefbc24660ed86`.
+- UI idempotency production family `0aa44423428ea4e872dea03fa93e16bb664e0023`, `3e1009ca6d9e031c73798bb0c8db479cab54c1ae`, `c9ddf94a174f884f6b60cd5c2beb0b5a19ba723c`, `6ad684210f4c6939be28568021c7a75ff1a2bed8`.
+- penalty semantics RED `79dab3a16900eecc082add93c61755a4aef49a99`; production `bc8883093767ccd60980f5395fc2687e125bf0fa` — Full #2006 / Responsive #372.
+
+R4 is no longer a launch blocker by itself. Launch decision must now evaluate remaining R3 catalogue/anti-farming debt and R5/R6 scope rather than reopening conversion-ledger semantics without new evidence.
 
 Commit family: `fix(reputation): make point conversion lossless and auditable`
 
