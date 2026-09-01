@@ -113,8 +113,8 @@ class ReputationConversionController extends Controller
 
         $requestedConversionKey = trim((string) $request->header('Idempotency-Key', ''));
         $conversionKey = $requestedConversionKey !== ''
-            ? $requestedConversionKey
-            : 'reputation-conversion-' . $user->id . '-' . now()->format('YmdHisv');
+            ? 'reputation-conversion:' . $user->id . ':' . $requestedConversionKey
+            : 'reputation-conversion:' . $user->id . ':' . now()->format('YmdHisv');
 
         try {
             $alreadyConverted = false;
