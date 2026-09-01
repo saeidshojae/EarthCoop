@@ -45,4 +45,21 @@ class PrivateMessagingUiContractTest extends TestCase
         $this->assertStringNotContainsString('col-lg-6', $view);
         $this->assertStringNotContainsString('درخواست‌های چت', $view);
     }
+
+    public function test_conversation_screen_is_mobile_viewport_first_and_text_only(): void
+    {
+        $view = file_get_contents(resource_path('views/private-chats/show.blade.php'));
+
+        $this->assertStringContainsString('data-private-conversation', $view);
+        $this->assertStringContainsString('100dvh', $view);
+        $this->assertStringContainsString('data-conversation-header', $view);
+        $this->assertStringContainsString('data-conversation-composer', $view);
+        $this->assertStringContainsString('data-read-receipt', $view);
+        $this->assertStringContainsString('@media (min-width: 769px)', $view);
+        $this->assertStringNotContainsString('max-height: 500px', $view);
+        $this->assertStringNotContainsString('max-height: 400px', $view);
+        $this->assertStringNotContainsString('در حال بررسی...', $view);
+        $this->assertStringNotContainsString('type="file"', $view);
+        $this->assertStringNotContainsString('fa-microphone', $view);
+    }
 }
