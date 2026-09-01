@@ -76,7 +76,7 @@ class InvitationLifecycleServiceTest extends TestCase
         $this->assertSame(100, (int) $reward->delta);
         $this->assertSame('participation', $reward->dimension);
         $this->assertTrue((bool) $reward->convertible);
-        $this->assertSame('registration_completion', $reward->reference_type);
+        $this->assertSame('registration_completion', $reward->source);
         $this->assertSame($invitation->id, (int) $reward->reference_id);
         $this->assertSame(1, UserPointTransaction::where('user_id', $referrer->id)
             ->where('action', 'invite_member')
