@@ -62,4 +62,22 @@ class PrivateMessagingUiContractTest extends TestCase
         $this->assertStringNotContainsString('type="file"', $view);
         $this->assertStringNotContainsString('fa-microphone', $view);
     }
+
+    public function test_profile_request_flow_is_state_aware_and_mobile_bottom_sheet_ready(): void
+    {
+        $profileAction = file_get_contents(resource_path('views/chat-requests/partials/profile-action.blade.php'));
+        $legacyPartial = file_get_contents(resource_path('views/chat_request.blade.php'));
+
+        $this->assertStringContainsString('data-private-request-action', $profileAction);
+        $this->assertStringContainsString('شروع گفتگو', $profileAction);
+        $this->assertStringContainsString('درخواست ارسال شده', $profileAction);
+        $this->assertStringContainsString('مشاهده درخواست', $profileAction);
+        $this->assertStringContainsString('ادامه گفتگو', $profileAction);
+        $this->assertStringContainsString('درخواست مجدد گفتگو', $profileAction);
+        $this->assertStringContainsString('role="dialog"', $profileAction);
+        $this->assertStringContainsString('data-private-request-sheet', $profileAction);
+        $this->assertStringContainsString('@media (min-width: 769px)', $profileAction);
+        $this->assertStringNotContainsString('.btn {', $legacyPartial);
+        $this->assertStringNotContainsString('.list-group-item {', $legacyPartial);
+    }
 }
