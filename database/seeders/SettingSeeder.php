@@ -13,13 +13,13 @@ class SettingSeeder extends Seeder
             ['id' => 1],
             [
 
-                'invation_status' => false,
+                'invation_status' => true,
 
                 'finger_status' => false,
 
-                'expire_invation_time' => null,
+                'expire_invation_time' => 72,
 
-                'count_invation' => 0,
+                'count_invation' => 10,
 
                 'najm_summary' => null,
 
