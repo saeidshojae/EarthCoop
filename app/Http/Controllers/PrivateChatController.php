@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Events\PrivateMessageCreated;
 use App\Models\PrivateConversation;
 use App\Models\PrivateMessage;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class PrivateChatController extends Controller
 {
@@ -17,6 +17,12 @@ class PrivateChatController extends Controller
         $conversations = PrivateConversation::whereHas('users', function ($query) use ($currentUserId) {
             $query->where('users.id', $currentUserId);
         })
+        ->withCount([
+            'messages as unread_count' => function ($query) use ($currentUserId) {
+                $query->where('sender_id', '!=', $currentUserId)
+                    ->whereNull('read_at');
+            },
+        ])
         ->with([
             'users:id,first_name,last_name,avatar',
             'messages' => function ($query) {
@@ -35,10 +41,9 @@ class PrivateChatController extends Controller
     public function show(PrivateConversation $conversation)
     {
         $currentUserId = (int) auth()->id();
-        $isParticipant = $conversation->users()->where('users.id', $currentUserId)->exists();
-        if (!$isParticipant) {
-            abort(403, 'Unauthorized');
-        }
+        $this->ensureParticipant($conversation, $currentUserId);
+
+        $this->markIncomingMessagesRead($conversation, $currentUserId);
 
         $conversation->load('users:id,first_name,last_name,avatar');
 
@@ -135,6 +140,32 @@ class PrivateChatController extends Controller
             $messages = $messages->sortBy('id')->values();
         }
 
+        // Fetching new messages from an open conversation represents an active view.
+        // Older-history pagination does not alter read state because those messages
+        // have already passed through the active conversation surface.
+        if (!$beforeId) {
+            $incomingIds = $messages
+                ->where('sender_id', '!=', $currentUserId)
+                ->whereNull('read_at')
+                ->pluck('id');
+
+            if ($incomingIds->isNotEmpty()) {
+                $readAt = now();
+                PrivateMessage::query()
+                    ->where('private_conversation_id', $conversation->id)
+                    ->whereIn('id', $incomingIds)
+                    ->where('sender_id', '!=', $currentUserId)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => $readAt]);
+
+                $messages->each(function (PrivateMessage $message) use ($incomingIds, $readAt) {
+                    if ($incomingIds->contains($message->id)) {
+                        $message->read_at = $readAt;
+                    }
+                });
+            }
+        }
+
         return response()->json([
             'messages' => $messages->map(fn($m) => $this->formatMessage($m)),
             'has_more' => $messages->count() >= $limit,
@@ -162,6 +193,23 @@ class PrivateChatController extends Controller
                 ]),
             ],
         ]);
+    }
+
+    private function ensureParticipant(PrivateConversation $conversation, int $currentUserId): void
+    {
+        $isParticipant = $conversation->users()->where('users.id', $currentUserId)->exists();
+
+        if (!$isParticipant) {
+            abort(403, 'Unauthorized');
+        }
+    }
+
+    private function markIncomingMessagesRead(PrivateConversation $conversation, int $currentUserId): int
+    {
+        return $conversation->messages()
+            ->where('sender_id', '!=', $currentUserId)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
     }
 
     private function formatMessage($message): array
@@ -195,6 +243,8 @@ class PrivateChatController extends Controller
             ],
             'created_at' => $message->created_at,
             'created_at_relative' => $message->created_at->diffForHumans(),
+            'read_at' => $message->read_at,
+            'is_read' => $message->read_at !== null,
             'reaction_summary' => $reactionSummary,
         ];
     }
