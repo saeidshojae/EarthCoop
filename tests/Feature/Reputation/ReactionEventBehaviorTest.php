@@ -79,15 +79,17 @@ class ReactionEventBehaviorTest extends TestCase
 
     private function createRule(string $key, int $weight): void
     {
-        ReputationRule::create([
-            'key' => $key,
-            'label' => $key,
-            'weight' => $weight,
-            'active' => true,
-            'daily_cap' => null,
-            'dimension' => 'participation',
-            'convertible' => true,
-            'repeat_policy' => 'once_per_context',
-        ]);
+        ReputationRule::updateOrCreate(
+            ['key' => $key],
+            [
+                'label' => $key,
+                'weight' => $weight,
+                'active' => true,
+                'daily_cap' => null,
+                'dimension' => 'participation',
+                'convertible' => true,
+                'repeat_policy' => 'once_per_context',
+            ]
+        );
     }
 }
