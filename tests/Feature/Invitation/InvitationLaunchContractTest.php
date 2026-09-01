@@ -32,13 +32,16 @@ class InvitationLaunchContractTest extends TestCase
     }
 
     #[Test]
-    public function member_quota_counts_completed_invitations_not_every_generated_code(): void
+    public function member_quota_is_enforced_by_the_canonical_invitation_lifecycle(): void
     {
-        $profileController = file_get_contents(app_path('Http/Controllers/Profile/ProfileController.php'));
+        $controller = file_get_contents(app_path('Http/Controllers/Profile/MemberInvitationController.php'));
+        $routes = file_get_contents(base_path('routes/member-invitations.php'));
 
-        $this->assertStringContainsString('InvitationLifecycleService', $profileController);
-        $this->assertStringContainsString('canIssueMemberInvitation', $profileController);
-        $this->assertStringNotContainsString('$codes->count() >= intval($setting->count_invation)', $profileController);
+        $this->assertStringContainsString('InvitationLifecycleService', $controller);
+        $this->assertStringContainsString('canIssueMemberInvitation', $controller);
+        $this->assertStringContainsString('issueMemberInvitation', $controller);
+        $this->assertStringContainsString("/profile/invation-code-generate", $routes);
+        $this->assertStringContainsString("profile.generate-code", $routes);
     }
 
     #[Test]
