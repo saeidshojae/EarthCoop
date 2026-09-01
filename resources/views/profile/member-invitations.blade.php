@@ -141,7 +141,7 @@
 @push('scripts')
 <script>
 function shareInviteCode(code) {
-    const url = new URL(@json(route('register')), window.location.origin);
+    const url = new URL(@json(route('register.form')), window.location.origin);
     url.searchParams.set('invitation_code', code);
     const text = `برای پیوستن به EarthCoop از کد دعوت ${code} استفاده کنید:\n${url.toString()}`;
 
