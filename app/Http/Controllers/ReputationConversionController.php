@@ -42,6 +42,15 @@ class ReputationConversionController extends Controller
             ->orderBy('created_at', 'asc');
     }
 
+    private function participationReversalPoints(int $userId): int
+    {
+        return abs((int) UserPointTransaction::where('user_id', $userId)
+            ->where('delta', '<', 0)
+            ->where('convertible', true)
+            ->where('dimension', 'participation')
+            ->sum('delta'));
+    }
+
     private function legacyCashedPoints(int $userId): int
     {
         return (int) UserPointTransaction::where('user_id', $userId)
@@ -72,9 +81,10 @@ class ReputationConversionController extends Controller
         $transactions = $this->convertibleTransactions($user->id)->get();
         $convertibleAwarded = (int) $transactions->sum('delta');
         $ledgerConsumedPoints = (int) $transactions->sum(fn ($tx) => (int) ($tx->consumptions_sum_points_consumed ?? 0));
+        $participationReversalPoints = $this->participationReversalPoints($user->id);
         $legacyCashedPoints = $this->legacyCashedPoints($user->id);
         $cashedPoints = $legacyCashedPoints + $ledgerConsumedPoints;
-        $uncashedPoints = max(0, $convertibleAwarded - $ledgerConsumedPoints);
+        $uncashedPoints = max(0, $convertibleAwarded - $participationReversalPoints - $ledgerConsumedPoints);
 
         $ratio = max(1, (int) data_get($policy, 'parameters.reputation_to_gol_ratio', 100));
         $hasEnoughFaded = $account->balance_faded >= intdiv($uncashedPoints, $ratio);
@@ -187,9 +197,10 @@ class ReputationConversionController extends Controller
                     ->lockForUpdate()
                     ->get();
 
-                $availablePoints = (int) $transactions->sum(function ($tx) {
+                $positiveRemainingPoints = (int) $transactions->sum(function ($tx) {
                     return max(0, (int) $tx->delta - (int) ($tx->consumptions_sum_points_consumed ?? 0));
                 });
+                $availablePoints = max(0, $positiveRemainingPoints - $this->participationReversalPoints($user->id));
 
                 if ($convertiblePoints > $availablePoints) {
                     throw new \Exception("امتیازات قابل نقد کافی نیست. امتیاز قابل نقد: {$availablePoints}");
