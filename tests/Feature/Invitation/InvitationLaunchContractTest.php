@@ -1,0 +1,65 @@
+<?php
+
+namespace Tests\Feature\Invitation;
+
+use App\Http\Controllers\Admin\ReputationController;
+use App\Models\ReputationRule;
+use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
+
+class InvitationLaunchContractTest extends TestCase
+{
+    #[Test]
+    public function launch_defaults_are_invite_only_with_ten_successful_slots_and_one_hundred_points(): void
+    {
+        $seeder = file_get_contents(database_path('seeders/SettingSeeder.php'));
+        $reputation = require config_path('reputation.php');
+
+        $this->assertStringContainsString("'invation_status' => true", $seeder);
+        $this->assertStringContainsString("'count_invation' => 10", $seeder);
+        $this->assertSame(100, (int) $reputation['weights']['invite_member']);
+    }
+
+    #[Test]
+    public function invite_reward_is_finalized_by_registration_completion_not_najm_bahar_agreement(): void
+    {
+        $profileCompletion = file_get_contents(app_path('Services/ProfileCompletionService.php'));
+        $najmBahar = file_get_contents(app_path('Http/Controllers/NajmBaharController.php'));
+
+        $this->assertStringContainsString('InvitationLifecycleService', $profileCompletion);
+        $this->assertStringContainsString('completeSuccessfulInvitation', $profileCompletion);
+        $this->assertStringNotContainsString('processReferralParticipation($user)', $najmBahar);
+    }
+
+    #[Test]
+    public function member_quota_counts_completed_invitations_not_every_generated_code(): void
+    {
+        $profileController = file_get_contents(app_path('Http/Controllers/Profile/ProfileController.php'));
+
+        $this->assertStringContainsString('InvitationLifecycleService', $profileController);
+        $this->assertStringContainsString('canIssueMemberInvitation', $profileController);
+        $this->assertStringNotContainsString('$codes->count() >= intval($setting->count_invation)', $profileController);
+    }
+
+    #[Test]
+    public function registration_claims_invitation_atomically(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/Auth/Register/StartController.php'));
+
+        $this->assertStringContainsString('DB::transaction', $controller);
+        $this->assertStringContainsString('lockForUpdate()', $controller);
+    }
+
+    #[Test]
+    public function invite_member_remains_an_admin_managed_convertible_rule_with_new_default(): void
+    {
+        app(ReputationController::class)->index();
+
+        $rule = ReputationRule::where('key', 'invite_member')->firstOrFail();
+
+        $this->assertSame(100, (int) $rule->weight);
+        $this->assertSame('participation', $rule->dimension);
+        $this->assertTrue((bool) $rule->convertible);
+        $this->assertSame('once_per_context', $rule->repeat_policy);
+    }
+}
