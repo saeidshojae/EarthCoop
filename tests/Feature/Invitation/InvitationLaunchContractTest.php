@@ -80,6 +80,17 @@ class InvitationLaunchContractTest extends TestCase
     }
 
     #[Test]
+    public function invitation_share_link_uses_the_actual_registration_form_route(): void
+    {
+        $this->assertNotNull(app('router')->getRoutes()->getByName('register.form'));
+        $this->assertNull(app('router')->getRoutes()->getByName('register'));
+
+        $view = file_get_contents(resource_path('views/profile/member-invitations.blade.php'));
+        $this->assertStringContainsString("route('register.form')", $view);
+        $this->assertStringNotContainsString("route('register')", $view);
+    }
+
+    #[Test]
     public function registration_claims_invitation_atomically(): void
     {
         $controller = file_get_contents(app_path('Http/Controllers/Auth/Register/StartController.php'));
