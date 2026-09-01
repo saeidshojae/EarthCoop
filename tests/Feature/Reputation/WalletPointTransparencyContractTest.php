@@ -11,8 +11,8 @@ class WalletPointTransparencyContractTest extends TestCase
         $controller = file_get_contents(app_path('Http/Controllers/NajmBaharController.php'));
         $view = file_get_contents(resource_path('views/najm-bahar/wallet.blade.php'));
 
-        $this->assertStringContainsString("$ledgerConsumedPoints = $pointSummary['ledger_consumed_points'];", $controller);
-        $this->assertStringContainsString("$legacyCashedPoints = $pointSummary['legacy_cashed_points'];", $controller);
+        $this->assertStringContainsString('$ledgerConsumedPoints = $pointSummary[\'ledger_consumed_points\'];', $controller);
+        $this->assertStringContainsString('$legacyCashedPoints = $pointSummary[\'legacy_cashed_points\'];', $controller);
         $this->assertStringContainsString("'ledgerConsumedPoints'", $controller);
         $this->assertStringContainsString("'legacyCashedPoints'", $controller);
 
