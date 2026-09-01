@@ -19,7 +19,8 @@
 6. دعوت موفق (`invite_member`) و پرداخت موفق حق عضویت (`membership_fee_paid`) Participation reward مستقل و admin-managed دارند.
 7. پاداش مدیر/بازرس می‌تواند convertible باشد و هویت اقتصادی آن `user + role + governance level` است؛ انتخاب مجدد همان role/level پاداش اقتصادی جدید نمی‌سازد، ولی role یا level دیگر مستقل است.
 8. تبدیل Points هرگز Bahar جدید mint نمی‌کند؛ فقط Dim موجود همان عضو را با `MonetaryService::activateDim()` به Active تبدیل می‌کند.
-9. تا قبل از freeze نهایی R4، برای launch می‌توان کسب/نمایش امتیاز را فعال نگه داشت ولی conversion را با policy flag `reputation_conversion_enabled` خاموش نگه داشت.
+9. R4 بسته شده است؛ conversion دیگر به‌دلیل نقص ledger/idempotency/history blocker فنی launch نیست. فعال‌کردن policy flag هنوز یک تصمیم launch است و باید با debtهای R3/R5/R6 سنجیده شود.
+10. سیاست penalty اقتصادی مصوب: فقط transaction منفی که هم `dimension=participation` و هم `convertible=true` باشد ظرفیت تبدیل آینده Participation را کم می‌کند. جریمه‌های Reliability/Civic Trust/Expertise به‌طور ضمنی entitlement اقتصادی Participation را کم نمی‌کنند و reversal به Active قبلاً اعمال‌شده clawback نمی‌زند.
 
 ## Baseline و اسناد
 
@@ -116,41 +117,48 @@ Open R3 items to close later:
 
 ## R4 — Financial Conversion Ledger & Consumption Safety
 
-Status: **IN PROGRESS — lossless conversion + sequential retry + cross-user isolation GREEN; atomic concurrency/history compatibility remain**
+Status: **GREEN / COMPLETE**
 
-Structural RED:
-- `85835788c4db8ae7b463b7f74a93f2a6c8743e76`
-- Full #1983 RED as intended; Responsive #349 success
+Final production checkpoint before handoff docs: `bc8883093767ccd60980f5395fc2687e125bf0fa`
 
-Lossless consumption ledger GREEN:
-- production `7bbab2168bf6de4d55c5ba3ccfcf30cc2beb5510`
-- adds `user_point_consumptions` and `UserPointConsumption`.
-- conversion sources only positive `convertible=true` + `dimension=participation` snapshots.
-- partial transaction consumption no longer marks whole source cashed.
-- ratio remainder preserved: request 150 at ratio 100 consumes 100, leaves 50, activates 1.
-- Full #1984 / Responsive #350: success
+Final validation on that production checkpoint:
+- Full Validation #2006: **success**
+- Responsive #372: **success**
+- Full Project PHPUnit step: **success**
 
-Behavioral exactness + retry:
-- behavior test RED `158ee58d1c6df856a0e2cc644764b79de85d5abc`
-- partial exactness already passed in RED run #1985; retry failed as intended.
-- sequential retry production `93cf58b74154ea636c80324f66625a018eb7e114`
-- Full #1986 / Responsive #352: success
+Established:
+- exact point-consumption ledger; no whole-source false cashing.
+- exact ratio remainder preservation.
+- only positive `convertible=true` + `dimension=participation` award snapshots are source-eligible.
+- canonical conversion key is user-scoped.
+- same-user/same-request identity is represented by `user_point_conversions`, with DB uniqueness on `(user_id, request_key)`, locked parent ownership and child consumption linkage.
+- applied retry replays the completed parent instead of consuming/activating twice.
+- no synthetic concurrent load/stress benchmark was run; the concurrency invariant is enforced structurally by DB uniqueness + parent locking and verified by contract tests.
+- historical `is_cashed=true` positive convertible Participation rows are excluded from future conversion and reported conservatively as historical cashed. Because legacy partial cashing lost exact remainder information, no guessed remainder is re-credited.
+- eligibility behavior excludes non-convertible and wrong-dimension snapshots from both reporting and conversion.
+- browser conversion UI supplies one stable request key per form submission lifecycle through `najm-bahar-conversion-idempotency.js`; controller accepts either HTTP `Idempotency-Key` or form `idempotency_key`.
+- negative economic reversal semantics are explicit: only `participation + convertible` negative transactions reduce future capacity; other dimension penalties do not.
+- reversal only reduces remaining future capacity; it does not claw back an already completed Active activation.
+- all activation continues through `MonetaryService::activateDim()` and no Bahar mint path was introduced.
 
-Cross-user idempotency isolation:
-- RED test `3599f868809095a798c837be071002b5d7457048`
-- RED Full #1987; Responsive #353 success
-- production `f6f4ba997fcbd548edd673226eca1efb7452cd3f`
-- canonical key now `reputation-conversion:{user_id}:{client_key}`; fallback also user-scoped.
-- Full Validation #1988: success
-- Responsive #354: success
+Key R4 timeline:
+- structural ledger RED: `85835788c4db8ae7b463b7f74a93f2a6c8743e76`; ledger production `7bbab2168bf6de4d55c5ba3ccfcf30cc2beb5510`; Full #1984 / Responsive #350.
+- behavioral retry RED `158ee58d1c6df856a0e2cc644764b79de85d5abc`; production `93cf58b74154ea636c80324f66625a018eb7e114`; Full #1986 / Responsive #352.
+- cross-user isolation RED `3599f868809095a798c837be071002b5d7457048`; production `f6f4ba997fcbd548edd673226eca1efb7452cd3f`; Full #1988 / Responsive #354.
+- atomic parent identity RED `c6e867c0c7ab3b478782a7578e77322ee2f3c585`; production through `dc8828ba481132d3ca2648ac0f73c154ce8e41cf`; Full #1995 / Responsive #361.
+- legacy compatibility production `5118a6d6fb1deaae59db72d8a667091934141ae0`, corrected historical fixture `23db91a443b7b0c70e1a9bde4431b97f9fc8173e`; Full #1998 / Responsive #364.
+- eligibility characterization `fc85652179522a67334bf5d700aefbc24660ed86`.
+- UI idempotency production family: `0aa44423428ea4e872dea03fa93e16bb664e0023`, `3e1009ca6d9e031c73798bb0c8db479cab54c1ae`, `c9ddf94a174f884f6b60cd5c2beb0b5a19ba723c`, `6ad684210f4c6939be28568021c7a75ff1a2bed8`.
+- penalty policy RED `79dab3a16900eecc082add93c61755a4aef49a99`; production `bc8883093767ccd60980f5395fc2687e125bf0fa`; Full #2006 / Responsive #372.
 
-R4 remaining before COMPLETE:
-1. atomic request identity for concurrent same-user/same-key conversion. Current duplicate `exists()` check precedes source locks and is sequentially safe but not proven concurrent-safe.
-2. legacy `is_cashed=true` compatibility. Historical already-cashed rows must never become eligible again under the new consumption ledger.
-3. explicit behavioral proof that non-convertible and non-participation snapshots are excluded from both info and conversion.
-4. end-to-end UI request idempotency: inspect conversion form/JS and ensure a stable request key is actually sent when browser/UI can retry/double-submit.
-5. penalty semantics remains a product/economic decision: negative Participation/reputation currently affects aggregate points but not necessarily positive convertible capacity. Do not silently impose a new economic rule; surface for decision if it blocks R4 Definition of Done.
-6. after the above, Full Validation on final R4 checkpoint and update this handoff.
+Final R4 invariant suite includes:
+- `ParticipationConversionLedgerContractTest`
+- `ParticipationConversionBehaviorTest`
+- `ParticipationConversionAtomicIdentityTest`
+- `ParticipationConversionLegacyCompatibilityTest`
+- `ParticipationConversionEligibilityTest`
+- `ParticipationConversionUiIdempotencyContractTest`
+- `ParticipationConversionPenaltySemanticsTest`
 
 ## R5 — Bootstrap + Outcome Participation Catalogue & Runtime Wiring
 
@@ -172,26 +180,29 @@ Includes final legacy migration policy, semantic labels/grouping, user/admin tra
 - [x] R1 — Rule Control Plane & Runtime Source of Truth
 - [x] R2 — Core Policy Dimensions, Convertibility & Admin Control Plane
 - [ ] R3 — Event Idempotency, Anti-Farming & Correct Recipients — major core GREEN, closure items remain
-- [ ] R4 — Financial Conversion Ledger & Consumption Safety — current priority
+- [x] R4 — Financial Conversion Ledger & Consumption Safety
 - [ ] R5 — Bootstrap + Outcome Participation Catalogue & Runtime Wiring
 - [ ] R6 — Migration, Transparency UI, Admin/UAT & Final Constitution
 
-## Launch-oriented status as of Full #1988
+## Launch-oriented status after R4 close
 
-- earning/storing/displaying points can remain enabled for initial launch evaluation.
-- conversion Points → Active should remain policy-disabled until R4 is fully closed and final financial invariant validation is green.
-- not every desired future activity is wired yet; current catalogue is functional but incomplete.
+- earning/storing/displaying points can remain enabled.
+- R4 no longer requires keeping conversion disabled for ledger-safety reasons.
+- this does **not** automatically mean conversion should be enabled at launch: final launch decision should now classify the remaining R3 anti-farming/idempotency debts and R5/R6 catalogue/transparency/UAT work as blockers vs post-launch work.
+- current catalogue is functional but incomplete; not every desired future activity is wired.
 
 ## Constitutional/economic invariants
 
 - conversion never mints Bahar.
 - only the member's own Dim can be activated.
-- only transaction snapshots explicitly `convertible=true` and in economic participation eligibility may enter conversion.
+- only transaction snapshots explicitly `convertible=true` and in economic Participation eligibility may enter conversion.
 - conversion consumes exact points; no ratio remainder may disappear.
 - duplicate/retry/cross-user idempotency must not double-consume or cross-contaminate monetary events.
-- historical audit trail must survive migration/hardening.
+- same-user/same-key requests have one canonical parent conversion identity.
+- historical audit trail survives ledger hardening; legacy unknown remainder is not guessed.
 - policy edits affect future awards, not historical eligibility snapshots.
+- non-Participation reputation penalties do not silently alter Participation economic entitlement.
 
 ## New-chat continuation prompt
 
-«ادامه سخت‌سازی Reputation/Participation Points را روی branch `agent/economic-system-current-integration` انجام بده. ابتدا `docs/REPUTATION_PARTICIPATION_POINTS_AUDIT.fa.md`، `docs/superpowers/plans/2026-08-31-reputation-participation-points-hardening.md` و `docs/REPUTATION_PARTICIPATION_POINTS_HANDOFF.fa.md` را از branch فعلی بخوان. آخرین financial checkpoint ثبت‌شده در handoff را با branch head و CI روز تطبیق بده. R4 را قبل از تصمیم launch کامل کن: atomic same-user conversion identity، legacy is_cashed compatibility، eligibility behavior و UI idempotency را با TDD ببند؛ penalty semantics را بدون تصمیم محصول تغییر نده. هیچ merge به main انجام نده.»
+«ادامه سخت‌سازی Reputation/Participation Points را روی branch `agent/economic-system-current-integration` انجام بده. ابتدا `docs/REPUTATION_PARTICIPATION_POINTS_AUDIT.fa.md`، `docs/superpowers/plans/2026-08-31-reputation-participation-points-hardening.md` و `docs/REPUTATION_PARTICIPATION_POINTS_HANDOFF.fa.md` را از branch فعلی بخوان و با head/CI روز reconcile کن. R4 بسته و GREEN است؛ آن را بدون evidence جدید بازطراحی نکن. مرحله بعد ابتدا launch-readiness را با debtهای باز R3 و scopeهای R5/R6 طبقه‌بندی کن، سپس طبق تصمیم launch ادامه بده. هیچ merge به main انجام نده.»
