@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Events\PrivateMessageCreated;
+use App\Events\PrivateMessagesRead;
 use App\Models\PrivateConversation;
 use App\Models\PrivateMessage;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class PrivateChatController extends Controller
 {
@@ -17,6 +19,12 @@ class PrivateChatController extends Controller
         $conversations = PrivateConversation::whereHas('users', function ($query) use ($currentUserId) {
             $query->where('users.id', $currentUserId);
         })
+        ->withCount([
+            'messages as unread_count' => function ($query) use ($currentUserId) {
+                $query->where('sender_id', '!=', $currentUserId)
+                    ->whereNull('read_at');
+            },
+        ])
         ->with([
             'users:id,first_name,last_name,avatar',
             'messages' => function ($query) {
@@ -35,10 +43,9 @@ class PrivateChatController extends Controller
     public function show(PrivateConversation $conversation)
     {
         $currentUserId = (int) auth()->id();
-        $isParticipant = $conversation->users()->where('users.id', $currentUserId)->exists();
-        if (!$isParticipant) {
-            abort(403, 'Unauthorized');
-        }
+        $this->ensureParticipant($conversation, $currentUserId);
+
+        $this->markIncomingMessagesRead($conversation, $currentUserId);
 
         $conversation->load('users:id,first_name,last_name,avatar');
 
@@ -135,6 +142,27 @@ class PrivateChatController extends Controller
             $messages = $messages->sortBy('id')->values();
         }
 
+        // Fetching current/new messages is an active-view signal. Historical
+        // pagination must not manufacture a new read transition.
+        if (!$beforeId) {
+            $incomingIds = $messages
+                ->where('sender_id', '!=', $currentUserId)
+                ->whereNull('read_at')
+                ->pluck('id');
+
+            if ($incomingIds->isNotEmpty()) {
+                $readAt = $this->markMessageIdsRead($conversation, $currentUserId, $incomingIds);
+
+                if ($readAt) {
+                    $messages->each(function (PrivateMessage $message) use ($incomingIds, $readAt) {
+                        if ($incomingIds->contains($message->id)) {
+                            $message->read_at = $readAt;
+                        }
+                    });
+                }
+            }
+        }
+
         return response()->json([
             'messages' => $messages->map(fn($m) => $this->formatMessage($m)),
             'has_more' => $messages->count() >= $limit,
@@ -151,10 +179,22 @@ class PrivateChatController extends Controller
 
         $conversation->load('users:id,first_name,last_name,avatar');
 
+        $lastReadOutgoingMessageId = $conversation->messages()
+            ->where('sender_id', $currentUserId)
+            ->whereNotNull('read_at')
+            ->max('id');
+
+        $unreadIncomingCount = $conversation->messages()
+            ->where('sender_id', '!=', $currentUserId)
+            ->whereNull('read_at')
+            ->count();
+
         return response()->json([
             'conversation' => [
                 'id' => $conversation->id,
                 'status' => $conversation->status,
+                'last_read_outgoing_message_id' => $lastReadOutgoingMessageId ? (int) $lastReadOutgoingMessageId : null,
+                'unread_incoming_count' => $unreadIncomingCount,
                 'users' => $conversation->users->map(fn($u) => [
                     'id' => $u->id,
                     'name' => trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')),
@@ -162,6 +202,68 @@ class PrivateChatController extends Controller
                 ]),
             ],
         ]);
+    }
+
+    private function ensureParticipant(PrivateConversation $conversation, int $currentUserId): void
+    {
+        $isParticipant = $conversation->users()->where('users.id', $currentUserId)->exists();
+
+        if (!$isParticipant) {
+            abort(403, 'Unauthorized');
+        }
+    }
+
+    private function markIncomingMessagesRead(PrivateConversation $conversation, int $currentUserId): int
+    {
+        $messageIds = $conversation->messages()
+            ->where('sender_id', '!=', $currentUserId)
+            ->whereNull('read_at')
+            ->pluck('id');
+
+        return $this->markMessageIdsRead($conversation, $currentUserId, $messageIds) ? $messageIds->count() : 0;
+    }
+
+    private function markMessageIdsRead(
+        PrivateConversation $conversation,
+        int $currentUserId,
+        Collection $messageIds
+    ): ?\Illuminate\Support\Carbon {
+        if ($messageIds->isEmpty()) {
+            return null;
+        }
+
+        $readAt = now();
+        $updated = PrivateMessage::query()
+            ->where('private_conversation_id', $conversation->id)
+            ->whereIn('id', $messageIds)
+            ->where('sender_id', '!=', $currentUserId)
+            ->whereNull('read_at')
+            ->update(['read_at' => $readAt]);
+
+        if ($updated < 1) {
+            return null;
+        }
+
+        $readIds = PrivateMessage::query()
+            ->where('private_conversation_id', $conversation->id)
+            ->whereIn('id', $messageIds)
+            ->where('sender_id', '!=', $currentUserId)
+            ->where('read_at', $readAt)
+            ->pluck('id')
+            ->map(fn($id) => (int) $id)
+            ->values()
+            ->all();
+
+        if ($readIds !== []) {
+            event(new PrivateMessagesRead(
+                $conversation,
+                $readIds,
+                $currentUserId,
+                $readAt->toIso8601String()
+            ));
+        }
+
+        return $readAt;
     }
 
     private function formatMessage($message): array
@@ -195,6 +297,8 @@ class PrivateChatController extends Controller
             ],
             'created_at' => $message->created_at,
             'created_at_relative' => $message->created_at->diffForHumans(),
+            'read_at' => $message->read_at,
+            'is_read' => $message->read_at !== null,
             'reaction_summary' => $reactionSummary,
         ];
     }

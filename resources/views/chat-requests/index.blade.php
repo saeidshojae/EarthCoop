@@ -1,23 +1,105 @@
 @extends('layouts.unified')
 
-@section('title', 'چت خصوصی - ' . config('app.name', 'EarthCoop'))
+@section('title', 'گفتگوهای خصوصی - ' . config('app.name', 'EarthCoop'))
+
+@push('styles')
+<style>
+    .pm-page {
+        direction: rtl;
+        width: 100%;
+        margin: 0;
+        padding: .65rem .55rem 1rem;
+    }
+
+    .pm-page-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+        padding: .2rem .35rem .8rem;
+    }
+
+    .pm-page-title {
+        margin: 0;
+        color: #1d2924;
+        font-size: 1.12rem;
+        font-weight: 850;
+        line-height: 1.55;
+    }
+
+    .pm-page-back {
+        display: inline-flex;
+        width: 44px;
+        height: 44px;
+        flex: 0 0 44px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #e0e7e3;
+        border-radius: 14px;
+        background: #fff;
+        color: #526159;
+        text-decoration: none;
+    }
+
+    .pm-page-back:focus-visible {
+        outline: 3px solid rgba(35, 122, 86, .23);
+        outline-offset: 2px;
+    }
+
+    .pm-page-panel {
+        position: relative;
+    }
+
+    .pm-page-loading {
+        position: absolute;
+        inset: 0;
+        z-index: 40;
+        display: flex;
+        min-height: 160px;
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: 4rem;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, .78);
+        backdrop-filter: blur(3px);
+    }
+
+    .pm-page-loading.d-none { display: none !important; }
+
+    @media (min-width: 769px) {
+        .pm-page {
+            max-width: 940px;
+            margin: 0 auto;
+            padding: 1.5rem 1rem 2rem;
+        }
+
+        .pm-page-heading {
+            padding: 0 .15rem .9rem;
+        }
+
+        .pm-page-title {
+            font-size: 1.3rem;
+        }
+    }
+</style>
+@endpush
 
 @section('content')
 @php
     $section = $section ?? request()->query('section', 'requests');
+    $box = $box ?? request()->query('box', 'received');
     $status = $status ?? request()->query('status', 'pending');
 @endphp
-<div class="container py-4">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <div>
-            <h4 class="mb-0">پنل چت خصوصی</h4>
-            <p class="text-muted mb-0">درخواست‌های چت و گفتگوهای خصوصی خود را از یک صفحه مدیریت کنید.</p>
-        </div>
-        <a href="{{ route('profile.show') }}" class="btn btn-outline-secondary btn-sm">بازگشت به پروفایل</a>
-    </div>
+<section class="pm-page" data-private-messaging-page aria-labelledby="private-messaging-page-title">
+    <header class="pm-page-heading">
+        <h1 class="pm-page-title" id="private-messaging-page-title">گفتگوهای خصوصی</h1>
+        <a href="{{ route('profile.show') }}" class="pm-page-back" aria-label="بازگشت به پروفایل">
+            <i class="fas fa-arrow-right" aria-hidden="true"></i>
+        </a>
+    </header>
 
-    <div id="chat-panel-body-wrapper" class="position-relative">
-        <div id="chat-panel-loading" class="d-none position-absolute top-0 start-0 w-100 h-100 bg-white bg-opacity-75 d-flex justify-content-center align-items-center" style="z-index: 20;">
+    <div id="chat-panel-body-wrapper" class="pm-page-panel">
+        <div id="chat-panel-loading" class="pm-page-loading d-none" aria-live="polite" aria-busy="true">
             <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">در حال بارگذاری...</span>
             </div>
@@ -27,7 +109,7 @@
             @include('chat-requests.partials.body')
         </div>
     </div>
-</div>
+</section>
 @endsection
 
 @push('scripts')
@@ -79,7 +161,7 @@
                     attachLinkHandlers();
                 })
                 .catch(error => {
-                    console.error('Failed to load chat panel content:', error);
+                    console.error('Failed to load private messaging content:', error);
                 })
                 .finally(() => {
                     showLoading(false);
@@ -102,7 +184,7 @@
 
         attachLinkHandlers();
 
-        window.addEventListener('popstate', function(event) {
+        window.addEventListener('popstate', function() {
             fetchTabContent(window.location.href, false);
         });
     });

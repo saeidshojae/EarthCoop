@@ -19,6 +19,7 @@ class PrivateMessage extends Model
      */
     protected $casts = [
         'is_pinned' => 'boolean',
+        'read_at' => 'datetime',
     ];
 
     public function conversation(): BelongsTo
