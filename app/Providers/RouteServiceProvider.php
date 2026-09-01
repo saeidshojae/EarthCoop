@@ -45,6 +45,12 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware(['web', \App\Http\Middleware\Authenticate::class])
                 ->group(base_path('routes/groups-index.php'));
 
+            // Canonical member invitation issuance intentionally shadows the
+            // legacy ProfileController action. The public non-member invitation
+            // request routes in web.php remain available for launch.
+            Route::middleware('web')
+                ->group(base_path('routes/member-invitations.php'));
+
             // Election compatibility/canonical routes intentionally load after
             // web.php so legacy responsibility-response endpoints are shadowed
             // by the E7 read-only confirmation + CSRF-protected POST flow.
