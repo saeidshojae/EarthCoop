@@ -18,4 +18,20 @@ class PrivateMessagingUiContractTest extends TestCase
         $this->assertStringNotContainsString('چت‌های خصوصی', $view);
         $this->assertStringNotContainsString('list-group-item-action private-chat-card mb-3', $view);
     }
+
+    public function test_request_inbox_uses_single_mobile_first_received_sent_flow(): void
+    {
+        $view = file_get_contents(resource_path('views/chat-requests/partials/body.blade.php'));
+
+        $this->assertStringContainsString('data-private-messaging-shell', $view);
+        $this->assertStringContainsString('گفتگوها', $view);
+        $this->assertStringContainsString('درخواست‌ها', $view);
+        $this->assertStringContainsString('دریافتی', $view);
+        $this->assertStringContainsString('ارسالی', $view);
+        $this->assertStringContainsString("'box' => 'received'", $view);
+        $this->assertStringContainsString("'box' => 'sent'", $view);
+        $this->assertStringContainsString('@media (min-width: 769px)', $view);
+        $this->assertStringNotContainsString('col-lg-6', $view);
+        $this->assertStringNotContainsString('درخواست‌های چت', $view);
+    }
 }
