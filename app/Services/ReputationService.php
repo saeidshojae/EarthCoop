@@ -44,7 +44,7 @@ class ReputationService
         }
     }
 
-    public function applyAction(User $user, string $actionKey, array $meta = [], $referenceId = null, $source = null, ?string $eventKey = null)
+    public function applyAction(User $user, string $actionKey, array $meta = [], $referenceId = null, $source = null, ?string $eventKey = null, ?bool $convertibleOverride = null)
     {
         if ($eventKey !== null && UserPointTransaction::where('event_key', $eventKey)->exists()) {
             return null;
@@ -64,6 +64,7 @@ class ReputationService
             $dimension = (string) config("reputation.dimensions.{$actionKey}", 'participation');
             $convertible = (bool) config("reputation.convertible.{$actionKey}", false);
         }
+        $convertible = $convertibleOverride ?? $convertible;
         if ($weight === 0) return null;
 
         if ($weight > 0 && $dailyCap !== null) {
