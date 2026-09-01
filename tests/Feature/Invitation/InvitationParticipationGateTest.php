@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\MonetaryService;
 use App\Services\InvitationLifecycleService;
+use App\Services\MembershipFeeStatusService;
+use App\Services\MembershipParticipationEligibilityService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -22,17 +24,24 @@ class InvitationParticipationGateTest extends TestCase
         $user = $this->completeMember();
         $service = app(InvitationLifecycleService::class);
 
+        $this->assertSame(10, $service->quota());
         $this->assertFalse($service->canIssueMemberInvitation($user));
 
         $account = app(AccountService::class)->createMainAccountForUser($user->id, 'Invitation gate');
         app(MonetaryService::class)->issueMembershipCredit($account, $user->id);
+        $this->assertSame(10, $service->quota());
         $this->assertFalse($service->canIssueMemberInvitation($user->fresh()));
 
         $this->actingAs($user)
             ->post(route('najm-bahar.membership-fee.pay'), ['payment_source' => 'dim'])
             ->assertRedirect(route('najm-bahar.dashboard'));
 
-        $this->assertTrue($service->canIssueMemberInvitation($user->fresh()));
+        $freshUser = $user->fresh();
+        $this->assertSame(10, $service->quota());
+        $this->assertTrue(app(MembershipFeeStatusService::class)->hasPaidCurrentMembershipFee($freshUser));
+        $this->assertTrue(app(MembershipParticipationEligibilityService::class)->isEligible($freshUser));
+        $this->assertTrue($service->isEligibleMember($freshUser));
+        $this->assertTrue($service->canIssueMemberInvitation($freshUser));
     }
 
     public function test_invitation_page_contract_uses_dynamic_policy_values_and_membership_ctas(): void
