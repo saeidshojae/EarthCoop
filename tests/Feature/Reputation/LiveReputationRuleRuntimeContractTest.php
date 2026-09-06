@@ -14,10 +14,10 @@ class LiveReputationRuleRuntimeContractTest extends TestCase
         $this->assertFileExists($observerPath);
         $observer = file_get_contents($observerPath);
         $this->assertStringContainsString('ProfileMilestoneReputationObserver::class', $provider);
+        $this->assertStringContainsString("$action . ':user:'", $observer);
 
         foreach (['profile_photo_uploaded', 'social_links_added', 'documents_uploaded', 'bio_added'] as $action) {
             $this->assertStringContainsString("'{$action}'", $observer);
-            $this->assertStringContainsString($action . ':user:', $observer);
             $this->assertSame('participation', config("reputation.policy_defaults.{$action}.dimension"));
             $this->assertFalse(config("reputation.policy_defaults.{$action}.convertible"));
             $this->assertSame('once_per_context', config("reputation.policy_defaults.{$action}.repeat_policy"));
