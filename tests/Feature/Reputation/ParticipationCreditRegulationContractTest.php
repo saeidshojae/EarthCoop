@@ -8,12 +8,14 @@ class ParticipationCreditRegulationContractTest extends TestCase
 {
     public function test_regulation_surface_is_wired_to_live_runtime_policy_sources(): void
     {
-        $routes = file_get_contents(base_path('routes/web.php'));
+        $routes = file_get_contents(base_path('routes/participation-credit-regulation.php'));
+        $provider = file_get_contents(app_path('Providers/RouteServiceProvider.php'));
         $controller = file_get_contents(app_path('Http/Controllers/ParticipationCreditRegulationController.php'));
         $service = file_get_contents(app_path('Services/ParticipationCreditRegulationService.php'));
         $view = file_get_contents(resource_path('views/participation/credit-regulation.blade.php'));
 
         $this->assertStringContainsString("name('participation.credit-regulation')", $routes);
+        $this->assertStringContainsString("routes/participation-credit-regulation.php", $provider);
         $this->assertStringContainsString('ParticipationCreditRegulationService', $controller);
         $this->assertStringContainsString('ReputationRule::query()', $service);
         $this->assertStringContainsString("config('reputation.weights'", $service);
