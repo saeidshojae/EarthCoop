@@ -393,6 +393,10 @@
                         <span class="reputation-overview__unit">امتیاز</span>
                     </div>
                     <p class="reputation-overview__description">این امتیاز حاصل سابقه فعالیت و مشارکت شما در EarthCoop است و با تبدیل بخشی از امتیاز مشارکت به بهار کاهش نمی‌یابد.</p>
+                    <a href="{{ route('participation.credit-regulation') }}" style="display:inline-flex;align-items:center;gap:.45rem;margin-top:.8rem;padding:.55rem .8rem;border-radius:.7rem;background:#ecfdf5;border:1px solid #a7f3d0;color:#047857;text-decoration:none;font-size:.82rem;font-weight:800;">
+                        <i class="fas fa-book-open" aria-hidden="true"></i>
+                        نظام‌نامه اعتبارات مشارکت
+                    </a>
                 </div>
                 <span class="reputation-level-pill">سطح {{ $reputationLevelLabel }}</span>
             </div>
