@@ -1,5 +1,3 @@
-import '../css/my-participation-mobile.css';
-
 const contributionMobileSchemas = {
     'tab-posts': { primaryIndex: 0 },
     'tab-comments': { primaryIndex: 0 },
