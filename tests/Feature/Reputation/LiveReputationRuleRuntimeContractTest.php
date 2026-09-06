@@ -14,7 +14,7 @@ class LiveReputationRuleRuntimeContractTest extends TestCase
         $this->assertFileExists($observerPath);
         $observer = file_get_contents($observerPath);
         $this->assertStringContainsString('ProfileMilestoneReputationObserver::class', $provider);
-        $this->assertStringContainsString("$action . ':user:'", $observer);
+        $this->assertStringContainsString("\$action . ':user:'", $observer);
 
         foreach (['profile_photo_uploaded', 'social_links_added', 'documents_uploaded', 'bio_added'] as $action) {
             $this->assertStringContainsString("'{$action}'", $observer);
