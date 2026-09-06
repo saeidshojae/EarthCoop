@@ -14,6 +14,7 @@ use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\TransactionService;
 use App\Modules\NajmBahar\Services\MonetaryService;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
+use App\Services\ParticipationPointSummaryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -25,6 +26,7 @@ class NajmBaharController extends Controller
         protected AccountBalanceService $balanceService,
         protected TransactionService $transactionService,
         protected MonetaryService $monetaryService,
+        protected ParticipationPointSummaryService $participationPointSummaryService,
     ) {
     }
 
@@ -162,19 +164,15 @@ class NajmBaharController extends Controller
         $recentTransactions = $this->transactionService->getUserTransactions($user->id, 10);
         $accountIds = $this->transactionService->getUserAccountIds($user->id);
 
-        $userPoint = \App\Models\UserPoint::where('user_id', $user->id)->first();
-        $totalPoints = $userPoint ? $userPoint->points : 0;
-        $userLevel = $userPoint ? $userPoint->level : 'Bronze';
-
-        $cashedPoints = \App\Models\UserPointTransaction::where('user_id', $user->id)
-            ->where('is_cashed', true)
-            ->where('delta', '>', 0)
-            ->sum('delta');
-
-        $uncashedPoints = \App\Models\UserPointTransaction::where('user_id', $user->id)
-            ->where('is_cashed', false)
-            ->where('delta', '>', 0)
-            ->sum('delta');
+        $pointSummary = $this->participationPointSummaryService->forUser((int) $user->id);
+        $totalPoints = $pointSummary['total_points'];
+        $userLevel = $pointSummary['level'];
+        $cashedPoints = $pointSummary['cashed_points'];
+        $uncashedPoints = $pointSummary['remaining_convertible_points'];
+        $convertibleAwardedPoints = $pointSummary['convertible_awarded_points'];
+        $ledgerConsumedPoints = $pointSummary['ledger_consumed_points'];
+        $legacyCashedPoints = $pointSummary['legacy_cashed_points'];
+        $participationReversalPoints = $pointSummary['participation_reversal_points'];
 
         return view('najm-bahar.wallet', compact(
             'account',
@@ -184,16 +182,16 @@ class NajmBaharController extends Controller
             'totalPoints',
             'userLevel',
             'cashedPoints',
-            'uncashedPoints'
+            'uncashedPoints',
+            'convertibleAwardedPoints',
+            'ledgerConsumedPoints',
+            'legacyCashedPoints',
+            'participationReversalPoints'
         ));
     }
 
     private function applyCanonicalWalletBalancesToViewAccount($account, array $walletBalance): void
     {
-        // Compatibility boundary for the legacy Blade. These assignments only
-        // affect the in-memory model used for rendering; nothing is persisted.
-        // They make all legacy `$account->balance*` reads display the canonical
-        // aggregate wallet, including active child/sub-account balances.
         $account->setAttribute('balance', (int) $walletBalance['total']);
         $account->setAttribute('balance_active', (int) $walletBalance['active']);
         $account->setAttribute('balance_faded', (int) $walletBalance['dim']);

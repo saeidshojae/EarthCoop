@@ -6,33 +6,53 @@ use App\Models\ReputationRule;
 use App\Models\User;
 use App\Models\UserPoint;
 use App\Models\UserPointTransaction;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 class ReputationService
 {
     public function addPoints(User $user, int $delta, string $action, array $meta = [], $referenceId = null, $source = null, string $dimension = 'participation', bool $convertible = false, ?string $eventKey = null)
     {
-        return DB::transaction(function () use ($user, $delta, $action, $meta, $referenceId, $source, $dimension, $convertible, $eventKey) {
-            if ($eventKey !== null && UserPointTransaction::where('event_key', $eventKey)->exists()) {
+        try {
+            return DB::transaction(function () use ($user, $delta, $action, $meta, $referenceId, $source, $dimension, $convertible, $eventKey) {
+                if ($eventKey !== null && UserPointTransaction::where('event_key', $eventKey)->exists()) {
+                    return null;
+                }
+
+                $point = UserPoint::firstOrCreate(['user_id' => $user->id], ['points' => 0]);
+                $newBalance = $point->points + $delta;
+                $point->points = $newBalance;
+                $point->level = $this->determineLevel($newBalance);
+                $point->save();
+
+                return UserPointTransaction::create([
+                    'user_id' => $user->id, 'delta' => $delta, 'balance_after' => $newBalance,
+                    'action' => $action, 'dimension' => $dimension, 'convertible' => $convertible,
+                    'source' => $source, 'reference_id' => $referenceId, 'event_key' => $eventKey, 'metadata' => $meta,
+                ]);
+            });
+        } catch (QueryException $e) {
+            if (
+                $eventKey !== null
+                && in_array((string) $e->getCode(), ['23000', '23505'], true)
+                && UserPointTransaction::where('event_key', $eventKey)->exists()
+            ) {
                 return null;
             }
 
-            $point = UserPoint::firstOrCreate(['user_id' => $user->id], ['points' => 0]);
-            $newBalance = $point->points + $delta;
-            $point->points = $newBalance;
-            $point->level = $this->determineLevel($newBalance);
-            $point->save();
-
-            return UserPointTransaction::create([
-                'user_id' => $user->id, 'delta' => $delta, 'balance_after' => $newBalance,
-                'action' => $action, 'dimension' => $dimension, 'convertible' => $convertible,
-                'source' => $source, 'reference_id' => $referenceId, 'event_key' => $eventKey, 'metadata' => $meta,
-            ]);
-        });
+            throw $e;
+        }
     }
 
-    public function applyAction(User $user, string $actionKey, array $meta = [], $referenceId = null, $source = null, ?string $eventKey = null)
+    public function applyAction(User $user, string $actionKey, array $meta = [], $referenceId = null, $source = null, ?string $eventKey = null, ?bool $convertibleOverride = null)
     {
+        // Membership-fee callers predate the canonical event-key argument. Keep the
+        // newest payment controller intact while still making the business event
+        // race-safe and idempotent across retries for the same member/year.
+        if ($eventKey === null && $actionKey === 'membership_fee_paid' && $referenceId !== null) {
+            $eventKey = 'membership_fee_paid:user:' . $user->id . ':year:' . $referenceId;
+        }
+
         if ($eventKey !== null && UserPointTransaction::where('event_key', $eventKey)->exists()) {
             return null;
         }
@@ -51,6 +71,7 @@ class ReputationService
             $dimension = (string) config("reputation.dimensions.{$actionKey}", 'participation');
             $convertible = (bool) config("reputation.convertible.{$actionKey}", false);
         }
+        $convertible = $convertibleOverride ?? $convertible;
         if ($weight === 0) return null;
 
         if ($weight > 0 && $dailyCap !== null) {

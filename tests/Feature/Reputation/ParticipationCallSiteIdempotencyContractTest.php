@@ -21,4 +21,12 @@ class ParticipationCallSiteIdempotencyContractTest extends TestCase
 
         $this->assertStringContainsString("'invite_member:referrer:' . \$referrer->id . ':member:' . \$invitee->id", $source);
     }
+
+    public function test_membership_fee_award_uses_member_and_payment_year_as_stable_business_event_key(): void
+    {
+        $source = file_get_contents(app_path('Services/ReputationService.php'));
+
+        $this->assertStringContainsString("\$actionKey === 'membership_fee_paid'", $source);
+        $this->assertStringContainsString("'membership_fee_paid:user:' . \$user->id . ':year:' . \$referenceId", $source);
+    }
 }

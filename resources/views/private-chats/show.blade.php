@@ -1,593 +1,809 @@
 @extends('layouts.unified')
 
-@section('title', 'چت خصوصی - ' . config('app.name', 'EarthCoop'))
+@section('title', 'گفتگوی خصوصی - ' . config('app.name', 'EarthCoop'))
 
 @push('styles')
 <style>
-    .chat-container {
-        max-width: 800px;
-        margin: 0 auto;
+    .pm-chat-page {
+        --pm-chat-border: #e2e9e5;
+        --pm-chat-muted: #738078;
+        --pm-chat-green: #237a56;
+        --pm-chat-green-dark: #1b6646;
+        --pm-chat-bg: #f4f7f5;
         direction: rtl;
+        width: 100%;
+        min-height: calc(100dvh - 5rem);
+        margin: 0;
+        background: var(--pm-chat-bg);
     }
-    .chat-messages {
-        max-height: 500px;
-        overflow-y: auto;
-        padding: 1rem;
-        background: #f8f9fa;
-        border-radius: 12px;
+
+    .pm-chat-shell {
+        position: relative;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        width: 100%;
+        min-height: calc(100dvh - 5rem);
+        overflow: hidden;
+        background: #fff;
     }
-    .message-bubble {
+
+    .pm-chat-header {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr) 44px;
+        align-items: center;
+        gap: .65rem;
+        min-height: 64px;
+        padding: .55rem .7rem;
+        border-bottom: 1px solid var(--pm-chat-border);
+        background: rgba(255, 255, 255, .97);
+        backdrop-filter: blur(12px);
+    }
+
+    .pm-chat-back,
+    .pm-chat-more {
+        display: inline-flex;
+        width: 44px;
+        height: 44px;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 14px;
+        background: transparent;
+        color: #4f5f56;
+        text-decoration: none;
+    }
+
+    .pm-chat-more {
+        visibility: hidden;
+    }
+
+    .pm-chat-person {
         display: flex;
-        gap: 0.75rem;
-        margin-bottom: 1rem;
-        animation: fadeInUp 0.3s ease;
+        min-width: 0;
+        align-items: center;
+        gap: .65rem;
     }
-    .message-bubble.sent {
-        flex-direction: row-reverse;
-    }
-    .message-avatar {
-        width: 40px;
-        height: 40px;
+
+    .pm-chat-avatar {
+        width: 42px;
+        height: 42px;
+        flex: 0 0 42px;
+        border: 1px solid #dfe7e2;
         border-radius: 50%;
         object-fit: cover;
-        flex-shrink: 0;
+        background: #edf2ef;
     }
-    .message-content {
-        max-width: 70%;
+
+    .pm-chat-person-text {
+        min-width: 0;
     }
-    .message-bubble.sent .message-content {
-        text-align: left;
+
+    .pm-chat-name {
+        display: block;
+        overflow: hidden;
+        color: #1d2924;
+        font-size: .96rem;
+        font-weight: 800;
+        line-height: 1.45;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
-    .message-bubble.received .message-content {
-        background: white;
-        border: 1px solid #e5e7eb;
+
+    .pm-chat-context {
+        display: block;
+        margin-top: .08rem;
+        color: #87938c;
+        font-size: .68rem;
+        line-height: 1.4;
     }
-    .message-bubble.sent .message-content {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-    }
-    .message-text {
-        padding: 0.75rem 1rem;
+
+    .pm-chat-status-message {
+        margin: .55rem .7rem 0;
+        padding: .6rem .75rem;
+        border: 1px solid #d6ebdf;
         border-radius: 12px;
-        font-size: 0.95rem;
-        line-height: 1.5;
+        background: #eef8f2;
+        color: #2a674b;
+        font-size: .8rem;
     }
-    .message-bubble.sent .message-text {
-        border-bottom-right-radius: 4px;
+
+    .pm-chat-timeline-wrap {
+        position: relative;
+        min-height: 0;
+        overflow: hidden;
+        background: var(--pm-chat-bg);
     }
-    .message-bubble.received .message-text {
-        border-bottom-left-radius: 4px;
+
+    .pm-chat-older {
+        position: absolute;
+        top: .55rem;
+        left: 50%;
+        z-index: 12;
+        transform: translateX(-50%);
     }
-    .message-meta {
-        font-size: 0.75rem;
-        margin-top: 0.25rem;
-        opacity: 0.7;
+
+    .pm-chat-older-btn {
+        min-height: 38px;
+        padding: .45rem .8rem;
+        border: 1px solid #dfe7e2;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, .94);
+        color: #526159;
+        font-family: inherit;
+        font-size: .72rem;
+        font-weight: 700;
+        box-shadow: 0 4px 14px rgba(31, 52, 42, .07);
     }
-    
-    /* Message Reactions */
-    .message-reactions-bar {
+
+    .pm-chat-messages {
+        height: 100%;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 1.1rem .7rem 1.5rem;
+        scroll-behavior: smooth;
+        scrollbar-gutter: stable;
+    }
+
+    .pm-message {
+        position: relative;
         display: flex;
-        gap: 4px;
-        margin-top: 4px;
-        flex-wrap: wrap;
+        width: 100%;
+        margin: .22rem 0;
+        align-items: flex-end;
+        gap: .4rem;
     }
-    .message-reaction-chip {
+
+    .pm-message.sent {
+        justify-content: flex-start;
+    }
+
+    .pm-message.received {
+        justify-content: flex-end;
+    }
+
+    .pm-message-avatar {
+        width: 28px;
+        height: 28px;
+        flex: 0 0 28px;
+        margin-bottom: .2rem;
+        border-radius: 50%;
+        object-fit: cover;
+        background: #e6ece8;
+    }
+
+    .pm-message-body {
+        display: flex;
+        max-width: min(84%, 34rem);
+        min-width: 0;
+        flex-direction: column;
+    }
+
+    .pm-message.sent .pm-message-body {
+        align-items: flex-start;
+    }
+
+    .pm-message.received .pm-message-body {
+        align-items: flex-end;
+    }
+
+    .pm-message-sender {
+        margin: 0 .42rem .18rem;
+        color: #7c8982;
+        font-size: .67rem;
+        line-height: 1.3;
+    }
+
+    .pm-message-bubble {
+        max-width: 100%;
+        padding: .58rem .76rem .48rem;
+        border-radius: 17px;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+        font-size: .91rem;
+        line-height: 1.8;
+        box-shadow: 0 1px 2px rgba(28, 45, 37, .04);
+    }
+
+    .pm-message.sent .pm-message-bubble {
+        border-bottom-right-radius: 6px;
+        background: #dff3e7;
+        color: #173c2c;
+    }
+
+    .pm-message.received .pm-message-bubble {
+        border: 1px solid #e3e9e6;
+        border-bottom-left-radius: 6px;
+        background: #fff;
+        color: #25312b;
+    }
+
+    .pm-message-meta-row {
+        display: flex;
+        min-height: 24px;
+        margin: .15rem .25rem 0;
+        align-items: center;
+        gap: .35rem;
+        color: #87938c;
+        font-size: .64rem;
+        line-height: 1;
+    }
+
+    .pm-message-time {
+        white-space: nowrap;
+    }
+
+    .pm-read-receipt {
+        display: inline-flex;
+        min-width: 21px;
+        align-items: center;
+        justify-content: center;
+        color: #8a9690;
+        font-size: .72rem;
+        letter-spacing: -3px;
+        direction: ltr;
+    }
+
+    .pm-read-receipt.is-read {
+        color: var(--pm-chat-green);
+    }
+
+    .pm-message-tools {
+        position: relative;
         display: inline-flex;
         align-items: center;
-        gap: 3px;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.8rem;
+        gap: .1rem;
+    }
+
+    .pm-message-tool {
+        display: inline-flex;
+        width: 30px;
+        height: 30px;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 9px;
+        background: transparent;
+        color: #7c8982;
+        font-size: .75rem;
         cursor: pointer;
-        transition: all 0.2s ease;
-        border: 1px solid transparent;
-        background: #f0f0f0;
     }
-    .message-reaction-chip:hover {
-        border-color: #10b981;
-        background: #e8f5e9;
-    }
-    .message-reaction-chip.active {
-        border-color: #10b981;
-        background: #e8f5e9;
-    }
-    .message-reaction-chip .reaction-count {
-        font-size: 0.7rem;
-        color: #666;
-    }
-    .message-reactions-trigger {
+
+    .pm-reaction-trigger-wrap {
         position: relative;
     }
+
     .reaction-picker {
-        display: none;
         position: absolute;
-        bottom: 100%;
+        bottom: calc(100% + 5px);
         right: 0;
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 6px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        z-index: 100;
-        gap: 2px;
+        z-index: 50;
+        display: none;
+        width: max-content;
+        max-width: calc(100vw - 2rem);
+        padding: .3rem;
+        gap: .1rem;
+        border: 1px solid #e0e7e3;
+        border-radius: 14px;
+        background: #fff;
+        box-shadow: 0 8px 24px rgba(30, 49, 40, .13);
     }
+
     .reaction-picker.show {
         display: flex;
     }
+
     .reaction-picker-btn {
+        display: inline-flex;
         width: 36px;
         height: 36px;
-        display: flex;
+        padding: 0;
         align-items: center;
         justify-content: center;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        font-size: 1.2rem;
-        border: none;
+        border: 0;
+        border-radius: 10px;
         background: transparent;
-    }
-    .reaction-picker-btn:hover {
-        background: #f0f0f0;
-        transform: scale(1.2);
-    }
-    .message-actions-hover {
-        display: none;
-        position: absolute;
-        top: 0;
-        left: 0;
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 4px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        z-index: 50;
-    }
-    .message-bubble:hover .message-actions-hover {
-        display: flex;
-    }
-    .message-bubble.sent:hover .message-actions-hover {
-        right: 0;
-        left: auto;
-    }
-    .message-action-btn {
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 6px;
+        font-size: 1.08rem;
         cursor: pointer;
-        transition: all 0.2s ease;
-        border: none;
-        background: transparent;
-        font-size: 0.9rem;
     }
-    .message-action-btn:hover {
-        background: #f0f0f0;
-    }
+
     .message-reactions-summary {
         display: flex;
-        gap: 4px;
-        margin-top: 4px;
+        max-width: 100%;
+        margin: -.12rem .35rem 0;
         flex-wrap: wrap;
+        gap: .2rem;
+        z-index: 2;
     }
+
     .message-reaction-summary-chip {
         display: inline-flex;
+        min-height: 24px;
+        padding: .16rem .42rem;
         align-items: center;
-        gap: 3px;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
+        gap: .22rem;
+        border: 1px solid #dfe7e2;
+        border-radius: 999px;
+        background: #fff;
+        color: #5f6e66;
+        font-size: .68rem;
         cursor: pointer;
-        transition: all 0.2s ease;
-        border: 1px solid #e5e7eb;
-        background: #f8f9fa;
     }
-    .message-reaction-summary-chip:hover {
-        border-color: #10b981;
-        background: #e8f5e9;
-    }
-    .message-reaction-summary-chip.active {
-        border-color: #10b981;
-        background: #e8f5e9;
-    }
-    
-    /* Report Modal */
-    .report-modal-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 1000;
+
+    .pm-chat-empty {
+        display: flex;
+        min-height: 100%;
+        padding: 4rem 1.25rem;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
+        color: #8a9690;
+        text-align: center;
     }
+
+    .pm-chat-empty i {
+        margin-bottom: .8rem;
+        color: #9fb9ab;
+        font-size: 2rem;
+    }
+
+    .pm-new-message {
+        position: absolute;
+        right: 50%;
+        bottom: .8rem;
+        z-index: 15;
+        display: none;
+        min-height: 38px;
+        padding: .45rem .75rem;
+        transform: translateX(50%);
+        align-items: center;
+        gap: .35rem;
+        border: 0;
+        border-radius: 999px;
+        background: var(--pm-chat-green);
+        color: #fff;
+        font-family: inherit;
+        font-size: .75rem;
+        box-shadow: 0 5px 16px rgba(35, 122, 86, .24);
+    }
+
+    .pm-new-message.active {
+        display: inline-flex;
+    }
+
+    .pm-typing {
+        position: absolute;
+        right: .8rem;
+        bottom: .5rem;
+        z-index: 14;
+        display: none;
+        padding: .32rem .58rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, .93);
+        color: #78857e;
+        font-size: .68rem;
+        box-shadow: 0 2px 8px rgba(28, 45, 37, .05);
+    }
+
+    .pm-typing.active {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+    }
+
+    .pm-chat-composer {
+        position: sticky;
+        bottom: 0;
+        z-index: 30;
+        padding: .5rem .55rem calc(.5rem + env(safe-area-inset-bottom));
+        border-top: 1px solid var(--pm-chat-border);
+        background: rgba(255, 255, 255, .98);
+        backdrop-filter: blur(12px);
+    }
+
+    .pm-composer-form {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 46px;
+        align-items: end;
+        gap: .45rem;
+    }
+
+    .pm-message-input {
+        display: block;
+        width: 100%;
+        min-height: 46px;
+        max-height: 132px;
+        padding: .7rem .82rem;
+        overflow-y: auto;
+        border: 1px solid #dde5e1;
+        border-radius: 16px;
+        outline: 0;
+        background: #f7f9f8;
+        color: #26322c;
+        font: inherit;
+        font-size: .9rem;
+        line-height: 1.55;
+        resize: none;
+    }
+
+    .pm-message-input:focus {
+        border-color: #aacdbb;
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(35, 122, 86, .09);
+    }
+
+    .pm-send-btn {
+        display: inline-flex;
+        width: 46px;
+        height: 46px;
+        padding: 0;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 15px;
+        background: var(--pm-chat-green);
+        color: #fff;
+        cursor: pointer;
+    }
+
+    .pm-send-btn:disabled {
+        opacity: .5;
+        cursor: wait;
+    }
+
+    .pm-chat-back:focus-visible,
+    .pm-message-tool:focus-visible,
+    .reaction-picker-btn:focus-visible,
+    .message-reaction-summary-chip:focus-visible,
+    .pm-chat-older-btn:focus-visible,
+    .pm-new-message:focus-visible,
+    .pm-send-btn:focus-visible {
+        outline: 3px solid rgba(35, 122, 86, .24);
+        outline-offset: 2px;
+    }
+
+    .report-modal-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1100;
+        display: none;
+        padding: 1rem;
+        align-items: flex-end;
+        justify-content: center;
+        background: rgba(18, 29, 24, .52);
+    }
+
     .report-modal-overlay.show {
         display: flex;
     }
+
     .report-modal {
-        background: white;
-        border-radius: 16px;
-        padding: 1.5rem;
-        max-width: 500px;
-        width: 90%;
-        max-height: 80vh;
-        overflow-y: auto;
-    }
-    .report-modal h3 {
-        margin-bottom: 1rem;
-        font-size: 1.1rem;
-        font-weight: 600;
-    }
-    .report-reason-option {
-        display: block;
-        padding: 0.75rem 1rem;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        margin-bottom: 0.5rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    .report-reason-option:hover {
-        border-color: #10b981;
-        background: #f0fdf4;
-    }
-    .report-reason-option input[type="radio"] {
-        margin-left: 0.5rem;
-    }
-    .report-reason-option.selected {
-        border-color: #10b981;
-        background: #e8f5e9;
-    }
-    .chat-input-area {
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
+        width: 100%;
+        max-width: 32rem;
+        max-height: min(82dvh, 42rem);
         padding: 1rem;
-        background: white;
+        overflow-y: auto;
+        border-radius: 22px 22px 16px 16px;
+        background: #fff;
+        box-shadow: 0 22px 60px rgba(15, 28, 21, .2);
     }
-    .chat-input-area textarea {
-        border: none;
-        resize: none;
-        outline: none;
+
+    .report-modal h3 {
+        margin: 0;
+        color: #233029;
+        font-size: 1rem;
+        font-weight: 800;
     }
-    .chat-input-area textarea:focus {
-        box-shadow: none;
-    }
-    .send-btn {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-        border-radius: 50%;
-        width: 44px;
-        height: 44px;
-        display: flex;
+
+    .report-modal-close {
+        display: inline-flex;
+        width: 40px;
+        height: 40px;
         align-items: center;
         justify-content: center;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border: 0;
+        border-radius: 12px;
+        background: #f3f6f4;
+        color: #5d6b64;
     }
-    .send-btn:hover {
-        transform: scale(1.1);
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-    }
-    .send-btn:disabled {
-        opacity: 0.5;
-        transform: none;
-    }
-    .typing-indicator {
-        display: none;
-        padding: 0.5rem 1rem;
-        font-size: 0.85rem;
-        color: #6b7280;
-    }
-    .typing-indicator.active {
-        display: block;
-    }
-    .empty-chat {
-        text-align: center;
-        padding: 3rem 1rem;
-        color: #9ca3af;
-    }
-    .empty-chat i {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-        opacity: 0.5;
-    }
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    .new-message-indicator {
-        display: none;
-        position: absolute;
-        bottom: 80px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #10b981;
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        cursor: pointer;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-        z-index: 10;
-    }
-    .new-message-indicator.active {
-        display: block;
-        animation: bounce 0.5s ease;
-    }
-    @keyframes bounce {
-        0%, 100% { transform: translateX(-50%) translateY(0); }
-        50% { transform: translateX(-50%) translateY(-5px); }
-    }
-    .chat-header-info {
+
+    .report-reason-option {
         display: flex;
+        min-height: 46px;
+        margin-bottom: .45rem;
+        padding: .65rem .75rem;
         align-items: center;
-        gap: 1rem;
+        gap: .55rem;
+        border: 1px solid #e2e8e5;
+        border-radius: 13px;
+        color: #45534b;
+        cursor: pointer;
     }
-    .chat-header-avatar {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        object-fit: cover;
+
+    .report-reason-option.selected {
+        border-color: #b7d6c6;
+        background: #eef7f2;
     }
-    .chat-header-name {
-        font-weight: 600;
-        font-size: 1.1rem;
+
+    .report-description {
+        width: 100%;
+        min-height: 86px;
+        padding: .65rem .75rem;
+        border: 1px solid #dfe6e2;
+        border-radius: 13px;
+        font: inherit;
+        font-size: .85rem;
+        resize: vertical;
     }
-    .chat-header-status {
-        font-size: 0.85rem;
-        color: #6b7280;
+
+    .report-actions {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: .5rem;
+        margin-top: .8rem;
     }
-    .chat-header-status.online {
-        color: #10b981;
+
+    .report-action {
+        min-height: 44px;
+        padding: .55rem .8rem;
+        border: 0;
+        border-radius: 12px;
+        font-family: inherit;
+        font-size: .82rem;
+        font-weight: 750;
     }
-    @media (max-width: 768px) {
-        .message-content {
-            max-width: 85%;
+
+    .report-action--primary { background: var(--pm-chat-green); color: #fff; }
+    .report-action--secondary { background: #f1f4f2; color: #56645d; }
+
+    @media (min-width: 769px) {
+        .pm-chat-page {
+            min-height: auto;
+            padding: 1.25rem 1rem 2rem;
         }
-        .chat-messages {
-            max-height: 400px;
+
+        .pm-chat-shell {
+            max-width: 920px;
+            height: min(78dvh, 820px);
+            min-height: 620px;
+            margin: 0 auto;
+            border: 1px solid var(--pm-chat-border);
+            border-radius: 24px;
+            box-shadow: 0 18px 48px rgba(26, 47, 37, .09);
+        }
+
+        .pm-chat-header {
+            position: relative;
+            padding-inline: 1rem;
+        }
+
+        .pm-chat-messages {
+            padding: 1.4rem 1.25rem 1.7rem;
+        }
+
+        .pm-message-body {
+            max-width: min(66%, 36rem);
+        }
+
+        .pm-message-tools {
+            opacity: .35;
+            transition: opacity .15s ease;
+        }
+
+        .pm-message:hover .pm-message-tools,
+        .pm-message:focus-within .pm-message-tools {
+            opacity: 1;
+        }
+
+        .pm-chat-composer {
+            position: relative;
+            padding: .65rem .8rem;
+        }
+
+        .report-modal-overlay {
+            align-items: center;
+        }
+
+        .report-modal {
+            border-radius: 20px;
         }
     }
 </style>
 @endpush
 
 @section('content')
-<div class="chat-container">
-    @if(session('status'))
-        <div class="alert alert-success" role="alert">
-            {{ session('status') }}
-        </div>
-    @endif
+@php
+    $otherUser = $conversation->users->firstWhere('id', '!=', auth()->id());
+@endphp
+<section class="pm-chat-page" data-private-conversation data-conversation-id="{{ $conversation->id }}">
+    <div class="pm-chat-shell">
+        <header class="pm-chat-header" data-conversation-header>
+            <a href="{{ route('chat-requests.index', ['section' => 'conversations']) }}" class="pm-chat-back" aria-label="بازگشت به گفتگوها">
+                <i class="fas fa-arrow-right" aria-hidden="true"></i>
+            </a>
 
-    <!-- Chat Header -->
-    <div class="card mb-3" style="border-radius: 12px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-        <div class="card-body p-3">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="chat-header-info">
-                    @foreach($conversation->users as $user)
-                        @if($user->id !== auth()->id())
-                            <img src="{{ $user->avatar ? asset('images/users/' . $user->avatar) : asset('images/default-avatar.png') }}" 
-                                 alt="{{ $user->fullName() }}" 
-                                 class="chat-header-avatar">
-                            <div>
-                                <div class="chat-header-name">{{ $user->fullName() }}</div>
-                                <div class="chat-header-status" id="user-status">
-                                    <i class="fas fa-circle text-muted" style="font-size: 8px;"></i>
-                                    <span class="ms-1">در حال بررسی...</span>
-                                </div>
-                            </div>
-                        @endif
-                    @endforeach
+            <div class="pm-chat-person">
+                <img src="{{ $otherUser && $otherUser->avatar ? asset('images/users/' . $otherUser->avatar) : asset('images/default-avatar.png') }}"
+                     alt=""
+                     class="pm-chat-avatar">
+                <div class="pm-chat-person-text">
+                    <span class="pm-chat-name">{{ $otherUser?->fullName() ?? 'گفتگوی خصوصی' }}</span>
+                    <span class="pm-chat-context">گفتگوی خصوصی</span>
                 </div>
-                <a href="{{ route('chat-requests.index') }}" class="btn btn-light btn-sm" style="border-radius: 8px;">
-                    <i class="fas fa-arrow-right"></i>
-                </a>
             </div>
-        </div>
-    </div>
 
-    <!-- Messages Area -->
-    <div class="card mb-3" style="border-radius: 12px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08); position: relative;">
-        @if(!empty($hasMoreMessages) && $hasMoreMessages)
-            <div class="text-center py-2">
-                <button type="button" class="btn btn-sm btn-light" id="load-older-messages-btn">
-                    بارگذاری پیام‌های قدیمی‌تر
-                </button>
-            </div>
+            <button type="button" class="pm-chat-more" tabindex="-1" aria-hidden="true"><i class="fas fa-ellipsis-v"></i></button>
+        </header>
+
+        @if(session('status'))
+            <div class="pm-chat-status-message" role="status">{{ session('status') }}</div>
         @endif
-        <div class="chat-messages" id="chat-messages">
-            @forelse($conversation->messages as $message)
-                <div class="message-bubble {{ $message->sender_id === auth()->id() ? 'sent' : 'received' }}" 
-                     data-message-id="{{ $message->id }}"
-                     data-created-at="{{ $message->created_at->timestamp }}">
-                    @if($message->sender_id !== auth()->id())
-                        <img src="{{ $message->sender->avatar ? asset('images/users/' . $message->sender->avatar) : asset('images/default-avatar.png') }}" 
-                             alt="{{ $message->sender->fullName() }}" 
-                             class="message-avatar">
-                    @endif
-                    <div class="message-content">
-                        @if($message->sender_id !== auth()->id())
-                            <div class="message-sender">{{ $message->sender->fullName() }}</div>
+
+        <div class="pm-chat-timeline-wrap">
+            @if(!empty($hasMoreMessages) && $hasMoreMessages)
+                <div class="pm-chat-older">
+                    <button type="button" class="pm-chat-older-btn" id="load-older-messages-btn">پیام‌های قدیمی‌تر</button>
+                </div>
+            @endif
+
+            <div class="pm-chat-messages" id="chat-messages" aria-live="polite" aria-label="پیام‌های گفتگو">
+                @forelse($conversation->messages as $message)
+                    @php
+                        $isSent = (int) $message->sender_id === (int) auth()->id();
+                        $reactionSummary = $message->reactions->groupBy('reaction_type')->map(function($group) {
+                            return [
+                                'count' => $group->count(),
+                                'users' => $group->map(fn($reaction) => $reaction->user ? $reaction->user->fullName() : '')
+                                    ->filter()->unique()->values()->toArray(),
+                            ];
+                        });
+                    @endphp
+                    <div class="pm-message {{ $isSent ? 'sent' : 'received' }}"
+                         data-message-id="{{ $message->id }}"
+                         data-created-at="{{ $message->created_at->timestamp }}">
+                        @if(!$isSent)
+                            <img src="{{ $message->sender->avatar ? asset('images/users/' . $message->sender->avatar) : asset('images/default-avatar.png') }}"
+                                 alt=""
+                                 class="pm-message-avatar">
                         @endif
-                        <div class="message-text">{{ $message->message }}</div>
-                        
-                        <!-- Reactions Bar -->
-                        <div class="message-reactions-summary" data-message-reactions="{{ $message->id }}">
-                            @php
-                                $reactionSummary = $message->reactions->groupBy('reaction_type')->map(function($group) {
-                                    return [
-                                        'count' => $group->count(),
-                                        'users' => $group->map(fn($reaction) => $reaction->user ? $reaction->user->fullName() : '')
-                                            ->filter()
-                                            ->unique()
-                                            ->values()
-                                            ->toArray(),
-                                    ];
-                                });
-                            @endphp
-                            @foreach($reactionSummary as $reactionType => $data)
-                                @if($data['count'] > 0)
-                                    <button class="message-reaction-summary-chip reaction-chip" 
-                                            data-message-id="{{ $message->id }}"
-                                            data-reaction="{{ $reactionType }}"
-                                            title="{{ implode(', ', $data['users']) }}">
-                                        <span class="reaction-emoji">{{ $reactionType }}</span>
-                                        <span class="reaction-count">{{ $data['count'] }}</span>
-                                    </button>
-                                @endif
-                            @endforeach
-                        </div>
-                        
-                        <div class="message-meta d-flex align-items-center gap-2">
-                            {{ $message->created_at->format('H:i') }}
-                            <!-- Reaction Picker Trigger -->
-                            <div class="message-reactions-trigger">
-                                <button class="message-action-btn reaction-trigger-btn" 
-                                        data-message-id="{{ $message->id }}"
-                                        title="ری‌اکت">
-                                    <i class="far fa-smile"></i>
-                                </button>
-                                <div class="reaction-picker" data-picker-for="{{ $message->id }}">
-                                    @foreach(['👍', '❤️', '😂', '😮', '😢', '🔥', '👎'] as $reaction)
-                                        <button class="reaction-picker-btn" 
+
+                        <div class="pm-message-body">
+                            @if(!$isSent)
+                                <div class="pm-message-sender">{{ $message->sender->fullName() }}</div>
+                            @endif
+
+                            <div class="pm-message-bubble">{{ $message->message }}</div>
+
+                            <div class="message-reactions-summary" data-message-reactions="{{ $message->id }}">
+                                @foreach($reactionSummary as $reactionType => $data)
+                                    @if($data['count'] > 0)
+                                        <button type="button" class="message-reaction-summary-chip reaction-chip"
                                                 data-message-id="{{ $message->id }}"
-                                                data-reaction="{{ $reaction }}"
-                                                title="{{ $reaction }}">
-                                            {{ $reaction }}
+                                                data-reaction="{{ $reactionType }}"
+                                                title="{{ implode(', ', $data['users']) }}">
+                                            <span>{{ $reactionType }}</span>
+                                            <span>{{ $data['count'] }}</span>
                                         </button>
-                                    @endforeach
-                                </div>
+                                    @endif
+                                @endforeach
                             </div>
-                            <!-- Report Button -->
-                            <button class="message-action-btn report-btn" 
-                                    data-message-id="{{ $message->id }}"
-                                    data-message-sender="{{ $message->sender_id }}"
-                                    title="گزارش پیام">
-                                <i class="fas fa-flag"></i>
-                            </button>
+
+                            <div class="pm-message-meta-row">
+                                <time class="pm-message-time" datetime="{{ $message->created_at->toIso8601String() }}">{{ $message->created_at->format('H:i') }}</time>
+
+                                @if($isSent)
+                                    <span class="pm-read-receipt {{ $message->read_at ? 'is-read' : '' }}"
+                                          data-read-receipt
+                                          data-message-id="{{ $message->id }}"
+                                          aria-label="{{ $message->read_at ? 'خوانده شده' : 'ارسال شده' }}">
+                                        {{ $message->read_at ? '✓✓' : '✓' }}
+                                    </span>
+                                @endif
+
+                                <span class="pm-message-tools">
+                                    <span class="pm-reaction-trigger-wrap">
+                                        <button type="button" class="pm-message-tool reaction-trigger-btn" data-message-id="{{ $message->id }}" aria-label="واکنش به پیام">
+                                            <i class="far fa-smile" aria-hidden="true"></i>
+                                        </button>
+                                        <span class="reaction-picker" data-picker-for="{{ $message->id }}">
+                                            @foreach(['👍', '❤️', '😂', '😮', '😢', '🔥', '👎'] as $reaction)
+                                                <button type="button" class="reaction-picker-btn" data-message-id="{{ $message->id }}" data-reaction="{{ $reaction }}" aria-label="واکنش {{ $reaction }}">{{ $reaction }}</button>
+                                            @endforeach
+                                        </span>
+                                    </span>
+                                    @if(!$isSent)
+                                        <button type="button" class="pm-message-tool report-btn"
+                                                data-message-id="{{ $message->id }}"
+                                                data-message-sender="{{ $message->sender_id }}"
+                                                aria-label="گزارش پیام">
+                                            <i class="far fa-flag" aria-hidden="true"></i>
+                                        </button>
+                                    @endif
+                                </span>
+                            </div>
                         </div>
                     </div>
-                    @if($message->sender_id === auth()->id())
-                        <img src="{{ auth()->user()->avatar ? asset('images/users/' . auth()->user()->avatar) : asset('images/default-avatar.png') }}" 
-                             alt="{{ auth()->user()->fullName() }}" 
-                             class="message-avatar">
-                    @endif
-                </div>
-            @empty
-                <div class="empty-chat">
-                    <i class="fas fa-comments"></i>
-                    <p>هنوز پیامی ارسال نشده است</p>
-                    <small>اولین پیام را ارسال کنید!</small>
-                </div>
-            @endforelse
-        </div>
-        
-        <!-- New Message Indicator -->
-        <div class="new-message-indicator" id="new-message-indicator" onclick="scrollToBottom()">
-            <i class="fas fa-arrow-down"></i>
-            <span id="new-message-count">0</span> پیام جدید
-        </div>
-    </div>
-
-    <!-- Typing Indicator -->
-    <div class="typing-indicator" id="typing-indicator">
-        <i class="fas fa-spinner fa-spin"></i>
-        <span class="ms-1">در حال نوشتن...</span>
-    </div>
-
-    <!-- Chat Input Area -->
-    <div class="chat-input-area">
-        <form id="chat-form" action="{{ route('private-chats.send', $conversation->id) }}" method="POST">
-            @csrf
-            <div class="d-flex gap-2 align-items-end">
-                <div class="flex-grow-1">
-                    <textarea name="message" 
-                              id="message-input"
-                              class="form-control" 
-                              rows="2" 
-                              placeholder="پیام خود را بنویسید..."
-                              required>{{ old('message') }}</textarea>
-                    @error('message')
-                        <div class="text-danger small mt-1">{{ $message }}</div>
-                    @enderror
-                </div>
-                <button type="submit" class="send-btn" id="send-btn">
-                    <i class="fas fa-paper-plane" style="color: white;"></i>
-                </button>
+                @empty
+                    <div class="pm-chat-empty">
+                        <i class="far fa-comments" aria-hidden="true"></i>
+                        <div>هنوز پیامی ردوبدل نشده است.</div>
+                        <small>می‌توانید اولین پیام را بفرستید.</small>
+                    </div>
+                @endforelse
             </div>
-        </form>
+
+            <button type="button" class="pm-new-message" id="new-message-indicator">
+                <i class="fas fa-arrow-down" aria-hidden="true"></i>
+                <span><span id="new-message-count">0</span> پیام جدید</span>
+            </button>
+
+            <div class="pm-typing" id="typing-indicator" aria-live="polite">
+                <span>در حال نوشتن</span><span aria-hidden="true">…</span>
+            </div>
+        </div>
+
+        <footer class="pm-chat-composer" data-conversation-composer>
+            <form id="chat-form" class="pm-composer-form" action="{{ route('private-chats.send', $conversation->id) }}" method="POST">
+                @csrf
+                <textarea name="message"
+                          id="message-input"
+                          class="pm-message-input"
+                          rows="1"
+                          maxlength="5000"
+                          autocomplete="off"
+                          aria-label="متن پیام"
+                          placeholder="پیام بنویسید…"
+                          required>{{ old('message') }}</textarea>
+                <button type="submit" class="pm-send-btn" id="send-btn" aria-label="ارسال پیام">
+                    <i class="fas fa-paper-plane" aria-hidden="true"></i>
+                </button>
+            </form>
+            @error('message')
+                <div class="text-danger small mt-1" role="alert">{{ $message }}</div>
+            @enderror
+        </footer>
     </div>
-    
-    <!-- Report Modal -->
-    <div class="report-modal-overlay" id="report-modal">
+
+    <div class="report-modal-overlay" id="report-modal" role="dialog" aria-modal="true" aria-labelledby="report-modal-title">
         <div class="report-modal">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3 class="m-0">گزارش پیام</h3>
-                <button class="btn btn-sm btn-light" onclick="closeReportModal()">
-                    <i class="fas fa-times"></i>
+                <h3 id="report-modal-title">گزارش پیام</h3>
+                <button type="button" class="report-modal-close" data-close-report aria-label="بستن">
+                    <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
             </div>
+
             <form id="report-form">
                 @csrf
                 <input type="hidden" name="message_id" id="report-message-id">
-                
-                <p class="text-muted small mb-3">لطفاً دلیل گزارش خود را انتخاب کنید:</p>
-                
+                <p class="text-muted small mb-3">دلیل گزارش را انتخاب کنید:</p>
+
                 <div class="report-reasons">
-                    <label class="report-reason-option">
-                        <input type="radio" name="reason" value="spam" required>
-                        اسپم و تبلیغات
-                    </label>
-                    <label class="report-reason-option">
-                        <input type="radio" name="reason" value="harassment">
-                        آزار و اذیت
-                    </label>
-                    <label class="report-reason-option">
-                        <input type="radio" name="reason" value="inappropriate_content">
-                        محتوای نامناسب
-                    </label>
-                    <label class="report-reason-option">
-                        <input type="radio" name="reason" value="abuse">
-                        توهین
-                    </label>
-                    <label class="report-reason-option">
-                        <input type="radio" name="reason" value="other">
-                        سایر
-                    </label>
+                    <label class="report-reason-option"><input type="radio" name="reason" value="spam" required> اسپم و تبلیغات</label>
+                    <label class="report-reason-option"><input type="radio" name="reason" value="harassment"> آزار و اذیت</label>
+                    <label class="report-reason-option"><input type="radio" name="reason" value="inappropriate_content"> محتوای نامناسب</label>
+                    <label class="report-reason-option"><input type="radio" name="reason" value="abuse"> توهین</label>
+                    <label class="report-reason-option"><input type="radio" name="reason" value="other"> سایر</label>
                 </div>
-                
-                <div class="mt-3">
-                    <textarea name="description" class="form-control" rows="3" placeholder="توضیحات بیشتر (اختیاری)"></textarea>
-                </div>
-                
-                <div class="d-flex gap-2 mt-3">
-                    <button type="submit" class="btn btn-success flex-grow-1" id="report-submit-btn">
-                        <i class="fas fa-paper-plane"></i>
-                        ارسال گزارش
-                    </button>
-                    <button type="button" class="btn btn-light" onclick="closeReportModal()">
-                        انصراف
-                    </button>
+
+                <textarea name="description" class="report-description" maxlength="1000" placeholder="توضیحات بیشتر (اختیاری)"></textarea>
+
+                <div class="report-actions">
+                    <button type="submit" class="report-action report-action--primary" id="report-submit-btn">ارسال گزارش</button>
+                    <button type="button" class="report-action report-action--secondary" data-close-report>انصراف</button>
                 </div>
             </form>
-            
-            <div id="report-success" class="text-center mt-3" style="display: none;">
-                <i class="fas fa-check-circle text-success" style="font-size: 3rem;"></i>
-                <p class="mt-2 text-success">گزارش شما با موفقیت ثبت شد و توسط مدیریت بررسی خواهد شد.</p>
+
+            <div id="report-success" class="text-center py-3" style="display:none" role="status">
+                <i class="fas fa-check-circle text-success fa-2x" aria-hidden="true"></i>
+                <p class="mt-2 mb-0 text-success">گزارش ثبت شد و توسط مدیریت بررسی خواهد شد.</p>
             </div>
         </div>
     </div>
-</div>
+</section>
 @endsection
 
 @push('scripts')
@@ -601,68 +817,82 @@ document.addEventListener('DOMContentLoaded', function() {
     const newMessageIndicator = document.getElementById('new-message-indicator');
     const newMessageCount = document.getElementById('new-message-count');
     const loadOlderMessagesBtn = document.getElementById('load-older-messages-btn');
-    
+    const reportModal = document.getElementById('report-modal');
+    const reportForm = document.getElementById('report-form');
+
     const conversationId = {{ $conversation->id }};
     const currentUserId = {{ auth()->id() }};
-    
+    const messagesUrl = @json(route('private-chats.messages', $conversation->id));
+    const sendUrl = @json(route('private-chats.send', $conversation->id));
+    const reactionUrl = @json(route('messages.reactions.store'));
+    const reportUrl = @json(route('private-chats.report'));
+    const usersAssetBase = @json(asset('images/users'));
+    const defaultAvatar = @json(asset('images/default-avatar.png'));
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
     let lastMessageId = {{ $conversation->messages->max('id') ?? 0 }};
-    let newMessagesCount = 0;
+    let newMessagesCountValue = 0;
     let isAtBottom = true;
     let pollingInterval = null;
     let typingTimeout = null;
     let loadingOlderMessages = false;
     let echoChannel = null;
-    
-    // Scroll to bottom on load
-    scrollToBottom();
-    
-    // Check if user is at bottom
+
+    if (!chatMessages || !chatForm || !messageInput || !sendBtn) {
+        return;
+    }
+
+    function scrollToBottom(behavior = 'auto') {
+        chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior });
+        newMessageIndicator?.classList.remove('active');
+        newMessagesCountValue = 0;
+        if (newMessageCount) newMessageCount.textContent = '0';
+    }
+
+    requestAnimationFrame(() => scrollToBottom('auto'));
+
     chatMessages.addEventListener('scroll', function() {
         const threshold = 100;
         isAtBottom = (chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight) < threshold;
-        
-        if (isAtBottom && newMessagesCount > 0) {
-            newMessageIndicator.classList.remove('active');
-            newMessagesCount = 0;
+        if (isAtBottom && newMessagesCountValue > 0) {
+            newMessageIndicator?.classList.remove('active');
+            newMessagesCountValue = 0;
+            if (newMessageCount) newMessageCount.textContent = '0';
         }
     });
-    
-    // Form submission with AJAX
-    chatForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
+
+    newMessageIndicator?.addEventListener('click', () => scrollToBottom('smooth'));
+
+    chatForm.addEventListener('submit', function(event) {
+        event.preventDefault();
         const message = messageInput.value.trim();
         if (!message) return;
-        
+
         sendBtn.disabled = true;
-        
-        fetch('{{ route('private-chats.send', $conversation->id) }}', {
+        fetch(sendUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'X-CSRF-TOKEN': csrfToken,
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({ message: message })
+            body: JSON.stringify({ message })
         })
-        .then(response => response.json())
+        .then(async response => {
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'Send failed');
+            return data;
+        })
         .then(data => {
-            if (data.success) {
-                // Add message to chat
-                addMessageToChat(data.message, true);
-                
-                // Clear input
-                messageInput.value = '';
-                
-                // Scroll to bottom
-                scrollToBottom();
-                
-                // Reset last message ID
-                lastMessageId = data.message.id;
-            }
+            if (!data.success) return;
+            addMessageToChat(data.message, true);
+            lastMessageId = Math.max(lastMessageId, Number(data.message.id) || 0);
+            messageInput.value = '';
+            resizeComposer();
+            scrollToBottom('smooth');
         })
         .catch(error => {
-            console.error('Error sending message:', error);
+            console.error('Error sending private message:', error);
             alert('خطا در ارسال پیام. لطفاً دوباره تلاش کنید.');
         })
         .finally(() => {
@@ -670,86 +900,77 @@ document.addEventListener('DOMContentLoaded', function() {
             messageInput.focus();
         });
     });
-    
-    // Add message to chat UI
+
+    function receiptHtml(messageData, isSent) {
+        if (!isSent) return '';
+        const isRead = Boolean(messageData.is_read || messageData.read_at);
+        return `<span class="pm-read-receipt ${isRead ? 'is-read' : ''}" data-read-receipt data-message-id="${messageData.id}" aria-label="${isRead ? 'خوانده شده' : 'ارسال شده'}">${isRead ? '✓✓' : '✓'}</span>`;
+    }
+
     function addMessageToChat(messageData, isSent, prepend = false) {
-        // Remove empty chat message
-        const emptyChat = chatMessages.querySelector('.empty-chat');
-        if (emptyChat) {
-            emptyChat.remove();
-        }
-        
-        const existingMessageEl = chatMessages.querySelector(`[data-message-id="${messageData.id}"]`);
-        if (existingMessageEl) {
-            if (messageData.reaction_summary) {
-                updateReactionUI(messageData.id, messageData.reaction_summary);
-            }
+        const emptyChat = chatMessages.querySelector('.pm-chat-empty');
+        if (emptyChat) emptyChat.remove();
+
+        const existing = chatMessages.querySelector(`[data-message-id="${messageData.id}"]`);
+        if (existing) {
+            if (messageData.reaction_summary) updateReactionUI(messageData.id, messageData.reaction_summary);
+            if (isSent && (messageData.is_read || messageData.read_at)) markReceiptRead(messageData.id);
             return;
         }
 
         const messageEl = document.createElement('div');
-        messageEl.className = `message-bubble ${isSent ? 'sent' : 'received'}`;
+        messageEl.className = `pm-message ${isSent ? 'sent' : 'received'}`;
         messageEl.dataset.messageId = messageData.id;
-        messageEl.dataset.createdAt = new Date(messageData.created_at).getTime() / 1000;
-        
-        const avatarUrl = messageData.sender.avatar 
-            ? `{{ asset('images/users') }}/${messageData.sender.avatar}` 
-            : '{{ asset('images/default-avatar.png') }}';
+        messageEl.dataset.createdAt = String(new Date(messageData.created_at).getTime() / 1000);
 
-        const reactionSummaryHtml = buildReactionSummaryHtml(messageData.reaction_summary, messageData.id);
-        
+        const avatarUrl = messageData.sender.avatar ? `${usersAssetBase}/${messageData.sender.avatar}` : defaultAvatar;
+        const reactions = buildReactionSummaryHtml(messageData.reaction_summary || {}, messageData.id);
+        const reportButton = !isSent ? `<button type="button" class="pm-message-tool report-btn" data-message-id="${messageData.id}" data-message-sender="${messageData.sender.id}" aria-label="گزارش پیام"><i class="far fa-flag" aria-hidden="true"></i></button>` : '';
+
         messageEl.innerHTML = `
-            ${!isSent ? `<img src="${avatarUrl}" alt="${messageData.sender.name}" class="message-avatar">` : ''}
-            <div class="message-content">
-                ${!isSent ? `<div class="message-sender">${messageData.sender.name}</div>` : ''}
-                <div class="message-text">${escapeHtml(messageData.message)}</div>
-                ${reactionSummaryHtml}
-                <div class="message-meta d-flex align-items-center gap-2">
-                    ${formatTime(messageData.created_at)}
-                    <div class="message-reactions-trigger">
-                        <button class="message-action-btn reaction-trigger-btn" 
-                                data-message-id="${messageData.id}"
-                                title="ری‌اکت">
-                            <i class="far fa-smile"></i>
-                        </button>
-                        <div class="reaction-picker" data-picker-for="${messageData.id}">
-                            ${['👍', '❤️', '😂', '😮', '😢', '🔥', '👎'].map(reaction => `
-                                <button class="reaction-picker-btn" 
-                                        data-message-id="${messageData.id}"
-                                        data-reaction="${reaction}"
-                                        title="${reaction}">
-                                    ${reaction}
-                                </button>
-                            `).join('')}
-                        </div>
-                    </div>
-                    <button class="message-action-btn report-btn" 
-                            data-message-id="${messageData.id}"
-                            data-message-sender="${messageData.sender.id}"
-                            title="گزارش پیام">
-                        <i class="fas fa-flag"></i>
-                    </button>
+            ${!isSent ? `<img src="${avatarUrl}" alt="" class="pm-message-avatar">` : ''}
+            <div class="pm-message-body">
+                ${!isSent ? `<div class="pm-message-sender">${escapeHtml(messageData.sender.name)}</div>` : ''}
+                <div class="pm-message-bubble">${escapeHtml(messageData.message)}</div>
+                ${reactions}
+                <div class="pm-message-meta-row">
+                    <span class="pm-message-time">${formatTime(messageData.created_at)}</span>
+                    ${receiptHtml(messageData, isSent)}
+                    <span class="pm-message-tools">
+                        <span class="pm-reaction-trigger-wrap">
+                            <button type="button" class="pm-message-tool reaction-trigger-btn" data-message-id="${messageData.id}" aria-label="واکنش به پیام"><i class="far fa-smile" aria-hidden="true"></i></button>
+                            <span class="reaction-picker" data-picker-for="${messageData.id}">
+                                ${['👍','❤️','😂','😮','😢','🔥','👎'].map(reaction => `<button type="button" class="reaction-picker-btn" data-message-id="${messageData.id}" data-reaction="${reaction}" aria-label="واکنش ${reaction}">${reaction}</button>`).join('')}
+                            </span>
+                        </span>
+                        ${reportButton}
+                    </span>
                 </div>
-            </div>
-            ${isSent ? `<img src="${avatarUrl}" alt="${messageData.sender.name}" class="message-avatar">` : ''}
-        `;
+            </div>`;
 
         if (prepend) {
             chatMessages.insertBefore(messageEl, chatMessages.firstChild);
         } else {
             chatMessages.appendChild(messageEl);
         }
-        
-        // Auto scroll if at bottom and message appended
+
         if (!prepend && isAtBottom) {
-            scrollToBottom();
+            scrollToBottom('smooth');
         } else if (!prepend) {
-            newMessagesCount++;
-            newMessageCount.textContent = newMessagesCount;
-            newMessageIndicator.classList.add('active');
+            newMessagesCountValue++;
+            if (newMessageCount) newMessageCount.textContent = String(newMessagesCountValue);
+            newMessageIndicator?.classList.add('active');
         }
     }
-    
+
+    function buildReactionSummaryHtml(reactions, messageId) {
+        const entries = Object.entries(reactions || {});
+        return `<div class="message-reactions-summary" data-message-reactions="${messageId}">${entries.map(([type, data]) => `
+            <button type="button" class="message-reaction-summary-chip reaction-chip" data-message-id="${messageId}" data-reaction="${type}" title="${escapeHtml((data.users || []).join(', '))}">
+                <span>${type}</span><span>${data.count}</span>
+            </button>`).join('')}</div>`;
+    }
+
     function subscribeToPrivateChat() {
         if (!window.Echo) {
             startPolling();
@@ -758,36 +979,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             echoChannel = window.Echo.private(`private-chat.${conversationId}`);
-
             echoChannel.listen('.private-message.created', function(event) {
                 const msg = event.message;
-
-                if (!msg || !msg.id) {
-                    return;
-                }
-
-                addMessageToChat(msg, msg.sender.id === currentUserId);
-                lastMessageId = Math.max(lastMessageId, msg.id);
+                if (!msg || !msg.id) return;
+                addMessageToChat(msg, Number(msg.sender.id) === Number(currentUserId));
+                lastMessageId = Math.max(lastMessageId, Number(msg.id) || 0);
             });
 
             echoChannel.listen('.private-message.reactions.updated', function(event) {
-                if (!event || !event.message_id) {
-                    return;
-                }
-
-                updateReactionUI(event.message_id, event.reactions || {});
+                if (event?.message_id) updateReactionUI(event.message_id, event.reactions || {});
             });
 
             echoChannel.listenForWhisper('typing', function(payload) {
-                if (!payload || payload.user_id === currentUserId) {
-                    return;
-                }
-
-                typingIndicator.classList.add('active');
+                if (!payload || Number(payload.user_id) === Number(currentUserId) || document.hidden) return;
+                typingIndicator?.classList.add('active');
                 clearTimeout(typingTimeout);
-                typingTimeout = setTimeout(function() {
-                    typingIndicator.classList.remove('active');
-                }, 1400);
+                typingTimeout = setTimeout(() => typingIndicator?.classList.remove('active'), 1400);
             });
 
             if (pollingInterval) {
@@ -800,395 +1007,227 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function buildReactionSummaryHtml(reactions = {}, messageId) {
-        const entries = Object.entries(reactions || {});
-        if (!entries.length) {
-            return '';
-        }
-
-        return `
-            <div class="message-reactions-summary" data-message-reactions="${messageId}">
-                ${entries.map(([reactionType, data]) => `
-                    <button class="message-reaction-summary-chip reaction-chip" 
-                            data-message-id="${messageId}"
-                            data-reaction="${reactionType}"
-                            title="${(data.users || []).join(', ')}">
-                        <span class="reaction-emoji">${reactionType}</span>
-                        <span class="reaction-count">${data.count}</span>
-                    </button>
-                `).join('')}
-            </div>
-        `;
-    }
-    
-    // Poll for new messages
-    function startPolling() {
-        pollingInterval = setInterval(function() {
-            if (window.Echo && echoChannel) {
-                return;
-            }
-
-            fetch(`{{ route('private-chats.messages', $conversation->id) }}?after_id=${lastMessageId}`, {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.messages && data.messages.length > 0) {
-                    data.messages.forEach(function(msg) {
-                        if (msg.id > lastMessageId) {
-                            lastMessageId = msg.id;
-                        }
-                        addMessageToChat(msg, msg.sender.id === currentUserId);
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error polling messages:', error);
-            });
-        }, 3000); // Poll every 3 seconds
-    }
-    
-    if (window.Echo) {
-        subscribeToPrivateChat();
-    } else {
-        startPolling();
-    }
-
-    if (loadOlderMessagesBtn) {
-        loadOlderMessagesBtn.addEventListener('click', function() {
-            loadOlderMessagesBtn.disabled = true;
-            loadOlderMessages();
-        });
-    }
-    
-    // Stop polling when leaving page
-    window.addEventListener('beforeunload', function() {
-        if (pollingInterval) {
-            clearInterval(pollingInterval);
-        }
-    });
-    
-    // Helper functions
-    function scrollToBottom() {
-        chatMessages.scrollTo({
-            top: chatMessages.scrollHeight,
-            behavior: 'smooth'
-        });
-        newMessageIndicator.classList.remove('active');
-        newMessagesCount = 0;
-    }
-    
-    function formatTime(timestamp) {
-        const date = new Date(timestamp);
-        return date.getHours().toString().padStart(2, '0') + ':' + 
-               date.getMinutes().toString().padStart(2, '0');
-    }
-    
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-    
-    function loadOlderMessages() {
-        if (loadingOlderMessages) {
-            return;
-        }
-
-        const firstMessage = chatMessages.querySelector('.message-bubble');
-        if (!firstMessage) {
-            loadOlderMessagesBtn.disabled = false;
-            return;
-        }
-
-        const beforeId = firstMessage.dataset.messageId;
-        if (!beforeId) {
-            loadOlderMessagesBtn.disabled = false;
-            return;
-        }
-
-        loadingOlderMessages = true;
-
-        fetch(`{{ route('private-chats.messages', $conversation->id) }}?before_id=${beforeId}&limit=50`, {
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            }
+    function fetchNewMessages() {
+        if (document.hidden) return;
+        fetch(`${messagesUrl}?after_id=${lastMessageId}`, {
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
         })
         .then(response => response.json())
         .then(data => {
-            if (data.messages && data.messages.length > 0) {
-                data.messages.forEach(function(msg) {
-                    addMessageToChat(msg, msg.sender.id === currentUserId, true);
-                });
-            }
+            (data.messages || []).forEach(msg => {
+                lastMessageId = Math.max(lastMessageId, Number(msg.id) || 0);
+                addMessageToChat(msg, Number(msg.sender.id) === Number(currentUserId));
+            });
+        })
+        .catch(error => console.error('Error polling private messages:', error));
+    }
 
-            if (!data.has_more && loadOlderMessagesBtn) {
-                loadOlderMessagesBtn.style.display = 'none';
-            }
+    function startPolling() {
+        if (pollingInterval) return;
+        pollingInterval = setInterval(function() {
+            if (window.Echo && echoChannel) return;
+            fetchNewMessages();
+        }, 3000);
+    }
+
+    if (window.Echo) subscribeToPrivateChat(); else startPolling();
+
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden && (!window.Echo || !echoChannel)) fetchNewMessages();
+    });
+
+    loadOlderMessagesBtn?.addEventListener('click', loadOlderMessages);
+
+    function loadOlderMessages() {
+        if (loadingOlderMessages) return;
+        const firstMessage = chatMessages.querySelector('.pm-message');
+        if (!firstMessage?.dataset.messageId) return;
+
+        loadingOlderMessages = true;
+        loadOlderMessagesBtn.disabled = true;
+        const oldHeight = chatMessages.scrollHeight;
+
+        fetch(`${messagesUrl}?before_id=${firstMessage.dataset.messageId}&limit=50`, {
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
         })
-        .catch(error => {
-            console.error('Error loading older messages:', error);
+        .then(response => response.json())
+        .then(data => {
+            const messages = data.messages || [];
+            [...messages].reverse().forEach(msg => addMessageToChat(msg, Number(msg.sender.id) === Number(currentUserId), true));
+            chatMessages.scrollTop += chatMessages.scrollHeight - oldHeight;
+            if (!data.has_more && loadOlderMessagesBtn) loadOlderMessagesBtn.style.display = 'none';
         })
+        .catch(error => console.error('Error loading older private messages:', error))
         .finally(() => {
             loadingOlderMessages = false;
-            if (loadOlderMessagesBtn) {
-                loadOlderMessagesBtn.disabled = false;
-            }
+            if (loadOlderMessagesBtn) loadOlderMessagesBtn.disabled = false;
         });
     }
 
-    // Auto-resize textarea
-    messageInput.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = (this.scrollHeight) + 'px';
-        
-        typingIndicator.classList.add('active');
-        clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(function() {
-            typingIndicator.classList.remove('active');
-        }, 1200);
+    function resizeComposer() {
+        messageInput.style.height = 'auto';
+        messageInput.style.height = `${Math.min(messageInput.scrollHeight, 132)}px`;
+    }
 
+    messageInput.addEventListener('input', function() {
+        resizeComposer();
+        // Only the remote participant should see a typing indicator.
         if (window.Echo && echoChannel) {
-            echoChannel.whisper('typing', {
-                user_id: currentUserId,
-            });
+            echoChannel.whisper('typing', { user_id: currentUserId });
         }
     });
-    
-    // Enter key to send (Shift+Enter for new line)
-    messageInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            chatForm.dispatchEvent(new Event('submit'));
+
+    messageInput.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            chatForm.requestSubmit();
         }
     });
-    
-    // ========== Message Reactions ==========
-    const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '👎'];
-    
-    // Toggle reaction picker visibility
-    document.addEventListener('click', function(e) {
-        // Reaction picker toggle
-        const triggerBtn = e.target.closest('.reaction-trigger-btn');
-        if (triggerBtn) {
-            e.stopPropagation();
-            const messageId = triggerBtn.dataset.messageId;
-            const picker = document.querySelector(`.reaction-picker[data-picker-for="${messageId}"]`);
-            
-            // Close all other pickers
-            document.querySelectorAll('.reaction-picker.show').forEach(p => {
-                if (p !== picker) p.classList.remove('show');
+
+    function formatTime(timestamp) {
+        const date = new Date(timestamp);
+        return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function escapeHtml(value) {
+        const div = document.createElement('div');
+        div.textContent = value ?? '';
+        return div.innerHTML;
+    }
+
+    function markReceiptRead(messageId) {
+        const receipt = document.querySelector(`[data-read-receipt][data-message-id="${messageId}"]`);
+        if (!receipt) return;
+        receipt.classList.add('is-read');
+        receipt.textContent = '✓✓';
+        receipt.setAttribute('aria-label', 'خوانده شده');
+    }
+
+    document.addEventListener('click', function(event) {
+        const trigger = event.target.closest('.reaction-trigger-btn');
+        if (trigger) {
+            event.stopPropagation();
+            const picker = document.querySelector(`.reaction-picker[data-picker-for="${trigger.dataset.messageId}"]`);
+            document.querySelectorAll('.reaction-picker.show').forEach(item => {
+                if (item !== picker) item.classList.remove('show');
             });
-            
-            picker.classList.toggle('show');
+            picker?.classList.toggle('show');
             return;
         }
-        
-        // Close picker when clicking outside
-        if (!e.target.closest('.reaction-picker') && !e.target.closest('.reaction-trigger-btn')) {
-            document.querySelectorAll('.reaction-picker.show').forEach(p => p.classList.remove('show'));
-        }
-    });
-    
-    // Reaction picker button click
-    document.addEventListener('click', function(e) {
-        const reactionBtn = e.target.closest('.reaction-picker-btn');
-        if (reactionBtn) {
-            e.stopPropagation();
-            const messageId = reactionBtn.dataset.messageId;
-            const reactionType = reactionBtn.dataset.reaction;
-            toggleReaction(messageId, reactionType);
-            
-            // Close picker
-            document.querySelectorAll('.reaction-picker.show').forEach(p => p.classList.remove('show'));
+
+        const reactionButton = event.target.closest('.reaction-picker-btn, .reaction-chip');
+        if (reactionButton) {
+            event.stopPropagation();
+            toggleReaction(reactionButton.dataset.messageId, reactionButton.dataset.reaction);
+            document.querySelectorAll('.reaction-picker.show').forEach(item => item.classList.remove('show'));
             return;
         }
-        
-        // Existing reaction chip click (toggle)
-        const chipBtn = e.target.closest('.reaction-chip');
-        if (chipBtn) {
-            const messageId = chipBtn.dataset.messageId;
-            const reactionType = chipBtn.dataset.reaction;
-            toggleReaction(messageId, reactionType);
+
+        if (!event.target.closest('.reaction-picker')) {
+            document.querySelectorAll('.reaction-picker.show').forEach(item => item.classList.remove('show'));
         }
     });
-    
-    // Toggle reaction on message
+
     function toggleReaction(messageId, reactionType) {
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-        
-        // Check if user already has this reaction
-        const existingChip = document.querySelector(`.reaction-chip[data-message-id="${messageId}"][data-reaction="${reactionType}"]`);
-        const userHasReaction = existingChip !== null;
-        
-        fetch('{{ route('messages.reactions.store') }}', {
+        fetch(reactionUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': csrfToken,
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({
-                message_id: messageId,
-                reaction_type: reactionType
-            })
+            body: JSON.stringify({ message_id: messageId, reaction_type: reactionType })
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                updateReactionUI(messageId, data.reactions);
-            }
+            if (data.success) updateReactionUI(messageId, data.reactions || {});
         })
-        .catch(error => {
-            console.error('Error toggling reaction:', error);
-        });
+        .catch(error => console.error('Error toggling reaction:', error));
     }
-    
-    // Update reaction UI for a message
+
     function updateReactionUI(messageId, reactions) {
         const container = document.querySelector(`.message-reactions-summary[data-message-reactions="${messageId}"]`);
         if (!container) return;
-        
-        container.innerHTML = '';
-        
-        if (Object.keys(reactions).length === 0) return;
-        
-        Object.entries(reactions).forEach(([reactionType, data]) => {
-            if (data.count > 0) {
-                const chip = document.createElement('button');
-                chip.className = 'message-reaction-summary-chip reaction-chip';
-                chip.dataset.messageId = messageId;
-                chip.dataset.reaction = reactionType;
-                chip.title = data.users.join(', ');
-                chip.innerHTML = `
-                    <span class="reaction-emoji">${reactionType}</span>
-                    <span class="reaction-count">${data.count}</span>
-                `;
-                container.appendChild(chip);
-            }
-        });
+        container.outerHTML = buildReactionSummaryHtml(reactions || {}, messageId);
     }
-    
-    // ========== Message Report ==========
+
     let currentReportMessageId = null;
-    let currentReportMessageSender = null;
-    
-    // Open report modal
-    document.addEventListener('click', function(e) {
-        const reportBtn = e.target.closest('.report-btn');
-        if (reportBtn) {
-            e.stopPropagation();
-            currentReportMessageId = reportBtn.dataset.messageId;
-            currentReportMessageSender = reportBtn.dataset.messageSender;
-            
-            // Prevent reporting own messages
-            if (currentReportMessageSender == currentUserId) {
-                alert('شما نمی‌توانید از پیام خود گزارش دهید');
-                return;
-            }
-            
+
+    document.addEventListener('click', function(event) {
+        const reportButton = event.target.closest('.report-btn');
+        if (reportButton) {
+            event.stopPropagation();
+            if (Number(reportButton.dataset.messageSender) === Number(currentUserId)) return;
+            currentReportMessageId = reportButton.dataset.messageId;
             document.getElementById('report-message-id').value = currentReportMessageId;
-            document.getElementById('report-modal').classList.add('show');
-            document.getElementById('report-form').style.display = 'block';
+            reportForm.style.display = 'block';
             document.getElementById('report-success').style.display = 'none';
-            document.getElementById('report-form').reset();
-            document.querySelectorAll('.report-reason-option').forEach(o => o.classList.remove('selected'));
-        }
-    });
-    
-    // Close report modal
-    window.closeReportModal = function() {
-        document.getElementById('report-modal').classList.remove('show');
-    };
-    
-    // Report reason selection
-    document.addEventListener('click', function(e) {
-        const reasonOption = e.target.closest('.report-reason-option');
-        if (reasonOption) {
-            document.querySelectorAll('.report-reason-option').forEach(o => o.classList.remove('selected'));
-            reasonOption.classList.add('selected');
-            const radio = reasonOption.querySelector('input[type="radio"]');
-            if (radio) radio.checked = true;
-        }
-    });
-    
-    // Report form submission
-    document.getElementById('report-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const messageId = document.getElementById('report-message-id').value;
-        const reason = document.querySelector('input[name="reason"]:checked');
-        const description = document.querySelector('textarea[name="description"]').value;
-        
-        if (!reason) {
-            alert('لطفاً دلیل گزارش خود را انتخاب کنید');
+            reportForm.reset();
+            document.querySelectorAll('.report-reason-option').forEach(option => option.classList.remove('selected'));
+            reportModal.classList.add('show');
+            reportModal.querySelector('input[name="reason"]')?.focus();
             return;
         }
-        
-        const submitBtn = document.getElementById('report-submit-btn');
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> در حال ارسال...';
-        
-        fetch('{{ route('private-chats.report') }}', {
+
+        if (event.target.closest('[data-close-report]')) closeReportModal();
+    });
+
+    function closeReportModal() {
+        reportModal?.classList.remove('show');
+    }
+
+    reportModal?.addEventListener('click', function(event) {
+        if (event.target === reportModal) closeReportModal();
+    });
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && reportModal?.classList.contains('show')) closeReportModal();
+    });
+
+    document.addEventListener('change', function(event) {
+        if (!event.target.matches('.report-reason-option input[type="radio"]')) return;
+        document.querySelectorAll('.report-reason-option').forEach(option => option.classList.remove('selected'));
+        event.target.closest('.report-reason-option')?.classList.add('selected');
+    });
+
+    reportForm?.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const reason = reportForm.querySelector('input[name="reason"]:checked');
+        const description = reportForm.querySelector('textarea[name="description"]')?.value || '';
+        if (!reason || !currentReportMessageId) return;
+
+        const submitButton = document.getElementById('report-submit-btn');
+        submitButton.disabled = true;
+
+        fetch(reportUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'X-CSRF-TOKEN': csrfToken,
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({
-                message_id: messageId,
-                reason: reason.value,
-                description: description
-            })
+            body: JSON.stringify({ message_id: currentReportMessageId, reason: reason.value, description })
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                document.getElementById('report-form').style.display = 'none';
-                document.getElementById('report-success').style.display = 'block';
-                setTimeout(closeReportModal, 2000);
-            } else {
-                alert(data.error || 'خطا در ارسال گزارش');
-            }
+            if (!data.success) throw new Error(data.error || 'Report failed');
+            reportForm.style.display = 'none';
+            document.getElementById('report-success').style.display = 'block';
+            setTimeout(closeReportModal, 1700);
         })
         .catch(error => {
-            console.error('Error reporting message:', error);
+            console.error('Error reporting private message:', error);
             alert('خطا در ارسال گزارش. لطفاً دوباره تلاش کنید.');
         })
-        .finally(() => {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> ارسال گزارش';
-        });
+        .finally(() => { submitButton.disabled = false; });
     });
-    
-    // Close modal on overlay click
-    document.getElementById('report-modal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeReportModal();
+
+    window.addEventListener('beforeunload', function() {
+        if (pollingInterval) clearInterval(pollingInterval);
+        if (window.Echo && echoChannel && typeof window.Echo.leave === 'function') {
+            window.Echo.leave(`private-chat.${conversationId}`);
         }
     });
-    
-    // Update reaction UI for dynamically added messages
-    window.updateMessageReactions = function(messageEl, reactions) {
-        const messageId = messageEl.dataset.messageId;
-        let container = messageEl.querySelector('.message-reactions-summary');
-        
-        if (!container) {
-            // Create container if it doesn't exist (for AJAX added messages)
-            const metaEl = messageEl.querySelector('.message-meta');
-            container = document.createElement('div');
-            container.className = 'message-reactions-summary';
-            container.dataset.messageReactions = messageId;
-            metaEl.parentNode.insertBefore(container, metaEl);
-        }
-        
-        updateReactionUI(messageId, reactions || {});
-    };
 });
 </script>
 @endpush

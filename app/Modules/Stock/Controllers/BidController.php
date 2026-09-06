@@ -29,7 +29,7 @@ class BidController extends Controller
                 $bid=Bid::create($data);
                 try {
                     $reputation=app(\App\Services\ReputationService::class); $user=\App\Models\User::find($data['user_id']);
-                    if($user)$reputation->applyAction($user,'bid_placed',['auction_id'=>$auctionId,'bid_id'=>$bid->id],$bid->id,'stock.bid');
+                    if($user)$reputation->applyAction($user,'bid_placed',['auction_id'=>$auctionId,'bid_id'=>$bid->id],$bid->id,'stock.bid','bid_placed:bid:' . $bid->id . ':user:' . $user->id);
                 } catch(\Exception $e){ \Log::warning('Reputation bid_placed failed (BidController): '.$e->getMessage()); }
                 return redirect()->back()->with('success','پیشنهاد شما ثبت شد');
             });

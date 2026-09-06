@@ -5,6 +5,7 @@ return [
     'weights' => [
         'email_verified' => 50,
         'profile_completed' => 30,
+        // Latest launch policy: a completed invitation earns 100 participation points.
         'invite_member' => 100,
         'membership_fee_paid' => 12,
         'post_created' => 10,
@@ -19,19 +20,17 @@ return [
         'report_received' => -10,
         'bid_canceled' => -15,
         'fraud' => -100,
-        // Profile-related optional fields
         'profile_photo_uploaded' => 10,
         'social_links_added' => 5,
         'documents_uploaded' => 20,
         'bio_added' => 5,
 
-        // Group polls & elections
+        // Group polls, systemic election outcomes & verified governance outcomes.
         'poll_created' => 5,
         'poll_participated' => 2,
-        'election_participated' => 5,
-        'election_candidate' => 10,
         'elected_inspector' => 50,
         'elected_manager' => 100,
+        'professional_referral_completed' => 10,
     ],
 
     // Policy defaults are used only when a rule is first bootstrapped into the database.
@@ -45,6 +44,41 @@ return [
         'membership_fee_paid' => [
             'dimension' => 'participation',
             'convertible' => true,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'profile_photo_uploaded' => [
+            'dimension' => 'participation',
+            'convertible' => false,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'social_links_added' => [
+            'dimension' => 'participation',
+            'convertible' => false,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'documents_uploaded' => [
+            'dimension' => 'participation',
+            'convertible' => false,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'bio_added' => [
+            'dimension' => 'participation',
+            'convertible' => false,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'report_received' => [
+            'dimension' => 'reliability',
+            'convertible' => false,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'bid_canceled' => [
+            'dimension' => 'reliability',
+            'convertible' => false,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'fraud' => [
+            'dimension' => 'reliability',
+            'convertible' => false,
             'repeat_policy' => 'once_per_context',
         ],
         'post_liked' => [
@@ -67,9 +101,33 @@ return [
             'convertible' => true,
             'repeat_policy' => 'once_per_context',
         ],
+        'poll_created' => [
+            'dimension' => 'participation',
+            'convertible' => true,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'poll_participated' => [
+            'dimension' => 'participation',
+            'convertible' => true,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'elected_manager' => [
+            'dimension' => 'participation',
+            'convertible' => false,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'elected_inspector' => [
+            'dimension' => 'participation',
+            'convertible' => false,
+            'repeat_policy' => 'once_per_context',
+        ],
+        'professional_referral_completed' => [
+            'dimension' => 'participation',
+            'convertible' => false,
+            'repeat_policy' => 'once_per_context',
+        ],
     ],
 
-    // Tier thresholds
     'tiers' => [
         'Bronze' => 0,
         'Silver' => 200,
@@ -77,18 +135,20 @@ return [
         'Platinum' => 5000,
     ],
 
-    // Daily caps to prevent abuse (per action-key)
+    // Daily caps are awarded points over a rolling day, not event counts.
     'daily_caps' => [
+        'post_created' => 50,
+        'comment_created' => 20,
         'post_liked' => 20,
         'post_upvoted' => 50,
         'comment_liked' => 20,
         'comment_upvoted' => 100,
         'bid_placed' => 500,
-        // limit poll participation abuse
+        'poll_created' => 25,
         'poll_participated' => 100,
+        'professional_referral_completed' => 50,
     ],
 
-    // Decay settings (monthly percentage to remove)
     'decay' => [
         'enabled' => false,
         'monthly_percent' => 5,

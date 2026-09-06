@@ -43,12 +43,29 @@ const loadNajmBaharRuntime = () => {
     if (hasReputationConversion) importFeature(() => import("./najm-bahar-conversion-idempotency.js"), "Najm Bahar conversion idempotency");
 };
 
+const loadPrivateMessagingRuntime = () => {
+    if (!document.querySelector('[data-private-conversation]')) return;
+    importFeature(() => import("./private-messaging-read-receipts.js"), "private messaging read receipts");
+    importFeature(() => import("./private-messaging-reaction-picker.js"), "private messaging reaction picker");
+};
+
+const loadMyParticipationRuntime = () => {
+    if (!document.querySelector('#tab-posts, #tab-comments, #tab-replies, #tab-reactions, #tab-polls, #tab-votes')) return;
+    importFeature(() => import("./my-participation-mobile.js"), "My Participation mobile UX");
+};
+
 const loadSwiperRuntime = () => {
     if (!document.querySelector('swiper-container')) return;
     importFeature(async () => { const { register } = await import("swiper/element/bundle"); register(); }, "Swiper");
 };
 
-const loadPageScopedRuntime = () => { loadNajmHodaRuntime(); loadNajmBaharRuntime(); loadSwiperRuntime(); };
+const loadPageScopedRuntime = () => {
+    loadNajmHodaRuntime();
+    loadNajmBaharRuntime();
+    loadPrivateMessagingRuntime();
+    loadMyParticipationRuntime();
+    loadSwiperRuntime();
+};
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadPageScopedRuntime, { once: true }); else loadPageScopedRuntime();
 
 const localDevelopmentHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);

@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Modules\Governance\Models\AgendaItem;
 use App\Modules\Governance\Models\ProposalReferral;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ProfessionalReferralService
 {
@@ -72,7 +73,7 @@ class ProfessionalReferralService
             throw new \RuntimeException('Referral must be accepted before professional review can complete.');
         }
 
-        return DB::transaction(function () use ($referral, $actor, $assessment, $responseNotes) {
+        $completed = DB::transaction(function () use ($referral, $actor, $assessment, $responseNotes) {
             $referral->update([
                 'status' => 'completed',
                 'completed_by' => $actor->id,
@@ -84,6 +85,36 @@ class ProfessionalReferralService
             $referral->agendaItem()->update(['status' => 'referral_completed']);
             return $referral->fresh();
         }, 3);
+
+        $this->awardCompletedReferralParticipation($completed, $actor);
+
+        return $completed;
+    }
+
+    private function awardCompletedReferralParticipation(ProposalReferral $completed, User $actor): void
+    {
+        try {
+            app(\App\Services\ReputationService::class)->applyAction(
+                $actor,
+                'professional_referral_completed',
+                [
+                    'referral_id' => (int) $completed->id,
+                    'proposal_id' => (int) $completed->proposal_id,
+                    'agenda_item_id' => (int) $completed->agenda_item_id,
+                    'source_group_id' => (int) $completed->source_group_id,
+                    'target_group_id' => (int) $completed->target_group_id,
+                ],
+                $completed->id,
+                'governance.professional_referral',
+                'professional_referral_completed:referral:' . $completed->id
+            );
+        } catch (\Throwable $exception) {
+            Log::warning('professional_referral_reputation_failed', [
+                'referral_id' => (int) $completed->id,
+                'user_id' => (int) $actor->id,
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
 
     private function assertManagerOrInspector(Group $group, User $user): GroupUser

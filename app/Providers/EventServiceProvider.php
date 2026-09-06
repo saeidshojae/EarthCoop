@@ -92,6 +92,9 @@ class EventServiceProvider extends ServiceProvider
             \App\Listeners\SendElectionFinishedNotifications::class,
             \App\Listeners\CaptureNajmHodaRuntimeInput::class,
         ],
+        \App\Events\Elections\ElectionAppointmentApplied::class => [
+            \App\Listeners\AwardElectionAppointmentParticipation::class,
+        ],
         \App\Events\CandidateAccepted::class => [\App\Listeners\SendCandidateAcceptedNotifications::class],
         \App\Events\CommentCreated::class => [
             \App\Listeners\SendCommentCreatedNotifications::class,
@@ -106,6 +109,7 @@ class EventServiceProvider extends ServiceProvider
         \App\Events\BidCancelled::class => [
             \App\Listeners\SendBidCancelledNotifications::class,
             \App\Listeners\CaptureNajmHodaStockRuntimeInput::class,
+            \App\Listeners\AwardBidCancellationReputation::class,
         ],
         \App\Events\WalletSettled::class => [
             \App\Listeners\SendWalletSettledNotifications::class,
@@ -140,6 +144,11 @@ class EventServiceProvider extends ServiceProvider
     public function boot()
     {
         User::observe(FounderUserObserver::class);
+        User::observe(\App\Observers\ProfileMilestoneReputationObserver::class);
+        \App\Models\Report::observe(\App\Observers\ConfirmedReportReputationObserver::class);
+        ReportedMessage::observe(\App\Observers\ConfirmedReportReputationObserver::class);
+        \App\Models\PrivateChatReport::observe(\App\Observers\ConfirmedReportReputationObserver::class);
+
         ExperienceField::observe(FounderReferenceDataObserver::class);
         OccupationalField::observe(FounderReferenceDataObserver::class);
         Alley::observe(FounderReferenceDataObserver::class);

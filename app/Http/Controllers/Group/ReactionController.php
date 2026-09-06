@@ -145,26 +145,29 @@ class ReactionController extends Controller
         $blogId = (int) $blog->id;
         $reactorId = (int) $reactor->id;
         $owner = $blog->user;
+        $selfLike = $owner && (int) $owner->id === $reactorId;
 
-        dispatch(static function () use ($reactor, $owner, $blogId, $reactorId): void {
+        dispatch(static function () use ($reactor, $owner, $blogId, $reactorId, $selfLike): void {
             try {
                 $reputation = app(\App\Services\ReputationService::class);
                 $reputation->applyAction(
                     $reactor,
                     'post_liked',
-                    ['blog_id' => $blogId, 'reactor_id' => $reactorId],
+                    ['blog_id' => $blogId, 'reactor_id' => $reactorId, 'self_like' => (bool) $selfLike],
                     $blogId,
                     'groups',
-                    'post_liked:' . $blogId . ':reactor:' . $reactorId
+                    'post_liked:' . $blogId . ':reactor:' . $reactorId,
+                    $selfLike ? false : null
                 );
                 if ($owner) {
                     $reputation->applyAction(
                         $owner,
                         'post_upvoted',
-                        ['blog_id' => $blogId, 'reactor_id' => $reactorId],
+                        ['blog_id' => $blogId, 'reactor_id' => $reactorId, 'self_like' => (bool) $selfLike],
                         $blogId,
                         'groups',
-                        'post_upvoted:' . $blogId . ':reactor:' . $reactorId
+                        'post_upvoted:' . $blogId . ':reactor:' . $reactorId,
+                        $selfLike ? false : null
                     );
                 }
             } catch (\Throwable $exception) {
@@ -181,25 +184,28 @@ class ReactionController extends Controller
     {
         $reactorId = (int) $reactor->id;
         $owner = $comment->user;
+        $selfLike = $owner && (int) $owner->id === $reactorId;
 
         try {
             $reputation = app(\App\Services\ReputationService::class);
             $reputation->applyAction(
                 $reactor,
                 'comment_liked',
-                ['comment_id' => $comment->id, 'reactor_id' => $reactorId],
+                ['comment_id' => $comment->id, 'reactor_id' => $reactorId, 'self_like' => (bool) $selfLike],
                 $comment->id,
                 'groups',
-                'comment_liked:' . $comment->id . ':reactor:' . $reactorId
+                'comment_liked:' . $comment->id . ':reactor:' . $reactorId,
+                $selfLike ? false : null
             );
             if ($owner) {
                 $reputation->applyAction(
                     $owner,
                     'comment_upvoted',
-                    ['comment_id' => $comment->id, 'reactor_id' => $reactorId],
+                    ['comment_id' => $comment->id, 'reactor_id' => $reactorId, 'self_like' => (bool) $selfLike],
                     $comment->id,
                     'groups',
-                    'comment_upvoted:' . $comment->id . ':reactor:' . $reactorId
+                    'comment_upvoted:' . $comment->id . ':reactor:' . $reactorId,
+                    $selfLike ? false : null
                 );
             }
         } catch (\Throwable $exception) {

@@ -67,7 +67,7 @@ class AuctionService
                 $reputation = app(\App\Services\ReputationService::class);
                 $user = \App\Models\User::find($userId);
                 if ($user) {
-                    $reputation->applyAction($user, 'bid_placed', ['auction_id' => $auction->id, 'bid_id' => $bid->id], $bid->id, 'stock.bid');
+                    $reputation->applyAction($user, 'bid_placed', ['auction_id' => $auction->id, 'bid_id' => $bid->id], $bid->id, 'stock.bid', 'bid_placed:bid:' . $bid->id . ':user:' . $user->id);
                 }
             } catch (\Exception $e) {
                 \Log::warning('Reputation bid_placed failed: ' . $e->getMessage());
@@ -479,8 +479,8 @@ class AuctionService
             $reputation = app(\App\Services\ReputationService::class);
             $user = \App\Models\User::find($bid->user_id);
             if ($user) {
-                $reputation->applyAction($user, 'bid_won', ['auction_id' => $bid->auction_id, 'bid_id' => $bid->id], $bid->id, 'stock.bid');
-                $reputation->applyAction($user, 'successful_settlement', ['auction_id' => $bid->auction_id, 'bid_id' => $bid->id, 'shares' => $bid->quantity], $bid->id, 'stock.settlement');
+                $reputation->applyAction($user, 'bid_won', ['auction_id' => $bid->auction_id, 'bid_id' => $bid->id], $bid->id, 'stock.bid', 'bid_won:bid:' . $bid->id . ':user:' . $user->id);
+                $reputation->applyAction($user, 'successful_settlement', ['auction_id' => $bid->auction_id, 'bid_id' => $bid->id, 'shares' => $bid->quantity], $bid->id, 'stock.settlement', 'successful_settlement:bid:' . $bid->id . ':user:' . $user->id);
             }
         } catch (\Exception $e) {
             \Log::warning('Reputation settlement notifications failed: ' . $e->getMessage());
@@ -538,8 +538,8 @@ class AuctionService
             $user = \App\Models\User::find($bid->user_id);
             if ($user) {
                 // award bid_won once (even for partial) and a settlement reward
-                $reputation->applyAction($user, 'bid_won', ['auction_id' => $bid->auction_id, 'bid_id' => $bid->id, 'allocated_shares' => $allocatedShares], $bid->id, 'stock.bid');
-                $reputation->applyAction($user, 'successful_settlement', ['auction_id' => $bid->auction_id, 'bid_id' => $bid->id, 'shares' => $allocatedShares], $bid->id, 'stock.settlement');
+                $reputation->applyAction($user, 'bid_won', ['auction_id' => $bid->auction_id, 'bid_id' => $bid->id, 'allocated_shares' => $allocatedShares], $bid->id, 'stock.bid', 'bid_won:bid:' . $bid->id . ':user:' . $user->id);
+                $reputation->applyAction($user, 'successful_settlement', ['auction_id' => $bid->auction_id, 'bid_id' => $bid->id, 'shares' => $allocatedShares], $bid->id, 'stock.settlement', 'successful_settlement:bid:' . $bid->id . ':user:' . $user->id);
             }
         } catch (\Exception $e) {
             \Log::warning('Reputation partial settlement failed: ' . $e->getMessage());

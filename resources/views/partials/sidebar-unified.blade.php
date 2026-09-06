@@ -105,7 +105,7 @@
                     </a>
                 </li>
 
-                <!-- Chat Requests -->
+                <!-- Private Conversations -->
                 @php
                     $pendingChatRequestCount = \App\Models\ChatRequest::where('receiver_id', auth()->id())
                         ->where('status', 'pending')
@@ -115,7 +115,7 @@
                     <a href="{{ route('chat-requests.index') }}" class="sidebar-menu-link {{ request()->routeIs('chat-requests.*') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
                         <i class="fas fa-comments" style="color: var(--color-ocean-blue);"></i>
-                        <span class="flex-grow text-right mx-3">درخواست‌های چت</span>
+                        <span class="flex-grow text-right mx-3">گفتگوهای خصوصی</span>
                         @if($pendingChatRequestCount > 0)
                             <span class="badge text-white text-xs px-2 py-1 rounded-full font-bold badge-pulse" style="background-color: var(--color-red-tomato);">{{ $pendingChatRequestCount }}</span>
                         @endif
