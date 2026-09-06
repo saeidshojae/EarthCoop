@@ -147,13 +147,16 @@ class ParticipationCreditRegulationService
         $configuredCap = config("reputation.daily_caps.{$key}");
 
         $weight = $rule ? (int) $rule->weight : (int) config("reputation.weights.{$key}", 0);
-        $dimension = $rule?->dimension ?: (string) ($policyDefault['dimension'] ?? 'participation');
+        // Match ReputationService::applyAction() exactly when the DB rule is absent.
+        $dimension = $rule?->dimension ?: (string) config("reputation.dimensions.{$key}", 'participation');
         $convertible = $rule
             ? (bool) $rule->convertible
-            : (bool) ($policyDefault['convertible'] ?? false);
+            : (bool) config("reputation.convertible.{$key}", false);
         $dailyCap = $rule
             ? ($rule->daily_cap !== null ? (int) $rule->daily_cap : null)
             : ($configuredCap !== null ? (int) $configuredCap : null);
+        // Repeat policy is descriptive metadata when no DB rule exists; actual
+        // fallback award behavior remains governed by the runtime call site.
         $repeatPolicy = $rule?->repeat_policy ?: ($policyDefault['repeat_policy'] ?? null);
         [$groupKey, $groupLabel, $groupOrder] = $this->groupFor($key, $rule?->module);
 
