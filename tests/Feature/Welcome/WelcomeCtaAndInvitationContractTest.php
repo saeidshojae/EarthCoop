@@ -6,34 +6,26 @@ use Tests\TestCase;
 
 class WelcomeCtaAndInvitationContractTest extends TestCase
 {
-    public function test_welcome_primary_ctas_share_one_responsive_shape_contract(): void
+    public function test_welcome_primary_ctas_use_the_dedicated_pill_action_contract(): void
     {
-        $files = [
-            'resources/views/partials/hero-section.blade.php',
-            'resources/views/partials/projects-section.blade.php',
-            'resources/views/partials/how-it-works-section.blade.php',
-            'resources/views/partials/invite-section.blade.php',
-            'resources/views/partials/cta-section.blade.php',
-            'resources/views/partials/testimonials-section.blade.php',
-        ];
-
-        foreach ($files as $file) {
-            $source = file_get_contents(base_path($file));
-            $this->assertStringContainsString('welcome-cta', $source, $file . ' must use the shared Welcome CTA contract.');
-        }
-
         $projects = file_get_contents(base_path('resources/views/partials/projects-section.blade.php'));
         $journey = file_get_contents(base_path('resources/views/partials/how-it-works-section.blade.php'));
         $invite = file_get_contents(base_path('resources/views/partials/invite-section.blade.php'));
+
+        $this->assertStringContainsString('welcome-action', $projects);
+        $this->assertStringContainsString('welcome-action', $journey);
+        $this->assertSame(2, substr_count($invite, 'welcome-action'));
 
         $this->assertStringNotContainsString('px-10 py-5', $projects);
         $this->assertStringNotContainsString('px-10 py-5', $journey);
         $this->assertStringNotContainsString('px-12 py-5', $invite);
 
         $css = file_get_contents(base_path('resources/css/app.css'));
-        $this->assertStringContainsString('.welcome-cta {', $css);
-        $this->assertStringContainsString('min-height:', $css);
-        $this->assertStringContainsString('max-width:', $css);
+        $this->assertStringContainsString('.welcome-action {', $css);
+        $this->assertStringContainsString('min-height: 3.5rem;', $css);
+        $this->assertStringContainsString('padding: 1rem 2.25rem;', $css);
+        $this->assertStringContainsString('border-radius: 9999px;', $css);
+        $this->assertStringContainsString('border-radius: 9999px !important;', $css);
     }
 
     public function test_invitation_copy_uses_current_participation_credit_model_not_old_bahar_cash_claims(): void
