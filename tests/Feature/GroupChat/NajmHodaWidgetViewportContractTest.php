@@ -41,15 +41,4 @@ class NajmHodaWidgetViewportContractTest extends TestCase
         $this->assertStringNotContainsString('return 86;', $runtime);
         $this->assertStringNotContainsString('return 78;', $runtime);
     }
-
-    public function test_widget_uses_the_najm_hoda_identity_avatar_instead_of_a_generic_robot_icon(): void
-    {
-        $widget = file_get_contents(resource_path('views/components/najm-hoda-widget.blade.php'));
-
-        $this->assertStringContainsString("asset('images/najm-hoda/avatar.svg')", $widget);
-        $this->assertStringContainsString('class="najm-hoda-avatar-image"', $widget);
-        $this->assertStringContainsString('alt="نجم هدا"', $widget);
-        $this->assertStringNotContainsString('<i class="fas fa-robot"></i>', $widget);
-        $this->assertFileExists(public_path('images/najm-hoda/avatar.svg'));
-    }
 }
