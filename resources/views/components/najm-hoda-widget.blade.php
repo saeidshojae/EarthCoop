@@ -205,8 +205,8 @@
 }
 
 .najm-hoda-avatar {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.25);
     display: flex;
@@ -268,8 +268,8 @@
 }
 
 .najm-hoda-message-avatar {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -410,8 +410,8 @@
         border-radius: 16px 16px 0 0;
     }
     .najm-hoda-avatar {
-        width: 40px;
-        height: 40px;
+        width: 42px;
+        height: 42px;
         font-size: 20px;
     }
     .najm-hoda-header h6 {
@@ -443,8 +443,8 @@
         font-size: 13px;
     }
     .najm-hoda-message-avatar {
-        width: 30px;
-        height: 30px;
+        width: 32px;
+        height: 32px;
         font-size: 16px;
     }
     .najm-hoda-footer {
@@ -522,8 +522,8 @@
         border-radius: 14px 14px 0 0;
     }
     .najm-hoda-avatar {
-        width: 38px;
-        height: 38px;
+        width: 40px;
+        height: 40px;
         font-size: 18px;
     }
     .najm-hoda-header h6 {
@@ -546,8 +546,8 @@
         padding: 10px 12px;
     }
     .najm-hoda-message-avatar {
-        width: 28px;
-        height: 28px;
+        width: 30px;
+        height: 30px;
         font-size: 14px;
     }
     .najm-hoda-footer {
@@ -909,11 +909,11 @@
                         this.showSuggestions(data.suggestions);
                     }
                 } else {
-                    this.addMessage(data.message || 'خطایی رخ داد', 'assistant', '⚠️');
+                    this.addMessage(data.message || 'خطایی رخ داد', 'assistant', null);
                 }
             } catch (error) {
                 this.hideTyping();
-                this.addMessage('متأسفانه مشکلی پیش آمد. لطفاً دوباره تلاش کنید.', 'assistant', '❌');
+                this.addMessage('متأسفانه مشکلی پیش آمد. لطفاً دوباره تلاش کنید.', 'assistant', null);
                 console.error('خطا در ارسال پیام:', error);
             }
         },
@@ -923,7 +923,7 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = `najm-hoda-message ${role}`;
 
-            const avatarMarkup = role === 'assistant'
+            const avatarMarkup = role !== 'user'
                 ? `<img src="${this.getAvatarUrl()}" alt="" aria-hidden="true" class="najm-hoda-message-avatar-image">`
                 : icon;
 

@@ -22,9 +22,11 @@ class NajmHodaWidgetAvatarContractTest extends TestCase
         $widget = file_get_contents(resource_path('views/components/najm-hoda-widget.blade.php'));
 
         $this->assertStringContainsString('getAvatarUrl()', $widget);
-        $this->assertStringContainsString('role === \'assistant\'', $widget);
+        $this->assertStringContainsString("const avatarMarkup = role !== 'user'", $widget);
         $this->assertStringContainsString('najm-hoda-message-avatar-image', $widget);
         $this->assertStringContainsString('this.addMessage(data.message, \'assistant\'', $widget);
+        $this->assertStringNotContainsString("'assistant', '⚠️'", $widget);
+        $this->assertStringNotContainsString("'assistant', '❌'", $widget);
     }
 
     public function test_najm_hoda_has_a_stable_profile_route_independent_of_user_id(): void
@@ -56,5 +58,6 @@ class NajmHodaWidgetAvatarContractTest extends TestCase
         $this->assertStringContainsString('حریم خصوصی و شفافیت', $profile);
         $this->assertStringContainsString('images/najm-hoda/avatar.webp', $profile);
         $this->assertStringContainsString('data-najm-hoda-open', $profile);
+        $this->assertStringContainsString('hoda-profile-mobile-polish', $profile);
     }
 }
