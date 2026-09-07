@@ -77,6 +77,11 @@
             .unified-public-sidebar .docs-parent-button {
                 cursor: pointer;
             }
+            .unified-public-sidebar .docs-parent-button .support-submenu-label {
+                width: 100%;
+                justify-self: stretch;
+                text-align: start !important;
+            }
             body.dark-mode .unified-public-sidebar .support-submenu {
                 background: rgba(15, 23, 42, .5);
                 border-color: rgba(52, 211, 153, .25);
