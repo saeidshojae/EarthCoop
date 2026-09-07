@@ -10,6 +10,7 @@ use App\Models\Poll;
 use App\Models\Reaction;
 use App\Models\PollVote;
 use App\Models\Vote;
+use App\Services\Elections\CurrentElectionCenterService;
 use App\Services\ParticipationPointSummaryService;
 
 class HistoryController extends Controller
@@ -38,8 +39,6 @@ class HistoryController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Compatibility list for the generic activity page. Use the canonical
-        // selected-member relation rather than the overloaded legacy candidate_id.
         $elections = Vote::where('voter_id', $userId)
             ->with(['candidateUser', 'election.group'])
             ->orderBy('created_at', 'desc')
@@ -52,9 +51,6 @@ class HistoryController extends Controller
         $pointSummary = $participationPointSummaryService->forUser($userId);
         $reputationBreakdown = $pointSummary['reputation_breakdown'];
         $currentPoints = (int) $pointSummary['total_points'];
-
-        // Keep internal ledger keys out of the Blade contract. These private,
-        // human-named values are the only economic details exposed to this view.
         $convertibleAwardedPoints = (int) $pointSummary['convertible_awarded_points'];
         $ledgerConsumedPoints = (int) $pointSummary['ledger_consumed_points'];
         $remainingConvertiblePoints = (int) $pointSummary['remaining_convertible_points'];
@@ -81,12 +77,17 @@ class HistoryController extends Controller
         ));
     }
 
-    public function election()
+    public function election(CurrentElectionCenterService $currentElectionCenterService)
+    {
+        $snapshot = $currentElectionCenterService->forUser(auth()->user());
+
+        return view('history.election', compact('snapshot'));
+    }
+
+    public function electionHistory()
     {
         $userId = (int) auth()->id();
 
-        // History is lifecycle-driven, not wall-clock driven: tallying,
-        // acceptance, appointment and completed cycles remain visible.
         $currentElections = Election::query()
             ->whereHas('group.users', fn ($query) => $query->whereKey($userId))
             ->with([
@@ -100,7 +101,7 @@ class HistoryController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        return view('history.election', compact('currentElections'));
+        return view('history.election-history', compact('currentElections'));
     }
 
     public function poll()
@@ -110,6 +111,7 @@ class HistoryController extends Controller
         $polls = Poll::whereHas('group.users', function ($query) use ($user) {
             $query->whereKey($user->id);
         })
+            ->where('main_type', 1)
             ->with(['group', 'options', 'yourVote.option'])
             ->orderBy('created_at', 'desc')
             ->get();

@@ -10,6 +10,7 @@ use App\Http\Controllers\Elections\ElectionResponsibilityContractController;
 use App\Http\Controllers\Elections\ElectionUserPortalController;
 use App\Http\Controllers\Elections\ResponsibilityOfferController;
 use App\Http\Controllers\Group\SystemicElectionChatController;
+use App\Http\Controllers\Profile\HistoryController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\Authenticate;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,9 @@ Route::middleware(Authenticate::class)->group(function () {
 
     Route::get('/groups/{group}/elections', [ElectionUserPortalController::class, 'show'])
         ->name('elections.portal');
+
+    Route::get('/history/election-history', [HistoryController::class, 'electionHistory'])
+        ->name('history.election-history');
 
     Route::get('/profile/accept-candidate/{type}',[ResponsibilityOfferController::class,'legacyConfirmation'])->name('profile.accept.candidate');
     Route::post('/elections/responsibility-offers/{offer}/{decision}',[ResponsibilityOfferController::class,'respond'])->whereNumber('offer')->whereIn('decision',['accept','decline'])->name('elections.responsibility-offers.respond');

@@ -28,6 +28,7 @@
             ['url' => '#about', 'label' => __('langWelcome.nav_about'), 'icon' => 'fa-info-circle'],
             ['url' => '#how-it-works', 'label' => __('langWelcome.nav_guide'), 'icon' => 'fa-question-circle'],
             ['url' => '#projects', 'label' => __('langWelcome.nav_projects'), 'icon' => 'fa-seedling'],
+            ['url' => '#documents', 'label' => __('langWelcome.docs_footer_title'), 'icon' => 'fa-folder-open'],
             ['url' => '#testimonials', 'label' => __('langWelcome.nav_stories'), 'icon' => 'fa-users'],
         ]
         : [

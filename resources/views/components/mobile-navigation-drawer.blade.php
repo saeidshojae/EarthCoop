@@ -10,6 +10,7 @@
         $mobileCurrentGroup = null;
     }
     $mobileBackFallback = $isAuth ? route('home') : route('welcome');
+    $mobileDocsLinks = config('docs-links');
 @endphp
 
 @once
@@ -72,6 +73,16 @@
     header.site-header-unified .guest-navigation-cta--join { background: #10b981 !important; }
     header.site-header-unified .guest-navigation-cta--invite { background: #f59e0b !important; }
 
+    .mobile-navigation-drawer .documents-navigation-toggle {
+        text-align: start !important;
+    }
+    .mobile-navigation-drawer .documents-navigation-toggle > span {
+        width: 100%;
+        min-width: 0;
+        justify-self: stretch;
+        text-align: start !important;
+    }
+
     @media (max-width: 1023px) {
         header.site-header-unified[data-auth-state="guest"] {
             height: 60px !important;
@@ -129,7 +140,7 @@
 </style>
 @endonce
 
-<div class="mobile-navigation-drawer" x-data="{ openSection: 'primary' }">
+<div class="mobile-navigation-drawer" x-data="{ openSection: 'primary', openDocumentSection: false }">
     <div class="mobile-navigation-drawer__backdrop" @click="headerMenuOpen = false" aria-hidden="true"></div>
 
     <aside class="mobile-navigation-drawer__panel" role="dialog" aria-modal="true" aria-label="ناوبری EarthCoop">
@@ -189,7 +200,7 @@
                         <a href="{{ route('home') }}" class="navigation-link"><i class="fas fa-home"></i><span>خانه</span></a>
                         <a href="{{ route('groups.index') }}" class="navigation-link"><i class="fas fa-users"></i><span>{{ __('navigation.footer_my_groups') }}</span><span class="navigation-badge">{{ $mobileNavGroups->count() }}</span></a>
                         <a href="{{ route('notifications.index') }}" class="navigation-link"><i class="fas fa-bell"></i><span>اعلان‌ها</span>@if($mobileUnreadNotifications > 0)<span class="navigation-badge navigation-badge--alert">{{ $mobileUnreadNotifications }}</span>@endif</a>
-                        <a href="{{ route('chat-requests.index') }}" class="navigation-link"><i class="fas fa-comment-dots"></i><span>درخواست‌های چت</span>@if($mobilePendingChatRequests > 0)<span class="navigation-badge navigation-badge--alert">{{ $mobilePendingChatRequests }}</span>@endif</a>
+                        <a href="{{ route('chat-requests.index') }}" class="navigation-link"><i class="fas fa-comment-dots"></i><span>گفتگوهای خصوصی</span>@if($mobilePendingChatRequests > 0)<span class="navigation-badge navigation-badge--alert">{{ $mobilePendingChatRequests }}</span>@endif</a>
                     </div>
                 </section>
 
@@ -201,6 +212,7 @@
                     <div x-show="openSection === 'participation'" x-transition class="navigation-section__links">
                         <a href="{{ route('history.index') }}" class="navigation-link"><i class="fas fa-handshake"></i><span>مشارکت‌های من</span></a>
                         <a href="{{ route('history.election') }}" class="navigation-link"><i class="fas fa-vote-yea"></i><span>انتخابات جاری</span></a>
+                        <a href="{{ route('history.election-history') }}" class="navigation-link"><i class="fas fa-clock-rotate-left"></i><span>تاریخچه انتخابات من</span></a>
                         <a href="{{ route('history.poll') }}" class="navigation-link"><i class="fas fa-chart-pie"></i><span>نظرسنجی‌های جاری</span></a>
                     </div>
                 </section>
@@ -255,8 +267,20 @@
                         @foreach($navLinks as $link)
                             <a href="{{ $link['url'] }}" class="navigation-link"><i class="fas {{ $link['icon'] }}"></i><span>{{ $link['label'] }}</span></a>
                         @endforeach
-                        <a href="{{ route('terms') }}" class="navigation-link"><i class="fas fa-file-alt"></i><span>{{ __('navigation.charter') }}</span></a>
-                        <a href="{{ route('najm-bahar.agreement') }}" class="navigation-link"><i class="fas fa-file-contract"></i><span>{{ __('navigation.financial_agreement') }}</span></a>
+
+                        <button type="button" class="navigation-link documents-navigation-toggle w-full" @click="openDocumentSection = !openDocumentSection" :aria-expanded="openDocumentSection">
+                            <i class="fas fa-folder-open" aria-hidden="true"></i>
+                            <span>اسناد</span>
+                            <i class="fas fa-chevron-down text-xs transition-transform" :class="{ 'rotate-180': openDocumentSection }" aria-hidden="true"></i>
+                        </button>
+                        <div x-show="openDocumentSection" x-transition class="navigation-section__links ms-3 border-s border-gray-200 ps-2">
+                            <a href="{{ $mobileDocsLinks['base_url'] }}/fa/introduction" target="_blank" rel="noopener noreferrer" class="navigation-link"><i class="fas fa-book-open"></i><span>مرکز اسناد</span></a>
+                            <a href="{{ $mobileDocsLinks['foundational_index']['href'] }}" target="_blank" rel="noopener noreferrer" class="navigation-link"><i class="fas fa-landmark"></i><span>اسناد بنیادین</span></a>
+                            <a href="{{ route('terms') }}" class="navigation-link"><i class="fas fa-scroll"></i><span>اساسنامه</span></a>
+                            <a href="{{ route('najm-bahar.agreement') }}" class="navigation-link"><i class="fas fa-file-contract"></i><span>توافقنامه مالی</span></a>
+                            <a href="{{ route('elections.guideline') }}" class="navigation-link"><i class="fas fa-vote-yea"></i><span>شیوه‌نامه انتخابات سیال</span></a>
+                            <a href="{{ route('participation.credit-regulation') }}" class="navigation-link"><i class="fas fa-award"></i><span>نظام‌نامه اعتبارات مشارکت</span></a>
+                        </div>
                     </div>
                 </section>
 

@@ -6,6 +6,7 @@
         $generalGroups = $groups->where('type', 'general');
         $specializedGroups = $groups->where('type', 'specialized');
         $exclusiveGroups = $groups->where('type', 'exclusive');
+        $docsLinks = config('docs-links');
     @endphp
 
     @once
@@ -65,9 +66,29 @@
                 margin: 0 !important;
                 justify-self: end;
             }
+            .unified-public-sidebar .docs-submenu {
+                margin-top: .35rem !important;
+                margin-inline-start: .75rem !important;
+                padding: .35rem !important;
+                border-inline-start: 2px solid rgba(59, 130, 246, .18);
+                border-radius: .7rem;
+                background: rgba(255, 255, 255, .82);
+            }
+            .unified-public-sidebar .docs-parent-button {
+                cursor: pointer;
+            }
+            .unified-public-sidebar .docs-parent-button .support-submenu-label {
+                width: 100%;
+                justify-self: stretch;
+                text-align: start !important;
+            }
             body.dark-mode .unified-public-sidebar .support-submenu {
                 background: rgba(15, 23, 42, .5);
                 border-color: rgba(52, 211, 153, .25);
+            }
+            body.dark-mode .unified-public-sidebar .docs-submenu {
+                background: rgba(15, 23, 42, .72);
+                border-color: rgba(96, 165, 250, .25);
             }
             body.dark-mode .unified-public-sidebar .support-submenu-link {
                 color: var(--text-dark) !important;
@@ -149,6 +170,15 @@
                         <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
                         <i class="fas fa-vote-yea" style="color: var(--color-earth-green);"></i>
                         <span class="flex-grow text-right mx-3">انتخابات جاری</span>
+                    </a>
+                </li>
+
+                <!-- Election History -->
+                <li class="sidebar-menu-item">
+                    <a href="{{ route('history.election-history') }}" class="sidebar-menu-link {{ request()->routeIs('history.election-history') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                        <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
+                        <i class="fas fa-clock-rotate-left" style="color: var(--color-ocean-blue);"></i>
+                        <span class="flex-grow text-right mx-3">تاریخچه انتخابات من</span>
                     </a>
                 </li>
 
@@ -246,6 +276,75 @@
                                 <i class="fas fa-comments text-sm" aria-hidden="true"></i>
                                 <span class="support-submenu-label">چت پشتیبانی</span>
                             </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Explore EarthCoop -->
+                <li class="sidebar-menu-item" x-data="{ exploreOpen: false, docsOpen: false }">
+                    <button type="button" @click="exploreOpen = !exploreOpen" class="sidebar-menu-link w-full block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);" :aria-expanded="exploreOpen">
+                        <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
+                        <div class="flex items-center">
+                            <i class="fas fa-earth-americas" style="color: var(--color-earth-green);"></i>
+                            <span class="flex-grow text-right mx-3">کاوش EarthCoop</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform" :class="{ 'rotate-180': exploreOpen }" aria-hidden="true"></i>
+                    </button>
+                    <ul x-show="exploreOpen" x-transition class="support-submenu space-y-1">
+                        <li>
+                            <div class="relative"
+                                 @mouseenter="docsOpen = true"
+                                 @mouseleave="docsOpen = false"
+                                 @focusin="docsOpen = true"
+                                 @focusout="if (!$el.contains($event.relatedTarget)) docsOpen = false">
+                                <button type="button"
+                                        @click="docsOpen = !docsOpen"
+                                        class="sidebar-menu-link support-submenu-link docs-parent-button relative group"
+                                        :aria-expanded="docsOpen"
+                                        aria-haspopup="true">
+                                    <i class="fas fa-folder-open text-sm" aria-hidden="true"></i>
+                                    <span class="support-submenu-label">اسناد</span>
+                                    <i class="fas fa-chevron-down text-xs transition-transform" :class="{ 'rotate-180': docsOpen }" aria-hidden="true"></i>
+                                </button>
+                                <ul x-show="docsOpen" x-transition class="docs-submenu space-y-1">
+                                    <li>
+                                        <a href="{{ $docsLinks['base_url'] }}/fa/introduction" target="_blank" rel="noopener noreferrer" class="sidebar-menu-link support-submenu-link relative group">
+                                            <i class="fas fa-book-open text-sm" aria-hidden="true"></i>
+                                            <span class="support-submenu-label">مرکز اسناد</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="{{ $docsLinks['foundational_index']['href'] }}" target="_blank" rel="noopener noreferrer" class="sidebar-menu-link support-submenu-link relative group">
+                                            <i class="fas fa-landmark text-sm" aria-hidden="true"></i>
+                                            <span class="support-submenu-label">اسناد بنیادین</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="{{ route('terms') }}" class="sidebar-menu-link support-submenu-link relative group">
+                                            <i class="fas fa-scroll text-sm" aria-hidden="true"></i>
+                                            <span class="support-submenu-label">اساسنامه</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="{{ route('najm-bahar.agreement') }}" class="sidebar-menu-link support-submenu-link relative group">
+                                            <i class="fas fa-file-contract text-sm" aria-hidden="true"></i>
+                                            <span class="support-submenu-label">توافقنامه مالی</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="{{ route('elections.guideline') }}" class="sidebar-menu-link support-submenu-link relative group">
+                                            <i class="fas fa-vote-yea text-sm" aria-hidden="true"></i>
+                                            <span class="support-submenu-label">شیوه‌نامه انتخابات سیال</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="{{ route('participation.credit-regulation') }}" class="sidebar-menu-link support-submenu-link relative group">
+                                            <i class="fas fa-award text-sm" aria-hidden="true"></i>
+                                            <span class="support-submenu-label">نظام‌نامه اعتبارات مشارکت</span>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
                         </li>
                     </ul>
                 </li>
