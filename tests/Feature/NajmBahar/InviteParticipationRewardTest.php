@@ -3,12 +3,11 @@
 namespace Tests\Feature\NajmBahar;
 
 use App\Http\Controllers\Admin\ReputationController;
-use App\Models\Address;
 use App\Models\InvitationCode;
 use App\Models\ReputationRule;
 use App\Models\User;
-use App\Models\UserExperience;
 use App\Models\UserPointTransaction;
+use App\Services\ProfileCompletionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -18,9 +17,17 @@ class InviteParticipationRewardTest extends TestCase
 
     public function test_najm_bahar_agreement_does_not_award_invitation_points(): void
     {
+        $this->mock(ProfileCompletionService::class, function ($mock) {
+            $mock->shouldReceive('isComplete')->once()->andReturnTrue();
+        });
+
         $referrer = User::factory()->create();
-        $newMember = User::factory()->create();
-        $this->completeMembershipProfile($newMember);
+        $newMember = User::factory()->create([
+            'terms_accepted_at' => now(),
+            'status' => 'active',
+            'is_system' => false,
+            'email_verified_at' => now(),
+        ]);
 
         ReputationRule::updateOrCreate(
             ['key' => 'invite_member'],
@@ -63,35 +70,5 @@ class InviteParticipationRewardTest extends TestCase
         $this->assertSame('participation', $rule->dimension);
         $this->assertTrue((bool) $rule->convertible);
         $this->assertSame('once_per_context', $rule->repeat_policy);
-    }
-
-    private function completeMembershipProfile(User $user): void
-    {
-        $user->forceFill([
-            'first_name' => 'علی',
-            'last_name' => 'رضایی',
-            'gender' => 'male',
-            'national_id' => '0012345678',
-            'phone' => '09121234567',
-            'status' => 'active',
-            'email_verified_at' => $user->email_verified_at ?? now(),
-            'terms_accepted_at' => now(),
-        ])->save();
-
-        UserExperience::query()->create([
-            'user_id' => $user->id,
-            'organization_name' => 'شرکت نمونه',
-            'position' => 'مدیر پروژه',
-            'started_at' => '1402/01/01',
-            'description' => 'سابقه کاری',
-        ]);
-
-        Address::query()->create([
-            'user_id' => $user->id,
-            'province' => 'تهران',
-            'city' => 'تهران',
-            'address_line' => 'خیابان نمونه، پلاک ۱',
-            'postal_code' => '1234567890',
-        ]);
     }
 }
