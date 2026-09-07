@@ -51,4 +51,15 @@ class ParticipationCreditRegulationContractTest extends TestCase
         $this->assertStringContainsString("route('participation.credit-regulation')", $historyView);
         $this->assertStringContainsString('نظام‌نامه اعتبارات مشارکت', $historyView);
     }
+
+    public function test_narrow_viewport_content_can_shrink_without_table_forcing_page_overflow(): void
+    {
+        $view = file_get_contents(resource_path('views/participation/credit-regulation.blade.php'));
+
+        $this->assertStringContainsString('.pcr-layout{', $view);
+        $this->assertStringContainsString('.pcr-content{min-width:0;', $view);
+        $this->assertStringContainsString('.pcr-card{min-width:0;', $view);
+        $this->assertStringContainsString('.pcr-table-wrap{width:100%;max-width:100%;overflow-x:auto;', $view);
+        $this->assertStringContainsString('overflow-wrap:anywhere', $view);
+    }
 }
