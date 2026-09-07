@@ -127,7 +127,7 @@
 
 
 
-            <a href="#about" class="welcome-cta welcome-wide-cta__button border-2 border-pure-white text-pure-white px-12 py-5 rounded-full shadow-xl hover:bg-pure-white hover:text-purple-700 group transition duration-300 font-vazirmatn text-xl font-medium flex items-center justify-center">
+            <a href="#about" class="welcome-cta welcome-action w-full sm:w-auto px-9 py-4 rounded-full border-2 border-pure-white text-pure-white shadow-xl hover:bg-pure-white hover:text-purple-700 group transition duration-300 font-vazirmatn text-xl font-medium flex items-center justify-center">
 
 
 
@@ -157,7 +157,7 @@
 
 
 
-            <button onclick="openModal()" class="welcome-cta welcome-wide-cta__button bg-digital-gold text-pure-white px-12 py-5 rounded-full shadow-2xl hover:bg-opacity-90 hover:scale-105 transition duration-300 font-vazirmatn text-xl font-bold animate-glow flex items-center justify-center cursor-pointer">
+            <button onclick="openModal()" class="welcome-cta welcome-action w-full sm:w-auto px-9 py-4 rounded-full bg-digital-gold text-pure-white shadow-2xl hover:bg-opacity-90 hover:scale-105 transition duration-300 font-vazirmatn text-xl font-bold animate-glow flex items-center justify-center cursor-pointer">
 
 
 
