@@ -985,6 +985,17 @@
             });
         }
 
+        // Invitation links open registration with the invitation code prefilled.
+        const searchParams = new URLSearchParams(window.location.search);
+        const invitationCode = searchParams.get('invite');
+        if (invitationCode) {
+            const inviteInput = document.querySelector('[name="invite_code"]');
+            if (inviteInput) {
+                inviteInput.value = invitationCode;
+                openModal();
+            }
+        }
+
         // Auto-open modal if validation errors exist
         @if($errors->any())
             openModal();
