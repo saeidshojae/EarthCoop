@@ -39,6 +39,9 @@ class ExploreDocumentsNavigationTest extends TestCase
         $this->assertStringContainsString('کاوش EarthCoop', $source);
         $this->assertStringContainsString("openDocumentSection", $source);
         $this->assertStringContainsString("@click=\"openDocumentSection = !openDocumentSection\"", $source);
+        $this->assertStringContainsString('documents-navigation-toggle', $source);
+        $this->assertStringContainsString('.documents-navigation-toggle > span', $source);
+        $this->assertStringContainsString('text-align: start !important;', $source);
         $this->assertStringContainsString("route('elections.guideline')", $source);
         $this->assertStringContainsString("route('participation.credit-regulation')", $source);
         $this->assertStringContainsString("config('docs-links')", $source);
