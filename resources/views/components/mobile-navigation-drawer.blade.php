@@ -211,6 +211,7 @@
                     </button>
                     <div x-show="openSection === 'participation'" x-transition class="navigation-section__links">
                         <a href="{{ route('history.index') }}" class="navigation-link"><i class="fas fa-handshake"></i><span>مشارکت‌های من</span></a>
+                        <a href="{{ route('community-stories.index') }}" class="navigation-link"><i class="fas fa-feather"></i><span>داستان من در EarthCoop</span></a>
                         <a href="{{ route('history.election') }}" class="navigation-link"><i class="fas fa-vote-yea"></i><span>انتخابات جاری</span></a>
                         <a href="{{ route('history.election-history') }}" class="navigation-link"><i class="fas fa-clock-rotate-left"></i><span>تاریخچه انتخابات من</span></a>
                         <a href="{{ route('history.poll') }}" class="navigation-link"><i class="fas fa-chart-pie"></i><span>نظرسنجی‌های جاری</span></a>

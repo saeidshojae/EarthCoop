@@ -100,6 +100,17 @@
         
         <hr class="my-1 border-gray-200">
 
+        <h6 class="px-4 py-2 text-sm font-bold text-right" style="color: var(--color-ocean-blue); text-align: right !important;">مشارکت من</h6>
+
+        <a href="{{ route('community-stories.index') }}"
+           class="block px-4 py-2 hover:bg-gray-50 transition duration-200 flex items-center gap-3"
+           style="color: var(--color-gentle-black);">
+            <i class="fas fa-feather"></i>
+            <span class="text-right">داستان من در EarthCoop</span>
+        </a>
+
+        <hr class="my-1 border-gray-200">
+
         <!-- Chat Requests with Badge -->
         <a href="{{ route('chat-requests.index') }}"
            class="block px-4 py-2 hover:bg-gray-50 transition duration-200 flex items-center gap-3 relative"
