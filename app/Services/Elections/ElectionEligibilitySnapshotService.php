@@ -65,6 +65,70 @@ class ElectionEligibilitySnapshotService
     }
 
     /**
+     * Read-only eligibility view for user-facing election surfaces.
+     *
+     * Existing snapshot evidence always wins. During an open continuous
+     * election, a genuinely new member may not have a row yet; ballot submit
+     * would append that row through enrollOpenElectionMembers(). This method
+     * previews the exact same eligibility rule without inserting or updating
+     * anything, so merely opening the Current Elections Center stays read-only.
+     *
+     * @return array{eligible: bool, reason: ?string, source: string}
+     */
+    public function previewVoterEligibility(Election $election, int $userId): array
+    {
+        $snapshot = ElectionEligibilitySnapshot::query()
+            ->where('election_id', $election->id)
+            ->where('user_id', $userId)
+            ->first();
+
+        if ($snapshot !== null) {
+            return [
+                'eligible' => (bool) $snapshot->voter_eligible,
+                'reason' => $snapshot->voter_exclusion_reason,
+                'source' => 'snapshot',
+            ];
+        }
+
+        if ($election->lifecycle_status !== ElectionLifecycleStatus::Open) {
+            return [
+                'eligible' => false,
+                'reason' => 'missing_snapshot_outside_open_window',
+                'source' => 'missing_snapshot',
+            ];
+        }
+
+        $member = GroupUser::query()
+            ->leftJoin('users', 'users.id', '=', 'group_user.user_id')
+            ->where('group_user.group_id', $election->group_id)
+            ->where('group_user.user_id', $userId)
+            ->select([
+                'group_user.user_id',
+                'group_user.role',
+                'group_user.status',
+                'users.id as persisted_user_id',
+                'users.is_system',
+            ])
+            ->first();
+
+        if ($member === null) {
+            return [
+                'eligible' => false,
+                'reason' => 'missing_membership',
+                'source' => 'open_preview',
+            ];
+        }
+
+        [$eligible, $reason] = $this->evaluate($member);
+
+        return [
+            'eligible' => $eligible,
+            'reason' => $reason,
+            'source' => 'open_preview',
+        ];
+    }
+
+    /**
      * E0 continuous-election enrollment.
      *
      * The opening capture is immutable for members already recorded, but a
