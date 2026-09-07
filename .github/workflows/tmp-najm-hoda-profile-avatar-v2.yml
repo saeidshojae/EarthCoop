@@ -21,6 +21,10 @@ jobs:
           php-version: '8.2'
           extensions: mbstring, pdo_sqlite, sqlite3
           coverage: none
+      - name: Prepare Laravel writable directories
+        run: |
+          mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views
+          chmod -R 777 bootstrap/cache storage
       - run: composer install --no-interaction --prefer-dist --no-progress
       - name: Confirm RED
         run: |
