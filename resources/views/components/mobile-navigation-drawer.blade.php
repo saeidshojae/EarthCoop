@@ -189,7 +189,7 @@
                         <a href="{{ route('home') }}" class="navigation-link"><i class="fas fa-home"></i><span>خانه</span></a>
                         <a href="{{ route('groups.index') }}" class="navigation-link"><i class="fas fa-users"></i><span>{{ __('navigation.footer_my_groups') }}</span><span class="navigation-badge">{{ $mobileNavGroups->count() }}</span></a>
                         <a href="{{ route('notifications.index') }}" class="navigation-link"><i class="fas fa-bell"></i><span>اعلان‌ها</span>@if($mobileUnreadNotifications > 0)<span class="navigation-badge navigation-badge--alert">{{ $mobileUnreadNotifications }}</span>@endif</a>
-                        <a href="{{ route('chat-requests.index') }}" class="navigation-link"><i class="fas fa-comment-dots"></i><span>درخواست‌های چت</span>@if($mobilePendingChatRequests > 0)<span class="navigation-badge navigation-badge--alert">{{ $mobilePendingChatRequests }}</span>@endif</a>
+                        <a href="{{ route('chat-requests.index') }}" class="navigation-link"><i class="fas fa-comment-dots"></i><span>گفتگوهای خصوصی</span>@if($mobilePendingChatRequests > 0)<span class="navigation-badge navigation-badge--alert">{{ $mobilePendingChatRequests }}</span>@endif</a>
                     </div>
                 </section>
 
@@ -201,6 +201,7 @@
                     <div x-show="openSection === 'participation'" x-transition class="navigation-section__links">
                         <a href="{{ route('history.index') }}" class="navigation-link"><i class="fas fa-handshake"></i><span>مشارکت‌های من</span></a>
                         <a href="{{ route('history.election') }}" class="navigation-link"><i class="fas fa-vote-yea"></i><span>انتخابات جاری</span></a>
+                        <a href="{{ route('history.election-history') }}" class="navigation-link"><i class="fas fa-clock-rotate-left"></i><span>تاریخچه انتخابات من</span></a>
                         <a href="{{ route('history.poll') }}" class="navigation-link"><i class="fas fa-chart-pie"></i><span>نظرسنجی‌های جاری</span></a>
                     </div>
                 </section>
