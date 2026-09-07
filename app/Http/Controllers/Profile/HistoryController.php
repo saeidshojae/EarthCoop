@@ -111,6 +111,7 @@ class HistoryController extends Controller
         $polls = Poll::whereHas('group.users', function ($query) use ($user) {
             $query->whereKey($user->id);
         })
+            ->where('main_type', 1)
             ->with(['group', 'options', 'yourVote.option'])
             ->orderBy('created_at', 'desc')
             ->get();
