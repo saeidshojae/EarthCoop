@@ -1,4 +1,4 @@
-name: Final Integration Reconcile Diagnostic
+name: Final Integration Reconcile Najm Bahar
 
 on:
   push:
@@ -6,32 +6,95 @@ on:
       - agent/pre-main-final-integration-20260908
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnose:
+  reconcile:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Diagnose Najm Bahar UAT merge
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - name: Merge UAT and resolve only reviewed conflicts
         shell: bash
         run: |
-          git config user.name "integration-diagnostic"
-          git config user.email "integration-diagnostic@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           set +e
           git merge --no-commit --no-ff origin/agent/najm-bahar-uat
           code=$?
-          echo "MERGE_EXIT=$code"
-          echo "--- UNMERGED FILES ---"
-          git diff --name-only --diff-filter=U || true
-          echo "--- STATUS ---"
-          git status --short || true
-          if [ "$code" -eq 0 ]; then
-            git merge --abort || true
-            echo "MERGE_CLEAN"
-            exit 0
+          set -e
+          if [ "$code" -ne 0 ]; then
+            mapfile -t conflicts < <(git diff --name-only --diff-filter=U)
+            printf 'Conflicts: %s\n' "${conflicts[*]}"
+            expected=("app/Http/Controllers/NajmBaharController.php" "resources/js/app.js")
+            if [ "${#conflicts[@]}" -ne 2 ]; then exit 31; fi
+            for f in "${expected[@]}"; do printf '%s\n' "${conflicts[@]}" | grep -Fxq "$f" || exit 32; done
+            git checkout --ours -- app/Http/Controllers/NajmBaharController.php resources/js/app.js
           fi
-          git merge --abort || true
-          exit 1
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('app/Http/Controllers/NajmBaharController.php')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('use App\\Models\\UserExperience;\nuse App\\Models\\Address;\n', '')
+          anchor = 'use App\\Modules\\NajmBahar\\Services\\AccountService;\n'
+          if 'MembershipEligibilityService' not in s:
+              s = s.replace(anchor, anchor + 'use App\\Modules\\NajmBahar\\Services\\MembershipEligibilityService;\n', 1)
+          ctor = '        protected ParticipationPointSummaryService $participationPointSummaryService,\n'
+          if 'protected MembershipEligibilityService $membershipEligibilityService' not in s:
+              s = s.replace(ctor, ctor + '        protected MembershipEligibilityService $membershipEligibilityService,\n', 1)
+          old = "        $hasExperience = UserExperience::where('user_id', $user->id)->exists();\n        $hasAddress = Address::where('user_id', $user->id)->exists();\n        $step1Complete = ($user->first_name && $user->last_name && $user->gender && $user->national_id && $user->phone);\n        $isProfileComplete = $step1Complete && $hasExperience && $hasAddress;"
+          s = s.replace(old, '        $isProfileComplete = $this->membershipEligibilityService->isEligibleForInitialMembershipCredit($user);')
+          gate_anchor = "        if ($this->accountService->hasMainAccount($user->id)) {\n            return redirect()->route('najm-bahar.dashboard')\n                ->with('info', 'شما قبلاً حساب نجم بهار دارید.');\n        }\n"
+          gate = gate_anchor + "\n        if (! $this->membershipEligibilityService->isEligibleForInitialMembershipCredit($user)) {\n            return redirect()->route('najm-bahar.agreement')\n                ->with('error', 'برای ایجاد حساب نجم بهار، عضویت شما باید فعال و تأییدشده باشد و اطلاعات هویتی، تجربه و نشانی نیز کامل شده باشند.');\n        }\n"
+          if 'برای ایجاد حساب نجم بهار، عضویت شما باید فعال' not in s:
+              if gate_anchor not in s: raise SystemExit('NajmBahar agreement gate anchor missing')
+              s = s.replace(gate_anchor, gate, 1)
+          funding_anchor = "        if (! $hasInitialFunding) {\n            $this->monetaryService->issueMembershipCredit($account, $user->id);"
+          funding = "        if (! $hasInitialFunding) {\n            if (! $this->membershipEligibilityService->isEligibleForInitialMembershipCredit($user)) {\n                return;\n            }\n\n            $this->monetaryService->issueMembershipCredit($account, $user->id);"
+          if 'if (! $this->membershipEligibilityService->isEligibleForInitialMembershipCredit($user))' not in s[s.find('private function ensureInitialFunding'):]:
+              if funding_anchor not in s: raise SystemExit('initial funding anchor missing')
+              s = s.replace(funding_anchor, funding, 1)
+          p.write_text(s, encoding='utf-8')
+
+          p = Path('resources/js/app.js')
+          s = p.read_text(encoding='utf-8')
+          admin_fn = '''\nconst loadNajmBaharAdminRuntime = () => {\n    const path = window.location.pathname.replace(/\\/+$/, '') || '/';\n    if (!['/admin/najm-bahar/dashboard', '/admin/najm-bahar/settings'].includes(path)) return;\n    importFeature(() => import("./najm-bahar-admin-settings.js"), "Najm Bahar admin settings");\n};\n'''
+          if 'const loadNajmBaharAdminRuntime' not in s:
+              marker = '\nconst loadPrivateMessagingRuntime = () => {'
+              if marker not in s: raise SystemExit('app.js runtime anchor missing')
+              s = s.replace(marker, admin_fn + marker, 1)
+          call_anchor = '    loadNajmBaharRuntime();\n'
+          if '    loadNajmBaharAdminRuntime();' not in s:
+              s = s.replace(call_anchor, call_anchor + '    loadNajmBaharAdminRuntime();\n', 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+          git add app/Http/Controllers/NajmBaharController.php resources/js/app.js
+          test -z "$(git diff --name-only --diff-filter=U)"
+      - name: Focused structural verification
+        run: |
+          php -l app/Http/Controllers/NajmBaharController.php
+          php -l app/Modules/NajmBahar/Services/MembershipEligibilityService.php
+          node --check resources/js/app.js
+          node --check resources/js/najm-bahar-admin-settings.js
+          git diff --check --cached
+          test -f tests/Feature/NajmBahar/MembershipEligibilityServiceTest.php
+          test -f tests/Feature/NajmBahar/TransactionReservationProtectionTest.php
+          grep -Fq 'ParticipationPointSummaryService' app/Http/Controllers/NajmBaharController.php
+          grep -Fq 'MembershipEligibilityService' app/Http/Controllers/NajmBaharController.php
+          grep -Fq 'loadNajmHodaRuntime' resources/js/app.js
+          grep -Fq 'loadPrivateMessagingRuntime' resources/js/app.js
+          grep -Fq 'loadMemberInvitationRuntime' resources/js/app.js
+          grep -Fq 'loadNajmBaharAdminRuntime' resources/js/app.js
+      - name: Commit reconciled merge
+        run: |
+          git rm .github/workflows/tmp-final-integration-reconcile.yml
+          git add -A
+          git commit -m "merge: reconcile Najm Bahar UAT hardening into final integration"
+          git push origin HEAD:agent/pre-main-final-integration-20260908
