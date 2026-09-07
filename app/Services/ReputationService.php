@@ -68,8 +68,8 @@ class ReputationService
             $weight = (int) config("reputation.weights.{$actionKey}", 0);
             $configuredCap = config("reputation.daily_caps.{$actionKey}");
             $dailyCap = $configuredCap !== null ? (int) $configuredCap : null;
-            $dimension = (string) config("reputation.dimensions.{$actionKey}", 'participation');
-            $convertible = (bool) config("reputation.convertible.{$actionKey}", false);
+            $dimension = (string) config("reputation.policy_defaults.{$actionKey}.dimension", 'participation');
+            $convertible = (bool) config("reputation.policy_defaults.{$actionKey}.convertible", false);
         }
         $convertible = $convertibleOverride ?? $convertible;
         if ($weight === 0) return null;
