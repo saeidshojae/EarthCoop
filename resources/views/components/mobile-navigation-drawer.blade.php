@@ -10,6 +10,7 @@
         $mobileCurrentGroup = null;
     }
     $mobileBackFallback = $isAuth ? route('home') : route('welcome');
+    $mobileDocsLinks = config('docs-links');
 @endphp
 
 @once
@@ -129,7 +130,7 @@
 </style>
 @endonce
 
-<div class="mobile-navigation-drawer" x-data="{ openSection: 'primary' }">
+<div class="mobile-navigation-drawer" x-data="{ openSection: 'primary', openDocumentSection: false }">
     <div class="mobile-navigation-drawer__backdrop" @click="headerMenuOpen = false" aria-hidden="true"></div>
 
     <aside class="mobile-navigation-drawer__panel" role="dialog" aria-modal="true" aria-label="ناوبری EarthCoop">
@@ -256,8 +257,20 @@
                         @foreach($navLinks as $link)
                             <a href="{{ $link['url'] }}" class="navigation-link"><i class="fas {{ $link['icon'] }}"></i><span>{{ $link['label'] }}</span></a>
                         @endforeach
-                        <a href="{{ route('terms') }}" class="navigation-link"><i class="fas fa-file-alt"></i><span>{{ __('navigation.charter') }}</span></a>
-                        <a href="{{ route('najm-bahar.agreement') }}" class="navigation-link"><i class="fas fa-file-contract"></i><span>{{ __('navigation.financial_agreement') }}</span></a>
+
+                        <button type="button" class="navigation-link w-full" @click="openDocumentSection = !openDocumentSection" :aria-expanded="openDocumentSection">
+                            <i class="fas fa-folder-open" aria-hidden="true"></i>
+                            <span>اسناد</span>
+                            <i class="fas fa-chevron-down text-xs transition-transform" :class="{ 'rotate-180': openDocumentSection }" aria-hidden="true"></i>
+                        </button>
+                        <div x-show="openDocumentSection" x-transition class="navigation-section__links ms-3 border-s border-gray-200 ps-2">
+                            <a href="{{ $mobileDocsLinks['base_url'] }}/fa/introduction" target="_blank" rel="noopener noreferrer" class="navigation-link"><i class="fas fa-book-open"></i><span>مرکز اسناد</span></a>
+                            <a href="{{ $mobileDocsLinks['foundational_index']['href'] }}" target="_blank" rel="noopener noreferrer" class="navigation-link"><i class="fas fa-landmark"></i><span>اسناد بنیادین</span></a>
+                            <a href="{{ route('terms') }}" class="navigation-link"><i class="fas fa-scroll"></i><span>اساسنامه</span></a>
+                            <a href="{{ route('najm-bahar.agreement') }}" class="navigation-link"><i class="fas fa-file-contract"></i><span>توافقنامه مالی</span></a>
+                            <a href="{{ route('elections.guideline') }}" class="navigation-link"><i class="fas fa-vote-yea"></i><span>شیوه‌نامه انتخابات سیال</span></a>
+                            <a href="{{ route('participation.credit-regulation') }}" class="navigation-link"><i class="fas fa-award"></i><span>نظام‌نامه اعتبارات مشارکت</span></a>
+                        </div>
                     </div>
                 </section>
 
