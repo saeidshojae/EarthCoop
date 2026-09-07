@@ -69,5 +69,9 @@ jobs:
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections/CurrentElectionCenterServiceTest.php
       - name: Run current/history route split test
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections/CurrentElectionRoutesTest.php
+      - name: Run current center view test
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections/CurrentElectionCenterViewTest.php
+      - name: Run current center responsive contract
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections/CurrentElectionCenterResponsiveContractTest.php
       - name: Run elections regression suite
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections
