@@ -29,7 +29,7 @@
                 <p class="max-w-2xl mx-auto text-base sm:text-lg text-gray-700 font-vazirmatn leading-8 mb-7">
                     {{ __('communityStories.empty_text') }}
                 </p>
-                <button type="button" onclick="openModal()" aria-controls="registrationModal" class="welcome-cta bg-earth-green text-pure-white shadow-lg hover:bg-dark-green cursor-pointer mx-auto">
+                <button type="button" onclick="openModal()" aria-controls="registrationModal" class="welcome-cta welcome-action w-full max-w-sm px-9 py-4 rounded-full bg-earth-green text-pure-white shadow-lg hover:bg-dark-green cursor-pointer mx-auto flex items-center justify-center gap-3">
                     <span>{{ __('communityStories.empty_cta') }}</span>
                     <i class="fas fa-user-plus" aria-hidden="true"></i>
                 </button>
