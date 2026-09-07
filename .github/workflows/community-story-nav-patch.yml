@@ -1,0 +1,55 @@
+name: Community Story Navigation Patch
+
+on:
+  push:
+    branches:
+      - agent/welcome-community-stories
+
+permissions:
+  contents: write
+
+jobs:
+  patch-navigation:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/welcome-community-stories
+          fetch-depth: 0
+      - name: Add story authoring links to desktop and mobile member navigation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          desktop_path = Path('resources/views/components/user-dropdown-unified.blade.php')
+          desktop = desktop_path.read_text()
+          desktop_marker = "route('community-stories.index')"
+          if desktop_marker not in desktop:
+              needle = '''        <hr class="my-1 border-gray-200">\n\n        <!-- Chat Requests with Badge -->'''
+              replacement = '''        <hr class="my-1 border-gray-200">\n\n        <h6 class="px-4 py-2 text-sm font-bold text-right" style="color: var(--color-ocean-blue); text-align: right !important;">مشارکت من</h6>\n\n        <a href="{{ route('community-stories.index') }}"\n           class="block px-4 py-2 hover:bg-gray-50 transition duration-200 flex items-center gap-3"\n           style="color: var(--color-gentle-black);">\n            <i class="fas fa-feather"></i>\n            <span class="text-right">داستان من در EarthCoop</span>\n        </a>\n\n        <hr class="my-1 border-gray-200">\n\n        <!-- Chat Requests with Badge -->'''
+              if needle not in desktop:
+                  raise SystemExit('Desktop insertion anchor not found')
+              desktop_path.write_text(desktop.replace(needle, replacement, 1))
+
+          mobile_path = Path('resources/views/components/mobile-navigation-drawer.blade.php')
+          mobile = mobile_path.read_text()
+          if mobile_marker := "route('community-stories.index')":
+              if mobile_marker not in mobile:
+                  needle = '''                        <a href="{{ route('history.index') }}" class="navigation-link"><i class="fas fa-handshake"></i><span>مشارکت‌های من</span></a>\n                        <a href="{{ route('history.election') }}" class="navigation-link">'''
+                  replacement = '''                        <a href="{{ route('history.index') }}" class="navigation-link"><i class="fas fa-handshake"></i><span>مشارکت‌های من</span></a>\n                        <a href="{{ route('community-stories.index') }}" class="navigation-link"><i class="fas fa-feather"></i><span>داستان من در EarthCoop</span></a>\n                        <a href="{{ route('history.election') }}" class="navigation-link">'''
+                  if needle not in mobile:
+                      raise SystemExit('Mobile insertion anchor not found')
+                  mobile_path.write_text(mobile.replace(needle, replacement, 1))
+          PY
+      - name: Commit navigation patch
+        run: |
+          if git diff --quiet; then
+            echo "Navigation links already present."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add resources/views/components/user-dropdown-unified.blade.php resources/views/components/mobile-navigation-drawer.blade.php
+          git commit -m "feat: expose community story authoring in member navigation"
+          git push origin HEAD:agent/welcome-community-stories
