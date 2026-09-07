@@ -39,6 +39,12 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
 
+            // User-facing participation credit regulation. This route stays in a
+            // separate read-only surface so rendering the regulation never seeds or
+            // mutates the reputation rules it is documenting.
+            Route::middleware('web')
+                ->group(base_path('routes/participation-credit-regulation.php'));
+
             // Canonical authenticated My Groups route intentionally loads after
             // web.php so the legacy public /groups definition is shadowed. Guests
             // must be redirected before GroupController@index can dereference user().
