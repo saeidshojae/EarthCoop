@@ -26,4 +26,35 @@ class NajmHodaWidgetAvatarContractTest extends TestCase
         $this->assertStringContainsString('najm-hoda-message-avatar-image', $widget);
         $this->assertStringContainsString('this.addMessage(data.message, \'assistant\'', $widget);
     }
+
+    public function test_najm_hoda_has_a_stable_profile_route_independent_of_user_id(): void
+    {
+        $routes = file_get_contents(base_path('routes/web.php'));
+        $controller = file_get_contents(app_path('Http/Controllers/Profile/ProfileController.php'));
+
+        $this->assertStringContainsString("Route::get('/najm-hoda', [ProfileController::class, 'showNajmHodaProfile'])->name('najm-hoda.profile');", $routes);
+        $this->assertStringContainsString('public function showNajmHodaProfile()', $controller);
+        $this->assertStringContainsString("config('najm-hoda.group_assistant.bot_email'", $controller);
+        $this->assertStringContainsString("return view('profile.najm-hoda'", $controller);
+    }
+
+    public function test_generic_member_profile_redirects_the_najm_hoda_system_identity(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/Profile/ProfileController.php'));
+
+        $this->assertStringContainsString("return redirect()->route('najm-hoda.profile');", $controller);
+        $this->assertStringContainsString("config('najm-hoda.group_assistant.bot_email'", $controller);
+    }
+
+    public function test_najm_hoda_profile_explains_identity_services_usage_and_transparency(): void
+    {
+        $profile = file_get_contents(resource_path('views/profile/najm-hoda.blade.php'));
+
+        $this->assertStringContainsString('هویت رسمی سامانه', $profile);
+        $this->assertStringContainsString('چه کارهایی می‌توانم برای شما انجام دهم؟', $profile);
+        $this->assertStringContainsString('چطور از نجم هدا استفاده کنم؟', $profile);
+        $this->assertStringContainsString('حریم خصوصی و شفافیت', $profile);
+        $this->assertStringContainsString('images/najm-hoda/avatar.webp', $profile);
+        $this->assertStringContainsString('data-najm-hoda-open', $profile);
+    }
 }
