@@ -40,7 +40,10 @@ jobs:
           php -l app/Http/Controllers/Profile/ProfileController.php
           php -l tests/Feature/NajmHoda/NajmHodaWidgetAvatarContractTest.php
           php artisan test tests/Feature/NajmHoda/NajmHodaWidgetAvatarContractTest.php
-          php artisan test tests/Feature/NajmHoda/NajmHodaWidgetViewportContractTest.php
+          node --check resources/js/najm-hoda-widget-layout.js
+          grep -q "visualViewport" resources/js/najm-hoda-widget-layout.js
+          grep -q "ResizeObserver" resources/js/najm-hoda-widget-layout.js
+          grep -q "telegram-style-input" resources/js/najm-hoda-widget-layout.js
           php artisan route:list --name=najm-hoda.profile
       - name: Commit implementation
         run: |
