@@ -82,3 +82,5 @@ jobs:
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/CommunityStories/CommunityStoryNavigationTest.php
       - name: Run Welcome CTA and invitation contract
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Welcome/WelcomeCtaAndInvitationContractTest.php
+      - name: Run member invitation page UX contract
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Invitation/MemberInvitationViewContractTest.php
