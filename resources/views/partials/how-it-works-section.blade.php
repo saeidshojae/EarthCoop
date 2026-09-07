@@ -637,7 +637,7 @@
 
 
 
-            <button onclick="openModal()" class="welcome-cta bg-earth-green text-pure-white px-10 py-5 rounded-full shadow-lg hover:bg-dark-green transition duration-300 font-vazirmatn text-xl font-bold transform hover:scale-105 flex items-center justify-center mx-auto inline-flex cursor-pointer">
+            <button onclick="openModal()" class="welcome-cta bg-earth-green text-pure-white rounded-full shadow-lg hover:bg-dark-green transition duration-300 font-vazirmatn text-xl font-bold transform hover:scale-105 flex items-center justify-center mx-auto inline-flex cursor-pointer">
 
 
 

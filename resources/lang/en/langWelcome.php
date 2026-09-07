@@ -125,7 +125,7 @@ return [
 	'projects_card2_desc' => 'Invest in clean-energy projects that protect the environment while delivering financial returns.',
 	'projects_card3_title' => 'Social initiatives',
 	'projects_card3_desc' => 'Support projects that directly enhance community well-being and long-term social sustainability.',
-	'projects_cta' => 'View all projects',
+	'projects_cta' => 'Join to participate',
 
 	// Invite Section
 	'invite_title' => 'Grow EarthCoop and earn participation credit',
