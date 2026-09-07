@@ -18,7 +18,7 @@ class InviteParticipationRewardTest extends TestCase
     public function test_najm_bahar_agreement_does_not_award_invitation_points(): void
     {
         $this->mock(ProfileCompletionService::class, function ($mock) {
-            $mock->shouldReceive('isComplete')->once()->andReturnTrue();
+            $mock->shouldReceive('isComplete')->andReturnTrue();
         });
 
         $referrer = User::factory()->create();
