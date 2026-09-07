@@ -117,11 +117,11 @@ class ReputationServiceTest extends TestCase
         $this->assertSame(26, (int) $rule->daily_cap);
     }
 
-    public function test_admin_can_update_dimension_convertibility_and_repeat_policy(): void
+    public function test_admin_can_update_supported_policy_fields_without_mutating_repeat_policy(): void
     {
         $rule = ReputationRule::create([
             'key'=>'governance_role','label'=>'Governance role','weight'=>50,'daily_cap'=>null,'active'=>true,
-            'dimension'=>'participation','convertible'=>true,'repeat_policy'=>null,
+            'dimension'=>'participation','convertible'=>true,'repeat_policy'=>'daily',
         ]);
 
         $request = Request::create('/admin/reputation', 'POST', [
@@ -140,20 +140,20 @@ class ReputationServiceTest extends TestCase
         $this->assertSame(75, (int) $rule->weight);
         $this->assertSame('civic_trust', $rule->dimension);
         $this->assertFalse((bool) $rule->convertible);
-        $this->assertSame('once_per_context', $rule->repeat_policy);
+        $this->assertSame('daily', $rule->repeat_policy);
     }
 
-    public function test_admin_reputation_view_exposes_policy_controls(): void
+    public function test_admin_reputation_view_exposes_supported_policy_controls_without_fake_repeat_policy_editor(): void
     {
         $source = file_get_contents(resource_path('views/admin/system-settings/reputation/index.blade.php'));
 
         $this->assertStringContainsString('name="dimension[{{ $rule->key }}]"', $source);
         $this->assertStringContainsString('name="convertible[{{ $rule->key }}]"', $source);
-        $this->assertStringContainsString('name="repeat_policy[{{ $rule->key }}]"', $source);
+        $this->assertStringNotContainsString('name="repeat_policy[{{ $rule->key }}]"', $source);
         $this->assertStringContainsString("'participation'", $source);
         $this->assertStringContainsString("'reliability'", $source);
         $this->assertStringContainsString("'expertise'", $source);
         $this->assertStringContainsString("'civic_trust'", $source);
-        $this->assertStringContainsString("'once_per_context'", $source);
+        $this->assertStringContainsString('هویت رویداد', $source);
     }
 }
