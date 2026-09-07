@@ -45,6 +45,11 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->group(base_path('routes/participation-credit-regulation.php'));
 
+            // Voluntary community stories stay isolated from posts/comments: only
+            // explicit member submissions can enter the public-review pipeline.
+            Route::middleware('web')
+                ->group(base_path('routes/community-stories.php'));
+
             // Canonical authenticated My Groups route intentionally loads after
             // web.php so the legacy public /groups definition is shadowed. Guests
             // must be redirected before GroupController@index can dereference user().
