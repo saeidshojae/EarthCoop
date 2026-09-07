@@ -72,3 +72,5 @@ jobs:
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/CommunityStories/CommunityStoryPublicationContractTest.php
       - name: Run authentic welcome stories contract
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/CommunityStories/WelcomeCommunityStoriesTest.php
+      - name: Run voluntary story submission contract
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/CommunityStories/CommunityStorySubmissionTest.php
