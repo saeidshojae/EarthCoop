@@ -73,6 +73,16 @@
     header.site-header-unified .guest-navigation-cta--join { background: #10b981 !important; }
     header.site-header-unified .guest-navigation-cta--invite { background: #f59e0b !important; }
 
+    .mobile-navigation-drawer .documents-navigation-toggle {
+        text-align: start !important;
+    }
+    .mobile-navigation-drawer .documents-navigation-toggle > span {
+        width: 100%;
+        min-width: 0;
+        justify-self: stretch;
+        text-align: start !important;
+    }
+
     @media (max-width: 1023px) {
         header.site-header-unified[data-auth-state="guest"] {
             height: 60px !important;
@@ -258,7 +268,7 @@
                             <a href="{{ $link['url'] }}" class="navigation-link"><i class="fas {{ $link['icon'] }}"></i><span>{{ $link['label'] }}</span></a>
                         @endforeach
 
-                        <button type="button" class="navigation-link w-full" @click="openDocumentSection = !openDocumentSection" :aria-expanded="openDocumentSection">
+                        <button type="button" class="navigation-link documents-navigation-toggle w-full" @click="openDocumentSection = !openDocumentSection" :aria-expanded="openDocumentSection">
                             <i class="fas fa-folder-open" aria-hidden="true"></i>
                             <span>اسناد</span>
                             <i class="fas fa-chevron-down text-xs transition-transform" :class="{ 'rotate-180': openDocumentSection }" aria-hidden="true"></i>
