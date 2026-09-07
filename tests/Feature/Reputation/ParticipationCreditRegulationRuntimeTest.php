@@ -17,18 +17,20 @@ class ParticipationCreditRegulationRuntimeTest extends TestCase
     {
         config(['reputation.tiers.Silver' => 321]);
 
-        $rule = ReputationRule::create([
-            'key' => 'post_created',
-            'label' => 'ایجاد پست',
-            'weight' => 77,
-            'description' => 'قاعده آزمایشی جاری',
-            'module' => 'content',
-            'active' => true,
-            'daily_cap' => 88,
-            'dimension' => 'expertise',
-            'convertible' => true,
-            'repeat_policy' => 'daily',
-        ]);
+        $rule = ReputationRule::updateOrCreate(
+            ['key' => 'post_created'],
+            [
+                'label' => 'ایجاد پست',
+                'weight' => 77,
+                'description' => 'قاعده آزمایشی جاری',
+                'module' => 'content',
+                'active' => true,
+                'daily_cap' => 88,
+                'dimension' => 'expertise',
+                'convertible' => true,
+                'repeat_policy' => 'daily',
+            ]
+        );
 
         $policy = Mockery::mock(MonetaryPolicyService::class);
         $policy->shouldReceive('current')->twice()->andReturn([
