@@ -35,8 +35,8 @@ if (widget && panel && toggle) {
     };
 
     const defaultLauncherBottom = () => {
-        if (window.matchMedia('(max-width: 480px)').matches) return 86;
-        if (window.matchMedia('(max-width: 768px)').matches) return 78;
+        if (window.matchMedia('(max-width: 480px)').matches) return 10;
+        if (window.matchMedia('(max-width: 768px)').matches) return 15;
         return 20;
     };
 
