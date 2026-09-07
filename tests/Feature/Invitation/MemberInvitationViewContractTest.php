@@ -9,7 +9,7 @@ class MemberInvitationViewContractTest extends TestCase
     // Locks the responsive invitation UX and the human-readable share/deep-link contract.
     public function test_member_invitation_page_has_mobile_first_cards_and_a_standard_primary_action(): void
     {
-        $view = file_get_contents(base_path('resources/views/my-invation-code.blade.php'));
+        $view = file_get_contents(base_path('resources/views/profile/member-invitations.blade.php'));
 
         $this->assertStringContainsString('invite-page-shell', $view);
         $this->assertStringContainsString('invite-primary-action', $view);
@@ -22,7 +22,7 @@ class MemberInvitationViewContractTest extends TestCase
 
     public function test_share_action_builds_a_human_invitation_and_copies_the_whole_message_as_fallback(): void
     {
-        $view = file_get_contents(base_path('resources/views/my-invation-code.blade.php'));
+        $view = file_get_contents(base_path('resources/views/profile/member-invitations.blade.php'));
 
         $this->assertStringContainsString('function buildInviteMessage(code)', $view);
         $this->assertStringContainsString('از اعضای نخستین', $view);
@@ -34,7 +34,7 @@ class MemberInvitationViewContractTest extends TestCase
 
     public function test_invitation_page_does_not_repeat_old_fixed_bahar_cash_reward_claims(): void
     {
-        $view = file_get_contents(base_path('resources/views/my-invation-code.blade.php'));
+        $view = file_get_contents(base_path('resources/views/profile/member-invitations.blade.php'));
 
         $this->assertStringNotContainsString('۱۰ بهار', $view);
         $this->assertStringNotContainsString('۱ گرم طلای ۲۴ عیار', $view);
