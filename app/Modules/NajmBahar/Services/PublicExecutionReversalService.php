@@ -79,7 +79,8 @@ class PublicExecutionReversalService
                 if ($destination->type !== 'legal_entity') {
                     throw new \RuntimeException('Public reversal destination must be the legal-entity execution account.');
                 }
-                if ((int) ($source->balance_active ?? 0) < $amount) {
+                $availableActive = app(ActiveBaharReservationService::class)->availableActive($source);
+                if ($availableActive < $amount) {
                     throw new \RuntimeException('Original payee has insufficient Active Bahar for reversal.');
                 }
 

@@ -20,6 +20,11 @@ class MonetaryService
             }
 
             $locked = Account::whereKey($account->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->type !== 'user' || (int) $locked->user_id !== $userId) {
+                throw new \RuntimeException('Membership issuance requires an account owned by the member.');
+            }
+
             $amount = NajmBaharConstitution::initialMembershipGol();
 
             if ((int) $locked->balance !== 0
@@ -88,7 +93,9 @@ class MonetaryService
             $amount = $allowPartial ? min($requestedAmount, $available) : $requestedAmount;
             $locked->balance_faded = $available - $amount;
             $locked->balance_active = (int) ($locked->balance_active ?? 0) + $amount;
-            $locked->balance = (int) $locked->balance_faded + (int) $locked->balance_active;
+            $locked->balance = (int) $locked->balance_faded
+                + (int) $locked->balance_active
+                + (int) ($locked->committed_dim ?? 0);
             $locked->save();
             $this->syncSubAccountMirror($locked);
 
@@ -144,7 +151,9 @@ class MonetaryService
 
             $amount = $allowPartial ? min($requestedAmount, $available) : $requestedAmount;
             $locked->balance_faded = $available - $amount;
-            $locked->balance = (int) ($locked->balance_active ?? 0) + (int) $locked->balance_faded;
+            $locked->balance = (int) ($locked->balance_active ?? 0)
+                + (int) $locked->balance_faded
+                + (int) ($locked->committed_dim ?? 0);
             $locked->save();
             $this->syncSubAccountMirror($locked);
 
@@ -169,7 +178,7 @@ class MonetaryService
         });
     }
 
-    /** Destroy active money held by a system fund. */
+    /** Destroy only spendable Active money held by a system fund. */
     public function destroyActive(
         Account $account,
         int $requestedAmount,
@@ -188,7 +197,9 @@ class MonetaryService
             }
 
             $locked = Account::whereKey($account->id)->lockForUpdate()->firstOrFail();
-            $available = (int) ($locked->balance_active ?? 0);
+            $nominalActive = (int) ($locked->balance_active ?? 0);
+            $available = app(ActiveBaharReservationService::class)->availableActive($locked);
+
             if ($available <= 0) {
                 return ['transaction' => null, 'amount' => 0, 'applied' => false];
             }
@@ -197,8 +208,10 @@ class MonetaryService
             }
 
             $amount = $allowPartial ? min($requestedAmount, $available) : $requestedAmount;
-            $locked->balance_active = $available - $amount;
-            $locked->balance = (int) $locked->balance_active + (int) ($locked->balance_faded ?? 0);
+            $locked->balance_active = $nominalActive - $amount;
+            $locked->balance = (int) $locked->balance_active
+                + (int) ($locked->balance_faded ?? 0)
+                + (int) ($locked->committed_dim ?? 0);
             $locked->save();
             $this->syncSubAccountMirror($locked);
 

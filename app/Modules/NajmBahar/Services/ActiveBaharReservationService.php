@@ -45,8 +45,8 @@ class ActiveBaharReservationService
             [$payer,$payee]=$this->lockAccounts((int)$r->payer_account_id,$payeeAccountNumber);
             if ((int)$payer->balance_active<(int)$r->amount) throw new RuntimeException('Reserved Active Bahar is no longer backed by payer balance.');
 
-            $payer->balance_active=(int)$payer->balance_active-(int)$r->amount; $payer->balance=(int)$payer->balance_active+(int)$payer->balance_faded; $payer->save();
-            $payee->balance_active=(int)$payee->balance_active+(int)$r->amount; $payee->balance=(int)$payee->balance_active+(int)$payee->balance_faded; $payee->save();
+            $payer->balance_active=(int)$payer->balance_active-(int)$r->amount; $payer->balance=(int)$payer->balance_active+(int)$payer->balance_faded+(int)($payer->committed_dim??0); $payer->save();
+            $payee->balance_active=(int)$payee->balance_active+(int)$r->amount; $payee->balance=(int)$payee->balance_active+(int)$payee->balance_faded+(int)($payee->committed_dim??0); $payee->save();
 
             $meta=array_merge((array)$r->metadata,$metadata,['idempotency_key'=>$settlementKey,'reservation_key'=>$reservationKey,'balance_type'=>'active','reference_type'=>$r->reference_type,'reference_id'=>$r->reference_id]);
             $tx=NajmTransaction::create(['idempotency_key'=>$settlementKey,'from_account_id'=>$payer->id,'to_account_id'=>$payee->id,'amount'=>(int)$r->amount,'type'=>'reservation_settlement','status'=>'completed','metadata'=>$meta,'description'=>'Active Bahar reservation settlement']);
@@ -67,8 +67,8 @@ class ActiveBaharReservationService
             [$payer,$payee]=$this->lockAccountsByIds((int)$r->payer_account_id,(int)$r->payee_account_id);
             if ((int)$payee->balance_active<$amount) throw new RuntimeException('Payee has insufficient Active Bahar for refund.');
 
-            $payee->balance_active=(int)$payee->balance_active-$amount; $payee->balance=(int)$payee->balance_active+(int)$payee->balance_faded; $payee->save();
-            $payer->balance_active=(int)$payer->balance_active+$amount; $payer->balance=(int)$payer->balance_active+(int)$payer->balance_faded; $payer->save();
+            $payee->balance_active=(int)$payee->balance_active-$amount; $payee->balance=(int)$payee->balance_active+(int)$payee->balance_faded+(int)($payee->committed_dim??0); $payee->save();
+            $payer->balance_active=(int)$payer->balance_active+$amount; $payer->balance=(int)$payer->balance_active+(int)$payer->balance_faded+(int)($payer->committed_dim??0); $payer->save();
             $meta=array_merge($metadata,['idempotency_key'=>$refundKey,'reservation_key'=>$reservationKey,'balance_type'=>'active','refund_key'=>$refundKey]);
             $tx=NajmTransaction::create(['idempotency_key'=>$refundKey,'from_account_id'=>$payee->id,'to_account_id'=>$payer->id,'amount'=>$amount,'type'=>'reservation_refund','status'=>'completed','metadata'=>$meta,'description'=>'Active Bahar reservation refund']);
             LedgerEntry::create(['transaction_id'=>$tx->id,'account_id'=>$payee->id,'amount'=>-$amount,'entry_type'=>'debit','meta'=>$meta]); LedgerEntry::create(['transaction_id'=>$tx->id,'account_id'=>$payer->id,'amount'=>$amount,'entry_type'=>'credit','meta'=>$meta]);

@@ -29,7 +29,8 @@ class SubAccountSystemTransferService
                 $parent = Account::query()->lockForUpdate()->findOrFail($lockedSource->account_id);
 
                 $active = (int) ($lockedSource->balance_active ?? 0);
-                if ($active < $amount) throw new \RuntimeException('Insufficient active funds in sub-account');
+                $availableActive = app(ActiveBaharReservationService::class)->availableActive($sourceMirror);
+                if ($active < $amount || $availableActive < $amount) throw new \RuntimeException('Insufficient active funds in sub-account');
 
                 $lockedSource->balance_active = $active - $amount;
                 $lockedSource->balance = (int) $lockedSource->balance_active + (int) ($lockedSource->balance_faded ?? 0);

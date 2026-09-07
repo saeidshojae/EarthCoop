@@ -8,6 +8,7 @@ use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\LedgerEntry;
 use App\Modules\NajmBahar\Models\Transaction;
 use App\Modules\NajmBahar\Policy\NajmBaharConstitution;
+use App\Modules\NajmBahar\Services\MembershipEligibilityService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -17,6 +18,7 @@ class InitialMembershipCreditTest extends TestCase
 
     public function test_accepting_najm_bahar_agreement_creates_exactly_ten_thousand_bahar_as_dim_money(): void
     {
+        $this->allowEligibleMembership();
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)->post(route('najm-bahar.agreement.process'), [
@@ -56,6 +58,7 @@ class InitialMembershipCreditTest extends TestCase
 
     public function test_reopening_dashboard_does_not_issue_membership_credit_twice(): void
     {
+        $this->allowEligibleMembership();
         $user = User::factory()->create();
 
         $this->actingAs($user)->post(route('najm-bahar.agreement.process'), [
@@ -79,5 +82,12 @@ class InitialMembershipCreditTest extends TestCase
         $this->assertSame(1, LedgerEntry::where('account_id', $account->id)
             ->where('meta->monetary_event', 'money_created')
             ->count());
+    }
+
+    private function allowEligibleMembership(): void
+    {
+        $this->mock(MembershipEligibilityService::class, function ($mock) {
+            $mock->shouldReceive('isEligibleForInitialMembershipCredit')->andReturnTrue();
+        });
     }
 }

@@ -46,6 +46,12 @@ const loadNajmBaharRuntime = () => {
     if (hasReputationConversion) importFeature(() => import("./najm-bahar-conversion-idempotency.js"), "Najm Bahar conversion idempotency");
 };
 
+const loadNajmBaharAdminRuntime = () => {
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    if (!['/admin/najm-bahar/dashboard', '/admin/najm-bahar/settings'].includes(path)) return;
+    importFeature(() => import("./najm-bahar-admin-settings.js"), "Najm Bahar admin settings");
+};
+
 const loadPrivateMessagingRuntime = () => {
     if (!document.querySelector('[data-private-conversation]')) return;
     importFeature(() => import("./private-messaging-read-receipts.js"), "private messaging read receipts");
@@ -70,6 +76,7 @@ const loadMemberInvitationRuntime = () => {
 const loadPageScopedRuntime = () => {
     loadNajmHodaRuntime();
     loadNajmBaharRuntime();
+    loadNajmBaharAdminRuntime();
     loadPrivateMessagingRuntime();
     loadMyParticipationRuntime();
     loadSwiperRuntime();
