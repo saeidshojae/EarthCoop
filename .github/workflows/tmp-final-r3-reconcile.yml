@@ -1,4 +1,4 @@
-name: Final Integration R3 Diagnostic
+name: Final Integration R3 Reconcile
 
 on:
   push:
@@ -6,27 +6,80 @@ on:
       - agent/pre-main-final-integration-20260908
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnose:
+  reconcile:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Diagnose post-freeze R3 merge
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - name: Prepare Laravel writable directories
         run: |
-          git config user.name "integration-diagnostic"
-          git config user.email "integration-diagnostic@users.noreply.github.com"
+          mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views
+          chmod -R 777 bootstrap/cache storage
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Merge R3 and resolve only reviewed conflicts
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           set +e
           git merge --no-commit --no-ff origin/agent/r3-reputation-close
           code=$?
-          echo "MERGE_EXIT=$code"
-          echo "--- UNMERGED FILES ---"
-          git diff --name-only --diff-filter=U || true
-          echo "--- STATUS ---"
-          git status --short || true
-          if [ "$code" -eq 0 ]; then git merge --abort || true; echo MERGE_CLEAN; exit 0; fi
-          git merge --abort || true
-          exit 1
+          set -e
+          if [ "$code" -ne 0 ]; then
+            mapfile -t conflicts < <(git diff --name-only --diff-filter=U)
+            printf 'Conflicts: %s\n' "${conflicts[*]}"
+            expected=("app/Http/Controllers/Admin/ReputationController.php" "config/reputation.php" "resources/views/admin/system-settings/reputation/index.blade.php")
+            if [ "${#conflicts[@]}" -ne 3 ]; then exit 41; fi
+            for f in "${expected[@]}"; do printf '%s\n' "${conflicts[@]}" | grep -Fxq "$f" || exit 42; done
+            git checkout --theirs -- app/Http/Controllers/Admin/ReputationController.php config/reputation.php resources/views/admin/system-settings/reputation/index.blade.php
+          fi
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('config/reputation.php')
+          s = p.read_text(encoding='utf-8')
+          old = "        'invite_member' => 10,"
+          new = "        // Latest launch policy: a completed invitation earns 100 participation points.\n        'invite_member' => 100,"
+          if old not in s:
+              raise SystemExit('expected R3 invite_member=10 anchor missing')
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+          git add app/Http/Controllers/Admin/ReputationController.php config/reputation.php resources/views/admin/system-settings/reputation/index.blade.php
+          test -z "$(git diff --name-only --diff-filter=U)"
+      - name: Verify post-freeze reputation semantics
+        run: |
+          php -l app/Http/Controllers/Admin/ReputationController.php
+          php -l app/Services/ReputationService.php
+          php -l app/Console/Commands/ReconcileMembershipFeeReputation.php
+          php -l app/Console/Commands/RepairReputationPolicyDefaults.php
+          php -l config/reputation.php
+          php -l database/migrations/2026_09_07_000001_archive_unwired_reputation_rules.php
+          git diff --check --cached
+          grep -Fq "'invite_member' => 100" config/reputation.php
+          grep -Fq "'profile_photo_uploaded'" app/Http/Controllers/Admin/ReputationController.php
+          grep -Fq "'fraud'" app/Http/Controllers/Admin/ReputationController.php
+          grep -Fq "'archived' => ['label' => 'آرشیو / منسوخ'" app/Http/Controllers/Admin/ReputationController.php
+          grep -Fq 'deprecatedRuleKeys' resources/views/admin/system-settings/reputation/index.blade.php
+          ! grep -Fq 'apply_confirmed_fraud' resources/views/admin/system-settings/reputation/index.blade.php
+          ! grep -Fq 'ثبت تقلب تأییدشده' resources/views/admin/system-settings/reputation/index.blade.php
+          test -f tests/Feature/Reputation/ReputationLaunchAdminCleanupContractTest.php
+      - name: Run focused reputation tests
+        run: |
+          php artisan test tests/Feature/Reputation/DeprecatedElectionRuleAdminGuardContractTest.php
+          php artisan test tests/Feature/Reputation/ReputationAdminSemanticLabelsContractTest.php
+          php artisan test tests/Feature/Reputation/ReputationLaunchAdminCleanupContractTest.php
+      - name: Commit reconciled R3 merge
+        run: |
+          git rm .github/workflows/tmp-final-r3-reconcile.yml
+          git add -A
+          git commit -m "merge: reconcile post-freeze reputation hardening"
+          git push origin HEAD:agent/pre-main-final-integration-20260908
