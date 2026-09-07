@@ -1,0 +1,62 @@
+name: Najm Hoda Scope Cleanup
+
+on:
+  push:
+    branches:
+      - agent/najm-hoda-widget-viewport-safety
+
+permissions:
+  contents: write
+
+jobs:
+  clean-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Remove generated and metadata-only changes
+        run: |
+          git checkout origin/agent/welcome-community-stories -- \
+            storage/app/.gitignore \
+            storage/app/public/.gitignore \
+            storage/backups/chat_page_audit_20260217_015716/BlogController.php \
+            storage/backups/chat_page_audit_20260217_015716/ChatController.php \
+            storage/backups/chat_page_audit_20260217_015716/MessageController.php \
+            storage/backups/chat_page_audit_20260217_015716/PollController.php \
+            storage/backups/chat_page_audit_20260217_015716/chat-features.js \
+            storage/backups/chat_page_audit_20260217_015716/chat.blade.php \
+            storage/backups/chat_page_audit_20260217_015716/group-chat.js \
+            storage/backups/chat_page_audit_20260217_015716/voice-recorder.js \
+            storage/backups/chat_page_audit_20260217_015716/web.php \
+            storage/framework/.gitignore \
+            storage/tmp_show_head.blade.php
+          git rm -f --ignore-unmatch \
+            storage/najm-hoda/knowledge/project-info.md \
+            storage/najm-hoda/knowledge/user-guide.md \
+            storage/najm-hoda/knowledge/values.md \
+            storage/najm-hoda/knowledge/vision.md
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_sqlite, sqlite3
+          coverage: none
+      - name: Prepare Laravel writable directories
+        run: |
+          mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views
+          chmod -R 777 bootstrap/cache storage
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Verify intended Najm Hoda contracts
+        run: |
+          php artisan test tests/Feature/NajmHoda/NajmHodaWidgetAvatarContractTest.php
+          php artisan test tests/Feature/GroupChat/NajmHodaWidgetViewportContractTest.php
+          node --check resources/js/najm-hoda-widget-layout.js
+          php artisan route:list --name=najm-hoda.profile
+      - name: Commit scope cleanup
+        run: |
+          git rm .github/workflows/tmp-najm-hoda-scope-cleanup.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: keep Najm Hoda profile work scope-clean"
+          git push
