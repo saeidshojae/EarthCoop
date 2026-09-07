@@ -1,0 +1,84 @@
+name: Welcome UI Polish Repair
+
+on:
+  push:
+    branches:
+      - agent/welcome-community-stories
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: "github.actor != 'github-actions[bot]'"
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/welcome-community-stories
+          fetch-depth: 0
+
+      - name: Apply focused Welcome UI fixes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          stories_path = Path('resources/views/partials/testimonials-section.blade.php')
+          stories = stories_path.read_text()
+          old = 'class="welcome-cta welcome-action w-full max-w-sm px-9 py-4 rounded-full bg-earth-green text-pure-white shadow-lg hover:bg-dark-green cursor-pointer mx-auto flex items-center justify-center gap-3"'
+          new = 'class="welcome-cta welcome-action w-full max-w-sm px-9 py-4 rounded-full bg-earth-green text-pure-white shadow-lg hover:bg-dark-green cursor-pointer mx-auto mb-4 flex items-center justify-center gap-3"'
+          if old not in stories:
+              raise SystemExit('empty story CTA shape changed unexpectedly')
+          stories_path.write_text(stories.replace(old, new, 1))
+
+          cta_path = Path('resources/views/partials/cta-section.blade.php')
+          cta = cta_path.read_text()
+          old_primary = 'class="welcome-cta welcome-wide-cta__button border-2 border-pure-white text-pure-white px-12 py-5 rounded-full shadow-xl hover:bg-pure-white hover:text-purple-700 group transition duration-300 font-vazirmatn text-xl font-medium flex items-center justify-center"'
+          new_primary = 'class="welcome-cta welcome-action w-full sm:w-auto px-9 py-4 rounded-full border-2 border-pure-white text-pure-white shadow-xl hover:bg-pure-white hover:text-purple-700 group transition duration-300 font-vazirmatn text-xl font-medium flex items-center justify-center"'
+          old_secondary = 'class="welcome-cta welcome-wide-cta__button bg-digital-gold text-pure-white px-12 py-5 rounded-full shadow-2xl hover:bg-opacity-90 hover:scale-105 transition duration-300 font-vazirmatn text-xl font-bold animate-glow flex items-center justify-center cursor-pointer"'
+          new_secondary = 'class="welcome-cta welcome-action w-full sm:w-auto px-9 py-4 rounded-full bg-digital-gold text-pure-white shadow-2xl hover:bg-opacity-90 hover:scale-105 transition duration-300 font-vazirmatn text-xl font-bold animate-glow flex items-center justify-center cursor-pointer"'
+          if old_primary not in cta or old_secondary not in cta:
+              raise SystemExit('final CTA shape changed unexpectedly')
+          cta = cta.replace(old_primary, new_primary, 1).replace(old_secondary, new_secondary, 1)
+          cta_path.write_text(cta)
+
+          welcome_path = Path('resources/views/welcome.blade.php')
+          welcome = welcome_path.read_text()
+          old_modal = 'class="fixed inset-0 bg-black bg-opacity-50 hidden z-[100] flex items-center justify-center p-4"'
+          new_modal = 'class="fixed inset-0 bg-black bg-opacity-50 hidden z-[9999] flex items-start justify-center overflow-y-auto overscroll-contain p-4"'
+          if old_modal not in welcome:
+              raise SystemExit('registration modal overlay shape changed unexpectedly')
+          welcome = welcome.replace(old_modal, new_modal, 1)
+
+          old_content = 'class="bg-white rounded-3xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-95 opacity-0" id="modalContent"'
+          new_content = 'class="bg-white rounded-3xl shadow-2xl max-w-md w-full my-4 sm:my-8 transform transition-all duration-300 scale-95 opacity-0" id="modalContent"'
+          if old_content not in welcome:
+              raise SystemExit('registration modal content shape changed unexpectedly')
+          welcome = welcome.replace(old_content, new_content, 1)
+
+          open_marker = "        modal.classList.remove('hidden');\n"
+          open_replacement = "        modal.classList.remove('hidden');\n        document.body.classList.add('overflow-hidden');\n"
+          if "document.body.classList.add('overflow-hidden')" not in welcome:
+              if open_marker not in welcome:
+                  raise SystemExit('openModal marker missing')
+              welcome = welcome.replace(open_marker, open_replacement, 1)
+
+          close_marker = "        setTimeout(() => {\n            modal.classList.add('hidden');\n        }, 300);"
+          close_replacement = "        setTimeout(() => {\n            modal.classList.add('hidden');\n            document.body.classList.remove('overflow-hidden');\n        }, 300);"
+          if "document.body.classList.remove('overflow-hidden')" not in welcome:
+              if close_marker not in welcome:
+                  raise SystemExit('closeModal marker missing')
+              welcome = welcome.replace(close_marker, close_replacement, 1)
+
+          welcome_path.write_text(welcome)
+
+          Path('.github/workflows/welcome-ui-polish-repair.yml').unlink()
+          PY
+
+      - name: Commit focused repair and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add resources/views/partials/testimonials-section.blade.php resources/views/partials/cta-section.blade.php resources/views/welcome.blade.php .github/workflows/welcome-ui-polish-repair.yml
+          git commit -m "fix: polish Welcome CTA spacing and registration modal"
+          git push origin HEAD:agent/welcome-community-stories
