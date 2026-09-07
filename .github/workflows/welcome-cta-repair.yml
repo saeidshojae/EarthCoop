@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   repair:
-    if: github.actor != 'github-actions[bot]'
+    if: "github.actor != 'github-actions[bot]'"
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -24,7 +24,6 @@ jobs:
           from pathlib import Path
           import re
 
-          # 1) Shared CTA CSS owns sizing; remove duplicate fixed padding from CTA surfaces.
           replacements = {
               'resources/views/partials/projects-section.blade.php': [('px-10 py-5 ', '')],
               'resources/views/partials/how-it-works-section.blade.php': [('px-10 py-5 ', '')],
@@ -37,7 +36,6 @@ jobs:
                   text = text.replace(old, new)
               path.write_text(text)
 
-          # 2) Public projects CTA must start registration, not send guests to an authenticated investment page.
           projects_path = Path('resources/views/partials/projects-section.blade.php')
           projects = projects_path.read_text()
           projects = projects.replace(
@@ -45,7 +43,6 @@ jobs:
               '<button type="button" onclick="openModal()" aria-controls="registrationModal" class="welcome-cta ',
               1,
           )
-          # Replace only the CTA closing tag nearest the translation key.
           marker = "{{ __('langWelcome.projects_cta') }}"
           idx = projects.find(marker)
           if idx == -1:
@@ -57,7 +54,6 @@ jobs:
               raise SystemExit('projects CTA registration action was not restored')
           projects_path.write_text(projects)
 
-          # 3) Restore copy that matches the registration action in all supported locales.
           copy = {
               'fa': 'برای مشارکت بپیوندید',
               'en': 'Join to participate',
@@ -72,7 +68,6 @@ jobs:
               text = re.sub(pattern, lambda m: m.group(1) + "'" + value + "'" + m.group(2), text, count=1, flags=re.M)
               path.write_text(text)
 
-          # 4) Resolve the current invite participation-credit rule from the same canonical snapshot used by the regulation page.
           controller_path = Path('app/Http/Controllers/Auth/Register/StartController.php')
           controller = controller_path.read_text()
           use_line = 'use App\\Services\\ParticipationCreditRegulationService;'
@@ -118,13 +113,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            resources/views/partials/projects-section.blade.php \
-            resources/views/partials/how-it-works-section.blade.php \
-            resources/views/partials/invite-section.blade.php \
-            resources/lang/fa/langWelcome.php \
-            resources/lang/en/langWelcome.php \
-            resources/lang/ar/langWelcome.php \
-            app/Http/Controllers/Auth/Register/StartController.php
+          git add resources/views/partials/projects-section.blade.php resources/views/partials/how-it-works-section.blade.php resources/views/partials/invite-section.blade.php resources/lang/fa/langWelcome.php resources/lang/en/langWelcome.php resources/lang/ar/langWelcome.php app/Http/Controllers/Auth/Register/StartController.php
           git commit -m "fix: restore Welcome CTA and invite credit contracts"
           git push origin HEAD:agent/welcome-community-stories
