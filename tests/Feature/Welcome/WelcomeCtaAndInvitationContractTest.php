@@ -6,6 +6,7 @@ use Tests\TestCase;
 
 class WelcomeCtaAndInvitationContractTest extends TestCase
 {
+    // Regression coverage for the mobile Welcome CTA and registration modal polish.
     public function test_welcome_primary_ctas_use_the_dedicated_pill_action_contract(): void
     {
         $projects = file_get_contents(base_path('resources/views/partials/projects-section.blade.php'));
