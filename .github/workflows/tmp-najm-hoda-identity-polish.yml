@@ -25,17 +25,21 @@ jobs:
           mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views
           chmod -R 777 bootstrap/cache storage
       - run: composer install --no-interaction --prefer-dist --no-progress
-      - name: Add regression assertions and confirm RED
+      - name: Add regression assertions
         shell: python
         run: |
           from pathlib import Path
           p = Path('tests/Feature/NajmHoda/NajmHodaWidgetAvatarContractTest.php')
           s = p.read_text(encoding='utf-8')
-          old = "        $this->assertStringContainsString('this.addMessage(data.message, \\'assistant\\'', $widget);\n"
-          new = old + "        $this->assertStringContainsString(\"const avatarMarkup = role !== 'user'\", $widget);\n        $this->assertStringNotContainsString(\"'assistant', '⚠️'\", $widget);\n        $this->assertStringNotContainsString(\"'assistant', '❌'\", $widget);\n"
-          if "const avatarMarkup = role !== 'user'" not in s:
-              if old not in s: raise SystemExit('avatar test anchor not found')
-              s = s.replace(old, new, 1)
+          old_role = "        $this->assertStringContainsString('role === \\'assistant\\'', $widget);\n"
+          new_role = "        $this->assertStringContainsString(\"const avatarMarkup = role !== 'user'\", $widget);\n"
+          if old_role in s:
+              s = s.replace(old_role, new_role, 1)
+          anchor = "        $this->assertStringContainsString('this.addMessage(data.message, \\'assistant\\'', $widget);\n"
+          additions = "        $this->assertStringNotContainsString(\"'assistant', '⚠️'\", $widget);\n        $this->assertStringNotContainsString(\"'assistant', '❌'\", $widget);\n"
+          if "'assistant', '⚠️'" not in s:
+              if anchor not in s: raise SystemExit('avatar test anchor not found')
+              s = s.replace(anchor, anchor + additions, 1)
           old2 = "        $this->assertStringContainsString('data-najm-hoda-open', $profile);\n"
           new2 = old2 + "        $this->assertStringContainsString('hoda-profile-mobile-polish', $profile);\n"
           if "hoda-profile-mobile-polish" not in s:
