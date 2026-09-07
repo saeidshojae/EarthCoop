@@ -59,12 +59,18 @@ const loadSwiperRuntime = () => {
     importFeature(async () => { const { register } = await import("swiper/element/bundle"); register(); }, "Swiper");
 };
 
+const loadMemberInvitationRuntime = () => {
+    if (!document.querySelector('.invite-page-shell')) return;
+    importFeature(() => import("./member-invitation-share.js"), "member invitation sharing");
+};
+
 const loadPageScopedRuntime = () => {
     loadNajmHodaRuntime();
     loadNajmBaharRuntime();
     loadPrivateMessagingRuntime();
     loadMyParticipationRuntime();
     loadSwiperRuntime();
+    loadMemberInvitationRuntime();
 };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadPageScopedRuntime, { once: true }); else loadPageScopedRuntime();
 
