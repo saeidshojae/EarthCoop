@@ -21,8 +21,8 @@ class ParticipationCreditRegulationContractTest extends TestCase
         $this->assertStringContainsString("config('reputation.weights'", $service);
         $this->assertStringContainsString("config('reputation.tiers'", $service);
         $this->assertStringContainsString('MonetaryPolicyService', $service);
-        $this->assertStringContainsString("'reputation_to_gol_ratio'", $service);
-        $this->assertStringContainsString("'reputation_conversion_enabled'", $service);
+        $this->assertStringContainsString('parameters.reputation_to_gol_ratio', $service);
+        $this->assertStringContainsString('parameters.reputation_conversion_enabled', $service);
 
         $this->assertStringContainsString('نظام‌نامه اعتبارات مشارکت', $view);
         $this->assertStringContainsString('policySnapshot', $view);
