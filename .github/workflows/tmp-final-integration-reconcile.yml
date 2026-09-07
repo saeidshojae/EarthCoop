@@ -1,0 +1,35 @@
+name: Final Integration Reconcile Diagnostic
+
+on:
+  push:
+    branches:
+      - agent/pre-main-final-integration-20260908
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Diagnose Najm Bahar UAT merge
+        shell: bash
+        run: |
+          set +e
+          git merge --no-commit --no-ff origin/agent/najm-bahar-uat
+          code=$?
+          echo "MERGE_EXIT=$code"
+          echo "--- UNMERGED FILES ---"
+          git diff --name-only --diff-filter=U || true
+          echo "--- STATUS ---"
+          git status --short || true
+          if [ "$code" -eq 0 ]; then
+            git merge --abort || true
+            echo "MERGE_CLEAN"
+            exit 0
+          fi
+          git merge --abort || true
+          exit 1
