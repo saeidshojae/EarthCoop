@@ -10,22 +10,24 @@ class WelcomeCtaAndInvitationContractTest extends TestCase
     {
         $projects = file_get_contents(base_path('resources/views/partials/projects-section.blade.php'));
         $journey = file_get_contents(base_path('resources/views/partials/how-it-works-section.blade.php'));
+        $stories = file_get_contents(base_path('resources/views/partials/testimonials-section.blade.php'));
         $invite = file_get_contents(base_path('resources/views/partials/invite-section.blade.php'));
 
-        $this->assertStringContainsString('welcome-action', $projects);
-        $this->assertStringContainsString('welcome-action', $journey);
+        foreach ([$projects, $journey, $stories] as $source) {
+            $this->assertStringContainsString('welcome-action', $source);
+            $this->assertStringContainsString('w-full max-w-sm', $source);
+            $this->assertStringContainsString('px-9 py-4', $source);
+            $this->assertStringContainsString('rounded-full', $source);
+        }
+
         $this->assertSame(2, substr_count($invite, 'welcome-action'));
+        $this->assertStringContainsString('w-full sm:w-auto', $invite);
+        $this->assertStringContainsString('px-9 py-4', $invite);
+        $this->assertStringNotContainsString('welcome-wide-cta__button', $invite);
 
         $this->assertStringNotContainsString('px-10 py-5', $projects);
         $this->assertStringNotContainsString('px-10 py-5', $journey);
         $this->assertStringNotContainsString('px-12 py-5', $invite);
-
-        $css = file_get_contents(base_path('resources/css/app.css'));
-        $this->assertStringContainsString('.welcome-action {', $css);
-        $this->assertStringContainsString('min-height: 3.5rem;', $css);
-        $this->assertStringContainsString('padding: 1rem 2.25rem;', $css);
-        $this->assertStringContainsString('border-radius: 9999px;', $css);
-        $this->assertStringContainsString('border-radius: 9999px !important;', $css);
     }
 
     public function test_invitation_copy_uses_current_participation_credit_model_not_old_bahar_cash_claims(): void
