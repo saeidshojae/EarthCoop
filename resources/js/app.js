@@ -15,7 +15,10 @@ if (appJQuery.fn.select2?.defaults) {
 const importFeature = (loader, label) => { void loader().catch((error) => { console.warn(`EarthCoop ${label} runtime could not be loaded:`, error); }); };
 
 const loadNajmHodaRuntime = () => {
-    if (document.querySelector('#najm-hoda-widget')) importFeature(() => import("./najm-hoda-context.js"), "Najm Hoda continuity");
+    if (document.querySelector('#najm-hoda-widget')) {
+        importFeature(() => import("./najm-hoda-widget-layout.js"), "Najm Hoda widget layout");
+        importFeature(() => import("./najm-hoda-context.js"), "Najm Hoda continuity");
+    }
 
     if (/^\/groups\/\d+\/najm-hoda\/panel\/?$/.test(window.location.pathname)) {
         importFeature(() => import("./najm-hoda-attention-panel.js"), "Najm Hoda attention panel");
