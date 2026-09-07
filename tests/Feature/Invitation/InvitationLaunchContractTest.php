@@ -80,13 +80,14 @@ class InvitationLaunchContractTest extends TestCase
     }
 
     #[Test]
-    public function invitation_share_link_uses_the_actual_registration_form_route(): void
+    public function invitation_share_link_enters_through_the_public_welcome_flow(): void
     {
         $this->assertNotNull(app('router')->getRoutes()->getByName('register.form'));
         $this->assertNull(app('router')->getRoutes()->getByName('register'));
 
         $view = file_get_contents(resource_path('views/profile/member-invitations.blade.php'));
-        $this->assertStringContainsString("route('register.form')", $view);
+        $this->assertStringContainsString('const invitationWelcomeUrl = @json(url(\'/\'));', $view);
+        $this->assertStringContainsString("'?invite=' + encodeURIComponent(code)", $view);
         $this->assertStringNotContainsString("route('register')", $view);
     }
 
