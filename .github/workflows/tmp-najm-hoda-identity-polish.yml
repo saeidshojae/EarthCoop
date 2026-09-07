@@ -1,0 +1,91 @@
+name: Najm Hoda Identity Polish
+
+on:
+  push:
+    branches:
+      - agent/najm-hoda-widget-viewport-safety
+
+permissions:
+  contents: write
+
+jobs:
+  polish:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - name: Prepare Laravel writable directories
+        run: |
+          mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views
+          chmod -R 777 bootstrap/cache storage
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Add regression assertions and confirm RED
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('tests/Feature/NajmHoda/NajmHodaWidgetAvatarContractTest.php')
+          s = p.read_text(encoding='utf-8')
+          old = "        $this->assertStringContainsString('this.addMessage(data.message, \\'assistant\\'', $widget);\n"
+          new = old + "        $this->assertStringContainsString(\"const avatarMarkup = role !== 'user'\", $widget);\n        $this->assertStringNotContainsString(\"'assistant', '⚠️'\", $widget);\n        $this->assertStringNotContainsString(\"'assistant', '❌'\", $widget);\n"
+          if "const avatarMarkup = role !== 'user'" not in s:
+              if old not in s: raise SystemExit('avatar test anchor not found')
+              s = s.replace(old, new, 1)
+          old2 = "        $this->assertStringContainsString('data-najm-hoda-open', $profile);\n"
+          new2 = old2 + "        $this->assertStringContainsString('hoda-profile-mobile-polish', $profile);\n"
+          if "hoda-profile-mobile-polish" not in s:
+              if old2 not in s: raise SystemExit('profile test anchor not found')
+              s = s.replace(old2, new2, 1)
+          p.write_text(s, encoding='utf-8')
+      - name: Confirm focused contract is red
+        run: |
+          set +e
+          php artisan test tests/Feature/NajmHoda/NajmHodaWidgetAvatarContractTest.php
+          code=$?
+          set -e
+          test "$code" -ne 0
+      - name: Apply minimal identity polish
+        shell: python
+        run: |
+          from pathlib import Path
+          widget = Path('resources/views/components/najm-hoda-widget.blade.php')
+          s = widget.read_text(encoding='utf-8')
+          s = s.replace("const avatarMarkup = role === 'assistant'\n                ? `<img src=\"${this.getAvatarUrl()}\" alt=\"\" aria-hidden=\"true\" class=\"najm-hoda-message-avatar-image\">`\n                : icon;", "const avatarMarkup = role !== 'user'\n                ? `<img src=\"${this.getAvatarUrl()}\" alt=\"\" aria-hidden=\"true\" class=\"najm-hoda-message-avatar-image\">`\n                : icon;")
+          s = s.replace("this.addMessage(data.message || 'خطایی رخ داد', 'assistant', '⚠️');", "this.addMessage(data.message || 'خطایی رخ داد', 'assistant', null);")
+          s = s.replace("this.addMessage('متأسفانه مشکلی پیش آمد. لطفاً دوباره تلاش کنید.', 'assistant', '❌');", "this.addMessage('متأسفانه مشکلی پیش آمد. لطفاً دوباره تلاش کنید.', 'assistant', null);")
+          s = s.replace("    width: 44px;\n    height: 44px;", "    width: 48px;\n    height: 48px;", 1)
+          s = s.replace("        width: 40px;\n        height: 40px;", "        width: 42px;\n        height: 42px;", 1)
+          s = s.replace("        width: 38px;\n        height: 38px;", "        width: 40px;\n        height: 40px;", 1)
+          s = s.replace("    width: 32px;\n    height: 32px;", "    width: 34px;\n    height: 34px;", 1)
+          s = s.replace("        width: 30px;\n        height: 30px;", "        width: 32px;\n        height: 32px;", 1)
+          s = s.replace("        width: 28px;\n        height: 28px;", "        width: 30px;\n        height: 30px;", 1)
+          widget.write_text(s, encoding='utf-8')
+
+          profile = Path('resources/views/profile/najm-hoda.blade.php')
+          s = profile.read_text(encoding='utf-8')
+          marker = '/* hoda-profile-mobile-polish */'
+          if marker not in s:
+              needle = '@media(max-width:760px){.hoda-profile{padding:.8rem .65rem 2rem}.hoda-hero{padding:1.35rem 1rem;border-radius:20px}.hoda-hero__inner{grid-template-columns:1fr;text-align:center;gap:.9rem}.hoda-profile-avatar{width:112px;height:112px;margin:0 auto}.hoda-lead{margin-inline:auto}.hoda-actions{justify-content:center}.hoda-primary,.hoda-secondary{width:100%}.hoda-grid,.hoda-examples{grid-template-columns:1fr}.hoda-card,.hoda-section{border-radius:16px}}'
+              repl = marker + '@media(max-width:760px){.hoda-profile{padding:.8rem .65rem 2rem}.hoda-hero{padding:1.15rem 1rem 1.25rem;border-radius:20px}.hoda-hero__inner{grid-template-columns:1fr;text-align:center;gap:.7rem}.hoda-profile-avatar{width:104px;height:104px;margin:0 auto}.hoda-title{margin:.45rem 0 .2rem}.hoda-subtitle{margin:0 0 .5rem}.hoda-lead{margin-inline:auto;line-height:1.82;font-size:.9rem}.hoda-actions{justify-content:center;margin-top:.9rem;gap:.6rem}.hoda-primary,.hoda-secondary{width:100%}.hoda-grid,.hoda-examples{grid-template-columns:1fr}.hoda-card,.hoda-section{border-radius:16px}}'
+              if needle not in s: raise SystemExit('profile mobile CSS anchor not found')
+              s = s.replace(needle, repl, 1)
+          profile.write_text(s, encoding='utf-8')
+      - name: Verify focused contracts
+        run: |
+          php artisan test tests/Feature/NajmHoda/NajmHodaWidgetAvatarContractTest.php
+          php artisan test tests/Feature/GroupChat/NajmHodaWidgetViewportContractTest.php
+          node --check resources/js/najm-hoda-widget-layout.js
+          php artisan route:list --name=najm-hoda.profile
+      - name: Commit focused polish
+        run: |
+          rm -f .github/workflows/tmp-najm-hoda-identity-polish.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add resources/views/components/najm-hoda-widget.blade.php resources/views/profile/najm-hoda.blade.php tests/Feature/NajmHoda/NajmHodaWidgetAvatarContractTest.php .github/workflows/tmp-najm-hoda-identity-polish.yml
+          git commit -m "fix: polish Najm Hoda avatar identity"
+          git push
