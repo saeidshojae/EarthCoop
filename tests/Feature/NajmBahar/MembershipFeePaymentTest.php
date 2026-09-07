@@ -137,7 +137,7 @@ class MembershipFeePaymentTest extends TestCase
         $this->assertSame(3,Transaction::where('metadata->type','membership_fee')->count());
     }
 
-    public function test_fallback_membership_payment_is_recognized_and_cannot_be_charged_twice(): void
+    public function test_invalid_membership_split_is_rejected_without_charging_or_recording_payment(): void
     {
         MonetaryPolicyVersion::create([
             'version' => 78,
@@ -152,18 +152,18 @@ class MembershipFeePaymentTest extends TestCase
         ]);
 
         [$user, $account] = $this->memberWithCredit();
+        $balanceBefore = (int) $account->fresh()->balance;
 
-        $this->actingAs($user)->post(route('najm-bahar.membership-fee.pay'), ['payment_source' => 'dim'])
-            ->assertRedirect(route('najm-bahar.dashboard'));
+        $this->actingAs($user)
+            ->from(route('najm-bahar.wallet'))
+            ->post(route('najm-bahar.membership-fee.pay'), ['payment_source' => 'dim'])
+            ->assertRedirect(route('najm-bahar.wallet'))
+            ->assertSessionHas('error');
 
-        $balanceAfterFirst = (int) $account->fresh()->balance;
-        $this->assertSame(1, Transaction::where('metadata->type', 'membership_fee')->count());
-        $this->assertSame('operations_salary', Transaction::where('metadata->type', 'membership_fee')->firstOrFail()->metadata['split'] ?? null);
-
-        $this->actingAs($user)->post(route('najm-bahar.membership-fee.pay'), ['payment_source' => 'dim']);
-
-        $this->assertSame($balanceAfterFirst, (int) $account->fresh()->balance);
-        $this->assertSame(1, Transaction::where('metadata->type', 'membership_fee')->count());
+        $this->assertSame($balanceBefore, (int) $account->fresh()->balance);
+        $this->assertSame(0, Transaction::where('metadata->type', 'membership_fee')->count());
+        $this->assertSame(0, Transaction::where('metadata->type', 'membership_fee_activation')->count());
+        $this->assertSame(0, UserPointTransaction::where('user_id', $user->id)->where('action', 'membership_fee_paid')->count());
     }
 
     public function test_versioned_policy_controls_membership_allocation_and_is_recorded(): void
