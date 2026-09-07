@@ -34,17 +34,21 @@ class MemberInvitationViewContractTest extends TestCase
 
     public function test_desktop_share_uses_earthcoop_menu_before_native_system_share(): void
     {
-        $view = file_get_contents(base_path('resources/views/profile/member-invitations.blade.php'));
+        $app = file_get_contents(base_path('resources/js/app.js'));
+        $runtime = file_get_contents(base_path('resources/js/member-invitation-share.js'));
 
-        $this->assertStringContainsString('id="inviteShareMenu"', $view);
-        $this->assertStringContainsString('function isMobileShareContext()', $view);
-        $this->assertStringContainsString('function openInviteShareMenu(code)', $view);
-        $this->assertStringContainsString('function shareInviteViaSystem()', $view);
-        $this->assertStringContainsString('اشتراک از طریق سیستم', $view);
-        $this->assertStringContainsString('واتساپ', $view);
-        $this->assertStringContainsString('تلگرام', $view);
-        $this->assertStringContainsString('کپی لینک دعوت', $view);
-        $this->assertStringContainsString('if (isMobileShareContext() && navigator.share)', $view);
+        $this->assertStringContainsString('./member-invitation-share.js', $app);
+        $this->assertStringContainsString("document.querySelector('.invite-page-shell')", $app);
+        $this->assertStringContainsString('id="inviteShareMenu"', $runtime);
+        $this->assertStringContainsString('function isMobileShareContext()', $runtime);
+        $this->assertStringContainsString('function openInviteShareMenu(code)', $runtime);
+        $this->assertStringContainsString('function shareInviteViaSystem()', $runtime);
+        $this->assertStringContainsString('اشتراک از طریق سیستم', $runtime);
+        $this->assertStringContainsString('واتساپ', $runtime);
+        $this->assertStringContainsString('تلگرام', $runtime);
+        $this->assertStringContainsString('کپی لینک دعوت', $runtime);
+        $this->assertStringContainsString('if (isMobileShareContext() && navigator.share)', $runtime);
+        $this->assertStringContainsString('window.shareInviteCode = shareInviteCode', $runtime);
     }
 
     public function test_invitation_page_does_not_repeat_old_fixed_bahar_cash_reward_claims(): void
