@@ -16,6 +16,8 @@ class ExploreDocumentsNavigationTest extends TestCase
         $this->assertStringContainsString('docs-submenu', $source);
         $this->assertStringContainsString('@mouseenter="docsOpen = true"', $source);
         $this->assertStringContainsString('@focusin="docsOpen = true"', $source);
+        $this->assertStringContainsString('.docs-parent-button .support-submenu-label', $source);
+        $this->assertStringContainsString('text-align: start !important;', $source);
         $this->assertStringContainsString("route('elections.guideline')", $source);
         $this->assertStringContainsString("route('participation.credit-regulation')", $source);
         $this->assertStringContainsString("config('docs-links')", $source);
@@ -48,5 +50,17 @@ class ExploreDocumentsNavigationTest extends TestCase
         $this->assertStringContainsString('توافقنامه مالی', $source);
         $this->assertStringContainsString('شیوه‌نامه انتخابات سیال', $source);
         $this->assertStringContainsString('نظام‌نامه اعتبارات مشارکت', $source);
+    }
+
+    public function test_welcome_navigation_links_to_the_documents_section(): void
+    {
+        $headerSource = file_get_contents(resource_path('views/components/header-unified.blade.php'));
+        $documentsSource = file_get_contents(resource_path('views/partials/docs-section.blade.php'));
+
+        $this->assertIsString($headerSource);
+        $this->assertIsString($documentsSource);
+        $this->assertStringContainsString("['url' => '#documents'", $headerSource);
+        $this->assertStringContainsString("__('langWelcome.docs_footer_title')", $headerSource);
+        $this->assertStringContainsString('id="documents"', $documentsSource);
     }
 }
