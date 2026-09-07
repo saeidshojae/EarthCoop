@@ -1,33 +1,4 @@
-from pathlib import Path
-
-ROUTE_LINE = "    Route::get('/profile-member/{user}', [ProfileController::class, 'showProfileMember'])->name('profile.member.show');"
-
-routes = Path('routes/web.php')
-text = routes.read_text(encoding='utf-8')
-if "name('najm-hoda.profile')" not in text:
-    if ROUTE_LINE not in text:
-        raise SystemExit('profile route anchor missing')
-    text = text.replace(ROUTE_LINE, "    Route::get('/najm-hoda', [ProfileController::class, 'showNajmHodaProfile'])->name('najm-hoda.profile');\n\n" + ROUTE_LINE, 1)
-routes.write_text(text, encoding='utf-8')
-
-controller = Path('app/Http/Controllers/Profile/ProfileController.php')
-text = controller.read_text(encoding='utf-8')
-anchor = "    public function showProfileMember(User $user)\n    {\n"
-if 'public function showNajmHodaProfile()' not in text:
-    method = """    public function showNajmHodaProfile()\n    {\n        $email = (string) config('najm-hoda.group_assistant.bot_email', 'najm-hoda-bot@local.invalid');\n        $najmHoda = User::where('email', $email)->first();\n\n        if (! $najmHoda) {\n            $najmHoda = app(\\App\\Services\\NajmHoda\\NajmHodaGroupAssistantService::class)->ensureBotUser();\n        }\n\n        return view('profile.najm-hoda', compact('najmHoda'));\n    }\n\n"""
-    if anchor not in text:
-        raise SystemExit('showProfileMember anchor missing')
-    text = text.replace(anchor, method + anchor, 1)
-
-if '$najmHodaEmail' not in text:
-    redirect = """    public function showProfileMember(User $user)\n    {\n        $najmHodaEmail = (string) config('najm-hoda.group_assistant.bot_email', 'najm-hoda-bot@local.invalid');\n        if ($user->isSystemIdentity() && $user->email === $najmHodaEmail) {\n            return redirect()->route('najm-hoda.profile');\n        }\n\n"""
-    if anchor not in text:
-        raise SystemExit('redirect anchor missing')
-    text = text.replace(anchor, redirect, 1)
-controller.write_text(text, encoding='utf-8')
-
-profile = Path('resources/views/profile/najm-hoda.blade.php')
-profile.write_text(r'''@extends('layouts.unified')
+@extends('layouts.unified')
 @section('title', 'نجم هدا - دستیار هوشمند EarthCoop')
 
 @push('styles')
@@ -49,28 +20,3 @@ profile.write_text(r'''@extends('layouts.unified')
 </main>
 <script>document.addEventListener('click',function(e){const t=e.target.closest('[data-najm-hoda-open]');if(!t)return;document.getElementById('najm-hoda-toggle')?.click();});</script>
 @endsection
-''', encoding='utf-8')
-
-widget = Path('resources/views/components/najm-hoda-widget.blade.php')
-text = widget.read_text(encoding='utf-8')
-if 'data-avatar-url=' not in text:
-    text = text.replace("     data-module=\"{{ request()->segment(1) ?? 'home' }}\">", "     data-module=\"{{ request()->segment(1) ?? 'home' }}\"\n     data-avatar-url=\"{{ asset('images/najm-hoda/avatar.webp') }}\">", 1)
-text = text.replace('        <i class="fas fa-robot"></i>\n        <span class="najm-hoda-notification-badge"', '        <img src="{{ asset(\'images/najm-hoda/avatar.webp\') }}" alt="" aria-hidden="true" class="najm-hoda-toggle-avatar">\n        <span class="najm-hoda-notification-badge"', 1)
-text = text.replace('                    <div class="najm-hoda-avatar" style="flex-shrink: 0;">\n                        <i class="fas fa-robot"></i>\n                    </div>', '                    <div class="najm-hoda-avatar" style="flex-shrink: 0;">\n                        <img src="{{ asset(\'images/najm-hoda/avatar.webp\') }}" alt="نجم هدا" class="najm-hoda-header-avatar">\n                    </div>', 1)
-text = text.replace('<div class="najm-hoda-message-avatar">🌟</div>', '<div class="najm-hoda-message-avatar"><img src="{{ asset(\'images/najm-hoda/avatar.webp\') }}" alt="" aria-hidden="true" class="najm-hoda-message-avatar-image"></div>', 1)
-text = text.replace('<div class="najm-hoda-message-avatar">🤖</div>', '<div class="najm-hoda-message-avatar"><img src="{{ asset(\'images/najm-hoda/avatar.webp\') }}" alt="" aria-hidden="true" class="najm-hoda-message-avatar-image"></div>', 1)
-if '.najm-hoda-toggle-avatar,' not in text:
-    css = """\n.najm-hoda-toggle-avatar,\n.najm-hoda-header-avatar,\n.najm-hoda-message-avatar-image { display:block; width:100%; height:100%; object-fit:cover; border-radius:50%; }\n.najm-hoda-toggle-avatar { border:2px solid rgba(255,255,255,.92); box-shadow:0 0 0 2px rgba(55,196,180,.22); }\n.najm-hoda-header-avatar { border:2px solid rgba(255,255,255,.82); }\n.najm-hoda-message-avatar-image { border:1px solid rgba(55,196,180,.24); }\n"""
-    text = text.replace('/* استایل‌های نجم‌هدا */', '/* استایل‌های نجم‌هدا */' + css, 1)
-if 'getAvatarUrl() {' not in text:
-    text = text.replace("        init() {\n", "        getAvatarUrl() {\n            return document.getElementById('najm-hoda-widget')?.dataset.avatarUrl || '/images/najm-hoda/avatar.webp';\n        },\n\n        init() {\n", 1)
-old = '''            messageDiv.innerHTML = `\n                <div class="najm-hoda-message-avatar">${icon}</div>\n                <div class="najm-hoda-message-content">${this.formatMessage(content)}</div>\n            `;'''
-new = '''            const avatarMarkup = role === 'assistant'\n                ? `<img src="${this.getAvatarUrl()}" alt="" aria-hidden="true" class="najm-hoda-message-avatar-image">`\n                : icon;\n\n            messageDiv.innerHTML = `\n                <div class="najm-hoda-message-avatar">${avatarMarkup}</div>\n                <div class="najm-hoda-message-content">${this.formatMessage(content)}</div>\n            `;'''
-if old in text:
-    text = text.replace(old, new, 1)
-elif "role === 'assistant'" not in text:
-    raise SystemExit('message avatar anchor missing')
-text = text.replace("this.addMessage(data.message, 'assistant', data.agent_icon || '🤖');", "this.addMessage(data.message, 'assistant', null);", 1)
-widget.write_text(text, encoding='utf-8')
-
-print('Najm Hoda profile/avatar patch applied')
