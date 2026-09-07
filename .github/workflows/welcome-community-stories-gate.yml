@@ -70,3 +70,5 @@ jobs:
         run: php artisan migrate:fresh --force
       - name: Run community story publication contract
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/CommunityStories/CommunityStoryPublicationContractTest.php
+      - name: Run authentic welcome stories contract
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/CommunityStories/WelcomeCommunityStoriesTest.php
