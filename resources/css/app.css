@@ -1156,3 +1156,16 @@
     }
   }
 }
+
+
+/* Shared responsive contract for primary Welcome actions. */
+.welcome-cta {
+  min-width: 0;
+  min-height: 48px;
+  max-width: 100%;
+  border-radius: 9999px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+  text-align: center;
+}

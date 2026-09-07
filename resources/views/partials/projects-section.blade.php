@@ -167,7 +167,7 @@
 
 
 
-                <div class="w-24 h-24 bg-earth-green/15 rounded-full flex items-center justify-center text-4xl text-earth-green mb-6 transform group-hover:scale-110 transition-transform duration-300">
+                <div class="welcome-cta w-24 h-24 bg-earth-green/15 rounded-full flex items-center justify-center text-4xl text-earth-green mb-6 transform group-hover:scale-110 transition-transform duration-300">
 
 
 
@@ -267,7 +267,7 @@
 
 
 
-                <div class="w-24 h-24 bg-ocean-blue/15 rounded-full flex items-center justify-center text-4xl text-ocean-blue mb-6 transform group-hover:scale-110 transition-transform duration-300">
+                <div class="welcome-cta w-24 h-24 bg-ocean-blue/15 rounded-full flex items-center justify-center text-4xl text-ocean-blue mb-6 transform group-hover:scale-110 transition-transform duration-300">
 
 
 
@@ -367,7 +367,7 @@
 
 
 
-                <div class="w-24 h-24 bg-digital-gold/15 rounded-full flex items-center justify-center text-4xl text-digital-gold mb-6 transform group-hover:scale-110 transition-transform duration-300">
+                <div class="welcome-cta w-24 h-24 bg-digital-gold/15 rounded-full flex items-center justify-center text-4xl text-digital-gold mb-6 transform group-hover:scale-110 transition-transform duration-300">
 
 
 
@@ -477,7 +477,7 @@
 
 
 
-            <button type="button" onclick="openModal()" aria-controls="registrationModal" class="bg-earth-green text-pure-white px-10 py-5 rounded-full shadow-lg hover:bg-dark-green transition duration-300 font-vazirmatn text-xl font-bold transform hover:scale-105 flex items-center justify-center mx-auto">
+            <a href="{{ route('najm-bahar.investments.index') }}" class="welcome-cta bg-earth-green text-pure-white px-10 py-5 rounded-full shadow-lg hover:bg-dark-green transition duration-300 font-vazirmatn text-xl font-bold transform hover:scale-105 flex items-center justify-center mx-auto">
 
 
 
@@ -497,7 +497,7 @@
 
 
 
-            </button>
+            </a>
 
 
 

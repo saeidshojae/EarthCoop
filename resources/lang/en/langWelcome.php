@@ -128,9 +128,10 @@ return [
 	'projects_cta' => 'View all projects',
 
 	// Invite Section
-	'invite_title' => 'Spread the movement, earn Bahar coins!',
-	'invite_text' => 'Invite your friends to EarthCoop and earn Bahar, our unique internal digital currency, for every successful referral. Use Bahar across our network for exclusive services, sustainable products, and even to increase your voting weight on specific decisions.',
-	'invite_btn_learn' => 'Learn about Bahar',
+	'invite_title' => 'Grow EarthCoop and earn participation credit',
+	'invite_text' => 'Successful invitations can earn participation credit under the Participation Credit Regulation. Eligibility and credit amounts follow the current system rules.',
+	'invite_btn_learn' => 'Participation Credit Regulation',
+	'invite_reward_label' => 'Participation credit',
 	'invite_btn_send' => 'Send an invitation',
 
 	// Testimonials Section

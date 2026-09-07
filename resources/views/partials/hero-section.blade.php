@@ -56,13 +56,13 @@
 
             <div class="flex flex-col sm:flex-row-reverse gap-4 justify-center md:justify-end">
 
-                <button onclick="openModal()" class="bg-earth-green text-pure-white px-9 py-4 rounded-full shadow-xl hover:shadow-2xl hover:bg-dark-green transition duration-300 animate-glow font-vazirmatn text-lg font-bold flex items-center justify-center cursor-pointer">
+                <button onclick="openModal()" class="welcome-cta bg-earth-green text-pure-white px-9 py-4 rounded-full shadow-xl hover:shadow-2xl hover:bg-dark-green transition duration-300 animate-glow font-vazirmatn text-lg font-bold flex items-center justify-center cursor-pointer">
 
                     {{ __('langWelcome.hero_cta_start') }} <i class="fas fa-arrow-left mr-3"></i>
 
                 </button>
 
-                <a href="#about" class="border-2 border-earth-green text-earth-green bg-white px-9 py-4 rounded-full shadow-lg hover:shadow-xl hover:bg-earth-green group transition duration-300 font-vazirmatn text-lg font-medium flex items-center justify-center">
+                <a href="#about" class="welcome-cta border-2 border-earth-green text-earth-green bg-white px-9 py-4 rounded-full shadow-lg hover:shadow-xl hover:bg-earth-green group transition duration-300 font-vazirmatn text-lg font-medium flex items-center justify-center">
 
                     {{ __('langWelcome.hero_cta_more') }} <i class="fas fa-info-circle mr-3 group-hover:text-purple-700 transition-colors duration-300"></i>
 
@@ -74,7 +74,7 @@
 
                 <div class="stats-item flex items-center flex-row-reverse">
 
-                    <div class="p-3 bg-earth-green/10 rounded-full text-earth-green text-xl ml-3">
+                    <div class="welcome-cta p-3 bg-earth-green/10 rounded-full text-earth-green text-xl ml-3">
 
                         <i class="fas fa-users"></i>
 
@@ -92,7 +92,7 @@
 
                 <div class="stats-item flex items-center flex-row-reverse">
 
-                    <div class="p-3 bg-ocean-blue/10 rounded-full text-ocean-blue text-xl ml-3">
+                    <div class="welcome-cta p-3 bg-ocean-blue/10 rounded-full text-ocean-blue text-xl ml-3">
 
                         <i class="fas fa-seedling"></i>
 
@@ -110,7 +110,7 @@
 
                 <div class="stats-item flex items-center flex-row-reverse">
 
-                    <div class="p-3 bg-digital-gold/10 rounded-full text-digital-gold text-xl ml-3">
+                    <div class="welcome-cta p-3 bg-digital-gold/10 rounded-full text-digital-gold text-xl ml-3">
 
                         <i class="fas fa-globe-americas"></i>
 
@@ -143,7 +143,7 @@
 
                 <!-- 🔹 کارت پایین - سمت راست (کوچک‌تر و شفاف‌تر) -->
                 <div class="absolute -bottom-6 -left-6 bg-white/95 backdrop-blur-sm p-3 rounded-2xl shadow-xl flex items-center space-x-2 rtl:space-x-reverse transform -rotate-6 hover:rotate-0 transition duration-500 hero-image-card-right">
-                    <div class="w-10 h-10 bg-earth-green rounded-full flex items-center justify-center text-white text-lg flex-shrink-0">
+                    <div class="welcome-cta w-10 h-10 bg-earth-green rounded-full flex items-center justify-center text-white text-lg flex-shrink-0">
                         <i class="fas fa-leaf"></i>
                     </div>
                     <div class="ml-2 rtl:ml-0 rtl:mr-2">
@@ -154,7 +154,7 @@
 
                 <!-- 🔹 کارت بالا - سمت چپ (کوچک‌تر و شفاف‌تر) -->
                 <div class="absolute -top-6 -right-6 bg-white/95 backdrop-blur-sm p-3 rounded-2xl shadow-xl flex items-center space-x-2 rtl:space-x-reverse transform rotate-6 hover:rotate-0 transition duration-500 hidden md:flex hero-image-card-left">
-                    <div class="w-10 h-10 bg-ocean-blue rounded-full flex items-center justify-center text-white text-lg flex-shrink-0">
+                    <div class="welcome-cta w-10 h-10 bg-ocean-blue rounded-full flex items-center justify-center text-white text-lg flex-shrink-0">
                         <i class="fas fa-hands-helping"></i>
                     </div>
                     <div class="ml-2 rtl:ml-0 rtl:mr-2">
