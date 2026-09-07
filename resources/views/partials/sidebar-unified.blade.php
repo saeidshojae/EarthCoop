@@ -152,6 +152,15 @@
                     </a>
                 </li>
 
+                <!-- Election History -->
+                <li class="sidebar-menu-item">
+                    <a href="{{ route('history.election-history') }}" class="sidebar-menu-link {{ request()->routeIs('history.election-history') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                        <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
+                        <i class="fas fa-clock-rotate-left" style="color: var(--color-ocean-blue);"></i>
+                        <span class="flex-grow text-right mx-3">تاریخچه انتخابات من</span>
+                    </a>
+                </li>
+
                 <!-- Polls -->
                 <li class="sidebar-menu-item">
                     <a href="{{ route('history.poll') }}" class="sidebar-menu-link {{ request()->routeIs('history.poll') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
