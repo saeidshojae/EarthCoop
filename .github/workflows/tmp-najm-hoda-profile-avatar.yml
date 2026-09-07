@@ -1,0 +1,232 @@
+name: Temporary Najm Hoda Profile Avatar Apply
+
+on:
+  push:
+    branches:
+      - agent/najm-hoda-widget-viewport-safety
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_sqlite, sqlite3
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Verify RED contract
+        shell: bash
+        run: |
+          set +e
+          php artisan test tests/Feature/NajmHoda/NajmHodaWidgetAvatarContractTest.php
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "Expected Najm Hoda identity/profile contract to be RED before implementation."
+            exit 1
+          fi
+          echo "RED contract confirmed."
+
+      - name: Apply focused Najm Hoda identity and profile implementation
+        shell: python
+        run: |
+          from pathlib import Path
+
+          routes = Path('routes/web.php')
+          text = routes.read_text(encoding='utf-8')
+          needle = "    Route::get('/profile-member/{user}', [ProfileController::class, 'showProfileMember'])->name('profile.member.show');"
+          insert = "    Route::get('/najm-hoda', [ProfileController::class, 'showNajmHodaProfile'])->name('najm-hoda.profile');\n\n" + needle
+          if "name('najm-hoda.profile')" not in text:
+              if needle not in text:
+                  raise SystemExit('profile member route anchor not found')
+              text = text.replace(needle, insert, 1)
+          routes.write_text(text, encoding='utf-8')
+
+          controller = Path('app/Http/Controllers/Profile/ProfileController.php')
+          text = controller.read_text(encoding='utf-8')
+          method_anchor = "    public function showProfileMember(User $user)\n    {\n"
+          profile_method = """    public function showNajmHodaProfile()\n    {\n        $email = (string) config('najm-hoda.group_assistant.bot_email', 'najm-hoda-bot@local.invalid');\n        $najmHoda = User::where('email', $email)->first();\n\n        if (! $najmHoda) {\n            $najmHoda = app(\\App\\Services\\NajmHoda\\NajmHodaGroupAssistantService::class)->ensureBotUser();\n        }\n\n        return view('profile.najm-hoda', compact('najmHoda'));\n    }\n\n"""
+          if 'public function showNajmHodaProfile()' not in text:
+              if method_anchor not in text:
+                  raise SystemExit('showProfileMember anchor not found')
+              text = text.replace(method_anchor, profile_method + method_anchor, 1)
+
+          redirect_anchor = method_anchor
+          redirect_body = """    public function showProfileMember(User $user)\n    {\n        $najmHodaEmail = (string) config('najm-hoda.group_assistant.bot_email', 'najm-hoda-bot@local.invalid');\n        if ($user->isSystemIdentity() && $user->email === $najmHodaEmail) {\n            return redirect()->route('najm-hoda.profile');\n        }\n\n"""
+          if "$najmHodaEmail" not in text:
+              if redirect_anchor not in text:
+                  raise SystemExit('profile redirect anchor not found')
+              text = text.replace(redirect_anchor, redirect_body, 1)
+          controller.write_text(text, encoding='utf-8')
+
+          view = Path('resources/views/profile/najm-hoda.blade.php')
+          view.parent.mkdir(parents=True, exist_ok=True)
+          view.write_text(r'''@extends('layouts.unified')
+
+@section('title', 'نجم هدا - دستیار هوشمند EarthCoop')
+
+@push('styles')
+<style>
+    .hoda-profile { direction: rtl; max-width: 1040px; margin: 0 auto; padding: 1.5rem 1rem 3rem; color: #172033; }
+    .hoda-hero { position: relative; overflow: hidden; border-radius: 28px; padding: 2.2rem; background: linear-gradient(135deg, #0f766e 0%, #11b7a4 58%, #d7a92f 140%); color: #fff; box-shadow: 0 20px 50px rgba(15,118,110,.18); }
+    .hoda-hero::after { content: ''; position: absolute; width: 260px; height: 260px; border-radius: 50%; left: -90px; top: -110px; border: 1px solid rgba(255,255,255,.22); box-shadow: 0 0 0 38px rgba(255,255,255,.035), 0 0 0 78px rgba(255,255,255,.025); }
+    .hoda-hero__inner { position: relative; z-index: 1; display: grid; grid-template-columns: 150px 1fr; gap: 1.6rem; align-items: center; }
+    .hoda-profile-avatar { width: 138px; height: 138px; border-radius: 50%; object-fit: cover; border: 4px solid rgba(255,255,255,.9); box-shadow: 0 12px 30px rgba(0,0,0,.18); background: #e8fffa; }
+    .hoda-badge { display: inline-flex; align-items: center; gap: .45rem; padding: .42rem .78rem; border-radius: 999px; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.35); font-weight: 800; font-size: .8rem; }
+    .hoda-title { margin: .7rem 0 .35rem; font-size: clamp(1.75rem, 4vw, 2.6rem); font-weight: 900; }
+    .hoda-subtitle { margin: 0 0 .7rem; opacity: .94; font-size: 1.02rem; }
+    .hoda-lead { max-width: 690px; margin: 0; line-height: 1.95; color: rgba(255,255,255,.9); }
+    .hoda-actions { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: 1.15rem; }
+    .hoda-primary { border: 0; border-radius: 999px; min-height: 48px; padding: .7rem 1.25rem; background: #fff; color: #08796e; font-weight: 900; box-shadow: 0 8px 22px rgba(0,0,0,.12); cursor: pointer; }
+    .hoda-secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: .7rem 1.15rem; border-radius: 999px; color: #fff; border: 1px solid rgba(255,255,255,.5); text-decoration: none; font-weight: 800; }
+    .hoda-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 1rem; margin-top: 1.25rem; }
+    .hoda-card { background: #fff; border: 1px solid #e5e9ef; border-radius: 20px; padding: 1.2rem; box-shadow: 0 7px 24px rgba(23,32,51,.06); }
+    .hoda-card h2 { font-size: 1.02rem; margin: 0 0 .65rem; color: #0f766e; font-weight: 900; }
+    .hoda-card p, .hoda-card li { color: #566174; line-height: 1.9; font-size: .9rem; }
+    .hoda-card ul { margin: .25rem 0 0; padding-right: 1.1rem; }
+    .hoda-section { margin-top: 1.25rem; padding: 1.3rem; border-radius: 20px; background: #fff; border: 1px solid #e5e9ef; }
+    .hoda-section h2 { font-size: 1.12rem; font-weight: 900; color: #172033; margin: 0 0 .85rem; }
+    .hoda-examples { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .75rem; }
+    .hoda-example { padding: .85rem 1rem; border-radius: 14px; background: #f2fbf9; border: 1px solid #c9eee8; color: #28625d; line-height: 1.8; }
+    .hoda-transparency { background: linear-gradient(180deg,#fffdf6,#fff); border-color: #f0dfaa; }
+    .hoda-note { display: flex; gap: .7rem; align-items: flex-start; color: #6d5a24; line-height: 1.9; }
+    @media (max-width: 760px) {
+        .hoda-profile { padding: .8rem .65rem 2rem; }
+        .hoda-hero { padding: 1.35rem 1rem; border-radius: 20px; }
+        .hoda-hero__inner { grid-template-columns: 1fr; text-align: center; gap: .9rem; }
+        .hoda-profile-avatar { width: 112px; height: 112px; margin: 0 auto; }
+        .hoda-lead { margin-inline: auto; }
+        .hoda-actions { justify-content: center; }
+        .hoda-primary, .hoda-secondary { width: 100%; }
+        .hoda-grid, .hoda-examples { grid-template-columns: 1fr; }
+        .hoda-card, .hoda-section { border-radius: 16px; }
+    }
+</style>
+@endpush
+
+@section('content')
+<main class="hoda-profile" aria-labelledby="najm-hoda-profile-title">
+    <section class="hoda-hero">
+        <div class="hoda-hero__inner">
+            <img src="{{ asset('images/najm-hoda/avatar.webp') }}" alt="نجم هدا" class="hoda-profile-avatar" width="138" height="138">
+            <div>
+                <span class="hoda-badge"><i class="fas fa-shield-alt" aria-hidden="true"></i> هویت رسمی سامانه</span>
+                <h1 id="najm-hoda-profile-title" class="hoda-title">نجم هدا</h1>
+                <p class="hoda-subtitle">دستیار هوشمند EarthCoop</p>
+                <p class="hoda-lead">من همراه هوشمند شما در زیست‌بوم EarthCoop هستم؛ برای فهم بهتر امکانات، پیدا کردن مسیر درست، مشارکت مؤثرتر در گروه‌ها و دریافت راهنمایی متناسب با نقش و موقعیت شما.</p>
+                <div class="hoda-actions">
+                    <button type="button" class="hoda-primary" data-najm-hoda-open><i class="fas fa-comment-dots ms-1" aria-hidden="true"></i> گفتگو با نجم هدا</button>
+                    <a href="#hoda-usage" class="hoda-secondary">راهنمای استفاده</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="hoda-grid" aria-label="خدمات نجم هدا">
+        <article class="hoda-card"><h2>راهنمای سامانه</h2><p>در پیدا کردن بخش‌ها، فهم امکانات، مراحل انجام کارها و رفع سردرگمی در EarthCoop راهنمایی‌تان می‌کنم.</p></article>
+        <article class="hoda-card"><h2>گروه‌ها و مشارکت</h2><p>در گفتگوها، نقش‌ها، جلسات، مشارکت‌ها و امکانات گروه متناسب با دسترسی و تنظیمات فعال به شما کمک می‌کنم.</p></article>
+        <article class="hoda-card"><h2>انتخابات و قواعد</h2><p>می‌توانم شیوه استفاده از ابزارهای انتخابات و مقررات ثبت‌شده در سامانه را توضیح دهم؛ تصمیم و رأی همیشه متعلق به خود شماست.</p></article>
+    </div>
+
+    <section class="hoda-section">
+        <h2>چه کارهایی می‌توانم برای شما انجام دهم؟</h2>
+        <ul>
+            <li>پاسخ به پرسش‌های کاربردی درباره صفحات، امکانات و مسیرهای EarthCoop.</li>
+            <li>راهنمایی متناسب با زمینه صفحه یا گروهی که در آن حضور دارید.</li>
+            <li>کمک به مدیران و مسئولان در فهم وضعیت‌ها و اقدام‌های مجاز، متناسب با سطح دسترسی.</li>
+            <li>توضیح قواعد و اسناد در محدوده دانشی که واقعاً در اختیار سامانه قرار گرفته است.</li>
+            <li>پیشنهاد قدم بعدی؛ اقدام‌های حساس یا نیازمند مجوز بدون سطح دسترسی و تأیید لازم انجام نمی‌شوند.</li>
+        </ul>
+    </section>
+
+    <section id="hoda-usage" class="hoda-section">
+        <h2>چطور از نجم هدا استفاده کنم؟</h2>
+        <p>روی آواتار شناور نجم هدا در صفحات EarthCoop یا دکمه «گفتگو با نجم هدا» بزنید و مستقیم سؤال‌تان را بنویسید. هرچه درخواست روشن‌تر و با زمینه بیشتری باشد، راهنمایی دقیق‌تر خواهد بود.</p>
+        <div class="hoda-examples">
+            <div class="hoda-example">«در این صفحه باید چه کاری انجام بدهم؟»</div>
+            <div class="hoda-example">«قواعد این انتخابات چیست و قدم بعدی من کدام است؟»</div>
+            <div class="hoda-example">«در این گروه چه امکاناتی در اختیار من است؟»</div>
+            <div class="hoda-example">«این قانون یا تنظیم سامانه چه معنایی برای من دارد؟»</div>
+        </div>
+    </section>
+
+    <section class="hoda-section hoda-transparency">
+        <h2>حریم خصوصی و شفافیت</h2>
+        <div class="hoda-note"><i class="fas fa-info-circle" aria-hidden="true"></i><div>نجم هدا یک <strong>هویت سیستمی</strong> و دستیار هوشمند EarthCoop است، نه یک حساب انسانی. ورود تعاملی به این هویت مجاز نیست. دسترسی‌ها و اقدام‌های آن تابع نقش شما، تنظیمات فعال سامانه و سیاست‌های تأیید است؛ در جاهایی که دانشی در اختیارش نیست یا عملی مجاز نیست، باید این محدودیت را روشن بیان کند.</div></div>
+    </section>
+</main>
+
+<script>
+document.addEventListener('click', function (event) {
+    const trigger = event.target.closest('[data-najm-hoda-open]');
+    if (!trigger) return;
+    const toggle = document.getElementById('najm-hoda-toggle');
+    if (toggle) toggle.click();
+});
+</script>
+@endsection
+''', encoding='utf-8')
+
+          widget = Path('resources/views/components/najm-hoda-widget.blade.php')
+          text = widget.read_text(encoding='utf-8')
+          if 'data-avatar-url=' not in text:
+              text = text.replace("     data-module=\"{{ request()->segment(1) ?? 'home' }}\">", "     data-module=\"{{ request()->segment(1) ?? 'home' }}\"\n     data-avatar-url=\"{{ asset('images/najm-hoda/avatar.webp') }}\">", 1)
+          text = text.replace('        <i class="fas fa-robot"></i>\n        <span class="najm-hoda-notification-badge"', '        <img src="{{ asset(\'images/najm-hoda/avatar.webp\') }}" alt="" aria-hidden="true" class="najm-hoda-toggle-avatar">\n        <span class="najm-hoda-notification-badge"', 1)
+          text = text.replace('                    <div class="najm-hoda-avatar" style="flex-shrink: 0;">\n                        <i class="fas fa-robot"></i>\n                    </div>', '                    <div class="najm-hoda-avatar" style="flex-shrink: 0;">\n                        <img src="{{ asset(\'images/najm-hoda/avatar.webp\') }}" alt="نجم هدا" class="najm-hoda-header-avatar">\n                    </div>', 1)
+          text = text.replace('<div class="najm-hoda-message-avatar">🌟</div>', '<div class="najm-hoda-message-avatar"><img src="{{ asset(\'images/najm-hoda/avatar.webp\') }}" alt="" aria-hidden="true" class="najm-hoda-message-avatar-image"></div>', 1)
+          text = text.replace('<div class="najm-hoda-message-avatar">🤖</div>', '<div class="najm-hoda-message-avatar"><img src="{{ asset(\'images/najm-hoda/avatar.webp\') }}" alt="" aria-hidden="true" class="najm-hoda-message-avatar-image"></div>', 1)
+
+          css_marker = '/* استایل‌های نجم‌هدا */'
+          avatar_css = '''\n.najm-hoda-toggle-avatar,\n.najm-hoda-header-avatar,\n.najm-hoda-message-avatar-image {\n    display: block;\n    width: 100%;\n    height: 100%;\n    object-fit: cover;\n    border-radius: 50%;\n}\n.najm-hoda-toggle-avatar {\n    border: 2px solid rgba(255,255,255,.92);\n    box-shadow: 0 0 0 2px rgba(55,196,180,.22);\n}\n.najm-hoda-header-avatar { border: 2px solid rgba(255,255,255,.82); }\n.najm-hoda-message-avatar-image { border: 1px solid rgba(55,196,180,.24); }\n'''
+          if '.najm-hoda-toggle-avatar,' not in text:
+              text = text.replace(css_marker, css_marker + avatar_css, 1)
+
+          init_anchor = "        init() {\n"
+          avatar_method = """        getAvatarUrl() {\n            return document.getElementById('najm-hoda-widget')?.dataset.avatarUrl || '/images/najm-hoda/avatar.webp';\n        },\n\n"""
+          if 'getAvatarUrl() {' not in text:
+              if init_anchor not in text:
+                  raise SystemExit('Najm Hoda init anchor not found')
+              text = text.replace(init_anchor, avatar_method + init_anchor, 1)
+
+          old_inner = '''            messageDiv.innerHTML = `\n                <div class="najm-hoda-message-avatar">${icon}</div>\n                <div class="najm-hoda-message-content">${this.formatMessage(content)}</div>\n            `;'''
+          new_inner = '''            const avatarMarkup = role === 'assistant'\n                ? `<img src="${this.getAvatarUrl()}" alt="" aria-hidden="true" class="najm-hoda-message-avatar-image">`\n                : icon;\n\n            messageDiv.innerHTML = `\n                <div class="najm-hoda-message-avatar">${avatarMarkup}</div>\n                <div class="najm-hoda-message-content">${this.formatMessage(content)}</div>\n            `;'''
+          if old_inner in text:
+              text = text.replace(old_inner, new_inner, 1)
+          elif "role === 'assistant'" not in text:
+              raise SystemExit('dynamic message avatar anchor not found')
+          text = text.replace("this.addMessage(data.message, 'assistant', data.agent_icon || '🤖');", "this.addMessage(data.message, 'assistant', null);", 1)
+          widget.write_text(text, encoding='utf-8')
+
+      - name: Verify focused contracts and syntax
+        run: |
+          php -l app/Http/Controllers/Profile/ProfileController.php
+          php -l tests/Feature/NajmHoda/NajmHodaWidgetAvatarContractTest.php
+          php artisan test tests/Feature/NajmHoda/NajmHodaWidgetAvatarContractTest.php
+          php artisan route:list --name=najm-hoda.profile
+
+      - name: Preserve viewport contract
+        run: |
+          php artisan test tests/Feature/NajmHoda/NajmHodaWidgetViewportContractTest.php
+
+      - name: Commit implementation and remove temporary workflow
+        shell: bash
+        run: |
+          rm .github/workflows/tmp-najm-hoda-profile-avatar.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add routes/web.php app/Http/Controllers/Profile/ProfileController.php resources/views/profile/najm-hoda.blade.php resources/views/components/najm-hoda-widget.blade.php .github/workflows/tmp-najm-hoda-profile-avatar.yml
+          git commit -m "feat: give Najm Hoda a stable profile and avatar identity"
+          git push
