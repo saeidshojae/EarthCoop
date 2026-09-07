@@ -65,5 +65,7 @@ jobs:
           php artisan route:list --name=history
       - name: Run current center contract test
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections/CurrentElectionCenterServiceContractTest.php
+      - name: Run current center behavior test
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections/CurrentElectionCenterServiceTest.php
       - name: Run elections regression suite
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections
