@@ -122,7 +122,7 @@ class SafeSubAccountServiceInvariantTest extends TestCase
             $service->transferBetweenSubAccounts($from->id, $to->id, 100, 'Locked active transfer', 'active');
             $this->fail('Cross-owner Active transfer unexpectedly bypassed threshold policy.');
         } catch (\RuntimeException $exception) {
-            $this->assertStringContainsString('آستانه سیاستی', $exception->getMessage());
+            $this->assertStringContainsString('تراکنشهای بین کاربران قفله', $exception->getMessage());
         }
 
         $this->assertSame($fromBefore, (int) $from->fresh()->balance_active);
