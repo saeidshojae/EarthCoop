@@ -78,5 +78,7 @@ jobs:
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/CommunityStories/CommunityStorySubmissionTest.php
       - name: Run community story moderation contract
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/CommunityStories/CommunityStoryModerationTest.php
+      - name: Run community story navigation contract
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/CommunityStories/CommunityStoryNavigationTest.php
       - name: Run Welcome CTA and invitation contract
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Welcome/WelcomeCtaAndInvitationContractTest.php
