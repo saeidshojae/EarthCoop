@@ -60,6 +60,7 @@ jobs:
           cat > .env <<'EOF'
           APP_NAME=EarthCoop
           APP_ENV=testing
+          APP_KEY=
           APP_DEBUG=true
           APP_URL=http://localhost
           LOG_CHANNEL=stderr
