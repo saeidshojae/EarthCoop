@@ -73,5 +73,9 @@ jobs:
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections/CurrentElectionCenterViewTest.php
       - name: Run current center responsive contract
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections/CurrentElectionCenterResponsiveContractTest.php
+      - name: Run election history navigation contract
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections/ElectionHistoryNavigationTest.php
+      - name: Run poll separation contract
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections/CurrentPollSeparationTest.php
       - name: Run elections regression suite
         run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections
