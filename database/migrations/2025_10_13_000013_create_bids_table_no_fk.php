@@ -14,14 +14,15 @@ return new class extends Migration {
                 $table->bigInteger('quantity');
                 $table->string('status')->default('active');
                 $table->timestamps();
-                
+
                 $table->index(['auction_id', 'price', 'created_at']);
                 $table->index(['user_id', 'status']);
             });
         }
     }
-    
+
     public function down() {
-        Schema::dropIfExists('bids');
+        // Historical no-FK fallback only. The canonical bids table is owned by
+        // the base Stock migration and must survive this rollback.
     }
 };

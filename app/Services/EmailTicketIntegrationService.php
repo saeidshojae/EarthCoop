@@ -17,8 +17,10 @@ use Throwable;
 
 /**
  * سرویس یکپارچه‌سازی ایمیل با تیکت‌ها
- * 
- * این سرویس امکان تبدیل ایمیل‌های دریافتی به تیکت و ارسال پاسخ تیکت‌ها به ایمیل را فراهم می‌کند
+ *
+ * این سرویس امکان تبدیل ایمیل‌های دریافتی به تیکت و ارسال پاسخ تیکت‌ها به ایمیل را فراهم می‌کند.
+ * تمام ایمیل‌های خروجی پشتیبانی با هویت سازمانی «تیم پشتیبانی EarthCoop» ارسال می‌شوند،
+ * نه با هویت حساب کاربری مدیر یا پاسخ‌دهنده.
  */
 class EmailTicketIntegrationService
 {
@@ -26,11 +28,16 @@ class EmailTicketIntegrationService
 
     protected TicketTriageService $triage;
     protected TicketSlaService $sla;
+    protected SystemIdentityService $systemIdentities;
 
-    public function __construct(TicketTriageService $triage, TicketSlaService $sla)
-    {
+    public function __construct(
+        TicketTriageService $triage,
+        TicketSlaService $sla,
+        SystemIdentityService $systemIdentities
+    ) {
         $this->triage = $triage;
         $this->sla = $sla;
+        $this->systemIdentities = $systemIdentities;
     }
 
     /**
@@ -55,15 +62,12 @@ class EmailTicketIntegrationService
             $inReplyTo = $emailData['in_reply_to'] ?? null;
             $references = $emailData['references'] ?? null;
 
-            // پیدا کردن کاربر با ایمیل
             $user = User::where('email', $fromEmail)->first();
 
-            // اگر این ایمیل پاسخ به یک تیکت است
             if ($inReplyTo || $references) {
                 $ticket = $this->findTicketByMessageId($inReplyTo, $references);
-                
+
                 if ($ticket) {
-                    // اضافه کردن کامنت به تیکت موجود
                     TicketComment::create([
                         'ticket_id' => $ticket->id,
                         'user_id' => $user?->id,
@@ -75,7 +79,6 @@ class EmailTicketIntegrationService
                         ],
                     ]);
 
-                    // به‌روزرسانی وضعیت تیکت
                     if ($ticket->status === 'closed') {
                         $ticket->update(['status' => 'open']);
                     }
@@ -90,7 +93,6 @@ class EmailTicketIntegrationService
                 }
             }
 
-            // ایجاد تیکت جدید
             $ticket = $this->createTicketFromEmail($fromEmail, $fromName, $subject, $body, $user, $messageId);
             $this->emitRuntime('najm_hoda.input.support.service.email_integration.process.succeeded', array_merge($context, [
                 'ticket_id' => (int) $ticket->id,
@@ -113,12 +115,8 @@ class EmailTicketIntegrationService
         }
     }
 
-    /**
-     * استخراج متن اصلی ایمیل از body
-     */
     protected function extractEmailBody(array $emailData): string
     {
-        // اولویت: text/plain > text/html
         if (isset($emailData['text_plain'])) {
             return strip_tags($emailData['text_plain']);
         }
@@ -134,12 +132,8 @@ class EmailTicketIntegrationService
         return '';
     }
 
-    /**
-     * پیدا کردن تیکت بر اساس Message-ID
-     */
     protected function findTicketByMessageId(?string $inReplyTo, ?string $references): ?Ticket
     {
-        // جستجو در metadata کامنت‌ها
         $comment = TicketComment::whereJsonContains('metadata->message_id', $inReplyTo)
             ->orWhereJsonContains('metadata->message_id', $references)
             ->first();
@@ -148,15 +142,11 @@ class EmailTicketIntegrationService
             return $comment->ticket;
         }
 
-        // جستجو در metadata تیکت‌ها
         return Ticket::whereJsonContains('metadata->message_id', $inReplyTo)
             ->orWhereJsonContains('metadata->message_id', $references)
             ->first();
     }
 
-    /**
-     * ایجاد تیکت جدید از ایمیل
-     */
     protected function createTicketFromEmail(
         string $fromEmail,
         ?string $fromName,
@@ -165,24 +155,18 @@ class EmailTicketIntegrationService
         ?User $user,
         ?string $messageId
     ): Ticket {
-        // حذف پیشوند "Re:" یا "Fwd:" از subject
         $cleanSubject = preg_replace('/^(Re:|Fwd:|FW:)\s*/i', '', $subject);
-
-        // تریاژ خودکار
         $triageResult = $this->triage->triage($cleanSubject, $body);
 
-        // ایجاد کد پیگیری منحصر به فرد
         do {
             $trackingCode = 'TK-' . strtoupper(Str::random(8));
         } while (Ticket::where('tracking_code', $trackingCode)->exists());
 
-        // محاسبه SLA
         $priority = $triageResult['priority'] ?? 'normal';
         $slaDeadline = $this->sla->calculateDeadline(
             new Ticket(['priority' => $priority, 'created_at' => now()])
         );
 
-        // ایجاد تیکت
         $ticket = Ticket::create([
             'user_id' => $user?->id,
             'tracking_code' => $trackingCode,
@@ -201,15 +185,11 @@ class EmailTicketIntegrationService
             ],
         ]);
 
-        // ثبت فعالیت
         $this->logTicketCreated($ticket);
 
         return $ticket;
     }
 
-    /**
-     * ارسال پاسخ تیکت به ایمیل کاربر
-     */
     public function sendTicketReplyToEmail(Ticket $ticket, TicketComment $comment): bool
     {
         $context = [
@@ -232,11 +212,9 @@ class EmailTicketIntegrationService
 
             $user = $ticket->user;
             $commenter = $comment->user;
-
-            // ساخت subject ایمیل
+            $sender = $this->systemIdentities->mailSender('support');
             $subject = $ticket->tracking_code . ' - ' . $ticket->subject;
 
-            // ساخت body ایمیل
             $body = view('emails.ticket-reply', [
                 'ticket' => $ticket,
                 'comment' => $comment,
@@ -244,14 +222,13 @@ class EmailTicketIntegrationService
                 'commenter' => $commenter,
             ])->render();
 
-            // ارسال ایمیل
             $messageId = null;
-            Mail::html($body, function ($message) use ($ticket, $subject, &$messageId) {
-                $message->to($ticket->email, $ticket->name)
+            Mail::html($body, function ($message) use ($ticket, $subject, $sender, &$messageId) {
+                $message->from($sender['address'], $sender['name'])
+                    ->to($ticket->email, $ticket->name)
                     ->subject($subject)
-                    ->replyTo(config('mail.support_email', 'support@earthcoop.ir'), 'پشتیبانی EarthCoop');
-                
-                // تنظیم Message-ID برای ردیابی
+                    ->replyTo($sender['reply_to'] ?: $sender['address'], $sender['name']);
+
                 $host = parse_url(config('app.url'), PHP_URL_HOST) ?? 'earthcoop.org';
                 $messageId = '<ticket-' . $ticket->id . '-comment-' . time() . '@' . $host . '>';
                 $message->getHeaders()->addTextHeader('Message-ID', $messageId);
@@ -259,18 +236,22 @@ class EmailTicketIntegrationService
                 $message->getHeaders()->addTextHeader('References', '<ticket-' . $ticket->id . '@' . $host . '>');
             });
 
-            // ذخیره Message-ID برای ردیابی
             if ($messageId) {
                 $comment->update([
                     'metadata' => array_merge($comment->metadata ?? [], [
                         'email_sent' => true,
                         'email_sent_at' => now()->toIso8601String(),
                         'message_id' => $messageId,
+                        'sender_identity' => 'support',
+                        'sender_address' => $sender['address'],
+                        'sender_name' => $sender['name'],
                     ]),
                 ]);
             }
 
-            $this->emitRuntime('najm_hoda.input.support.service.email_integration.send_reply.succeeded', $context);
+            $this->emitRuntime('najm_hoda.input.support.service.email_integration.send_reply.succeeded', array_merge($context, [
+                'sender_identity' => 'support',
+            ]));
             return true;
 
         } catch (\Exception $e) {
@@ -288,9 +269,6 @@ class EmailTicketIntegrationService
         }
     }
 
-    /**
-     * ارسال اعلان ایجاد تیکت به ایمیل کاربر
-     */
     public function sendTicketCreatedEmail(Ticket $ticket): bool
     {
         $context = [
@@ -309,18 +287,20 @@ class EmailTicketIntegrationService
                 return false;
             }
 
+            $sender = $this->systemIdentities->mailSender('support');
             $subject = 'تیکت جدید شما: ' . $ticket->tracking_code . ' - ' . $ticket->subject;
+            $body = view('emails.ticket-created', ['ticket' => $ticket])->render();
 
-            $body = view('emails.ticket-created', [
-                'ticket' => $ticket,
-            ])->render();
-
-            Mail::html($body, function ($message) use ($ticket, $subject) {
-                $message->to($ticket->email, $ticket->name)
-                    ->subject($subject);
+            Mail::html($body, function ($message) use ($ticket, $subject, $sender) {
+                $message->from($sender['address'], $sender['name'])
+                    ->to($ticket->email, $ticket->name)
+                    ->subject($subject)
+                    ->replyTo($sender['reply_to'] ?: $sender['address'], $sender['name']);
             });
 
-            $this->emitRuntime('najm_hoda.input.support.service.email_integration.send_created.succeeded', $context);
+            $this->emitRuntime('najm_hoda.input.support.service.email_integration.send_created.succeeded', array_merge($context, [
+                'sender_identity' => 'support',
+            ]));
             return true;
 
         } catch (\Exception $e) {
@@ -336,9 +316,6 @@ class EmailTicketIntegrationService
         }
     }
 
-    /**
-     * @param array<string, mixed> $payload
-     */
     protected function emitRuntime(string $event, array $payload): void
     {
         try {
@@ -354,6 +331,3 @@ class EmailTicketIntegrationService
         }
     }
 }
-
-
-

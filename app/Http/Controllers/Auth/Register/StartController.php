@@ -8,7 +8,7 @@ use App\Models\Group;
 use App\Models\Address;
 use App\Models\Blog;
 use App\Models\Category;
-use App\Models\Comment;
+use App\Models\CommunityStory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -59,60 +59,13 @@ class StartController extends Controller
             'countries_formatted' => format_number($countriesCount, 0),
         ];
 
-        // دریافت نظرات واقعی برای بخش testimonials
-        $testimonials = collect();
-        if (Schema::hasTable('comments')) {
-            try {
-                $testimonials = Comment::whereNull('parent_id') // فقط نظرات اصلی (نه پاسخ‌ها)
-                    ->whereRaw('CHAR_LENGTH(message) >= 80') // نظرات با طول مناسب
-                    ->with(['user.occupationalFields', 'user.address.city', 'user.address.province', 'user.address.country'])
-                    ->whereHas('user', function($q) {
-                        $q->whereNotNull('first_name')
-                          ->whereNotNull('last_name');
-                    })
-                    ->orderByDesc('created_at')
-                    ->limit(10) // بیشتر بگیریم تا بتوانیم بهترین‌ها را انتخاب کنیم
-                    ->get()
-                    ->map(function($comment) {
-                        $user = $comment->user;
-                        $occupationalField = $user->occupationalFields->first();
+        // Welcome social proof must come only from stories explicitly submitted
+        // for public use, reviewed, published and selected as featured.
+        $communityStories = Schema::hasTable('community_stories')
+            ? CommunityStory::welcomeFeatured()
+            : collect();
 
-                        // ساخت مکان از Address اگر موجود باشد
-                        $locationText = '';
-                        if ($user->address) {
-                            $address = $user->address;
-                            if ($address->city) {
-                                $locationText = $address->city->name;
-                                if ($address->province) {
-                                    $locationText .= '، ' . $address->province->name;
-                                }
-                            } elseif ($address->province) {
-                                $locationText = $address->province->name;
-                            } elseif ($address->country) {
-                                $locationText = $address->country->name;
-                            }
-                        }
-
-                        return [
-                            'quote' => $comment->message,
-                            'name' => $user->fullName(),
-                            'role' => $occupationalField ? $occupationalField->name : 'عضو EarthCoop',
-                            'location' => $locationText,
-                            'avatar' => $user->avatar ? asset('images/users/avatars/' . $user->avatar) : 'https://ui-avatars.com/api/?name=' . urlencode($user->fullName()) . '&background=10b981&color=fff&size=250',
-                        ];
-                    })
-                    ->take(3); // فقط 3 تا اول را بگیریم
-            } catch (\Throwable $e) {
-                $testimonials = collect();
-            }
-        }
-
-        // اگر نظرات کافی نبود، از داده‌های تستی استفاده کنیم
-        if ($testimonials->count() < 3) {
-            // می‌توانیم نظرات تستی را هم اضافه کنیم یا فقط همان‌هایی که داریم را نمایش دهیم
-        }
-
-        return view('welcome', compact('stats', 'testimonials'));
+        return view('welcome', compact('stats', 'communityStories'));
     }
 
     public function processAgreement(Request $request)
@@ -199,20 +152,8 @@ class StartController extends Controller
         $invitationCode = $invitationRequired
             ? $request->session()->get('registration_invitation_code')
             : null;
-        $invartion = null;
 
-        if ($invitationRequired) {
-            $invartion = InvitationCode::where('code', $invitationCode)
-                ->where('used', 0)
-                ->where('expire_at', '>=', now())
-                ->first();
-
-            if (!$invartion) {
-                return redirect()->route('welcome')->withErrors([
-                    'invite_code' => 'کد دعوت معتبر نیست یا منقضی شده است. لطفاً دوباره کد دعوت را وارد کنید.',
-                ]);
-            }
-        } else {
+        if (!$invitationRequired) {
             $request->session()->forget('registration_invitation_code');
         }
 
@@ -222,19 +163,48 @@ class StartController extends Controller
             'password' => 'required|min:6|confirmed',
         ]);
 
-        $user = User::create([
-            'email'          => $request->email,
-            'phone'          => $request->phone,
-            'password'       => Hash::make($request->password),
-            'fingerprint_id' => session('fingerprint_id'),
-            'terms_accepted_at' => now(),
-        ]);
-        
-        if ($invartion) {
-            $invartion->update([
-                'used' => 1,
-                'used_by' => $user->id,
-                'used_at' => now(),
+        $user = DB::transaction(function () use ($request, $invitationRequired, $invitationCode) {
+            $invitation = null;
+
+            if ($invitationRequired) {
+                // The lock makes the final validity check + claim a single atomic
+                // operation. Two concurrent registrations cannot consume one code.
+                $invitation = InvitationCode::where('code', $invitationCode)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$invitation
+                    || $invitation->used
+                    || !$invitation->expire_at
+                    || $invitation->expire_at->lt(now())) {
+                    return null;
+                }
+            }
+
+            $newUser = User::create([
+                'email'          => $request->email,
+                'phone'          => $request->phone,
+                'password'       => Hash::make($request->password),
+                'fingerprint_id' => session('fingerprint_id'),
+                'terms_accepted_at' => now(),
+            ]);
+
+            if ($invitation) {
+                $invitation->forceFill([
+                    'used' => true,
+                    'used_by' => $newUser->id,
+                    'used_at' => now(),
+                ])->save();
+            }
+
+            return $newUser;
+        });
+
+        if (!$user) {
+            $request->session()->forget('registration_invitation_code');
+
+            return redirect()->route('welcome')->withErrors([
+                'invite_code' => 'کد دعوت معتبر نیست، منقضی شده یا هم‌زمان توسط عضو دیگری استفاده شده است. لطفاً کد دعوت دیگری وارد کنید.',
             ]);
         }
 

@@ -2,135 +2,102 @@
 
 namespace App\Http\Controllers\Group;
 
+use App\Enums\Elections\ElectionBallotCommentVisibility;
+use App\Enums\Elections\ElectionLifecycleStatus;
+use App\Enums\Elections\ElectionVoteVisibility;
 use App\Http\Controllers\Controller;
-use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\Group;
-use App\Models\GroupSetting;
-use App\Models\Vote;
+use App\Services\Elections\ElectionBallotService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ElectionController extends Controller
 {
+    public function __construct(
+        private readonly ElectionBallotService $ballots,
+    ) {
+    }
+
     public function submitVote(Request $request, Group $group)
     {
-        $groupSetting = GroupSetting::where('level', $group->location_level)->first();
-        
-        if($group->specialty_id != null){
-            $groupSetting = GroupSetting::where('level', $group->location_level . '_job')->first();
-        }elseif($group->experience_id != null){
-            $groupSetting = GroupSetting::where('level', $group->location_level . '_experience')->first();
-        }elseif($group->age_group_id != null){
-            $groupSetting = GroupSetting::where('level', $group->location_level . '_age')->first();
-        }elseif($group->gender != null){
-            $groupSetting = GroupSetting::where('level', $group->location_level . '_gender')->first();
-        }
-        
         $inputs = $request->validate([
             'inspector' => 'nullable|array',
             'manager' => 'nullable|array',
+            'vote_visibility' => 'nullable|array',
+            'vote_visibility.*' => [
+                Rule::in(array_map(
+                    fn (ElectionVoteVisibility $visibility) => $visibility->value,
+                    ElectionVoteVisibility::cases(),
+                )),
+            ],
+            'comment' => 'nullable|string|max:4000',
+            'comment_visibility' => [
+                'nullable',
+                Rule::in(array_map(
+                    fn (ElectionBallotCommentVisibility $visibility) => $visibility->value,
+                    ElectionBallotCommentVisibility::cases(),
+                )),
+            ],
+            'comment_anonymous' => 'nullable|boolean',
         ]);
-        
-        $election = Election::where('group_id', $group->id)->where('is_closed', 0)->first();       
-        $voteCheck = Vote::where('voter_id', auth()->user()->id)->where('election_id', $election->id)->get();
-        foreach($voteCheck as $vote){
-            $vote->delete();
+
+        $election = Election::query()
+            ->where('group_id', $group->id)
+            ->where('lifecycle_status', ElectionLifecycleStatus::Open->value)
+            ->orderByDesc('id')
+            ->first();
+
+        if ($election === null) {
+            throw ValidationException::withMessages([
+                'election' => 'در حال حاضر انتخابات بازی برای این گروه وجود ندارد.',
+            ]);
         }
 
-        
-        if(isset($inputs['inspector'])){
-            foreach ($inputs['inspector'] as $userId) {
-                Vote::create([
-                    'election_id' => $election->id,
-                    'voter_id' => auth()->id(),
-                    'candidate_id' => $userId,
-                    'position' => 0
-                ]);
-            }            
-        }
+        $commentVisibility = isset($inputs['comment_visibility'])
+            ? ElectionBallotCommentVisibility::from($inputs['comment_visibility'])
+            : null;
 
-        if(isset($inputs['manager'])){
-            foreach ($inputs['manager'] as $userId) {
-                Vote::create([
-                    'election_id' => $election->id,
-                    'voter_id' => auth()->id(),
-                    'candidate_id' => $userId,
-                    'position' => 1
-                ]);
-            }
-   
-        }
+        $result = $this->ballots->submit(
+            $election,
+            (int) auth()->id(),
+            $inputs['manager'] ?? [],
+            $inputs['inspector'] ?? [],
+            $request->header('Idempotency-Key') ?: null,
+            $inputs['comment'] ?? null,
+            $commentVisibility,
+            $inputs['vote_visibility'] ?? [],
+            (bool) ($inputs['comment_anonymous'] ?? false),
+        );
+
         if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'status' => 'success',
                 'message' => 'رأی شما با موفقیت ثبت شد.',
+                'ballot' => $result,
             ]);
         }
 
         return redirect()->back()->with('success', 'رأی شما با موفقیت ثبت شد.');
     }
 
-    public function finishElection(Election $election){
+    /**
+     * Retired compatibility endpoint.
+     *
+     * Election closing, snapshotting, tallying and offer creation are owned
+     * exclusively by the systemic scheduler/domain lifecycle. Keeping this
+     * adapter non-mutating prevents old clients/bookmarks from bypassing the
+     * canonical state machine while the legacy route declaration remains in
+     * the compatibility route file.
+     */
+    public function finishElection(Election $election)
+    {
         $this->authorize('manageSession', $election->group);
-        $groupSetting = GroupSetting::where('level', $election->group->location_level)->first();
-        $candidates = $election->candidates;
-        foreach($candidates as $candidate){
-            $candidate->accept_status = null;
-            $candidate->save();
-        }
-        if($candidates[0]->accept_status != null){
-            return response()->json([
-                'status' => 'error',
-                'error' => 'پیش از اتمام انتخابات امکان انتخاب دیگری وجود ندارد',
-            ]);
-            exit;
-        }
-        foreach($candidates as $candidate){
-            $candidate->accept_status = 0;
-            $candidate->save();
-        }
-
-        $topOfInspectors = Vote::select('candidate_id', DB::raw('COUNT(*) as total_votes'))
-            ->where('election_id', $election->id)
-            ->where('position', 0)        // 0 = بازرس
-            ->groupBy('candidate_id')
-            ->orderBy('total_votes', 'desc')
-            ->take($groupSetting->insperctor_count)
-            ->get()->pluck('candidate_id')->toArray();
-        
-        $topOfManagers = Vote::select('candidate_id', DB::raw('COUNT(*) as total_votes'))
-            ->where('election_id', $election->id)
-            ->where('position', 1)        // 0 = بازرس
-            ->groupBy('candidate_id')
-            ->orderBy('total_votes', 'desc')
-            ->take($groupSetting->manager_count)
-            ->get()->pluck('candidate_id')->toArray();
-
-        $topOfInspectors = array_merge($topOfInspectors, $topOfManagers);
-        $activeCandidates =  $election->candidates()->whereIn('user_id', $topOfInspectors)->get();
-
-        foreach($activeCandidates as $candidate){
-            $candidate->accept_status = 1;
-            $candidate->save();
-        }
-
-        // Close the election
-        $election->update(['is_closed' => 1]);
-
-        app(\App\Services\GroupChat\GroupEventPublisher::class)->publish(
-            new \App\Events\GroupFeedUpdated((int) $election->group_id, 'election_finished', [
-                'election_id' => (int) $election->id,
-                'is_closed' => true,
-                'elected_candidate_ids' => $activeCandidates->pluck('user_id')->map(fn ($id) => (int) $id)->values()->all(),
-            ], (int) auth()->id())
-        );
 
         return response()->json([
-            'status' => 'success',
-            'candidates' => $activeCandidates,
-            'group_setting' => $groupSetting
-            
-        ]);
+            'status' => 'retired',
+            'message' => 'پایان دستی انتخابات بازنشسته شده است؛ چرخه فقط توسط سامانه انتخابات متوقف و شمارش می‌شود.',
+        ], 410);
     }
 }

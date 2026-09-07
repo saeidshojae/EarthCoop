@@ -1,0 +1,312 @@
+/*
+ * Group chat modal viewport contract
+ * Keeps long post/poll/election forms inside the viewport on desktop and mobile,
+ * with scroll owned by the modal instead of the page behind it.
+ */
+
+body:has(.modal-shell[style*="display: flex"]),
+body:has(.election-voting-overlay[style*="display: flex"]) {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+.modal-shell,
+.election-voting-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)) !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  overscroll-behavior: contain !important;
+  align-items: center !important;
+  justify-content: center !important;
+  touch-action: pan-y;
+}
+
+.modal-shell__dialog {
+  width: min(720px, 100%) !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.modal-shell__header { flex: 0 0 auto; }
+
+.modal-shell__form {
+  min-height: 0 !important;
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch;
+  padding-inline-end: 4px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+.modal-shell__actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  margin-top: auto !important;
+  margin-inline: -2px;
+  padding: 12px 2px max(4px, env(safe-area-inset-bottom));
+  background: linear-gradient(to top, #fff 72%, rgba(255,255,255,.92));
+  border-top: 1px solid rgba(148, 163, 184, .16);
+}
+
+#pollOptionsBox .modal-shell__dialog { height: min(720px, 100%) !important; }
+#pollOptionsBox .modal-shell__form {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+}
+#pollOptionsBox .modal-shell__actions {
+  flex: 0 0 auto !important;
+  margin-top: auto !important;
+}
+
+.modal-shell__errors {
+  flex: 0 0 auto;
+  max-height: 22vh;
+  overflow-y: auto;
+}
+
+.election-voting-overlay { z-index: 100000 !important; }
+.election-voting-overlay__backdrop {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+}
+
+.election-voting-overlay .election-box,
+.election-voting-overlay .election-card {
+  position: relative !important;
+  z-index: 2 !important;
+  width: min(920px, 100%) !important;
+  max-width: 920px !important;
+  height: auto !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  overflow: hidden !important;
+  border-radius: 24px !important;
+  box-sizing: border-box !important;
+}
+
+.election-modal-header {
+  flex: 0 0 auto;
+  padding: 22px 24px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, .16);
+  background: rgba(255,255,255,.96);
+}
+
+.election-modal-body {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch;
+  padding: 18px 24px 24px;
+}
+
+.election-close {
+  position: absolute !important;
+  top: 12px !important;
+  left: 12px !important;
+  z-index: 8 !important;
+}
+
+.election-member-option { min-width: 0; }
+.election-member-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+.election-member-avatar {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 12px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #dbeafe, #d1fae5);
+  color: #0f766e;
+  border: 1px solid rgba(16,185,129,.2);
+  font-size: 13px;
+  font-weight: 800;
+}
+.election-member-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.election-member-copy {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 7px;
+}
+.election-member-copy strong { overflow-wrap: anywhere; }
+
+.election-role-tabs { display: none; }
+.election-privacy-select {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+.election-privacy-help,
+.election-comment-visibility-help { display: none; }
+
+@media (max-width: 767.98px) {
+  .modal-shell,
+  .election-voting-overlay {
+    padding: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left)) !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .modal-shell__dialog {
+    width: calc(100vw - 12px) !important;
+    max-width: calc(100vw - 12px) !important;
+    height: calc(100dvh - 12px) !important;
+    max-height: calc(100dvh - 12px) !important;
+    margin-inline: auto !important;
+    align-self: center !important;
+    border-radius: 18px !important;
+    padding: 14px !important;
+  }
+
+  .election-voting-overlay .election-box,
+  .election-voting-overlay .election-card {
+    flex: 0 1 auto !important;
+    width: calc(100vw - 12px) !important;
+    max-width: calc(100vw - 12px) !important;
+    height: calc(100dvh - 12px) !important;
+    max-height: calc(100dvh - 12px) !important;
+    margin-inline: auto !important;
+    align-self: center !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none;
+    border-radius: 18px !important;
+  }
+
+  #pollOptionsBox .modal-shell__dialog { height: calc(100dvh - 12px) !important; }
+  .modal-shell__header { margin-bottom: 10px !important; }
+  .modal-shell__title { font-size: 1rem !important; padding-left: 40px; }
+  .modal-grid { grid-template-columns: 1fr !important; }
+
+  .modal-shell__actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px !important;
+    margin-top: auto !important;
+  }
+  .modal-shell__actions .btn { width: 100%; min-height: 44px; }
+
+  .election-modal-header { padding: 18px 16px 12px !important; }
+  .election-title { font-size: 1.05rem !important; line-height: 1.65 !important; padding-left: 34px; }
+  .election-subtitle { font-size: .78rem !important; line-height: 1.75 !important; }
+  .election-modal-body { padding: 12px 12px max(18px, env(safe-area-inset-bottom)) !important; }
+
+  .election-role-tabs {
+    position: relative !important;
+    top: auto !important;
+    z-index: 2;
+    display: grid !important;
+    width: 100% !important;
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+    gap: 6px;
+    margin: 0 0 12px !important;
+    padding: 5px;
+    border-radius: 14px;
+    background: #f1f5f9;
+    border: 1px solid rgba(148,163,184,.18);
+    box-sizing: border-box;
+  }
+
+  .election-role-tab {
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: #475569;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 8px;
+    white-space: nowrap;
+  }
+  .election-role-tab.is-active {
+    background: #fff;
+    color: #4f46e5;
+    box-shadow: 0 5px 18px -12px rgba(15,23,42,.5);
+  }
+  .election-role-tab__count {
+    min-width: 32px;
+    padding: 2px 5px;
+    border-radius: 999px;
+    background: rgba(99,102,241,.1);
+    font-size: 11px;
+  }
+
+  .election-role-panels { margin-inline: 0 !important; width: 100% !important; }
+  #electionForm [data-election-role-panel] {
+    display: none !important;
+    width: 100% !important;
+    padding-inline: 0 !important;
+  }
+  #electionForm [data-election-role-panel].is-active { display: block !important; }
+
+  .election-member-list { max-height: none !important; overflow: visible !important; }
+  .election-member-option { padding-block: 10px !important; }
+  .election-member-option > label:first-child { align-items: center !important; }
+
+  .election-member-option .form-select,
+  .election-privacy-select {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px;
+    font-size: 16px !important;
+    line-height: 1.3;
+    padding-inline: 12px 34px !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  #electionForm > .row.g-3 { --bs-gutter-x: 0; --bs-gutter-y: 0; }
+  #electionForm .border.rounded-3.p-3 { padding: 12px !important; }
+
+  #electionForm > .d-flex.flex-wrap.gap-2.mt-3 {
+    position: sticky;
+    bottom: -1px;
+    z-index: 5;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    padding: 10px 0 max(6px, env(safe-area-inset-bottom));
+    background: rgba(255,255,255,.97);
+    border-top: 1px solid rgba(148,163,184,.18);
+  }
+  #electionForm > .d-flex.flex-wrap.gap-2.mt-3 .btn:first-child { grid-column: 1 / -1; }
+  #electionForm > .d-flex.flex-wrap.gap-2.mt-3 .btn { width: 100%; min-height: 44px; }
+}

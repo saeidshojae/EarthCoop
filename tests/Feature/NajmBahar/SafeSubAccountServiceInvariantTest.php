@@ -112,7 +112,7 @@ class SafeSubAccountServiceInvariantTest extends TestCase
     public function test_cross_owner_active_subaccount_transfer_is_blocked_before_threshold_without_mutation(): void
     {
         [$service, $from, $to, $firstMain] = $this->independentOwnerSubAccounts(activeSource: true);
-        Setting::create(['najm_bahar_user_threshold' => 999]);
+        $this->setThreshold(999);
 
         $fromBefore = (int) $from->fresh()->balance_active;
         $toBefore = (int) $to->fresh()->balance_active;
@@ -134,7 +134,7 @@ class SafeSubAccountServiceInvariantTest extends TestCase
     public function test_cross_owner_active_subaccount_transfer_uses_canonical_transaction_path_after_threshold(): void
     {
         [$service, $from, $to] = $this->independentOwnerSubAccounts(activeSource: true);
-        Setting::create(['najm_bahar_user_threshold' => 2]);
+        $this->setThreshold(2);
 
         $transaction = $service->transferBetweenSubAccounts(
             $from->id,
@@ -163,7 +163,7 @@ class SafeSubAccountServiceInvariantTest extends TestCase
     public function test_scheduled_cross_owner_active_transfer_cannot_bypass_threshold_policy(): void
     {
         [$service, $from, $to] = $this->independentOwnerSubAccounts(activeSource: true);
-        Setting::create(['najm_bahar_user_threshold' => 999]);
+        $this->setThreshold(999);
 
         $placeholder = NajmTransaction::create([
             'amount' => 100,
@@ -224,5 +224,12 @@ class SafeSubAccountServiceInvariantTest extends TestCase
         );
 
         return [$service, $from, $to, $firstMain, $secondMain];
+    }
+
+    private function setThreshold(int $threshold): void
+    {
+        $setting = Setting::singleton();
+        $setting->najm_bahar_user_threshold = $threshold;
+        $setting->save();
     }
 }

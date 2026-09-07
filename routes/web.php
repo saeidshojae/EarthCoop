@@ -372,6 +372,8 @@ Route::middleware(Authenticate::class)->group(function () {
     Route::post('/api/groups/{group}/polls/{poll}/delegation/{expert}', [ChatController::class, 'storeDelegation'])->middleware(['group.session.writable', 'group.chat.idempotency', 'group.chat.context'])->name('groups.delegation');
 
     //show profile
+    Route::get('/najm-hoda', [ProfileController::class, 'showNajmHodaProfile'])->name('najm-hoda.profile');
+
     Route::get('/profile-member/{user}', [ProfileController::class, 'showProfileMember'])->name('profile.member.show');
 
     // ارسال پیام در گروه

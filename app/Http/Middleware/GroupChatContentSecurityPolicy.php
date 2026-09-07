@@ -10,14 +10,37 @@ class GroupChatContentSecurityPolicy
     public function handle(Request $request, Closure $next)
     {
         $response = $next($request);
+
+        $localViteScriptSources = [];
+        $localViteStyleSources = [];
+        $localViteConnectSources = [];
+
+        if (app()->environment('local')) {
+            $localViteScriptSources = [
+                'http://localhost:5173',
+                'http://127.0.0.1:5173',
+            ];
+            $localViteStyleSources = $localViteScriptSources;
+            $localViteConnectSources = [
+                'http://localhost:5173',
+                'http://127.0.0.1:5173',
+                'ws://localhost:5173',
+                'ws://127.0.0.1:5173',
+            ];
+        }
+
+        $scriptSrc = implode(' ', array_merge(["'self'", "'unsafe-inline'", "'unsafe-eval'"], $localViteScriptSources));
+        $styleSrc = implode(' ', array_merge(["'self'", "'unsafe-inline'"], $localViteStyleSources));
+        $connectSrc = implode(' ', array_merge(["'self'", 'ws:', 'wss:'], $localViteConnectSources));
+
         $response->headers->set('Content-Security-Policy', implode('; ', [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-            "style-src 'self' 'unsafe-inline'",
+            "script-src {$scriptSrc}",
+            "style-src {$styleSrc}",
             "img-src 'self' data: blob:",
             "media-src 'self' blob:",
             "font-src 'self' data:",
-            "connect-src 'self' ws: wss:",
+            "connect-src {$connectSrc}",
             "frame-src 'none'",
             "object-src 'none'",
             "base-uri 'self'",

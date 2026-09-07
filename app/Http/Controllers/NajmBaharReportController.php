@@ -26,9 +26,7 @@ class NajmBaharReportController extends Controller
     {
         $this->transactionService = $transactionService;
     }
-    /**
-     * نمایش صفحه گزارش‌های مالی
-     */
+
     public function index(Request $request)
     {
         $user = auth()->user();
@@ -40,17 +38,13 @@ class NajmBaharReportController extends Controller
                 ->with('info', 'ابتدا باید حساب نجم بهار خود را ایجاد کنید.');
         }
 
-        // فیلترها
         $dateFrom = $request->input('date_from', Carbon::now()->subMonths(3)->format('Y-m-d'));
         $dateTo = $request->input('date_to', Carbon::now()->format('Y-m-d'));
-        $type = $request->input('type', 'all'); // all, in, out
+        $type = $request->input('type', 'all');
         $search = $request->input('search');
         $accountIds = $this->transactionService->getUserAccountIds($user->id);
 
-        // دریافت تراکنش‌ها
         $transactions = $this->getTransactions($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $accountIds);
-
-        // آمار خلاصه
         $summary = $this->getSummary($account, $accountNumber, $dateFrom, $dateTo, $accountIds);
 
         $routePrefix = 'najm-bahar.reports';
@@ -145,9 +139,6 @@ class NajmBaharReportController extends Controller
         return view('najm-bahar.reports.index', compact('transactions', 'summary', 'dateFrom', 'dateTo', 'type', 'search', 'account', 'routePrefix', 'routeParams', 'reportOwnerName', 'accountNumberDisplay'));
     }
 
-    /**
-     * دریافت تراکنش‌ها با فیلتر
-     */
     private function resolveAccountIds($account, ?array $accountIds): array
     {
         $ids = $accountIds ?? [];
@@ -157,7 +148,42 @@ class NajmBaharReportController extends Controller
 
         $ids = array_filter($ids, fn($id) => ! is_null($id));
 
-        return array_values(array_unique($ids));
+        return array_values(array_unique(array_map('intval', $ids)));
+    }
+
+    private function applyDirectionFilter($query, string $type, array $accountIds)
+    {
+        if ($type === 'in') {
+            $query->whereIn('to_account_id', $accountIds)
+                ->where(function ($q) use ($accountIds) {
+                    $q->whereNull('from_account_id')
+                      ->orWhereNotIn('from_account_id', $accountIds);
+                });
+        } elseif ($type === 'out') {
+            $query->whereIn('from_account_id', $accountIds)
+                ->where(function ($q) use ($accountIds) {
+                    $q->whereNull('to_account_id')
+                      ->orWhereNotIn('to_account_id', $accountIds);
+                });
+        } else {
+            $query->where(function ($q) use ($accountIds) {
+                $q->where(function ($incoming) use ($accountIds) {
+                    $incoming->whereIn('to_account_id', $accountIds)
+                        ->where(function ($outside) use ($accountIds) {
+                            $outside->whereNull('from_account_id')
+                                ->orWhereNotIn('from_account_id', $accountIds);
+                        });
+                })->orWhere(function ($outgoing) use ($accountIds) {
+                    $outgoing->whereIn('from_account_id', $accountIds)
+                        ->where(function ($outside) use ($accountIds) {
+                            $outside->whereNull('to_account_id')
+                                ->orWhereNotIn('to_account_id', $accountIds);
+                        });
+                });
+            });
+        }
+
+        return $query;
     }
 
     private function getTransactions($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $accountIds = null)
@@ -178,14 +204,8 @@ class NajmBaharReportController extends Controller
             ])
             ->where('status', 'completed');
 
-        // فیلتر نوع
-        if ($type === 'in') {
-            $query->whereIn('to_account_id', $accountIds);
-        } elseif ($type === 'out') {
-            $query->whereIn('from_account_id', $accountIds);
-        }
+        $this->applyDirectionFilter($query, $type, $accountIds);
 
-        // جستجو در توضیحات
         if ($search) {
             $query->where('description', 'like', "%{$search}%");
         }
@@ -193,9 +213,6 @@ class NajmBaharReportController extends Controller
         return $query->orderBy('created_at', 'desc')->paginate(25);
     }
 
-    /**
-     * دریافت آمار خلاصه
-     */
     private function getSummary($account, $accountNumber, $dateFrom, $dateTo, $accountIds = null)
     {
         $accountIds = $this->resolveAccountIds($account, $accountIds);
@@ -208,7 +225,7 @@ class NajmBaharReportController extends Controller
             ];
         }
 
-        $transactions = Transaction::where(function($q) use ($accountIds) {
+        $query = Transaction::where(function($q) use ($accountIds) {
             $q->whereIn('from_account_id', $accountIds)
               ->orWhereIn('to_account_id', $accountIds);
         })
@@ -216,8 +233,10 @@ class NajmBaharReportController extends Controller
             Carbon::parse($dateFrom)->startOfDay(),
             Carbon::parse($dateTo)->endOfDay()
         ])
-        ->where('status', 'completed')
-        ->get();
+        ->where('status', 'completed');
+
+        $this->applyDirectionFilter($query, 'all', $accountIds);
+        $transactions = $query->get();
 
         $totalIn = $transactions->whereIn('to_account_id', $accountIds)->sum('amount');
         $totalOut = $transactions->whereIn('from_account_id', $accountIds)->sum('amount');
@@ -231,9 +250,6 @@ class NajmBaharReportController extends Controller
         ];
     }
 
-    /**
-     * Export به Excel
-     */
     public function exportExcel(Request $request)
     {
         $user = auth()->user();
@@ -245,16 +261,13 @@ class NajmBaharReportController extends Controller
                 ->with('info', 'ابتدا باید حساب نجم بهار خود را ایجاد کنید.');
         }
 
-        // دریافت فیلترها
         $dateFrom = $request->input('date_from', Carbon::now()->subMonth()->format('Y-m-d'));
         $dateTo = $request->input('date_to', Carbon::now()->format('Y-m-d'));
         $type = $request->input('type', 'all');
         $search = $request->input('search');
         $accountIds = $this->transactionService->getUserAccountIds($user->id);
 
-        // دریافت تمام تراکنش‌ها (بدون pagination)
         $transactions = $this->getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $accountIds);
-
         $fileName = 'najm-bahar-transactions-' . Carbon::now()->format('Y-m-d-His') . '.csv';
 
         return $this->downloadTransactionsCSV($transactions, $account, $fileName);
@@ -275,15 +288,11 @@ class NajmBaharReportController extends Controller
         $accountIds = $this->resolveAccountIds($account, null);
 
         $transactions = $this->getTransactionsForExport($account, $account->account_number, $dateFrom, $dateTo, $type, $search, $accountIds);
-
         $fileName = 'najm-bahar-group-' . $group->id . '-transactions-' . Carbon::now()->format('Y-m-d-His') . '.csv';
 
         return $this->downloadTransactionsCSV($transactions, $account, $fileName);
     }
 
-    /**
-     * دریافت تراکنش‌ها برای Export (بدون pagination)
-     */
     private function getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $accountIds = null)
     {
         $accountIds = $this->resolveAccountIds($account, $accountIds);
@@ -302,11 +311,7 @@ class NajmBaharReportController extends Controller
             ])
             ->where('status', 'completed');
 
-        if ($type === 'in') {
-            $query->whereIn('to_account_id', $accountIds);
-        } elseif ($type === 'out') {
-            $query->whereIn('from_account_id', $accountIds);
-        }
+        $this->applyDirectionFilter($query, $type, $accountIds);
 
         if ($search) {
             $query->where('description', 'like', "%{$search}%");
@@ -315,9 +320,6 @@ class NajmBaharReportController extends Controller
         return $query->orderBy('created_at', 'desc')->get();
     }
 
-    /**
-     * Export به PDF
-     */
     public function exportPdf(Request $request)
     {
         $user = auth()->user();
@@ -329,14 +331,12 @@ class NajmBaharReportController extends Controller
                 ->with('info', 'ابتدا باید حساب نجم بهار خود را ایجاد کنید.');
         }
 
-        // دریافت فیلترها
         $dateFrom = $request->input('date_from', Carbon::now()->subMonth()->format('Y-m-d'));
         $dateTo = $request->input('date_to', Carbon::now()->format('Y-m-d'));
         $type = $request->input('type', 'all');
         $search = $request->input('search');
         $accountIds = $this->transactionService->getUserAccountIds($user->id);
 
-        // دریافت تراکنش‌ها
         $transactions = $this->getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search);
         $transactions = $this->getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $accountIds);
         $summary = $this->getSummary($account, $accountNumber, $dateFrom, $dateTo, $accountIds);
@@ -344,11 +344,8 @@ class NajmBaharReportController extends Controller
         $reportOwnerName = trim($user->first_name . ' ' . $user->last_name);
         $accountNumberDisplay = $account?->account_number;
 
-        // استفاده از view برای PDF
         $html = view('najm-bahar.reports.pdf', compact('transactions', 'summary', 'dateFrom', 'dateTo', 'user', 'reportOwnerName', 'accountNumberDisplay', 'account'))->render();
 
-        // استفاده از DomPDF (اگر نصب باشد) یا بازگشت HTML
-        // برای حال حاضر، HTML را برمی‌گردانیم
         return response($html)
             ->header('Content-Type', 'text/html; charset=utf-8')
             ->header('Content-Disposition', 'inline; filename="najm-bahar-report-' . Carbon::now()->format('Y-m-d') . '.html"');
@@ -414,7 +411,6 @@ class NajmBaharReportController extends Controller
         $accountIds = $this->transactionService->getUserAccountIds($leader->id);
 
         $transactions = $this->getTransactionsForExport($account, $accountNumber, $dateFrom, $dateTo, $type, $search, $accountIds);
-
         $fileName = 'najm-bahar-group-' . $group->id . '-leader-' . $leader->id . '-transactions-' . Carbon::now()->format('Y-m-d-His') . '.csv';
 
         return $this->downloadTransactionsCSV($transactions, $account, $fileName);
@@ -612,15 +608,11 @@ class NajmBaharReportController extends Controller
         return [$from->format('Y-m-d'), $to->format('Y-m-d')];
     }
 
-    /**
-     * دریافت CSV تراکنش‌ها
-     */
     private function downloadTransactionsCSV($transactions, $account, $fileName)
     {
         $export = new \App\Exports\NajmBaharTransactionsExport($transactions, $account);
         $rows = $export->getRows();
 
-        // تبدیل به CSV
         $csv = '';
         foreach ($rows as $row) {
             $csv .= implode("\t", $row) . "\n";
@@ -631,4 +623,3 @@ class NajmBaharReportController extends Controller
             ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
     }
 }
-

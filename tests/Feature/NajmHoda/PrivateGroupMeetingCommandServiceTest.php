@@ -7,6 +7,7 @@ use App\Models\GroupSession;
 use App\Models\GroupUser;
 use App\Models\User;
 use App\Services\NajmHoda\NajmHodaPrivateGroupActionItemCommandService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -15,8 +16,18 @@ class PrivateGroupMeetingCommandServiceTest extends TestCase
 {
     use DatabaseTransactions;
 
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
     public function test_manager_meeting_command_requires_confirmation_and_creates_exact_session(): void
     {
+        // Keep the scheduled-meeting contract deterministic. The requested
+        // 18:30 session must remain in the future regardless of when CI runs.
+        Carbon::setTestNow(Carbon::parse('2026-08-20 12:00:00'));
+
         [$group, $manager] = $this->makeGroupAndUser(3);
         $service = app(NajmHodaPrivateGroupActionItemCommandService::class);
         $message = 'یک نشست تنظیم کن | عنوان: جلسه بودجه | موضوع: بودجه ماه آینده | دستور جلسه: بررسی هزینه‌ها | زمان: 2026-08-20 18:30';

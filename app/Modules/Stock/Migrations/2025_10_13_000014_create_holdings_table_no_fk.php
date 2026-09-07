@@ -12,13 +12,14 @@ return new class extends Migration {
                 $table->unsignedBigInteger('stock_id');
                 $table->bigInteger('quantity')->default(0);
                 $table->timestamps();
-                
+
                 $table->unique(['user_id', 'stock_id']);
             });
         }
     }
-    
+
     public function down() {
-        Schema::dropIfExists('holdings');
+        // Historical no-FK fallback only. The canonical holdings table is
+        // owned by the base Stock migration and must survive this rollback.
     }
 };

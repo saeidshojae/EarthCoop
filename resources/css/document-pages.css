@@ -1,0 +1,167 @@
+/* Shared responsive treatment for long-form legal / policy documents. */
+
+.accordion-wrapper,
+.agreement-card,
+.accordion-item,
+.accordion-content,
+.nested-content,
+.agreement-content,
+.agreement-section,
+.agreement-accordion-panel,
+.agreement-subsection,
+.agreement-subsection-panel,
+.prose {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.accordion-content .prose,
+.nested-content .prose,
+.agreement-content .prose,
+.agreement-accordion-panel,
+.agreement-subsection-panel {
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
+.accordion-content .prose img,
+.nested-content .prose img,
+.agreement-content img,
+.accordion-content .prose video,
+.nested-content .prose video,
+.agreement-content video,
+.accordion-content .prose iframe,
+.nested-content .prose iframe,
+.agreement-content iframe {
+    max-width: 100%;
+    height: auto;
+}
+
+.accordion-content .prose table,
+.nested-content .prose table,
+.agreement-content table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+    :root {
+        --ec-document-gutter: 12px;
+        --ec-document-surface-pad: 12px;
+        --ec-document-node-pad: 12px;
+    }
+
+    main .container:has(.accordion-wrapper),
+    main .nb-page-container:has(.agreement-card) {
+        width: 100%;
+        max-width: none !important;
+        padding-inline: var(--ec-document-gutter) !important;
+        margin-inline: 0 !important;
+    }
+
+    .terms-hero,
+    .agreement-hero {
+        border-radius: 1.15rem;
+        padding: 1.35rem 1rem !important;
+    }
+
+    .accordion-wrapper,
+    .agreement-card {
+        width: 100%;
+        padding: var(--ec-document-surface-pad) !important;
+        border-radius: 1rem !important;
+    }
+
+    .accordion-wrapper {
+        gap: 0.75rem;
+    }
+
+    .accordion-item,
+    .agreement-section {
+        width: 100%;
+        border-radius: 0.9rem !important;
+    }
+
+    .accordion-header-btn,
+    .agreement-accordion-button {
+        gap: 0.65rem;
+        padding: 0.9rem var(--ec-document-node-pad) !important;
+    }
+
+    .accordion-icon {
+        width: 32px;
+        height: 32px;
+        flex: 0 0 32px;
+        font-size: 0.95rem;
+    }
+
+    .accordion-content > div,
+    .agreement-accordion-panel {
+        padding: var(--ec-document-node-pad) !important;
+    }
+
+    .nested-accordion-button,
+    .agreement-subsection {
+        width: 100%;
+        margin-inline: 0 !important;
+        padding: 0.85rem 0.8rem !important;
+        border-radius: 0.8rem !important;
+    }
+
+    .agreement-subsection,
+    .nested-content {
+        border-inline-start: 2px solid rgba(16, 185, 129, 0.28);
+    }
+
+    .nested-content,
+    .agreement-subsection-panel {
+        margin-inline: 0 !important;
+        padding-inline: 0.35rem 0 !important;
+    }
+
+    .accordion-content .prose,
+    .nested-content .prose,
+    .agreement-content,
+    .agreement-content .prose {
+        width: 100%;
+        max-width: none !important;
+        font-size: 0.96rem;
+        line-height: 1.95;
+        text-align: right;
+    }
+
+    .accordion-content .prose p,
+    .nested-content .prose p,
+    .agreement-content p,
+    .accordion-content .prose li,
+    .nested-content .prose li,
+    .agreement-content li {
+        overflow-wrap: anywhere;
+    }
+
+    .terms-action-card,
+    .agreement-actions {
+        padding: 1.15rem !important;
+        border-radius: 1rem !important;
+    }
+}
+
+@media (max-width: 390px) {
+    .accordion-wrapper,
+    .agreement-card {
+        padding: 10px !important;
+    }
+
+    .accordion-header-btn,
+    .agreement-accordion-button {
+        padding-inline: 10px !important;
+    }
+
+    .accordion-content > div,
+    .agreement-accordion-panel {
+        padding-inline: 10px !important;
+    }
+}

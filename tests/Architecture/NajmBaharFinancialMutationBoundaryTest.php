@@ -34,6 +34,8 @@ class NajmBaharFinancialMutationBoundaryTest extends TestCase
         'app/Modules/NajmBahar/Services/DimCommitmentService.php',
         'app/Modules/NajmBahar/Services/InternalSubAccountTransferService.php',
         'app/Modules/NajmBahar/Services/SubAccountSystemTransferService.php',
+        // Dedicated atomic Active Bahar reservation settlement/refund boundary.
+        'app/Modules/NajmBahar/Services/ActiveBaharReservationService.php',
         'app/Console/Commands/FixCorruptedBalances.php',
         'app/Http/Controllers/Admin/UserController.php',
     ];

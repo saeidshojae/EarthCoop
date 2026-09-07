@@ -1,3 +1,7 @@
+@php
+$membershipParticipationService = app(\App\Services\MembershipParticipationEligibilityService::class);
+$membershipParticipationStatus = $membershipParticipationService->status(auth()->user());
+@endphp
 <script>
 const groupId = @json((int) $group->id);
 window.groupChatTransport = @json(($realtimeConfig['transport'] ?? 'polling'));
@@ -24,6 +28,12 @@ window.GroupChatConfig = Object.freeze({
     sessionToggleUrl: @json(route('groups.session.toggle', $group)),
     canParticipate: @json(auth()->user()->can('participate', $group)),
     canManageSession: @json(auth()->user()->can('manageSession', $group)),
+    membershipParticipation: Object.freeze({
+        status: @json($membershipParticipationStatus),
+        eligible: @json($membershipParticipationStatus === \App\Services\MembershipParticipationEligibilityService::ELIGIBLE),
+        agreementUrl: @json(route('najm-bahar.agreement')),
+        dashboardUrl: @json(route('najm-bahar.dashboard')),
+    }),
     participationRequestUrl: @json(route('groups.session-participation.request', $group)),
     participationStateUrl: @json(route('groups.session-participation.state', $group)),
     participationIndexUrl: @json(route('groups.session-participation.index', $group)),
@@ -34,5 +44,6 @@ window.GroupChatConfig = Object.freeze({
 const manageCount = @json((int) ($groupSetting?->manager_count ?? 0));
 const inspectorCount = @json((int) ($groupSetting?->inspector_count ?? 0));
 </script>
+<script src="{{ asset('js/membership-participation-gate.js') }}" defer></script>
 <script src="{{ asset('js/chat-features.js') }}" defer></script>
 <script src="{{ asset('js/voice-recorder.js') }}" defer></script>

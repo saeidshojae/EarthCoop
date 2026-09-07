@@ -654,8 +654,8 @@
 </button>
 
 <!-- Registration Modal - مودال ثبت‌نام -->
-<div id="registrationModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[100] flex items-center justify-center p-4" style="backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); background-color: rgba(0, 0, 0, 0.5);">
-    <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-95 opacity-0" id="modalContent">
+<div id="registrationModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[9999] flex items-start justify-center overflow-y-auto overscroll-contain p-4" style="backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); background-color: rgba(0, 0, 0, 0.5);">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full my-4 sm:my-8 transform transition-all duration-300 scale-95 opacity-0" id="modalContent">
         <!-- Modal Header -->
         <div class="relative bg-gradient-to-br from-earth-green to-ocean-blue text-white p-6 rounded-t-3xl">
             <button onclick="closeModal()" class="absolute top-4 left-4 text-white hover:text-gray-200 transition">
@@ -832,6 +832,7 @@
         const modal = document.getElementById('registrationModal');
         const modalContent = document.getElementById('modalContent');
         modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
         setTimeout(() => {
             modalContent.classList.remove('scale-95', 'opacity-0');
             modalContent.classList.add('scale-100', 'opacity-100');
@@ -845,6 +846,7 @@
         modalContent.classList.add('scale-95', 'opacity-0');
         setTimeout(() => {
             modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
         }, 300);
     }
 
@@ -981,6 +983,17 @@
                     localeDropdown.classList.add('hidden');
                 }
             });
+        }
+
+        // Invitation links open registration with the invitation code prefilled.
+        const searchParams = new URLSearchParams(window.location.search);
+        const invitationCode = searchParams.get('invite');
+        if (invitationCode) {
+            const inviteInput = document.querySelector('[name="invite_code"]');
+            if (inviteInput) {
+                inviteInput.value = invitationCode;
+                openModal();
+            }
         }
 
         // Auto-open modal if validation errors exist

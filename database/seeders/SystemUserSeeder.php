@@ -10,23 +10,31 @@ class SystemUserSeeder extends Seeder
 {
     public function run(): void
     {
-        $support = User::updateOrCreate(
-            ['email' => 'support@earthcoop.ir'],
-            [
-                'first_name' => 'تیم پشتیبانی',
-                'last_name' => 'EarthCoop',
-                'password' => Hash::make(bin2hex(random_bytes(32))),
-                'status' => 'active',
-                'is_system' => true,
-                'email_verified_at' => now(),
-                'terms_accepted_at' => now(),
-            ]
-        );
+        foreach (['support', 'management'] as $identity) {
+            $definition = (array) config("system-identities.{$identity}", []);
+            $email = trim((string) ($definition['email'] ?? ''));
+            if ($email === '') {
+                continue;
+            }
 
-        // A technical identity may author system content, but it is never an
-        // interactive administrator or a cooperative/group member.
-        $support->forceFill(['is_admin' => false])->save();
-        $support->groups()->detach();
-        $support->roles()->detach();
+            $user = User::updateOrCreate(
+                ['email' => $email],
+                [
+                    'first_name' => (string) ($definition['first_name'] ?? ''),
+                    'last_name' => (string) ($definition['last_name'] ?? 'EarthCoop'),
+                    'password' => Hash::make(bin2hex(random_bytes(32))),
+                    'status' => 'active',
+                    'is_system' => true,
+                    'email_verified_at' => now(),
+                    'terms_accepted_at' => now(),
+                ]
+            );
+
+            // Technical/team identities may author official system content, but
+            // they are never interactive administrators or cooperative members.
+            $user->forceFill(['is_admin' => false])->save();
+            $user->groups()->detach();
+            $user->roles()->detach();
+        }
     }
 }

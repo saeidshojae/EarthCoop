@@ -19,6 +19,10 @@
 
 <!-- Invite & Earn Bahār Section - بخش جنبش را گسترش دهید، سکه‌های بهار کسب کنید! -->
 
+@php
+    $inviteRewardRule = collect(app(\App\Services\ParticipationCreditRegulationService::class)->snapshot()['actionRules'] ?? [])->firstWhere('key', 'invite_member');
+@endphp
+
 
 
 
@@ -127,7 +131,7 @@
 
 
 
-            <a href="#bahar" class="welcome-wide-cta__button border-2 border-pure-white text-pure-white px-12 py-5 rounded-full shadow-xl hover:bg-pure-white hover:text-purple-700 group transition duration-300 font-vazirmatn text-xl font-medium flex items-center justify-center">
+            <a href="{{ route('participation.credit-regulation') }}" class="welcome-cta welcome-action w-full sm:w-auto px-9 py-4 border-2 border-pure-white text-pure-white rounded-full shadow-xl hover:bg-pure-white hover:text-purple-700 group transition duration-300 font-vazirmatn text-xl font-medium flex items-center justify-center">
 
 
 
@@ -137,7 +141,7 @@
 
 
 
-                {{ __('langWelcome.invite_btn_learn') }} <i class="fas fa-coins mr-3 group-hover:text-purple-700 transition-colors duration-300"></i>
+                {{ __('langWelcome.invite_reward_label') }} <i class="fas fa-coins mr-3 group-hover:text-purple-700 transition-colors duration-300"></i>
 
 
 
@@ -157,7 +161,7 @@
 
 
 
-            <a href="{{ route('invite') }}" class="welcome-wide-cta__button bg-digital-gold text-pure-white px-12 py-5 rounded-full shadow-2xl hover:bg-opacity-90 hover:scale-105 transition duration-300 font-vazirmatn text-xl font-bold animate-glow flex items-center justify-center">
+            <a href="{{ route('invite') }}" class="welcome-cta welcome-action w-full sm:w-auto px-9 py-4 bg-digital-gold text-pure-white rounded-full shadow-2xl hover:bg-opacity-90 hover:scale-105 transition duration-300 font-vazirmatn text-xl font-bold animate-glow flex items-center justify-center">
 
 
 

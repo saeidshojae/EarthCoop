@@ -137,7 +137,7 @@
 
 
 
-            <div class="absolute hidden md:block top-1/3 left-1/4 w-1/2 h-2 bg-gray-200 rounded-full z-0"></div>
+            <div class="welcome-cta absolute hidden md:block top-1/3 left-1/4 w-1/2 h-2 bg-gray-200 rounded-full z-0"></div>
 
 
 
@@ -157,7 +157,7 @@
 
 
 
-                <div class="w-4 h-4 bg-earth-green rounded-full transform -translate-y-1/2"></div>
+                <div class="welcome-cta w-4 h-4 bg-earth-green rounded-full transform -translate-y-1/2"></div>
 
 
 
@@ -167,7 +167,7 @@
 
 
 
-                <div class="w-4 h-4 bg-ocean-blue rounded-full transform -translate-y-1/2"></div>
+                <div class="welcome-cta w-4 h-4 bg-ocean-blue rounded-full transform -translate-y-1/2"></div>
 
 
 
@@ -177,7 +177,7 @@
 
 
 
-                <div class="w-4 h-4 bg-digital-gold rounded-full transform -translate-y-1/2"></div>
+                <div class="welcome-cta w-4 h-4 bg-digital-gold rounded-full transform -translate-y-1/2"></div>
 
 
 
@@ -187,7 +187,7 @@
 
 
 
-                <div class="w-4 h-4 bg-earth-green rounded-full transform -translate-y-1/2"></div>
+                <div class="welcome-cta w-4 h-4 bg-earth-green rounded-full transform -translate-y-1/2"></div>
 
 
 
@@ -227,7 +227,7 @@
 
 
 
-                <div class="w-20 h-20 bg-earth-green text-pure-white rounded-full flex items-center justify-center text-3xl font-bold mb-4 shadow-lg border-4 border-white">
+                <div class="welcome-cta w-20 h-20 bg-earth-green text-pure-white rounded-full flex items-center justify-center text-3xl font-bold mb-4 shadow-lg border-4 border-white">
 
 
 
@@ -327,7 +327,7 @@
 
 
 
-                <div class="w-20 h-20 bg-ocean-blue text-pure-white rounded-full flex items-center justify-center text-3xl font-bold mb-4 shadow-lg border-4 border-white">
+                <div class="welcome-cta w-20 h-20 bg-ocean-blue text-pure-white rounded-full flex items-center justify-center text-3xl font-bold mb-4 shadow-lg border-4 border-white">
 
 
 
@@ -427,7 +427,7 @@
 
 
 
-                <div class="w-20 h-20 bg-digital-gold text-pure-white rounded-full flex items-center justify-center text-3xl font-bold mb-4 shadow-lg border-4 border-white">
+                <div class="welcome-cta w-20 h-20 bg-digital-gold text-pure-white rounded-full flex items-center justify-center text-3xl font-bold mb-4 shadow-lg border-4 border-white">
 
 
 
@@ -527,7 +527,7 @@
 
 
 
-                <div class="w-20 h-20 bg-earth-green text-pure-white rounded-full flex items-center justify-center text-3xl font-bold mb-4 shadow-lg border-4 border-white">
+                <div class="welcome-cta w-20 h-20 bg-earth-green text-pure-white rounded-full flex items-center justify-center text-3xl font-bold mb-4 shadow-lg border-4 border-white">
 
 
 
@@ -637,7 +637,7 @@
 
 
 
-            <button onclick="openModal()" class="bg-earth-green text-pure-white px-10 py-5 rounded-full shadow-lg hover:bg-dark-green transition duration-300 font-vazirmatn text-xl font-bold transform hover:scale-105 flex items-center justify-center mx-auto inline-flex cursor-pointer">
+            <button onclick="openModal()" class="welcome-cta welcome-action w-full max-w-sm px-9 py-4 bg-earth-green text-pure-white rounded-full shadow-lg hover:bg-dark-green transition duration-300 font-vazirmatn text-xl font-bold transform hover:scale-105 flex items-center justify-center mx-auto inline-flex cursor-pointer">
 
 
 
@@ -688,7 +688,6 @@
 
 
 </section>
-
 
 
 

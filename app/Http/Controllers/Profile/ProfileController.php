@@ -851,8 +851,25 @@ foreach ($removedExperience as $id) {
         return back()->with('success', 'ایمیل دعوت با موفقیت ارسال شد.');
     }
 
+    public function showNajmHodaProfile()
+    {
+        $email = (string) config('najm-hoda.group_assistant.bot_email', 'najm-hoda-bot@local.invalid');
+        $najmHoda = User::where('email', $email)->first();
+
+        if (! $najmHoda) {
+            $najmHoda = app(\App\Services\NajmHoda\NajmHodaGroupAssistantService::class)->ensureBotUser();
+        }
+
+        return view('profile.najm-hoda', compact('najmHoda'));
+    }
+
     public function showProfileMember(User $user)
     {
+        $najmHodaEmail = (string) config('najm-hoda.group_assistant.bot_email', 'najm-hoda-bot@local.invalid');
+        if ($user->isSystemIdentity() && $user->email === $najmHodaEmail) {
+            return redirect()->route('najm-hoda.profile');
+        }
+
         $chatRequests = ChatRequest::where('receiver_id', auth()->id())
             ->where('status', 'pending')
             ->with('sender')

@@ -1,216 +1,69 @@
 @extends('layouts.admin')
 
-@section('title', 'گزارش سرمایه‌گذاران - ' . config('app.name', 'EarthCoop'))
-@section('page-title', 'گزارش سرمایه‌گذاران')
-@section('page-description', 'لیست کامل سرمایه‌گذاران و میزان سرمایه‌گذاری آن‌ها')
+@section('title', 'گزارش دارندگان سهام - ' . config('app.name', 'EarthCoop'))
+@section('page-title', 'گزارش دارندگان سهام')
+@section('page-description', 'دارایی سهامداران و ارزش پایه آن بر حسب گل و بهار')
+
+@php
+    $fa = static function ($value, int $decimals = 0): string {
+        return strtr(number_format((float) $value, $decimals, '.', ','), [
+            '0'=>'۰','1'=>'۱','2'=>'۲','3'=>'۳','4'=>'۴','5'=>'۵','6'=>'۶','7'=>'۷','8'=>'۸','9'=>'۹','.'=>'٫',','=>'٬'
+        ]);
+    };
+@endphp
 
 @push('styles')
 <style>
-    .report-card {
-        background: white;
-        border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        padding: 2rem;
-        margin-bottom: 2rem;
-    }
-    
-    .report-summary {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-    
-    .report-summary-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 12px;
-        padding: 1.5rem;
-        color: white;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .report-summary-card::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-    }
-    
-    .report-summary-card.success {
-        background: linear-gradient(135deg, #10b981 0%, #047857 100%);
-    }
-    
-    .report-summary-icon {
-        font-size: 2rem;
-        margin-bottom: 0.75rem;
-        opacity: 0.9;
-        position: relative;
-        z-index: 10;
-    }
-    
-    .report-summary-label {
-        font-size: 0.75rem;
-        opacity: 0.9;
-        margin-bottom: 0.5rem;
-        position: relative;
-        z-index: 10;
-    }
-    
-    .report-summary-value {
-        font-size: 1.5rem;
-        font-weight: 800;
-        position: relative;
-        z-index: 10;
-    }
-    
-    .report-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 1.5rem;
-    }
-    
-    .report-table thead {
-        background: #f9fafb;
-    }
-    
-    .report-table th {
-        padding: 1rem;
-        text-align: right;
-        font-weight: 600;
-        color: #1e293b;
-        font-size: 0.875rem;
-        border-bottom: 2px solid #e5e7eb;
-    }
-    
-    .report-table td {
-        padding: 1rem;
-        text-align: right;
-        color: #4b5563;
-        font-size: 0.875rem;
-        border-bottom: 1px solid #e5e7eb;
-    }
-    
-    .report-table tbody tr:hover {
-        background: #f9fafb;
-    }
-    
-    @media (prefers-color-scheme: dark) {
-        .report-card {
-            background: #1e293b !important;
-            color: #f1f5f9 !important;
-        }
-        
-        .report-summary-card {
-            background: linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%) !important;
-        }
-        
-        .report-summary-card.success {
-            background: linear-gradient(135deg, #064e3b 0%, #065f46 100%) !important;
-        }
-        
-        .report-table thead {
-            background: #334155 !important;
-        }
-        
-        .report-table th {
-            color: #f1f5f9 !important;
-            border-bottom-color: #475569 !important;
-        }
-        
-        .report-table td {
-            color: #cbd5e1 !important;
-            border-bottom-color: #475569 !important;
-        }
-        
-        .report-table tbody tr:hover {
-            background: #334155 !important;
-        }
-    }
+.report-card{background:#fff;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.08);padding:2rem;margin-bottom:2rem}.report-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:2rem}.report-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem;margin-bottom:2rem}.summary-card{border-radius:12px;padding:1.5rem;color:#fff;background:linear-gradient(135deg,#667eea,#764ba2)}.summary-card.success{background:linear-gradient(135deg,#10b981,#047857)}.summary-label{font-size:.8rem;opacity:.9}.summary-value{font-size:1.5rem;font-weight:800;margin-top:.45rem}.summary-sub{font-size:.78rem;opacity:.88;margin-top:.25rem}.report-table{width:100%;border-collapse:collapse}.report-table th,.report-table td{padding:1rem;text-align:right;border-bottom:1px solid #e5e7eb}.report-table th{background:#f8fafc;color:#1e293b}.money-primary{font-weight:800;color:#047857}.money-sub{display:block;font-size:.75rem;color:#64748b;margin-top:.2rem}.empty{padding:3rem 1rem;text-align:center;background:#f8fafc;border:2px dashed #e5e7eb;border-radius:12px;color:#64748b}.dark .report-card{background:#1e293b}.dark .report-table th{background:#334155;color:#f8fafc}.dark .report-table td{border-color:#475569;color:#cbd5e1}@media(max-width:700px){.report-card{padding:1rem}}
 </style>
 @endpush
 
 @section('content')
-<div class="space-y-6" style="direction: rtl;">
+<div style="direction:rtl">
     <div class="report-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
-            <h3 style="font-size: 1.5rem; font-weight: 700; color: #1e293b;">
-                <i class="fas fa-users ml-2"></i>
-                گزارش سرمایه‌گذاران
-            </h3>
-            <a href="{{ route('admin.stock-reports.export-investors') }}" 
-               class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-semibold hover:bg-emerald-600 transition">
-                <i class="fas fa-download"></i>
-                خروجی CSV
+        <div class="report-head">
+            <h3 class="text-2xl font-bold"><i class="fas fa-users ml-2"></i>گزارش دارندگان سهام</h3>
+            <a href="{{ route('admin.stock-reports.export-investors') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-semibold">
+                <i class="fas fa-download"></i> خروجی CSV
             </a>
         </div>
-        
-        <!-- خلاصه -->
+
         <div class="report-summary">
-            <div class="report-summary-card">
-                <div class="report-summary-icon">
-                    <i class="fas fa-users"></i>
-                </div>
-                <div class="report-summary-label">تعداد کل سرمایه‌گذاران</div>
-                <div class="report-summary-value">{{ number_format($totalInvestors) }}</div>
+            <div class="summary-card">
+                <div class="summary-label">تعداد کل سهامداران</div>
+                <div class="summary-value">{{ $fa($totalInvestors) }}</div>
             </div>
-            
-            <div class="report-summary-card success">
-                <div class="report-summary-icon">
-                    <i class="fas fa-dollar-sign"></i>
-                </div>
-                <div class="report-summary-label">کل سرمایه‌گذاری</div>
-                <div class="report-summary-value">{{ number_format($totalInvestment) }} <span style="font-size: 0.75rem; opacity: 0.8;">تومان</span></div>
+            <div class="summary-card success">
+                <div class="summary-label">ارزش پایه کل دارایی‌ها</div>
+                <div class="summary-value">{{ $fa($totalAssetValueGol) }} گل</div>
+                <div class="summary-sub">معادل {{ $fa($totalAssetValueGol / 100, 2) }} بهار</div>
             </div>
         </div>
-        
-        <!-- جدول سرمایه‌گذاران -->
+
+        <p class="text-sm text-slate-500 mb-5">این رقم «ارزش پایه دارایی» بر مبنای قیمت پایه فعلی هر سهم است و به معنی مبلغ تاریخی پرداخت‌شده توسط سهامدار نیست.</p>
+
         @if($investors->count() > 0)
-        <div style="overflow-x: auto;">
-            <table class="report-table">
-                <thead>
-                    <tr>
-                        <th>شناسه کاربر</th>
-                        <th>نام</th>
-                        <th>ایمیل</th>
-                        <th>شناسه سهام</th>
-                        <th>تعداد کل سهام</th>
-                        <th>کل سرمایه‌گذاری (تومان)</th>
-                    </tr>
-                </thead>
-                <tbody>
+            <div style="overflow-x:auto">
+                <table class="report-table">
+                    <thead><tr><th>شناسه کاربر</th><th>نام</th><th>ایمیل</th><th>شناسه سهام</th><th>تعداد سهام</th><th>ارزش پایه دارایی</th></tr></thead>
+                    <tbody>
                     @foreach($investors as $investor)
-                    <tr>
-                        <td>
-                            <a href="{{ route('admin.users.show', $investor->user_id) }}" style="color: #3b82f6; text-decoration: none;">
-                                #{{ $investor->user_id }}
-                            </a>
-                        </td>
-                        <td>{{ ($investor->user->first_name ?? '') . ' ' . ($investor->user->last_name ?? '') }}</td>
-                        <td>{{ $investor->user->email ?? '—' }}</td>
-                        <td>#{{ $investor->stock_id }}</td>
-                        <td>{{ number_format($investor->total_shares) }}</td>
-                        <td><strong>{{ number_format($investor->total_investment) }}</strong></td>
-                    </tr>
+                        <tr>
+                            <td><a href="{{ route('admin.users.show', $investor->user_id) }}" class="text-blue-500">#{{ $fa($investor->user_id) }}</a></td>
+                            <td>{{ trim(($investor->user->first_name ?? '') . ' ' . ($investor->user->last_name ?? '')) ?: '—' }}</td>
+                            <td>{{ $investor->user->email ?? '—' }}</td>
+                            <td>#{{ $fa($investor->stock_id) }}</td>
+                            <td>{{ $fa($investor->total_shares) }} سهم</td>
+                            <td><span class="money-primary">{{ $fa($investor->base_asset_value_gol) }} گل</span><span class="money-sub">{{ $fa($investor->base_asset_value_gol / 100, 2) }} بهار</span></td>
+                        </tr>
                     @endforeach
-                </tbody>
-            </table>
-        </div>
-        
-        <div style="margin-top: 2rem;">
-            {{ $investors->links('pagination::bootstrap-5') }}
-        </div>
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-8">{{ $investors->links('pagination::bootstrap-5') }}</div>
         @else
-        <div style="text-align: center; padding: 3rem 1rem; background: #f9fafb; border-radius: 12px; border: 2px dashed #e5e7eb;">
-            <i class="fas fa-inbox" style="font-size: 4rem; color: #9ca3af; margin-bottom: 1rem;"></i>
-            <div style="font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem;">سرمایه‌گذاری ثبت نشده است</div>
-            <p style="color: #6b7280; font-size: 0.875rem;">هنوز هیچ سرمایه‌گذاری انجام نشده است.</p>
-        </div>
+            <div class="empty"><i class="fas fa-inbox text-5xl mb-4"></i><div class="font-bold text-lg">هنوز دارایی سهامی ثبت نشده است</div></div>
         @endif
     </div>
 </div>
 @endsection
-

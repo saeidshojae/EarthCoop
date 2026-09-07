@@ -26,10 +26,9 @@ return new class extends Migration {
             }
         });
     }
-    
+
     public function down() {
-        Schema::table('auctions', function (Blueprint $table) {
-            $table->dropColumn(['type', 'min_bid', 'max_bid', 'lot_size', 'channel_id', 'ends_at']);
-        });
+        // Historical fallback only. The canonical base auction migration now
+        // owns these columns, so rollback must not remove canonical structure.
     }
 };

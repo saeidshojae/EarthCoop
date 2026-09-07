@@ -2,6 +2,33 @@
     let latestMembershipInfo = null;
     const originalFetch = window.fetch?.bind(window);
 
+    const prepareMembershipModal = () => {
+        const modal = document.getElementById('membershipFeeModal');
+        if (!modal) return;
+
+        if (modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+        modal.style.zIndex = '2147483000';
+        modal.style.overflowY = 'auto';
+        modal.style.overscrollBehavior = 'contain';
+
+        const panel = modal.firstElementChild;
+        if (panel) {
+            panel.style.maxHeight = 'calc(100dvh - 2rem)';
+            panel.style.display = 'flex';
+            panel.style.flexDirection = 'column';
+        }
+
+        const content = document.getElementById('membershipModalContent');
+        if (content) {
+            content.style.minHeight = '0';
+            content.style.overflowY = 'auto';
+            content.style.overscrollBehavior = 'contain';
+            content.style.webkitOverflowScrolling = 'touch';
+        }
+    };
+
     if (originalFetch) {
         window.fetch = async (...args) => {
             const response = await originalFetch(...args);
@@ -76,6 +103,13 @@
             form.prepend(selector);
         }
 
+        const paymentNotice = Array.from(form.parentElement?.querySelectorAll('p') || []).find((element) =>
+            element.textContent.includes('پرداخت حق عضویت تنها از موجودی فعال شما کسر می‌شود.')
+        );
+        if (paymentNotice) {
+            paymentNotice.textContent = 'حق عضویت از منبعی که در ادامه انتخاب می‌کنید پرداخت می‌شود؛ در حالت پول کمرنگ فقط مبلغ لازم فعال و همان لحظه پرداخت می‌شود.';
+        }
+
         form.addEventListener('submit', (event) => {
             const selected = form.querySelector('input[name="payment_source"]:checked:not(:disabled)');
             const error = form.querySelector('[data-membership-source-error]');
@@ -92,7 +126,10 @@
         });
     };
 
-    const scan = () => enhanceForm(document.getElementById('payMembershipForm'));
+    const scan = () => {
+        prepareMembershipModal();
+        enhanceForm(document.getElementById('payMembershipForm'));
+    };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', scan);

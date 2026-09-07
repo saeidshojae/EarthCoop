@@ -5,17 +5,15 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\NajmBaharAgreement;
 use App\Models\User;
-use App\Models\UserExperience;
-use App\Models\Address;
-use App\Models\InvitationCode;
 use App\Models\Setting;
 use App\Modules\NajmBahar\Policy\NajmBaharConstitution;
 use App\Modules\NajmBahar\Services\AccountBalanceService;
 use App\Modules\NajmBahar\Services\AccountService;
+use App\Modules\NajmBahar\Services\MembershipEligibilityService;
 use App\Modules\NajmBahar\Services\TransactionService;
 use App\Modules\NajmBahar\Services\MonetaryService;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
-use App\Services\ReputationService;
+use App\Services\ParticipationPointSummaryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +25,8 @@ class NajmBaharController extends Controller
         protected AccountBalanceService $balanceService,
         protected TransactionService $transactionService,
         protected MonetaryService $monetaryService,
-        protected ReputationService $reputationService,
+        protected ParticipationPointSummaryService $participationPointSummaryService,
+        protected MembershipEligibilityService $membershipEligibilityService,
     ) {
     }
 
@@ -43,10 +42,7 @@ class NajmBaharController extends Controller
             ->with('descendants')
             ->orderBy('order')
             ->get();
-        $hasExperience = UserExperience::where('user_id', $user->id)->exists();
-        $hasAddress = Address::where('user_id', $user->id)->exists();
-        $step1Complete = ($user->first_name && $user->last_name && $user->gender && $user->national_id && $user->phone);
-        $isProfileComplete = $step1Complete && $hasExperience && $hasAddress;
+        $isProfileComplete = $this->membershipEligibilityService->isEligibleForInitialMembershipCredit($user);
 
         return view('najm-bahar.agreement', compact('agreements', 'isProfileComplete', 'hasAcceptedAgreement'));
     }
@@ -68,6 +64,11 @@ class NajmBaharController extends Controller
                 ->with('info', 'شما قبلاً حساب نجم بهار دارید.');
         }
 
+        if (! $this->membershipEligibilityService->isEligibleForInitialMembershipCredit($user)) {
+            return redirect()->route('najm-bahar.agreement')
+                ->with('error', 'برای ایجاد حساب نجم بهار، عضویت شما باید فعال و تأییدشده باشد و اطلاعات هویتی، تجربه و نشانی نیز کامل شده باشند.');
+        }
+
         try {
             DB::transaction(function () use ($user) {
                 $userAccount = $this->accountService->createMainAccountForUser(
@@ -76,7 +77,6 @@ class NajmBaharController extends Controller
                 );
 
                 $this->ensureInitialFunding($user, $userAccount);
-                $this->processReferralParticipation($user);
 
                 $user->update([
                     'najm_bahar_agreement_accepted_at' => now()
@@ -100,36 +100,6 @@ class NajmBaharController extends Controller
             return redirect()->back()
                 ->with('error', 'خطا در ایجاد حساب نجم بهار. لطفاً مجدداً تلاش کنید.');
         }
-    }
-
-    /**
-     * Referral is participation, not a transfer of the new member's dim money.
-     * The reputation rule remains configurable; conversion later activates the
-     * referrer's own constitutional dim balance through MonetaryService.
-     */
-    protected function processReferralParticipation(User $user): void
-    {
-        $invitationCheck = InvitationCode::where('used_by', $user->id)->first();
-        if (! $invitationCheck || (int) $invitationCheck->user_id === 171) {
-            return;
-        }
-
-        $referrer = User::find($invitationCheck->user_id);
-        if (! $referrer) {
-            return;
-        }
-
-        $this->reputationService->applyAction(
-            $referrer,
-            'invite_member',
-            [
-                'new_user_id' => $user->id,
-                'invitation_code_id' => $invitationCheck->id,
-                'economic_rule' => 'participation_points_only_no_dim_transfer',
-            ],
-            $invitationCheck->id,
-            'najm_bahar_membership'
-        );
     }
 
     public function dashboard()
@@ -196,19 +166,15 @@ class NajmBaharController extends Controller
         $recentTransactions = $this->transactionService->getUserTransactions($user->id, 10);
         $accountIds = $this->transactionService->getUserAccountIds($user->id);
 
-        $userPoint = \App\Models\UserPoint::where('user_id', $user->id)->first();
-        $totalPoints = $userPoint ? $userPoint->points : 0;
-        $userLevel = $userPoint ? $userPoint->level : 'Bronze';
-
-        $cashedPoints = \App\Models\UserPointTransaction::where('user_id', $user->id)
-            ->where('is_cashed', true)
-            ->where('delta', '>', 0)
-            ->sum('delta');
-
-        $uncashedPoints = \App\Models\UserPointTransaction::where('user_id', $user->id)
-            ->where('is_cashed', false)
-            ->where('delta', '>', 0)
-            ->sum('delta');
+        $pointSummary = $this->participationPointSummaryService->forUser((int) $user->id);
+        $totalPoints = $pointSummary['total_points'];
+        $userLevel = $pointSummary['level'];
+        $cashedPoints = $pointSummary['cashed_points'];
+        $uncashedPoints = $pointSummary['remaining_convertible_points'];
+        $convertibleAwardedPoints = $pointSummary['convertible_awarded_points'];
+        $ledgerConsumedPoints = $pointSummary['ledger_consumed_points'];
+        $legacyCashedPoints = $pointSummary['legacy_cashed_points'];
+        $participationReversalPoints = $pointSummary['participation_reversal_points'];
 
         return view('najm-bahar.wallet', compact(
             'account',
@@ -218,16 +184,16 @@ class NajmBaharController extends Controller
             'totalPoints',
             'userLevel',
             'cashedPoints',
-            'uncashedPoints'
+            'uncashedPoints',
+            'convertibleAwardedPoints',
+            'ledgerConsumedPoints',
+            'legacyCashedPoints',
+            'participationReversalPoints'
         ));
     }
 
     private function applyCanonicalWalletBalancesToViewAccount($account, array $walletBalance): void
     {
-        // Compatibility boundary for the legacy Blade. These assignments only
-        // affect the in-memory model used for rendering; nothing is persisted.
-        // They make all legacy `$account->balance*` reads display the canonical
-        // aggregate wallet, including active child/sub-account balances.
         $account->setAttribute('balance', (int) $walletBalance['total']);
         $account->setAttribute('balance_active', (int) $walletBalance['active']);
         $account->setAttribute('balance_faded', (int) $walletBalance['dim']);
@@ -240,6 +206,10 @@ class NajmBaharController extends Controller
             ->exists();
 
         if (! $hasInitialFunding) {
+            if (! $this->membershipEligibilityService->isEligibleForInitialMembershipCredit($user)) {
+                return;
+            }
+
             $this->monetaryService->issueMembershipCredit($account, $user->id);
             return;
         }

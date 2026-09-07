@@ -8,11 +8,21 @@ class InvitationCode extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['code', 'user_id', 'used', 'used_by', 'expire_at', 'used_at'];
+    protected $fillable = [
+        'code',
+        'user_id',
+        'used',
+        'used_by',
+        'expire_at',
+        'used_at',
+        'completed_at',
+    ];
     
     protected $casts = [
+        'used' => 'boolean',
         'expire_at' => 'datetime',
         'used_at' => 'datetime',
+        'completed_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

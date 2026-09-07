@@ -13,6 +13,9 @@ class AdminNajmHodaPersianNavigationTest extends TestCase
         $this->assertIsString($sidebar);
         $this->assertStringContainsString('نجم هُدی', $sidebar);
         $this->assertStringContainsString('داشبورد نجم هُدی', $sidebar);
+        $this->assertStringContainsString('مرکز مدیریت کل', $sidebar);
+        $this->assertStringContainsString("route('admin.najm-hoda.founder-ops.index')", $sidebar);
+        $this->assertStringContainsString("request()->routeIs('admin.najm-hoda.founder-ops.*')", $sidebar);
         $this->assertStringContainsString('حکمرانی خودمختار', $sidebar);
         $this->assertStringContainsString('مدیریت n8n', $sidebar);
         $this->assertStringContainsString('x-data="{ open:', $sidebar);

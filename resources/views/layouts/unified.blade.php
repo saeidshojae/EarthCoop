@@ -37,6 +37,8 @@
 
     <!-- Unified Styles - بر اساس طراحی Home -->
     <link rel="stylesheet" href="{{ asset('Css/unified-styles.css') }}">
+    <link rel="stylesheet" href="{{ asset('Css/responsive-system.css') }}">
+    <link rel="stylesheet" href="{{ asset('Css/header-mobile-polish.css') }}">
 
     <!-- Page Specific Styles -->
     @stack('styles')
@@ -79,13 +81,8 @@
         /* =============================== */
         /* هدر یکپارچه - چسبیده به بالا   */
         /* =============================== */
-        /* فرض بر این است که header-unified از کلاس‌های خاصی استفاده می‌کند */
-        /* برای اطمینان، هر المان هدر را نشانه می‌گیریم */
-        header, 
-        .header-unified,
-        .main-header,
-        .navbar,
-        [class*="header"] {
+        /* Scope header reset to the actual unified site header only. */
+        header.site-header-unified {
             margin: 0 !important;
             padding-top: 0 !important;
             padding-bottom: 0 !important; /* در صورت لزوم */
@@ -96,10 +93,7 @@
         }
 
         /* اگر هدر دارای container است، padding افقی را نگه می‌داریم */
-        .header-unified .container,
-        .main-header .container,
-        header .container,
-        .navbar .container {
+        header.site-header-unified .container {
             margin: 0 auto !important;
             padding: 0.5rem 1rem !important; /* padding مناسب برای محتوا */
             max-width: 1320px !important;
@@ -108,10 +102,7 @@
 
         /* در موبایل padding کمتر */
         @media (max-width: 576px) {
-            .header-unified .container,
-            .main-header .container,
-            header .container,
-            .navbar .container {
+            header.site-header-unified .container {
                 padding: 0.5rem 0.75rem !important;
             }
         }
@@ -177,6 +168,9 @@
 
     <!-- Unified Footer -->
     @include('components.footer-unified', ['footerContext' => 'default'])
+
+    <!-- Responsive shared runtime -->
+    <script src="{{ asset('js/responsive-system.js') }}" defer></script>
 
     <!-- Scripts -->
     @stack('scripts')

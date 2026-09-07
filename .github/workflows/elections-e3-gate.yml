@@ -1,0 +1,98 @@
+name: Elections E3 Lifecycle State Machine Gate
+
+on:
+  push:
+    branches:
+      - agent/elections-systemic-rebuild
+  pull_request:
+    branches:
+      - agent/integration-pre-elections-current-main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: elections-e3-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e3-lifecycle-state-machine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: newearthcoop_elections_e3
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout elections branch
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo, pdo_mysql, bcmath, openssl, fileinfo, zip, curl, json
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Prepare Laravel runtime
+        run: |
+          mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+          chmod -R 775 bootstrap/cache storage/framework storage/logs
+          composer install --prefer-dist --no-interaction --no-progress
+          npm ci --no-audit --no-fund
+          npm run build
+          cat > .env <<'EOF'
+          APP_NAME=EarthCoop
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          LOG_CHANNEL=stack
+          DB_CONNECTION=mysql
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_DATABASE=newearthcoop_elections_e3
+          DB_USERNAME=root
+          DB_PASSWORD=
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          MAIL_MAILER=array
+          BROADCAST_DRIVER=log
+          FILESYSTEM_DISK=local
+          EOF
+          php artisan key:generate --force
+
+      - name: Migrate canonical election lifecycle schema
+        run: php artisan migrate:fresh --force
+
+      - name: Validate lifecycle command registration
+        shell: bash
+        run: |
+          php artisan list > /tmp/commands.txt
+          grep -F 'elections:process-lifecycle' /tmp/commands.txt >/dev/null
+
+      - name: Run E3 lifecycle and cycle tests
+        shell: bash
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Elections
+
+      - name: Re-run E2 vocabulary compatibility tests
+        shell: bash
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Unit/Elections

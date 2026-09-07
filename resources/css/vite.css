@@ -1,0 +1,5 @@
+@import "bootstrap/dist/css/bootstrap.min.css";
+@import "./app.css";
+@import "./document-pages.css";
+@import "./my-participation-mobile.css";
+@import "select2/dist/css/select2.min.css";

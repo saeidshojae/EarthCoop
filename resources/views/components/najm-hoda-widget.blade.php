@@ -1,10 +1,11 @@
 {{-- Widget چت نجم‌هدا --}}
 <div id="najm-hoda-widget" class="najm-hoda-widget" style="display: block;"
      data-route-name="{{ request()->route()?->getName() ?? '' }}"
-     data-module="{{ request()->segment(1) ?? 'home' }}">
+     data-module="{{ request()->segment(1) ?? 'home' }}"
+     data-avatar-url="{{ asset('images/najm-hoda/avatar.webp') }}">
     {{-- دکمه باز/بسته کردن --}}
     <button id="najm-hoda-toggle" class="najm-hoda-toggle-btn" title="چت با نجم‌هدا">
-        <i class="fas fa-robot"></i>
+        <img src="{{ asset('images/najm-hoda/avatar.webp') }}" alt="" aria-hidden="true" class="najm-hoda-toggle-avatar">
         <span class="najm-hoda-notification-badge" id="najm-hoda-badge" style="display: none;">0</span>
     </button>
 
@@ -16,7 +17,7 @@
                 <button id="najm-hoda-close" class="btn-close btn-close-white ms-2" title="بستن" style="flex-shrink: 0;"></button>
                 <div class="d-flex align-items-center flex-grow-1" style="min-width: 0;">
                     <div class="najm-hoda-avatar" style="flex-shrink: 0;">
-                        <i class="fas fa-robot"></i>
+                        <img src="{{ asset('images/najm-hoda/avatar.webp') }}" alt="نجم هدا" class="najm-hoda-header-avatar">
                     </div>
                     <div class="ms-3" style="min-width: 0; overflow: hidden;">
                         <h6 class="mb-1" style="font-size: 16px; font-weight: 700; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
@@ -53,7 +54,7 @@
         <div id="najm-hoda-messages" class="najm-hoda-messages">
             {{-- پیام خوش‌آمدگویی --}}
             <div class="najm-hoda-message assistant">
-                <div class="najm-hoda-message-avatar">🌟</div>
+                <div class="najm-hoda-message-avatar"><img src="{{ asset('images/najm-hoda/avatar.webp') }}" alt="" aria-hidden="true" class="najm-hoda-message-avatar-image"></div>
                 <div class="najm-hoda-message-content">
                     @php
                         $user = auth()->user();
@@ -93,7 +94,7 @@
         {{-- اندیکاتور در حال تایپ --}}
         <div id="najm-hoda-typing" class="najm-hoda-typing d-none">
             <div class="najm-hoda-message assistant">
-                <div class="najm-hoda-message-avatar">🤖</div>
+                <div class="najm-hoda-message-avatar"><img src="{{ asset('images/najm-hoda/avatar.webp') }}" alt="" aria-hidden="true" class="najm-hoda-message-avatar-image"></div>
                 <div class="najm-hoda-typing-indicator">
                     <span></span>
                     <span></span>
@@ -117,6 +118,13 @@
 
 <style>
 /* استایل‌های نجم‌هدا */
+.najm-hoda-toggle-avatar,
+.najm-hoda-header-avatar,
+.najm-hoda-message-avatar-image { display:block; width:100%; height:100%; object-fit:cover; border-radius:50%; }
+.najm-hoda-toggle-avatar { border:2px solid rgba(255,255,255,.92); box-shadow:0 0 0 2px rgba(55,196,180,.22); }
+.najm-hoda-header-avatar { border:2px solid rgba(255,255,255,.82); }
+.najm-hoda-message-avatar-image { border:1px solid rgba(55,196,180,.24); }
+
 .najm-hoda-widget {
     position: fixed;
     bottom: 20px;
@@ -197,8 +205,8 @@
 }
 
 .najm-hoda-avatar {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.25);
     display: flex;
@@ -260,8 +268,8 @@
 }
 
 .najm-hoda-message-avatar {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -402,8 +410,8 @@
         border-radius: 16px 16px 0 0;
     }
     .najm-hoda-avatar {
-        width: 40px;
-        height: 40px;
+        width: 42px;
+        height: 42px;
         font-size: 20px;
     }
     .najm-hoda-header h6 {
@@ -435,8 +443,8 @@
         font-size: 13px;
     }
     .najm-hoda-message-avatar {
-        width: 30px;
-        height: 30px;
+        width: 32px;
+        height: 32px;
         font-size: 16px;
     }
     .najm-hoda-footer {
@@ -514,8 +522,8 @@
         border-radius: 14px 14px 0 0;
     }
     .najm-hoda-avatar {
-        width: 38px;
-        height: 38px;
+        width: 40px;
+        height: 40px;
         font-size: 18px;
     }
     .najm-hoda-header h6 {
@@ -538,8 +546,8 @@
         padding: 10px 12px;
     }
     .najm-hoda-message-avatar {
-        width: 28px;
-        height: 28px;
+        width: 30px;
+        height: 30px;
         font-size: 14px;
     }
     .najm-hoda-footer {
@@ -775,6 +783,10 @@
         conversationId: null,
         isTyping: false,
 
+        getAvatarUrl() {
+            return document.getElementById('najm-hoda-widget')?.dataset.avatarUrl || '/images/najm-hoda/avatar.webp';
+        },
+
         init() {
             this.showWidget();
             this.ensureChatClosed();
@@ -892,16 +904,16 @@
 
                 if (data.success) {
                     this.conversationId = data.conversation_id;
-                    this.addMessage(data.message, 'assistant', data.agent_icon || '🤖');
+                    this.addMessage(data.message, 'assistant', null);
                     if (data.suggestions && data.suggestions.length > 0) {
                         this.showSuggestions(data.suggestions);
                     }
                 } else {
-                    this.addMessage(data.message || 'خطایی رخ داد', 'assistant', '⚠️');
+                    this.addMessage(data.message || 'خطایی رخ داد', 'assistant', null);
                 }
             } catch (error) {
                 this.hideTyping();
-                this.addMessage('متأسفانه مشکلی پیش آمد. لطفاً دوباره تلاش کنید.', 'assistant', '❌');
+                this.addMessage('متأسفانه مشکلی پیش آمد. لطفاً دوباره تلاش کنید.', 'assistant', null);
                 console.error('خطا در ارسال پیام:', error);
             }
         },
@@ -911,8 +923,12 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = `najm-hoda-message ${role}`;
 
+            const avatarMarkup = role !== 'user'
+                ? `<img src="${this.getAvatarUrl()}" alt="" aria-hidden="true" class="najm-hoda-message-avatar-image">`
+                : icon;
+
             messageDiv.innerHTML = `
-                <div class="najm-hoda-message-avatar">${icon}</div>
+                <div class="najm-hoda-message-avatar">${avatarMarkup}</div>
                 <div class="najm-hoda-message-content">${this.formatMessage(content)}</div>
             `;
 

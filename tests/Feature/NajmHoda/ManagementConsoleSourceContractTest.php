@@ -15,10 +15,11 @@ class ManagementConsoleSourceContractTest extends TestCase
         $liveAttention = file_get_contents(resource_path('js/najm-hoda-management-live-attention.js'));
         $managementSnapshot = file_get_contents(app_path('Services/NajmHoda/NajmHodaGroupManagementSnapshotService.php'));
 
-        $this->assertStringContainsString('import "./najm-hoda-management-console-v2.js";', $app);
-        $this->assertStringContainsString('import "./najm-hoda-management-content-tools.js";', $app);
-        $this->assertStringContainsString('import "./najm-hoda-management-native-tools.js";', $app);
-        $this->assertStringContainsString('import "./najm-hoda-management-live-attention.js";', $app);
+        $this->assertStringContainsString('import("./najm-hoda-management-console-v2.js")', $app);
+        $this->assertStringContainsString('import("./najm-hoda-management-content-tools.js")', $app);
+        $this->assertStringContainsString('import("./najm-hoda-management-native-tools.js")', $app);
+        $this->assertStringContainsString('import("./najm-hoda-management-live-attention.js")', $app);
+        $this->assertStringContainsString("document.querySelector('#group-chat-main-container')", $app);
         $this->assertStringNotContainsString('import "./najm-hoda-management-console.js";', $app);
 
         $this->assertStringContainsString('GroupChatConfig?.canManageSession', $console);
@@ -72,7 +73,6 @@ class ManagementConsoleSourceContractTest extends TestCase
 
         $this->assertStringContainsString('PinnedMessage::query()', $managementSnapshot);
         $this->assertStringContainsString("'pinned_count'", $managementSnapshot);
-
         $this->assertStringContainsString('وضعیت زنده نیازمند توجه', $liveAttention);
         $this->assertStringContainsString('/najm-hoda/attention', $liveAttention);
         $this->assertStringContainsString('active_events', $liveAttention);
