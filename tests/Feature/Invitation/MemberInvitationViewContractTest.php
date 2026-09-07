@@ -32,6 +32,21 @@ class MemberInvitationViewContractTest extends TestCase
         $this->assertStringNotContainsString('copyToClipboard(url)', $view);
     }
 
+    public function test_desktop_share_uses_earthcoop_menu_before_native_system_share(): void
+    {
+        $view = file_get_contents(base_path('resources/views/profile/member-invitations.blade.php'));
+
+        $this->assertStringContainsString('id="inviteShareMenu"', $view);
+        $this->assertStringContainsString('function isMobileShareContext()', $view);
+        $this->assertStringContainsString('function openInviteShareMenu(code)', $view);
+        $this->assertStringContainsString('function shareInviteViaSystem()', $view);
+        $this->assertStringContainsString('اشتراک از طریق سیستم', $view);
+        $this->assertStringContainsString('واتساپ', $view);
+        $this->assertStringContainsString('تلگرام', $view);
+        $this->assertStringContainsString('کپی لینک دعوت', $view);
+        $this->assertStringContainsString('if (isMobileShareContext() && navigator.share)', $view);
+    }
+
     public function test_invitation_page_does_not_repeat_old_fixed_bahar_cash_reward_claims(): void
     {
         $view = file_get_contents(base_path('resources/views/profile/member-invitations.blade.php'));
