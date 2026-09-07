@@ -3,15 +3,14 @@
 namespace Tests\Feature\NajmBahar;
 
 use App\Helpers\BaharMoney;
-use App\Models\Address;
 use App\Models\User;
-use App\Models\UserExperience;
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\Transaction;
 use App\Modules\NajmBahar\Services\AccountNumberService;
 use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\TransactionService;
+use App\Services\ProfileCompletionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -129,34 +128,15 @@ class ReportExternalFlowSemanticsTest extends TestCase
 
     private function eligibleMember(): User
     {
-        $user = User::factory()->create();
-        $user->forceFill([
-            'first_name' => 'علی',
-            'last_name' => 'رضایی',
-            'gender' => 'male',
-            'national_id' => '0012345678',
-            'phone' => '09121234567',
-            'status' => 'active',
-            'email_verified_at' => $user->email_verified_at ?? now(),
+        $this->mock(ProfileCompletionService::class, function ($mock) {
+            $mock->shouldReceive('isComplete')->once()->andReturnTrue();
+        });
+
+        return User::factory()->create([
             'terms_accepted_at' => now(),
-        ])->save();
-
-        UserExperience::query()->create([
-            'user_id' => $user->id,
-            'organization_name' => 'شرکت نمونه',
-            'position' => 'مدیر پروژه',
-            'started_at' => '1402/01/01',
-            'description' => 'سابقه کاری',
+            'status' => 'active',
+            'is_system' => false,
+            'email_verified_at' => now(),
         ]);
-
-        Address::query()->create([
-            'user_id' => $user->id,
-            'province' => 'تهران',
-            'city' => 'تهران',
-            'address_line' => 'خیابان نمونه، پلاک ۱',
-            'postal_code' => '1234567890',
-        ]);
-
-        return $user;
     }
 }
