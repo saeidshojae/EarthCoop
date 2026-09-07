@@ -29,4 +29,16 @@ class NajmHodaWidgetViewportContractTest extends TestCase
         $this->assertStringContainsString("group-chat:composer-replaced", $runtime);
         $this->assertStringContainsString('env(safe-area-inset-top)', $runtime);
     }
+
+    public function test_widget_launcher_keeps_its_normal_page_bottom_spacing_until_a_visible_group_composer_requires_clearance(): void
+    {
+        $runtime = file_get_contents(resource_path('js/najm-hoda-widget-layout.js'));
+
+        $this->assertStringContainsString("if (window.matchMedia('(max-width: 480px)').matches) return 10;", $runtime);
+        $this->assertStringContainsString("if (window.matchMedia('(max-width: 768px)').matches) return 15;", $runtime);
+        $this->assertStringContainsString('return 20;', $runtime);
+        $this->assertStringContainsString('if (compact && composerRect)', $runtime);
+        $this->assertStringNotContainsString('return 86;', $runtime);
+        $this->assertStringNotContainsString('return 78;', $runtime);
+    }
 }
