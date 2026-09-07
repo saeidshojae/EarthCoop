@@ -3,7 +3,9 @@
 namespace Tests\Feature\NajmBahar;
 
 use App\Helpers\BaharMoney;
+use App\Models\Address;
 use App\Models\User;
+use App\Models\UserExperience;
 use App\Modules\NajmBahar\Models\Account;
 use App\Modules\NajmBahar\Models\SubAccount;
 use App\Modules\NajmBahar\Models\Transaction;
@@ -19,7 +21,7 @@ class ReportExternalFlowSemanticsTest extends TestCase
 
     public function test_dim_activation_is_not_counted_as_income_or_expense_in_report_summary(): void
     {
-        $user = User::factory()->create();
+        $user = $this->eligibleMember();
 
         $this->actingAs($user)->post(route('najm-bahar.agreement.process'), [
             'agreement_accepted' => '1',
@@ -55,7 +57,7 @@ class ReportExternalFlowSemanticsTest extends TestCase
 
     public function test_direction_filters_only_return_external_flows(): void
     {
-        $user = User::factory()->create();
+        $user = $this->eligibleMember();
 
         $this->actingAs($user)->post(route('najm-bahar.agreement.process'), [
             'agreement_accepted' => '1',
@@ -80,7 +82,7 @@ class ReportExternalFlowSemanticsTest extends TestCase
 
     public function test_transfer_between_main_and_owned_subaccount_does_not_change_external_flow_totals_or_list(): void
     {
-        $user = User::factory()->create();
+        $user = $this->eligibleMember();
         $this->actingAs($user)->post(route('najm-bahar.agreement.process'), [
             'agreement_accepted' => '1',
         ]);
@@ -123,5 +125,38 @@ class ReportExternalFlowSemanticsTest extends TestCase
             ->assertViewHas('transactions', fn ($transactions): bool => $transactions->count() === 1);
         $this->actingAs($user)->get(route('najm-bahar.reports', ['type' => 'out']))
             ->assertViewHas('transactions', fn ($transactions): bool => $transactions->count() === 0);
+    }
+
+    private function eligibleMember(): User
+    {
+        $user = User::factory()->create();
+        $user->forceFill([
+            'first_name' => 'علی',
+            'last_name' => 'رضایی',
+            'gender' => 'male',
+            'national_id' => '0012345678',
+            'phone' => '09121234567',
+            'status' => 'active',
+            'email_verified_at' => $user->email_verified_at ?? now(),
+            'terms_accepted_at' => now(),
+        ])->save();
+
+        UserExperience::query()->create([
+            'user_id' => $user->id,
+            'organization_name' => 'شرکت نمونه',
+            'position' => 'مدیر پروژه',
+            'started_at' => '1402/01/01',
+            'description' => 'سابقه کاری',
+        ]);
+
+        Address::query()->create([
+            'user_id' => $user->id,
+            'province' => 'تهران',
+            'city' => 'تهران',
+            'address_line' => 'خیابان نمونه، پلاک ۱',
+            'postal_code' => '1234567890',
+        ]);
+
+        return $user;
     }
 }
