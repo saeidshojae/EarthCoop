@@ -129,7 +129,7 @@ class ReportExternalFlowSemanticsTest extends TestCase
     private function eligibleMember(): User
     {
         $this->mock(ProfileCompletionService::class, function ($mock) {
-            $mock->shouldReceive('isComplete')->once()->andReturnTrue();
+            $mock->shouldReceive('isComplete')->andReturnTrue();
         });
 
         return User::factory()->create([
