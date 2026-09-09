@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Location extends Model
@@ -75,5 +76,10 @@ class Location extends Model
     public function incomingRelations(): HasMany
     {
         return $this->hasMany(LocationRelation::class, 'to_location_id');
+    }
+
+    public function governanceAreas(): BelongsToMany
+    {
+        return $this->belongsToMany(GovernanceArea::class, 'governance_area_locations')->withTimestamps();
     }
 }
