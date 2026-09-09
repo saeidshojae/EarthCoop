@@ -65,6 +65,11 @@ class User extends Authenticatable
         return $this->belongsToMany(Location::class, 'user_location');
     }
 
+    public function locationRelationships()
+    {
+        return $this->hasMany(UserLocationRelationship::class);
+    }
+
     public function groups()
     {
         $relation = $this->belongsToMany(Group::class, 'group_user', 'user_id', 'group_id')
@@ -253,7 +258,6 @@ class User extends Authenticatable
     public function syncRoles(array $roles)
     {
         $roleIds = [];
-        
         foreach ($roles as $role) {
             if (is_string($role)) {
                 $r = Role::where('slug', $role)->first();
@@ -264,20 +268,16 @@ class User extends Authenticatable
                 $roleIds[] = $role;
             }
         }
-        
         $this->roles()->sync($roleIds);
-        
         return $this;
     }
 
     public function getAllPermissions()
     {
         $permissions = collect();
-        
         foreach ($this->roles as $role) {
             $permissions = $permissions->merge($role->permissions);
         }
-        
         return $permissions->unique('id');
     }
 
