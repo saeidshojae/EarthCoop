@@ -2,6 +2,7 @@
 
 namespace App\Services\LocationGovernance;
 
+use App\Data\LocationGovernance\GovernanceCapabilities;
 use App\Models\GovernanceArea;
 use App\Models\GovernanceAreaOverride;
 use App\Models\GovernanceCapabilityPolicy;
