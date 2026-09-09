@@ -1,0 +1,11 @@
+{"external_id":"IR-COUNTRY","parent_external_id":null,"type":"country","canonical_name":"Iran","localized_names":{"fa":"ایران"},"status":"active"}
+{"external_id":"IR-MAZ-001","parent_external_id":"IR-COUNTRY","type":"province","canonical_name":"Mazandaran","localized_names":{"fa":"مازندران"},"status":"active"}
+{"external_id":"IR-MAZ-SARI-COUNTY","parent_external_id":"IR-MAZ-001","type":"county","canonical_name":"Sari County","localized_names":{"fa":"شهرستان ساری"},"status":"active"}
+{"external_id":"IR-MAZ-SARI-CENTRAL","parent_external_id":"IR-MAZ-SARI-COUNTY","type":"section","canonical_name":"Central Section of Sari","localized_names":{"fa":"بخش مرکزی ساری"},"status":"active"}
+{"external_id":"IR-SARI-001","parent_external_id":"IR-MAZ-SARI-CENTRAL","type":"city","canonical_name":"Sari","localized_names":{"fa":"ساری"},"status":"active","centroid_latitude":36.5659,"centroid_longitude":53.0586}
+{"external_id":"IR-SARI-URBAN-01","parent_external_id":"IR-SARI-001","type":"urban_region","canonical_name":"Sari Urban Region 1","localized_names":{"fa":"منطقه شهری ۱ ساری"},"status":"active"}
+{"external_id":"IR-SARI-NBH-01","parent_external_id":"IR-SARI-URBAN-01","type":"neighborhood","canonical_name":"Sari Reference Neighborhood","localized_names":{"fa":"محله مرجع ساری"},"status":"active"}
+{"external_id":"IR-MAZ-SARI-CHAHARDANGEH-SECTION","parent_external_id":"IR-MAZ-SARI-COUNTY","type":"section","canonical_name":"Chahardangeh Section","localized_names":{"fa":"بخش چهاردانگه"},"status":"active"}
+{"external_id":"IR-MAZ-SARI-CHAHARDANGEH-RD","parent_external_id":"IR-MAZ-SARI-CHAHARDANGEH-SECTION","type":"rural_district","canonical_name":"Chahardangeh Rural District","localized_names":{"fa":"دهستان چهاردانگه"},"status":"active"}
+{"external_id":"IR-MAZ-SARI-CHAHARDANGEH-VILLAGE-01","parent_external_id":"IR-MAZ-SARI-CHAHARDANGEH-RD","type":"village","canonical_name":"Chahardangeh Reference Village","localized_names":{"fa":"روستای مرجع چهاردانگه"},"status":"active"}
+{"external_id":"IR-MAZ-SARI-CHAHARDANGEH-VILLAGE-NONEIGHBORHOOD","parent_external_id":"IR-MAZ-SARI-CHAHARDANGEH-RD","type":"village","canonical_name":"Reference Village Without Neighborhood","localized_names":{"fa":"روستای مرجع بدون محله"},"status":"active","metadata":{"fixture":"without-neighborhood"}}
