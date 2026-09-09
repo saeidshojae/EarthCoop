@@ -21,7 +21,7 @@ class LocationSchemaContractTest extends TestCase
         $this->assertCount(2, $allowed);
     }
 
-    public function test_schema_can_mark_multiple_residence_endpoint_types(): void
+    public function test_schema_marks_required_and_optional_residence_endpoint_types(): void
     {
         $schema = LocationFixture::iranSchema();
 
@@ -32,6 +32,14 @@ class LocationSchemaContractTest extends TestCase
             ->values()
             ->all();
 
-        $this->assertSame(['city', 'village'], $endpointKeys);
+        $this->assertContains('city', $endpointKeys);
+        $this->assertContains('village', $endpointKeys);
+        $this->assertContains('neighborhood', $endpointKeys);
+        $this->assertContains('street', $endpointKeys);
+        $this->assertContains('alley', $endpointKeys);
+        $this->assertContains('complex', $endpointKeys);
+        $this->assertContains('building', $endpointKeys);
+        $this->assertNotContains('section', $endpointKeys);
+        $this->assertNotContains('rural_district', $endpointKeys);
     }
 }
