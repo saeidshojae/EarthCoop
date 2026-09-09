@@ -10,7 +10,7 @@ class LocationReferenceImportCommand extends Command
 {
     protected $signature = 'location:reference-import
                             {country : ISO 3166-1 alpha-2 country code}
-                            {--version=v1 : Reference dataset version}
+                            {--dataset-version=v1 : Reference dataset version}
                             {--dry-run : Report the diff without any writes}
                             {--apply : Apply the versioned reference dataset}';
 
@@ -32,7 +32,7 @@ class LocationReferenceImportCommand extends Command
         try {
             $summary = $importer->import(
                 (string) $this->argument('country'),
-                (string) $this->option('version'),
+                (string) $this->option('dataset-version'),
                 $apply,
             );
         } catch (Throwable $e) {
