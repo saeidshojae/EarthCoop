@@ -34,6 +34,12 @@ class StockAdminCanonicalValuationTest extends TestCase
         $response->assertDontSee('مقادیر مالی در فرم و دیتابیس به صورت ریال هستند');
     }
 
+    public function test_admin_stock_form_has_no_case_colliding_legacy_duplicate(): void
+    {
+        $this->assertFileExists(resource_path('views/stock/admin_stock_create.blade.php'));
+        $this->assertFileDoesNotExist(resource_path('views/Stock/admin_stock_create.blade.php'));
+    }
+
     public function test_admin_can_persist_bahar_valuation_as_exact_canonical_gol(): void
     {
         $response = $this->post('/admin/stock', [
