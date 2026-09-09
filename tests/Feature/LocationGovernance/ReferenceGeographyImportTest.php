@@ -17,7 +17,7 @@ class ReferenceGeographyImportTest extends TestCase
 
         $exit = Artisan::call('location:reference-import', [
             'country' => 'IR',
-            '--version' => 'v1',
+            '--dataset-version' => 'v1',
             '--dry-run' => true,
         ]);
 
