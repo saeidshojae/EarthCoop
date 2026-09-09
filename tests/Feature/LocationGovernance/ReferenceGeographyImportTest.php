@@ -21,7 +21,7 @@ class ReferenceGeographyImportTest extends TestCase
             '--dry-run' => true,
         ]);
 
-        $this->assertSame(0, $exit);
+        $this->assertSame(0, $exit, Artisan::output());
         $this->assertSame($before, Location::count(), 'Dry-run must not persist reference geography.');
 
         $output = Artisan::output();
