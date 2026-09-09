@@ -16,7 +16,7 @@ class ReferenceGeographyImportIdempotencyTest extends TestCase
     {
         $firstExit = Artisan::call('location:reference-import', [
             'country' => 'IR',
-            '--version' => 'v1',
+            '--dataset-version' => 'v1',
             '--apply' => true,
         ]);
 
@@ -30,7 +30,7 @@ class ReferenceGeographyImportIdempotencyTest extends TestCase
 
         $secondExit = Artisan::call('location:reference-import', [
             'country' => 'IR',
-            '--version' => 'v1',
+            '--dataset-version' => 'v1',
             '--apply' => true,
         ]);
 
