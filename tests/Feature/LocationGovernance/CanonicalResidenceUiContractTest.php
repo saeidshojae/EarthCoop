@@ -8,13 +8,25 @@ use Tests\TestCase;
 class CanonicalResidenceUiContractTest extends TestCase
 {
     #[Test]
-    public function registration_and_profile_expose_the_schema_driven_selector_behind_the_canonical_flag(): void
+    public function registration_and_profile_switch_between_canonical_and_legacy_location_views(): void
     {
-        $registration = file_get_contents(resource_path('views/auth/register_step3.blade.php'));
-        $profile = file_get_contents(resource_path('views/profile/edit.blade.php'));
+        $registrationWrapper = file_get_contents(resource_path('views/auth/register_step3.blade.php'));
+        $profileWrapper = file_get_contents(resource_path('views/profile/partials/location.blade.php'));
+
+        foreach ([$registrationWrapper, $profileWrapper] as $wrapper) {
+            $this->assertStringContainsString("config('location-governance.registration_enabled')", $wrapper);
+        }
+
+        $registrationPath = resource_path('views/auth/register_step3_canonical.blade.php');
+        $profilePath = resource_path('views/profile/partials/location_canonical.blade.php');
+
+        $this->assertFileExists($registrationPath);
+        $this->assertFileExists($profilePath);
+
+        $registration = file_get_contents($registrationPath);
+        $profile = file_get_contents($profilePath);
 
         foreach ([$registration, $profile] as $view) {
-            $this->assertStringContainsString("config('location-governance.registration_enabled')", $view);
             $this->assertStringContainsString('data-location-selector', $view);
             $this->assertStringContainsString('name="location_id"', $view);
         }
