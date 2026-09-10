@@ -92,9 +92,9 @@ class CommunityAreaCreationTest extends TestCase
         $capabilities = app(GovernanceCapabilityResolver::class)->capabilities($community);
 
         $this->assertSame('community', $community->governance_type);
-        $this->assertTrue($capabilities->get('chat'));
-        $this->assertTrue($capabilities->get('polls'));
-        $this->assertTrue($capabilities->get('projects'));
-        $this->assertFalse($capabilities->get('systemic_elections'));
+        $this->assertTrue($capabilities->enabled('chat'));
+        $this->assertTrue($capabilities->enabled('polls'));
+        $this->assertTrue($capabilities->enabled('projects'));
+        $this->assertFalse($capabilities->enabled('systemic_elections'));
     }
 }
