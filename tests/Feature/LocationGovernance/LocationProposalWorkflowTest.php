@@ -4,6 +4,7 @@ namespace Tests\Feature\LocationGovernance;
 
 use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\Location;
+use App\Models\LocationProposal;
 use App\Models\User;
 use App\Services\LocationGovernance\LocationProposalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -13,6 +14,36 @@ use Tests\TestCase;
 class LocationProposalWorkflowTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_existing_canonical_location_is_reused_before_a_new_proposal_is_created(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $parent = LocationFixture::createPath($schema, [
+            'country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood', 'street',
+        ])->last();
+        $type = $schema->types->firstWhere('key', 'complex');
+        $existing = Location::factory()->create([
+            'parent_id' => $parent->id,
+            'location_schema_id' => $schema->id,
+            'location_type_id' => $type->id,
+            'country_code' => 'IR',
+            'name' => 'مجتمع موجود',
+            'canonical_name' => 'مجتمع موجود',
+            'level' => 'complex',
+            'status' => 'active',
+        ]);
+
+        $result = app(LocationProposalService::class)->propose(
+            User::factory()->create(),
+            $parent,
+            $type,
+            ['canonical_name' => '  مجتمع   موجود  '],
+        );
+
+        $this->assertInstanceOf(Location::class, $result);
+        $this->assertSame($existing->id, $result->id);
+        $this->assertSame(0, LocationProposal::query()->count());
+    }
 
     public function test_same_pending_candidate_is_reused_instead_of_creating_duplicate_proposals(): void
     {
