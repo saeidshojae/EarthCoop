@@ -55,10 +55,16 @@ class CanonicalResidenceUiContractTest extends TestCase
     #[Test]
     public function canonical_profile_edit_does_not_require_a_legacy_address_to_render(): void
     {
-        $controller = file_get_contents(app_path('Http/Controllers/Profile/ProfileController.php'));
+        $controllerPath = app_path('Http/Controllers/LocationGovernance/ProfileEditController.php');
+        $this->assertFileExists($controllerPath);
+
+        $controller = file_get_contents($controllerPath);
+        $routes = file_get_contents(base_path('routes/location-governance.php'));
 
         $this->assertStringContainsString("config('location-governance.registration_enabled')", $controller);
         $this->assertStringContainsString('locationRelationships()', $controller);
         $this->assertStringContainsString("relationship_type', 'primary_residence'", $controller);
+        $this->assertStringContainsString("/profile/edit", $routes);
+        $this->assertStringContainsString('ProfileEditController', $routes);
     }
 }
