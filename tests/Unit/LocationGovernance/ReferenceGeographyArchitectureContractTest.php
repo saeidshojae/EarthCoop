@@ -4,8 +4,10 @@ namespace Tests\Unit\LocationGovernance;
 
 use App\Data\LocationGovernance\ReferenceDataset;
 use App\Data\LocationGovernance\ReferenceImportResult;
+use App\Services\LocationGovernance\Import\ReferenceGeographyImporter;
 use App\Services\LocationGovernance\Import\ReferenceGeographyValidator;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 
 class ReferenceGeographyArchitectureContractTest extends TestCase
 {
@@ -26,6 +28,46 @@ class ReferenceGeographyArchitectureContractTest extends TestCase
         $errors = (new ReferenceGeographyValidator())->validate($dataset);
 
         $this->assertSame([], $errors);
+    }
+
+    public function test_validator_rejects_duplicate_identity_and_disallowed_hierarchy(): void
+    {
+        $dataset = new ReferenceDataset(
+            countryCode: 'IR',
+            version: 'v-test',
+            schema: [
+                'country_code' => 'IR',
+                'version' => 'v-test',
+                'types' => [
+                    ['key' => 'country', 'is_root' => true],
+                    ['key' => 'province', 'is_root' => false],
+                    ['key' => 'city', 'is_root' => false],
+                ],
+                'relations' => [
+                    ['parent' => 'country', 'child' => 'province'],
+                ],
+            ],
+            rows: [
+                ['external_id' => 'ROOT', 'parent_external_id' => null, 'type' => 'country', 'canonical_name' => 'Iran'],
+                ['external_id' => 'DUP', 'parent_external_id' => 'ROOT', 'type' => 'city', 'canonical_name' => 'Invalid City'],
+                ['external_id' => 'DUP', 'parent_external_id' => 'ROOT', 'type' => 'province', 'canonical_name' => 'Duplicate Province'],
+            ],
+            rawLocations: '',
+        );
+
+        $errors = (new ReferenceGeographyValidator())->validate($dataset);
+        $joined = implode(' ', $errors);
+
+        $this->assertStringContainsString('country -> city', $joined);
+        $this->assertStringContainsString('Duplicate reference geography external ID: DUP', $joined);
+    }
+
+    public function test_importer_does_not_embed_type_or_relation_definitions(): void
+    {
+        $constants = (new ReflectionClass(ReferenceGeographyImporter::class))->getConstants();
+
+        $this->assertArrayNotHasKey('TYPE_DEFINITIONS', $constants);
+        $this->assertArrayNotHasKey('TYPE_RELATIONS', $constants);
     }
 
     public function test_import_result_is_the_public_count_contract(): void
