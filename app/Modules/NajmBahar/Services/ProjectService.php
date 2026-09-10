@@ -139,6 +139,7 @@ class ProjectService
                 // اعتبارسنجی اطلاعات
                 $this->validateProjectData($project);
 
+            $project->status = 'pending';
             $project->submitted_at = now();
             $project->save();
 
