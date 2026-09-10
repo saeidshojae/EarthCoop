@@ -4,6 +4,7 @@ namespace App\Http\Controllers\LocationGovernance;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Profile\ProfileController;
+use App\Models\Address;
 use App\Models\ExperienceField;
 use App\Models\OccupationalField;
 use Illuminate\Http\Request;
@@ -34,6 +35,16 @@ final class ProfileEditController extends Controller
         $allExperienceFields = ExperienceField::with('parent')->get();
         $level1Fields = OccupationalField::whereNull('parent_id')->get();
         $level1ExperienceFields = ExperienceField::whereNull('parent_id')->get();
+
+        // The canonical selector owns residence state. The surrounding legacy
+        // profile template still contains presentation-only reads such as
+        // $user->address->city_id in old JavaScript. Supply an unsaved, empty
+        // relation so those reads remain harmless without creating or mutating
+        // any legacy Address row. Flag-off requests still use the legacy
+        // controller unchanged above.
+        if ($user->address === null) {
+            $user->setRelation('address', new Address());
+        }
 
         // The canonical location partial no longer consumes the legacy fixed-depth
         // geography collections. Keep the variables present so the surrounding
