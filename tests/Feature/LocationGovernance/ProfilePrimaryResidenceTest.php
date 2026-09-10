@@ -51,7 +51,7 @@ class ProfilePrimaryResidenceTest extends TestCase
             $user->locationRelationships()
                 ->where('location_id', $oldLocation->id)
                 ->where('relationship_type', 'primary_residence')
-                ->value('ends_at')
+                ->value('ended_at')
         );
         $this->assertDatabaseHas('user_location_relationships', [
             'user_id' => $user->id,
@@ -63,7 +63,7 @@ class ProfilePrimaryResidenceTest extends TestCase
             $user->locationRelationships()
                 ->where('location_id', $newLocation->id)
                 ->where('relationship_type', 'primary_residence')
-                ->value('ends_at')
+                ->value('ended_at')
         );
     }
 
