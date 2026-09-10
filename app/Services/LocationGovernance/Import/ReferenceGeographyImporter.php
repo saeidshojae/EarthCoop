@@ -2,7 +2,8 @@
 
 namespace App\Services\LocationGovernance\Import;
 
-use App\Data\LocationGovernance\ReferenceImportSummary;
+use App\Data\LocationGovernance\ReferenceDataset;
+use App\Data\LocationGovernance\ReferenceImportResult;
 use App\Models\Location;
 use App\Models\LocationExternalId;
 use App\Models\LocationSchema;
@@ -11,72 +12,38 @@ use App\Models\LocationType;
 use App\Models\LocationTypeRelation;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use RuntimeException;
 
 final class ReferenceGeographyImporter
 {
     public const SOURCE = 'earthcoop-reference';
 
-    private const TYPE_DEFINITIONS = [
-        'country' => ['Country', true, false],
-        'province' => ['Province', false, false],
-        'county' => ['County', false, false],
-        'section' => ['Section', false, false],
-        'city' => ['City', false, true],
-        'rural_district' => ['Rural district', false, false],
-        'village' => ['Village', false, true],
-        'urban_region' => ['Urban region', false, false],
-        'neighborhood' => ['Neighborhood', false, true],
-        'street' => ['Street', false, true],
-        'alley' => ['Alley', false, true],
-        'complex' => ['Residential complex', false, true],
-        'building' => ['Building', false, true],
-    ];
-
-    private const TYPE_RELATIONS = [
-        ['country', 'province'],
-        ['province', 'county'],
-        ['county', 'section'],
-        ['section', 'city'],
-        ['section', 'rural_district'],
-        ['rural_district', 'village'],
-        ['city', 'urban_region'],
-        ['urban_region', 'neighborhood'],
-        ['village', 'neighborhood'],
-        ['neighborhood', 'street'],
-        ['street', 'alley'],
-        ['street', 'complex'],
-        ['alley', 'complex'],
-        ['complex', 'building'],
-    ];
-
-    public function __construct(private readonly ReferenceGeographyNormalizer $normalizer)
-    {
+    public function __construct(
+        private readonly ReferenceGeographyNormalizer $normalizer,
+        private readonly ReferenceGeographyValidator $validator,
+    ) {
     }
 
-    public function import(string $countryCode, string $version, bool $apply = false): ReferenceImportSummary
+    public function import(string $countryCode, string $version, bool $apply = false): ReferenceImportResult
     {
-        $countryCode = strtoupper(trim($countryCode));
-        $version = trim($version);
-        $path = database_path('reference/'.strtolower($countryCode).'/'.$version.'/locations.jsonl');
-
-        if (! is_file($path)) {
-            throw new InvalidArgumentException("Reference geography dataset not found: {$countryCode}/{$version}");
+        $dataset = ReferenceDataset::fromCountryVersion($countryCode, $version);
+        $errors = $this->validator->validate($dataset);
+        if ($errors !== []) {
+            throw new InvalidArgumentException('Invalid reference geography dataset: '.implode(' ', $errors));
         }
 
-        $raw = file_get_contents($path);
-        if ($raw === false) {
-            throw new InvalidArgumentException("Reference geography dataset cannot be read: {$countryCode}/{$version}");
-        }
-
-        $rows = $this->parseDataset($raw, $countryCode, $version);
-        [$actions, $summary] = $this->diff($rows, $countryCode, $version);
+        $rows = array_map(
+            fn (array $row): array => $this->normalizer->normalize($row, $dataset->countryCode, $dataset->version),
+            $dataset->rows,
+        );
+        [$actions, $result] = $this->diff($rows, $dataset->countryCode, $dataset->version);
 
         if (! $apply) {
-            return $summary;
+            return $result;
         }
 
-        return DB::transaction(function () use ($rows, $actions, $summary, $countryCode, $version, $raw): ReferenceImportSummary {
-            [$schema, $types] = $this->ensureSchema($countryCode, $version);
+        return DB::transaction(function () use ($dataset, $rows, $actions, $result): ReferenceImportResult {
+            [$schema, $types] = $this->ensureSchema($dataset);
             $resolved = [];
 
             foreach ($rows as $row) {
@@ -86,15 +53,16 @@ final class ReferenceGeographyImporter
 
                 $parent = null;
                 if ($row['parent_external_id'] !== null && $row['parent_external_id'] !== '') {
-                    $parent = $resolved[$row['parent_external_id']] ?? $this->locationForExternalId($row['parent_external_id'], $version);
+                    $parent = $resolved[$row['parent_external_id']]
+                        ?? $this->locationForExternalId($row['parent_external_id'], $dataset->version);
                     if (! $parent) {
-                        continue;
+                        throw new RuntimeException("Validated reference parent disappeared during import: {$row['parent_external_id']}");
                     }
                 }
 
                 $existingIdentity = LocationExternalId::query()
                     ->where('source', self::SOURCE)
-                    ->where('dataset_version', $version)
+                    ->where('dataset_version', $dataset->version)
                     ->where('external_id', $row['external_id'])
                     ->first();
 
@@ -103,7 +71,7 @@ final class ReferenceGeographyImporter
                     'parent_id' => $parent?->id,
                     'location_schema_id' => $schema->id,
                     'location_type_id' => $types[$row['type_key']]->id,
-                    'country_code' => $countryCode,
+                    'country_code' => $dataset->countryCode,
                     'name' => $row['canonical_name'],
                     'canonical_name' => $row['canonical_name'],
                     'localized_names' => $row['localized_names'],
@@ -128,9 +96,9 @@ final class ReferenceGeographyImporter
                     LocationExternalId::create([
                         'location_id' => $location->id,
                         'source' => self::SOURCE,
-                        'dataset_version' => $version,
+                        'dataset_version' => $dataset->version,
                         'external_id' => $row['external_id'],
-                        'metadata' => ['country_code' => $countryCode],
+                        'metadata' => ['country_code' => $dataset->countryCode],
                     ]);
                 }
 
@@ -144,11 +112,11 @@ final class ReferenceGeographyImporter
 
                 $identity = LocationExternalId::query()
                     ->where('source', self::SOURCE)
-                    ->where('dataset_version', $version)
+                    ->where('dataset_version', $dataset->version)
                     ->where('external_id', $externalId)
                     ->first();
 
-                if ($identity?->location && $identity->location->country_code === $countryCode) {
+                if ($identity?->location && $identity->location->country_code === $dataset->countryCode) {
                     $identity->location->update([
                         'status' => 'inactive',
                         'valid_to' => now(),
@@ -157,17 +125,17 @@ final class ReferenceGeographyImporter
             }
 
             $runId = DB::table('location_import_runs')->insertGetId([
-                'country_code' => $countryCode,
+                'country_code' => $dataset->countryCode,
                 'source' => self::SOURCE,
-                'dataset_version' => $version,
+                'dataset_version' => $dataset->version,
                 'mode' => 'apply',
-                'status' => $summary->conflicts > 0 ? 'completed_with_conflicts' : 'completed',
-                'creates' => $summary->creates,
-                'updates' => $summary->updates,
-                'deactivates' => $summary->deactivates,
-                'conflicts' => $summary->conflicts,
-                'unchanged' => $summary->unchanged,
-                'dataset_hash' => hash('sha256', $raw),
+                'status' => $result->conflicts > 0 ? 'completed_with_conflicts' : 'completed',
+                'creates' => $result->creates,
+                'updates' => $result->updates,
+                'deactivates' => $result->deactivates,
+                'conflicts' => $result->conflicts,
+                'unchanged' => $result->unchanged,
+                'dataset_hash' => hash('sha256', $dataset->rawLocations),
                 'started_at' => now(),
                 'finished_at' => now(),
                 'created_at' => now(),
@@ -187,41 +155,8 @@ final class ReferenceGeographyImporter
                 ]);
             }
 
-            return $summary;
+            return $result;
         });
-    }
-
-    private function parseDataset(string $raw, string $countryCode, string $version): array
-    {
-        $rows = [];
-        $seen = [];
-
-        // JSONL is line-oriented. Split only on actual CR/LF bytes; PCRE \R in
-        // non-UTF mode can treat UTF-8 continuation byte 0x85 as a line break.
-        foreach (preg_split('/\r\n|\n|\r/', trim($raw)) ?: [] as $index => $line) {
-            if (trim($line) === '') {
-                continue;
-            }
-
-            $decoded = json_decode($line, true);
-            if (! is_array($decoded)) {
-                throw new InvalidArgumentException('Invalid reference geography JSON on line '.($index + 1));
-            }
-
-            $row = $this->normalizer->normalize($decoded, $countryCode, $version);
-            if ($row['external_id'] === '' || $row['type_key'] === '' || $row['canonical_name'] === '') {
-                throw new InvalidArgumentException('Reference geography row is missing required identity fields on line '.($index + 1));
-            }
-
-            if (isset($seen[$row['external_id']])) {
-                throw new InvalidArgumentException("Duplicate reference geography external ID: {$row['external_id']}");
-            }
-
-            $seen[$row['external_id']] = true;
-            $rows[] = $row;
-        }
-
-        return $rows;
     }
 
     private function diff(array $rows, string $countryCode, string $version): array
@@ -236,11 +171,11 @@ final class ReferenceGeographyImporter
                 || isset($knownDatasetIds[$row['parent_external_id']])
                 || $this->locationForExternalId($row['parent_external_id'], $version) !== null;
 
-            if (! isset(self::TYPE_DEFINITIONS[$row['type_key']]) || ! $parentKnown) {
+            if (! $parentKnown) {
                 $actions[$row['external_id']] = [
                     'action' => 'conflict',
                     'after' => $row,
-                    'message' => ! isset(self::TYPE_DEFINITIONS[$row['type_key']]) ? 'Unknown location type.' : 'Parent reference is missing or appears after its child.',
+                    'message' => 'Parent reference is missing or appears after its child.',
                 ];
                 continue;
             }
@@ -259,12 +194,20 @@ final class ReferenceGeographyImporter
 
             $location = $identity->location;
             if (! $location || $location->country_code !== $countryCode) {
-                $actions[$row['external_id']] = ['action' => 'conflict', 'after' => $row, 'message' => 'Existing external identity belongs to another country or missing location.'];
+                $actions[$row['external_id']] = [
+                    'action' => 'conflict',
+                    'after' => $row,
+                    'message' => 'Existing external identity belongs to another country or missing location.',
+                ];
                 continue;
             }
 
             $parentExternalId = $location->parent_id
-                ? LocationExternalId::query()->where('location_id', $location->parent_id)->where('source', self::SOURCE)->where('dataset_version', $version)->value('external_id')
+                ? LocationExternalId::query()
+                    ->where('location_id', $location->parent_id)
+                    ->where('source', self::SOURCE)
+                    ->where('dataset_version', $version)
+                    ->value('external_id')
                 : null;
 
             $current = [
@@ -312,7 +255,7 @@ final class ReferenceGeographyImporter
 
         $counts = array_count_values(array_column($actions, 'action'));
 
-        return [$actions, new ReferenceImportSummary(
+        return [$actions, new ReferenceImportResult(
             creates: $counts['create'] ?? 0,
             updates: $counts['update'] ?? 0,
             deactivates: $counts['deactivate'] ?? 0,
@@ -321,38 +264,57 @@ final class ReferenceGeographyImporter
         )];
     }
 
-    private function ensureSchema(string $countryCode, string $version): array
+    private function ensureSchema(ReferenceDataset $dataset): array
     {
-        $schema = LocationSchema::firstOrCreate(
-            ['key' => strtolower($countryCode).'-reference-'.$version],
-            [
-                'country_code' => $countryCode,
-                'name' => $countryCode.' reference geography',
-                'version' => $version,
+        $schemaDefinition = $dataset->schema;
+        $schemaKey = trim((string) ($schemaDefinition['key'] ?? ''));
+        if ($schemaKey === '') {
+            throw new InvalidArgumentException('Reference geography schema key is required.');
+        }
+
+        $schema = LocationSchema::query()->where('key', $schemaKey)->first();
+        if ($schema && ($schema->country_code !== $dataset->countryCode || $schema->version !== $dataset->version)) {
+            throw new RuntimeException("Reference geography schema key collision: {$schemaKey}");
+        }
+
+        if (! $schema) {
+            $schema = LocationSchema::create([
+                'key' => $schemaKey,
+                'country_code' => $dataset->countryCode,
+                'name' => (string) ($schemaDefinition['name'] ?? $dataset->countryCode.' reference geography'),
+                'version' => $dataset->version,
                 'status' => 'active',
                 'metadata' => ['source' => self::SOURCE],
-            ]
-        );
+            ]);
+        }
 
         $types = [];
-        foreach (self::TYPE_DEFINITIONS as $key => [$name, $isRoot, $isEndpoint]) {
+        foreach ($schemaDefinition['types'] as $typeDefinition) {
+            $key = trim((string) $typeDefinition['key']);
             $type = LocationType::firstOrCreate(
                 ['key' => $key],
-                ['canonical_name' => $name, 'is_residence_endpoint' => $isEndpoint]
+                [
+                    'canonical_name' => (string) ($typeDefinition['canonical_name'] ?? $key),
+                    'is_residence_endpoint' => (bool) ($typeDefinition['is_residence_endpoint'] ?? false),
+                ]
             );
             $types[$key] = $type;
 
-            LocationSchemaType::firstOrCreate(
+            LocationSchemaType::updateOrCreate(
                 ['location_schema_id' => $schema->id, 'location_type_id' => $type->id],
-                ['is_root' => $isRoot, 'is_residence_endpoint' => $isEndpoint, 'sort_order' => array_search($key, array_keys(self::TYPE_DEFINITIONS), true)]
+                [
+                    'is_root' => (bool) ($typeDefinition['is_root'] ?? false),
+                    'is_residence_endpoint' => (bool) ($typeDefinition['is_residence_endpoint'] ?? false),
+                    'sort_order' => (int) ($typeDefinition['sort_order'] ?? 0),
+                ]
             );
         }
 
-        foreach (self::TYPE_RELATIONS as [$parentKey, $childKey]) {
+        foreach ($schemaDefinition['relations'] as $relation) {
             LocationTypeRelation::firstOrCreate([
                 'location_schema_id' => $schema->id,
-                'parent_type_id' => $types[$parentKey]->id,
-                'child_type_id' => $types[$childKey]->id,
+                'parent_type_id' => $types[$relation['parent']]->id,
+                'child_type_id' => $types[$relation['child']]->id,
             ]);
         }
 

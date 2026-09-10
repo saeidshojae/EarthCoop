@@ -1,0 +1,37 @@
+{
+  "key": "ir-reference-v1",
+  "country_code": "IR",
+  "version": "v1",
+  "name": "Iran Reference Geography v1",
+  "types": [
+    {"key":"country","canonical_name":"Country","is_root":true,"is_residence_endpoint":false,"sort_order":10},
+    {"key":"province","canonical_name":"Province","is_root":false,"is_residence_endpoint":false,"sort_order":20},
+    {"key":"county","canonical_name":"County","is_root":false,"is_residence_endpoint":false,"sort_order":30},
+    {"key":"section","canonical_name":"Section","is_root":false,"is_residence_endpoint":false,"sort_order":40},
+    {"key":"city","canonical_name":"City","is_root":false,"is_residence_endpoint":true,"sort_order":50},
+    {"key":"rural_district","canonical_name":"Rural district","is_root":false,"is_residence_endpoint":false,"sort_order":60},
+    {"key":"village","canonical_name":"Village","is_root":false,"is_residence_endpoint":true,"sort_order":70},
+    {"key":"urban_region","canonical_name":"Urban region","is_root":false,"is_residence_endpoint":false,"sort_order":80},
+    {"key":"neighborhood","canonical_name":"Neighborhood","is_root":false,"is_residence_endpoint":true,"sort_order":90},
+    {"key":"street","canonical_name":"Street","is_root":false,"is_residence_endpoint":true,"sort_order":100},
+    {"key":"alley","canonical_name":"Alley","is_root":false,"is_residence_endpoint":true,"sort_order":110},
+    {"key":"complex","canonical_name":"Residential complex","is_root":false,"is_residence_endpoint":true,"sort_order":120},
+    {"key":"building","canonical_name":"Building","is_root":false,"is_residence_endpoint":true,"sort_order":130}
+  ],
+  "relations": [
+    {"parent":"country","child":"province"},
+    {"parent":"province","child":"county"},
+    {"parent":"county","child":"section"},
+    {"parent":"section","child":"city"},
+    {"parent":"section","child":"rural_district"},
+    {"parent":"rural_district","child":"village"},
+    {"parent":"city","child":"urban_region"},
+    {"parent":"urban_region","child":"neighborhood"},
+    {"parent":"village","child":"neighborhood"},
+    {"parent":"neighborhood","child":"street"},
+    {"parent":"street","child":"alley"},
+    {"parent":"street","child":"complex"},
+    {"parent":"alley","child":"complex"},
+    {"parent":"complex","child":"building"}
+  ]
+}
