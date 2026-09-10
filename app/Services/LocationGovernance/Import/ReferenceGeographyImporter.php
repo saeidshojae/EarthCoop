@@ -196,7 +196,9 @@ final class ReferenceGeographyImporter
         $rows = [];
         $seen = [];
 
-        foreach (preg_split('/\R/', trim($raw)) ?: [] as $index => $line) {
+        // JSONL is line-oriented. Split only on actual CR/LF bytes; PCRE \R in
+        // non-UTF mode can treat UTF-8 continuation byte 0x85 as a line break.
+        foreach (preg_split('/\r\n|\n|\r/', trim($raw)) ?: [] as $index => $line) {
             if (trim($line) === '') {
                 continue;
             }
