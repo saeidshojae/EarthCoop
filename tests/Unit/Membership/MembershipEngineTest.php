@@ -42,4 +42,16 @@ class MembershipEngineTest extends TestCase
             $this->assertContains($property, $properties, "MembershipResolution must expose {$property}.");
         }
     }
+
+    public function test_resolution_audit_schema_is_additive_and_fingerprint_oriented(): void
+    {
+        $path = base_path('database/migrations/2026_09_10_000006_create_membership_resolution_audits.php');
+        $this->assertFileExists($path);
+
+        $source = file_get_contents($path);
+        $this->assertStringContainsString('membership_resolution_audits', $source);
+        $this->assertStringContainsString('user_id', $source);
+        $this->assertStringContainsString('fingerprint', $source);
+        $this->assertStringContainsString('resolution', $source);
+    }
 }
