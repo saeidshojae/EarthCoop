@@ -8,7 +8,6 @@ use App\Models\GroupCreationPolicy;
 use App\Models\MembershipDimension;
 use App\Models\User;
 use App\Services\LocationGovernance\GovernanceResolver;
-use Illuminate\Support\Collection;
 
 class MembershipEngine
 {
@@ -48,13 +47,12 @@ class MembershipEngine
                 ->sortBy(fn ($area) => sprintf('%010d:%s', (int) $area->rank, (string) $area->key))
                 ->values();
 
-        // Community topology is intentionally separate and is introduced in C10.
         $communityAreas = collect();
         $materializable = collect();
         $suppressed = collect();
 
         $dimensions = MembershipDimension::query()
-            ->where('status', 'active')
+            ->where('enabled', true)
             ->whereIn('key', array_keys($this->resolvers))
             ->orderBy('key')
             ->get()
@@ -66,7 +64,12 @@ class MembershipEngine
                 continue;
             }
 
-            $values = $resolver->valuesFor($user)->map(fn ($value) => (string) $value)->sort()->values();
+            $values = $resolver->valuesFor($user)
+                ->map(fn ($value) => (string) $value)
+                ->unique()
+                ->sort()
+                ->values();
+
             foreach ($officialAreas as $area) {
                 $policy = $this->policyFor($dimension->id, $area->id);
                 foreach ($values as $valueKey) {
@@ -75,7 +78,6 @@ class MembershipEngine
                         'automatic' => null,
                         'threshold' => 'threshold',
                         'on_demand' => 'on_demand',
-                        'disabled' => 'disabled',
                         default => 'disabled',
                     };
 
@@ -85,7 +87,7 @@ class MembershipEngine
                         governanceAreaId: (int) $area->id,
                         mode: $mode,
                         threshold: $policy?->threshold,
-                        policyVersion: $policy?->policy_version,
+                        policyVersion: $policy?->metadata['policy_version'] ?? null,
                         suppressionReason: $reason,
                     );
 
@@ -105,7 +107,10 @@ class MembershipEngine
         $suppressed = $suppressed->sortBy($sort)->values();
 
         $canonical = [
-            'official_governance_areas' => $officialAreas->map(fn ($area) => ['id' => (int) $area->id, 'key' => (string) $area->key])->values()->all(),
+            'official_governance_areas' => $officialAreas
+                ->map(fn ($area) => ['id' => (int) $area->id, 'key' => (string) $area->key])
+                ->values()
+                ->all(),
             'community_areas' => [],
             'materializable_intents' => $materializable->map->canonical()->all(),
             'suppressed_intents' => $suppressed->map->canonical()->all(),
@@ -121,7 +126,6 @@ class MembershipEngine
         );
 
         if ($materialize) {
-            // C6 records the deterministic decision only; physical Group creation begins in C7.
             $this->auditService->record($user, $resolution);
         }
 
@@ -132,11 +136,13 @@ class MembershipEngine
     {
         return GroupCreationPolicy::query()
             ->where('membership_dimension_id', $dimensionId)
+            ->where('enabled', true)
             ->where(function ($query) use ($governanceAreaId): void {
                 $query->where('governance_area_id', $governanceAreaId)
                     ->orWhereNull('governance_area_id');
             })
             ->orderByRaw('governance_area_id IS NULL')
+            ->orderByDesc('priority')
             ->orderByDesc('id')
             ->first();
     }
