@@ -5,6 +5,7 @@ namespace App\Services\Elections;
 use App\Models\Election;
 use App\Models\ElectionPolicyVersion;
 use App\Models\ElectionResponsibilityContractVersion;
+use App\Models\GovernanceArea;
 use App\Models\Group;
 use App\Models\GroupSetting;
 use Illuminate\Database\Eloquent\Model;
@@ -72,15 +73,12 @@ class ElectionPolicyResolver
 
     public function levelKeyForGroup(Group $group): string
     {
-        $attributes = $group->getAttributes();
-        $base = strtolower(trim((string) ($attributes['location_level'] ?? '')));
-
-        // Historical group data uses `section` while the canonical GroupSetting
-        // vocabulary uses `district`. Normalize once at the policy boundary so
-        // every lifecycle stage resolves the same versioned rule set.
-        if ($base === 'section') {
-            $base = 'district';
+        if ($this->canonicalEnabled()) {
+            return $this->canonicalLevelKeyForGroup($group);
         }
+
+        $attributes = $group->getAttributes();
+        $base = $this->normalizeBaseLevel((string) ($attributes['location_level'] ?? ''));
 
         if (($attributes['specialty_id'] ?? null) !== null) return $base.'_job';
         if (($attributes['experience_id'] ?? null) !== null) return $base.'_experience';
@@ -119,6 +117,56 @@ class ElectionPolicyResolver
         return $setting instanceof ElectionPolicyVersion
             ? max(1, (int) $setting->response_duration_days)
             : ElectionResponsibilityOfferService::RESPONSE_WINDOW_DAYS;
+    }
+
+    private function canonicalLevelKeyForGroup(Group $group): string
+    {
+        $area = $this->canonicalAreaFor($group);
+        if ($area === null || $area->area_kind !== 'official' || $area->status !== 'active') {
+            throw new RuntimeException("Formal election policy requires an active official governance area for group [{$group->id}].");
+        }
+
+        $base = $this->normalizeBaseLevel((string) $area->governance_type);
+        if ($base === '') {
+            throw new RuntimeException("Governance area [{$area->id}] does not define an election policy type.");
+        }
+
+        $dimension = strtolower(trim((string) ($group->getAttributes()['dimension_key'] ?? '')));
+
+        return match ($dimension) {
+            'public' => $base,
+            'profession' => $base.'_job',
+            'specialty' => $base.'_experience',
+            'age' => $base.'_age',
+            'gender' => $base.'_gender',
+            default => throw new RuntimeException("Unsupported canonical election dimension [{$dimension}] for group [{$group->id}]."),
+        };
+    }
+
+    private function canonicalAreaFor(Group $group): ?GovernanceArea
+    {
+        if ($group->relationLoaded('governanceArea')) {
+            $area = $group->getRelation('governanceArea');
+            return $area instanceof GovernanceArea ? $area : null;
+        }
+
+        $areaId = $group->getAttributes()['governance_area_id'] ?? null;
+        return $areaId === null ? null : GovernanceArea::query()->find((int) $areaId);
+    }
+
+    private function normalizeBaseLevel(string $level): string
+    {
+        $base = strtolower(trim($level));
+
+        // Legacy group data uses `section` while GroupSetting uses `district`.
+        // Apply the same compatibility normalization to canonical governance_type
+        // so existing versioned election policy records remain authoritative.
+        return $base === 'section' ? 'district' : $base;
+    }
+
+    private function canonicalEnabled(): bool
+    {
+        return (bool) config('location-governance.elections_enabled', false);
     }
 
     private function baseSettingForGroup(Group $group): GroupSetting
