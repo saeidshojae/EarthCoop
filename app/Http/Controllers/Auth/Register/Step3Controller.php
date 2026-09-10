@@ -27,7 +27,7 @@ class Step3Controller extends Controller
         if ((bool) config('location-governance.registration_enabled')) {
             $hasPrimaryResidence = auth()->user()?->locationRelationships()
                 ->where('relationship_type', 'primary_residence')
-                ->whereNull('ends_at')
+                ->whereNull('ended_at')
                 ->exists();
 
             if ($hasPrimaryResidence) {
@@ -172,9 +172,6 @@ class Step3Controller extends Controller
 
         app(ProfileCompletionService::class)->maybeAward($user);
 
-        return redirect()->route('home')->with('success', 'تبریک میگوییم، داده های شما دریافت و ثبت نام شما تکمیل شد و شما در گروه های مربوطه عضو شدید.
-اکنون به داشبورد وارد میشوید. برای ایجاد حساب مالی نجم بهار، روی لینک "حساب مالی نجم بهار" کلیک کنید.
-
-با تشکر تیم توسعه EarthCoop');
+        return redirect()->route('home')->with('success', 'تبریک میگوییم، داده های شما دریافت و ثبت نام شما تکمیل شد و شما در گروه های مربوطه عضو شدید.\nاکنون به داشبورد وارد میشوید. برای ایجاد حساب مالی نجم بهار، روی لینک "حساب مالی نجم بهار" کلیک کنید.\n\nبا تشکر تیم توسعه EarthCoop');
     }
 }
