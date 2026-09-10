@@ -17,13 +17,19 @@ class LocationProposalService
     ) {
     }
 
-    public function propose(User $proposer, Location $parent, LocationType $type, array $data): LocationProposal
+    public function propose(User $proposer, Location $parent, LocationType $type, array $data): LocationProposal|Location
     {
         $canonicalName = trim((string) ($data['canonical_name'] ?? ''));
         $normalizedName = $this->duplicateDetector->normalizeName($canonicalName);
 
         if ($normalizedName === '') {
             throw new DomainException('A canonical location name is required.');
+        }
+
+        $duplicate = $this->duplicateDetector->findLikelyDuplicate($parent, $type, $canonicalName);
+
+        if ($duplicate !== null) {
+            return $duplicate;
         }
 
         $reusable = LocationProposal::query()
