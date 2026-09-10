@@ -18,7 +18,15 @@ class ProfileCompletionService
             && $user->national_id
             && $user->phone;
         $hasExperience = UserExperience::where('user_id', $user->id)->exists();
-        $hasAddress = Address::where('user_id', $user->id)->exists();
+
+        if ((bool) config('location-governance.registration_enabled')) {
+            $hasAddress = $user->locationRelationships()
+                ->where('relationship_type', 'primary_residence')
+                ->whereNull('ended_at')
+                ->exists();
+        } else {
+            $hasAddress = Address::where('user_id', $user->id)->exists();
+        }
 
         return (bool) ($step1Complete && $hasExperience && $hasAddress);
     }
