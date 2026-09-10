@@ -43,7 +43,17 @@ class StartController extends Controller
         }
 
         $countriesCount = 0;
-        if (Schema::hasTable('addresses')) {
+        if ((bool) config('location-governance.registration_enabled')
+            && Schema::hasTable('user_location_relationships')
+            && Schema::hasTable('locations')) {
+            $countriesCount = DB::table('user_location_relationships')
+                ->join('locations', 'locations.id', '=', 'user_location_relationships.location_id')
+                ->where('relationship_type', 'primary_residence')
+                ->whereNull('ended_at')
+                ->whereNotNull('locations.country_code')
+                ->distinct()
+                ->count('locations.country_code');
+        } elseif (Schema::hasTable('addresses')) {
             $countriesCount = DB::table('addresses')
                 ->whereNotNull('country_id')
                 ->distinct()
