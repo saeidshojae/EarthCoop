@@ -2,6 +2,7 @@
 
 namespace App\Modules\NajmBahar\Models;
 
+use App\Models\GovernanceArea;
 use App\Models\User;
 use App\Models\Group;
 use Illuminate\Database\Eloquent\Model;
@@ -17,10 +18,11 @@ class Project extends Model
     protected $fillable = [
         'owner_type',
         'owner_id',
+        'governance_area_id',
         'category_level1_id',
         'category_level2_id',
         'category_level3_id',
-        // Geographic scope fields for target market
+        // Legacy geographic scope fields retained for rollback during canonical cutover.
         'geographic_continent_id',
         'geographic_country_id',
         'geographic_province_id',
@@ -117,6 +119,14 @@ class Project extends Model
     public function owner()
     {
         return $this->morphTo();
+    }
+
+    /**
+     * Canonical Governance scope for the project.
+     */
+    public function governanceArea()
+    {
+        return $this->belongsTo(GovernanceArea::class);
     }
 
     /**
