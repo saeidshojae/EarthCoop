@@ -44,6 +44,12 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->group(base_path('routes/location-governance.php'));
 
+            // Crowdsourced location proposals are member-only. Sensitive review,
+            // approval, rejection and merge actions stay outside this surface and
+            // are introduced later through the admin/Najm Hoda review boundary.
+            Route::middleware('web')
+                ->group(base_path('routes/location-proposals.php'));
+
             // User-facing participation credit regulation. This route stays in a
             // separate read-only surface so rendering the regulation never seeds or
             // mutates the reputation rules it is documenting.
