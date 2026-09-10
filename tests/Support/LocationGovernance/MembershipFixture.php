@@ -11,6 +11,11 @@ use App\Models\MembershipDimension;
 use App\Models\OccupationalField;
 use App\Models\User;
 use App\Models\UserLocationRelationship;
+use App\Services\Membership\AgeDimensionResolver;
+use App\Services\Membership\GenderDimensionResolver;
+use App\Services\Membership\ProfessionDimensionResolver;
+use App\Services\Membership\PublicDimensionResolver;
+use App\Services\Membership\SpecialtyDimensionResolver;
 
 final class MembershipFixture
 {
@@ -49,20 +54,30 @@ final class MembershipFixture
 
         AgeGroup::create(['title' => '25-34', 'min_age' => 25, 'max_age' => 34]);
 
-        foreach (['public', 'profession', 'specialty', 'age', 'gender'] as $key) {
+        $resolverClasses = [
+            'public' => PublicDimensionResolver::class,
+            'profession' => ProfessionDimensionResolver::class,
+            'specialty' => SpecialtyDimensionResolver::class,
+            'age' => AgeDimensionResolver::class,
+            'gender' => GenderDimensionResolver::class,
+        ];
+
+        foreach ($resolverClasses as $key => $resolverClass) {
             $dimension = MembershipDimension::create([
                 'key' => $key,
-                'canonical_name' => ucfirst($key),
-                'resolver_key' => $key,
-                'status' => 'active',
+                'name' => ucfirst($key),
+                'resolver_class' => $resolverClass,
+                'enabled' => true,
             ]);
 
+            $mode = $modes[$key] ?? GroupCreationMode::Automatic;
             GroupCreationPolicy::create([
                 'membership_dimension_id' => $dimension->id,
                 'governance_area_id' => null,
-                'mode' => $modes[$key] ?? GroupCreationMode::Automatic,
-                'threshold' => ($modes[$key] ?? null) === GroupCreationMode::Threshold ? 20 : null,
-                'policy_version' => 'test-v1',
+                'mode' => $mode,
+                'threshold' => $mode === GroupCreationMode::Threshold ? 20 : null,
+                'enabled' => true,
+                'metadata' => ['policy_version' => 'test-v1'],
             ]);
         }
 
