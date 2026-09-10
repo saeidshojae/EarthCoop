@@ -50,6 +50,9 @@ class ProjectService
 
             $project = new Project([
                 'title' => $data['title'],
+                'governance_area_id' => $owner instanceof Group
+                    ? ($owner->governance_area_id ?? null)
+                    : ($data['governance_area_id'] ?? null),
                 'category_level1_id' => $data['category_level1_id'],
                 'category_level2_id' => $data['category_level2_id'] ?? null,
                 'category_level3_id' => $data['category_level3_id'] ?? null,
@@ -136,7 +139,6 @@ class ProjectService
                 // اعتبارسنجی اطلاعات
                 $this->validateProjectData($project);
 
-            $project->status = 'pending';
             $project->submitted_at = now();
             $project->save();
 
