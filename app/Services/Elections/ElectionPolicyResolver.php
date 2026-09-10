@@ -166,7 +166,12 @@ class ElectionPolicyResolver
 
     private function canonicalEnabled(): bool
     {
-        return (bool) config('location-governance.elections_enabled', false);
+        $app = app();
+        if (! $app->bound('config')) {
+            return false;
+        }
+
+        return (bool) $app['config']->get('location-governance.elections_enabled', false);
     }
 
     private function baseSettingForGroup(Group $group): GroupSetting
