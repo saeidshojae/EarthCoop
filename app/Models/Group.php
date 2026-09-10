@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Group extends Model
 {
-    protected $fillable = ['group_type', 'name', 'location_level', 'is_open', 'address_id', 'specialty_id', 'experience_id', 'age_group_id', 'gender', 'age_group_title', 'description', 'avatar', 'last_activity_at'];
+    protected $fillable = ['group_type', 'name', 'location_level', 'is_open', 'address_id', 'governance_area_id', 'dimension_key', 'dimension_value_key', 'specialty_id', 'experience_id', 'age_group_id', 'gender', 'age_group_title', 'description', 'avatar', 'last_activity_at'];
 
     protected $casts = [
         'last_activity_at' => 'datetime',
@@ -58,7 +58,6 @@ class Group extends Model
             ->withTimestamps();
     }
 
-
     public function specialty()
     {
         return $this->belongsTo(OccupationalField::class, 'specialty_id');
@@ -67,6 +66,11 @@ class Group extends Model
     public function address()
     {
         return $this->belongsTo(Address::class);
+    }
+
+    public function governanceArea()
+    {
+        return $this->belongsTo(GovernanceArea::class);
     }
 
     public function experience()
@@ -93,9 +97,6 @@ class Group extends Model
     }
 
     public function userCount(){
-        // The group-chat panel preloads this aggregate for all related groups in
-        // one query. Reuse it when present and preserve the canonical fallback
-        // everywhere else.
         if (array_key_exists('active_members_count', $this->attributes)) {
             return (int) $this->attributes['active_members_count'];
         }
@@ -149,17 +150,11 @@ class Group extends Model
         $this->update(['last_activity_at' => now()]);
     }
 
-    /**
-     * پروژه‌های نجم بهار (به عنوان صاحب پروژه)
-     */
     public function najmBaharProjects()
     {
         return $this->morphMany(\App\Modules\NajmBahar\Models\Project::class, 'owner');
     }
 
-    /**
-     * سرمایه‌گذاری‌های نجم بهار (به عنوان سرمایه‌گذار)
-     */
     public function najmBaharInvestments()
     {
         return $this->morphMany(\App\Modules\NajmBahar\Models\Investment::class, 'investor');
