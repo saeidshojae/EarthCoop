@@ -8,4 +8,8 @@ return [
     'groups_enabled' => filter_var(env('LOCATION_GOVERNANCE_GROUPS_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
     'elections_enabled' => filter_var(env('LOCATION_GOVERNANCE_ELECTIONS_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
     'projects_enabled' => filter_var(env('LOCATION_GOVERNANCE_PROJECTS_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
+
+    // Distinct supporters make a crowdsourced location ready for human review;
+    // reaching this threshold never auto-approves the proposal.
+    'location_proposal_verification_threshold' => max(1, (int) env('LOCATION_GOVERNANCE_PROPOSAL_VERIFICATION_THRESHOLD', 10)),
 ];
