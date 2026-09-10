@@ -39,6 +39,11 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
 
+            // Canonical location selection is isolated behind dark-launch flags so
+            // legacy registration/profile geography remains authoritative until C5 cutover.
+            Route::middleware('web')
+                ->group(base_path('routes/location-governance.php'));
+
             // User-facing participation credit regulation. This route stays in a
             // separate read-only surface so rendering the regulation never seeds or
             // mutates the reputation rules it is documenting.
