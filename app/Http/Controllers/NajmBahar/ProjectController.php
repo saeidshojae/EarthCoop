@@ -3,19 +3,23 @@
 namespace App\Http\Controllers\NajmBahar;
 
 use App\Http\Controllers\Controller;
+use App\Models\GovernanceArea;
 use App\Modules\NajmBahar\Models\Project;
 use App\Modules\NajmBahar\Models\ProjectCategory;
 use App\Modules\NajmBahar\Services\ProjectService;
+use App\Services\Projects\ProjectScopeCutoverRenderer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class ProjectController extends Controller
 {
     protected ProjectService $projectService;
+    protected ProjectScopeCutoverRenderer $scopeCutoverRenderer;
 
-    public function __construct(ProjectService $projectService)
+    public function __construct(ProjectService $projectService, ProjectScopeCutoverRenderer $scopeCutoverRenderer)
     {
         $this->projectService = $projectService;
+        $this->scopeCutoverRenderer = $scopeCutoverRenderer;
     }
 
     /**
@@ -41,7 +45,18 @@ class ProjectController extends Controller
             ->orderBy('order')
             ->get();
 
-        return view('najm-bahar.projects.create', compact('categories'));
+        if (!$this->useCanonicalProjectScope()) {
+            return view('najm-bahar.projects.create', compact('categories'));
+        }
+
+        $governanceAreas = $this->projectGovernanceAreas();
+        $legacyHtml = view('najm-bahar.projects.create', compact('categories'))->render();
+
+        return response($this->scopeCutoverRenderer->renderCanonical(
+            $legacyHtml,
+            $governanceAreas,
+            old('governance_area_id') !== null ? (int) old('governance_area_id') : null
+        ));
     }
 
     /**
@@ -49,7 +64,7 @@ class ProjectController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $validated = $request->validate(array_merge([
             'title' => 'required|string|max:255',
             'category_level1_id' => 'required|exists:najm_bahar_project_categories,id',
             'category_level2_id' => 'nullable|exists:najm_bahar_project_categories,id',
@@ -64,19 +79,8 @@ class ProjectController extends Controller
             'value_proposition' => 'nullable|string',
             'target_market' => 'required|in:local,professional,general,external',
             'existing_assets' => 'nullable|string',
-            'geographic_continent_id' => 'nullable|integer',
-            'geographic_country_id' => 'nullable|integer',
-            'geographic_province_id' => 'nullable|integer',
-            'geographic_county_id' => 'nullable|integer',
-            'geographic_section_id' => 'nullable|integer',
-            'geographic_city_id' => 'nullable|integer',
-            'geographic_rural_id' => 'nullable|integer',
-            'geographic_region_id' => 'nullable|integer',
-            'geographic_neighborhood_id' => 'nullable|integer',
-            'geographic_street_id' => 'nullable|integer',
-            'geographic_alley_id' => 'nullable|integer',
             'investment_method' => 'required|in:auction_shares,capital_participation',
-            
+
             // Conditional fields for auction method
             'base_value_min' => 'required_if:investment_method,auction_shares|nullable|integer|min:1',
             'base_value_max' => 'required_if:investment_method,auction_shares|nullable|integer|min:1|gte:base_value_min',
@@ -84,12 +88,12 @@ class ProjectController extends Controller
             'initial_auction_percent' => 'required_if:investment_method,auction_shares|nullable|numeric|min:0|max:100',
             'max_user_ownership_percent' => 'required_if:investment_method,auction_shares|nullable|numeric|min:0|max:100',
             'auction_period' => 'required_if:investment_method,auction_shares|nullable|in:monthly,quarterly,semi_annual,annual',
-            
+
             // Conditional fields for capital participation method
             'required_capital' => 'required_if:investment_method,capital_participation|nullable|integer|min:1',
             'profit_percentage' => 'required_if:investment_method,capital_participation|nullable|numeric|min:0.01|max:100',
             'investment_duration_months' => 'required_if:investment_method,capital_participation|nullable|integer|min:1',
-            
+
             // Common fields
             'risk_level' => 'required|in:low,medium,high',
             'main_risks' => 'nullable|string',
@@ -102,7 +106,7 @@ class ProjectController extends Controller
             'accept_rules' => 'accepted',
             'attachments' => 'nullable|array',
             'attachments.*' => 'file|mimes:pdf,doc,docx,xls,xlsx|max:10240',
-        ]);
+        ], $this->projectScopeRules()));
 
         try {
             // آپلود فایل‌ها
@@ -164,7 +168,19 @@ class ProjectController extends Controller
             ->orderBy('order')
             ->get();
 
-        return view('najm-bahar.projects.edit', compact('project', 'categories'));
+        if (!$this->useCanonicalProjectScope()) {
+            return view('najm-bahar.projects.edit', compact('project', 'categories'));
+        }
+
+        $governanceAreas = $this->projectGovernanceAreas();
+        $legacyHtml = view('najm-bahar.projects.edit', compact('project', 'categories'))->render();
+        $selectedAreaId = old('governance_area_id', $project->governance_area_id);
+
+        return response($this->scopeCutoverRenderer->renderCanonical(
+            $legacyHtml,
+            $governanceAreas,
+            $selectedAreaId !== null ? (int) $selectedAreaId : null
+        ));
     }
 
     /**
@@ -175,7 +191,7 @@ class ProjectController extends Controller
         // بررسی دسترسی
         $this->authorize('update', $project);
 
-        $validated = $request->validate([
+        $validated = $request->validate(array_merge([
             'title' => 'required|string|max:255',
             'category_level1_id' => 'required|exists:najm_bahar_project_categories,id',
             'category_level2_id' => 'nullable|exists:najm_bahar_project_categories,id',
@@ -190,19 +206,8 @@ class ProjectController extends Controller
             'value_proposition' => 'nullable|string',
             'target_market' => 'required|in:local,professional,general,external',
             'existing_assets' => 'nullable|string',
-            'geographic_continent_id' => 'nullable|integer',
-            'geographic_country_id' => 'nullable|integer',
-            'geographic_province_id' => 'nullable|integer',
-            'geographic_county_id' => 'nullable|integer',
-            'geographic_section_id' => 'nullable|integer',
-            'geographic_city_id' => 'nullable|integer',
-            'geographic_rural_id' => 'nullable|integer',
-            'geographic_region_id' => 'nullable|integer',
-            'geographic_neighborhood_id' => 'nullable|integer',
-            'geographic_street_id' => 'nullable|integer',
-            'geographic_alley_id' => 'nullable|integer',
             'investment_method' => 'required|in:auction_shares,capital_participation',
-            
+
             // Conditional fields for auction method
             'base_value_min' => 'required_if:investment_method,auction_shares|nullable|integer|min:1',
             'base_value_max' => 'required_if:investment_method,auction_shares|nullable|integer|min:1|gte:base_value_min',
@@ -210,12 +215,12 @@ class ProjectController extends Controller
             'initial_auction_percent' => 'required_if:investment_method,auction_shares|nullable|numeric|min:0|max:100',
             'max_user_ownership_percent' => 'required_if:investment_method,auction_shares|nullable|numeric|min:0|max:100',
             'auction_period' => 'required_if:investment_method,auction_shares|nullable|in:monthly,quarterly,semi_annual,annual',
-            
+
             // Conditional fields for capital participation method
             'required_capital' => 'required_if:investment_method,capital_participation|nullable|integer|min:1',
             'profit_percentage' => 'required_if:investment_method,capital_participation|nullable|numeric|min:0.01|max:100',
             'investment_duration_months' => 'required_if:investment_method,capital_participation|nullable|integer|min:1',
-            
+
             // Common fields
             'risk_level' => 'required|in:low,medium,high',
             'main_risks' => 'nullable|string',
@@ -228,7 +233,7 @@ class ProjectController extends Controller
             'accept_rules' => 'accepted',
             'attachments' => 'nullable|array',
             'attachments.*' => 'file|mimes:pdf,doc,docx,xls,xlsx|max:10240',
-        ]);
+        ], $this->projectScopeRules()));
 
         try {
             // آپلود فایل‌های جدید
@@ -302,12 +307,54 @@ class ProjectController extends Controller
     public function getSubCategories(Request $request)
     {
         $parentId = $request->input('parent_id');
-        
+
         $categories = ProjectCategory::active()
             ->where('parent_id', $parentId)
             ->orderBy('order')
             ->get(['id', 'name', 'level']);
 
         return response()->json($categories);
+    }
+
+    /**
+     * Canonical project scope is dark-launched independently so rollback does not
+     * require schema or data changes. Legacy geography remains authoritative only
+     * while this switch is disabled.
+     */
+    private function useCanonicalProjectScope(): bool
+    {
+        return (bool) config('location-governance.projects_enabled', false);
+    }
+
+    private function projectGovernanceAreas()
+    {
+        return GovernanceArea::query()
+            ->official()
+            ->active()
+            ->orderBy('canonical_name')
+            ->get(['id', 'canonical_name']);
+    }
+
+    private function projectScopeRules(): array
+    {
+        if ($this->useCanonicalProjectScope()) {
+            return [
+                'governance_area_id' => 'nullable|integer|exists:governance_areas,id',
+            ];
+        }
+
+        return [
+            'geographic_continent_id' => 'nullable|integer',
+            'geographic_country_id' => 'nullable|integer',
+            'geographic_province_id' => 'nullable|integer',
+            'geographic_county_id' => 'nullable|integer',
+            'geographic_section_id' => 'nullable|integer',
+            'geographic_city_id' => 'nullable|integer',
+            'geographic_rural_id' => 'nullable|integer',
+            'geographic_region_id' => 'nullable|integer',
+            'geographic_neighborhood_id' => 'nullable|integer',
+            'geographic_street_id' => 'nullable|integer',
+            'geographic_alley_id' => 'nullable|integer',
+        ];
     }
 }
