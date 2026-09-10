@@ -20,11 +20,11 @@ class ReferenceGeographyImportTest extends TestCase
             '--dataset-version' => 'v1',
             '--dry-run' => true,
         ]);
+        $output = Artisan::output();
 
-        $this->assertSame(0, $exit, Artisan::output());
+        $this->assertSame(0, $exit, $output);
         $this->assertSame($before, Location::count(), 'Dry-run must not persist reference geography.');
 
-        $output = Artisan::output();
         $this->assertStringContainsString('create', strtolower($output));
         $this->assertStringContainsString('update', strtolower($output));
         $this->assertStringContainsString('deactivate', strtolower($output));
