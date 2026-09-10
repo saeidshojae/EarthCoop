@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\LocationGovernance\LocationOptionsController;
+use App\Http\Controllers\LocationGovernance\ProfileEditController;
 use App\Http\Controllers\LocationGovernance\ProfileResidenceController;
 use Illuminate\Support\Facades\Route;
 
@@ -9,8 +10,11 @@ Route::prefix('location/options')->name('location.options.')->group(function () 
     Route::get('/{location}/children', [LocationOptionsController::class, 'children'])->name('children');
 });
 
-// Loaded after routes/web.php. This deliberately shadows the legacy profile
-// address mutation endpoint while preserving exact rollback behavior inside
-// ProfileResidenceController when the canonical registration flag is disabled.
+// Loaded after routes/web.php. These deliberately shadow the legacy profile
+// location endpoints. Each canonical adapter delegates straight back to the
+// legacy ProfileController while the rollout flag is disabled.
+Route::middleware('auth')->get('/profile/edit', ProfileEditController::class)
+    ->name('profile.edit');
+
 Route::middleware('auth')->put('/profile/update/address', [ProfileResidenceController::class, 'update'])
     ->name('profile.update.address');
