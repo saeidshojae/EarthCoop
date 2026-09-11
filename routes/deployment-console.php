@@ -12,10 +12,12 @@ Route::post('/run/{operation}', [DeploymentConsoleController::class, 'run'])
     ->whereIn('operation', [
         'migration_status',
         'reference_dry_run',
+        'topology_dry_run',
         'readiness',
         'flag_status',
         'migrate',
         'bootstrap',
         'reference_apply',
+        'topology_apply',
     ])
     ->name('run');
