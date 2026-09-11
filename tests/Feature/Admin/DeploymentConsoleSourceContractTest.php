@@ -44,7 +44,10 @@ class DeploymentConsoleSourceContractTest extends TestCase
             '/admin/deployment-console',
             'phpMyAdmin',
             'migration status',
-            'reference dry-run',
+            'reference_dry_run',
+            'topology_dry_run',
+            'topology_apply',
+            'APPLY-GOV-IR',
             'readiness',
             'HARD STOP',
         ] as $required) {
@@ -54,5 +57,23 @@ class DeploymentConsoleSourceContractTest extends TestCase
         foreach (['migrate:fresh', 'migrate:reset', 'migrate:rollback', 'truncate', 'drop'] as $forbiddenOperation) {
             $this->assertStringContainsString($forbiddenOperation, strtolower($source));
         }
+    }
+
+    public function test_primary_cutover_runbook_requires_explicit_governance_topology_before_readiness(): void
+    {
+        $path = base_path('docs/location-governance/PRODUCTION_CUTOVER_RUNBOOK.md');
+        $this->assertFileExists($path);
+
+        $source = file_get_contents($path);
+
+        $this->assertStringContainsString('Explicit Governance topology', $source);
+        $this->assertStringContainsString('location-governance:reference-topology', $source);
+        $this->assertStringContainsString('APPLY-GOV-IR', $source);
+        $this->assertStringContainsString('location-governance:readiness', $source);
+
+        $this->assertLessThan(
+            strpos($source, 'location-governance:readiness', strpos($source, '## 10A. Explicit Governance topology')),
+            strpos($source, '## 10A. Explicit Governance topology')
+        );
     }
 }

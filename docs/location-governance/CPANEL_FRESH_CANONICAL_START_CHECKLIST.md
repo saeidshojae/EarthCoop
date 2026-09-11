@@ -117,11 +117,11 @@ The server-side mapping is only:
 php artisan db:seed --class=LocationGovernanceBootstrapSeeder --force
 ```
 
-This idempotent bootstrap creates canonical schema/type/dimension/policy metadata. It is not the real geography dataset. Existing users do not need canonical Primary Residence rows at this point.
+This idempotent bootstrap creates canonical schema/type/dimension/policy metadata. It is not the real geography dataset and it does not create Governance Areas or Location-to-Governance mappings. Existing users do not need canonical Primary Residence rows at this point.
 
-## H. Iran reference dry-run
+## H. Iran reference geography dry-run
 
-Use the console's fixed `reference dry-run` operation before any reference geography apply.
+Use the console's fixed `reference_dry_run` operation before any reference geography apply.
 
 The mapping is only:
 
@@ -164,9 +164,47 @@ source=earthcoop-reference
 dataset_version=v1
 ```
 
-## J. Run read-only readiness
+Re-run `reference_dry_run` after apply and require an idempotent result before continuing.
 
-Configure the approved release evidence in Production:
+## J. Apply explicit Governance topology
+
+Governance topology is intentionally independent from government geography. Do **not** infer Governance Areas from Location types and do not insert manual mappings merely to satisfy readiness.
+
+First run the fixed `topology_dry_run` operation. Its mapping is only:
+
+```bash
+php artisan location-governance:reference-topology IR --dataset-version=v1 --dry-run
+```
+
+Review `create`, `update`, `conflict`, and `unchanged`. Any conflict is a STOP condition.
+
+After the dry-run is accepted, use the fixed `topology_apply` operation with exact confirmation phrase:
+
+```text
+APPLY-GOV-IR
+```
+
+The mapping is only:
+
+```bash
+php artisan location-governance:reference-topology IR --dataset-version=v1 --apply
+```
+
+The versioned topology dataset explicitly owns its reference Governance Areas and Location mappings. It must not rewrite unrelated Governance Areas.
+
+Re-run `topology_dry_run` after apply and require:
+
+```text
+create=0
+update=0
+conflict=0
+```
+
+with the expected reference areas reported as unchanged.
+
+## K. Run read-only readiness
+
+Configure the approved release evidence in Production only after the final approved release candidate is known:
 
 ```text
 LOCATION_GOVERNANCE_VALIDATION_SHA=<approved exact 40-char SHA>
@@ -183,11 +221,11 @@ Use the console's fixed `readiness` operation. Its server-side mapping is only:
 php artisan location-governance:readiness
 ```
 
-Fresh Canonical Start explicitly permits zero existing-user canonical residence mappings here. Missing user mappings alone are not a failure.
+Fresh Canonical Start explicitly permits zero existing-user canonical residence mappings here. Missing user mappings alone are not a failure. Canonical Governance mappings for the approved reference topology are required.
 
 `NOT READY` is a STOP condition.
 
-## K. Disable the temporary console and HARD STOP
+## L. Disable the temporary console and HARD STOP
 
 At this point report:
 
@@ -198,6 +236,8 @@ MIGRATIONS=PASS|FAIL
 BOOTSTRAP=PASS|FAIL
 REFERENCE_DRY_RUN=PASS|FAIL
 REFERENCE_APPLY=PASS|FAIL
+TOPOLOGY_DRY_RUN=PASS|FAIL
+TOPOLOGY_APPLY=PASS|FAIL
 READINESS=READY|NOT_READY
 CURRENT_FLAGS=
 ```
@@ -214,7 +254,7 @@ A separate explicit owner approval is required before Stage A (`LOCATION_GOVERNA
 
 This is a mandatory **HARD STOP**.
 
-## L. Existing users after later activation
+## M. Existing users after later activation
 
 Under Fresh Canonical Start:
 

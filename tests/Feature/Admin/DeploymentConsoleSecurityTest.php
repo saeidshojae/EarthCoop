@@ -92,6 +92,21 @@ class DeploymentConsoleSecurityTest extends TestCase
             ->assertSessionHasErrors('confirmation');
     }
 
+    public function test_wrong_topology_apply_confirmation_never_invokes_artisan(): void
+    {
+        $user = User::factory()->create(['is_admin' => true]);
+        Artisan::shouldReceive('call')->never();
+
+        $this->actingAs($user)
+            ->from('/admin/deployment-console')
+            ->post('/admin/deployment-console/run/topology_apply', [
+                'deployment_secret' => 'temporary-deployment-secret',
+                'confirmation' => 'APPLY-IR',
+            ])
+            ->assertRedirect('/admin/deployment-console')
+            ->assertSessionHasErrors('confirmation');
+    }
+
     public function test_unknown_operation_is_404_and_never_invokes_artisan(): void
     {
         $user = User::factory()->create(['is_admin' => true]);

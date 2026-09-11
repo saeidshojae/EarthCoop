@@ -25,6 +25,16 @@ class DeploymentConsoleService
             'write' => false,
             'confirmation' => null,
         ],
+        'topology_dry_run' => [
+            'command' => 'location-governance:reference-topology',
+            'arguments' => [
+                'country' => 'IR',
+                '--dataset-version' => 'v1',
+                '--dry-run' => true,
+            ],
+            'write' => false,
+            'confirmation' => null,
+        ],
         'readiness' => [
             'command' => 'location-governance:readiness',
             'arguments' => [],
@@ -61,6 +71,16 @@ class DeploymentConsoleService
             ],
             'write' => true,
             'confirmation' => 'APPLY-IR',
+        ],
+        'topology_apply' => [
+            'command' => 'location-governance:reference-topology',
+            'arguments' => [
+                'country' => 'IR',
+                '--dataset-version' => 'v1',
+                '--apply' => true,
+            ],
+            'write' => true,
+            'confirmation' => 'APPLY-GOV-IR',
         ],
     ];
 
