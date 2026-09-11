@@ -22,7 +22,7 @@ class LocationGovernanceValidationGateTest extends TestCase
             'LOCATION_GOVERNANCE: ${{ steps.regression_location_governance.outcome }}',
             $workflow
         );
-        $this->assertStringContainsString("'Location / Governance' \"$LOCATION_GOVERNANCE\"", $workflow);
+        $this->assertStringContainsString("'Location / Governance' \"\$LOCATION_GOVERNANCE\"", $workflow);
         $this->assertStringContainsString('"$LOCATION_GOVERNANCE"', $workflow);
     }
 }
