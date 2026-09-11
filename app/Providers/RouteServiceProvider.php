@@ -36,6 +36,18 @@ class RouteServiceProvider extends ServiceProvider
                 \App\Http\Middleware\FounderOperationsMiddleware::class,
             ])->group(base_path('routes/najm-hoda-founder-ops.php'));
 
+            // Temporary founder-only browser deployment surface for cPanel hosts
+            // without Terminal/SSH. The console itself remains disabled by config
+            // unless explicitly enabled and exposes only a fixed operation allowlist.
+            Route::middleware([
+                'web',
+                \App\Http\Middleware\AdminMiddleware::class,
+                \App\Http\Middleware\FounderOperationsMiddleware::class,
+            ])
+                ->prefix('admin/deployment-console')
+                ->name('admin.deployment-console.')
+                ->group(base_path('routes/deployment-console.php'));
+
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
 
@@ -138,6 +150,14 @@ class RouteServiceProvider extends ServiceProvider
 
         RateLimiter::for('najm-hoda-n8n-callback', function (Request $request) {
             return Limit::perMinute(30)->by('nh-n8n-callback:' . $request->ip());
+        });
+
+        RateLimiter::for('deployment-console-read', function (Request $request) {
+            return Limit::perMinute(20)->by('deployment-console-read:' . ($request->user()?->id ?: $request->ip()));
+        });
+
+        RateLimiter::for('deployment-console-write', function (Request $request) {
+            return Limit::perMinute(6)->by('deployment-console-write:' . ($request->user()?->id ?: $request->ip()));
         });
 
         foreach ([
