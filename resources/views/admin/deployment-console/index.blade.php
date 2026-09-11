@@ -11,9 +11,33 @@
         این صفحه فقط برای استقرار کنترل‌شده است. پیش از هر عملیات نوشتنی از دیتابیس فعلی در cPanel/phpMyAdmin خروجی کامل بگیرید. فعال‌سازی Location/Governance از این صفحه ممکن نیست.
     </div>
 
-    @if(session('deployment_console_notice'))
-        <div class="alert alert-info">{{ session('deployment_console_notice') }}</div>
+    @if(session('deployment_console_result'))
+        @php($result = session('deployment_console_result'))
+        <section class="alert {{ $result['success'] ? 'alert-success' : 'alert-danger' }} shadow-sm" aria-live="polite">
+            <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
+                <strong>نتیجهٔ {{ $result['operation'] }}</strong>
+                <span>Exit code: {{ $result['exit_code'] }}</span>
+            </div>
+            <pre class="mb-0 p-2 bg-body-tertiary border rounded small text-start" dir="ltr" style="white-space: pre-wrap;">{{ $result['output'] !== '' ? $result['output'] : 'No output.' }}</pre>
+        </section>
     @endif
+
+    <section class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent"><h2 class="h6 mb-0">وضعیت فعلی rollout flagها — فقط خواندنی</h2></div>
+        <div class="card-body">
+            <div class="row g-2">
+                @foreach($flags as $flag => $enabled)
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <div class="border rounded p-2 d-flex justify-content-between gap-2">
+                            <code>{{ $flag }}</code>
+                            <span class="badge {{ $enabled ? 'text-bg-warning' : 'text-bg-success' }}">{{ $enabled ? 'ON' : 'OFF' }}</span>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+            <p class="small text-muted mb-0 mt-3">این صفحه هیچ کنترل نوشتنی برای تغییر flagها ندارد.</p>
+        </div>
+    </section>
 
     <div class="row g-3">
         @foreach($operations as $key => $operation)
@@ -45,7 +69,7 @@
                             @endif
 
                             <button class="btn {{ $operation['write'] ? 'btn-outline-warning' : 'btn-outline-primary' }}" type="submit">
-                                بررسی و ادامه
+                                {{ $operation['write'] ? 'اجرای عملیات تأییدشده' : 'اجرا' }}
                             </button>
                         </form>
                     </div>
