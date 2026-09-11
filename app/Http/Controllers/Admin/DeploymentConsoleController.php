@@ -21,6 +21,7 @@ class DeploymentConsoleController extends Controller
 
         return view('admin.deployment-console.index', [
             'operations' => $this->console->operations(),
+            'flags' => $this->console->flags(),
         ]);
     }
 
@@ -49,7 +50,13 @@ class DeploymentConsoleController extends Controller
             ]);
         }
 
-        return back()->with('deployment_console_notice', 'اعتبارسنجی عملیات انجام شد؛ اجرای دستور در مرحله بعدی فعال می‌شود.');
+        $result = $this->console->run(
+            $operation,
+            (int) $request->user()->id,
+            $request->ip()
+        );
+
+        return back()->with('deployment_console_result', $result);
     }
 
     private function ensureEnabled(): void
