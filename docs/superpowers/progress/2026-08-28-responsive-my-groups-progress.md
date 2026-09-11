@@ -51,6 +51,9 @@ This is the persistent recovery checkpoint for the responsive-system rollout. Up
 - Minimal root-cause fix: shared filter bridge now owns filter clicks in capture phase (`document.addEventListener('click', ..., true)`), so local legacy bubbling handlers cannot prevent mobile-card filtering. Runtime fix commit: `fce88d73c49f65e76a20095f08a0484b3876c3b6`.
 - **FOCUSED GREEN:** Responsive Contract Validation run `33206399442`, job `98968437378`, completed `success` on `fce88d73c49f65e76a20095f08a0484b3876c3b6`.
 - **FULL GREEN:** EarthCoop Integration Full Validation run `33206397902`, job `98968434814`, completed `success` on the same runtime checkpoint. Every gate was green, including route boot, Group Chat, Group Admin/Identity, Najm Hoda+n8n, Governance, Najm Bahar, Stock, Group Chat JavaScript, Full Project PHPUnit, and the final regression gate. This also validates the earlier `/groups` authentication fix in the integrated branch state.
+- 2026-08-29 00:04 +03:30 — Responsive legal-document pass started for `/terms` and Najm Bahar agreement. During implementation, the first legal-document commits were mistakenly written to `agent/pre-main-ui-polish` instead of the active responsive branch. This was detected from Founder local pull evidence (`agent/pre-main-ui-polish-responsive` still at `253ccf23...`). No force-move was used because the branches had diverged (`responsive` contained 36 commits not present on `pre-main-ui-polish`).
+- Safe recovery: created temporary branch `agent/pre-main-ui-polish-responsive-docfix` directly from the correct responsive HEAD `253ccf23ab25209ad048f4b65d760e02d0f557df`, ported only the three intended legal-document files, verified the temporary branch was strictly `ahead_by=3, behind_by=0`, then fast-forwarded `agent/pre-main-ui-polish-responsive` non-forcibly to `ce6b93da48b5b9a68b2b86eadf955b667404dd1a`.
+- Legal-document files now on the correct branch: `resources/css/document-pages.css`, `resources/css/vite.css` import, and `tests/js/responsive/document-pages-contract.test.js`. The shared stylesheet gives long-form legal pages a 12px mobile gutter, reduced nested padding, stable rich-text width, safe media/table overflow, and hierarchy accents without cumulative indentation.
 
 ## Current implementation behavior
 - Desktop keeps comparative tables.
@@ -64,25 +67,16 @@ This is the persistent recovery checkpoint for the responsive-system rollout. Up
 - Member counts are loaded in one grouped query per rendered group collection rather than one count query per group. Specialty/experience approval relations are bulk-loaded only for specialty lists.
 - Shared responsive primitives are additive/opt-in; there is no blanket `.container`, all-heading or all-table rewrite.
 - `/groups` is now an authenticated boundary: unauthenticated requests redirect to login before `GroupController@index` executes.
+- `/terms` and Najm Bahar agreement now share a legal-document responsive stylesheet with a 12px mobile reading gutter, reduced nested padding, non-cumulative child indentation, and responsive rich-text/media handling.
 
 ## Verification state
-**READY FOR FOUNDER UAT — AUTH ROUTE + SPECIALTY MOBILE FILTER FIXED.**
+**LEGAL DOCUMENT RESPONSIVE PASS — CORRECT BRANCH RECOVERED; CI PENDING.**
 
-Validated runtime checkpoint:
+Current responsive branch HEAD:
+`ce6b93da48b5b9a68b2b86eadf955b667404dd1a`
+
+Last fully validated pre-document runtime checkpoint:
 `fce88d73c49f65e76a20095f08a0484b3876c3b6`
-
-Focused validation:
-- Workflow: EarthCoop Responsive Contract Validation
-- Run: `33206399442`
-- Job: `98968437378`
-- Conclusion: `success`
-
-Full integration validation:
-- Workflow: EarthCoop Integration Full Validation
-- Run: `33206397902`
-- Job: `98968434814`
-- Conclusion: `success`
-- All regression gates completed successfully.
 
 ## Founder UAT checklist
 Pull the latest branch and test at 360px, 390px, 768px and desktop:
@@ -97,9 +91,12 @@ Pull the latest branch and test at 360px, 390px, 768px and desktop:
 9. No horizontal group-list scrolling.
 10. Desktop still shows comparative tables only; mobile/tablet shows cards only.
 11. Persian group names wrap naturally and do not stack word-by-word vertically.
+12. `/terms`: parent/child accordion content uses nearly the full mobile width without cumulative indentation.
+13. Najm Bahar agreement: section/subsection text uses the same wide mobile reading pattern.
+14. Admin-authored rich text, images and tables do not break the viewport.
 
 ## Next exact action
-Founder pulls the branch, hard-refreshes the browser to replace the cached `responsive-system.js`, and resumes mobile UAT. If another visual or behavioral defect appears, reproduce it with a focused regression before changing runtime code.
+Wait for validation on the recovered responsive HEAD. If green, Founder pulls `agent/pre-main-ui-polish-responsive`, hard-refreshes/builds assets, and UATs `/terms` plus Najm Bahar agreement on mobile widths.
 
 ## Merge safety
 No merge to `main` is authorized. This branch is for implementation/UAT only.
