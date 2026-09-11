@@ -38,6 +38,16 @@ class LocationGovernanceControlCenterTest extends TestCase
         $response->assertSee('نگاشت حکمرانی');
     }
 
+    public function test_admin_sidebar_exposes_location_governance_control_center(): void
+    {
+        $sidebar = file_get_contents(resource_path('views/admin/partials/sidebar.blade.php'));
+
+        $this->assertIsString($sidebar);
+        $this->assertStringContainsString("route('admin.location-governance.index')", $sidebar);
+        $this->assertStringContainsString('مکان و حکمرانی', $sidebar);
+        $this->assertStringContainsString("request()->routeIs('admin.location-governance.*')", $sidebar);
+    }
+
     public function test_sensitive_review_actions_are_explicit_admin_writes_and_audited(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
