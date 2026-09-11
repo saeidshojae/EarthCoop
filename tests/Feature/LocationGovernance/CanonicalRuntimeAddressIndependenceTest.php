@@ -26,6 +26,21 @@ class CanonicalRuntimeAddressIndependenceTest extends TestCase
         $this->assertTrue(app(ProfileCompletionService::class)->isComplete($user));
     }
 
+    public function test_canonical_resident_without_legacy_address_can_render_profile(): void
+    {
+        config()->set('location-governance.runtime_enabled', true);
+        config()->set('location-governance.registration_enabled', true);
+
+        $user = $this->canonicalUserWithoutLegacyAddress();
+
+        $this->assertFalse(Address::where('user_id', $user->id)->exists());
+
+        $response = $this->actingAs($user)->get('/profile');
+
+        $response->assertOk();
+        $response->assertViewIs('profile.profile');
+    }
+
     public function test_legacy_profile_completion_still_requires_address_when_canonical_runtime_is_disabled(): void
     {
         config()->set('location-governance.runtime_enabled', false);
