@@ -11,7 +11,7 @@ return [
     |
     | Here you may specify which of the database connections below you wish
     | to use as your default connection for all database work. Of course
-    | you may use many connections at once.
+    | you may use many connections at once using the Database library.
     |
     */
 
@@ -112,8 +112,9 @@ return [
     | Redis Databases
     |--------------------------------------------------------------------------
     |
-    | Redis is an open source, fast, and advanced key-value store providing
-    | commands than Memcached offers. Laravel makes it easy to dig right in.
+    | Redis is an open source, fast, and advanced key-value store that also
+    | provides a richer body of commands than a typical key-value system
+    | such as APC or Memcached. Laravel makes it easy to dig right in.
     |
     */
 
