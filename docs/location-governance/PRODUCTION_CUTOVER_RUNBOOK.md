@@ -35,7 +35,7 @@ FULL_VALIDATION_JOB=<exact successful job ID>
 UAT_EVIDENCE=<approved UAT evidence reference>
 ```
 
-The repository reference dataset currently lives at `database/reference/ir/v1` and the importer records source `earthcoop-reference` with dataset version `v1`.
+The repository reference dataset currently lives at `database/reference/ir/v1`. Geography import evidence uses source `earthcoop-reference` with dataset version `v1`; the explicit Governance topology is separately versioned in the same reviewed dataset directory and must not be inferred from government geography.
 
 Do not substitute a different dataset/version during the window. A new dataset version requires its own review and readiness evidence.
 
@@ -137,7 +137,7 @@ php artisan migrate:status
 php artisan location-governance:readiness
 ```
 
-At this point readiness may still be `NOT READY` if bootstrap/reference-import evidence is not yet present. That is expected only if the approved procedure has not reached those steps. Any unexpected migration failure triggers rollback/stop; do not improvise schema repair during the window.
+At this point readiness may still be `NOT READY` if bootstrap/reference-import/topology evidence is not yet present. That is expected only if the approved procedure has not reached those steps. Any unexpected migration failure triggers rollback/stop; do not improvise schema repair during the window.
 
 ## 8. Bootstrap canonical schema/types/policies
 
@@ -147,7 +147,7 @@ Only after explicit Production authorization, seed the small idempotent Location
 php artisan db:seed --class=LocationGovernanceBootstrapSeeder --force
 ```
 
-This bootstrap is intended for schemas/types/dimensions/policies only. It must not be treated as the real reference geography import.
+This bootstrap is intended for schemas/types/dimensions/policies only. It must not be treated as the real reference geography import and it does not create Governance Areas or Location-to-Governance mappings.
 
 Run boot/read-only checks before proceeding.
 
@@ -186,13 +186,58 @@ php artisan location:reference-import IR --dataset-version=v1 --apply
 
 Record the resulting import audit row and counts. Do not manually edit audit evidence to force readiness.
 
-After apply:
+Re-run the geography dry-run after apply:
 
 ```bash
-php artisan location-governance:readiness
+php artisan location:reference-import IR --dataset-version=v1 --dry-run
 ```
 
-The command is read-only and fail-closed. It must report all checks as passing before any canonical runtime flag is enabled. Required release evidence must be provided through the deployment environment/config for the exact approved candidate:
+Require an idempotent result (`create=0`, `update=0`, `deactivate=0`, `conflict=0`) before continuing.
+
+## 10A. Explicit Governance topology dry-run and apply
+
+Governance topology is intentionally independent from government geography. Do not generate Governance Areas merely by mirroring Location types and do not insert manual mappings solely to satisfy readiness.
+
+First run the reviewed topology without writes:
+
+```bash
+php artisan location-governance:reference-topology IR --dataset-version=v1 --dry-run
+```
+
+Record:
+
+```text
+create=
+update=
+conflict=
+unchanged=
+```
+
+Any conflict is a STOP condition. Compare the proposed Governance Areas, their parentage, ranks/types and Location mappings with the reviewed versioned topology dataset.
+
+Only after the dry-run is accepted and the exact write has separate Production authorization:
+
+```bash
+php artisan location-governance:reference-topology IR --dataset-version=v1 --apply
+```
+
+In the browser Deployment Console the corresponding write action is `topology_apply` and requires the exact secondary confirmation phrase:
+
+```text
+APPLY-GOV-IR
+```
+
+The importer may create/update only Governance Areas explicitly owned by the reviewed reference-topology dataset. An existing key not owned by that dataset is a conflict, not permission to overwrite unrelated governance history.
+
+After apply, re-run:
+
+```bash
+php artisan location-governance:reference-topology IR --dataset-version=v1 --dry-run
+```
+
+Require `create=0`, `update=0`, `conflict=0` with the expected areas reported as unchanged before readiness.
+
+Then provide required release evidence through the deployment environment/config for the exact approved candidate:
 
 ```text
 LOCATION_GOVERNANCE_VALIDATION_SHA=<exact approved 40-char SHA>
@@ -203,7 +248,13 @@ LOCATION_GOVERNANCE_TARGET_DATASET_SOURCE=earthcoop-reference
 LOCATION_GOVERNANCE_TARGET_DATASET_VERSION=v1
 ```
 
-Do not proceed on `NOT READY`.
+Run:
+
+```bash
+php artisan location-governance:readiness
+```
+
+The command is read-only and fail-closed. It must report all checks as passing before any canonical runtime flag is enabled. Do not proceed on `NOT READY`.
 
 ## 11. Staged rollout — one flag boundary at a time
 
@@ -307,7 +358,8 @@ Capture:
 - deployed SHA;
 - final flag values;
 - readiness output (`--json` may be archived);
-- import run ID and counts;
+- geography import run ID and counts;
+- Governance topology dry-run/apply/idempotency evidence;
 - smoke-test results for each stage;
 - application/queue/error-log observations;
 - start/end time of each stage;
@@ -323,7 +375,8 @@ Cutover is accepted only when:
 - exact approved SHA is deployed;
 - backup and isolated restore rehearsal are proven;
 - additive migrations completed without unresolved errors;
-- target reference import is completed with zero unresolved conflicts;
+- target reference geography import is completed with zero unresolved conflicts;
+- explicit reference Governance topology is applied with zero unresolved conflicts and an idempotent post-apply dry-run;
 - `location-governance:readiness` returns success;
 - each rollout stage passed its smoke checks before the next was enabled;
 - no critical regression is observed in mature subsystems;
