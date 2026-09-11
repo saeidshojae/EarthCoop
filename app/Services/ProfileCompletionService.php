@@ -6,6 +6,7 @@ use App\Models\Address;
 use App\Models\User;
 use App\Models\UserExperience;
 use App\Models\UserPointTransaction;
+use App\Services\LocationGovernance\LocationTreeResolver;
 use Illuminate\Support\Facades\Log;
 
 class ProfileCompletionService
@@ -18,17 +19,34 @@ class ProfileCompletionService
             && $user->national_id
             && $user->phone;
         $hasExperience = UserExperience::where('user_id', $user->id)->exists();
+        $hasResidence = $this->hasRequiredResidence($user);
 
-        if ((bool) config('location-governance.registration_enabled')) {
-            $hasAddress = $user->locationRelationships()
-                ->where('relationship_type', 'primary_residence')
-                ->whereNull('ended_at')
-                ->exists();
-        } else {
-            $hasAddress = Address::where('user_id', $user->id)->exists();
+        return (bool) ($step1Complete && $hasExperience && $hasResidence);
+    }
+
+    public function hasRequiredResidence(User $user): bool
+    {
+        if (! (bool) config('location-governance.runtime_enabled')) {
+            return Address::where('user_id', $user->id)->exists();
         }
 
-        return (bool) ($step1Complete && $hasExperience && $hasAddress);
+        $primaryResidence = $user->locationRelationships()
+            ->with('location')
+            ->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')
+            ->orderByDesc('started_at')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($primaryResidence?->location === null) {
+            return false;
+        }
+
+        // Canonical runtime validates the residence through the Location tree;
+        // it never needs a shadow legacy Address row merely to enter the app.
+        app(LocationTreeResolver::class)->ancestors($primaryResidence->location);
+
+        return true;
     }
 
     public function maybeAward(User $user): bool
