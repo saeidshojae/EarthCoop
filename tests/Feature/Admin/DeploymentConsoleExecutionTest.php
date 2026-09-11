@@ -49,6 +49,21 @@ class DeploymentConsoleExecutionTest extends TestCase
         $this->assertStringContainsString('conflict=0', $result['output']);
     }
 
+    public function test_service_runs_topology_dry_run_with_exact_fixed_arguments(): void
+    {
+        $this->expectArtisan('location-governance:reference-topology', [
+            'country' => 'IR',
+            '--dataset-version' => 'v1',
+            '--dry-run' => true,
+        ], 0, 'create: 5 update: 0 conflict: 0 unchanged: 0');
+        $this->expectSanitizedAudit('topology_dry_run', false, 0, true, 49, null);
+
+        $result = app(DeploymentConsoleService::class)->run('topology_dry_run', 49);
+
+        $this->assertTrue($result['success']);
+        $this->assertStringContainsString('conflict: 0', $result['output']);
+    }
+
     public function test_service_runs_readiness_with_exact_command(): void
     {
         $this->expectArtisan('location-governance:readiness', [], 0, 'READY');
@@ -92,6 +107,20 @@ class DeploymentConsoleExecutionTest extends TestCase
         $this->expectSanitizedAudit('reference_apply', true, 0, true, 46, null);
 
         $result = app(DeploymentConsoleService::class)->run('reference_apply', 46);
+
+        $this->assertTrue($result['success']);
+    }
+
+    public function test_service_runs_topology_apply_with_exact_fixed_arguments(): void
+    {
+        $this->expectArtisan('location-governance:reference-topology', [
+            'country' => 'IR',
+            '--dataset-version' => 'v1',
+            '--apply' => true,
+        ], 0, 'Applied topology');
+        $this->expectSanitizedAudit('topology_apply', true, 0, true, 50, null);
+
+        $result = app(DeploymentConsoleService::class)->run('topology_apply', 50);
 
         $this->assertTrue($result['success']);
     }
