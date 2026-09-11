@@ -33,11 +33,14 @@ class ProductionReadinessCommandTest extends TestCase
         config()->set('location-governance.validation_sha', '7ea742e7a4b8157de70029007bbdb4edd1409e94');
         config()->set('location-governance.uat_evidence', 'Full Validation #2414 / run 34605952857');
 
+        $this->assertDatabaseCount('user_location_relationships', 0);
+
         $before = [
             'locations' => DB::table('locations')->count(),
             'governance_areas' => DB::table('governance_areas')->count(),
             'imports' => DB::table('location_import_runs')->count(),
             'proposals' => DB::table('location_proposals')->count(),
+            'user_location_relationships' => DB::table('user_location_relationships')->count(),
         ];
 
         $this->artisan('location-governance:readiness')
@@ -49,6 +52,7 @@ class ProductionReadinessCommandTest extends TestCase
             'governance_areas' => DB::table('governance_areas')->count(),
             'imports' => DB::table('location_import_runs')->count(),
             'proposals' => DB::table('location_proposals')->count(),
+            'user_location_relationships' => DB::table('user_location_relationships')->count(),
         ]);
     }
 
