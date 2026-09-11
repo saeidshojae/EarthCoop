@@ -126,7 +126,8 @@ jobs:
           set -o pipefail
           php artisan test \
             tests/Unit/Deployment/DeploymentConsoleServiceTest.php \
-            tests/Feature/Admin/DeploymentConsoleSourceContractTest.php 2>&1 | tee regression-logs/deployment-console.log
+            tests/Feature/Admin/DeploymentConsoleSourceContractTest.php \
+            tests/Feature/Admin/DeploymentConsoleSecurityTest.php 2>&1 | tee regression-logs/deployment-console.log
 
       - name: Regression — Group Chat
         id: regression_group_chat
