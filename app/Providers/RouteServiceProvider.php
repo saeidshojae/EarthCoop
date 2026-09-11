@@ -50,6 +50,14 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->group(base_path('routes/location-proposals.php'));
 
+            // Location/Governance review is an explicit administrator surface.
+            // Najm Hoda may recommend here, while every sensitive write remains
+            // behind AdminMiddleware and an auditable human POST action.
+            Route::middleware(['web', \App\Http\Middleware\AdminMiddleware::class])
+                ->prefix('admin/location-governance')
+                ->name('admin.location-governance.')
+                ->group(base_path('routes/location-governance-admin.php'));
+
             // User-facing participation credit regulation. This route stays in a
             // separate read-only surface so rendering the regulation never seeds or
             // mutates the reputation rules it is documenting.
