@@ -80,7 +80,7 @@ class GlobalArchitectureScenarioTest extends TestCase
         }
 
         $this->assertStringContainsString(
-            'same verifier',
+            'same_user_cannot_inflate',
             strtolower(file_get_contents(base_path('tests/Feature/LocationGovernance/DistinctVerifierThresholdTest.php'))),
         );
         $this->assertStringContainsString(
