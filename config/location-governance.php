@@ -14,8 +14,8 @@ return [
     // imports data, changes flags, or mutates the database.
     'target_country' => strtoupper((string) env('LOCATION_GOVERNANCE_TARGET_COUNTRY', 'IR')),
     'target_schema' => (string) env('LOCATION_GOVERNANCE_TARGET_SCHEMA', 'ir-reference-v1'),
-    'target_dataset_source' => (string) env('LOCATION_GOVERNANCE_TARGET_DATASET_SOURCE', 'reference'),
-    'target_dataset_version' => (string) env('LOCATION_GOVERNANCE_TARGET_DATASET_VERSION', '1'),
+    'target_dataset_source' => (string) env('LOCATION_GOVERNANCE_TARGET_DATASET_SOURCE', 'earthcoop-reference'),
+    'target_dataset_version' => (string) env('LOCATION_GOVERNANCE_TARGET_DATASET_VERSION', 'v1'),
     'validation_sha' => env('LOCATION_GOVERNANCE_VALIDATION_SHA'),
     'uat_evidence' => env('LOCATION_GOVERNANCE_UAT_EVIDENCE'),
 
