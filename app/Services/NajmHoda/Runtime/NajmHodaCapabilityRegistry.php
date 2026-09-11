@@ -29,6 +29,7 @@ class NajmHodaCapabilityRegistry
             'version' => 1,
             'risk' => 'low',
             'mode' => 'propose',
+            'human_approval_required' => false,
             'required_input' => [],
             'optional_input' => [],
             'output' => [],
@@ -103,15 +104,17 @@ class NajmHodaCapabilityRegistry
             true
         );
         $risk = (string) ($contract['risk'] ?? 'low');
-        $defaultMode = (string) ($contract['mode'] ?? 'propose');
+        $humanApprovalRequired = (bool) ($contract['human_approval_required'] ?? false);
 
         // Fail closed: an apply request can only become apply when permissioning
-        // is enabled and delegation enforcement is explicitly active.
+        // and delegation are active, the action is low-risk, and its contract does
+        // not reserve the final decision for a human reviewer.
         $canApply = $applyRequested
             && $allowApplyLowRisk
             && $risk === 'low'
             && $permissioningEnabled
-            && $delegationEnforced;
+            && $delegationEnforced
+            && !$humanApprovalRequired;
 
         $mode = $canApply ? 'apply' : 'propose';
 
@@ -122,6 +125,7 @@ class NajmHodaCapabilityRegistry
             'contract_version' => (int) ($contract['version'] ?? 1),
             'risk' => $risk,
             'mode' => $mode,
+            'human_approval_required' => $humanApprovalRequired,
             'reason' => $reason,
             'goals' => $goals,
             'input' => $input,
@@ -133,6 +137,7 @@ class NajmHodaCapabilityRegistry
             'contract_version' => (int) ($contract['version'] ?? 1),
             'risk' => $risk,
             'mode' => $mode,
+            'human_approval_required' => $humanApprovalRequired,
             'apply_requested' => $applyRequested,
             'delegation_enforced' => $delegationEnforced,
         ]);
