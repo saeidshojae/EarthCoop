@@ -126,7 +126,7 @@ class LocationGovernanceReadinessCommand extends Command
             return DB::table('location_schemas')
                 ->where('key', (string) config('location-governance.target_schema'))
                 ->where('country_code', (string) config('location-governance.target_country'))
-                ->where('is_active', true)
+                ->where('status', 'active')
                 ->exists();
         } catch (Throwable) {
             return false;
