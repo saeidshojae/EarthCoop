@@ -22,7 +22,7 @@ class LocationGovernanceBootstrapSeeder extends Seeder
                 [
                     'country_code' => 'IR',
                     'name' => 'Iran reference geography',
-                    'version' => '1',
+                    'version' => 'v1',
                     'status' => 'active',
                     'metadata' => ['bootstrap' => true],
                 ],
