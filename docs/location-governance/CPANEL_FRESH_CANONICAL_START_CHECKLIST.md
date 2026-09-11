@@ -1,6 +1,6 @@
 # cPanel Fresh Canonical Start Checklist
 
-This checklist adapts the C13 Location/Governance cutover package to the current EarthCoop hosting model (GitHub -> FTPS/cPanel) and the approved Fresh Canonical Start policy.
+This checklist adapts the C13 Location/Governance cutover package to the current EarthCoop hosting model (GitHub -> FTPS/cPanel), the approved Fresh Canonical Start policy, and the temporary browser deployment console used when cPanel has no Terminal/SSH.
 
 It does **not** authorize feature-flag activation or destructive database work.
 
@@ -30,7 +30,7 @@ Never truncate/drop the Production database.
 
 ## B. Create a current cPanel/database backup
 
-Use the hosting provider/cPanel-supported backup mechanism or phpMyAdmin export for the actual Production database.
+Use the hosting provider/cPanel-supported backup mechanism or phpMyAdmin export for the actual Production database before any write action.
 
 Record at minimum:
 
@@ -62,52 +62,74 @@ If the variables do not yet exist in Production `.env`, omission/default-false m
 
 The existing repository deploy workflow uploads Production files from `main` via FTPS after its safety gates. Do not merge/deploy a moving branch accidentally. The release must identify the exact approved commit.
 
-After code deployment but before any Location/Governance flag activation:
+The temporary deployment console is disabled by default. After the approved code is deployed, configure only these temporary values through the cPanel environment/.env editor:
 
-```bash
-php artisan about
-php artisan migrate:status
+```text
+DEPLOYMENT_CONSOLE_ENABLED=true
+DEPLOYMENT_CONSOLE_SECRET=<temporary high-entropy secret>
 ```
 
-The application must boot normally.
+Do not reuse an account password as the deployment secret. Do not send the secret in screenshots or chat logs.
 
-## E. Apply additive migrations only
+Then sign in as the founder/admin and open:
 
-Only during the separately approved Production preparation window:
+```text
+/admin/deployment-console
+```
+
+The console must show that Location/Governance rollout flags are still OFF.
+
+## E. Inspect migration status in the browser console
+
+Run the fixed `migration status` operation from the deployment console. It maps only to Laravel `migrate:status` and does not write to the database.
+
+Review the pending migration list before any write. Unexpected or unrelated pending migrations are a STOP condition until reviewed.
+
+## F. Apply additive migrations only
+
+After the pending list is accepted, use the console's fixed `migrate` operation and enter the exact secondary confirmation phrase:
+
+```text
+MIGRATE
+```
+
+The only server-side command mapping for this action is:
 
 ```bash
 php artisan migrate --force
 ```
 
-Then:
-
-```bash
-php artisan migrate:status
-```
-
 Any migration error is a STOP condition. Do not improvise a destructive rollback.
 
-## F. Bootstrap canonical metadata
+Afterward, run `migration status` again and confirm the intended migrations are complete.
 
-Run the idempotent small bootstrap:
+## G. Bootstrap canonical metadata
+
+Use the fixed bootstrap operation and exact confirmation phrase:
+
+```text
+BOOTSTRAP
+```
+
+The server-side mapping is only:
 
 ```bash
 php artisan db:seed --class=LocationGovernanceBootstrapSeeder --force
 ```
 
-This creates canonical schema/type/dimension/policy metadata. It is not the real geography dataset.
+This idempotent bootstrap creates canonical schema/type/dimension/policy metadata. It is not the real geography dataset. Existing users do not need canonical Primary Residence rows at this point.
 
-Existing users do not need canonical Primary Residence rows at this point.
+## H. Iran reference dry-run
 
-## G. Dry-run Iran reference geography
+Use the console's fixed `reference dry-run` operation before any reference geography apply.
 
-Before writes:
+The mapping is only:
 
 ```bash
 php artisan location:reference-import IR --dataset-version=v1 --dry-run
 ```
 
-Record:
+Record and review:
 
 ```text
 create=
@@ -117,9 +139,17 @@ conflict=
 unchanged=
 ```
 
-STOP if conflicts are unresolved or the counts look unexpectedly destructive.
+STOP if conflicts are unresolved or counts look unexpectedly destructive.
 
-## H. Apply reference geography only after the dry-run is accepted
+## I. Apply reference geography only after accepted dry-run
+
+If the dry-run is accepted, use the fixed reference apply action with exact confirmation phrase:
+
+```text
+APPLY-IR
+```
+
+The mapping is only:
 
 ```bash
 php artisan location:reference-import IR --dataset-version=v1 --apply
@@ -134,7 +164,7 @@ source=earthcoop-reference
 dataset_version=v1
 ```
 
-## I. Run read-only readiness
+## J. Run read-only readiness
 
 Configure the approved release evidence in Production:
 
@@ -147,10 +177,9 @@ LOCATION_GOVERNANCE_TARGET_DATASET_SOURCE=earthcoop-reference
 LOCATION_GOVERNANCE_TARGET_DATASET_VERSION=v1
 ```
 
-Then:
+Use the console's fixed `readiness` operation. Its server-side mapping is only:
 
 ```bash
-php artisan config:clear
 php artisan location-governance:readiness
 ```
 
@@ -158,7 +187,7 @@ Fresh Canonical Start explicitly permits zero existing-user canonical residence 
 
 `NOT READY` is a STOP condition.
 
-## J. Stop before activation
+## K. Disable the temporary console and HARD STOP
 
 At this point report:
 
@@ -173,11 +202,19 @@ READINESS=READY|NOT_READY
 CURRENT_FLAGS=
 ```
 
-Do **not** enable any canonical runtime flag yet.
+Then set:
+
+```text
+DEPLOYMENT_CONSOLE_ENABLED=false
+```
+
+Do **not** enable any canonical runtime flag yet. The deployment console intentionally provides no flag-mutation action.
 
 A separate explicit owner approval is required before Stage A (`LOCATION_GOVERNANCE_RUNTIME_ENABLED=true`) and the staged activation sequence described in `PRODUCTION_CUTOVER_RUNBOOK.md`.
 
-## K. Existing users after later activation
+This is a mandatory **HARD STOP**.
+
+## L. Existing users after later activation
 
 Under Fresh Canonical Start:
 
