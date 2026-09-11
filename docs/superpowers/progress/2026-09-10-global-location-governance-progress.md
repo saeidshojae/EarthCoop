@@ -8,20 +8,39 @@
 
 ## Current checkpoint
 
-C12-B is technically validated on implementation candidate `7ea742e7a4b8157de70029007bbdb4edd1409e94`.
+C13 production-cutover **package preparation** is complete and is now at its mandatory HARD STOP. No Production cutover has been executed or authorized.
 
-GitHub Actions evidence:
+Preparation candidate before evidence-only documentation update: `c34f7ef406cac4bf512ee789c31688e65c764189`.
+
+GitHub Actions evidence on that exact candidate:
 
 - Workflow: `EarthCoop Integration Full Validation`
-- Run: `#2414` (`34605952857`)
-- Job: `full-validation` (`103284291867`)
+- Run: `#2424` (`34610982735`)
+- Job: `full-validation` (`103301574562`)
 - Conclusion: `success`
 - Focused `Regression — Location / Governance`: `success`
 - Mature release gates retained and green: Group Chat, Group Admin / Identity, Najm Hoda + n8n, Governance, Najm Bahar, Stock, Group Chat JavaScript
 - Full Project PHPUnit: `success`
+- Regression diagnostics upload: `success`
 - Enforce regression gate: `success`
 
-The preceding RED/GREEN history for the new CI gate is preserved in Git history. In particular, Full Validation #2411 established the intended RED because the focused gate was absent. Full Validation #2413 then exposed a defect in the new CI contract test itself (PHP interpolation of `$LOCATION_GOVERNANCE`), not a product or database regression. Commit `7ea742e7a4b8157de70029007bbdb4edd1409e94` corrected only that test literal, after which #2414 completed fully green.
+The branch remains isolated from `main`; PR #103 is still Draft and unmerged.
+
+## C13 preparation completed
+
+C13 now provides:
+
+- read-only fail-closed command `location-governance:readiness`;
+- tests proving missing release evidence/conflicts fail closed and a complete valid fixture can pass without mutating domain/import/proposal state;
+- readiness target aligned with the actual canonical importer/dataset identity (`IR`, `ir-reference-v1`, `earthcoop-reference`, `v1`);
+- `docs/location-governance/PRODUCTION_CUTOVER_RUNBOOK.md`;
+- `docs/location-governance/PRODUCTION_ROLLBACK_RUNBOOK.md`;
+- explicit staged flag order and smoke-test checkpoints;
+- non-destructive rollback policy;
+- explicit ban on legacy removal during initial cutover;
+- documented requirement for Production backup + verified restore rehearsal evidence before GO.
+
+C13 testing caught and corrected two readiness defects before Production: an invalid `is_active` schema check instead of `status = active`, and stale `reference/1` dataset defaults instead of the real `earthcoop-reference/v1` contract.
 
 ## Checkpoint status
 
@@ -40,26 +59,26 @@ The preceding RED/GREEN history for the new CI gate is preserved in Git history.
 | C10 | Community policy and crowdsourced proposals | Complete |
 | C11 | Optional geolocation, admin control center, Najm Hoda human-gated review | Complete |
 | C12-A | Fresh bootstrap and permanent global/UAT scenarios | Complete |
-| C12-B | Focused CI gate, full validation and UAT candidate | Complete — validated candidate above |
-| C13 | Production cutover package | Not executed; preparation only is next |
-| C14 | Legacy retirement | Not started; separate explicit approval required |
-
-## C12 acceptance evidence
-
-C12-A provides an idempotent small bootstrap seeder and permanent scenario coverage without creating real production geography. The scenario suite covers urban and rural branches, village endpoints, micro-location Community behavior, duplicate proposals, distinct-user verification threshold, optional GPS agreement/conflict, residence transfer quota, non-residence voting exclusion, five membership dimensions, materialization modes, election topology and location lifecycle history.
-
-C12-B adds a blocking Location/Governance regression step to the existing integration workflow. It does not remove or weaken any mature release gate. The final validation run proves the focused suite and complete project suite can pass together on a disposable CI database.
+| C12-B | Focused CI gate, full validation and UAT candidate | Complete |
+| C13 | Production cutover package | Prepared + CI-validated; HARD STOP before Production |
+| C14 | Legacy retirement | Not started; second explicit approval required |
 
 ## Safety state
 
 - No direct change or merge to `main` has been performed.
-- No production `migrate:fresh`, truncation, table drop, destructive migration, bootstrap or reference import has been performed.
-- Runtime cutovers remain reversible through the architecture's feature flags where specified.
-- Legacy spatial data remains available as rollback support.
+- PR #103 remains Draft and unmerged.
+- No Production `migrate`, `migrate:fresh`, truncation, table drop, destructive migration, bootstrap or reference import has been performed.
+- No Production Location/Governance rollout flag has been changed.
+- Runtime cutovers remain reversible through feature flags and application SHA rollback.
+- Legacy spatial data remains intact and available as rollback support.
 - Najm Hoda sensitive Location/Governance actions remain human-approval-gated.
-- C13 preparation does **not** constitute authorization to execute a production cutover.
-- C14 destructive retirement work requires a second, separate explicit approval.
+- Production backup/restore rehearsal evidence has **not** yet been produced; this is a blocking prerequisite for any cutover authorization.
+- C14 destructive retirement work requires a second, separate explicit approval after post-cutover audit and observation.
 
-## Next checkpoint
+## Required next action
 
-Proceed to C13 only as a **production cutover package preparation** task: create/read the readiness checks and operator runbooks, identify exact production commands and rollback checkpoints, then stop before any production-changing command. A new explicit user approval is required for the exact cutover action.
+**STOP before any Production-changing operation.**
+
+Before a Production cutover can be considered GO, obtain current Production backup evidence, successfully rehearse restore into an isolated non-Production environment, capture current Production SHA/flag values, run the read-only readiness command with immutable validation/UAT evidence, and then obtain a new explicit user approval for the exact staged cutover action.
+
+The approved implementation plan does not itself authorize Production execution.
