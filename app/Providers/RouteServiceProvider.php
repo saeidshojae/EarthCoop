@@ -39,6 +39,12 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
 
+            // Canonical profile runtime shadows only the profile read route. The
+            // adapter delegates to the legacy controller when runtime is disabled,
+            // preserving rollback without requiring a legacy Address when enabled.
+            Route::middleware('web')
+                ->group(base_path('routes/profile-canonical-runtime.php'));
+
             // Canonical location selection is isolated behind dark-launch flags so
             // legacy registration/profile geography remains authoritative until C5 cutover.
             Route::middleware('web')
