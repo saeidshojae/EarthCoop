@@ -1,0 +1,62 @@
+{
+  "country": "IR",
+  "dataset_version": "v1",
+  "source": "earthcoop-reference-governance",
+  "areas": [
+    {
+      "key": "ir-reference-v1-country",
+      "parent_key": null,
+      "governance_type": "country",
+      "area_kind": "official",
+      "canonical_name": "Iran",
+      "localized_names": {"fa": "ایران", "en": "Iran"},
+      "rank": 100,
+      "status": "active",
+      "location_external_ids": ["IR-COUNTRY"]
+    },
+    {
+      "key": "ir-reference-v1-sari",
+      "parent_key": "ir-reference-v1-country",
+      "governance_type": "city",
+      "area_kind": "official",
+      "canonical_name": "Sari",
+      "localized_names": {"fa": "ساری", "en": "Sari"},
+      "rank": 500,
+      "status": "active",
+      "location_external_ids": ["IR-SARI-001"]
+    },
+    {
+      "key": "ir-reference-v1-sari-neighborhood-01",
+      "parent_key": "ir-reference-v1-sari",
+      "governance_type": "local",
+      "area_kind": "official",
+      "canonical_name": "Sari Reference Neighborhood",
+      "localized_names": {"fa": "محله مرجع ساری", "en": "Sari Reference Neighborhood"},
+      "rank": 900,
+      "status": "active",
+      "location_external_ids": ["IR-SARI-NBH-01"]
+    },
+    {
+      "key": "ir-reference-v1-chahardangeh-village-01",
+      "parent_key": "ir-reference-v1-country",
+      "governance_type": "village",
+      "area_kind": "official",
+      "canonical_name": "Chahardangeh Reference Village",
+      "localized_names": {"fa": "روستای مرجع چهاردانگه", "en": "Chahardangeh Reference Village"},
+      "rank": 800,
+      "status": "active",
+      "location_external_ids": ["IR-MAZ-SARI-CHAHARDANGEH-VILLAGE-01"]
+    },
+    {
+      "key": "ir-reference-v1-chahardangeh-village-no-neighborhood",
+      "parent_key": "ir-reference-v1-country",
+      "governance_type": "village",
+      "area_kind": "official",
+      "canonical_name": "Chahardangeh Village Without Neighborhood",
+      "localized_names": {"fa": "روستای چهاردانگه بدون محله", "en": "Chahardangeh Village Without Neighborhood"},
+      "rank": 800,
+      "status": "active",
+      "location_external_ids": ["IR-MAZ-SARI-CHAHARDANGEH-VILLAGE-NONEIGHBORHOOD"]
+    }
+  ]
+}
