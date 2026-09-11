@@ -45,8 +45,8 @@ class LocationGovernanceBootstrapSeeder extends Seeder
             ];
 
             $types = [];
-            foreach ($typeDefinitions as $sortOrder => $definition) {
-                $key = array_keys($typeDefinitions)[$sortOrder];
+            $sortOrder = 0;
+            foreach ($typeDefinitions as $key => $definition) {
                 [$name, $isRoot, $isEndpoint] = $definition;
 
                 $type = LocationType::query()->updateOrCreate(
@@ -74,6 +74,8 @@ class LocationGovernanceBootstrapSeeder extends Seeder
                     'sort_order' => $sortOrder,
                     'metadata' => json_encode(['bootstrap' => true]),
                 ]);
+
+                $sortOrder++;
             }
 
             foreach ([
