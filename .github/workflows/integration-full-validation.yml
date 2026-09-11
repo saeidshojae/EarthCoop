@@ -119,8 +119,18 @@ jobs:
           grep -F 'elections:audit-data' /tmp/commands.txt >/dev/null
           php artisan elections:audit-data --json --fail-on-issues
 
+      - name: Regression — Deployment Console
+        id: regression_deployment_console
+        shell: bash
+        run: |
+          set -o pipefail
+          php artisan test \
+            tests/Unit/Deployment/DeploymentConsoleServiceTest.php \
+            tests/Feature/Admin/DeploymentConsoleSourceContractTest.php 2>&1 | tee regression-logs/deployment-console.log
+
       - name: Regression — Group Chat
         id: regression_group_chat
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -o pipefail
@@ -215,6 +225,7 @@ jobs:
         if: ${{ !cancelled() }}
         shell: bash
         env:
+          DEPLOYMENT_CONSOLE: ${{ steps.regression_deployment_console.outcome }}
           GROUP_CHAT: ${{ steps.regression_group_chat.outcome }}
           GROUP_ADMIN_IDENTITY: ${{ steps.regression_group_admin_identity.outcome }}
           NAJM_HODA: ${{ steps.regression_najm_hoda.outcome }}
@@ -226,6 +237,7 @@ jobs:
           FULL_PHPUNIT: ${{ steps.regression_full_phpunit.outcome }}
         run: |
           printf '%-28s %s\n' \
+            'Deployment Console' "$DEPLOYMENT_CONSOLE" \
             'Group Chat' "$GROUP_CHAT" \
             'Group Admin / Identity' "$GROUP_ADMIN_IDENTITY" \
             'Najm Hoda + n8n' "$NAJM_HODA" \
@@ -237,6 +249,7 @@ jobs:
             'Full Project PHPUnit' "$FULL_PHPUNIT"
 
           if printf '%s\n' \
+            "$DEPLOYMENT_CONSOLE" \
             "$GROUP_CHAT" \
             "$GROUP_ADMIN_IDENTITY" \
             "$NAJM_HODA" \
