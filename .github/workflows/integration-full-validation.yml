@@ -155,6 +155,14 @@ jobs:
           set -o pipefail
           php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Governance 2>&1 | tee regression-logs/governance.log
 
+      - name: Regression — Location / Governance
+        id: regression_location_governance
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -o pipefail
+          php artisan test tests/Unit/LocationGovernance tests/Unit/Membership tests/Feature/LocationGovernance 2>&1 | tee regression-logs/location-governance.log
+
       - name: Regression — Najm Bahar
         id: regression_najm_bahar
         if: ${{ !cancelled() }}
@@ -211,6 +219,7 @@ jobs:
           GROUP_ADMIN_IDENTITY: ${{ steps.regression_group_admin_identity.outcome }}
           NAJM_HODA: ${{ steps.regression_najm_hoda.outcome }}
           GOVERNANCE: ${{ steps.regression_governance.outcome }}
+          LOCATION_GOVERNANCE: ${{ steps.regression_location_governance.outcome }}
           NAJM_BAHAR: ${{ steps.regression_najm_bahar.outcome }}
           STOCK: ${{ steps.regression_stock.outcome }}
           GROUP_CHAT_JS: ${{ steps.regression_group_chat_js.outcome }}
@@ -221,6 +230,7 @@ jobs:
             'Group Admin / Identity' "$GROUP_ADMIN_IDENTITY" \
             'Najm Hoda + n8n' "$NAJM_HODA" \
             'Governance' "$GOVERNANCE" \
+            'Location / Governance' "$LOCATION_GOVERNANCE" \
             'Najm Bahar' "$NAJM_BAHAR" \
             'Stock' "$STOCK" \
             'Group Chat JavaScript' "$GROUP_CHAT_JS" \
@@ -231,6 +241,7 @@ jobs:
             "$GROUP_ADMIN_IDENTITY" \
             "$NAJM_HODA" \
             "$GOVERNANCE" \
+            "$LOCATION_GOVERNANCE" \
             "$NAJM_BAHAR" \
             "$STOCK" \
             "$GROUP_CHAT_JS" \
