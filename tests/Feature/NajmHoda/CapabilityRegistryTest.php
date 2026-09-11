@@ -124,21 +124,23 @@ class CapabilityRegistryTest extends TestCase
         $this->assertSame('propose', (string) ($planned['mode'] ?? ''));
     }
 
+    public function test_location_governance_review_contract_is_registered_by_default(): void
+    {
+        $registry = new NajmHodaCapabilityRegistry(new InMemoryRuntimeEventBus(100));
+        $contract = $registry->contract('review_location_governance_proposal');
+
+        $this->assertIsArray($contract);
+        $this->assertSame('medium', $contract['risk']);
+        $this->assertSame('propose', $contract['mode']);
+        $this->assertTrue($contract['human_approval_required']);
+        $this->assertContains(
+            'approve_location_governance_proposal',
+            config('najm-hoda.runtime.autonomy.safety.blocked_actions', [])
+        );
+    }
+
     public function test_location_governance_review_capability_is_recommendation_only_even_when_apply_is_requested(): void
     {
-        config([
-            'najm-hoda.runtime.autonomy.capabilities.review_location_governance_proposal' => [
-                'name' => 'Location Governance Proposal Review',
-                'enabled' => true,
-                'version' => 1,
-                'risk' => 'medium',
-                'mode' => 'propose',
-                'required_input' => ['proposal_id'],
-                'optional_input' => ['recommendation', 'duplicate_candidate_id'],
-                'output' => ['recommendation', 'rationale'],
-            ],
-        ]);
-
         $registry = new NajmHodaCapabilityRegistry(new InMemoryRuntimeEventBus(100));
         $planned = $registry->makePlannedAction(
             'review_location_governance_proposal',
@@ -152,20 +154,11 @@ class CapabilityRegistryTest extends TestCase
         $this->assertIsArray($planned);
         $this->assertSame('medium', $planned['risk']);
         $this->assertSame('propose', $planned['mode']);
+        $this->assertTrue($planned['human_approval_required']);
     }
 
     public function test_location_governance_sensitive_writes_are_blocked_from_autonomous_safety_gate(): void
     {
-        config([
-            'najm-hoda.runtime.autonomy.safety.allowed_risk_levels' => ['low', 'medium', 'high'],
-            'najm-hoda.runtime.autonomy.safety.blocked_actions' => [
-                'approve_location_governance_proposal',
-                'reject_location_governance_proposal',
-                'merge_location_governance_proposal',
-            ],
-            'najm-hoda.runtime.autonomy.safety.allowed_actions' => [],
-        ]);
-
         $gate = new NajmHodaAutonomySafetyGate(new InMemoryRuntimeEventBus(100));
         $decision = $gate->evaluate([
             'action' => 'approve_location_governance_proposal',
@@ -174,6 +167,35 @@ class CapabilityRegistryTest extends TestCase
         ], ['review_location_governance'], 0);
 
         $this->assertFalse($decision['allowed']);
+        $this->assertSame('risk_not_allowed', $decision['reason']);
+
+        config(['najm-hoda.runtime.autonomy.safety.allowed_risk_levels' => ['low', 'medium', 'high']]);
+        $decision = $gate->evaluate([
+            'action' => 'approve_location_governance_proposal',
+            'risk' => 'high',
+            'mode' => 'apply',
+        ], ['review_location_governance'], 0);
+
+        $this->assertFalse($decision['allowed']);
         $this->assertSame('action_blocked', $decision['reason']);
+    }
+
+    public function test_human_approval_required_apply_mode_fails_closed_even_if_action_is_otherwise_allowed(): void
+    {
+        config([
+            'najm-hoda.runtime.autonomy.safety.allowed_risk_levels' => ['low', 'medium'],
+            'najm-hoda.runtime.autonomy.safety.allowed_actions' => ['review_location_governance_proposal'],
+        ]);
+
+        $gate = new NajmHodaAutonomySafetyGate(new InMemoryRuntimeEventBus(100));
+        $decision = $gate->evaluate([
+            'action' => 'review_location_governance_proposal',
+            'risk' => 'medium',
+            'mode' => 'apply',
+            'human_approval_required' => true,
+        ], ['review_location_governance'], 0);
+
+        $this->assertFalse($decision['allowed']);
+        $this->assertSame('human_approval_required', $decision['reason']);
     }
 }
