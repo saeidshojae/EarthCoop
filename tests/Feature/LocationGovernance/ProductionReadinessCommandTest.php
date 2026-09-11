@@ -6,6 +6,7 @@ use App\Models\GovernanceArea;
 use App\Models\Location;
 use App\Models\LocationSchema;
 use App\Models\LocationType;
+use App\Services\LocationGovernance\Import\ReferenceGeographyImporter;
 use Database\Seeders\LocationGovernanceBootstrapSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -90,8 +91,8 @@ class ProductionReadinessCommandTest extends TestCase
 
         DB::table('location_import_runs')->insert([
             'country_code' => 'IR',
-            'source' => 'reference',
-            'dataset_version' => '1',
+            'source' => ReferenceGeographyImporter::SOURCE,
+            'dataset_version' => 'v1',
             'mode' => 'apply',
             'status' => 'completed',
             'creates' => 1,
