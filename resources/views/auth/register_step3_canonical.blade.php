@@ -37,6 +37,11 @@
                     data-error-label="دریافت گزینه‌های مکانی ممکن نشد. دوباره تلاش کنید."
                 >
                     <input type="hidden" name="location_id" value="{{ old('location_id') }}" data-location-id>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3" data-location-geolocation>
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-location-geolocation-detect>تشخیص موقعیت من</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-location-geolocation-manual>انتخاب دستی</button>
+                    </div>
+                    <p class="small text-secondary mb-3 d-none" data-location-geolocation-status aria-live="polite"></p>
                     <div class="vstack gap-3" data-location-levels></div>
                     <div class="small text-secondary mt-3" data-location-status aria-live="polite">برای ادامه، یک محل معتبر برای سکونت اصلی انتخاب کنید.</div>
                 </div>
