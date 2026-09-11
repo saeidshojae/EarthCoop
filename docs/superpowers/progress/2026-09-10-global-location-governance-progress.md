@@ -8,39 +8,19 @@
 
 ## Current checkpoint
 
-C13 production-cutover **package preparation** is complete and is now at its mandatory HARD STOP. No Production cutover has been executed or authorized.
+C13 production cutover preparation is complete and technically validated. The latest non-documentation C13 implementation candidate is `c34f7ef406cac4bf512ee789c31688e65c764189`.
 
-Preparation candidate before evidence-only documentation update: `c34f7ef406cac4bf512ee789c31688e65c764189`.
+GitHub Actions evidence:
 
-GitHub Actions evidence on that exact candidate:
-
-- Workflow: `EarthCoop Integration Full Validation`
-- Run: `#2424` (`34610982735`)
-- Job: `full-validation` (`103301574562`)
+- Full Validation #2424 / run `34610982735`
+- Job `103301574562`
 - Conclusion: `success`
 - Focused `Regression — Location / Governance`: `success`
-- Mature release gates retained and green: Group Chat, Group Admin / Identity, Najm Hoda + n8n, Governance, Najm Bahar, Stock, Group Chat JavaScript
+- Mature release gates: all retained and green
 - Full Project PHPUnit: `success`
-- Regression diagnostics upload: `success`
 - Enforce regression gate: `success`
 
-The branch remains isolated from `main`; PR #103 is still Draft and unmerged.
-
-## C13 preparation completed
-
-C13 now provides:
-
-- read-only fail-closed command `location-governance:readiness`;
-- tests proving missing release evidence/conflicts fail closed and a complete valid fixture can pass without mutating domain/import/proposal state;
-- readiness target aligned with the actual canonical importer/dataset identity (`IR`, `ir-reference-v1`, `earthcoop-reference`, `v1`);
-- `docs/location-governance/PRODUCTION_CUTOVER_RUNBOOK.md`;
-- `docs/location-governance/PRODUCTION_ROLLBACK_RUNBOOK.md`;
-- explicit staged flag order and smoke-test checkpoints;
-- non-destructive rollback policy;
-- explicit ban on legacy removal during initial cutover;
-- documented requirement for Production backup + verified restore rehearsal evidence before GO.
-
-C13 testing caught and corrected two readiness defects before Production: an invalid `is_active` schema check instead of `status = active`, and stale `reference/1` dataset defaults instead of the real `earthcoop-reference/v1` contract.
+Documentation/evidence checkpoint `943804fbcac2c702790466ae266cce8a2557a0d5` was subsequently validated by Full Validation #2426 / run `34616614013`, job `103320370800`, also fully green.
 
 ## Checkpoint status
 
@@ -60,25 +40,54 @@ C13 testing caught and corrected two readiness defects before Production: an inv
 | C11 | Optional geolocation, admin control center, Najm Hoda human-gated review | Complete |
 | C12-A | Fresh bootstrap and permanent global/UAT scenarios | Complete |
 | C12-B | Focused CI gate, full validation and UAT candidate | Complete |
-| C13 | Production cutover package | Prepared + CI-validated; HARD STOP before Production |
-| C14 | Legacy retirement | Not started; second explicit approval required |
+| C13 | Production cutover package | Prepared and CI-validated; Fresh Canonical Start policy approved; activation not yet authorized |
+| C14 | Legacy retirement | Not started; separate explicit approval required |
+
+## Fresh Canonical Start decision
+
+The owner has explicitly approved continuing the initial cutover without making migration of the current small set of users' legacy geographic/profile data a prerequisite.
+
+The policy is recorded in `docs/location-governance/FRESH_CANONICAL_START_DECISION.md`.
+
+Operational consequences:
+
+- canonical Location/Governance can begin with zero or partial existing-user canonical residence rows;
+- no risky bulk legacy-user geography conversion is required before launch;
+- existing users can establish/correct canonical Primary Residence through the canonical profile flow after activation;
+- new registrations use the canonical flow after registration/profile activation;
+- the rest of Production state is still protected: no database reset/truncate/drop, and no deletion of users, groups, elections, Najm Bahar, Stock, messages, projects, or other mature data;
+- legacy geography remains available during C13 for compatibility and rollback.
+
+The current `location-governance:readiness` contract already supports this policy: it validates canonical schema/import/governance/release evidence and does not require every existing user to have a canonical residence row.
+
+## C13 package
+
+C13 now contains:
+
+- read-only fail-closed `location-governance:readiness` command;
+- tests for release evidence, canonical import/governance readiness and conflict failure;
+- Production cutover runbook;
+- Production rollback runbook;
+- Fresh Canonical Start decision record;
+- staged rollout with reversible flags;
+- explicit C14 hard stop before legacy retirement.
+
+## Production access boundary
+
+This execution environment can operate on GitHub/CI but does not have cPanel/SSH/MySQL Production access. Therefore no Production backup, schema command, reference import or flag change has been falsely claimed as executed.
+
+Before additive Production writes, the hosting operator should have a current recoverable database backup/provider snapshot. Fresh Canonical Start removes existing-user geography conversion from the critical path, but does not make all other Production data disposable.
 
 ## Safety state
 
 - No direct change or merge to `main` has been performed.
-- PR #103 remains Draft and unmerged.
-- No Production `migrate`, `migrate:fresh`, truncation, table drop, destructive migration, bootstrap or reference import has been performed.
-- No Production Location/Governance rollout flag has been changed.
-- Runtime cutovers remain reversible through feature flags and application SHA rollback.
-- Legacy spatial data remains intact and available as rollback support.
+- PR #103 remains Draft.
+- No Production `migrate:fresh`, truncation, table drop, destructive migration, bootstrap or reference import has been performed.
+- No Location/Governance Production feature flag has been enabled.
+- Legacy spatial data remains available as rollback support.
 - Najm Hoda sensitive Location/Governance actions remain human-approval-gated.
-- Production backup/restore rehearsal evidence has **not** yet been produced; this is a blocking prerequisite for any cutover authorization.
-- C14 destructive retirement work requires a second, separate explicit approval after post-cutover audit and observation.
+- C14 destructive retirement work requires a second, separate explicit approval.
 
-## Required next action
+## Next checkpoint
 
-**STOP before any Production-changing operation.**
-
-Before a Production cutover can be considered GO, obtain current Production backup evidence, successfully rehearse restore into an isolated non-Production environment, capture current Production SHA/flag values, run the read-only readiness command with immutable validation/UAT evidence, and then obtain a new explicit user approval for the exact staged cutover action.
-
-The approved implementation plan does not itself authorize Production execution.
+The next operational step is Production-safe backup/preflight and additive deployment/bootstrap/reference-import preparation under the approved Fresh Canonical Start policy. **Canonical runtime feature flags must remain disabled until the owner separately approves activation.**
