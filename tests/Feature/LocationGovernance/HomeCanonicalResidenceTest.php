@@ -3,6 +3,7 @@
 namespace Tests\Feature\LocationGovernance;
 
 use App\Models\Address;
+use App\Models\ExperienceField;
 use App\Models\User;
 use App\Models\UserExperience;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -55,7 +56,15 @@ class HomeCanonicalResidenceTest extends TestCase
             'phone' => '09120000001',
         ]);
 
-        UserExperience::factory()->create(['user_id' => $user->id]);
+        $experienceField = ExperienceField::create([
+            'name' => 'Home canonical runtime test field',
+            'status' => 1,
+        ]);
+        $userExperience = new UserExperience();
+        $userExperience->user_id = $user->id;
+        $userExperience->experience_field_id = $experienceField->id;
+        $userExperience->save();
+
         $user->locationRelationships()->create([
             'location_id' => $residence->id,
             'relationship_type' => 'primary_residence',
