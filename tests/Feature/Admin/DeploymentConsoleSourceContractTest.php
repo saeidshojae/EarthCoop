@@ -44,7 +44,10 @@ class DeploymentConsoleSourceContractTest extends TestCase
             '/admin/deployment-console',
             'phpMyAdmin',
             'migration status',
-            'reference dry-run',
+            'reference_dry_run',
+            'topology_dry_run',
+            'topology_apply',
+            'APPLY-GOV-IR',
             'readiness',
             'HARD STOP',
         ] as $required) {
