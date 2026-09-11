@@ -26,7 +26,7 @@ class FreshBootstrapLocationGovernanceTest extends TestCase
             ->where('status', 'active')
             ->firstOrFail();
 
-        $this->assertSame('1', (string) $schema->version);
+        $this->assertSame('v1', (string) $schema->version);
         $this->assertSame(13, $schema->types()->count());
         $this->assertSame(
             [
