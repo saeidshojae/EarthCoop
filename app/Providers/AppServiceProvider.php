@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Http\Events\RequestHandled;
+use App\Contracts\Geocoding\ReverseGeocoder;
 use App\Http\Controllers\Admin\SafeUserController;
 use App\Http\Controllers\Admin\UserController;
 use App\Modules\NajmBahar\Models\Transaction as NajmTransaction;
@@ -35,6 +36,7 @@ use App\Models\FaqQuestion;
 use App\Observers\FaqQuestionObserver;
 use App\Models\StewardKnowledgeFile;
 use App\Observers\StewardKnowledgeFileObserver;
+use App\Services\Geocoding\UnavailableReverseGeocoder;
 use App\Services\NajmHoda\NajmHodaPrivateGroupMeetingCommandService;
 use App\Services\NajmHoda\NajmHodaPrivateGroupMeetingDecisionCommandService;
 
@@ -48,6 +50,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(NajmHodaPrivateGroupMeetingCommandService::class, NajmHodaPrivateGroupMeetingDecisionCommandService::class);
         $this->app->bind(SecretariatKnowledgeRanker::class, DeterministicSecretariatKnowledgeRanker::class);
         $this->app->bind(AuctionService::class, CanonicalAwareAuctionService::class);
+        $this->app->bind(ReverseGeocoder::class, UnavailableReverseGeocoder::class);
         // Production deployments may replace this binding with ClamAV or another
         // scanner adapter. The default is explicitly unavailable, never fake-clean.
         $this->app->bind(SecretariatMalwareScanner::class, UnavailableSecretariatMalwareScanner::class);

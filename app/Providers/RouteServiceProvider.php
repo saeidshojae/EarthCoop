@@ -36,8 +36,45 @@ class RouteServiceProvider extends ServiceProvider
                 \App\Http\Middleware\FounderOperationsMiddleware::class,
             ])->group(base_path('routes/najm-hoda-founder-ops.php'));
 
+            // Temporary founder-only browser deployment surface for cPanel hosts
+            // without Terminal/SSH. The console itself remains disabled by config
+            // unless explicitly enabled and exposes only a fixed operation allowlist.
+            Route::middleware([
+                'web',
+                \App\Http\Middleware\AdminMiddleware::class,
+                \App\Http\Middleware\FounderOperationsMiddleware::class,
+            ])
+                ->prefix('admin/deployment-console')
+                ->name('admin.deployment-console.')
+                ->group(base_path('routes/deployment-console.php'));
+
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
+
+            // Canonical profile runtime shadows only the profile read route. The
+            // adapter delegates to the legacy controller when runtime is disabled,
+            // preserving rollback without requiring a legacy Address when enabled.
+            Route::middleware('web')
+                ->group(base_path('routes/profile-canonical-runtime.php'));
+
+            // Canonical location selection is isolated behind dark-launch flags so
+            // legacy registration/profile geography remains authoritative until C5 cutover.
+            Route::middleware('web')
+                ->group(base_path('routes/location-governance.php'));
+
+            // Crowdsourced location proposals are member-only. Sensitive review,
+            // approval, rejection and merge actions stay outside this surface and
+            // are introduced later through the admin/Najm Hoda review boundary.
+            Route::middleware('web')
+                ->group(base_path('routes/location-proposals.php'));
+
+            // Location/Governance review is an explicit administrator surface.
+            // Najm Hoda may recommend here, while every sensitive write remains
+            // behind AdminMiddleware and an auditable human POST action.
+            Route::middleware(['web', \App\Http\Middleware\AdminMiddleware::class])
+                ->prefix('admin/location-governance')
+                ->name('admin.location-governance.')
+                ->group(base_path('routes/location-governance-admin.php'));
 
             // User-facing participation credit regulation. This route stays in a
             // separate read-only surface so rendering the regulation never seeds or
@@ -113,6 +150,14 @@ class RouteServiceProvider extends ServiceProvider
 
         RateLimiter::for('najm-hoda-n8n-callback', function (Request $request) {
             return Limit::perMinute(30)->by('nh-n8n-callback:' . $request->ip());
+        });
+
+        RateLimiter::for('deployment-console-read', function (Request $request) {
+            return Limit::perMinute(20)->by('deployment-console-read:' . ($request->user()?->id ?: $request->ip()));
+        });
+
+        RateLimiter::for('deployment-console-write', function (Request $request) {
+            return Limit::perMinute(6)->by('deployment-console-write:' . ($request->user()?->id ?: $request->ip()));
         });
 
         foreach ([

@@ -77,8 +77,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | The application locale determines the default locale that will be used
-    | by the translation service provider. You are free to set this value
-    | to any of the locales which will be supported by the application.
+    | by the translation service provider. You are free to set this value to
+    | any of the locales which will be supported by the application.
     |
     */
 
@@ -91,7 +91,7 @@ return [
     |
     | The fallback locale determines the locale to use when the current one
     | is not available. You may change the value to correspond to any of the
-    | language folders that are provided through your application.
+    | language folders that are provided by your application.
     |
     */
 
@@ -104,7 +104,7 @@ return [
     |
     | This locale will be used by the Faker PHP library when generating fake
     | data for your database seeds. For example, this will be used to get
-    | localized telephone numbers and more.
+    | localized telephone numbers, street address information and more.
     |
     */
 
@@ -115,9 +115,9 @@ return [
     | Encryption Key
     |--------------------------------------------------------------------------
     |
-    | This key is used by the Illuminate encrypter service and should be set
-    | to a random, 32 character string, otherwise these encrypted strings
-    | will not be safe. Please do this before deploying an application!
+    | This key is utilized by Laravel's encryption services and should be set
+    | to a random, 32 character string to ensure that all encrypted values are
+    | secure. You should do this prior to deploying the application.
     |
     */
 
@@ -197,6 +197,7 @@ return [
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
         App\Providers\NajmHodaServiceProvider::class, // نجم‌هدا
+        App\Providers\LocationGovernanceNajmHodaServiceProvider::class,
 
     ],
 
@@ -205,14 +206,14 @@ return [
     | Class Aliases
     |--------------------------------------------------------------------------
     |
-    | This array of class aliases will be registered when this application
-    | is started. However, feel free to register as many as you wish as
-    | the aliases are "lazy" loaded so they don't hinder performance.
+    | This array of class aliases will be registered when this application is
+    | started. However, feel free to register as many as you wish as the
+    | aliases are "lazy" loaded so they don't hinder performance.
     |
     */
 
     'aliases' => Facade::defaultAliases()->merge([
-        // 'ExampleClass' => App\Example\ExampleClass::class,
+        // 'ExampleClass' => App\Facades\Example::class,
     ])->toArray(),
 
 ];

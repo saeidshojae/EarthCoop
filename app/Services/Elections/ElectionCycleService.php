@@ -89,6 +89,7 @@ class ElectionCycleService
 
             $election = Election::create([
                 'group_id' => $lockedGroup->id,
+                'governance_area_id' => $lockedGroup->governance_area_id,
                 'cycle_number' => $latest === null ? 1 : ((int) ($latest->cycle_number ?? 0) + 1),
                 'previous_election_id' => $latest?->id,
                 'policy_version_id' => $policy->id,

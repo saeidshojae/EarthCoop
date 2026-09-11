@@ -24,6 +24,12 @@ class NajmHodaAutonomySafetyGate
 
         $action = (string) ($planItem['action'] ?? '');
         $risk = (string) ($planItem['risk'] ?? 'low');
+        $mode = (string) ($planItem['mode'] ?? 'propose');
+        $humanApprovalRequired = (bool) ($planItem['human_approval_required'] ?? false);
+
+        if ($humanApprovalRequired && $mode === 'apply') {
+            return $this->deny($action, 'human_approval_required');
+        }
 
         $override = $this->adaptiveOverride();
         $maxActionsBase = (int) config('najm-hoda.runtime.autonomy.safety.max_actions_per_run', 3);
@@ -38,7 +44,12 @@ class NajmHodaAutonomySafetyGate
         if (($override['allow_apply_low_risk'] ?? null) === false) {
             $allowedRisk = ['low'];
         }
-        if (!in_array($risk, $allowedRisk, true)) {
+
+        // Recommendation-only capabilities may carry medium risk precisely because
+        // their final decision is human-gated. They may be evaluated in propose mode
+        // without widening the autonomous apply risk budget.
+        $humanGatedRecommendation = $humanApprovalRequired && $mode === 'propose';
+        if (!$humanGatedRecommendation && !in_array($risk, $allowedRisk, true)) {
             return $this->deny($action, 'risk_not_allowed', ['risk' => $risk]);
         }
 
@@ -68,6 +79,8 @@ class NajmHodaAutonomySafetyGate
         $this->eventBus->emit('najm_hoda.autonomy.safety.approved', [
             'action' => $action,
             'risk' => $risk,
+            'mode' => $mode,
+            'human_approval_required' => $humanApprovalRequired,
         ]);
 
         return ['allowed' => true];

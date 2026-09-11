@@ -25,7 +25,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | This option controls the log channel that should be used to log warnings
-    | regarding deprecated PHP and library features. This allows you to get
+    | regarding deprecated PHP and Laravel features. This allows you to get
     | your application ready for upcoming major versions of dependencies.
     |
     */
@@ -61,6 +61,12 @@ return [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
+        ],
+
+        'deployment-console' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/deployment-console.log'),
+            'level' => 'info',
         ],
 
         'daily' => [

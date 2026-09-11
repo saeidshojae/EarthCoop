@@ -12,6 +12,7 @@ class Election extends Model
 
     protected $fillable = [
         'group_id',
+        'governance_area_id',
         'cycle_number',
         'previous_election_id',
         'policy_version_id',
@@ -56,6 +57,7 @@ class Election extends Model
     }
 
     public function group() { return $this->belongsTo(Group::class); }
+    public function governanceArea() { return $this->belongsTo(GovernanceArea::class); }
     public function previousCycle() { return $this->belongsTo(self::class, 'previous_election_id'); }
     public function nextCycle() { return $this->hasOne(self::class, 'previous_election_id'); }
     public function policyVersion() { return $this->belongsTo(ElectionPolicyVersion::class, 'policy_version_id'); }

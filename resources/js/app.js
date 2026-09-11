@@ -1,5 +1,7 @@
 import "./bootstrap";
 import "./site-navigation-history.js";
+import "./location-selector.js";
+import "./location-geolocation.js";
 import $ from "jquery";
 import installSelect2 from "select2";
 

@@ -33,6 +33,19 @@ class InvitationLaunchContractTest extends TestCase
     }
 
     #[Test]
+    public function canonical_primary_residence_can_satisfy_invitation_profile_completion_without_legacy_address(): void
+    {
+        $profileCompletion = file_get_contents(app_path('Services/ProfileCompletionService.php'));
+
+        $this->assertStringContainsString("config('location-governance.registration_enabled')", $profileCompletion);
+        $this->assertStringContainsString('locationRelationships()', $profileCompletion);
+        $this->assertStringContainsString("relationship_type', 'primary_residence'", $profileCompletion);
+        $this->assertStringContainsString("whereNull('ended_at')", $profileCompletion);
+        $this->assertStringContainsString('completeSuccessfulInvitation', $profileCompletion);
+        $this->assertStringContainsString('Address::where', $profileCompletion);
+    }
+
+    #[Test]
     public function member_quota_is_enforced_by_the_canonical_invitation_lifecycle(): void
     {
         $controller = file_get_contents(app_path('Http/Controllers/Profile/MemberInvitationController.php'));

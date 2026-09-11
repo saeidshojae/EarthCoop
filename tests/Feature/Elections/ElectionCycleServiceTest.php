@@ -7,6 +7,7 @@ use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\ElectionLifecycleTransition;
 use App\Models\ElectionResponsibilityContractVersion;
+use App\Models\GovernanceArea;
 use App\Models\Group;
 use App\Models\GroupSetting;
 use App\Models\GroupUser;
@@ -62,6 +63,24 @@ class ElectionCycleServiceTest extends TestCase
         $this->assertSame(1, Election::where('group_id', $group->id)->count());
         $this->assertSame(2, Candidate::where('election_id', $election->id)->count());
         $this->assertSame(1, ElectionLifecycleTransition::where('election_id', $election->id)->count());
+    }
+
+    public function test_created_cycle_freezes_governance_scope_from_group(): void
+    {
+        $originalArea = GovernanceArea::factory()->official()->create();
+        $laterArea = GovernanceArea::factory()->official()->create();
+        [$group] = $this->configuredGroup(1);
+        $group->update(['governance_area_id' => $originalArea->id]);
+        $this->addActiveMember($group);
+
+        $election = app(ElectionCycleService::class)->ensureForGroup($group->fresh());
+
+        $this->assertNotNull($election);
+        $this->assertSame($originalArea->id, $election->governance_area_id);
+
+        $group->update(['governance_area_id' => $laterArea->id]);
+
+        $this->assertSame($originalArea->id, $election->fresh()->governance_area_id);
     }
 
     public function test_required_seats_without_frozen_e0_contracts_do_not_open_a_cycle(): void

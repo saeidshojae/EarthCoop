@@ -2,6 +2,8 @@
 
 namespace App\Services\Elections;
 
+use App\Contracts\Governance\OfficialGovernanceTopology;
+use App\Models\GovernanceArea;
 use App\Models\Group;
 use App\Models\User;
 use App\Services\GroupService;
@@ -27,10 +29,27 @@ class ElectionGroupHierarchyResolver
         'continent' => ['continents', null],
     ];
 
-    public function __construct(private readonly GroupService $groups) {}
+    public function __construct(
+        private readonly GroupService $groups,
+        private readonly OfficialGovernanceTopology $officialTopology,
+    ) {}
 
     public function higherGroup(Group $source, User $user): ?Group
     {
+        if ($this->canonicalEnabled()) {
+            $area = $this->canonicalAreaFor($source);
+            if (! $this->isActiveOfficial($area)) {
+                return null;
+            }
+
+            $parent = $this->officialTopology->parentOf($area);
+            if ($parent === null) {
+                return null;
+            }
+
+            return $this->matchingCanonicalGroup($source, $parent);
+        }
+
         if ($source->location_level === 'global') {
             return null;
         }
@@ -73,17 +92,6 @@ class ElectionGroupHierarchyResolver
         return $this->higherGroup($highest, $user);
     }
 
-    /**
-     * An election layer is independent unless its approved geographic topology
-     * has exactly one effective structural child constituency. A single child
-     * means the lower elected office represents the same constituency and its
-     * appointment is inherited into this layer instead of running a duplicate
-     * election here.
-     *
-     * Zero children intentionally remains independent: it is the lowest
-     * configured geographic layer available for that branch. Population is
-     * never consulted by this decision.
-     */
     public function isIndependentElectoralLayer(Group $group): bool
     {
         $count = $this->effectiveStructuralChildCount($group);
@@ -91,18 +99,17 @@ class ElectionGroupHierarchyResolver
         return $count === null || $count !== 1;
     }
 
-    /**
-     * Return the number of approved direct/effective geographic constituencies
-     * under a group. Null denotes a structural leaf (alley).
-     *
-     * Optional urban/rural layers are folded without relying on current users:
-     * - section counts city + rural together;
-     * - city counts regions plus neighborhoods attached directly to the city;
-     * - rural counts villages plus neighborhoods attached directly to the rural;
-     * - region/village count their directly attached neighborhoods.
-     */
     public function effectiveStructuralChildCount(Group $parent): ?int
     {
+        if ($this->canonicalEnabled()) {
+            $area = $this->canonicalAreaFor($parent);
+            if (! $this->isActiveOfficial($area)) {
+                return null;
+            }
+
+            return $this->officialTopology->childrenOf($area)->count();
+        }
+
         $parentId = $parent->address_id === null ? null : (int) $parent->address_id;
 
         return match ($parent->location_level) {
@@ -127,6 +134,21 @@ class ElectionGroupHierarchyResolver
 
     public function isSoleStructuralConstituency(Group $child, Group $parent): bool
     {
+        if ($this->canonicalEnabled()) {
+            if (! $this->sameTrack($child, $parent)) {
+                return false;
+            }
+
+            $childArea = $this->canonicalAreaFor($child);
+            $parentArea = $this->canonicalAreaFor($parent);
+            if (! $this->isActiveOfficial($childArea) || ! $this->isActiveOfficial($parentArea)) {
+                return false;
+            }
+
+            return $this->officialTopology->parentOf($childArea)?->id === $parentArea->id
+                && $this->effectiveStructuralChildCount($parent) === 1;
+        }
+
         if (! $this->sameTrack($child, $parent) || $child->address_id === null) {
             return false;
         }
@@ -135,14 +157,12 @@ class ElectionGroupHierarchyResolver
             && $this->childBelongsToParent($child, $parent);
     }
 
-    /**
-     * Count approved/configured geographic constituencies, irrespective of
-     * current EarthCoop population. When a location table exposes `status`, the
-     * canonical Geographic API treats only status=1 as usable; election topology
-     * follows the same rule so pending admin submissions cannot alter governance.
-     */
     public function structuralConstituencyCount(Group $parent, string $childLevel): int
     {
+        if ($this->canonicalEnabled()) {
+            return $this->effectiveStructuralChildCount($parent) ?? 0;
+        }
+
         if ($parent->location_level === 'section' && in_array($childLevel, ['city', 'rural'], true)) {
             $parentId = (int) $parent->address_id;
             $cities = $this->approved(DB::table('cities')->where('district_id', $parentId), 'cities');
@@ -175,6 +195,22 @@ class ElectionGroupHierarchyResolver
 
     public function hierarchyIndex(Group $group, User $user): int
     {
+        if ($this->canonicalEnabled()) {
+            $area = $this->canonicalAreaFor($group);
+            if (! $this->isActiveOfficial($area)) {
+                throw new RuntimeException("Group [{$group->id}] is not on the active official governance hierarchy.");
+            }
+
+            $depth = 0;
+            $current = $area;
+            while (($parent = $this->officialTopology->parentOf($current)) !== null) {
+                $depth++;
+                $current = $parent;
+            }
+
+            return $depth;
+        }
+
         $index = $this->indexFor($group, $this->pathFor($user));
         if ($index === null) {
             throw new RuntimeException("Group [{$group->id}] is not on user [{$user->id}] geographic hierarchy.");
@@ -185,6 +221,11 @@ class ElectionGroupHierarchyResolver
 
     public function sameTrack(Group $left, Group $right): bool
     {
+        if ($this->canonicalEnabled()) {
+            return $this->raw($left, 'dimension_key') === $this->raw($right, 'dimension_key')
+                && $this->raw($left, 'dimension_value_key') === $this->raw($right, 'dimension_value_key');
+        }
+
         if ((string) $this->raw($left, 'group_type') !== (string) $this->raw($right, 'group_type')) {
             return false;
         }
@@ -263,6 +304,49 @@ class ElectionGroupHierarchyResolver
         }
 
         return $group;
+    }
+
+    private function matchingCanonicalGroup(Group $source, GovernanceArea $area): Group
+    {
+        $group = Group::query()
+            ->where('governance_area_id', $area->id)
+            ->where('dimension_key', $this->raw($source, 'dimension_key'))
+            ->where('dimension_value_key', $this->raw($source, 'dimension_value_key'))
+            ->first();
+
+        if ($group === null) {
+            throw new RuntimeException(
+                "Corresponding official governance group is missing for source group [{$source->id}] at area [{$area->id}]."
+            );
+        }
+
+        return $group;
+    }
+
+    private function canonicalAreaFor(Group $group): ?GovernanceArea
+    {
+        if ($group->relationLoaded('governanceArea')) {
+            $area = $group->getRelation('governanceArea');
+            return $area instanceof GovernanceArea ? $area : null;
+        }
+
+        $areaId = $this->raw($group, 'governance_area_id');
+        return $areaId === null ? null : GovernanceArea::query()->find((int) $areaId);
+    }
+
+    private function isActiveOfficial(?GovernanceArea $area): bool
+    {
+        return $area !== null && $area->area_kind === 'official' && $area->status === 'active';
+    }
+
+    private function canonicalEnabled(): bool
+    {
+        $app = app();
+        if (! $app->bound('config')) {
+            return false;
+        }
+
+        return (bool) $app['config']->get('location-governance.elections_enabled', false);
     }
 
     private function raw(Group $group, string $field): mixed

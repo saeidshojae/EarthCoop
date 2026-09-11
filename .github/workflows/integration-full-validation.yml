@@ -119,8 +119,20 @@ jobs:
           grep -F 'elections:audit-data' /tmp/commands.txt >/dev/null
           php artisan elections:audit-data --json --fail-on-issues
 
+      - name: Regression — Deployment Console
+        id: regression_deployment_console
+        shell: bash
+        run: |
+          set -o pipefail
+          php artisan test \
+            tests/Unit/Deployment/DeploymentConsoleServiceTest.php \
+            tests/Feature/Admin/DeploymentConsoleSourceContractTest.php \
+            tests/Feature/Admin/DeploymentConsoleSecurityTest.php \
+            tests/Feature/Admin/DeploymentConsoleExecutionTest.php 2>&1 | tee regression-logs/deployment-console.log
+
       - name: Regression — Group Chat
         id: regression_group_chat
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -o pipefail
@@ -154,6 +166,14 @@ jobs:
         run: |
           set -o pipefail
           php vendor/bin/phpunit --configuration phpunit.xml.dist tests/Feature/Governance 2>&1 | tee regression-logs/governance.log
+
+      - name: Regression — Location / Governance
+        id: regression_location_governance
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -o pipefail
+          php artisan test tests/Unit/LocationGovernance tests/Unit/Membership tests/Feature/LocationGovernance 2>&1 | tee regression-logs/location-governance.log
 
       - name: Regression — Najm Bahar
         id: regression_najm_bahar
@@ -207,30 +227,36 @@ jobs:
         if: ${{ !cancelled() }}
         shell: bash
         env:
+          DEPLOYMENT_CONSOLE: ${{ steps.regression_deployment_console.outcome }}
           GROUP_CHAT: ${{ steps.regression_group_chat.outcome }}
           GROUP_ADMIN_IDENTITY: ${{ steps.regression_group_admin_identity.outcome }}
           NAJM_HODA: ${{ steps.regression_najm_hoda.outcome }}
           GOVERNANCE: ${{ steps.regression_governance.outcome }}
+          LOCATION_GOVERNANCE: ${{ steps.regression_location_governance.outcome }}
           NAJM_BAHAR: ${{ steps.regression_najm_bahar.outcome }}
           STOCK: ${{ steps.regression_stock.outcome }}
           GROUP_CHAT_JS: ${{ steps.regression_group_chat_js.outcome }}
           FULL_PHPUNIT: ${{ steps.regression_full_phpunit.outcome }}
         run: |
           printf '%-28s %s\n' \
+            'Deployment Console' "$DEPLOYMENT_CONSOLE" \
             'Group Chat' "$GROUP_CHAT" \
             'Group Admin / Identity' "$GROUP_ADMIN_IDENTITY" \
             'Najm Hoda + n8n' "$NAJM_HODA" \
             'Governance' "$GOVERNANCE" \
+            'Location / Governance' "$LOCATION_GOVERNANCE" \
             'Najm Bahar' "$NAJM_BAHAR" \
             'Stock' "$STOCK" \
             'Group Chat JavaScript' "$GROUP_CHAT_JS" \
             'Full Project PHPUnit' "$FULL_PHPUNIT"
 
           if printf '%s\n' \
+            "$DEPLOYMENT_CONSOLE" \
             "$GROUP_CHAT" \
             "$GROUP_ADMIN_IDENTITY" \
             "$NAJM_HODA" \
             "$GOVERNANCE" \
+            "$LOCATION_GOVERNANCE" \
             "$NAJM_BAHAR" \
             "$STOCK" \
             "$GROUP_CHAT_JS" \
