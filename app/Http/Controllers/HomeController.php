@@ -4,10 +4,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Address;
 use App\Models\UserExperience;
 use App\Models\Setting;
 use App\Models\Slider;
+use App\Services\ProfileCompletionService;
 
 class HomeController extends Controller
 {
@@ -25,7 +25,7 @@ class HomeController extends Controller
             return redirect('register/step2')->with('success', 'شما نمیتوانید وارد برنامه شوید، لطفا مراحل ثبت نام را کامل کنید و اگر نیاز به ویرایش دارید پس از ثبت نام از درون برنامه اقدام کنید');
         }
         
-                if(Address::where('user_id', auth()->user()->id)->first() == null){
+                if(! app(ProfileCompletionService::class)->hasRequiredResidence(auth()->user())){
             return redirect('register/step3')->with('success', 'شما نمیتوانید وارد برنامه شوید، لطفا مراحل ثبت نام را کامل کنید و اگر نیاز به ویرایش دارید پس از ثبت نام از درون برنامه اقدام کنید');
         }
         
