@@ -26,7 +26,10 @@ class ProfileCompletionService
 
     public function hasRequiredResidence(User $user): bool
     {
-        if (! (bool) config('location-governance.runtime_enabled')) {
+        $canonicalResidenceEnabled = (bool) config('location-governance.runtime_enabled')
+            && (bool) config('location-governance.registration_enabled');
+
+        if (! $canonicalResidenceEnabled) {
             return Address::where('user_id', $user->id)->exists();
         }
 
