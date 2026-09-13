@@ -17,6 +17,7 @@ Route::post('/run/{operation}', [DeploymentConsoleController::class, 'run'])
         'flag_status',
         'migrate',
         'bootstrap',
+        'stage_c_group_policy_apply',
         'reference_apply',
         'topology_apply',
     ])

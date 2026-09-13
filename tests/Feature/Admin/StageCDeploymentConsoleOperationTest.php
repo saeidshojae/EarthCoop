@@ -38,4 +38,11 @@ class StageCDeploymentConsoleOperationTest extends TestCase
         $this->assertTrue($result['success']);
         $this->assertSame('Stage C group policies applied', $result['output']);
     }
+
+    public function test_stage_c_policy_transition_is_allowed_by_the_http_run_route(): void
+    {
+        $routeSource = file_get_contents(base_path('routes/deployment-console.php'));
+
+        $this->assertStringContainsString("'stage_c_group_policy_apply'", $routeSource);
+    }
 }
