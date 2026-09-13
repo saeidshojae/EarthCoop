@@ -15,11 +15,16 @@ class LocationProposalService
     public function __construct(
         private readonly LocationDuplicateDetector $duplicateDetector,
         private readonly ResidenceService $residenceService,
+        private readonly LocationProposalPolicy $proposalPolicy,
     ) {
     }
 
     public function propose(User $proposer, Location $parent, LocationType $type, array $data): LocationProposal|Location
     {
+        if (! $this->proposalPolicy->allows($parent, $type)) {
+            throw new DomainException('Crowdsourced proposals are not permitted for this location type in the active schema.');
+        }
+
         $canonicalName = trim((string) ($data['canonical_name'] ?? ''));
         $normalizedName = $this->duplicateDetector->normalizeName($canonicalName);
 
