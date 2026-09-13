@@ -14,6 +14,7 @@ class LocationProposalService
 {
     public function __construct(
         private readonly LocationDuplicateDetector $duplicateDetector,
+        private readonly ResidenceService $residenceService,
     ) {
     }
 
@@ -126,6 +127,7 @@ class LocationProposalService
             $proposal->approved_at = now();
             $proposal->save();
             $this->transition($proposal, LocationProposalStatus::Approved, $reviewer, $reason, true);
+            $this->residenceService->resolvePendingResidenceIntents($proposal->fresh(), $location);
 
             return $location;
         });
@@ -145,6 +147,7 @@ class LocationProposalService
             $proposal->resolved_location_id = $existing->id;
             $proposal->save();
             $this->transition($proposal, LocationProposalStatus::Merged, $reviewer, $reason, true);
+            $this->residenceService->resolvePendingResidenceIntents($proposal->fresh(), $existing);
         });
     }
 
