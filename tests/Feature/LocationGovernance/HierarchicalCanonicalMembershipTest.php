@@ -1,0 +1,141 @@
+<?php
+
+namespace Tests\Feature\LocationGovernance;
+
+use App\Models\ExperienceField;
+use App\Models\GovernanceArea;
+use App\Models\GroupUser;
+use App\Models\OccupationalField;
+use App\Services\Groups\CanonicalGroupMembershipReconciler;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\LocationGovernance\MembershipFixture;
+use Tests\TestCase;
+
+class HierarchicalCanonicalMembershipTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_leaf_profession_and_specialty_expand_to_parent_and_grandparent_values(): void
+    {
+        config(['location-governance.groups_enabled' => true]);
+
+        ['user' => $user] = MembershipFixture::canonicalUser();
+
+        $professionRoot = OccupationalField::create(['name' => 'فرهنگیان', 'status' => 1]);
+        $professionMiddle = OccupationalField::create(['name' => 'معلمان ابتدایی', 'parent_id' => $professionRoot->id, 'status' => 1]);
+        $professionLeaf = OccupationalField::create(['name' => 'معلمان پایه اول', 'parent_id' => $professionMiddle->id, 'status' => 1]);
+
+        $specialtyRoot = ExperienceField::create(['name' => 'آموزش', 'status' => 1]);
+        $specialtyMiddle = ExperienceField::create(['name' => 'آموزش ابتدایی', 'parent_id' => $specialtyRoot->id, 'status' => 1]);
+        $specialtyLeaf = ExperienceField::create(['name' => 'آموزش پایه اول', 'parent_id' => $specialtyMiddle->id, 'status' => 1]);
+
+        $user->occupationalFields()->sync([$professionLeaf->id]);
+        $user->experienceFields()->sync([$specialtyLeaf->id]);
+
+        $professionValues = app(\App\Services\Membership\ProfessionDimensionResolver::class)
+            ->valuesFor($user)
+            ->values()
+            ->all();
+        $specialtyValues = app(\App\Services\Membership\SpecialtyDimensionResolver::class)
+            ->valuesFor($user)
+            ->values()
+            ->all();
+
+        $this->assertEqualsCanonicalizing([
+            'occupational_field:'.$professionRoot->id,
+            'occupational_field:'.$professionMiddle->id,
+            'occupational_field:'.$professionLeaf->id,
+        ], $professionValues);
+
+        $this->assertEqualsCanonicalizing([
+            'experience_field:'.$specialtyRoot->id,
+            'experience_field:'.$specialtyMiddle->id,
+            'experience_field:'.$specialtyLeaf->id,
+        ], $specialtyValues);
+    }
+
+    public function test_shared_profession_ancestors_are_deduplicated_across_multiple_leaf_selections(): void
+    {
+        ['user' => $user] = MembershipFixture::canonicalUser();
+
+        $root = OccupationalField::create(['name' => 'فرهنگیان', 'status' => 1]);
+        $middle = OccupationalField::create(['name' => 'معلمان ابتدایی', 'parent_id' => $root->id, 'status' => 1]);
+        $first = OccupationalField::create(['name' => 'معلمان پایه اول', 'parent_id' => $middle->id, 'status' => 1]);
+        $second = OccupationalField::create(['name' => 'معلمان پایه دوم', 'parent_id' => $middle->id, 'status' => 1]);
+
+        $user->occupationalFields()->sync([$first->id, $second->id]);
+
+        $values = app(\App\Services\Membership\ProfessionDimensionResolver::class)
+            ->valuesFor($user)
+            ->values()
+            ->all();
+
+        $this->assertCount(4, $values);
+        $this->assertEqualsCanonicalizing([
+            'occupational_field:'.$root->id,
+            'occupational_field:'.$middle->id,
+            'occupational_field:'.$first->id,
+            'occupational_field:'.$second->id,
+        ], $values);
+    }
+
+    public function test_minimum_three_level_profession_and_specialty_contract_materializes_81_memberships_on_nine_governance_scopes(): void
+    {
+        config(['location-governance.groups_enabled' => true]);
+
+        ['user' => $user, 'area' => $baseArea] = MembershipFixture::canonicalUser();
+
+        $professionRoot = OccupationalField::create(['name' => 'فرهنگیان', 'status' => 1]);
+        $professionMiddle = OccupationalField::create(['name' => 'معلمان ابتدایی', 'parent_id' => $professionRoot->id, 'status' => 1]);
+        $professionLeaf = OccupationalField::create(['name' => 'معلمان پایه اول', 'parent_id' => $professionMiddle->id, 'status' => 1]);
+        $user->occupationalFields()->sync([$professionLeaf->id]);
+
+        $specialtyRoot = ExperienceField::create(['name' => 'آموزش', 'status' => 1]);
+        $specialtyMiddle = ExperienceField::create(['name' => 'آموزش ابتدایی', 'parent_id' => $specialtyRoot->id, 'status' => 1]);
+        $specialtyLeaf = ExperienceField::create(['name' => 'آموزش پایه اول', 'parent_id' => $specialtyMiddle->id, 'status' => 1]);
+        $user->experienceFields()->sync([$specialtyLeaf->id]);
+
+        $parent = null;
+        foreach ([
+            ['global', null, 'Global', 100],
+            ['continent', null, 'Asia', 200],
+            ['country', 'IR', 'Iran', 300],
+            ['province', 'IR', 'Mazandaran', 400],
+            ['county', 'IR', 'Sari County', 500],
+            ['section', 'IR', 'Central Sari Section', 600],
+            ['city', 'IR', 'Sari', 700],
+            ['urban_region', 'IR', 'Sari Urban Region 1', 800],
+        ] as [$type, $countryCode, $name, $rank]) {
+            $area = GovernanceArea::create([
+                'parent_id' => $parent?->id,
+                'key' => 'test.'.str_replace(' ', '-', strtolower($name)),
+                'country_code' => $countryCode,
+                'governance_type' => $type,
+                'area_kind' => 'official',
+                'canonical_name' => $name,
+                'rank' => $rank,
+                'status' => 'active',
+            ]);
+            $parent = $area;
+        }
+
+        // Rewire the fixture's mapped base area beneath the eight upstream areas.
+        $baseArea->update([
+            'parent_id' => $parent->id,
+            'governance_type' => 'local',
+            'rank' => 900,
+        ]);
+
+        app(CanonicalGroupMembershipReconciler::class)->reconcile($user);
+
+        $canonicalMemberships = GroupUser::query()
+            ->where('user_id', $user->id)
+            ->where('status', 1)
+            ->whereHas('group', fn ($query) => $query->whereNotNull('governance_area_id'))
+            ->get();
+
+        $this->assertCount(81, $canonicalMemberships);
+        $this->assertSame(9, $canonicalMemberships->where('role', 1)->count());
+        $this->assertSame(72, $canonicalMemberships->where('role', 0)->count());
+    }
+}
