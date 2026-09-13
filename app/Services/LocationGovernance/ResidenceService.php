@@ -228,9 +228,9 @@ class ResidenceService
         });
     }
 
-    public function officialGovernanceAreasFor(User $user): Collection
+    public function currentPrimaryResidence(User $user): ?UserLocationRelationship
     {
-        $primaryResidence = UserLocationRelationship::query()
+        return UserLocationRelationship::query()
             ->where('user_id', $user->id)
             ->where('relationship_type', 'primary_residence')
             ->whereNull('ended_at')
@@ -238,6 +238,11 @@ class ResidenceService
             ->orderByDesc('started_at')
             ->orderByDesc('id')
             ->first();
+    }
+
+    public function officialGovernanceAreasFor(User $user): Collection
+    {
+        $primaryResidence = $this->currentPrimaryResidence($user);
 
         if ($primaryResidence === null || $primaryResidence->location === null) {
             return collect();
