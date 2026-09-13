@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Models\User;
 use App\Modules\NajmBahar\Services\MembershipRemovalService;
+use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\Users\UserManagementService;
 use Illuminate\Http\Request;
 
@@ -12,12 +13,15 @@ class SafeUserController extends UserController
     public function __construct(
         private readonly MembershipRemovalService $membershipRemoval,
         private readonly UserManagementService $userManagement,
+        private readonly CanonicalGroupMembershipReconciler $canonicalGroupMembershipReconciler,
     ) {
     }
 
     public function update(Request $request, User $user)
     {
         $requestedStatus = $request->input('status');
+        $previousGender = $user->gender;
+        $previousBirthDate = (string) $user->getRawOriginal('birth_date');
 
         // Preserve the current lifecycle state while the legacy profile updater
         // handles non-lifecycle fields. Status changes are applied only through
@@ -31,9 +35,17 @@ class SafeUserController extends UserController
         }
 
         $response = parent::update($request, $user);
+        $freshUser = User::withoutGlobalScopes()->find($user->getKey());
+
+        if ($freshUser !== null
+            && (bool) config('location-governance.groups_enabled', false)
+            && ($previousGender !== $freshUser->gender
+                || $previousBirthDate !== (string) $freshUser->getRawOriginal('birth_date'))) {
+            $this->canonicalGroupMembershipReconciler->reconcile($freshUser);
+        }
 
         if ($requestedStatus !== null) {
-            $result = $this->userManagement->setStatus($user->fresh(), (string) $requestedStatus);
+            $result = $this->userManagement->setStatus($freshUser, (string) $requestedStatus);
             if (! (bool) ($result['success'] ?? false)) {
                 return back()->with('error', 'تغییر وضعیت این هویت مجاز نیست');
             }
