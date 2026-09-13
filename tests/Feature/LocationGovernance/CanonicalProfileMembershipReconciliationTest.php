@@ -122,6 +122,29 @@ class CanonicalProfileMembershipReconciliationTest extends TestCase
         $this->assertSame(0, (int) $user->groups()->whereKey($oldAge->id)->firstOrFail()->pivot->status);
     }
 
+    public function test_canonical_profile_taxonomy_write_stays_group_dark_while_stage_c_groups_are_disabled(): void
+    {
+        config([
+            'location-governance.runtime_enabled' => true,
+            'location-governance.registration_enabled' => true,
+            'location-governance.groups_enabled' => false,
+        ]);
+
+        ['user' => $user] = MembershipFixture::canonicalUser();
+
+        $profession = OccupationalField::create(['name' => 'فرهنگیان', 'status' => 1]);
+        $specialty = ExperienceField::create(['name' => 'آموزش', 'status' => 1]);
+
+        $this->actingAs($user)->put(route('profile.update.experience'), [
+            'occupational_fields' => [$profession->id],
+            'experience_fields' => [$specialty->id],
+        ])->assertRedirect(route('profile.edit'));
+
+        $this->assertTrue($user->fresh()->occupationalFields()->whereKey($profession->id)->exists());
+        $this->assertTrue($user->fresh()->experienceFields()->whereKey($specialty->id)->exists());
+        $this->assertSame(0, Group::query()->count(), 'Registration cutover must not fall back to legacy group creation while Stage C groups are dark.');
+    }
+
     private function enableStageC(): void
     {
         config([
