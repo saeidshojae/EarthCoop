@@ -17,6 +17,15 @@ class SafeUserController extends UserController
     ) {
     }
 
+    public function edit(User $user)
+    {
+        if (! (bool) config('location-governance.registration_enabled')) {
+            return parent::edit($user);
+        }
+
+        return view('admin.user.edit_canonical', compact('user'));
+    }
+
     public function update(Request $request, User $user)
     {
         $requestedStatus = $request->input('status');
