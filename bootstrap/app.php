@@ -15,6 +15,14 @@ $app = new Illuminate\Foundation\Application(
     $_ENV['APP_BASE_PATH'] ?? dirname(__DIR__)
 );
 
+// Keep existing route/controller declarations stable while the location/governance
+// rollout is feature-flagged. The adapter delegates back to the legacy controller
+// whenever canonical registration is disabled.
+$app->bind(
+    App\Http\Controllers\Profile\ProfileController::class,
+    App\Http\Controllers\Profile\CanonicalProfileController::class
+);
+
 /*
 |--------------------------------------------------------------------------
 | Bind Important Interfaces

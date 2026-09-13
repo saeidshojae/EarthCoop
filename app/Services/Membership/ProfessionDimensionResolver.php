@@ -15,11 +15,23 @@ class ProfessionDimensionResolver implements DimensionResolver
 
     public function valuesFor(User $user): Collection
     {
-        return $user->occupationalFields()
-            ->pluck('occupational_fields.id')
-            ->map(static fn ($id): string => 'occupational_field:'.(int) $id)
+        $fieldIds = collect();
+
+        foreach ($user->occupationalFields()->with('parent.parent')->get() as $field) {
+            $current = $field;
+            $visited = [];
+
+            while ($current !== null && ! isset($visited[$current->id])) {
+                $visited[$current->id] = true;
+                $fieldIds->push((int) $current->id);
+                $current = $current->parent;
+            }
+        }
+
+        return $fieldIds
             ->unique()
             ->sort()
-            ->values();
+            ->values()
+            ->map(static fn (int $id): string => 'occupational_field:'.$id);
     }
 }

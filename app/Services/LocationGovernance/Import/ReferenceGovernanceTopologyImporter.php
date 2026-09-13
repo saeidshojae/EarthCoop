@@ -27,7 +27,7 @@ class ReferenceGovernanceTopologyImporter
                 continue;
             }
 
-            if (! $this->isOwnedByDataset($area, $dataset)) {
+            if (! $this->isOwnedByDataset($area, $dataset, $definition)) {
                 $counts['conflict']++;
                 continue;
             }
@@ -36,7 +36,7 @@ class ReferenceGovernanceTopologyImporter
             $expectedLocationIds = collect($locations)->pluck('id')->sort()->values()->all();
             $actualLocationIds = $area->locations()->pluck('locations.id')->sort()->values()->all();
 
-            $matches = $area->country_code === $dataset['country']
+            $matches = $area->country_code === $this->countryCodeFor($definition, $dataset)
                 && $area->governance_type === $definition['governance_type']
                 && $area->area_kind === $definition['area_kind']
                 && $area->canonical_name === $definition['canonical_name']
@@ -79,11 +79,14 @@ class ReferenceGovernanceTopologyImporter
                     throw new RuntimeException('Reference governance topology location mapping is missing for '.$definition['key']);
                 }
 
+                $countryCode = $this->countryCodeFor($definition, $dataset);
+                $sharedScope = $countryCode === null;
+
                 $area = GovernanceArea::query()->updateOrCreate(
                     ['key' => $definition['key']],
                     [
                         'parent_id' => $parentId,
-                        'country_code' => $dataset['country'],
+                        'country_code' => $countryCode,
                         'governance_type' => $definition['governance_type'],
                         'area_kind' => $definition['area_kind'],
                         'canonical_name' => $definition['canonical_name'],
@@ -94,6 +97,7 @@ class ReferenceGovernanceTopologyImporter
                             'reference_topology' => true,
                             'source' => $dataset['source'],
                             'dataset_version' => $dataset['dataset_version'],
+                            'shared_scope' => $sharedScope,
                         ],
                     ],
                 );
@@ -142,12 +146,28 @@ class ReferenceGovernanceTopologyImporter
         return $locations;
     }
 
-    private function isOwnedByDataset(GovernanceArea $area, array $dataset): bool
+    private function countryCodeFor(array $definition, array $dataset): ?string
+    {
+        return array_key_exists('country_code', $definition)
+            ? $definition['country_code']
+            : $dataset['country'];
+    }
+
+    private function isOwnedByDataset(GovernanceArea $area, array $dataset, array $definition): bool
     {
         $metadata = $area->metadata ?? [];
+        $sharedScope = $this->countryCodeFor($definition, $dataset) === null;
 
-        return ($metadata['reference_topology'] ?? false) === true
-            && ($metadata['source'] ?? null) === $dataset['source']
-            && ($metadata['dataset_version'] ?? null) === $dataset['dataset_version'];
+        if (($metadata['reference_topology'] ?? false) !== true
+            || ($metadata['source'] ?? null) !== $dataset['source']) {
+            return false;
+        }
+
+        if ($sharedScope) {
+            return ($metadata['shared_scope'] ?? false) === true
+                || $area->country_code === null;
+        }
+
+        return ($metadata['dataset_version'] ?? null) === $dataset['dataset_version'];
     }
 }

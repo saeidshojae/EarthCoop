@@ -104,6 +104,109 @@ class CanonicalGroupIndexCutoverTest extends TestCase
         $this->assertSame(1, (int) $user->groups()->whereKey($newPublicGroup->id)->firstOrFail()->pivot->status);
     }
 
+    public function test_base_scope_is_active_and_all_upstream_canonical_memberships_are_observer_roles(): void
+    {
+        $this->enableStageC();
+
+        ['user' => $user, 'area' => $baseArea] = MembershipFixture::canonicalUser();
+
+        $country = GovernanceArea::create([
+            'key' => 'ir.country',
+            'country_code' => 'IR',
+            'governance_type' => 'country',
+            'area_kind' => 'official',
+            'canonical_name' => 'Iran',
+            'rank' => 1,
+            'status' => 'active',
+        ]);
+        $baseArea->update(['parent_id' => $country->id, 'rank' => 10]);
+
+        $this->actingAs($user)->get('/groups')->assertOk();
+
+        foreach (['public', 'profession', 'specialty', 'age', 'gender'] as $dimensionKey) {
+            $baseGroup = Group::query()
+                ->where('governance_area_id', $baseArea->id)
+                ->where('dimension_key', $dimensionKey)
+                ->firstOrFail();
+            $upstreamGroup = Group::query()
+                ->where('governance_area_id', $country->id)
+                ->where('dimension_key', $dimensionKey)
+                ->firstOrFail();
+
+            $basePivot = $user->groups()->whereKey($baseGroup->id)->firstOrFail()->pivot;
+            $upstreamPivot = $user->groups()->whereKey($upstreamGroup->id)->firstOrFail()->pivot;
+
+            $this->assertSame(1, (int) $basePivot->role, "Base {$dimensionKey} group must be active.");
+            $this->assertSame(0, (int) $upstreamPivot->role, "Upstream {$dimensionKey} group must be observer.");
+        }
+    }
+
+    public function test_active_privileged_upstream_role_is_not_overwritten_by_membership_reconciliation(): void
+    {
+        $this->enableStageC();
+
+        ['user' => $user, 'area' => $baseArea] = MembershipFixture::canonicalUser();
+
+        $country = GovernanceArea::create([
+            'key' => 'ir.country.privileged',
+            'country_code' => 'IR',
+            'governance_type' => 'country',
+            'area_kind' => 'official',
+            'canonical_name' => 'Iran',
+            'rank' => 1,
+            'status' => 'active',
+        ]);
+        $baseArea->update(['parent_id' => $country->id, 'rank' => 10]);
+
+        $this->actingAs($user)->get('/groups')->assertOk();
+
+        $countryPublic = Group::query()
+            ->where('governance_area_id', $country->id)
+            ->where('dimension_key', 'public')
+            ->where('dimension_value_key', 'public')
+            ->firstOrFail();
+
+        $user->groups()->updateExistingPivot($countryPublic->id, [
+            'status' => 1,
+            'role' => 3,
+        ]);
+
+        $this->actingAs($user)->get('/groups')->assertOk();
+
+        $this->assertSame(
+            3,
+            (int) $user->groups()->whereKey($countryPublic->id)->firstOrFail()->pivot->role,
+        );
+    }
+
+    public function test_canonical_profession_filters_use_governance_levels_instead_of_legacy_location_level(): void
+    {
+        $this->enableStageC();
+
+        ['user' => $user, 'area' => $baseArea] = MembershipFixture::canonicalUser();
+
+        $country = GovernanceArea::create([
+            'key' => 'ir.country.filter',
+            'country_code' => 'IR',
+            'governance_type' => 'country',
+            'area_kind' => 'official',
+            'canonical_name' => 'Iran',
+            'rank' => 1,
+            'status' => 'active',
+        ]);
+        $baseArea->update([
+            'parent_id' => $country->id,
+            'governance_type' => 'city',
+            'rank' => 10,
+        ]);
+
+        $response = $this->actingAs($user)->get('/groups');
+
+        $response->assertOk();
+        $response->assertSee('data-filter-value="country"', false);
+        $response->assertSee('data-filter-value="city"', false);
+    }
+
     private function enableStageC(): void
     {
         config([

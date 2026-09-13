@@ -28,12 +28,28 @@ final class CanonicalGroupIndexController extends Controller
         $canonicalGroups = $materializedIds->isEmpty()
             ? collect()
             : $user->groups()
+                ->with(['governanceArea'])
                 ->withPivot('role', 'status', 'expired', 'last_read_message_id')
                 ->whereIn('groups.id', $materializedIds->all())
                 ->wherePivot('status', 1)
                 ->get()
                 ->reverse()
                 ->values();
+
+        // The mature My Groups view still filters profession/specialty rows by the
+        // legacy `location_level` presentation field. Canonical group identity must
+        // remain governance_area_id-based, so adapt the value in-memory only for
+        // this response; never persist it back to the legacy column.
+        $canonicalGroups->each(function (Group $group): void {
+            if ($group->location_level !== null || $group->governanceArea === null) {
+                return;
+            }
+
+            $group->setAttribute(
+                'location_level',
+                $this->presentationLevelFor((string) $group->governanceArea->governance_type),
+            );
+        });
 
         return view('groups.index', [
             'generalGroups' => $this->dimension($canonicalGroups, 'public'),
@@ -56,5 +72,21 @@ final class CanonicalGroupIndexController extends Controller
         return $groups
             ->filter(fn (Group $group): bool => $group->dimension_key === $dimensionKey)
             ->values();
+    }
+
+    private function presentationLevelFor(string $governanceType): ?string
+    {
+        return match ($governanceType) {
+            'global' => 'global',
+            'continent' => 'continent',
+            'country' => 'country',
+            'province' => 'province',
+            'county' => 'county',
+            'section' => 'section',
+            'city', 'rural_district' => 'city',
+            'urban_region', 'village' => 'region',
+            'local', 'neighborhood' => 'neighborhood',
+            default => null,
+        };
     }
 }
