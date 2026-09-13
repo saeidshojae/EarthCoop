@@ -104,6 +104,43 @@ class CanonicalGroupIndexCutoverTest extends TestCase
         $this->assertSame(1, (int) $user->groups()->whereKey($newPublicGroup->id)->firstOrFail()->pivot->status);
     }
 
+    public function test_base_scope_is_active_and_all_upstream_canonical_memberships_are_observer_roles(): void
+    {
+        $this->enableStageC();
+
+        ['user' => $user, 'area' => $baseArea] = MembershipFixture::canonicalUser();
+
+        $country = GovernanceArea::create([
+            'key' => 'ir.country',
+            'country_code' => 'IR',
+            'governance_type' => 'country',
+            'area_kind' => 'official',
+            'canonical_name' => 'Iran',
+            'rank' => 1,
+            'status' => 'active',
+        ]);
+        $baseArea->update(['parent_id' => $country->id, 'rank' => 10]);
+
+        $this->actingAs($user)->get('/groups')->assertOk();
+
+        foreach (['public', 'profession', 'specialty', 'age', 'gender'] as $dimensionKey) {
+            $baseGroup = Group::query()
+                ->where('governance_area_id', $baseArea->id)
+                ->where('dimension_key', $dimensionKey)
+                ->firstOrFail();
+            $upstreamGroup = Group::query()
+                ->where('governance_area_id', $country->id)
+                ->where('dimension_key', $dimensionKey)
+                ->firstOrFail();
+
+            $basePivot = $user->groups()->whereKey($baseGroup->id)->firstOrFail()->pivot;
+            $upstreamPivot = $user->groups()->whereKey($upstreamGroup->id)->firstOrFail()->pivot;
+
+            $this->assertSame(1, (int) $basePivot->role, "Base {$dimensionKey} group must be active.");
+            $this->assertSame(0, (int) $upstreamPivot->role, "Upstream {$dimensionKey} group must be observer.");
+        }
+    }
+
     private function enableStageC(): void
     {
         config([
