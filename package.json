@@ -6,6 +6,7 @@
     "prebuild": "node -e \"require('fs').rmSync('public/hot',{force:true})\"",
     "build": "vite build",
     "test:group-chat": "node --test tests/js/group-chat",
+    "test:location-governance": "node --test tests/js/location-governance",
     "realtime": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-soketi.ps1",
     "realtime:smoke": "node_modules\\node\\bin\\node.exe scripts/realtime-smoke.cjs"
   },
