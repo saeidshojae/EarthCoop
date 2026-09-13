@@ -93,54 +93,68 @@ Security note: the old temporary deployment-console secret appeared in a screens
 
 ## Stage A — canonical runtime — PASS
 
-Owner explicitly authorized Stage A. Only this Production flag was changed:
+Owner explicitly authorized Stage A. Production changed only:
 
 ```text
 LOCATION_GOVERNANCE_RUNTIME_ENABLED=true
 ```
 
-Other consumer flags remained disabled:
-
-```text
-LOCATION_GOVERNANCE_REGISTRATION_ENABLED=false
-LOCATION_GOVERNANCE_GROUPS_ENABLED=false
-LOCATION_GOVERNANCE_ELECTIONS_ENABLED=false
-LOCATION_GOVERNANCE_PROJECTS_ENABLED=false
-```
-
-Deployment Console remained disabled.
-
-### Stage A smoke evidence
+Stage A smoke evidence:
 
 - authenticated session survived flag activation = PASS
-- `/home` dashboard rendered successfully with real group counts = PASS
+- `/home` dashboard rendered successfully = PASS
 - `/profile/edit` rendered successfully = PASS
-- because `registration_enabled=false`, `/profile/edit` correctly remained on legacy profile/location UI = EXPECTED/PASS
 - no observed 500, blank page, or redirect loop = PASS
-- canonical root endpoint without country returned `{"data":[]}` instead of 404, confirming runtime flag is active = PASS
-- canonical root endpoint with `?country=IR` returned active country node:
-  - `id=1`
-  - `type_key=country`
-  - label = Iran
-  - `is_residence_endpoint=false`
-  - `has_children=true`
-  - `status=active`
-- canonical children endpoint `/location/options/1/children` returned active child node:
-  - `id=2`
-  - `type_key=province`
-  - `is_residence_endpoint=false`
-  - `has_children=true`
-  - `status=active`
+- canonical root endpoint with `?country=IR` returned active country node = PASS
+- canonical children endpoint `/location/options/1/children` returned active province child = PASS
 
-Result: **Stage A canonical runtime/read-side = PASS**.
+Result: **Stage A canonical runtime/read-side = PASS**. No rollback required.
 
-No rollback was required.
+## Stage B — canonical registration/profile — PASS on current controlled reference dataset
+
+Owner explicitly authorized Stage B. Production changed only:
+
+```text
+LOCATION_GOVERNANCE_REGISTRATION_ENABLED=true
+```
+
+### Stage B smoke evidence
+
+- `/profile/edit` switched from legacy location UI to canonical Primary Residence editor = PASS
+- manual canonical cascade loaded successfully = PASS
+- available reference path loaded through Iran → Mazandaran → Sari County → Chahardangeh Section → Chahardangeh Rural District → Chahardangeh Reference Village = PASS
+- terminal village was recognized as a valid residence endpoint = PASS
+- saving Primary Residence succeeded and success message rendered = PASS
+- redirected `/profile/edit` displayed persisted current location `Chahardangeh Reference Village` = PASS
+- no observed 500, blank page, or redirect loop during save = PASS
+
+Result: **Stage B registration/profile path = PASS for the currently loaded reference/pilot dataset**. No rollback required.
+
+### Observed group behavior after Stage B save
+
+Existing group memberships/listing did not change after Primary Residence was saved. This is expected while:
+
+```text
+LOCATION_GOVERNANCE_GROUPS_ENABLED=false
+```
+
+Current `GroupService` switches to canonical MembershipEngine/GovernanceScopedGroupService resolution only when `groups_enabled=true`; otherwise legacy group resolution remains active. Therefore unchanged groups are **not a Stage B failure**. They are a mandatory Stage C verification item.
+
+Detailed follow-up checklist:
+
+`docs/superpowers/plans/2026-09-13-stage-b-observations-and-stage-c-followups.md`
+
+### Observed geography coverage limitation
+
+The current Production selector is backed by the small versioned `earthcoop-reference / v1` architecture/UAT dataset. The limited set of selectable paths is therefore a **known reference-data coverage limitation**, not a selector UI failure.
+
+Before broad public onboarding, complete a separate reviewed/versioned geography-data rollout for full intended Iran coverage and later country-by-country global expansion. Use the importer/dry-run/apply/idempotency process; do not use ad-hoc SQL.
 
 ## Current Production flag matrix
 
 ```text
 LOCATION_GOVERNANCE_RUNTIME_ENABLED=true
-LOCATION_GOVERNANCE_REGISTRATION_ENABLED=false
+LOCATION_GOVERNANCE_REGISTRATION_ENABLED=true
 LOCATION_GOVERNANCE_GROUPS_ENABLED=false
 LOCATION_GOVERNANCE_ELECTIONS_ENABLED=false
 LOCATION_GOVERNANCE_PROJECTS_ENABLED=false
@@ -149,32 +163,38 @@ DEPLOYMENT_CONSOLE_ENABLED=false
 
 ## Next official boundary
 
-Next stage is **Stage B — registration/profile**, and it is NOT yet authorized.
+Next stage is **Stage C — canonical group membership resolution**, and it is NOT yet authorized.
 
 Only after explicit owner approval may this one additional flag change:
 
 ```text
-LOCATION_GOVERNANCE_REGISTRATION_ENABLED=true
+LOCATION_GOVERNANCE_GROUPS_ENABLED=true
 ```
 
-Before Stage B, keep runtime healthy and preserve all other flags as-is. Stage B smoke must cover schema-driven location selection, urban and rural branches, Primary Residence create/update, profile completion without requiring legacy Address, and geolocation assist not overwriting manual residence selection.
+Stage C must verify:
 
-If Stage B fails, immediately revert only:
+- Primary Residence drives canonical public/spatial membership resolution;
+- expected profession/specialty/age/gender memberships still resolve correctly;
+- obsolete legacy-location-derived exposure is not incorrectly authoritative;
+- no empty-group explosion or mass meaningless materialization occurs;
+- Group Chat, listing, Admin/Control Center remain healthy;
+- membership behavior is deterministic/idempotent.
+
+If Stage C fails, immediately revert only:
 
 ```text
-LOCATION_GOVERNANCE_REGISTRATION_ENABLED=false
+LOCATION_GOVERNANCE_GROUPS_ENABLED=false
 ```
 
-Keep `runtime_enabled=true`, reload configuration safely, verify legacy profile/registration behavior returns, capture evidence, and STOP. Do not continue to Groups.
+Keep Stage A+B enabled if still healthy, capture evidence, and STOP before Stage D.
 
 ## Remaining staged order
 
-1. Stage B — `registration_enabled`
-2. Stage C — `groups_enabled`
-3. Stage D — `elections_enabled`
-4. Stage E — `projects_enabled`
-5. Post-cutover observation/evidence
-6. HARD STOP before C14 legacy retirement
+1. Stage C — `groups_enabled`
+2. Stage D — `elections_enabled`
+3. Stage E — `projects_enabled`
+4. Post-cutover observation/evidence
+5. HARD STOP before C14 legacy retirement
 
 Each Production flag change is an independent authorization boundary. Never enable all flags together.
 
@@ -190,4 +210,4 @@ Each Production flag change is an independent authorization boundary. Never enab
 
 ## Resume prompt for a new chat
 
-> Continue EarthCoop Global Location/Governance from `docs/location-governance/2026-09-12-c13-production-hard-stop-checkpoint.md` and `docs/superpowers/plans/2026-09-12-location-governance-staged-activation.md`. C13 preparation is READY; fresh backup + isolated restore rehearsal is PASS; deployed/main SHA is `cae358c4b01dabfd45cd588f82bd5f2c1d657956`; Stage A runtime is PASS and `LOCATION_GOVERNANCE_RUNTIME_ENABLED=true`; registration/groups/elections/projects remain false; Deployment Console remains disabled. The next authorization boundary is Stage B only (`LOCATION_GOVERNANCE_REGISTRATION_ENABLED=true`). Do not mutate main, Production data, or later flags without explicit checkpoint approval. C14 is prohibited.
+> Continue EarthCoop Global Location/Governance from `docs/location-governance/2026-09-12-c13-production-hard-stop-checkpoint.md`, `docs/superpowers/plans/2026-09-12-location-governance-staged-activation.md`, and `docs/superpowers/plans/2026-09-13-stage-b-observations-and-stage-c-followups.md`. C13 preparation is READY; fresh backup + isolated restore rehearsal is PASS; deployed/main SHA is `cae358c4b01dabfd45cd588f82bd5f2c1d657956`; Stage A runtime PASS; Stage B registration/profile PASS on controlled reference data; `runtime=true`, `registration=true`, `groups=false`, `elections=false`, `projects=false`; Deployment Console disabled. Group memberships intentionally remained legacy because `groups_enabled=false`; verify/rematerialize only in Stage C. Current geography coverage is reference/pilot-only and needs a separate complete Iran data rollout before broad public onboarding. The next authorization boundary is Stage C only (`LOCATION_GOVERNANCE_GROUPS_ENABLED=true`). C14 is prohibited.
