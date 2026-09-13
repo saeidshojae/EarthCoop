@@ -155,6 +155,17 @@
                     </a>
                 </li>
 
+                @if((bool) config('location-governance.runtime_enabled'))
+                    <!-- My Location & Governance -->
+                    <li class="sidebar-menu-item">
+                        <a href="{{ route('location-governance.me') }}" class="sidebar-menu-link {{ request()->routeIs('location-governance.me') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
+                            <span class="absolute left-0 top-0 h-full w-1 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200" style="background-color: var(--color-earth-green);"></span>
+                            <i class="fas fa-location-dot" style="color: var(--color-earth-green);"></i>
+                            <span class="flex-grow text-right mx-3">مکان و حکمرانی من</span>
+                        </a>
+                    </li>
+                @endif
+
                 <!-- Collaborations -->
                 <li class="sidebar-menu-item">
                     <a href="{{ route('history.index') }}" class="sidebar-menu-link {{ request()->routeIs('history.index') ? 'active' : '' }} block px-4 py-3 rounded-xl text-gentle-black transition duration-200 flex items-center justify-between relative group" style="color: var(--color-gentle-black);">
