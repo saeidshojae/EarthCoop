@@ -4,6 +4,8 @@ namespace Tests\Feature\Admin;
 
 use App\Http\Controllers\Admin\SafeUserController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\PermissionMiddleware;
 use App\Models\Location;
 use App\Models\User;
 use App\Services\LocationGovernance\LocationProposalService;
@@ -25,6 +27,14 @@ class CanonicalUserResidenceEditTest extends TestCase
             'location-governance.runtime_enabled' => true,
             'location-governance.registration_enabled' => true,
             'location-governance.groups_enabled' => false,
+        ]);
+
+        // Keep Laravel's normal web middleware, especially SubstituteBindings,
+        // active so {user} is bound exactly as it is in production. Only bypass
+        // the admin authorization wrappers that are outside this feature's scope.
+        $this->withoutMiddleware([
+            AdminMiddleware::class,
+            PermissionMiddleware::class,
         ]);
     }
 
@@ -75,8 +85,7 @@ class CanonicalUserResidenceEditTest extends TestCase
         [$target, $oldHome, $newHome] = $this->makeApprovedMoveScenario();
         $admin = User::factory()->create();
 
-        $response = $this->withoutMiddleware()
-            ->actingAs($admin)
+        $response = $this->actingAs($admin)
             ->from(route('admin.users.edit', $target))
             ->put(route('admin.users.residence.update', $target), [
                 'location_id' => $newHome->id,
@@ -113,8 +122,7 @@ class CanonicalUserResidenceEditTest extends TestCase
             'canonical_name' => 'خیابان پیشنهادی برای کاربر',
         ]);
 
-        $response = $this->withoutMiddleware()
-            ->actingAs($admin)
+        $response = $this->actingAs($admin)
             ->from(route('admin.users.edit', $target))
             ->put(route('admin.users.residence.update', $target), [
                 'location_proposal_id' => $proposal->id,
@@ -143,8 +151,7 @@ class CanonicalUserResidenceEditTest extends TestCase
         [$target, $oldHome, $newHome] = $this->makeApprovedMoveScenario();
         $admin = User::factory()->create();
 
-        $missingReason = $this->withoutMiddleware()
-            ->actingAs($admin)
+        $missingReason = $this->actingAs($admin)
             ->from(route('admin.users.edit', $target))
             ->put(route('admin.users.residence.update', $target), [
                 'location_id' => $newHome->id,
@@ -153,8 +160,7 @@ class CanonicalUserResidenceEditTest extends TestCase
         $missingReason->assertRedirect(route('admin.users.edit', $target));
         $missingReason->assertSessionHasErrors('reason');
 
-        $both = $this->withoutMiddleware()
-            ->actingAs($admin)
+        $both = $this->actingAs($admin)
             ->from(route('admin.users.edit', $target))
             ->put(route('admin.users.residence.update', $target), [
                 'location_id' => $newHome->id,
@@ -180,8 +186,7 @@ class CanonicalUserResidenceEditTest extends TestCase
         $admin = User::factory()->create();
         app(ResidenceService::class)->setInitialPrimaryResidence($target, $home, ['source' => 'test']);
 
-        $response = $this->withoutMiddleware()
-            ->actingAs($admin)
+        $response = $this->actingAs($admin)
             ->from(route('admin.users.edit', $target))
             ->put(route('admin.users.residence.update', $target), [
                 'location_id' => $country->id,
