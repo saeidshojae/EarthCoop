@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\UserResidenceController;
+use App\Http\Controllers\LocationGovernance\CommunityAreaController;
 use App\Http\Controllers\LocationGovernance\GeolocationController;
 use App\Http\Controllers\LocationGovernance\LocationOptionsController;
 use App\Http\Controllers\LocationGovernance\MyLocationGovernanceController;
@@ -18,6 +19,9 @@ Route::middleware('auth')->post('/location-governance/geolocation/match', [Geolo
 
 Route::middleware('auth')->get('/location-governance/me', MyLocationGovernanceController::class)
     ->name('location-governance.me');
+
+Route::middleware('auth')->post('/location-governance/community/{location}', [CommunityAreaController::class, 'store'])
+    ->name('location-governance.community.store');
 
 // Loaded after routes/web.php. These deliberately shadow the legacy profile
 // location endpoints. Each canonical adapter delegates straight back to the
