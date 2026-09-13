@@ -28,6 +28,7 @@ final class CanonicalGroupIndexController extends Controller
         $canonicalGroups = $materializedIds->isEmpty()
             ? collect()
             : $user->groups()
+                ->with(['governanceArea'])
                 ->withPivot('role', 'status', 'expired', 'last_read_message_id')
                 ->whereIn('groups.id', $materializedIds->all())
                 ->wherePivot('status', 1)
