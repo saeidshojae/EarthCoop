@@ -15,7 +15,7 @@ class ReferenceGovernanceTopologyImportTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_reference_topology_apply_maps_urban_and_rural_reference_locations_to_official_governance(): void
+    public function test_reference_topology_apply_maps_complete_urban_and_rural_governance_chains(): void
     {
         $this->seed(LocationGovernanceBootstrapSeeder::class);
 
@@ -31,8 +31,19 @@ class ReferenceGovernanceTopologyImportTest extends TestCase
             '--apply' => true,
         ]));
 
-        $this->assertSame(5, GovernanceArea::query()->count());
-        $this->assertSame(5, DB::table('governance_area_locations')->count());
+        $this->assertSame(13, GovernanceArea::query()->count());
+        $this->assertSame(11, DB::table('governance_area_locations')->count());
+
+        $global = GovernanceArea::query()->where('key', 'earthcoop-global')->firstOrFail();
+        $asia = GovernanceArea::query()->where('key', 'earthcoop-continent-asia')->firstOrFail();
+        $iran = GovernanceArea::query()->where('key', 'ir-reference-v1-country')->firstOrFail();
+
+        $this->assertNull($global->country_code);
+        $this->assertNull($asia->country_code);
+        $this->assertSame('IR', $iran->country_code);
+        $this->assertNull($global->parent_id);
+        $this->assertSame($global->id, $asia->parent_id);
+        $this->assertSame($asia->id, $iran->parent_id);
 
         $urbanResidence = LocationExternalId::query()
             ->where('source', 'earthcoop-reference')
@@ -48,16 +59,44 @@ class ReferenceGovernanceTopologyImportTest extends TestCase
             ->firstOrFail()
             ->location;
 
-        $urbanArea = app(GovernanceResolver::class)->baseOfficialAreaForResidence($urbanResidence);
-        $ruralArea = app(GovernanceResolver::class)->baseOfficialAreaForResidence($ruralResidence);
+        $resolver = app(GovernanceResolver::class);
+        $urbanArea = $resolver->baseOfficialAreaForResidence($urbanResidence);
+        $ruralArea = $resolver->baseOfficialAreaForResidence($ruralResidence);
 
         $this->assertNotNull($urbanArea);
         $this->assertSame('local', $urbanArea->governance_type);
         $this->assertSame(900, $urbanArea->rank);
+        $this->assertSame(
+            [
+                'ir-reference-v1-sari-neighborhood-01',
+                'ir-reference-v1-sari-urban-region-01',
+                'ir-reference-v1-sari',
+                'ir-reference-v1-sari-central-section',
+                'ir-reference-v1-sari-county',
+                'ir-reference-v1-mazandaran',
+                'ir-reference-v1-country',
+                'earthcoop-continent-asia',
+                'earthcoop-global',
+            ],
+            $resolver->officialAreasForResidence($urbanResidence)->pluck('key')->all(),
+        );
 
         $this->assertNotNull($ruralArea);
         $this->assertSame('village', $ruralArea->governance_type);
-        $this->assertSame(800, $ruralArea->rank);
+        $this->assertSame(700, $ruralArea->rank);
+        $this->assertSame(
+            [
+                'ir-reference-v1-chahardangeh-village-no-neighborhood',
+                'ir-reference-v1-chahardangeh-rural-district',
+                'ir-reference-v1-chahardangeh-section',
+                'ir-reference-v1-sari-county',
+                'ir-reference-v1-mazandaran',
+                'ir-reference-v1-country',
+                'earthcoop-continent-asia',
+                'earthcoop-global',
+            ],
+            $resolver->officialAreasForResidence($ruralResidence)->pluck('key')->all(),
+        );
 
         $this->assertSame(0, Artisan::call('location-governance:reference-topology', [
             'country' => 'IR',
@@ -68,6 +107,6 @@ class ReferenceGovernanceTopologyImportTest extends TestCase
         $this->assertStringContainsString('create: 0', $output);
         $this->assertStringContainsString('update: 0', $output);
         $this->assertStringContainsString('conflict: 0', $output);
-        $this->assertStringContainsString('unchanged: 5', $output);
+        $this->assertStringContainsString('unchanged: 13', $output);
     }
 }
