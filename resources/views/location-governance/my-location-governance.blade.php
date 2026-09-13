@@ -130,7 +130,7 @@
     <section class="card shadow-sm border-0" aria-labelledby="communities-heading">
         <div class="card-body p-3 p-md-4">
             <h2 id="communities-heading" class="h5 mb-3">اجتماعات محلی</h2>
-            <p class="text-muted small">اجتماعات محلی اختیاری و جدا از زنجیره رسمی حکمرانی و انتخابات رسمی هستند.</p>
+            <p class="text-muted small">اجتماعات محلی اختیاری و جدا از زنجیره رسمی حکمرانی هستند. ایجاد اجتماع محلی به‌معنای ایجاد سطح جدید در انتخابات رسمی یا حکمرانی رسمی نیست.</p>
 
             @forelse($communities as $community)
                 <div class="d-flex align-items-center justify-content-between gap-3 py-2 {{ !$loop->last ? 'border-bottom' : '' }}" data-community-area="{{ $community->id }}">
@@ -138,8 +138,19 @@
                     <span class="badge text-bg-light border">اجتماع اختیاری</span>
                 </div>
             @empty
-                <div class="alert alert-light border mb-0">در حال حاضر اجتماع محلی فعالی برای محل سکونت شما ثبت نشده است.</div>
+                <div class="alert alert-light border mb-3">در حال حاضر اجتماع محلی فعالی برای محل سکونت شما ثبت نشده است.</div>
             @endforelse
+
+            @if($canCreateCommunity && $currentResidence?->location)
+                <form method="POST"
+                      action="{{ route('location-governance.community.store', $currentResidence->location) }}"
+                      data-community-create-action>
+                    @csrf
+                    <button type="submit" class="btn btn-outline-primary">
+                        ایجاد اجتماع محلی برای این مکان
+                    </button>
+                </form>
+            @endif
         </div>
     </section>
 </div>
