@@ -8,6 +8,7 @@ use App\Models\Location;
 use App\Models\LocationProposal;
 use App\Models\LocationSchemaType;
 use App\Models\LocationType;
+use App\Services\LocationGovernance\LocationProposalPolicy;
 use App\Services\LocationGovernance\LocationSchemaResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -51,8 +52,11 @@ final class LocationOptionsController extends Controller
         ]);
     }
 
-    public function children(Location $location, LocationSchemaResolver $schemaResolver): JsonResponse
-    {
+    public function children(
+        Location $location,
+        LocationSchemaResolver $schemaResolver,
+        LocationProposalPolicy $proposalPolicy,
+    ): JsonResponse {
         $this->assertRuntimeEnabled();
 
         if ($location->status !== 'active' || ! $location->location_schema_id || ! $location->location_type_id) {
@@ -63,6 +67,9 @@ final class LocationOptionsController extends Controller
             ->sortBy('canonical_name')
             ->values();
         $allowedTypeIds = $allowedTypes->pluck('id');
+        $proposableTypeIds = $allowedTypes
+            ->filter(fn (LocationType $type): bool => $proposalPolicy->allows($location, $type))
+            ->pluck('id');
 
         $children = $location->children()
             ->with(['type', 'schema'])
@@ -76,7 +83,7 @@ final class LocationOptionsController extends Controller
             ->with('type')
             ->where('parent_location_id', $location->id)
             ->where('location_schema_id', $location->location_schema_id)
-            ->whereIn('location_type_id', $allowedTypeIds)
+            ->whereIn('location_type_id', $proposableTypeIds)
             ->whereIn('status', [
                 LocationProposalStatus::Pending->value,
                 LocationProposalStatus::ReadyForReview->value,
@@ -88,7 +95,12 @@ final class LocationOptionsController extends Controller
         return response()->json([
             'data' => $children->map(fn (Location $child): array => $this->serialize($child))->values(),
             'proposals' => $proposals->map(fn (LocationProposal $proposal): array => $this->serializeProposal($proposal))->values(),
-            'allowed_types' => $allowedTypes->map(fn (LocationType $type): array => $this->serializeAllowedType($type))->values(),
+            'allowed_types' => $allowedTypes->map(
+                fn (LocationType $type): array => $this->serializeAllowedType(
+                    $type,
+                    $proposalPolicy->allows($location, $type),
+                )
+            )->values(),
         ]);
     }
 
@@ -144,13 +156,13 @@ final class LocationOptionsController extends Controller
         ];
     }
 
-    private function serializeAllowedType(LocationType $type): array
+    private function serializeAllowedType(LocationType $type, bool $proposalAllowed): array
     {
         return [
             'id' => $type->id,
             'key' => $type->key,
             'label' => $type->canonical_name,
-            'proposal_allowed' => true,
+            'proposal_allowed' => $proposalAllowed,
         ];
     }
 
