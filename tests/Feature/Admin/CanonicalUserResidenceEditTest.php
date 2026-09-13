@@ -18,12 +18,22 @@ class CanonicalUserResidenceEditTest extends TestCase
         $this->assertSame(['PUT'], $route->methods());
     }
 
-    public function test_admin_user_edit_includes_separate_canonical_residence_card(): void
+    public function test_admin_user_edit_uses_flag_safe_canonical_wrapper_with_separate_residence_card(): void
     {
-        $view = file_get_contents(resource_path('views/admin/user/edit.blade.php'));
+        $editRoute = Route::getRoutes()->getByName('admin.users.edit');
+        $this->assertNotNull($editRoute);
+        $this->assertStringContainsString('CanonicalUserEditController', $editRoute->getActionName());
+        $this->assertContains('permission:users.edit', $editRoute->gatherMiddleware());
+
+        $adapter = file_get_contents(app_path('Http/Controllers/Admin/CanonicalUserEditController.php'));
+        $wrapper = file_get_contents(resource_path('views/admin/user/edit_canonical.blade.php'));
         $partialPath = resource_path('views/admin/user/partials/canonical-residence.blade.php');
 
-        $this->assertStringContainsString("@include('admin.user.partials.canonical-residence')", $view);
+        $this->assertStringContainsString("config('location-governance.registration_enabled')", $adapter);
+        $this->assertStringContainsString("app(UserController::class)->edit(\$user)", $adapter);
+        $this->assertStringContainsString("@extends('admin.user.edit')", $wrapper);
+        $this->assertStringContainsString('@parent', $wrapper);
+        $this->assertStringContainsString("@include('admin.user.partials.canonical-residence')", $wrapper);
         $this->assertFileExists($partialPath);
 
         $partial = file_get_contents($partialPath);
