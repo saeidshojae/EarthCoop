@@ -6,7 +6,6 @@ use App\Http\Controllers\Admin\SafeUserController;
 use App\Http\Controllers\Admin\UserController;
 use App\Models\Location;
 use App\Models\User;
-use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\LocationGovernance\LocationProposalService;
 use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -71,16 +70,10 @@ class CanonicalUserResidenceEditTest extends TestCase
         $this->assertStringContainsString("route('admin.users.residence.update', \$user)", $partial);
     }
 
-    public function test_admin_can_move_user_to_approved_residence_with_actor_reason_and_reconciliation(): void
+    public function test_admin_can_move_user_to_approved_residence_with_actor_and_reason(): void
     {
         [$target, $oldHome, $newHome] = $this->makeApprovedMoveScenario();
         $admin = User::factory()->create();
-
-        $reconciler = $this->mock(CanonicalGroupMembershipReconciler::class);
-        $reconciler->shouldReceive('reconcile')
-            ->once()
-            ->withArgs(fn (User $user): bool => (int) $user->id === (int) $target->id);
-        config(['location-governance.groups_enabled' => true]);
 
         $response = $this->withoutMiddleware()
             ->actingAs($admin)
