@@ -124,6 +124,8 @@ class CanonicalProfileMembershipReconciliationTest extends TestCase
 
         $profession = OccupationalField::create(['name' => 'فرهنگیان', 'status' => 1]);
         $specialty = ExperienceField::create(['name' => 'آموزش', 'status' => 1]);
+        $groupCountBefore = Group::query()->count();
+        $legacyGroupCountBefore = Group::query()->whereNull('governance_area_id')->count();
 
         $this->actingAs($user)->put(route('profile.update.experience'), [
             'occupational_fields' => [$profession->id],
@@ -132,7 +134,8 @@ class CanonicalProfileMembershipReconciliationTest extends TestCase
 
         $this->assertTrue($user->fresh()->occupationalFields()->whereKey($profession->id)->exists());
         $this->assertTrue($user->fresh()->experienceFields()->whereKey($specialty->id)->exists());
-        $this->assertSame(0, Group::query()->count(), 'Registration cutover must not fall back to legacy group creation while Stage C groups are dark.');
+        $this->assertSame($groupCountBefore, Group::query()->count(), 'Registration cutover must not create any groups while Stage C groups are dark.');
+        $this->assertSame($legacyGroupCountBefore, Group::query()->whereNull('governance_area_id')->count(), 'Registration cutover must not fall back to legacy group creation while Stage C groups are dark.');
     }
 
     public function test_canonical_general_profile_write_stays_group_dark_while_stage_c_groups_are_disabled(): void
@@ -143,6 +146,8 @@ class CanonicalProfileMembershipReconciliationTest extends TestCase
         AgeGroup::create(['title' => '35-44', 'min_age' => 35, 'max_age' => 44]);
         $targetBirthDate = now()->subYears(40)->startOfDay();
         $jalali = Jalalian::fromCarbon($targetBirthDate);
+        $groupCountBefore = Group::query()->count();
+        $legacyGroupCountBefore = Group::query()->whereNull('governance_area_id')->count();
 
         $this->actingAs($user)->put(route('profile.update.general'), [
             'gender' => 'female',
@@ -152,7 +157,8 @@ class CanonicalProfileMembershipReconciliationTest extends TestCase
         $fresh = $user->fresh();
         $this->assertSame('female', $fresh->gender);
         $this->assertSame(40, $fresh->birth_date->age);
-        $this->assertSame(0, Group::query()->count(), 'Canonical general profile writes must not create legacy age/gender groups while Stage C groups are dark.');
+        $this->assertSame($groupCountBefore, Group::query()->count(), 'Canonical general profile writes must not create any groups while Stage C groups are dark.');
+        $this->assertSame($legacyGroupCountBefore, Group::query()->whereNull('governance_area_id')->count(), 'Canonical general profile writes must not create legacy age/gender groups while Stage C groups are dark.');
     }
 
     private function enableRegistrationOnly(): void
