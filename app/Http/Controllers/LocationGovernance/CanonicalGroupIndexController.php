@@ -5,13 +5,13 @@ namespace App\Http\Controllers\LocationGovernance;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Group\GroupController;
 use App\Models\Group;
-use App\Services\GroupService;
+use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 final class CanonicalGroupIndexController extends Controller
 {
-    public function __invoke(GroupService $groupService): View
+    public function __invoke(CanonicalGroupMembershipReconciler $reconciler): View
     {
         if (! (bool) config('location-governance.groups_enabled', false)) {
             return app(GroupController::class)->index();
@@ -20,7 +20,7 @@ final class CanonicalGroupIndexController extends Controller
         $user = auth()->user();
         abort_unless($user !== null, 401);
 
-        $materializedIds = collect($groupService->getGroupsForUser($user))
+        $materializedIds = collect($reconciler->reconcile($user))
             ->pluck('id')
             ->filter()
             ->values();
