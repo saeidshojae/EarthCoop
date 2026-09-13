@@ -141,6 +141,44 @@ class CanonicalGroupIndexCutoverTest extends TestCase
         }
     }
 
+    public function test_active_privileged_upstream_role_is_not_overwritten_by_membership_reconciliation(): void
+    {
+        $this->enableStageC();
+
+        ['user' => $user, 'area' => $baseArea] = MembershipFixture::canonicalUser();
+
+        $country = GovernanceArea::create([
+            'key' => 'ir.country.privileged',
+            'country_code' => 'IR',
+            'governance_type' => 'country',
+            'area_kind' => 'official',
+            'canonical_name' => 'Iran',
+            'rank' => 1,
+            'status' => 'active',
+        ]);
+        $baseArea->update(['parent_id' => $country->id, 'rank' => 10]);
+
+        $this->actingAs($user)->get('/groups')->assertOk();
+
+        $countryPublic = Group::query()
+            ->where('governance_area_id', $country->id)
+            ->where('dimension_key', 'public')
+            ->where('dimension_value_key', 'public')
+            ->firstOrFail();
+
+        $user->groups()->updateExistingPivot($countryPublic->id, [
+            'status' => 1,
+            'role' => 3,
+        ]);
+
+        $this->actingAs($user)->get('/groups')->assertOk();
+
+        $this->assertSame(
+            3,
+            (int) $user->groups()->whereKey($countryPublic->id)->firstOrFail()->pivot->role,
+        );
+    }
+
     private function enableStageC(): void
     {
         config([
