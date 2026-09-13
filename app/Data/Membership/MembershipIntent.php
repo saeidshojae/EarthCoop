@@ -12,7 +12,6 @@ class MembershipIntent
         public readonly ?int $threshold = null,
         public readonly ?string $policyVersion = null,
         public readonly ?string $suppressionReason = null,
-        public readonly int $membershipRole = 0,
     ) {
     }
 
@@ -26,7 +25,6 @@ class MembershipIntent
             'threshold' => $this->threshold,
             'policy_version' => $this->policyVersion,
             'suppression_reason' => $this->suppressionReason,
-            'membership_role' => $this->membershipRole,
         ];
     }
 }
