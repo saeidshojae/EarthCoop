@@ -17,7 +17,7 @@ final class CanonicalProfileMembershipController extends Controller
         Request $request,
         CanonicalGroupMembershipReconciler $reconciler,
     ): RedirectResponse {
-        if (! (bool) config('location-governance.groups_enabled', false)) {
+        if (! (bool) config('location-governance.registration_enabled', false)) {
             return app(ProfileController::class)->updateExperience($request);
         }
 
@@ -35,7 +35,9 @@ final class CanonicalProfileMembershipController extends Controller
             $user->specialties()->sync($validated['occupational_fields']);
             $user->experiences()->sync($validated['experience_fields']);
 
-            $reconciler->reconcile($user->fresh());
+            if ((bool) config('location-governance.groups_enabled', false)) {
+                $reconciler->reconcile($user->fresh());
+            }
         });
 
         app(ProfileCompletionService::class)->maybeAward($user->fresh());
@@ -48,7 +50,7 @@ final class CanonicalProfileMembershipController extends Controller
         Request $request,
         CanonicalGroupMembershipReconciler $reconciler,
     ): RedirectResponse {
-        if (! (bool) config('location-governance.groups_enabled', false)) {
+        if (! (bool) config('location-governance.registration_enabled', false)) {
             return app(ProfileController::class)->updateGeneral($request);
         }
 
@@ -59,17 +61,17 @@ final class CanonicalProfileMembershipController extends Controller
                 ['birth_date' => 'nullable|array|min:3'],
             )->validate();
 
-            // The mature legacy controller still owns the rest of the general
-            // profile form (identity, avatar, documents, phone, etc.). Remove only
-            // birth_date from its input so its legacy age-group detach/materialize
-            // block cannot run during Stage C. Canonical age membership is applied
-            // below through the shared reconciler.
+            // Registration cutover owns the canonical birth-date value even while
+            // Stage C groups are dark. Remove it from the mature legacy request so
+            // the old age-group detach/materialize block can never run in canonical
+            // registration mode. The value is persisted below, while membership
+            // reconciliation remains independently gated by groups_enabled.
             $request->request->remove('birth_date');
         }
 
         $response = app(ProfileController::class)->updateGeneral($request);
 
-        // Legacy validation exceptions never reach this point. Explicit legacy
+        // Legacy validation exceptions never reach this point. Explicit mature
         // business-rule errors are flashed and must not be followed by canonical
         // mutation of the withheld birth date.
         if (session()->has('error')) {
@@ -91,9 +93,11 @@ final class CanonicalProfileMembershipController extends Controller
             }
 
             // Gender is saved by the mature controller above; age is saved here.
-            // Reconcile every successful general profile update so a birthday that
-            // crosses an age band is also corrected on the next profile save.
-            $reconciler->reconcile($user->fresh());
+            // Membership writes are dark until Stage C group activation, so profile
+            // data can move to the canonical runtime without creating legacy groups.
+            if ((bool) config('location-governance.groups_enabled', false)) {
+                $reconciler->reconcile($user->fresh());
+            }
         });
 
         app(ProfileCompletionService::class)->maybeAward($user->fresh());
