@@ -41,11 +41,18 @@ class MembershipEngine
             ->latest('started_at')
             ->first()?->location;
 
-        $officialAreas = $residence === null
+        $resolvedAreas = $residence === null
             ? collect()
-            : $this->governanceResolver->officialAreasForResidence($residence)
-                ->sortBy(fn ($area) => sprintf('%010d:%s', (int) $area->rank, (string) $area->key))
-                ->values();
+            : $this->governanceResolver->officialAreasForResidence($residence);
+
+        // GovernanceResolver guarantees base-first ordering before we sort for a
+        // deterministic canonical fingerprint. The base scope is the only normal
+        // active membership; all official upstream scopes are observers.
+        $baseAreaId = $resolvedAreas->first()?->id;
+
+        $officialAreas = $resolvedAreas
+            ->sortBy(fn ($area) => sprintf('%010d:%s', (int) $area->rank, (string) $area->key))
+            ->values();
 
         $communityAreas = collect();
         $materializable = collect();
@@ -89,6 +96,7 @@ class MembershipEngine
                         threshold: $policy?->threshold,
                         policyVersion: $policy?->metadata['policy_version'] ?? null,
                         suppressionReason: $reason,
+                        membershipRole: $baseAreaId !== null && (int) $area->id === (int) $baseAreaId ? 1 : 0,
                     );
 
                     ($reason === null ? $materializable : $suppressed)->push($intent);
