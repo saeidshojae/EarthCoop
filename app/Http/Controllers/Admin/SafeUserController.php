@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Models\User;
 use App\Modules\NajmBahar\Services\MembershipRemovalService;
-use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\Users\UserManagementService;
 use Illuminate\Http\Request;
 
@@ -13,7 +12,6 @@ class SafeUserController extends UserController
     public function __construct(
         private readonly MembershipRemovalService $membershipRemoval,
         private readonly UserManagementService $userManagement,
-        private readonly CanonicalGroupMembershipReconciler $canonicalGroupMembershipReconciler,
     ) {
     }
 
@@ -34,18 +32,8 @@ class SafeUserController extends UserController
 
         $response = parent::update($request, $user);
 
-        // Admin profile edits may change canonical membership inputs such as
-        // birth date or gender. Reconciliation is idempotent and remains dark
-        // until Stage C group activation, so every successful admin profile
-        // update can safely converge the user's canonical memberships here.
-        $freshUser = $user->refresh();
-        if (! session()->has('error')
-            && (bool) config('location-governance.groups_enabled', false)) {
-            $this->canonicalGroupMembershipReconciler->reconcile($freshUser);
-        }
-
         if ($requestedStatus !== null) {
-            $result = $this->userManagement->setStatus($freshUser, (string) $requestedStatus);
+            $result = $this->userManagement->setStatus($user->fresh(), (string) $requestedStatus);
             if (! (bool) ($result['success'] ?? false)) {
                 return back()->with('error', 'تغییر وضعیت این هویت مجاز نیست');
             }
