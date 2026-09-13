@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Complete EarthCoop's canonical Location/Governance UI so registration, profile, admin user management, proposals, pending residence intent, governance visibility, and Community Areas work coherently across arbitrary country schemas without enabling unsafe legacy assumptions.
+**Goal:** Complete EarthCoop's canonical Location/Governance UI so registration, profile, admin user editing, proposals, pending residence intent, governance visibility, and Community Areas work coherently across arbitrary country schemas without unsafe legacy assumptions.
 
-**Architecture:** Keep authoritative Primary Residence anchored only to approved canonical `Location` rows. Add an explicit pending-residence-intent domain object that points from a user/current residence relationship to an open `LocationProposal`; this allows registration/profile completion to proceed while governance and membership continue to derive only from the approved anchor. Build one schema-driven Location Picker contract used by registration, profile, and admin, then add user/admin governance views on top of existing canonical services.
+**Architecture:** Keep authoritative Primary Residence anchored only to approved canonical `Location` rows. Add an explicit pending-residence-intent domain object that points from a user/current residence relationship to an open `LocationProposal`; registration/profile completion can proceed while governance and membership continue to derive only from the approved anchor. Build one schema-driven Location Picker used by registration, profile, and admin, then add user/admin governance views on top of existing canonical services.
 
-**Tech Stack:** Laravel 9/PHP, Blade, Vite JavaScript, Bootstrap/unified EarthCoop layouts, PHPUnit Feature tests, existing Location/Governance services and feature flags.
+**Tech Stack:** Laravel 9/PHP, Blade, Vite JavaScript, Bootstrap/unified EarthCoop layouts, Node 18 built-in test runner, PHPUnit Feature tests, existing Location/Governance services and feature flags.
 
 **Spec:** `docs/superpowers/specs/2026-09-13-location-governance-ui-completion-design.md`
 
@@ -15,7 +15,7 @@
 - Work only on `agent/location-governance-ui-completion-20260913`; never edit `main` directly.
 - Preserve dark-launch behavior: do not enable `LOCATION_GOVERNANCE_*` Production flags in this plan.
 - Canonical UI must be schema-driven; never hard-code a universal Iran-only location chain.
-- Open proposals (`pending`, `ready_for_review`, `needs_evidence`) are selectable but are never themselves official Governance Areas.
+- Open proposals (`pending`, `ready_for_review`, `needs_evidence`) are selectable but never official Governance Areas.
 - Official governance and canonical group membership resolve only from approved canonical Primary Residence anchors.
 - Proposal approval/merge refinement must not consume ordinary Primary Residence transfer quota.
 - A stale pending intent must never move a user after that user has changed residence.
@@ -23,7 +23,7 @@
 - Sensitive proposal review remains explicit, CSRF-protected, authorized, audited, and human-approved.
 - TDD is mandatory: each production change starts with a targeted RED, then minimal GREEN, then relevant regression tests.
 - Preserve existing Najm Bahar, elections, Najm Hoda, Group Chat, invitations, profile-completion, and canonical membership behavior.
-- Every checkpoint commit must be independently reviewable and must not contain known failing targeted tests.
+- Every checkpoint commit must be independently reviewable and contain no known failing targeted tests.
 
 ---
 
@@ -31,41 +31,48 @@
 
 ### Pending residence intent domain
 - Create: `database/migrations/2026_09_13_000001_create_pending_residence_intents_table.php` — explicit current pending exact-residence selection without polluting `user_location_relationships.location_id`.
-- Create: `app/Models/PendingResidenceIntent.php` — typed relationships to user, current anchor relationship, proposal, resolver metadata.
-- Modify: `app/Models/User.php` — `pendingResidenceIntents()` / `currentPendingResidenceIntent()` relationships or focused query helper.
-- Modify: `app/Models/LocationProposal.php` — `pendingResidenceIntents()` relationship.
-- Modify: `app/Services/LocationGovernance/ResidenceService.php` — set/replace/clear pending intent, resolve approved/merged proposal, and staleness guard.
-- Modify: `app/Services/LocationGovernance/LocationProposalService.php` — invoke convergence after approve/merge without changing review authority.
+- Create: `app/Models/PendingResidenceIntent.php` — typed relations to user, anchor relationship, proposal, and resolved Location.
+- Modify: `app/Models/User.php` — pending intent relation/query helper.
+- Modify: `app/Models/LocationProposal.php` — pending intent relation.
+- Modify: `app/Services/LocationGovernance/ResidenceService.php` — set/replace/clear intent, safe convergence, staleness guard.
+- Modify: `app/Services/LocationGovernance/LocationProposalService.php` — converge intents after approve/merge without changing review authority.
 
-### Shared Location Picker read/write contract
-- Modify: `app/Http/Controllers/LocationGovernance/LocationOptionsController.php` — serialize approved children, open proposals, allowed next types, endpoint/proposal-policy metadata.
-- Modify: `app/Http/Controllers/Location/LocationProposalController.php` — return reusable candidate state needed by picker; retain server-authoritative duplicate detection.
-- Modify: `resources/js/location-selector.js` — one reusable component supporting arbitrary depth, proposal creation/reuse, pending selection, stale resolution, and explicit `location:<id>` / `proposal:<id>` identity.
-- Modify: `resources/js/app.js` only if initialization/export contract needs adjustment.
+### Shared Location Picker
+- Modify: `app/Http/Controllers/LocationGovernance/LocationOptionsController.php` — approved children, open proposals, allowed next types, endpoint metadata.
+- Modify: `app/Http/Controllers/Location/LocationProposalController.php` — picker-friendly create/reuse response.
+- Modify: `resources/js/location-selector.js` — arbitrary-depth traversal, proposal create/reuse, pending selection, resolved/stale state.
+- Modify: `package.json` — add `test:location-governance` using Node's built-in test runner.
+- Create: `tests/js/location-governance/location-selector.test.mjs`.
 
-### Registration / profile / admin residence flows
+### Registration / profile / admin residence
 - Modify: `resources/views/auth/register_step3_canonical.blade.php`.
 - Modify: `app/Http/Controllers/Auth/Register/Step3Controller.php`.
 - Modify: `resources/views/profile/partials/location_canonical.blade.php`.
 - Modify: `app/Http/Controllers/LocationGovernance/ProfileResidenceController.php`.
 - Modify: `app/Http/Controllers/LocationGovernance/ProfileEditController.php`.
-- Modify: `resources/views/admin/user/edit.blade.php` and, if residence is exposed on creation, `resources/views/admin/user/create.blade.php`.
-- Create: `app/Http/Controllers/Admin/UserResidenceController.php` — canonical admin residence mutation with actor/reason and domain-service use.
-- Modify: admin routes where `SafeUserController` routes are currently declared.
+- Create: `app/Http/Controllers/Admin/UserResidenceController.php`.
+- Modify: `resources/views/admin/user/edit.blade.php`.
+- Modify: `routes/web.php` — canonical admin residence route inside existing admin user permission boundary.
+- Modify: `app/Http/Controllers/Admin/SafeUserController.php` only for explicit reconciliation coordination proved necessary by tests.
 
 ### User Location/Governance experience
 - Create: `app/Http/Controllers/LocationGovernance/MyLocationGovernanceController.php`.
+- Create: `app/Http/Controllers/LocationGovernance/CommunityAreaController.php`.
 - Create: `resources/views/location-governance/my-location-governance.blade.php`.
 - Modify: `routes/location-governance.php`.
-- Modify: `resources/views/partials/sidebar-unified.blade.php` and matching mobile/navigation partial if the project has a separate current mobile entry.
+- Modify: `resources/views/partials/sidebar-unified.blade.php` — this existing responsive sidebar serves desktop and mobile states.
 
-### Community / admin operations
-- Create or modify focused Community controller/routes only after policy contracts are proven.
-- Modify: `resources/views/admin/location-governance/index.blade.php`.
+### Admin Location/Governance operations
 - Modify: `app/Http/Controllers/Admin/LocationGovernanceController.php`.
-- Create focused partials under `resources/views/admin/location-governance/` if the current page would otherwise become monolithic.
+- Modify: `resources/views/admin/location-governance/index.blade.php` to compose focused sections.
+- Create: `resources/views/admin/location-governance/partials/proposal-queue.blade.php`.
+- Create: `resources/views/admin/location-governance/partials/reference-explorer.blade.php`.
+- Create: `resources/views/admin/location-governance/partials/governance-topology.blade.php`.
+- Create: `resources/views/admin/location-governance/partials/community-overview.blade.php`.
+- Create: `resources/views/admin/location-governance/partials/import-diagnostics.blade.php`.
+- Create: `resources/views/admin/location-governance/partials/health-diagnostics.blade.php`.
 
-### Core test suite for this phase
+### Core tests
 - Create: `tests/Feature/LocationGovernance/PendingResidenceIntentTest.php`.
 - Create: `tests/Feature/LocationGovernance/LocationPickerProposalContractTest.php`.
 - Extend: `tests/Feature/LocationGovernance/CanonicalResidenceUiContractTest.php`.
@@ -74,8 +81,7 @@
 - Create: `tests/Feature/Admin/CanonicalUserResidenceEditTest.php`.
 - Create: `tests/Feature/LocationGovernance/MyLocationGovernancePageTest.php`.
 - Create: `tests/Feature/LocationGovernance/CommunityAreaUiTest.php`.
-- Extend/create: `tests/Feature/Admin/LocationGovernanceControlCenterTest.php`.
-- Add JS contract/regression coverage following the repository's existing JavaScript-test convention for `location-selector.js`.
+- Extend: `tests/Feature/Admin/LocationGovernanceControlCenterTest.php`.
 
 ---
 
@@ -89,8 +95,8 @@
 - Test: `tests/Feature/LocationGovernance/PendingResidenceIntentTest.php`
 
 **Interfaces:**
-- Consumes: existing `UserLocationRelationship` current Primary Residence and `LocationProposal` open states.
-- Produces: `PendingResidenceIntent` with `user_id`, `anchor_relationship_id`, `location_proposal_id`, `status`, `selected_at`, `resolved_at`, `cancelled_at`, `resolved_location_id`, `metadata`; one current open intent per user enforced by service/database semantics.
+- Consumes: existing current `UserLocationRelationship` and open `LocationProposal`.
+- Produces: `PendingResidenceIntent` with `user_id`, `anchor_relationship_id`, `location_proposal_id`, `resolved_location_id`, `status`, `selected_at`, `resolved_at`, `cancelled_at`, `metadata`.
 
 - [ ] **Step 1: Write the failing persistence test**
 
@@ -113,13 +119,13 @@ public function a_user_can_hold_pending_exact_residence_without_replacing_the_ap
 }
 ```
 
-- [ ] **Step 2: Run targeted test and verify RED**
+- [ ] **Step 2: Run RED**
 
 Run: `php artisan test tests/Feature/LocationGovernance/PendingResidenceIntentTest.php`
 
-Expected: FAIL because the table/model does not yet exist.
+Expected: FAIL because table/model do not exist.
 
-- [ ] **Step 3: Add migration with explicit foreign keys and lifecycle fields**
+- [ ] **Step 3: Add additive migration**
 
 ```php
 Schema::create('pending_residence_intents', function (Blueprint $table) {
@@ -138,7 +144,7 @@ Schema::create('pending_residence_intents', function (Blueprint $table) {
 });
 ```
 
-- [ ] **Step 4: Add model relationships/casts and user/proposal relations**
+- [ ] **Step 4: Add model relations/casts**
 
 ```php
 public function locationProposal(): BelongsTo
@@ -152,13 +158,13 @@ public function anchorRelationship(): BelongsTo
 }
 ```
 
-- [ ] **Step 5: Run migration/model tests GREEN**
+- [ ] **Step 5: Run GREEN**
 
 Run: `php artisan test tests/Feature/LocationGovernance/PendingResidenceIntentTest.php`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit checkpoint**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add database/migrations/2026_09_13_000001_create_pending_residence_intents_table.php app/Models/PendingResidenceIntent.php app/Models/User.php app/Models/LocationProposal.php tests/Feature/LocationGovernance/PendingResidenceIntentTest.php
@@ -182,7 +188,7 @@ git commit -m "feat: persist pending residence intent"
   - `ResidenceService::clearPendingResidenceIntent(User $user, string $reason): void`
   - `ResidenceService::resolvePendingResidenceIntents(LocationProposal $proposal, Location $resolvedLocation): int`
 
-- [ ] **Step 1: Add RED tests for currentness, quota preservation, approval, merge, rejection-safe behavior**
+- [ ] **Step 1: Add RED lifecycle tests**
 
 ```php
 #[Test]
@@ -211,15 +217,13 @@ public function stale_intent_cannot_move_user_after_real_residence_transfer(): v
 }
 ```
 
-- [ ] **Step 2: Run targeted test and verify RED**
+- [ ] **Step 2: Run RED**
 
 Run: `php artisan test tests/Feature/LocationGovernance/PendingResidenceIntentTest.php`
 
-Expected: FAIL for missing service methods/convergence.
+Expected: FAIL for missing service methods.
 
-- [ ] **Step 3: Implement transactional intent replacement and currentness guard**
-
-Service rules:
+- [ ] **Step 3: Implement transactional replacement/currentness guard**
 
 ```php
 $current = UserLocationRelationship::query()
@@ -229,7 +233,6 @@ $current = UserLocationRelationship::query()
     ->lockForUpdate()
     ->firstOrFail();
 
-// Replace only the user's currently-open intent; preserve history by cancelling it.
 PendingResidenceIntent::query()
     ->where('user_id', $user->id)
     ->where('status', 'pending')
@@ -241,22 +244,21 @@ PendingResidenceIntent::query()
     ])->save());
 ```
 
-For resolution, update only if `anchor_relationship_id` is still the current unended Primary Residence relationship. End anchor and create refined relationship with `explicit_transfer=false`, provenance metadata, and `change_reason='location_proposal_resolution'`.
+Resolution updates only intents whose `anchor_relationship_id` is still the user's current unended Primary Residence. End the anchor and create a refined relationship with `explicit_transfer=false`, `change_reason='location_proposal_resolution'`, and provenance metadata.
 
-- [ ] **Step 4: Call convergence only after approve/merge resolution is durable**
+- [ ] **Step 4: Trigger convergence after approve/merge only**
 
-In `LocationProposalService::approve()` and `merge()`, after the proposal is tied to a canonical `resolved_location_id`, call `ResidenceService::resolvePendingResidenceIntents(...)` inside safe transaction ordering. Do not invoke convergence on reject.
+In `LocationProposalService::approve()` and `merge()`, after durable `resolved_location_id`, call `ResidenceService::resolvePendingResidenceIntents(...)`. Reject does not move residence.
 
-- [ ] **Step 5: Run targeted and history regression tests**
+- [ ] **Step 5: Run lifecycle/history GREEN**
 
-Run:
 ```bash
 php artisan test tests/Feature/LocationGovernance/PendingResidenceIntentTest.php tests/Feature/LocationGovernance/PrimaryResidenceHistoryTest.php
 ```
 
-Expected: PASS; explicit transfer quota/history contracts remain unchanged.
+Expected: PASS.
 
-- [ ] **Step 6: Commit checkpoint**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add app/Services/LocationGovernance/ResidenceService.php app/Services/LocationGovernance/LocationProposalService.php tests/Feature/LocationGovernance/PendingResidenceIntentTest.php
@@ -272,10 +274,10 @@ git commit -m "feat: resolve pending residence intent safely"
 - Test: `tests/Feature/LocationGovernance/LocationPickerProposalContractTest.php`
 
 **Interfaces:**
-- Consumes: `LocationSchemaResolver::allowedChildTypes(Location $location)` and open `LocationProposal` statuses.
-- Produces JSON under each root/children response with stable `data`, `proposals`, and `allowed_types` collections.
+- Consumes: `LocationSchemaResolver::allowedChildTypes(Location $location)` and open proposal statuses.
+- Produces: JSON keys `data`, `proposals`, `allowed_types`.
 
-- [ ] **Step 1: Write RED API contract test**
+- [ ] **Step 1: Write RED API contract**
 
 ```php
 $response->assertJsonStructure([
@@ -285,17 +287,15 @@ $response->assertJsonStructure([
 ]);
 ```
 
-Also assert rejected/resolved proposals are not emitted as selectable open candidates.
+Assert rejected/resolved proposals are not emitted as selectable open candidates.
 
-- [ ] **Step 2: Verify RED**
+- [ ] **Step 2: Run RED**
 
 Run: `php artisan test tests/Feature/LocationGovernance/LocationPickerProposalContractTest.php`
 
-Expected: FAIL because current payload contains only `data`.
+Expected: FAIL because current payload only contains approved `data`.
 
 - [ ] **Step 3: Implement focused serializers**
-
-Use methods such as:
 
 ```php
 private function serializeProposal(LocationProposal $proposal): array
@@ -310,15 +310,15 @@ private function serializeProposal(LocationProposal $proposal): array
 }
 ```
 
-`allowed_types` must come from server-side schema resolution; JavaScript must not infer geography rules.
+`allowed_types` comes from server-side schema resolution; JavaScript never infers geography rules.
 
-- [ ] **Step 4: Run API contract GREEN**
+- [ ] **Step 4: Run GREEN**
 
 Run: `php artisan test tests/Feature/LocationGovernance/LocationPickerProposalContractTest.php`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit checkpoint**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add app/Http/Controllers/LocationGovernance/LocationOptionsController.php tests/Feature/LocationGovernance/LocationPickerProposalContractTest.php
@@ -331,17 +331,15 @@ git commit -m "feat: expose canonical location picker contract"
 
 **Files:**
 - Modify: `resources/js/location-selector.js`
-- Modify: `resources/js/app.js` only if required by current initialization pattern
-- Test: repository-standard JS contract/regression file for Location Picker
+- Modify: `package.json`
+- Create: `tests/js/location-governance/location-selector.test.mjs`
 - Extend: `tests/Feature/LocationGovernance/CanonicalResidenceUiContractTest.php`
 
 **Interfaces:**
-- Consumes: Task 3 JSON contract and existing `POST /locations/proposals`.
-- Produces hidden fields `location_id` and `location_proposal_id`, with exactly one active selection identity.
+- Consumes: Task 3 JSON contract and existing authenticated `POST /locations/proposals`.
+- Produces: exactly one active selection through hidden `location_id` or `location_proposal_id`.
 
-- [ ] **Step 1: Add RED contract assertions for proposal controls**
-
-Feature/JS contract must prove the canonical registration/profile markup initializes the same picker and exposes both hidden targets:
+- [ ] **Step 1: Add RED PHP/JS contracts**
 
 ```php
 $this->assertStringContainsString('name="location_id"', $html);
@@ -349,15 +347,25 @@ $this->assertStringContainsString('name="location_proposal_id"', $html);
 $this->assertStringContainsString('data-location-selector', $html);
 ```
 
-JS behavior test must cover direct `street -> complex`, `street -> alley -> complex`, and proposal selection without hard-coded depth.
+Node test must cover direct `street -> complex`, `street -> alley -> complex`, and proposal selection without hard-coded depth.
 
-- [ ] **Step 2: Verify RED**
+- [ ] **Step 2: Add test command and verify RED**
 
-Run targeted PHP + JS tests using the repository's existing JS test command.
+In `package.json`:
 
-- [ ] **Step 3: Implement stable selection identity**
+```json
+"test:location-governance": "node --test tests/js/location-governance"
+```
 
-Core client state:
+Run:
+```bash
+npm run test:location-governance
+php artisan test tests/Feature/LocationGovernance/CanonicalResidenceUiContractTest.php
+```
+
+Expected: RED because proposal selection controls do not exist yet.
+
+- [ ] **Step 3: Implement stable client selection identity**
 
 ```js
 const selection = { kind: null, id: null };
@@ -377,20 +385,20 @@ function selectProposal(id) {
 }
 ```
 
-Render pending badge textually (`در انتظار تأیید`) and contextual `مکان من در فهرست نیست` action only for `proposal_allowed` child types.
+Render pending text badge `در انتظار تأیید` and `مکان من در فهرست نیست` only for server-returned `proposal_allowed` types.
 
-- [ ] **Step 4: Submit proposal through existing authenticated endpoint and reuse server result**
+- [ ] **Step 4: Reuse server create response**
 
-If response `kind === 'location'`, select approved Location. If response `kind === 'proposal'`, render/select proposal immediately. Never manufacture IDs client-side.
+If response `kind === 'location'`, select the approved Location. If `kind === 'proposal'`, render/select that proposal. Never manufacture IDs client-side.
 
-- [ ] **Step 5: Run targeted JS/PHP GREEN**
+- [ ] **Step 5: Run GREEN**
 
-Expected: PASS and existing arbitrary-depth traversal tests remain green.
+Run the two commands from Step 2; expect PASS.
 
-- [ ] **Step 6: Commit checkpoint**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add resources/js/location-selector.js resources/js/app.js tests/Feature/LocationGovernance/CanonicalResidenceUiContractTest.php
+git add resources/js/location-selector.js package.json tests/js/location-governance/location-selector.test.mjs tests/Feature/LocationGovernance/CanonicalResidenceUiContractTest.php
 git commit -m "feat: add proposal flow to location picker"
 ```
 
@@ -402,22 +410,15 @@ git commit -m "feat: add proposal flow to location picker"
 - Modify: `resources/views/auth/register_step3_canonical.blade.php`
 - Modify: `app/Http/Controllers/Auth/Register/Step3Controller.php`
 - Test: `tests/Feature/LocationGovernance/RegistrationPendingResidenceTest.php`
-- Regression: canonical registration tests already present in `tests/Feature/LocationGovernance/`
+- Regression: existing canonical registration tests under `tests/Feature/LocationGovernance/`
 
 **Interfaces:**
-- Consumes: Location Picker selection and `ResidenceService::setPendingResidenceIntent()`.
-- Produces completed registration with either exact approved residence or approved anchor + pending exact intent.
+- Consumes: picker selection and `ResidenceService::setPendingResidenceIntent()`.
+- Produces: completed registration with exact approved residence or approved anchor + pending exact intent.
 
-- [ ] **Step 1: Write RED registration scenarios**
+- [ ] **Step 1: Write RED scenarios**
 
-Cover:
-1. approved endpoint works unchanged;
-2. open proposal under an approved residence endpoint can complete registration;
-3. pending proposal cannot become Primary Residence FK;
-4. official anchor remains approved ancestor;
-5. rejected/resolved-invalid proposal selection is rejected server-side.
-
-Example:
+Cover approved endpoint, open proposal completion, no proposal ID stored as Primary Residence FK, approved anchor governance, and invalid/rejected proposal rejection.
 
 ```php
 $response = $this->actingAs($user)->post(route('register.step3.process'), [
@@ -428,24 +429,23 @@ $this->assertSame($parent->id, $user->fresh()->locationRelationships()->whereNul
 $this->assertSame($proposal->id, $user->pendingResidenceIntents()->where('status', 'pending')->sole()->location_proposal_id);
 ```
 
-- [ ] **Step 2: Verify RED**
+- [ ] **Step 2: Run RED**
 
 Run: `php artisan test tests/Feature/LocationGovernance/RegistrationPendingResidenceTest.php`
 
-- [ ] **Step 3: Validate exactly one target server-side**
+- [ ] **Step 3: Validate exactly one selection server-side**
 
-Accept nullable `location_id` and `location_proposal_id`, then reject zero/both selections. For proposal selection, validate open status, schema relationship, selectable policy, and derive the approved anchor from the proposal parent/path; do not trust client anchor IDs.
+Accept nullable `location_id` and `location_proposal_id`; reject zero or both. For proposal selection, validate open state, schema relationship, and selectable policy; derive approved anchor from proposal parent/path instead of trusting client anchor IDs.
 
-- [ ] **Step 4: Store approved anchor + pending intent and emit precise success copy**
+- [ ] **Step 4: Persist anchor + intent and distinguish success copy**
 
-Approved: current success copy.
-Pending: explain registration is complete, exact location is awaiting review, and official governance temporarily uses the approved parent/ancestor.
+Pending success explains registration is complete, exact location awaits review, and official governance temporarily uses the approved anchor.
 
-- [ ] **Step 5: Run registration + profile-completion regressions**
+- [ ] **Step 5: Run registration/profile-completion regressions GREEN**
 
-Run targeted LocationGovernance registration tests and invitation/profile-completion tests that depend on residence completeness.
+Run new test plus existing canonical registration and invitation/profile-completion tests that depend on residence completeness.
 
-- [ ] **Step 6: Commit checkpoint**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add resources/views/auth/register_step3_canonical.blade.php app/Http/Controllers/Auth/Register/Step3Controller.php tests/Feature/LocationGovernance/RegistrationPendingResidenceTest.php
@@ -464,33 +464,37 @@ git commit -m "feat: allow pending exact residence at registration"
 - Regression: `tests/Feature/LocationGovernance/ProfilePrimaryResidenceTest.php`
 
 **Interfaces:**
-- Consumes: same picker and ResidenceService intent lifecycle.
-- Produces profile view model for approved path, open intent/status, resolved/rejected outcome, and true-transfer quota behavior.
+- Consumes: shared picker and ResidenceService intent lifecycle.
+- Produces: approved path, pending status, resolution outcome, and true-transfer quota behavior.
 
-- [ ] **Step 1: Write RED tests**
+- [ ] **Step 1: Write RED profile tests**
 
-Assert profile can select an open proposal without consuming explicit transfer count when it refines the same approved anchor, while changing to a different approved residence still calls transfer policy.
+Assert proposal refinement can be selected without counting approval/merge as an explicit move; changing to a different approved residence still obeys transfer policy.
 
-- [ ] **Step 2: Verify RED**
+- [ ] **Step 2: Run RED**
 
-Run both pending-profile and existing primary-residence tests.
+```bash
+php artisan test tests/Feature/LocationGovernance/ProfilePendingResidenceTest.php tests/Feature/LocationGovernance/ProfilePrimaryResidenceTest.php
+```
 
 - [ ] **Step 3: Implement intent-aware update branching**
 
 Rules:
 - approved different residence => `transferPrimaryResidence()`;
-- proposal under current approved anchor => set/replace pending intent only;
-- proposal requiring a different approved anchor => perform one real transfer to that anchor, then attach pending intent;
+- proposal under current approved anchor => set/replace intent only;
+- proposal requiring a different approved anchor => one real transfer to that anchor, then attach intent;
 - same approved location => no transfer;
 - rejected/non-open proposal => validation error.
 
-- [ ] **Step 4: Render current approved path + pending status + correction action**
+- [ ] **Step 4: Render approved path + pending status + correction action**
 
 Never label a proposal as approved Location. Show transfer quota only for actual moves.
 
-- [ ] **Step 5: Run targeted GREEN + regressions**
+- [ ] **Step 5: Run GREEN**
 
-- [ ] **Step 6: Commit checkpoint**
+Run the command from Step 2; expect PASS.
+
+- [ ] **Step 6: Commit**
 
 ```bash
 git add resources/views/profile/partials/location_canonical.blade.php app/Http/Controllers/LocationGovernance/ProfileResidenceController.php app/Http/Controllers/LocationGovernance/ProfileEditController.php tests/Feature/LocationGovernance/ProfilePendingResidenceTest.php
@@ -504,62 +508,69 @@ git commit -m "feat: complete canonical profile residence flow"
 **Files:**
 - Create: `app/Http/Controllers/Admin/UserResidenceController.php`
 - Modify: `resources/views/admin/user/edit.blade.php`
-- Modify: current admin user route file
-- Modify: `app/Http/Controllers/Admin/SafeUserController.php` only if demographic/residence reconciliation boundary needs coordination
+- Modify: `routes/web.php`
+- Modify: `app/Http/Controllers/Admin/SafeUserController.php` only if a failing reconciliation test proves coordination is needed
 - Test: `tests/Feature/Admin/CanonicalUserResidenceEditTest.php`
 
 **Interfaces:**
-- Consumes: shared picker, ResidenceService, current authenticated admin actor.
-- Produces explicit admin residence mutation endpoint requiring `reason`; optional override only through already-authorized admin policy, never by direct row update.
+- Consumes: shared picker, ResidenceService, authenticated admin actor.
+- Produces: `PUT /admin/users/{user}/residence` inside existing admin + `permission:users.edit` boundary, requiring a reason.
 
 - [ ] **Step 1: Write RED admin tests**
 
-Cover approved move, pending proposal, required reason, schema validation, protected audit actor, and group reconciliation when flag enabled.
+Cover approved move, pending proposal, required reason, schema validation, audit actor, and membership reconciliation when groups flag is enabled.
 
-- [ ] **Step 2: Verify RED**
+- [ ] **Step 2: Run RED**
 
 Run: `php artisan test tests/Feature/Admin/CanonicalUserResidenceEditTest.php`
 
-- [ ] **Step 3: Implement focused controller**
+- [ ] **Step 3: Add focused controller and route**
 
-Example signature:
+```php
+Route::put('/{user}/residence', [UserResidenceController::class, 'update'])
+    ->middleware('permission:users.edit')
+    ->name('residence.update');
+```
+
+Controller signature:
 
 ```php
 public function update(Request $request, User $user, ResidenceService $residences): RedirectResponse
 ```
 
-Validate selection and `reason`; use authenticated admin as `changed_by_user_id`. Do not add raw geography columns to `SafeUserController::update()`.
+Validate exactly one selection plus required `reason`; use authenticated admin as actor. Never mutate canonical residence with raw DB updates.
 
-- [ ] **Step 4: Embed shared picker in admin edit UI**
+- [ ] **Step 4: Embed a separate canonical Residence card in admin edit**
 
-Keep the existing identity form intact except for a clearly separated canonical Residence card. Do not refactor unrelated inline CSS/layout in this task.
+Keep existing identity form behavior intact; use the same `data-location-selector` contract and show current approved/pending status.
 
-- [ ] **Step 5: Run admin + canonical membership regressions**
+- [ ] **Step 5: Run GREEN + SafeUser regressions**
 
-- [ ] **Step 6: Commit checkpoint**
+Run new test and existing SafeUser lifecycle/canonical membership reconciliation tests.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add app/Http/Controllers/Admin/UserResidenceController.php resources/views/admin/user/edit.blade.php app/Http/Controllers/Admin/SafeUserController.php tests/Feature/Admin/CanonicalUserResidenceEditTest.php routes
+git add app/Http/Controllers/Admin/UserResidenceController.php resources/views/admin/user/edit.blade.php routes/web.php app/Http/Controllers/Admin/SafeUserController.php tests/Feature/Admin/CanonicalUserResidenceEditTest.php
 git commit -m "feat: add canonical admin residence editing"
 ```
 
 ---
 
-### Task 8: Add “My Location & Governance” Page and Navigation
+### Task 8: Add “My Location & Governance” Page and Responsive Navigation Entry
 
 **Files:**
 - Create: `app/Http/Controllers/LocationGovernance/MyLocationGovernanceController.php`
 - Create: `resources/views/location-governance/my-location-governance.blade.php`
 - Modify: `routes/location-governance.php`
 - Modify: `resources/views/partials/sidebar-unified.blade.php`
-- Modify matching active mobile navigation partial if current layout has one
 - Test: `tests/Feature/LocationGovernance/MyLocationGovernancePageTest.php`
 
 **Interfaces:**
-- Consumes: `ResidenceService::officialGovernanceAreasFor()`, current pending intent, canonical group memberships.
-- Produces authenticated read-only page grouped into Residence, Official Governance Chain, Canonical Memberships, Communities.
+- Consumes: `ResidenceService::officialGovernanceAreasFor()`, current pending intent, canonical memberships.
+- Produces: authenticated `location-governance.me` page with Residence, Official Governance Chain, Memberships, Communities sections.
 
-- [ ] **Step 1: Write RED page contract**
+- [ ] **Step 1: Write RED page/navigation contract**
 
 ```php
 $response->assertSee('مکان و حکمرانی من');
@@ -569,21 +580,23 @@ $response->assertSee('عضویت‌های من');
 $response->assertSee('ناظر');
 ```
 
-Also assert official chain uses `GovernanceArea` names, not arbitrary Location ancestors.
+Assert official chain displays `GovernanceArea` identities rather than arbitrary Location ancestors, and the unified responsive sidebar contains the route.
 
-- [ ] **Step 2: Verify RED**
+- [ ] **Step 2: Run RED**
+
+Run: `php artisan test tests/Feature/LocationGovernance/MyLocationGovernancePageTest.php`
 
 - [ ] **Step 3: Build focused controller view model**
 
-Group memberships by `public`, `profession`, `specialty`, `age`, `gender`, then by active/base versus observer/upstream. Do not assume reference count 81.
+Group memberships by `public`, `profession`, `specialty`, `age`, `gender`, then active/base versus observer/upstream. Never assume count 81.
 
-- [ ] **Step 4: Add responsive Blade page and navigation entry**
+- [ ] **Step 4: Build responsive RTL Blade and sidebar entry**
 
-Use text labels in addition to badges/colors. Link residence edit from the page.
+Use textual labels as well as badges/colors; link residence edit from the page. `sidebar-unified.blade.php` already controls collapsed mobile and desktop sidebar behavior, so no duplicate mobile menu implementation is introduced.
 
-- [ ] **Step 5: Run page/navigation tests GREEN**
+- [ ] **Step 5: Run GREEN**
 
-- [ ] **Step 6: Commit checkpoint**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add app/Http/Controllers/LocationGovernance/MyLocationGovernanceController.php resources/views/location-governance/my-location-governance.blade.php routes/location-governance.php resources/views/partials/sidebar-unified.blade.php tests/Feature/LocationGovernance/MyLocationGovernancePageTest.php
@@ -595,42 +608,52 @@ git commit -m "feat: add my location and governance page"
 ### Task 9: Add Policy-Safe Community Area UX
 
 **Files:**
-- Create or modify focused user Community controller under `app/Http/Controllers/LocationGovernance/`
+- Create: `app/Http/Controllers/LocationGovernance/CommunityAreaController.php`
 - Modify: `routes/location-governance.php`
 - Modify: `resources/views/location-governance/my-location-governance.blade.php`
 - Test: `tests/Feature/LocationGovernance/CommunityAreaUiTest.php`
-- Regression: existing `CommunityAreaCreationTest` / `CommunityElectionBoundaryTest`
+- Regression: `tests/Feature/LocationGovernance/CommunityAreaCreationTest.php`
+- Regression: `tests/Feature/LocationGovernance/CommunityElectionBoundaryTest.php`
 
 **Interfaces:**
 - Consumes: `CommunityCreationPolicy` and `CommunityAreaService::createFor(Location $location, User $actor)`.
-- Produces idempotent create/view action only for approved eligible micro-locations.
+- Produces: `POST /location-governance/community/{location}` as an idempotent create action only for approved eligible Locations.
 
-- [ ] **Step 1: Write RED UI/policy tests**
+- [ ] **Step 1: Write RED policy/UI tests**
 
-Prove:
-- eligible approved complex/building gets create action;
-- existing Community gets view/open state;
-- pending proposal gets no create action;
-- ineligible Location gets none;
-- repeated create returns same Community;
-- Community remains outside formal election topology.
+Prove eligible approved complex/building gets create action, existing Community gets view state, pending proposal gets no create action, ineligible Location gets no action, repeat creation is idempotent, and Community remains outside formal election topology.
 
-- [ ] **Step 2: Verify RED**
-
-- [ ] **Step 3: Implement controller that delegates entirely to policy/service**
-
-No duplicated eligibility logic in Blade.
-
-- [ ] **Step 4: Render Community section separately from official chain**
-
-Copy must explicitly say Community is not automatically an official systemic-election tier.
-
-- [ ] **Step 5: Run Community regressions GREEN**
-
-- [ ] **Step 6: Commit checkpoint**
+- [ ] **Step 2: Run RED**
 
 ```bash
-git add app/Http/Controllers/LocationGovernance routes/location-governance.php resources/views/location-governance/my-location-governance.blade.php tests/Feature/LocationGovernance/CommunityAreaUiTest.php
+php artisan test tests/Feature/LocationGovernance/CommunityAreaUiTest.php tests/Feature/LocationGovernance/CommunityAreaCreationTest.php tests/Feature/LocationGovernance/CommunityElectionBoundaryTest.php
+```
+
+- [ ] **Step 3: Implement controller that delegates to canonical policy/service**
+
+```php
+public function store(Location $location, Request $request, CommunityAreaService $communities): RedirectResponse
+{
+    $area = $communities->createFor($location, $request->user());
+
+    return back()->with('success', 'جامعه محلی ایجاد یا بازیابی شد.');
+}
+```
+
+No duplicate eligibility logic in Blade.
+
+- [ ] **Step 4: Render Community separately from official chain**
+
+Copy explicitly states Community is not automatically an official systemic-election tier.
+
+- [ ] **Step 5: Run GREEN**
+
+Run Step 2 command; expect PASS.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add app/Http/Controllers/LocationGovernance/CommunityAreaController.php routes/location-governance.php resources/views/location-governance/my-location-governance.blade.php tests/Feature/LocationGovernance/CommunityAreaUiTest.php
 git commit -m "feat: add policy safe community area UX"
 ```
 
@@ -641,39 +664,42 @@ git commit -m "feat: add policy safe community area UX"
 **Files:**
 - Modify: `app/Http/Controllers/Admin/LocationGovernanceController.php`
 - Modify: `resources/views/admin/location-governance/index.blade.php`
-- Create focused partials under `resources/views/admin/location-governance/` if needed for proposal/reference/topology/community/diagnostics sections
+- Create: `resources/views/admin/location-governance/partials/proposal-queue.blade.php`
+- Create: `resources/views/admin/location-governance/partials/reference-explorer.blade.php`
+- Create: `resources/views/admin/location-governance/partials/governance-topology.blade.php`
+- Create: `resources/views/admin/location-governance/partials/community-overview.blade.php`
+- Create: `resources/views/admin/location-governance/partials/import-diagnostics.blade.php`
+- Create: `resources/views/admin/location-governance/partials/health-diagnostics.blade.php`
 - Test: `tests/Feature/Admin/LocationGovernanceControlCenterTest.php`
 
 **Interfaces:**
-- Consumes: canonical Location, LocationProposal, GovernanceArea, Community, import-run data and existing Hoda review summaries.
-- Produces operational read models and existing human-gated mutation forms; no raw topology mutation introduced by this phase.
+- Consumes: canonical Location, LocationProposal, GovernanceArea, Community, import runs, existing Hoda review summaries.
+- Produces: operational read models plus existing human-gated proposal mutation forms; no raw official-topology mutation is added in this phase.
 
 - [ ] **Step 1: Add RED control-center contracts**
 
-Assert sections for:
-- proposal filters/status/evidence/audit;
-- reference Location explorer summary;
-- official Governance topology summary;
-- Community overview;
-- import diagnostics;
-- health diagnostics.
+Assert proposal filters/status/evidence/audit, reference explorer, official topology, Community overview, import diagnostics, and health diagnostics sections.
 
-- [ ] **Step 2: Verify RED**
+- [ ] **Step 2: Run RED**
+
+Run: `php artisan test tests/Feature/Admin/LocationGovernanceControlCenterTest.php`
 
 - [ ] **Step 3: Add bounded read queries/view models**
 
-Health indicators include at minimum open proposals, proposals above review threshold, invalid/unresolved residence intents, Locations missing schema/type where canonical runtime expects them, and governance mappings with missing/inactive Location references where applicable.
+Health indicators include open proposals, above-threshold proposals, invalid/unresolved pending residence intents, canonical Locations missing schema/type, and invalid governance mappings where applicable.
 
-- [ ] **Step 4: Split Blade into focused partials if size materially increases**
+- [ ] **Step 4: Compose exact focused Blade partials**
 
-Keep approve/reject/merge/request-evidence POST actions explicit and CSRF-protected; Hoda remains recommendation-only.
+Move the current proposal section into `proposal-queue.blade.php`; render the five additional named partials. Keep approve/reject/merge/request-evidence POST actions explicit and CSRF-protected; Hoda remains recommendation-only.
 
-- [ ] **Step 5: Run admin control-center tests GREEN**
+- [ ] **Step 5: Run GREEN**
 
-- [ ] **Step 6: Commit checkpoint**
+Run Step 2 command; expect PASS.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add app/Http/Controllers/Admin/LocationGovernanceController.php resources/views/admin/location-governance tests/Feature/Admin/LocationGovernanceControlCenterTest.php
+git add app/Http/Controllers/Admin/LocationGovernanceController.php resources/views/admin/location-governance/index.blade.php resources/views/admin/location-governance/partials tests/Feature/Admin/LocationGovernanceControlCenterTest.php
 git commit -m "feat: complete location governance control center"
 ```
 
@@ -683,34 +709,35 @@ git commit -m "feat: complete location governance control center"
 
 **Files:**
 - Modify: `resources/js/location-selector.js`
-- Modify canonical registration/profile/admin/location-governance Blade files touched above
-- Extend relevant Feature and JS contract tests
+- Modify: `tests/js/location-governance/location-selector.test.mjs`
+- Modify: `resources/views/auth/register_step3_canonical.blade.php`
+- Modify: `resources/views/profile/partials/location_canonical.blade.php`
+- Modify: `resources/views/admin/user/edit.blade.php`
+- Modify: `resources/views/location-governance/my-location-governance.blade.php`
+- Extend relevant PHP tests from Tasks 5–10.
 
 **Interfaces:**
 - Consumes all earlier UI contracts.
-- Produces explicit loading/empty/error/duplicate/stale/resolved states across desktop/mobile, keyboard-friendly controls, and localization-ready copy.
+- Produces explicit loading/empty/error/duplicate/stale/resolved states, keyboard-friendly controls, localization-ready copy, and cross-schema behavior.
 
 - [ ] **Step 1: Add RED edge-case tests**
 
-Required cases:
-- street directly to complex;
-- street to alley to complex;
-- building as endpoint;
-- village endpoint without neighborhood;
-- country schema with different branching;
-- duplicate proposal returned as existing Location;
-- reusable proposal returned instead of duplicate;
-- proposal changes state while picker is open;
-- network failure preserves form state;
-- inactive parent causes server validation rather than silent corruption.
+Required cases: street→complex, street→alley→complex, building endpoint, village endpoint without neighborhood, alternate-country branch, duplicate returned as existing Location, reusable proposal, proposal state changes while picker open, network failure preserving form state, inactive parent rejected server-side.
 
-- [ ] **Step 2: Verify RED**
+- [ ] **Step 2: Run RED**
 
-- [ ] **Step 3: Implement explicit client states and accessible labels**
+```bash
+npm run test:location-governance
+php artisan test tests/Feature/LocationGovernance tests/Feature/Admin/CanonicalUserResidenceEditTest.php tests/Feature/Admin/LocationGovernanceControlCenterTest.php
+```
 
-Buttons/selects must have labels; badges use text; no correctness depends only on color. Keep dynamic levels progressive and arbitrary-depth.
+- [ ] **Step 3: Implement explicit client/accessibility states**
 
-- [ ] **Step 4: Run responsive/JS/location-governance targeted suites GREEN**
+Controls have text labels; correctness never depends only on color; dynamic levels remain arbitrary-depth and progressively disclosed; failed proposal submit leaves user-entered name/path intact.
+
+- [ ] **Step 4: Run targeted GREEN**
+
+Run Step 2 command; expect PASS.
 
 - [ ] **Step 5: Build production assets**
 
@@ -718,10 +745,10 @@ Run: `npm run build`
 
 Expected: successful Vite build with no new compile errors.
 
-- [ ] **Step 6: Commit checkpoint**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add resources/js/location-selector.js resources/views tests
+git add resources/js/location-selector.js tests/js/location-governance/location-selector.test.mjs resources/views/auth/register_step3_canonical.blade.php resources/views/profile/partials/location_canonical.blade.php resources/views/admin/user/edit.blade.php resources/views/location-governance/my-location-governance.blade.php tests/Feature
 git commit -m "fix: harden location governance UX states"
 ```
 
@@ -730,59 +757,56 @@ git commit -m "fix: harden location governance UX states"
 ### Task 12: Stage-C UI Completion Integration Gate and Release Readiness
 
 **Files:**
-- Test-only adjustments if a test reveals a real missing regression guard; no feature expansion in this task.
-- Update docs/checklist only if repository convention requires a release note/checkpoint record.
+- No planned production-code expansion. Add only regression guards if validation exposes a real uncovered defect, with a fresh RED/GREEN cycle.
 
 **Interfaces:**
-- Consumes all prior tasks.
-- Produces a release candidate suitable for PR review while feature flags remain dark until separate Production cutover approval.
+- Consumes all previous tasks.
+- Produces an exact release candidate suitable for PR review while feature flags remain dark until separate Production cutover approval.
 
 - [ ] **Step 1: Run focused Location/Governance suite**
 
-Run the repository's Location/Governance feature test group/path including all new tests.
+Run: `php artisan test tests/Feature/LocationGovernance`
 
 Expected: PASS with no failures/errors.
 
-- [ ] **Step 2: Run affected admin/profile/registration/invitation/group regression suites**
+- [ ] **Step 2: Run affected admin/profile/invitation/group regressions**
 
-At minimum include:
-- canonical registration/profile residence;
-- admin users;
-- Location/Governance control center;
-- canonical group membership/reconciliation;
-- Community boundaries;
-- profile completion/invitations.
+Run relevant existing suites for admin users, canonical membership/reconciliation, invitation/profile completion, Community boundaries, and Location/Governance control center.
 
 Expected: PASS.
 
-- [ ] **Step 3: Run project-required responsive/frontend validation**
+- [ ] **Step 3: Run frontend validations**
 
-Run current repository Responsive workflow/test command and `npm run build`.
+```bash
+npm run test:location-governance
+npm run test:group-chat
+npm run build
+```
 
 Expected: PASS.
 
-- [ ] **Step 4: Run Full Validation on exact candidate commit**
+- [ ] **Step 4: Run repository Full Validation on exact candidate commit**
 
-Use the repository's existing Full Validation workflow on the exact branch head. Do not merge if any required gate fails.
+Use the existing Full Validation workflow for the exact branch HEAD. Do not merge if any required gate fails.
 
-Expected: all required jobs PASS, including Najm Bahar, governance, group chat, Najm Hoda, JavaScript, full PHPUnit, and regression gate.
+Expected: all required jobs PASS, including Najm Bahar, Governance, Group Chat, Najm Hoda, JavaScript, Full Project PHPUnit, and regression gate.
 
-- [ ] **Step 5: Verify dark-launch safety before PR handoff**
+- [ ] **Step 5: Verify dark-launch safety**
 
-Confirm code defaults remain false and no commit changes Production `.env` or enables Location/Governance flags. Do not change Production flags as part of this plan.
+Confirm code defaults remain false and no commit changes Production `.env` or enables Location/Governance flags. Do not change Production flags in this plan.
 
-- [ ] **Step 6: Final branch review**
+- [ ] **Step 6: Review branch diff against `main`**
 
-Compare branch to `main`; verify changes are limited to this spec, migrations are additive/non-destructive, no legacy data is dropped, and no unrelated UI refactor slipped in.
+Verify changes are limited to this spec, migration is additive/non-destructive, no legacy data is dropped, and no unrelated UI refactor slipped in.
 
-- [ ] **Step 7: Commit any test-only release guard, then stop for merge approval**
+- [ ] **Step 7: Stop for explicit merge approval**
 
 ```bash
 git status
 git log --oneline --decorate main..HEAD
 ```
 
-Do not merge to `main` without the user's explicit approval after exact-candidate validation.
+Do not merge to `main` without explicit user approval after exact-candidate validation.
 
 ---
 
@@ -790,14 +814,14 @@ Do not merge to `main` without the user's explicit approval after exact-candidat
 
 1. Task 1 establishes the persistence boundary.
 2. Task 2 establishes safe domain lifecycle/convergence.
-3. Tasks 3–4 establish the one shared picker contract.
-4. Tasks 5–7 migrate registration/profile/admin consumers onto that contract.
+3. Tasks 3–4 establish the shared picker contract.
+4. Tasks 5–7 migrate registration/profile/admin consumers.
 5. Tasks 8–9 expose user governance/community understanding without changing authority boundaries.
-6. Task 10 completes admin operations/visibility.
+6. Task 10 completes admin operational visibility.
 7. Task 11 hardens cross-schema UI/UX.
 8. Task 12 is the exact-candidate integration gate.
 
-A reviewer may reject any checkpoint independently. Later tasks must not compensate for a broken earlier contract.
+Each task ends in a reviewable checkpoint. A later task must not compensate for a broken earlier contract.
 
 ## Spec Coverage Self-Review
 
@@ -811,10 +835,10 @@ A reviewer may reject any checkpoint independently. Later tasks must not compens
 - Profile editing/status: Task 6.
 - Admin canonical residence editing: Task 7.
 - My Location & Governance: Task 8.
-- Active vs Observer membership visualization: Task 8.
+- Active vs Observer visualization: Task 8.
 - Community Area separation/policy: Task 9.
 - Admin topology/proposals/import/diagnostics: Task 10.
 - Accessibility/responsive/error/concurrency states: Task 11.
-- Dark launch and full regression/release safety: Task 12.
+- Dark launch/full regression/release safety: Task 12.
 
-No `TBD`, `TODO`, automatic Governance creation from proposals, or Production flag activation is part of this plan.
+The plan contains no deferred placeholder requirement, no automatic Governance creation from proposals, and no Production flag activation.
