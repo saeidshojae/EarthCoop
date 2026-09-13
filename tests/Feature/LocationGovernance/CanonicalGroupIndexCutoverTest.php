@@ -179,6 +179,34 @@ class CanonicalGroupIndexCutoverTest extends TestCase
         );
     }
 
+    public function test_canonical_profession_filters_use_governance_levels_instead_of_legacy_location_level(): void
+    {
+        $this->enableStageC();
+
+        ['user' => $user, 'area' => $baseArea] = MembershipFixture::canonicalUser();
+
+        $country = GovernanceArea::create([
+            'key' => 'ir.country.filter',
+            'country_code' => 'IR',
+            'governance_type' => 'country',
+            'area_kind' => 'official',
+            'canonical_name' => 'Iran',
+            'rank' => 1,
+            'status' => 'active',
+        ]);
+        $baseArea->update([
+            'parent_id' => $country->id,
+            'governance_type' => 'city',
+            'rank' => 10,
+        ]);
+
+        $response = $this->actingAs($user)->get('/groups');
+
+        $response->assertOk();
+        $response->assertSee('data-filter-value="country"', false);
+        $response->assertSee('data-filter-value="city"', false);
+    }
+
     private function enableStageC(): void
     {
         config([
