@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\LocationGovernance;
 
+use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\PermissionMiddleware;
 use App\Models\AgeGroup;
 use App\Models\ExperienceField;
 use App\Models\Group;
@@ -190,7 +192,10 @@ class CanonicalProfileMembershipReconciliationTest extends TestCase
         $jalali = Jalalian::fromCarbon($targetBirthDate);
         $admin = User::factory()->create();
 
-        $this->withoutMiddleware();
+        $this->withoutMiddleware([
+            AdminMiddleware::class,
+            PermissionMiddleware::class,
+        ]);
         $this->actingAs($admin)->put(route('admin.users.update', $user), [
             'email' => 'canonical-admin-update-'.uniqid().'@example.test',
             'first_name' => 'علی',
@@ -201,6 +206,10 @@ class CanonicalProfileMembershipReconciliationTest extends TestCase
             'phone' => '09123456780',
             'password' => null,
         ])->assertRedirect(route('admin.users.index'));
+
+        $fresh = $user->fresh();
+        $this->assertSame('female', $fresh->gender);
+        $this->assertSame(40, $fresh->birth_date->age);
 
         $femaleGroup = Group::query()
             ->where('governance_area_id', $area->id)
