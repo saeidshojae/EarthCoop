@@ -6,6 +6,7 @@ use App\Models\AgeGroup;
 use App\Models\ExperienceField;
 use App\Models\Group;
 use App\Models\OccupationalField;
+use App\Models\User;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Morilog\Jalali\Jalalian;
@@ -159,6 +160,63 @@ class CanonicalProfileMembershipReconciliationTest extends TestCase
         $this->assertSame(40, $fresh->birth_date->age);
         $this->assertSame($groupCountBefore, Group::query()->count(), 'Canonical general profile writes must not create any groups while Stage C groups are dark.');
         $this->assertSame($legacyGroupCountBefore, Group::query()->whereNull('governance_area_id')->count(), 'Canonical general profile writes must not create legacy age/gender groups while Stage C groups are dark.');
+    }
+
+    public function test_admin_user_update_reconciles_canonical_age_and_gender_memberships(): void
+    {
+        $this->enableStageC();
+        ['user' => $user, 'area' => $area] = MembershipFixture::canonicalUser();
+        AgeGroup::create(['title' => '35-44', 'min_age' => 35, 'max_age' => 44]);
+        app(CanonicalGroupMembershipReconciler::class)->reconcile($user);
+
+        $user->forceFill([
+            'first_name' => 'علی',
+            'last_name' => 'رضایی',
+            'national_id' => '1234567891',
+            'phone' => '09123456789',
+        ])->save();
+
+        $oldGender = Group::query()
+            ->where('governance_area_id', $area->id)
+            ->where('dimension_key', 'gender')
+            ->where('dimension_value_key', 'gender:male')
+            ->firstOrFail();
+        $oldAge = Group::query()
+            ->where('governance_area_id', $area->id)
+            ->where('dimension_key', 'age')
+            ->firstOrFail();
+
+        $targetBirthDate = now()->subYears(40)->startOfDay();
+        $jalali = Jalalian::fromCarbon($targetBirthDate);
+        $admin = User::factory()->create();
+
+        $this->withoutMiddleware();
+        $this->actingAs($admin)->put(route('admin.users.update', $user), [
+            'email' => $user->email,
+            'first_name' => 'علی',
+            'last_name' => 'رضایی',
+            'birth_date' => [$jalali->getDay(), $jalali->getMonth(), $jalali->getYear()],
+            'gender' => 'female',
+            'national_id' => '1234567891',
+            'phone' => '09123456789',
+            'status' => 'active',
+        ])->assertRedirect(route('admin.users.index'));
+
+        $femaleGroup = Group::query()
+            ->where('governance_area_id', $area->id)
+            ->where('dimension_key', 'gender')
+            ->where('dimension_value_key', 'gender:female')
+            ->firstOrFail();
+        $newAge = Group::query()
+            ->where('governance_area_id', $area->id)
+            ->where('dimension_key', 'age')
+            ->where('id', '!=', $oldAge->id)
+            ->firstOrFail();
+
+        $this->assertSame(1, (int) $user->groups()->whereKey($femaleGroup->id)->firstOrFail()->pivot->status);
+        $this->assertSame(1, (int) $user->groups()->whereKey($newAge->id)->firstOrFail()->pivot->status);
+        $this->assertSame(0, (int) $user->groups()->whereKey($oldGender->id)->firstOrFail()->pivot->status);
+        $this->assertSame(0, (int) $user->groups()->whereKey($oldAge->id)->firstOrFail()->pivot->status);
     }
 
     private function enableRegistrationOnly(): void
