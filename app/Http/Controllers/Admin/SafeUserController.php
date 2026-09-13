@@ -20,8 +20,6 @@ class SafeUserController extends UserController
     public function update(Request $request, User $user)
     {
         $requestedStatus = $request->input('status');
-        $previousGender = $user->gender;
-        $previousBirthDate = (string) $user->getRawOriginal('birth_date');
 
         // Preserve the current lifecycle state while the legacy profile updater
         // handles non-lifecycle fields. Status changes are applied only through
@@ -35,12 +33,14 @@ class SafeUserController extends UserController
         }
 
         $response = parent::update($request, $user);
-        $freshUser = User::withoutGlobalScopes()->find($user->getKey());
 
-        if ($freshUser !== null
-            && (bool) config('location-governance.groups_enabled', false)
-            && ($previousGender !== $freshUser->gender
-                || $previousBirthDate !== (string) $freshUser->getRawOriginal('birth_date'))) {
+        // Admin profile edits may change canonical membership inputs such as
+        // birth date or gender. Reconciliation is idempotent and remains dark
+        // until Stage C group activation, so every successful admin profile
+        // update can safely converge the user's canonical memberships here.
+        $freshUser = $user->refresh();
+        if (! session()->has('error')
+            && (bool) config('location-governance.groups_enabled', false)) {
             $this->canonicalGroupMembershipReconciler->reconcile($freshUser);
         }
 
