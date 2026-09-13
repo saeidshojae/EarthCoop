@@ -41,7 +41,7 @@ class CanonicalGroupIndexCutoverTest extends TestCase
             $hasCanonicalPublic = $groups->contains(fn (Group $group): bool =>
                 (int) $group->governance_area_id === (int) $area->id
                 && $group->dimension_key === 'public'
-                && $group->dimension_value_key === 'all'
+                && $group->dimension_value_key === 'public'
             );
 
             $hasLegacySpatial = $groups->contains(fn (Group $group): bool => $group->is($legacyGroup));
