@@ -69,4 +69,9 @@ class LocationProposal extends Model
     {
         return $this->hasMany(LocationProposalEvidence::class);
     }
+
+    public function pendingResidenceIntents(): HasMany
+    {
+        return $this->hasMany(PendingResidenceIntent::class);
+    }
 }
