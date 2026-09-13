@@ -29,6 +29,13 @@ final class ProfileEditController extends Controller
             ->latest('id')
             ->first();
 
+        $pendingResidenceIntent = $user->pendingResidenceIntents()
+            ->with(['locationProposal.type', 'resolvedLocation'])
+            ->where('status', 'pending')
+            ->latest('selected_at')
+            ->latest('id')
+            ->first();
+
         $occupationalFields = OccupationalField::whereNull('parent_id')->get();
         $experienceFields = ExperienceField::whereNull('parent_id')->get();
         $allOccupationalFields = OccupationalField::with('parent')->get();
@@ -54,6 +61,7 @@ final class ProfileEditController extends Controller
         return view('profile.edit', [
             'user' => $user,
             'primaryResidence' => $primaryResidence,
+            'pendingResidenceIntent' => $pendingResidenceIntent,
             'occupationalFields' => $occupationalFields,
             'experienceFields' => $experienceFields,
             'allOccupationalFields' => $allOccupationalFields,
