@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\LocationGovernance;
 
-use App\Http\Controllers\Group\GroupController;
 use App\Models\Group;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\MembershipFixture;
@@ -33,23 +32,21 @@ class CanonicalGroupIndexCutoverTest extends TestCase
             'status' => 1,
         ]);
 
-        $this->actingAs($user);
+        $response = $this->actingAs($user)->get('/groups');
 
-        $view = app(GroupController::class)->index();
-        $generalGroups = collect($view->getData()['generalGroups']);
+        $response->assertOk();
+        $response->assertViewHas('generalGroups', function ($groups) use ($area, $legacyGroup): bool {
+            $groups = collect($groups);
 
-        $this->assertTrue(
-            $generalGroups->contains(fn (Group $group): bool =>
+            $hasCanonicalPublic = $groups->contains(fn (Group $group): bool =>
                 (int) $group->governance_area_id === (int) $area->id
                 && $group->dimension_key === 'public'
                 && $group->dimension_value_key === 'all'
-            ),
-            'Stage C must materialize and expose the canonical public membership for the current Primary Residence.',
-        );
+            );
 
-        $this->assertFalse(
-            $generalGroups->contains(fn (Group $group): bool => $group->is($legacyGroup)),
-            'When canonical group cutover is enabled, legacy spatial memberships must not remain authoritative in My Groups.',
-        );
+            $hasLegacySpatial = $groups->contains(fn (Group $group): bool => $group->is($legacyGroup));
+
+            return $hasCanonicalPublic && ! $hasLegacySpatial;
+        });
     }
 }
