@@ -70,6 +70,11 @@ class User extends Authenticatable
         return $this->hasMany(UserLocationRelationship::class);
     }
 
+    public function pendingResidenceIntents()
+    {
+        return $this->hasMany(PendingResidenceIntent::class);
+    }
+
     public function groups()
     {
         $relation = $this->belongsToMany(Group::class, 'group_user', 'user_id', 'group_id')
@@ -143,9 +148,7 @@ class User extends Authenticatable
             $sColor = rand(1, 255);
             $tColor = rand(1, 255);
 
-            return '<div class="group-avatar" style="width: 5rem; height: 5rem; font-size: 2rem; margin: 0; background-color: rgba(' . $fColor . ', ' . $sColor . ', ' . $tColor . ', .1); color: rgb(' . $fColor . ', ' . $sColor . ', ' . $tColor . ');">
-                        <span>' . strtoupper(substr($this->email, 0, 1)) . '</span>
-                    </div>';
+            return '<div class="group-avatar" style="width: 5rem; height: 5rem; font-size: 2rem; margin: 0; background-color: rgba(' . $fColor . ', ' . $sColor . ', ' . $tColor . ', .1); color: rgb(' . $fColor . ', ' . $sColor . ', ' . $tColor . ');">\n                        <span>' . strtoupper(substr($this->email, 0, 1)) . '</span>\n                    </div>';
         }else{
             return '<img alt="تصویر پروفایل" class="rounded-circle" width="150" height="150" src=' . asset('/images/users/avatars/' . $this->avatar) . '>';
         }
@@ -154,9 +157,7 @@ class User extends Authenticatable
 
     public function profileInChat(){
         if($this->avatar == null){
-            return '<div class="group-avatar" style="width: 2rem; height: 2rem; font-size: .6rem; margin: 0; background-color: #e3f2fd; color: #1976d2;">
-                        <span>' . mb_substr($this->first_name, 0, 1) . ' ' . mb_substr($this->last_name, 0, 1) . '</span>
-                    </div>';
+            return '<div class="group-avatar" style="width: 2rem; height: 2rem; font-size: .6rem; margin: 0; background-color: #e3f2fd; color: #1976d2;">\n                        <span>' . mb_substr($this->first_name, 0, 1) . ' ' . mb_substr($this->last_name, 0, 1) . '</span>\n                    </div>';
         }else{
             return '<img alt="تصویر پروفایل" class="rounded-circle" width="32" height="32" src=' . asset('/images/users/avatars/' . $this->avatar) . '>';
         }
