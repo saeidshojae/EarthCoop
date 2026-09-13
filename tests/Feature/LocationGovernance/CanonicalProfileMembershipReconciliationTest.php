@@ -199,6 +199,7 @@ class CanonicalProfileMembershipReconciliationTest extends TestCase
             'gender' => 'female',
             'national_id' => '1234567806',
             'phone' => '09123456780',
+            'password' => null,
             'status' => 'active',
         ])->assertRedirect(route('admin.users.index'));
 
