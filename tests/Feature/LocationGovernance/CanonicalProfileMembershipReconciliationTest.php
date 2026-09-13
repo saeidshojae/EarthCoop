@@ -192,13 +192,13 @@ class CanonicalProfileMembershipReconciliationTest extends TestCase
 
         $this->withoutMiddleware();
         $this->actingAs($admin)->put(route('admin.users.update', $user), [
-            'email' => $user->email,
+            'email' => 'canonical-admin-update-'.uniqid().'@example.test',
             'first_name' => 'علی',
             'last_name' => 'رضایی',
             'birth_date' => [$jalali->getDay(), $jalali->getMonth(), $jalali->getYear()],
             'gender' => 'female',
-            'national_id' => '1234567891',
-            'phone' => '09123456789',
+            'national_id' => '1234567806',
+            'phone' => '09123456780',
             'status' => 'active',
         ])->assertRedirect(route('admin.users.index'));
 
