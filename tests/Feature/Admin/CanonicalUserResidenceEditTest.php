@@ -18,16 +18,21 @@ class CanonicalUserResidenceEditTest extends TestCase
         $this->assertSame(['PUT'], $route->methods());
     }
 
-    public function test_admin_user_edit_contains_separate_canonical_residence_card(): void
+    public function test_admin_user_edit_includes_separate_canonical_residence_card(): void
     {
         $view = file_get_contents(resource_path('views/admin/user/edit.blade.php'));
+        $partialPath = resource_path('views/admin/user/partials/canonical-residence.blade.php');
 
-        $this->assertStringContainsString('data-admin-user-residence', $view);
-        $this->assertStringContainsString('data-location-selector', $view);
-        $this->assertStringContainsString('data-location-selector-context="admin-user-residence"', $view);
-        $this->assertStringContainsString('name="location_id"', $view);
-        $this->assertStringContainsString('name="location_proposal_id"', $view);
-        $this->assertStringContainsString('name="reason"', $view);
-        $this->assertStringContainsString("route('admin.users.residence.update', \$user)", $view);
+        $this->assertStringContainsString("@include('admin.user.partials.canonical-residence')", $view);
+        $this->assertFileExists($partialPath);
+
+        $partial = file_get_contents($partialPath);
+        $this->assertStringContainsString('data-admin-user-residence', $partial);
+        $this->assertStringContainsString('data-location-selector', $partial);
+        $this->assertStringContainsString('data-location-selector-context="admin-user-residence"', $partial);
+        $this->assertStringContainsString('name="location_id"', $partial);
+        $this->assertStringContainsString('name="location_proposal_id"', $partial);
+        $this->assertStringContainsString('name="reason"', $partial);
+        $this->assertStringContainsString("route('admin.users.residence.update', \$user)", $partial);
     }
 }
