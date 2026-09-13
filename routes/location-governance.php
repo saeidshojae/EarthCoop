@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\CanonicalUserEditController;
 use App\Http\Controllers\Admin\UserResidenceController;
 use App\Http\Controllers\LocationGovernance\GeolocationController;
 use App\Http\Controllers\LocationGovernance\LocationOptionsController;
@@ -17,12 +18,16 @@ Route::middleware('auth')->post('/location-governance/geolocation/match', [Geolo
 
 // Loaded after routes/web.php. These deliberately shadow the legacy profile
 // location endpoints. Each canonical adapter delegates straight back to the
-// legacy ProfileController while the rollout flag is disabled.
+// legacy controller/view while the rollout flag is disabled.
 Route::middleware('auth')->get('/profile/edit', ProfileEditController::class)
     ->name('profile.edit');
 
 Route::middleware('auth')->put('/profile/update/address', [ProfileResidenceController::class, 'update'])
     ->name('profile.update.address');
+
+Route::middleware(['auth', 'admin', 'permission:users.edit'])
+    ->get('/admin/user/{user}/edit', CanonicalUserEditController::class)
+    ->name('admin.users.edit');
 
 Route::middleware(['auth', 'admin', 'permission:users.edit'])
     ->put('/admin/user/{user}/residence', [UserResidenceController::class, 'update'])
