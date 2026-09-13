@@ -3,8 +3,11 @@
 namespace Tests\Feature\LocationGovernance;
 
 use App\Data\Membership\MembershipIntent;
+use App\Models\AgeGroup;
+use App\Models\ExperienceField;
 use App\Models\GovernanceArea;
 use App\Models\Group;
+use App\Models\OccupationalField;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -71,5 +74,41 @@ class GovernanceScopedGroupTest extends TestCase
 
         $this->assertNull($group);
         $this->assertSame($before, Group::count());
+    }
+
+    public function test_materialized_names_use_human_labels_while_preserving_canonical_identity_keys(): void
+    {
+        app()->setLocale('fa');
+
+        $area = GovernanceArea::factory()->create([
+            'area_kind' => 'official',
+            'status' => 'active',
+            'canonical_name' => 'Sari Reference Neighborhood',
+            'localized_names' => ['fa' => 'محله مرجع ساری', 'en' => 'Sari Reference Neighborhood'],
+        ]);
+        $profession = OccupationalField::create(['name' => 'مهندسی', 'status' => 1]);
+        $specialty = ExperienceField::create(['name' => 'برنامه‌نویسی', 'status' => 1]);
+        $age = AgeGroup::create(['title' => '۲۵ تا ۳۴ سال', 'min_age' => 25, 'max_age' => 34]);
+
+        $service = app(\App\Services\Groups\GovernanceScopedGroupService::class);
+
+        $groups = collect([
+            $service->materialize(new MembershipIntent('profession', 'occupational_field:'.$profession->id, $area->id, 'automatic')),
+            $service->materialize(new MembershipIntent('specialty', 'experience_field:'.$specialty->id, $area->id, 'automatic')),
+            $service->materialize(new MembershipIntent('age', 'age_group:'.$age->id, $area->id, 'automatic')),
+            $service->materialize(new MembershipIntent('gender', 'gender:male', $area->id, 'automatic')),
+        ]);
+
+        $joined = $groups->pluck('name')->join(' | ');
+
+        $this->assertStringContainsString('مهندسی', $joined);
+        $this->assertStringContainsString('برنامه‌نویسی', $joined);
+        $this->assertStringContainsString('۲۵ تا ۳۴ سال', $joined);
+        $this->assertStringContainsString('مردان', $joined);
+        $this->assertStringContainsString('محله مرجع ساری', $joined);
+        $this->assertStringNotContainsString('occupational_field:', $joined);
+        $this->assertStringNotContainsString('experience_field:', $joined);
+        $this->assertStringNotContainsString('age_group:', $joined);
+        $this->assertStringNotContainsString('gender:male', $joined);
     }
 }
