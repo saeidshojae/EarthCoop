@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Admin\CanonicalUserEditController;
 use App\Http\Controllers\Admin\UserResidenceController;
 use App\Http\Controllers\LocationGovernance\GeolocationController;
 use App\Http\Controllers\LocationGovernance\LocationOptionsController;
@@ -24,10 +23,6 @@ Route::middleware('auth')->get('/profile/edit', ProfileEditController::class)
 
 Route::middleware('auth')->put('/profile/update/address', [ProfileResidenceController::class, 'update'])
     ->name('profile.update.address');
-
-Route::middleware(['auth', 'admin', 'permission:users.edit'])
-    ->get('/admin/user/{user}/edit', CanonicalUserEditController::class)
-    ->name('admin.users.edit');
 
 Route::middleware(['auth', 'admin', 'permission:users.edit'])
     ->put('/admin/user/{user}/residence', [UserResidenceController::class, 'update'])
