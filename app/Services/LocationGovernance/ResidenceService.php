@@ -6,6 +6,7 @@ use App\Exceptions\ResidenceTransferLimitExceeded;
 use App\Models\Location;
 use App\Models\User;
 use App\Models\UserLocationRelationship;
+use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -14,6 +15,7 @@ class ResidenceService
     public function __construct(
         private readonly ResidenceTransferPolicy $transferPolicy,
         private readonly GovernanceResolver $governanceResolver,
+        private readonly CanonicalGroupMembershipReconciler $groupMembershipReconciler,
     ) {
     }
 
@@ -28,10 +30,12 @@ class ResidenceService
                 ->first();
 
             if ($existing !== null) {
+                $this->reconcileCanonicalGroupsIfEnabled($user);
+
                 return $existing;
             }
 
-            return UserLocationRelationship::query()->create([
+            $relationship = UserLocationRelationship::query()->create([
                 'user_id' => $user->id,
                 'location_id' => $location->id,
                 'relationship_type' => 'primary_residence',
@@ -41,6 +45,10 @@ class ResidenceService
                 'explicit_transfer' => false,
                 'transfer_override' => false,
             ]);
+
+            $this->reconcileCanonicalGroupsIfEnabled($user);
+
+            return $relationship;
         });
     }
 
@@ -69,7 +77,7 @@ class ResidenceService
                 $current->forceFill(['ended_at' => $at])->save();
             }
 
-            return UserLocationRelationship::query()->create([
+            $relationship = UserLocationRelationship::query()->create([
                 'user_id' => $user->id,
                 'location_id' => $to->id,
                 'relationship_type' => 'primary_residence',
@@ -81,6 +89,10 @@ class ResidenceService
                 'changed_by_user_id' => $actor->id,
                 'change_reason' => $reason,
             ]);
+
+            $this->reconcileCanonicalGroupsIfEnabled($user);
+
+            return $relationship;
         });
     }
 
@@ -100,5 +112,12 @@ class ResidenceService
         }
 
         return $this->governanceResolver->officialAreasForResidence($primaryResidence->location);
+    }
+
+    private function reconcileCanonicalGroupsIfEnabled(User $user): void
+    {
+        if ((bool) config('location-governance.groups_enabled', false)) {
+            $this->groupMembershipReconciler->reconcile($user);
+        }
     }
 }

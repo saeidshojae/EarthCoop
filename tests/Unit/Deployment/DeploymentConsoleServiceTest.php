@@ -20,12 +20,14 @@ class DeploymentConsoleServiceTest extends TestCase
             'flag_status',
             'migrate',
             'bootstrap',
+            'stage_c_group_policy_apply',
             'reference_apply',
             'topology_apply',
         ], array_keys($service->operations()));
 
         $this->assertSame('MIGRATE', $service->confirmationFor('migrate'));
         $this->assertSame('BOOTSTRAP', $service->confirmationFor('bootstrap'));
+        $this->assertSame('APPLY-GROUP-POLICY', $service->confirmationFor('stage_c_group_policy_apply'));
         $this->assertSame('APPLY-IR', $service->confirmationFor('reference_apply'));
         $this->assertSame('APPLY-GOV-IR', $service->confirmationFor('topology_apply'));
         $this->assertNull($service->confirmationFor('migration_status'));

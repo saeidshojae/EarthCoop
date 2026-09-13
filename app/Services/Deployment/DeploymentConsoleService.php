@@ -62,6 +62,15 @@ class DeploymentConsoleService
             'write' => true,
             'confirmation' => 'BOOTSTRAP',
         ],
+        'stage_c_group_policy_apply' => [
+            'command' => 'db:seed',
+            'arguments' => [
+                '--class' => 'StageCCanonicalGroupPolicySeeder',
+                '--force' => true,
+            ],
+            'write' => true,
+            'confirmation' => 'APPLY-GROUP-POLICY',
+        ],
         'reference_apply' => [
             'command' => 'location:reference-import',
             'arguments' => [
