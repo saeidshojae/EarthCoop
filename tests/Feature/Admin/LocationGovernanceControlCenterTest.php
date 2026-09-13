@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\GovernanceArea;
 use App\Models\Location;
+use App\Models\LocationSchema;
 use App\Models\User;
 use App\Services\LocationGovernance\CommunityAreaService;
 use App\Services\LocationGovernance\LocationProposalService;
@@ -124,7 +125,7 @@ class LocationGovernanceControlCenterTest extends TestCase
         $official->locations()->attach($neighborhood->id);
 
         $community = app(CommunityAreaService::class)->createFor($complex, $admin);
-        $this->makeProposal('پیشنهاد سلامت کنترل');
+        $this->makeProposal('پیشنهاد سلامت کنترل', $schema);
 
         DB::table('location_import_runs')->insert([
             'country_code' => 'IR',
@@ -176,9 +177,9 @@ class LocationGovernanceControlCenterTest extends TestCase
     }
 
     /** @return array{0: \App\Models\LocationProposal, 1: Location} */
-    private function makeProposal(string $name): array
+    private function makeProposal(string $name, ?LocationSchema $schema = null): array
     {
-        $schema = LocationFixture::iranSchema();
+        $schema ??= LocationFixture::iranSchema();
         $parent = LocationFixture::createPath($schema, [
             'country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood', 'street',
         ])->last();
