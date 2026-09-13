@@ -4,6 +4,7 @@ namespace App\Http\Controllers\LocationGovernance;
 
 use App\Http\Controllers\Controller;
 use App\Models\GovernanceArea;
+use App\Services\LocationGovernance\CommunityCreationPolicy;
 use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -19,8 +20,11 @@ final class MyLocationGovernanceController extends Controller
         'gender',
     ];
 
-    public function __invoke(Request $request, ResidenceService $residenceService): View
-    {
+    public function __invoke(
+        Request $request,
+        ResidenceService $residenceService,
+        CommunityCreationPolicy $communityCreationPolicy,
+    ): View {
         abort_unless((bool) config('location-governance.runtime_enabled'), 404);
 
         $user = $request->user();
@@ -61,6 +65,10 @@ final class MyLocationGovernanceController extends Controller
             });
 
         $communities = $this->communitiesForResidence($currentResidence?->location_id);
+        $canCreateCommunity = $pendingResidenceIntent === null
+            && $communities->isEmpty()
+            && $currentResidence?->location !== null
+            && $communityCreationPolicy->mayCreateFor($currentResidence->location, $user);
 
         return view('location-governance.my-location-governance', compact(
             'currentResidence',
@@ -68,6 +76,7 @@ final class MyLocationGovernanceController extends Controller
             'governanceAreas',
             'membershipsByDimension',
             'communities',
+            'canCreateCommunity',
         ));
     }
 
