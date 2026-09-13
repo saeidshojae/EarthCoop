@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Http\Controllers\Admin\SafeUserController;
+use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
@@ -22,15 +24,18 @@ class CanonicalUserResidenceEditTest extends TestCase
     {
         $editRoute = Route::getRoutes()->getByName('admin.users.edit');
         $this->assertNotNull($editRoute);
-        $this->assertStringContainsString('CanonicalUserEditController', $editRoute->getActionName());
+        $this->assertStringContainsString('UserController@edit', $editRoute->getActionName());
         $this->assertContains('permission:users.edit', $editRoute->gatherMiddleware());
+        $this->assertInstanceOf(SafeUserController::class, app(UserController::class));
 
-        $adapter = file_get_contents(app_path('Http/Controllers/Admin/CanonicalUserEditController.php'));
+        $safeController = file_get_contents(app_path('Http/Controllers/Admin/SafeUserController.php'));
         $wrapper = file_get_contents(resource_path('views/admin/user/edit_canonical.blade.php'));
         $partialPath = resource_path('views/admin/user/partials/canonical-residence.blade.php');
 
-        $this->assertStringContainsString("config('location-governance.registration_enabled')", $adapter);
-        $this->assertStringContainsString("app(UserController::class)->edit(\$user)", $adapter);
+        $this->assertStringContainsString('public function edit(User $user)', $safeController);
+        $this->assertStringContainsString("config('location-governance.registration_enabled')", $safeController);
+        $this->assertStringContainsString("return parent::edit(\$user)", $safeController);
+        $this->assertStringContainsString("view('admin.user.edit_canonical'", $safeController);
         $this->assertStringContainsString("@extends('admin.user.edit')", $wrapper);
         $this->assertStringContainsString('@parent', $wrapper);
         $this->assertStringContainsString("@include('admin.user.partials.canonical-residence')", $wrapper);
