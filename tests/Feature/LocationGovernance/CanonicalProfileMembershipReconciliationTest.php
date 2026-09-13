@@ -20,7 +20,6 @@ class CanonicalProfileMembershipReconciliationTest extends TestCase
     {
         $this->enableStageC();
         ['user' => $user, 'area' => $area] = MembershipFixture::canonicalUser();
-
         app(CanonicalGroupMembershipReconciler::class)->reconcile($user);
 
         $oldProfessionValue = 'occupational_field:'.(int) $user->occupationalFields()->firstOrFail()->id;
@@ -34,12 +33,10 @@ class CanonicalProfileMembershipReconciliationTest extends TestCase
         $specialtyParent = ExperienceField::create(['name' => 'آموزش ابتدایی', 'parent_id' => $specialtyRoot->id, 'status' => 1]);
         $specialtyLeaf = ExperienceField::create(['name' => 'تدریس پایه اول', 'parent_id' => $specialtyParent->id, 'status' => 1]);
 
-        $response = $this->actingAs($user)->put(route('profile.update.experience'), [
+        $this->actingAs($user)->put(route('profile.update.experience'), [
             'occupational_fields' => [$professionLeaf->id],
             'experience_fields' => [$specialtyLeaf->id],
-        ]);
-
-        $response->assertRedirect(route('profile.edit'));
+        ])->assertRedirect(route('profile.edit'));
 
         foreach ([$professionRoot, $professionParent, $professionLeaf] as $field) {
             $group = Group::query()
@@ -98,12 +95,10 @@ class CanonicalProfileMembershipReconciliationTest extends TestCase
         $targetBirthDate = now()->subYears(40)->startOfDay();
         $jalali = Jalalian::fromCarbon($targetBirthDate);
 
-        $response = $this->actingAs($user)->put(route('profile.update.general'), [
+        $this->actingAs($user)->put(route('profile.update.general'), [
             'gender' => 'female',
             'birth_date' => [$jalali->getDay(), $jalali->getMonth(), $jalali->getYear()],
-        ]);
-
-        $response->assertRedirect();
+        ])->assertRedirect();
 
         $femaleGroup = Group::query()
             ->where('governance_area_id', $area->id)
@@ -124,12 +119,7 @@ class CanonicalProfileMembershipReconciliationTest extends TestCase
 
     public function test_canonical_profile_taxonomy_write_stays_group_dark_while_stage_c_groups_are_disabled(): void
     {
-        config([
-            'location-governance.runtime_enabled' => true,
-            'location-governance.registration_enabled' => true,
-            'location-governance.groups_enabled' => false,
-        ]);
-
+        $this->enableRegistrationOnly();
         ['user' => $user] = MembershipFixture::canonicalUser();
 
         $profession = OccupationalField::create(['name' => 'فرهنگیان', 'status' => 1]);
@@ -143,6 +133,35 @@ class CanonicalProfileMembershipReconciliationTest extends TestCase
         $this->assertTrue($user->fresh()->occupationalFields()->whereKey($profession->id)->exists());
         $this->assertTrue($user->fresh()->experienceFields()->whereKey($specialty->id)->exists());
         $this->assertSame(0, Group::query()->count(), 'Registration cutover must not fall back to legacy group creation while Stage C groups are dark.');
+    }
+
+    public function test_canonical_general_profile_write_stays_group_dark_while_stage_c_groups_are_disabled(): void
+    {
+        $this->enableRegistrationOnly();
+        ['user' => $user] = MembershipFixture::canonicalUser();
+
+        AgeGroup::create(['title' => '35-44', 'min_age' => 35, 'max_age' => 44]);
+        $targetBirthDate = now()->subYears(40)->startOfDay();
+        $jalali = Jalalian::fromCarbon($targetBirthDate);
+
+        $this->actingAs($user)->put(route('profile.update.general'), [
+            'gender' => 'female',
+            'birth_date' => [$jalali->getDay(), $jalali->getMonth(), $jalali->getYear()],
+        ])->assertRedirect();
+
+        $fresh = $user->fresh();
+        $this->assertSame('female', $fresh->gender);
+        $this->assertSame(40, $fresh->birth_date->age);
+        $this->assertSame(0, Group::query()->count(), 'Canonical general profile writes must not create legacy age/gender groups while Stage C groups are dark.');
+    }
+
+    private function enableRegistrationOnly(): void
+    {
+        config([
+            'location-governance.runtime_enabled' => true,
+            'location-governance.registration_enabled' => true,
+            'location-governance.groups_enabled' => false,
+        ]);
     }
 
     private function enableStageC(): void
