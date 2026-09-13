@@ -5,7 +5,7 @@ namespace Tests\Feature\LocationGovernance;
 use App\Models\GovernanceArea;
 use App\Models\Group;
 use App\Models\Location;
-use App\Models\UserLocationRelationship;
+use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\MembershipFixture;
 use Tests\TestCase;
@@ -49,7 +49,7 @@ class CanonicalGroupIndexCutoverTest extends TestCase
         });
     }
 
-    public function test_residence_transfer_deactivates_stale_canonical_memberships_and_activates_current_scope(): void
+    public function test_residence_transfer_atomically_deactivates_stale_canonical_memberships_and_activates_current_scope(): void
     {
         $this->enableStageC();
 
@@ -87,20 +87,12 @@ class CanonicalGroupIndexCutoverTest extends TestCase
         ]);
         $newArea->locations()->attach($newEndpoint->id);
 
-        UserLocationRelationship::query()
-            ->where('user_id', $user->id)
-            ->where('relationship_type', 'primary_residence')
-            ->whereNull('ended_at')
-            ->update(['ended_at' => now()->subMinute()]);
-
-        UserLocationRelationship::create([
-            'user_id' => $user->id,
-            'location_id' => $newEndpoint->id,
-            'relationship_type' => 'primary_residence',
-            'started_at' => now(),
-        ]);
-
-        $this->actingAs($user)->get('/groups')->assertOk();
+        app(ResidenceService::class)->transferPrimaryResidence(
+            $user,
+            $newEndpoint,
+            $user,
+            'stage_c_reconciliation_test',
+        );
 
         $newPublicGroup = Group::query()
             ->where('governance_area_id', $newArea->id)
