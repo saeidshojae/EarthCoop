@@ -6,13 +6,17 @@ use App\Http\Controllers\Admin\SafeUserController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\PermissionMiddleware;
+use App\Models\GovernanceArea;
+use App\Models\Group;
 use App\Models\Location;
 use App\Models\User;
+use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\LocationGovernance\LocationProposalService;
 use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Tests\Support\LocationGovernance\LocationFixture;
+use Tests\Support\LocationGovernance\MembershipFixture;
 use Tests\TestCase;
 
 class CanonicalUserResidenceEditTest extends TestCase
@@ -106,6 +110,61 @@ class CanonicalUserResidenceEditTest extends TestCase
         $this->assertSame('اصلاح محل سکونت با درخواست کاربر', $current->change_reason);
         $this->assertSame(1, $target->fresh()->locationRelationships()->where('explicit_transfer', true)->count());
         $this->assertNotSame($oldHome->id, $current->location_id);
+    }
+
+    public function test_admin_approved_move_reconciles_canonical_memberships_when_groups_are_enabled(): void
+    {
+        config(['location-governance.groups_enabled' => true]);
+
+        ['user' => $target, 'area' => $oldArea, 'endpoint' => $oldEndpoint] = MembershipFixture::canonicalUser();
+        app(CanonicalGroupMembershipReconciler::class)->reconcile($target);
+
+        $oldPublicGroup = Group::query()
+            ->where('governance_area_id', $oldArea->id)
+            ->where('dimension_key', 'public')
+            ->where('dimension_value_key', 'public')
+            ->firstOrFail();
+
+        $newEndpoint = Location::factory()->create([
+            'parent_id' => $oldEndpoint->parent_id,
+            'location_schema_id' => $oldEndpoint->location_schema_id,
+            'location_type_id' => $oldEndpoint->location_type_id,
+            'country_code' => 'IR',
+            'name' => 'ساری جدید مدیر',
+            'canonical_name' => 'Admin New Sari',
+            'level' => $oldEndpoint->level,
+            'status' => 'active',
+        ]);
+
+        $newArea = GovernanceArea::query()->create([
+            'key' => 'ir.admin-new-sari',
+            'country_code' => 'IR',
+            'governance_type' => 'city',
+            'area_kind' => 'official',
+            'canonical_name' => 'Admin New Sari',
+            'rank' => 10,
+            'status' => 'active',
+        ]);
+        $newArea->locations()->attach($newEndpoint->id);
+
+        $admin = User::factory()->create();
+        $this->actingAs($admin)
+            ->from(route('admin.users.edit', $target))
+            ->put(route('admin.users.residence.update', $target), [
+                'location_id' => $newEndpoint->id,
+                'reason' => 'انتقال تأییدشده توسط مدیر',
+            ])
+            ->assertRedirect(route('admin.users.edit', $target))
+            ->assertSessionHasNoErrors();
+
+        $newPublicGroup = Group::query()
+            ->where('governance_area_id', $newArea->id)
+            ->where('dimension_key', 'public')
+            ->where('dimension_value_key', 'public')
+            ->firstOrFail();
+
+        $this->assertSame(0, (int) $target->fresh()->groups()->whereKey($oldPublicGroup->id)->firstOrFail()->pivot->status);
+        $this->assertSame(1, (int) $target->fresh()->groups()->whereKey($newPublicGroup->id)->firstOrFail()->pivot->status);
     }
 
     public function test_admin_can_select_open_proposal_as_pending_exact_residence_without_storing_proposal_as_location(): void
