@@ -1,0 +1,133 @@
+<?php
+
+namespace Tests\Feature\LocationGovernance;
+
+use App\Models\AgeGroup;
+use App\Models\ExperienceField;
+use App\Models\Group;
+use App\Models\OccupationalField;
+use App\Services\Groups\CanonicalGroupMembershipReconciler;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Morilog\Jalali\Jalalian;
+use Tests\Support\LocationGovernance\MembershipFixture;
+use Tests\TestCase;
+
+class CanonicalProfileMembershipReconciliationTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_taxonomy_profile_update_reconciles_canonical_ancestry_without_creating_legacy_groups(): void
+    {
+        $this->enableStageC();
+        ['user' => $user, 'area' => $area] = MembershipFixture::canonicalUser();
+
+        app(CanonicalGroupMembershipReconciler::class)->reconcile($user);
+
+        $oldProfessionValue = 'occupational_field:'.(int) $user->occupationalFields()->firstOrFail()->id;
+        $oldSpecialtyValue = 'experience_field:'.(int) $user->experienceFields()->firstOrFail()->id;
+
+        $professionRoot = OccupationalField::create(['name' => 'فرهنگیان', 'status' => 1]);
+        $professionParent = OccupationalField::create(['name' => 'معلمان ابتدایی', 'parent_id' => $professionRoot->id, 'status' => 1]);
+        $professionLeaf = OccupationalField::create(['name' => 'معلمان پایه اول', 'parent_id' => $professionParent->id, 'status' => 1]);
+
+        $specialtyRoot = ExperienceField::create(['name' => 'آموزش', 'status' => 1]);
+        $specialtyParent = ExperienceField::create(['name' => 'آموزش ابتدایی', 'parent_id' => $specialtyRoot->id, 'status' => 1]);
+        $specialtyLeaf = ExperienceField::create(['name' => 'تدریس پایه اول', 'parent_id' => $specialtyParent->id, 'status' => 1]);
+
+        $response = $this->actingAs($user)->put(route('profile.update.experience'), [
+            'occupational_fields' => [$professionLeaf->id],
+            'experience_fields' => [$specialtyLeaf->id],
+        ]);
+
+        $response->assertRedirect(route('profile.edit'));
+
+        foreach ([$professionRoot, $professionParent, $professionLeaf] as $field) {
+            $group = Group::query()
+                ->where('governance_area_id', $area->id)
+                ->where('dimension_key', 'profession')
+                ->where('dimension_value_key', 'occupational_field:'.$field->id)
+                ->firstOrFail();
+            $this->assertSame(1, (int) $user->groups()->whereKey($group->id)->firstOrFail()->pivot->status);
+        }
+
+        foreach ([$specialtyRoot, $specialtyParent, $specialtyLeaf] as $field) {
+            $group = Group::query()
+                ->where('governance_area_id', $area->id)
+                ->where('dimension_key', 'specialty')
+                ->where('dimension_value_key', 'experience_field:'.$field->id)
+                ->firstOrFail();
+            $this->assertSame(1, (int) $user->groups()->whereKey($group->id)->firstOrFail()->pivot->status);
+        }
+
+        foreach ([['profession', $oldProfessionValue], ['specialty', $oldSpecialtyValue]] as [$dimension, $value]) {
+            $oldGroup = Group::query()
+                ->where('governance_area_id', $area->id)
+                ->where('dimension_key', $dimension)
+                ->where('dimension_value_key', $value)
+                ->firstOrFail();
+            $this->assertSame(0, (int) $user->groups()->whereKey($oldGroup->id)->firstOrFail()->pivot->status);
+        }
+
+        $this->assertFalse(Group::query()
+            ->whereNull('governance_area_id')
+            ->where(function ($query) use ($professionLeaf, $specialtyLeaf): void {
+                $query->where('specialty_id', $professionLeaf->id)
+                    ->orWhere('experience_id', $specialtyLeaf->id);
+            })
+            ->exists(), 'Canonical profile updates must not create legacy taxonomy groups.');
+    }
+
+    public function test_general_profile_update_reconciles_gender_and_age_memberships_immediately(): void
+    {
+        $this->enableStageC();
+        ['user' => $user, 'area' => $area] = MembershipFixture::canonicalUser();
+
+        AgeGroup::create(['title' => '35-44', 'min_age' => 35, 'max_age' => 44]);
+        app(CanonicalGroupMembershipReconciler::class)->reconcile($user);
+
+        $oldGender = Group::query()
+            ->where('governance_area_id', $area->id)
+            ->where('dimension_key', 'gender')
+            ->where('dimension_value_key', 'gender:male')
+            ->firstOrFail();
+        $oldAge = Group::query()
+            ->where('governance_area_id', $area->id)
+            ->where('dimension_key', 'age')
+            ->firstOrFail();
+
+        $targetBirthDate = now()->subYears(40)->startOfDay();
+        $jalali = Jalalian::fromCarbon($targetBirthDate);
+
+        $response = $this->actingAs($user)->put(route('profile.update.general'), [
+            'gender' => 'female',
+            'birth_date' => [$jalali->getDay(), $jalali->getMonth(), $jalali->getYear()],
+        ]);
+
+        $response->assertRedirect();
+
+        $femaleGroup = Group::query()
+            ->where('governance_area_id', $area->id)
+            ->where('dimension_key', 'gender')
+            ->where('dimension_value_key', 'gender:female')
+            ->firstOrFail();
+        $newAge = Group::query()
+            ->where('governance_area_id', $area->id)
+            ->where('dimension_key', 'age')
+            ->where('id', '!=', $oldAge->id)
+            ->firstOrFail();
+
+        $this->assertSame(1, (int) $user->groups()->whereKey($femaleGroup->id)->firstOrFail()->pivot->status);
+        $this->assertSame(1, (int) $user->groups()->whereKey($newAge->id)->firstOrFail()->pivot->status);
+        $this->assertSame(0, (int) $user->groups()->whereKey($oldGender->id)->firstOrFail()->pivot->status);
+        $this->assertSame(0, (int) $user->groups()->whereKey($oldAge->id)->firstOrFail()->pivot->status);
+    }
+
+    private function enableStageC(): void
+    {
+        config([
+            'location-governance.runtime_enabled' => true,
+            'location-governance.registration_enabled' => true,
+            'location-governance.groups_enabled' => true,
+        ]);
+    }
+}
