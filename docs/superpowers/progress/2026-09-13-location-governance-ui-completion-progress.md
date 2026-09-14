@@ -67,23 +67,45 @@ This file is the durable handoff/checkpoint for continuing in a new chat. Update
 
 ### Task 10 — Admin Location/Governance Control Center completion
 
-**Status:** ready to begin RED contracts.
+**Status:** implementation candidate awaiting GREEN verification.
 
-Current control center already has:
-- human-gated proposal review and Hoda recommendations;
-- import run summary;
-- governance summary counts;
-- explicit audited approve/reject/merge/request-evidence actions.
+#### RED history
+- Initial RED commit: `9220f9e08b8599720242b333b361fa28a4ef568d`.
+- Full Validation #2593 (`34789963117`) proved the missing operational UI but also exposed a test-fixture error from creating the same Iran schema twice.
+- Test-only fixture correction commit: `b92d838940194d6eb2854e7582a05980a3114ac6` reuses the already-created schema and does not alter Production code.
+- Full Validation #2594 (`34790898356`) is the clean RED:
+  - all specialist gates passed, including Location/Governance (195 tests / 998 assertions);
+  - Full Project: 1683 tests, 9020 assertions, 47 PHPUnit deprecations, 2 skipped;
+  - exactly one expected failure because the focused partials were absent;
+  - exactly one expected error because `referenceLocations`/new read models were absent.
+- Therefore Task 10 has a valid product RED with no remaining fixture/setup defect.
 
-Still required by the approved plan:
-- focused proposal queue partial;
-- reference geography explorer;
-- official governance topology view;
-- Community overview;
-- import diagnostics;
-- health diagnostics;
-- bounded read models for those sections;
-- no raw official-topology mutation in this phase.
+#### Implementation now on branch
+- `LocationGovernanceController::index()` now builds bounded operational read models for:
+  - open proposal queue + Hoda recommendations;
+  - active reference Locations;
+  - official GovernanceArea topology;
+  - Community areas;
+  - recent import runs;
+  - health diagnostics.
+- Health diagnostics expose the approved plan keys:
+  - `open_proposals`;
+  - `above_threshold_proposals`;
+  - `pending_residence_intents`;
+  - `invalid_pending_residence_intents`;
+  - `locations_missing_schema_or_type`;
+  - `official_areas_without_location_mapping`.
+- Created six focused partials:
+  - `proposal-queue.blade.php`;
+  - `reference-explorer.blade.php`;
+  - `governance-topology.blade.php`;
+  - `community-overview.blade.php`;
+  - `import-diagnostics.blade.php`;
+  - `health-diagnostics.blade.php`.
+- Existing approve/reject/merge/request-evidence forms remain explicit, CSRF-protected and human-gated inside the proposal queue.
+- Reference/topology/community/import/health sections are read-only.
+- No raw official-topology mutation route or form was added.
+- Latest code candidate before this documentation checkpoint: `f812d825508840ed462abe78b4b540179bfc3108`.
 
 ## Safety invariants still locked
 - `Location != GovernanceArea != Group`.
@@ -97,9 +119,8 @@ Still required by the approved plan:
 - Feature flags remain dark/default false unless separately verified and explicitly approved.
 
 ## Next exact action
-1. Add RED contracts to `tests/Feature/Admin/LocationGovernanceControlCenterTest.php` for proposal queue, reference explorer, official topology, Community overview, import diagnostics, and health diagnostics.
-2. Run Full Validation and confirm failure is isolated to the new Task 10 contracts.
-3. Add bounded controller read models and the exact focused Blade partials required by the plan.
-4. Re-run to GREEN before starting Task 11.
-5. Update this handoff file with Task 10 RED/GREEN commit and CI evidence.
-6. Do not merge to `main`; final merge remains gated by Task 12 full exact-candidate validation and explicit user approval.
+1. Run/inspect Full Validation on the latest Task 10 code + documentation candidate.
+2. If it fails, inspect the exact Full Project/Admin failure and fix only that regression.
+3. If it succeeds, mark Task 10 COMPLETE / GREEN with exact HEAD and CI evidence.
+4. Then begin Task 11 UX hardening test-first.
+5. Do not merge to `main`; final merge remains gated by Task 12 full exact-candidate validation and explicit user approval.
