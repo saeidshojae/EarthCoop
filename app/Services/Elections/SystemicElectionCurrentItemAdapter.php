@@ -22,11 +22,22 @@ class SystemicElectionCurrentItemAdapter
             ->map(fn (ElectionLifecycleStatus $status) => $status->value)
             ->all();
 
-        $elections = Election::query()
+        $electionsQuery = Election::query()
             ->whereHas('group.users', fn ($query) => $query
                 ->whereKey($user->id)
                 ->where('group_user.status', 1))
-            ->whereIn('lifecycle_status', $currentStatuses)
+            ->whereIn('lifecycle_status', $currentStatuses);
+
+        if ((bool) config('location-governance.elections_enabled', false)) {
+            $electionsQuery
+                ->whereNotNull('governance_area_id')
+                ->whereHas('group', fn ($query) => $query
+                    ->whereNotNull('governance_area_id')
+                    ->whereNotNull('dimension_key')
+                    ->whereNotNull('dimension_value_key'));
+        }
+
+        $elections = $electionsQuery
             ->with('group')
             ->orderByDesc('cycle_number')
             ->orderByDesc('id')
