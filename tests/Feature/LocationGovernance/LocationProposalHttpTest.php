@@ -113,6 +113,26 @@ class LocationProposalHttpTest extends TestCase
             ->assertJsonPath('status', LocationProposalStatus::ReadyForReview->value);
     }
 
+    public function test_inactive_parent_cannot_receive_a_new_location_proposal(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $parent = LocationFixture::createPath($schema, [
+            'country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood', 'street',
+        ])->last();
+        $parent->update(['status' => 'inactive']);
+        $type = $schema->types->firstWhere('key', 'complex');
+
+        $response = $this->actingAs(User::factory()->create())->postJson('/locations/proposals', [
+            'parent_location_id' => $parent->id,
+            'location_type_id' => $type->id,
+            'canonical_name' => 'مجتمع زیر والد غیرفعال',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('parent_location_id');
+        $this->assertSame(0, LocationProposal::query()->count());
+    }
+
     public function test_location_proposal_routes_require_authentication(): void
     {
         $this->postJson('/locations/proposals', [])->assertUnauthorized();
