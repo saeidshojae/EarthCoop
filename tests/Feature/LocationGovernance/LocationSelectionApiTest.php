@@ -3,6 +3,7 @@
 namespace Tests\Feature\LocationGovernance;
 
 use App\Models\Location;
+use App\Models\LocationSchema;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\LocationFixture;
 use Tests\TestCase;
@@ -59,6 +60,57 @@ class LocationSelectionApiTest extends TestCase
         $response->assertJsonPath('data.0.is_residence_endpoint', false);
         $response->assertJsonPath('data.0.has_children', false);
         $response->assertJsonPath('data.0.status', 'active');
+    }
+
+    public function test_root_without_country_filter_exposes_active_roots_from_multiple_country_schemas(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+
+        $iranSchema = LocationFixture::iranSchema();
+        $countryType = $iranSchema->types->firstWhere('key', 'country');
+        $iran = Location::factory()->create([
+            'location_schema_id' => $iranSchema->id,
+            'location_type_id' => $countryType->id,
+            'country_code' => 'IR',
+            'name' => 'Iran',
+            'canonical_name' => 'Iran',
+            'level' => 'country',
+            'status' => 'active',
+        ]);
+
+        $alternateSchema = LocationSchema::factory()->create([
+            'key' => 'us-reference-v1',
+            'country_code' => 'US',
+            'name' => 'US reference geography',
+            'version' => '1',
+            'status' => 'active',
+        ]);
+        $alternateSchema->types()->attach($countryType->id, [
+            'is_root' => true,
+            'is_residence_endpoint' => false,
+            'metadata' => json_encode(['crowdsourced_proposal_allowed' => false]),
+        ]);
+        $unitedStates = Location::factory()->create([
+            'location_schema_id' => $alternateSchema->id,
+            'location_type_id' => $countryType->id,
+            'country_code' => 'US',
+            'name' => 'United States',
+            'canonical_name' => 'United States',
+            'level' => 'country',
+            'status' => 'active',
+        ]);
+
+        $global = $this->getJson('/location/options/root');
+
+        $global->assertOk();
+        $this->assertEqualsCanonicalizing(
+            [$iran->id, $unitedStates->id],
+            collect($global->json('data'))->pluck('id')->all(),
+        );
+
+        $filtered = $this->getJson('/location/options/root?country=US');
+        $filtered->assertOk()->assertJsonCount(1, 'data');
+        $filtered->assertJsonPath('data.0.id', $unitedStates->id);
     }
 
     public function test_children_follow_schema_branching_and_report_endpoint_and_child_state(): void
