@@ -18,6 +18,7 @@ class ProjectScopeCutoverRenderer
         $canonicalPicker = implode("\n", [
             '<div data-location-selector data-location-purpose="project-scope" data-location-selector-context="project-scope" data-empty-label="یک گزینه را انتخاب کنید" data-loading-label="در حال دریافت گزینه‌های مکانی..." data-error-label="دریافت گزینه‌های مکانی ممکن نشد.">',
             sprintf('<input type="hidden" name="target_location_id" value="%s" data-location-id>', e($selectedValue)),
+            '<input type="hidden" value="" data-project-governance-area-id>',
             '<input type="hidden" value="" data-location-proposal-id>',
             '<div data-location-levels class="vstack gap-3"></div>',
             '<div class="small text-secondary mt-2" data-location-status aria-live="polite">محدوده هدف پروژه را از بالا به پایین انتخاب کنید؛ انتخاب این بخش اختیاری است.</div>',

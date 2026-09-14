@@ -58,10 +58,12 @@ class ProjectController extends Controller
 
         $legacyHtml = view('najm-bahar.projects.create', compact('categories'))->render();
         $selectedLocationId = old('target_location_id');
+        $selectedGovernanceAreaId = old('governance_area_id');
 
         return response($this->scopeCutoverRenderer->renderCanonical(
             $legacyHtml,
-            $selectedLocationId !== null ? (int) $selectedLocationId : null
+            $selectedLocationId !== null ? (int) $selectedLocationId : null,
+            $selectedGovernanceAreaId !== null ? (int) $selectedGovernanceAreaId : null
         ));
     }
 
@@ -187,10 +189,12 @@ class ProjectController extends Controller
 
         $legacyHtml = view('najm-bahar.projects.edit', compact('project', 'categories'))->render();
         $selectedLocationId = old('target_location_id', $project->target_location_id);
+        $selectedGovernanceAreaId = old('governance_area_id', $project->governance_area_id);
 
         return response($this->scopeCutoverRenderer->renderCanonical(
             $legacyHtml,
-            $selectedLocationId !== null ? (int) $selectedLocationId : null
+            $selectedLocationId !== null ? (int) $selectedLocationId : null,
+            $selectedGovernanceAreaId !== null ? (int) $selectedGovernanceAreaId : null
         ));
     }
 

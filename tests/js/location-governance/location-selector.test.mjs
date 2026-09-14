@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 import {
     normalizePickerPayload,
     projectScopePayload,
+    projectScopeSelectionValues,
+    pickerLevelLabel,
     selectionValues,
     shouldRenderNextLevel,
 } from '../../../resources/js/location-selector.js';
@@ -66,6 +68,29 @@ test('project scope reuses canonical traversal but excludes pending proposals an
     assert.deepEqual(scoped.proposals, []);
     assert.deepEqual(scoped.allowedTypes.map((type) => type.key), ['neighborhood', 'campus']);
     assert.equal(scoped.allowedTypes.every((type) => type.proposal_allowed === false), true);
+});
+
+test('project scope supports governance-only global and continent selections before entering the Location tree', () => {
+    assert.deepEqual(
+        projectScopeSelectionValues({ id: 5, identity: 'governance:5', status: 'active' }),
+        { locationId: '', governanceAreaId: '5' },
+    );
+
+    assert.deepEqual(
+        projectScopeSelectionValues({ id: 7, identity: 'location:7', governance_area_id: 9, status: 'active' }),
+        { locationId: '7', governanceAreaId: '' },
+    );
+});
+
+test('picker level labels describe server-driven location types instead of anonymous depth numbers', () => {
+    assert.equal(pickerLevelLabel({ locations: [{ type_key: 'global' }] }, 0), 'جهانی');
+    assert.equal(pickerLevelLabel({ locations: [{ type_key: 'continent' }] }, 1), 'قاره');
+    assert.equal(pickerLevelLabel({ locations: [{ type_key: 'country' }] }, 2), 'کشور');
+    assert.equal(
+        pickerLevelLabel({ locations: [{ type_key: 'city' }, { type_key: 'rural_district' }] }, 5),
+        'شهر / دهستان',
+    );
+    assert.equal(pickerLevelLabel({ locations: [{ type_key: 'campus' }] }, 9), 'سطح مکانی 10');
 });
 
 test('open proposals count as a renderable next level even when no approved child exists', () => {
@@ -157,6 +182,14 @@ test('alternate schema branches remain server driven and never hard-code Iran mi
 
     const source = readFileSync(new URL('../../../resources/js/location-selector.js', import.meta.url), 'utf8');
     assert.doesNotMatch(source, /street\s*[-=>]+\s*alley|alley\s*[-=>]+\s*complex/i);
+});
+
+test('project scope bootstraps from the governance bridge while residence keeps the canonical location root', () => {
+    const source = readFileSync(new URL('../../../resources/js/location-selector.js', import.meta.url), 'utf8');
+
+    assert.match(source, /\/location\/project-scope\/options\/root/);
+    assert.match(source, /selected\.children_url/);
+    assert.match(source, /\/location\/options\/root/);
 });
 
 test('empty and stale states are explicit rather than silently clearing a valid form state', () => {

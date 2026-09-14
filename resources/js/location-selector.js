@@ -11,6 +11,24 @@ const PICKER_STATES = Object.freeze({
     ready: 'ready',
 });
 
+const TYPE_LABELS = Object.freeze({
+    global: 'جهانی',
+    continent: 'قاره',
+    country: 'کشور',
+    province: 'استان / ایالت',
+    county: 'شهرستان / ناحیه',
+    section: 'بخش',
+    city: 'شهر',
+    rural_district: 'دهستان',
+    village: 'روستا',
+    urban_region: 'منطقه شهری',
+    neighborhood: 'محله',
+    street: 'خیابان',
+    alley: 'کوچه',
+    complex: 'مجتمع',
+    building: 'ساختمان',
+});
+
 const isActiveLocation = (item) => item?.status === undefined || item?.status === null || item?.status === 'active';
 const isOpenProposal = (item) => OPEN_PROPOSAL_STATUSES.has(String(item?.status || '')) && item?.selectable !== false;
 
@@ -42,6 +60,27 @@ const selectionValues = (item) => {
     return { locationId: '', proposalId: '' };
 };
 
+const projectScopeSelectionValues = (item) => {
+    if (!isActiveLocation(item)) return { locationId: '', governanceAreaId: '' };
+
+    const identity = String(item?.identity || '');
+    if (identity.startsWith('governance:')) {
+        return {
+            locationId: '',
+            governanceAreaId: String(item?.governance_area_id || item?.id || identity.slice('governance:'.length)),
+        };
+    }
+
+    if (identity.startsWith('location:') || item?.id) {
+        return {
+            locationId: String(item?.id || identity.slice('location:'.length)),
+            governanceAreaId: '',
+        };
+    }
+
+    return { locationId: '', governanceAreaId: '' };
+};
+
 const shouldRenderNextLevel = (payload) => {
     const normalized = payload?.locations ? payload : normalizePickerPayload(payload);
 
@@ -51,9 +90,27 @@ const shouldRenderNextLevel = (payload) => {
 };
 
 const pickerItems = (payload) => [
-    ...payload.locations.map((item) => ({ ...item, picker_kind: 'location' })),
+    ...payload.locations.map((item) => ({
+        ...item,
+        picker_kind: String(item?.identity || '').startsWith('governance:') ? 'governance' : 'location',
+    })),
     ...payload.proposals.map((item) => ({ ...item, picker_kind: 'proposal' })),
 ];
+
+const pickerLevelLabel = (payload, depth) => {
+    const keys = [
+        ...(Array.isArray(payload?.locations) ? payload.locations : []).map((item) => item?.type_key),
+        ...(Array.isArray(payload?.allowedTypes) ? payload.allowedTypes : []).map((item) => item?.key),
+    ]
+        .filter(Boolean)
+        .filter((key, index, all) => all.indexOf(key) === index);
+
+    if (keys.length > 0 && keys.every((key) => Object.prototype.hasOwnProperty.call(TYPE_LABELS, key))) {
+        return keys.map((key) => TYPE_LABELS[key]).join(' / ');
+    }
+
+    return `سطح مکانی ${depth + 1}`;
+};
 
 const buildSelect = (host, payload, depth) => {
     const wrapper = document.createElement('div');
@@ -64,7 +121,7 @@ const buildSelect = (host, payload, depth) => {
     const selectId = `location-level-${depth}-${Math.random().toString(36).slice(2, 8)}`;
     label.htmlFor = selectId;
     label.className = 'form-label small text-secondary mb-0';
-    label.textContent = depth === 0 ? 'کشور یا حوزهٔ مکانی' : `سطح مکانی ${depth + 1}`;
+    label.textContent = pickerLevelLabel(payload, depth);
 
     const select = document.createElement('select');
     select.id = selectId;
@@ -227,12 +284,15 @@ const initializeLocationSelector = async (host) => {
     const proposalId = isProjectScope
         ? host.querySelector('[data-location-proposal-id]')
         : host.querySelector('[data-location-proposal-id][name="location_proposal_id"]');
+    const governanceAreaId = isProjectScope
+        ? host.querySelector('[data-project-governance-area-id][name="governance_area_id"]')
+        : null;
     const form = host.closest('[data-location-form]') || host.closest('form');
     const submit = form?.querySelector('[data-location-submit]');
     const status = host.querySelector('[data-location-status]');
     const country = (host.dataset.countryCode || '').trim();
 
-    if (!levels || !locationId || (!isProjectScope && !proposalId)) return;
+    if (!levels || !locationId || (!isProjectScope && !proposalId) || (isProjectScope && !governanceAreaId)) return;
 
     const setPickerState = (state, message, isError = false) => {
         host.dataset.locationState = state;
@@ -250,22 +310,35 @@ const initializeLocationSelector = async (host) => {
     const clearSelection = () => {
         locationId.value = '';
         if (proposalId) proposalId.value = '';
+        if (governanceAreaId) governanceAreaId.value = '';
         if (submit && !isProjectScope) submit.disabled = true;
     };
 
     const setSelection = (item) => {
-        const values = selectionValues(item);
-        locationId.value = values.locationId;
-        if (proposalId) proposalId.value = isProjectScope ? '' : values.proposalId;
+        if (isProjectScope) {
+            const values = projectScopeSelectionValues(item);
+            locationId.value = values.locationId;
+            governanceAreaId.value = values.governanceAreaId;
+            if (proposalId) proposalId.value = '';
 
-        if (!values.locationId && (!values.proposalId || isProjectScope)) {
-            if (submit && !isProjectScope) submit.disabled = true;
-            setPickerState(PICKER_STATES.stale, 'این گزینه دیگر معتبر نیست. لطفاً یک مکان فعال را انتخاب کنید.', true);
+            if (!values.locationId && !values.governanceAreaId) {
+                setPickerState(PICKER_STATES.stale, 'این گزینه دیگر معتبر نیست. لطفاً یک محدوده رسمی و فعال را انتخاب کنید.', true);
+                return;
+            }
+
+            setStatus(values.governanceAreaId
+                ? 'این محدوده حکمرانی رسمی به‌عنوان هدف پروژه انتخاب شد. در صورت وجود گزینه‌های دقیق‌تر، می‌توانید مسیر را ادامه دهید.'
+                : 'این مکان به‌عنوان مکان هدف پروژه انتخاب شد. در صورت وجود گزینه‌های دقیق‌تر، می‌توانید مسیر را ادامه دهید.');
             return;
         }
 
-        if (isProjectScope) {
-            setStatus('این مکان به‌عنوان مکان هدف پروژه انتخاب شد. در صورت وجود گزینه‌های دقیق‌تر، می‌توانید مسیر را ادامه دهید.');
+        const values = selectionValues(item);
+        locationId.value = values.locationId;
+        if (proposalId) proposalId.value = values.proposalId;
+
+        if (!values.locationId && !values.proposalId) {
+            if (submit) submit.disabled = true;
+            setPickerState(PICKER_STATES.stale, 'این گزینه دیگر معتبر نیست. لطفاً یک مکان فعال را انتخاب کنید.', true);
             return;
         }
 
@@ -369,12 +442,15 @@ const initializeLocationSelector = async (host) => {
 
             const previousLocationId = locationId.value;
             const previousProposalId = proposalId?.value || '';
+            const previousGovernanceAreaId = governanceAreaId?.value || '';
             const previousSubmitDisabled = submit?.disabled ?? true;
 
             try {
-                const children = await load(`/location/options/${encodeURIComponent(selected.id)}/children`);
+                const childrenUrl = selected.children_url
+                    || `/location/options/${encodeURIComponent(selected.id)}/children`;
+                const children = await load(childrenUrl);
                 if (shouldRenderNextLevel(children)) {
-                    appendLevel(children, depth + 1, selected.id);
+                    appendLevel(children, depth + 1, selected.identity?.startsWith('location:') ? selected.id : null);
                     setStatus(isProjectScope
                         ? 'گزینه‌های دقیق‌تر آماده‌اند؛ می‌توانید همین سطح را نگه دارید یا پایین‌تر بروید.'
                         : 'گزینه‌های سطح بعد آماده‌اند.');
@@ -388,6 +464,7 @@ const initializeLocationSelector = async (host) => {
                 console.warn('EarthCoop location selector could not load children:', error);
                 locationId.value = previousLocationId;
                 if (proposalId) proposalId.value = previousProposalId;
+                if (governanceAreaId) governanceAreaId.value = previousGovernanceAreaId;
                 if (submit && !isProjectScope) submit.disabled = previousSubmitDisabled;
                 setPickerState(PICKER_STATES.stale, 'دریافت گزینه‌های جدید ممکن نشد؛ انتخاب معتبر فعلی شما حفظ شده است.', true);
             }
@@ -395,24 +472,29 @@ const initializeLocationSelector = async (host) => {
     };
 
     const initialLocationId = locationId.value;
-    if (!isProjectScope || !initialLocationId) clearSelection();
+    const initialGovernanceAreaId = governanceAreaId?.value || '';
+    if (!isProjectScope || (!initialLocationId && !initialGovernanceAreaId)) clearSelection();
     if (isProjectScope && proposalId) proposalId.value = '';
     host.setAttribute('aria-live', 'polite');
 
     try {
-        const rootUrl = country
-            ? `/location/options/root?country=${encodeURIComponent(country)}`
-            : '/location/options/root';
+        const rootUrl = isProjectScope
+            ? '/location/project-scope/options/root'
+            : (country
+                ? `/location/options/root?country=${encodeURIComponent(country)}`
+                : '/location/options/root');
         const roots = await load(rootUrl);
         appendLevel(roots, 0);
         if (!roots.locations.length && !roots.proposals.length) {
-            setPickerState(PICKER_STATES.empty, country
-                ? 'برای این کشور هنوز گزینهٔ مکانی فعالی ثبت نشده است.'
-                : 'هنوز گزینهٔ مکانی فعالی ثبت نشده است.');
+            setPickerState(PICKER_STATES.empty, isProjectScope
+                ? 'هنوز محدوده حکمرانی رسمی فعالی ثبت نشده است.'
+                : (country
+                    ? 'برای این کشور هنوز گزینهٔ مکانی فعالی ثبت نشده است.'
+                    : 'هنوز گزینهٔ مکانی فعالی ثبت نشده است.'));
         } else if (isProjectScope) {
-            setStatus(initialLocationId
-                ? 'مکان هدف فعلی پروژه حفظ شده است؛ برای تغییر، مسیر جدید را مرحله‌به‌مرحله انتخاب کنید.'
-                : 'مکان هدف پروژه را مرحله‌به‌مرحله انتخاب کنید؛ این بخش اختیاری است.');
+            setStatus(initialLocationId || initialGovernanceAreaId
+                ? 'محدوده هدف فعلی پروژه حفظ شده است؛ برای تغییر، مسیر جدید را مرحله‌به‌مرحله انتخاب کنید.'
+                : 'محدوده هدف پروژه را مرحله‌به‌مرحله انتخاب کنید؛ این بخش اختیاری است.');
         } else {
             setStatus('مسیر محل سکونت را مرحله‌به‌مرحله انتخاب کنید.');
         }
@@ -428,6 +510,8 @@ export {
     initializeLocationSelector,
     normalizePickerPayload,
     projectScopePayload,
+    projectScopeSelectionValues,
+    pickerLevelLabel,
     selectionValues,
     shouldRenderNextLevel,
 };
