@@ -7,11 +7,18 @@ use App\Http\Controllers\LocationGovernance\LocationOptionsController;
 use App\Http\Controllers\LocationGovernance\MyLocationGovernanceController;
 use App\Http\Controllers\LocationGovernance\ProfileEditController;
 use App\Http\Controllers\LocationGovernance\ProfileResidenceController;
+use App\Http\Controllers\LocationGovernance\ProjectScopeOptionsController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('location/options')->name('location.options.')->group(function () {
     Route::get('/root', [LocationOptionsController::class, 'root'])->name('root');
     Route::get('/{location}/children', [LocationOptionsController::class, 'children'])->name('children');
+});
+
+Route::prefix('location/project-scope/options')->name('location.project-scope.options.')->group(function () {
+    Route::get('/root', [ProjectScopeOptionsController::class, 'root'])->name('root');
+    Route::get('/governance/{governanceArea}/children', [ProjectScopeOptionsController::class, 'children'])
+        ->name('governance.children');
 });
 
 Route::middleware('auth')->post('/location-governance/geolocation/match', [GeolocationController::class, 'match'])
