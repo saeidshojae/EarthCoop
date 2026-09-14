@@ -6,6 +6,7 @@ use App\Models\Election;
 use App\Models\GovernanceArea;
 use App\Models\Group;
 use App\Models\Location;
+use App\Models\Poll;
 use App\Services\Elections\CurrentElectionCenterService;
 use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -152,6 +153,54 @@ class StageCDProductionHardeningTest extends TestCase
 
         $groupIds = app(CurrentElectionCenterService::class)
             ->forUser($user)['systemic']
+            ->pluck('group_id')
+            ->all();
+
+        $this->assertContains($newGroup->id, $groupIds);
+        $this->assertNotContains($oldGroup->id, $groupIds);
+    }
+
+    public function test_current_internal_election_center_excludes_stale_canonical_branch_after_residence_transfer(): void
+    {
+        $this->enableStageCD();
+
+        ['user' => $user, 'area' => $oldArea, 'endpoint' => $oldEndpoint] = MembershipFixture::canonicalUser();
+        $this->actingAs($user)->get('/groups')->assertOk();
+
+        $oldGroup = Group::query()
+            ->where('governance_area_id', $oldArea->id)
+            ->where('dimension_key', 'public')
+            ->where('dimension_value_key', 'public')
+            ->firstOrFail();
+
+        [$newEndpoint, $newArea] = $this->newResidenceBranch($oldEndpoint);
+
+        app(ResidenceService::class)->transferPrimaryResidence(
+            $user,
+            $newEndpoint,
+            $user,
+            'stage_d_internal_center_hardening',
+        );
+
+        $newGroup = Group::query()
+            ->where('governance_area_id', $newArea->id)
+            ->where('dimension_key', 'public')
+            ->where('dimension_value_key', 'public')
+            ->firstOrFail();
+
+        foreach ([$oldGroup, $newGroup] as $index => $group) {
+            Poll::create([
+                'group_id' => $group->id,
+                'created_by' => $user->id,
+                'question' => 'Internal election '.$index,
+                'main_type' => 0,
+                'is_active' => true,
+                'expires_at' => now()->addDay(),
+            ]);
+        }
+
+        $groupIds = app(CurrentElectionCenterService::class)
+            ->forUser($user)['internal']
             ->pluck('group_id')
             ->all();
 
