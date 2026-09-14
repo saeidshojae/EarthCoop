@@ -2,38 +2,32 @@
 
 namespace App\Services\Projects;
 
-use Illuminate\Support\Collection;
 use RuntimeException;
 
 class ProjectScopeCutoverRenderer
 {
     /**
-     * Adapt the existing Najm Bahar project form to the canonical GovernanceArea
-     * selector without mutating the legacy Blade template. This is intentionally
-     * a reversible strangler adapter: when the feature flag is off, callers render
-     * the legacy view directly and this code is never involved.
+     * Adapt the existing Najm Bahar project form to the shared canonical Location
+     * picker without mutating the legacy Blade template. Exact target geography is
+     * persisted as Location; formal GovernanceArea scope is resolved server-side.
      */
-    public function renderCanonical(string $legacyHtml, Collection $areas, ?int $selectedAreaId = null): string
+    public function renderCanonical(string $legacyHtml, ?int $selectedLocationId = null): string
     {
-        $options = ['<option value="">انتخاب کنید</option>'];
+        $selectedValue = $selectedLocationId !== null ? (string) $selectedLocationId : '';
 
-        foreach ($areas as $area) {
-            $id = (int) $area->id;
-            $name = e((string) $area->canonical_name);
-            $selected = $selectedAreaId === $id ? ' selected' : '';
-            $options[] = sprintf('<option value="%d"%s>%s</option>', $id, $selected, $name);
-        }
-
-        $canonicalSelect = implode("\n", [
-            '<select id="governance_area_select" name="governance_area_id" class="w-full px-3 py-2 border border-gray-300 rounded-md" data-governance-scope-cutover="canonical">',
-            implode("\n", $options),
-            '</select>',
+        $canonicalPicker = implode("\n", [
+            '<div data-location-selector data-location-purpose="project-scope" data-location-selector-context="project-scope" data-empty-label="یک گزینه را انتخاب کنید" data-loading-label="در حال دریافت گزینه‌های مکانی..." data-error-label="دریافت گزینه‌های مکانی ممکن نشد.">',
+            sprintf('<input type="hidden" name="target_location_id" value="%s" data-location-id>', e($selectedValue)),
+            '<input type="hidden" value="" data-location-proposal-id>',
+            '<div data-location-levels class="vstack gap-3"></div>',
+            '<div class="small text-secondary mt-2" data-location-status aria-live="polite">محدوده هدف پروژه را از بالا به پایین انتخاب کنید؛ انتخاب این بخش اختیاری است.</div>',
+            '</div>',
         ]);
 
         $count = 0;
         $html = preg_replace(
             '~<select\s+id="geographic_continent_select"[^>]*>.*?</select>~s',
-            $canonicalSelect,
+            $canonicalPicker,
             $legacyHtml,
             1,
             $count
@@ -43,19 +37,19 @@ class ProjectScopeCutoverRenderer
             throw new RuntimeException('Canonical project scope cutover could not locate the legacy geography selector.');
         }
 
-        // The canonical selector is not a legacy .location-select, so the delegated
-        // legacy change handler will ignore it. Disable only the eager AJAX bootstrap
-        // that otherwise expects #geographic_continent_select to exist.
+        // The shared canonical picker owns traversal while this cutover is enabled.
+        // Keep the legacy fields in the DOM for rollback, but never bootstrap their
+        // old fixed geography AJAX chain in canonical mode.
         $html = str_replace(
             'initializeGeographicLocation();',
-            '// Canonical GovernanceArea mode: legacy geographic bootstrap disabled.',
+            '// Canonical Location picker mode: legacy geographic bootstrap disabled.',
             $html
         );
 
-        $html = str_replace('قاره:', 'محدوده حکمرانی:', $html);
+        $html = str_replace('قاره:', 'مکان هدف پروژه:', $html);
         $html = str_replace(
             'محدوده جغرافیایی مورد نظر برای پروژه را به‌صورت تفصیلی انتخاب کنید (اختیاری). این اطلاعات برای ارسال نوتیفیکیشن هدفمند به سرمایه‌گذاران استفاده می‌شود.',
-            'محدوده حکمرانی پروژه را از ساختار رسمی و یکپارچه EarthCoop انتخاب کنید (اختیاری).',
+            'مکان هدف پروژه را از ساختار رسمی و سلسله‌مراتبی EarthCoop مرحله‌به‌مرحله انتخاب کنید (اختیاری). محدوده حکمرانی رسمی متناظر به‌صورت امن در سرور تعیین می‌شود.',
             $html
         );
 
