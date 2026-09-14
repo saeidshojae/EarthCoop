@@ -2,132 +2,108 @@
 
 This document records **readiness evidence only**. It is not authorization to change Production.
 
-## Validated C13 preparation candidate
+## Current hardened post-UI candidate
 
-- Implementation candidate: `c34f7ef406cac4bf512ee789c31688e65c764189`
-- Branch: `agent/global-location-governance-implementation-20260910`
-- Draft PR: `#103`
-- PR base: `main@767a276b962a62234f70878071d007930903577a`
-- Full Validation: run `#2424` / ID `34610982735`
-- Validation job: `103301574562`
+- Current Production/main baseline before this hardening PR: `c26f012e9b683b69342050f435931486a3bb6874`
+- Hardened branch: `agent/location-governance-production-readiness-membership-fix-20260914`
+- Draft PR: `#113`
+- Current validated checkpoint before this documentation update: `3b8bca8905839d5a23d170984093e99a99371131`
+- Full Validation: `#2620` / run ID `34833958912`
+- Validation job: `103943434913`
 - Result: `success`
 
-Run #2424 completed successfully on the exact C13 preparation candidate. The dedicated `Regression — Location / Governance` gate, all retained mature subsystem gates, Full Project PHPUnit, diagnostics upload and final enforcement all succeeded.
+Full Validation #2620 completed successfully on the exact hardened checkpoint. Evidence from the uploaded regression artifact:
 
-A later documentation-only checkpoint `943804fbcac2c702790466ae266cce8a2557a0d5` was also fully validated by run `#2426` / ID `34616614013`, job `103320370800`.
+- Location / Governance: **201 passed / 1018 assertions**;
+- Location / Governance JavaScript: passing;
+- Deployment Console: **25 passed / 230 assertions**;
+- Najm Bahar: **174 tests / 899 assertions**;
+- Governance: **28 tests / 309 assertions**;
+- Najm Hoda + n8n: **503 tests / 3025 assertions**;
+- Group Chat: **56 tests / 305 assertions**;
+- Group Admin / Identity: **24 tests / 95 assertions**;
+- Stock: **14 tests / 18 assertions**;
+- Full Project PHPUnit: **1690 tests / 9073 assertions**, 2 skipped, 47 existing PHPUnit deprecations;
+- frontend build, integrated migrations, route/command boot, Group Chat JavaScript, diagnostics upload and final regression enforcement all succeeded.
+
+The documentation update that records this evidence changes the branch SHA and therefore requires its own final Full Validation before PR #113 can be considered merge-ready.
+
+## What this hardening adds
+
+The readiness contract now fails closed unless all of the following are true:
+
+1. all canonical additive migrations are applied, including `2026_09_13_000001_create_pending_residence_intents_table` required by registration/profile pending exact-residence flows;
+2. the reviewed versioned Governance topology is fully applied and idempotent for the target dataset (`create=0`, `update=0`, `conflict=0`, with reviewed areas unchanged), rather than accepting any arbitrary single Location-to-Governance mapping;
+3. the five Stage C systemic group policies (`public`, `profession`, `specialty`, `age`, `gender`) are activated through the reviewed canonical policy seeder and the default Governance capability reports automatic group creation;
+4. the existing schema/import/flag/proposal/release-evidence checks continue to pass.
+
+The cPanel and Production runbooks now also require an explicit Laravel configuration-cache check before relying on `.env` changes and include the bounded Stage C policy transition (`APPLY-GROUP-POLICY`) before readiness.
+
+## Production code deployment state
+
+PR #112 was merged previously into `main` at `c26f012e9b683b69342050f435931486a3bb6874`. Because `.github/workflows/deploy.yml` deploys pushes to `main`, FTP Deploy #39 / run `34830668090` successfully synchronized that code to cPanel Production.
+
+That FTP workflow does **not** execute Production migrations, bootstrap, geography import, Governance topology import, Stage C policy activation, configuration-cache clearing, or Location/Governance feature-flag changes. `.env` is excluded from the FTP sync.
+
+Therefore the code deployment must not be confused with canonical database preparation or activation.
+
+## Production My Groups observation
+
+A Production screenshot taken while `LOCATION_GOVERNANCE_GROUPS_ENABLED=false` showed historical Tehran/Sohanak groups alongside canonical Sari reference groups previously materialized during controlled testing.
+
+Repository tracing established that this is the dark-launch legacy-path behavior rather than evidence of a failed canonical residence transfer:
+
+- while the groups flag is false, `/groups` delegates to the mature legacy controller;
+- the legacy list does not separate canonical Governance-scoped rows from legacy spatial memberships;
+- legacy memberships are deliberately retained through C13 for rollback/history;
+- existing canonical cutover regression coverage proves that, with Stage C groups enabled, a residence transfer deactivates stale canonical memberships and activates the new canonical branch, and the canonical index excludes legacy spatial groups.
+
+Accordingly, no legacy membership rows should be deleted merely to make the pre-activation list look clean. The Production Stage C smoke test must explicitly verify that the account moved from Tehran/Sohanak to the Sari reference neighborhood shows the current Sari canonical ancestry and no former Tehran/Sohanak branch as current canonical memberships after `LOCATION_GOVERNANCE_GROUPS_ENABLED=true` is separately approved and enabled.
+
+## Historical validated C13 preparation
+
+The original C13 preparation candidate was `c34f7ef406cac4bf512ee789c31688e65c764189` on `agent/global-location-governance-implementation-20260910`, validated by Full Validation #2424 / run `34610982735`, job `103301574562`. A later documentation checkpoint `943804fbcac2c702790466ae266cce8a2557a0d5` was validated by #2426 / run `34616614013`, job `103320370800`.
+
+Those runs remain historical architecture evidence; they are not substitutes for the current post-UI hardened candidate evidence above.
 
 ## Fresh Canonical Start launch policy
 
-The owner has explicitly chosen **Fresh Canonical Start** for the current early Production population. The small set of existing users' legacy spatial/profile geography does not need to be bulk-converted into canonical Location/Governance before launch.
+The owner has explicitly chosen **Fresh Canonical Start** for the current early Production population. Existing users' legacy spatial/profile geography does not need to be bulk-converted into canonical Location/Governance before launch.
 
 This means:
 
 - an empty or partially populated `user_location_relationships` table is not by itself a readiness failure;
-- existing users may establish/correct canonical Primary Residence through the new canonical profile flow after activation;
-- no one-off destructive or risky user-geography conversion is required for initial cutover;
-- new users will use the canonical schema-driven flow once the registration/profile stage is separately approved and enabled.
-
-The complete decision and boundaries are recorded in `docs/location-governance/FRESH_CANONICAL_START_DECISION.md`.
+- existing users may establish/correct canonical Primary Residence through the canonical profile flow after activation;
+- no one-off destructive user-geography conversion is required for initial cutover;
+- new users use the canonical schema-driven flow once the registration/profile stage is separately approved and enabled.
 
 This policy does **not** authorize deleting the Production database or mature subsystem state. Users, authentication, groups, elections, Najm Bahar, Stock, messages, projects and other existing state remain protected. No `migrate:fresh`, reset, truncate, table drop or destructive legacy retirement is permitted.
-
-## C13 package contents
-
-The production preparation package now includes:
-
-- read-only, fail-closed command: `php artisan location-governance:readiness`;
-- readiness coverage for required additive migrations, active target schema, exact reference dataset identity, import status/conflicts, governance mappings, rollout flag types, fatal proposal conflicts, immutable validation SHA and UAT evidence;
-- canonical reference identity aligned with the actual importer: country `IR`, schema `ir-reference-v1`, source `earthcoop-reference`, dataset version `v1`;
-- `docs/location-governance/PRODUCTION_CUTOVER_RUNBOOK.md`;
-- `docs/location-governance/PRODUCTION_ROLLBACK_RUNBOOK.md`;
-- `docs/location-governance/FRESH_CANONICAL_START_DECISION.md`;
-- staged rollout order: `runtime -> registration/profile -> groups -> elections -> remaining consumers/projects`;
-- smoke/regression checkpoint after each rollout step;
-- rollback by feature flags first and application SHA second;
-- explicit prohibition on dropping legacy geography during initial cutover.
-
-The readiness command itself does not import data, apply migrations, change flags, or mutate Production.
-
-## Defects caught during C13 preparation
-
-C13 testing caught two readiness-contract defects before Production:
-
-1. the readiness command checked a nonexistent `location_schemas.is_active` column; the schema contract actually uses `status = active`;
-2. readiness defaults used `reference/1`, while the real importer and repository dataset use `earthcoop-reference/v1`.
-
-Both were corrected through RED/GREEN validation before the final C13 candidate was accepted.
-
-## Architecture readiness
-
-The canonical architecture is present and tested for:
-
-- schema-driven global Location topology rather than fixed Iran-specific runtime tiers;
-- independent Official Governance topology and capability inheritance;
-- historical Primary Residence relationships and audited transfer limits;
-- explicit exclusion of work/study/other relationships from parallel official geographic voting rights;
-- deterministic membership dimensions: `public`, `profession`, `specialty`, `age`, `gender`;
-- canonical Group and Election scope with reversible rollout controls;
-- Secretariat, Projects and Polls governance-scope consumers;
-- on-demand Community behavior for micro-locations outside formal official election topology by default;
-- crowdsourced proposals with duplicate detection, distinct-user evidence and human review;
-- optional geolocation assistance that never proves or overwrites declared residence;
-- Admin control center and Najm Hoda read/recommend capabilities with explicit human approval required for sensitive writes;
-- fresh disposable bootstrap and permanent global architecture scenarios.
-
-## Final release-gate evidence
-
-On Full Validation #2424 all of the following completed successfully:
-
-- route and command boot;
-- Group Chat regression;
-- Group Admin / Identity regression;
-- Najm Hoda + n8n regression;
-- Governance regression;
-- Location / Governance regression;
-- Najm Bahar regression;
-- Stock regression;
-- Group Chat JavaScript regression;
-- reset of the disposable PHPUnit database;
-- Full Project PHPUnit;
-- regression diagnostics upload;
-- final regression enforcement.
-
-The same complete gate set also passed on documentation checkpoint #2426. No mature release gate was removed or made non-blocking.
-
-## UAT / disposable-data evidence
-
-The permanent Location/Governance acceptance suite and fresh-bootstrap scenarios remain part of the blocking Location/Governance gate. They cover urban/rural topology, village and micro-location behavior, membership dimensions, Primary Residence voting authority, election boundaries, crowdsourced proposal review, geolocation assistance and location lifecycle history.
-
-No Production data was used to manufacture this validation result.
 
 ## Production backup boundary
 
 No Production backup or restore rehearsal has been performed from this workspace because this workspace has GitHub/CI access but no cPanel/SSH/MySQL Production connection.
 
-Fresh Canonical Start removes migration of existing user geography from the critical path, but does not make the rest of the Production database disposable. Before additive schema/import writes, a current recoverable hosting/database backup or provider snapshot must still exist. If the hosting environment cannot practically support an isolated restore rehearsal, that limitation must be recorded honestly and the owner must explicitly accept that operational risk; it must not be represented as verified restore evidence.
-
-## Data and rollback safety
-
-No Production database has been reset, truncated or destructively migrated. Legacy geography remains available as rollback support. Reference geography import is versioned and auditable. Fresh bootstrap is deliberately small and does not create real geography records by itself.
-
-Rollback for the initial cutover is non-destructive: disable canonical rollout flags in reverse order and, if required, restore the prior application SHA. Canonical tables/data and legacy tables remain intact for diagnosis and later controlled action.
+Before any additive Production write, a current recoverable cPanel/database backup or provider snapshot must exist. If hosting limitations make an isolated restore rehearsal impractical, that limitation must be recorded honestly and explicitly accepted; it must never be represented as verified restore evidence.
 
 ## Human-approval boundary — activation still stopped
 
-Preparation may continue under the Fresh Canonical Start decision, but canonical runtime activation remains a separate approval checkpoint.
+`DEPLOYMENT_CONSOLE_ENABLED` must remain `false` until the backup/preflight checkpoint is accepted. When the controlled preparation window is explicitly approved, the console may be enabled temporarily with a high-entropy secret for its fixed allowlisted operations, then must be disabled again before activation.
 
-Until that activation approval, do not:
+Until separate activation approval, do not:
 
 - enable any `LOCATION_GOVERNANCE_*_ENABLED` Production flag;
-- delete or retire any legacy geography data/table/column;
-- perform destructive database operations.
+- delete or retire legacy geography or membership history;
+- perform destructive database operations;
+- perform C14 legacy retirement.
 
-Legacy retirement is not part of C13. C14 requires a post-cutover audit, observation evidence and a second separate explicit approval before any destructive cleanup migration is authored or executed.
+C14 remains a post-cutover audit/observation phase requiring a new, separate explicit approval.
 
 ## Readiness verdict
 
-**C13 technical cutover package: PREPARED AND CI-VALIDATED.**
+**C13 architecture and Stage C/UI package: implemented.**
 
-**Fresh Canonical Start policy: APPROVED for the current small existing user population.**
+**Post-UI Production-readiness hardening: GREEN on checkpoint `3b8bca8905839d5a23d170984093e99a99371131` via Full Validation #2620.**
 
-**Production canonical activation: NOT YET AUTHORIZED.** The next operational step is safe Production backup/preflight plus additive deployment/bootstrap/reference import preparation; feature flags must remain off until a separate explicit activation approval.
+**Current documentation checkpoint: awaiting its own fresh Full Validation before PR #113 is merge-ready.**
+
+**Production canonical activation: NOT AUTHORIZED.** The next operational phase after a final merge-approved candidate is safe Production backup/preflight and additive preparation with all rollout flags still OFF.
