@@ -77,7 +77,8 @@ final class ProjectScopeOptionsController extends Controller
     private function serializeLocationBridge(GovernanceArea $area, Location $location): array
     {
         $locale = app()->getLocale();
-        $localizedNames = $location->localized_names ?? [];
+        $locationLocalizedNames = $location->localized_names ?? [];
+        $areaLocalizedNames = $area->localized_names ?? [];
         $allowedChildTypeIds = app(LocationSchemaResolver::class)
             ->allowedChildTypes($location)
             ->pluck('id');
@@ -92,7 +93,10 @@ final class ProjectScopeOptionsController extends Controller
             'id' => $location->id,
             'identity' => 'location:'.$location->id,
             'type_key' => $location->type?->key ?? $area->governance_type,
-            'label' => $localizedNames[$locale] ?? $location->canonical_name ?? $area->canonical_name,
+            'label' => $locationLocalizedNames[$locale]
+                ?? $areaLocalizedNames[$locale]
+                ?? $location->canonical_name
+                ?? $area->canonical_name,
             'status' => $location->status,
             'has_children' => $hasChildren,
             'governance_area_id' => $area->id,
