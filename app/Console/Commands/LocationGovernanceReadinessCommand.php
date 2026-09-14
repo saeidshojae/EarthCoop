@@ -110,12 +110,15 @@ class LocationGovernanceReadinessCommand extends Command
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
         } else {
             foreach ($checks as $check) {
-                $prefix = $check['passed'] ? '[PASS]' : '[FAIL]';
-                $this->line(sprintf('%s %s%s', $prefix, $check['name'], $check['passed'] ? '' : ': '.$check['message']));
+                $prefix = $check['passed'] ? 'PASS' : 'FAIL';
+                $message = sprintf('[%s] %s', $prefix, $check['name']);
+                if (! $check['passed']) {
+                    $message .= ': '.$check['failure'];
+                }
+                $check['passed'] ? $this->info($message) : $this->error($message);
             }
 
-            $this->newLine();
-            $this->line($ready ? 'READY' : 'NOT READY');
+            $ready ? $this->info('READY') : $this->error('NOT READY');
         }
 
         return $ready ? self::SUCCESS : self::FAILURE;
@@ -127,12 +130,16 @@ class LocationGovernanceReadinessCommand extends Command
             return false;
         }
 
-        $applied = DB::table('migrations')
-            ->whereIn('migration', self::REQUIRED_MIGRATIONS)
-            ->pluck('migration')
-            ->all();
+        try {
+            $applied = DB::table('migrations')
+                ->whereIn('migration', self::REQUIRED_MIGRATIONS)
+                ->pluck('migration')
+                ->all();
 
-        return count(array_diff(self::REQUIRED_MIGRATIONS, $applied)) === 0;
+            return count(array_diff(self::REQUIRED_MIGRATIONS, $applied)) === 0;
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     private function targetSchemaReady(): bool
@@ -141,11 +148,15 @@ class LocationGovernanceReadinessCommand extends Command
             return false;
         }
 
-        return DB::table('location_schemas')
-            ->where('country_code', config('location-governance.target_country'))
-            ->where('key', config('location-governance.target_schema'))
-            ->where('status', 'active')
-            ->exists();
+        try {
+            return DB::table('location_schemas')
+                ->where('key', (string) config('location-governance.target_schema'))
+                ->where('country_code', (string) config('location-governance.target_country'))
+                ->where('status', 'active')
+                ->exists();
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     private function latestTargetImport(): ?object
@@ -154,44 +165,61 @@ class LocationGovernanceReadinessCommand extends Command
             return null;
         }
 
-        return DB::table('location_import_runs')
-            ->where('source', config('location-governance.target_dataset_source'))
-            ->where('dataset_version', config('location-governance.target_dataset_version'))
-            ->where('country_code', config('location-governance.target_country'))
-            ->orderByDesc('id')
-            ->first();
+        try {
+            return DB::table('location_import_runs')
+                ->where('country_code', (string) config('location-governance.target_country'))
+                ->where('source', (string) config('location-governance.target_dataset_source'))
+                ->where('dataset_version', (string) config('location-governance.target_dataset_version'))
+                ->where('mode', 'apply')
+                ->latest('id')
+                ->first();
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     private function importConflictRows(int $runId): int
     {
         if (! Schema::hasTable('location_import_conflicts')) {
-            return PHP_INT_MAX;
+            return 0;
         }
 
-        return DB::table('location_import_conflicts')
-            ->where('location_import_run_id', $runId)
-            ->whereNull('resolved_at')
-            ->count();
+        try {
+            return DB::table('location_import_conflicts')->where('location_import_run_id', $runId)->count();
+        } catch (Throwable) {
+            return PHP_INT_MAX;
+        }
     }
 
     private function hasGovernanceMappings(): bool
     {
-        return Schema::hasTable('governance_area_location')
-            && DB::table('governance_area_location')->exists();
+        if (! Schema::hasTable('governance_area_locations')) {
+            return false;
+        }
+
+        try {
+            return DB::table('governance_area_locations')->exists();
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     private function governanceTopologyReady(): bool
     {
+        if (! Schema::hasTable('governance_areas') || ! Schema::hasTable('governance_area_locations')) {
+            return false;
+        }
+
         try {
-            $summary = app(ReferenceGovernanceTopologyImporter::class)->dryRunSummary(
+            $counts = app(ReferenceGovernanceTopologyImporter::class)->diff(
                 (string) config('location-governance.target_country'),
-                (string) config('location-governance.target_dataset_version')
+                (string) config('location-governance.target_dataset_version'),
             );
 
-            return (int) ($summary['create'] ?? -1) === 0
-                && (int) ($summary['update'] ?? -1) === 0
-                && (int) ($summary['conflict'] ?? -1) === 0
-                && (int) ($summary['unchanged'] ?? 0) > 0;
+            return (int) ($counts['create'] ?? PHP_INT_MAX) === 0
+                && (int) ($counts['update'] ?? PHP_INT_MAX) === 0
+                && (int) ($counts['conflict'] ?? PHP_INT_MAX) === 0
+                && (int) ($counts['unchanged'] ?? 0) > 0;
         } catch (Throwable) {
             return false;
         }
@@ -205,34 +233,52 @@ class LocationGovernanceReadinessCommand extends Command
             return false;
         }
 
-        foreach (self::STAGE_C_DIMENSIONS as $dimensionKey) {
-            $dimension = MembershipDimension::query()->where('key', $dimensionKey)->first();
-            if (! $dimension) {
+        try {
+            $dimensions = MembershipDimension::query()
+                ->where('enabled', true)
+                ->whereIn('key', self::STAGE_C_DIMENSIONS)
+                ->get()
+                ->keyBy('key');
+
+            if ($dimensions->count() !== count(self::STAGE_C_DIMENSIONS)) {
                 return false;
             }
 
-            $policy = GroupCreationPolicy::query()
-                ->where('membership_dimension_id', $dimension->id)
+            foreach (self::STAGE_C_DIMENSIONS as $dimensionKey) {
+                $dimension = $dimensions->get($dimensionKey);
+                $policy = GroupCreationPolicy::query()
+                    ->where('membership_dimension_id', $dimension->id)
+                    ->where('enabled', true)
+                    ->whereNull('governance_area_id')
+                    ->whereNull('governance_type')
+                    ->whereNull('governance_rank')
+                    ->where('priority', 0)
+                    ->first();
+
+                if ($policy === null
+                    || $policy->mode?->value !== 'automatic'
+                    || ($policy->metadata['stage_c_canonical_groups'] ?? false) !== true) {
+                    return false;
+                }
+            }
+
+            $capabilityPolicy = GovernanceCapabilityPolicy::query()
+                ->where('scope', 'default')
                 ->whereNull('country_code')
+                ->whereNull('governance_type')
                 ->first();
 
-            if (! $policy || ! $policy->enabled || $policy->creation_mode !== 'automatic') {
-                return false;
-            }
+            return $capabilityPolicy !== null
+                && ($capabilityPolicy->capabilities['group_creation_mode'] ?? null) === 'automatic';
+        } catch (Throwable) {
+            return false;
         }
-
-        $defaultCapability = GovernanceCapabilityPolicy::query()
-            ->whereNull('country_code')
-            ->whereNull('governance_type')
-            ->first();
-
-        return $defaultCapability?->group_creation_mode === 'automatic';
     }
 
     private function rolloutFlagsAreBoolean(): bool
     {
-        foreach (['runtime_enabled', 'registration_enabled', 'groups_enabled', 'elections_enabled', 'projects_enabled'] as $flag) {
-            if (! is_bool(config('location-governance.'.$flag))) {
+        foreach (['runtime_enabled', 'registration_enabled', 'groups_enabled', 'elections_enabled', 'projects_enabled'] as $key) {
+            if (! is_bool(config("location-governance.{$key}"))) {
                 return false;
             }
         }
@@ -246,13 +292,30 @@ class LocationGovernanceReadinessCommand extends Command
             return false;
         }
 
-        return DB::table('location_proposals')
-            ->where('status', 'conflict')
-            ->exists();
+        try {
+            return DB::table('location_proposals')
+                ->whereIn('status', ['pending', 'ready_for_review', 'needs_evidence'])
+                ->get(['metadata'])
+                ->contains(function (object $proposal): bool {
+                    $metadata = $proposal->metadata;
+                    if (is_string($metadata)) {
+                        $metadata = json_decode($metadata, true);
+                    }
+
+                    return is_array($metadata) && ($metadata['fatal_conflict'] ?? false) === true;
+                });
+        } catch (Throwable) {
+            // A broken proposal read is itself unsafe for cutover, so fail closed.
+            return true;
+        }
     }
 
-    private function check(array &$checks, string $name, bool $passed, string $message): void
+    private function check(array &$checks, string $name, bool $passed, string $failure): void
     {
-        $checks[] = compact('name', 'passed', 'message');
+        $checks[] = [
+            'name' => $name,
+            'passed' => $passed,
+            'failure' => $passed ? null : $failure,
+        ];
     }
 }
