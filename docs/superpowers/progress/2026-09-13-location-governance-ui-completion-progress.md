@@ -6,7 +6,7 @@
 **Design:** `docs/superpowers/specs/2026-09-13-location-governance-ui-completion-design.md`  
 **Implementation plan:** `docs/superpowers/plans/2026-09-13-location-governance-ui-completion.md`
 
-This file is the durable handoff/checkpoint for continuing in a new chat. Update it after each meaningful RED/GREEN checkpoint. Do not infer Production rollout from this file; all Location/Governance feature flags remain dark by default unless separately verified and explicitly enabled.
+This file is the durable handoff/checkpoint for this workstream. Do not infer Production rollout from this file. All Location/Governance feature flags remain dark by default unless separately verified and explicitly enabled.
 
 ## Completed tasks
 
@@ -47,72 +47,68 @@ This file is the durable handoff/checkpoint for continuing in a new chat. Update
 
 ### Task 8 — “My Location & Governance” page
 - COMPLETE / GREEN.
-- RED contract was followed by implementation and root-cause fix in `ResidenceService::currentPrimaryResidence()`.
-- Full Validation #2585 (`34786853086`) on commit `c276703d12ef39b0ea9b05372c921973c07bddde` completed SUCCESS, including Location/Governance and Full Project.
 - Page exposes approved residence, pending exact intent, official GovernanceArea chain, active/observer memberships, and Communities separately.
-- Sidebar entry and endpoint are dark-launched behind `runtime_enabled`; endpoint returns 404 while flag is off.
+- Sidebar entry and endpoint remain dark-launched behind the Location/Governance runtime flag.
 
 ### Task 9 — Policy-safe Community Area UX
 - COMPLETE / GREEN.
-- RED test commit: `e40e8793a117cca5b032f23e4056db8977af7eb4`.
-- Full Validation #2586 (`34787507853`) produced the intended isolated RED: Location/Governance and Full Project failed only because the new Community create action/route were absent; existing Community creation/election-boundary regressions stayed green.
-- Implemented `CommunityAreaController`, authenticated `location-governance.community.store`, policy-backed create-action state, and separate Community copy on the user page.
-- POST delegates to `CommunityAreaService::createFor()`; eligibility remains canonical in `CommunityCreationPolicy` and is not hard-coded in Blade.
-- No create action is exposed for a pending residence intent, an existing Community, missing approved residence, or policy rejection.
-- Community creation remains idempotent and does not create a formal systemic-election tier.
-- Exact verified HEAD: `682d8a8f60b54af934aa3c0483f8d25f7d4b3c94`.
-- Full Validation #2591 (`34789091796`) completed SUCCESS on that exact HEAD, including Location/Governance and Full Project.
+- Community creation delegates to `CommunityAreaService::createFor()` and canonical eligibility remains in `CommunityCreationPolicy`.
+- Pending proposals never create formal governance or a Community automatically.
+- Community remains outside official systemic-election topology by default.
 
-### Task 10 — Admin Location/Governance Control Center completion
+### Task 10 — Admin Location/Governance Control Center
 - COMPLETE / GREEN.
-- Initial product RED: `9220f9e08b8599720242b333b361fa28a4ef568d`.
-- Fixture-only correction: `b92d838940194d6eb2854e7582a05980a3114ac6`.
-- Clean RED Full Validation #2594 (`34790898356`) isolated the missing operational partials/read models while all specialist gates stayed green.
-- Added bounded read models and six focused partials for proposal queue, reference explorer, official topology, Community overview, import diagnostics, and health diagnostics.
-- Existing approve/reject/merge/request-evidence actions remain explicit, CSRF-protected, human-gated writes; Hoda stays recommendation-only.
+- Added bounded read models and focused views for proposal queue, reference explorer, official topology, Community overview, import diagnostics, and health diagnostics.
+- Existing approve/reject/merge/request-evidence actions remain explicit, CSRF-protected, human-gated writes; Hoda remains recommendation-only.
 - No raw official-topology mutation was added.
-- Plan gap caught before closure: proposal filters and audit context were not covered by the first RED. Added supplemental RED on `dc15bca0309654a794722a946e61e8556aa72a3b`.
-- Full Validation #2604 (`34791658802`) produced exactly one expected Full Project failure because `proposalStatusFilter` was not yet implemented; every specialist gate, including Location/Governance, was green.
-- Final implementation adds an allowlisted open-status GET filter, latest proposal audit context, and DB-side evidence-threshold counting without loading the whole proposal set.
-- Exact verified GREEN HEAD: `382228eec478cb2f96541ce7a9a2d3b5d387657c`.
-- Full Validation #2606 (`34821466451`) completed SUCCESS on that exact HEAD: build, migrations, route/command boot, Deployment Console, Group Chat, Group Admin/Identity, Najm Hoda, Governance, Location/Governance, Najm Bahar, Stock, Group Chat JavaScript, Full Project PHPUnit, and final regression gate all passed.
-
-## Current task
+- Verified Task 10 GREEN checkpoint: `382228eec478cb2f96541ce7a9a2d3b5d387657c`.
+- Full Validation #2606 (`34821466451`) completed SUCCESS on that exact checkpoint.
 
 ### Task 11 — UX hardening for alternate schemas, errors, accessibility, and responsive states
+- COMPLETE / GREEN.
+- Intentional RED contract checkpoint: `ef1a498d1d5b21457131c58834eb881c341e5cc6`.
+- Full Validation #2612 isolated exactly three expected gaps: registration forced `IR`, inactive proposal parent was accepted, and global root discovery returned no roots without a country filter.
+- GREEN implementation checkpoint: `418361c4a8157b19d52d88afdecaa92ba546b858`.
+- Registration no longer hard-codes Iran; the selector treats country filtering as optional while preserving filtered root behavior when a country is supplied.
+- Root discovery is global/schema-driven when no country is supplied.
+- Inactive parents are rejected server-side with validation error before a Location proposal can be created.
+- Client normalization removes inactive canonical locations and terminal proposals from stale payloads.
+- Selection mapping rejects stale/terminal identities.
+- Explicit `loading`, `empty`, `error`, and `stale` UI states are exposed with text/ARIA semantics; dynamically created levels have visible labels.
+- Proposal network failure preserves typed input/path and prior valid selection.
+- Arbitrary-depth/alternate-schema behavior remains server-driven; no Iran-specific micro-location ordering was introduced.
+- Full Validation #2613 (`34826072015`) completed SUCCESS on the GREEN implementation checkpoint.
+- The previously omitted frontend gate was then added to Full Validation: `npm run test:location-governance` now runs as `Regression — Location / Governance JavaScript` and participates in the final regression gate.
+- Exact Task 11 verified HEAD after CI hardening: `ddc2e2c8d3e06bd2196668767faa635a984fc34e`.
+- Full Validation #2614 (`34827091450`) completed SUCCESS on that exact HEAD.
+- #2614 evidence: Location/Governance **198 tests / 1012 assertions**; Location/Governance JavaScript **9/9 passing**; Full Project PHPUnit **1687 tests / 9067 assertions**, 0 failures/errors, 2 skipped, 47 existing deprecations.
 
-**Status:** ready to begin RED edge-case coverage on top of verified Task 10 GREEN.
+## Task 12 — Stage-C UI Completion Integration Gate / Release Readiness
 
-Plan-required RED coverage includes:
-- direct `street -> complex` and `street -> alley -> complex`;
-- building endpoint;
-- village endpoint without neighborhood;
-- alternate-country branch;
-- duplicate proposal returned as existing Location;
-- reusable open proposal;
-- proposal state changing while picker is open;
-- network failure preserving user-entered proposal name/path and prior valid selection;
-- inactive parent rejected server-side;
-- keyboard/text-label/accessibility states that do not depend on color alone.
+**Status:** implementation complete; exact final documentation checkpoint awaiting its own fresh Full Validation before merge approval.
 
-Implementation must remain arbitrary-depth and schema-driven. No client-side hard-coded geography hierarchy may be introduced.
+Release-readiness audit completed on `ddc2e2c8d3e06bd2196668767faa635a984fc34e`:
+- Branch is **85 commits ahead and 0 behind** `main@e253797392257a95e6e84c78ceaf7c936516ceb4`.
+- Diff is limited to Location/Governance UI/domain/supporting tests/docs plus the validation workflow/package script needed to enforce the new frontend regression gate.
+- No Production `.env` file is changed by the PR.
+- `config/location-governance.php` keeps `runtime_enabled`, `registration_enabled`, `groups_enabled`, `elections_enabled`, and `projects_enabled` defaulted to `false`.
+- The only new migration in this UI-completion workstream creates `pending_residence_intents`; it does not drop or rewrite legacy tables in `up()`.
+- No Production feature flag has been enabled.
+- No destructive Production operation has been performed.
+- PR #112 remains Draft and unmerged.
 
-## Safety invariants still locked
+## Safety invariants locked
 - `Location != GovernanceArea != Group`.
 - Pending Location Proposal is never a canonical Location FK and never automatically creates formal governance.
 - Community Area is optional/on-demand and remains outside official systemic-election topology by default.
 - Community eligibility comes from `CommunityCreationPolicy`; creation comes from `CommunityAreaService`.
-- Admin Control Center additions are operational read models plus already-existing human-gated proposal writes; no raw topology mutation is permitted.
+- Admin Control Center additions are operational read models plus existing human-gated proposal writes; no raw topology mutation is permitted.
 - No direct changes to `main`.
-- Draft PR #112 remains unmerged.
 - No destructive Production operation.
 - Feature flags remain dark/default false unless separately verified and explicitly approved.
 
 ## Next exact action
-1. Add Task 11 RED edge-case tests first, reusing existing coverage where already sufficient instead of duplicating it.
-2. Run/inspect the exact RED and confirm failures represent uncovered UX hardening gaps only.
-3. Implement the minimum shared-selector/server hardening required by those RED tests.
-4. Run targeted GREEN plus production asset build.
-5. Update this handoff with exact Task 11 RED/GREEN evidence.
-6. Then proceed to Task 12 exact-candidate release gate.
-7. Do not merge to `main`; final merge remains gated by Task 12 full exact-candidate validation and explicit user approval.
+1. Run Full Validation on the exact documentation-updated HEAD.
+2. Confirm Location/Governance PHP, Location/Governance JavaScript, build, migrations, mature subsystem regressions, Full Project PHPUnit, and final regression gate are all GREEN on that exact SHA.
+3. Re-check PR #112 head/base/mergeability and verify no unexpected branch movement.
+4. Stop and request explicit merge approval. Do **not** merge to `main` without that approval.
