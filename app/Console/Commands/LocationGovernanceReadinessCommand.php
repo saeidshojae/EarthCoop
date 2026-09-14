@@ -2,6 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Models\GovernanceCapabilityPolicy;
+use App\Models\GroupCreationPolicy;
+use App\Models\MembershipDimension;
+use App\Services\LocationGovernance\Import\ReferenceGovernanceTopologyImporter;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -28,6 +32,15 @@ class LocationGovernanceReadinessCommand extends Command
         '2026_09_10_000008_add_governance_scope_to_elections',
         '2026_09_10_000009_add_governance_scope_to_spatial_consumers',
         '2026_09_10_000011_create_location_proposal_tables',
+        '2026_09_13_000001_create_pending_residence_intents_table',
+    ];
+
+    private const STAGE_C_DIMENSIONS = [
+        'public',
+        'profession',
+        'specialty',
+        'age',
+        'gender',
     ];
 
     public function handle(): int
@@ -53,6 +66,18 @@ class LocationGovernanceReadinessCommand extends Command
         );
 
         $this->check($checks, 'governance mappings', $this->hasGovernanceMappings(), 'canonical governance mappings are missing');
+        $this->check(
+            $checks,
+            'governance topology',
+            $this->governanceTopologyReady(),
+            'reviewed reference governance topology is missing, conflicting, or not idempotent'
+        );
+        $this->check(
+            $checks,
+            'Stage C group policies',
+            $this->stageCGroupPoliciesReady(),
+            'canonical automatic group policies are not fully activated for Stage C'
+        );
         $this->check($checks, 'rollout flags', $this->rolloutFlagsAreBoolean(), 'one or more rollout flags are invalid');
         $this->check($checks, 'proposal fatal conflicts', ! $this->hasFatalProposalConflicts(), 'fatal location proposal conflicts remain unresolved');
 
@@ -173,6 +198,77 @@ class LocationGovernanceReadinessCommand extends Command
 
         try {
             return DB::table('governance_area_locations')->exists();
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    private function governanceTopologyReady(): bool
+    {
+        if (! Schema::hasTable('governance_areas') || ! Schema::hasTable('governance_area_locations')) {
+            return false;
+        }
+
+        try {
+            $counts = app(ReferenceGovernanceTopologyImporter::class)->diff(
+                (string) config('location-governance.target_country'),
+                (string) config('location-governance.target_dataset_version'),
+            );
+
+            return (int) ($counts['create'] ?? PHP_INT_MAX) === 0
+                && (int) ($counts['update'] ?? PHP_INT_MAX) === 0
+                && (int) ($counts['conflict'] ?? PHP_INT_MAX) === 0
+                && (int) ($counts['unchanged'] ?? 0) > 0;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    private function stageCGroupPoliciesReady(): bool
+    {
+        if (! Schema::hasTable('membership_dimensions')
+            || ! Schema::hasTable('group_creation_policies')
+            || ! Schema::hasTable('governance_capability_policies')) {
+            return false;
+        }
+
+        try {
+            $dimensions = MembershipDimension::query()
+                ->where('enabled', true)
+                ->whereIn('key', self::STAGE_C_DIMENSIONS)
+                ->get()
+                ->keyBy('key');
+
+            if ($dimensions->count() !== count(self::STAGE_C_DIMENSIONS)) {
+                return false;
+            }
+
+            foreach (self::STAGE_C_DIMENSIONS as $dimensionKey) {
+                $dimension = $dimensions->get($dimensionKey);
+                $policy = GroupCreationPolicy::query()
+                    ->where('membership_dimension_id', $dimension->id)
+                    ->where('enabled', true)
+                    ->whereNull('governance_area_id')
+                    ->whereNull('governance_type')
+                    ->whereNull('governance_rank')
+                    ->where('priority', 0)
+                    ->first();
+
+                if ($policy === null
+                    || $policy->mode?->value !== 'automatic'
+                    || ($policy->metadata['stage_c_canonical_groups'] ?? false) !== true) {
+                    return false;
+                }
+            }
+
+            $capabilityPolicy = GovernanceCapabilityPolicy::query()
+                ->where('scope', 'default')
+                ->whereNull('country_code')
+                ->whereNull('governance_type')
+                ->first();
+
+            return $capabilityPolicy !== null
+                && ($capabilityPolicy->capabilities['group_creation_mode'] ?? null) === 'automatic';
         } catch (Throwable) {
             return false;
         }
