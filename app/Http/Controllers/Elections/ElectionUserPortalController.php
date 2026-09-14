@@ -34,6 +34,15 @@ class ElectionUserPortalController extends Controller
         ElectionFeedbackTopicAggregationService $topics,
         ElectionVoteFeedbackReadService $feedbackReader,
     ) {
+        if ((bool) config('location-governance.elections_enabled', false)) {
+            abort_unless(
+                $group->governance_area_id !== null
+                    && $group->dimension_key !== null
+                    && $group->dimension_value_key !== null,
+                403,
+            );
+        }
+
         $member = GroupUser::query()
             ->where('group_id', $group->id)
             ->where('user_id', $request->user()->id)

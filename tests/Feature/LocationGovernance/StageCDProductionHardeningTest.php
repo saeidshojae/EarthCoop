@@ -143,6 +143,7 @@ class StageCDProductionHardeningTest extends TestCase
         foreach ([$oldGroup, $newGroup] as $group) {
             Election::create([
                 'group_id' => $group->id,
+                'governance_area_id' => $group->governance_area_id,
                 'starts_at' => now()->subHour(),
                 'ends_at' => now()->addDay(),
                 'is_closed' => false,
@@ -158,6 +159,53 @@ class StageCDProductionHardeningTest extends TestCase
 
         $this->assertContains($newGroup->id, $groupIds);
         $this->assertNotContains($oldGroup->id, $groupIds);
+    }
+
+    public function test_current_systemic_election_center_excludes_active_legacy_membership_in_canonical_mode(): void
+    {
+        $this->enableStageCD();
+
+        ['user' => $user, 'area' => $currentArea] = MembershipFixture::canonicalUser();
+        $this->actingAs($user)->get('/groups')->assertOk();
+
+        $currentGroup = Group::query()
+            ->where('governance_area_id', $currentArea->id)
+            ->where('dimension_key', 'public')
+            ->where('dimension_value_key', 'public')
+            ->firstOrFail();
+
+        $legacyGroup = Group::create([
+            'name' => 'مجمع عمومی محله سوهانک',
+            'group_type' => '0',
+            'location_level' => 'neighborhood',
+            'governance_area_id' => null,
+            'dimension_key' => null,
+            'dimension_value_key' => null,
+        ]);
+
+        $user->groups()->syncWithoutDetaching([
+            $legacyGroup->id => ['role' => 1, 'status' => 1],
+        ]);
+
+        foreach ([$legacyGroup, $currentGroup] as $group) {
+            Election::create([
+                'group_id' => $group->id,
+                'governance_area_id' => $group->governance_area_id,
+                'starts_at' => now()->subHour(),
+                'ends_at' => now()->addDay(),
+                'is_closed' => false,
+                'lifecycle_status' => 'open',
+                'cycle_number' => 1,
+            ]);
+        }
+
+        $groupIds = app(CurrentElectionCenterService::class)
+            ->forUser($user)['systemic']
+            ->pluck('group_id')
+            ->all();
+
+        $this->assertContains($currentGroup->id, $groupIds);
+        $this->assertNotContains($legacyGroup->id, $groupIds);
     }
 
     public function test_current_internal_election_center_excludes_stale_canonical_branch_after_residence_transfer(): void
