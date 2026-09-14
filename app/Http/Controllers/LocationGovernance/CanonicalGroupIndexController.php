@@ -33,7 +33,7 @@ final class CanonicalGroupIndexController extends Controller
                 ->whereIn('groups.id', $materializedIds->all())
                 ->wherePivot('status', 1)
                 ->get()
-                ->reverse()
+                ->sortByDesc(fn (Group $group): int => (int) ($group->governanceArea?->rank ?? -1))
                 ->values();
 
         // The mature My Groups view still filters profession/specialty rows by the

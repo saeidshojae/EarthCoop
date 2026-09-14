@@ -15,7 +15,9 @@ class InternalElectionCurrentItemAdapter
         $polls = Poll::query()
             ->where('main_type', 0)
             ->where('is_active', true)
-            ->whereHas('group.users', fn ($query) => $query->whereKey($user->id))
+            ->whereHas('group.users', fn ($query) => $query
+                ->whereKey($user->id)
+                ->where('group_user.status', 1))
             ->where(function ($query) {
                 $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
             })
