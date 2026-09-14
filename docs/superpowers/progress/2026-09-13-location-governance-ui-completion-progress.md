@@ -63,64 +63,56 @@ This file is the durable handoff/checkpoint for continuing in a new chat. Update
 - Exact verified HEAD: `682d8a8f60b54af934aa3c0483f8d25f7d4b3c94`.
 - Full Validation #2591 (`34789091796`) completed SUCCESS on that exact HEAD, including Location/Governance and Full Project.
 
+### Task 10 — Admin Location/Governance Control Center completion
+- COMPLETE / GREEN.
+- Initial product RED: `9220f9e08b8599720242b333b361fa28a4ef568d`.
+- Fixture-only correction: `b92d838940194d6eb2854e7582a05980a3114ac6`.
+- Clean RED Full Validation #2594 (`34790898356`) isolated the missing operational partials/read models while all specialist gates stayed green.
+- Added bounded read models and six focused partials for proposal queue, reference explorer, official topology, Community overview, import diagnostics, and health diagnostics.
+- Existing approve/reject/merge/request-evidence actions remain explicit, CSRF-protected, human-gated writes; Hoda stays recommendation-only.
+- No raw official-topology mutation was added.
+- Plan gap caught before closure: proposal filters and audit context were not covered by the first RED. Added supplemental RED on `dc15bca0309654a794722a946e61e8556aa72a3b`.
+- Full Validation #2604 (`34791658802`) produced exactly one expected Full Project failure because `proposalStatusFilter` was not yet implemented; every specialist gate, including Location/Governance, was green.
+- Final implementation adds an allowlisted open-status GET filter, latest proposal audit context, and DB-side evidence-threshold counting without loading the whole proposal set.
+- Exact verified GREEN HEAD: `382228eec478cb2f96541ce7a9a2d3b5d387657c`.
+- Full Validation #2606 (`34821466451`) completed SUCCESS on that exact HEAD: build, migrations, route/command boot, Deployment Console, Group Chat, Group Admin/Identity, Najm Hoda, Governance, Location/Governance, Najm Bahar, Stock, Group Chat JavaScript, Full Project PHPUnit, and final regression gate all passed.
+
 ## Current task
 
-### Task 10 — Admin Location/Governance Control Center completion
+### Task 11 — UX hardening for alternate schemas, errors, accessibility, and responsive states
 
-**Status:** implementation candidate awaiting GREEN verification.
+**Status:** ready to begin RED edge-case coverage on top of verified Task 10 GREEN.
 
-#### RED history
-- Initial RED commit: `9220f9e08b8599720242b333b361fa28a4ef568d`.
-- Full Validation #2593 (`34789963117`) proved the missing operational UI but also exposed a test-fixture error from creating the same Iran schema twice.
-- Test-only fixture correction commit: `b92d838940194d6eb2854e7582a05980a3114ac6` reuses the already-created schema and does not alter Production code.
-- Full Validation #2594 (`34790898356`) is the clean RED:
-  - all specialist gates passed, including Location/Governance (195 tests / 998 assertions);
-  - Full Project: 1683 tests, 9020 assertions, 47 PHPUnit deprecations, 2 skipped;
-  - exactly one expected failure because the focused partials were absent;
-  - exactly one expected error because `referenceLocations`/new read models were absent.
-- Therefore Task 10 has a valid product RED with no remaining fixture/setup defect.
+Plan-required RED coverage includes:
+- direct `street -> complex` and `street -> alley -> complex`;
+- building endpoint;
+- village endpoint without neighborhood;
+- alternate-country branch;
+- duplicate proposal returned as existing Location;
+- reusable open proposal;
+- proposal state changing while picker is open;
+- network failure preserving user-entered proposal name/path and prior valid selection;
+- inactive parent rejected server-side;
+- keyboard/text-label/accessibility states that do not depend on color alone.
 
-#### Implementation now on branch
-- `LocationGovernanceController::index()` now builds bounded operational read models for:
-  - open proposal queue + Hoda recommendations;
-  - active reference Locations;
-  - official GovernanceArea topology;
-  - Community areas;
-  - recent import runs;
-  - health diagnostics.
-- Health diagnostics expose the approved plan keys:
-  - `open_proposals`;
-  - `above_threshold_proposals`;
-  - `pending_residence_intents`;
-  - `invalid_pending_residence_intents`;
-  - `locations_missing_schema_or_type`;
-  - `official_areas_without_location_mapping`.
-- Created six focused partials:
-  - `proposal-queue.blade.php`;
-  - `reference-explorer.blade.php`;
-  - `governance-topology.blade.php`;
-  - `community-overview.blade.php`;
-  - `import-diagnostics.blade.php`;
-  - `health-diagnostics.blade.php`.
-- Existing approve/reject/merge/request-evidence forms remain explicit, CSRF-protected and human-gated inside the proposal queue.
-- Reference/topology/community/import/health sections are read-only.
-- No raw official-topology mutation route or form was added.
-- Latest code candidate before this documentation checkpoint: `f812d825508840ed462abe78b4b540179bfc3108`.
+Implementation must remain arbitrary-depth and schema-driven. No client-side hard-coded geography hierarchy may be introduced.
 
 ## Safety invariants still locked
 - `Location != GovernanceArea != Group`.
 - Pending Location Proposal is never a canonical Location FK and never automatically creates formal governance.
 - Community Area is optional/on-demand and remains outside official systemic-election topology by default.
 - Community eligibility comes from `CommunityCreationPolicy`; creation comes from `CommunityAreaService`.
-- Admin Control Center additions in Task 10 are operational read models plus already-existing human-gated proposal writes; no raw topology mutation is permitted.
+- Admin Control Center additions are operational read models plus already-existing human-gated proposal writes; no raw topology mutation is permitted.
 - No direct changes to `main`.
 - Draft PR #112 remains unmerged.
 - No destructive Production operation.
 - Feature flags remain dark/default false unless separately verified and explicitly approved.
 
 ## Next exact action
-1. Run/inspect Full Validation on the latest Task 10 code + documentation candidate.
-2. If it fails, inspect the exact Full Project/Admin failure and fix only that regression.
-3. If it succeeds, mark Task 10 COMPLETE / GREEN with exact HEAD and CI evidence.
-4. Then begin Task 11 UX hardening test-first.
-5. Do not merge to `main`; final merge remains gated by Task 12 full exact-candidate validation and explicit user approval.
+1. Add Task 11 RED edge-case tests first, reusing existing coverage where already sufficient instead of duplicating it.
+2. Run/inspect the exact RED and confirm failures represent uncovered UX hardening gaps only.
+3. Implement the minimum shared-selector/server hardening required by those RED tests.
+4. Run targeted GREEN plus production asset build.
+5. Update this handoff with exact Task 11 RED/GREEN evidence.
+6. Then proceed to Task 12 exact-candidate release gate.
+7. Do not merge to `main`; final merge remains gated by Task 12 full exact-candidate validation and explicit user approval.
