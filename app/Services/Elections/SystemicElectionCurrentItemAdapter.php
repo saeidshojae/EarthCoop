@@ -23,7 +23,9 @@ class SystemicElectionCurrentItemAdapter
             ->all();
 
         $elections = Election::query()
-            ->whereHas('group.users', fn ($query) => $query->whereKey($user->id))
+            ->whereHas('group.users', fn ($query) => $query
+                ->whereKey($user->id)
+                ->where('group_user.status', 1))
             ->whereIn('lifecycle_status', $currentStatuses)
             ->with('group')
             ->orderByDesc('cycle_number')
