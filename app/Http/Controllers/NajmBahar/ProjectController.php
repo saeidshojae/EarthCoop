@@ -10,6 +10,7 @@ use App\Modules\NajmBahar\Services\ProjectService;
 use App\Services\Projects\ProjectScopeCutoverRenderer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class ProjectController extends Controller
 {
@@ -339,7 +340,13 @@ class ProjectController extends Controller
     {
         if ($this->useCanonicalProjectScope()) {
             return [
-                'governance_area_id' => 'nullable|integer|exists:governance_areas,id',
+                'governance_area_id' => [
+                    'nullable',
+                    'integer',
+                    Rule::exists('governance_areas', 'id')->where(fn ($query) => $query
+                        ->where('area_kind', 'official')
+                        ->where('status', 'active')),
+                ],
             ];
         }
 
