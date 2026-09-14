@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\LocationGovernance;
 
+use App\Models\Election;
 use App\Models\GovernanceArea;
 use App\Models\Group;
 use App\Models\Location;
+use App\Services\Elections\CurrentElectionCenterService;
 use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\MembershipFixture;
@@ -90,27 +92,7 @@ class StageCDProductionHardeningTest extends TestCase
             ->where('dimension_value_key', 'public')
             ->firstOrFail();
 
-        $newEndpoint = Location::factory()->create([
-            'parent_id' => $oldEndpoint->parent_id,
-            'location_schema_id' => $oldEndpoint->location_schema_id,
-            'location_type_id' => $oldEndpoint->location_type_id,
-            'country_code' => 'IR',
-            'name' => 'محله مرجع جدید',
-            'canonical_name' => 'New Reference Neighborhood',
-            'level' => $oldEndpoint->level,
-            'status' => 'active',
-        ]);
-
-        $newArea = GovernanceArea::create([
-            'key' => 'stage-d-current-area',
-            'country_code' => 'IR',
-            'governance_type' => 'local',
-            'area_kind' => 'official',
-            'canonical_name' => 'Current Area',
-            'rank' => 900,
-            'status' => 'active',
-        ]);
-        $newArea->locations()->attach($newEndpoint->id);
+        [$newEndpoint, $newArea] = $this->newResidenceBranch($oldEndpoint);
 
         app(ResidenceService::class)->transferPrimaryResidence(
             $user,
@@ -127,6 +109,81 @@ class StageCDProductionHardeningTest extends TestCase
 
         $this->actingAs($user)->get(route('elections.portal', $oldGroup))->assertForbidden();
         $this->actingAs($user)->get(route('elections.portal', $newGroup))->assertOk();
+    }
+
+    public function test_current_election_center_excludes_stale_canonical_branch_after_residence_transfer(): void
+    {
+        $this->enableStageCD();
+
+        ['user' => $user, 'area' => $oldArea, 'endpoint' => $oldEndpoint] = MembershipFixture::canonicalUser();
+        $this->actingAs($user)->get('/groups')->assertOk();
+
+        $oldGroup = Group::query()
+            ->where('governance_area_id', $oldArea->id)
+            ->where('dimension_key', 'public')
+            ->where('dimension_value_key', 'public')
+            ->firstOrFail();
+
+        [$newEndpoint, $newArea] = $this->newResidenceBranch($oldEndpoint);
+
+        app(ResidenceService::class)->transferPrimaryResidence(
+            $user,
+            $newEndpoint,
+            $user,
+            'stage_d_current_center_hardening',
+        );
+
+        $newGroup = Group::query()
+            ->where('governance_area_id', $newArea->id)
+            ->where('dimension_key', 'public')
+            ->where('dimension_value_key', 'public')
+            ->firstOrFail();
+
+        foreach ([$oldGroup, $newGroup] as $group) {
+            Election::create([
+                'group_id' => $group->id,
+                'starts_at' => now()->subHour(),
+                'ends_at' => now()->addDay(),
+                'is_closed' => false,
+                'lifecycle_status' => 'open',
+                'cycle_number' => 1,
+            ]);
+        }
+
+        $groupIds = app(CurrentElectionCenterService::class)
+            ->forUser($user)['systemic']
+            ->pluck('group_id')
+            ->all();
+
+        $this->assertContains($newGroup->id, $groupIds);
+        $this->assertNotContains($oldGroup->id, $groupIds);
+    }
+
+    private function newResidenceBranch(Location $oldEndpoint): array
+    {
+        $newEndpoint = Location::factory()->create([
+            'parent_id' => $oldEndpoint->parent_id,
+            'location_schema_id' => $oldEndpoint->location_schema_id,
+            'location_type_id' => $oldEndpoint->location_type_id,
+            'country_code' => 'IR',
+            'name' => 'محله مرجع جدید',
+            'canonical_name' => 'New Reference Neighborhood',
+            'level' => $oldEndpoint->level,
+            'status' => 'active',
+        ]);
+
+        $newArea = GovernanceArea::create([
+            'key' => 'stage-d-current-area-'.uniqid('', true),
+            'country_code' => 'IR',
+            'governance_type' => 'local',
+            'area_kind' => 'official',
+            'canonical_name' => 'Current Area',
+            'rank' => 900,
+            'status' => 'active',
+        ]);
+        $newArea->locations()->attach($newEndpoint->id);
+
+        return [$newEndpoint, $newArea];
     }
 
     private function enableStageCD(): void
