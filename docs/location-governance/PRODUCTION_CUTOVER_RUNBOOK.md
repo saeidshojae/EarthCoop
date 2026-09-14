@@ -49,17 +49,18 @@ All items below are blocking:
 - current Production application SHA is captured;
 - current Production database identity and backup destination are captured;
 - a fresh, restorable Production backup exists;
-- restore rehearsal of that backup has succeeded on an isolated clone/non-Production database;
-- restore rehearsal includes integrity checks and records timestamps/checksums or provider snapshot IDs;
+- restore rehearsal of that backup has succeeded on an isolated clone/non-Production database, or a hosting limitation preventing rehearsal is explicitly recorded and accepted;
+- restore evidence includes integrity checks and records timestamps/checksums or provider snapshot IDs where available;
 - operators know how to revert the deployed application SHA;
 - operators know how to set each Location/Governance rollout flag independently;
+- the Laravel configuration-cache state is known before relying on `.env` changes;
 - maintenance window and responsible operator are recorded.
 
-If backup/restore evidence is absent, **do not begin cutover**.
+If backup evidence is absent, **do not begin cutover**.
 
 ## 4. Backup and restore rehearsal
 
-Use the hosting/database provider's supported consistent backup mechanism. The exact provider command must be recorded in the execution record before approval; do not invent or substitute a command during the window.
+Use the hosting/database provider's supported consistent backup mechanism. The exact provider procedure must be recorded in the execution record before approval; do not invent or substitute a command during the window.
 
 Minimum backup evidence:
 
@@ -72,13 +73,13 @@ BACKUP_CHECKSUM_OR_PROVIDER_SNAPSHOT_ID=
 RESTORE_REHEARSAL_TARGET=
 RESTORE_REHEARSAL_STARTED_AT=
 RESTORE_REHEARSAL_COMPLETED_AT=
-RESTORE_REHEARSAL_RESULT=PASS|FAIL
+RESTORE_REHEARSAL_RESULT=PASS|FAIL|NOT_PRACTICAL
 RESTORE_REHEARSAL_NOTES=
 ```
 
 The rehearsal target MUST be isolated from Production. Never restore over Production merely to prove that restore works.
 
-Restore rehearsal acceptance checks must include at least:
+Restore rehearsal acceptance checks, when practical, must include at least:
 
 - database opens and expected tables are queryable;
 - user/account counts are plausible against the captured source snapshot;
@@ -86,7 +87,7 @@ Restore rehearsal acceptance checks must include at least:
 - Groups, Elections, Governance and Location tables are queryable;
 - no restore errors remain unresolved.
 
-Any failed restore rehearsal blocks cutover.
+A failed restore rehearsal blocks cutover. If hosting limitations make an isolated rehearsal impractical, record that limitation honestly and require explicit acceptance of that operational risk before any write.
 
 ## 5. Enter maintenance window
 
@@ -95,6 +96,8 @@ Any failed restore rehearsal blocks cutover.
 3. Capture the currently deployed application SHA again and compare it with `PREVIOUS_APPLICATION_SHA`.
 4. Capture a final database backup/checkpoint if the approved provider procedure requires one at window start.
 5. Confirm the five rollout flags are known booleans and record their current values.
+6. Confirm `DEPLOYMENT_CONSOLE_ENABLED=false` until the separately approved preparation window.
+7. Inspect Laravel configuration-cache state before relying on any later `.env` edit. On the current cPanel hosting model, `bootstrap/cache/config.php`, if present, can preserve stale environment-derived configuration. Follow `CPANEL_FRESH_CANONICAL_START_CHECKLIST.md`; do not delete unrelated cache files.
 
 Expected flag names:
 
@@ -112,7 +115,9 @@ Do not proceed if the deployed SHA or database changed unexpectedly after eviden
 
 Deploy the exact approved `APPLICATION_SHA`. Do not deploy a moving branch tip.
 
-After deployment, verify the application reports/runs from the intended SHA and that Laravel boots successfully before changing data or flags.
+The current GitHub-to-cPanel workflow uploads application files over FTPS; it does not itself execute Production migrations, bootstrap, reference imports, topology imports, Stage C policy activation, cache clearing, or feature-flag changes, and it excludes `.env` from sync.
+
+After deployment, verify the application reports/runs from the intended release and that Laravel boots successfully before changing data or flags.
 
 ## 7. Additive migrations only
 
@@ -130,6 +135,8 @@ php artisan migrate:reset
 php artisan migrate:rollback
 ```
 
+The required canonical migration set includes the UI-era `2026_09_13_000001_create_pending_residence_intents_table`, because registration/profile proposal flows persist pending exact-residence intent there.
+
 Immediately after migration:
 
 ```bash
@@ -137,7 +144,7 @@ php artisan migrate:status
 php artisan location-governance:readiness
 ```
 
-At this point readiness may still be `NOT READY` if bootstrap/reference-import/topology evidence is not yet present. That is expected only if the approved procedure has not reached those steps. Any unexpected migration failure triggers rollback/stop; do not improvise schema repair during the window.
+At this point readiness should still be `NOT READY` until bootstrap/reference-import/topology/Stage-C-policy/release evidence is present. Any unexpected migration failure triggers rollback/stop; do not improvise schema repair during the window.
 
 ## 8. Bootstrap canonical schema/types/policies
 
@@ -147,7 +154,7 @@ Only after explicit Production authorization, seed the small idempotent Location
 php artisan db:seed --class=LocationGovernanceBootstrapSeeder --force
 ```
 
-This bootstrap is intended for schemas/types/dimensions/policies only. It must not be treated as the real reference geography import and it does not create Governance Areas or Location-to-Governance mappings.
+This bootstrap is intended for schemas/types/dimensions/policies only. It must not be treated as the real reference geography import and it does not create Governance Areas or Location-to-Governance mappings. Its systemic group-creation policies deliberately remain conservative/on-demand until the separate Stage C policy transition below.
 
 Run boot/read-only checks before proceeding.
 
@@ -237,6 +244,22 @@ php artisan location-governance:reference-topology IR --dataset-version=v1 --dry
 
 Require `create=0`, `update=0`, `conflict=0` with the expected areas reported as unchanged before readiness.
 
+## 10B. Stage C canonical group policy transition
+
+The bootstrap intentionally does not turn systemic group creation automatic. Before release readiness can pass, apply the dedicated reviewed idempotent transition for `public`, `profession`, `specialty`, `age`, and `gender`:
+
+```bash
+php artisan db:seed --class=StageCCanonicalGroupPolicySeeder --force
+```
+
+In the browser Deployment Console the corresponding write action is `stage_c_group_policy_apply` and requires:
+
+```text
+APPLY-GROUP-POLICY
+```
+
+This does **not** enable `LOCATION_GOVERNANCE_GROUPS_ENABLED`; all rollout flags remain OFF during preparation. Any incomplete policy/default capability error is a STOP condition. Do not hand-edit policy rows to satisfy readiness.
+
 Then provide required release evidence through the deployment environment/config for the exact approved candidate:
 
 ```text
@@ -248,17 +271,19 @@ LOCATION_GOVERNANCE_TARGET_DATASET_SOURCE=earthcoop-reference
 LOCATION_GOVERNANCE_TARGET_DATASET_VERSION=v1
 ```
 
+If these values are changed through `.env`, verify that Laravel is not still serving stale cached configuration before trusting readiness output.
+
 Run:
 
 ```bash
 php artisan location-governance:readiness
 ```
 
-The command is read-only and fail-closed. It must report all checks as passing before any canonical runtime flag is enabled. Do not proceed on `NOT READY`.
+The command is read-only and fail-closed. It must report all checks as passing before any canonical runtime flag is enabled. In addition to prior checks it now requires the pending-residence migration, an idempotently applied reviewed Governance topology, and the five Stage C automatic group policies. Do not proceed on `NOT READY`.
 
 ## 11. Staged rollout — one flag boundary at a time
 
-After every step below, clear/reload application configuration using the deployment platform's standard procedure and run the smoke checks for that stage. Never enable the next stage until the current stage is accepted.
+After every step below, reload application configuration using the deployment platform's reviewed safe procedure and verify the intended value is actually active. Never enable the next stage until the current stage is accepted.
 
 ### Stage A — canonical runtime
 
@@ -292,6 +317,7 @@ Smoke checks with test users only:
 - registration location selection follows schema-driven country branch;
 - urban and rural paths load correctly;
 - Primary Residence can be created/updated according to policy;
+- pending exact-residence proposals persist safely when the requested micro-location is not yet canonical;
 - profile completion succeeds without requiring a legacy Address for canonical users;
 - optional geolocation assist never overwrites manual residence selection.
 
@@ -305,10 +331,17 @@ LOCATION_GOVERNANCE_GROUPS_ENABLED=true
 
 Smoke checks:
 
-- public/profession/specialty/age/gender memberships resolve through canonical governance scope;
+- public/profession/specialty/age/gender memberships resolve through the current canonical Governance scope;
+- the base/current local official scope is active and upstream official scopes have the intended observer role unless a valid privileged role already exists;
+- after a Primary Residence transfer, stale canonical groups from the previous branch become inactive and the new branch becomes active;
+- `/groups` uses the canonical cutover path and does not leak legacy spatial groups into the canonical systemic lists;
+- specifically, for the existing test account moved from Tehran/Sohanak to the Sari reference neighborhood, the canonical My Groups list must follow the reviewed Sari ancestry and must not retain Tehran/Sohanak as current canonical memberships;
+- legacy group-membership rows remain preserved as rollback/history scaffolding; do not delete them merely to make the UI clean;
 - no empty-group explosion;
 - existing mature Group Chat/Admin flows remain healthy;
 - Community creation remains on-demand according to policy.
+
+While `LOCATION_GOVERNANCE_GROUPS_ENABLED=false`, `/groups` intentionally remains on the legacy controller path; legacy memberships and canonical rows previously materialized during controlled testing can therefore coexist in that dark-launch view. That pre-activation display is not evidence that stale canonical reconciliation failed.
 
 ### Stage D — elections
 
@@ -360,6 +393,7 @@ Capture:
 - readiness output (`--json` may be archived);
 - geography import run ID and counts;
 - Governance topology dry-run/apply/idempotency evidence;
+- Stage C group-policy apply evidence;
 - smoke-test results for each stage;
 - application/queue/error-log observations;
 - start/end time of each stage;
@@ -372,15 +406,16 @@ A green local/CI test result is not a substitute for Production smoke evidence.
 
 Cutover is accepted only when:
 
-- exact approved SHA is deployed;
-- backup and isolated restore rehearsal are proven;
-- additive migrations completed without unresolved errors;
+- exact approved release is deployed and recorded;
+- backup requirements and any restore-rehearsal limitation/evidence are recorded and accepted;
+- additive migrations completed without unresolved errors, including the pending-residence-intent table;
 - target reference geography import is completed with zero unresolved conflicts;
 - explicit reference Governance topology is applied with zero unresolved conflicts and an idempotent post-apply dry-run;
+- Stage C canonical group policies are applied successfully while feature flags are still dark;
 - `location-governance:readiness` returns success;
 - each rollout stage passed its smoke checks before the next was enabled;
 - no critical regression is observed in mature subsystems;
-- legacy geography remains intact and available for rollback;
+- legacy geography and legacy group-membership history remain intact and available for rollback;
 - evidence has been recorded.
 
 Otherwise follow `PRODUCTION_ROLLBACK_RUNBOOK.md`.

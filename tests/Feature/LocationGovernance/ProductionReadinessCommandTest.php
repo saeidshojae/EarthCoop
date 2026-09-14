@@ -2,12 +2,10 @@
 
 namespace Tests\Feature\LocationGovernance;
 
-use App\Models\GovernanceArea;
-use App\Models\Location;
-use App\Models\LocationSchema;
-use App\Models\LocationType;
 use App\Services\LocationGovernance\Import\ReferenceGeographyImporter;
+use App\Services\LocationGovernance\Import\ReferenceGovernanceTopologyImporter;
 use Database\Seeders\LocationGovernanceBootstrapSeeder;
+use Database\Seeders\StageCCanonicalGroupPolicySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -71,45 +69,19 @@ class ProductionReadinessCommandTest extends TestCase
 
     private function createReferenceAndGovernanceEvidence(int $conflicts = 0): void
     {
-        $schema = LocationSchema::query()->where('key', 'ir-reference-v1')->firstOrFail();
-        $countryType = LocationType::query()->where('key', 'country')->firstOrFail();
+        app(ReferenceGeographyImporter::class)->import('IR', 'v1', true);
+        app(ReferenceGovernanceTopologyImporter::class)->apply('IR', 'v1');
+        $this->seed(StageCCanonicalGroupPolicySeeder::class);
 
-        $location = Location::factory()->create([
-            'location_schema_id' => $schema->id,
-            'location_type_id' => $countryType->id,
-            'country_code' => 'IR',
-        ]);
-
-        $area = GovernanceArea::factory()->official()->create([
-            'country_code' => 'IR',
-            'governance_type' => 'country',
-            'rank' => 1000,
-        ]);
-
-        DB::table('governance_area_locations')->insert([
-            'governance_area_id' => $area->id,
-            'location_id' => $location->id,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        DB::table('location_import_runs')->insert([
-            'country_code' => 'IR',
-            'source' => ReferenceGeographyImporter::SOURCE,
-            'dataset_version' => 'v1',
-            'mode' => 'apply',
-            'status' => 'completed',
-            'creates' => 1,
-            'updates' => 0,
-            'deactivates' => 0,
-            'conflicts' => $conflicts,
-            'unchanged' => 0,
-            'dataset_hash' => str_repeat('a', 64),
-            'started_at' => now()->subMinute(),
-            'finished_at' => now(),
-            'metadata' => json_encode(['test' => true]),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        if ($conflicts > 0) {
+            DB::table('location_import_runs')
+                ->where('country_code', 'IR')
+                ->where('source', ReferenceGeographyImporter::SOURCE)
+                ->where('dataset_version', 'v1')
+                ->where('mode', 'apply')
+                ->latest('id')
+                ->limit(1)
+                ->update(['conflicts' => $conflicts]);
+        }
     }
 }

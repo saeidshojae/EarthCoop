@@ -44,7 +44,7 @@ If cPanel provides a full account/database backup identifier, record that identi
 
 If a separate restore rehearsal database is practical, restore the backup there and record the result. If hosting limitations make that impractical, record the limitation honestly before any write; do not label restore as verified when it was not performed.
 
-## C. Keep canonical rollout flags OFF
+## C. Keep canonical rollout flags and deployment console OFF
 
 Before code/data preparation, confirm these remain disabled unless the owner has separately approved activation:
 
@@ -54,15 +54,39 @@ LOCATION_GOVERNANCE_REGISTRATION_ENABLED=false
 LOCATION_GOVERNANCE_GROUPS_ENABLED=false
 LOCATION_GOVERNANCE_ELECTIONS_ENABLED=false
 LOCATION_GOVERNANCE_PROJECTS_ENABLED=false
+DEPLOYMENT_CONSOLE_ENABLED=false
 ```
 
-If the variables do not yet exist in Production `.env`, omission/default-false must be verified from the deployed configuration before proceeding.
+If the Location/Governance variables do not yet exist in Production `.env`, omission/default-false must be verified from the deployed configuration before proceeding. The deployment console must remain explicitly disabled until the backup/preflight checkpoint has been accepted.
 
 ## D. Deploy preparation code only
 
 The existing repository deploy workflow uploads Production files from `main` via FTPS after its safety gates. Do not merge/deploy a moving branch accidentally. The release must identify the exact approved commit.
 
-The temporary deployment console is disabled by default. After the approved code is deployed, configure only these temporary values through the cPanel environment/.env editor:
+The FTP workflow does **not** run Production Artisan migrations, bootstrap, reference imports, topology imports, policy activation, cache clears, or feature-flag changes. `.env` is excluded from the FTP sync.
+
+After the approved code is deployed, do not enable the temporary deployment console until Section B is complete and the owner has accepted the preflight checkpoint.
+
+### D1. Check Laravel configuration cache before changing `.env`
+
+The deployment console and Location/Governance switches are read through Laravel configuration. If `bootstrap/cache/config.php` exists, an older cached configuration can cause later `.env` edits to appear ineffective.
+
+Using cPanel File Manager, inspect whether this file exists:
+
+```text
+bootstrap/cache/config.php
+```
+
+Record:
+
+```text
+CONFIG_CACHE_PRESENT=yes|no
+CONFIG_CACHE_ACTION=none|removed-through-cpanel-file-manager
+```
+
+If it exists, remove **only that generated cache file** through cPanel File Manager before relying on new `.env` values. Do not delete the `bootstrap/cache` directory and do not delete unrelated cache files as a substitute for understanding the state. If the file cannot be safely inspected/removed, STOP and do not assume changed environment values are active.
+
+After the backup/preflight checkpoint is accepted, configure only these temporary values through the cPanel environment/.env editor:
 
 ```text
 DEPLOYMENT_CONSOLE_ENABLED=true
@@ -77,17 +101,17 @@ Then sign in as the founder/admin and open:
 /admin/deployment-console
 ```
 
-The console must show that Location/Governance rollout flags are still OFF.
+The console must show that all five Location/Governance rollout flags are still OFF. If the console remains unavailable after an intentional enablement, STOP and re-check configuration-cache state rather than changing unrelated files.
 
 ## E. Inspect migration status in the browser console
 
 Run the fixed `migration status` operation from the deployment console. It maps only to Laravel `migrate:status` and does not write to the database.
 
-Review the pending migration list before any write. Unexpected or unrelated pending migrations are a STOP condition until reviewed.
+Review the pending migration list before any write. Unexpected or unrelated pending migrations are a STOP condition until reviewed. The canonical UI release requires, among its additive migrations, `2026_09_13_000001_create_pending_residence_intents_table`.
 
 ## F. Apply additive migrations only
 
-After the pending list is accepted, use the console's fixed `migrate` operation and enter the exact secondary confirmation phrase:
+After the pending list is accepted and the exact write has explicit approval, use the console's fixed `migrate` operation and enter the exact secondary confirmation phrase:
 
 ```text
 MIGRATE
@@ -117,7 +141,9 @@ The server-side mapping is only:
 php artisan db:seed --class=LocationGovernanceBootstrapSeeder --force
 ```
 
-This idempotent bootstrap creates canonical schema/type/dimension/policy metadata. It is not the real geography dataset and it does not create Governance Areas or Location-to-Governance mappings. Existing users do not need canonical Primary Residence rows at this point.
+This idempotent bootstrap creates canonical schema/type/dimension/policy metadata. It is not the real geography dataset and it does not create Governance Areas or Location-to-Governance mappings. Its group-creation defaults are deliberately conservative/on-demand; Stage C automatic group policies are activated separately in Section K.
+
+Existing users do not need canonical Primary Residence rows at this point.
 
 ## H. Iran reference geography dry-run
 
@@ -143,7 +169,7 @@ STOP if conflicts are unresolved or counts look unexpectedly destructive.
 
 ## I. Apply reference geography only after accepted dry-run
 
-If the dry-run is accepted, use the fixed reference apply action with exact confirmation phrase:
+If the dry-run is accepted and the exact write has explicit approval, use the fixed reference apply action with exact confirmation phrase:
 
 ```text
 APPLY-IR
@@ -164,7 +190,14 @@ source=earthcoop-reference
 dataset_version=v1
 ```
 
-Re-run `reference_dry_run` after apply and require an idempotent result before continuing.
+Re-run `reference_dry_run` after apply and require an idempotent result before continuing:
+
+```text
+create=0
+update=0
+deactivate=0
+conflict=0
+```
 
 ## J. Apply explicit Governance topology
 
@@ -178,7 +211,7 @@ php artisan location-governance:reference-topology IR --dataset-version=v1 --dry
 
 Review `create`, `update`, `conflict`, and `unchanged`. Any conflict is a STOP condition.
 
-After the dry-run is accepted, use the fixed `topology_apply` operation with exact confirmation phrase:
+After the dry-run is accepted and the exact write has explicit approval, use the fixed `topology_apply` operation with exact confirmation phrase:
 
 ```text
 APPLY-GOV-IR
@@ -202,7 +235,27 @@ conflict=0
 
 with the expected reference areas reported as unchanged.
 
-## K. Run read-only readiness
+## K. Activate reviewed Stage C canonical group policies
+
+Bootstrap intentionally leaves the five systemic membership dimensions in `on_demand` mode. Before readiness can pass for the reviewed Stage C package, apply the dedicated idempotent policy transition.
+
+Use the fixed `stage_c_group_policy_apply` operation with the exact confirmation phrase:
+
+```text
+APPLY-GROUP-POLICY
+```
+
+The server-side mapping is only:
+
+```bash
+php artisan db:seed --class=StageCCanonicalGroupPolicySeeder --force
+```
+
+This write changes the reviewed default policies for `public`, `profession`, `specialty`, `age`, and `gender` to canonical automatic materialization and sets the default Governance capability to `group_creation_mode=automatic`. It does **not** enable `LOCATION_GOVERNANCE_GROUPS_ENABLED`; all rollout flags must still remain OFF at this preparation stage.
+
+Any incomplete-policy or missing-capability error is a STOP condition. Do not manually edit policy rows to force readiness.
+
+## L. Run read-only readiness
 
 Configure the approved release evidence in Production only after the final approved release candidate is known:
 
@@ -215,29 +268,43 @@ LOCATION_GOVERNANCE_TARGET_DATASET_SOURCE=earthcoop-reference
 LOCATION_GOVERNANCE_TARGET_DATASET_VERSION=v1
 ```
 
+If `.env` is edited for this evidence, re-check Section D1 so Laravel is not still serving an older cached configuration.
+
 Use the console's fixed `readiness` operation. Its server-side mapping is only:
 
 ```bash
 php artisan location-governance:readiness
 ```
 
-Fresh Canonical Start explicitly permits zero existing-user canonical residence mappings here. Missing user mappings alone are not a failure. Canonical Governance mappings for the approved reference topology are required.
+Fresh Canonical Start explicitly permits zero existing-user canonical residence mappings here. Missing user mappings alone are not a failure.
+
+Current readiness is fail-closed and requires at least:
+
+- all required additive Location/Governance migrations, including `pending_residence_intents`;
+- active target schema and successful conflict-free reference geography import;
+- the reviewed versioned Governance topology to be fully applied and idempotent (`create=0`, `update=0`, `conflict=0` on its diff);
+- Stage C automatic group policies for all five systemic dimensions;
+- valid rollout flag types and no fatal proposal conflicts;
+- immutable validation SHA format and non-empty approved UAT/Full Validation evidence.
 
 `NOT READY` is a STOP condition.
 
-## L. Disable the temporary console and HARD STOP
+## M. Disable the temporary console and HARD STOP
 
 At this point report:
 
 ```text
 DEPLOYED_SHA=
 BACKUP_ID=
+CONFIG_CACHE_PRESENT=
+CONFIG_CACHE_ACTION=
 MIGRATIONS=PASS|FAIL
 BOOTSTRAP=PASS|FAIL
 REFERENCE_DRY_RUN=PASS|FAIL
 REFERENCE_APPLY=PASS|FAIL
 TOPOLOGY_DRY_RUN=PASS|FAIL
 TOPOLOGY_APPLY=PASS|FAIL
+STAGE_C_GROUP_POLICY_APPLY=PASS|FAIL
 READINESS=READY|NOT_READY
 CURRENT_FLAGS=
 ```
@@ -248,18 +315,24 @@ Then set:
 DEPLOYMENT_CONSOLE_ENABLED=false
 ```
 
+If Laravel configuration caching is in use, verify that the disabled value is actually active before considering the temporary surface closed.
+
 Do **not** enable any canonical runtime flag yet. The deployment console intentionally provides no flag-mutation action.
 
 A separate explicit owner approval is required before Stage A (`LOCATION_GOVERNANCE_RUNTIME_ENABLED=true`) and the staged activation sequence described in `PRODUCTION_CUTOVER_RUNBOOK.md`.
 
 This is a mandatory **HARD STOP**.
 
-## M. Existing users after later activation
+## N. Existing users and My Groups after later activation
 
 Under Fresh Canonical Start:
 
 - existing users may be prompted to establish/correct canonical Primary Residence through profile;
 - no mass legacy-address conversion is required before launch;
 - new registrations use canonical location selection after the registration/profile stage is enabled;
-- legacy geography remains intact through C13;
+- legacy geography and legacy group-membership records remain intact through C13 as rollback/history scaffolding;
+- while `LOCATION_GOVERNANCE_GROUPS_ENABLED=false`, `/groups` intentionally remains on its mature legacy path and can display legacy spatial memberships alongside canonical rows that were materialized during controlled testing;
+- once Stage C groups are explicitly enabled, `/groups` must resolve from the current canonical Primary Residence and display only the current canonical systemic geography chain; stale canonical memberships are inactive and legacy spatial groups must not leak into the canonical list;
+- for a test user moved from Tehran/Sohanak to the Sari reference neighborhood, the Stage C smoke check must confirm that the active canonical path follows the reviewed Sari governance ancestry and does not retain the former Tehran/Sohanak branch in the canonical My Groups list;
+- no legacy membership should be deleted merely to make this smoke check pass;
 - C14 retirement remains a separate audit and approval.
