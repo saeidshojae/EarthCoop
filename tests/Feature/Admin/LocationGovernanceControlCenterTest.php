@@ -84,6 +84,30 @@ class LocationGovernanceControlCenterTest extends TestCase
         $this->assertSame(LocationProposalStatus::Pending, $proposal->fresh()->status);
     }
 
+    public function test_proposal_queue_filters_open_status_and_shows_latest_audit_context(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $schema = LocationFixture::iranSchema();
+        [$needsEvidence] = $this->makeProposal('پیشنهاد نیازمند مدرک', $schema);
+        [$pending] = $this->makeProposal('پیشنهاد هنوز در انتظار', $schema);
+
+        app(LocationProposalService::class)->requestMoreEvidence(
+            $needsEvidence,
+            $admin,
+            'مدرک سکونت تکمیلی برای بازبینی لازم است.',
+        );
+
+        $response = $this->actingAs($admin)->get('/admin/location-governance?proposal_status=needs_evidence');
+
+        $response->assertOk();
+        $response->assertViewHas('proposalStatusFilter', LocationProposalStatus::NeedsEvidence->value);
+        $response->assertSee('name="proposal_status"', false);
+        $response->assertSee('پیشنهاد نیازمند مدرک');
+        $response->assertSee('مدرک سکونت تکمیلی برای بازبینی لازم است.');
+        $response->assertDontSee('پیشنهاد هنوز در انتظار');
+        $this->assertSame(LocationProposalStatus::Pending, $pending->fresh()->status);
+    }
+
     public function test_control_center_is_composed_from_the_six_focused_operational_partials(): void
     {
         $index = file_get_contents(resource_path('views/admin/location-governance/index.blade.php'));
