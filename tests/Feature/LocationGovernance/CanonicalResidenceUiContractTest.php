@@ -58,6 +58,19 @@ class CanonicalResidenceUiContractTest extends TestCase
     }
 
     #[Test]
+    public function registration_picker_does_not_force_iran_and_can_start_from_global_country_roots(): void
+    {
+        $registration = file_get_contents(resource_path('views/auth/register_step3_canonical.blade.php'));
+        $selector = file_get_contents(resource_path('js/location-selector.js'));
+
+        $this->assertIsString($registration);
+        $this->assertIsString($selector);
+        $this->assertStringNotContainsString('data-country-code="IR"', $registration);
+        $this->assertStringNotContainsString("|| 'IR'", $selector);
+        $this->assertStringContainsString('/location/options/root', $selector);
+    }
+
+    #[Test]
     public function canonical_profile_edit_does_not_require_a_legacy_address_to_render(): void
     {
         $controllerPath = app_path('Http/Controllers/LocationGovernance/ProfileEditController.php');
