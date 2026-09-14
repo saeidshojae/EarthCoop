@@ -97,6 +97,15 @@ Release-readiness audit completed on `ddc2e2c8d3e06bd2196668767faa635a984fc34e`:
 - No destructive Production operation has been performed.
 - PR #112 remains Draft and unmerged.
 
+## Post-cutover UI/UAT and mobile-polish gate — REQUIRED before Location/Governance rollout is considered fully closed
+
+- Re-verify every Location/Governance UI synchronization against real Production behavior after the backend cutover, not only against automated tests.
+- Explicitly exercise registration, profile residence editing, admin residence editing, My Location & Governance, My Groups, Current Elections, election portal, proposal states, Community UX, and admin Location/Governance control-center flows with canonical Production data.
+- Verify that every UI reads the same canonical Location/Governance/membership/election state as its backend contract and that no legacy spatial row leaks into a canonical screen.
+- Perform a dedicated responsive/mobile UAT pass after functional rollout stability: phone-width navigation, cards/tables, hierarchy rendering, forms/selectors, dialogs, touch targets, overflow, RTL, loading/error/empty/stale states, and Hoda widget coexistence.
+- Polish mobile layouts where desktop-first markup is merely technically responsive but not comfortably usable.
+- Do not close the Location/Governance UI workstream until this real-Production synchronization pass and mobile-specific polish pass have explicit evidence/checkpoints.
+
 ## Safety invariants locked
 - `Location != GovernanceArea != Group`.
 - Pending Location Proposal is never a canonical Location FK and never automatically creates formal governance.
