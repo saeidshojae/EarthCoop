@@ -31,12 +31,12 @@
                 <div
                     data-location-selector
                     data-location-selector-context="registration"
-                    data-country-code="IR"
                     data-empty-label="یک گزینه را انتخاب کنید"
                     data-loading-label="در حال دریافت گزینه‌های مکانی..."
                     data-error-label="دریافت گزینه‌های مکانی ممکن نشد. دوباره تلاش کنید."
                 >
                     <input type="hidden" name="location_id" value="{{ old('location_id') }}" data-location-id>
+                    <input type="hidden" name="location_proposal_id" value="{{ old('location_proposal_id') }}" data-location-proposal-id>
                     <div class="d-flex flex-wrap align-items-center gap-2 mb-3" data-location-geolocation>
                         <button type="button" class="btn btn-outline-primary btn-sm" data-location-geolocation-detect>تشخیص موقعیت من</button>
                         <button type="button" class="btn btn-outline-secondary btn-sm" data-location-geolocation-manual>انتخاب دستی</button>

@@ -29,6 +29,8 @@ class CanonicalResidenceUiContractTest extends TestCase
         foreach ([$registration, $profile] as $view) {
             $this->assertStringContainsString('data-location-selector', $view);
             $this->assertStringContainsString('name="location_id"', $view);
+            $this->assertStringContainsString('name="location_proposal_id"', $view);
+            $this->assertStringContainsString('data-location-proposal-id', $view);
         }
 
         $this->assertStringContainsString('data-location-selector-context="registration"', $registration);
@@ -36,7 +38,7 @@ class CanonicalResidenceUiContractTest extends TestCase
     }
 
     #[Test]
-    public function shared_selector_consumes_only_the_schema_driven_location_api_and_endpoint_metadata(): void
+    public function shared_selector_consumes_schema_driven_picker_contract_and_proposal_endpoint(): void
     {
         $selectorPath = resource_path('js/location-selector.js');
         $this->assertFileExists($selectorPath);
@@ -46,10 +48,26 @@ class CanonicalResidenceUiContractTest extends TestCase
 
         $this->assertStringContainsString('/location/options/root', $selector);
         $this->assertStringContainsString('/children', $selector);
+        $this->assertStringContainsString('/locations/proposals', $selector);
         $this->assertStringContainsString('is_residence_endpoint', $selector);
+        $this->assertStringContainsString('allowed_types', $selector);
         $this->assertStringContainsString('location_id', $selector);
+        $this->assertStringContainsString('location_proposal_id', $selector);
         $this->assertStringNotContainsString('/api/locations?level=', $selector);
         $this->assertStringContainsString('location-selector.js', $app);
+    }
+
+    #[Test]
+    public function registration_picker_does_not_force_iran_and_can_start_from_global_country_roots(): void
+    {
+        $registration = file_get_contents(resource_path('views/auth/register_step3_canonical.blade.php'));
+        $selector = file_get_contents(resource_path('js/location-selector.js'));
+
+        $this->assertIsString($registration);
+        $this->assertIsString($selector);
+        $this->assertStringNotContainsString('data-country-code="IR"', $registration);
+        $this->assertStringNotContainsString("|| 'IR'", $selector);
+        $this->assertStringContainsString('/location/options/root', $selector);
     }
 
     #[Test]

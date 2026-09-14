@@ -3,10 +3,14 @@
 namespace Tests\Feature\Admin;
 
 use App\Enums\LocationGovernance\LocationProposalStatus;
+use App\Models\GovernanceArea;
 use App\Models\Location;
+use App\Models\LocationSchema;
 use App\Models\User;
+use App\Services\LocationGovernance\CommunityAreaService;
 use App\Services\LocationGovernance\LocationProposalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\Support\LocationGovernance\LocationFixture;
 use Tests\TestCase;
 
@@ -80,10 +84,126 @@ class LocationGovernanceControlCenterTest extends TestCase
         $this->assertSame(LocationProposalStatus::Pending, $proposal->fresh()->status);
     }
 
-    /** @return array{0: \App\Models\LocationProposal, 1: Location} */
-    private function makeProposal(string $name): array
+    public function test_proposal_queue_filters_open_status_and_shows_latest_audit_context(): void
     {
+        $admin = User::factory()->create(['is_admin' => true]);
         $schema = LocationFixture::iranSchema();
+        [$needsEvidence] = $this->makeProposal('پیشنهاد نیازمند مدرک', $schema);
+        [$pending] = $this->makeProposal('پیشنهاد هنوز در انتظار', $schema);
+
+        app(LocationProposalService::class)->requestMoreEvidence(
+            $needsEvidence,
+            $admin,
+            'مدرک سکونت تکمیلی برای بازبینی لازم است.',
+        );
+
+        $response = $this->actingAs($admin)->get('/admin/location-governance?proposal_status=needs_evidence');
+
+        $response->assertOk();
+        $response->assertViewHas('proposalStatusFilter', LocationProposalStatus::NeedsEvidence->value);
+        $response->assertSee('name="proposal_status"', false);
+        $response->assertSee('پیشنهاد نیازمند مدرک');
+        $response->assertSee('مدرک سکونت تکمیلی برای بازبینی لازم است.');
+        $response->assertDontSee('پیشنهاد هنوز در انتظار');
+        $this->assertSame(LocationProposalStatus::Pending, $pending->fresh()->status);
+    }
+
+    public function test_control_center_is_composed_from_the_six_focused_operational_partials(): void
+    {
+        $index = file_get_contents(resource_path('views/admin/location-governance/index.blade.php'));
+
+        $this->assertIsString($index);
+
+        foreach ([
+            'proposal-queue',
+            'reference-explorer',
+            'governance-topology',
+            'community-overview',
+            'import-diagnostics',
+            'health-diagnostics',
+        ] as $partial) {
+            $this->assertFileExists(resource_path("views/admin/location-governance/partials/{$partial}.blade.php"));
+            $this->assertStringContainsString(
+                "@include('admin.location-governance.partials.{$partial}')",
+                $index,
+            );
+        }
+    }
+
+    public function test_control_center_exposes_bounded_reference_topology_community_import_and_health_read_models(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $schema = LocationFixture::iranSchema();
+        $path = LocationFixture::createPath($schema, [
+            'country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood', 'street', 'complex',
+        ]);
+        $neighborhood = $path->firstWhere('level', 'neighborhood');
+        $complex = $path->last();
+
+        $official = GovernanceArea::factory()->official()->create([
+            'key' => 'task10-official-'.$neighborhood->id,
+            'country_code' => 'IR',
+            'governance_type' => 'local',
+            'canonical_name' => 'حوزه رسمی تست کنترل',
+        ]);
+        $official->locations()->attach($neighborhood->id);
+
+        $community = app(CommunityAreaService::class)->createFor($complex, $admin);
+        $this->makeProposal('پیشنهاد سلامت کنترل', $schema);
+
+        DB::table('location_import_runs')->insert([
+            'country_code' => 'IR',
+            'source' => 'task10-test',
+            'dataset_version' => 'v1',
+            'mode' => 'dry-run',
+            'status' => 'completed',
+            'creates' => 3,
+            'updates' => 2,
+            'deactivates' => 1,
+            'conflicts' => 4,
+            'unchanged' => 5,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/location-governance');
+
+        $response->assertOk();
+        $response->assertViewHas('referenceLocations', fn ($locations) => $locations->contains('id', $complex->id));
+        $response->assertViewHas('officialTopology', fn ($areas) => $areas->contains('id', $official->id));
+        $response->assertViewHas('communityAreas', fn ($areas) => $areas->contains('id', $community->id));
+        $response->assertViewHas('healthDiagnostics', function ($diagnostics): bool {
+            return is_array($diagnostics)
+                && array_key_exists('open_proposals', $diagnostics)
+                && array_key_exists('above_threshold_proposals', $diagnostics)
+                && array_key_exists('pending_residence_intents', $diagnostics)
+                && array_key_exists('invalid_pending_residence_intents', $diagnostics)
+                && array_key_exists('locations_missing_schema_or_type', $diagnostics)
+                && array_key_exists('official_areas_without_location_mapping', $diagnostics);
+        });
+
+        foreach ([
+            'data-proposal-queue',
+            'data-reference-explorer',
+            'data-governance-topology',
+            'data-community-overview',
+            'data-import-diagnostics',
+            'data-health-diagnostics',
+        ] as $marker) {
+            $response->assertSee($marker, false);
+        }
+
+        $response->assertSee('حوزه رسمی تست کنترل');
+        $response->assertSee($community->canonical_name);
+        $response->assertSee('task10-test');
+        $response->assertSee('تعارض');
+        $response->assertSee('4');
+    }
+
+    /** @return array{0: \App\Models\LocationProposal, 1: Location} */
+    private function makeProposal(string $name, ?LocationSchema $schema = null): array
+    {
+        $schema ??= LocationFixture::iranSchema();
         $parent = LocationFixture::createPath($schema, [
             'country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood', 'street',
         ])->last();

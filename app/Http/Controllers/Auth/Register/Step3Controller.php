@@ -2,22 +2,26 @@
 
 namespace App\Http\Controllers\Auth\Register;
 
+use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\Alley;
 use App\Models\Continent;
 use App\Models\Country;
 use App\Models\Location;
+use App\Models\LocationProposal;
 use App\Models\Neighborhood;
 use App\Models\Province;
 use App\Models\Region;
 use App\Models\Street;
 use App\Models\Village;
 use App\Services\GroupService;
+use App\Services\LocationGovernance\LocationProposalPolicy;
 use App\Services\LocationGovernance\LocationTreeResolver;
 use App\Services\LocationGovernance\ResidenceService;
 use App\Services\ProfileCompletionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class Step3Controller extends Controller
@@ -51,6 +55,7 @@ class Step3Controller extends Controller
         Request $request,
         LocationTreeResolver $locationTreeResolver,
         ResidenceService $residenceService,
+        LocationProposalPolicy $proposalPolicy,
     ) {
         $user = auth()->user();
         if (! $user) {
@@ -59,24 +64,91 @@ class Step3Controller extends Controller
 
         if ((bool) config('location-governance.registration_enabled')) {
             $validated = $request->validate([
-                'location_id' => 'required|integer|exists:locations,id',
+                'location_id' => ['nullable', 'integer', 'exists:locations,id'],
+                'location_proposal_id' => ['nullable', 'integer', 'exists:location_proposals,id'],
             ]);
 
-            $location = Location::query()->findOrFail($validated['location_id']);
+            $locationId = $validated['location_id'] ?? null;
+            $proposalId = $validated['location_proposal_id'] ?? null;
 
-            if ($location->status !== 'active' || ! $locationTreeResolver->residenceEndpointAllowed($location)) {
+            if (($locationId === null) === ($proposalId === null)) {
                 throw ValidationException::withMessages([
-                    'location_id' => 'لطفاً یک محل سکونت معتبر و قابل انتخاب را مشخص کنید.',
+                    'location_id' => 'لطفاً دقیقاً یک محل تأییدشده یا یک پیشنهاد مکان در انتظار بررسی را انتخاب کنید.',
                 ]);
             }
 
-            $residenceService->setInitialPrimaryResidence($user, $location, [
-                'source' => 'registration_step3',
-            ]);
+            if ($locationId !== null) {
+                $location = Location::query()->findOrFail($locationId);
+
+                if ($location->status !== 'active' || ! $locationTreeResolver->residenceEndpointAllowed($location)) {
+                    throw ValidationException::withMessages([
+                        'location_id' => 'لطفاً یک محل سکونت معتبر و قابل انتخاب را مشخص کنید.',
+                    ]);
+                }
+
+                $residenceService->setInitialPrimaryResidence($user, $location, [
+                    'source' => 'registration_step3',
+                ]);
+
+                app(ProfileCompletionService::class)->maybeAward($user->fresh());
+
+                return redirect()->route('home')->with('success', 'تبریک میگوییم، محل سکونت اصلی شما ثبت شد و ثبت نام شما تکمیل شد.');
+            }
+
+            DB::transaction(function () use (
+                $user,
+                $proposalId,
+                $locationTreeResolver,
+                $residenceService,
+                $proposalPolicy,
+            ): void {
+                $proposal = LocationProposal::query()
+                    ->with(['parentLocation', 'type'])
+                    ->whereKey($proposalId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($proposal === null || ! in_array($proposal->status, [
+                    LocationProposalStatus::Pending,
+                    LocationProposalStatus::ReadyForReview,
+                    LocationProposalStatus::NeedsEvidence,
+                ], true)) {
+                    throw ValidationException::withMessages([
+                        'location_proposal_id' => 'این پیشنهاد مکان دیگر در وضعیت قابل انتخاب نیست.',
+                    ]);
+                }
+
+                $anchor = $proposal->parentLocation;
+                $type = $proposal->type;
+
+                if (
+                    $anchor === null
+                    || $type === null
+                    || $anchor->status !== 'active'
+                    || ! $locationTreeResolver->residenceEndpointAllowed($anchor)
+                    || ! $proposalPolicy->allows($anchor, $type)
+                ) {
+                    throw ValidationException::withMessages([
+                        'location_proposal_id' => 'پیشنهاد مکان انتخاب‌شده با مسیر معتبر محل سکونت سازگار نیست.',
+                    ]);
+                }
+
+                $residenceService->setInitialPrimaryResidence($user, $anchor, [
+                    'source' => 'registration_step3_pending_anchor',
+                    'location_proposal_id' => $proposal->id,
+                ]);
+
+                $residenceService->setPendingResidenceIntent($user, $proposal, [
+                    'source' => 'registration_step3',
+                ]);
+            });
 
             app(ProfileCompletionService::class)->maybeAward($user->fresh());
 
-            return redirect()->route('home')->with('success', 'تبریک میگوییم، محل سکونت اصلی شما ثبت شد و ثبت نام شما تکمیل شد.');
+            return redirect()->route('home')->with(
+                'success',
+                'ثبت نام شما تکمیل شد. محل دقیق انتخابی شما در انتظار بررسی است و تا زمان تأیید، حوزه رسمی شما بر اساس نزدیک‌ترین مکان تأییدشده محاسبه می‌شود.'
+            );
         }
 
         $validated = $request->validate([

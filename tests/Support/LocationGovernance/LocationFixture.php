@@ -43,10 +43,15 @@ final class LocationFixture
             ])];
         });
 
+        $crowdsourcableTypes = collect(['street', 'alley', 'complex', 'building']);
+
         foreach ($types as $key => $type) {
             $schema->types()->attach($type->id, [
                 'is_root' => $key === 'country',
                 'is_residence_endpoint' => (bool) $type->is_residence_endpoint,
+                'metadata' => json_encode([
+                    'crowdsourced_proposal_allowed' => $crowdsourcableTypes->contains($key),
+                ], JSON_UNESCAPED_UNICODE),
             ]);
         }
 
