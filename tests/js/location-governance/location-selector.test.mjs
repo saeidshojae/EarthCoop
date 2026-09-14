@@ -116,3 +116,32 @@ test('proposal network failure path preserves the typed draft and prior valid se
     assert.doesNotMatch(catchMatch[1], /nameInput\.value\s*=\s*['"]/);
     assert.doesNotMatch(catchMatch[1], /clearSelection\s*\(/);
 });
+
+test('alternate schema branches remain server driven and never hard-code Iran micro-location order', () => {
+    const payload = normalizePickerPayload({
+        data: [
+            { id: 70, identity: 'location:70', type_key: 'building', label: 'Building endpoint', status: 'active', is_residence_endpoint: true },
+        ],
+        proposals: [],
+        allowed_types: [
+            { id: 71, key: 'campus', label: 'Campus', proposal_allowed: false },
+        ],
+    });
+
+    assert.equal(shouldRenderNextLevel(payload), true);
+    assert.deepEqual(payload.locations.map((item) => item.type_key), ['building']);
+    assert.deepEqual(payload.allowedTypes.map((type) => type.key), ['campus']);
+
+    const source = readFileSync(new URL('../../../resources/js/location-selector.js', import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /street\s*[-=>]+\s*alley|alley\s*[-=>]+\s*complex/i);
+});
+
+test('empty and stale states are explicit rather than silently clearing a valid form state', () => {
+    const source = readFileSync(new URL('../../../resources/js/location-selector.js', import.meta.url), 'utf8');
+
+    assert.match(source, /['"]loading['"]/);
+    assert.match(source, /['"]empty['"]/);
+    assert.match(source, /['"]error['"]/);
+    assert.match(source, /['"]stale['"]/);
+    assert.match(source, /aria-live/);
+});
