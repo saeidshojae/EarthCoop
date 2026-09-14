@@ -26,6 +26,21 @@ class ProductionReadinessHardeningTest extends TestCase
             ->assertExitCode(1);
     }
 
+    public function test_readiness_requires_stage_e_project_target_location_migration(): void
+    {
+        $this->seed(LocationGovernanceBootstrapSeeder::class);
+
+        DB::table('migrations')
+            ->where('migration', '2026_09_14_000001_add_target_location_to_najm_bahar_projects')
+            ->delete();
+
+        $this->setReleaseEvidence();
+
+        $this->artisan('location-governance:readiness')
+            ->expectsOutputToContain('[FAIL] required migrations')
+            ->assertExitCode(1);
+    }
+
     public function test_readiness_fails_when_reviewed_reference_governance_topology_is_not_applied(): void
     {
         $this->seed(LocationGovernanceBootstrapSeeder::class);
