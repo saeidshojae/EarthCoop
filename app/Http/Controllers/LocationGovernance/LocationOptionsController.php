@@ -20,21 +20,15 @@ final class LocationOptionsController extends Controller
         $this->assertRuntimeEnabled();
 
         $countryCode = strtoupper(trim((string) $request->query('country', '')));
-        if ($countryCode === '') {
-            return response()->json([
-                'data' => [],
-                'proposals' => [],
-                'allowed_types' => [],
-            ]);
-        }
 
         $locations = Location::query()
             ->with(['type', 'schema'])
             ->whereNull('parent_id')
-            ->where('country_code', $countryCode)
             ->where('status', 'active')
             ->whereNotNull('location_schema_id')
             ->whereNotNull('location_type_id')
+            ->whereHas('schema', fn ($query) => $query->where('status', 'active'))
+            ->when($countryCode !== '', fn ($query) => $query->where('country_code', $countryCode))
             ->whereExists(function ($query) {
                 $query->selectRaw('1')
                     ->from('location_schema_types')

@@ -30,6 +30,12 @@ class LocationProposalController extends Controller
         $parent = Location::query()->findOrFail($validated['parent_location_id']);
         $type = LocationType::query()->findOrFail($validated['location_type_id']);
 
+        if ($parent->status !== 'active') {
+            throw ValidationException::withMessages([
+                'parent_location_id' => 'The selected parent location is not active.',
+            ]);
+        }
+
         if (! $type->schemas()->where('location_schemas.id', $parent->location_schema_id)->exists()) {
             throw ValidationException::withMessages([
                 'location_type_id' => 'The selected location type is not valid for the parent location schema.',

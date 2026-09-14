@@ -2,9 +2,21 @@ const selectors = typeof document !== 'undefined'
     ? Array.from(document.querySelectorAll('[data-location-selector]'))
     : [];
 
+const OPEN_PROPOSAL_STATUSES = new Set(['pending', 'ready_for_review', 'needs_evidence']);
+const PICKER_STATES = Object.freeze({
+    loading: 'loading',
+    empty: 'empty',
+    error: 'error',
+    stale: 'stale',
+    ready: 'ready',
+});
+
+const isActiveLocation = (item) => item?.status === undefined || item?.status === null || item?.status === 'active';
+const isOpenProposal = (item) => OPEN_PROPOSAL_STATUSES.has(String(item?.status || '')) && item?.selectable !== false;
+
 const normalizePickerPayload = (payload) => ({
-    locations: Array.isArray(payload?.data) ? payload.data : [],
-    proposals: Array.isArray(payload?.proposals) ? payload.proposals : [],
+    locations: (Array.isArray(payload?.data) ? payload.data : []).filter(isActiveLocation),
+    proposals: (Array.isArray(payload?.proposals) ? payload.proposals : []).filter(isOpenProposal),
     allowedTypes: Array.isArray(payload?.allowed_types) ? payload.allowed_types : [],
 });
 
@@ -12,10 +24,12 @@ const selectionValues = (item) => {
     const identity = String(item?.identity || '');
 
     if (identity.startsWith('proposal:')) {
+        if (!isOpenProposal(item)) return { locationId: '', proposalId: '' };
         return { locationId: '', proposalId: String(item?.id || identity.slice('proposal:'.length)) };
     }
 
     if (identity.startsWith('location:') || item?.id) {
+        if (!isActiveLocation(item)) return { locationId: '', proposalId: '' };
         return { locationId: String(item?.id || identity.slice('location:'.length)), proposalId: '' };
     }
 
@@ -40,10 +54,17 @@ const buildSelect = (host, payload, depth) => {
     wrapper.dataset.locationDepth = String(depth);
     wrapper.className = 'vstack gap-2';
 
+    const label = document.createElement('label');
+    const selectId = `location-level-${depth}-${Math.random().toString(36).slice(2, 8)}`;
+    label.htmlFor = selectId;
+    label.className = 'form-label small text-secondary mb-0';
+    label.textContent = depth === 0 ? 'کشور یا حوزهٔ مکانی' : `سطح مکانی ${depth + 1}`;
+
     const select = document.createElement('select');
+    select.id = selectId;
     select.className = 'form-select';
     select.dataset.locationSelect = String(depth);
-    select.setAttribute('aria-label', `سطح مکانی ${depth + 1}`);
+    select.setAttribute('aria-label', label.textContent);
 
     const placeholder = document.createElement('option');
     placeholder.value = '';
@@ -63,7 +84,7 @@ const buildSelect = (host, payload, depth) => {
         select.appendChild(option);
     });
 
-    wrapper.appendChild(select);
+    wrapper.append(label, select);
     return { wrapper, select };
 };
 
@@ -85,6 +106,10 @@ const buildProposalPanel = (host, allowedTypes, parentLocationId, onCreated) => 
     panel.className = 'vstack gap-2 mt-3 d-none';
     panel.dataset.locationProposalPanel = '';
 
+    const typeLabel = document.createElement('label');
+    typeLabel.className = 'form-label small text-secondary mb-0';
+    typeLabel.textContent = 'نوع مکان پیشنهادی';
+
     const typeSelect = document.createElement('select');
     typeSelect.className = 'form-select form-select-sm';
     typeSelect.setAttribute('aria-label', 'نوع مکان پیشنهادی');
@@ -94,6 +119,10 @@ const buildProposalPanel = (host, allowedTypes, parentLocationId, onCreated) => 
         option.textContent = type.label || type.key;
         typeSelect.appendChild(option);
     });
+
+    const nameLabel = document.createElement('label');
+    nameLabel.className = 'form-label small text-secondary mb-0';
+    nameLabel.textContent = 'نام مکان';
 
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
@@ -120,7 +149,7 @@ const buildProposalPanel = (host, allowedTypes, parentLocationId, onCreated) => 
     feedback.setAttribute('aria-live', 'polite');
 
     actions.append(submit, cancel);
-    panel.append(typeSelect, nameInput, actions, feedback);
+    panel.append(typeLabel, typeSelect, nameLabel, nameInput, actions, feedback);
     shell.append(toggle, panel);
 
     toggle.addEventListener('click', () => {
@@ -169,9 +198,10 @@ const buildProposalPanel = (host, allowedTypes, parentLocationId, onCreated) => 
             const result = await response.json();
             await onCreated(result);
             panel.classList.add('d-none');
+            feedback.textContent = '';
         } catch (error) {
             console.warn('EarthCoop location proposal could not be created:', error);
-            feedback.textContent = 'ثبت پیشنهاد مکان ممکن نشد. دوباره تلاش کنید.';
+            feedback.textContent = 'ثبت پیشنهاد مکان ممکن نشد. متن شما حفظ شده است؛ دوباره تلاش کنید.';
             feedback.classList.add('text-danger');
         } finally {
             submit.disabled = false;
@@ -188,14 +218,21 @@ const initializeLocationSelector = async (host) => {
     const form = host.closest('[data-location-form]') || host.closest('form');
     const submit = form?.querySelector('[data-location-submit]');
     const status = host.querySelector('[data-location-status]');
-    const country = host.dataset.countryCode || 'IR';
+    const country = (host.dataset.countryCode || '').trim();
 
     if (!levels || !locationId || !proposalId) return;
 
-    const setStatus = (message, isError = false) => {
+    const setPickerState = (state, message, isError = false) => {
+        host.dataset.locationState = state;
+        host.setAttribute('aria-busy', state === PICKER_STATES.loading ? 'true' : 'false');
         if (!status) return;
         status.textContent = message;
         status.classList.toggle('text-danger', isError);
+        status.setAttribute('aria-live', isError ? 'assertive' : 'polite');
+    };
+
+    const setStatus = (message, isError = false) => {
+        setPickerState(isError ? PICKER_STATES.error : PICKER_STATES.ready, message, isError);
     };
 
     const clearSelection = () => {
@@ -208,6 +245,12 @@ const initializeLocationSelector = async (host) => {
         const values = selectionValues(item);
         locationId.value = values.locationId;
         proposalId.value = values.proposalId;
+
+        if (!values.locationId && !values.proposalId) {
+            if (submit) submit.disabled = true;
+            setPickerState(PICKER_STATES.stale, 'این گزینه دیگر معتبر نیست. لطفاً یک مکان فعال را انتخاب کنید.', true);
+            return;
+        }
 
         if (values.proposalId) {
             if (submit) submit.disabled = false;
@@ -226,7 +269,7 @@ const initializeLocationSelector = async (host) => {
     };
 
     const load = async (url) => {
-        setStatus(host.dataset.loadingLabel || 'در حال دریافت گزینه‌های مکانی...');
+        setPickerState(PICKER_STATES.loading, host.dataset.loadingLabel || 'در حال دریافت گزینه‌های مکانی...');
         const response = await fetch(url, {
             headers: { Accept: 'application/json' },
             credentials: 'same-origin',
@@ -242,7 +285,10 @@ const initializeLocationSelector = async (host) => {
     };
 
     const appendLevel = (payload, depth, parentLocationId = null) => {
-        if (!shouldRenderNextLevel(payload)) return;
+        if (!shouldRenderNextLevel(payload)) {
+            setPickerState(PICKER_STATES.empty, 'در این سطح گزینهٔ فعال دیگری ثبت نشده است.');
+            return;
+        }
 
         const { wrapper, select } = buildSelect(host, payload, depth);
         levels.appendChild(wrapper);
@@ -272,6 +318,8 @@ const initializeLocationSelector = async (host) => {
                         select.appendChild(option);
                     }
                     select.value = matched.identity;
+                } else {
+                    setPickerState(PICKER_STATES.stale, 'مکان ثبت‌شده در فهرست فعال این سطح دیده نشد؛ انتخاب قبلی شما حفظ شده است.', true);
                 }
             }
         };
@@ -290,36 +338,57 @@ const initializeLocationSelector = async (host) => {
 
             if (!selected) {
                 clearSelection();
+                setPickerState(PICKER_STATES.empty, 'یک گزینه را برای ادامه انتخاب کنید.');
                 return;
             }
 
             setSelection(selected);
             if (selected.picker_kind === 'proposal') return;
 
+            const previousLocationId = locationId.value;
+            const previousProposalId = proposalId.value;
+            const previousSubmitDisabled = submit?.disabled ?? true;
+
             try {
                 const children = await load(`/location/options/${encodeURIComponent(selected.id)}/children`);
                 if (shouldRenderNextLevel(children)) {
                     appendLevel(children, depth + 1, selected.id);
+                    setStatus('گزینه‌های سطح بعد آماده‌اند.');
                 } else {
                     setSelection(selected);
+                    if (!selected.is_residence_endpoint) {
+                        setPickerState(PICKER_STATES.empty, 'این شاخه فعلاً نقطهٔ معتبر دیگری برای سکونت ندارد.');
+                    }
                 }
             } catch (error) {
                 console.warn('EarthCoop location selector could not load children:', error);
-                setStatus(host.dataset.errorLabel || 'دریافت گزینه‌های مکانی ممکن نشد.', true);
+                locationId.value = previousLocationId;
+                proposalId.value = previousProposalId;
+                if (submit) submit.disabled = previousSubmitDisabled;
+                setPickerState(PICKER_STATES.stale, 'دریافت گزینه‌های جدید ممکن نشد؛ انتخاب معتبر فعلی شما حفظ شده است.', true);
             }
         });
     };
 
     clearSelection();
+    host.setAttribute('aria-live', 'polite');
 
     try {
-        const roots = await load(`/location/options/root?country=${encodeURIComponent(country)}`);
+        const rootUrl = country
+            ? `/location/options/root?country=${encodeURIComponent(country)}`
+            : '/location/options/root';
+        const roots = await load(rootUrl);
         appendLevel(roots, 0);
-        if (!roots.locations.length) setStatus('برای این کشور هنوز گزینهٔ مکانی فعالی ثبت نشده است.');
-        else setStatus('مسیر محل سکونت را مرحله‌به‌مرحله انتخاب کنید.');
+        if (!roots.locations.length && !roots.proposals.length) {
+            setPickerState(PICKER_STATES.empty, country
+                ? 'برای این کشور هنوز گزینهٔ مکانی فعالی ثبت نشده است.'
+                : 'هنوز گزینهٔ مکانی فعالی ثبت نشده است.');
+        } else {
+            setStatus('مسیر محل سکونت را مرحله‌به‌مرحله انتخاب کنید.');
+        }
     } catch (error) {
         console.warn('EarthCoop location selector could not load root options:', error);
-        setStatus(host.dataset.errorLabel || 'دریافت گزینه‌های مکانی ممکن نشد.', true);
+        setPickerState(PICKER_STATES.error, host.dataset.errorLabel || 'دریافت گزینه‌های مکانی ممکن نشد.', true);
     }
 };
 

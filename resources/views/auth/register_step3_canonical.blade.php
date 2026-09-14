@@ -31,7 +31,6 @@
                 <div
                     data-location-selector
                     data-location-selector-context="registration"
-                    data-country-code="IR"
                     data-empty-label="یک گزینه را انتخاب کنید"
                     data-loading-label="در حال دریافت گزینه‌های مکانی..."
                     data-error-label="دریافت گزینه‌های مکانی ممکن نشد. دوباره تلاش کنید."
