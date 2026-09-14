@@ -175,6 +175,14 @@ jobs:
           set -o pipefail
           php artisan test tests/Unit/LocationGovernance tests/Unit/Membership tests/Feature/LocationGovernance 2>&1 | tee regression-logs/location-governance.log
 
+      - name: Regression — Location / Governance JavaScript
+        id: regression_location_governance_js
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:location-governance 2>&1 | tee regression-logs/location-governance-js.log
+
       - name: Regression — Najm Bahar
         id: regression_najm_bahar
         if: ${{ !cancelled() }}
@@ -233,18 +241,20 @@ jobs:
           NAJM_HODA: ${{ steps.regression_najm_hoda.outcome }}
           GOVERNANCE: ${{ steps.regression_governance.outcome }}
           LOCATION_GOVERNANCE: ${{ steps.regression_location_governance.outcome }}
+          LOCATION_GOVERNANCE_JS: ${{ steps.regression_location_governance_js.outcome }}
           NAJM_BAHAR: ${{ steps.regression_najm_bahar.outcome }}
           STOCK: ${{ steps.regression_stock.outcome }}
           GROUP_CHAT_JS: ${{ steps.regression_group_chat_js.outcome }}
           FULL_PHPUNIT: ${{ steps.regression_full_phpunit.outcome }}
         run: |
-          printf '%-28s %s\n' \
+          printf '%-32s %s\n' \
             'Deployment Console' "$DEPLOYMENT_CONSOLE" \
             'Group Chat' "$GROUP_CHAT" \
             'Group Admin / Identity' "$GROUP_ADMIN_IDENTITY" \
             'Najm Hoda + n8n' "$NAJM_HODA" \
             'Governance' "$GOVERNANCE" \
             'Location / Governance' "$LOCATION_GOVERNANCE" \
+            'Location / Governance JS' "$LOCATION_GOVERNANCE_JS" \
             'Najm Bahar' "$NAJM_BAHAR" \
             'Stock' "$STOCK" \
             'Group Chat JavaScript' "$GROUP_CHAT_JS" \
@@ -257,6 +267,7 @@ jobs:
             "$NAJM_HODA" \
             "$GOVERNANCE" \
             "$LOCATION_GOVERNANCE" \
+            "$LOCATION_GOVERNANCE_JS" \
             "$NAJM_BAHAR" \
             "$STOCK" \
             "$GROUP_CHAT_JS" \
