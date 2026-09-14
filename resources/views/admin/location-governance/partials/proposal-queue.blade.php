@@ -1,11 +1,29 @@
 <section class="card border-0 shadow-sm mb-4" data-proposal-queue>
     <div class="card-header bg-transparent py-3">
-        <h2 class="h5 mb-1">پیشنهادهای در انتظار بررسی</h2>
-        <p class="small text-muted mb-0">آستانهٔ فعلی راستی‌آزمایی: {{ $verificationThreshold }} کاربر متمایز</p>
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div>
+                <h2 class="h5 mb-1">پیشنهادهای در انتظار بررسی</h2>
+                <p class="small text-muted mb-0">آستانهٔ فعلی راستی‌آزمایی: {{ $verificationThreshold }} کاربر متمایز</p>
+            </div>
+            <form method="GET" action="{{ route('admin.location-governance.index') }}" class="d-flex align-items-center gap-2">
+                <label for="proposal-status-filter" class="small text-muted mb-0">وضعیت</label>
+                <select id="proposal-status-filter" class="form-select form-select-sm" name="proposal_status" onchange="this.form.submit()">
+                    <option value="" @selected($proposalStatusFilter === null)>همهٔ بازها</option>
+                    <option value="pending" @selected($proposalStatusFilter === 'pending')>در انتظار</option>
+                    <option value="ready_for_review" @selected($proposalStatusFilter === 'ready_for_review')>آمادهٔ بازبینی</option>
+                    <option value="needs_evidence" @selected($proposalStatusFilter === 'needs_evidence')>نیازمند مدرک</option>
+                </select>
+                <noscript><button class="btn btn-sm btn-outline-secondary" type="submit">اعمال</button></noscript>
+            </form>
+        </div>
     </div>
     <div class="card-body">
         @forelse($proposals as $proposal)
-            @php($review = $hodaReviews->get($proposal->id, []))
+            @php
+                $review = $hodaReviews->get($proposal->id, []);
+                $auditEntries = collect($proposal->audit_log ?? []);
+                $latestAudit = $auditEntries->last();
+            @endphp
             <article class="border rounded-3 p-3 mb-3">
                 <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
                     <div>
@@ -18,6 +36,18 @@
                         <div class="small text-muted mt-1">
                             والد: {{ $proposal->parentLocation?->canonical_name ?: $proposal->parentLocation?->name ?: '—' }}
                         </div>
+                        @if(is_array($latestAudit))
+                            <div class="small mt-2" data-proposal-audit-context>
+                                <strong>آخرین سابقهٔ بازبینی:</strong>
+                                {{ $latestAudit['reason'] ?? '—' }}
+                                @if(!empty($latestAudit['actor_user_id']))
+                                    <span class="text-muted">· مدیر #{{ $latestAudit['actor_user_id'] }}</span>
+                                @endif
+                                @if(!empty($latestAudit['to']))
+                                    <span class="text-muted">· {{ $latestAudit['to'] }}</span>
+                                @endif
+                            </div>
+                        @endif
                     </div>
                     <div class="alert alert-warning mb-0 py-2 px-3">
                         <strong>پیشنهاد نجم هدا — نیازمند تایید انسانی:</strong>
