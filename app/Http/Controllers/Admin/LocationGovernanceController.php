@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\GovernanceArea;
 use App\Models\Location;
 use App\Models\LocationProposal;
+use App\Models\PendingResidenceIntent;
 use App\Services\LocationGovernance\LocationProposalService;
 use App\Services\NajmHoda\LocationGovernanceReviewService;
 use Illuminate\Http\JsonResponse;
@@ -19,14 +20,17 @@ class LocationGovernanceController extends Controller
 {
     public function index(LocationGovernanceReviewService $reviewService): View
     {
+        $openStatuses = [
+            LocationProposalStatus::Pending->value,
+            LocationProposalStatus::ReadyForReview->value,
+            LocationProposalStatus::NeedsEvidence->value,
+        ];
+        $verificationThreshold = max(1, (int) config('location-governance.location_proposal_verification_threshold', 10));
+
         $proposals = LocationProposal::query()
             ->with(['parentLocation', 'type', 'proposer'])
             ->withCount('evidence')
-            ->whereIn('status', [
-                LocationProposalStatus::Pending->value,
-                LocationProposalStatus::ReadyForReview->value,
-                LocationProposalStatus::NeedsEvidence->value,
-            ])
+            ->whereIn('status', $openStatuses)
             ->latest('id')
             ->limit(100)
             ->get();
@@ -36,10 +40,77 @@ class LocationGovernanceController extends Controller
                 $proposal->id => $reviewService->review($proposal),
             ]);
 
+        $referenceLocations = Location::query()
+            ->with(['parent', 'type'])
+            ->where('status', 'active')
+            ->orderBy('country_code')
+            ->orderBy('id')
+            ->limit(100)
+            ->get();
+
+        $officialTopology = GovernanceArea::query()
+            ->official()
+            ->with(['parent', 'locations'])
+            ->orderBy('rank')
+            ->orderBy('id')
+            ->limit(100)
+            ->get();
+
+        $communityAreas = GovernanceArea::query()
+            ->where('area_kind', 'community')
+            ->with(['parent', 'locations'])
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get();
+
         $importRuns = DB::table('location_import_runs')
             ->latest('id')
             ->limit(10)
             ->get();
+
+        $pendingIntentSample = PendingResidenceIntent::query()
+            ->where('status', 'pending')
+            ->with(['anchorRelationship', 'locationProposal'])
+            ->latest('id')
+            ->limit(1000)
+            ->get();
+
+        $healthDiagnostics = [
+            'open_proposals' => LocationProposal::query()->whereIn('status', $openStatuses)->count(),
+            'above_threshold_proposals' => LocationProposal::query()
+                ->whereIn('status', $openStatuses)
+                ->withCount('evidence')
+                ->get()
+                ->filter(fn (LocationProposal $proposal): bool => (int) $proposal->evidence_count >= $verificationThreshold)
+                ->count(),
+            'pending_residence_intents' => PendingResidenceIntent::query()->where('status', 'pending')->count(),
+            'invalid_pending_residence_intents' => $pendingIntentSample
+                ->filter(function (PendingResidenceIntent $intent) use ($openStatuses): bool {
+                    $anchor = $intent->anchorRelationship;
+                    $proposal = $intent->locationProposal;
+                    $proposalStatus = $proposal?->status instanceof LocationProposalStatus
+                        ? $proposal->status->value
+                        : $proposal?->status;
+
+                    return $anchor === null
+                        || $proposal === null
+                        || $anchor->relationship_type !== 'primary_residence'
+                        || $anchor->ended_at !== null
+                        || ! in_array($proposalStatus, $openStatuses, true);
+                })
+                ->count(),
+            'locations_missing_schema_or_type' => Location::query()
+                ->where(function ($query): void {
+                    $query->whereNull('location_schema_id')
+                        ->orWhereNull('location_type_id');
+                })
+                ->count(),
+            'official_areas_without_location_mapping' => GovernanceArea::query()
+                ->active()
+                ->official()
+                ->doesntHave('locations')
+                ->count(),
+        ];
 
         $governanceSummary = [
             'active' => GovernanceArea::query()->active()->count(),
@@ -50,9 +121,13 @@ class LocationGovernanceController extends Controller
         return view('admin.location-governance.index', [
             'proposals' => $proposals,
             'hodaReviews' => $hodaReviews,
+            'referenceLocations' => $referenceLocations,
+            'officialTopology' => $officialTopology,
+            'communityAreas' => $communityAreas,
             'importRuns' => $importRuns,
+            'healthDiagnostics' => $healthDiagnostics,
             'governanceSummary' => $governanceSummary,
-            'verificationThreshold' => max(1, (int) config('location-governance.location_proposal_verification_threshold', 10)),
+            'verificationThreshold' => $verificationThreshold,
         ]);
     }
 
