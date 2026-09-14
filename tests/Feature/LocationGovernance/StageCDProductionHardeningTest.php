@@ -143,6 +143,7 @@ class StageCDProductionHardeningTest extends TestCase
         foreach ([$oldGroup, $newGroup] as $group) {
             Election::create([
                 'group_id' => $group->id,
+                'governance_area_id' => $group->governance_area_id,
                 'starts_at' => now()->subHour(),
                 'ends_at' => now()->addDay(),
                 'is_closed' => false,
@@ -189,6 +190,7 @@ class StageCDProductionHardeningTest extends TestCase
         foreach ([$legacyGroup, $currentGroup] as $group) {
             Election::create([
                 'group_id' => $group->id,
+                'governance_area_id' => $group->governance_area_id,
                 'starts_at' => now()->subHour(),
                 'ends_at' => now()->addDay(),
                 'is_closed' => false,
