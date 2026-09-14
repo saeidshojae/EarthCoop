@@ -4,6 +4,7 @@ namespace Tests\Feature\LocationGovernance;
 
 use App\Models\GovernanceArea;
 use App\Models\User;
+use App\Modules\NajmBahar\Models\Project;
 use App\Modules\NajmBahar\Models\ProjectCategory;
 use App\Modules\NajmBahar\Services\AccountService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -71,7 +72,82 @@ class ProjectScopeCutoverFlagTest extends TestCase
             'owner_type' => User::class,
             'owner_id' => $this->user->id,
             'governance_area_id' => $area->id,
+            'geographic_city_id' => null,
         ]);
+    }
+
+    public function test_canonical_project_store_rejects_inactive_governance_scope(): void
+    {
+        config(['location-governance.projects_enabled' => true]);
+
+        $inactiveArea = GovernanceArea::factory()->official()->create([
+            'status' => 'inactive',
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->from(route('najm-bahar.projects.create'))
+            ->post(route('najm-bahar.projects.store'), $this->validProjectPayload([
+                'governance_area_id' => $inactiveArea->id,
+            ]));
+
+        $response->assertRedirect(route('najm-bahar.projects.create'));
+        $response->assertSessionHasErrors('governance_area_id');
+        $this->assertDatabaseMissing('najm_bahar_projects', [
+            'title' => 'Canonical controller project',
+        ]);
+    }
+
+    public function test_canonical_project_store_rejects_non_official_governance_scope(): void
+    {
+        config(['location-governance.projects_enabled' => true]);
+
+        $communityArea = GovernanceArea::factory()->create([
+            'area_kind' => 'community',
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->from(route('najm-bahar.projects.create'))
+            ->post(route('najm-bahar.projects.store'), $this->validProjectPayload([
+                'governance_area_id' => $communityArea->id,
+            ]));
+
+        $response->assertRedirect(route('najm-bahar.projects.create'));
+        $response->assertSessionHasErrors('governance_area_id');
+        $this->assertDatabaseMissing('najm_bahar_projects', [
+            'title' => 'Canonical controller project',
+        ]);
+    }
+
+    public function test_canonical_project_update_rejects_inactive_governance_scope(): void
+    {
+        config(['location-governance.projects_enabled' => true]);
+
+        $activeArea = GovernanceArea::factory()->official()->create();
+        $inactiveArea = GovernanceArea::factory()->official()->create([
+            'status' => 'inactive',
+        ]);
+
+        $this->actingAs($this->user)
+            ->post(route('najm-bahar.projects.store'), $this->validProjectPayload([
+                'governance_area_id' => $activeArea->id,
+            ]))
+            ->assertSessionHas('success');
+
+        $project = Project::query()
+            ->where('owner_type', User::class)
+            ->where('owner_id', $this->user->id)
+            ->firstOrFail();
+
+        $response = $this->actingAs($this->user)
+            ->from(route('najm-bahar.projects.edit', $project))
+            ->put(route('najm-bahar.projects.update', $project), $this->validProjectPayload([
+                'governance_area_id' => $inactiveArea->id,
+            ]));
+
+        $response->assertRedirect(route('najm-bahar.projects.edit', $project));
+        $response->assertSessionHasErrors('governance_area_id');
+        $this->assertSame($activeArea->id, $project->fresh()->governance_area_id);
     }
 
     public function test_legacy_project_form_remains_available_when_flag_is_disabled(): void
