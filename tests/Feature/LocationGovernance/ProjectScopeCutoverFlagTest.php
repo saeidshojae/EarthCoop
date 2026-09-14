@@ -35,24 +35,22 @@ class ProjectScopeCutoverFlagTest extends TestCase
         ]);
     }
 
-    public function test_canonical_project_form_replaces_legacy_geography_selector_when_flag_is_enabled(): void
+    public function test_canonical_project_form_replaces_legacy_geography_selector_with_shared_location_picker_when_flag_is_enabled(): void
     {
         config(['location-governance.projects_enabled' => true]);
-
-        $area = GovernanceArea::factory()->official()->create([
-            'canonical_name' => 'Sari canonical area',
-        ]);
 
         $response = $this->actingAs($this->user)
             ->get(route('najm-bahar.projects.create'));
 
         $response->assertOk();
-        $response->assertSee('name="governance_area_id"', false);
-        $response->assertSee((string) $area->canonical_name);
+        $response->assertSee('data-location-selector', false);
+        $response->assertSee('data-location-purpose="project-scope"', false);
+        $response->assertSee('name="target_location_id"', false);
+        $response->assertDontSee('id="governance_area_select"', false);
         $response->assertDontSee('name="geographic_continent_id"', false);
     }
 
-    public function test_canonical_project_store_persists_governance_scope_when_flag_is_enabled(): void
+    public function test_canonical_project_store_still_accepts_valid_explicit_governance_scope_as_backward_compatible_fallback(): void
     {
         config(['location-governance.projects_enabled' => true]);
 
@@ -159,7 +157,8 @@ class ProjectScopeCutoverFlagTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('name="geographic_continent_id"', false);
-        $response->assertDontSee('name="governance_area_id"', false);
+        $response->assertDontSee('name="target_location_id"', false);
+        $response->assertDontSee('data-location-purpose="project-scope"', false);
     }
 
     private function validProjectPayload(array $overrides = []): array

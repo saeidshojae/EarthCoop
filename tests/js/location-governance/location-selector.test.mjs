@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 import {
     normalizePickerPayload,
+    projectScopePayload,
     selectionValues,
     shouldRenderNextLevel,
 } from '../../../resources/js/location-selector.js';
@@ -43,6 +44,28 @@ test('maps canonical and proposal identities to mutually exclusive hidden values
         selectionValues({ id: 17, identity: 'proposal:17', status: 'pending', selectable: true }),
         { locationId: '', proposalId: '17' },
     );
+});
+
+test('project scope reuses canonical traversal but excludes pending proposals and proposal creation', () => {
+    const normalized = normalizePickerPayload({
+        data: [
+            { id: 70, identity: 'location:70', type_key: 'city', label: 'City', status: 'active' },
+        ],
+        proposals: [
+            { id: 71, identity: 'proposal:71', type_key: 'neighborhood', label: 'Pending neighborhood', status: 'pending', selectable: true },
+        ],
+        allowed_types: [
+            { id: 72, key: 'neighborhood', label: 'Neighborhood', proposal_allowed: true },
+            { id: 73, key: 'campus', label: 'Campus', proposal_allowed: false },
+        ],
+    });
+
+    const scoped = projectScopePayload(normalized);
+
+    assert.deepEqual(scoped.locations.map((item) => item.id), [70]);
+    assert.deepEqual(scoped.proposals, []);
+    assert.deepEqual(scoped.allowedTypes.map((type) => type.key), ['neighborhood', 'campus']);
+    assert.equal(scoped.allowedTypes.every((type) => type.proposal_allowed === false), true);
 });
 
 test('open proposals count as a renderable next level even when no approved child exists', () => {

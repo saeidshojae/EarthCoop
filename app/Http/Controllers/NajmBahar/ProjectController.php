@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\NajmBahar;
 
 use App\Http\Controllers\Controller;
-use App\Models\GovernanceArea;
+use App\Models\Location;
 use App\Modules\NajmBahar\Models\Project;
 use App\Modules\NajmBahar\Models\ProjectCategory;
 use App\Modules\NajmBahar\Services\ProjectService;
+use App\Services\Projects\ProjectLocationScopeResolver;
 use App\Services\Projects\ProjectScopeCutoverRenderer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,11 +17,16 @@ class ProjectController extends Controller
 {
     protected ProjectService $projectService;
     protected ProjectScopeCutoverRenderer $scopeCutoverRenderer;
+    protected ProjectLocationScopeResolver $locationScopeResolver;
 
-    public function __construct(ProjectService $projectService, ProjectScopeCutoverRenderer $scopeCutoverRenderer)
-    {
+    public function __construct(
+        ProjectService $projectService,
+        ProjectScopeCutoverRenderer $scopeCutoverRenderer,
+        ProjectLocationScopeResolver $locationScopeResolver
+    ) {
         $this->projectService = $projectService;
         $this->scopeCutoverRenderer = $scopeCutoverRenderer;
+        $this->locationScopeResolver = $locationScopeResolver;
     }
 
     /**
@@ -50,13 +56,12 @@ class ProjectController extends Controller
             return view('najm-bahar.projects.create', compact('categories'));
         }
 
-        $governanceAreas = $this->projectGovernanceAreas();
         $legacyHtml = view('najm-bahar.projects.create', compact('categories'))->render();
+        $selectedLocationId = old('target_location_id');
 
         return response($this->scopeCutoverRenderer->renderCanonical(
             $legacyHtml,
-            $governanceAreas,
-            old('governance_area_id') !== null ? (int) old('governance_area_id') : null
+            $selectedLocationId !== null ? (int) $selectedLocationId : null
         ));
     }
 
@@ -109,8 +114,9 @@ class ProjectController extends Controller
             'attachments.*' => 'file|mimes:pdf,doc,docx,xls,xlsx|max:10240',
         ], $this->projectScopeRules()));
 
+        $this->resolveCanonicalLocationScope($validated);
+
         try {
-            // آپلود فایل‌ها
             if ($request->hasFile('attachments')) {
                 $uploadedFiles = [];
                 foreach ($request->file('attachments') as $file) {
@@ -129,8 +135,16 @@ class ProjectController extends Controller
                 $validated['main_risks'] = array_values(array_filter(array_map('trim', $validated['main_risks'])));
             }
 
+            $targetLocationId = $validated['target_location_id'] ?? null;
+            unset($validated['target_location_id']);
+
             $user = Auth::user();
             $project = $this->projectService->createProject($user, $validated);
+
+            if ($this->useCanonicalProjectScope()) {
+                $project->target_location_id = $targetLocationId;
+                $project->save();
+            }
 
             return redirect()
                 ->route('najm-bahar.projects.show', $project)
@@ -147,7 +161,6 @@ class ProjectController extends Controller
      */
     public function show(Project $project)
     {
-        // بررسی دسترسی
         $this->authorize('view', $project);
 
         $project->load(['categoryLevel1', 'categoryLevel2', 'categoryLevel3', 'reviews', 'investments']);
@@ -160,7 +173,6 @@ class ProjectController extends Controller
      */
     public function edit(Project $project)
     {
-        // بررسی دسترسی
         $this->authorize('update', $project);
 
         $categories = ProjectCategory::active()
@@ -173,14 +185,12 @@ class ProjectController extends Controller
             return view('najm-bahar.projects.edit', compact('project', 'categories'));
         }
 
-        $governanceAreas = $this->projectGovernanceAreas();
         $legacyHtml = view('najm-bahar.projects.edit', compact('project', 'categories'))->render();
-        $selectedAreaId = old('governance_area_id', $project->governance_area_id);
+        $selectedLocationId = old('target_location_id', $project->target_location_id);
 
         return response($this->scopeCutoverRenderer->renderCanonical(
             $legacyHtml,
-            $governanceAreas,
-            $selectedAreaId !== null ? (int) $selectedAreaId : null
+            $selectedLocationId !== null ? (int) $selectedLocationId : null
         ));
     }
 
@@ -189,7 +199,6 @@ class ProjectController extends Controller
      */
     public function update(Request $request, Project $project)
     {
-        // بررسی دسترسی
         $this->authorize('update', $project);
 
         $validated = $request->validate(array_merge([
@@ -236,8 +245,9 @@ class ProjectController extends Controller
             'attachments.*' => 'file|mimes:pdf,doc,docx,xls,xlsx|max:10240',
         ], $this->projectScopeRules()));
 
+        $this->resolveCanonicalLocationScope($validated);
+
         try {
-            // آپلود فایل‌های جدید
             if ($request->hasFile('attachments')) {
                 $uploadedFiles = $project->attachments ?? [];
                 foreach ($request->file('attachments') as $file) {
@@ -251,7 +261,15 @@ class ProjectController extends Controller
                 $validated['attachments'] = $uploadedFiles;
             }
 
+            $targetLocationId = $validated['target_location_id'] ?? null;
+            unset($validated['target_location_id']);
+
             $this->projectService->updateProject($project, $validated);
+
+            if ($this->useCanonicalProjectScope()) {
+                $project->target_location_id = $targetLocationId;
+                $project->save();
+            }
 
             return redirect()
                 ->route('najm-bahar.projects.show', $project)
@@ -268,7 +286,6 @@ class ProjectController extends Controller
      */
     public function submit(Project $project)
     {
-        // بررسی دسترسی
         $this->authorize('update', $project);
 
         try {
@@ -287,10 +304,8 @@ class ProjectController extends Controller
      */
     public function destroy(Project $project)
     {
-        // بررسی دسترسی
         $this->authorize('delete', $project);
 
-        // فقط پروژه‌های draft قابل حذف هستند
         if ($project->status !== 'draft') {
             return back()->with('error', 'فقط پروژه‌های پیش‌نویس قابل حذف هستند.');
         }
@@ -317,29 +332,24 @@ class ProjectController extends Controller
         return response()->json($categories);
     }
 
-    /**
-     * Canonical project scope is dark-launched independently so rollback does not
-     * require schema or data changes. Legacy geography remains authoritative only
-     * while this switch is disabled.
-     */
     private function useCanonicalProjectScope(): bool
     {
         return (bool) config('location-governance.projects_enabled', false);
-    }
-
-    private function projectGovernanceAreas()
-    {
-        return GovernanceArea::query()
-            ->official()
-            ->active()
-            ->orderBy('canonical_name')
-            ->get(['id', 'canonical_name']);
     }
 
     private function projectScopeRules(): array
     {
         if ($this->useCanonicalProjectScope()) {
             return [
+                'target_location_id' => [
+                    'nullable',
+                    'integer',
+                    Rule::exists('locations', 'id')->where(fn ($query) => $query
+                        ->where('status', 'active')),
+                ],
+                // Backward-compatible API/fallback contract. The UI no longer sends
+                // this field when an exact target Location is selected; when a target
+                // is present its GovernanceArea is always re-derived server-side.
                 'governance_area_id' => [
                     'nullable',
                     'integer',
@@ -363,5 +373,15 @@ class ProjectController extends Controller
             'geographic_street_id' => 'nullable|integer',
             'geographic_alley_id' => 'nullable|integer',
         ];
+    }
+
+    private function resolveCanonicalLocationScope(array &$validated): void
+    {
+        if (!$this->useCanonicalProjectScope() || empty($validated['target_location_id'])) {
+            return;
+        }
+
+        $location = Location::query()->findOrFail((int) $validated['target_location_id']);
+        $validated['governance_area_id'] = $this->locationScopeResolver->resolve($location)->id;
     }
 }

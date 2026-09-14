@@ -33,6 +33,7 @@ class LocationGovernanceReadinessCommand extends Command
         '2026_09_10_000009_add_governance_scope_to_spatial_consumers',
         '2026_09_10_000011_create_location_proposal_tables',
         '2026_09_13_000001_create_pending_residence_intents_table',
+        '2026_09_14_000001_add_target_location_to_najm_bahar_projects',
     ];
 
     private const STAGE_C_DIMENSIONS = [
