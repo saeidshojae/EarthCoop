@@ -27,7 +27,7 @@ if (registrationSelector) {
         path.classList.remove('text-muted');
         items.forEach((item, index) => {
             const node = document.createElement('span');
-            node.dataset.locationPathItem = '';
+            node.setAttribute('data-location-path-item', '');
             node.className = item.proposal ? 'location-proposal badge bg-warning-subtle text-warning-emphasis' : 'badge bg-primary-subtle text-primary-emphasis';
             node.textContent = item.proposal ? `${item.label} (در انتظار بررسی)` : item.label;
             path.appendChild(node);
