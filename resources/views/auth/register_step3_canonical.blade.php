@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>مرحله ۳: اطلاعات مکانی - EarthCoop</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
-    @vite(['resources/js/app.js', 'resources/js/registration-location-ux.js'])
+    @vite(['resources/js/app.js']) {{-- registration-location-ux.js is imported by app.js --}}
     <style>
         body { min-height:100vh; background:linear-gradient(135deg,#f8f9fa 0%,#e9ecef 100%); font-family:Tahoma,Arial,sans-serif; }
         .registration-container { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
@@ -28,50 +28,18 @@
     </style>
 </head>
 <body>
-<div class="registration-container">
-    <div class="registration-card">
-        <header class="form-card-gradient">
-            <div class="logo-container">
-                <img src="{{ asset('assets/images/logo.png') }}" alt="EarthCoop" onerror="this.style.display='none'">
-            </div>
-            <h1 class="h4 mb-2">مرحله ۳: اطلاعات مکانی</h1>
-            <p class="mb-0 opacity-75">محل سکونت اصلی خود را مشخص کنید</p>
-            <div class="progress-steps" aria-label="مراحل ثبت‌نام">
-                <div class="step">۱</div><div class="step">۲</div><div class="step active">۳</div>
-            </div>
-        </header>
-
-        <main class="registration-body">
-            <h2 class="h5 mb-2">محل سکونت اصلی</h2>
-            <p class="text-secondary small mb-4">ساختار مکانی هر کشور پویاست؛ مسیر را تا دقیق‌ترین محل معتبر خود ادامه دهید. عضویت در حوزه‌های حکمرانی بالادستی از محل سکونت اصلی شما به‌صورت سیستمی تعیین می‌شود.</p>
-
-            @if ($errors->any())
-                <div class="alert alert-danger" role="alert"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
-            @endif
-
-            <form method="POST" action="{{ route('register.step3.process') }}" data-location-form>
-                @csrf
-                <div data-location-selector data-location-selector-context="registration" data-empty-label="یک گزینه را انتخاب کنید" data-loading-label="در حال دریافت گزینه‌های مکانی..." data-error-label="دریافت گزینه‌های مکانی ممکن نشد. دوباره تلاش کنید.">
-                    <input type="hidden" name="location_id" value="{{ old('location_id') }}" data-location-id>
-                    <input type="hidden" name="location_proposal_id" value="{{ old('location_proposal_id') }}" data-location-proposal-id>
-
-                    <div class="location-actions" data-location-geolocation>
-                        <button type="button" class="btn btn-outline-primary" data-location-geolocation-detect>تشخیص خودکار موقعیت من</button>
-                        <button type="button" class="btn btn-outline-secondary" data-location-geolocation-manual>انتخاب دستی</button>
-                    </div>
-                    <p class="small text-secondary mb-3 d-none" data-location-geolocation-status aria-live="polite"></p>
-
-                    <div class="mb-2 fw-semibold small">مسیر انتخابی شما</div>
-                    <div class="location-path text-muted" data-location-path aria-live="polite">مسیر انتخاب نشده</div>
-
-                    <div data-location-levels></div>
-                    <div class="small text-secondary mt-3" data-location-status aria-live="polite">برای ادامه، یک محل معتبر برای سکونت اصلی انتخاب کنید.</div>
-                </div>
-
-                <div class="d-grid mt-4"><button type="submit" class="submit-btn" data-location-submit disabled>ثبت محل سکونت و ادامه</button></div>
-            </form>
-        </main>
-    </div>
-</div>
-</body>
-</html>
+<div class="registration-container"><div class="registration-card">
+<header class="form-card-gradient"><div class="logo-container"><img src="{{ asset('assets/images/logo.png') }}" alt="EarthCoop" onerror="this.style.display='none'"></div><h1 class="h4 mb-2">مرحله ۳: اطلاعات مکانی</h1><p class="mb-0 opacity-75">محل سکونت اصلی خود را مشخص کنید</p><div class="progress-steps" aria-label="مراحل ثبت‌نام"><div class="step">۱</div><div class="step">۲</div><div class="step active">۳</div></div></header>
+<main class="registration-body">
+<h2 class="h5 mb-2">محل سکونت اصلی</h2><p class="text-secondary small mb-4">ساختار مکانی هر کشور پویاست؛ مسیر را تا دقیق‌ترین محل معتبر خود ادامه دهید. عضویت در حوزه‌های حکمرانی بالادستی از محل سکونت اصلی شما به‌صورت سیستمی تعیین می‌شود.</p>
+@if ($errors->any())<div class="alert alert-danger" role="alert"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+<form method="POST" action="{{ route('register.step3.process') }}" data-location-form>@csrf
+<div data-location-selector data-location-selector-context="registration" data-empty-label="یک گزینه را انتخاب کنید" data-loading-label="در حال دریافت گزینه‌های مکانی..." data-error-label="دریافت گزینه‌های مکانی ممکن نشد. دوباره تلاش کنید.">
+<input type="hidden" name="location_id" value="{{ old('location_id') }}" data-location-id><input type="hidden" name="location_proposal_id" value="{{ old('location_proposal_id') }}" data-location-proposal-id>
+<div class="location-actions" data-location-geolocation><button type="button" class="btn btn-outline-primary" data-location-geolocation-detect>تشخیص خودکار موقعیت من</button><button type="button" class="btn btn-outline-secondary" data-location-geolocation-manual>انتخاب دستی</button></div>
+<p class="small text-secondary mb-3 d-none" data-location-geolocation-status aria-live="polite"></p>
+<div class="mb-2 fw-semibold small">مسیر انتخابی شما</div><div class="location-path text-muted" data-location-path aria-live="polite">مسیر انتخاب نشده</div>
+<div data-location-levels></div><div class="small text-secondary mt-3" data-location-status aria-live="polite">برای ادامه، یک محل معتبر برای سکونت اصلی انتخاب کنید.</div>
+</div><div class="d-grid mt-4"><button type="submit" class="submit-btn" data-location-submit disabled>ثبت محل سکونت و ادامه</button></div></form>
+</main></div></div>
+</body></html>
