@@ -30,5 +30,5 @@ test('project scope traversal keeps the selected parent valid while offering mor
 
     assert.match(source, /گزینه‌های دقیق‌تر آماده‌اند؛ می‌توانید همین سطح را نگه دارید یا پایین‌تر بروید/);
     assert.match(source, /if \(submit && !isProjectScope\) submit\.disabled = true/);
-    assert.doesNotMatch(source, /isProjectScope[^\n]*submit\.disabled\s*=\s*true/);
+    assert.match(source, /if \(submit && !isProjectScope\) submit\.disabled = previousSubmitDisabled/);
 });
