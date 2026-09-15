@@ -36,7 +36,7 @@
 <form method="POST" action="{{ route('register.step3.process') }}" data-location-form>@csrf
 <div data-location-selector data-location-selector-context="registration" data-empty-label="یک گزینه را انتخاب کنید" data-loading-label="در حال دریافت گزینه‌های مکانی..." data-error-label="دریافت گزینه‌های مکانی ممکن نشد. دوباره تلاش کنید.">
 <input type="hidden" name="location_id" value="{{ old('location_id') }}" data-location-id><input type="hidden" name="location_proposal_id" value="{{ old('location_proposal_id') }}" data-location-proposal-id>
-<div class="location-actions" data-location-geolocation><button type="button" class="btn btn-outline-primary" data-location-geolocation-detect>تشخیص خودکار موقعیت من</button><button type="button" class="btn btn-outline-secondary" data-location-geolocation-manual>انتخاب دستی</button></div>
+<div class="location-actions" data-location-geolocation><button type="button" class="btn btn-outline-primary" data-location-geolocation-detect>تشخیص موقعیت من</button><button type="button" class="btn btn-outline-secondary" data-location-geolocation-manual>انتخاب دستی</button></div>
 <p class="small text-secondary mb-3 d-none" data-location-geolocation-status aria-live="polite"></p>
 <div class="mb-2 fw-semibold small">مسیر انتخابی شما</div><div class="location-path text-muted" data-location-path aria-live="polite">مسیر انتخاب نشده</div>
 <div data-location-levels></div><div class="small text-secondary mt-3" data-location-status aria-live="polite">برای ادامه، یک محل معتبر برای سکونت اصلی انتخاب کنید.</div>
