@@ -18,11 +18,12 @@ class RegistrationStep3CanonicalUxRegressionTest extends TestCase
         $this->assertStringContainsString('مسیر انتخاب نشده', $view);
         $this->assertStringContainsString('data-location-selector', $view);
         $this->assertStringContainsString('data-location-geolocation-detect', $view);
+        $this->assertStringContainsString('registration-location-ux.js', $view);
     }
 
-    public function test_shared_location_picker_exposes_a_live_canonical_path_contract(): void
+    public function test_registration_enhancement_exposes_a_live_canonical_path_contract(): void
     {
-        $source = file_get_contents(resource_path('js/location-selector.js'));
+        $source = file_get_contents(resource_path('js/registration-location-ux.js'));
 
         $this->assertIsString($source);
         $this->assertStringContainsString('[data-location-path]', $source);
@@ -30,7 +31,7 @@ class RegistrationStep3CanonicalUxRegressionTest extends TestCase
         $this->assertStringContainsString('location-proposal', $source);
     }
 
-    public function test_successful_geolocation_can_hydrate_the_canonical_selector_instead_of_only_showing_a_message(): void
+    public function test_successful_geolocation_can_hydrate_the_canonical_registration_selection_instead_of_only_showing_a_message(): void
     {
         $source = file_get_contents(resource_path('js/location-geolocation.js'));
 
