@@ -75,6 +75,14 @@ const loadMemberInvitationRuntime = () => {
     importFeature(() => import("./member-invitation-share.js"), "member invitation sharing");
 };
 
+const loadProjectFormMobileRuntime = () => {
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    const isProjectCreate = path === '/najm-bahar/projects/create';
+    const isProjectEdit = /^\/najm-bahar\/projects\/[^/]+\/edit$/.test(path);
+    if (!isProjectCreate && !isProjectEdit) return;
+    importFeature(() => import("./project-form-mobile.js"), "project form mobile UX");
+};
+
 const loadPageScopedRuntime = () => {
     loadNajmHodaRuntime();
     loadNajmBaharRuntime();
@@ -83,6 +91,7 @@ const loadPageScopedRuntime = () => {
     loadMyParticipationRuntime();
     loadSwiperRuntime();
     loadMemberInvitationRuntime();
+    loadProjectFormMobileRuntime();
 };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadPageScopedRuntime, { once: true }); else loadPageScopedRuntime();
 
