@@ -26,48 +26,49 @@ class ProjectScopeTraversalProductionRegressionTest extends TestCase
     {
         $schema = LocationFixture::iranSchema();
         $country = LocationFixture::createPath($schema, ['country'])->first();
+        [$global, $asia, $iran] = $this->governancePathFor($country);
 
-        $global = GovernanceArea::factory()->official()->create([
-            'parent_id' => null,
-            'governance_type' => 'global',
-            'canonical_name' => 'EarthCoop Global',
-            'localized_names' => ['fa' => 'جهانی'],
-            'status' => 'active',
-        ]);
-        $asia = GovernanceArea::factory()->official()->create([
-            'parent_id' => $global->id,
-            'governance_type' => 'continent',
-            'canonical_name' => 'Asia',
-            'localized_names' => ['fa' => 'آسیا'],
-            'status' => 'active',
-        ]);
-        $iran = GovernanceArea::factory()->official()->create([
-            'parent_id' => $asia->id,
-            'governance_type' => 'country',
-            'canonical_name' => 'Iran',
-            'localized_names' => ['fa' => 'ایران'],
-            'status' => 'active',
-        ]);
-        $iran->locations()->attach($country->id);
-
-        $root = $this->getJson('/location/project-scope/options/root');
-        $root->assertOk()
+        $this->getJson('/location/project-scope/options/root')->assertOk()
             ->assertJsonPath('data.0.identity', 'governance:'.$global->id)
-            ->assertJsonPath('data.0.type_key', 'global')
-            ->assertJsonPath('data.0.label', 'جهانی');
-
-        $continents = $this->getJson('/location/project-scope/options/governance/'.$global->id.'/children');
-        $continents->assertOk()
+            ->assertJsonPath('data.0.type_key', 'global')->assertJsonPath('data.0.label', 'جهانی');
+        $this->getJson('/location/project-scope/options/governance/'.$global->id.'/children')->assertOk()
             ->assertJsonPath('data.0.identity', 'governance:'.$asia->id)
-            ->assertJsonPath('data.0.type_key', 'continent')
-            ->assertJsonPath('data.0.label', 'آسیا');
-
-        $countries = $this->getJson('/location/project-scope/options/governance/'.$asia->id.'/children');
-        $countries->assertOk()
+            ->assertJsonPath('data.0.type_key', 'continent')->assertJsonPath('data.0.label', 'آسیا');
+        $this->getJson('/location/project-scope/options/governance/'.$asia->id.'/children')->assertOk()
             ->assertJsonPath('data.0.identity', 'location:'.$country->id)
-            ->assertJsonPath('data.0.type_key', 'country')
-            ->assertJsonPath('data.0.label', 'ایران')
+            ->assertJsonPath('data.0.type_key', 'country')->assertJsonPath('data.0.label', 'ایران')
             ->assertJsonPath('data.0.governance_area_id', $iran->id);
+    }
+
+    public function test_saved_governance_scope_path_can_stop_at_continent(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $country = LocationFixture::createPath($schema, ['country'])->first();
+        [$global, $asia] = $this->governancePathFor($country);
+
+        $this->getJson('/location/project-scope/options/path?governance_area_id='.$asia->id)->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.identity', 'governance:'.$global->id)
+            ->assertJsonPath('data.1.identity', 'governance:'.$asia->id);
+    }
+
+    public function test_saved_location_scope_path_hydrates_governance_bridge_and_every_location_ancestor(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $path = LocationFixture::createPath(
+            $schema,
+            ['country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood'],
+            ['Iran', 'Mazandaran', 'Sari County', 'Central Sari', 'Sari', 'Urban Region 1', 'Reference Neighborhood'],
+        );
+        [$global, $asia] = $this->governancePathFor($path->first());
+        $target = $path->last();
+
+        $this->getJson('/location/project-scope/options/path?target_location_id='.$target->id)->assertOk()
+            ->assertJsonCount(2 + $path->count(), 'data')
+            ->assertJsonPath('data.0.identity', 'governance:'.$global->id)
+            ->assertJsonPath('data.1.identity', 'governance:'.$asia->id)
+            ->assertJsonPath('data.2.identity', 'location:'.$path->first()->id)
+            ->assertJsonPath('data.'.(1 + $path->count()).'.identity', 'location:'.$target->id);
     }
 
     public function test_canonical_project_scope_renderer_emits_the_governance_field_required_by_the_picker(): void
@@ -79,9 +80,7 @@ class ProjectScopeTraversalProductionRegressionTest extends TestCase
 <script>initializeGeographicLocation();</script>
 </form>
 HTML;
-
         $html = app(ProjectScopeCutoverRenderer::class)->renderCanonical($legacyHtml, null, 42);
-
         $this->assertStringContainsString('name="governance_area_id"', $html);
         $this->assertStringContainsString('value="42" data-project-governance-area-id', $html);
         $this->assertStringContainsString('name="target_location_id"', $html);
@@ -90,9 +89,7 @@ HTML;
     public function test_reference_rural_branch_contains_a_full_arbitrary_depth_path_below_reference_village(): void
     {
         $rows = collect(file(database_path('reference/ir/v1/locations.jsonl'), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES))
-            ->map(fn (string $line): array => json_decode($line, true, flags: JSON_THROW_ON_ERROR))
-            ->keyBy('external_id');
-
+            ->map(fn (string $line): array => json_decode($line, true, flags: JSON_THROW_ON_ERROR))->keyBy('external_id');
         $expected = [
             'IR-MAZ-SARI-CHAHARDANGEH-VILLAGE-NBH-01' => ['IR-MAZ-SARI-CHAHARDANGEH-VILLAGE-01', 'neighborhood'],
             'IR-MAZ-SARI-CHAHARDANGEH-VILLAGE-STREET-01' => ['IR-MAZ-SARI-CHAHARDANGEH-VILLAGE-NBH-01', 'street'],
@@ -100,12 +97,20 @@ HTML;
             'IR-MAZ-SARI-CHAHARDANGEH-VILLAGE-COMPLEX-01' => ['IR-MAZ-SARI-CHAHARDANGEH-VILLAGE-ALLEY-01', 'complex'],
             'IR-MAZ-SARI-CHAHARDANGEH-VILLAGE-BUILDING-01' => ['IR-MAZ-SARI-CHAHARDANGEH-VILLAGE-COMPLEX-01', 'building'],
         ];
-
         foreach ($expected as $externalId => [$parentExternalId, $type]) {
             $this->assertTrue($rows->has($externalId), 'Missing reference location '.$externalId);
             $this->assertSame($parentExternalId, $rows[$externalId]['parent_external_id']);
             $this->assertSame($type, $rows[$externalId]['type']);
             $this->assertSame('active', $rows[$externalId]['status']);
         }
+    }
+
+    private function governancePathFor($country): array
+    {
+        $global = GovernanceArea::factory()->official()->create(['parent_id' => null, 'governance_type' => 'global', 'canonical_name' => 'EarthCoop Global', 'localized_names' => ['fa' => 'جهانی'], 'status' => 'active']);
+        $asia = GovernanceArea::factory()->official()->create(['parent_id' => $global->id, 'governance_type' => 'continent', 'canonical_name' => 'Asia', 'localized_names' => ['fa' => 'آسیا'], 'status' => 'active']);
+        $iran = GovernanceArea::factory()->official()->create(['parent_id' => $asia->id, 'governance_type' => 'country', 'canonical_name' => 'Iran', 'localized_names' => ['fa' => 'ایران'], 'status' => 'active']);
+        $iran->locations()->attach($country->id);
+        return [$global, $asia, $iran];
     }
 }

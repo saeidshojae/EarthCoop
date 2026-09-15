@@ -17,6 +17,7 @@ Route::prefix('location/options')->name('location.options.')->group(function () 
 
 Route::prefix('location/project-scope/options')->name('location.project-scope.options.')->group(function () {
     Route::get('/root', [ProjectScopeOptionsController::class, 'root'])->name('root');
+    Route::get('/path', [ProjectScopeOptionsController::class, 'path'])->name('path');
     Route::get('/governance/{governanceArea}/children', [ProjectScopeOptionsController::class, 'children'])
         ->name('governance.children');
 });
