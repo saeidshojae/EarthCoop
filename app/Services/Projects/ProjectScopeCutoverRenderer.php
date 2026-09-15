@@ -9,16 +9,20 @@ class ProjectScopeCutoverRenderer
     /**
      * Adapt the existing Najm Bahar project form to the shared canonical Location
      * picker without mutating the legacy Blade template. Exact target geography is
-     * persisted as Location; formal GovernanceArea scope is resolved server-side.
+     * persisted as Location; formal GovernanceArea scope is carried separately.
      */
-    public function renderCanonical(string $legacyHtml, ?int $selectedLocationId = null): string
-    {
-        $selectedValue = $selectedLocationId !== null ? (string) $selectedLocationId : '';
+    public function renderCanonical(
+        string $legacyHtml,
+        ?int $selectedLocationId = null,
+        ?int $selectedGovernanceAreaId = null
+    ): string {
+        $selectedLocationValue = $selectedLocationId !== null ? (string) $selectedLocationId : '';
+        $selectedGovernanceAreaValue = $selectedGovernanceAreaId !== null ? (string) $selectedGovernanceAreaId : '';
 
         $canonicalPicker = implode("\n", [
             '<div data-location-selector data-location-purpose="project-scope" data-location-selector-context="project-scope" data-empty-label="یک گزینه را انتخاب کنید" data-loading-label="در حال دریافت گزینه‌های مکانی..." data-error-label="دریافت گزینه‌های مکانی ممکن نشد.">',
-            sprintf('<input type="hidden" name="target_location_id" value="%s" data-location-id>', e($selectedValue)),
-            '<input type="hidden" value="" data-project-governance-area-id>',
+            sprintf('<input type="hidden" name="target_location_id" value="%s" data-location-id>', e($selectedLocationValue)),
+            sprintf('<input type="hidden" name="governance_area_id" value="%s" data-project-governance-area-id>', e($selectedGovernanceAreaValue)),
             '<input type="hidden" value="" data-location-proposal-id>',
             '<div data-location-levels class="vstack gap-3"></div>',
             '<div class="small text-secondary mt-2" data-location-status aria-live="polite">محدوده هدف پروژه را از بالا به پایین انتخاب کنید؛ انتخاب این بخش اختیاری است.</div>',
