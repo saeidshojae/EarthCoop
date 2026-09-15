@@ -3,6 +3,7 @@
 namespace Tests\Feature\LocationGovernance;
 
 use App\Models\GovernanceArea;
+use App\Services\Projects\ProjectScopeCutoverRenderer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\LocationFixture;
 use Tests\TestCase;
@@ -67,6 +68,23 @@ class ProjectScopeTraversalProductionRegressionTest extends TestCase
             ->assertJsonPath('data.0.type_key', 'country')
             ->assertJsonPath('data.0.label', 'ایران')
             ->assertJsonPath('data.0.governance_area_id', $iran->id);
+    }
+
+    public function test_canonical_project_scope_renderer_emits_the_governance_field_required_by_the_picker(): void
+    {
+        $legacyHtml = <<<'HTML'
+<form>
+<label>قاره:</label>
+<select id="geographic_continent_select"><option value="">انتخاب کنید</option></select>
+<script>initializeGeographicLocation();</script>
+</form>
+HTML;
+
+        $html = app(ProjectScopeCutoverRenderer::class)->renderCanonical($legacyHtml, null, 42);
+
+        $this->assertStringContainsString('name="governance_area_id"', $html);
+        $this->assertStringContainsString('value="42" data-project-governance-area-id', $html);
+        $this->assertStringContainsString('name="target_location_id"', $html);
     }
 
     public function test_reference_rural_branch_contains_a_full_arbitrary_depth_path_below_reference_village(): void
