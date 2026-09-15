@@ -27,28 +27,7 @@ class ProjectScopeTraversalProductionRegressionTest extends TestCase
         $schema = LocationFixture::iranSchema();
         $country = LocationFixture::createPath($schema, ['country'])->first();
 
-        $global = GovernanceArea::factory()->official()->create([
-            'parent_id' => null,
-            'governance_type' => 'global',
-            'canonical_name' => 'EarthCoop Global',
-            'localized_names' => ['fa' => 'جهانی'],
-            'status' => 'active',
-        ]);
-        $asia = GovernanceArea::factory()->official()->create([
-            'parent_id' => $global->id,
-            'governance_type' => 'continent',
-            'canonical_name' => 'Asia',
-            'localized_names' => ['fa' => 'آسیا'],
-            'status' => 'active',
-        ]);
-        $iran = GovernanceArea::factory()->official()->create([
-            'parent_id' => $asia->id,
-            'governance_type' => 'country',
-            'canonical_name' => 'Iran',
-            'localized_names' => ['fa' => 'ایران'],
-            'status' => 'active',
-        ]);
-        $iran->locations()->attach($country->id);
+        [$global, $asia, $iran] = $this->governancePathFor($country);
 
         $root = $this->getJson('/location/project-scope/options/root');
         $root->assertOk()
@@ -68,6 +47,40 @@ class ProjectScopeTraversalProductionRegressionTest extends TestCase
             ->assertJsonPath('data.0.type_key', 'country')
             ->assertJsonPath('data.0.label', 'ایران')
             ->assertJsonPath('data.0.governance_area_id', $iran->id);
+    }
+
+    public function test_saved_governance_scope_path_can_stop_at_continent(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $country = LocationFixture::createPath($schema, ['country'])->first();
+        [$global, $asia] = $this->governancePathFor($country);
+
+        $this->getJson('/location/project-scope/options/path?governance_area_id='.$asia->id)
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.identity', 'governance:'.$global->id)
+            ->assertJsonPath('data.1.identity', 'governance:'.$asia->id);
+    }
+
+    public function test_saved_location_scope_path_hydrates_governance_bridge_and_every_location_ancestor(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $path = LocationFixture::createPath(
+            $schema,
+            ['country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood'],
+            ['Iran', 'Mazandaran', 'Sari County', 'Central Sari', 'Sari', 'Urban Region 1', 'Reference Neighborhood'],
+        );
+        [$global, $asia] = $this->governancePathFor($path->first());
+        $target = $path->last();
+
+        $response = $this->getJson('/location/project-scope/options/path?target_location_id='.$target->id);
+
+        $response->assertOk()
+            ->assertJsonCount(2 + $path->count(), 'data')
+            ->assertJsonPath('data.0.identity', 'governance:'.$global->id)
+            ->assertJsonPath('data.1.identity', 'governance:'.$asia->id)
+            ->assertJsonPath('data.2.identity', 'location:'.$path->first()->id)
+            ->assertJsonPath('data.'.(1 + $path->count()).identity', 'location:'.$target->id);
     }
 
     public function test_canonical_project_scope_renderer_emits_the_governance_field_required_by_the_picker(): void
@@ -107,5 +120,33 @@ HTML;
             $this->assertSame($type, $rows[$externalId]['type']);
             $this->assertSame('active', $rows[$externalId]['status']);
         }
+    }
+
+    private function governancePathFor($country): array
+    {
+        $global = GovernanceArea::factory()->official()->create([
+            'parent_id' => null,
+            'governance_type' => 'global',
+            'canonical_name' => 'EarthCoop Global',
+            'localized_names' => ['fa' => 'جهانی'],
+            'status' => 'active',
+        ]);
+        $asia = GovernanceArea::factory()->official()->create([
+            'parent_id' => $global->id,
+            'governance_type' => 'continent',
+            'canonical_name' => 'Asia',
+            'localized_names' => ['fa' => 'آسیا'],
+            'status' => 'active',
+        ]);
+        $iran = GovernanceArea::factory()->official()->create([
+            'parent_id' => $asia->id,
+            'governance_type' => 'country',
+            'canonical_name' => 'Iran',
+            'localized_names' => ['fa' => 'ایران'],
+            'status' => 'active',
+        ]);
+        $iran->locations()->attach($country->id);
+
+        return [$global, $asia, $iran];
     }
 }
