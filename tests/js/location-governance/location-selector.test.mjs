@@ -201,3 +201,11 @@ test('empty and stale states are explicit rather than silently clearing a valid 
     assert.match(source, /['"]stale['"]/);
     assert.match(source, /aria-live/);
 });
+
+test('project scope edit hydrates the saved canonical path instead of only preserving hidden ids', () => {
+    const source = readFileSync(new URL('../../../resources/js/location-selector.js', import.meta.url), 'utf8');
+
+    assert.match(source, /hydrateProjectScopePath/);
+    assert.match(source, /initialLocationId|initialGovernanceAreaId/);
+    assert.match(source, /select\.value\s*=\s*selected\.identity/);
+});
