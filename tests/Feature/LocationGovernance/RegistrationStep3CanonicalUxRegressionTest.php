@@ -20,7 +20,7 @@ class RegistrationStep3CanonicalUxRegressionTest extends TestCase
         $this->assertStringContainsString('مسیر انتخاب نشده', $view);
         $this->assertStringContainsString('data-location-selector', $view);
         $this->assertStringContainsString('data-location-geolocation-detect', $view);
-        $this->assertStringContainsString("import './registration-location-ux.js';", $app);
+        $this->assertMatchesRegularExpression('/import\s+[\'\"]\.\/registration-location-ux\.js[\'\"]\s*;/', $app);
     }
 
     public function test_registration_enhancement_exposes_a_live_canonical_path_contract(): void
