@@ -188,6 +188,14 @@ class LocationProposalService
                 throw new DomainException('The merge target must use the same location schema and type as the proposal.');
             }
 
+            if ($proposal->parent_location_id === null) {
+                throw new DomainException('Resolve the pending parent proposal before merging this descendant.');
+            }
+
+            if ((int) $existing->parent_id !== (int) $proposal->parent_location_id) {
+                throw new DomainException('The merge target must belong to the same canonical parent branch as the proposal.');
+            }
+
             $proposal->resolved_location_id = $existing->id;
             $proposal->save();
             $this->transition($proposal, LocationProposalStatus::Merged, $reviewer, $reason, true);
