@@ -11,6 +11,11 @@ import {
     shouldRenderNextLevel,
 } from '../../../resources/js/location-selector.js';
 
+const selectorSource = () => [
+    '../../../resources/js/location-selector-core.js',
+    '../../../resources/js/location-selector.js',
+].map((path) => readFileSync(new URL(path, import.meta.url), 'utf8')).join('\n');
+
 test('normalizes active locations, open proposals, and allowed types without fixed depth', () => {
     const streetPayload = normalizePickerPayload({ data: [], proposals: [], allowed_types: [
         { id: 12, key: 'alley', label: 'Alley', proposal_allowed: true },
@@ -82,7 +87,7 @@ test('selection values reject stale terminal proposal and inactive canonical ide
 });
 
 test('dynamic selector exposes visible labels and explicit loading error and stale states', () => {
-    const source = readFileSync(new URL('../../../resources/js/location-selector.js', import.meta.url), 'utf8');
+    const source = selectorSource();
     assert.match(source, /document\.createElement\(['"]label['"]\)/);
     assert.match(source, /aria-busy/);
     assert.match(source, /data-location-state|dataset\.locationState/);
@@ -102,19 +107,19 @@ test('alternate schema branches remain server driven and never hard-code Iran mi
     assert.equal(shouldRenderNextLevel(payload), true);
     assert.deepEqual(payload.locations.map((item) => item.type_key), ['building']);
     assert.deepEqual(payload.allowedTypes.map((type) => type.key), ['campus']);
-    const source = readFileSync(new URL('../../../resources/js/location-selector.js', import.meta.url), 'utf8');
+    const source = selectorSource();
     assert.doesNotMatch(source, /street\s*[-=>]+\s*alley|alley\s*[-=>]+\s*complex/i);
 });
 
 test('project scope bootstraps from the governance bridge while residence keeps the canonical location root', () => {
-    const source = readFileSync(new URL('../../../resources/js/location-selector.js', import.meta.url), 'utf8');
+    const source = selectorSource();
     assert.match(source, /\/location\/project-scope\/options\/root/);
     assert.match(source, /selected\.children_url/);
     assert.match(source, /\/location\/options\/root/);
 });
 
 test('empty and stale states are explicit rather than silently clearing a valid form state', () => {
-    const source = readFileSync(new URL('../../../resources/js/location-selector.js', import.meta.url), 'utf8');
+    const source = selectorSource();
     assert.match(source, /['"]loading['"]/);
     assert.match(source, /['"]empty['"]/);
     assert.match(source, /['"]error['"]/);
@@ -123,7 +128,7 @@ test('empty and stale states are explicit rather than silently clearing a valid 
 });
 
 test('project scope edit hydrates the saved canonical path instead of only preserving hidden ids', () => {
-    const source = readFileSync(new URL('../../../resources/js/location-selector.js', import.meta.url), 'utf8');
+    const source = selectorSource();
     assert.match(source, /hydrateProjectScopePath/);
     assert.match(source, /initialLocationId|initialGovernanceAreaId/);
     assert.match(source, /select\.value\s*=\s*selected\.identity/);
