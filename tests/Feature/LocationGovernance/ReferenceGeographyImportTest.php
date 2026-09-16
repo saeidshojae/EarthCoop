@@ -40,7 +40,7 @@ class ReferenceGeographyImportTest extends TestCase
         $this->assertStringContainsString('without-neighborhood', $dataset);
     }
 
-    public function test_reference_import_persists_the_reviewed_micro_location_proposal_policy(): void
+    public function test_reference_import_persists_the_established_user_location_proposal_policy(): void
     {
         $exit = Artisan::call('location:reference-import', [
             'country' => 'IR',
@@ -51,14 +51,28 @@ class ReferenceGeographyImportTest extends TestCase
 
         $rows = LocationSchemaType::query()->with('type')->get()->keyBy(fn (LocationSchemaType $row) => $row->type?->key);
 
-        foreach (['street', 'alley', 'complex', 'building'] as $key) {
+        // The pre-canonical registration flow allowed users to add the
+        // "region / village" tier and every finer tier. In the canonical
+        // split this means urban_region and village are user-proposable,
+        // together with neighborhood and all micro-location descendants.
+        foreach (['village', 'urban_region', 'neighborhood', 'street', 'alley', 'complex', 'building'] as $key) {
             $this->assertTrue((bool) data_get($rows[$key]?->metadata, 'crowdsourced_proposal_allowed'), "{$key} must remain crowdsourcable.");
         }
-        foreach (['country', 'province', 'county', 'section', 'city', 'rural_district', 'village', 'urban_region', 'neighborhood'] as $key) {
+        foreach (['country', 'province', 'county', 'section', 'city', 'rural_district'] as $key) {
             $this->assertFalse((bool) data_get($rows[$key]?->metadata, 'crowdsourced_proposal_allowed'), "{$key} must not become crowdsourcable implicitly.");
         }
 
+        $city = Location::query()->where('level', 'city')->firstOrFail();
+        $ruralDistrict = Location::query()->where('level', 'rural_district')->firstOrFail();
+        $urbanRegion = Location::query()->where('level', 'urban_region')->firstOrFail();
+        $village = Location::query()->where('level', 'village')->firstOrFail();
         $neighborhood = Location::query()->where('level', 'neighborhood')->firstOrFail();
-        $this->assertTrue(app(LocationProposalPolicy::class)->allows($neighborhood, $rows['street']->type));
+        $policy = app(LocationProposalPolicy::class);
+
+        $this->assertTrue($policy->allows($city, $rows['urban_region']->type));
+        $this->assertTrue($policy->allows($ruralDistrict, $rows['village']->type));
+        $this->assertTrue($policy->allows($urbanRegion, $rows['neighborhood']->type));
+        $this->assertTrue($policy->allows($village, $rows['neighborhood']->type));
+        $this->assertTrue($policy->allows($neighborhood, $rows['street']->type));
     }
 }
