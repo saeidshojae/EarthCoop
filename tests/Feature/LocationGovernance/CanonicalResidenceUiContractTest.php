@@ -12,27 +12,16 @@ class CanonicalResidenceUiContractTest extends TestCase
     {
         $registrationWrapper = file_get_contents(resource_path('views/auth/register_step3.blade.php'));
         $profileWrapper = file_get_contents(resource_path('views/profile/partials/location.blade.php'));
+        foreach ([$registrationWrapper, $profileWrapper] as $wrapper) $this->assertStringContainsString("config('location-governance.registration_enabled')", $wrapper);
 
-        foreach ([$registrationWrapper, $profileWrapper] as $wrapper) {
-            $this->assertStringContainsString("config('location-governance.registration_enabled')", $wrapper);
-        }
-
-        $registrationPath = resource_path('views/auth/register_step3_canonical.blade.php');
-        $profilePath = resource_path('views/profile/partials/location_canonical.blade.php');
-
-        $this->assertFileExists($registrationPath);
-        $this->assertFileExists($profilePath);
-
-        $registration = file_get_contents($registrationPath);
-        $profile = file_get_contents($profilePath);
-
+        $registration = file_get_contents(resource_path('views/auth/register_step3_canonical.blade.php'));
+        $profile = file_get_contents(resource_path('views/profile/partials/location_canonical.blade.php'));
         foreach ([$registration, $profile] as $view) {
             $this->assertStringContainsString('data-location-selector', $view);
             $this->assertStringContainsString('name="location_id"', $view);
             $this->assertStringContainsString('name="location_proposal_id"', $view);
             $this->assertStringContainsString('data-location-proposal-id', $view);
         }
-
         $this->assertStringContainsString('data-location-selector-context="registration"', $registration);
         $this->assertStringContainsString('data-location-selector-context="profile"', $profile);
     }
@@ -40,12 +29,8 @@ class CanonicalResidenceUiContractTest extends TestCase
     #[Test]
     public function shared_selector_consumes_schema_driven_picker_contract_and_proposal_endpoint(): void
     {
-        $selectorPath = resource_path('js/location-selector.js');
-        $this->assertFileExists($selectorPath);
-
-        $selector = file_get_contents($selectorPath);
+        $selector = file_get_contents(resource_path('js/location-selector.js'));
         $app = file_get_contents(resource_path('js/app.js'));
-
         $this->assertStringContainsString('/location/options/root', $selector);
         $this->assertStringContainsString('/children', $selector);
         $this->assertStringContainsString('/locations/proposals', $selector);
@@ -62,9 +47,6 @@ class CanonicalResidenceUiContractTest extends TestCase
     {
         $registration = file_get_contents(resource_path('views/auth/register_step3_canonical.blade.php'));
         $selector = file_get_contents(resource_path('js/location-selector.js'));
-
-        $this->assertIsString($registration);
-        $this->assertIsString($selector);
         $this->assertStringNotContainsString('data-country-code="IR"', $registration);
         $this->assertStringNotContainsString("|| 'IR'", $selector);
         $this->assertStringContainsString('/location/options/root', $selector);
@@ -73,16 +55,35 @@ class CanonicalResidenceUiContractTest extends TestCase
     #[Test]
     public function canonical_profile_edit_does_not_require_a_legacy_address_to_render(): void
     {
-        $controllerPath = app_path('Http/Controllers/LocationGovernance/ProfileEditController.php');
-        $this->assertFileExists($controllerPath);
-
-        $controller = file_get_contents($controllerPath);
+        $controller = file_get_contents(app_path('Http/Controllers/LocationGovernance/ProfileEditController.php'));
         $routes = file_get_contents(base_path('routes/location-governance.php'));
-
         $this->assertStringContainsString("config('location-governance.registration_enabled')", $controller);
         $this->assertStringContainsString('locationRelationships()', $controller);
         $this->assertStringContainsString("relationship_type', 'primary_residence'", $controller);
         $this->assertStringContainsString("/profile/edit", $routes);
         $this->assertStringContainsString('ProfileEditController', $routes);
+    }
+
+    #[Test]
+    public function profile_residence_editor_hydrates_current_selection_and_exposes_mobile_first_shared_controls(): void
+    {
+        $profile = file_get_contents(resource_path('views/profile/partials/location_canonical.blade.php'));
+        $this->assertStringContainsString('data-location-path', $profile);
+        $this->assertStringContainsString('data-location-current-id', $profile);
+        $this->assertStringContainsString("old('location_id', $primaryResidence?->location_id)", $profile);
+        $this->assertStringContainsString('location-residence-surface', $profile);
+        $this->assertStringContainsString('location-geolocation-actions', $profile);
+        $this->assertStringContainsString('location-proposal-help', $profile);
+    }
+
+    #[Test]
+    public function proposal_affordance_is_explicitly_mobile_touch_friendly_and_only_built_for_server_allowed_types(): void
+    {
+        $selector = file_get_contents(resource_path('js/location-selector.js'));
+        $this->assertStringContainsString('proposal_allowed === true', $selector);
+        $this->assertStringContainsString('data.locationProposalShell', $selector);
+        $this->assertStringContainsString('location-proposal-surface', $selector);
+        $this->assertStringContainsString('location-proposal-toggle', $selector);
+        $this->assertStringContainsString('min-height: 44px', $selector);
     }
 }
