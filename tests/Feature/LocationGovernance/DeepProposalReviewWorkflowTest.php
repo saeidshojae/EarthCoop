@@ -91,6 +91,43 @@ class DeepProposalReviewWorkflowTest extends TestCase
         $this->assertSame(LocationProposalStatus::Pending, $parentProposal->fresh()->status);
     }
 
+    public function test_approving_intermediate_parent_refines_official_anchor_while_deepest_intent_stays_pending(): void
+    {
+        [$parentProposal, $childProposal, $anchor] = $this->makeDeepProposalScenario();
+        $user = User::factory()->create();
+        $reviewer = User::factory()->create(['is_admin' => true]);
+        $residenceService = app(ResidenceService::class);
+        $proposalService = app(LocationProposalService::class);
+
+        $residenceService->setInitialPrimaryResidence($user, $anchor, [
+            'source' => 'deep-anchor-refinement-test',
+        ]);
+        $intent = $residenceService->setPendingResidenceIntent($user, $childProposal, [
+            'source' => 'deep-anchor-refinement-test',
+        ]);
+
+        $approvedParent = $proposalService->approve($parentProposal, $reviewer, 'تأیید مرحله میانی');
+        $childProposal->refresh();
+        $intent->refresh();
+        $current = $residenceService->currentPrimaryResidence($user);
+
+        $this->assertNotNull($current);
+        $this->assertSame($approvedParent->id, $current->location_id);
+        $this->assertSame('pending', $intent->status);
+        $this->assertSame($childProposal->id, $intent->location_proposal_id);
+        $this->assertSame($current->id, $intent->anchor_relationship_id);
+        $this->assertSame($approvedParent->id, $childProposal->nearestCanonicalParent()?->id);
+
+        $approvedChild = $proposalService->approve($childProposal, $reviewer, 'تأیید مکان دقیق نهایی');
+        $intent->refresh();
+        $finalResidence = $residenceService->currentPrimaryResidence($user);
+
+        $this->assertNotNull($finalResidence);
+        $this->assertSame($approvedChild->id, $finalResidence->location_id);
+        $this->assertSame('resolved', $intent->status);
+        $this->assertSame($approvedChild->id, $intent->resolved_location_id);
+    }
+
     public function test_profile_refresh_preserves_deepest_pending_selection_and_exposes_full_hydration_path(): void
     {
         [$parentProposal, $childProposal, $anchor] = $this->makeDeepProposalScenario();
