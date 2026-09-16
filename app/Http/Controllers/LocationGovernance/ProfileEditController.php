@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Profile\ProfileController;
 use App\Models\Address;
 use App\Models\ExperienceField;
+use App\Models\Location;
+use App\Models\LocationProposal;
 use App\Models\OccupationalField;
+use App\Models\PendingResidenceIntent;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -36,6 +39,8 @@ final class ProfileEditController extends Controller
             ->latest('id')
             ->first();
 
+        $residenceHydrationPath = $this->residenceHydrationPath($pendingResidenceIntent);
+
         $occupationalFields = OccupationalField::whereNull('parent_id')->get();
         $experienceFields = ExperienceField::whereNull('parent_id')->get();
         $allOccupationalFields = OccupationalField::with('parent')->get();
@@ -62,6 +67,7 @@ final class ProfileEditController extends Controller
             'user' => $user,
             'primaryResidence' => $primaryResidence,
             'pendingResidenceIntent' => $pendingResidenceIntent,
+            'residenceHydrationPath' => $residenceHydrationPath,
             'occupationalFields' => $occupationalFields,
             'experienceFields' => $experienceFields,
             'allOccupationalFields' => $allOccupationalFields,
@@ -80,5 +86,53 @@ final class ProfileEditController extends Controller
             'alleys' => $empty,
             'countryCodes' => [],
         ]);
+    }
+
+    /** @return array<int, string> */
+    private function residenceHydrationPath(?PendingResidenceIntent $intent): array
+    {
+        $proposal = $intent?->locationProposal;
+        if (! $proposal instanceof LocationProposal) {
+            return [];
+        }
+
+        $proposalPath = [];
+        $proposalCursor = $proposal;
+        $visitedProposalIds = [];
+        $canonicalAnchor = null;
+
+        while ($proposalCursor !== null) {
+            if (isset($visitedProposalIds[$proposalCursor->id])) {
+                return [];
+            }
+            $visitedProposalIds[$proposalCursor->id] = true;
+            array_unshift($proposalPath, 'proposal:'.$proposalCursor->id);
+
+            if ($proposalCursor->parent_location_id !== null) {
+                $canonicalAnchor = $proposalCursor->parentLocation()->first();
+                break;
+            }
+
+            $proposalCursor = $proposalCursor->parentProposal()->first();
+        }
+
+        if (! $canonicalAnchor instanceof Location) {
+            return [];
+        }
+
+        $locationPath = [];
+        $locationCursor = $canonicalAnchor;
+        $visitedLocationIds = [];
+
+        while ($locationCursor !== null) {
+            if (isset($visitedLocationIds[$locationCursor->id])) {
+                return [];
+            }
+            $visitedLocationIds[$locationCursor->id] = true;
+            array_unshift($locationPath, 'location:'.$locationCursor->id);
+            $locationCursor = $locationCursor->parent()->first();
+        }
+
+        return [...$locationPath, ...$proposalPath];
     }
 }

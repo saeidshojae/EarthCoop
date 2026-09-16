@@ -27,6 +27,8 @@ const installResidenceStyles = () => {
     document.head.appendChild(style);
 };
 
+const sleep = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+
 const mountResidenceUx = (selector) => {
     const levels = selector.querySelector('[data-location-levels]');
     const path = selector.querySelector('[data-location-path]');
@@ -34,8 +36,19 @@ const mountResidenceUx = (selector) => {
     const proposalInput = selector.querySelector('[data-location-proposal-id]');
     const submit = selector.closest('form')?.querySelector('[data-location-submit]');
     const currentLocationId = selector.dataset.locationCurrentId || '';
+    const currentProposalId = selector.dataset.locationCurrentProposalId || '';
+    let currentPath = [];
 
-    if (currentLocationId && locationInput && !locationInput.value) locationInput.value = currentLocationId;
+    try {
+        const parsed = JSON.parse(selector.dataset.locationCurrentPath || '[]');
+        currentPath = Array.isArray(parsed) ? parsed.map((identity) => String(identity)) : [];
+    } catch (error) {
+        console.warn('EarthCoop persisted residence path could not be parsed:', error);
+    }
+
+    if (currentLocationId && !currentProposalId && locationInput && !locationInput.value) {
+        locationInput.value = currentLocationId;
+    }
 
     const selectedLabels = () => Array.from(levels?.querySelectorAll('select') || [])
         .map((select) => select.selectedOptions?.[0])
@@ -54,6 +67,36 @@ const mountResidenceUx = (selector) => {
         });
     };
 
+    const waitForPersistedOption = async (depth, identity) => {
+        for (let attempt = 0; attempt < 160; attempt += 1) {
+            const select = levels?.querySelector(`[data-location-select="${depth}"]`);
+            if (select && Array.from(select.options).some((option) => option.value === identity)) return select;
+            await sleep(25);
+        }
+        return null;
+    };
+
+    const replayPersistedPath = async () => {
+        if (!levels || !currentPath.length || !currentProposalId) return;
+
+        for (let depth = 0; depth < currentPath.length; depth += 1) {
+            const identity = currentPath[depth];
+            const select = await waitForPersistedOption(depth, identity);
+            if (!select) {
+                console.warn(`EarthCoop persisted residence path is stale at depth ${depth}: ${identity}`);
+                return;
+            }
+
+            select.value = identity;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        if (locationInput) locationInput.value = '';
+        if (proposalInput) proposalInput.value = currentProposalId;
+        if (submit) submit.disabled = false;
+        renderPath();
+    };
+
     levels?.addEventListener('change', () => window.setTimeout(() => renderPath(), 0));
     selector.addEventListener('location:hydrate', (event) => {
         const suggestedId = event.detail?.suggested_location_id; if (!suggestedId || !locationInput) return;
@@ -69,6 +112,8 @@ const mountResidenceUx = (selector) => {
         renderPath();
     });
     if (levels) observer.observe(levels, { childList: true, subtree: true });
+
+    void replayPersistedPath();
 };
 
 installResidenceStyles();

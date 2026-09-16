@@ -33,20 +33,27 @@
         </div>
     @endif
 
+    @php
+        $persistedProposalId = old('location_proposal_id', $pendingResidenceIntent?->location_proposal_id);
+        $persistedLocationId = old('location_id', $persistedProposalId ? '' : $primaryResidence?->location_id);
+    @endphp
+
     <form method="POST" action="{{ route('profile.update.address') }}" data-location-form>
         @csrf
         @method('PUT')
         <div
             data-location-selector
             data-location-selector-context="profile"
-            data-location-current-id="{{ $primaryResidence?->location_id }}"
+            data-location-current-id="{{ $persistedProposalId ? '' : $primaryResidence?->location_id }}"
+            data-location-current-proposal-id="{{ $persistedProposalId }}"
+            data-location-current-path='@json($residenceHydrationPath ?? [])'
             data-country-code="{{ $primaryResidence?->location?->country_code ?: 'IR' }}"
             data-empty-label="یک گزینه را انتخاب کنید"
             data-loading-label="در حال دریافت گزینه‌های مکانی..."
             data-error-label="دریافت گزینه‌های مکانی ممکن نشد. دوباره تلاش کنید."
         >
-            <input type="hidden" name="location_id" value="{{ old('location_id', $primaryResidence?->location_id) }}" data-location-id>
-            <input type="hidden" name="location_proposal_id" value="{{ old('location_proposal_id') }}" data-location-proposal-id>
+            <input type="hidden" name="location_id" value="{{ $persistedLocationId }}" data-location-id>
+            <input type="hidden" name="location_proposal_id" value="{{ $persistedProposalId }}" data-location-proposal-id>
 
             <div class="location-geolocation-actions d-flex flex-wrap align-items-center gap-2 mb-3" data-location-geolocation>
                 <button type="button" class="btn btn-outline-primary btn-sm" data-location-geolocation-detect>تشخیص موقعیت من</button>
