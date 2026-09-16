@@ -12,6 +12,12 @@ use Illuminate\Support\Facades\DB;
 
 class LocationProposalService
 {
+    private const OPEN_STATUSES = [
+        LocationProposalStatus::Pending->value,
+        LocationProposalStatus::ReadyForReview->value,
+        LocationProposalStatus::NeedsEvidence->value,
+    ];
+
     public function __construct(
         private readonly LocationDuplicateDetector $duplicateDetector,
         private readonly ResidenceService $residenceService,
@@ -25,13 +31,8 @@ class LocationProposalService
             throw new DomainException('Crowdsourced proposals are not permitted for this location type in the active schema.');
         }
 
-        $canonicalName = trim((string) ($data['canonical_name'] ?? ''));
+        $canonicalName = $this->canonicalName($data);
         $normalizedName = $this->duplicateDetector->normalizeName($canonicalName);
-
-        if ($normalizedName === '') {
-            throw new DomainException('A canonical location name is required.');
-        }
-
         $duplicate = $this->duplicateDetector->findLikelyDuplicate($parent, $type, $canonicalName);
 
         if ($duplicate !== null) {
@@ -40,13 +41,10 @@ class LocationProposalService
 
         $reusable = LocationProposal::query()
             ->where('parent_location_id', $parent->id)
+            ->whereNull('parent_location_proposal_id')
             ->where('location_type_id', $type->id)
             ->where('normalized_name', $normalizedName)
-            ->whereIn('status', [
-                LocationProposalStatus::Pending->value,
-                LocationProposalStatus::ReadyForReview->value,
-                LocationProposalStatus::NeedsEvidence->value,
-            ])
+            ->whereIn('status', self::OPEN_STATUSES)
             ->orderBy('id')
             ->first();
 
@@ -57,6 +55,47 @@ class LocationProposalService
         return LocationProposal::query()->create([
             'proposer_user_id' => $proposer->id,
             'parent_location_id' => $parent->id,
+            'parent_location_proposal_id' => null,
+            'location_schema_id' => $parent->location_schema_id,
+            'location_type_id' => $type->id,
+            'country_code' => $parent->country_code,
+            'canonical_name' => $canonicalName,
+            'normalized_name' => $normalizedName,
+            'localized_names' => $data['localized_names'] ?? null,
+            'status' => LocationProposalStatus::Pending,
+            'metadata' => $data['metadata'] ?? null,
+            'audit_log' => [],
+        ]);
+    }
+
+    public function proposeUnderProposal(User $proposer, LocationProposal $parent, LocationType $type, array $data): LocationProposal
+    {
+        $this->guardOpen($parent);
+
+        if (! $this->proposalPolicy->allowsProposalParent($parent, $type)) {
+            throw new DomainException('The requested location type is not a permitted crowdsourced child of this proposal.');
+        }
+
+        $canonicalName = $this->canonicalName($data);
+        $normalizedName = $this->duplicateDetector->normalizeName($canonicalName);
+
+        $reusable = LocationProposal::query()
+            ->whereNull('parent_location_id')
+            ->where('parent_location_proposal_id', $parent->id)
+            ->where('location_type_id', $type->id)
+            ->where('normalized_name', $normalizedName)
+            ->whereIn('status', self::OPEN_STATUSES)
+            ->orderBy('id')
+            ->first();
+
+        if ($reusable !== null) {
+            return $reusable;
+        }
+
+        return LocationProposal::query()->create([
+            'proposer_user_id' => $proposer->id,
+            'parent_location_id' => null,
+            'parent_location_proposal_id' => $parent->id,
             'location_schema_id' => $parent->location_schema_id,
             'location_type_id' => $type->id,
             'country_code' => $parent->country_code,
@@ -74,11 +113,7 @@ class LocationProposalService
         $this->guardOpen($proposal);
 
         DB::transaction(function () use ($proposal, $user, $evidence): void {
-            $proposal->evidence()->updateOrCreate(
-                ['user_id' => $user->id],
-                ['evidence' => $evidence],
-            );
-
+            $proposal->evidence()->updateOrCreate(['user_id' => $user->id], ['evidence' => $evidence]);
             $proposal->refresh();
             $threshold = max(1, (int) config('location-governance.location_proposal_verification_threshold', 10));
             $distinctVerifiers = $proposal->evidence()->distinct()->count('user_id');
@@ -101,19 +136,19 @@ class LocationProposalService
 
         return DB::transaction(function () use ($proposal, $reviewer, $reason): Location {
             $proposal->refresh();
+            $parent = $proposal->parentLocation()->lockForUpdate()->first();
 
-            $duplicate = $this->duplicateDetector->findLikelyDuplicate(
-                $proposal->parentLocation,
-                $proposal->type,
-                $proposal->canonical_name,
-            );
+            if ($parent === null) {
+                throw new DomainException('Approve the pending parent proposal before approving this descendant.');
+            }
 
+            $duplicate = $this->duplicateDetector->findLikelyDuplicate($parent, $proposal->type, $proposal->canonical_name);
             if ($duplicate !== null) {
                 throw new DomainException('A matching canonical location already exists; merge the proposal instead.');
             }
 
             $location = Location::query()->create([
-                'parent_id' => $proposal->parent_location_id,
+                'parent_id' => $parent->id,
                 'location_schema_id' => $proposal->location_schema_id,
                 'location_type_id' => $proposal->location_type_id,
                 'country_code' => $proposal->country_code,
@@ -122,16 +157,14 @@ class LocationProposalService
                 'localized_names' => $proposal->localized_names,
                 'level' => $proposal->type?->key,
                 'status' => 'active',
-                'provenance' => [
-                    'source' => 'community_proposal',
-                    'location_proposal_id' => $proposal->id,
-                ],
+                'provenance' => ['source' => 'community_proposal', 'location_proposal_id' => $proposal->id],
             ]);
 
             $proposal->resolved_location_id = $location->id;
             $proposal->approved_at = now();
             $proposal->save();
             $this->transition($proposal, LocationProposalStatus::Approved, $reviewer, $reason, true);
+            $this->reanchorOpenChildren($proposal, $location);
             $this->residenceService->resolvePendingResidenceIntents($proposal->fresh(), $location);
 
             return $location;
@@ -141,6 +174,7 @@ class LocationProposalService
     public function reject(LocationProposal $proposal, User $reviewer, string $reason): void
     {
         $this->guardOpen($proposal);
+        $this->guardNoOpenChildren($proposal);
         $this->transition($proposal, LocationProposalStatus::Rejected, $reviewer, $reason, true);
     }
 
@@ -149,20 +183,49 @@ class LocationProposalService
         $this->guardOpen($proposal);
 
         DB::transaction(function () use ($proposal, $existing, $reviewer, $reason): void {
+            if ((int) $existing->location_schema_id !== (int) $proposal->location_schema_id
+                || (int) $existing->location_type_id !== (int) $proposal->location_type_id) {
+                throw new DomainException('The merge target must use the same location schema and type as the proposal.');
+            }
+
             $proposal->resolved_location_id = $existing->id;
             $proposal->save();
             $this->transition($proposal, LocationProposalStatus::Merged, $reviewer, $reason, true);
+            $this->reanchorOpenChildren($proposal, $existing);
             $this->residenceService->resolvePendingResidenceIntents($proposal->fresh(), $existing);
         });
     }
 
-    private function transition(
-        LocationProposal $proposal,
-        LocationProposalStatus $to,
-        User $actor,
-        string $reason,
-        bool $markReviewed = false,
-    ): void {
+    private function reanchorOpenChildren(LocationProposal $proposal, Location $resolvedParent): void
+    {
+        LocationProposal::query()
+            ->where('parent_location_proposal_id', $proposal->id)
+            ->whereIn('status', self::OPEN_STATUSES)
+            ->update([
+                'parent_location_id' => $resolvedParent->id,
+                'parent_location_proposal_id' => null,
+                'updated_at' => now(),
+            ]);
+    }
+
+    private function guardNoOpenChildren(LocationProposal $proposal): void
+    {
+        if ($proposal->childProposals()->whereIn('status', self::OPEN_STATUSES)->exists()) {
+            throw new DomainException('Resolve or re-parent open descendant proposals before rejecting this proposal.');
+        }
+    }
+
+    private function canonicalName(array $data): string
+    {
+        $canonicalName = trim((string) ($data['canonical_name'] ?? ''));
+        if ($this->duplicateDetector->normalizeName($canonicalName) === '') {
+            throw new DomainException('A canonical location name is required.');
+        }
+        return $canonicalName;
+    }
+
+    private function transition(LocationProposal $proposal, LocationProposalStatus $to, User $actor, string $reason, bool $markReviewed = false): void
+    {
         $proposal->refresh();
         $from = $proposal->status;
         $audit = $proposal->audit_log ?? [];
@@ -173,27 +236,19 @@ class LocationProposalService
             'reason' => $reason,
             'at' => now()->toIso8601String(),
         ];
-
         $proposal->status = $to;
         $proposal->audit_log = $audit;
-
         if ($markReviewed) {
             $proposal->reviewed_by_user_id = $actor->id;
             $proposal->review_reason = $reason;
         }
-
         $proposal->save();
     }
 
     private function guardOpen(LocationProposal $proposal): void
     {
         $proposal->refresh();
-
-        if (in_array($proposal->status, [
-            LocationProposalStatus::Approved,
-            LocationProposalStatus::Rejected,
-            LocationProposalStatus::Merged,
-        ], true)) {
+        if (! in_array($proposal->status->value, self::OPEN_STATUSES, true)) {
             throw new DomainException('This location proposal is already resolved.');
         }
     }
