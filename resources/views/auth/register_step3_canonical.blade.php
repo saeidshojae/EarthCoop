@@ -2,44 +2,68 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="format-detection" content="telephone=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>مرحله ۳: اطلاعات مکانی - EarthCoop</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
-    @vite(['resources/js/app.js']) {{-- registration-location-ux.js is imported by app.js --}}
+    <title>مرحله ۳ - اطلاعات مکانی</title>
+    @vite(['resources/js/app.js'])
+    <link rel="stylesheet" href="{{ asset('Css/fonts-local.css') }}">
+    <link rel="stylesheet" href="{{ asset("vendor/fontawesome/css/all.min.css") }}">
     <style>
-        body { min-height:100vh; background:linear-gradient(135deg,#f8f9fa 0%,#e9ecef 100%); font-family:Tahoma,Arial,sans-serif; }
-        .registration-container { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
-        .registration-card { background:#fff; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,.1); overflow:hidden; width:100%; max-width:760px; }
-        .form-card-gradient { background:linear-gradient(135deg,#6f42c1 0%,#5a32a3 100%); color:#fff; padding:28px 32px; text-align:center; }
-        .logo-container img { width:76px; height:76px; object-fit:contain; margin-bottom:12px; }
-        .progress-steps { display:flex; justify-content:center; gap:8px; margin-top:18px; }
-        .step { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.25); font-weight:700; }
-        .step.active { background:#fff; color:#6f42c1; }
-        .registration-body { padding:30px 34px 34px; }
-        .location-path { background:#f8f5ff; border:1px solid #e3d8ff; border-radius:12px; padding:12px 14px; min-height:50px; display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:18px; }
-        .location-path .badge { font-size:.82rem; padding:.55em .7em; }
-        [data-location-levels] { display:grid; gap:14px; }
-        [data-location-levels] .form-select { min-height:46px; border-radius:10px; }
-        .location-actions { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:12px; }
-        .submit-btn { min-height:50px; border:0; border-radius:12px; background:linear-gradient(135deg,#6f42c1,#8e5cff); color:#fff; font-weight:700; font-size:1.05rem; }
-        .submit-btn:disabled { opacity:.55; }
-        @media(max-width:640px){ .registration-container{padding:10px}.registration-body{padding:22px 16px 26px}.form-card-gradient{padding:22px 16px}.registration-card{border-radius:16px}.location-actions>*{flex:1 1 140px;min-height:44px} }
+        :root { --color-earth-green: #10b981; --color-ocean-blue: #3b82f6; --color-digital-gold: #f59e0b; --color-pure-white: #ffffff; --color-gentle-black: #1e293b; --color-dark-green: #047857; --color-dark-blue: #1d4ed8; }
+        * { font-family: 'Vazirmatn', 'Poppins', sans-serif; }
+        body { background-color: #e2e8f0; }
+        @keyframes bounce-custom { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-15px)} }
+        .animate-bounce-custom { animation: bounce-custom 3s infinite ease-in-out; }
+        .form-card-gradient { background: linear-gradient(145deg, var(--color-pure-white) 0%, #f0f4f7 100%); box-shadow:0 12px 35px rgba(0,0,0,.08); border-radius:18px; position:relative; border:1px solid rgba(220,220,220,.3); overflow:hidden; }
+        .form-card-gradient::before { content:''; position:absolute; top:0; left:0; width:100%; height:6px; background: linear-gradient(90deg, var(--color-earth-green), var(--color-ocean-blue), var(--color-digital-gold)); }
+        .location-path { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding:.75rem 1rem; border-radius:.75rem; color:white; font-weight:500; margin-bottom:1.5rem; box-shadow:0 4px 15px rgba(102,126,234,.3); font-size:.875rem; line-height:1.6; min-height:3rem; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:.35rem; }
+        .location-path .badge,.location-path span { color:white!important; background:rgba(255,255,255,.14)!important; border:0; font-weight:600; padding:.3rem .55rem; border-radius:.35rem; white-space:nowrap; }
+        [data-location-levels] { display:grid; gap:.9rem; }
+        [data-location-levels] .form-select { min-height:3rem; border:1px solid #d1d5db; border-radius:.5rem; color:var(--color-gentle-black); background-color:white; }
+        .location-actions { display:flex; flex-wrap:wrap; gap:.75rem; margin-bottom:1rem; }
+        .location-action-btn { min-height:44px; border-radius:.6rem; padding:.65rem 1rem; font-weight:700; transition:transform .2s ease,box-shadow .2s ease; }
+        .location-action-btn:hover { transform:translateY(-1px); }
+        .location-detect-btn { border:1px solid var(--color-ocean-blue); color:var(--color-dark-blue); background:white; }
+        .location-manual-btn { border:1px solid #94a3b8; color:#475569; background:white; }
+        .create-location-btn { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; white-space:nowrap; border-radius:9999px; font-weight:700; font-size:.95rem; padding:.65rem 1.5rem; background:linear-gradient(135deg,var(--color-earth-green),var(--color-dark-green)); color:white; box-shadow:0 10px 22px rgba(16,185,129,.35); transition:transform .2s ease,box-shadow .2s ease; }
+        .create-location-btn:hover { transform:translateY(-2px); box-shadow:0 12px 26px rgba(16,185,129,.45); }
+        .submit-btn { width:100%; min-height:3rem; border:0; border-radius:.65rem; background:linear-gradient(135deg,var(--color-ocean-blue),var(--color-dark-blue)); color:white; font-weight:800; box-shadow:0 8px 18px rgba(59,130,246,.24); }
+        .submit-btn:disabled { opacity:.5; cursor:not-allowed; box-shadow:none; }
+        @media(max-width:640px){ html,body{margin:0!important;padding:0!important;width:100%!important;min-height:100%!important;overflow-x:hidden!important} body{padding-top:.25rem!important;padding-bottom:.25rem!important;align-items:flex-start!important}.form-card-gradient{padding:.75rem!important;border-radius:12px;margin:.25rem auto!important;width:calc(100% - .5rem)!important;max-width:calc(100% - .5rem)!important}.form-card-gradient::before{border-radius:12px 12px 0 0}.location-path{padding:.625rem .75rem!important;font-size:.75rem!important;margin-bottom:1rem!important;line-height:1.5!important}.create-location-btn{font-size:.8125rem!important;padding:.5rem 1rem!important;min-height:44px}.location-actions>*{flex:1 1 140px;min-height:44px}[data-location-levels] .form-select{min-height:44px;font-size:.875rem} }
     </style>
 </head>
-<body>
-<div class="registration-container"><div class="registration-card">
-<header class="form-card-gradient"><div class="logo-container"><img src="{{ asset('assets/images/logo.png') }}" alt="EarthCoop" onerror="this.style.display='none'"></div><h1 class="h4 mb-2">مرحله ۳: اطلاعات مکانی</h1><p class="mb-0 opacity-75">محل سکونت اصلی خود را مشخص کنید</p><div class="progress-steps" aria-label="مراحل ثبت‌نام"><div class="step">۱</div><div class="step">۲</div><div class="step active">۳</div></div></header>
-<main class="registration-body">
-<h2 class="h5 mb-2">محل سکونت اصلی</h2><p class="text-secondary small mb-4">ساختار مکانی هر کشور پویاست؛ مسیر را تا دقیق‌ترین محل معتبر خود ادامه دهید. عضویت در حوزه‌های حکمرانی بالادستی از محل سکونت اصلی شما به‌صورت سیستمی تعیین می‌شود.</p>
-@if ($errors->any())<div class="alert alert-danger" role="alert"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
-<form method="POST" action="{{ route('register.step3.process') }}" data-location-form>@csrf
-<div data-location-selector data-location-selector-context="registration" data-empty-label="یک گزینه را انتخاب کنید" data-loading-label="در حال دریافت گزینه‌های مکانی..." data-error-label="دریافت گزینه‌های مکانی ممکن نشد. دوباره تلاش کنید.">
-<input type="hidden" name="location_id" value="{{ old('location_id') }}" data-location-id><input type="hidden" name="location_proposal_id" value="{{ old('location_proposal_id') }}" data-location-proposal-id>
-<div class="location-actions" data-location-geolocation><button type="button" class="btn btn-outline-primary" data-location-geolocation-detect>تشخیص موقعیت من</button><button type="button" class="btn btn-outline-secondary" data-location-geolocation-manual>انتخاب دستی</button></div>
-<p class="small text-secondary mb-3 d-none" data-location-geolocation-status aria-live="polite"></p>
-<div class="mb-2 fw-semibold small">مسیر انتخابی شما</div><div class="location-path text-muted" data-location-path aria-live="polite">مسیر انتخاب نشده</div>
-<div data-location-levels></div><div class="small text-secondary mt-3" data-location-status aria-live="polite">برای ادامه، یک محل معتبر برای سکونت اصلی انتخاب کنید.</div>
-</div><div class="d-grid mt-4"><button type="submit" class="submit-btn" data-location-submit disabled>ثبت محل سکونت و ادامه</button></div></form>
-</main></div></div>
-</body></html>
+<body class="font-vazirmatn leading-relaxed flex items-center justify-center min-h-screen p-0 sm:p-2 md:p-4">
+<div class="form-card-gradient w-full max-w-3xl mx-auto p-4 sm:p-6 md:p-8 lg:p-10">
+    <div class="flex items-center justify-center space-x-2 sm:space-x-3 rtl:space-x-reverse mb-4 sm:mb-6 md:mb-8">
+        <svg width="40" height="40" class="animate-bounce-custom sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#10b981" opacity="0.8"/><path d="M12 2C10.5 4 8 6 8 9C8 12 12 14 12 14C12 14 16 12 16 9C16 6 13.5 4 12 2ZM12 14C12 14 10 16 10 18C10 20 12 22 12 22" fill="#047857"/></svg>
+        <span class="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold" style="color:var(--color-gentle-black);">EarthCoop</span>
+    </div>
+    <div class="text-center mb-4 sm:mb-6 md:mb-8"><div class="flex items-center justify-center flex-wrap gap-2 sm:gap-3 md:gap-4 mb-2 sm:mb-4" aria-label="مراحل ثبت‌نام">
+        <div class="flex items-center flex-col sm:flex-row opacity-50"><div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-white bg-gray-400 text-sm sm:text-base"><i class="fas fa-check text-xs sm:text-sm"></i></div><span class="mr-0 sm:mr-2 mt-1 sm:mt-0 text-xs sm:text-sm text-gray-500 hidden sm:inline">هویتی</span></div>
+        <div class="w-4 h-1 sm:w-6 md:w-8 bg-gray-300 hidden sm:block"></div>
+        <div class="flex items-center flex-col sm:flex-row opacity-50"><div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-white bg-gray-400 text-sm sm:text-base"><i class="fas fa-check text-xs sm:text-sm"></i></div><span class="mr-0 sm:mr-2 mt-1 sm:mt-0 text-xs sm:text-sm text-gray-500 hidden sm:inline">صنفی</span></div>
+        <div class="w-4 h-1 sm:w-6 md:w-8 bg-gray-300 hidden sm:block"></div>
+        <div class="flex items-center flex-col sm:flex-row"><div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-white text-sm sm:text-base" style="background-color:var(--color-ocean-blue);">۳</div><span class="mr-0 sm:mr-2 mt-1 sm:mt-0 text-xs sm:text-sm font-bold hidden sm:inline" style="color:var(--color-ocean-blue);">مکانی</span></div>
+    </div></div>
+    <div class="text-right">
+        <h2 class="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold mb-3 sm:mb-4" style="color:var(--color-gentle-black);">مرحله ۳: اطلاعات مکانی</h2>
+        <p class="text-gray-600 mb-4 sm:mb-6 text-xs sm:text-sm md:text-base">لطفاً محل سکونت اصلی خود را با دقت انتخاب کنید. مسیر مکانی هر کشور پویاست و می‌توانید تا دقیق‌ترین محل معتبر خود ادامه دهید. عضویت در حوزه‌های حکمرانی بالادستی از محل سکونت اصلی شما به‌صورت سیستمی تعیین می‌شود.</p>
+        @if ($errors->any())<div class="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-4 sm:mb-6 text-sm sm:text-base" role="alert"><ul class="list-disc list-inside mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+        @if(session('error'))<div class="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-4 sm:mb-6 text-sm sm:text-base" role="alert">{{ session('error') }}</div>@endif
+        <form method="POST" action="{{ route('register.step3.process') }}" data-location-form id="step3Form">@csrf
+            <div data-location-selector data-location-selector-context="registration" data-empty-label="یک گزینه را انتخاب کنید" data-loading-label="در حال دریافت گزینه‌های مکانی..." data-error-label="دریافت گزینه‌های مکانی ممکن نشد. دوباره تلاش کنید.">
+                <input type="hidden" name="location_id" value="{{ old('location_id') }}" data-location-id><input type="hidden" name="location_proposal_id" value="{{ old('location_proposal_id') }}" data-location-proposal-id>
+                <div class="location-actions" data-location-geolocation><button type="button" class="location-action-btn location-detect-btn" data-location-geolocation-detect><i class="fas fa-location-crosshairs ml-1"></i>تشخیص موقعیت من</button><button type="button" class="location-action-btn location-manual-btn" data-location-geolocation-manual><i class="fas fa-list ml-1"></i>انتخاب دستی</button></div>
+                <p class="text-xs sm:text-sm text-gray-500 mb-3 hidden" data-location-geolocation-status aria-live="polite"></p>
+                <div class="location-path text-center" id="location_path_display" data-location-path aria-live="polite"><i class="fas fa-map-marker-alt ml-2"></i><span>مسیر انتخاب نشده</span></div>
+                <div data-location-levels></div><div class="text-xs sm:text-sm text-gray-500 mt-3" data-location-status aria-live="polite">برای ادامه، یک محل معتبر برای سکونت اصلی انتخاب کنید.</div>
+                <div class="mt-4 text-center" data-registration-proposal-visual-hint hidden aria-hidden="true"><span class="create-location-btn"><i class="fas fa-plus-circle"></i>مکان من در فهرست نیست</span></div>
+            </div>
+            <button type="submit" id="continueBtn" class="submit-btn mt-5" data-location-submit disabled>ثبت محل سکونت و ادامه</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>
