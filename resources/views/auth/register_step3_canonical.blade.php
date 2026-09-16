@@ -27,11 +27,12 @@
         .location-action-btn:hover { transform:translateY(-1px); }
         .location-detect-btn { border:1px solid var(--color-ocean-blue); color:var(--color-dark-blue); background:white; }
         .location-manual-btn { border:1px solid #94a3b8; color:#475569; background:white; }
-        .create-location-btn { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; white-space:nowrap; border-radius:9999px; font-weight:700; font-size:.95rem; padding:.65rem 1.5rem; background:linear-gradient(135deg,var(--color-earth-green),var(--color-dark-green)); color:white; box-shadow:0 10px 22px rgba(16,185,129,.35); transition:transform .2s ease,box-shadow .2s ease; }
-        .create-location-btn:hover { transform:translateY(-2px); box-shadow:0 12px 26px rgba(16,185,129,.45); }
+        .create-location-btn,[data-location-proposal-toggle] { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; white-space:nowrap; border-radius:9999px!important; border:0!important; font-weight:700; font-size:.95rem; padding:.65rem 1.5rem; background:linear-gradient(135deg,var(--color-earth-green),var(--color-dark-green))!important; color:white!important; box-shadow:0 10px 22px rgba(16,185,129,.35); transition:transform .2s ease,box-shadow .2s ease; }
+        .create-location-btn:hover,[data-location-proposal-toggle]:hover { transform:translateY(-2px); box-shadow:0 12px 26px rgba(16,185,129,.45); }
+        [data-location-proposal-shell] { margin-top:.75rem; }
         .submit-btn { width:100%; min-height:3rem; border:0; border-radius:.65rem; background:linear-gradient(135deg,var(--color-ocean-blue),var(--color-dark-blue)); color:white; font-weight:800; box-shadow:0 8px 18px rgba(59,130,246,.24); }
         .submit-btn:disabled { opacity:.5; cursor:not-allowed; box-shadow:none; }
-        @media(max-width:640px){ html,body{margin:0!important;padding:0!important;width:100%!important;min-height:100%!important;overflow-x:hidden!important} body{padding-top:.25rem!important;padding-bottom:.25rem!important;align-items:flex-start!important}.form-card-gradient{padding:.75rem!important;border-radius:12px;margin:.25rem auto!important;width:calc(100% - .5rem)!important;max-width:calc(100% - .5rem)!important}.form-card-gradient::before{border-radius:12px 12px 0 0}.location-path{padding:.625rem .75rem!important;font-size:.75rem!important;margin-bottom:1rem!important;line-height:1.5!important}.create-location-btn{font-size:.8125rem!important;padding:.5rem 1rem!important;min-height:44px}.location-actions>*{flex:1 1 140px;min-height:44px}[data-location-levels] .form-select{min-height:44px;font-size:.875rem} }
+        @media(max-width:640px){ html,body{margin:0!important;padding:0!important;width:100%!important;min-height:100%!important;overflow-x:hidden!important} body{padding-top:.25rem!important;padding-bottom:.25rem!important;align-items:flex-start!important}.form-card-gradient{padding:.75rem!important;border-radius:12px;margin:.25rem auto!important;width:calc(100% - .5rem)!important;max-width:calc(100% - .5rem)!important}.form-card-gradient::before{border-radius:12px 12px 0 0}.location-path{padding:.625rem .75rem!important;font-size:.75rem!important;margin-bottom:1rem!important;line-height:1.5!important}.create-location-btn,[data-location-proposal-toggle]{font-size:.8125rem!important;padding:.5rem 1rem!important;min-height:44px}.location-actions>*{flex:1 1 140px;min-height:44px}[data-location-levels] .form-select{min-height:44px;font-size:.875rem} }
     </style>
 </head>
 <body class="font-vazirmatn leading-relaxed flex items-center justify-center min-h-screen p-0 sm:p-2 md:p-4">
@@ -59,7 +60,6 @@
                 <p class="text-xs sm:text-sm text-gray-500 mb-3 hidden" data-location-geolocation-status aria-live="polite"></p>
                 <div class="location-path text-center" id="location_path_display" data-location-path aria-live="polite"><i class="fas fa-map-marker-alt ml-2"></i><span>مسیر انتخاب نشده</span></div>
                 <div data-location-levels></div><div class="text-xs sm:text-sm text-gray-500 mt-3" data-location-status aria-live="polite">برای ادامه، یک محل معتبر برای سکونت اصلی انتخاب کنید.</div>
-                <div class="mt-4 text-center" data-registration-proposal-visual-hint hidden aria-hidden="true"><span class="create-location-btn"><i class="fas fa-plus-circle"></i>مکان من در فهرست نیست</span></div>
             </div>
             <button type="submit" id="continueBtn" class="submit-btn mt-5" data-location-submit disabled>ثبت محل سکونت و ادامه</button>
         </form>
