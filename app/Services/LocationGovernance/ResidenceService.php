@@ -85,7 +85,8 @@ class ResidenceService
                 ]);
             }
 
-            if ((int) $proposal->parent_location_id !== (int) $current->location_id) {
+            $canonicalAnchor = $proposal->nearestCanonicalParent();
+            if ($canonicalAnchor === null || (int) $canonicalAnchor->id !== (int) $current->location_id) {
                 throw ValidationException::withMessages([
                     'location_proposal_id' => 'پیشنهاد مکان باید ادامهٔ همان مسیر محل سکونت تأییدشده باشد.',
                 ]);
