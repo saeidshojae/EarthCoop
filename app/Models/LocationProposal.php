@@ -12,6 +12,7 @@ class LocationProposal extends Model
     protected $fillable = [
         'proposer_user_id',
         'parent_location_id',
+        'parent_location_proposal_id',
         'location_schema_id',
         'location_type_id',
         'country_code',
@@ -45,6 +46,16 @@ class LocationProposal extends Model
         return $this->belongsTo(Location::class, 'parent_location_id');
     }
 
+    public function parentProposal(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_location_proposal_id');
+    }
+
+    public function childProposals(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_location_proposal_id');
+    }
+
     public function schema(): BelongsTo
     {
         return $this->belongsTo(LocationSchema::class, 'location_schema_id');
@@ -73,5 +84,26 @@ class LocationProposal extends Model
     public function pendingResidenceIntents(): HasMany
     {
         return $this->hasMany(PendingResidenceIntent::class);
+    }
+
+    public function nearestCanonicalParent(): ?Location
+    {
+        $cursor = $this;
+        $visited = [];
+
+        while ($cursor !== null) {
+            if (isset($visited[$cursor->id])) {
+                return null;
+            }
+            $visited[$cursor->id] = true;
+
+            if ($cursor->parent_location_id) {
+                return $cursor->parentLocation()->first();
+            }
+
+            $cursor = $cursor->parentProposal()->first();
+        }
+
+        return null;
     }
 }
