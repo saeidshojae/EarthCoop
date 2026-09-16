@@ -29,7 +29,8 @@ class CanonicalResidenceUiContractTest extends TestCase
     #[Test]
     public function shared_selector_consumes_schema_driven_picker_contract_and_proposal_endpoint(): void
     {
-        $selector = file_get_contents(resource_path('js/location-selector.js'));
+        $selector = file_get_contents(resource_path('js/location-selector-core.js'))
+            . file_get_contents(resource_path('js/location-selector.js'));
         $app = file_get_contents(resource_path('js/app.js'));
         $this->assertStringContainsString('/location/options/root', $selector);
         $this->assertStringContainsString('/children', $selector);
@@ -46,7 +47,8 @@ class CanonicalResidenceUiContractTest extends TestCase
     public function registration_picker_does_not_force_iran_and_can_start_from_global_country_roots(): void
     {
         $registration = file_get_contents(resource_path('views/auth/register_step3_canonical.blade.php'));
-        $selector = file_get_contents(resource_path('js/location-selector.js'));
+        $selector = file_get_contents(resource_path('js/location-selector-core.js'))
+            . file_get_contents(resource_path('js/location-selector.js'));
         $this->assertStringNotContainsString('data-country-code="IR"', $registration);
         $this->assertStringNotContainsString("|| 'IR'", $selector);
         $this->assertStringContainsString('/location/options/root', $selector);
@@ -82,7 +84,8 @@ class CanonicalResidenceUiContractTest extends TestCase
     #[Test]
     public function proposal_affordance_is_explicitly_mobile_touch_friendly_and_only_built_for_server_allowed_types(): void
     {
-        $selector = file_get_contents(resource_path('js/location-selector.js'));
+        $selector = file_get_contents(resource_path('js/location-selector-core.js'))
+            . file_get_contents(resource_path('js/location-selector.js'));
         $ux = file_get_contents(resource_path('js/registration-location-ux.js'));
         $this->assertStringContainsString('proposal_allowed === true', $selector);
         $this->assertStringContainsString('dataset.locationProposalShell', $selector);
