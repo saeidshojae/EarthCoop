@@ -68,22 +68,26 @@ class CanonicalResidenceUiContractTest extends TestCase
     public function profile_residence_editor_hydrates_current_selection_and_exposes_mobile_first_shared_controls(): void
     {
         $profile = file_get_contents(resource_path('views/profile/partials/location_canonical.blade.php'));
+        $ux = file_get_contents(resource_path('js/registration-location-ux.js'));
         $this->assertStringContainsString('data-location-path', $profile);
         $this->assertStringContainsString('data-location-current-id', $profile);
         $this->assertStringContainsString("old('location_id', $primaryResidence?->location_id)", $profile);
         $this->assertStringContainsString('location-residence-surface', $profile);
         $this->assertStringContainsString('location-geolocation-actions', $profile);
         $this->assertStringContainsString('location-proposal-help', $profile);
+        $this->assertStringContainsString('dataset.locationCurrentId', $ux);
+        $this->assertStringContainsString('[data-location-selector-context="profile"]', $ux);
     }
 
     #[Test]
     public function proposal_affordance_is_explicitly_mobile_touch_friendly_and_only_built_for_server_allowed_types(): void
     {
         $selector = file_get_contents(resource_path('js/location-selector.js'));
+        $ux = file_get_contents(resource_path('js/registration-location-ux.js'));
         $this->assertStringContainsString('proposal_allowed === true', $selector);
-        $this->assertStringContainsString('data.locationProposalShell', $selector);
-        $this->assertStringContainsString('location-proposal-surface', $selector);
-        $this->assertStringContainsString('location-proposal-toggle', $selector);
-        $this->assertStringContainsString('min-height: 44px', $selector);
+        $this->assertStringContainsString('dataset.locationProposalShell', $selector);
+        $this->assertStringContainsString('location-proposal-surface', $ux);
+        $this->assertStringContainsString('location-proposal-toggle', $ux);
+        $this->assertStringContainsString('min-height: 44px', $ux);
     }
 }
