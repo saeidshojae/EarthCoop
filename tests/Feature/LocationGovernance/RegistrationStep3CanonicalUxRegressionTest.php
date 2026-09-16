@@ -9,8 +9,10 @@ class RegistrationStep3CanonicalUxRegressionTest extends TestCase
     public function test_canonical_registration_preserves_the_established_step_three_visual_contract(): void
     {
         $view = file_get_contents(resource_path('views/auth/register_step3_canonical.blade.php'));
+        $app = file_get_contents(resource_path('js/app.js'));
 
         $this->assertIsString($view);
+        $this->assertIsString($app);
         $this->assertStringContainsString('form-card-gradient', $view);
         $this->assertStringContainsString('مرحله ۳: اطلاعات مکانی', $view);
         $this->assertStringContainsString('location-path', $view);
@@ -18,7 +20,7 @@ class RegistrationStep3CanonicalUxRegressionTest extends TestCase
         $this->assertStringContainsString('مسیر انتخاب نشده', $view);
         $this->assertStringContainsString('data-location-selector', $view);
         $this->assertStringContainsString('data-location-geolocation-detect', $view);
-        $this->assertStringContainsString('registration-location-ux.js', $view);
+        $this->assertStringContainsString("import './registration-location-ux.js';", $app);
     }
 
     public function test_registration_enhancement_exposes_a_live_canonical_path_contract(): void
