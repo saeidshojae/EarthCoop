@@ -2,6 +2,7 @@ import "./bootstrap";
 import "./site-navigation-history.js";
 import "./location-selector.js";
 import "./location-geolocation.js";
+import "./registration-location-ux.js";
 import $ from "jquery";
 import installSelect2 from "select2";
 
@@ -41,9 +42,7 @@ const loadNajmBaharRuntime = () => {
     const hasReputationConversion = Boolean(document.querySelector('form#conversionForm'));
     if (!onNajmBaharPage && !hasMembershipFeeUi && !hasNajmBaharSidebar && !hasReputationConversion) return;
     if (onNajmBaharPage) importFeature(() => import("./najm-bahar.js"), "Najm Bahar");
-    if (hasNajmBaharSidebar) {
-        importFeature(() => import("./najm-bahar-dashboard-mobile.js"), "Najm Bahar mobile UX");
-    }
+    if (hasNajmBaharSidebar) importFeature(() => import("./najm-bahar-dashboard-mobile.js"), "Najm Bahar mobile UX");
     if (hasMembershipFeeUi) importFeature(() => import("./najm-bahar-membership-source.js"), "Najm Bahar membership source");
     if (hasReputationConversion) importFeature(() => import("./najm-bahar-conversion-idempotency.js"), "Najm Bahar conversion idempotency");
 };
@@ -53,54 +52,17 @@ const loadNajmBaharAdminRuntime = () => {
     if (!['/admin/najm-bahar/dashboard', '/admin/najm-bahar/settings'].includes(path)) return;
     importFeature(() => import("./najm-bahar-admin-settings.js"), "Najm Bahar admin settings");
 };
-
-const loadPrivateMessagingRuntime = () => {
-    if (!document.querySelector('[data-private-conversation]')) return;
-    importFeature(() => import("./private-messaging-read-receipts.js"), "private messaging read receipts");
-    importFeature(() => import("./private-messaging-reaction-picker.js"), "private messaging reaction picker");
-};
-
-const loadMyParticipationRuntime = () => {
-    if (!document.querySelector('#tab-posts, #tab-comments, #tab-replies, #tab-reactions, #tab-polls, #tab-votes')) return;
-    importFeature(() => import("./my-participation-mobile.js"), "My Participation mobile UX");
-};
-
-const loadSwiperRuntime = () => {
-    if (!document.querySelector('swiper-container')) return;
-    importFeature(async () => { const { register } = await import("swiper/element/bundle"); register(); }, "Swiper");
-};
-
-const loadMemberInvitationRuntime = () => {
-    if (!document.querySelector('.invite-page-shell')) return;
-    importFeature(() => import("./member-invitation-share.js"), "member invitation sharing");
-};
-
-const loadProjectFormMobileRuntime = () => {
-    const path = window.location.pathname.replace(/\/+$/, '') || '/';
-    const isProjectCreate = path === '/najm-bahar/projects/create';
-    const isProjectEdit = /^\/najm-bahar\/projects\/[^/]+\/edit$/.test(path);
-    if (!isProjectCreate && !isProjectEdit) return;
-    importFeature(() => import("./project-form-mobile.js"), "project form mobile UX");
-};
-
-const loadPageScopedRuntime = () => {
-    loadNajmHodaRuntime();
-    loadNajmBaharRuntime();
-    loadNajmBaharAdminRuntime();
-    loadPrivateMessagingRuntime();
-    loadMyParticipationRuntime();
-    loadSwiperRuntime();
-    loadMemberInvitationRuntime();
-    loadProjectFormMobileRuntime();
-};
+const loadPrivateMessagingRuntime = () => { if (document.querySelector('[data-private-conversation]')) { importFeature(() => import("./private-messaging-read-receipts.js"), "private messaging read receipts"); importFeature(() => import("./private-messaging-reaction-picker.js"), "private messaging reaction picker"); } };
+const loadMyParticipationRuntime = () => { if (document.querySelector('#tab-posts, #tab-comments, #tab-replies, #tab-reactions, #tab-polls, #tab-votes')) importFeature(() => import("./my-participation-mobile.js"), "My Participation mobile UX"); };
+const loadSwiperRuntime = () => { if (document.querySelector('swiper-container')) importFeature(async () => { const { register } = await import("swiper/element/bundle"); register(); }, "Swiper"); };
+const loadMemberInvitationRuntime = () => { if (document.querySelector('.invite-page-shell')) importFeature(() => import("./member-invitation-share.js"), "member invitation sharing"); };
+const loadProjectFormMobileRuntime = () => { const path = window.location.pathname.replace(/\/+$/, '') || '/'; if (path === '/najm-bahar/projects/create' || /^\/najm-bahar\/projects\/[^/]+\/edit$/.test(path)) importFeature(() => import("./project-form-mobile.js"), "project form mobile UX"); };
+const loadPageScopedRuntime = () => { loadNajmHodaRuntime(); loadNajmBaharRuntime(); loadNajmBaharAdminRuntime(); loadPrivateMessagingRuntime(); loadMyParticipationRuntime(); loadSwiperRuntime(); loadMemberInvitationRuntime(); loadProjectFormMobileRuntime(); };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadPageScopedRuntime, { once: true }); else loadPageScopedRuntime();
 
 const localDevelopmentHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 if ('serviceWorker' in navigator && localDevelopmentHost) {
-    window.addEventListener('load', async () => {
-        try { const registrations = await navigator.serviceWorker.getRegistrations(); await Promise.all(registrations.map(registration => registration.unregister())); const keys = await caches?.keys?.() || []; await Promise.all(keys.filter(key => key.startsWith('earthcoop-')).map(key => caches.delete(key))); }
-        catch (error) { console.warn('EarthCoop local service worker cleanup failed:', error); }
-    });
+    window.addEventListener('load', async () => { try { const registrations = await navigator.serviceWorker.getRegistrations(); await Promise.all(registrations.map(registration => registration.unregister())); const keys = await caches?.keys?.() || []; await Promise.all(keys.filter(key => key.startsWith('earthcoop-')).map(key => caches.delete(key))); } catch (error) { console.warn('EarthCoop local service worker cleanup failed:', error); } });
 } else if ('serviceWorker' in navigator && window.isSecureContext) {
     window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch((error) => { console.warn('EarthCoop service worker registration failed:', error); }); });
 }

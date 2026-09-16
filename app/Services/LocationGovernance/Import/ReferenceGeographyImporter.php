@@ -306,6 +306,7 @@ final class ReferenceGeographyImporter
                     'is_root' => (bool) ($typeDefinition['is_root'] ?? false),
                     'is_residence_endpoint' => (bool) ($typeDefinition['is_residence_endpoint'] ?? false),
                     'sort_order' => (int) ($typeDefinition['sort_order'] ?? 0),
+                    'metadata' => is_array($typeDefinition['metadata'] ?? null) ? $typeDefinition['metadata'] : [],
                 ]
             );
         }
