@@ -71,7 +71,7 @@ class CanonicalResidenceUiContractTest extends TestCase
         $ux = file_get_contents(resource_path('js/registration-location-ux.js'));
         $this->assertStringContainsString('data-location-path', $profile);
         $this->assertStringContainsString('data-location-current-id', $profile);
-        $this->assertStringContainsString("old('location_id', $primaryResidence?->location_id)", $profile);
+        $this->assertStringContainsString("old('location_id', \$primaryResidence?->location_id)", $profile);
         $this->assertStringContainsString('location-residence-surface', $profile);
         $this->assertStringContainsString('location-geolocation-actions', $profile);
         $this->assertStringContainsString('location-proposal-help', $profile);
