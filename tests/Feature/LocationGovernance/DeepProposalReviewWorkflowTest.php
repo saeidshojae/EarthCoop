@@ -91,7 +91,7 @@ class DeepProposalReviewWorkflowTest extends TestCase
         $this->assertSame(LocationProposalStatus::Pending, $parentProposal->fresh()->status);
     }
 
-    public function test_approving_intermediate_parent_refines_official_anchor_while_deepest_intent_stays_pending(): void
+    public function test_approving_intermediate_parent_reanchors_chain_without_prematurely_changing_official_residence(): void
     {
         [$parentProposal, $childProposal, $anchor] = $this->makeDeepProposalScenario();
         $user = User::factory()->create();
@@ -112,7 +112,7 @@ class DeepProposalReviewWorkflowTest extends TestCase
         $current = $residenceService->currentPrimaryResidence($user);
 
         $this->assertNotNull($current);
-        $this->assertSame($approvedParent->id, $current->location_id);
+        $this->assertSame($anchor->id, $current->location_id);
         $this->assertSame('pending', $intent->status);
         $this->assertSame($childProposal->id, $intent->location_proposal_id);
         $this->assertSame($current->id, $intent->anchor_relationship_id);
