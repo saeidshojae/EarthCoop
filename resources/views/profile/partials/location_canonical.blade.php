@@ -35,7 +35,9 @@
 
     @php
         $persistedProposalId = old('location_proposal_id', $pendingResidenceIntent?->location_proposal_id);
-        $persistedLocationId = old('location_id', $persistedProposalId ? '' : $primaryResidence?->location_id);
+        $persistedLocationId = $persistedProposalId
+            ? old('location_id')
+            : old('location_id', $primaryResidence?->location_id);
     @endphp
 
     <form method="POST" action="{{ route('profile.update.address') }}" data-location-form>
