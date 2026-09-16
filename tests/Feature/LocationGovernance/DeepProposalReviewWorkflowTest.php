@@ -5,6 +5,7 @@ namespace Tests\Feature\LocationGovernance;
 use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\User;
 use App\Services\LocationGovernance\LocationProposalService;
+use App\Services\LocationGovernance\ResidenceService;
 use App\Services\NajmHoda\LocationGovernanceReviewService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\LocationFixture;
@@ -90,7 +91,40 @@ class DeepProposalReviewWorkflowTest extends TestCase
         $this->assertSame(LocationProposalStatus::Pending, $parentProposal->fresh()->status);
     }
 
-    /** @return array{0: \App\Models\LocationProposal, 1: \App\Models\LocationProposal} */
+    public function test_profile_refresh_preserves_deepest_pending_selection_and_exposes_full_hydration_path(): void
+    {
+        [$parentProposal, $childProposal, $anchor] = $this->makeDeepProposalScenario();
+        $user = User::factory()->create();
+        $residenceService = app(ResidenceService::class);
+
+        $residenceService->setInitialPrimaryResidence($user, $anchor, [
+            'source' => 'deep-profile-hydration-test',
+        ]);
+        $residenceService->setPendingResidenceIntent($user, $childProposal, [
+            'source' => 'deep-profile-hydration-test',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('profile.edit'));
+
+        $response->assertOk();
+        $response->assertSee('data-location-current-proposal-id="'.$childProposal->id.'"', false);
+        $response->assertSee('name="location_id" value="" data-location-id', false);
+        $response->assertSee('name="location_proposal_id" value="'.$childProposal->id.'"', false);
+        $response->assertSeeInOrder([
+            'location:'.$anchor->id,
+            'proposal:'.$parentProposal->id,
+            'proposal:'.$childProposal->id,
+        ], false);
+
+        $ux = file_get_contents(resource_path('js/registration-location-ux.js'));
+        $this->assertIsString($ux);
+        $this->assertStringContainsString('dataset.locationCurrentPath', $ux);
+        $this->assertStringContainsString('dataset.locationCurrentProposalId', $ux);
+        $this->assertStringContainsString('replayPersistedPath', $ux);
+        $this->assertStringContainsString("dispatchEvent(new Event('change'", $ux);
+    }
+
+    /** @return array{0: \App\Models\LocationProposal, 1: \App\Models\LocationProposal, 2: \App\Models\Location} */
     private function makeDeepProposalScenario(): array
     {
         $schema = LocationFixture::iranSchema();
@@ -109,6 +143,6 @@ class DeepProposalReviewWorkflowTest extends TestCase
             'canonical_name' => 'کوچه فرزند در انتظار',
         ]);
 
-        return [$parentProposal, $childProposal];
+        return [$parentProposal, $childProposal, $anchor];
     }
 }
