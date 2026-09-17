@@ -138,14 +138,24 @@ final class ProfileEditController extends Controller
         $path = [];
         $cursor = $location;
         $visitedLocationIds = [];
+        $root = null;
 
         while ($cursor !== null) {
             if (isset($visitedLocationIds[$cursor->id])) {
                 return [];
             }
             $visitedLocationIds[$cursor->id] = true;
+            $root = $cursor;
             array_unshift($path, 'location:'.$cursor->id);
             $cursor = $cursor->parent()->first();
+        }
+
+        if ($root instanceof Location) {
+            $countryArea = $root->governanceAreas()->official()->active()->where('governance_type', 'country')->first();
+            $continentArea = $countryArea?->parent()->official()->active()->where('governance_type', 'continent')->first();
+            if ($continentArea !== null) {
+                array_unshift($path, 'governance:'.$continentArea->id);
+            }
         }
 
         return $path;
