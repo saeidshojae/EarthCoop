@@ -91,7 +91,9 @@ class LocationGovernanceBootstrapSeeder extends Seeder
                 ['neighborhood', 'street'],
                 ['street', 'alley'],
                 ['street', 'complex'],
+                ['street', 'building'],
                 ['alley', 'complex'],
+                ['alley', 'building'],
                 ['complex', 'building'],
             ] as [$parentKey, $childKey]) {
                 LocationTypeRelation::query()->updateOrCreate(
