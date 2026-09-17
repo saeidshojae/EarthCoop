@@ -106,7 +106,7 @@ final class UserResidenceController extends Controller
             $proposalPolicy,
         ): void {
             $proposal = LocationProposal::query()
-                ->with(['parentLocation', 'type'])
+                ->with(['parentLocation', 'parentProposal', 'type'])
                 ->whereKey($proposalId)
                 ->lockForUpdate()
                 ->first();
@@ -121,15 +121,19 @@ final class UserResidenceController extends Controller
                 ]);
             }
 
-            $anchor = $proposal->parentLocation;
+            $anchor = $proposal->nearestCanonicalParent();
             $type = $proposal->type;
+            $parentProposal = $proposal->parentProposal;
+            $proposalPathAllowed = $proposal->parent_location_id !== null
+                ? ($anchor !== null && $type !== null && $proposalPolicy->allows($anchor, $type))
+                : ($parentProposal !== null && $type !== null && $proposalPolicy->allowsProposalParent($parentProposal, $type));
 
             if (
                 $anchor === null
                 || $type === null
                 || $anchor->status !== 'active'
                 || ! $locationTreeResolver->residenceEndpointAllowed($anchor)
-                || ! $proposalPolicy->allows($anchor, $type)
+                || ! $proposalPathAllowed
             ) {
                 throw ValidationException::withMessages([
                     'location_proposal_id' => 'مکان پیشنهادی با مسیر معتبر محل سکونت سازگار نیست.',

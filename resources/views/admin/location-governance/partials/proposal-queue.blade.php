@@ -23,6 +23,8 @@
                 $review = $hodaReviews->get($proposal->id, []);
                 $auditEntries = collect($proposal->audit_log ?? []);
                 $latestAudit = $auditEntries->last();
+                $awaitingParentResolution = (bool) ($review['awaiting_parent_resolution'] ?? false);
+                $hasOpenChildren = (int) ($proposal->open_child_proposals_count ?? 0) > 0;
             @endphp
             <article class="border rounded-3 p-3 mb-3">
                 <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
@@ -34,8 +36,22 @@
                             شواهد: {{ $proposal->evidence_count }}
                         </div>
                         <div class="small text-muted mt-1">
-                            والد: {{ $proposal->parentLocation?->canonical_name ?: $proposal->parentLocation?->name ?: '—' }}
+                            @if($proposal->parentProposal)
+                                والد پیشنهادی: {{ $proposal->parentProposal->canonical_name }}
+                            @else
+                                والد: {{ $proposal->parentLocation?->canonical_name ?: $proposal->parentLocation?->name ?: '—' }}
+                            @endif
                         </div>
+                        @if($awaitingParentResolution)
+                            <div class="small fw-semibold text-warning-emphasis mt-2">
+                                ابتدا پیشنهاد والد را تعیین تکلیف کنید؛ تا آن زمان تأیید یا ادغام این فرزند مجاز نیست.
+                            </div>
+                        @endif
+                        @if($hasOpenChildren)
+                            <div class="small fw-semibold text-warning-emphasis mt-2">
+                                این پیشنهاد فرزند باز دارد و تا تعیین تکلیف یا بازاتصال فرزندان قابل رد نیست.
+                            </div>
+                        @endif
                         @if(is_array($latestAudit))
                             <div class="small mt-2" data-proposal-audit-context>
                                 <strong>آخرین سابقهٔ بازبینی:</strong>
@@ -61,20 +77,24 @@
                 <p class="small mt-3 mb-2">{{ $review['rationale'] ?? 'بازبینی انسانی لازم است.' }}</p>
 
                 <div class="row g-2 mt-1">
-                    <div class="col-12 col-xl-6">
-                        <form method="POST" action="{{ route('admin.location-governance.proposals.approve', $proposal) }}" class="d-flex gap-2">
-                            @csrf
-                            <input class="form-control" name="reason" required minlength="4" maxlength="1000" placeholder="دلیل تأیید انسانی">
-                            <button class="btn btn-success" type="submit">تأیید</button>
-                        </form>
-                    </div>
-                    <div class="col-12 col-xl-6">
-                        <form method="POST" action="{{ route('admin.location-governance.proposals.reject', $proposal) }}" class="d-flex gap-2">
-                            @csrf
-                            <input class="form-control" name="reason" required minlength="4" maxlength="1000" placeholder="دلیل رد انسانی">
-                            <button class="btn btn-outline-danger" type="submit">رد</button>
-                        </form>
-                    </div>
+                    @unless($awaitingParentResolution)
+                        <div class="col-12 col-xl-6">
+                            <form method="POST" action="{{ route('admin.location-governance.proposals.approve', $proposal) }}" class="d-flex gap-2">
+                                @csrf
+                                <input class="form-control" name="reason" required minlength="4" maxlength="1000" placeholder="دلیل تأیید انسانی">
+                                <button class="btn btn-success" type="submit">تأیید</button>
+                            </form>
+                        </div>
+                    @endunless
+                    @unless($hasOpenChildren)
+                        <div class="col-12 col-xl-6">
+                            <form method="POST" action="{{ route('admin.location-governance.proposals.reject', $proposal) }}" class="d-flex gap-2">
+                                @csrf
+                                <input class="form-control" name="reason" required minlength="4" maxlength="1000" placeholder="دلیل رد انسانی">
+                                <button class="btn btn-outline-danger" type="submit">رد</button>
+                            </form>
+                        </div>
+                    @endunless
                     <div class="col-12 col-xl-6">
                         <form method="POST" action="{{ route('admin.location-governance.proposals.request-evidence', $proposal) }}" class="d-flex gap-2">
                             @csrf
@@ -82,14 +102,16 @@
                             <button class="btn btn-outline-secondary" type="submit">مدرک بیشتر</button>
                         </form>
                     </div>
-                    <div class="col-12 col-xl-6">
-                        <form method="POST" action="{{ route('admin.location-governance.proposals.merge', $proposal) }}" class="d-flex gap-2">
-                            @csrf
-                            <input class="form-control" type="number" min="1" name="existing_location_id" required value="{{ $review['duplicate_candidate_id'] ?? '' }}" placeholder="ID مکان موجود">
-                            <input class="form-control" name="reason" required minlength="4" maxlength="1000" placeholder="دلیل ادغام">
-                            <button class="btn btn-outline-primary" type="submit">ادغام</button>
-                        </form>
-                    </div>
+                    @unless($awaitingParentResolution)
+                        <div class="col-12 col-xl-6">
+                            <form method="POST" action="{{ route('admin.location-governance.proposals.merge', $proposal) }}" class="d-flex gap-2">
+                                @csrf
+                                <input class="form-control" type="number" min="1" name="existing_location_id" required value="{{ $review['duplicate_candidate_id'] ?? '' }}" placeholder="ID مکان موجود">
+                                <input class="form-control" name="reason" required minlength="4" maxlength="1000" placeholder="دلیل ادغام">
+                                <button class="btn btn-outline-primary" type="submit">ادغام</button>
+                            </form>
+                        </div>
+                    @endunless
                 </div>
             </article>
         @empty

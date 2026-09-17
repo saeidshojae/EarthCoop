@@ -21,20 +21,21 @@ class LocationGovernanceReviewService
      */
     public function review(LocationProposal $proposal): array
     {
-        $proposal->loadMissing(['parentLocation', 'type']);
+        $proposal->loadMissing(['parentLocation', 'parentProposal', 'type']);
 
         $distinctVerifiers = $proposal->evidence()->distinct()->count('user_id');
         $duplicate = null;
         $anomalies = [];
+        $awaitingParentResolution = $proposal->parentLocation === null && $proposal->parentProposal !== null;
 
-        if ($proposal->parentLocation === null) {
+        if ($proposal->parentLocation === null && ! $awaitingParentResolution) {
             $anomalies[] = 'missing_parent_location';
         }
         if ($proposal->type === null) {
             $anomalies[] = 'missing_location_type';
         }
 
-        if ($proposal->parentLocation !== null && $proposal->type !== null) {
+        if (! $awaitingParentResolution && $proposal->parentLocation !== null && $proposal->type !== null) {
             $duplicate = $this->duplicateDetector->findLikelyDuplicate(
                 $proposal->parentLocation,
                 $proposal->type,
@@ -42,12 +43,19 @@ class LocationGovernanceReviewService
             );
         }
 
-        [$recommendation, $rationale] = $this->recommendationFor(
-            $proposal,
-            $duplicate?->id,
-            $distinctVerifiers,
-            $anomalies,
-        );
+        if ($awaitingParentResolution) {
+            [$recommendation, $rationale] = [
+                'review',
+                'The proposal is structurally valid but must wait until its parent proposal is approved or merged.',
+            ];
+        } else {
+            [$recommendation, $rationale] = $this->recommendationFor(
+                $proposal,
+                $duplicate?->id,
+                $distinctVerifiers,
+                $anomalies,
+            );
+        }
 
         $status = $proposal->status instanceof LocationProposalStatus
             ? $proposal->status->value
@@ -61,6 +69,7 @@ class LocationGovernanceReviewService
             'duplicate_candidate_id' => $duplicate?->id,
             'distinct_verifiers' => $distinctVerifiers,
             'anomalies' => $anomalies,
+            'awaiting_parent_resolution' => $awaitingParentResolution,
             'human_approval_required' => true,
         ];
     }

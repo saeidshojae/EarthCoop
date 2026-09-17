@@ -10,10 +10,12 @@ use App\Models\LocationProposal;
 use App\Models\PendingResidenceIntent;
 use App\Services\LocationGovernance\LocationProposalService;
 use App\Services\NajmHoda\LocationGovernanceReviewService;
+use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class LocationGovernanceController extends Controller
@@ -32,8 +34,11 @@ class LocationGovernanceController extends Controller
         $verificationThreshold = max(1, (int) config('location-governance.location_proposal_verification_threshold', 10));
 
         $proposalQuery = LocationProposal::query()
-            ->with(['parentLocation', 'type', 'proposer'])
+            ->with(['parentLocation', 'parentProposal', 'type', 'proposer'])
             ->withCount('evidence')
+            ->withCount([
+                'childProposals as open_child_proposals_count' => fn ($query) => $query->whereIn('status', $openStatuses),
+            ])
             ->whereIn('status', $openStatuses);
 
         if ($proposalStatusFilter !== null) {
@@ -146,7 +151,12 @@ class LocationGovernanceController extends Controller
         LocationProposalService $proposalService,
     ): JsonResponse|RedirectResponse {
         $validated = $this->validateReason($request);
-        $location = $proposalService->approve($locationProposal, $request->user(), $validated['reason']);
+
+        try {
+            $location = $proposalService->approve($locationProposal, $request->user(), $validated['reason']);
+        } catch (DomainException $exception) {
+            throw $this->proposalValidationException($exception);
+        }
 
         return $this->reviewResponse($request, $locationProposal->fresh(), ['location_id' => $location->id]);
     }
@@ -157,7 +167,12 @@ class LocationGovernanceController extends Controller
         LocationProposalService $proposalService,
     ): JsonResponse|RedirectResponse {
         $validated = $this->validateReason($request);
-        $proposalService->reject($locationProposal, $request->user(), $validated['reason']);
+
+        try {
+            $proposalService->reject($locationProposal, $request->user(), $validated['reason']);
+        } catch (DomainException $exception) {
+            throw $this->proposalValidationException($exception);
+        }
 
         return $this->reviewResponse($request, $locationProposal->fresh());
     }
@@ -173,7 +188,12 @@ class LocationGovernanceController extends Controller
         ]);
 
         $existing = Location::query()->findOrFail((int) $validated['existing_location_id']);
-        $proposalService->merge($locationProposal, $existing, $request->user(), $validated['reason']);
+
+        try {
+            $proposalService->merge($locationProposal, $existing, $request->user(), $validated['reason']);
+        } catch (DomainException $exception) {
+            throw $this->proposalValidationException($exception);
+        }
 
         return $this->reviewResponse($request, $locationProposal->fresh(), [
             'location_id' => $existing->id,
@@ -186,7 +206,12 @@ class LocationGovernanceController extends Controller
         LocationProposalService $proposalService,
     ): JsonResponse|RedirectResponse {
         $validated = $this->validateReason($request);
-        $proposalService->requestMoreEvidence($locationProposal, $request->user(), $validated['reason']);
+
+        try {
+            $proposalService->requestMoreEvidence($locationProposal, $request->user(), $validated['reason']);
+        } catch (DomainException $exception) {
+            throw $this->proposalValidationException($exception);
+        }
 
         return $this->reviewResponse($request, $locationProposal->fresh());
     }
@@ -196,6 +221,13 @@ class LocationGovernanceController extends Controller
     {
         return $request->validate([
             'reason' => ['required', 'string', 'min:4', 'max:1000'],
+        ]);
+    }
+
+    private function proposalValidationException(DomainException $exception): ValidationException
+    {
+        return ValidationException::withMessages([
+            'proposal' => $exception->getMessage(),
         ]);
     }
 

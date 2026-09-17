@@ -4,6 +4,11 @@ import { readFileSync } from 'node:fs';
 
 import { projectScopeSelectionValues } from '../../../resources/js/location-selector.js';
 
+const selectorSource = () => [
+    '../../../resources/js/location-selector-core.js',
+    '../../../resources/js/location-selector.js',
+].map((path) => readFileSync(new URL(path, import.meta.url), 'utf8')).join('\n');
+
 test('project market scope may stop on global or continent governance without requiring a lower location', () => {
     assert.deepEqual(
         projectScopeSelectionValues({ id: 1, identity: 'governance:1', type_key: 'global', status: 'active' }),
@@ -26,7 +31,7 @@ test('project market scope may stop on any active intermediate Location without 
 });
 
 test('project scope traversal keeps the selected parent valid while offering more precise children', () => {
-    const source = readFileSync(new URL('../../../resources/js/location-selector.js', import.meta.url), 'utf8');
+    const source = selectorSource();
 
     assert.match(source, /گزینه‌های دقیق‌تر آماده‌اند؛ می‌توانید همین سطح را نگه دارید یا پایین‌تر بروید/);
     assert.match(source, /if \(submit && !isProjectScope\) submit\.disabled = true/);

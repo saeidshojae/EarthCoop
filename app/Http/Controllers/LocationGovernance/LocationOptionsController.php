@@ -8,6 +8,7 @@ use App\Models\Location;
 use App\Models\LocationProposal;
 use App\Models\LocationSchemaType;
 use App\Models\LocationType;
+use App\Models\LocationTypeRelation;
 use App\Services\LocationGovernance\LocationProposalPolicy;
 use App\Services\LocationGovernance\LocationSchemaResolver;
 use Illuminate\Http\JsonResponse;
@@ -15,86 +16,73 @@ use Illuminate\Http\Request;
 
 final class LocationOptionsController extends Controller
 {
+    private const FA_TYPE_LABELS = [
+        'country' => 'کشور', 'province' => 'استان / ایالت', 'county' => 'شهرستان / ناحیه', 'section' => 'بخش',
+        'city' => 'شهر', 'rural_district' => 'دهستان', 'village' => 'روستا', 'urban_region' => 'منطقه شهری',
+        'neighborhood' => 'محله', 'street' => 'خیابان', 'alley' => 'کوچه', 'complex' => 'مجتمع', 'building' => 'ساختمان',
+    ];
+
+    private const OPEN_STATUSES = ['pending', 'ready_for_review', 'needs_evidence'];
+
     public function root(Request $request): JsonResponse
     {
         $this->assertRuntimeEnabled();
-
         $countryCode = strtoupper(trim((string) $request->query('country', '')));
-
-        $locations = Location::query()
-            ->with(['type', 'schema'])
-            ->whereNull('parent_id')
-            ->where('status', 'active')
-            ->whereNotNull('location_schema_id')
-            ->whereNotNull('location_type_id')
+        $locations = Location::query()->with(['type', 'schema'])->whereNull('parent_id')->where('status', 'active')
+            ->whereNotNull('location_schema_id')->whereNotNull('location_type_id')
             ->whereHas('schema', fn ($query) => $query->where('status', 'active'))
             ->when($countryCode !== '', fn ($query) => $query->where('country_code', $countryCode))
             ->whereExists(function ($query) {
-                $query->selectRaw('1')
-                    ->from('location_schema_types')
+                $query->selectRaw('1')->from('location_schema_types')
                     ->whereColumn('location_schema_types.location_schema_id', 'locations.location_schema_id')
                     ->whereColumn('location_schema_types.location_type_id', 'locations.location_type_id')
                     ->where('location_schema_types.is_root', true);
-            })
-            ->orderBy('canonical_name')
-            ->get();
+            })->orderBy('canonical_name')->get();
 
-        return response()->json([
-            'data' => $locations->map(fn (Location $location): array => $this->serialize($location))->values(),
-            'proposals' => [],
-            'allowed_types' => [],
-        ]);
+        return response()->json(['data' => $locations->map(fn (Location $location) => $this->serialize($location))->values(), 'proposals' => [], 'allowed_types' => []]);
     }
 
-    public function children(
-        Location $location,
-        LocationSchemaResolver $schemaResolver,
-        LocationProposalPolicy $proposalPolicy,
-    ): JsonResponse {
+    public function children(Location $location, LocationSchemaResolver $schemaResolver, LocationProposalPolicy $proposalPolicy): JsonResponse
+    {
         $this->assertRuntimeEnabled();
+        if ($location->status !== 'active' || ! $location->location_schema_id || ! $location->location_type_id) abort(404);
 
-        if ($location->status !== 'active' || ! $location->location_schema_id || ! $location->location_type_id) {
-            abort(404);
-        }
-
-        $allowedTypes = $schemaResolver->allowedChildTypes($location)
-            ->sortBy('canonical_name')
-            ->values();
+        $allowedTypes = $schemaResolver->allowedChildTypes($location)->sortBy('canonical_name')->values();
         $allowedTypeIds = $allowedTypes->pluck('id');
-        $proposableTypeIds = $allowedTypes
-            ->filter(fn (LocationType $type): bool => $proposalPolicy->allows($location, $type))
-            ->pluck('id');
+        $proposableTypeIds = $allowedTypes->filter(fn (LocationType $type) => $proposalPolicy->allows($location, $type))->pluck('id');
+        $children = $location->children()->with(['type', 'schema'])->where('status', 'active')
+            ->where('location_schema_id', $location->location_schema_id)->whereIn('location_type_id', $allowedTypeIds)->orderBy('canonical_name')->get();
+        $proposals = LocationProposal::query()->with('type')->where('parent_location_id', $location->id)->whereNull('parent_location_proposal_id')
+            ->where('location_schema_id', $location->location_schema_id)->whereIn('location_type_id', $proposableTypeIds)
+            ->whereIn('status', self::OPEN_STATUSES)->orderBy('canonical_name')->get();
 
-        $children = $location->children()
-            ->with(['type', 'schema'])
-            ->where('status', 'active')
-            ->where('location_schema_id', $location->location_schema_id)
-            ->whereIn('location_type_id', $allowedTypeIds)
-            ->orderBy('canonical_name')
-            ->get();
+        return $this->payload($children, $proposals, $allowedTypes, fn (LocationType $type) => $proposalPolicy->allows($location, $type));
+    }
 
-        $proposals = LocationProposal::query()
-            ->with('type')
-            ->where('parent_location_id', $location->id)
-            ->where('location_schema_id', $location->location_schema_id)
-            ->whereIn('location_type_id', $proposableTypeIds)
-            ->whereIn('status', [
-                LocationProposalStatus::Pending->value,
-                LocationProposalStatus::ReadyForReview->value,
-                LocationProposalStatus::NeedsEvidence->value,
-            ])
-            ->orderBy('canonical_name')
-            ->get();
+    public function proposalChildren(LocationProposal $locationProposal, LocationProposalPolicy $proposalPolicy): JsonResponse
+    {
+        $this->assertRuntimeEnabled();
+        $status = $locationProposal->status instanceof LocationProposalStatus ? $locationProposal->status->value : (string) $locationProposal->status;
+        if (! in_array($status, self::OPEN_STATUSES, true) || ! $locationProposal->location_schema_id || ! $locationProposal->location_type_id) abort(404);
 
+        $allowedTypeIds = LocationTypeRelation::query()
+            ->where('location_schema_id', $locationProposal->location_schema_id)
+            ->where('parent_type_id', $locationProposal->location_type_id)
+            ->pluck('child_type_id');
+        $allowedTypes = LocationType::query()->whereIn('id', $allowedTypeIds)->orderBy('canonical_name')->get();
+        $proposals = LocationProposal::query()->with('type')->whereNull('parent_location_id')
+            ->where('parent_location_proposal_id', $locationProposal->id)
+            ->whereIn('location_type_id', $allowedTypeIds)->whereIn('status', self::OPEN_STATUSES)->orderBy('canonical_name')->get();
+
+        return $this->payload(collect(), $proposals, $allowedTypes, fn (LocationType $type) => $proposalPolicy->allowsProposalParent($locationProposal, $type));
+    }
+
+    private function payload($children, $proposals, $allowedTypes, callable $proposalAllowed): JsonResponse
+    {
         return response()->json([
-            'data' => $children->map(fn (Location $child): array => $this->serialize($child))->values(),
-            'proposals' => $proposals->map(fn (LocationProposal $proposal): array => $this->serializeProposal($proposal))->values(),
-            'allowed_types' => $allowedTypes->map(
-                fn (LocationType $type): array => $this->serializeAllowedType(
-                    $type,
-                    $proposalPolicy->allows($location, $type),
-                )
-            )->values(),
+            'data' => $children->map(fn (Location $child) => $this->serialize($child))->values(),
+            'proposals' => $proposals->map(fn (LocationProposal $proposal) => $this->serializeProposal($proposal))->values(),
+            'allowed_types' => $allowedTypes->map(fn (LocationType $type) => $this->serializeAllowedType($type, $proposalAllowed($type)))->values(),
         ]);
     }
 
@@ -103,61 +91,28 @@ final class LocationOptionsController extends Controller
         $locale = app()->getLocale();
         $localizedNames = $location->localized_names ?? [];
         $label = $localizedNames[$locale] ?? $location->canonical_name ?? $location->name;
+        $schemaType = LocationSchemaType::query()->where('location_schema_id', $location->location_schema_id)->where('location_type_id', $location->location_type_id)->first();
+        $allowedChildTypeIds = app(LocationSchemaResolver::class)->allowedChildTypes($location)->pluck('id');
+        $hasChildren = $allowedChildTypeIds->isNotEmpty() && $location->children()->where('status', 'active')
+            ->where('location_schema_id', $location->location_schema_id)->whereIn('location_type_id', $allowedChildTypeIds)->exists();
 
-        $schemaType = LocationSchemaType::query()
-            ->where('location_schema_id', $location->location_schema_id)
-            ->where('location_type_id', $location->location_type_id)
-            ->first();
-
-        $allowedChildTypeIds = app(LocationSchemaResolver::class)
-            ->allowedChildTypes($location)
-            ->pluck('id');
-
-        $hasChildren = $allowedChildTypeIds->isNotEmpty()
-            && $location->children()
-                ->where('status', 'active')
-                ->where('location_schema_id', $location->location_schema_id)
-                ->whereIn('location_type_id', $allowedChildTypeIds)
-                ->exists();
-
-        return [
-            'id' => $location->id,
-            'identity' => 'location:'.$location->id,
-            'type_key' => $location->type?->key,
-            'label' => $label,
-            'is_residence_endpoint' => (bool) ($schemaType?->is_residence_endpoint ?? false),
-            'has_children' => $hasChildren,
-            'status' => $location->status,
-        ];
+        return ['id' => $location->id, 'identity' => 'location:'.$location->id, 'type_key' => $location->type?->key, 'label' => $label,
+            'is_residence_endpoint' => (bool) ($schemaType?->is_residence_endpoint ?? false), 'has_children' => $hasChildren, 'status' => $location->status];
     }
 
     private function serializeProposal(LocationProposal $proposal): array
     {
         $locale = app()->getLocale();
         $localizedNames = $proposal->localized_names ?? [];
-        $label = $localizedNames[$locale] ?? $proposal->canonical_name;
-        $status = $proposal->status instanceof LocationProposalStatus
-            ? $proposal->status->value
-            : (string) $proposal->status;
-
-        return [
-            'id' => $proposal->id,
-            'identity' => 'proposal:'.$proposal->id,
-            'type_key' => $proposal->type?->key,
-            'label' => $label,
-            'status' => $status,
-            'selectable' => true,
-        ];
+        $status = $proposal->status instanceof LocationProposalStatus ? $proposal->status->value : (string) $proposal->status;
+        return ['id' => $proposal->id, 'identity' => 'proposal:'.$proposal->id, 'type_key' => $proposal->type?->key,
+            'label' => $localizedNames[$locale] ?? $proposal->canonical_name, 'status' => $status, 'selectable' => true];
     }
 
     private function serializeAllowedType(LocationType $type, bool $proposalAllowed): array
     {
-        return [
-            'id' => $type->id,
-            'key' => $type->key,
-            'label' => $type->canonical_name,
-            'proposal_allowed' => $proposalAllowed,
-        ];
+        $label = app()->getLocale() === 'fa' ? (self::FA_TYPE_LABELS[$type->key] ?? $type->canonical_name) : $type->canonical_name;
+        return ['id' => $type->id, 'key' => $type->key, 'label' => $label, 'proposal_allowed' => $proposalAllowed];
     }
 
     private function assertRuntimeEnabled(): void
