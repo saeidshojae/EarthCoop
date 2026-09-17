@@ -39,7 +39,10 @@ final class ProfileEditController extends Controller
             ->latest('id')
             ->first();
 
-        $residenceHydrationPath = $this->residenceHydrationPath($pendingResidenceIntent);
+        $residenceHydrationPath = $this->residenceHydrationPath(
+            $primaryResidence?->location,
+            $pendingResidenceIntent,
+        );
 
         $occupationalFields = OccupationalField::whereNull('parent_id')->get();
         $experienceFields = ExperienceField::whereNull('parent_id')->get();
@@ -89,11 +92,13 @@ final class ProfileEditController extends Controller
     }
 
     /** @return array<int, string> */
-    private function residenceHydrationPath(?PendingResidenceIntent $intent): array
-    {
+    private function residenceHydrationPath(
+        ?Location $primaryResidenceLocation,
+        ?PendingResidenceIntent $intent,
+    ): array {
         $proposal = $intent?->locationProposal;
         if (! $proposal instanceof LocationProposal) {
-            return [];
+            return $this->canonicalLocationPath($primaryResidenceLocation);
         }
 
         $proposalPath = [];
@@ -103,7 +108,7 @@ final class ProfileEditController extends Controller
 
         while ($proposalCursor !== null) {
             if (isset($visitedProposalIds[$proposalCursor->id])) {
-                return [];
+                return $this->canonicalLocationPath($primaryResidenceLocation);
             }
             $visitedProposalIds[$proposalCursor->id] = true;
             array_unshift($proposalPath, 'proposal:'.$proposalCursor->id);
@@ -117,22 +122,32 @@ final class ProfileEditController extends Controller
         }
 
         if (! $canonicalAnchor instanceof Location) {
+            return $this->canonicalLocationPath($primaryResidenceLocation);
+        }
+
+        return [...$this->canonicalLocationPath($canonicalAnchor), ...$proposalPath];
+    }
+
+    /** @return array<int, string> */
+    private function canonicalLocationPath(?Location $location): array
+    {
+        if (! $location instanceof Location) {
             return [];
         }
 
-        $locationPath = [];
-        $locationCursor = $canonicalAnchor;
+        $path = [];
+        $cursor = $location;
         $visitedLocationIds = [];
 
-        while ($locationCursor !== null) {
-            if (isset($visitedLocationIds[$locationCursor->id])) {
+        while ($cursor !== null) {
+            if (isset($visitedLocationIds[$cursor->id])) {
                 return [];
             }
-            $visitedLocationIds[$locationCursor->id] = true;
-            array_unshift($locationPath, 'location:'.$locationCursor->id);
-            $locationCursor = $locationCursor->parent()->first();
+            $visitedLocationIds[$cursor->id] = true;
+            array_unshift($path, 'location:'.$cursor->id);
+            $cursor = $cursor->parent()->first();
         }
 
-        return [...$locationPath, ...$proposalPath];
+        return $path;
     }
 }

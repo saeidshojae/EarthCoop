@@ -9,7 +9,7 @@
     @if (isset($primaryResidence) && $primaryResidence?->location)
         <div class="alert alert-light border mb-3">
             <div class="small text-muted mb-1">مکان تأییدشده و مبنای رسمی</div>
-            <strong>{{ $primaryResidence->location->canonical_name ?: $primaryResidence->location->name }}</strong>
+            <strong>{{ \App\Support\LocationDisplayName::for($primaryResidence->location) }}</strong>
         </div>
     @endif
 
@@ -25,7 +25,7 @@
                 <span class="fw-semibold">مکان دقیق پیشنهادی</span>
                 <span class="badge text-bg-warning">در انتظار بررسی</span>
             </div>
-            <div>{{ $proposal->canonical_name }}</div>
+            <div>{{ \App\Support\LocationDisplayName::for($proposal) }}</div>
             <div class="small mt-2">این جزئیات هنوز مکان رسمی محسوب نمی‌شود و تا زمان تأیید یا ادغام، حوزهٔ حکمرانی شما بر اساس مکان تأییدشدهٔ بالا محاسبه می‌شود.</div>
             @if ($proposalStatus === 'needs_evidence')
                 <div class="small fw-semibold mt-2">برای این پیشنهاد اطلاعات یا مدرک بیشتری درخواست شده است.</div>
@@ -66,7 +66,7 @@
             <div class="rounded-3 border bg-light-subtle px-3 py-2 mb-3" data-location-path aria-live="polite">
                 @if ($primaryResidence?->location)
                     <span class="small text-muted">مکان فعلی: </span>
-                    <strong class="small">{{ $primaryResidence->location->canonical_name ?: $primaryResidence->location->name }}</strong>
+                    <strong class="small">{{ \App\Support\LocationDisplayName::for($primaryResidence->location) }}</strong>
                 @else
                     <span class="small text-muted">هنوز محل سکونت اصلی ثبت نشده است.</span>
                 @endif

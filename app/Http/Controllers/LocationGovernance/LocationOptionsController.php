@@ -11,6 +11,7 @@ use App\Models\LocationType;
 use App\Models\LocationTypeRelation;
 use App\Services\LocationGovernance\LocationProposalPolicy;
 use App\Services\LocationGovernance\LocationSchemaResolver;
+use App\Support\LocationDisplayName;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -88,9 +89,7 @@ final class LocationOptionsController extends Controller
 
     private function serialize(Location $location): array
     {
-        $locale = app()->getLocale();
-        $localizedNames = $location->localized_names ?? [];
-        $label = $localizedNames[$locale] ?? $location->canonical_name ?? $location->name;
+        $label = LocationDisplayName::for($location);
         $schemaType = LocationSchemaType::query()->where('location_schema_id', $location->location_schema_id)->where('location_type_id', $location->location_type_id)->first();
         $allowedChildTypeIds = app(LocationSchemaResolver::class)->allowedChildTypes($location)->pluck('id');
         $hasChildren = $allowedChildTypeIds->isNotEmpty() && $location->children()->where('status', 'active')
@@ -102,11 +101,9 @@ final class LocationOptionsController extends Controller
 
     private function serializeProposal(LocationProposal $proposal): array
     {
-        $locale = app()->getLocale();
-        $localizedNames = $proposal->localized_names ?? [];
         $status = $proposal->status instanceof LocationProposalStatus ? $proposal->status->value : (string) $proposal->status;
         return ['id' => $proposal->id, 'identity' => 'proposal:'.$proposal->id, 'type_key' => $proposal->type?->key,
-            'label' => $localizedNames[$locale] ?? $proposal->canonical_name, 'status' => $status, 'selectable' => true];
+            'label' => LocationDisplayName::for($proposal), 'status' => $status, 'selectable' => true];
     }
 
     private function serializeAllowedType(LocationType $type, bool $proposalAllowed): array

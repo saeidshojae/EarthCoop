@@ -77,7 +77,7 @@ const mountResidenceUx = (selector) => {
     };
 
     const replayPersistedPath = async () => {
-        if (!levels || !currentPath.length || !currentProposalId) return;
+        if (!levels || !currentPath.length) return;
 
         for (let depth = 0; depth < currentPath.length; depth += 1) {
             const identity = currentPath[depth];
@@ -91,8 +91,14 @@ const mountResidenceUx = (selector) => {
             select.dispatchEvent(new Event('change', { bubbles: true }));
         }
 
-        if (locationInput) locationInput.value = '';
-        if (proposalInput) proposalInput.value = currentProposalId;
+        const terminalIdentity = currentPath[currentPath.length - 1];
+        if (terminalIdentity.startsWith('proposal:')) {
+            if (locationInput) locationInput.value = '';
+            if (proposalInput) proposalInput.value = currentProposalId;
+        } else {
+            if (locationInput) locationInput.value = currentLocationId;
+            if (proposalInput) proposalInput.value = '';
+        }
         if (submit) submit.disabled = false;
         renderPath();
     };
