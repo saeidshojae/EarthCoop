@@ -46,13 +46,13 @@ test('proposal affordance is compact secondary UI instead of a dominant green ca
 test('proposal form hides redundant type selector when exactly one type is allowed', () => {
   assert.match(selectorSource, /types\.length\s*===\s*1/);
   assert.match(selectorSource, /افزودن.*جدید/);
-  assert.match(selectorSource, /data-location-proposal-type/);
+  assert.match(selectorSource, /dataset\.locationProposalType/);
 });
 
 test('proposal actions expose clear mobile-first primary secondary and pending hooks', () => {
-  assert.match(selectorSource, /data-location-proposal-submit/);
-  assert.match(selectorSource, /data-location-proposal-cancel/);
-  assert.match(selectorSource, /data-location-pending-badge/);
+  assert.match(selectorSource, /dataset\.locationProposalSubmit/);
+  assert.match(selectorSource, /dataset\.locationProposalCancel/);
+  assert.match(selectorSource, /dataset\.locationPendingBadge/);
   assert.match(uxSource, /@media\s*\(max-width:\s*640px\)/);
   assert.match(uxSource, /location-proposal-actions[^}]*width:\s*100%/si);
 });
