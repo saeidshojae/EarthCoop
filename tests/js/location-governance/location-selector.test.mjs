@@ -111,11 +111,11 @@ test('alternate schema branches remain server driven and never hard-code Iran mi
     assert.doesNotMatch(source, /street\s*[-=>]+\s*alley|alley\s*[-=>]+\s*complex/i);
 });
 
-test('project scope bootstraps from the governance bridge while residence keeps the canonical location root', () => {
+test('project scope and residence bootstrap from their governance bridges before canonical location traversal', () => {
     const source = selectorSource();
     assert.match(source, /\/location\/project-scope\/options\/root/);
     assert.match(source, /selected\.children_url/);
-    assert.match(source, /\/location\/options\/root/);
+    assert.match(source, /\/location\/residence\/options\/root/);
 });
 
 test('empty and stale states are explicit rather than silently clearing a valid form state', () => {

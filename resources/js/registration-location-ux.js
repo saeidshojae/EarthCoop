@@ -50,7 +50,7 @@ const mountResidenceUx = (selector) => {
         locationInput.value = currentLocationId;
     }
 
-    const selectedLabels = () => Array.from(levels?.querySelectorAll('select') || [])
+    const selectedLabels = () => Array.from(levels?.querySelectorAll('[data-location-select]') || [])
         .map((select) => select.selectedOptions?.[0])
         .filter((option) => option?.value)
         .map((option) => ({ label: option.textContent?.replace(/\s+—\s+در انتظار تأیید$/, '').trim() || '', proposal: String(option.value || '').startsWith('proposal:') }))

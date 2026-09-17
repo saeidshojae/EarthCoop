@@ -49,7 +49,6 @@
             data-location-current-id="{{ $persistedProposalId ? '' : $primaryResidence?->location_id }}"
             data-location-current-proposal-id="{{ $persistedProposalId }}"
             data-location-current-path='@json($residenceHydrationPath ?? [])'
-            data-country-code="{{ $primaryResidence?->location?->country_code ?: 'IR' }}"
             data-empty-label="یک گزینه را انتخاب کنید"
             data-loading-label="در حال دریافت گزینه‌های مکانی..."
             data-error-label="دریافت گزینه‌های مکانی ممکن نشد. دوباره تلاش کنید."
