@@ -26,7 +26,7 @@ class ResidenceContinentTraversalTest extends TestCase
     public function test_residence_root_starts_at_continent_and_bridges_country_to_canonical_location(): void
     {
         $schema = LocationFixture::iranSchema();
-        $country = LocationFixture::createPath($schema, ['country'], ['Iran'])->first();
+        $country = LocationFixture::createPath($schema, ['country'], ['ایران'])->first();
         [$global, $asia, $iran] = $this->governancePathFor($country);
 
         $this->getJson('/location/residence/options/root')->assertOk()
