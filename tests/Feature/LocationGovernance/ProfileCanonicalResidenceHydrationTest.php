@@ -24,6 +24,8 @@ class ProfileCanonicalResidenceHydrationTest extends TestCase
 
     public function test_profile_edit_exposes_complete_canonical_residence_path_without_pending_proposal(): void
     {
+        app()->setLocale('fa');
+
         $schema = LocationFixture::iranSchema();
         $path = LocationFixture::createPath(
             $schema,
@@ -32,6 +34,10 @@ class ProfileCanonicalResidenceHydrationTest extends TestCase
         );
 
         [$country, $province, $county, $section, $city, $region, $neighborhood] = $path->all();
+        $neighborhood->update([
+            'localized_names' => ['fa' => 'محله مرجع ساری'],
+        ]);
+
         $user = User::factory()->create();
 
         app(ResidenceService::class)->setInitialPrimaryResidence($user, $neighborhood, [
@@ -44,6 +50,8 @@ class ProfileCanonicalResidenceHydrationTest extends TestCase
         $response->assertSee('data-location-current-id="'.$neighborhood->id.'"', false);
         $response->assertSee('name="location_id" value="'.$neighborhood->id.'" data-location-id', false);
         $response->assertSee('name="location_proposal_id" value="" data-location-proposal-id', false);
+        $response->assertSee('محله مرجع ساری');
+        $response->assertDontSee('Sari Reference Neighborhood');
         $response->assertSeeInOrder([
             'location:'.$country->id,
             'location:'.$province->id,
