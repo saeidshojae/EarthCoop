@@ -67,6 +67,31 @@ class ProductionReadinessCommandTest extends TestCase
             ->assertExitCode(1);
     }
 
+    public function test_readiness_fails_when_target_reference_root_has_no_active_schema_valid_child(): void
+    {
+        $this->seed(LocationGovernanceBootstrapSeeder::class);
+        $this->createReferenceAndGovernanceEvidence();
+
+        config()->set('location-governance.validation_sha', '7ea742e7a4b8157de70029007bbdb4edd1409e94');
+        config()->set('location-governance.uat_evidence', 'Full Validation #2414 / run 34605952857');
+
+        $rootLocationId = DB::table('location_external_ids')
+            ->where('source', ReferenceGeographyImporter::SOURCE)
+            ->where('dataset_version', 'v1')
+            ->where('external_id', 'IR-COUNTRY')
+            ->value('location_id');
+
+        $this->assertNotNull($rootLocationId);
+
+        DB::table('locations')
+            ->where('parent_id', $rootLocationId)
+            ->update(['status' => 'inactive']);
+
+        $this->artisan('location-governance:readiness')
+            ->expectsOutputToContain('reference traversal')
+            ->assertExitCode(1);
+    }
+
     private function createReferenceAndGovernanceEvidence(int $conflicts = 0): void
     {
         app(ReferenceGeographyImporter::class)->import('IR', 'v1', true);
