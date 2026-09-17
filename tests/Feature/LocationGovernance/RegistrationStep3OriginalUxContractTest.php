@@ -45,7 +45,7 @@ final class RegistrationStep3OriginalUxContractTest extends TestCase
         self::assertStringContainsString('proposal_allowed === true', $selector);
         self::assertStringNotContainsString('data-registration-proposal-visual-hint', $view);
 
-        // Mobile remains first-class and the real proposal control has a 44px target.
+        // Mobile remains first-class; the compact secondary proposal affordance keeps a deliberate 40px target while primary form actions remain larger.
         $compactView = preg_replace('/\s+/', '', $view);
         self::assertStringContainsString('@media(max-width:640px)', $compactView);
         self::assertStringContainsString('[data-location-proposal-toggle]{font-size:.8125rem!important;padding:.5rem.25rem!important;min-height:40px;background:transparent!important;color:#087f5b!important;box-shadow:none!important}', $compactView);
