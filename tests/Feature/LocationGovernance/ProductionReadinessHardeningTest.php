@@ -56,6 +56,21 @@ class ProductionReadinessHardeningTest extends TestCase
             ->assertExitCode(1);
     }
 
+    public function test_readiness_requires_flexible_micro_location_paths_migration(): void
+    {
+        $this->seed(LocationGovernanceBootstrapSeeder::class);
+
+        DB::table('migrations')
+            ->where('migration', '2026_09_18_000001_allow_direct_buildings_under_streets_and_alleys')
+            ->delete();
+
+        $this->setReleaseEvidence();
+
+        $this->artisan('location-governance:readiness')
+            ->expectsOutputToContain('[FAIL] required migrations')
+            ->assertExitCode(1);
+    }
+
     public function test_readiness_fails_when_reviewed_reference_governance_topology_is_not_applied(): void
     {
         $this->seed(LocationGovernanceBootstrapSeeder::class);
