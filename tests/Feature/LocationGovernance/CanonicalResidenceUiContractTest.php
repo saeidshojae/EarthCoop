@@ -32,7 +32,7 @@ class CanonicalResidenceUiContractTest extends TestCase
         $selector = file_get_contents(resource_path('js/location-selector-core.js'))
             . file_get_contents(resource_path('js/location-selector.js'));
         $app = file_get_contents(resource_path('js/app.js'));
-        $this->assertStringContainsString('/location/options/root', $selector);
+        $this->assertStringContainsString('/location/residence/options/root', $selector);
         $this->assertStringContainsString('/children', $selector);
         $this->assertStringContainsString('/locations/proposals', $selector);
         $this->assertStringContainsString('is_residence_endpoint', $selector);
