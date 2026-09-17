@@ -44,6 +44,23 @@ class LocationSchemaResolverTest extends TestCase
         $this->addToAssertionCount(2);
     }
 
+    public function test_building_may_be_directly_under_street_alley_or_complex(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $path = LocationFixture::createPath($schema, [
+            'country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood', 'street', 'alley', 'complex',
+        ]);
+
+        $buildingType = $schema->types->firstWhere('key', 'building');
+        $resolver = app(LocationSchemaResolver::class);
+
+        $resolver->assertValidParentChild($path->firstWhere('level', 'street'), $buildingType);
+        $resolver->assertValidParentChild($path->firstWhere('level', 'alley'), $buildingType);
+        $resolver->assertValidParentChild($path->firstWhere('level', 'complex'), $buildingType);
+
+        $this->addToAssertionCount(3);
+    }
+
     public function test_invalid_parent_child_pair_is_rejected(): void
     {
         $schema = LocationFixture::iranSchema();
