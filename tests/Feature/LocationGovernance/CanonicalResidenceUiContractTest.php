@@ -44,14 +44,14 @@ class CanonicalResidenceUiContractTest extends TestCase
     }
 
     #[Test]
-    public function registration_picker_does_not_force_iran_and_can_start_from_global_country_roots(): void
+    public function registration_picker_does_not_force_iran_and_can_start_from_continent_roots(): void
     {
         $registration = file_get_contents(resource_path('views/auth/register_step3_canonical.blade.php'));
         $selector = file_get_contents(resource_path('js/location-selector-core.js'))
             . file_get_contents(resource_path('js/location-selector.js'));
         $this->assertStringNotContainsString('data-country-code="IR"', $registration);
         $this->assertStringNotContainsString("|| 'IR'", $selector);
-        $this->assertStringContainsString('/location/options/root', $selector);
+        $this->assertStringContainsString('/location/residence/options/root', $selector);
     }
 
     #[Test]
