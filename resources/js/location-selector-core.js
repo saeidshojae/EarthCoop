@@ -139,7 +139,9 @@ const initializeLocationSelector = async (host) => {
         select.addEventListener('change', async () => {
             removeDeeperLevels(depth); const selected = pickerItems(payload).find((item) => (item.identity || `${item.picker_kind}:${item.id}`) === select.value) || null;
             if (!selected) { clearSelection(); setPickerState(PICKER_STATES.empty, isProjectScope ? 'انتخاب محدوده پروژه اختیاری است.' : 'یک گزینه را برای ادامه انتخاب کنید.'); return; }
-            setSelection(selected); if (selected.picker_kind === 'proposal') return;
+            if (selected.navigation_only === true) { clearSelection(); setStatus('سطح بعدی را برای تعیین محل سکونت انتخاب کنید.'); }
+            else setSelection(selected);
+            if (selected.picker_kind === 'proposal') return;
             const previousLocationId = locationId.value; const previousProposalId = proposalId?.value || ''; const previousGovernanceAreaId = governanceAreaId?.value || ''; const previousSubmitDisabled = submit?.disabled ?? true;
             try {
                 const childrenUrl = selected.children_url || `/location/options/${encodeURIComponent(selected.id)}/children`; const children = await load(childrenUrl);
@@ -177,7 +179,7 @@ const initializeLocationSelector = async (host) => {
     };
 
     try {
-        const rootUrl = isProjectScope ? '/location/project-scope/options/root' : (country ? `/location/options/root?country=${encodeURIComponent(country)}` : '/location/options/root');
+        const rootUrl = isProjectScope ? '/location/project-scope/options/root' : '/location/residence/options/root';
         const roots = await load(rootUrl); appendLevel(roots, 0);
         if (!roots.locations.length && !roots.proposals.length) setPickerState(PICKER_STATES.empty, isProjectScope ? 'هنوز محدوده حکمرانی رسمی فعالی ثبت نشده است.' : (country ? 'برای این کشور هنوز گزینهٔ مکانی فعالی ثبت نشده است.' : 'هنوز گزینهٔ مکانی فعالی ثبت نشده است.'));
         else if (isProjectScope && (initialLocationId || initialGovernanceAreaId)) {
