@@ -19,3 +19,8 @@ test('persisted residence replay preserves the correct terminal identity kind', 
     assert.match(source, /locationInput\.value = currentLocationId/);
     assert.match(source, /proposalInput\.value = currentProposalId/);
 });
+
+test('visible residence path contains only actual location picker selections', () => {
+    assert.match(source, /querySelectorAll\('\[data-location-select\]'\)/);
+    assert.doesNotMatch(source, /querySelectorAll\('select'\)/);
+});
