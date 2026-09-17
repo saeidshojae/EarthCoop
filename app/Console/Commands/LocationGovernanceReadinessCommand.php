@@ -65,6 +65,12 @@ class LocationGovernanceReadinessCommand extends Command
             $import !== null && (int) $import->conflicts === 0 && $this->importConflictRows($import->id) === 0,
             'reference import conflicts remain unresolved'
         );
+        $this->check(
+            $checks,
+            'reference traversal',
+            $this->referenceTraversalReady(),
+            'target reference root is missing, inactive, or has no active schema-valid child'
+        );
 
         $this->check($checks, 'governance mappings', $this->hasGovernanceMappings(), 'canonical governance mappings are missing');
         $this->check(
@@ -188,6 +194,54 @@ class LocationGovernanceReadinessCommand extends Command
             return DB::table('location_import_conflicts')->where('location_import_run_id', $runId)->count();
         } catch (Throwable) {
             return PHP_INT_MAX;
+        }
+    }
+
+    private function referenceTraversalReady(): bool
+    {
+        foreach (['location_external_ids', 'locations', 'location_schemas', 'location_schema_types', 'location_type_relations'] as $table) {
+            if (! Schema::hasTable($table)) {
+                return false;
+            }
+        }
+
+        try {
+            $root = DB::table('location_external_ids as external_ids')
+                ->join('locations as roots', 'roots.id', '=', 'external_ids.location_id')
+                ->join('location_schemas as schemas', 'schemas.id', '=', 'roots.location_schema_id')
+                ->join('location_schema_types as schema_types', function ($join): void {
+                    $join->on('schema_types.location_schema_id', '=', 'roots.location_schema_id')
+                        ->on('schema_types.location_type_id', '=', 'roots.location_type_id');
+                })
+                ->where('external_ids.source', (string) config('location-governance.target_dataset_source'))
+                ->where('external_ids.dataset_version', (string) config('location-governance.target_dataset_version'))
+                ->where('schemas.key', (string) config('location-governance.target_schema'))
+                ->where('schemas.country_code', (string) config('location-governance.target_country'))
+                ->where('schemas.status', 'active')
+                ->where('roots.country_code', (string) config('location-governance.target_country'))
+                ->where('roots.status', 'active')
+                ->whereNull('roots.parent_id')
+                ->where('schema_types.is_root', true)
+                ->select(['roots.id', 'roots.location_schema_id', 'roots.location_type_id'])
+                ->first();
+
+            if ($root === null) {
+                return false;
+            }
+
+            return DB::table('locations as children')
+                ->join('location_type_relations as relations', function ($join): void {
+                    $join->on('relations.location_schema_id', '=', 'children.location_schema_id')
+                        ->on('relations.child_type_id', '=', 'children.location_type_id');
+                })
+                ->where('children.parent_id', $root->id)
+                ->where('children.location_schema_id', $root->location_schema_id)
+                ->where('children.country_code', (string) config('location-governance.target_country'))
+                ->where('children.status', 'active')
+                ->where('relations.parent_type_id', $root->location_type_id)
+                ->exists();
+        } catch (Throwable) {
+            return false;
         }
     }
 
