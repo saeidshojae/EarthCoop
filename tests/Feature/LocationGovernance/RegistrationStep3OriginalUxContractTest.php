@@ -38,11 +38,10 @@ final class RegistrationStep3OriginalUxContractTest extends TestCase
         self::assertStringContainsString('data-location-submit', $view);
 
         // Proposal affordance is real and policy-driven: the shared selector creates it
-        // only when the API marks a child type proposal_allowed=true. Step 3 styles that
-        // actual runtime control in the established green visual language; no fake hidden
-        // button is kept in the Blade merely to satisfy this contract.
+        // only when the API marks a child type proposal_allowed=true. The approved
+        // mobile-first UX keeps this secondary action compact rather than dominant.
         self::assertStringContainsString('data-location-proposal-toggle', $view);
-        self::assertStringContainsString('مکان من در فهرست نیست', $selector);
+        self::assertStringContainsString('+ افزودن مکان جدید', $selector);
         self::assertStringContainsString('proposal_allowed === true', $selector);
         self::assertStringNotContainsString('data-registration-proposal-visual-hint', $view);
 
