@@ -54,60 +54,51 @@ class LocationGovernanceReadinessCommand extends Command
 
         $import = $this->latestTargetImport();
         $this->check($checks, 'reference import', $import !== null, 'target reference import evidence is missing');
-        $this->check(
-            $checks,
-            'reference import status',
-            $import !== null && $import->status === 'completed',
-            'target reference import is not completed'
-        );
-        $this->check(
-            $checks,
-            'reference import conflicts',
-            $import !== null && (int) $import->conflicts === 0 && $this->importConflictRows($import->id) === 0,
-            'reference import conflicts remain unresolved'
-        );
-        $this->check(
-            $checks,
-            'reference traversal',
-            $this->referenceTraversalReady(),
-            'target reference root is missing, inactive, or has no active schema-valid child'
-        );
+        $this->check($checks, 'reference import status', $import !== null && $import->status === 'completed', 'target reference import is not completed');
+        $this->check($checks, 'reference import conflicts', $import !== null && (int) $import->conflicts === 0 && $this->importConflictRows($import->id) === 0, 'reference import conflicts remain unresolved');
+        $this->check($checks, 'reference traversal', $this->referenceTraversalReady(), 'target reference root is missing, inactive, or has no active schema-valid child');
 
         $this->check($checks, 'governance mappings', $this->hasGovernanceMappings(), 'canonical governance mappings are missing');
-        $this->check(
-            $checks,
-            'governance topology',
-            $this->governanceTopologyReady(),
-            'reviewed reference governance topology is missing, conflicting, or not idempotent'
-        );
-        $this->check(
-            $checks,
-            'group creation policies',
-            $this->groupCreationPoliciesReady(),
-            'canonical group creation policies are missing or not activated for Stage C'
-        );
-        $this->check($checks, 'rollout flags', $this->flagsReady(), 'required rollout flags are not enabled');
-        $this->check($checks, 'release evidence', $this->releaseEvidenceReady(), 'release evidence is missing or stale');
+        $this->check($checks, 'governance topology', $this->governanceTopologyReady(), 'reviewed reference governance topology is missing, conflicting, or not idempotent');
+        $this->check($checks, 'Stage C group policies', $this->stageCGroupPoliciesReady(), 'canonical automatic group policies are not fully activated for Stage C');
+        $this->check($checks, 'rollout flags', $this->rolloutFlagsAreBoolean(), 'one or more rollout flags are invalid');
+        $this->check($checks, 'proposal fatal conflicts', ! $this->hasFatalProposalConflicts(), 'fatal location proposal conflicts remain unresolved');
+
+        $validationSha = trim((string) config('location-governance.validation_sha', ''));
+        $this->check($checks, 'validation SHA', (bool) preg_match('/^[0-9a-f]{40}$/i', $validationSha), 'validated release SHA evidence is missing or invalid');
+
+        $uatEvidence = trim((string) config('location-governance.uat_evidence', ''));
+        $this->check($checks, 'UAT evidence', $uatEvidence !== '', 'UAT/Full Validation evidence is missing');
+
+        $ready = collect($checks)->every(fn (array $check): bool => $check['passed']);
 
         if ($this->option('json')) {
-            $this->line(json_encode(['ready' => $this->allChecksPass($checks), 'checks' => $checks], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            $this->line(json_encode([
+                'ready' => $ready,
+                'target' => [
+                    'country' => config('location-governance.target_country'),
+                    'schema' => config('location-governance.target_schema'),
+                    'dataset_source' => config('location-governance.target_dataset_source'),
+                    'dataset_version' => config('location-governance.target_dataset_version'),
+                ],
+                'validation_sha' => $validationSha ?: null,
+                'uat_evidence' => $uatEvidence ?: null,
+                'checks' => $checks,
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
         } else {
             foreach ($checks as $check) {
-                $this->line(sprintf('[%s] %s%s', $check['ok'] ? 'PASS' : 'FAIL', $check['name'], $check['ok'] ? '' : ': '.$check['message']));
+                $prefix = $check['passed'] ? 'PASS' : 'FAIL';
+                $message = sprintf('[%s] %s', $prefix, $check['name']);
+                if (! $check['passed']) {
+                    $message .= ': '.$check['failure'];
+                }
+                $check['passed'] ? $this->info($message) : $this->error($message);
             }
+
+            $ready ? $this->info('READY') : $this->error('NOT READY');
         }
 
-        return $this->allChecksPass($checks) ? self::SUCCESS : self::FAILURE;
-    }
-
-    private function check(array &$checks, string $name, bool $ok, string $message): void
-    {
-        $checks[] = compact('name', 'ok', 'message');
-    }
-
-    private function allChecksPass(array $checks): bool
-    {
-        return collect($checks)->every(fn (array $check) => $check['ok']);
+        return $ready ? self::SUCCESS : self::FAILURE;
     }
 
     private function requiredMigrationsReady(): bool
@@ -116,9 +107,12 @@ class LocationGovernanceReadinessCommand extends Command
             return false;
         }
 
-        $ran = DB::table('migrations')->pluck('migration')->all();
-
-        return collect(self::REQUIRED_MIGRATIONS)->every(fn (string $migration) => in_array($migration, $ran, true));
+        try {
+            $applied = DB::table('migrations')->whereIn('migration', self::REQUIRED_MIGRATIONS)->pluck('migration')->all();
+            return count(array_diff(self::REQUIRED_MIGRATIONS, $applied)) === 0;
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     private function targetSchemaReady(): bool
@@ -127,7 +121,15 @@ class LocationGovernanceReadinessCommand extends Command
             return false;
         }
 
-        return DB::table('location_schemas')->where('is_active', true)->exists();
+        try {
+            return DB::table('location_schemas')
+                ->where('key', (string) config('location-governance.target_schema'))
+                ->where('country_code', (string) config('location-governance.target_country'))
+                ->where('status', 'active')
+                ->exists();
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     private function latestTargetImport(): ?object
@@ -136,7 +138,16 @@ class LocationGovernanceReadinessCommand extends Command
             return null;
         }
 
-        return DB::table('location_import_runs')->latest('id')->first();
+        try {
+            return DB::table('location_import_runs')
+                ->where('country_code', (string) config('location-governance.target_country'))
+                ->where('source', (string) config('location-governance.target_dataset_source'))
+                ->where('dataset_version', (string) config('location-governance.target_dataset_version'))
+                ->where('mode', 'apply')
+                ->latest('id')->first();
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     private function importConflictRows(int $runId): int
@@ -145,99 +156,149 @@ class LocationGovernanceReadinessCommand extends Command
             return 0;
         }
 
-        return DB::table('location_import_conflicts')->where('location_import_run_id', $runId)->count();
+        try {
+            return DB::table('location_import_conflicts')->where('location_import_run_id', $runId)->count();
+        } catch (Throwable) {
+            return PHP_INT_MAX;
+        }
     }
 
     private function referenceTraversalReady(): bool
     {
-        if (! Schema::hasTable('locations') || ! Schema::hasTable('location_type_relations')) {
-            return false;
+        foreach (['location_external_ids', 'locations', 'location_schemas', 'location_schema_types', 'location_type_relations'] as $table) {
+            if (! Schema::hasTable($table)) {
+                return false;
+            }
         }
 
-        $root = DB::table('locations')
-            ->whereNull('parent_id')
-            ->where('status', 'active')
-            ->whereNotNull('location_schema_id')
-            ->whereNotNull('location_type_id')
-            ->first();
-
-        if (! $root) {
-            return false;
-        }
-
-        $allowedChildTypeIds = DB::table('location_type_relations')
-            ->where('location_schema_id', $root->location_schema_id)
-            ->where('parent_type_id', $root->location_type_id)
-            ->pluck('child_type_id');
-
-        if ($allowedChildTypeIds->isEmpty()) {
-            return false;
-        }
-
-        return DB::table('locations')
-            ->where('parent_id', $root->id)
-            ->where('status', 'active')
-            ->where('location_schema_id', $root->location_schema_id)
-            ->whereIn('location_type_id', $allowedChildTypeIds)
-            ->exists();
-    }
-
-    private function hasGovernanceMappings(): bool
-    {
-        return Schema::hasTable('governance_area_locations') && DB::table('governance_area_locations')->exists();
-    }
-
-    private function governanceTopologyReady(): bool
-    {
         try {
-            return app(ReferenceGovernanceTopologyImporter::class)->readinessReady();
+            $root = DB::table('location_external_ids as external_ids')
+                ->join('locations as roots', 'roots.id', '=', 'external_ids.location_id')
+                ->join('location_schemas as schemas', 'schemas.id', '=', 'roots.location_schema_id')
+                ->join('location_schema_types as schema_types', function ($join): void {
+                    $join->on('schema_types.location_schema_id', '=', 'roots.location_schema_id')->on('schema_types.location_type_id', '=', 'roots.location_type_id');
+                })
+                ->where('external_ids.source', (string) config('location-governance.target_dataset_source'))
+                ->where('external_ids.dataset_version', (string) config('location-governance.target_dataset_version'))
+                ->where('schemas.key', (string) config('location-governance.target_schema'))
+                ->where('schemas.country_code', (string) config('location-governance.target_country'))
+                ->where('schemas.status', 'active')
+                ->where('roots.country_code', (string) config('location-governance.target_country'))
+                ->where('roots.status', 'active')
+                ->whereNull('roots.parent_id')
+                ->where('schema_types.is_root', true)
+                ->select(['roots.id', 'roots.location_schema_id', 'roots.location_type_id'])->first();
+
+            if ($root === null) {
+                return false;
+            }
+
+            return DB::table('locations as children')
+                ->join('location_type_relations as relations', function ($join): void {
+                    $join->on('relations.location_schema_id', '=', 'children.location_schema_id')->on('relations.child_type_id', '=', 'children.location_type_id');
+                })
+                ->where('children.parent_id', $root->id)
+                ->where('children.location_schema_id', $root->location_schema_id)
+                ->where('children.country_code', (string) config('location-governance.target_country'))
+                ->where('children.status', 'active')
+                ->where('relations.parent_type_id', $root->location_type_id)
+                ->exists();
         } catch (Throwable) {
             return false;
         }
     }
 
-    private function groupCreationPoliciesReady(): bool
+    private function hasGovernanceMappings(): bool
     {
-        if (! Schema::hasTable('membership_dimensions') || ! Schema::hasTable('group_creation_policies')) {
+        if (! Schema::hasTable('governance_area_locations')) {
             return false;
         }
+        try {
+            return DB::table('governance_area_locations')->exists();
+        } catch (Throwable) {
+            return false;
+        }
+    }
 
-        foreach (self::STAGE_C_DIMENSIONS as $key) {
-            $dimension = MembershipDimension::query()->where('key', $key)->first();
-            if (! $dimension) {
+    private function governanceTopologyReady(): bool
+    {
+        if (! Schema::hasTable('governance_areas') || ! Schema::hasTable('governance_area_locations')) {
+            return false;
+        }
+        try {
+            $counts = app(ReferenceGovernanceTopologyImporter::class)->diff((string) config('location-governance.target_country'), (string) config('location-governance.target_dataset_version'));
+            return (int) ($counts['create'] ?? PHP_INT_MAX) === 0
+                && (int) ($counts['update'] ?? PHP_INT_MAX) === 0
+                && (int) ($counts['conflict'] ?? PHP_INT_MAX) === 0
+                && (int) ($counts['unchanged'] ?? 0) > 0;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    private function stageCGroupPoliciesReady(): bool
+    {
+        if (! Schema::hasTable('membership_dimensions') || ! Schema::hasTable('group_creation_policies') || ! Schema::hasTable('governance_capability_policies')) {
+            return false;
+        }
+        try {
+            $dimensions = MembershipDimension::query()->where('enabled', true)->whereIn('key', self::STAGE_C_DIMENSIONS)->get()->keyBy('key');
+            if ($dimensions->count() !== count(self::STAGE_C_DIMENSIONS)) {
                 return false;
             }
+            foreach (self::STAGE_C_DIMENSIONS as $dimensionKey) {
+                $dimension = $dimensions->get($dimensionKey);
+                $policy = GroupCreationPolicy::query()
+                    ->where('membership_dimension_id', $dimension->id)
+                    ->where('enabled', true)
+                    ->whereNull('governance_area_id')
+                    ->whereNull('governance_type')
+                    ->whereNull('governance_rank')
+                    ->where('priority', 0)->first();
+                if ($policy === null || $policy->mode?->value !== 'automatic' || ($policy->metadata['stage_c_canonical_groups'] ?? false) !== true) {
+                    return false;
+                }
+            }
+            $capabilityPolicy = GovernanceCapabilityPolicy::query()->where('scope', 'default')->whereNull('country_code')->whereNull('governance_type')->first();
+            return $capabilityPolicy !== null && ($capabilityPolicy->capabilities['group_creation_mode'] ?? null) === 'automatic';
+        } catch (Throwable) {
+            return false;
+        }
+    }
 
-            $policy = GroupCreationPolicy::query()
-                ->where('membership_dimension_id', $dimension->id)
-                ->whereNull('country_code')
-                ->whereNull('governance_type_key')
-                ->first();
-
-            if (! $policy || $policy->creation_mode !== 'automatic_on_membership') {
+    private function rolloutFlagsAreBoolean(): bool
+    {
+        foreach (['runtime_enabled', 'registration_enabled', 'groups_enabled', 'elections_enabled', 'projects_enabled'] as $key) {
+            if (! is_bool(config("location-governance.{$key}"))) {
                 return false;
             }
         }
-
         return true;
     }
 
-    private function flagsReady(): bool
+    private function hasFatalProposalConflicts(): bool
     {
-        return (bool) config('features.location_governance.canonical_runtime')
-            && (bool) config('features.location_governance.canonical_registration')
-            && (bool) config('features.location_governance.canonical_groups')
-            && (bool) config('features.location_governance.canonical_elections')
-            && (bool) config('features.location_governance.canonical_project_scope');
+        if (! Schema::hasTable('location_proposals')) {
+            return false;
+        }
+        try {
+            return DB::table('location_proposals')
+                ->whereIn('status', ['pending', 'ready_for_review', 'needs_evidence'])
+                ->get(['metadata'])
+                ->contains(function (object $proposal): bool {
+                    $metadata = $proposal->metadata;
+                    if (is_string($metadata)) {
+                        $metadata = json_decode($metadata, true);
+                    }
+                    return is_array($metadata) && ($metadata['fatal_conflict'] ?? false) === true;
+                });
+        } catch (Throwable) {
+            return true;
+        }
     }
 
-    private function releaseEvidenceReady(): bool
+    private function check(array &$checks, string $name, bool $passed, string $failure): void
     {
-        $evidence = config('location-governance.release_evidence');
-
-        return is_array($evidence)
-            && ! empty($evidence['release_id'])
-            && ! empty($evidence['validated_at'])
-            && ! empty($evidence['validation_run']);
+        $checks[] = ['name' => $name, 'passed' => $passed, 'failure' => $passed ? null : $failure];
     }
 }
