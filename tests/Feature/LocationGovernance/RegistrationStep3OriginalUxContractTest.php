@@ -48,6 +48,6 @@ final class RegistrationStep3OriginalUxContractTest extends TestCase
         // Mobile remains first-class and the real proposal control has a 44px target.
         $compactView = preg_replace('/\s+/', '', $view);
         self::assertStringContainsString('@media(max-width:640px)', $compactView);
-        self::assertStringContainsString('[data-location-proposal-toggle]{font-size:.8125rem!important;padding:.5rem1rem!important;min-height:44px}', $compactView);
+        self::assertStringContainsString('[data-location-proposal-toggle]{font-size:.8125rem!important;padding:.5rem.25rem!important;min-height:40px;background:transparent!important;color:#087f5b!important;box-shadow:none!important}', $compactView);
     }
 }
