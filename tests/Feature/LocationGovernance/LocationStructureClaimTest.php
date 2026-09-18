@@ -53,7 +53,29 @@ class LocationStructureClaimTest extends TestCase
         $this->assertSame(3, $claim->evidence()->distinct()->count('user_id'));
         $this->assertSame('ready_for_review', $claim->status);
         $this->assertNull($claim->approved_at);
-    }    public function test_authenticated_resident_can_create_or_reuse_an_allowed_structural_claim_via_http(): void
+    }    public function test_approved_claim_can_be_persisted_as_residence_dependency_without_new_support(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city'])->last();
+        $user = User::factory()->create();
+        $claim = LocationStructureClaim::query()->create([
+            'location_id' => $city->id,
+            'claim_type' => 'no_urban_region',
+            'status' => 'approved',
+        ]);
+
+        $relationship = app(ResidenceService::class)->setInitialPrimaryResidence(
+            $user,
+            $city,
+            ['source' => 'approved-structural-dependency-test'],
+            [$claim],
+        );
+
+        $this->assertSame([$claim->id], $relationship->fresh()->metadata['structural_claim_ids']);
+        $this->assertSame(0, $claim->fresh()->evidence()->count());
+    }
+
+    public function test_authenticated_resident_can_create_or_reuse_an_allowed_structural_claim_via_http(): void
     {
         $schema = LocationFixture::iranSchema();
         $city = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city'])->last();
