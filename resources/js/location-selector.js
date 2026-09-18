@@ -54,7 +54,7 @@ const addProposalPanel = (host, wrapper, payload, parentIdentity, select) => {
             const response = await fetch('/locations/proposals', { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}) }, body: JSON.stringify({ ...proposalParentPayload(parentIdentity), location_type_id: Number(type.value), canonical_name: canonicalName, localized_names: { fa: canonicalName } }) });
             if (!response.ok) throw new Error(`Location proposal request failed: ${response.status}`); const result = await response.json(); if (result?.kind !== 'proposal') throw new Error('Unexpected canonical result below pending parent.');
             let option = Array.from(select.options).find((item) => item.value === `proposal:${result.id}`); if (!option) { option = document.createElement('option'); option.value = `proposal:${result.id}`; option.textContent = `${result.canonical_name} — در انتظار تأیید`; option.dataset.locationPendingBadge = ''; select.appendChild(option); }
-            select.value = option.value; setSelection(host, result.id); closePanel(); feedback.textContent = ''; await loadProposalChildren(host, select, result.id);
+            select.value = option.value; setSelection(host, result.id); closePanel(); feedback.textContent = ''; select.dispatchEvent(new CustomEvent('location-proposal-created', { bubbles: true, detail: { proposalId: Number(result.id) } }));
         } catch (error) { console.warn('EarthCoop deeper proposal failed:', error); feedback.textContent = 'ثبت پیشنهاد مکان ممکن نشد. متن شما حفظ شده است؛ دوباره تلاش کنید.'; feedback.classList.add('text-danger'); } finally { submit.disabled = false; submit.removeAttribute('aria-busy'); }
     });
     actions.append(submit, cancel); panel.append(heading, type, name, actions, feedback); shell.append(toggle, panel); wrapper.appendChild(shell);
@@ -83,12 +83,11 @@ if (typeof document !== 'undefined') {
         const select = event.target?.closest?.('[data-location-select]'); if (!select) return; const host = select.closest('[data-location-selector]'); if (!host || (host.dataset.locationPurpose || host.dataset.locationSelectorContext) === 'project-scope') return;
         const value = String(select.value || ''); if (!value.startsWith('proposal:')) return; event.preventDefault(); event.stopImmediatePropagation(); const id = Number(value.slice(9)); setSelection(host, id); void loadProposalChildren(host, select, id);
     }, true);
-    document.querySelectorAll('[data-location-selector]').forEach((host) => {
-        if ((host.dataset.locationPurpose || host.dataset.locationSelectorContext) === 'project-scope') return; const levels = host.querySelector('[data-location-levels]'); if (!levels) return;
-        new MutationObserver((mutations) => mutations.forEach((mutation) => {
-            const panel = mutation.target?.closest?.('[data-location-proposal-panel]'); if (!panel || !panel.classList.contains('d-none')) return; const id = host.querySelector('[data-location-proposal-id][name="location_proposal_id"]')?.value; const wrapper = panel.closest('[data-location-depth]'); const select = wrapper?.querySelector('[data-location-select]'); if (!id || !select || select.value === `proposal:${id}`) return;
-            const name = panel.querySelector('input[aria-label="نام مکان پیشنهادی"]')?.value?.trim() || 'مکان پیشنهادی'; const option = document.createElement('option'); option.value = `proposal:${id}`; option.textContent = `${name} — در انتظار تأیید`; select.appendChild(option); select.value = option.value; void loadProposalChildren(host, select, Number(id));
-        })).observe(levels, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    document.addEventListener('location-proposal-created', (event) => {
+        const select = event.target?.closest?.('[data-location-select]'); const host = select?.closest?.('[data-location-selector]');
+        const id = Number(event.detail?.proposalId || 0); if (!select || !host || !id) return;
+        if ((host.dataset.locationPurpose || host.dataset.locationSelectorContext) === 'project-scope') return;
+        void loadProposalChildren(host, select, id);
     });
 }
 
