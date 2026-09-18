@@ -37,7 +37,7 @@ class LocationStructureClaimLifecycleTest extends TestCase
         $this->assertSame('no_urban_region', $regionClaim->claim_type);
         $this->assertSame('no_neighborhood', $neighborhoodClaim->claim_type);
         $this->assertSame($city->id, $neighborhoodClaim->location_id);
-        $this->assertSame(2, $city->structureClaims()->whereIn('status', LocationStructureClaimService::OPEN_STATUSES)->count());
+        $this->assertSame(2, LocationStructureClaim::query()->where('location_id', $city->id)->whereIn('status', LocationStructureClaimService::OPEN_STATUSES)->count());
     }
 
     public function test_rejected_claim_is_not_open_and_cannot_receive_committed_support(): void
