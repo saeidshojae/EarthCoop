@@ -140,3 +140,26 @@ test('cancelling a proposal panel is side-effect free and cannot synthesize pend
     assert.doesNotMatch(source, /new MutationObserver\s*\(/, 'panel visibility must not be used as a proxy for proposal creation');
     assert.match(source, /location-proposal-created/, 'deeper traversal must react only to an explicit successful proposal-created event');
 });
+
+test('structural residence payload stays separate from project scope and uses localized claim copy', () => {
+    const normalized = normalizePickerPayload({
+        data: [], proposals: [], allowed_types: [],
+        effective_allowed_types: [{ id: 31, key: 'street', label: 'خیابان', proposal_allowed: true }],
+        structural_choices: [{ claim_type: 'no_neighborhood', status: 'pending', claim_id: 8 }],
+        official_governance_base: false,
+    });
+    assert.deepEqual(normalized.effectiveAllowedTypes.map((type) => type.key), ['street']);
+    assert.equal(normalized.structuralChoices[0].claim_type, 'no_neighborhood');
+    const scoped = projectScopePayload(normalized);
+    assert.deepEqual(scoped.structuralChoices, []);
+    assert.deepEqual(scoped.effectiveAllowedTypes, []);
+    const source = selectorSource();
+    assert.match(source, /محله|منطقه شهری/);
+    assert.doesNotMatch(source, />\s*(?:neighborhood|street|alley|building|complex)\s*</);
+});
+
+test('single proposal type does not render a redundant visible type selector', () => {
+    const source = readFileSync(new URL('../../../resources/js/location-selector-core.js', import.meta.url), 'utf8');
+    assert.match(source, /proposableTypes\.length\s*===\s*1/);
+    assert.match(source, /typeSelect\.classList\.add\(['"]d-none['"]\)|typeSelect\.hidden\s*=\s*true/);
+});
