@@ -7,10 +7,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Location;
 use App\Models\LocationProposal;
 use App\Models\LocationSchemaType;
+use App\Models\LocationStructureClaim;
 use App\Models\LocationType;
 use App\Models\LocationTypeRelation;
 use App\Services\LocationGovernance\LocationProposalPolicy;
 use App\Services\LocationGovernance\LocationSchemaResolver;
+use App\Services\LocationGovernance\LocationStructureClaimPolicy;
 use App\Support\LocationDisplayName;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -43,7 +45,7 @@ final class LocationOptionsController extends Controller
         return response()->json(['data' => $locations->map(fn (Location $location) => $this->serialize($location))->values(), 'proposals' => [], 'allowed_types' => []]);
     }
 
-    public function children(Location $location, LocationSchemaResolver $schemaResolver, LocationProposalPolicy $proposalPolicy): JsonResponse
+    public function children(Location $location, LocationSchemaResolver $schemaResolver, LocationProposalPolicy $proposalPolicy, LocationStructureClaimPolicy $structurePolicy): JsonResponse
     {
         $this->assertRuntimeEnabled();
         if ($location->status !== 'active' || ! $location->location_schema_id || ! $location->location_type_id) abort(404);
@@ -57,7 +59,31 @@ final class LocationOptionsController extends Controller
             ->where('location_schema_id', $location->location_schema_id)->whereIn('location_type_id', $proposableTypeIds)
             ->whereIn('status', self::OPEN_STATUSES)->orderBy('canonical_name')->get();
 
-        return $this->payload($children, $proposals, $allowedTypes, fn (LocationType $type) => $proposalPolicy->allows($location, $type));
+        $claims = LocationStructureClaim::query()
+            ->where('location_id', $location->id)
+            ->whereIn('status', array_merge(\App\Services\LocationGovernance\LocationStructureClaimService::OPEN_STATUSES, ['approved']))
+            ->get();
+        $effectiveTypeCodes = $structurePolicy->effectiveChildTypeCodes($location, $claims);
+        $effectiveTypes = LocationType::query()->whereIn('key', $effectiveTypeCodes)->orderBy('canonical_name')->get();
+        $structuralChoices = collect($structurePolicy->allowedClaimTypes($location))
+            ->merge(($claims->pluck('claim_type')->contains(fn ($type) => in_array($type, ['single_urban_region', 'no_urban_region'], true)))
+                ? ['single_neighborhood', 'no_neighborhood'] : [])
+            ->unique()->values()->map(function (string $type) use ($claims): array {
+                $claim = $claims->firstWhere('claim_type', $type);
+                return ['claim_type' => $type, 'status' => $claim?->status ?? 'available', 'claim_id' => $claim?->id];
+            });
+
+        $officialBase = $claims->where('status', 'approved')->pluck('claim_type')
+            ->intersect(['single_neighborhood', 'no_neighborhood'])->isNotEmpty();
+
+        return response()->json([
+            'data' => $children->map(fn (Location $child) => $this->serialize($child))->values(),
+            'proposals' => $proposals->map(fn (LocationProposal $proposal) => $this->serializeProposal($proposal))->values(),
+            'allowed_types' => $allowedTypes->map(fn (LocationType $type) => $this->serializeAllowedType($type, $proposalPolicy->allows($location, $type)))->values(),
+            'effective_allowed_types' => $effectiveTypes->map(fn (LocationType $type) => $this->serializeAllowedType($type, $proposalPolicy->allows($location, $type)))->values(),
+            'structural_choices' => $structuralChoices,
+            'official_governance_base' => $officialBase,
+        ]);
     }
 
     public function proposalChildren(LocationProposal $locationProposal, LocationProposalPolicy $proposalPolicy): JsonResponse
