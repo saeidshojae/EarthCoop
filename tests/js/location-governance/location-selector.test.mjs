@@ -170,3 +170,14 @@ test('breadcrumb uses typed display labels across the full residence path', () =
     assert.match(source, /data-location-path|locationPath/);
     assert.match(source, /TYPE_LABELS/);
 });
+
+test('residence selector renders and submits structural choices without leaking them into project scope', () => {
+    const source = selectorSource();
+    assert.match(source, /structuralChoices/);
+    assert.match(source, /locations\/structure-claims/);
+    assert.match(source, /single_urban_region/);
+    assert.match(source, /no_urban_region/);
+    assert.match(source, /single_neighborhood/);
+    assert.match(source, /no_neighborhood/);
+    assert.match(source, /effectiveAllowedTypes/);
+});
