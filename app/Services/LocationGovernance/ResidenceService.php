@@ -6,6 +6,7 @@ use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Exceptions\ResidenceTransferLimitExceeded;
 use App\Models\Location;
 use App\Models\LocationProposal;
+use App\Models\LocationStructureClaim;
 use App\Models\PendingResidenceIntent;
 use App\Models\User;
 use App\Models\UserLocationRelationship;
@@ -23,9 +24,19 @@ class ResidenceService
     ) {
     }
 
-    public function setInitialPrimaryResidence(User $user, Location $location, array $evidence): UserLocationRelationship
+    public function setInitialPrimaryResidence(User $user, Location $location, array $evidence, array $structuralClaims = []): UserLocationRelationship
     {
-        return DB::transaction(function () use ($user, $location, $evidence): UserLocationRelationship {
+        return DB::transaction(function () use ($user, $location, $evidence, $structuralClaims): UserLocationRelationship {
+            $claims = collect($structuralClaims)->map(function ($claim) use ($location): LocationStructureClaim {
+                $locked = LocationStructureClaim::query()->lockForUpdate()->findOrFail($claim->id);
+                if ((int) $locked->location_id !== (int) $location->id
+                    || ! in_array($locked->status, LocationStructureClaimService::OPEN_STATUSES, true)) {
+                    throw ValidationException::withMessages([
+                        'location_structure_claim_ids' => 'ادعای ساختاری انتخاب‌شده دیگر برای این محل سکونت قابل استفاده نیست.',
+                    ]);
+                }
+                return $locked;
+            });
             $existing = UserLocationRelationship::query()
                 ->where('user_id', $user->id)
                 ->where('relationship_type', 'primary_residence')
@@ -34,8 +45,16 @@ class ResidenceService
                 ->first();
 
             if ($existing !== null) {
+                if ((int) $existing->location_id !== (int) $location->id) {
+                    return $existing;
+                }
+                foreach ($claims as $claim) {
+                    app(LocationStructureClaimService::class)->recordCommittedSupport($claim, $user, [
+                        'source' => 'residence_commit',
+                        'relationship_id' => $existing->id,
+                    ]);
+                }
                 $this->reconcileCanonicalGroupsIfEnabled($user);
-
                 return $existing;
             }
 
@@ -46,9 +65,19 @@ class ResidenceService
                 'started_at' => now(),
                 'ended_at' => null,
                 'evidence' => $evidence,
+                'metadata' => $claims->isEmpty() ? null : [
+                    'structural_claim_ids' => $claims->pluck('id')->values()->all(),
+                ],
                 'explicit_transfer' => false,
                 'transfer_override' => false,
             ]);
+
+            foreach ($claims as $claim) {
+                app(LocationStructureClaimService::class)->recordCommittedSupport($claim, $user, [
+                    'source' => 'residence_commit',
+                    'relationship_id' => $relationship->id,
+                ]);
+            }
 
             $this->reconcileCanonicalGroupsIfEnabled($user);
 
