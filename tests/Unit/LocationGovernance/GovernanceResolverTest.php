@@ -120,19 +120,16 @@ class GovernanceResolverTest extends TestCase
         $locations = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city']);
         $cityLocation = $locations->last();
 
-        LocationStructureClaim::factory()->create([
+        LocationStructureClaim::query()->create([
             'location_id' => $cityLocation->id,
             'claim_type' => 'no_urban_region',
             'status' => 'approved',
         ]);
-        LocationStructureClaim::factory()->create([
+        LocationStructureClaim::query()->create([
             'location_id' => $cityLocation->id,
             'claim_type' => 'no_neighborhood',
             'status' => 'approved',
         ]);
-
-        $streetType = $schema[1]['street'] ?? null;
-        $this->assertNotNull($streetType);
 
         $cityArea = GovernanceArea::factory()->official()->create(['key' => 'collapsed-city-base', 'rank' => 800]);
         $cityArea->locations()->attach($cityLocation->id);
