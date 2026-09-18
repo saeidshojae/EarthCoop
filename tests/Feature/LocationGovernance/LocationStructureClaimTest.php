@@ -54,8 +54,8 @@ class LocationStructureClaimTest extends TestCase
         $this->assertNull($claim->approved_at);
     }    public function test_authenticated_resident_can_create_or_reuse_an_allowed_structural_claim_via_http(): void
     {
-        [$schema, $types] = LocationFixture::iranSchema();
-        $city = LocationFixture::location($schema, $types['city'], 'Kiasar');
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city'])->last();
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)->postJson('/locations/structure-claims', [
