@@ -40,7 +40,7 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
         $schema=LocationFixture::iranSchema();
         $path=LocationFixture::createPath($schema,['country','province','county','section','city']);
         $city=$path->last();
-        $other=LocationFixture::createPath($schema,['country','province','county','section','city'], 'other-city')->last();
+        $other=LocationFixture::createPath($schema,['country','province','county','section','city'], ['کشور دوم','استان دوم','شهرستان دوم','بخش دوم','شهر دیگر'])->last();
         $user=User::factory()->create();
         $claim=app(LocationStructureClaimService::class)->findOrCreateOpenClaim($other,'no_urban_region',$user);
 
