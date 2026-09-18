@@ -15,10 +15,14 @@ const normalizePickerPayload = (payload) => ({
     locations: (Array.isArray(payload?.data) ? payload.data : []).filter(isActiveLocation),
     proposals: (Array.isArray(payload?.proposals) ? payload.proposals : []).filter(isOpenProposal),
     allowedTypes: Array.isArray(payload?.allowed_types) ? payload.allowed_types : [],
+    effectiveAllowedTypes: Array.isArray(payload?.effective_allowed_types) ? payload.effective_allowed_types : [],
+    structuralChoices: Array.isArray(payload?.structural_choices) ? payload.structural_choices : [],
+    officialGovernanceBase: payload?.official_governance_base === true,
 });
 const projectScopePayload = (payload) => ({
     locations: payload.locations, proposals: [],
     allowedTypes: payload.allowedTypes.map((type) => ({ ...type, proposal_allowed: false })),
+    effectiveAllowedTypes: [], structuralChoices: [], officialGovernanceBase: false,
 });
 const selectionValues = (item) => {
     const identity = String(item?.identity || '');
@@ -75,6 +79,7 @@ const buildProposalPanel = (host, allowedTypes, parentLocationId, onCreated) => 
     const panel = document.createElement('div'); panel.className = 'vstack gap-2 mt-3 d-none'; panel.dataset.locationProposalPanel = '';
     const typeLabel = document.createElement('label'); typeLabel.className = 'form-label small text-secondary mb-0'; typeLabel.textContent = 'نوع مکان پیشنهادی';
     const typeSelect = document.createElement('select'); typeSelect.className = 'form-select form-select-sm'; typeSelect.setAttribute('aria-label', 'نوع مکان پیشنهادی');
+    if (proposableTypes.length === 1) { typeLabel.classList.add('d-none'); typeSelect.classList.add('d-none'); }
     proposableTypes.forEach((type) => { const option = document.createElement('option'); option.value = String(type.id); option.textContent = type.label || type.key; typeSelect.appendChild(option); });
     const nameLabel = document.createElement('label'); nameLabel.className = 'form-label small text-secondary mb-0'; nameLabel.textContent = 'نام مکان';
     const nameInput = document.createElement('input'); nameInput.type = 'text'; nameInput.className = 'form-control form-control-sm'; nameInput.maxLength = 255; nameInput.placeholder = 'نام مکان را وارد کنید'; nameInput.setAttribute('aria-label', 'نام مکان پیشنهادی');
