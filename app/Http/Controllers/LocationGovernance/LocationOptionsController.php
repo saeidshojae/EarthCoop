@@ -65,6 +65,12 @@ final class LocationOptionsController extends Controller
             ->get();
         $effectiveTypeCodes = $structurePolicy->effectiveResidenceChildTypeCodes($location, $claims);
         $effectiveTypes = LocationType::query()->whereIn('key', $effectiveTypeCodes)->orderBy('canonical_name')->get();
+        $effectiveTypeIds = $effectiveTypes->pluck('id');
+        if ($effectiveTypeIds->isNotEmpty() && $effectiveTypeCodes !== $allowedTypes->pluck('key')->values()->all()) {
+            $children = $location->children()->with(['type','schema'])->where('status','active')->where('location_schema_id',$location->location_schema_id)->whereIn('location_type_id',$effectiveTypeIds)->orderBy('canonical_name')->get();
+            $proposableTypeIds = $effectiveTypes->filter(fn (LocationType $type) => $proposalPolicy->allows($location, $type))->pluck('id');
+            $proposals = LocationProposal::query()->with('type')->where('parent_location_id',$location->id)->whereNull('parent_location_proposal_id')->where('location_schema_id',$location->location_schema_id)->whereIn('location_type_id',$proposableTypeIds)->whereIn('status',self::OPEN_STATUSES)->orderBy('canonical_name')->get();
+        }
         $structuralChoices = collect($structurePolicy->allowedClaimTypes($location))
             ->merge(($claims->pluck('claim_type')->contains(fn ($type) => in_array($type, ['single_urban_region', 'no_urban_region'], true)))
                 ? ['single_neighborhood', 'no_neighborhood'] : [])
