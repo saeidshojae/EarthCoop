@@ -1,0 +1,74 @@
+<?php
+
+namespace Tests\Feature\LocationGovernance;
+
+use App\Models\User;
+use App\Services\LocationGovernance\LocationStructureClaimService;
+use App\Services\LocationGovernance\ResidenceService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\LocationGovernance\LocationFixture;
+use Tests\TestCase;
+
+class StructuralClaimResidenceCommitTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_pending_structural_claim_can_be_relied_on_by_committed_initial_residence_and_counts_support_once(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $user = User::factory()->create();
+        $claim = app(LocationStructureClaimService::class)
+            ->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+
+        $relationship = app(ResidenceService::class)->setInitialPrimaryResidence(
+            $user,
+            $city,
+            ['source'=>'registration'],
+            [$claim]
+        );
+
+        $this->assertSame($city->id, $relationship->location_id);
+        $this->assertSame([$claim->id], $relationship->fresh()->metadata['structural_claim_ids']);
+        $this->assertSame(1, $claim->fresh()->evidence()->where('user_id', $user->id)->count());
+
+        app(ResidenceService::class)->setInitialPrimaryResidence($user, $city, ['source'=>'registration'], [$claim]);
+        $this->assertSame(1, $claim->fresh()->evidence()->where('user_id', $user->id)->count());
+    }
+
+    public function test_terminal_structural_claim_cannot_be_used_for_residence_commit(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $village = LocationFixture::createPath($schema, ['country','province','county','section','rural_district','village'])->last();
+        $user = User::factory()->create();
+        $service = app(LocationStructureClaimService::class);
+        $claim = $service->findOrCreateOpenClaim($village, 'no_neighborhood', $user);
+        $service->reject($claim, User::factory()->create(), 'invalid');
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        app(ResidenceService::class)->setInitialPrimaryResidence($user, $village, ['source'=>'registration'], [$claim]);
+
+        $this->assertSame(0, $claim->fresh()->evidence()->count());
+    }
+
+    public function test_admin_committing_residence_for_user_never_counts_admin_as_supporter(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $region = LocationFixture::createPath($schema, ['country','province','county','section','city','urban_region'])->last();
+        $user = User::factory()->create();
+        $admin = User::factory()->create();
+        $claim = app(LocationStructureClaimService::class)
+            ->findOrCreateOpenClaim($region, 'no_neighborhood', $user);
+
+        app(ResidenceService::class)->setInitialPrimaryResidence(
+            $user,
+            $region,
+            ['source'=>'admin_edit','actor_user_id'=>$admin->id],
+            [$claim]
+        );
+
+        $this->assertSame(1, $claim->fresh()->evidence()->count());
+        $this->assertTrue($claim->fresh()->evidence()->where('user_id', $user->id)->exists());
+        $this->assertFalse($claim->fresh()->evidence()->where('user_id', $admin->id)->exists());
+    }
+}
