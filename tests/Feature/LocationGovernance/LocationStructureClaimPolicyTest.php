@@ -27,6 +27,37 @@ class LocationStructureClaimPolicyTest extends TestCase
         $this->assertNotContains('no_neighborhood', $policy->allowedClaimTypes($city));
     }
 
+    public function test_claim_policy_is_driven_by_schema_metadata_and_combined_city_claim_is_contextual(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $policy = app(LocationStructureClaimPolicy::class);
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $cityType = $schema->types->firstWhere('key', 'city');
+
+        $pivot = \App\Models\LocationSchemaType::query()
+            ->where('location_schema_id', $schema->id)
+            ->where('location_type_id', $cityType->id)
+            ->firstOrFail();
+        $pivot->forceFill(['metadata' => array_merge($pivot->metadata ?? [], [
+            'structural_claim_types' => ['no_urban_region'],
+            'structural_claim_types_after' => [
+                'no_urban_region' => ['no_neighborhood'],
+            ],
+        ])])->save();
+
+        $this->assertSame(['no_urban_region'], $policy->allowedClaimTypes($city));
+        $this->assertFalse($policy->allowsClaimType($city, 'no_neighborhood', collect()));
+
+        $first = LocationStructureClaim::create([
+            'location_id'=>$city->id,
+            'claim_type'=>'no_urban_region',
+            'status'=>'pending',
+            'proposer_user_id'=>User::factory()->create()->id,
+        ]);
+
+        $this->assertTrue($policy->allowsClaimType($city, 'no_neighborhood', collect([$first])));
+    }
+
     public function test_effective_children_skip_only_the_claimed_governance_tier_and_preserve_micro_locations(): void
     {
         $schema = LocationFixture::iranSchema();
