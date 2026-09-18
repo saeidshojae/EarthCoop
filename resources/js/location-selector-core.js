@@ -74,7 +74,7 @@ const buildSelect = (host, payload, depth) => {
     pickerItems(payload).forEach((item) => {
         const option = document.createElement('option'); option.value = item.identity || `${item.picker_kind}:${item.id}`;
         option.textContent = item.picker_kind === 'proposal' ? `${item.label} — در انتظار تأیید` : item.label;
-        option.dataset.endpoint = item.is_residence_endpoint ? '1' : '0'; option.dataset.hasChildren = item.has_children ? '1' : '0'; option.dataset.typeKey = item.type_key || ''; option.dataset.pickerKind = item.picker_kind;
+        option.dataset.endpoint = item.is_residence_endpoint ? '1' : '0'; option.dataset.typeKey = item.type_key || ''; option.dataset.hasChildren = item.has_children ? '1' : '0'; option.dataset.typeKey = item.type_key || ''; option.dataset.pickerKind = item.picker_kind;
         select.appendChild(option);
     });
     wrapper.append(label, select); return { wrapper, select };
