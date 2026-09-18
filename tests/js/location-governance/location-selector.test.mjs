@@ -133,3 +133,10 @@ test('project scope edit hydrates the saved canonical path instead of only prese
     assert.match(source, /initialLocationId|initialGovernanceAreaId/);
     assert.match(source, /select\.value\s*=\s*selected\.identity/);
 });
+
+
+test('cancelling a proposal panel is side-effect free and cannot synthesize pending levels', () => {
+    const source = readFileSync(new URL('../../../resources/js/location-selector.js', import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /new MutationObserver\s*\(/, 'panel visibility must not be used as a proxy for proposal creation');
+    assert.match(source, /location-proposal-created/, 'deeper traversal must react only to an explicit successful proposal-created event');
+});
