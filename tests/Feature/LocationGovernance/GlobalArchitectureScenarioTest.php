@@ -53,8 +53,8 @@ class GlobalArchitectureScenarioTest extends TestCase
         $alleyChildren = LocationFixture::allowedChildTypeKeys($schema, 'alley')->sort()->values()->all();
         $complexChildren = LocationFixture::allowedChildTypeKeys($schema, 'complex')->sort()->values()->all();
 
-        $this->assertSame(['alley', 'complex'], $streetChildren);
-        $this->assertSame(['complex'], $alleyChildren);
+        $this->assertSame(['alley', 'building', 'complex'], $streetChildren);
+        $this->assertSame(['building', 'complex'], $alleyChildren);
         $this->assertSame(['building'], $complexChildren);
     }
 

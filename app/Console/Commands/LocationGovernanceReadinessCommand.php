@@ -35,6 +35,7 @@ class LocationGovernanceReadinessCommand extends Command
         '2026_09_13_000001_create_pending_residence_intents_table',
         '2026_09_14_000001_add_target_location_to_najm_bahar_projects',
         '2026_09_16_200000_enable_location_proposal_chains',
+        '2026_09_18_000001_allow_direct_buildings_under_streets_and_alleys',
     ];
 
     private const STAGE_C_DIMENSIONS = [

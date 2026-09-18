@@ -38,17 +38,16 @@ final class RegistrationStep3OriginalUxContractTest extends TestCase
         self::assertStringContainsString('data-location-submit', $view);
 
         // Proposal affordance is real and policy-driven: the shared selector creates it
-        // only when the API marks a child type proposal_allowed=true. Step 3 styles that
-        // actual runtime control in the established green visual language; no fake hidden
-        // button is kept in the Blade merely to satisfy this contract.
+        // only when the API marks a child type proposal_allowed=true. The approved
+        // mobile-first UX keeps this secondary action compact rather than dominant.
         self::assertStringContainsString('data-location-proposal-toggle', $view);
-        self::assertStringContainsString('مکان من در فهرست نیست', $selector);
+        self::assertStringContainsString('+ افزودن مکان جدید', $selector);
         self::assertStringContainsString('proposal_allowed === true', $selector);
         self::assertStringNotContainsString('data-registration-proposal-visual-hint', $view);
 
-        // Mobile remains first-class and the real proposal control has a 44px target.
+        // Mobile remains first-class; the compact secondary proposal affordance keeps a deliberate 40px target while primary form actions remain larger.
         $compactView = preg_replace('/\s+/', '', $view);
         self::assertStringContainsString('@media(max-width:640px)', $compactView);
-        self::assertStringContainsString('[data-location-proposal-toggle]{font-size:.8125rem!important;padding:.5rem1rem!important;min-height:44px}', $compactView);
+        self::assertStringContainsString('[data-location-proposal-toggle]{font-size:.8125rem!important;padding:.5rem.25rem!important;min-height:40px;background:transparent!important;color:#087f5b!important;box-shadow:none!important}', $compactView);
     }
 }

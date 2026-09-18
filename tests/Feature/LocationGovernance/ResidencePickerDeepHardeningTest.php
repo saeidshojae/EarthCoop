@@ -63,7 +63,7 @@ class ResidencePickerDeepHardeningTest extends TestCase
         $neighborhood = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood'])->last();
         $streetType = $schema->types->firstWhere('key', 'street');
         $alleyType = $schema->types->firstWhere('key', 'alley');
-        $buildingType = $schema->types->firstWhere('key', 'building');
+        $provinceType = $schema->types->firstWhere('key', 'province');
         $user = User::factory()->create();
         $service = app(LocationProposalService::class);
         $street = $service->propose($user, $neighborhood, $streetType, ['canonical_name' => 'خیابان پیشنهادی']);
@@ -73,7 +73,7 @@ class ResidencePickerDeepHardeningTest extends TestCase
         $this->assertSame($first->id, $second->id);
 
         $this->expectException(DomainException::class);
-        $service->proposeUnderProposal($user, $street, $buildingType, ['canonical_name' => 'ساختمان نامعتبر']);
+        $service->proposeUnderProposal($user, $street, $provinceType, ['canonical_name' => 'استان نامعتبر']);
     }
 
     public function test_approving_parent_reanchors_direct_open_children_without_auto_approving_them(): void

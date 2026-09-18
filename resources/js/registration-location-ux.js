@@ -9,17 +9,26 @@ const installResidenceStyles = () => {
     style.textContent = `
         .location-residence-surface [data-location-levels] .form-select { min-height: 44px; }
         .location-geolocation-actions .btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
-        [data-location-proposal-shell], .location-proposal-surface { border-radius: .85rem; }
+        [data-location-proposal-shell], .location-proposal-shell, .location-proposal-surface { border: 0; background: transparent; padding: 0; margin-top: .25rem; }
         [data-location-proposal-toggle], .location-proposal-toggle {
-            min-height: 44px; white-space: normal; text-align: start;
-            background: linear-gradient(135deg, #10b981, #059669); color: #fff; border-color: transparent;
-            font-weight: 700; box-shadow: 0 4px 12px rgba(16, 185, 129, .22);
+            min-height: 40px; padding: .35rem .25rem; white-space: normal; text-align: start;
+            background: transparent; color: #087f5b; border: 0; font-weight: 700; box-shadow: none;
         }
         [data-location-proposal-toggle]:hover, [data-location-proposal-toggle]:focus,
-        .location-proposal-toggle:hover, .location-proposal-toggle:focus { color: #fff; filter: brightness(.96); }
+        .location-proposal-toggle:hover, .location-proposal-toggle:focus { color: #066649; background: rgba(16,185,129,.08); }
+        .location-proposal-panel { margin-top: .5rem; padding: .75rem; border: 1px solid rgba(100,116,139,.2); border-radius: .75rem; background: rgba(248,250,252,.72); display: grid; gap: .65rem; }
+        .location-proposal-heading { font-size: .875rem; font-weight: 800; color: #334155; }
+        .location-proposal-actions { display: flex; align-items: center; gap: .5rem; }
+        .location-proposal-actions .btn-primary { min-height: 42px; font-weight: 700; }
+        .location-proposal-actions .btn-link { min-height: 42px; text-decoration: none; color: #64748b; }
+        [data-location-pending-badge] { font-weight: 600; }
         @media (max-width: 640px) {
             .location-geolocation-actions { display: grid !important; grid-template-columns: minmax(0, 1fr); }
-            .location-geolocation-actions .btn, [data-location-proposal-toggle] { width: 100%; }
+            .location-geolocation-actions .btn { width: 100%; }
+            [data-location-proposal-toggle] { width: auto; max-width: 100%; }
+            .location-proposal-panel { padding: .7rem; }
+            .location-proposal-actions { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+            .location-proposal-actions .btn-primary { width: 100%; }
             .location-residence-surface [data-location-levels] { min-width: 0; }
             .location-residence-surface [data-location-levels] .form-select { width: 100%; max-width: 100%; }
         }
