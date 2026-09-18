@@ -72,5 +72,5 @@ class LocationStructureClaimTest extends TestCase
             'location_id' => $city->id,
             'claim_type' => 'no_urban_region',
         ])->assertOk()->assertJsonPath('id', $response->json('id'));
-    
+    }
 }
