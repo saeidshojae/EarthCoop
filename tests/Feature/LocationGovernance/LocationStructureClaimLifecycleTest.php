@@ -24,6 +24,22 @@ class LocationStructureClaimLifecycleTest extends TestCase
             ->findOrCreateOpenClaim($city, 'no_neighborhood', User::factory()->create());
     }
 
+    public function test_service_allows_contextual_city_neighborhood_claim_after_region_layer_is_collapsed(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $user = User::factory()->create();
+        $service = app(LocationStructureClaimService::class);
+
+        $regionClaim = $service->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+        $neighborhoodClaim = $service->findOrCreateOpenClaim($city, 'no_neighborhood', $user);
+
+        $this->assertSame('no_urban_region', $regionClaim->claim_type);
+        $this->assertSame('no_neighborhood', $neighborhoodClaim->claim_type);
+        $this->assertSame($city->id, $neighborhoodClaim->location_id);
+        $this->assertSame(2, $city->structureClaims()->whereIn('status', LocationStructureClaimService::OPEN_STATUSES)->count());
+    }
+
     public function test_rejected_claim_is_not_open_and_cannot_receive_committed_support(): void
     {
         $schema = LocationFixture::iranSchema();
