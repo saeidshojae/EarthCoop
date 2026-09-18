@@ -36,6 +36,16 @@ const installResidenceStyles = () => {
     document.head.appendChild(style);
 };
 
+const FA_TYPE_LABELS = Object.freeze({
+    global: 'جهانی', continent: 'قاره', country: 'کشور', province: 'استان', county: 'شهرستان',
+    section: 'بخش', city: 'شهر', rural_district: 'دهستان', village: 'روستا', urban_region: 'منطقه شهری',
+    neighborhood: 'محله', street: 'خیابان', alley: 'کوچه', complex: 'مجتمع', building: 'ساختمان',
+});
+const typedLocationLabel = (label, typeKey) => {
+    const name = String(label || '').trim(); const prefix = FA_TYPE_LABELS[typeKey] || '';
+    return !prefix || !name || name === prefix || name.startsWith(prefix + ' ') ? name : prefix + ' ' + name;
+};
+
 const sleep = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 
 const mountResidenceUx = (selector) => {
@@ -62,7 +72,7 @@ const mountResidenceUx = (selector) => {
     const selectedLabels = () => Array.from(levels?.querySelectorAll('[data-location-select]') || [])
         .map((select) => select.selectedOptions?.[0])
         .filter((option) => option?.value)
-        .map((option) => ({ label: option.textContent?.replace(/\s+—\s+در انتظار تأیید$/, '').trim() || '', proposal: String(option.value || '').startsWith('proposal:') }))
+        .map((option) => ({ label: typedLocationLabel(option.textContent?.replace(/\s+—\s+در انتظار تأیید$/, '').trim() || '', option.dataset.typeKey || option.closest('select')?.selectedOptions?.[0]?.dataset.typeKey || ''), proposal: String(option.value || '').startsWith('proposal:') }))
         .filter((item) => item.label);
 
     const renderPath = (items = selectedLabels()) => {
