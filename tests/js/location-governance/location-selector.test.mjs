@@ -163,3 +163,10 @@ test('single proposal type does not render a redundant visible type selector', (
     assert.match(source, /proposableTypes\.length\s*===\s*1/);
     assert.match(source, /typeSelect\.classList\.add\(['"]d-none['"]\)|typeSelect\.hidden\s*=\s*true/);
 });
+
+test('breadcrumb uses typed display labels across the full residence path', () => {
+    const source = selectorSource();
+    assert.match(source, /displayLocationLabel|locationDisplayLabel/);
+    assert.match(source, /data-location-path|locationPath/);
+    assert.match(source, /TYPE_LABELS/);
+});
