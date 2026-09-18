@@ -6,6 +6,7 @@ use App\Models\Location;
 use App\Models\LocationStructureClaim;
 use App\Models\User;
 use App\Services\LocationGovernance\LocationStructureClaimService;
+use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\LocationFixture;
 use Tests\TestCase;
