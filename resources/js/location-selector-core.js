@@ -9,6 +9,13 @@ const TYPE_LABELS = Object.freeze({
     section: 'بخش', city: 'شهر', rural_district: 'دهستان', village: 'روستا', urban_region: 'منطقه شهری',
     neighborhood: 'محله', street: 'خیابان', alley: 'کوچه', complex: 'مجتمع', building: 'ساختمان',
 });
+const locationDisplayLabel = (item) => {
+    const name = String(item?.label || item?.canonical_name || '').trim();
+    const prefix = TYPE_LABELS[item?.type_key] || '';
+    if (!prefix || !name) return name;
+    const normalizedPrefix = prefix.split(' / ')[0].trim();
+    return name === normalizedPrefix || name.startsWith(normalizedPrefix + ' ') ? name : normalizedPrefix + ' ' + name;
+};
 const isActiveLocation = (item) => item?.status === undefined || item?.status === null || item?.status === 'active';
 const isOpenProposal = (item) => OPEN_PROPOSAL_STATUSES.has(String(item?.status || '')) && item?.selectable !== false;
 const normalizePickerPayload = (payload) => ({
@@ -110,7 +117,9 @@ const initializeLocationSelector = async (host) => {
     const locationId = isProjectScope ? host.querySelector('[data-location-id][name="target_location_id"]') : host.querySelector('[data-location-id][name="location_id"]');
     const proposalId = isProjectScope ? host.querySelector('[data-location-proposal-id]') : host.querySelector('[data-location-proposal-id][name="location_proposal_id"]');
     const governanceAreaId = isProjectScope ? host.querySelector('[data-project-governance-area-id][name="governance_area_id"]') : null;
-    const form = host.closest('[data-location-form]') || host.closest('form'); const submit = form?.querySelector('[data-location-submit]'); const status = host.querySelector('[data-location-status]'); const country = (host.dataset.countryCode || '').trim();
+    const form = host.closest('[data-location-form]') || host.closest('form'); const submit = form?.querySelector('[data-location-submit]'); const status = host.querySelector('[data-location-status]'); const locationPath = host.querySelector('[data-location-path]'); const country = (host.dataset.countryCode || '').trim();
+    const selectedPath = new Map();
+    const renderLocationPath = () => { if (!locationPath) return; const labels = [...selectedPath.entries()].sort((a,b) => a[0]-b[0]).map(([, item]) => locationDisplayLabel(item)).filter(Boolean); locationPath.textContent = labels.length ? labels.join(' / ') : 'مسیر انتخاب نشده'; };
     if (!levels || !locationId || (!isProjectScope && !proposalId) || (isProjectScope && !governanceAreaId)) return;
     const setPickerState = (state, message, isError = false) => { host.dataset.locationState = state; host.setAttribute('aria-busy', state === PICKER_STATES.loading ? 'true' : 'false'); if (!status) return; status.textContent = message; status.classList.toggle('text-danger', isError); status.setAttribute('aria-live', isError ? 'assertive' : 'polite'); };
     const setStatus = (message, isError = false) => setPickerState(isError ? PICKER_STATES.error : PICKER_STATES.ready, message, isError);
@@ -142,8 +151,9 @@ const initializeLocationSelector = async (host) => {
         };
         if (!isProjectScope) { const proposalPanel = buildProposalPanel(host, payload.allowedTypes, parentLocationId, refreshAfterProposal); if (proposalPanel) wrapper.appendChild(proposalPanel); }
         select.addEventListener('change', async () => {
-            removeDeeperLevels(depth); const selected = pickerItems(payload).find((item) => (item.identity || `${item.picker_kind}:${item.id}`) === select.value) || null;
-            if (!selected) { clearSelection(); setPickerState(PICKER_STATES.empty, isProjectScope ? 'انتخاب محدوده پروژه اختیاری است.' : 'یک گزینه را برای ادامه انتخاب کنید.'); return; }
+            removeDeeperLevels(depth); [...selectedPath.keys()].filter((key) => key > depth).forEach((key) => selectedPath.delete(key)); const selected = pickerItems(payload).find((item) => (item.identity || `${item.picker_kind}:${item.id}`) === select.value) || null;
+            if (!selected) { selectedPath.delete(depth); renderLocationPath(); clearSelection(); setPickerState(PICKER_STATES.empty, isProjectScope ? 'انتخاب محدوده پروژه اختیاری است.' : 'یک گزینه را برای ادامه انتخاب کنید.'); return; }
+            selectedPath.set(depth, selected); renderLocationPath();
             if (selected.navigation_only === true) { clearSelection(); setStatus('سطح بعدی را برای تعیین محل سکونت انتخاب کنید.'); }
             else setSelection(selected);
             if (selected.picker_kind === 'proposal') return;
@@ -196,4 +206,4 @@ const initializeLocationSelector = async (host) => {
 };
 
 selectors.forEach((host) => { void initializeLocationSelector(host); });
-export { initializeLocationSelector, normalizePickerPayload, projectScopePayload, projectScopeSelectionValues, pickerLevelLabel, selectionValues, shouldRenderNextLevel };
+export { initializeLocationSelector, normalizePickerPayload, projectScopePayload, projectScopeSelectionValues, pickerLevelLabel, selectionValues, shouldRenderNextLevel, locationDisplayLabel };
