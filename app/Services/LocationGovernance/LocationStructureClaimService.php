@@ -13,6 +13,10 @@ class LocationStructureClaimService
 
     public function findOrCreateOpenClaim(Location $location, string $type, User $proposer): LocationStructureClaim
     {
+        if (! in_array($type, app(LocationStructureClaimPolicy::class)->allowedClaimTypes($location), true)) {
+            throw new \DomainException('Structural claim type is not allowed for this location type.');
+        }
+
         return DB::transaction(function () use ($location, $type, $proposer): LocationStructureClaim {
             $claim = LocationStructureClaim::query()
                 ->where('location_id', $location->id)
