@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 class LocationStructureClaimService
 {
-    private const OPEN_STATUSES = ['pending', 'ready_for_review', 'needs_evidence'];
+    public const OPEN_STATUSES = ['pending', 'ready_for_review', 'needs_evidence'];
 
     public function findOrCreateOpenClaim(Location $location, string $type, User $proposer): LocationStructureClaim
     {
