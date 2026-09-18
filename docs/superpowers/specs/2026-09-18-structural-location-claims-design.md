@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-18
 **Status:** Approved design
-**Baseline:** `main@d4b84125cdef2c85c0af20ceb0b8e22113490052`
+**Baseline:** `main@a5db7480ca0b2731234de882bb6e7b3d075a885b`
 
 ## Purpose
 EarthCoop must represent absent local administrative tiers without fake Locations. Structural facts change effective traversal/governance interpretation of a canonical Location while preserving `Location != GovernanceArea != Group`.
@@ -17,22 +17,27 @@ EarthCoop must represent absent local administrative tiers without fake Location
 7. Project market-scope semantics remain independent.
 
 ## Model
-Introduce `LocationStructureClaim`: `location_id`, `claim_type` (`single_urban_region`, `single_neighborhood`), status (`pending`, `ready_for_review`, `needs_evidence`, `approved`, `rejected`), proposer/reviewer, review reason, timestamps, metadata. Companion support/evidence records are unique per claim/user. Only one open same-type claim per canonical Location.
+Introduce `LocationStructureClaim`: `location_id`, `claim_type` (`single_urban_region`, `no_urban_region`, `single_neighborhood`, `no_neighborhood`), status (`pending`, `ready_for_review`, `needs_evidence`, `approved`, `rejected`), proposer/reviewer, review reason, timestamps, metadata. Companion support/evidence records are unique per claim/user. Only one open same-type claim per canonical Location.
 
 ## Initial Iran policy
-- `city + single_urban_region`: city carries the absent regional scope.
-- `urban_region + single_neighborhood`: region is the base official local scope.
-- `village + single_neighborhood`: village is the base official local scope.
-- `city + single_neighborhood` is valid only when effective `single_urban_region` also applies; rare small-city/township case makes city the base official scope.
+- `city + single_urban_region`: city carries the collapsed regional scope and traversal continues to real neighborhoods when they exist.
+- `city + no_urban_region`: city has no separate official urban-region tier.
+- `urban_region + single_neighborhood` or `no_neighborhood`: region itself is the base official local scope.
+- `village + single_neighborhood` or `no_neighborhood`: village itself is the base official local scope.
+- `city + single/no_neighborhood` is valid when its effective regional tier is also collapsed/absent; the city itself becomes the base official local scope.
+
+`single_*` and `no_*` remain distinct facts even where their governance consequence is identical. This preserves truthful geography, auditability, and future country mappings.
 
 This is intentionally narrower than a generic arbitrary skip-tier engine.
 
 ## Effective traversal
 Normal urban: `city → urban_region → neighborhood`.
 Single-region city: `city → neighborhood`.
-Single-neighborhood urban region: `urban_region → optional micro-location`.
-Single-neighborhood village: `village → optional micro-location`.
-Combined city: `city → optional micro-location`.
+Single/no-neighborhood urban region: `urban_region [official governance base] → optional micro-location`.
+Single/no-neighborhood village: `village [official governance base] → optional micro-location`.
+Combined city with no separate region/neighborhood tier: `city [official governance base] → optional micro-location`.
+
+**The official-governance endpoint is not the residence-detail endpoint.** After an effective official base, the residence picker may continue through every schema-valid micro-location path (for example street, alley, complex, building). These micro-locations refine residence only and do not create additional Official GovernanceAreas or systemic-election tiers.
 
 Pending claims allow immediate selection/proposal of the next real level and successful registration/profile save. No fake tier is inserted.
 
@@ -47,8 +52,11 @@ Formal systemic elections operate only on active Official GovernanceAreas. No ar
 ## UX
 Structural choices are distinct from Locations/LocationProposals:
 - `این شهر تک‌منطقه‌ای است — در انتظار تأیید`
+- `این شهر منطقه‌بندی جداگانه ندارد — در انتظار تأیید`
 - `این منطقه تک‌محله‌ای است — در انتظار تأیید`
+- `این منطقه محله‌بندی ندارد — در انتظار تأیید`
 - `این روستا تک‌محله‌ای است — در انتظار تأیید`
+- `این روستا محله‌بندی ندارد — در انتظار تأیید`
 
 After selection the picker exposes the effective next real level. The choice appears in the selected-path summary and survives refresh/edit hydration. Approved claims render as established structural facts.
 
@@ -59,7 +67,7 @@ Open claims are reused. At 10 distinct committed supporters they become `ready_f
 Integrate registration Step 3, profile/admin residence editing, persistence/hydration/history, schema traversal, GovernanceArea resolution/materialization, pending group behavior, Membership/auto-grouping, formal election topology, admin/readiness, and Location/Governance JS. Do not change project market scope or make micro-locations mandatory.
 
 ## Permanent tests
-Cover: Kiassar-like single-region city; single-neighborhood urban region; single-neighborhood village; combined small city; pending continuation; idempotent support; tenth support ready-for-review only; rejected-claim new-save rejection; refresh/edit hydration; no synthetic Location; no duplicate GovernanceArea/public group/election; no pending formal authority; deterministic approval reconciliation; all mature regression suites.
+Cover: Kiassar-like single-region/no-separate-region city; single/no-neighborhood urban region; single/no-neighborhood village; city with no separate region and no neighborhood; micro-location continuation below every collapsed official base; pending continuation; idempotent support; tenth support ready-for-review only; rejected-claim new-save rejection; refresh/edit hydration; no synthetic Location; no duplicate GovernanceArea/public group/election; no pending formal authority; deterministic approval reconciliation; all mature regression suites.
 
 ## Safety and acceptance
 Implement on an isolated feature branch, additively and test-first. No destructive Production mutation. Required migrations enter readiness gates. Complete means all four collapsed-tier cases work without fake locations, pending/approved persistence and hydration work, support is deduplicated, governance/group/election topology has no artificial duplicate tiers, pending claims grant no formal authority, and Full Validation is green.
