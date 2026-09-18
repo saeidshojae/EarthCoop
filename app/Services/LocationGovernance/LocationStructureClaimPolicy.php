@@ -43,12 +43,26 @@ class LocationStructureClaimPolicy
             ->value('metadata') ?? [];
     }
 
+    public function effectiveResidenceChildTypeCodes(Location $location, Collection $effectiveClaims): array
+    {
+        return $this->effectiveChildTypeCodesForStatuses(
+            $location,
+            $effectiveClaims,
+            array_merge(LocationStructureClaimService::OPEN_STATUSES, ['approved'])
+        );
+    }
+
     public function effectiveChildTypeCodes(Location $location, Collection $effectiveClaims): array
+    {
+        return $this->effectiveChildTypeCodesForStatuses($location, $effectiveClaims, ['approved']);
+    }
+
+    private function effectiveChildTypeCodesForStatuses(Location $location, Collection $effectiveClaims, array $statuses): array
     {
         $claims = $effectiveClaims
             ->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim
                 && (int) $claim->location_id === (int) $location->id
-                && $claim->status === 'approved')
+                && in_array($claim->status, $statuses, true))
             ->pluck('claim_type')
             ->unique()
             ->values();
