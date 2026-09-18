@@ -5,6 +5,7 @@ namespace Tests\Feature\LocationGovernance;
 use App\Models\User;
 use App\Services\LocationGovernance\LocationStructureClaimService;
 use App\Services\LocationGovernance\ResidenceService;
+use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\LocationFixture;
 use Tests\TestCase;
@@ -65,6 +66,30 @@ class StructuralClaimResidenceCommitTest extends TestCase
         $this->assertSame($relationship->id, $same->id);
         $this->assertSame([$claim->id], $same->fresh()->metadata['structural_claim_ids']);
         $this->assertSame(1, $claim->fresh()->evidence()->where('user_id', $user->id)->count());
+    }
+
+    public function test_residence_and_structural_support_roll_back_together_when_reconciliation_fails(): void
+    {
+        config(['location-governance.groups_enabled' => true]);
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $user = User::factory()->create();
+        $claim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+
+        $reconciler = \Mockery::mock(CanonicalGroupMembershipReconciler::class);
+        $reconciler->shouldReceive('reconcile')->once()->andThrow(new \RuntimeException('forced reconciliation failure'));
+        $this->app->instance(CanonicalGroupMembershipReconciler::class, $reconciler);
+        $service = app(ResidenceService::class);
+
+        try {
+            $service->setInitialPrimaryResidence($user, $city, ['source'=>'registration'], [$claim]);
+            $this->fail('Expected reconciliation failure.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('forced reconciliation failure', $exception->getMessage());
+        }
+
+        $this->assertSame(0, $user->fresh()->locationRelationships()->where('relationship_type','primary_residence')->count());
+        $this->assertSame(0, $claim->fresh()->evidence()->where('user_id', $user->id)->count());
     }
 
     public function test_admin_committing_residence_for_user_never_counts_admin_as_supporter(): void
