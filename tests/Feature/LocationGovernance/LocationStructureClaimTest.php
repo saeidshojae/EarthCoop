@@ -52,5 +52,25 @@ class LocationStructureClaimTest extends TestCase
         $this->assertSame(3, $claim->evidence()->distinct()->count('user_id'));
         $this->assertSame('ready_for_review', $claim->status);
         $this->assertNull($claim->approved_at);
-    }
+    }    public function test_authenticated_resident_can_create_or_reuse_an_allowed_structural_claim_via_http(): void
+    {
+        [$schema, $types] = LocationFixture::iranSchema();
+        $city = LocationFixture::location($schema, $types['city'], 'Kiasar');
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->postJson('/locations/structure-claims', [
+            'location_id' => $city->id,
+            'claim_type' => 'no_urban_region',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('location_id', $city->id)
+            ->assertJsonPath('claim_type', 'no_urban_region')
+            ->assertJsonPath('status', 'pending');
+
+        $this->actingAs($user)->postJson('/locations/structure-claims', [
+            'location_id' => $city->id,
+            'claim_type' => 'no_urban_region',
+        ])->assertOk()->assertJsonPath('id', $response->json('id'));
+    
 }
