@@ -48,6 +48,17 @@ class ResidenceService
                 if ((int) $existing->location_id !== (int) $location->id) {
                     return $existing;
                 }
+                if ($claims->isNotEmpty()) {
+                    $metadata = $existing->metadata ?? [];
+                    $metadata['structural_claim_ids'] = collect($metadata['structural_claim_ids'] ?? [])
+                        ->merge($claims->pluck('id'))
+                        ->map(fn ($id) => (int) $id)
+                        ->unique()
+                        ->values()
+                        ->all();
+                    $existing->forceFill(['metadata' => $metadata])->save();
+                }
+
                 foreach ($claims as $claim) {
                     app(LocationStructureClaimService::class)->recordCommittedSupport($claim, $user, [
                         'source' => 'residence_commit',
