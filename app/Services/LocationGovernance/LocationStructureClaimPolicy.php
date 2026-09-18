@@ -4,6 +4,7 @@ namespace App\Services\LocationGovernance;
 
 use App\Models\Location;
 use App\Models\LocationStructureClaim;
+use App\Models\LocationSchemaType;
 use App\Models\LocationTypeRelation;
 use Illuminate\Support\Collection;
 
@@ -11,14 +12,35 @@ class LocationStructureClaimPolicy
 {
     public function allowedClaimTypes(Location $location): array
     {
-        $type = $location->relationLoaded('type') ? $location->type : $location->type()->first();
-        $key = $type?->key;
+        return $this->structuralMetadata($location)['structural_claim_types'] ?? [];
+    }
 
-        return match ($key) {
-            'city' => ['single_urban_region', 'no_urban_region'],
-            'urban_region', 'village' => ['single_neighborhood', 'no_neighborhood'],
-            default => [],
-        };
+    public function allowsClaimType(Location $location, string $claimType, Collection $contextClaims): bool
+    {
+        if (in_array($claimType, $this->allowedClaimTypes($location), true)) {
+            return true;
+        }
+
+        $contextTypes = $contextClaims
+            ->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim
+                && (int) $claim->location_id === (int) $location->id
+                && in_array($claim->status, array_merge(LocationStructureClaimService::OPEN_STATUSES, ['approved']), true))
+            ->pluck('claim_type')
+            ->unique();
+
+        $conditional = $this->structuralMetadata($location)['structural_claim_types_after'] ?? [];
+
+        return $contextTypes->contains(
+            fn (string $contextType): bool => in_array($claimType, $conditional[$contextType] ?? [], true)
+        );
+    }
+
+    private function structuralMetadata(Location $location): array
+    {
+        return LocationSchemaType::query()
+            ->where('location_schema_id', $location->location_schema_id)
+            ->where('location_type_id', $location->location_type_id)
+            ->value('metadata') ?? [];
     }
 
     public function effectiveChildTypeCodes(Location $location, Collection $effectiveClaims): array
