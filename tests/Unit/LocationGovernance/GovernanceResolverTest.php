@@ -3,6 +3,7 @@
 namespace Tests\Unit\LocationGovernance;
 
 use App\Models\GovernanceArea;
+use App\Models\LocationStructureClaim;
 use App\Services\LocationGovernance\GovernanceResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\LocationFixture;
@@ -110,6 +111,35 @@ class GovernanceResolverTest extends TestCase
         $resolved = app(GovernanceResolver::class)->baseOfficialAreaForResidence($locations->last());
 
         $this->assertTrue($resolved->is($village));
+    }
+
+
+    public function test_approved_no_neighborhood_claim_keeps_city_as_official_base_while_residence_continues_to_street(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $locations = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city']);
+        $cityLocation = $locations->last();
+
+        LocationStructureClaim::factory()->create([
+            'location_id' => $cityLocation->id,
+            'claim_type' => 'no_urban_region',
+            'status' => 'approved',
+        ]);
+        LocationStructureClaim::factory()->create([
+            'location_id' => $cityLocation->id,
+            'claim_type' => 'no_neighborhood',
+            'status' => 'approved',
+        ]);
+
+        $streetType = $schema[1]['street'] ?? null;
+        $this->assertNotNull($streetType);
+
+        $cityArea = GovernanceArea::factory()->official()->create(['key' => 'collapsed-city-base', 'rank' => 800]);
+        $cityArea->locations()->attach($cityLocation->id);
+
+        $resolved = app(GovernanceResolver::class)->baseOfficialAreaForResidence($cityLocation);
+
+        $this->assertTrue($resolved->is($cityArea));
     }
 
     public function test_official_ancestors_follow_governance_parentage_not_location_parentage(): void
