@@ -28,8 +28,10 @@ return new class extends Migration
         if (! Schema::hasTable('location_structure_claim_evidence')) {
             Schema::create('location_structure_claim_evidence', function (Blueprint $table): void {
                 $table->id();
-                $table->foreignId('location_structure_claim_id')->constrained('location_structure_claims')->cascadeOnDelete();
-                $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+                $table->unsignedBigInteger('location_structure_claim_id');
+                $table->foreign('location_structure_claim_id', 'lsc_evidence_claim_fk')->references('id')->on('location_structure_claims')->cascadeOnDelete();
+                $table->unsignedBigInteger('user_id');
+                $table->foreign('user_id', 'lsc_evidence_user_fk')->references('id')->on('users')->cascadeOnDelete();
                 $table->json('evidence')->nullable();
                 $table->timestamps();
                 $table->unique(['location_structure_claim_id', 'user_id'], 'location_structure_claim_user_unique');
