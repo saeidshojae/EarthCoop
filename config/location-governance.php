@@ -22,4 +22,5 @@ return [
     // Distinct supporters make a crowdsourced location ready for human review;
     // reaching this threshold never auto-approves the proposal.
     'location_proposal_verification_threshold' => max(1, (int) env('LOCATION_GOVERNANCE_PROPOSAL_VERIFICATION_THRESHOLD', 10)),
+    'location_structure_claim_verification_threshold' => max(1, (int) env('LOCATION_GOVERNANCE_STRUCTURE_CLAIM_VERIFICATION_THRESHOLD', 10)),
 ];
