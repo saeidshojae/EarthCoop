@@ -139,6 +139,49 @@ class GovernanceResolverTest extends TestCase
         $this->assertTrue($resolved->is($cityArea));
     }
 
+    public function test_pending_claim_never_changes_official_governance_base(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $locations = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city', 'urban_region']);
+        $cityLocation = $locations->firstWhere('level', 'city');
+        $regionLocation = $locations->last();
+
+        LocationStructureClaim::query()->create([
+            'location_id' => $regionLocation->id,
+            'claim_type' => 'no_neighborhood',
+            'status' => 'pending',
+        ]);
+
+        $cityArea = GovernanceArea::factory()->official()->create(['key' => 'pending-city', 'rank' => 500]);
+        $regionArea = GovernanceArea::factory()->official()->create(['parent_id' => $cityArea->id, 'key' => 'pending-region', 'rank' => 800]);
+        $cityArea->locations()->attach($cityLocation->id);
+        $regionArea->locations()->attach($regionLocation->id);
+
+        $resolved = app(GovernanceResolver::class)->baseOfficialAreaForResidence($regionLocation);
+
+        $this->assertTrue($resolved->is($regionArea));
+    }
+
+    public function test_approved_no_neighborhood_village_remains_base_for_deeper_residence(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $locations = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'rural_district', 'village']);
+        $villageLocation = $locations->last();
+
+        LocationStructureClaim::query()->create([
+            'location_id' => $villageLocation->id,
+            'claim_type' => 'no_neighborhood',
+            'status' => 'approved',
+        ]);
+
+        $villageArea = GovernanceArea::factory()->official()->create(['key' => 'collapsed-village-base', 'rank' => 800]);
+        $villageArea->locations()->attach($villageLocation->id);
+
+        $resolved = app(GovernanceResolver::class)->baseOfficialAreaForResidence($villageLocation);
+
+        $this->assertTrue($resolved->is($villageArea));
+    }
+
     public function test_official_ancestors_follow_governance_parentage_not_location_parentage(): void
     {
         $root = GovernanceArea::factory()->official()->create(['key' => 'gov-root', 'rank' => 100]);
