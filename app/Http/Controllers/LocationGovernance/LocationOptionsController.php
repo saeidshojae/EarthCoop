@@ -63,7 +63,7 @@ final class LocationOptionsController extends Controller
             ->where('location_id', $location->id)
             ->whereIn('status', array_merge(\App\Services\LocationGovernance\LocationStructureClaimService::OPEN_STATUSES, ['approved']))
             ->get();
-        $effectiveTypeCodes = $structurePolicy->effectiveChildTypeCodes($location, $claims);
+        $effectiveTypeCodes = $structurePolicy->effectiveResidenceChildTypeCodes($location, $claims);
         $effectiveTypes = LocationType::query()->whereIn('key', $effectiveTypeCodes)->orderBy('canonical_name')->get();
         $structuralChoices = collect($structurePolicy->allowedClaimTypes($location))
             ->merge(($claims->pluck('claim_type')->contains(fn ($type) => in_array($type, ['single_urban_region', 'no_urban_region'], true)))
