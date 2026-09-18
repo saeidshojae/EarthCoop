@@ -51,6 +51,22 @@ class StructuralClaimResidenceCommitTest extends TestCase
         $this->assertSame(0, $claim->fresh()->evidence()->count());
     }
 
+    public function test_existing_same_location_only_counts_new_claim_when_dependency_is_persisted(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $user = User::factory()->create();
+        $service = app(ResidenceService::class);
+        $relationship = $service->setInitialPrimaryResidence($user, $city, ['source'=>'registration']);
+        $claim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+
+        $same = $service->setInitialPrimaryResidence($user, $city, ['source'=>'profile'], [$claim]);
+
+        $this->assertSame($relationship->id, $same->id);
+        $this->assertSame([$claim->id], $same->fresh()->metadata['structural_claim_ids']);
+        $this->assertSame(1, $claim->fresh()->evidence()->where('user_id', $user->id)->count());
+    }
+
     public function test_admin_committing_residence_for_user_never_counts_admin_as_supporter(): void
     {
         $schema = LocationFixture::iranSchema();
