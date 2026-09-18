@@ -61,4 +61,50 @@ class LocationStructureClaimService
             }
         });
     }
+    public function markNeedsEvidence(LocationStructureClaim $claim, User $reviewer, string $reason): LocationStructureClaim
+    {
+        return $this->reviewTransition($claim, $reviewer, 'needs_evidence', $reason);
+    }
+
+    public function approve(LocationStructureClaim $claim, User $reviewer, string $reason): LocationStructureClaim
+    {
+        return $this->reviewTransition($claim, $reviewer, 'approved', $reason);
+    }
+
+    public function reject(LocationStructureClaim $claim, User $reviewer, string $reason): LocationStructureClaim
+    {
+        return $this->reviewTransition($claim, $reviewer, 'rejected', $reason);
+    }
+
+    private function reviewTransition(LocationStructureClaim $claim, User $reviewer, string $to, string $reason): LocationStructureClaim
+    {
+        return DB::transaction(function () use ($claim, $reviewer, $to, $reason): LocationStructureClaim {
+            $locked = LocationStructureClaim::query()->lockForUpdate()->findOrFail($claim->id);
+
+            if (! in_array($locked->status, self::OPEN_STATUSES, true)) {
+                throw new \DomainException('Terminal structural claim cannot be reviewed again.');
+            }
+
+            $from = $locked->status;
+            $audit = $locked->audit_log ?? [];
+            $audit[] = [
+                'from' => $from,
+                'to' => $to,
+                'actor_user_id' => $reviewer->id,
+                'reason' => $reason,
+                'at' => now()->toIso8601String(),
+            ];
+
+            $locked->forceFill([
+                'status' => $to,
+                'reviewed_by_user_id' => $reviewer->id,
+                'review_reason' => $reason,
+                'approved_at' => $to === 'approved' ? now() : null,
+                'audit_log' => $audit,
+            ])->save();
+
+            return $locked;
+        });
+    }
+
 }
