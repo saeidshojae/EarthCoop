@@ -74,7 +74,7 @@ class LocationStructureClaimPolicy
                 return $this->descendantTypeCodes($location, ['urban_region', 'neighborhood']);
             }
 
-            return $this->descendantTypeCodes($location, ['urban_region']);
+            return ['neighborhood'];
         }
 
         if (in_array($typeKey, ['urban_region', 'village'], true)
