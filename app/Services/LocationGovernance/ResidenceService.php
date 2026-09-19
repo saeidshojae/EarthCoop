@@ -30,7 +30,7 @@ class ResidenceService
             $claims = collect($structuralClaims)->map(function ($claim) use ($location): LocationStructureClaim {
                 $locked = LocationStructureClaim::query()->lockForUpdate()->findOrFail($claim->id);
                 if ((int) $locked->location_id !== (int) $location->id
-                    || ! in_array($locked->status, LocationStructureClaimService::OPEN_STATUSES, true)) {
+                    || (! in_array($locked->status, LocationStructureClaimService::OPEN_STATUSES, true) && $locked->status !== 'approved')) {
                     throw ValidationException::withMessages([
                         'location_structure_claim_ids' => 'ادعای ساختاری انتخاب‌شده دیگر برای این محل سکونت قابل استفاده نیست.',
                     ]);
@@ -59,7 +59,7 @@ class ResidenceService
                     $existing->forceFill(['metadata' => $metadata])->save();
                 }
 
-                foreach ($claims as $claim) {
+                foreach ($claims->whereIn('status', LocationStructureClaimService::OPEN_STATUSES) as $claim) {
                     app(LocationStructureClaimService::class)->recordCommittedSupport($claim, $user, [
                         'source' => 'residence_commit',
                         'relationship_id' => $existing->id,
@@ -83,7 +83,7 @@ class ResidenceService
                 'transfer_override' => false,
             ]);
 
-            foreach ($claims as $claim) {
+            foreach ($claims->whereIn('status', LocationStructureClaimService::OPEN_STATUSES) as $claim) {
                 app(LocationStructureClaimService::class)->recordCommittedSupport($claim, $user, [
                     'source' => 'residence_commit',
                     'relationship_id' => $relationship->id,
