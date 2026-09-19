@@ -89,6 +89,7 @@ final class UserResidenceController extends Controller
                         $structuralClaims,
                     );
                 } else {
+                    $residenceService->refreshPrimaryResidenceStructuralClaims($user, $location, $structuralClaims);
                     $residenceService->clearPendingResidenceIntent($user, 'approved_location_selected_by_admin');
                 }
             } catch (DomainException $exception) {
