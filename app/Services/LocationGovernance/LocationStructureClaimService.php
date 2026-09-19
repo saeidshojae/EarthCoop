@@ -4,6 +4,7 @@ namespace App\Services\LocationGovernance;
 
 use App\Models\Location;
 use App\Models\LocationStructureClaim;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -51,7 +52,7 @@ class LocationStructureClaimService
             }
 
             $claim->evidence()->updateOrCreate(['user_id' => $user->id], ['evidence' => $evidence]);
-            $threshold = max(1, (int) config('location-governance.location_structure_claim_verification_threshold', 10));
+            $threshold = max(1, (int) (Setting::singleton()->location_structure_claim_verification_threshold ?? config('location-governance.location_structure_claim_verification_threshold', 10)));
 
             if ($claim->status === 'pending' && $claim->evidence()->distinct()->count('user_id') >= $threshold) {
                 $audit = $claim->audit_log ?? [];
