@@ -76,6 +76,8 @@ final class ProfileResidenceController extends Controller
                     $location,
                     $user,
                     'profile_location_update',
+                    false,
+                    $structuralClaims,
                 );
             } else {
                 $residenceService->clearPendingResidenceIntent($user, 'approved_location_selected');
