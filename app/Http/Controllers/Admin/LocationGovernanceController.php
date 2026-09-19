@@ -7,8 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Models\GovernanceArea;
 use App\Models\Location;
 use App\Models\LocationProposal;
+use App\Models\LocationStructureClaim;
 use App\Models\PendingResidenceIntent;
 use App\Services\LocationGovernance\LocationProposalService;
+use App\Services\LocationGovernance\LocationStructureClaimService;
 use App\Services\NajmHoda\LocationGovernanceReviewService;
 use App\Support\LocationDisplayName;
 use DomainException;
@@ -59,6 +61,18 @@ class LocationGovernanceController extends Controller
             ->mapWithKeys(fn (LocationProposal $proposal): array => [
                 $proposal->id => $reviewService->review($proposal),
             ]);
+
+        $structureClaims = LocationStructureClaim::query()
+            ->with(['location', 'proposer'])
+            ->withCount('evidence')
+            ->whereIn('status', LocationStructureClaimService::OPEN_STATUSES)
+            ->latest('id')
+            ->limit(100)
+            ->get();
+
+        $structureClaimPaths = $structureClaims->mapWithKeys(fn (LocationStructureClaim $claim): array => [
+            $claim->id => $this->locationPath($claim->location),
+        ]);
 
         $referenceLocations = Location::query()
             ->with(['parent', 'type'])
@@ -140,6 +154,8 @@ class LocationGovernanceController extends Controller
             'proposals' => $proposals,
             'proposalStatusFilter' => $proposalStatusFilter,
             'proposalPaths' => $proposalPaths,
+            'structureClaims' => $structureClaims,
+            'structureClaimPaths' => $structureClaimPaths,
             'hodaReviews' => $hodaReviews,
             'referenceLocations' => $referenceLocations,
             'officialTopology' => $officialTopology,
@@ -280,6 +296,53 @@ class LocationGovernanceController extends Controller
         }
 
         return $path;
+    }
+
+    /** @return array<int, string> */
+    private function locationPath(?Location $location): array
+    {
+        $path = [];
+        $visited = [];
+
+        while ($location !== null && ! isset($visited[$location->id])) {
+            $visited[$location->id] = true;
+            $path[] = LocationDisplayName::for($location);
+            $location = $location->parent()->first();
+        }
+
+        return array_reverse($path);
+    }
+
+    public function approveStructureClaim(Request $request, LocationStructureClaim $locationStructureClaim, LocationStructureClaimService $service): JsonResponse|RedirectResponse
+    {
+        return $this->reviewStructureClaim($request, $locationStructureClaim, $service, 'approve');
+    }
+
+    public function rejectStructureClaim(Request $request, LocationStructureClaim $locationStructureClaim, LocationStructureClaimService $service): JsonResponse|RedirectResponse
+    {
+        return $this->reviewStructureClaim($request, $locationStructureClaim, $service, 'reject');
+    }
+
+    public function requestStructureClaimEvidence(Request $request, LocationStructureClaim $locationStructureClaim, LocationStructureClaimService $service): JsonResponse|RedirectResponse
+    {
+        return $this->reviewStructureClaim($request, $locationStructureClaim, $service, 'markNeedsEvidence');
+    }
+
+    private function reviewStructureClaim(Request $request, LocationStructureClaim $claim, LocationStructureClaimService $service, string $action): JsonResponse|RedirectResponse
+    {
+        $validated = $this->validateReason($request);
+
+        try {
+            $reviewed = $service->{$action}($claim, $request->user(), $validated['reason']);
+        } catch (DomainException $exception) {
+            throw ValidationException::withMessages(['structure_claim' => $exception->getMessage()]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['claim_id' => $reviewed->id, 'status' => $reviewed->status]);
+        }
+
+        return back()->with('success', 'تصمیم مدیر دربارهٔ ادعای ساختاری ثبت شد.');
     }
 
     /** @return array{reason: string} */
