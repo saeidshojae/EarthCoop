@@ -6,11 +6,18 @@
     <div class="card-body">
         @forelse($structureClaims as $claim)
             @php
+                $locationTypeLabels = [
+                    'city' => 'شهر',
+                    'urban_region' => 'منطقه',
+                    'village' => 'روستا',
+                ];
+                $locationType = $claim->location?->type?->key;
+                $locationContext = $locationTypeLabels[$locationType] ?? null;
                 $labels = [
                     'single_urban_region' => 'شهر تک‌منطقه',
                     'no_urban_region' => 'شهر بدون منطقه',
-                    'single_neighborhood' => 'تک‌محله',
-                    'no_neighborhood' => 'بدون محله',
+                    'single_neighborhood' => $locationContext ? $locationContext.' تک‌محله' : 'تک‌محله',
+                    'no_neighborhood' => $locationContext ? $locationContext.' بدون محله' : 'بدون محله',
                 ];
                 $statusLabels = [
                     'pending' => 'در انتظار حمایت/بررسی',
