@@ -65,6 +65,39 @@ class DeepPendingResidenceEntryPointsTest extends TestCase
         ])->assertRedirect('/home');
     }
 
+    public function test_google_completion_gate_accepts_canonical_residence_without_legacy_address(): void
+    {
+        $user = User::factory()->create([
+            'national_id' => 'G' . fake()->unique()->numerify('#########'),
+            'password' => Hash::make('known-password'),
+        ]);
+        $experience = \App\Models\ExperienceField::query()->create([
+            'name' => 'Google canonical experience',
+            'status' => 1,
+        ]);
+        \Illuminate\Support\Facades\DB::table('user_experience_field')->insert([
+            'user_id' => $user->id,
+            'experience_field_id' => $experience->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $schema = LocationFixture::iranSchema();
+        $residence = LocationFixture::createPath(
+            $schema,
+            ['country', 'province', 'county', 'section', 'city']
+        )->last();
+        app(ResidenceService::class)->setInitialPrimaryResidence($user, $residence, ['source' => 'test']);
+
+        $this->assertDatabaseMissing('addresses', ['user_id' => $user->id]);
+
+        $controller = app(\App\Http\Controllers\Auth\GoogleController::class);
+        $method = new \ReflectionMethod($controller, 'getIncompleteStep');
+        $method->setAccessible(true);
+
+        $this->assertNull($method->invoke($controller, $user));
+    }
+
     public function test_registration_accepts_deepest_pending_proposal_and_keeps_nearest_canonical_anchor(): void
     {
         [$user, $anchor, $deepest] = $this->makeDeepProposalScenario();
