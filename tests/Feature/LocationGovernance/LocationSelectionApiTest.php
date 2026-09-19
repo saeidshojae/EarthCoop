@@ -206,6 +206,38 @@ class LocationSelectionApiTest extends TestCase
         }
     }
 
+    public function test_approving_structural_claim_changes_authority_signal_without_creating_synthetic_location(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+
+        $schema = LocationFixture::iranSchema();
+        $user = User::factory()->create();
+        $reviewer = User::factory()->create();
+        $village = LocationFixture::createPath($schema, ['country','province','county','section','rural_district','village'])->last();
+
+        $claim = LocationStructureClaim::create([
+            'location_id' => $village->id,
+            'claim_type' => 'no_neighborhood',
+            'status' => 'pending',
+            'proposer_user_id' => $user->id,
+        ]);
+
+        $beforeLocationIds = Location::query()->pluck('id')->sort()->values()->all();
+
+        $pending = $this->getJson('/location/options/'.$village->id.'/children')->assertOk();
+        $this->assertContains('street', collect($pending->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertFalse((bool) $pending->json('official_governance_base'));
+
+        app(\App\Services\LocationGovernance\LocationStructureClaimService::class)
+            ->approve($claim, $reviewer, 'ساختار محل بررسی و تایید شد');
+
+        $approved = $this->getJson('/location/options/'.$village->id.'/children')->assertOk();
+        $this->assertContains('street', collect($approved->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertTrue((bool) $approved->json('official_governance_base'));
+        $this->assertSame($beforeLocationIds, Location::query()->pluck('id')->sort()->values()->all());
+        $this->assertFalse(Location::query()->where('parent_id', $village->id)->where('level', 'neighborhood')->exists());
+    }
+
     public function test_children_follow_schema_branching_and_report_endpoint_and_child_state(): void
     {
         config(['location-governance.runtime_enabled' => true]);
