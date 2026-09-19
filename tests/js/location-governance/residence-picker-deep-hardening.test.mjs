@@ -72,7 +72,7 @@ test('proposal type controls never render raw backend English labels for known P
 });
 
 test('registration and profile residence path uses the unified Persian region label', () => {
-    const source = readFileSync(new URL('../../../resources/js/registration-location-ux.js', import.meta.url), 'utf8');
+    const source = uxSource;
     assert.match(source, /urban_region:\s*'منطقه'/);
     assert.doesNotMatch(source, /urban_region:\s*'منطقه شهری'/);
 });
