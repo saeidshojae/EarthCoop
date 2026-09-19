@@ -67,7 +67,7 @@ class LocationGovernanceController extends Controller
             ]);
 
         $structureClaims = LocationStructureClaim::query()
-            ->with(['location', 'proposer'])
+            ->with(['location.type', 'proposer'])
             ->withCount('evidence')
             ->whereIn('status', LocationStructureClaimService::OPEN_STATUSES)
             ->latest('id')
