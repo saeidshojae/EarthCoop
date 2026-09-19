@@ -27,26 +27,7 @@ class ResidenceService
     public function setInitialPrimaryResidence(User $user, Location $location, array $evidence, array $structuralClaims = []): UserLocationRelationship
     {
         return DB::transaction(function () use ($user, $location, $evidence, $structuralClaims): UserLocationRelationship {
-            $claims = collect($structuralClaims)->map(function ($claim) use ($location): LocationStructureClaim {
-                $locked = LocationStructureClaim::query()->lockForUpdate()->findOrFail($claim->id);
-                $claimLocationMatchesResidencePath = (int) $locked->location_id === (int) $location->id;
-                $cursor = $location;
-                while (! $claimLocationMatchesResidencePath && $cursor->parent_id !== null) {
-                    $cursor = $cursor->parent()->first();
-                    if ($cursor === null) {
-                        break;
-                    }
-                    $claimLocationMatchesResidencePath = (int) $locked->location_id === (int) $cursor->id;
-                }
-
-                if (! $claimLocationMatchesResidencePath
-                    || (! in_array($locked->status, LocationStructureClaimService::OPEN_STATUSES, true) && $locked->status !== 'approved')) {
-                    throw ValidationException::withMessages([
-                        'location_structure_claim_ids' => 'ادعای ساختاری انتخاب‌شده دیگر برای این مسیر محل سکونت قابل استفاده نیست.',
-                    ]);
-                }
-                return $locked;
-            });
+            $claims = $this->validatedStructuralClaimsForResidence($location, $structuralClaims);
             $existing = UserLocationRelationship::query()
                 ->where('user_id', $user->id)
                 ->where('relationship_type', 'primary_residence')
@@ -239,6 +220,7 @@ class ResidenceService
         User $actor,
         string $reason,
         bool $override = false,
+        array $structuralClaims = [],
     ): UserLocationRelationship {
         $at = now();
 
@@ -246,7 +228,9 @@ class ResidenceService
             throw new ResidenceTransferLimitExceeded('The rolling primary-residence transfer limit has been reached.');
         }
 
-        return DB::transaction(function () use ($user, $to, $actor, $reason, $override, $at): UserLocationRelationship {
+        return DB::transaction(function () use ($user, $to, $actor, $reason, $override, $at, $structuralClaims): UserLocationRelationship {
+            $claims = $this->validatedStructuralClaimsForResidence($to, $structuralClaims);
+
             $current = UserLocationRelationship::query()
                 ->where('user_id', $user->id)
                 ->where('relationship_type', 'primary_residence')
@@ -271,7 +255,17 @@ class ResidenceService
                 'transfer_override' => $override,
                 'changed_by_user_id' => $actor->id,
                 'change_reason' => $reason,
+                'metadata' => $claims->isEmpty() ? null : [
+                    'structural_claim_ids' => $claims->pluck('id')->values()->all(),
+                ],
             ]);
+
+            foreach ($claims->whereIn('status', LocationStructureClaimService::OPEN_STATUSES) as $claim) {
+                app(LocationStructureClaimService::class)->recordCommittedSupport($claim, $user, [
+                    'source' => 'residence_commit',
+                    'relationship_id' => $relationship->id,
+                ]);
+            }
 
             $this->reconcileCanonicalGroupsIfEnabled($user);
 
@@ -300,6 +294,26 @@ class ResidenceService
         }
 
         return $this->governanceResolver->officialAreasForResidence($primaryResidence->location);
+    }
+
+    private function validatedStructuralClaimsForResidence(Location $location, array $structuralClaims): Collection
+    {
+        return collect($structuralClaims)->map(function ($claim) use ($location): LocationStructureClaim {
+            $locked = LocationStructureClaim::query()->lockForUpdate()->findOrFail($claim->id);
+            $matchesPath = (int) $locked->location_id === (int) $location->id;
+            $cursor = $location;
+            while (! $matchesPath && $cursor->parent_id !== null) {
+                $cursor = $cursor->parent()->first();
+                if ($cursor === null) break;
+                $matchesPath = (int) $locked->location_id === (int) $cursor->id;
+            }
+            if (! $matchesPath || (! in_array($locked->status, LocationStructureClaimService::OPEN_STATUSES, true) && $locked->status !== 'approved')) {
+                throw ValidationException::withMessages([
+                    'location_structure_claim_ids' => 'ادعای ساختاری انتخاب‌شده دیگر برای این مسیر محل سکونت قابل استفاده نیست.',
+                ]);
+            }
+            return $locked;
+        });
     }
 
     private function cancelPendingIntentRows(User $user, string $reason, $at): void
