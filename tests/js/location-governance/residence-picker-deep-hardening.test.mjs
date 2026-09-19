@@ -70,3 +70,10 @@ test('proposal type controls never render raw backend English labels for known P
   assert.match(selectorSource, /localizeLocationTypeLabel\(item\)/);
   assert.doesNotMatch(selectorSource, /option\.textContent\s*=\s*item\.label\s*\|\|\s*item\.key/);
 });
+
+test('registration and profile residence path uses the unified Persian region label', () => {
+    const source = readFileSync(new URL('../../../resources/js/registration-location-ux.js', import.meta.url), 'utf8');
+    assert.match(source, /urban_region:\s*'منطقه'/);
+    assert.doesNotMatch(source, /urban_region:\s*'منطقه شهری'/);
+});
+
