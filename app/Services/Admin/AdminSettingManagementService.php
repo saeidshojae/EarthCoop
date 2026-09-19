@@ -70,6 +70,8 @@ class AdminSettingManagementService
             'welcome_content',
             'home_titre',
             'home_content',
+            'location_proposal_verification_threshold',
+            'location_structure_claim_verification_threshold',
         ];
     }
 
@@ -86,6 +88,7 @@ class AdminSettingManagementService
             'invation_status', 'finger_status' => $this->booleanValue($value),
             'expire_invation_time' => $this->boundedInteger($value, 1, 525600),
             'count_invation' => $this->boundedInteger($value, 0, 1000000),
+            'location_proposal_verification_threshold', 'location_structure_claim_verification_threshold' => $this->boundedInteger($value, 1, 1000000),
             'najm_summary', 'welcome_titre', 'home_titre' => $this->boundedString($value, 2000),
             'welcome_content', 'home_content' => $this->boundedString($value, 50000),
             default => throw new InvalidArgumentException('admin_setting_key_not_delegable'),
