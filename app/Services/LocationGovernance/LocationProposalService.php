@@ -108,6 +108,35 @@ class LocationProposalService
         ]);
     }
 
+    public function rename(LocationProposal $proposal, User $reviewer, string $canonicalName, string $reason): void
+    {
+        $this->guardOpen($proposal);
+
+        $canonicalName = $this->canonicalName(['canonical_name' => $canonicalName]);
+        $normalizedName = $this->duplicateDetector->normalizeName($canonicalName);
+        $reason = trim($reason);
+        if ($reason === '') {
+            throw new DomainException('A review reason is required when renaming a location proposal.');
+        }
+
+        $proposal->refresh();
+        $fromName = $proposal->canonical_name;
+        $audit = $proposal->audit_log ?? [];
+        $audit[] = [
+            'action' => 'rename',
+            'actor_user_id' => $reviewer->id,
+            'reason' => $reason,
+            'from_name' => $fromName,
+            'to_name' => $canonicalName,
+            'at' => now()->toIso8601String(),
+        ];
+
+        $proposal->canonical_name = $canonicalName;
+        $proposal->normalized_name = $normalizedName;
+        $proposal->audit_log = $audit;
+        $proposal->save();
+    }
+
     public function support(LocationProposal $proposal, User $user, array $evidence): void
     {
         $this->guardOpen($proposal);
