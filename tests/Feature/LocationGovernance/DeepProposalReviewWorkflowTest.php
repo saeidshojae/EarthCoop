@@ -3,6 +3,7 @@
 namespace Tests\Feature\LocationGovernance;
 
 use App\Enums\LocationGovernance\LocationProposalStatus;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\LocationGovernance\LocationProposalService;
 use App\Services\LocationGovernance\ResidenceService;
@@ -24,6 +25,7 @@ class DeepProposalReviewWorkflowTest extends TestCase
             'location-governance.registration_enabled' => true,
             'location-governance.location_proposal_verification_threshold' => 1,
         ]);
+        Setting::singleton()->forceFill(['location_proposal_verification_threshold' => 1])->save();
     }
 
     public function test_admin_queue_exposes_pending_parent_context_and_blocks_invalid_deep_proposal_actions(): void
