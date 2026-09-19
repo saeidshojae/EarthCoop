@@ -52,4 +52,33 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
         $this->assertSame(0,$user->fresh()->locationRelationships()->count());
         $this->assertSame(0,$claim->fresh()->evidence()->count());
     }
+
+    public function test_registration_commits_ancestor_structural_claim_when_residence_continues_to_micro_location(): void
+    {
+        $schema=LocationFixture::iranSchema();
+        $path=LocationFixture::createPath($schema,['country','province','county','section','city']);
+        $city=$path->last();
+        $streetType=$schema->types->firstWhere('key','street');
+        $street=\App\Models\Location::query()->create([
+            'parent_id'=>$city->id,
+            'location_schema_id'=>$schema->id,
+            'location_type_id'=>$streetType->id,
+            'country_code'=>'IR',
+            'canonical_name'=>'خیابان مستقیم',
+            'status'=>'active',
+        ]);
+        $user=User::factory()->create();
+        $claim=app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city,'no_urban_region',$user);
+
+        $this->actingAs($user)->post(route('register.step3.process'),[
+            'location_id'=>$street->id,
+            'location_structure_claim_ids'=>[$claim->id],
+        ])->assertRedirect(route('home'));
+
+        $relationship=$user->fresh()->locationRelationships()->where('relationship_type','primary_residence')->whereNull('ended_at')->sole();
+        $this->assertSame($street->id,$relationship->location_id);
+        $this->assertSame([$claim->id],$relationship->metadata['structural_claim_ids']);
+        $this->assertTrue($claim->fresh()->evidence()->where('user_id',$user->id)->exists());
+    }
+
 }
