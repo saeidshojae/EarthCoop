@@ -87,6 +87,50 @@ class ResidenceService
         });
     }
 
+    public function refreshPrimaryResidenceStructuralClaims(
+        User $user,
+        Location $location,
+        array $structuralClaims,
+    ): UserLocationRelationship {
+        return DB::transaction(function () use ($user, $location, $structuralClaims): UserLocationRelationship {
+            $claims = $this->validatedStructuralClaimsForResidence($location, $structuralClaims);
+            $current = UserLocationRelationship::query()
+                ->where('user_id', $user->id)
+                ->where('relationship_type', 'primary_residence')
+                ->whereNull('ended_at')
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ((int) $current->location_id !== (int) $location->id) {
+                throw ValidationException::withMessages([
+                    'location_id' => 'محل سکونت جاری با مسیر انتخاب‌شده هم‌خوان نیست.',
+                ]);
+            }
+
+            if ($claims->isNotEmpty()) {
+                $metadata = $current->metadata ?? [];
+                $metadata['structural_claim_ids'] = collect($metadata['structural_claim_ids'] ?? [])
+                    ->merge($claims->pluck('id'))
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values()
+                    ->all();
+                $current->forceFill(['metadata' => $metadata])->save();
+            }
+
+            foreach ($claims->whereIn('status', LocationStructureClaimService::OPEN_STATUSES) as $claim) {
+                app(LocationStructureClaimService::class)->recordCommittedSupport($claim, $user, [
+                    'source' => 'residence_commit',
+                    'relationship_id' => $current->id,
+                ]);
+            }
+
+            $this->reconcileCanonicalGroupsIfEnabled($user);
+
+            return $current;
+        });
+    }
+
     public function setPendingResidenceIntent(
         User $user,
         LocationProposal $proposal,
