@@ -9,8 +9,10 @@ use App\Models\Location;
 use App\Models\LocationProposal;
 use App\Models\LocationStructureClaim;
 use App\Models\PendingResidenceIntent;
+use App\Models\Setting;
 use App\Services\LocationGovernance\LocationProposalService;
 use App\Services\LocationGovernance\LocationStructureClaimService;
+use App\Services\Admin\AdminSettingManagementService;
 use App\Services\NajmHoda\LocationGovernanceReviewService;
 use App\Support\LocationDisplayName;
 use DomainException;
@@ -34,7 +36,9 @@ class LocationGovernanceController extends Controller
         $proposalStatusFilter = is_string($requestedStatus) && in_array($requestedStatus, $openStatuses, true)
             ? $requestedStatus
             : null;
-        $verificationThreshold = max(1, (int) config('location-governance.location_proposal_verification_threshold', 10));
+        $settings = Setting::singleton();
+        $verificationThreshold = max(1, (int) ($settings->location_proposal_verification_threshold ?? config('location-governance.location_proposal_verification_threshold', 10)));
+        $structureClaimVerificationThreshold = max(1, (int) ($settings->location_structure_claim_verification_threshold ?? config('location-governance.location_structure_claim_verification_threshold', 10)));
 
         $proposalQuery = LocationProposal::query()
             ->with(['parentLocation', 'parentProposal', 'type', 'proposer'])
@@ -164,7 +168,22 @@ class LocationGovernanceController extends Controller
             'healthDiagnostics' => $healthDiagnostics,
             'governanceSummary' => $governanceSummary,
             'verificationThreshold' => $verificationThreshold,
+            'structureClaimVerificationThreshold' => $structureClaimVerificationThreshold,
         ]);
+    }
+
+    public function updateSettings(Request $request, AdminSettingManagementService $settingsService): RedirectResponse
+    {
+        $validated = $request->validate([
+            'location_proposal_verification_threshold' => ['required', 'integer', 'min:1', 'max:1000000'],
+            'location_structure_claim_verification_threshold' => ['required', 'integer', 'min:1', 'max:1000000'],
+        ]);
+
+        foreach ($validated as $key => $value) {
+            $settingsService->change($key, $value);
+        }
+
+        return back()->with('success', 'تنظیمات حد حمایت مکان و ادعاهای ساختاری ذخیره شد.');
     }
 
     public function update(
