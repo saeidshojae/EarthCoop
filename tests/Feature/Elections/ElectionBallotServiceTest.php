@@ -38,8 +38,8 @@ class ElectionBallotServiceTest extends TestCase
         try {
             app(ElectionBallotService::class)->submit($election->fresh(), $voter->id, [$manager->id], [], 'req-non-official');
             $this->fail('Expected canonical governance boundary validation failure.');
-        } catch (ValidationException $e) {
-            $this->assertArrayHasKey('election', $e->errors());
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('active official governance area', $e->getMessage());
         }
 
         $this->assertSame(0, Vote::where('election_id', $election->id)->count());
