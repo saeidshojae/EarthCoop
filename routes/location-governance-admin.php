@@ -9,3 +9,7 @@ Route::post('/proposals/{locationProposal}/approve', [LocationGovernanceControll
 Route::post('/proposals/{locationProposal}/reject', [LocationGovernanceController::class, 'reject'])->name('proposals.reject');
 Route::post('/proposals/{locationProposal}/merge', [LocationGovernanceController::class, 'merge'])->name('proposals.merge');
 Route::post('/proposals/{locationProposal}/request-evidence', [LocationGovernanceController::class, 'requestEvidence'])->name('proposals.request-evidence');
+
+Route::post('/structure-claims/{locationStructureClaim}/approve', [LocationGovernanceController::class, 'approveStructureClaim'])->name('structure-claims.approve');
+Route::post('/structure-claims/{locationStructureClaim}/reject', [LocationGovernanceController::class, 'rejectStructureClaim'])->name('structure-claims.reject');
+Route::post('/structure-claims/{locationStructureClaim}/request-evidence', [LocationGovernanceController::class, 'requestStructureClaimEvidence'])->name('structure-claims.request-evidence');
