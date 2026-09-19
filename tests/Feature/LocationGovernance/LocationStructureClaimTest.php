@@ -75,6 +75,62 @@ class LocationStructureClaimTest extends TestCase
         $this->assertSame(0, $claim->fresh()->evidence()->count());
     }
 
+    public function test_admin_queue_lists_open_structural_claim_with_full_location_path_and_support_count(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city'])->last();
+        $claim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim(
+            $city,
+            'no_urban_region',
+            User::factory()->create(),
+        );
+        app(LocationStructureClaimService::class)->recordCommittedSupport(
+            $claim,
+            User::factory()->create(),
+            ['source' => 'admin-queue-test'],
+        );
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $response = $this->actingAs($admin)->get(route('admin.location-governance.index'));
+
+        $response->assertOk();
+        $response->assertSee('ادعاهای ساختاری مکان');
+        $response->assertSee('شهر بدون منطقه');
+        $response->assertSee((string) $claim->fresh()->evidence()->distinct()->count('user_id'));
+
+        $path = [];
+        for ($cursor = $city; $cursor !== null; $cursor = $cursor->parent()->first()) {
+            $path[] = $cursor;
+        }
+        foreach (array_reverse($path) as $location) {
+            $response->assertSee($location->canonical_name);
+        }
+    }
+
+    public function test_admin_can_review_structural_claim_but_support_threshold_does_not_auto_approve(): void
+    {
+        config(['location-governance.location_structure_claim_verification_threshold' => 1]);
+
+        $schema = LocationFixture::iranSchema();
+        $village = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'rural_district', 'village'])->last();
+        $service = app(LocationStructureClaimService::class);
+        $claim = $service->findOrCreateOpenClaim($village, 'no_neighborhood', User::factory()->create());
+        $service->recordCommittedSupport($claim, User::factory()->create(), ['source' => 'admin-review-test']);
+        $this->assertSame('ready_for_review', $claim->fresh()->status);
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $response = $this->actingAs($admin)->postJson(
+            route('admin.location-governance.structure-claims.approve', $claim),
+            ['reason' => 'بررسی انسانی و تأیید ساختار واقعی'],
+        );
+
+        $response->assertOk()->assertJsonPath('status', 'approved');
+        $claim->refresh();
+        $this->assertSame('approved', $claim->status);
+        $this->assertSame($admin->id, $claim->reviewed_by_user_id);
+        $this->assertNotNull($claim->approved_at);
+    }
+
     public function test_authenticated_resident_can_create_or_reuse_an_allowed_structural_claim_via_http(): void
     {
         $schema = LocationFixture::iranSchema();
