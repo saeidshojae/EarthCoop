@@ -91,15 +91,21 @@ const STRUCTURAL_CLAIM_COPY = Object.freeze({
     single_neighborhood: { title: 'این محدوده فقط یک حوزهٔ محله‌ای دارد', detail: 'محلهٔ مصنوعی ساخته نمی‌شود و خود محدوده می‌تواند مبنای رسمی باشد.' },
     no_neighborhood: { title: 'این محدوده محلهٔ جداگانه ندارد', detail: 'پایان حوزهٔ رسمی به معنی پایان مسیر مکانی نیست و می‌توانید خیابان یا مکان دقیق‌تر را ادامه دهید.' },
 });
-const rememberStructuralClaim = (host, claimId) => {
+const rememberStructuralClaim = (host, claimId, depth) => {
     const id = Number(claimId); if (!Number.isInteger(id) || id <= 0) return;
     const form = host.closest('[data-location-form]') || host.closest('form'); if (!form) return;
     const selector = `input[data-location-structure-claim-id][value="${id}"]`; if (form.querySelector(selector)) return;
-    const input = document.createElement('input'); input.type = 'hidden'; input.name = 'location_structure_claim_ids[]'; input.value = String(id); input.dataset.locationStructureClaimId = '';
+    const input = document.createElement('input'); input.type = 'hidden'; input.name = 'location_structure_claim_ids[]'; input.value = String(id); input.dataset.locationStructureClaimId = ''; input.dataset.locationStructureClaimDepth = String(depth);
     form.appendChild(input);
 };
+const clearStructuralClaimsAfterDepth = (form, depth) => {
+    if (!form) return;
+    form.querySelectorAll('[data-location-structure-claim-id][data-location-structure-claim-depth]').forEach((input) => {
+        if (Number(input.dataset.locationStructureClaimDepth) >= depth) input.remove();
+    });
+};
 
-const buildStructuralClaimPanel = (host, choices, locationId, onChanged) => {
+const buildStructuralClaimPanel = (host, choices, locationId, depth, onChanged) => {
     if (!locationId || !Array.isArray(choices) || choices.length === 0) return null;
     const shell = document.createElement('div'); shell.className = 'location-structural-claims vstack gap-2'; shell.dataset.locationStructuralClaims = '';
     const heading = document.createElement('div'); heading.className = 'small fw-bold'; heading.textContent = 'ساختار این محدوده متفاوت است؟';
@@ -119,7 +125,7 @@ const buildStructuralClaimPanel = (host, choices, locationId, onChanged) => {
             try {
                 const response = await fetch('/locations/structure-claims', { method:'POST', credentials:'same-origin', headers:{ Accept:'application/json','Content-Type':'application/json', ...(csrf ? {'X-CSRF-TOKEN':csrf}:{}) }, body:JSON.stringify({ location_id:Number(locationId), claim_type:choice.claim_type }) });
                 if (!response.ok) throw new Error('Structural claim request failed: ' + response.status);
-                const result = await response.json(); rememberStructuralClaim(host, result.id); state.textContent = 'در انتظار بررسی؛ می‌توانید مسیر واقعی محل سکونت را ادامه دهید.';
+                const result = await response.json(); rememberStructuralClaim(host, result.id, depth); state.textContent = 'در انتظار بررسی؛ می‌توانید مسیر واقعی محل سکونت را ادامه دهید.';
                 await onChanged(result);
             } catch (error) { console.warn('EarthCoop structural claim failed:', error); button.disabled = false; state.textContent = 'ثبت این وضعیت ممکن نشد؛ دوباره تلاش کنید.'; }
         });
@@ -199,7 +205,7 @@ const initializeLocationSelector = async (host) => {
             }
         };
         if (!isProjectScope) {
-            const structuralPanel = buildStructuralClaimPanel(host, payload.structuralChoices, parentLocationId, async () => {
+            const structuralPanel = buildStructuralClaimPanel(host, payload.structuralChoices, parentLocationId, depth, async () => {
                 const refreshed = await load(`/location/options/${encodeURIComponent(parentLocationId)}/children`);
                 removeDeeperLevels(depth); wrapper.remove(); appendLevel(refreshed, depth, parentLocationId);
                 setStatus('وضعیت ساختاری ثبت شد. مسیر واقعی بعدی بدون ساخت سطح مصنوعی در دسترس است.');
@@ -209,7 +215,7 @@ const initializeLocationSelector = async (host) => {
             const proposalPanel = buildProposalPanel(host, proposalTypes, parentLocationId, refreshAfterProposal); if (proposalPanel) wrapper.appendChild(proposalPanel);
         }
         select.addEventListener('change', async () => {
-            removeDeeperLevels(depth); [...selectedPath.keys()].filter((key) => key > depth).forEach((key) => selectedPath.delete(key)); const selected = pickerItems(payload).find((item) => (item.identity || `${item.picker_kind}:${item.id}`) === select.value) || null;
+            clearStructuralClaimsAfterDepth(form, depth); removeDeeperLevels(depth); [...selectedPath.keys()].filter((key) => key > depth).forEach((key) => selectedPath.delete(key)); const selected = pickerItems(payload).find((item) => (item.identity || `${item.picker_kind}:${item.id}`) === select.value) || null;
             if (!selected) { selectedPath.delete(depth); renderLocationPath(); clearSelection(); setPickerState(PICKER_STATES.empty, isProjectScope ? 'انتخاب محدوده پروژه اختیاری است.' : 'یک گزینه را برای ادامه انتخاب کنید.'); return; }
             selectedPath.set(depth, selected); renderLocationPath();
             if (selected.navigation_only === true) { clearSelection(); setStatus('سطح بعدی را برای تعیین محل سکونت انتخاب کنید.'); }
