@@ -4,6 +4,7 @@ namespace Tests\Feature\LocationGovernance;
 
 use App\Models\Location;
 use App\Models\LocationStructureClaim;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\LocationGovernance\LocationStructureClaimService;
 use App\Services\LocationGovernance\ResidenceService;
@@ -129,6 +130,31 @@ class LocationStructureClaimTest extends TestCase
         $this->assertSame('approved', $claim->status);
         $this->assertSame($admin->id, $claim->reviewed_by_user_id);
         $this->assertNotNull($claim->approved_at);
+    }
+
+    public function test_admin_can_change_location_support_thresholds_persistently_from_location_governance_panel(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $response = $this->actingAs($admin)->put(
+            route('admin.location-governance.settings.update'),
+            [
+                'location_proposal_verification_threshold' => 7,
+                'location_structure_claim_verification_threshold' => 12,
+            ],
+        );
+
+        $response->assertRedirect();
+        $settings = Setting::singleton()->fresh();
+        $this->assertSame(7, (int) $settings->location_proposal_verification_threshold);
+        $this->assertSame(12, (int) $settings->location_structure_claim_verification_threshold);
+
+        $page = $this->actingAs($admin)->get(route('admin.location-governance.index'));
+        $page->assertOk()
+            ->assertSee('حد حمایت پیشنهاد مکان')
+            ->assertSee('حد حمایت ادعای ساختاری')
+            ->assertSee('value="7"', false)
+            ->assertSee('value="12"', false);
     }
 
     public function test_authenticated_resident_can_create_or_reuse_an_allowed_structural_claim_via_http(): void
