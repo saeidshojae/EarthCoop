@@ -21,7 +21,7 @@ final class LocationOptionsController extends Controller
 {
     private const FA_TYPE_LABELS = [
         'country' => 'کشور', 'province' => 'استان / ایالت', 'county' => 'شهرستان / ناحیه', 'section' => 'بخش',
-        'city' => 'شهر', 'rural_district' => 'دهستان', 'village' => 'روستا', 'urban_region' => 'منطقه شهری',
+        'city' => 'شهر', 'rural_district' => 'دهستان', 'village' => 'روستا', 'urban_region' => 'منطقه',
         'neighborhood' => 'محله', 'street' => 'خیابان', 'alley' => 'کوچه', 'complex' => 'مجتمع', 'building' => 'ساختمان',
     ];
 
