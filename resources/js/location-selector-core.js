@@ -91,6 +91,14 @@ const STRUCTURAL_CLAIM_COPY = Object.freeze({
     single_neighborhood: { title: 'این محدوده فقط یک حوزهٔ محله‌ای دارد', detail: 'محلهٔ مصنوعی ساخته نمی‌شود و خود محدوده می‌تواند مبنای رسمی باشد.' },
     no_neighborhood: { title: 'این محدوده محلهٔ جداگانه ندارد', detail: 'پایان حوزهٔ رسمی به معنی پایان مسیر مکانی نیست و می‌توانید خیابان یا مکان دقیق‌تر را ادامه دهید.' },
 });
+const rememberStructuralClaim = (host, claimId) => {
+    const id = Number(claimId); if (!Number.isInteger(id) || id <= 0) return;
+    const form = host.closest('[data-location-form]') || host.closest('form'); if (!form) return;
+    const selector = `input[data-location-structure-claim-id][value="${id}"]`; if (form.querySelector(selector)) return;
+    const input = document.createElement('input'); input.type = 'hidden'; input.name = 'location_structure_claim_ids[]'; input.value = String(id); input.dataset.locationStructureClaimId = '';
+    form.appendChild(input);
+};
+
 const buildStructuralClaimPanel = (host, choices, locationId, onChanged) => {
     if (!locationId || !Array.isArray(choices) || choices.length === 0) return null;
     const shell = document.createElement('div'); shell.className = 'location-structural-claims vstack gap-2'; shell.dataset.locationStructuralClaims = '';
@@ -111,7 +119,7 @@ const buildStructuralClaimPanel = (host, choices, locationId, onChanged) => {
             try {
                 const response = await fetch('/locations/structure-claims', { method:'POST', credentials:'same-origin', headers:{ Accept:'application/json','Content-Type':'application/json', ...(csrf ? {'X-CSRF-TOKEN':csrf}:{}) }, body:JSON.stringify({ location_id:Number(locationId), claim_type:choice.claim_type }) });
                 if (!response.ok) throw new Error('Structural claim request failed: ' + response.status);
-                const result = await response.json(); state.textContent = 'در انتظار بررسی؛ می‌توانید مسیر واقعی محل سکونت را ادامه دهید.';
+                const result = await response.json(); rememberStructuralClaim(host, result.id); state.textContent = 'در انتظار بررسی؛ می‌توانید مسیر واقعی محل سکونت را ادامه دهید.';
                 await onChanged(result);
             } catch (error) { console.warn('EarthCoop structural claim failed:', error); button.disabled = false; state.textContent = 'ثبت این وضعیت ممکن نشد؛ دوباره تلاش کنید.'; }
         });
