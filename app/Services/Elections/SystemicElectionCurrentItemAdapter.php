@@ -34,7 +34,10 @@ class SystemicElectionCurrentItemAdapter
                 ->whereHas('group', fn ($query) => $query
                     ->whereNotNull('governance_area_id')
                     ->whereNotNull('dimension_key')
-                    ->whereNotNull('dimension_value_key'));
+                    ->whereNotNull('dimension_value_key')
+                    ->whereHas('governanceArea', fn ($area) => $area
+                        ->where('area_kind', 'official')
+                        ->where('status', 'active')));
         }
 
         $elections = $electionsQuery
