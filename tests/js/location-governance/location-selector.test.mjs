@@ -194,7 +194,7 @@ test('typed breadcrumb normalizes urban region wording and avoids duplicate pref
 test('changing an ancestor selection clears remembered structural claim ids from the abandoned path', () => {
     const source = selectorSource();
     assert.match(source, /clearStructuralClaimsAfterDepth/);
-    assert.match(source, /data-location-structure-claim-depth/);
+    assert.match(source, /locationStructureClaimDepth/);
     assert.match(source, /clearStructuralClaimsAfterDepth\(form, depth\)/);
 });
 
