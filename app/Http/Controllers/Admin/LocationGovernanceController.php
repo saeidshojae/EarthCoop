@@ -10,6 +10,7 @@ use App\Models\LocationProposal;
 use App\Models\PendingResidenceIntent;
 use App\Services\LocationGovernance\LocationProposalService;
 use App\Services\NajmHoda\LocationGovernanceReviewService;
+use App\Support\LocationDisplayName;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -49,6 +50,10 @@ class LocationGovernanceController extends Controller
             ->latest('id')
             ->limit(100)
             ->get();
+
+        $proposalPaths = $proposals->mapWithKeys(fn (LocationProposal $proposal): array => [
+            $proposal->id => $this->proposalPath($proposal),
+        ]);
 
         $hodaReviews = $proposals
             ->mapWithKeys(fn (LocationProposal $proposal): array => [
@@ -134,6 +139,7 @@ class LocationGovernanceController extends Controller
         return view('admin.location-governance.index', [
             'proposals' => $proposals,
             'proposalStatusFilter' => $proposalStatusFilter,
+            'proposalPaths' => $proposalPaths,
             'hodaReviews' => $hodaReviews,
             'referenceLocations' => $referenceLocations,
             'officialTopology' => $officialTopology,
@@ -238,6 +244,42 @@ class LocationGovernanceController extends Controller
         }
 
         return $this->reviewResponse($request, $locationProposal->fresh());
+    }
+
+    /** @return array<int, array{kind: string, label: string, pending: bool}> */
+    private function proposalPath(LocationProposal $proposal): array
+    {
+        $proposalChain = [];
+        $cursor = $proposal;
+        $visited = [];
+
+        while ($cursor !== null && ! isset($visited[$cursor->id])) {
+            $visited[$cursor->id] = true;
+            $proposalChain[] = $cursor;
+
+            if ($cursor->parent_location_id !== null) {
+                $location = $cursor->parentLocation()->first();
+                break;
+            }
+
+            $cursor = $cursor->parentProposal()->first();
+        }
+
+        $locationChain = [];
+        while (isset($location) && $location !== null) {
+            $locationChain[] = $location;
+            $location = $location->parent()->first();
+        }
+
+        $path = [];
+        foreach (array_reverse($locationChain) as $item) {
+            $path[] = ['kind' => 'location', 'label' => LocationDisplayName::for($item), 'pending' => false];
+        }
+        foreach (array_reverse($proposalChain) as $item) {
+            $path[] = ['kind' => 'proposal', 'label' => LocationDisplayName::for($item), 'pending' => true];
+        }
+
+        return $path;
     }
 
     /** @return array{reason: string} */
