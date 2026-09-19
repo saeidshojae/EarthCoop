@@ -45,6 +45,40 @@ class DeepProposalReviewWorkflowTest extends TestCase
         $response->assertSee(route('admin.location-governance.proposals.request-evidence', $childProposal), false);
     }
 
+    public function test_admin_queue_exposes_complete_mixed_canonical_and_pending_ancestry(): void
+    {
+        [$parentProposal, $childProposal, $anchor] = $this->makeDeepProposalScenario();
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $response = $this->actingAs($admin)->get(route('admin.location-governance.index'));
+
+        $response->assertOk();
+        foreach ($anchor->ancestorsAndSelf()->get() as $location) {
+            $response->assertSee($location->canonical_name);
+        }
+        $response->assertSee($parentProposal->canonical_name);
+        $response->assertSee($childProposal->canonical_name);
+        $response->assertSee('در انتظار بررسی');
+    }
+
+    public function test_admin_can_rename_open_proposal_and_change_is_audited_without_resolving_it(): void
+    {
+        [$proposal] = $this->makeDeepProposalScenario();
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $response = $this->actingAs($admin)->putJson(
+            route('admin.location-governance.proposals.update', $proposal),
+            ['canonical_name' => 'خیابان اصلاح‌شده توسط مدیر', 'reason' => 'اصلاح نگارشی پیش از بررسی نهایی'],
+        );
+
+        $response->assertOk();
+        $proposal->refresh();
+        $this->assertSame('خیابان اصلاح‌شده توسط مدیر', $proposal->canonical_name);
+        $this->assertSame(LocationProposalStatus::Pending, $proposal->status);
+        $this->assertSame($admin->id, data_get($proposal->audit_log, '0.actor_user_id'));
+        $this->assertSame('rename', data_get($proposal->audit_log, '0.action'));
+    }
+
     public function test_hoda_treats_pending_proposal_parent_as_valid_structure_but_never_recommends_approval_before_parent_resolution(): void
     {
         [, $childProposal] = $this->makeDeepProposalScenario();
