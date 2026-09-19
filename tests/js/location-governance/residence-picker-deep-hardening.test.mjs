@@ -21,6 +21,9 @@ test('known residence type keys render Persian labels for fa locale', () => {
     assert.equal(localizeLocationTypeLabel({ key, label: key }, 'fa'), label);
   }
   assert.equal(localizeLocationTypeLabel({ key: 'campus', label: 'Campus' }, 'fa'), 'Campus');
+  assert.equal(localizeLocationTypeLabel({ key: 'alley', label: 'alley' }, 'fa'), 'کوچه');
+  assert.equal(localizeLocationTypeLabel({ key: 'building', label: 'building' }, 'fa'), 'ساختمان');
+  assert.equal(localizeLocationTypeLabel({ key: 'complex', label: 'complex' }, 'fa'), 'مجتمع');
 });
 
 test('proposal parent payload never fabricates a canonical location id', () => {
@@ -60,4 +63,10 @@ test('proposal actions expose clear mobile-first primary secondary and pending h
 test('Persian path rendering uses selected localized labels rather than canonical type names', () => {
   assert.match(uxSource, /option\.textContent/);
   assert.doesNotMatch(uxSource, /Urban region|Neighborhood|Street|Alley|Residential complex|Building/);
+});
+
+
+test('proposal type controls never render raw backend English labels for known Persian location types', () => {
+  assert.match(selectorSource, /localizeLocationTypeLabel\(item\)/);
+  assert.doesNotMatch(selectorSource, /option\.textContent\s*=\s*item\.label\s*\|\|\s*item\.key/);
 });
