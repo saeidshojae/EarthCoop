@@ -95,6 +95,7 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
             'country_code' => 'IR',
             'location_type_id' => $streetType->id,
             'canonical_name' => 'خیابان پیشنهادی مستقیم',
+            'normalized_name' => 'خیابان پیشنهادی مستقیم',
             'localized_names' => ['fa' => 'خیابان پیشنهادی مستقیم'],
             'status' => \App\Enums\LocationGovernance\LocationProposalStatus::Pending,
             'proposer_user_id' => $user->id,
