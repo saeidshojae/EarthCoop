@@ -132,6 +132,27 @@ class LocationStructureClaimTest extends TestCase
         $this->assertNotNull($claim->approved_at);
     }
 
+    public function test_admin_queue_describes_structural_claims_in_location_context(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $village = LocationFixture::createPath($schema, ['country','province','county','section','rural_district','village'])->last();
+        $region = LocationFixture::createPath($schema, ['country','province','county','section','city','urban_region'])->last();
+        $service = app(LocationStructureClaimService::class);
+
+        $service->findOrCreateOpenClaim($city, 'no_urban_region', User::factory()->create());
+        $service->findOrCreateOpenClaim($village, 'no_neighborhood', User::factory()->create());
+        $service->findOrCreateOpenClaim($region, 'single_neighborhood', User::factory()->create());
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $page = $this->actingAs($admin)->get(route('admin.location-governance.index'));
+
+        $page->assertOk()
+            ->assertSee('شهر بدون منطقه')
+            ->assertSee('روستای بدون محله')
+            ->assertSee('منطقه تک‌محله');
+    }
+
     public function test_admin_can_change_location_support_thresholds_persistently_from_location_governance_panel(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
