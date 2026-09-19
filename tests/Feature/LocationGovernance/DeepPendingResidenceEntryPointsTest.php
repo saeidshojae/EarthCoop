@@ -98,6 +98,40 @@ class DeepPendingResidenceEntryPointsTest extends TestCase
         $this->assertNull($method->invoke($controller, $user));
     }
 
+    public function test_profile_reputation_dry_run_counts_canonical_member_without_legacy_address(): void
+    {
+        $user = User::factory()->create([
+            'first_name' => 'Canonical',
+            'last_name' => 'Member',
+            'gender' => 'male',
+            'national_id' => 'R' . fake()->unique()->numerify('#########'),
+            'phone' => '09' . fake()->unique()->numerify('#########'),
+        ]);
+        $experience = \App\Models\ExperienceField::query()->create([
+            'name' => 'Reputation canonical experience',
+            'status' => 1,
+        ]);
+        \Illuminate\Support\Facades\DB::table('user_experience_field')->insert([
+            'user_id' => $user->id,
+            'experience_field_id' => $experience->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $schema = LocationFixture::iranSchema();
+        $residence = LocationFixture::createPath(
+            $schema,
+            ['country', 'province', 'county', 'section', 'city']
+        )->last();
+        app(ResidenceService::class)->setInitialPrimaryResidence($user, $residence, ['source' => 'test']);
+
+        $this->assertDatabaseMissing('addresses', ['user_id' => $user->id]);
+
+        $this->artisan('reputation:backfill-profile', ['--dry-run' => true])
+            ->expectsOutputToContain('Eligible users: 1')
+            ->assertSuccessful();
+    }
+
     public function test_registration_accepts_deepest_pending_proposal_and_keeps_nearest_canonical_anchor(): void
     {
         [$user, $anchor, $deepest] = $this->makeDeepProposalScenario();
