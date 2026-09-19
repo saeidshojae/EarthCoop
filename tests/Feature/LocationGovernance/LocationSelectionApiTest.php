@@ -238,6 +238,41 @@ class LocationSelectionApiTest extends TestCase
         $this->assertFalse(Location::query()->where('parent_id', $village->id)->where('level', 'neighborhood')->exists());
     }
 
+    public function test_approving_collapsed_city_claims_opens_micro_residence_without_creating_region_or_neighborhood(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+
+        $schema = LocationFixture::iranSchema();
+        $user = User::factory()->create();
+        $reviewer = User::factory()->create();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+
+        $regionClaim = LocationStructureClaim::create([
+            'location_id' => $city->id,
+            'claim_type' => 'no_urban_region',
+            'status' => 'pending',
+            'proposer_user_id' => $user->id,
+        ]);
+        $neighborhoodClaim = LocationStructureClaim::create([
+            'location_id' => $city->id,
+            'claim_type' => 'no_neighborhood',
+            'status' => 'pending',
+            'proposer_user_id' => $user->id,
+        ]);
+
+        $beforeLocationIds = Location::query()->pluck('id')->sort()->values()->all();
+        $service = app(\App\Services\LocationGovernance\LocationStructureClaimService::class);
+        $service->approve($regionClaim, $reviewer, 'شهر منطقه ندارد');
+        $service->approve($neighborhoodClaim, $reviewer, 'شهر محله ندارد');
+
+        $response = $this->getJson('/location/options/'.$city->id.'/children')->assertOk();
+
+        $this->assertContains('street', collect($response->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertTrue((bool) $response->json('official_governance_base'));
+        $this->assertSame($beforeLocationIds, Location::query()->pluck('id')->sort()->values()->all());
+        $this->assertFalse(Location::query()->where('parent_id', $city->id)->whereIn('level', ['urban_region','neighborhood'])->exists());
+    }
+
     public function test_children_follow_schema_branching_and_report_endpoint_and_child_state(): void
     {
         config(['location-governance.runtime_enabled' => true]);
