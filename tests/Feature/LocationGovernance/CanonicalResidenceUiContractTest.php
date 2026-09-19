@@ -93,4 +93,13 @@ class CanonicalResidenceUiContractTest extends TestCase
         $this->assertStringContainsString('location-proposal-toggle', $ux);
         $this->assertStringContainsString('min-height: 44px', $ux);
     }
+
+    public function test_profile_canonical_summary_uses_typed_location_display_names(): void
+    {
+        $profile = file_get_contents(resource_path('views/profile/partials/location_canonical.blade.php'));
+
+        $this->assertStringContainsString('LocationDisplayName::typed($primaryResidence->location)', $profile);
+        $this->assertStringContainsString('LocationDisplayName::typed($proposal)', $profile);
+    }
+
 }
