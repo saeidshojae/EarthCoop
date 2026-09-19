@@ -29,7 +29,7 @@ class ResidencePickerDeepHardeningTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('allowed_types.0.key', 'urban_region');
-        $response->assertJsonPath('allowed_types.0.label', 'منطقه شهری');
+        $response->assertJsonPath('allowed_types.0.label', 'منطقه');
     }
 
     public function test_location_proposals_have_an_additive_nullable_proposal_parent_column(): void
