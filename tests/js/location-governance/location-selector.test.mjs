@@ -190,3 +190,11 @@ test('typed breadcrumb normalizes urban region wording and avoids duplicate pref
     assert.equal(locationDisplayLabel({ type_key: 'province', label: 'استان مازندران' }), 'استان مازندران');
     assert.equal(locationDisplayLabel({ type_key: 'street', label: 'الف' }), 'خیابان الف');
 });
+
+test('changing an ancestor selection clears remembered structural claim ids from the abandoned path', () => {
+    const source = selectorSource();
+    assert.match(source, /clearStructuralClaimsAfterDepth/);
+    assert.match(source, /data-location-structure-claim-depth/);
+    assert.match(source, /clearStructuralClaimsAfterDepth\(form, depth\)/);
+});
+
