@@ -53,7 +53,11 @@ class DeepProposalReviewWorkflowTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.location-governance.index'));
 
         $response->assertOk();
-        foreach ($anchor->ancestorsAndSelf()->get() as $location) {
+        $canonicalPath = [];
+        for ($location = $anchor; $location !== null; $location = $location->parent()->first()) {
+            $canonicalPath[] = $location;
+        }
+        foreach (array_reverse($canonicalPath) as $location) {
             $response->assertSee($location->canonical_name);
         }
         $response->assertSee($parentProposal->canonical_name);
