@@ -12,6 +12,7 @@ use App\Models\Location;
 use App\Models\User;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\LocationGovernance\LocationProposalService;
+use App\Services\LocationGovernance\LocationStructureClaimService;
 use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
@@ -255,6 +256,50 @@ class CanonicalUserResidenceEditTest extends TestCase
         $response->assertRedirect(route('admin.users.edit', $target));
         $response->assertSessionHasErrors('location_id');
         $this->assertSame($home->id, $target->fresh()->locationRelationships()->whereNull('ended_at')->sole()->location_id);
+    }
+
+
+    public function test_admin_transfer_preserves_structural_claim_dependency_support_and_audit_metadata(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $oldHome = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood'])->last();
+        $newPath = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city']);
+        $city = $newPath->last();
+        $streetType = $schema->types->firstWhere('key', 'street');
+        $street = Location::query()->create([
+            'parent_id' => $city->id,
+            'location_schema_id' => $schema->id,
+            'location_type_id' => $streetType->id,
+            'country_code' => 'IR',
+            'canonical_name' => 'خیابان انتقال مدیر',
+            'status' => 'active',
+        ]);
+        $target = User::factory()->create();
+        $admin = User::factory()->create();
+        app(ResidenceService::class)->setInitialPrimaryResidence($target, $oldHome, ['source' => 'test']);
+        $claim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'no_urban_region', $target);
+
+        $this->actingAs($admin)
+            ->from(route('admin.users.edit', $target))
+            ->put(route('admin.users.residence.update', $target), [
+                'location_id' => $street->id,
+                'location_structure_claim_ids' => [$claim->id],
+                'reason' => 'اصلاح مسیر واقعی سکونت کاربر',
+            ])
+            ->assertRedirect(route('admin.users.edit', $target))
+            ->assertSessionHasNoErrors();
+
+        $current = $target->fresh()->locationRelationships()
+            ->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')
+            ->sole();
+
+        $this->assertSame($street->id, $current->location_id);
+        $this->assertSame([$claim->id], $current->metadata['structural_claim_ids']);
+        $this->assertSame($admin->id, $current->changed_by_user_id);
+        $this->assertSame('اصلاح مسیر واقعی سکونت کاربر', $current->change_reason);
+        $this->assertTrue($claim->fresh()->evidence()->where('user_id', $target->id)->exists());
+        $this->assertFalse($claim->fresh()->evidence()->where('user_id', $admin->id)->exists());
     }
 
     private function makeApprovedMoveScenario(): array
