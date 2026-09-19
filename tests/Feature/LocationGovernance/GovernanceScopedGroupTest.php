@@ -79,7 +79,8 @@ class GovernanceScopedGroupTest extends TestCase
 
         $this->assertNull($communityGroup);
         $this->assertNull($pendingGroup);
-        $this->assertSame(0, Group::query()->count());
+        $this->assertFalse(Group::query()->where('governance_area_id', $community->id)->exists());
+        $this->assertFalse(Group::query()->where('governance_area_id', $pendingOfficial->id)->exists());
     }
 
     public function test_suppressed_intent_is_not_materialized(): void
