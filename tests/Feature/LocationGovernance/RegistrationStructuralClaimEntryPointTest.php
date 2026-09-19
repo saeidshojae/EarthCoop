@@ -91,6 +91,8 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
         $claim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'no_urban_region', $user);
         $proposal = \App\Models\LocationProposal::query()->create([
             'parent_location_id' => $city->id,
+            'location_schema_id' => $schema->id,
+            'country_code' => 'IR',
             'location_type_id' => $streetType->id,
             'canonical_name' => 'خیابان پیشنهادی مستقیم',
             'localized_names' => ['fa' => 'خیابان پیشنهادی مستقیم'],
