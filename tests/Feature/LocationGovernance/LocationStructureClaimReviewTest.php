@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\LocationGovernance;
 
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\LocationGovernance\LocationStructureClaimService;
 use DomainException;
@@ -59,7 +60,7 @@ class LocationStructureClaimReviewTest extends TestCase
 
     public function test_threshold_readiness_never_substitutes_for_human_approval(): void
     {
-        config(['location-governance.location_structure_claim_verification_threshold' => 1]);
+        Setting::singleton()->forceFill(['location_structure_claim_verification_threshold' => 1])->save();
         $schema = LocationFixture::iranSchema();
         $region = LocationFixture::createPath($schema, ['country','province','county','section','city','urban_region'])->last();
         $service = app(LocationStructureClaimService::class);
