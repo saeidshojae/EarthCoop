@@ -34,7 +34,7 @@ class LocationStructureClaimTest extends TestCase
 
     public function test_distinct_committed_support_is_idempotent_and_threshold_never_auto_approves(): void
     {
-        config(['location-governance.location_structure_claim_verification_threshold' => 3]);
+        Setting::singleton()->forceFill(['location_structure_claim_verification_threshold' => 3])->save();
 
         $schema = LocationFixture::iranSchema();
         $village = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'rural_district', 'village'])->last();
@@ -110,7 +110,7 @@ class LocationStructureClaimTest extends TestCase
 
     public function test_admin_can_review_structural_claim_but_support_threshold_does_not_auto_approve(): void
     {
-        config(['location-governance.location_structure_claim_verification_threshold' => 1]);
+        Setting::singleton()->forceFill(['location_structure_claim_verification_threshold' => 1])->save();
 
         $schema = LocationFixture::iranSchema();
         $village = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'rural_district', 'village'])->last();
