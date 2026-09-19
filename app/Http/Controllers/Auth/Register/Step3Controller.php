@@ -108,6 +108,7 @@ class Step3Controller extends Controller
                 $locationTreeResolver,
                 $residenceService,
                 $proposalPolicy,
+                $structuralClaims,
             ): void {
                 $proposal = LocationProposal::query()
                     ->with(['parentLocation', 'parentProposal', 'type'])
@@ -136,7 +137,6 @@ class Step3Controller extends Controller
                     $anchor === null
                     || $type === null
                     || $anchor->status !== 'active'
-                    || ! $locationTreeResolver->residenceEndpointAllowed($anchor)
                     || ! $proposalPathAllowed
                 ) {
                     throw ValidationException::withMessages([
@@ -147,7 +147,7 @@ class Step3Controller extends Controller
                 $residenceService->setInitialPrimaryResidence($user, $anchor, [
                     'source' => 'registration_step3_pending_anchor',
                     'location_proposal_id' => $proposal->id,
-                ]);
+                ], $structuralClaims);
 
                 $residenceService->setPendingResidenceIntent($user, $proposal, [
                     'source' => 'registration_step3',
