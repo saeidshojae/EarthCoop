@@ -6,7 +6,7 @@ const OPEN_PROPOSAL_STATUSES = new Set(['pending', 'ready_for_review', 'needs_ev
 const PICKER_STATES = Object.freeze({ loading: 'loading', empty: 'empty', error: 'error', stale: 'stale', ready: 'ready' });
 const TYPE_LABELS = Object.freeze({
     global: 'جهانی', continent: 'قاره', country: 'کشور', province: 'استان / ایالت', county: 'شهرستان / ناحیه',
-    section: 'بخش', city: 'شهر', rural_district: 'دهستان', village: 'روستا', urban_region: 'منطقه شهری',
+    section: 'بخش', city: 'شهر', rural_district: 'دهستان', village: 'روستا', urban_region: 'منطقه',
     neighborhood: 'محله', street: 'خیابان', alley: 'کوچه', complex: 'مجتمع', building: 'ساختمان',
 });
 const locationDisplayLabel = (item) => {
@@ -14,6 +14,12 @@ const locationDisplayLabel = (item) => {
     const prefix = TYPE_LABELS[item?.type_key] || '';
     if (!prefix || !name) return name;
     const normalizedPrefix = prefix.split(' / ')[0].trim();
+    if (item?.type_key === 'urban_region' && name.startsWith('منطقه شهری ')) {
+        return 'منطقه ' + name.slice('منطقه شهری '.length).trim();
+    }
+    if (item?.type_key === 'province' && (name === 'ایالت' || name.startsWith('ایالت '))) {
+        return name;
+    }
     return name === normalizedPrefix || name.startsWith(normalizedPrefix + ' ') ? name : normalizedPrefix + ' ' + name;
 };
 const isActiveLocation = (item) => item?.status === undefined || item?.status === null || item?.status === 'active';
