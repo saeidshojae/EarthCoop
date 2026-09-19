@@ -145,6 +145,30 @@ class LocationGovernanceController extends Controller
         ]);
     }
 
+    public function update(
+        Request $request,
+        LocationProposal $locationProposal,
+        LocationProposalService $proposalService,
+    ): JsonResponse|RedirectResponse {
+        $validated = $request->validate([
+            'canonical_name' => ['required', 'string', 'max:255'],
+            'reason' => ['required', 'string', 'min:4', 'max:1000'],
+        ]);
+
+        try {
+            $proposalService->rename(
+                $locationProposal,
+                $request->user(),
+                $validated['canonical_name'],
+                $validated['reason'],
+            );
+        } catch (DomainException $exception) {
+            throw ValidationException::withMessages(['proposal' => $exception->getMessage()]);
+        }
+
+        return $this->reviewResponse($request, 'نام پیشنهاد با ثبت سابقهٔ بازبینی اصلاح شد.');
+    }
+
     public function approve(
         Request $request,
         LocationProposal $locationProposal,
