@@ -78,12 +78,21 @@ const mountResidenceUx = (selector) => {
     const renderPath = (items = selectedLabels()) => {
         if (!path || !items.length) return;
         path.replaceChildren(); path.classList.remove('text-muted');
+        const pendingCount = items.filter((item) => item.proposal).length;
         items.forEach((item, index) => {
             const node = document.createElement('span'); node.setAttribute('data-location-path-item', '');
             node.className = item.proposal ? 'location-proposal badge bg-warning-subtle text-warning-emphasis' : 'badge bg-primary-subtle text-primary-emphasis';
-            node.textContent = item.proposal ? `${item.label} (در انتظار بررسی)` : item.label; path.appendChild(node);
+            node.textContent = item.label; path.appendChild(node);
             if (index < items.length - 1) path.appendChild(document.createTextNode(' ← '));
         });
+        if (pendingCount > 0) {
+            const status = document.createElement('span');
+            status.setAttribute('data-location-pending-badge', '');
+            status.className = 'badge bg-warning-subtle text-warning-emphasis';
+            status.textContent = pendingCount === 1 ? 'در انتظار بررسی' : `${pendingCount} سطح در انتظار بررسی`;
+            path.appendChild(document.createTextNode(' '));
+            path.appendChild(status);
+        }
     };
 
     const waitForPersistedOption = async (depth, identity) => {
