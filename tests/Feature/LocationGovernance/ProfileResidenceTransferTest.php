@@ -72,4 +72,33 @@ class ProfileResidenceTransferTest extends TestCase
         $this->assertTrue($claim->fresh()->evidence()->where('user_id', $user->id)->exists());
     }
 
+
+    public function test_profile_can_commit_new_structural_claim_without_changing_current_location(): void
+    {
+        config([
+            'location-governance.runtime_enabled' => true,
+            'location-governance.registration_enabled' => true,
+        ]);
+
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city'])->last();
+        $user = User::factory()->create();
+        app(ResidenceService::class)->setInitialPrimaryResidence($user, $city, ['source' => 'test']);
+        $claim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+
+        $this->actingAs($user)->put(route('profile.update.address'), [
+            'location_id' => $city->id,
+            'location_structure_claim_ids' => [$claim->id],
+        ])->assertSessionHasNoErrors();
+
+        $current = $user->fresh()->locationRelationships()
+            ->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')
+            ->sole();
+
+        $this->assertSame($city->id, $current->location_id);
+        $this->assertSame([$claim->id], $current->metadata['structural_claim_ids']);
+        $this->assertTrue($claim->fresh()->evidence()->where('user_id', $user->id)->exists());
+    }
+
 }
