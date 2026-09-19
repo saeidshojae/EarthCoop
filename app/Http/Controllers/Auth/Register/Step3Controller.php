@@ -130,7 +130,7 @@ class Step3Controller extends Controller
                 $type = $proposal->type;
                 $parentProposal = $proposal->parentProposal;
                 $proposalPathAllowed = $proposal->parent_location_id !== null
-                    ? ($anchor !== null && $type !== null && $proposalPolicy->allows($anchor, $type))
+                    ? ($anchor !== null && $type !== null && $proposalPolicy->allowsForResidence($anchor, $type, $structuralClaims))
                     : ($parentProposal !== null && $type !== null && $proposalPolicy->allowsProposalParent($parentProposal, $type));
 
                 if (
