@@ -5,6 +5,7 @@ namespace App\Services\LocationGovernance;
 use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\Location;
 use App\Models\LocationProposal;
+use App\Models\Setting;
 use App\Models\LocationType;
 use App\Models\User;
 use DomainException;
@@ -144,7 +145,7 @@ class LocationProposalService
         DB::transaction(function () use ($proposal, $user, $evidence): void {
             $proposal->evidence()->updateOrCreate(['user_id' => $user->id], ['evidence' => $evidence]);
             $proposal->refresh();
-            $threshold = max(1, (int) config('location-governance.location_proposal_verification_threshold', 10));
+            $threshold = max(1, (int) (Setting::singleton()->location_proposal_verification_threshold ?? config('location-governance.location_proposal_verification_threshold', 10)));
             $distinctVerifiers = $proposal->evidence()->distinct()->count('user_id');
 
             if ($proposal->status === LocationProposalStatus::Pending && $distinctVerifiers >= $threshold) {
