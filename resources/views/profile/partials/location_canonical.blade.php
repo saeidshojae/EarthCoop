@@ -9,7 +9,7 @@
     @if (isset($primaryResidence) && $primaryResidence?->location)
         <div class="alert alert-light border mb-3">
             <div class="small text-muted mb-1">مکان تأییدشده و مبنای رسمی</div>
-            <strong>{{ \App\Support\LocationDisplayName::for($primaryResidence->location) }}</strong>
+            <strong>{{ \App\Support\LocationDisplayName::typed($primaryResidence->location) }}</strong>
         </div>
     @endif
 
@@ -25,7 +25,7 @@
                 <span class="fw-semibold">مکان دقیق پیشنهادی</span>
                 <span class="badge text-bg-warning">در انتظار بررسی</span>
             </div>
-            <div>{{ \App\Support\LocationDisplayName::for($proposal) }}</div>
+            <div>{{ \App\Support\LocationDisplayName::typed($proposal) }}</div>
             <div class="small mt-2">این جزئیات هنوز مکان رسمی محسوب نمی‌شود و تا زمان تأیید یا ادغام، حوزهٔ حکمرانی شما بر اساس مکان تأییدشدهٔ بالا محاسبه می‌شود.</div>
             @if ($proposalStatus === 'needs_evidence')
                 <div class="small fw-semibold mt-2">برای این پیشنهاد اطلاعات یا مدرک بیشتری درخواست شده است.</div>
