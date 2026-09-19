@@ -6,6 +6,7 @@ import {
     pickerLevelLabel,
     selectionValues,
     shouldRenderNextLevel,
+    locationDisplayLabel,
 } from './location-selector-core.js';
 
 const FA_TYPE_LABELS = Object.freeze({
