@@ -5,12 +5,16 @@ namespace App\Services\LocationGovernance;
 use App\Models\Location;
 use App\Models\LocationProposal;
 use App\Models\LocationSchemaType;
+use App\Models\LocationStructureClaim;
 use App\Models\LocationType;
 use App\Models\LocationTypeRelation;
 
 class LocationProposalPolicy
 {
-    public function __construct(private readonly LocationSchemaResolver $schemaResolver)
+    public function __construct(
+        private readonly LocationSchemaResolver $schemaResolver,
+        private readonly LocationStructureClaimPolicy $structureClaimPolicy,
+    )
     {
     }
 
@@ -25,6 +29,21 @@ class LocationProposalPolicy
         }
 
         return $this->schemaAllowsCrowdsourcing((int) $parent->location_schema_id, $type);
+    }
+
+    public function allowsForResidence(Location $parent, LocationType $type, array $structuralClaims = []): bool
+    {
+        if ($this->allows($parent, $type)) {
+            return true;
+        }
+
+        $effectiveTypeCodes = $this->structureClaimPolicy->effectiveResidenceChildTypeCodes(
+            $parent,
+            collect($structuralClaims)->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim)
+        );
+
+        return in_array($type->key, $effectiveTypeCodes, true)
+            && $this->schemaAllowsCrowdsourcing((int) $parent->location_schema_id, $type);
     }
 
     public function allowsProposalParent(LocationProposal $parent, LocationType $type): bool
