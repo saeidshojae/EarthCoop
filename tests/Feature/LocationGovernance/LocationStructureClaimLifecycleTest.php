@@ -74,4 +74,30 @@ class LocationStructureClaimLifecycleTest extends TestCase
 
         $this->assertSame($first->id, $again->id);
     }
+
+    public function test_distinct_committed_support_reaches_persisted_threshold_but_never_auto_approves_claim(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $village = LocationFixture::createPath($schema, ['country','province','county','section','rural_district','village'])->last();
+        $service = app(LocationStructureClaimService::class);
+
+        $settings = \App\Models\Setting::singleton();
+        $settings->forceFill(['location_structure_claim_verification_threshold' => 2])->save();
+
+        $firstUser = User::factory()->create();
+        $secondUser = User::factory()->create();
+        $claim = $service->findOrCreateOpenClaim($village, 'no_neighborhood', $firstUser);
+
+        $service->recordCommittedSupport($claim, $firstUser, ['source' => 'residence_commit']);
+        $this->assertSame('pending', $claim->fresh()->status);
+
+        $service->recordCommittedSupport($claim, $secondUser, ['source' => 'residence_commit']);
+
+        $claim->refresh();
+        $this->assertSame('ready_for_review', $claim->status);
+        $this->assertNull($claim->reviewed_by_user_id);
+        $this->assertNull($claim->approved_at);
+        $this->assertSame(2, $claim->evidence()->distinct()->count('user_id'));
+    }
+
 }
