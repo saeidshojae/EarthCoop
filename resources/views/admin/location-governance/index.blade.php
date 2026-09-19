@@ -32,6 +32,29 @@
         </div>
     </div>
 
+    <section class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent"><h2 class="h5 mb-1">تنظیم حد حمایت مردمی</h2></div>
+        <div class="card-body">
+            <form method="POST" action="{{ route('admin.location-governance.settings.update') }}" class="row g-3 align-items-end">
+                @csrf
+                @method('PUT')
+                <div class="col-12 col-md-5">
+                    <label class="form-label" for="location_proposal_verification_threshold">حد حمایت پیشنهاد مکان</label>
+                    <input id="location_proposal_verification_threshold" name="location_proposal_verification_threshold" type="number" min="1" max="1000000" required class="form-control" value="{{ $verificationThreshold }}">
+                    <div class="form-text">پیش‌فرض ۱۰ نفر؛ رسیدن به این حد فقط پرونده را آمادهٔ بررسی انسانی می‌کند.</div>
+                </div>
+                <div class="col-12 col-md-5">
+                    <label class="form-label" for="location_structure_claim_verification_threshold">حد حمایت ادعای ساختاری</label>
+                    <input id="location_structure_claim_verification_threshold" name="location_structure_claim_verification_threshold" type="number" min="1" max="1000000" required class="form-control" value="{{ $structureClaimVerificationThreshold }}">
+                    <div class="form-text">برای ادعاهایی مانند شهر بدون منطقه یا روستای بدون محله؛ تأیید خودکار انجام نمی‌شود.</div>
+                </div>
+                <div class="col-12 col-md-2">
+                    <button class="btn btn-primary w-100">ذخیره تنظیمات</button>
+                </div>
+            </form>
+        </div>
+    </section>
+
     @include('admin.location-governance.partials.proposal-queue')
     @include('admin.location-governance.partials.structure-claim-queue')
 
