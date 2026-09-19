@@ -132,6 +132,54 @@ class LocationStructureClaimTest extends TestCase
         $this->assertNotNull($claim->approved_at);
     }
 
+    public function test_admin_can_reject_structural_claim_with_audited_reason_via_http(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $village = LocationFixture::createPath($schema, ['country','province','county','section','rural_district','village'])->last();
+        $claim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim(
+            $village,
+            'no_neighborhood',
+            User::factory()->create(),
+        );
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $response = $this->actingAs($admin)->postJson(
+            route('admin.location-governance.structure-claims.reject', $claim),
+            ['reason' => 'شواهد رسمی این ادعا را تأیید نمی‌کند'],
+        );
+
+        $response->assertOk()->assertJsonPath('status', 'rejected');
+        $claim->refresh();
+        $this->assertSame('rejected', $claim->status);
+        $this->assertSame($admin->id, $claim->reviewed_by_user_id);
+        $this->assertSame('شواهد رسمی این ادعا را تأیید نمی‌کند', $claim->review_reason);
+        $this->assertSame('rejected', data_get(collect($claim->audit_log)->last(), 'to'));
+    }
+
+    public function test_admin_can_request_more_evidence_for_structural_claim_via_http(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $claim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim(
+            $city,
+            'single_urban_region',
+            User::factory()->create(),
+        );
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $response = $this->actingAs($admin)->postJson(
+            route('admin.location-governance.structure-claims.request-evidence', $claim),
+            ['reason' => 'مدرک رسمی تقسیمات شهری را پیوست کنید'],
+        );
+
+        $response->assertOk()->assertJsonPath('status', 'needs_evidence');
+        $claim->refresh();
+        $this->assertSame('needs_evidence', $claim->status);
+        $this->assertSame($admin->id, $claim->reviewed_by_user_id);
+        $this->assertSame('مدرک رسمی تقسیمات شهری را پیوست کنید', $claim->review_reason);
+        $this->assertSame('needs_evidence', data_get(collect($claim->audit_log)->last(), 'to'));
+    }
+
     public function test_admin_queue_describes_structural_claims_in_location_context(): void
     {
         $schema = LocationFixture::iranSchema();
