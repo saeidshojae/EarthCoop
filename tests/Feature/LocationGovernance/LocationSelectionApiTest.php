@@ -159,6 +159,29 @@ class LocationSelectionApiTest extends TestCase
         $this->assertTrue((bool) $response->json('official_governance_base'));
     }
 
+    public function test_pending_city_collapse_claims_allow_residence_detail_but_do_not_grant_official_base_authority(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+
+        $schema = LocationFixture::iranSchema();
+        $user = User::factory()->create();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+
+        foreach (['no_urban_region', 'no_neighborhood'] as $type) {
+            LocationStructureClaim::create([
+                'location_id' => $city->id,
+                'claim_type' => $type,
+                'status' => 'pending',
+                'proposer_user_id' => $user->id,
+            ]);
+        }
+
+        $response = $this->getJson('/location/options/'.$city->id.'/children')->assertOk();
+
+        $this->assertContains('street', collect($response->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertFalse((bool) $response->json('official_governance_base'));
+    }
+
     public function test_children_follow_schema_branching_and_report_endpoint_and_child_state(): void
     {
         config(['location-governance.runtime_enabled' => true]);
