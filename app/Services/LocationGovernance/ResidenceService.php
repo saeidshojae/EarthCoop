@@ -29,10 +29,20 @@ class ResidenceService
         return DB::transaction(function () use ($user, $location, $evidence, $structuralClaims): UserLocationRelationship {
             $claims = collect($structuralClaims)->map(function ($claim) use ($location): LocationStructureClaim {
                 $locked = LocationStructureClaim::query()->lockForUpdate()->findOrFail($claim->id);
-                if ((int) $locked->location_id !== (int) $location->id
+                $claimLocationMatchesResidencePath = (int) $locked->location_id === (int) $location->id;
+                $cursor = $location;
+                while (! $claimLocationMatchesResidencePath && $cursor->parent_id !== null) {
+                    $cursor = $cursor->parent()->first();
+                    if ($cursor === null) {
+                        break;
+                    }
+                    $claimLocationMatchesResidencePath = (int) $locked->location_id === (int) $cursor->id;
+                }
+
+                if (! $claimLocationMatchesResidencePath
                     || (! in_array($locked->status, LocationStructureClaimService::OPEN_STATUSES, true) && $locked->status !== 'approved')) {
                     throw ValidationException::withMessages([
-                        'location_structure_claim_ids' => 'ادعای ساختاری انتخاب‌شده دیگر برای این محل سکونت قابل استفاده نیست.',
+                        'location_structure_claim_ids' => 'ادعای ساختاری انتخاب‌شده دیگر برای این مسیر محل سکونت قابل استفاده نیست.',
                     ]);
                 }
                 return $locked;
