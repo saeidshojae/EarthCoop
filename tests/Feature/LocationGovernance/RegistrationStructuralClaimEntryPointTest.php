@@ -86,17 +86,17 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
     {
         $schema = LocationFixture::iranSchema();
         $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
-        $streetType = $schema->types->firstWhere('key', 'street');
+        $neighborhoodType = $schema->types->firstWhere('key', 'neighborhood');
         $user = User::factory()->create();
         $claim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'no_urban_region', $user);
         $proposal = \App\Models\LocationProposal::query()->create([
             'parent_location_id' => $city->id,
             'location_schema_id' => $schema->id,
             'country_code' => 'IR',
-            'location_type_id' => $streetType->id,
-            'canonical_name' => 'خیابان پیشنهادی مستقیم',
-            'normalized_name' => 'خیابان پیشنهادی مستقیم',
-            'localized_names' => ['fa' => 'خیابان پیشنهادی مستقیم'],
+            'location_type_id' => $neighborhoodType->id,
+            'canonical_name' => 'محله پیشنهادی مستقیم',
+            'normalized_name' => 'محله پیشنهادی مستقیم',
+            'localized_names' => ['fa' => 'محله پیشنهادی مستقیم'],
             'status' => \App\Enums\LocationGovernance\LocationProposalStatus::Pending,
             'proposer_user_id' => $user->id,
         ]);
