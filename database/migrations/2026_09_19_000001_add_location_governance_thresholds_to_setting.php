@@ -8,19 +8,39 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('setting', function (Blueprint $table): void {
-            $table->unsignedInteger('location_proposal_verification_threshold')->default(10);
-            $table->unsignedInteger('location_structure_claim_verification_threshold')->default(10);
-        });
+        if (! Schema::hasTable('setting')) {
+            return;
+        }
+
+        if (! Schema::hasColumn('setting', 'location_proposal_verification_threshold')) {
+            Schema::table('setting', function (Blueprint $table): void {
+                $table->unsignedInteger('location_proposal_verification_threshold')->default(10);
+            });
+        }
+
+        if (! Schema::hasColumn('setting', 'location_structure_claim_verification_threshold')) {
+            Schema::table('setting', function (Blueprint $table): void {
+                $table->unsignedInteger('location_structure_claim_verification_threshold')->default(10);
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('setting', function (Blueprint $table): void {
-            $table->dropColumn([
-                'location_proposal_verification_threshold',
-                'location_structure_claim_verification_threshold',
-            ]);
-        });
+        if (! Schema::hasTable('setting')) {
+            return;
+        }
+
+        if (Schema::hasColumn('setting', 'location_proposal_verification_threshold')) {
+            Schema::table('setting', function (Blueprint $table): void {
+                $table->dropColumn('location_proposal_verification_threshold');
+            });
+        }
+
+        if (Schema::hasColumn('setting', 'location_structure_claim_verification_threshold')) {
+            Schema::table('setting', function (Blueprint $table): void {
+                $table->dropColumn('location_structure_claim_verification_threshold');
+            });
+        }
     }
 };
