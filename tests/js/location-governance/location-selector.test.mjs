@@ -9,6 +9,7 @@ import {
     pickerLevelLabel,
     selectionValues,
     shouldRenderNextLevel,
+    locationDisplayLabel,
 } from '../../../resources/js/location-selector.js';
 
 const selectorSource = () => [
