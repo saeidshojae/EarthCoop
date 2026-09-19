@@ -52,4 +52,29 @@ class LocationDisplayNameTest extends TestCase
         $this->assertSame('استان مازندران', LocationDisplayName::typed($province, 'fa'));
         $this->assertSame('منطقه ۶', LocationDisplayName::typed($region, 'fa'));
     }
+
+    public function test_typed_display_name_includes_continent_prefix_in_global_path(): void
+    {
+        app()->setLocale('fa');
+        $schema = LocationFixture::iranSchema();
+        $continentType = $schema->types()->where('key', 'continent')->first();
+
+        if ($continentType === null) {
+            $continentType = \App\Models\LocationType::query()->firstOrCreate(
+                ['key' => 'continent'],
+                ['canonical_name' => 'Continent']
+            );
+        }
+
+        $continent = Location::query()->create([
+            'location_schema_id' => $schema->id,
+            'location_type_id' => $continentType->id,
+            'canonical_name' => 'آسیا',
+            'country_code' => null,
+            'status' => 'active',
+        ]);
+
+        $this->assertSame('قاره آسیا', LocationDisplayName::typed($continent, 'fa'));
+    }
+
 }
