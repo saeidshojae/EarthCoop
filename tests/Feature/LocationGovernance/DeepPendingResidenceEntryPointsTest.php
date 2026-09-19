@@ -43,9 +43,11 @@ class DeepPendingResidenceEntryPointsTest extends TestCase
             'name' => 'Login canonical experience',
             'status' => 1,
         ]);
-        UserExperience::query()->create([
+        \Illuminate\Support\Facades\DB::table('user_experience_field')->insert([
             'user_id' => $user->id,
             'experience_field_id' => $experience->id,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $schema = LocationFixture::iranSchema();
