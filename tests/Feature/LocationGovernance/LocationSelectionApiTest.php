@@ -4,6 +4,8 @@ namespace Tests\Feature\LocationGovernance;
 
 use App\Models\Location;
 use App\Models\LocationSchema;
+use App\Models\LocationStructureClaim;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\LocationFixture;
 use Tests\TestCase;
@@ -111,6 +113,164 @@ class LocationSelectionApiTest extends TestCase
         $filtered = $this->getJson('/location/options/root?country=US');
         $filtered->assertOk()->assertJsonCount(1, 'data');
         $filtered->assertJsonPath('data.0.id', $unitedStates->id);
+    }
+
+    public function test_children_expose_structural_choices_and_effective_real_levels_without_fake_locations(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+        app()->setLocale('fa');
+
+        $schema = LocationFixture::iranSchema();
+        $user = User::factory()->create();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'], ['Iran','Mazandaran','Sari','Chahardangeh','Kiasar'])->last();
+        $region = LocationFixture::createPath($schema, ['country','province','county','section','city','urban_region'], ['Iran','Mazandaran','Sari','Central','Sari','Region 6'])->last();
+        $village = LocationFixture::createPath($schema, ['country','province','county','section','rural_district','village'], ['Iran','Mazandaran','Sari','Section','District','Village'])->last();
+
+        $singleRegion = LocationStructureClaim::create(['location_id'=>$city->id,'claim_type'=>'single_urban_region','status'=>'pending','proposer_user_id'=>$user->id]);
+        LocationStructureClaim::create(['location_id'=>$region->id,'claim_type'=>'no_neighborhood','status'=>'approved','proposer_user_id'=>$user->id,'approved_at'=>now()]);
+        LocationStructureClaim::create(['location_id'=>$village->id,'claim_type'=>'no_neighborhood','status'=>'approved','proposer_user_id'=>$user->id,'approved_at'=>now()]);
+
+        $cityResponse = $this->getJson('/location/options/'.$city->id.'/children')->assertOk();
+        $this->assertContains('single_urban_region', collect($cityResponse->json('structural_choices'))->pluck('claim_type')->all());
+        $this->assertContains('neighborhood', collect($cityResponse->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertSame('pending', collect($cityResponse->json('structural_choices'))->firstWhere('claim_type', 'single_urban_region')['status']);
+
+        foreach ([$region, $village] as $base) {
+            $response = $this->getJson('/location/options/'.$base->id.'/children')->assertOk();
+            $this->assertContains('street', collect($response->json('effective_allowed_types'))->pluck('key')->all());
+            $this->assertTrue((bool) $response->json('official_governance_base'));
+        }
+    }
+
+    public function test_combined_city_claims_expose_micro_children_as_effective_residence_continuation(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+
+        $schema = LocationFixture::iranSchema();
+        $user = User::factory()->create();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+
+        foreach (['no_urban_region','no_neighborhood'] as $type) {
+            LocationStructureClaim::create(['location_id'=>$city->id,'claim_type'=>$type,'status'=>'approved','proposer_user_id'=>$user->id,'approved_at'=>now()]);
+        }
+
+        $response = $this->getJson('/location/options/'.$city->id.'/children')->assertOk();
+        $this->assertContains('street', collect($response->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertTrue((bool) $response->json('official_governance_base'));
+    }
+
+    public function test_pending_city_collapse_claims_allow_residence_detail_but_do_not_grant_official_base_authority(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+
+        $schema = LocationFixture::iranSchema();
+        $user = User::factory()->create();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+
+        foreach (['no_urban_region', 'no_neighborhood'] as $type) {
+            LocationStructureClaim::create([
+                'location_id' => $city->id,
+                'claim_type' => $type,
+                'status' => 'pending',
+                'proposer_user_id' => $user->id,
+            ]);
+        }
+
+        $response = $this->getJson('/location/options/'.$city->id.'/children')->assertOk();
+
+        $this->assertContains('street', collect($response->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertFalse((bool) $response->json('official_governance_base'));
+    }
+
+    public function test_pending_no_neighborhood_claim_on_region_and_village_opens_micro_residence_without_claiming_official_base(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+
+        $schema = LocationFixture::iranSchema();
+        $user = User::factory()->create();
+        $region = LocationFixture::createPath($schema, ['country','province','county','section','city','urban_region'])->last();
+        $village = LocationFixture::createPath($schema, ['country','province','county','section','rural_district','village'])->last();
+
+        foreach ([$region, $village] as $base) {
+            LocationStructureClaim::create([
+                'location_id' => $base->id,
+                'claim_type' => 'no_neighborhood',
+                'status' => 'pending',
+                'proposer_user_id' => $user->id,
+            ]);
+
+            $response = $this->getJson('/location/options/'.$base->id.'/children')->assertOk();
+
+            $this->assertContains('street', collect($response->json('effective_allowed_types'))->pluck('key')->all());
+            $this->assertFalse((bool) $response->json('official_governance_base'));
+        }
+    }
+
+    public function test_approving_structural_claim_changes_authority_signal_without_creating_synthetic_location(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+
+        $schema = LocationFixture::iranSchema();
+        $user = User::factory()->create();
+        $reviewer = User::factory()->create();
+        $village = LocationFixture::createPath($schema, ['country','province','county','section','rural_district','village'])->last();
+
+        $claim = LocationStructureClaim::create([
+            'location_id' => $village->id,
+            'claim_type' => 'no_neighborhood',
+            'status' => 'pending',
+            'proposer_user_id' => $user->id,
+        ]);
+
+        $beforeLocationIds = Location::query()->pluck('id')->sort()->values()->all();
+
+        $pending = $this->getJson('/location/options/'.$village->id.'/children')->assertOk();
+        $this->assertContains('street', collect($pending->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertFalse((bool) $pending->json('official_governance_base'));
+
+        app(\App\Services\LocationGovernance\LocationStructureClaimService::class)
+            ->approve($claim, $reviewer, 'ساختار محل بررسی و تایید شد');
+
+        $approved = $this->getJson('/location/options/'.$village->id.'/children')->assertOk();
+        $this->assertContains('street', collect($approved->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertTrue((bool) $approved->json('official_governance_base'));
+        $this->assertSame($beforeLocationIds, Location::query()->pluck('id')->sort()->values()->all());
+        $this->assertFalse(Location::query()->where('parent_id', $village->id)->where('level', 'neighborhood')->exists());
+    }
+
+    public function test_approving_collapsed_city_claims_opens_micro_residence_without_creating_region_or_neighborhood(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+
+        $schema = LocationFixture::iranSchema();
+        $user = User::factory()->create();
+        $reviewer = User::factory()->create();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+
+        $regionClaim = LocationStructureClaim::create([
+            'location_id' => $city->id,
+            'claim_type' => 'no_urban_region',
+            'status' => 'pending',
+            'proposer_user_id' => $user->id,
+        ]);
+        $neighborhoodClaim = LocationStructureClaim::create([
+            'location_id' => $city->id,
+            'claim_type' => 'no_neighborhood',
+            'status' => 'pending',
+            'proposer_user_id' => $user->id,
+        ]);
+
+        $beforeLocationIds = Location::query()->pluck('id')->sort()->values()->all();
+        $service = app(\App\Services\LocationGovernance\LocationStructureClaimService::class);
+        $service->approve($regionClaim, $reviewer, 'شهر منطقه ندارد');
+        $service->approve($neighborhoodClaim, $reviewer, 'شهر محله ندارد');
+
+        $response = $this->getJson('/location/options/'.$city->id.'/children')->assertOk();
+
+        $this->assertContains('street', collect($response->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertTrue((bool) $response->json('official_governance_base'));
+        $this->assertSame($beforeLocationIds, Location::query()->pluck('id')->sort()->values()->all());
+        $this->assertFalse(Location::query()->where('parent_id', $city->id)->whereIn('level', ['urban_region','neighborhood'])->exists());
     }
 
     public function test_children_follow_schema_branching_and_report_endpoint_and_child_state(): void

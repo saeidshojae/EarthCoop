@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Profile\ProfileController;
 use App\Models\Location;
 use App\Models\LocationProposal;
+use App\Models\LocationStructureClaim;
 use App\Services\LocationGovernance\LocationProposalPolicy;
 use App\Services\LocationGovernance\LocationTreeResolver;
 use App\Services\LocationGovernance\ResidenceService;
@@ -35,10 +36,13 @@ final class ProfileResidenceController extends Controller
         $validated = $request->validate([
             'location_id' => ['nullable', 'integer', 'exists:locations,id'],
             'location_proposal_id' => ['nullable', 'integer', 'exists:location_proposals,id'],
+            'location_structure_claim_ids' => ['nullable', 'array'],
+            'location_structure_claim_ids.*' => ['integer', 'distinct', 'exists:location_structure_claims,id'],
         ]);
 
         $locationId = $validated['location_id'] ?? null;
         $proposalId = $validated['location_proposal_id'] ?? null;
+        $structuralClaims = LocationStructureClaim::query()->whereIn('id', $validated['location_structure_claim_ids'] ?? [])->get()->all();
 
         if (($locationId === null) === ($proposalId === null)) {
             throw ValidationException::withMessages([
@@ -65,7 +69,7 @@ final class ProfileResidenceController extends Controller
             if ($current === null) {
                 $residenceService->setInitialPrimaryResidence($user, $location, [
                     'source' => 'profile_location_update',
-                ]);
+                ], $structuralClaims);
             } elseif ((int) $current->location_id !== (int) $location->id) {
                 $residenceService->transferPrimaryResidence(
                     $user,

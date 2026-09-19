@@ -38,7 +38,8 @@ class ElectionUserPortalController extends Controller
             abort_unless(
                 $group->governance_area_id !== null
                     && $group->dimension_key !== null
-                    && $group->dimension_value_key !== null,
+                    && $group->dimension_value_key !== null
+                    && $group->governanceArea()->where('area_kind', 'official')->where('status', 'active')->exists(),
                 403,
             );
         }

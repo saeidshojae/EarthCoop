@@ -6,6 +6,7 @@ import {
     pickerLevelLabel,
     selectionValues,
     shouldRenderNextLevel,
+    locationDisplayLabel,
 } from './location-selector-core.js';
 
 const FA_TYPE_LABELS = Object.freeze({
@@ -91,4 +92,4 @@ if (typeof document !== 'undefined') {
     });
 }
 
-export { initializeLocationSelector, normalizePickerPayload, projectScopePayload, projectScopeSelectionValues, pickerLevelLabel, selectionValues, shouldRenderNextLevel, localizeLocationTypeLabel, proposalParentPayload };
+export { initializeLocationSelector, normalizePickerPayload, projectScopePayload, projectScopeSelectionValues, pickerLevelLabel, selectionValues, shouldRenderNextLevel, locationDisplayLabel, localizeLocationTypeLabel, proposalParentPayload };

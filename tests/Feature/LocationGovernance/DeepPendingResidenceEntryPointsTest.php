@@ -5,9 +5,11 @@ namespace Tests\Feature\LocationGovernance;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\PermissionMiddleware;
 use App\Models\User;
+use App\Models\UserExperience;
 use App\Services\LocationGovernance\LocationProposalService;
 use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\Support\LocationGovernance\LocationFixture;
 use Tests\TestCase;
 
@@ -29,6 +31,105 @@ class DeepPendingResidenceEntryPointsTest extends TestCase
             AdminMiddleware::class,
             PermissionMiddleware::class,
         ]);
+    }
+
+    public function test_password_login_does_not_send_canonical_member_without_legacy_address_back_to_step3(): void
+    {
+        $user = User::factory()->create([
+            'password' => Hash::make('known-password'),
+            'national_id' => 'T' . fake()->unique()->numerify('#########'),
+        ]);
+        $experience = \App\Models\ExperienceField::query()->create([
+            'name' => 'Login canonical experience',
+            'status' => 1,
+        ]);
+        \Illuminate\Support\Facades\DB::table('user_experience_field')->insert([
+            'user_id' => $user->id,
+            'experience_field_id' => $experience->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $schema = LocationFixture::iranSchema();
+        $residence = LocationFixture::createPath(
+            $schema,
+            ['country', 'province', 'county', 'section', 'city']
+        )->last();
+        app(ResidenceService::class)->setInitialPrimaryResidence($user, $residence, ['source' => 'test']);
+
+        $this->assertDatabaseMissing('addresses', ['user_id' => $user->id]);
+
+        $this->post('/login', [
+            'email' => $user->email,
+            'password' => 'known-password',
+        ])->assertRedirect('/home');
+    }
+
+    public function test_google_completion_gate_accepts_canonical_residence_without_legacy_address(): void
+    {
+        $user = User::factory()->create([
+            'national_id' => 'G' . fake()->unique()->numerify('#########'),
+            'password' => Hash::make('known-password'),
+        ]);
+        $experience = \App\Models\ExperienceField::query()->create([
+            'name' => 'Google canonical experience',
+            'status' => 1,
+        ]);
+        \Illuminate\Support\Facades\DB::table('user_experience_field')->insert([
+            'user_id' => $user->id,
+            'experience_field_id' => $experience->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $schema = LocationFixture::iranSchema();
+        $residence = LocationFixture::createPath(
+            $schema,
+            ['country', 'province', 'county', 'section', 'city']
+        )->last();
+        app(ResidenceService::class)->setInitialPrimaryResidence($user, $residence, ['source' => 'test']);
+
+        $this->assertDatabaseMissing('addresses', ['user_id' => $user->id]);
+
+        $controller = app(\App\Http\Controllers\Auth\GoogleController::class);
+        $method = new \ReflectionMethod($controller, 'getIncompleteStep');
+        $method->setAccessible(true);
+
+        $this->assertNull($method->invoke($controller, $user));
+    }
+
+    public function test_profile_reputation_dry_run_counts_canonical_member_without_legacy_address(): void
+    {
+        $user = User::factory()->create([
+            'first_name' => 'Canonical',
+            'last_name' => 'Member',
+            'gender' => 'male',
+            'national_id' => 'R' . fake()->unique()->numerify('#########'),
+            'phone' => '09' . fake()->unique()->numerify('#########'),
+        ]);
+        $experience = \App\Models\ExperienceField::query()->create([
+            'name' => 'Reputation canonical experience',
+            'status' => 1,
+        ]);
+        \Illuminate\Support\Facades\DB::table('user_experience_field')->insert([
+            'user_id' => $user->id,
+            'experience_field_id' => $experience->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $schema = LocationFixture::iranSchema();
+        $residence = LocationFixture::createPath(
+            $schema,
+            ['country', 'province', 'county', 'section', 'city']
+        )->last();
+        app(ResidenceService::class)->setInitialPrimaryResidence($user, $residence, ['source' => 'test']);
+
+        $this->assertDatabaseMissing('addresses', ['user_id' => $user->id]);
+
+        $this->artisan('reputation:backfill-profile', ['--dry-run' => true])
+            ->expectsOutputToContain('Eligible users: 1')
+            ->assertSuccessful();
     }
 
     public function test_registration_accepts_deepest_pending_proposal_and_keeps_nearest_canonical_anchor(): void

@@ -5,6 +5,7 @@ namespace App\Services\LocationGovernance;
 use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\Location;
 use App\Models\LocationProposal;
+use App\Models\Setting;
 use App\Models\LocationType;
 use App\Models\User;
 use DomainException;
@@ -108,6 +109,35 @@ class LocationProposalService
         ]);
     }
 
+    public function rename(LocationProposal $proposal, User $reviewer, string $canonicalName, string $reason): void
+    {
+        $this->guardOpen($proposal);
+
+        $canonicalName = $this->canonicalName(['canonical_name' => $canonicalName]);
+        $normalizedName = $this->duplicateDetector->normalizeName($canonicalName);
+        $reason = trim($reason);
+        if ($reason === '') {
+            throw new DomainException('A review reason is required when renaming a location proposal.');
+        }
+
+        $proposal->refresh();
+        $fromName = $proposal->canonical_name;
+        $audit = $proposal->audit_log ?? [];
+        $audit[] = [
+            'action' => 'rename',
+            'actor_user_id' => $reviewer->id,
+            'reason' => $reason,
+            'from_name' => $fromName,
+            'to_name' => $canonicalName,
+            'at' => now()->toIso8601String(),
+        ];
+
+        $proposal->canonical_name = $canonicalName;
+        $proposal->normalized_name = $normalizedName;
+        $proposal->audit_log = $audit;
+        $proposal->save();
+    }
+
     public function support(LocationProposal $proposal, User $user, array $evidence): void
     {
         $this->guardOpen($proposal);
@@ -115,7 +145,7 @@ class LocationProposalService
         DB::transaction(function () use ($proposal, $user, $evidence): void {
             $proposal->evidence()->updateOrCreate(['user_id' => $user->id], ['evidence' => $evidence]);
             $proposal->refresh();
-            $threshold = max(1, (int) config('location-governance.location_proposal_verification_threshold', 10));
+            $threshold = max(1, (int) (Setting::singleton()->location_proposal_verification_threshold ?? config('location-governance.location_proposal_verification_threshold', 10)));
             $distinctVerifiers = $proposal->evidence()->distinct()->count('user_id');
 
             if ($proposal->status === LocationProposalStatus::Pending && $distinctVerifiers >= $threshold) {

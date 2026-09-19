@@ -9,6 +9,7 @@ import {
     pickerLevelLabel,
     selectionValues,
     shouldRenderNextLevel,
+    locationDisplayLabel,
 } from '../../../resources/js/location-selector.js';
 
 const selectorSource = () => [
@@ -139,4 +140,53 @@ test('cancelling a proposal panel is side-effect free and cannot synthesize pend
     const source = readFileSync(new URL('../../../resources/js/location-selector.js', import.meta.url), 'utf8');
     assert.doesNotMatch(source, /new MutationObserver\s*\(/, 'panel visibility must not be used as a proxy for proposal creation');
     assert.match(source, /location-proposal-created/, 'deeper traversal must react only to an explicit successful proposal-created event');
+});
+
+test('structural residence payload stays separate from project scope and uses localized claim copy', () => {
+    const normalized = normalizePickerPayload({
+        data: [], proposals: [], allowed_types: [],
+        effective_allowed_types: [{ id: 31, key: 'street', label: 'خیابان', proposal_allowed: true }],
+        structural_choices: [{ claim_type: 'no_neighborhood', status: 'pending', claim_id: 8 }],
+        official_governance_base: false,
+    });
+    assert.deepEqual(normalized.effectiveAllowedTypes.map((type) => type.key), ['street']);
+    assert.equal(normalized.structuralChoices[0].claim_type, 'no_neighborhood');
+    const scoped = projectScopePayload(normalized);
+    assert.deepEqual(scoped.structuralChoices, []);
+    assert.deepEqual(scoped.effectiveAllowedTypes, []);
+    const source = selectorSource();
+    assert.match(source, /محله|منطقه شهری/);
+    assert.doesNotMatch(source, />\s*(?:neighborhood|street|alley|building|complex)\s*</);
+});
+
+test('single proposal type does not render a redundant visible type selector', () => {
+    const source = readFileSync(new URL('../../../resources/js/location-selector-core.js', import.meta.url), 'utf8');
+    assert.match(source, /proposableTypes\.length\s*===\s*1/);
+    assert.match(source, /typeSelect\.classList\.add\(['"]d-none['"]\)|typeSelect\.hidden\s*=\s*true/);
+});
+
+test('breadcrumb uses typed display labels across the full residence path', () => {
+    const source = selectorSource();
+    assert.match(source, /displayLocationLabel|locationDisplayLabel/);
+    assert.match(source, /data-location-path|locationPath/);
+    assert.match(source, /TYPE_LABELS/);
+});
+
+test('residence selector renders and submits structural choices without leaking them into project scope', () => {
+    const source = selectorSource();
+    assert.match(source, /structuralChoices/);
+    assert.match(source, /locations\/structure-claims/);
+    assert.match(source, /single_urban_region/);
+    assert.match(source, /no_urban_region/);
+    assert.match(source, /single_neighborhood/);
+    assert.match(source, /no_neighborhood/);
+    assert.match(source, /effectiveAllowedTypes/);
+});
+
+
+test('typed breadcrumb normalizes urban region wording and avoids duplicate prefixes', () => {
+    assert.equal(locationDisplayLabel({ type_key: 'urban_region', label: '۶' }), 'منطقه ۶');
+    assert.equal(locationDisplayLabel({ type_key: 'urban_region', label: 'منطقه شهری ۶' }), 'منطقه ۶');
+    assert.equal(locationDisplayLabel({ type_key: 'province', label: 'استان مازندران' }), 'استان مازندران');
+    assert.equal(locationDisplayLabel({ type_key: 'street', label: 'الف' }), 'خیابان الف');
 });

@@ -2,10 +2,14 @@
 
 use App\Http\Controllers\Location\LocationProposalController;
 use App\Http\Controllers\LocationGovernance\LocationOptionsController;
+use App\Http\Controllers\LocationGovernance\LocationStructureClaimController;
 use App\Http\Middleware\Authenticate;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(Authenticate::class)->group(function () {
+    Route::post('/locations/structure-claims', [LocationStructureClaimController::class, 'store'])
+        ->name('locations.structure-claims.store');
+
     Route::post('/locations/proposals', [LocationProposalController::class, 'store'])
         ->name('locations.proposals.store');
 

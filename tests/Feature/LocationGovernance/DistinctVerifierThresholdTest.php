@@ -3,6 +3,7 @@
 namespace Tests\Feature\LocationGovernance;
 
 use App\Enums\LocationGovernance\LocationProposalStatus;
+use App\Models\Setting;
 use App\Models\LocationProposal;
 use App\Models\User;
 use App\Services\LocationGovernance\LocationProposalService;
@@ -16,7 +17,7 @@ class DistinctVerifierThresholdTest extends TestCase
 
     public function test_same_user_cannot_inflate_verification_count_and_threshold_only_marks_ready_for_review(): void
     {
-        config(['location-governance.location_proposal_verification_threshold' => 3]);
+        Setting::singleton()->forceFill(['location_proposal_verification_threshold' => 3])->save();
 
         $schema = LocationFixture::iranSchema();
         $parent = LocationFixture::createPath($schema, [
