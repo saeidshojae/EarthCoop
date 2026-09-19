@@ -181,3 +181,11 @@ test('residence selector renders and submits structural choices without leaking 
     assert.match(source, /no_neighborhood/);
     assert.match(source, /effectiveAllowedTypes/);
 });
+
+
+test('typed breadcrumb normalizes urban region wording and avoids duplicate prefixes', () => {
+    assert.equal(locationDisplayLabel({ type_key: 'urban_region', label: '۶' }), 'منطقه ۶');
+    assert.equal(locationDisplayLabel({ type_key: 'urban_region', label: 'منطقه شهری ۶' }), 'منطقه ۶');
+    assert.equal(locationDisplayLabel({ type_key: 'province', label: 'استان مازندران' }), 'استان مازندران');
+    assert.equal(locationDisplayLabel({ type_key: 'street', label: 'الف' }), 'خیابان الف');
+});
