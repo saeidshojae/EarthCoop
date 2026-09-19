@@ -166,7 +166,7 @@ class LocationGovernanceController extends Controller
             throw ValidationException::withMessages(['proposal' => $exception->getMessage()]);
         }
 
-        return $this->reviewResponse($request, 'نام پیشنهاد با ثبت سابقهٔ بازبینی اصلاح شد.');
+        return $this->reviewResponse($request, $locationProposal->fresh());
     }
 
     public function approve(
