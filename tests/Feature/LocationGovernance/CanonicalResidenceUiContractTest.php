@@ -102,4 +102,21 @@ class CanonicalResidenceUiContractTest extends TestCase
         $this->assertStringContainsString('LocationDisplayName::typed($proposal)', $profile);
     }
 
+
+    public function test_canonical_residence_forms_carry_structural_claim_ids_without_changing_visible_layout(): void
+    {
+        $registration = file_get_contents(resource_path('views/auth/register_step3_canonical.blade.php'));
+        $profile = file_get_contents(resource_path('views/profile/partials/location_canonical.blade.php'));
+
+        foreach ([$registration, $profile] as $view) {
+            $this->assertStringContainsString('name="location_structure_claim_ids[]"', $view);
+            $this->assertStringContainsString('data-location-structure-claim-id', $view);
+            $this->assertStringContainsString('type="hidden"', $view);
+        }
+
+        $selector = file_get_contents(resource_path('js/location-selector-core.js'));
+        $this->assertStringContainsString('data-location-structure-claim-id', $selector);
+        $this->assertStringContainsString('result.claim_id', $selector);
+    }
+
 }
