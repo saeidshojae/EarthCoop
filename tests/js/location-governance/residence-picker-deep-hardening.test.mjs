@@ -14,7 +14,7 @@ const uxSource = fs.readFileSync(new URL('../../../resources/js/registration-loc
 test('known residence type keys render Persian labels for fa locale', () => {
   const expected = {
     country: 'کشور', province: 'استان / ایالت', county: 'شهرستان / ناحیه', section: 'بخش', city: 'شهر',
-    rural_district: 'دهستان', village: 'روستا', urban_region: 'منطقه شهری', neighborhood: 'محله',
+    rural_district: 'دهستان', village: 'روستا', urban_region: 'منطقه', neighborhood: 'محله',
     street: 'خیابان', alley: 'کوچه', complex: 'مجتمع', building: 'ساختمان',
   };
   for (const [key, label] of Object.entries(expected)) {
