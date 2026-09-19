@@ -67,6 +67,38 @@ class DeepProposalReviewWorkflowTest extends TestCase
         $response->assertSee('در انتظار بررسی');
     }
 
+    public function test_admin_queue_renders_dedicated_full_path_and_audited_rename_form_for_each_proposal(): void
+    {
+        [$parentProposal, $childProposal, $anchor] = $this->makeDeepProposalScenario();
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $response = $this->actingAs($admin)->get(route('admin.location-governance.index'));
+
+        $response->assertOk()
+            ->assertSee('data-proposal-path="'.$childProposal->id.'"', false)
+            ->assertSee('data-proposal-rename-form="'.$childProposal->id.'"', false)
+            ->assertSee('action="'.route('admin.location-governance.proposals.update', $childProposal).'"', false)
+            ->assertSee('name="canonical_name"', false)
+            ->assertSee('name="reason"', false);
+
+        $html = $response->getContent();
+        $pathStart = strpos($html, 'data-proposal-path="'.$childProposal->id.'"');
+        $pathEnd = strpos($html, '</div>', $pathStart);
+        $this->assertNotFalse($pathStart);
+        $this->assertNotFalse($pathEnd);
+        $pathHtml = substr($html, $pathStart, $pathEnd - $pathStart);
+
+        $canonicalPath = [];
+        for ($location = $anchor; $location !== null; $location = $location->parent()->first()) {
+            $canonicalPath[] = $location->canonical_name;
+        }
+        foreach (array_reverse($canonicalPath) as $name) {
+            $this->assertStringContainsString($name, $pathHtml);
+        }
+        $this->assertStringContainsString($parentProposal->canonical_name, $pathHtml);
+        $this->assertStringContainsString($childProposal->canonical_name, $pathHtml);
+    }
+
     public function test_admin_can_rename_open_proposal_and_change_is_audited_without_resolving_it(): void
     {
         [$proposal] = $this->makeDeepProposalScenario();
