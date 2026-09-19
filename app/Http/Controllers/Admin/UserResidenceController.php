@@ -85,6 +85,8 @@ final class UserResidenceController extends Controller
                         $location,
                         $actor,
                         $reason,
+                        false,
+                        $structuralClaims,
                     );
                 } else {
                     $residenceService->clearPendingResidenceIntent($user, 'approved_location_selected_by_admin');
