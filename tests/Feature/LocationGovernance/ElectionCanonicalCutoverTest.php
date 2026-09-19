@@ -53,18 +53,7 @@ class ElectionCanonicalCutoverTest extends TestCase
         $this->assertTrue($resolver->sameTrack($child, $parent));
         $this->assertSame(1, $resolver->effectiveStructuralChildCount($parent));
         $this->assertTrue($resolver->isSoleStructuralConstituency($child, $parent));
-        private function canonicalPublicGroup(GovernanceArea $area, string $name): Group
-    {
-        return Group::create([
-            'name' => $name,
-            'group_type' => 0,
-            'governance_area_id' => $area->id,
-            'dimension_key' => 'public',
-            'dimension_value_key' => 'public',
-        ]);
     }
-
-}
 
     public function test_canonical_formal_hierarchy_excludes_community_and_inactive_children(): void
     {
@@ -205,5 +194,15 @@ class ElectionCanonicalCutoverTest extends TestCase
             'location_level' => 'city',
             'experience_id' => 22,
         ])));
+    }
+    private function canonicalPublicGroup(GovernanceArea $area, string $name): Group
+    {
+        return Group::create([
+            'name' => $name,
+            'group_type' => 0,
+            'governance_area_id' => $area->id,
+            'dimension_key' => 'public',
+            'dimension_value_key' => 'public',
+        ]);
     }
 }
