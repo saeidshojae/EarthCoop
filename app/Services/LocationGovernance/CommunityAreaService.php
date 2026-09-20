@@ -68,6 +68,21 @@ class CommunityAreaService
         });
     }
 
+    public function ensureMembership(GovernanceArea $area, User $user): ?Group
+    {
+        $location = $area->locations()->where('locations.status', 'active')->first();
+        if ($location === null || ! $this->creationPolicy->mayCreateFor($location, $user)) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($area, $user): Group {
+            $group = $this->materializePublicAssembly($area);
+            $this->activateMembership($group, $user);
+
+            return $group;
+        });
+    }
+
     public function publicAssemblyFor(GovernanceArea $area): ?Group
     {
         if ($area->area_kind !== 'community') {
