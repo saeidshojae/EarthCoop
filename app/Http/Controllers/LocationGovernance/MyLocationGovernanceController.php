@@ -4,6 +4,7 @@ namespace App\Http\Controllers\LocationGovernance;
 
 use App\Http\Controllers\Controller;
 use App\Models\GovernanceArea;
+use App\Services\LocationGovernance\CommunityAreaService;
 use App\Services\LocationGovernance\CommunityCreationPolicy;
 use App\Services\LocationGovernance\LocationTreeResolver;
 use App\Services\LocationGovernance\ResidenceService;
