@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\LocationGovernance;
 
+use App\Models\GovernanceArea;
 use App\Models\LocationStructureClaim;
 use App\Models\User;
+use App\Services\LocationGovernance\GovernanceResolver;
 use App\Services\LocationGovernance\LocationStructureClaimPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\LocationFixture;
@@ -90,4 +92,35 @@ class LocationStructureClaimPolicyTest extends TestCase
 
         $this->assertSame(['street'], $policy->effectiveChildTypeCodes($city, $claims));
     }
+    public function test_pending_structural_claim_does_not_create_or_replace_official_governance_topology(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $user = User::factory()->create();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $street = LocationFixture::createPath($schema, ['country','province','county','section','city','urban_region','neighborhood','street'])->last();
+        $area = GovernanceArea::create([
+            'key' => 'test-city-official',
+            'country_code' => 'IR',
+            'governance_type' => 'city',
+            'area_kind' => 'official',
+            'canonical_name' => 'Test City',
+            'rank' => 500,
+            'status' => 'active',
+        ]);
+        $area->locations()->attach($city->id);
+
+        LocationStructureClaim::create([
+            'location_id' => $city->id,
+            'claim_type' => 'no_urban_region',
+            'status' => 'pending',
+            'proposer_user_id' => $user->id,
+        ]);
+
+        $resolver = app(GovernanceResolver::class);
+
+        $this->assertSame($area->id, $resolver->baseOfficialAreaForResidence($street)?->id);
+        $this->assertSame(1, GovernanceArea::query()->where('area_kind', 'official')->count());
+        $this->assertSame([$area->id], $city->governanceAreas()->official()->pluck('governance_areas.id')->all());
+    }
+
 }
