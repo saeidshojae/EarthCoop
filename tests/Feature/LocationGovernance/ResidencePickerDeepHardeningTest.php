@@ -211,4 +211,33 @@ class ResidencePickerDeepHardeningTest extends TestCase
             'canonical_name' => 'والد مبهم',
         ])->assertUnprocessable();
     }
+
+    public function test_direct_street_proposal_under_city_requires_complete_structural_claim_chain(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city'])->last();
+        $streetType = $schema->types->firstWhere('key', 'street');
+        $user = User::factory()->create();
+        $claimService = app(\App\Services\LocationGovernance\LocationStructureClaimService::class);
+
+        $noRegion = $claimService->findOrCreateOpenClaim($user, $city, 'no_urban_region');
+        $noNeighborhood = $claimService->findOrCreateOpenClaim($user, $city, 'no_neighborhood', [$noRegion]);
+
+        $this->actingAs($user)->postJson('/locations/proposals', [
+            'parent_location_id' => $city->id,
+            'location_type_id' => $streetType->id,
+            'canonical_name' => 'خیابان مستقیم بدون ادعا',
+        ])->assertStatus(422);
+
+        $response = $this->actingAs($user)->postJson('/locations/proposals', [
+            'parent_location_id' => $city->id,
+            'location_type_id' => $streetType->id,
+            'canonical_name' => 'خیابان مستقیم ساختاری',
+            'location_structure_claim_ids' => [$noRegion->id, $noNeighborhood->id],
+        ])->assertSuccessful()->assertJsonPath('kind', 'proposal');
+
+        $proposal = \App\Models\LocationProposal::query()->findOrFail((int) $response->json('id'));
+        $this->assertSame([$noRegion->id, $noNeighborhood->id], $proposal->metadata['structural_claim_ids']);
+    }
+
 }
