@@ -7,6 +7,7 @@ use App\Models\GovernanceCapabilityPolicy;
 use App\Models\User;
 use App\Services\LocationGovernance\CommunityAreaService;
 use App\Services\LocationGovernance\GovernanceCapabilityResolver;
+use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\LocationFixture;
 use Tests\TestCase;
@@ -41,6 +42,7 @@ class CommunityAreaCreationTest extends TestCase
         $official->locations()->attach($neighborhood->id);
 
         $actor = User::factory()->create();
+        app(ResidenceService::class)->setInitialPrimaryResidence($actor, $complex, ['source' => 'test']);
         $service = app(CommunityAreaService::class);
 
         $first = $service->createFor($complex, $actor);
@@ -88,7 +90,9 @@ class CommunityAreaCreationTest extends TestCase
             ],
         ]);
 
-        $community = app(CommunityAreaService::class)->createFor($complex, User::factory()->create());
+        $actor = User::factory()->create();
+        app(ResidenceService::class)->setInitialPrimaryResidence($actor, $complex, ['source' => 'test']);
+        $community = app(CommunityAreaService::class)->createFor($complex, $actor);
         $capabilities = app(GovernanceCapabilityResolver::class)->capabilities($community);
 
         $this->assertSame('community', $community->governance_type);
