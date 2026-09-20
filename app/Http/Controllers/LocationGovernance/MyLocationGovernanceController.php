@@ -25,6 +25,7 @@ final class MyLocationGovernanceController extends Controller
         Request $request,
         ResidenceService $residenceService,
         CommunityCreationPolicy $communityCreationPolicy,
+        CommunityAreaService $communityAreaService,
         LocationTreeResolver $locationTreeResolver,
     ): View {
         abort_unless((bool) config('location-governance.runtime_enabled'), 404);
@@ -85,6 +86,7 @@ final class MyLocationGovernanceController extends Controller
             return [
                 'location' => $location,
                 'community' => $community,
+                'group' => $community !== null ? $communityAreaService->publicAssemblyFor($community) : null,
                 'can_create' => $community === null
                     && $pendingResidenceIntent === null
                     && $communityCreationPolicy->mayCreateFor($location, $user),
