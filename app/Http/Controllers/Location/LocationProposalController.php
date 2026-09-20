@@ -64,10 +64,9 @@ class LocationProposalController extends Controller
             }
             if ($structuralClaims->contains(fn (LocationStructureClaim $claim): bool =>
                 (int) $claim->location_id !== (int) $parent->id
-                || (int) $claim->proposer_user_id !== (int) $request->user()->id
             )) {
                 throw ValidationException::withMessages([
-                    'location_structure_claim_ids' => 'Structural claims must belong to this location and the current user.',
+                    'location_structure_claim_ids' => 'Structural claims must belong to the selected parent location.',
                 ]);
             }
 
