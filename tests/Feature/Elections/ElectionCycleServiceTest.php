@@ -31,6 +31,32 @@ class ElectionCycleServiceTest extends TestCase
         $this->assertSame(0, Election::where('group_id', $group->id)->count());
     }
 
+    public function test_temporary_active_members_do_not_count_toward_systemic_election_threshold(): void
+    {
+        [$group] = $this->configuredGroup(2);
+        $active = $this->addActiveMember($group);
+        $temporary = User::factory()->create(['is_system' => false]);
+        GroupUser::create([
+            'group_id' => $group->id,
+            'user_id' => $temporary->id,
+            'role' => 5,
+            'status' => 1,
+        ]);
+
+        $this->assertNull(app(ElectionCycleService::class)->ensureForGroup($group));
+        $this->assertSame(0, Election::where('group_id', $group->id)->count());
+
+        $secondActive = $this->addActiveMember($group);
+        $election = app(ElectionCycleService::class)->ensureForGroup($group);
+
+        $this->assertNotNull($election);
+        $this->assertEqualsCanonicalizing(
+            [$active->id, $secondActive->id],
+            Candidate::where('election_id', $election->id)->pluck('user_id')->map(fn ($id) => (int) $id)->all(),
+        );
+        $this->assertFalse(Candidate::where('election_id', $election->id)->where('user_id', $temporary->id)->exists());
+    }
+
     public function test_threshold_reached_creates_and_opens_exactly_one_cycle(): void
     {
         [$group] = $this->configuredGroup(2);
