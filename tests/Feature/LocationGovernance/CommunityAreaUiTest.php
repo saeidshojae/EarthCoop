@@ -117,7 +117,7 @@ class CommunityAreaUiTest extends TestCase
         $oldArea = app(CommunityAreaService::class)->createFor($oldComplex, $user);
         $oldGroup = app(CommunityAreaService::class)->publicAssemblyFor($oldArea);
 
-        $schema = LocationFixture::iranSchema();
+        $schema = $oldComplex->type->schemas()->where('location_schemas.status', 'active')->firstOrFail();
         $newPath = LocationFixture::createPath($schema, [
             'country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood', 'street', 'complex',
         ], ['ایران دوم', 'استان دوم', 'شهرستان دوم', 'بخش دوم', 'شهر دوم', 'منطقه دوم', 'محله دوم', 'خیابان دوم', 'مجتمع دوم']);
