@@ -76,9 +76,10 @@ class ElectionEligibilitySnapshotServiceTest extends TestCase
             $this->assertDatabaseHas('election_eligibility_snapshots', [
                 'election_id' => $election->id,
                 'user_id' => $officeHolder->id,
-                'voter_eligible' => 0,
-                'selectable_eligible' => 0,
-                'voter_exclusion_reason' => 'non_elector_role',
+                'voter_eligible' => 1,
+                'selectable_eligible' => 1,
+                'voter_exclusion_reason' => null,
+                'selectable_exclusion_reason' => null,
             ]);
         }
         $this->assertDatabaseHas('election_eligibility_snapshots', [
