@@ -9,6 +9,7 @@ use App\Models\LocationSchema;
 use App\Models\User;
 use App\Services\LocationGovernance\CommunityAreaService;
 use App\Services\LocationGovernance\LocationProposalService;
+use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\LocationGovernance\LocationFixture;
@@ -148,6 +149,7 @@ class LocationGovernanceControlCenterTest extends TestCase
         ]);
         $official->locations()->attach($neighborhood->id);
 
+        app(ResidenceService::class)->setInitialPrimaryResidence($admin, $complex, ['source' => 'control-center-test']);
         $community = app(CommunityAreaService::class)->createFor($complex, $admin);
         $this->makeProposal('پیشنهاد سلامت کنترل', $schema);
 
