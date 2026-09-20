@@ -26,6 +26,19 @@ class ElectionCycleService
             $lockedGroup = Group::query()->lockForUpdate()->findOrFail($group->getKey());
             $attributes = $lockedGroup->getAttributes();
 
+            if ((bool) config('location-governance.elections_enabled', false)) {
+                $lockedGroup->loadMissing('governanceArea');
+                $area = $lockedGroup->governanceArea;
+
+                if ($area === null
+                    || $area->area_kind !== 'official'
+                    || $area->status !== 'active'
+                    || empty($attributes['dimension_key'])
+                    || empty($attributes['dimension_value_key'])) {
+                    return [null, false, false];
+                }
+            }
+
             if (($attributes['group_type'] ?? null) === 'private') {
                 return [null, false, false];
             }
