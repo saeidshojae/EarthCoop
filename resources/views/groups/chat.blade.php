@@ -42,7 +42,7 @@ $roleTitle = match($roleValue) {
 2 => 'بازرس',
 3 => 'مدیر',
 4 => 'مهمان',
-5 => 'فعال ۲',
+5 => 'فعال موقت',
 default => 'عضو'
 };
 $membershipStatusLabel = (int)($pivotUser?->status ?? 0) === 1 ? 'فعال' : 'غیرفعال';
