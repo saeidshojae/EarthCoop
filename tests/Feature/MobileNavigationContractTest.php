@@ -158,7 +158,7 @@ class MobileNavigationContractTest extends TestCase
         $this->assertStringContainsString("route('location-governance.me')", $drawer);
         $this->assertStringContainsString('مکان و حکمرانی من', $drawer);
         $this->assertStringContainsString('CanonicalGroupMembershipReconciler', $drawer);
-        $this->assertStringContainsString("whereIn('groups.id', $mobileMaterializedGroupIds->all())", $drawer);
+        $this->assertStringContainsString("whereIn('groups.id', \$mobileMaterializedGroupIds->all())", $drawer);
         $this->assertStringContainsString("wherePivot('status', 1)", $drawer);
     }
 
