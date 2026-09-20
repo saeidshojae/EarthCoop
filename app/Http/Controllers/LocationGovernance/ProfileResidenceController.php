@@ -95,6 +95,7 @@ final class ProfileResidenceController extends Controller
             $locationTreeResolver,
             $residenceService,
             $proposalPolicy,
+            $structuralClaims,
         ): void {
             $proposal = LocationProposal::query()
                 ->with(['parentLocation', 'parentProposal', 'type'])
@@ -116,7 +117,7 @@ final class ProfileResidenceController extends Controller
             $type = $proposal->type;
             $parentProposal = $proposal->parentProposal;
             $proposalPathAllowed = $proposal->parent_location_id !== null
-                ? ($anchor !== null && $type !== null && $proposalPolicy->allows($anchor, $type))
+                ? ($anchor !== null && $type !== null && $proposalPolicy->allowsForResidence($anchor, $type, $structuralClaims))
                 : ($parentProposal !== null && $type !== null && $proposalPolicy->allowsProposalParent($parentProposal, $type));
 
             if (
@@ -143,13 +144,15 @@ final class ProfileResidenceController extends Controller
                 $residenceService->setInitialPrimaryResidence($user, $anchor, [
                     'source' => 'profile_pending_residence_anchor',
                     'location_proposal_id' => $proposal->id,
-                ]);
+                ], $structuralClaims);
             } elseif ((int) $current->location_id !== (int) $anchor->id) {
                 $residenceService->transferPrimaryResidence(
                     $user,
                     $anchor,
                     $user,
                     'profile_pending_residence_anchor',
+                    false,
+                    $structuralClaims,
                 );
             }
 
