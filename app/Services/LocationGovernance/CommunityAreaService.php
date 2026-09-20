@@ -31,6 +31,11 @@ class CommunityAreaService
                 ->first();
 
             if ($existing !== null) {
+                // Creation is an explicit opt-in action. Reusing an existing
+                // community through this action must therefore also join the actor.
+                $group = $this->materializePublicAssembly($existing);
+                $this->activateMembership($group, $actor);
+
                 return $existing;
             }
 
@@ -69,7 +74,82 @@ class CommunityAreaService
     }
 
 
+    /**
+     * Reconcile eligibility only. Community membership is opt-in and is never
+     * activated merely because a residence is registered or changed.
+     *
+     * Active memberships that no longer belong to the user's current residence
+     * path are deactivated; eligible memberships already chosen by the user stay
+     * untouched.
+     *
+     * @return array<int>
+     */
     public function reconcileMembershipsFor(User $user): array
+    {
+        $eligibleLocationIds = $this->eligibleLocationIdsFor($user);
+
+        $eligibleGroupIds = $eligibleLocationIds === [] ? [] : Group::query()
+            ->where('dimension_key', 'public')
+            ->where('dimension_value_key', 'public')
+            ->whereHas('governanceArea', function ($query) use ($eligibleLocationIds): void {
+                $query->where('area_kind', 'community')
+                    ->where('status', 'active')
+                    ->whereHas('locations', fn ($locations) => $locations->whereIn('locations.id', $eligibleLocationIds));
+            })
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $stale = GroupUser::query()
+            ->where('user_id', $user->id)
+            ->where('status', 1)
+            ->whereHas('group.governanceArea', fn ($query) => $query->where('area_kind', 'community'));
+
+        if ($eligibleGroupIds !== []) {
+            $stale->whereNotIn('group_id', $eligibleGroupIds);
+        }
+
+        $stale->update(['status' => 0, 'updated_at' => now()]);
+
+        return $eligibleGroupIds;
+    }
+
+    public function join(GovernanceArea $area, User $user): Group
+    {
+        $location = $area->locations()->where('locations.status', 'active')->first();
+        if ($area->area_kind !== 'community'
+            || $area->status !== 'active'
+            || $location === null
+            || ! $this->creationPolicy->mayCreateFor($location, $user)) {
+            throw new DomainException('User is not eligible to join this community.');
+        }
+
+        return DB::transaction(function () use ($area, $user): Group {
+            $group = $this->materializePublicAssembly($area);
+            $this->activateMembership($group, $user);
+
+            return $group;
+        });
+    }
+
+    public function leave(GovernanceArea $area, User $user): void
+    {
+        if ($area->area_kind !== 'community') {
+            throw new DomainException('Only local community memberships can be left here.');
+        }
+
+        $group = $this->publicAssemblyFor($area);
+        if ($group === null) {
+            return;
+        }
+
+        GroupUser::query()
+            ->where('group_id', $group->id)
+            ->where('user_id', $user->id)
+            ->update(['status' => 0, 'updated_at' => now()]);
+    }
+
+    private function eligibleLocationIdsFor(User $user): array
     {
         $residenceId = \App\Models\UserLocationRelationship::query()
             ->where('user_id', $user->id)
@@ -78,45 +158,22 @@ class CommunityAreaService
             ->latest('started_at')
             ->value('location_id');
 
+        if ($residenceId === null) {
+            return [];
+        }
+
         $eligibleLocationIds = [];
-        if ($residenceId !== null) {
-            $cursor = Location::query()->find($residenceId);
-            $visited = [];
-            while ($cursor !== null && ! isset($visited[$cursor->id])) {
-                $visited[$cursor->id] = true;
-                if (in_array($cursor->type?->key, ['street', 'alley', 'complex', 'building'], true)) {
-                    $eligibleLocationIds[] = (int) $cursor->id;
-                }
-                $cursor = $cursor->parent_id !== null ? Location::query()->find($cursor->parent_id) : null;
+        $cursor = Location::query()->find($residenceId);
+        $visited = [];
+        while ($cursor !== null && ! isset($visited[$cursor->id])) {
+            $visited[$cursor->id] = true;
+            if (in_array($cursor->type?->key, ['street', 'alley', 'complex', 'building'], true)) {
+                $eligibleLocationIds[] = (int) $cursor->id;
             }
+            $cursor = $cursor->parent_id !== null ? Location::query()->find($cursor->parent_id) : null;
         }
 
-        $areas = $eligibleLocationIds === [] ? collect() : GovernanceArea::query()
-            ->where('area_kind', 'community')
-            ->where('status', 'active')
-            ->whereHas('locations', fn ($query) => $query->whereIn('locations.id', $eligibleLocationIds))
-            ->get();
-
-        $activeGroupIds = [];
-        foreach ($areas as $area) {
-            $group = $this->ensureMembership($area, $user);
-            if ($group !== null) {
-                $activeGroupIds[] = (int) $group->id;
-            }
-        }
-
-        $stale = GroupUser::query()
-            ->where('user_id', $user->id)
-            ->where('status', 1)
-            ->whereHas('group.governanceArea', fn ($query) => $query->where('area_kind', 'community'));
-
-        if ($activeGroupIds !== []) {
-            $stale->whereNotIn('group_id', $activeGroupIds);
-        }
-
-        $stale->update(['status' => 0]);
-
-        return $activeGroupIds;
+        return $eligibleLocationIds;
     }
 
     public function ensureMembership(GovernanceArea $area, User $user): ?Group
