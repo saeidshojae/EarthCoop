@@ -233,14 +233,34 @@ class ElectionProcessReviewService
 
     private function assertActiveGroupMember(Election $election, User $user): void
     {
-        $active = GroupUser::query()
+        if ((bool) $user->is_system) {
+            throw new RuntimeException('Only an eligible systemic elector may use the election review process.');
+        }
+
+        $snapshot = ElectionEligibilitySnapshot::query()
+            ->where('election_id', $election->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($snapshot !== null) {
+            if (! (bool) $snapshot->voter_eligible) {
+                throw new RuntimeException('Only an eligible systemic elector may use the election review process.');
+            }
+
+            return;
+        }
+
+        // Compatibility for historical elections that predate eligibility
+        // snapshots: only the canonical active-member role is electoral.
+        $eligible = GroupUser::query()
             ->where('group_id', $election->group_id)
             ->where('user_id', $user->id)
             ->where('status', 1)
-            ->where('role', '!=', 4)
+            ->where('role', 1)
             ->exists();
-        if (! $active || (bool) $user->is_system) {
-            throw new RuntimeException('Only an active group member may use the election review process.');
+
+        if (! $eligible) {
+            throw new RuntimeException('Only an eligible systemic elector may use the election review process.');
         }
     }
 
