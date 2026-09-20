@@ -195,8 +195,8 @@ class GlobalGroupRoleController extends Controller
         $rules = [
             'group_category' => ['required', Rule::in(['all', 'general', 'specialized', 'exclusive'])],
             'location_level' => ['nullable', Rule::in(self::LEVELS)],
-            'source_role' => ['required', 'integer', Rule::in([0, 1])],
-            'target_role' => ['required', 'integer', Rule::in([0, 1]), 'different:source_role'],
+            'source_role' => ['required', 'integer', Rule::in([0, 5])],
+            'target_role' => ['required', 'integer', Rule::in([0, 5]), 'different:source_role'],
         ];
         if ($withDuration) {
             $rules += [
@@ -206,6 +206,15 @@ class GlobalGroupRoleController extends Controller
         }
 
         $validated = $request->validate($rules);
+        if ((int) $validated['source_role'] === 0 && (int) $validated['target_role'] !== 5) {
+            abort(422, 'ناظر فقط می‌تواند به نقش فعال موقت ارتقا یابد.');
+        }
+        if ((int) $validated['source_role'] === 5 && (int) $validated['target_role'] !== 0) {
+            abort(422, 'فعال موقت فقط می‌تواند به نقش اصلی ناظر بازگردد.');
+        }
+        if ($withDuration && (int) $validated['target_role'] === 5 && $validated['duration_unit'] === 'unlimited') {
+            abort(422, 'نقش فعال موقت باید تاریخ انقضا داشته باشد.');
+        }
         if ($withDuration && $validated['duration_unit'] === 'month' && (int) $validated['duration_value'] > 12) {
             abort(422, 'مدت ماهانه حداکثر ۱۲ ماه است.');
         }
