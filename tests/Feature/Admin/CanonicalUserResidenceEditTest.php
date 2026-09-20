@@ -320,4 +320,48 @@ class CanonicalUserResidenceEditTest extends TestCase
 
         return [$target, $oldHome, $newHome];
     }
+    public function test_admin_can_preserve_structural_claims_when_selecting_direct_street_proposal(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, [
+            'country', 'province', 'county', 'section', 'city',
+        ])->last();
+        $streetType = $schema->types->firstWhere('key', 'street');
+        $target = User::factory()->create();
+        $admin = User::factory()->create();
+        $claimService = app(LocationStructureClaimService::class);
+
+        app(ResidenceService::class)->setInitialPrimaryResidence($target, $city, ['source' => 'test']);
+        $noRegion = $claimService->findOrCreateOpenClaim($city, 'no_urban_region', $target);
+        $noNeighborhood = $claimService->findOrCreateOpenClaim($city, 'no_neighborhood', $target);
+        $proposal = app(LocationProposalService::class)->propose($target, $city, $streetType, [
+            'canonical_name' => 'خیابان مستقیم مدیر',
+        ], [$noRegion, $noNeighborhood]);
+
+        $this->actingAs($admin)
+            ->from(route('admin.users.edit', $target))
+            ->put(route('admin.users.residence.update', $target), [
+                'location_proposal_id' => $proposal->id,
+                'location_structure_claim_ids' => [$noRegion->id, $noNeighborhood->id],
+                'reason' => 'ثبت مسیر ساختاری واقعی کاربر',
+            ])
+            ->assertRedirect(route('admin.users.edit', $target))
+            ->assertSessionHasNoErrors();
+
+        $current = $target->fresh()->locationRelationships()
+            ->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')
+            ->sole();
+
+        $this->assertSame($city->id, $current->location_id);
+        $this->assertSame(
+            [$noRegion->id, $noNeighborhood->id],
+            collect($current->metadata['structural_claim_ids'] ?? [])->map(fn ($id) => (int) $id)->values()->all()
+        );
+        $this->assertSame(
+            $proposal->id,
+            $target->fresh()->pendingResidenceIntents()->where('status', 'pending')->sole()->location_proposal_id
+        );
+    }
+
 }
