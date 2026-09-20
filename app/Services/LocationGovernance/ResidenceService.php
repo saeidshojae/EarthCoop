@@ -21,6 +21,7 @@ class ResidenceService
         private readonly ResidenceTransferPolicy $transferPolicy,
         private readonly GovernanceResolver $governanceResolver,
         private readonly CanonicalGroupMembershipReconciler $groupMembershipReconciler,
+        private readonly CommunityAreaService $communityAreaService,
     ) {
     }
 
@@ -389,6 +390,10 @@ class ResidenceService
     {
         if ((bool) config('location-governance.groups_enabled', false)) {
             $this->groupMembershipReconciler->reconcile($user);
+        }
+
+        if ((bool) config('location-governance.runtime_enabled', false)) {
+            $this->communityAreaService->reconcileMembershipsFor($user);
         }
     }
 }
