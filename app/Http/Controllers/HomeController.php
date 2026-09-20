@@ -32,10 +32,19 @@ class HomeController extends Controller
         
         
         // دریافت گروه‌ها از کاربر احراز هویت شده
-        $groups = auth()->user()->groups()
-            ->wherePivot('status', 1)
-            ->wherePivot('role', '!=', 0)
-            ->get();
+        $user = auth()->user();
+        if ((bool) config('location-governance.groups_enabled', false)) {
+            $materializedIds = collect(app(\App\Services\Groups\CanonicalGroupMembershipReconciler::class)->reconcile($user))
+                ->pluck('id')->filter()->values();
+            $groups = $materializedIds->isEmpty()
+                ? collect()
+                : $user->groups()
+                    ->whereIn('groups.id', $materializedIds->all())
+                    ->wherePivot('status', 1)
+                    ->get();
+        } else {
+            $groups = $user->groups()->wherePivot('status', 1)->get();
+        }
         
         // دسته‌بندی گروه‌ها بر اساس نوع
         // '0' = عمومی (general)
