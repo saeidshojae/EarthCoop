@@ -92,6 +92,28 @@ class ElectionCycleServiceTest extends TestCase
         );
     }
 
+    public function test_community_group_can_never_open_a_systemic_election_cycle(): void
+    {
+        config()->set('location-governance.elections_enabled', true);
+
+        $official = GovernanceArea::factory()->official()->create(['status' => 'active']);
+        $community = GovernanceArea::factory()->community()->create([
+            'status' => 'active',
+            'parent_id' => $official->id,
+        ]);
+
+        [$group] = $this->configuredGroup(1);
+        $group->update([
+            'governance_area_id' => $community->id,
+            'dimension_key' => 'public',
+            'dimension_value_key' => 'public',
+        ]);
+        $this->addActiveMember($group);
+
+        $this->assertNull(app(ElectionCycleService::class)->ensureForGroup($group->fresh()));
+        $this->assertSame(0, Election::where('group_id', $group->id)->count());
+    }
+
     public function test_threshold_reached_creates_and_opens_exactly_one_cycle(): void
     {
         [$group] = $this->configuredGroup(2);
