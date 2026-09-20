@@ -25,6 +25,7 @@ class MicroLocationWithoutCommunityTest extends TestCase
             'urban_region',
             'neighborhood',
             'street',
+            'alley',
             'complex',
             'building',
         ]);
@@ -56,9 +57,13 @@ class MicroLocationWithoutCommunityTest extends TestCase
 
         $actor = User::factory()->create();
         $city = $path->firstWhere('level', 'city');
+        $street = $path->firstWhere('level', 'street');
+        $alley = $path->firstWhere('level', 'alley');
         $complex = $path->firstWhere('level', 'complex');
         $policy = app(CommunityCreationPolicy::class);
 
+        $this->assertTrue($policy->mayCreateFor($street, $actor));
+        $this->assertTrue($policy->mayCreateFor($alley, $actor));
         $this->assertTrue($policy->mayCreateFor($complex, $actor));
         $this->assertFalse($policy->mayCreateFor($city, $actor));
 
