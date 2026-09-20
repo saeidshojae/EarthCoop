@@ -87,7 +87,7 @@
             <div class="panel-metrics__item">
                 <span class="panel-metrics__label">نقش شما</span>
                 <span class="panel-metrics__value panel-metrics__value--text">
-                    {{ match((int)$yourRole) { 0 => 'ناظر', 1 => 'فعال', 2 => 'بازرس', 3 => 'مدیر', 4 => 'مهمان', 5 => 'فعال ۲', default => 'عضو' } }}
+                    {{ match((int)$yourRole) { 0 => 'ناظر', 1 => 'فعال', 2 => 'بازرس', 3 => 'مدیر', 4 => 'مهمان', 5 => 'فعال موقت', default => 'عضو' } }}
                 </span>
             </div>
         </div>
@@ -266,7 +266,7 @@
                                     $locationLevel = strtolower(trim((string)($group2->location_level ?? '')));
                                     $finalRole = in_array($locationLevel, ['neighborhood','street','alley'], true) ? 1 : 0;
                                 }
-                                $memberRoleLabel = match($finalRole) { 0=>'ناظر',1=>'فعال',2=>'بازرس',3=>'مدیر',4=>'مهمان',5=>'فعال ۲',default=>'عضو' };
+                                $memberRoleLabel = match($finalRole) { 0=>'ناظر',1=>'فعال',2=>'بازرس',3=>'مدیر',4=>'مهمان',5=>'فعال موقت',default=>'عضو' };
                                 $profileUrl = $person?->id ? route('profile.member.show', $person->id) : '#';
                                 $isOnline = method_exists($person, 'isOnline') ? (bool)$person->isOnline() : false;
                             @endphp
@@ -426,7 +426,7 @@
                                     }
                                 }
                                 $specialtyApproved = !(($relatedGroup->specialty && (int)$relatedGroup->specialty->status === 0) || ($relatedGroup->experience && (int)$relatedGroup->experience->status === 0));
-                                $relatedRole = match((int)($pivot->role ?? 0)) { 0=>'ناظر',1=>'فعال',2=>'بازرس',3=>'مدیر',4=>'مهمان',5=>'فعال ۲',default=>'عضو' };
+                                $relatedRole = match((int)($pivot->role ?? 0)) { 0=>'ناظر',1=>'فعال',2=>'بازرس',3=>'مدیر',4=>'مهمان',5=>'فعال موقت',default=>'عضو' };
                             @endphp
                             @if($pivot)
                                 <div class="group-item" data-level="{{ $relatedGroup->location_level }}" data-group-id="{{ $relatedGroup->id }}">
