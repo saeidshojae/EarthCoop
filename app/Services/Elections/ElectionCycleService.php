@@ -60,7 +60,7 @@ class ElectionCycleService
                 ->join('users', 'users.id', '=', 'group_user.user_id')
                 ->where('group_user.group_id', $lockedGroup->id)
                 ->where('group_user.status', 1)
-                ->where('group_user.role', '>=', 1)
+                ->where('group_user.role', 1)
                 ->where('users.is_system', false);
 
             if ((clone $activeMemberQuery)->count() < $this->policyResolver->startThreshold($policy)) {
