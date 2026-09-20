@@ -53,6 +53,18 @@ class Kernel extends ConsoleKernel
         $schedule->command('auctions:close')->everyMinute();
         $schedule->command('group-chat:dispatch-outbox --limit=500')->everyMinute()->withoutOverlapping();
         $schedule->command('group-chat:activate-sessions')->everyMinute()->withoutOverlapping();
+        $schedule->call(function (): void {
+            \App\Models\GroupUser::query()
+                ->where('role_override_active', true)
+                ->whereNotNull('role_override_expires_at')
+                ->where('role_override_expires_at', '<=', now())
+                ->select('group_id')
+                ->distinct()
+                ->orderBy('group_id')
+                ->pluck('group_id')
+                ->each(fn ($groupId) => app(\App\Services\TemporaryGroupRoleService::class)
+                    ->restoreExpiredForGroup((int) $groupId));
+        })->name('group-roles:restore-expired-temporary')->everyMinute()->withoutOverlapping();
         $schedule->command('elections:process-lifecycle --limit=500 --fail-on-error')
             ->everyMinute()
             ->withoutOverlapping();
