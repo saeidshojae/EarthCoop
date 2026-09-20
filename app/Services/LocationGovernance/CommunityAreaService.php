@@ -169,6 +169,5 @@ class CommunityAreaService
             ['group_id' => $group->id, 'user_id' => $user->id],
             ['role' => 1, 'status' => 1, 'expired' => null, 'deleted_at' => null],
         );
-        });
     }
 }
