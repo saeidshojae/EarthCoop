@@ -68,7 +68,7 @@ class CommunityAreaUiTest extends TestCase
         $response->assertDontSee(route('location-governance.community.store', $complex), false);
     }
 
-    public function test_existing_community_auto_joins_another_resident_and_exposes_entry_action(): void
+    public function test_existing_community_suggests_opt_in_without_auto_join_and_explicit_join_exposes_entry_action(): void
     {
         [$creator, $complex] = $this->userAtComplexResidence();
         $area = app(CommunityAreaService::class)->createFor($complex, $creator);
@@ -80,17 +80,36 @@ class CommunityAreaUiTest extends TestCase
         $resident = User::factory()->create();
         app(ResidenceService::class)->setInitialPrimaryResidence($resident, $complex, ['source' => 'test']);
 
+        $this->assertFalse(GroupUser::query()
+            ->where('group_id', $group->id)
+            ->where('user_id', $resident->id)
+            ->exists());
+
         $response = $this->actingAs($resident)->get(route('location-governance.me'));
 
         $response->assertOk();
-        $response->assertSee(route('groups.show', $group), false);
-        $response->assertSee('data-community-enter-action', false);
+        $response->assertSee('data-community-join-action', false);
+        $response->assertDontSee('data-community-enter-action', false);
+        $this->assertFalse(GroupUser::query()
+            ->where('group_id', $group->id)
+            ->where('user_id', $resident->id)
+            ->exists(), 'Viewing the dashboard must not mutate community membership.');
+
+        $this->actingAs($resident)
+            ->post(route('location-governance.community.join', $area))
+            ->assertRedirect();
+
         $membership = GroupUser::query()
             ->where('group_id', $group->id)
             ->where('user_id', $resident->id)
             ->sole();
         $this->assertSame(1, (int) $membership->role);
         $this->assertSame(1, (int) $membership->status);
+
+        $this->actingAs($resident)
+            ->get(route('location-governance.me'))
+            ->assertSee('data-community-enter-action', false)
+            ->assertSee('data-community-leave-action', false);
     }
 
     public function test_outsider_cannot_create_or_join_an_unrelated_local_community(): void
@@ -138,7 +157,7 @@ class CommunityAreaUiTest extends TestCase
         $this->assertSame(0, (int) $oldMembership->status);
     }
 
-    public function test_residence_change_joins_existing_community_without_dashboard_visit(): void
+    public function test_residence_change_does_not_auto_join_existing_community_without_explicit_consent(): void
     {
         [$creator, $complex] = $this->userAtComplexResidence();
         $area = app(CommunityAreaService::class)->createFor($complex, $creator);
@@ -147,12 +166,56 @@ class CommunityAreaUiTest extends TestCase
         $resident = User::factory()->create();
         app(ResidenceService::class)->setInitialPrimaryResidence($resident, $complex, ['source' => 'test']);
 
-        $membership = GroupUser::query()
+        $this->assertFalse(GroupUser::query()
             ->where('group_id', $group->id)
             ->where('user_id', $resident->id)
+            ->exists());
+    }
+
+    public function test_member_can_explicitly_leave_and_remains_eligible_to_rejoin(): void
+    {
+        [$user, $complex] = $this->userAtComplexResidence();
+        $area = app(CommunityAreaService::class)->createFor($complex, $user);
+        $group = app(CommunityAreaService::class)->publicAssemblyFor($area);
+
+        $this->actingAs($user)
+            ->delete(route('location-governance.community.leave', $area))
+            ->assertRedirect();
+
+        $membership = GroupUser::query()
+            ->where('group_id', $group->id)
+            ->where('user_id', $user->id)
             ->sole();
-        $this->assertSame(1, (int) $membership->role);
-        $this->assertSame(1, (int) $membership->status);
+        $this->assertSame(0, (int) $membership->status);
+
+        $this->actingAs($user)
+            ->get(route('location-governance.me'))
+            ->assertSee('data-community-join-action', false)
+            ->assertDontSee('data-community-enter-action', false);
+    }
+
+    public function test_pending_deeper_residence_does_not_block_approved_ancestor_community_action(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $path = LocationFixture::createPath($schema, [
+            'country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood', 'street',
+        ]);
+        $street = $path->last();
+        $alleyType = $schema->types->firstWhere('key', 'alley');
+        $user = User::factory()->create();
+
+        app(ResidenceService::class)->setInitialPrimaryResidence($user, $street, ['source' => 'test']);
+        $proposal = app(LocationProposalService::class)->propose($user, $street, $alleyType, [
+            'canonical_name' => 'کوچه پیشنهادی در انتظار بررسی',
+        ]);
+        app(ResidenceService::class)->setPendingResidenceIntent($user, $proposal, ['source' => 'test']);
+
+        $this->actingAs($user)
+            ->get(route('location-governance.me'))
+            ->assertOk()
+            ->assertSee('data-pending-residence-intent', false)
+            ->assertSee(route('location-governance.community.store', $street), false)
+            ->assertSee('data-community-create-action', false);
     }
 
     public function test_pending_or_ineligible_residence_never_gets_community_create_action(): void
