@@ -3,6 +3,8 @@
 namespace App\Services\LocationGovernance;
 
 use App\Models\GovernanceArea;
+use App\Models\Group;
+use App\Models\GroupUser;
 use App\Models\Location;
 use App\Models\User;
 use DomainException;
@@ -59,8 +61,48 @@ class CommunityAreaService
             }
 
             $area->locations()->syncWithoutDetaching([$location->id]);
+            $group = $this->materializePublicAssembly($area);
+            $this->activateMembership($group, $actor);
 
             return $area->fresh();
+        });
+    }
+
+    public function publicAssemblyFor(GovernanceArea $area): ?Group
+    {
+        if ($area->area_kind !== 'community') {
+            return null;
+        }
+
+        return Group::query()
+            ->where('governance_area_id', $area->id)
+            ->where('dimension_key', 'public')
+            ->where('dimension_value_key', 'public')
+            ->first();
+    }
+
+    private function materializePublicAssembly(GovernanceArea $area): Group
+    {
+        return Group::query()->firstOrCreate(
+            [
+                'governance_area_id' => $area->id,
+                'dimension_key' => 'public',
+                'dimension_value_key' => 'public',
+            ],
+            [
+                'name' => 'اجتماع محلی '.($area->localized_names['fa'] ?? $area->canonical_name),
+                'group_type' => '0',
+                'is_open' => 1,
+            ],
+        );
+    }
+
+    private function activateMembership(Group $group, User $user): void
+    {
+        GroupUser::withTrashed()->updateOrCreate(
+            ['group_id' => $group->id, 'user_id' => $user->id],
+            ['role' => 1, 'status' => 1, 'expired' => null, 'deleted_at' => null],
+        );
         });
     }
 }
