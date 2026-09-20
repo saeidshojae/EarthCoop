@@ -17,7 +17,7 @@ class CommunityCreationPolicy
             return false;
         }
 
-        return in_array($this->typeKey($location), ['complex', 'building'], true);
+        return in_array($this->typeKey($location), ['street', 'alley', 'complex', 'building'], true);
     }
 
     private function typeKey(Location $location): ?string
