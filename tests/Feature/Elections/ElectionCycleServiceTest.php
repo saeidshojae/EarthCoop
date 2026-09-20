@@ -57,6 +57,41 @@ class ElectionCycleServiceTest extends TestCase
         $this->assertFalse(Candidate::where('election_id', $election->id)->where('user_id', $temporary->id)->exists());
     }
 
+    public function test_many_temporary_active_members_still_cannot_reach_systemic_election_threshold(): void
+    {
+        [$group] = $this->configuredGroup(3);
+        $active = $this->addActiveMember($group);
+
+        foreach (range(1, 25) as $index) {
+            $temporary = User::factory()->create(['is_system' => false]);
+            GroupUser::create([
+                'group_id' => $group->id,
+                'user_id' => $temporary->id,
+                'role' => 5,
+                'status' => 1,
+                'role_override_active' => true,
+                'role_override_original_role' => 0,
+                'role_override_started_at' => now(),
+                'role_override_expires_at' => now()->addDays(7),
+            ]);
+        }
+
+        $this->assertNull(app(ElectionCycleService::class)->ensureForGroup($group));
+        $this->assertSame(0, Election::where('group_id', $group->id)->count());
+
+        $second = $this->addActiveMember($group);
+        $this->assertNull(app(ElectionCycleService::class)->ensureForGroup($group));
+
+        $third = $this->addActiveMember($group);
+        $election = app(ElectionCycleService::class)->ensureForGroup($group);
+
+        $this->assertNotNull($election);
+        $this->assertEqualsCanonicalizing(
+            [$active->id, $second->id, $third->id],
+            Candidate::where('election_id', $election->id)->pluck('user_id')->map(fn ($id) => (int) $id)->all(),
+        );
+    }
+
     public function test_threshold_reached_creates_and_opens_exactly_one_cycle(): void
     {
         [$group] = $this->configuredGroup(2);
