@@ -86,7 +86,7 @@ final class MyLocationGovernanceController extends Controller
             return [
                 'location' => $location,
                 'community' => $community,
-                'group' => $community !== null ? $communityAreaService->publicAssemblyFor($community) : null,
+                'group' => $community !== null ? $communityAreaService->ensureMembership($community, $user) : null,
                 'can_create' => $community === null
                     && $pendingResidenceIntent === null
                     && $communityCreationPolicy->mayCreateFor($location, $user),
