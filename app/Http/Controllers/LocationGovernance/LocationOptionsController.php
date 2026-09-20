@@ -68,7 +68,7 @@ final class LocationOptionsController extends Controller
         $effectiveTypeIds = $effectiveTypes->pluck('id');
         if ($effectiveTypeIds->isNotEmpty() && $effectiveTypeCodes !== $allowedTypes->pluck('key')->values()->all()) {
             $children = $location->children()->with(['type','schema'])->where('status','active')->where('location_schema_id',$location->location_schema_id)->whereIn('location_type_id',$effectiveTypeIds)->orderBy('canonical_name')->get();
-            $proposableTypeIds = $effectiveTypes->filter(fn (LocationType $type) => $proposalPolicy->allows($location, $type))->pluck('id');
+            $proposableTypeIds = $effectiveTypes->filter(fn (LocationType $type) => $proposalPolicy->allowsForResidence($location, $type, $claims->all()))->pluck('id');
             $proposals = LocationProposal::query()->with('type')->where('parent_location_id',$location->id)->whereNull('parent_location_proposal_id')->where('location_schema_id',$location->location_schema_id)->whereIn('location_type_id',$proposableTypeIds)->whereIn('status',self::OPEN_STATUSES)->orderBy('canonical_name')->get();
         }
         $structuralChoices = collect($structurePolicy->allowedClaimTypes($location))
@@ -86,7 +86,7 @@ final class LocationOptionsController extends Controller
             'data' => $children->map(fn (Location $child) => $this->serialize($child))->values(),
             'proposals' => $proposals->map(fn (LocationProposal $proposal) => $this->serializeProposal($proposal))->values(),
             'allowed_types' => $allowedTypes->map(fn (LocationType $type) => $this->serializeAllowedType($type, $proposalPolicy->allows($location, $type)))->values(),
-            'effective_allowed_types' => $effectiveTypes->map(fn (LocationType $type) => $this->serializeAllowedType($type, $proposalPolicy->allows($location, $type)))->values(),
+            'effective_allowed_types' => $effectiveTypes->map(fn (LocationType $type) => $this->serializeAllowedType($type, $proposalPolicy->allowsForResidence($location, $type, $claims->all())))->values(),
             'structural_choices' => $structuralChoices,
             'official_governance_base' => $officialBase,
         ]);
