@@ -87,6 +87,28 @@ class PendingResidenceIntentTest extends TestCase
         $this->assertSame($resolved->id, $intent->fresh()->resolved_location_id);
     }
 
+    public function test_merging_pending_proposal_into_existing_location_resolves_residence_without_explicit_transfer(): void
+    {
+        [$user, $anchor, $relationship, $proposal, $schema] = $this->makePendingScenario();
+        $service = app(ResidenceService::class);
+        $intent = $service->setPendingResidenceIntent($user, $proposal, ['source' => 'merge_resolution_test']);
+        $existing = $this->makeStreet($schema, $anchor, 'خیابان موجود');
+        $reviewer = User::factory()->create(['is_admin' => true]);
+
+        app(LocationProposalService::class)->merge($proposal, $existing, $reviewer, 'ادغام با مکان موجود');
+
+        $current = $service->currentPrimaryResidence($user);
+        $this->assertNotNull($current);
+        $this->assertSame($existing->id, $current->location_id);
+        $this->assertFalse((bool) $current->explicit_transfer);
+        $this->assertSame('location_proposal_resolution', $current->change_reason);
+        $this->assertNotNull($relationship->fresh()->ended_at);
+        $this->assertSame('merged', $proposal->fresh()->status->value);
+        $this->assertSame($existing->id, $proposal->fresh()->resolved_location_id);
+        $this->assertSame('resolved', $intent->fresh()->status);
+        $this->assertSame($existing->id, $intent->fresh()->resolved_location_id);
+    }
+
     public function test_stale_pending_intent_cannot_move_user_after_real_residence_transfer(): void
     {
         [$user, $anchor, , $proposal, $schema] = $this->makePendingScenario();
