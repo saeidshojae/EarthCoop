@@ -37,6 +37,12 @@ Route::middleware('auth')->get('/location-governance/me', MyLocationGovernanceCo
 Route::middleware('auth')->post('/location-governance/community/{location}', [CommunityAreaController::class, 'store'])
     ->name('location-governance.community.store');
 
+Route::middleware('auth')->post('/location-governance/community/{community}/join', [CommunityAreaController::class, 'join'])
+    ->name('location-governance.community.join');
+
+Route::middleware('auth')->delete('/location-governance/community/{community}/membership', [CommunityAreaController::class, 'leave'])
+    ->name('location-governance.community.leave');
+
 // Loaded after routes/web.php. These deliberately shadow the legacy profile
 // location endpoints. Each canonical adapter delegates straight back to the
 // legacy controller/view while the rollout flag is disabled.
