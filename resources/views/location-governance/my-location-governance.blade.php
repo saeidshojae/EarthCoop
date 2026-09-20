@@ -156,6 +156,7 @@
                         @foreach($communityOptions as $option)
                             @php($location = $option['location'])
                             @php($community = $option['community'])
+                            @php($communityGroup = $option['group'])
                             @php($localTypeLabels = ['street' => 'خیابان', 'alley' => 'کوچه', 'complex' => 'مجتمع', 'building' => 'ساختمان'])
                             <article class="community-option" data-community-location="{{ $location->id }}">
                                 <div class="d-flex align-items-start gap-3">
@@ -168,6 +169,11 @@
                                 </div>
                                 @if($community)
                                     <div class="small mt-3">اجتماع «{{ $community->canonical_name }}» برای این مکان فعال است.</div>
+                                    @if($communityGroup)
+                                        <a href="{{ route('groups.show', $communityGroup) }}" class="btn btn-primary w-100 w-md-auto mt-3" data-community-enter-action>ورود به اجتماع محلی</a>
+                                    @else
+                                        <div class="small text-warning mt-2">فضای مشارکت این اجتماع هنوز آماده نشده است.</div>
+                                    @endif
                                 @elseif($option['can_create'])
                                     <form method="POST" action="{{ route('location-governance.community.store', $location) }}" class="mt-3" data-community-create-action>@csrf<button type="submit" class="btn btn-outline-primary w-100 w-md-auto">ایجاد اجتماع این {{ $localTypeLabels[$location->type?->key] ?? 'مکان' }}</button></form>
                                 @elseif($pendingResidenceIntent)
