@@ -28,8 +28,11 @@ class FounderGroupDecisionService
         int $requestedBy,
         ?string $reasonCode = null
     ): array {
-        if ($targetRole < 0 || $targetRole > 4) {
-            throw new InvalidArgumentException('Group role must be between 0 and 4.');
+        if ($targetRole < 0 || $targetRole > 5) {
+            throw new InvalidArgumentException('Group role must be between 0 and 5.');
+        }
+        if ($targetRole === 5 && $expiresAt === null) {
+            throw new InvalidArgumentException('Temporary active group role requires an expiry.');
         }
         if ($expiresAt && $expiresAt->isPast()) {
             throw new InvalidArgumentException('Group role expiry must be in the future.');
