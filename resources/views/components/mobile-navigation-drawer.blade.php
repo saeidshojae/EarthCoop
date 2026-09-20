@@ -1,8 +1,20 @@
 @php
     $mobileNavUser = auth()->user();
-    $mobileNavGroups = $mobileNavUser
-        ? $mobileNavUser->groups()->wherePivot('status', 1)->wherePivot('role', '!=', 0)->get()
-        : collect();
+    $mobileNavGroups = collect();
+    if ($mobileNavUser) {
+        if ((bool) config('location-governance.groups_enabled', false)) {
+            $mobileMaterializedGroupIds = collect(app(\App\Services\Groups\CanonicalGroupMembershipReconciler::class)->reconcile($mobileNavUser))
+                ->pluck('id')->filter()->values();
+            $mobileNavGroups = $mobileMaterializedGroupIds->isEmpty()
+                ? collect()
+                : $mobileNavUser->groups()
+                    ->whereIn('groups.id', $mobileMaterializedGroupIds->all())
+                    ->wherePivot('status', 1)
+                    ->get();
+        } else {
+            $mobileNavGroups = $mobileNavUser->groups()->wherePivot('status', 1)->get();
+        }
+    }
     $mobileUnreadNotifications = $mobileNavUser?->unreadNotifications?->count() ?? 0;
     $mobilePendingChatRequests = $mobileNavUser
         ? \App\Models\ChatRequest::where('receiver_id', $mobileNavUser->id)->where('status', 'pending')->count()
