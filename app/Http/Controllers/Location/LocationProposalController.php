@@ -38,10 +38,19 @@ class LocationProposalController extends Controller
         }
 
         $type = LocationType::query()->findOrFail($validated['location_type_id']);
+        $requestedStructuralClaimIds = collect($validated['location_structure_claim_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->values();
+
         $structuralClaims = LocationStructureClaim::query()
-            ->whereIn('id', $validated['location_structure_claim_ids'] ?? [])
-            ->get()
-            ->all();
+            ->whereIn('id', $requestedStructuralClaimIds)
+            ->get();
+
+        if ($structuralClaims->count() !== $requestedStructuralClaimIds->count()) {
+            throw ValidationException::withMessages([
+                'location_structure_claim_ids' => 'One or more structural claims are unavailable.',
+            ]);
+        }
         $data = [
             'canonical_name' => $validated['canonical_name'],
             'localized_names' => $validated['localized_names'] ?? null,
@@ -53,8 +62,17 @@ class LocationProposalController extends Controller
             if ($parent->status !== 'active') {
                 throw ValidationException::withMessages(['parent_location_id' => 'The selected parent location is not active.']);
             }
+            if ($structuralClaims->contains(fn (LocationStructureClaim $claim): bool =>
+                (int) $claim->location_id !== (int) $parent->id
+                || (int) $claim->proposer_user_id !== (int) $request->user()->id
+            )) {
+                throw ValidationException::withMessages([
+                    'location_structure_claim_ids' => 'Structural claims must belong to this location and the current user.',
+                ]);
+            }
+
             try {
-            $result = $this->proposals->propose($request->user(), $parent, $type, $data, $structuralClaims);
+            $result = $this->proposals->propose($request->user(), $parent, $type, $data, $structuralClaims->all());
         } catch (DomainException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422);
         }
