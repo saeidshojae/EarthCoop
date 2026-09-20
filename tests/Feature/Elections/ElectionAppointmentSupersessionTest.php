@@ -81,7 +81,7 @@ class ElectionAppointmentSupersessionTest extends TestCase
             ->where('position', 'manager')
             ->where('status', 'active')
             ->value('id'));
-        $this->assertSame(2, (int) GroupUser::where('group_id', $neighborhood->id)->where('user_id', $user->id)->value('role'));
+        $this->assertSame(3, (int) GroupUser::where('group_id', $neighborhood->id)->where('user_id', $user->id)->value('role'));
         $this->assertSame(1, (int) GroupUser::where('group_id', $region->id)->where('user_id', $user->id)->value('role'));
     }
 
