@@ -173,7 +173,7 @@ class ElectionVacancyServiceTest extends TestCase
             GroupUser::create([
                 'group_id' => $group->id,
                 'user_id' => $user->id,
-                'role' => $user->id === $incumbent->id ? 2 : 1,
+                'role' => $user->id === $incumbent->id ? 3 : 1,
                 'status' => 1,
             ]);
         }
