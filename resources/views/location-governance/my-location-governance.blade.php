@@ -150,13 +150,14 @@
                         <strong>برای ساخت اجتماع محلی، ابتدا نشانی محلی خود را تکمیل کنید.</strong>
                         <div class="small mt-1">ثبت جزئیات زیر محله اجباری نیست؛ اما با افزودن خیابان، کوچه، مجتمع یا ساختمان، می‌توانید برای هرکدام اجتماع محلی مستقل ایجاد یا مشاهده کنید.</div>
                     </div>
-                    <a href="{{ route('profile.edit') }}" class="btn btn-primary w-100 w-md-auto"><i class="fas fa-location-dot ms-2"></i>تکمیل نشانی و افزودن مکان محلی</a>
+                    <a href="{{ route('profile.edit') }}" class="btn btn-primary w-100"><i class="fas fa-location-dot ms-2"></i>تکمیل نشانی و افزودن مکان محلی</a>
                 @else
                     <div class="d-grid gap-3" data-community-options>
                         @foreach($communityOptions as $option)
                             @php($location = $option['location'])
                             @php($community = $option['community'])
                             @php($communityGroup = $option['group'])
+                            @php($isCommunityMember = $option['is_member'] ?? false)
                             @php($localTypeLabels = ['street' => 'خیابان', 'alley' => 'کوچه', 'complex' => 'مجتمع', 'building' => 'ساختمان'])
                             <article class="community-option" data-community-location="{{ $location->id }}">
                                 <div class="d-flex align-items-start gap-3">
@@ -168,16 +169,21 @@
                                     </div>
                                 </div>
                                 @if($community)
-                                    <div class="small mt-3">اجتماع «{{ $community->canonical_name }}» برای این مکان فعال است.</div>
-                                    @if($communityGroup)
-                                        <a href="{{ route('groups.show', $communityGroup) }}" class="btn btn-primary w-100 w-md-auto mt-3" data-community-enter-action>ورود به اجتماع محلی</a>
-                                    @else
+                                    <div class="small mt-3">اجتماع «{{ $community->canonical_name }}» برای این مکان فعال است. عضویت در اجتماعات محلی اختیاری است.</div>
+                                    @if($isCommunityMember && $communityGroup)
+                                        <div class="d-flex flex-column flex-md-row gap-2 mt-3">
+                                            <a href="{{ route('groups.show', $communityGroup) }}" class="btn btn-primary" data-community-enter-action>ورود به اجتماع محلی</a>
+                                            <form method="POST" action="{{ route('location-governance.community.leave', $community) }}" data-community-leave-action>@csrf @method('DELETE')<button type="submit" class="btn btn-outline-secondary w-100">خروج از اجتماع</button></form>
+                                        </div>
+                                    @elseif($option['can_join'])
+                                        <div class="small text-muted mt-2">این اجتماع در مسیر محل سکونت شماست. در صورت تمایل می‌توانید عضو شوید.</div>
+                                        <form method="POST" action="{{ route('location-governance.community.join', $community) }}" class="mt-3" data-community-join-action>@csrf<button type="submit" class="btn btn-primary w-100">عضویت در اجتماع محلی</button></form>
+                                    @elseif(!$communityGroup)
                                         <div class="small text-warning mt-2">فضای مشارکت این اجتماع هنوز آماده نشده است.</div>
                                     @endif
                                 @elseif($option['can_create'])
-                                    <form method="POST" action="{{ route('location-governance.community.store', $location) }}" class="mt-3" data-community-create-action>@csrf<button type="submit" class="btn btn-outline-primary w-100 w-md-auto">ایجاد اجتماع این {{ $localTypeLabels[$location->type?->key] ?? 'مکان' }}</button></form>
-                                @elseif($pendingResidenceIntent)
-                                    <div class="small text-muted mt-3">پس از تأیید جزئیات نشانی، امکان ایجاد اجتماع برای مکان‌های تأییدشده فعال می‌شود.</div>
+                                    <div class="small text-muted mt-3">برای این مکان هنوز اجتماعی ساخته نشده است. ایجاد آن اختیاری است و با ایجاد، خودتان نیز عضو آن می‌شوید.</div>
+                                    <form method="POST" action="{{ route('location-governance.community.store', $location) }}" class="mt-2" data-community-create-action>@csrf<button type="submit" class="btn btn-outline-primary w-100">ایجاد اجتماع این {{ $localTypeLabels[$location->type?->key] ?? 'مکان' }}</button></form>
                                 @endif
                             </article>
                         @endforeach
