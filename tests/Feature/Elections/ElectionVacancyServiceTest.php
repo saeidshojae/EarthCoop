@@ -226,7 +226,7 @@ class ElectionVacancyServiceTest extends TestCase
             'user_id' => $incumbent->id,
             'group_id' => $group->id,
             'position' => 'manager',
-            'group_role' => 2,
+            'group_role' => 3,
             'appointment_kind' => 'direct',
             'status' => 'active',
             'appointed_at' => now()->subWeeks(3),
