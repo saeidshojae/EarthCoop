@@ -90,7 +90,8 @@ final class CanonicalGroupMembershipReconciler
                 $query
                     ->whereNotNull('governance_area_id')
                     ->whereIn('dimension_key', self::SYSTEM_DIMENSIONS)
-                    ->whereNotNull('dimension_value_key');
+                    ->whereNotNull('dimension_value_key')
+                    ->whereHas('governanceArea', fn ($area) => $area->where('area_kind', 'official'));
             });
 
         if ($activeGroupIds !== []) {
