@@ -240,4 +240,54 @@ class ResidencePickerDeepHardeningTest extends TestCase
         $this->assertSame([$noRegion->id, $noNeighborhood->id], $proposal->metadata['structural_claim_ids']);
     }
 
+    public function test_structural_street_proposal_is_revalidated_and_preserves_claim_provenance_on_approval(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city'])->last();
+        $streetType = $schema->types->firstWhere('key', 'street');
+        $user = User::factory()->create();
+        $reviewer = User::factory()->create(['is_admin' => true]);
+        $claimService = app(LocationStructureClaimService::class);
+        $proposalService = app(LocationProposalService::class);
+
+        $noRegion = $claimService->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+        $noNeighborhood = $claimService->findOrCreateOpenClaim($city, 'no_neighborhood', $user);
+
+        $proposal = $proposalService->propose($user, $city, $streetType, [
+            'canonical_name' => 'خیابان مستقیم قابل تأیید',
+        ], [$noRegion, $noNeighborhood]);
+
+        $approved = $proposalService->approve($proposal, $reviewer, 'ساختار شهر بررسی شد');
+
+        $this->assertSame($city->id, $approved->parent_id);
+        $this->assertSame('street', $approved->level);
+        $this->assertSame($proposal->id, data_get($approved->provenance, 'location_proposal_id'));
+        $this->assertSame(
+            [$noRegion->id, $noNeighborhood->id],
+            data_get($approved->provenance, 'structural_claim_ids')
+        );
+    }
+
+    public function test_structural_street_proposal_cannot_be_approved_after_supporting_claim_is_rejected(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city'])->last();
+        $streetType = $schema->types->firstWhere('key', 'street');
+        $user = User::factory()->create();
+        $reviewer = User::factory()->create(['is_admin' => true]);
+        $claimService = app(LocationStructureClaimService::class);
+        $proposalService = app(LocationProposalService::class);
+
+        $noRegion = $claimService->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+        $noNeighborhood = $claimService->findOrCreateOpenClaim($city, 'no_neighborhood', $user);
+        $proposal = $proposalService->propose($user, $city, $streetType, [
+            'canonical_name' => 'خیابان مستقیم با ادعای ردشده',
+        ], [$noRegion, $noNeighborhood]);
+
+        $claimService->reject($noNeighborhood, $reviewer, 'ادعای ساختاری تأیید نشد');
+
+        $this->expectException(DomainException::class);
+        $proposalService->approve($proposal, $reviewer, 'نباید تأیید شود');
+    }
+
 }
