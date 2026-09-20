@@ -49,7 +49,7 @@
                         ['route' => 'admin.location-governance.structure-claims.request-evidence', 'label' => 'مدرک بیشتر'],
                     ] as $action)
                         <div class="col-12 col-lg-4">
-                            <form method="POST" action="{{ route($action['route'], $claim) }}" class="d-flex gap-2">
+                            <form method="POST" action="{{ route($action['route'], $claim) }}" class="d-flex flex-column flex-md-row gap-2">
                                 @csrf
                                 <input name="reason" required minlength="4" maxlength="1000" class="form-control form-control-sm" placeholder="دلیل تصمیم">
                                 <button class="btn btn-sm btn-outline-secondary text-nowrap">{{ $action['label'] }}</button>
