@@ -81,7 +81,7 @@ final class MyLocationGovernanceController extends Controller
             ->flatMap(fn ($community) => $community->locations->map(fn ($location) => [$location->id, $community]))
             ->mapWithKeys(fn ($pair) => [$pair[0] => $pair[1]]);
 
-        $communityOptions = $localCommunityLocations->map(function ($location) use ($communitiesByLocation, $communityCreationPolicy, $pendingResidenceIntent, $user): array {
+        $communityOptions = $localCommunityLocations->map(function ($location) use ($communitiesByLocation, $communityCreationPolicy, $communityAreaService, $pendingResidenceIntent, $user): array {
             $community = $communitiesByLocation->get($location->id);
 
             return [
