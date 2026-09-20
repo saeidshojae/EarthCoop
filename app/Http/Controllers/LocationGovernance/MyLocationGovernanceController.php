@@ -81,15 +81,25 @@ final class MyLocationGovernanceController extends Controller
             ->flatMap(fn ($community) => $community->locations->map(fn ($location) => [$location->id, $community]))
             ->mapWithKeys(fn ($pair) => [$pair[0] => $pair[1]]);
 
-        $communityOptions = $localCommunityLocations->map(function ($location) use ($communitiesByLocation, $communityCreationPolicy, $communityAreaService, $pendingResidenceIntent, $user): array {
+        $communityOptions = $localCommunityLocations->map(function ($location) use ($communitiesByLocation, $communityCreationPolicy, $communityAreaService, $user): array {
             $community = $communitiesByLocation->get($location->id);
+            $group = $community !== null ? $communityAreaService->publicAssemblyFor($community) : null;
+            $membership = $group !== null
+                ? $user->groups()
+                    ->where('groups.id', $group->id)
+                    ->wherePivot('status', 1)
+                    ->first()
+                : null;
 
             return [
                 'location' => $location,
                 'community' => $community,
-                'group' => $community !== null ? $communityAreaService->ensureMembership($community, $user) : null,
+                'group' => $group,
+                'is_member' => $membership !== null,
+                'can_join' => $community !== null
+                    && $membership === null
+                    && $communityCreationPolicy->mayCreateFor($location, $user),
                 'can_create' => $community === null
-                    && $pendingResidenceIntent === null
                     && $communityCreationPolicy->mayCreateFor($location, $user),
             ];
         });
