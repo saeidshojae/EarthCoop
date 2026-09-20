@@ -50,7 +50,8 @@
     </div></div>
     <div class="text-right">
         <h2 class="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold mb-3 sm:mb-4" style="color:var(--color-gentle-black);">مرحله ۳: اطلاعات مکانی</h2>
-        <p class="text-gray-600 mb-4 sm:mb-6 text-xs sm:text-sm md:text-base">لطفاً محل سکونت اصلی خود را با دقت انتخاب کنید. مسیر مکانی هر کشور پویاست و می‌توانید تا دقیق‌ترین محل معتبر خود ادامه دهید. عضویت در حوزه‌های حکمرانی بالادستی از محل سکونت اصلی شما به‌صورت سیستمی تعیین می‌شود.</p>
+        <p class="text-gray-600 mb-2 text-xs sm:text-sm md:text-base">لطفاً محل سکونت اصلی خود را با دقت انتخاب کنید. برای ثبت‌نام، مسیر مکانی را تا سطح محله یا نزدیک‌ترین سطح پایهٔ موجود در ساختار محل سکونت خود تکمیل کنید. عضویت در حوزه‌های حکمرانی بالادستی از محل سکونت اصلی شما به‌صورت سیستمی تعیین می‌شود.</p>
+        <p class="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6"><i class="fas fa-circle-info ml-1" aria-hidden="true"></i>از محله به پایین، وارد کردن خیابان، کوچه، مجتمع یا ساختمان اختیاری است؛ لازم نیست برای تکمیل ثبت‌نام تا آخرین سطح ادامه دهید و بعداً نیز می‌توانید جزئیات دقیق‌تر محل سکونت را از پروفایل خود تکمیل کنید.</p>
         @if ($errors->any())<div class="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-4 sm:mb-6 text-sm sm:text-base" role="alert"><ul class="list-disc list-inside mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
         @if(session('error'))<div class="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-4 sm:mb-6 text-sm sm:text-base" role="alert">{{ session('error') }}</div>@endif
         <form method="POST" action="{{ route('register.step3.process') }}" data-location-form id="step3Form">@csrf
