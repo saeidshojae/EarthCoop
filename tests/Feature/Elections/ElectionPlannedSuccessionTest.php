@@ -91,7 +91,7 @@ class ElectionPlannedSuccessionTest extends TestCase
             'user_id' => $incumbent->id,
             'group_id' => $group->id,
             'position' => 'manager',
-            'group_role' => 2,
+            'group_role' => 3,
             'appointment_kind' => 'direct',
             'status' => 'active',
             'appointed_at' => now()->subWeeks(3),
@@ -102,7 +102,7 @@ class ElectionPlannedSuccessionTest extends TestCase
 
         $this->assertSame('planned', $vacancy->continuity_mode);
         $this->assertSame('active', $appointment->refresh()->status);
-        $this->assertSame(2, (int) GroupUser::where('group_id', $group->id)->where('user_id', $incumbent->id)->value('role'));
+        $this->assertSame(3, (int) GroupUser::where('group_id', $group->id)->where('user_id', $incumbent->id)->value('role'));
 
         $this->assertSame('offer_pending', $vacancies->processOne($vacancy->id));
         $offer = $vacancy->refresh()->replacementOffer;
