@@ -149,8 +149,12 @@ class LocationGovernanceControlCenterTest extends TestCase
         ]);
         $official->locations()->attach($neighborhood->id);
 
-        app(ResidenceService::class)->setInitialPrimaryResidence($admin, $complex, ['source' => 'control-center-test']);
-        $community = app(CommunityAreaService::class)->createFor($complex, $admin);
+        // Admin access to the control center must not bypass the same residence-bound
+        // community creation policy enforced for every other user. Seed a genuine
+        // resident actor for the read-model fixture and keep the admin as reviewer.
+        $resident = User::factory()->create();
+        app(ResidenceService::class)->setInitialPrimaryResidence($resident, $complex, ['source' => 'control-center-test']);
+        $community = app(CommunityAreaService::class)->createFor($complex, $resident);
         $this->makeProposal('پیشنهاد سلامت کنترل', $schema);
 
         DB::table('location_import_runs')->insert([
