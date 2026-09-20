@@ -326,18 +326,20 @@ class GroupController extends Controller
             ], 404);
         }
 
-        if ($groupUser->role == 0) {
-            $targetRole = 1;
-            $newRole = 'فعال';
+        if ((int) $groupUser->role === 0) {
+            $targetRole = 5;
+            $newRole = 'فعال موقت';
             $oldRole = 'ناظر';
-        } elseif ($groupUser->role == 1) {
+        } elseif ((int) $groupUser->role === 5
+            && (bool) $groupUser->role_override_active
+            && (int) $groupUser->role_override_original_role === 0) {
             $targetRole = 0;
             $newRole = 'ناظر';
-            $oldRole = 'فعال';
+            $oldRole = 'فعال موقت';
         } else {
             return response()->json([
                 'status' => 'error',
-                'message' => 'فقط می‌توان نقش کاربران ناظر و فعال را تغییر داد.'
+                'message' => 'فقط می‌توان نقش ناظر را موقتاً فعال کرد یا فعال موقت را به نقش اصلی ناظر بازگرداند.'
             ], 400);
         }
 
@@ -385,7 +387,7 @@ class GroupController extends Controller
         }
 
         $members = $group->users()
-            ->wherePivotIn('role', [0, 1, 3])
+            ->wherePivotIn('role', [0, 1, 3, 5])
             ->select('users.id', 'users.first_name', 'users.last_name', 'users.email')
             ->withPivot('role', 'status', 'role_override_active', 'role_override_expires_at')
             ->orderBy('group_user.role', 'desc')
@@ -400,6 +402,7 @@ class GroupController extends Controller
                     'role_label' => match ((int) $user->pivot->role) {
                         3 => 'مدیر',
                         1 => 'فعال',
+                        5 => 'فعال موقت',
                         default => 'ناظر',
                     },
                     'status' => (int) $user->pivot->status,
