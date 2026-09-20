@@ -3,6 +3,8 @@
 namespace Tests\Feature\LocationGovernance;
 
 use App\Models\GovernanceArea;
+use App\Models\Group;
+use App\Models\GroupUser;
 use App\Models\User;
 use App\Services\LocationGovernance\CommunityAreaService;
 use App\Services\LocationGovernance\LocationProposalService;
@@ -64,6 +66,49 @@ class CommunityAreaUiTest extends TestCase
         $response->assertSee('data-community-location="'.$complex->id.'"', false);
         $response->assertSee('اجتماع «'.$community->canonical_name.'» برای این مکان فعال است.');
         $response->assertDontSee(route('location-governance.community.store', $complex), false);
+    }
+
+    public function test_existing_community_auto_joins_another_resident_and_exposes_entry_action(): void
+    {
+        [$creator, $complex] = $this->userAtComplexResidence();
+        $area = app(CommunityAreaService::class)->createFor($complex, $creator);
+        $group = Group::query()
+            ->where('governance_area_id', $area->id)
+            ->where('dimension_key', 'public')
+            ->sole();
+
+        $resident = User::factory()->create();
+        app(ResidenceService::class)->setInitialPrimaryResidence($resident, $complex, ['source' => 'test']);
+
+        $response = $this->actingAs($resident)->get(route('location-governance.me'));
+
+        $response->assertOk();
+        $response->assertSee(route('groups.show', $group), false);
+        $response->assertSee('data-community-enter-action', false);
+        $membership = GroupUser::query()
+            ->where('group_id', $group->id)
+            ->where('user_id', $resident->id)
+            ->sole();
+        $this->assertSame(1, (int) $membership->role);
+        $this->assertSame(1, (int) $membership->status);
+    }
+
+    public function test_outsider_cannot_create_or_join_an_unrelated_local_community(): void
+    {
+        [$creator, $complex] = $this->userAtComplexResidence();
+        $area = app(CommunityAreaService::class)->createFor($complex, $creator);
+        $outsider = User::factory()->create();
+
+        $this->actingAs($outsider)
+            ->post(route('location-governance.community.store', $complex))
+            ->assertSessionHasErrors('community');
+
+        $this->assertNull(app(CommunityAreaService::class)->ensureMembership($area, $outsider));
+        $group = app(CommunityAreaService::class)->publicAssemblyFor($area);
+        $this->assertFalse(GroupUser::query()
+            ->where('group_id', $group->id)
+            ->where('user_id', $outsider->id)
+            ->exists());
     }
 
     public function test_pending_or_ineligible_residence_never_gets_community_create_action(): void
