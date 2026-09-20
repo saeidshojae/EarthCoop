@@ -240,6 +240,39 @@ class ResidencePickerDeepHardeningTest extends TestCase
         $this->assertSame([$noRegion->id, $noNeighborhood->id], $proposal->metadata['structural_claim_ids']);
     }
 
+    public function test_second_user_can_create_structural_street_proposal_with_shared_open_city_claims(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city'])->last();
+        $streetType = $schema->types->firstWhere('key', 'street');
+        $firstUser = User::factory()->create();
+        $secondUser = User::factory()->create();
+        $claimService = app(LocationStructureClaimService::class);
+
+        $noRegion = $claimService->findOrCreateOpenClaim($city, 'no_urban_region', $firstUser);
+        $noNeighborhood = $claimService->findOrCreateOpenClaim($city, 'no_neighborhood', $firstUser);
+
+        $this->assertSame(
+            $noRegion->id,
+            $claimService->findOrCreateOpenClaim($city, 'no_urban_region', $secondUser)->id,
+        );
+        $this->assertSame(
+            $noNeighborhood->id,
+            $claimService->findOrCreateOpenClaim($city, 'no_neighborhood', $secondUser)->id,
+        );
+
+        $response = $this->actingAs($secondUser)->postJson('/locations/proposals', [
+            'parent_location_id' => $city->id,
+            'location_type_id' => $streetType->id,
+            'canonical_name' => 'خیابان پیشنهادی کاربر دوم',
+            'location_structure_claim_ids' => [$noRegion->id, $noNeighborhood->id],
+        ])->assertCreated()->assertJsonPath('kind', 'proposal');
+
+        $proposal = LocationProposal::query()->findOrFail((int) $response->json('id'));
+        $this->assertSame($secondUser->id, $proposal->proposer_user_id);
+        $this->assertSame([$noRegion->id, $noNeighborhood->id], $proposal->metadata['structural_claim_ids']);
+    }
+
     public function test_structural_street_proposal_is_revalidated_and_preserves_claim_provenance_on_approval(): void
     {
         $schema = LocationFixture::iranSchema();
