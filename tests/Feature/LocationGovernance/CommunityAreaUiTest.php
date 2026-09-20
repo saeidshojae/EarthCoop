@@ -61,8 +61,9 @@ class CommunityAreaUiTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('location-governance.me'));
         $response->assertOk();
-        $response->assertSee('data-community-area="'.$community->id.'"', false);
-        $response->assertDontSee('data-community-create-action', false);
+        $response->assertSee('data-community-location="'.$complex->id.'"', false);
+        $response->assertSee('اجتماع «'.$community->canonical_name.'» برای این مکان فعال است.');
+        $response->assertDontSee(route('location-governance.community.store', $complex), false);
     }
 
     public function test_pending_or_ineligible_residence_never_gets_community_create_action(): void
