@@ -5,9 +5,11 @@ namespace Tests\Feature\LocationGovernance;
 use App\Models\GovernanceArea;
 use App\Models\Group;
 use App\Models\User;
+use App\Models\UserLocationRelationship;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
+use Tests\Support\LocationGovernance\LocationFixture;
 use Tests\Support\LocationGovernance\MembershipFixture;
 use Tests\TestCase;
 
@@ -152,6 +154,37 @@ class MyLocationGovernancePageTest extends TestCase
         $response->assertSee('اجتماعات محلی');
         $response->assertSee('data-community-location-guide', false);
         $response->assertSee('تکمیل نشانی و افزودن مکان محلی');
+    }
+
+
+    public function test_local_communities_tab_lists_every_micro_location_in_residence_path_independently(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $path = LocationFixture::createPath(
+            $schema,
+            ['country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood', 'street', 'alley', 'complex', 'building'],
+            ['ایران', 'مازندران', 'ساری', 'مرکزی', 'ساری', 'منطقه یک', 'محله مرجع', 'خیابان الف', 'کوچه دوستی', 'مجتمع بهارستان', 'ساختمان ۳۵'],
+        );
+        $user = User::factory()->create();
+
+        UserLocationRelationship::create([
+            'user_id' => $user->id,
+            'location_id' => $path->last()->id,
+            'relationship_type' => 'primary_residence',
+            'started_at' => now()->subDay(),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('location-governance.me'));
+
+        $response->assertOk();
+        $response->assertViewHas('communityOptions', fn ($options): bool =>
+            collect($options)->pluck('location.type.key')->values()->all() === ['street', 'alley', 'complex', 'building']
+        );
+        foreach (['خیابان الف', 'کوچه دوستی', 'مجتمع بهارستان', 'ساختمان ۳۵'] as $name) {
+            $response->assertSee($name);
+        }
+        $response->assertSee('data-local-communities-tab', false);
+        $response->assertSee('هرکدام می‌توانند اجتماع محلی مستقل خود را داشته باشند');
     }
 
 }
