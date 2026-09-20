@@ -154,6 +154,8 @@ final class ProfileResidenceController extends Controller
                     false,
                     $structuralClaims,
                 );
+            } else {
+                $residenceService->refreshPrimaryResidenceStructuralClaims($user, $anchor, $structuralClaims);
             }
 
             $residenceService->setPendingResidenceIntent($user, $proposal, [
