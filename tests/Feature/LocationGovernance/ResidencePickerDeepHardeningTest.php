@@ -220,8 +220,8 @@ class ResidencePickerDeepHardeningTest extends TestCase
         $user = User::factory()->create();
         $claimService = app(\App\Services\LocationGovernance\LocationStructureClaimService::class);
 
-        $noRegion = $claimService->findOrCreateOpenClaim($user, $city, 'no_urban_region');
-        $noNeighborhood = $claimService->findOrCreateOpenClaim($user, $city, 'no_neighborhood', [$noRegion]);
+        $noRegion = $claimService->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+        $noNeighborhood = $claimService->findOrCreateOpenClaim($city, 'no_neighborhood', $user);
 
         $this->actingAs($user)->postJson('/locations/proposals', [
             'parent_location_id' => $city->id,
