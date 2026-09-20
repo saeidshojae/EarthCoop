@@ -26,9 +26,9 @@ class LocationProposalService
     ) {
     }
 
-    public function propose(User $proposer, Location $parent, LocationType $type, array $data): LocationProposal|Location
+    public function propose(User $proposer, Location $parent, LocationType $type, array $data, array $structuralClaims = []): LocationProposal|Location
     {
-        if (! $this->proposalPolicy->allows($parent, $type)) {
+        if (! $this->proposalPolicy->allowsForResidence($parent, $type, $structuralClaims)) {
             throw new DomainException('Crowdsourced proposals are not permitted for this location type in the active schema.');
         }
 
@@ -64,7 +64,9 @@ class LocationProposalService
             'normalized_name' => $normalizedName,
             'localized_names' => $data['localized_names'] ?? null,
             'status' => LocationProposalStatus::Pending,
-            'metadata' => $data['metadata'] ?? null,
+            'metadata' => array_merge($data['metadata'] ?? [], [
+                'structural_claim_ids' => collect($structuralClaims)->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+            ]),
             'audit_log' => [],
         ]);
     }
