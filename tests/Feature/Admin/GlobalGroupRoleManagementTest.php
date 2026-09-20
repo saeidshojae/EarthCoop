@@ -21,7 +21,7 @@ class GlobalGroupRoleManagementTest extends TestCase
             'group_category' => 'specialized',
             'location_level' => 'province',
             'source_role' => 0,
-            'target_role' => 1,
+            'target_role' => 5,
         ];
         $before = $this->actingAs($admin)
             ->postJson(route('admin.groups.global-roles.preview'), $payload)
@@ -53,7 +53,7 @@ class GlobalGroupRoleManagementTest extends TestCase
             'group_category' => 'specialized',
             'location_level' => 'province',
             'source_role' => 0,
-            'target_role' => 1,
+            'target_role' => 5,
             'duration_unit' => 'month',
             'duration_value' => 1,
         ])->assertCreated()->json('id');
@@ -64,7 +64,7 @@ class GlobalGroupRoleManagementTest extends TestCase
             ->assertJson(['status' => 'completed']);
         $this->assertDatabaseHas('group_user', [
             'id' => $membership->id,
-            'role' => 1,
+            'role' => 5,
             'role_override_active' => true,
             'role_override_original_role' => 0,
         ]);
@@ -72,7 +72,7 @@ class GlobalGroupRoleManagementTest extends TestCase
         $cancelId = $this->actingAs($admin)->postJson(route('admin.groups.global-roles.store'), [
             'group_category' => 'specialized',
             'location_level' => 'province',
-            'source_role' => 1,
+            'source_role' => 5,
             'target_role' => 0,
             'duration_unit' => 'day',
             'duration_value' => 1,
@@ -90,6 +90,27 @@ class GlobalGroupRoleManagementTest extends TestCase
         ]);
         $this->assertNotNull(GroupRoleBulkOperation::find($operationId));
         $this->assertNotNull(GroupRoleBulkOperation::find($cancelId));
+    }
+
+
+    public function test_bulk_temporary_activation_cannot_be_unlimited_or_promote_to_canonical_active_role(): void
+    {
+        $admin = $this->user(true);
+
+        $this->actingAs($admin)->postJson(route('admin.groups.global-roles.store'), [
+            'group_category' => 'all',
+            'source_role' => 0,
+            'target_role' => 5,
+            'duration_unit' => 'unlimited',
+        ])->assertUnprocessable();
+
+        $this->actingAs($admin)->postJson(route('admin.groups.global-roles.store'), [
+            'group_category' => 'all',
+            'source_role' => 0,
+            'target_role' => 1,
+            'duration_unit' => 'day',
+            'duration_value' => 1,
+        ])->assertUnprocessable();
     }
 
     private function user(bool $admin = false): User
