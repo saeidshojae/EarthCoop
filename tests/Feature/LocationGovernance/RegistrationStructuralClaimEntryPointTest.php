@@ -88,7 +88,8 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
         $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
         $streetType = $schema->types->firstWhere('key', 'street');
         $user = User::factory()->create();
-        $claim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+        $regionClaim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+        $neighborhoodClaim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'no_neighborhood', $user);
         $proposal = \App\Models\LocationProposal::query()->create([
             'parent_location_id' => $city->id,
             'location_schema_id' => $schema->id,
@@ -103,13 +104,17 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
 
         $this->actingAs($user)->post(route('register.step3.process'), [
             'location_proposal_id' => $proposal->id,
-            'location_structure_claim_ids' => [$claim->id],
+            'location_structure_claim_ids' => [$regionClaim->id, $neighborhoodClaim->id],
         ])->assertRedirect(route('home'));
 
         $relationship = $user->fresh()->locationRelationships()->where('relationship_type', 'primary_residence')->whereNull('ended_at')->sole();
         $this->assertSame($city->id, $relationship->location_id);
-        $this->assertSame([$claim->id], $relationship->metadata['structural_claim_ids']);
-        $this->assertTrue($claim->fresh()->evidence()->where('user_id', $user->id)->exists());
+        $this->assertEqualsCanonicalizing(
+            [$regionClaim->id, $neighborhoodClaim->id],
+            $relationship->metadata['structural_claim_ids']
+        );
+        $this->assertTrue($regionClaim->fresh()->evidence()->where('user_id', $user->id)->exists());
+        $this->assertTrue($neighborhoodClaim->fresh()->evidence()->where('user_id', $user->id)->exists());
     }
 
 }
