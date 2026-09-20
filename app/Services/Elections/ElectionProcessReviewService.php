@@ -250,13 +250,13 @@ class ElectionProcessReviewService
             return;
         }
 
-        // Compatibility for historical elections that predate eligibility
-        // snapshots: only the canonical active-member role is electoral.
+        // Compatibility for historical elections that predate eligibility snapshots:
+        // active members retain electoral rights while serving as inspector/manager.
         $eligible = GroupUser::query()
             ->where('group_id', $election->group_id)
             ->where('user_id', $user->id)
             ->where('status', 1)
-            ->where('role', 1)
+            ->whereIn('role', [1, 2, 3])
             ->exists();
 
         if (! $eligible) {
