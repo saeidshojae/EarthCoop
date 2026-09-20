@@ -7,6 +7,7 @@ use App\Models\Location;
 use App\Models\LocationProposal;
 use App\Models\Setting;
 use App\Models\LocationType;
+use App\Models\LocationStructureClaim;
 use App\Models\User;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -174,6 +175,29 @@ class LocationProposalService
                 throw new DomainException('Approve the pending parent proposal before approving this descendant.');
             }
 
+            $structuralClaimIds = collect($proposal->metadata['structural_claim_ids'] ?? [])
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values();
+
+            $structuralClaims = LocationStructureClaim::query()
+                ->whereIn('id', $structuralClaimIds)
+                ->get();
+
+            if (! $this->proposalPolicy->allowsForResidence($parent, $proposal->type, $structuralClaims->all())) {
+                throw new DomainException('The proposal no longer satisfies the canonical location structure.');
+            }
+
+            if ($structuralClaimIds->isNotEmpty()
+                && ($structuralClaims->count() !== $structuralClaimIds->count()
+                    || $structuralClaims->contains(fn (LocationStructureClaim $claim): bool =>
+                        (int) $claim->location_id !== (int) $parent->id
+                        || ! in_array($claim->status, ['pending', 'ready_for_review', 'needs_evidence', 'approved'], true)
+                    ))) {
+                throw new DomainException('The structural claims supporting this proposal are no longer valid.');
+            }
+
             $duplicate = $this->duplicateDetector->findLikelyDuplicate($parent, $proposal->type, $proposal->canonical_name);
             if ($duplicate !== null) {
                 throw new DomainException('A matching canonical location already exists; merge the proposal instead.');
@@ -189,7 +213,11 @@ class LocationProposalService
                 'localized_names' => $proposal->localized_names,
                 'level' => $proposal->type?->key,
                 'status' => 'active',
-                'provenance' => ['source' => 'community_proposal', 'location_proposal_id' => $proposal->id],
+                'provenance' => [
+                    'source' => 'community_proposal',
+                    'location_proposal_id' => $proposal->id,
+                    'structural_claim_ids' => $structuralClaimIds->all(),
+                ],
             ]);
 
             $proposal->resolved_location_id = $location->id;
