@@ -611,7 +611,7 @@ class MessageAuthorizationTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_group_manager_can_temporarily_toggle_observer_and_active_roles(): void
+    public function test_group_manager_can_temporarily_activate_observer_with_role_five_and_restore_baseline(): void
     {
         [$group, $manager] = $this->makeGroupWithMember(3);
         $observer = $this->makeUser();
@@ -620,19 +620,29 @@ class MessageAuthorizationTest extends TestCase
         $this->actingAs($manager)
             ->postJson(route('groups.members.toggle-role', [$group, $observer]), ['duration_hours' => 2])
             ->assertOk()
-            ->assertJsonPath('new_role', 1);
+            ->assertJsonPath('new_role', 5)
+            ->assertJsonPath('new_role_label', 'فعال موقت');
         $this->assertTrue($observer->fresh()->can('participate', $group));
+        $this->assertDatabaseHas('group_user', [
+            'group_id' => $group->id,
+            'user_id' => $observer->id,
+            'role' => 5,
+            'role_override_active' => true,
+            'role_override_original_role' => 0,
+        ]);
 
         $this->actingAs($manager)
             ->postJson(route('groups.members.toggle-role', [$group, $observer]), ['duration_hours' => 2])
             ->assertOk()
-            ->assertJsonPath('new_role', 0);
+            ->assertJsonPath('new_role', 0)
+            ->assertJsonPath('new_role_label', 'ناظر');
         $this->assertFalse($observer->fresh()->can('participate', $group));
         $this->assertDatabaseHas('group_user', [
             'group_id' => $group->id,
             'user_id' => $observer->id,
             'role' => 0,
             'role_override_active' => false,
+            'role_override_original_role' => null,
             'role_override_expires_at' => null,
         ]);
 
