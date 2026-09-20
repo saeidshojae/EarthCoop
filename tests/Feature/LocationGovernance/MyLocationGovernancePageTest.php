@@ -119,4 +119,23 @@ class MyLocationGovernancePageTest extends TestCase
         $response->assertSee('محل سکونت تأییدشده');
         $response->assertSee('اجتماعات محلی');
     }
+
+    public function test_page_uses_mobile_first_dashboard_contract_and_collapses_observer_lists(): void
+    {
+        ['user' => $user] = MembershipFixture::canonicalUser();
+
+        app(CanonicalGroupMembershipReconciler::class)->reconcile($user);
+
+        $response = $this->actingAs($user)->get(route('location-governance.me'));
+
+        $response->assertOk();
+        $response->assertSee('data-base-governance-summary', false);
+        $response->assertSee('data-governance-chain', false);
+        $response->assertSee('class="observer-memberships', false);
+        $response->assertSee('<details', false);
+        $response->assertSee('عضویت‌های ناظر');
+        $response->assertSee('حوزه پایه حکمرانی');
+        $response->assertDontSee('Governance Area');
+    }
+
 }
