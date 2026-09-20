@@ -111,6 +111,50 @@ class CommunityAreaUiTest extends TestCase
             ->exists());
     }
 
+    public function test_residence_transfer_deactivates_old_community_membership_without_page_visit(): void
+    {
+        [$user, $oldComplex] = $this->userAtComplexResidence();
+        $oldArea = app(CommunityAreaService::class)->createFor($oldComplex, $user);
+        $oldGroup = app(CommunityAreaService::class)->publicAssemblyFor($oldArea);
+
+        $schema = LocationFixture::iranSchema();
+        $newPath = LocationFixture::createPath($schema, [
+            'country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood', 'street', 'complex',
+        ], ['ایران دوم', 'استان دوم', 'شهرستان دوم', 'بخش دوم', 'شهر دوم', 'منطقه دوم', 'محله دوم', 'خیابان دوم', 'مجتمع دوم']);
+        $newComplex = $newPath->last();
+
+        app(ResidenceService::class)->transferPrimaryResidence(
+            $user,
+            $newComplex,
+            $user,
+            'community membership transfer regression',
+            true,
+        );
+
+        $oldMembership = GroupUser::query()
+            ->where('group_id', $oldGroup->id)
+            ->where('user_id', $user->id)
+            ->sole();
+        $this->assertSame(0, (int) $oldMembership->status);
+    }
+
+    public function test_residence_change_joins_existing_community_without_dashboard_visit(): void
+    {
+        [$creator, $complex] = $this->userAtComplexResidence();
+        $area = app(CommunityAreaService::class)->createFor($complex, $creator);
+        $group = app(CommunityAreaService::class)->publicAssemblyFor($area);
+
+        $resident = User::factory()->create();
+        app(ResidenceService::class)->setInitialPrimaryResidence($resident, $complex, ['source' => 'test']);
+
+        $membership = GroupUser::query()
+            ->where('group_id', $group->id)
+            ->where('user_id', $resident->id)
+            ->sole();
+        $this->assertSame(1, (int) $membership->role);
+        $this->assertSame(1, (int) $membership->status);
+    }
+
     public function test_pending_or_ineligible_residence_never_gets_community_create_action(): void
     {
         $schema = LocationFixture::iranSchema();
