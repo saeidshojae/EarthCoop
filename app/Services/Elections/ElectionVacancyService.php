@@ -271,6 +271,6 @@ class ElectionVacancyService
         }
 
         $role = (int) $membership->role;
-        return $role >= 1 && $role !== 4;
+        return $role === 1;
     }
 }
