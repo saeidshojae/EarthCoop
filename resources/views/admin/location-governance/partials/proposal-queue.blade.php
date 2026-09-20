@@ -99,7 +99,7 @@
                 <div class="row g-2 mt-1">
                     @unless($awaitingParentResolution)
                         <div class="col-12 col-xl-6">
-                            <form method="POST" action="{{ route('admin.location-governance.proposals.approve', $proposal) }}" class="d-flex gap-2">
+                            <form method="POST" action="{{ route('admin.location-governance.proposals.approve', $proposal) }}" class="d-flex flex-column flex-md-row gap-2">
                                 @csrf
                                 <input class="form-control" name="reason" required minlength="4" maxlength="1000" placeholder="دلیل تأیید انسانی">
                                 <button class="btn btn-success" type="submit">تأیید</button>
@@ -108,7 +108,7 @@
                     @endunless
                     @unless($hasOpenChildren)
                         <div class="col-12 col-xl-6">
-                            <form method="POST" action="{{ route('admin.location-governance.proposals.reject', $proposal) }}" class="d-flex gap-2">
+                            <form method="POST" action="{{ route('admin.location-governance.proposals.reject', $proposal) }}" class="d-flex flex-column flex-md-row gap-2">
                                 @csrf
                                 <input class="form-control" name="reason" required minlength="4" maxlength="1000" placeholder="دلیل رد انسانی">
                                 <button class="btn btn-outline-danger" type="submit">رد</button>
@@ -116,7 +116,7 @@
                         </div>
                     @endunless
                     <div class="col-12 col-xl-6">
-                        <form method="POST" action="{{ route('admin.location-governance.proposals.request-evidence', $proposal) }}" class="d-flex gap-2">
+                        <form method="POST" action="{{ route('admin.location-governance.proposals.request-evidence', $proposal) }}" class="d-flex flex-column flex-md-row gap-2">
                             @csrf
                             <input class="form-control" name="reason" required minlength="4" maxlength="1000" placeholder="مدرک یا توضیح موردنیاز">
                             <button class="btn btn-outline-secondary" type="submit">مدرک بیشتر</button>
@@ -124,7 +124,7 @@
                     </div>
                     @unless($awaitingParentResolution)
                         <div class="col-12 col-xl-6">
-                            <form method="POST" action="{{ route('admin.location-governance.proposals.merge', $proposal) }}" class="d-flex gap-2">
+                            <form method="POST" action="{{ route('admin.location-governance.proposals.merge', $proposal) }}" class="d-flex flex-column flex-md-row gap-2">
                                 @csrf
                                 <input class="form-control" type="number" min="1" name="existing_location_id" required value="{{ $review['duplicate_candidate_id'] ?? '' }}" placeholder="ID مکان موجود">
                                 <input class="form-control" name="reason" required minlength="4" maxlength="1000" placeholder="دلیل ادغام">
