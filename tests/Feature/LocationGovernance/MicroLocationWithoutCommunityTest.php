@@ -52,6 +52,7 @@ class MicroLocationWithoutCommunityTest extends TestCase
             'urban_region',
             'neighborhood',
             'street',
+            'alley',
             'complex',
         ]);
 
