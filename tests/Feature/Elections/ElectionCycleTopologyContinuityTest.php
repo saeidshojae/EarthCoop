@@ -135,6 +135,50 @@ class ElectionCycleTopologyContinuityTest extends TestCase
         $this->assertNotNull(app(ElectionCycleService::class)->ensureForGroup($city));
     }
 
+    public function test_manager_and_inspector_still_count_toward_active_electorate_threshold(): void
+    {
+        DB::table('neighborhoods')->insert([
+            'id' => 9721,
+            'name' => 'Neighborhood Office Holders',
+            'parent_id' => 7007,
+            'status' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('streets')->insert([
+            [
+                'id' => 9722,
+                'name' => 'Street Office A',
+                'parent_id' => 9721,
+                'status' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => 9723,
+                'name' => 'Street Office B',
+                'parent_id' => 9721,
+                'status' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        $group = $this->group('neighborhood', 9721);
+        $this->setting('neighborhood', 2);
+        $manager = $this->addActiveMember($group);
+        $inspector = $this->addActiveMember($group);
+        GroupUser::where('group_id', $group->id)->where('user_id', $manager->id)->update(['role' => 3]);
+        GroupUser::where('group_id', $group->id)->where('user_id', $inspector->id)->update(['role' => 2]);
+
+        $election = app(ElectionCycleService::class)->ensureForGroup($group);
+
+        $this->assertNotNull($election);
+        $this->assertSame(ElectionLifecycleStatus::Open, $election->lifecycle_status);
+        $this->assertDatabaseHas('candidates', ['election_id' => $election->id, 'user_id' => $manager->id]);
+        $this->assertDatabaseHas('candidates', ['election_id' => $election->id, 'user_id' => $inspector->id]);
+    }
+
     public function test_pending_geographic_child_does_not_change_electoral_topology(): void
     {
         DB::table('neighborhoods')->insert([
