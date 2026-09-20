@@ -5,6 +5,7 @@ namespace Tests\Feature\LocationGovernance;
 use App\Models\GovernanceArea;
 use App\Models\User;
 use App\Services\LocationGovernance\CommunityCreationPolicy;
+use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\LocationFixture;
 use Tests\TestCase;
@@ -62,11 +63,15 @@ class MicroLocationWithoutCommunityTest extends TestCase
         $alley = $path->firstWhere('level', 'alley');
         $complex = $path->firstWhere('level', 'complex');
         $policy = app(CommunityCreationPolicy::class);
+        app(ResidenceService::class)->setInitialPrimaryResidence($actor, $complex, ['source' => 'test']);
 
         $this->assertTrue($policy->mayCreateFor($street, $actor));
         $this->assertTrue($policy->mayCreateFor($alley, $actor));
         $this->assertTrue($policy->mayCreateFor($complex, $actor));
         $this->assertFalse($policy->mayCreateFor($city, $actor));
+
+        $outsider = User::factory()->create();
+        $this->assertFalse($policy->mayCreateFor($street, $outsider));
 
         $complex->update(['status' => 'inactive']);
         $this->assertFalse($policy->mayCreateFor($complex->fresh(), $actor));
