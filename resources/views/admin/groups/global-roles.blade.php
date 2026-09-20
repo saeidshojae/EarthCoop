@@ -48,13 +48,13 @@
                     <label class="block text-sm font-semibold mb-2" for="source_role">نقش فعلی اعضا</label>
                     <select id="source_role" name="source_role" class="w-full rounded-xl border-slate-300 dark:bg-slate-700">
                         <option value="0">ناظر</option>
-                        <option value="1">فعال</option>
+                        <option value="5">فعال موقت</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm font-semibold mb-2" for="target_role">نقش مقصد</label>
                     <select id="target_role" name="target_role" class="w-full rounded-xl border-slate-300 dark:bg-slate-700">
-                        <option value="1">فعال</option>
+                        <option value="5">فعال موقت</option>
                         <option value="0">ناظر</option>
                     </select>
                 </div>
@@ -67,7 +67,7 @@
                     <select id="duration_unit" name="duration_unit" class="w-full rounded-xl border-slate-300 dark:bg-slate-700">
                         <option value="day">روز</option>
                         <option value="month">ماه</option>
-                        <option value="unlimited">بدون محدودیت زمانی</option>
+                        <option value="unlimited" disabled>بدون محدودیت زمانی (برای فعال موقت مجاز نیست)</option>
                     </select>
                     <p class="text-xs text-slate-500 mt-2">در حالت ماه، حداکثر ۱۲ ماه مجاز است.</p>
                 </div>
@@ -119,7 +119,7 @@
                         <td class="p-3">#{{ $operation->id }}</td>
                         <td class="p-3">{{ $operation->creator?->fullName() ?? $operation->creator?->email }}</td>
                         <td class="p-3">{{ data_get($operation->filters, 'group_category', 'all') }} / {{ data_get($operation->filters, 'location_level') ?: 'همه سطوح' }}</td>
-                        <td class="p-3">{{ $operation->source_role == 0 ? 'ناظر' : 'فعال' }} ← {{ $operation->target_role == 0 ? 'ناظر' : 'فعال' }}</td>
+                        <td class="p-3">{{ $operation->source_role == 0 ? 'ناظر' : 'فعال موقت' }} ← {{ $operation->target_role == 0 ? 'ناظر' : 'فعال موقت' }}</td>
                         <td class="p-3">{{ $operation->processed_items }} / {{ $operation->total_items }} ({{ $operation->status }})</td>
                         <td class="p-3">{{ $operation->created_at?->format('Y-m-d H:i') }}</td>
                         <td class="p-3">
