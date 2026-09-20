@@ -5,6 +5,7 @@ namespace App\Http\Controllers\LocationGovernance;
 use App\Http\Controllers\Controller;
 use App\Models\GovernanceArea;
 use App\Services\LocationGovernance\CommunityCreationPolicy;
+use App\Services\LocationGovernance\LocationTreeResolver;
 use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -24,6 +25,7 @@ final class MyLocationGovernanceController extends Controller
         Request $request,
         ResidenceService $residenceService,
         CommunityCreationPolicy $communityCreationPolicy,
+        LocationTreeResolver $locationTreeResolver,
     ): View {
         abort_unless((bool) config('location-governance.runtime_enabled'), 404);
 
@@ -64,11 +66,30 @@ final class MyLocationGovernanceController extends Controller
                 ])];
             });
 
-        $communities = $this->communitiesForResidence($currentResidence?->location_id);
-        $canCreateCommunity = $pendingResidenceIntent === null
-            && $communities->isEmpty()
-            && $currentResidence?->location !== null
-            && $communityCreationPolicy->mayCreateFor($currentResidence->location, $user);
+        $localCommunityLocations = collect();
+        if ($currentResidence?->location !== null) {
+            $localCommunityLocations = $locationTreeResolver->ancestors($currentResidence->location)
+                ->push($currentResidence->location)
+                ->filter(fn ($location): bool => in_array($location->type?->key, ['street', 'alley', 'complex', 'building'], true))
+                ->values();
+        }
+
+        $communities = $this->communitiesForLocations($localCommunityLocations->pluck('id'));
+        $communitiesByLocation = $communities
+            ->flatMap(fn ($community) => $community->locations->map(fn ($location) => [$location->id, $community]))
+            ->mapWithKeys(fn ($pair) => [$pair[0] => $pair[1]]);
+
+        $communityOptions = $localCommunityLocations->map(function ($location) use ($communitiesByLocation, $communityCreationPolicy, $pendingResidenceIntent, $user): array {
+            $community = $communitiesByLocation->get($location->id);
+
+            return [
+                'location' => $location,
+                'community' => $community,
+                'can_create' => $community === null
+                    && $pendingResidenceIntent === null
+                    && $communityCreationPolicy->mayCreateFor($location, $user),
+            ];
+        });
 
         return view('location-governance.my-location-governance', compact(
             'currentResidence',
@@ -76,20 +97,21 @@ final class MyLocationGovernanceController extends Controller
             'governanceAreas',
             'membershipsByDimension',
             'communities',
-            'canCreateCommunity',
+            'communityOptions',
         ));
     }
 
-    private function communitiesForResidence(?int $locationId): Collection
+    private function communitiesForLocations(Collection $locationIds): Collection
     {
-        if ($locationId === null) {
+        if ($locationIds->isEmpty()) {
             return collect();
         }
 
         return GovernanceArea::query()
             ->where('area_kind', 'community')
             ->where('status', 'active')
-            ->whereHas('locations', fn ($query) => $query->whereKey($locationId))
+            ->whereHas('locations', fn ($query) => $query->whereIn('locations.id', $locationIds->all()))
+            ->with(['locations' => fn ($query) => $query->whereIn('locations.id', $locationIds->all())->with('type')])
             ->orderBy('rank')
             ->orderBy('id')
             ->get();
