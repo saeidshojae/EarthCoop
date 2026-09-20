@@ -32,7 +32,10 @@ class HomeController extends Controller
         
         
         // دریافت گروه‌ها از کاربر احراز هویت شده
-        $groups = auth()->user()->groups;
+        $groups = auth()->user()->groups()
+            ->wherePivot('status', 1)
+            ->wherePivot('role', '!=', 0)
+            ->get();
         
         // دسته‌بندی گروه‌ها بر اساس نوع
         // '0' = عمومی (general)
