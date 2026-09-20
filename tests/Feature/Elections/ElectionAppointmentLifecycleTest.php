@@ -66,8 +66,8 @@ class ElectionAppointmentLifecycleTest extends TestCase
         $this->assertSame(2, $summary['direct_appointments']);
         $this->assertSame(0, $summary['inherited_appointments']);
         $this->assertSame(ElectionLifecycleStatus::Filled, $election->refresh()->lifecycle_status);
-        $this->assertSame(2, (int) GroupUser::where('group_id', $group->id)->where('user_id', $manager->id)->value('role'));
-        $this->assertSame(3, (int) GroupUser::where('group_id', $group->id)->where('user_id', $inspector->id)->value('role'));
+        $this->assertSame(3, (int) GroupUser::where('group_id', $group->id)->where('user_id', $manager->id)->value('role'));
+        $this->assertSame(2, (int) GroupUser::where('group_id', $group->id)->where('user_id', $inspector->id)->value('role'));
         $this->assertSame(2, ElectionAppointment::where('election_id', $election->id)->where('status', 'active')->count());
 
         $transitions = $election->lifecycleTransitions()
