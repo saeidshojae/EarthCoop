@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Location;
 
+use DomainException;
+
 use App\Http\Controllers\Controller;
 use App\Models\Location;
 use App\Models\LocationProposal;
@@ -51,7 +53,11 @@ class LocationProposalController extends Controller
             if ($parent->status !== 'active') {
                 throw ValidationException::withMessages(['parent_location_id' => 'The selected parent location is not active.']);
             }
+            try {
             $result = $this->proposals->propose($request->user(), $parent, $type, $data, $structuralClaims);
+        } catch (DomainException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
         } else {
             $parent = LocationProposal::query()->findOrFail($parentProposalId);
             $result = $this->proposals->proposeUnderProposal($request->user(), $parent, $type, $data);
