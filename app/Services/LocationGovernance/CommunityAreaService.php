@@ -68,6 +68,57 @@ class CommunityAreaService
         });
     }
 
+
+    public function reconcileMembershipsFor(User $user): array
+    {
+        $residenceId = \App\Models\UserLocationRelationship::query()
+            ->where('user_id', $user->id)
+            ->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')
+            ->latest('started_at')
+            ->value('location_id');
+
+        $eligibleLocationIds = [];
+        if ($residenceId !== null) {
+            $cursor = Location::query()->find($residenceId);
+            $visited = [];
+            while ($cursor !== null && ! isset($visited[$cursor->id])) {
+                $visited[$cursor->id] = true;
+                if (in_array($cursor->type?->key, ['street', 'alley', 'complex', 'building'], true)) {
+                    $eligibleLocationIds[] = (int) $cursor->id;
+                }
+                $cursor = $cursor->parent_id !== null ? Location::query()->find($cursor->parent_id) : null;
+            }
+        }
+
+        $areas = $eligibleLocationIds === [] ? collect() : GovernanceArea::query()
+            ->where('area_kind', 'community')
+            ->where('status', 'active')
+            ->whereHas('locations', fn ($query) => $query->whereIn('locations.id', $eligibleLocationIds))
+            ->get();
+
+        $activeGroupIds = [];
+        foreach ($areas as $area) {
+            $group = $this->ensureMembership($area, $user);
+            if ($group !== null) {
+                $activeGroupIds[] = (int) $group->id;
+            }
+        }
+
+        $stale = GroupUser::query()
+            ->where('user_id', $user->id)
+            ->where('status', 1)
+            ->whereHas('group.governanceArea', fn ($query) => $query->where('area_kind', 'community'));
+
+        if ($activeGroupIds !== []) {
+            $stale->whereNotIn('group_id', $activeGroupIds);
+        }
+
+        $stale->update(['status' => 0]);
+
+        return $activeGroupIds;
+    }
+
     public function ensureMembership(GovernanceArea $area, User $user): ?Group
     {
         $location = $area->locations()->where('locations.status', 'active')->first();
