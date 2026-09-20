@@ -60,6 +60,35 @@ class ResidencePickerDeepHardeningTest extends TestCase
         $this->assertSame($neighborhoodClaim->id, collect($afterNeighborhood->json('structural_choices'))->firstWhere('claim_type', 'no_neighborhood')['claim_id']);
     }
 
+    public function test_region_and_village_without_neighborhood_expose_street_for_pending_and_approved_claims(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+        $schema = LocationFixture::iranSchema();
+        $user = User::factory()->create();
+        $service = app(LocationStructureClaimService::class);
+        $region = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city', 'urban_region'])->last();
+        $village = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'rural_district', 'village'])->last();
+
+        $regionClaim = $service->findOrCreateOpenClaim($region, 'no_neighborhood', $user);
+        $villageClaim = $service->findOrCreateOpenClaim($village, 'no_neighborhood', $user);
+
+        foreach ([$region, $village] as $location) {
+            $response = $this->getJson('/location/options/'.$location->id.'/children');
+            $response->assertOk();
+            $this->assertSame(['street'], collect($response->json('effective_allowed_types'))->pluck('key')->all());
+            $response->assertJsonPath('effective_allowed_types.0.proposal_allowed', true);
+        }
+
+        $regionClaim->forceFill(['status' => 'approved', 'approved_at' => now()])->save();
+        $villageClaim->forceFill(['status' => 'approved', 'approved_at' => now()])->save();
+
+        foreach ([$region, $village] as $location) {
+            $response = $this->getJson('/location/options/'.$location->id.'/children');
+            $response->assertOk();
+            $this->assertSame(['street'], collect($response->json('effective_allowed_types'))->pluck('key')->all());
+        }
+    }
+
     public function test_location_proposals_have_an_additive_nullable_proposal_parent_column(): void
     {
         $this->assertTrue(Schema::hasColumn('location_proposals', 'parent_location_proposal_id'));
