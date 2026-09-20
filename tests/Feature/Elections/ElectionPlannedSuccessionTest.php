@@ -42,7 +42,7 @@ class ElectionPlannedSuccessionTest extends TestCase
 
         $incumbent = User::factory()->create(['is_system' => false]);
         $replacement = User::factory()->create(['is_system' => false]);
-        GroupUser::create(['group_id' => $group->id, 'user_id' => $incumbent->id, 'role' => 2, 'status' => 1]);
+        GroupUser::create(['group_id' => $group->id, 'user_id' => $incumbent->id, 'role' => 3, 'status' => 1]);
         GroupUser::create(['group_id' => $group->id, 'user_id' => $replacement->id, 'role' => 1, 'status' => 1]);
 
         $election = Election::create([
