@@ -97,7 +97,14 @@ class LocationStructureClaimPolicyTest extends TestCase
         $schema = LocationFixture::iranSchema();
         $user = User::factory()->create();
         $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
-        $street = LocationFixture::createPath($schema, ['country','province','county','section','city','urban_region','neighborhood','street'])->last();
+        $street = \App\Models\Location::create([
+            'location_schema_id' => $schema->id,
+            'location_type_id' => $schema->types->firstWhere('key', 'street')->id,
+            'parent_id' => $city->id,
+            'country_code' => 'IR',
+            'canonical_name' => 'Direct Structural Street',
+            'status' => 'active',
+        ]);
         $area = GovernanceArea::create([
             'key' => 'test-city-official',
             'country_code' => 'IR',
