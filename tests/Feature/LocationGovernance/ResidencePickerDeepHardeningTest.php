@@ -7,6 +7,7 @@ use App\Models\Location;
 use App\Models\LocationProposal;
 use App\Models\User;
 use App\Services\LocationGovernance\LocationProposalService;
+use App\Services\LocationGovernance\LocationStructureClaimService;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -30,6 +31,33 @@ class ResidencePickerDeepHardeningTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('allowed_types.0.key', 'urban_region');
         $response->assertJsonPath('allowed_types.0.label', 'منطقه');
+    }
+
+    public function test_structural_claim_chain_exposes_only_the_real_next_residence_level(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+        app()->setLocale('fa');
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city'])->last();
+        $user = User::factory()->create();
+        $service = app(LocationStructureClaimService::class);
+
+        $regionClaim = $service->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+
+        $afterRegion = $this->getJson('/location/options/'.$city->id.'/children');
+        $afterRegion->assertOk();
+        $afterRegion->assertJsonPath('effective_allowed_types.0.key', 'neighborhood');
+        $this->assertSame(['neighborhood'], collect($afterRegion->json('effective_allowed_types'))->pluck('key')->all());
+
+        $neighborhoodClaim = $service->findOrCreateOpenClaim($city, 'no_neighborhood', $user);
+
+        $afterNeighborhood = $this->getJson('/location/options/'.$city->id.'/children');
+        $afterNeighborhood->assertOk();
+        $afterNeighborhood->assertJsonPath('effective_allowed_types.0.key', 'street');
+        $afterNeighborhood->assertJsonPath('effective_allowed_types.0.proposal_allowed', true);
+        $this->assertSame(['street'], collect($afterNeighborhood->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertSame($regionClaim->id, collect($afterNeighborhood->json('structural_choices'))->firstWhere('claim_type', 'no_urban_region')['claim_id']);
+        $this->assertSame($neighborhoodClaim->id, collect($afterNeighborhood->json('structural_choices'))->firstWhere('claim_type', 'no_neighborhood')['claim_id']);
     }
 
     public function test_location_proposals_have_an_additive_nullable_proposal_parent_column(): void
