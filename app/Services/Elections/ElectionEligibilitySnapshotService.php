@@ -258,12 +258,20 @@ class ElectionEligibilitySnapshotService
         }
 
         $role = (int) $member->role;
-        if ($role < 1) {
+        if ($role === 0) {
             return [false, 'observer_role'];
         }
 
         if ($role === 4) {
             return [false, 'guest_role'];
+        }
+
+        if ($role === 5) {
+            return [false, 'temporary_active_role'];
+        }
+
+        if ($role !== 1) {
+            return [false, 'non_elector_role'];
         }
 
         return [true, null];
