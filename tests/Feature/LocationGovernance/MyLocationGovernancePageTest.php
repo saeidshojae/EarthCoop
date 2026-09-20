@@ -89,7 +89,7 @@ class MyLocationGovernancePageTest extends TestCase
         $response->assertSee('Sari Official Governance');
         $response->assertSee('Iran Official Governance');
         $response->assertSee('عضویت فعال');
-        $response->assertSee('عضویت ناظر');
+        $response->assertSee('عضویت‌های ناظر');
     }
 
     public function test_page_shows_current_approved_residence_without_treating_community_as_official_governance(): void
@@ -116,7 +116,8 @@ class MyLocationGovernancePageTest extends TestCase
         $response->assertViewHas('governanceAreas', fn ($areas): bool =>
             ! collect($areas)->contains(fn ($area): bool => (int) $area->id === (int) $community->id)
         );
-        $response->assertSee('محل سکونت تأییدشده');
+        $response->assertSee('محل سکونت');
+        $response->assertSee('تأییدشده');
         $response->assertSee('اجتماعات محلی');
     }
 
@@ -136,6 +137,21 @@ class MyLocationGovernancePageTest extends TestCase
         $response->assertSee('عضویت‌های ناظر');
         $response->assertSee('حوزه پایه حکمرانی');
         $response->assertDontSee('Governance Area');
+    }
+
+
+    public function test_page_defaults_to_official_tab_and_guides_user_without_micro_location(): void
+    {
+        ['user' => $user] = MembershipFixture::canonicalUser();
+
+        $response = $this->actingAs($user)->get(route('location-governance.me'));
+
+        $response->assertOk();
+        $response->assertSee('id="official-tab"', false);
+        $response->assertSee('nav-link active', false);
+        $response->assertSee('اجتماعات محلی');
+        $response->assertSee('data-community-location-guide', false);
+        $response->assertSee('تکمیل نشانی و افزودن مکان محلی');
     }
 
 }
