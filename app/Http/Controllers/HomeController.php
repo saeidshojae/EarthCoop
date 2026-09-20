@@ -53,18 +53,22 @@ class HomeController extends Controller
         // '3' = سنی (age_group_id دارد)
         // '4' = جنسیتی (gender دارد)
         
-        // گروه‌های عمومی: group_type = '0'
-        $generalGroups = $groups->where('group_type', '0');
-        
-        // گروه‌های تخصصی: شامل صنفی (group_type='1') و علمی (group_type='2')
-        $specializedGroups = $groups->filter(function($group) {
-            return $group->group_type == '1' || $group->group_type == '2';
-        });
-        
-        // گروه‌های اختصاصی: شامل سنی (group_type='3') و جنسیتی (group_type='4')
-        $exclusiveGroups = $groups->filter(function($group) {
-            return $group->group_type == '3' || $group->group_type == '4';
-        });
+        if ((bool) config('location-governance.groups_enabled', false)) {
+            // Canonical identity is dimension-based. Legacy group_type is only a
+            // presentation/backward-compatibility field and must not drive counts.
+            $generalGroups = $groups->where('dimension_key', 'public');
+            $specializedGroups = $groups->whereIn('dimension_key', ['profession', 'specialty']);
+            $exclusiveGroups = $groups->whereIn('dimension_key', ['age', 'gender']);
+        } else {
+            // Legacy fallback while canonical group cutover is disabled.
+            $generalGroups = $groups->where('group_type', '0');
+            $specializedGroups = $groups->filter(function($group) {
+                return $group->group_type == '1' || $group->group_type == '2';
+            });
+            $exclusiveGroups = $groups->filter(function($group) {
+                return $group->group_type == '3' || $group->group_type == '4';
+            });
+        }
         
         // دریافت حراج‌های فعال
         $activeAuctions = \App\Modules\Stock\Models\Auction::where('status', 'running')
