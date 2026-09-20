@@ -60,8 +60,8 @@ class ElectionAppointmentServiceTest extends TestCase
         $direct = $service->appoint($offer);
 
         $this->assertSame('direct', $direct->appointment_kind);
-        $this->assertSame(2, (int) GroupUser::where('group_id', $streetGroup->id)->where('user_id', $user->id)->value('role'));
-        $this->assertSame(2, (int) GroupUser::where('group_id', $neighborhoodGroup->id)->where('user_id', $user->id)->value('role'));
+        $this->assertSame(3, (int) GroupUser::where('group_id', $streetGroup->id)->where('user_id', $user->id)->value('role'));
+        $this->assertSame(3, (int) GroupUser::where('group_id', $neighborhoodGroup->id)->where('user_id', $user->id)->value('role'));
         $this->assertSame(1, (int) GroupUser::where('group_id', $regionGroup->id)->where('user_id', $user->id)->value('role'));
 
         $inherited = ElectionAppointment::where('responsibility_offer_id', $offer->id)
@@ -161,7 +161,7 @@ class ElectionAppointmentServiceTest extends TestCase
         $this->assertSame($higher->id, (int) $lower->superseded_by_appointment_id);
         $this->assertNotNull($lower->ended_at);
         $this->assertSame(1, (int) GroupUser::where('group_id', $streetGroup->id)->where('user_id', $user->id)->value('role'));
-        $this->assertSame(2, (int) GroupUser::where('group_id', $neighborhoodGroup->id)->where('user_id', $user->id)->value('role'));
+        $this->assertSame(3, (int) GroupUser::where('group_id', $neighborhoodGroup->id)->where('user_id', $user->id)->value('role'));
         $this->assertSame(1, (int) GroupUser::where('group_id', $regionGroup->id)->where('user_id', $user->id)->value('role'));
     }
 
