@@ -131,6 +131,20 @@ class LocationGovernanceControlCenterTest extends TestCase
         }
     }
 
+    public function test_review_action_forms_stack_on_phone_widths_and_expand_from_medium_up(): void
+    {
+        foreach ([
+            'proposal-queue',
+            'structure-claim-queue',
+        ] as $partial) {
+            $source = file_get_contents(resource_path("views/admin/location-governance/partials/{$partial}.blade.php"));
+
+            $this->assertIsString($source);
+            $this->assertStringContainsString('d-flex flex-column flex-md-row gap-2', $source);
+            $this->assertStringNotContainsString('class="d-flex gap-2"', $source);
+        }
+    }
+
     public function test_control_center_exposes_bounded_reference_topology_community_import_and_health_read_models(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
