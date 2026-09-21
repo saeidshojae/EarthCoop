@@ -31,3 +31,9 @@ test('pending residence path uses one compact review indicator instead of repeat
     assert.match(source, /در انتظار بررسی/);
     assert.doesNotMatch(source, /\`\$\{item\.label\} \(در انتظار بررسی\)\`/);
 });
+
+test('persisted deep residence replay can pass through type-first micro choice gates', () => {
+    assert.match(source, /data-location-type-choice-key/);
+    assert.match(source, /identityTypeKey/);
+    assert.match(source, /button\.click\(\)/);
+});
