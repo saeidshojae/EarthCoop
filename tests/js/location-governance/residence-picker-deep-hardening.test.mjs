@@ -94,3 +94,10 @@ test('registration and profile residence path uses the unified Persian region la
     assert.doesNotMatch(source, /urban_region:\s*'منطقه شهری'/);
 });
 
+test('new canonical-parent proposal is inserted into the current selector and selected immediately', () => {
+  assert.match(selectorSource, /select\.appendChild\(option\)/);
+  assert.match(selectorSource, /select\.value = identity/);
+  assert.match(selectorSource, /selectedPath\.set\(depth, proposal\)/);
+  assert.match(selectorSource, /در فهرست همین سطح انتخاب شد/);
+});
+
