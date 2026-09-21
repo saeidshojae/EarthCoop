@@ -67,9 +67,10 @@ class LocationTreeResolver
             ->pluck('claim_type');
 
         // Missing rows are not evidence that a structural tier does not exist.
-        // Sparse city/region/village endpoints require an explicit absence claim.
+        // A city can finish only when both possible governance tiers are explicitly absent.
+        // A region/village can finish only when neighborhood is explicitly absent.
         return match ($typeKey) {
-            'city' => $claims->contains('no_urban_region') || $claims->contains('no_neighborhood'),
+            'city' => $claims->contains('no_urban_region') && $claims->contains('no_neighborhood'),
             'urban_region', 'village' => $claims->contains('no_neighborhood'),
             default => true,
         };
