@@ -150,6 +150,134 @@ class ElectionCanonicalCutoverTest extends TestCase
         }
     }
 
+    public function test_single_real_region_is_preserved_but_city_region_boundary_is_electorally_compressed(): void
+    {
+        config()->set('location-governance.elections_enabled', true);
+
+        $cityArea = GovernanceArea::factory()->official()->create([
+            'governance_type' => 'city',
+            'status' => 'active',
+            'parent_id' => null,
+            'rank' => 500,
+        ]);
+        $regionArea = GovernanceArea::factory()->official()->create([
+            'governance_type' => 'urban_region',
+            'status' => 'active',
+            'parent_id' => $cityArea->id,
+            'rank' => 700,
+        ]);
+        $firstNeighborhoodArea = GovernanceArea::factory()->official()->create([
+            'governance_type' => 'local',
+            'status' => 'active',
+            'parent_id' => $regionArea->id,
+            'rank' => 900,
+        ]);
+        GovernanceArea::factory()->official()->create([
+            'governance_type' => 'local',
+            'status' => 'active',
+            'parent_id' => $regionArea->id,
+            'rank' => 900,
+        ]);
+
+        $city = $this->canonicalPublicGroup($cityArea, 'Single-region city');
+        $region = $this->canonicalPublicGroup($regionArea, 'Only real region');
+        $neighborhood = $this->canonicalPublicGroup($firstNeighborhoodArea, 'Neighborhood A');
+
+        $resolver = app(ElectionGroupHierarchyResolver::class);
+        $user = User::factory()->create();
+
+        $this->assertSame(1, $resolver->effectiveStructuralChildCount($city));
+        $this->assertFalse($resolver->isIndependentElectoralLayer($city));
+        $this->assertSame(2, $resolver->effectiveStructuralChildCount($region));
+        $this->assertTrue($resolver->isIndependentElectoralLayer($region));
+        $this->assertSame($region->id, $resolver->higherGroup($neighborhood, $user)?->id);
+        $this->assertSame([$city->id], array_map(
+            fn (Group $group): int => (int) $group->id,
+            $resolver->compressionChain($region, $user),
+        ));
+    }
+
+    public function test_single_real_neighborhood_compresses_region_or_village_boundary_without_deleting_location_layer(): void
+    {
+        config()->set('location-governance.elections_enabled', true);
+
+        foreach (['urban_region', 'village'] as $parentType) {
+            $parentArea = GovernanceArea::factory()->official()->create([
+                'governance_type' => $parentType,
+                'status' => 'active',
+                'parent_id' => null,
+                'rank' => 700,
+            ]);
+            $neighborhoodArea = GovernanceArea::factory()->official()->create([
+                'governance_type' => 'local',
+                'status' => 'active',
+                'parent_id' => $parentArea->id,
+                'rank' => 900,
+            ]);
+
+            $parent = $this->canonicalPublicGroup($parentArea, 'Single-neighborhood '.$parentType);
+            $neighborhood = $this->canonicalPublicGroup($neighborhoodArea, 'Only real neighborhood '.$parentType);
+
+            $resolver = app(ElectionGroupHierarchyResolver::class);
+            $user = User::factory()->create();
+
+            $this->assertSame(1, $resolver->effectiveStructuralChildCount($parent));
+            $this->assertFalse($resolver->isIndependentElectoralLayer($parent));
+            $this->assertTrue($resolver->isIndependentElectoralLayer($neighborhood));
+            $this->assertSame([$parent->id], array_map(
+                fn (Group $group): int => (int) $group->id,
+                $resolver->compressionChain($neighborhood, $user),
+            ));
+        }
+    }
+
+    public function test_multiple_single_child_boundaries_compress_as_one_electoral_chain(): void
+    {
+        config()->set('location-governance.elections_enabled', true);
+
+        $provinceArea = GovernanceArea::factory()->official()->create([
+            'governance_type' => 'province',
+            'status' => 'active',
+            'parent_id' => null,
+            'rank' => 200,
+        ]);
+        $cityArea = GovernanceArea::factory()->official()->create([
+            'governance_type' => 'city',
+            'status' => 'active',
+            'parent_id' => $provinceArea->id,
+            'rank' => 500,
+        ]);
+        $regionArea = GovernanceArea::factory()->official()->create([
+            'governance_type' => 'urban_region',
+            'status' => 'active',
+            'parent_id' => $cityArea->id,
+            'rank' => 700,
+        ]);
+        $neighborhoodArea = GovernanceArea::factory()->official()->create([
+            'governance_type' => 'local',
+            'status' => 'active',
+            'parent_id' => $regionArea->id,
+            'rank' => 900,
+        ]);
+
+        $province = $this->canonicalPublicGroup($provinceArea, 'Province');
+        $city = $this->canonicalPublicGroup($cityArea, 'City');
+        $region = $this->canonicalPublicGroup($regionArea, 'Region');
+        $neighborhood = $this->canonicalPublicGroup($neighborhoodArea, 'Neighborhood');
+
+        $resolver = app(ElectionGroupHierarchyResolver::class);
+        $user = User::factory()->create();
+
+        $this->assertSame(
+            [$region->id, $city->id, $province->id],
+            array_map(
+                fn (Group $group): int => (int) $group->id,
+                $resolver->compressionChain($neighborhood, $user),
+            ),
+        );
+        $this->assertNull($resolver->nextElectoralParent($neighborhood, $user));
+    }
+
     public function test_canonical_policy_key_uses_governance_type_and_canonical_dimension(): void
     {
         config()->set('location-governance.elections_enabled', true);
