@@ -101,8 +101,8 @@ const pickerLevelLabel = (payload, depth) => {
 const buildMicroTypeChoice = (host, payload, depth, onChosen) => {
     const types = microContinuationTypes(payload); if (types.length < 2) return null;
     const wrapper = document.createElement('div'); wrapper.dataset.locationDepth = String(depth); wrapper.dataset.locationTypeChoice = ''; wrapper.className = 'vstack gap-2';
-    const label = document.createElement('div'); label.className = 'form-label small text-secondary mb-0'; label.textContent = 'نوع ادامه مسیر';
-    const hint = document.createElement('div'); hint.className = 'small text-secondary'; hint.textContent = 'ابتدا نوع مکان بعدی را انتخاب کنید تا فقط گزینه‌های همان نوع نمایش داده شوند.';
+    const label = document.createElement('div'); label.className = 'form-label fw-bold mb-0'; label.textContent = 'نشانی شما در ادامه کدام است؟';
+    const hint = document.createElement('div'); hint.className = 'small text-secondary'; hint.textContent = 'فقط یک نوع را انتخاب کنید؛ سپس گزینه‌های همان نوع نمایش داده می‌شوند.';
     const actions = document.createElement('div'); actions.className = 'd-flex flex-wrap gap-2';
     types.forEach((type) => {
         const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-outline-secondary btn-sm'; button.dataset.locationTypeChoiceKey = type.key; button.textContent = TYPE_LABELS[type.key] || type.label || type.key;
