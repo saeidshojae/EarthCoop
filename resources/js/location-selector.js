@@ -48,7 +48,7 @@ const addProposalPanel = (host, wrapper, payload, parentIdentity, select) => {
     if (types.length === 1) { type.value = String(types[0].id); type.hidden = true; type.setAttribute('aria-hidden', 'true'); }
     const name = document.createElement('input'); name.type = 'text'; name.className = 'form-control form-control-sm'; name.maxLength = 255; name.placeholder = types.length === 1 ? `نام ${localizeLocationTypeLabel(types[0])} را وارد کنید` : 'نام مکان را وارد کنید'; name.setAttribute('aria-label', 'نام مکان پیشنهادی');
     const actions = document.createElement('div'); actions.className = 'location-proposal-actions';
-    const submit = document.createElement('button'); submit.type = 'button'; submit.dataset.locationProposalSubmit = ''; submit.className = 'btn btn-primary btn-sm'; submit.textContent = 'ثبت پیشنهاد';
+    const submit = document.createElement('button'); submit.type = 'button'; submit.dataset.locationProposalSubmit = ''; submit.className = 'btn btn-primary btn-sm'; submit.textContent = types.length === 1 ? `ثبت ${localizeLocationTypeLabel(types[0])}` : 'ثبت مکان';
     const cancel = document.createElement('button'); cancel.type = 'button'; cancel.dataset.locationProposalCancel = ''; cancel.className = 'btn btn-link btn-sm'; cancel.textContent = 'انصراف';
     const feedback = document.createElement('div'); feedback.className = 'small text-secondary'; feedback.setAttribute('aria-live', 'polite');
     const closePanel = () => { panel.classList.add('d-none'); toggle.setAttribute('aria-expanded', 'false'); };
