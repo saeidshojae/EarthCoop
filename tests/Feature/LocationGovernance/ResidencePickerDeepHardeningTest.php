@@ -346,6 +346,7 @@ class ResidencePickerDeepHardeningTest extends TestCase
         $schema = LocationFixture::iranSchema();
         $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
         $regionType = $schema->types->firstWhere('key', 'urban_region');
+        $schema->types()->updateExistingPivot($regionType->id, ['metadata' => json_encode(['crowdsourced_proposal_allowed' => true, 'structural_claim_types' => ['single_neighborhood','no_neighborhood']], JSON_UNESCAPED_UNICODE)]);
         $user = User::factory()->create();
         $reviewer = User::factory()->create(['is_admin' => true]);
         $proposal = app(LocationProposalService::class)->propose($user, $city, $regionType, ['canonical_name' => 'منطقه پیشنهادی']);
@@ -371,6 +372,7 @@ class ResidencePickerDeepHardeningTest extends TestCase
 
         foreach ([['parent' => $section, 'type' => 'city', 'claims' => ['single_urban_region','no_urban_region']], ['parent' => $rural, 'type' => 'village', 'claims' => ['single_neighborhood','no_neighborhood']]] as $case) {
             $type = $schema->types->firstWhere('key', $case['type']);
+            $schema->types()->updateExistingPivot($type->id, ['metadata' => json_encode(['crowdsourced_proposal_allowed' => true, 'structural_claim_types' => $case['claims']], JSON_UNESCAPED_UNICODE)]);
             $proposal = app(LocationProposalService::class)->propose($user, $case['parent'], $type, ['canonical_name' => 'پیشنهاد '.$case['type']]);
             $response = $this->actingAs($user)->getJson('/location/proposals/'.$proposal->id.'/children')->assertOk();
             foreach ($case['claims'] as $claimType) $response->assertJsonFragment(['claim_type' => $claimType]);
