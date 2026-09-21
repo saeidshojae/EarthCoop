@@ -259,3 +259,14 @@ test('changing an ancestor selection clears remembered structural claim ids from
     assert.match(source, /clearStructuralClaimsAfterDepth\(form, depth\)/);
 });
 
+
+test('structural claim UI presents mutually exclusive tier states as one grouped question', () => {
+    const source = selectorSource();
+    assert.match(source, /STRUCTURAL_CLAIM_GROUPS/);
+    assert.match(source, /single_urban_region.*no_urban_region/s);
+    assert.match(source, /single_neighborhood.*no_neighborhood/s);
+    assert.match(source, /ساختار منطقه‌ای این شهر چگونه است/);
+    assert.match(source, /ساختار محله‌ای این محدوده چگونه است/);
+    assert.match(source, /data-location-structural-choice/);
+    assert.match(source, /aria-pressed/);
+});
