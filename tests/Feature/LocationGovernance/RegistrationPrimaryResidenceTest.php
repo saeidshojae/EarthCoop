@@ -5,6 +5,7 @@ namespace Tests\Feature\LocationGovernance;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\LocationFixture;
+use Tests\Support\LocationGovernance\MembershipFixture;
 use Tests\Support\LocationGovernance\RegistrationFixture;
 use Tests\TestCase;
 
@@ -63,6 +64,35 @@ class RegistrationPrimaryResidenceTest extends TestCase
             'location_id' => $neighborhood->id,
             'relationship_type' => 'primary_residence',
         ]);
+    }
+
+    public function test_canonical_registration_materializes_system_groups_immediately_when_stage_c_groups_are_enabled(): void
+    {
+        config([
+            'location-governance.runtime_enabled' => true,
+            'location-governance.registration_enabled' => true,
+            'location-governance.groups_enabled' => true,
+        ]);
+
+        ['user' => $user, 'endpoint' => $endpoint] = MembershipFixture::canonicalUser();
+        $user->locationRelationships()->delete();
+
+        $response = $this->actingAs($user)->post('/register/step3', [
+            'location_id' => $endpoint->id,
+        ]);
+
+        $response->assertRedirect(route('home'));
+
+        $memberships = $user->fresh()->groups()
+            ->wherePivot('status', 1)
+            ->whereNotNull('groups.governance_area_id')
+            ->get();
+
+        $this->assertSame(5, $memberships->count());
+        $this->assertSame(
+            ['age', 'gender', 'profession', 'public', 'specialty'],
+            $memberships->pluck('dimension_key')->sort()->values()->all(),
+        );
     }
 
     public function test_canonical_registration_accepts_a_rural_village_at_variable_depth(): void
