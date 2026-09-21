@@ -247,4 +247,52 @@ class LocationStructureClaimTest extends TestCase
             'claim_type' => 'no_urban_region',
         ])->assertOk()->assertJsonPath('id', $response->json('id'));
     }
+    public function test_conflicting_open_structural_claims_cannot_coexist_for_the_same_tier(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $service = app(LocationStructureClaimService::class);
+        $user = User::factory()->create();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $region = LocationFixture::createPath($schema, ['country','province','county','section','city','urban_region'])->last();
+
+        $service->findOrCreateOpenClaim($city, 'single_urban_region', $user);
+
+        try {
+            $service->findOrCreateOpenClaim($city, 'no_urban_region', User::factory()->create());
+            $this->fail('Conflicting city structural claims must not coexist.');
+        } catch (\DomainException $exception) {
+            $this->assertSame('Conflicting structural claim already exists for this location tier.', $exception->getMessage());
+        }
+
+        $service->findOrCreateOpenClaim($region, 'no_neighborhood', $user);
+
+        try {
+            $service->findOrCreateOpenClaim($region, 'single_neighborhood', User::factory()->create());
+            $this->fail('Conflicting neighborhood structural claims must not coexist.');
+        } catch (\DomainException $exception) {
+            $this->assertSame('Conflicting structural claim already exists for this location tier.', $exception->getMessage());
+        }
+    }
+
+    public function test_approved_structural_claim_blocks_a_conflicting_new_claim(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $service = app(LocationStructureClaimService::class);
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+
+        LocationStructureClaim::create([
+            'location_id' => $city->id,
+            'claim_type' => 'no_urban_region',
+            'status' => 'approved',
+            'proposer_user_id' => User::factory()->create()->id,
+            'approved_at' => now(),
+        ]);
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('Conflicting structural claim already exists for this location tier.');
+
+        $service->findOrCreateOpenClaim($city, 'single_urban_region', User::factory()->create());
+    }
+
+
 }
