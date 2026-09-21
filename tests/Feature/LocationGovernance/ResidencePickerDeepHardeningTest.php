@@ -114,6 +114,22 @@ class ResidencePickerDeepHardeningTest extends TestCase
         $this->assertSame(LocationProposalStatus::Pending, $alley->status);
     }
 
+    public function test_repeated_same_canonical_proposal_reuses_one_open_record(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $neighborhood = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood'])->last();
+        $streetType = $schema->types->firstWhere('key', 'street');
+        $user = User::factory()->create();
+        $service = app(LocationProposalService::class);
+
+        $first = $service->propose($user, $neighborhood, $streetType, ['canonical_name' => 'خیابان تکرارنشدنی']);
+        $second = $service->propose($user, $neighborhood, $streetType, ['canonical_name' => 'خیابان تکرارنشدنی']);
+
+        $this->assertInstanceOf(LocationProposal::class, $first);
+        $this->assertSame($first->id, $second->id);
+        $this->assertSame(1, LocationProposal::query()->where('parent_location_id', $neighborhood->id)->where('location_type_id', $streetType->id)->where('normalized_name', $first->normalized_name)->count());
+    }
+
     public function test_proposal_parent_reuses_same_open_child_and_rejects_invalid_type_relation(): void
     {
         $schema = LocationFixture::iranSchema();
