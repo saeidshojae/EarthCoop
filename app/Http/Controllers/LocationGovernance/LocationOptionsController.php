@@ -103,11 +103,39 @@ final class LocationOptionsController extends Controller
             ->where('parent_type_id', $locationProposal->location_type_id)
             ->pluck('child_type_id');
         $allowedTypes = LocationType::query()->whereIn('id', $allowedTypeIds)->orderBy('canonical_name')->get();
+        $claims = LocationStructureClaim::query()
+            ->where('location_proposal_id', $locationProposal->id)
+            ->whereIn('status', [...LocationStructureClaimService::OPEN_STATUSES, 'approved'])
+            ->get();
+        $claimTypes = $claims->pluck('claim_type');
+        $typeKey = $locationProposal->type?->key;
+        if ($typeKey === 'city' && $claimTypes->contains('no_urban_region')) {
+            $allowedTypes = LocationType::query()->whereIn('key', $claimTypes->contains('no_neighborhood') ? ['street'] : ['neighborhood'])->get();
+        } elseif (in_array($typeKey, ['urban_region', 'village'], true) && $claimTypes->contains('no_neighborhood')) {
+            $allowedTypes = LocationType::query()->where('key', 'street')->get();
+        }
+        $effectiveTypeIds = $allowedTypes->pluck('id');
         $proposals = LocationProposal::query()->with('type')->whereNull('parent_location_id')
             ->where('parent_location_proposal_id', $locationProposal->id)
-            ->whereIn('location_type_id', $allowedTypeIds)->whereIn('status', self::OPEN_STATUSES)->orderBy('canonical_name')->get();
+            ->whereIn('location_type_id', $effectiveTypeIds)->whereIn('status', self::OPEN_STATUSES)->orderBy('canonical_name')->get();
 
-        return $this->payload(collect(), $proposals, $allowedTypes, fn (LocationType $type) => $proposalPolicy->allowsProposalParent($locationProposal, $type));
+        $structuralChoices = collect(match ($typeKey) {
+            'city' => ['single_urban_region', 'no_urban_region'],
+            'urban_region', 'village' => ['single_neighborhood', 'no_neighborhood'],
+            default => [],
+        })->map(function (string $claimType) use ($claims): array {
+            $claim = $claims->firstWhere('claim_type', $claimType);
+            return ['claim_type' => $claimType, 'status' => $claim?->status, 'claim_id' => $claim?->id];
+        })->values();
+
+        return response()->json([
+            'data' => [],
+            'proposals' => $proposals->map(fn (LocationProposal $proposal) => $this->serializeProposal($proposal))->values(),
+            'allowed_types' => $allowedTypes->map(fn (LocationType $type) => $this->serializeAllowedType($type, $proposalPolicy->allowsProposalParent($locationProposal, $type)))->values(),
+            'effective_allowed_types' => $allowedTypes->map(fn (LocationType $type) => $this->serializeAllowedType($type, $proposalPolicy->allowsProposalParent($locationProposal, $type)))->values(),
+            'structural_choices' => $structuralChoices,
+            'structural_parent_proposal_id' => $locationProposal->id,
+        ]);
     }
 
     private function payload($children, $proposals, $allowedTypes, callable $proposalAllowed): JsonResponse
