@@ -22,7 +22,11 @@ class LocationStructureClaimController extends Controller
         $location = Location::query()->findOrFail($validated['location_id']);
         abort_unless($location->status === 'active', 422, 'The selected location is not active.');
 
-        $claim = $this->claims->findOrCreateOpenClaim($location, $validated['claim_type'], $request->user());
+        try {
+            $claim = $this->claims->findOrCreateOpenClaim($location, $validated['claim_type'], $request->user());
+        } catch (\DomainException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
 
         return response()->json([
             'id' => $claim->id,
