@@ -72,7 +72,7 @@ final class LocationOptionsController extends Controller
             $proposals = LocationProposal::query()->with('type')->where('parent_location_id',$location->id)->whereNull('parent_location_proposal_id')->where('location_schema_id',$location->location_schema_id)->whereIn('location_type_id',$proposableTypeIds)->whereIn('status',self::OPEN_STATUSES)->orderBy('canonical_name')->get();
         }
         $structuralChoices = collect($structurePolicy->allowedClaimTypes($location))
-            ->merge(($claims->pluck('claim_type')->contains(fn ($type) => in_array($type, ['single_urban_region', 'no_urban_region'], true)))
+            ->merge($claims->pluck('claim_type')->contains('no_urban_region')
                 ? ['single_neighborhood', 'no_neighborhood'] : [])
             ->unique()->values()->map(function (string $type) use ($claims): array {
                 $claim = $claims->firstWhere('claim_type', $type);
@@ -80,7 +80,7 @@ final class LocationOptionsController extends Controller
             });
 
         $officialBase = $claims->where('status', 'approved')->pluck('claim_type')
-            ->intersect(['single_neighborhood', 'no_neighborhood'])->isNotEmpty();
+            ->contains('no_neighborhood');
 
         return response()->json([
             'data' => $children->map(fn (Location $child) => $this->serialize($child))->values(),
