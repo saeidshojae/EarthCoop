@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Models\Location;
+use App\Models\LocationProposal;
+use App\Models\PendingResidenceIntent;
 use App\Models\User;
 use App\Modules\NajmBahar\Services\MembershipRemovalService;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
@@ -23,7 +26,12 @@ class SafeUserController extends UserController
             return parent::edit($user);
         }
 
-        return view('admin.user.edit_canonical', compact('user'));
+        $primaryResidence = $user->locationRelationships()
+            ->where('relationship_type', 'primary_residence')->whereNull('ended_at')->with('location')->latest('started_at')->latest('id')->first();
+        $pendingResidenceIntent = $user->pendingResidenceIntents()->where('status', 'pending')->with('locationProposal')->latest('id')->first();
+        $residenceHydrationPath = $this->residenceHydrationPath($primaryResidence?->location, $pendingResidenceIntent);
+
+        return view('admin.user.edit_canonical', compact('user', 'primaryResidence', 'pendingResidenceIntent', 'residenceHydrationPath'));
     }
 
     public function update(Request $request, User $user)
@@ -145,4 +153,36 @@ class SafeUserController extends UserController
             count($validated['user_ids']) . ' عضویت با حفظ دارایی‌ها و سوابق مالی خاتمه یافت'
         );
     }
+    /** @return array<int, string> */
+    private function residenceHydrationPath(?Location $location, ?PendingResidenceIntent $intent): array
+    {
+        $proposal = $intent?->locationProposal;
+        if (! $proposal instanceof LocationProposal) return $this->canonicalLocationPath($location);
+        $proposalPath = []; $cursor = $proposal; $visited = []; $anchor = null;
+        while ($cursor !== null) {
+            if (isset($visited[$cursor->id])) return $this->canonicalLocationPath($location);
+            $visited[$cursor->id] = true; array_unshift($proposalPath, 'proposal:'.$cursor->id);
+            if ($cursor->parent_location_id !== null) { $anchor = $cursor->parentLocation()->first(); break; }
+            $cursor = $cursor->parentProposal()->first();
+        }
+        return $anchor instanceof Location ? [...$this->canonicalLocationPath($anchor), ...$proposalPath] : $this->canonicalLocationPath($location);
+    }
+
+    /** @return array<int, string> */
+    private function canonicalLocationPath(?Location $location): array
+    {
+        if (! $location instanceof Location) return [];
+        $path = []; $cursor = $location; $visited = []; $root = null;
+        while ($cursor !== null) {
+            if (isset($visited[$cursor->id])) return [];
+            $visited[$cursor->id] = true; $root = $cursor; array_unshift($path, 'location:'.$cursor->id); $cursor = $cursor->parent()->first();
+        }
+        if ($root instanceof Location) {
+            $country = $root->governanceAreas()->official()->active()->where('governance_type', 'country')->first();
+            $continent = $country?->parent()->official()->active()->where('governance_type', 'continent')->first();
+            if ($continent !== null) array_unshift($path, 'governance:'.$continent->id);
+        }
+        return $path;
+    }
+
 }
