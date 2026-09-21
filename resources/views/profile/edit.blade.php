@@ -9910,7 +9910,11 @@
             stepperItem?.classList.add('active');
 
             if (initialSection !== 'general') {
-                requestAnimationFrame(() => section.scrollIntoView({ behavior: 'auto', block: 'start' }));
+                requestAnimationFrame(() => {
+                    const headerOffset = 96;
+                    const sectionTop = section.getBoundingClientRect().top + window.scrollY;
+                    window.scrollTo({ top: Math.max(0, sectionTop - headerOffset), behavior: 'auto' });
+                });
             }
         }
 
