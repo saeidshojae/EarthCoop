@@ -228,7 +228,13 @@ const initializeLocationSelector = async (host) => {
         const values = selectionValues(item); locationId.value = values.locationId; if (proposalId) proposalId.value = values.proposalId;
         if (!values.locationId && !values.proposalId) { if (submit) submit.disabled = true; setPickerState(PICKER_STATES.stale, 'این گزینه دیگر معتبر نیست. لطفاً یک مکان فعال را انتخاب کنید.', true); return; }
         if (values.proposalId) { if (submit) submit.disabled = false; setStatus('این مکان هنوز در انتظار تأیید است. می‌توانید ادامه دهید؛ حوزهٔ رسمی شما تا زمان تأیید بر مبنای نزدیک‌ترین مکان تأییدشده باقی می‌ماند.'); return; }
-        if (values.locationId && item?.is_residence_endpoint) { if (submit) submit.disabled = false; setStatus('این نقطه برای ثبت محل سکونت معتبر است. در صورت وجود گزینه‌های دقیق‌تر، می‌توانید مسیر را ادامه دهید.'); return; }
+        if (values.locationId && item?.is_residence_endpoint) {
+            if (submit) submit.disabled = false;
+            setStatus(isRegistration
+                ? 'سطح پایهٔ محل سکونت شما مشخص شد. برای تکمیل ثبت‌نام، «ثبت محل سکونت و ادامه» را بزنید؛ جزئیات محلی مانند خیابان، کوچه، مجتمع یا ساختمان را می‌توانید بعداً از بخش «مکان و حکمرانی من» تکمیل کنید.'
+                : 'این نقطه برای ثبت محل سکونت معتبر است. در صورت وجود گزینه‌های دقیق‌تر، می‌توانید مسیر را ادامه دهید.');
+            return;
+        }
         if (submit) submit.disabled = true; setStatus('برای ادامه، مسیر را تا یک نقطهٔ معتبر برای سکونت اصلی تکمیل کنید.');
     };
     const load = async (url) => { setPickerState(PICKER_STATES.loading, host.dataset.loadingLabel || 'در حال دریافت گزینه‌های مکانی...'); const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' }); if (!response.ok) throw new Error(`Location options request failed: ${response.status}`); const normalized = normalizePickerPayload(await response.json()); return isProjectScope ? projectScopePayload(normalized) : (isRegistration ? registrationPayload(normalized) : normalized); };
