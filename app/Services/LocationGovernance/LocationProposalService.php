@@ -220,6 +220,11 @@ class LocationProposalService
                 ],
             ]);
 
+            LocationStructureClaim::query()
+                ->where('location_proposal_id', $proposal->id)
+                ->whereIn('status', [...LocationStructureClaimService::OPEN_STATUSES, 'approved'])
+                ->update(['location_id' => $location->id, 'location_proposal_id' => null, 'updated_at' => now()]);
+
             $proposal->resolved_location_id = $location->id;
             $proposal->approved_at = now();
             $proposal->save();
