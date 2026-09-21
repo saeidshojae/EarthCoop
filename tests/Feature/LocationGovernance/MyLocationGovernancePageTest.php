@@ -144,9 +144,12 @@ class MyLocationGovernancePageTest extends TestCase
         $response->assertOk();
         $response->assertSee('data-base-governance-summary', false);
         $response->assertSee('data-governance-chain', false);
-        $response->assertSee('class="observer-memberships', false);
+        $response->assertSee('class="governance-disclosure"', false);
+        $response->assertSee('class="membership-summary-row"', false);
         $response->assertSee('<details', false);
-        $response->assertSee('عضویت‌های ناظر');
+        $response->assertSee('مشاهده زنجیره');
+        $response->assertSee('عضویت فعال');
+        $response->assertSee('عضویت ناظر');
         $response->assertSee('حوزه پایه حکمرانی');
         $response->assertDontSee('Governance Area');
     }
@@ -163,7 +166,31 @@ class MyLocationGovernancePageTest extends TestCase
         $response->assertSee('nav-link active', false);
         $response->assertSee('اجتماعات محلی');
         $response->assertSee('data-community-location-guide', false);
-        $response->assertSee('تکمیل نشانی و افزودن مکان محلی');
+        $response->assertSee('نشانی محلی شما هنوز تکمیل نشده است');
+        $response->assertSee('تکمیل نشانی محلی');
+    }
+
+
+    public function test_page_uses_progressive_disclosure_without_changing_membership_totals(): void
+    {
+        ['user' => $user] = MembershipFixture::canonicalUser();
+
+        app(CanonicalGroupMembershipReconciler::class)->reconcile($user);
+
+        $response = $this->actingAs($user)->get(route('location-governance.me'));
+
+        $response->assertOk();
+        $response->assertSee('محل سکونت من');
+        $response->assertSee('حکمرانی رسمی من');
+        $response->assertSee('governance-overview', false);
+        $response->assertSee('membership-summary-row', false);
+
+        $memberships = $user->groups()
+            ->whereNotNull('governance_area_id')
+            ->wherePivot('status', 1)
+            ->get();
+
+        $response->assertSee((string) $memberships->count());
     }
 
 
