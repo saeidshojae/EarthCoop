@@ -6,8 +6,14 @@
 @push('styles')
 <style>
 .location-governance-dashboard{max-width:1040px;padding-bottom:6rem}
-.location-hero{background:linear-gradient(135deg,rgba(var(--bs-primary-rgb),.07),rgba(255,255,255,.96));border:1px solid rgba(var(--bs-primary-rgb),.12)!important}
-.location-path{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem .55rem}
+.location-page-header{padding-bottom:.25rem}
+.location-page-header h1{font-weight:800;letter-spacing:-.02em}
+.location-hero{background:linear-gradient(135deg,rgba(var(--bs-primary-rgb),.075),rgba(255,255,255,.98));border:1px solid rgba(var(--bs-primary-rgb),.14)!important;border-radius:1rem}
+.location-hero-name{font-size:1.12rem;font-weight:800}
+.location-path-disclosure{border-top:1px solid rgba(var(--bs-primary-rgb),.1);margin-top:.85rem;padding-top:.75rem}
+.location-path-disclosure>summary{cursor:pointer;list-style:none;color:var(--bs-primary);font-size:.82rem;font-weight:700}
+.location-path-disclosure>summary::-webkit-details-marker{display:none}
+.location-path{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem .55rem;margin-top:.7rem}
 .location-path-item{display:inline-flex;align-items:center;gap:.45rem;font-weight:600}
 .location-path-item:not(:last-child)::after{content:"‹";color:var(--bs-secondary-color);font-weight:400}
 .governance-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.75rem}
@@ -23,6 +29,7 @@
 .membership-summary-row>summary::-webkit-details-marker{display:none}
 .membership-summary-row[open]>summary{border-bottom:1px solid var(--bs-border-color);background:rgba(var(--bs-primary-rgb),.025)}
 .membership-summary-counts{margin-inline-start:auto;display:flex;gap:.4rem;flex-wrap:wrap}
+.membership-total-pill{display:inline-flex;align-items:center;gap:.4rem;padding:.35rem .65rem;border-radius:999px;background:rgba(var(--bs-primary-rgb),.08);color:var(--bs-primary);font-size:.78rem;font-weight:700}
 .location-governance-edit{min-height:44px}
 .governance-chain{position:relative}
 .governance-chain-item{position:relative;display:flex;gap:.8rem;padding:.55rem .2rem .55rem 1rem}
@@ -36,7 +43,7 @@
 .location-governance-tabs .nav-link{min-height:44px;font-weight:700}
 .community-option{border:1px solid var(--bs-border-color);border-radius:.9rem;padding:1rem}
 .community-location-icon{width:2.5rem;height:2.5rem;display:grid;place-items:center;border-radius:.75rem;background:rgba(var(--bs-primary-rgb),.1);color:var(--bs-primary)}
-@media(max-width:767.98px){.location-governance-dashboard{padding-left:.75rem;padding-right:.75rem}.location-governance-edit{width:100%}.location-path{font-size:.88rem}.governance-overview{grid-template-columns:1fr}.governance-stat{display:flex;align-items:center;justify-content:space-between;gap:1rem}.governance-stat strong{margin:0;font-size:1.15rem}.membership-summary-row>summary{align-items:flex-start;flex-wrap:wrap}.membership-summary-counts{width:100%;margin-inline-start:3.1rem}.governance-chain-item{padding-top:.45rem;padding-bottom:.45rem}}
+@media(max-width:767.98px){.location-governance-dashboard{padding-left:.75rem;padding-right:.75rem}.location-page-header{text-align:center}.location-page-header h1{font-size:1.35rem}.location-hero .card-body{padding:1rem!important}.location-hero-name{font-size:1.05rem}.location-governance-edit{width:100%}.location-path{font-size:.82rem;line-height:1.8}.governance-overview{grid-template-columns:repeat(3,minmax(0,1fr));gap:.45rem}.governance-stat{padding:.7rem .45rem;text-align:center}.governance-stat strong{font-size:1.15rem;margin-bottom:.2rem}.governance-stat span{font-size:.72rem!important}.membership-summary-row>summary{align-items:center;flex-wrap:nowrap;padding:.75rem}.membership-summary-counts{width:auto;margin-inline-start:auto}.membership-icon{width:2.15rem;height:2.15rem}.governance-chain-item{padding-top:.45rem;padding-bottom:.45rem}}
 </style>
 @endpush
 
@@ -80,12 +87,11 @@
 @endphp
 
 <div class="container py-3 py-md-5 location-governance-dashboard" dir="rtl" data-my-location-governance>
-    <header class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3 mb-md-4">
+    <header class="location-page-header mb-3 mb-md-4">
         <div>
             <h1 class="h3 mb-1">مکان و حکمرانی من</h1>
             <p class="text-muted mb-0">خلاصه محل سکونت، حوزه پایه و عضویت‌های رسمی شما در ارث‌کوپ.</p>
         </div>
-        <a href="{{ route('profile.edit') }}" class="btn btn-outline-primary location-governance-edit"><i class="fas fa-location-dot ms-2"></i>ویرایش محل سکونت</a>
     </header>
 
     <section class="card shadow-sm border-0 location-hero mb-3 mb-md-4" data-base-governance-summary>
@@ -96,18 +102,22 @@
                         <span class="text-muted small">محل سکونت من</span>
                         @if($currentResidence)<span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">تأییدشده</span>@endif
                     </div>
-                    <div class="location-path mb-3" aria-label="مسیر محل سکونت">
-                        @forelse($residencePath as $location)
-                            <span class="location-path-item">{{ $location->name ?: $location->canonical_name }}</span>
-                        @empty
-                            <span class="text-muted">محل سکونت ثبت نشده است.</span>
-                        @endforelse
-                    </div>
+                    <div class="location-hero-name mb-2">{{ $currentResidence?->location?->name ?: $currentResidence?->location?->canonical_name ?: 'محل سکونت ثبت نشده است.' }}</div>
                     <div class="d-flex flex-wrap align-items-center gap-2 small">
                         <span class="text-muted">حوزه پایه حکمرانی:</span>
                         <strong>{{ $displayAreaName($baseGovernanceArea) }}</strong>
                         @if($baseGovernanceArea)<span class="badge text-bg-light border">{{ $governanceTypeLabels[$baseGovernanceArea->governance_type] ?? $baseGovernanceArea->governance_type }}</span>@endif
                     </div>
+                    @if($residencePath->isNotEmpty())
+                        <details class="location-path-disclosure">
+                            <summary><i class="fas fa-route ms-1" aria-hidden="true"></i>مشاهده مسیر کامل محل سکونت</summary>
+                            <div class="location-path" aria-label="مسیر محل سکونت">
+                                @foreach($residencePath as $location)
+                                    <span class="location-path-item">{{ $location->name ?: $location->canonical_name }}</span>
+                                @endforeach
+                            </div>
+                        </details>
+                    @endif
                 </div>
                 <div class="align-self-lg-center">
                     <a href="{{ route('profile.edit') }}" class="btn btn-outline-primary location-governance-edit"><i class="fas fa-location-dot ms-2"></i>ویرایش محل سکونت</a>
@@ -155,7 +165,7 @@
             </section>
 
             <section class="mb-3 mb-md-4" aria-labelledby="memberships-heading">
-                <div class="d-flex align-items-end justify-content-between gap-3 mb-3"><div><h2 id="memberships-heading" class="h5 mb-1">عضویت‌های حکمرانی من</h2><p class="text-muted small mb-0">جزئیات هر خانواده را فقط در صورت نیاز باز کنید.</p></div><span class="badge bg-primary">{{ $membershipTotal }}</span></div>
+                <div class="d-flex align-items-end justify-content-between gap-3 mb-3"><div><h2 id="memberships-heading" class="h5 mb-1">عضویت‌های حکمرانی من</h2><p class="text-muted small mb-0">پنج خانواده عضویت رسمی؛ جزئیات هرکدام را فقط در صورت نیاز باز کنید.</p></div><span class="membership-total-pill"><i class="fas fa-layer-group" aria-hidden="true"></i>{{ $membershipTotal }} عضویت</span></div>
                 <div class="d-grid gap-2">
                     @foreach($dimensionLabels as $dimension => $dimensionMeta)
                         @php($bucket = collect($membershipsByDimension->get($dimension, [])))
