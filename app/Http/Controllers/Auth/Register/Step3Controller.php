@@ -17,6 +17,7 @@ use App\Models\Region;
 use App\Models\Street;
 use App\Models\Village;
 use App\Services\GroupService;
+use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\LocationGovernance\LocationProposalPolicy;
 use App\Services\LocationGovernance\LocationTreeResolver;
 use App\Services\LocationGovernance\ResidenceService;
@@ -97,7 +98,9 @@ class Step3Controller extends Controller
                     'source' => 'registration_step3',
                 ], $structuralClaims);
 
-                app(ProfileCompletionService::class)->maybeAward($user->fresh());
+                $this->reconcileCanonicalGroupsIfEnabled($user->fresh());
+                $this->reconcileCanonicalGroupsIfEnabled($user->fresh());
+            app(ProfileCompletionService::class)->maybeAward($user->fresh());
 
                 return redirect()->route('home')->with('success', 'تبریک میگوییم، محل سکونت اصلی شما ثبت شد و ثبت نام شما تکمیل شد.');
             }
@@ -162,6 +165,16 @@ class Step3Controller extends Controller
                 'ثبت نام شما تکمیل شد. محل دقیق انتخابی شما در انتظار بررسی است و تا زمان تأیید، حوزه رسمی شما بر اساس نزدیک‌ترین مکان تأییدشده محاسبه می‌شود.'
             );
         }
+
+    private function reconcileCanonicalGroupsIfEnabled(\App\Models\User $user): void
+    {
+        if (! (bool) config('location-governance.groups_enabled', false)) {
+            return;
+        }
+
+        app(CanonicalGroupMembershipReconciler::class)->reconcile($user);
+    }
+
 
         $validated = $request->validate([
             'continent_id'     => 'required|exists:continents,id',
