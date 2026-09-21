@@ -41,6 +41,16 @@ class MyLocationGovernancePageTest extends TestCase
         $this->assertStringContainsString('مکان و حکمرانی من', $sidebar);
     }
 
+    public function test_sidebar_group_badge_uses_canonical_active_memberships_during_cutover(): void
+    {
+        $sidebar = file_get_contents(resource_path('views/partials/sidebar-unified.blade.php'));
+
+        $this->assertStringContainsString('CanonicalGroupMembershipReconciler::class', $sidebar);
+        $this->assertStringContainsString("wherePivot('status', 1)", $sidebar);
+        $this->assertStringContainsString("config('location-governance.groups_enabled'", $sidebar);
+        $this->assertStringNotContainsString('$groups = auth()->user()->groups;', $sidebar);
+    }
+
     public function test_page_uses_official_governance_chain_and_separates_active_from_observer_memberships(): void
     {
         ['user' => $user, 'area' => $baseArea] = MembershipFixture::canonicalUser();
