@@ -187,4 +187,30 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
     }
 
 
+    public function test_region_and_village_require_explicit_no_neighborhood_claim_to_finish_registration(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $service = app(LocationStructureClaimService::class);
+
+        foreach ([
+            ['country','province','county','section','city','urban_region'],
+            ['country','province','county','section','rural_district','village'],
+        ] as $pathTypes) {
+            $location = LocationFixture::createPath($schema, $pathTypes)->last();
+            $user = User::factory()->create();
+
+            $this->actingAs($user)->from(route('register.step3'))->post(route('register.step3.process'), [
+                'location_id' => $location->id,
+            ])->assertSessionHasErrors('location_id');
+
+            $claim = $service->findOrCreateOpenClaim($location, 'no_neighborhood', $user);
+
+            $this->actingAs($user)->post(route('register.step3.process'), [
+                'location_id' => $location->id,
+                'location_structure_claim_ids' => [$claim->id],
+            ])->assertRedirect(route('home'));
+        }
+    }
+
+
 }
