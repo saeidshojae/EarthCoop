@@ -240,7 +240,7 @@ const initializeLocationSelector = async (host) => {
                 choiceWrapper.remove(); appendLevel(filterPayloadByType(payload, typeKey), depth, parentLocationId, true);
                 setStatus('گزینه‌های ' + (TYPE_LABELS[typeKey] || typeKey) + ' آماده‌اند.');
             });
-            if (typeChoice) { levels.appendChild(typeChoice); setStatus('نوع ادامه مسیر را انتخاب کنید.'); return; }
+            if (typeChoice) { typeChoice.dataset.locationTypePayload = JSON.stringify(microContinuationTypes(payload).map((type) => ({ key: type.key, ids: [...payload.locations, ...payload.proposals].filter((item) => item.type_key === type.key).map((item) => String(item.identity || item.id)) }))); levels.appendChild(typeChoice); setStatus('نوع ادامه مسیر را انتخاب کنید.'); return; }
         }
         const { wrapper, select } = buildSelect(host, payload, depth); levels.appendChild(wrapper);
         const refreshAfterProposal = async (result) => {
