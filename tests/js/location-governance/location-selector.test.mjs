@@ -33,8 +33,9 @@ test('normalizes active locations, open proposals, and allowed types without fix
 });
 
 test('changing a micro branch clears deeper selection state before rendering the new branch', () => {
-    assert.match(source, /removeDeeperLevels\(depth\)/);
-    assert.match(source, /selectedPath\.keys\(\).*key > depth/);
+    const source = selectorSource();
+    assert.match(source, /removeDeeperLevels\(depth - 1\)/);
+    assert.match(source, /selectedPath\.keys\(\).*key >= depth/);
     assert.match(source, /clearSelection\(\)/);
     assert.match(source, /clearStructuralClaimsAfterDepth\(form, depth\)/);
 });
