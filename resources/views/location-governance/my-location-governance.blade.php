@@ -153,7 +153,7 @@
                     @endif
                 </div>
                 <div class="align-self-lg-center">
-                    <a href="{{ route('profile.edit') }}" class="btn btn-outline-primary location-governance-edit"><i class="fas fa-location-dot ms-2"></i>ویرایش محل سکونت</a>
+                    <a href="{{ route('profile.edit') }}?section=location#section-location" class="btn location-governance-edit"><i class="fas fa-location-dot ms-2"></i>ویرایش محل سکونت</a>
                 </div>
             </div>
             @if($pendingResidenceIntent?->locationProposal)
@@ -236,7 +236,7 @@
                         <strong>نشانی محلی شما هنوز تکمیل نشده است.</strong>
                         <div class="small mt-1">ثبت خیابان، کوچه، مجتمع یا ساختمان اختیاری است. با تکمیل نشانی می‌توانید اجتماعات محلی مربوط به محل زندگی خود را ببینید، عضو شوید یا در صورت فراهم بودن شرایط اجتماع تازه‌ای ایجاد کنید.</div>
                     </div>
-                    <a href="{{ route('profile.edit') }}" class="btn btn-primary w-100"><i class="fas fa-location-dot ms-2"></i>تکمیل نشانی محلی</a>
+                    <a href="{{ route('profile.edit') }}?section=location#section-location" class="btn location-governance-edit w-100"><i class="fas fa-location-dot ms-2"></i>تکمیل نشانی محلی</a>
                 @else
                     <div class="d-grid gap-3" data-community-options>
                         @foreach($communityOptions as $option)
