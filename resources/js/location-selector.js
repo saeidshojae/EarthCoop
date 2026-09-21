@@ -37,6 +37,44 @@ const setSelection = (host, id) => {
 const status = (host, text, error = false) => { const node = host.querySelector('[data-location-status]'); if (node) { node.textContent = text; node.classList.toggle('text-danger', error); } };
 const removeAfter = (levels, depth) => levels.querySelectorAll('[data-location-depth]').forEach((node) => { if (Number(node.dataset.locationDepth) > depth) node.remove(); });
 
+const rememberPendingStructuralClaim = (host, id, depth) => {
+    const form = host.closest('form'); if (!form || !id) return;
+    let input = form.querySelector(`input[name="location_structure_claim_ids[]"][value="${id}"]`);
+    if (!input) { input = document.createElement('input'); input.type = 'hidden'; input.name = 'location_structure_claim_ids[]'; input.value = String(id); form.appendChild(input); }
+    input.dataset.locationStructureClaimDepth = String(depth);
+};
+const addPendingStructuralPanel = (host, wrapper, payload, parentIdentity, depth) => {
+    const choices = Array.isArray(payload?.structural_choices) ? payload.structural_choices : [];
+    if (!String(parentIdentity || '').startsWith('proposal:') || !choices.length) return;
+    const proposalId = Number(String(parentIdentity).slice(9)); if (!proposalId) return;
+    const groups = [
+        { types:['single_urban_region','no_urban_region'], question:'ساختار منطقه‌ای این شهر چگونه است؟', labels:{single_urban_region:'این شهر فقط یک منطقهٔ شهری دارد',no_urban_region:'این شهر منطقهٔ شهری ندارد'} },
+        { types:['single_neighborhood','no_neighborhood'], question:'ساختار محله‌ای این محدوده چگونه است؟', labels:{single_neighborhood:'این محدوده فقط یک محله دارد',no_neighborhood:'این محدوده محله ندارد'} },
+    ];
+    groups.forEach((group) => {
+        const available = choices.filter((choice) => group.types.includes(choice.claim_type)); if (!available.length) return;
+        const box = document.createElement('div'); box.className = 'location-structural-claims border rounded-3 p-3 vstack gap-2';
+        const title = document.createElement('div'); title.className = 'small fw-bold'; title.textContent = group.question;
+        const actions = document.createElement('div'); actions.className = 'd-flex flex-wrap gap-2';
+        const state = document.createElement('div'); state.className = 'small text-secondary'; state.setAttribute('aria-live','polite');
+        available.forEach((choice) => {
+            const button = document.createElement('button'); button.type='button'; button.className='btn btn-outline-secondary btn-sm'; button.dataset.locationStructuralChoice=choice.claim_type; button.textContent=group.labels[choice.claim_type];
+            if (choice.claim_id) { button.disabled=true; button.setAttribute('aria-pressed','true'); rememberPendingStructuralClaim(host, choice.claim_id, depth); }
+            button.addEventListener('click', async () => {
+                const csrf=host.closest('form')?.querySelector('input[name="_token"]')?.value||''; actions.querySelectorAll('button').forEach((item)=>{item.disabled=true;}); state.textContent='در حال ثبت...';
+                try {
+                    const response=await fetch(`/location/proposals/${encodeURIComponent(proposalId)}/structure-claims`,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json',...(csrf?{'X-CSRF-TOKEN':csrf}:{})},body:JSON.stringify({claim_type:choice.claim_type})});
+                    const result=await response.json().catch(()=>({})); if(!response.ok) throw new Error(result.message||'ثبت وضعیت ساختاری ممکن نشد.');
+                    rememberPendingStructuralClaim(host,result.id,depth); button.setAttribute('aria-pressed','true'); state.textContent='در انتظار بررسی؛ مسیر بر اساس همین وضعیت ادامه پیدا می‌کند.';
+                    const refreshed=await fetch(`/location/proposals/${encodeURIComponent(proposalId)}/children`,{headers:{Accept:'application/json'},credentials:'same-origin'}); if(!refreshed.ok) throw new Error('دریافت مسیر بعد ممکن نشد.');
+                    removeAfter(host.querySelector('[data-location-levels]'),depth-1); appendPendingLevel(host,await refreshed.json(),depth,parentIdentity);
+                } catch(error) { state.textContent=error?.message||'ثبت وضعیت ساختاری ممکن نشد.'; actions.querySelectorAll('button').forEach((item)=>{if(item.getAttribute('aria-pressed')!=='true')item.disabled=false;}); }
+            }); actions.appendChild(button);
+        });
+        box.append(title,actions,state); wrapper.appendChild(box);
+    });
+};
+
 const addProposalPanel = (host, wrapper, payload, parentIdentity, select) => {
     const types = allowedTypes(payload); if (!types.length) return;
     const shell = document.createElement('div'); shell.dataset.locationProposalShell = ''; shell.className = 'location-proposal-shell';
@@ -89,6 +127,7 @@ const appendPendingLevel = (host, payload, depth, parentIdentity, selectedTypeKe
     const select = document.createElement('select'); select.className = 'form-select'; select.dataset.locationSelect = String(depth); const empty = document.createElement('option'); empty.value = ''; empty.textContent = 'یک گزینه را انتخاب کنید'; select.appendChild(empty);
     proposals.forEach((item) => { const option = document.createElement('option'); option.value = `proposal:${item.id}`; option.textContent = `${item.label} — در انتظار تأیید`; option.dataset.locationPendingBadge = ''; option.dataset.typeKey = item.type_key || ''; select.appendChild(option); });
     wrapper.append(label, select);
+    addPendingStructuralPanel(host, wrapper, payload, parentIdentity, depth);
     const proposalPayload = selectedTypeKey
         ? { ...payload, proposals, allowed_types: types, effective_allowed_types: types }
         : payload;
@@ -107,13 +146,13 @@ async function loadProposalChildren(host, select, proposalId) {
 
 if (typeof document !== 'undefined') {
     document.addEventListener('change', (event) => {
-        const select = event.target?.closest?.('[data-location-select]'); if (!select) return; const host = select.closest('[data-location-selector]'); if (!host || ['project-scope', 'registration'].includes(host.dataset.locationPurpose || host.dataset.locationSelectorContext)) return;
+        const select = event.target?.closest?.('[data-location-select]'); if (!select) return; const host = select.closest('[data-location-selector]'); if (!host || (host.dataset.locationPurpose || host.dataset.locationSelectorContext) === 'project-scope') return;
         const value = String(select.value || ''); if (!value.startsWith('proposal:')) return; event.preventDefault(); event.stopImmediatePropagation(); const id = Number(value.slice(9)); setSelection(host, id); void loadProposalChildren(host, select, id);
     }, true);
     document.addEventListener('location-proposal-created', (event) => {
         const select = event.target?.closest?.('[data-location-select]'); const host = select?.closest?.('[data-location-selector]');
         const id = Number(event.detail?.proposalId || 0); if (!select || !host || !id) return;
-        if (['project-scope', 'registration'].includes(host.dataset.locationPurpose || host.dataset.locationSelectorContext)) return;
+        if ((host.dataset.locationPurpose || host.dataset.locationSelectorContext) === 'project-scope') return;
         void loadProposalChildren(host, select, id);
     });
 }
