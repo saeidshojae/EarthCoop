@@ -60,6 +60,12 @@ test('mixed micro children expose type-first controls before location choices', 
   assert.match(selectorSource, /dataset\.locationTypeChoice/);
 });
 
+test('proposal cancel is UI-only and never invokes proposal creation', () => {
+  const coreSource = fs.readFileSync(new URL('../../../resources/js/location-selector-core.js', import.meta.url), 'utf8');
+  assert.match(coreSource, /cancel\.addEventListener\('click', \(\) => \{ panel\.classList\.add\('d-none'\); feedback\.textContent = ''; \}\)/);
+  assert.doesNotMatch(coreSource, /cancel\.addEventListener[\s\S]{0,220}fetch\('\/locations\/proposals'/);
+});
+
 test('proposal actions expose clear mobile-first primary secondary and pending hooks', () => {
   assert.match(selectorSource, /dataset\.locationProposalSubmit/);
   assert.match(selectorSource, /dataset\.locationProposalCancel/);
