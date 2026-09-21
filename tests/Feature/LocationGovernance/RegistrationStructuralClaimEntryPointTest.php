@@ -100,4 +100,38 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
         $this->assertSame(0, $user->fresh()->pendingResidenceIntents()->count());
     }
 
+    public function test_registration_cannot_treat_sparse_city_as_base_without_explicit_absence_claim(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->from(route('register.step3'))->post(route('register.step3.process'), [
+            'location_id' => $city->id,
+        ])->assertRedirect(route('register.step3'))->assertSessionHasErrors('location_id');
+
+        $this->assertSame(0, $user->fresh()->locationRelationships()->count());
+    }
+
+    public function test_registration_single_region_claim_requires_selecting_the_real_region(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $path = LocationFixture::createPath($schema, ['country','province','county','section','city','urban_region']);
+        $city = $path->first(fn ($location) => $location->type?->key === 'city');
+        $region = $path->last();
+        $user = User::factory()->create();
+        $claim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'single_urban_region', $user);
+
+        $this->actingAs($user)->from(route('register.step3'))->post(route('register.step3.process'), [
+            'location_id' => $city->id,
+            'location_structure_claim_ids' => [$claim->id],
+        ])->assertSessionHasErrors('location_id');
+
+        $this->actingAs($user)->post(route('register.step3.process'), [
+            'location_id' => $region->id,
+            'location_structure_claim_ids' => [$claim->id],
+        ])->assertRedirect(route('home'));
+    }
+
+
 }
