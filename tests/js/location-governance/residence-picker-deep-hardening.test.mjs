@@ -96,8 +96,8 @@ test('registration and profile residence path uses the unified Persian region la
 
 test('new canonical-parent proposal is inserted into the current selector and selected immediately', () => {
   assert.match(selectorSource, /select\.appendChild\(option\)/);
-  assert.match(selectorSource, /select\.value = identity/);
-  assert.match(selectorSource, /selectedPath\.set\(depth, proposal\)/);
+  assert.match(selectorSource, /select\.value = option\.value/);
+  assert.match(selectorSource, /setSelection\(host, result\.id\)/);
   assert.match(selectorSource, /در فهرست همین سطح انتخاب شد/);
 });
 
@@ -105,11 +105,11 @@ test('new canonical-parent proposal is inserted into the current selector and se
 test('pending proposals continue through their own children endpoint', () => {
   assert.match(selectorSource, /parent_location_proposal_id/);
   assert.match(selectorSource, /\/location\/proposals\/\$\{encodeURIComponent\(selected\.id\)\}\/children/);
-  assert.match(selectorSource, /appendLevel\(children, depth \+ 1, null, false, result\.id\)/);
+  assert.match(selectorSource, /appendPendingLevel\(host, await response\.json\(\), depth \+ 1, `proposal:\$\{proposalId\}`\)/);
   assert.doesNotMatch(selectorSource, /if \(selected\.picker_kind === 'proposal'\) return/);
 });
 
 test('structural state UI supports canonical and pending parents', () => {
-  assert.match(selectorSource, /proposalId \? `\/location\/proposals\/\$\{encodeURIComponent\(proposalId\)\}\/structure-claims` : '\/locations\/structure-claims'/);
-  assert.match(selectorSource, /parentProposalId/);
+  assert.match(selectorSource, /`\/location\/proposals\/\$\{encodeURIComponent\(proposalId\)\}\/structure-claims`/);
+  assert.match(selectorSource, /addPendingStructuralPanel/);
 });
