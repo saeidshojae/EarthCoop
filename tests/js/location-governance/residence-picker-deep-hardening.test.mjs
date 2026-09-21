@@ -108,3 +108,8 @@ test('pending proposals continue through their own children endpoint', () => {
   assert.match(selectorSource, /appendLevel\(children, depth \+ 1, null, false, result\.id\)/);
   assert.doesNotMatch(selectorSource, /if \(selected\.picker_kind === 'proposal'\) return/);
 });
+
+test('structural state UI supports canonical and pending parents', () => {
+  assert.match(selectorSource, /proposalId \? `\/location\/proposals\/\$\{encodeURIComponent\(proposalId\)\}\/structure-claims` : '\/locations\/structure-claims'/);
+  assert.match(selectorSource, /parentProposalId/);
+});
