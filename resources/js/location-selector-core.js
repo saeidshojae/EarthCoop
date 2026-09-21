@@ -157,8 +157,8 @@ const clearStructuralClaimsAfterDepth = (form, depth) => {
     });
 };
 
-const buildStructuralClaimPanel = (host, choices, locationId, depth, onChanged) => {
-    if (!locationId || !Array.isArray(choices) || choices.length === 0) return null;
+const buildStructuralClaimPanel = (host, choices, locationId, depth, onChanged, proposalId = null) => {
+    if ((!locationId && !proposalId) || !Array.isArray(choices) || choices.length === 0) return null;
     const shell = document.createElement('div'); shell.className = 'location-structural-claims vstack gap-3'; shell.dataset.locationStructuralClaims = '';
     const byType = new Map(choices.map((choice) => [choice.claim_type, choice]));
 
@@ -186,7 +186,7 @@ const buildStructuralClaimPanel = (host, choices, locationId, depth, onChanged) 
                 actions.querySelectorAll('[data-location-structural-choice]').forEach((candidate) => { candidate.disabled = true; });
                 state.textContent = 'در حال ثبت...';
                 try {
-                    const response = await fetch('/locations/structure-claims', { method:'POST', credentials:'same-origin', headers:{ Accept:'application/json','Content-Type':'application/json', ...(csrf ? {'X-CSRF-TOKEN':csrf}:{}) }, body:JSON.stringify({ location_id:Number(locationId), claim_type:choice.claim_type }) });
+                    const response = await fetch(proposalId ? `/location/proposals/${encodeURIComponent(proposalId)}/structure-claims` : '/locations/structure-claims', { method:'POST', credentials:'same-origin', headers:{ Accept:'application/json','Content-Type':'application/json', ...(csrf ? {'X-CSRF-TOKEN':csrf}:{}) }, body:JSON.stringify(proposalId ? { claim_type:choice.claim_type } : { location_id:Number(locationId), claim_type:choice.claim_type }) });
                     const result = await response.json().catch(() => ({}));
                     if (!response.ok) throw new Error(result.message || ('Structural claim request failed: ' + response.status));
                     rememberStructuralClaim(host, result.id, depth); button.setAttribute('aria-pressed','true');
@@ -295,10 +295,10 @@ const initializeLocationSelector = async (host) => {
         };
         if (!isProjectScope) {
             const structuralPanel = buildStructuralClaimPanel(host, payload.structuralChoices, parentLocationId, depth, async () => {
-                const refreshed = await load(`/location/options/${encodeURIComponent(parentLocationId)}/children`);
+                const refreshed = await load(parentProposalId ? `/location/proposals/${encodeURIComponent(parentProposalId)}/children` : `/location/options/${encodeURIComponent(parentLocationId)}/children`);
                 removeDeeperLevels(depth); wrapper.remove(); appendLevel(refreshed, depth, parentLocationId);
                 setStatus('وضعیت ساختاری ثبت شد. مسیر واقعی بعدی بدون ساخت سطح مصنوعی در دسترس است.');
-            });
+            }, parentProposalId);
             if (structuralPanel) wrapper.appendChild(structuralPanel);
             const proposalTypes = payload.effectiveAllowedTypes.length ? payload.effectiveAllowedTypes : payload.allowedTypes;
             const proposalPanel = buildProposalPanel(host, proposalTypes, parentLocationId, refreshAfterProposal, parentProposalId); if (proposalPanel) wrapper.appendChild(proposalPanel);
