@@ -40,10 +40,6 @@ class LocationTreeResolver
      */
     public function registrationEndpointAllowed(Location $location, array|Collection $structuralClaims = []): bool
     {
-        if (! $this->residenceEndpointAllowed($location)) {
-            return false;
-        }
-
         $typeKey = $location->type?->key;
         $microTypes = ['street', 'alley', 'complex', 'building'];
 
@@ -65,6 +61,13 @@ class LocationTreeResolver
             ->filter(fn (LocationStructureClaim $claim) => (int) $claim->location_id === (int) $location->id)
             ->filter(fn (LocationStructureClaim $claim) => in_array($claim->status, ['pending', 'ready_for_review', 'needs_evidence', 'approved'], true))
             ->pluck('claim_type');
+
+        // Urban regions are not generic residence endpoints in the schema, but an
+        // explicit no-neighborhood claim makes the real region the deepest base.
+        if (! $this->residenceEndpointAllowed($location)
+            && ! ($typeKey === 'urban_region' && $claims->contains('no_neighborhood'))) {
+            return false;
+        }
 
         // Missing rows are not evidence that a structural tier does not exist.
         // A city can finish only when both possible governance tiers are explicitly absent.
