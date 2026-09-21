@@ -23,6 +23,17 @@ class LocationStructureClaimService
             throw new \DomainException('Structural claim type is not allowed for this location type.');
         }
 
+        $conflicts = [
+            'single_urban_region' => ['no_urban_region'],
+            'no_urban_region' => ['single_urban_region'],
+            'single_neighborhood' => ['no_neighborhood'],
+            'no_neighborhood' => ['single_neighborhood'],
+        ];
+
+        if ($contextClaims->pluck('claim_type')->intersect($conflicts[$type] ?? [])->isNotEmpty()) {
+            throw new \DomainException('Conflicting structural claim already exists for this location tier.');
+        }
+
         return DB::transaction(function () use ($location, $type, $proposer): LocationStructureClaim {
             $claim = LocationStructureClaim::query()
                 ->where('location_id', $location->id)
