@@ -3,6 +3,7 @@ const selectors = typeof document !== 'undefined'
     : [];
 
 const OPEN_PROPOSAL_STATUSES = new Set(['pending', 'ready_for_review', 'needs_evidence']);
+const MICRO_LOCATION_TYPES = new Set(['street', 'alley', 'complex', 'building']);
 const PICKER_STATES = Object.freeze({ loading: 'loading', empty: 'empty', error: 'error', stale: 'stale', ready: 'ready' });
 const TYPE_LABELS = Object.freeze({
     global: 'جهانی', continent: 'قاره', country: 'کشور', province: 'استان / ایالت', county: 'شهرستان / ناحیه',
@@ -32,6 +33,17 @@ const normalizePickerPayload = (payload) => ({
     structuralChoices: Array.isArray(payload?.structural_choices) ? payload.structural_choices : [],
     officialGovernanceBase: payload?.official_governance_base === true,
 });
+const registrationPayload = (payload) => {
+    const continuationTypes = payload.effectiveAllowedTypes.length ? payload.effectiveAllowedTypes : payload.allowedTypes;
+    const allowedTypeIds = new Set(continuationTypes.filter((type) => !MICRO_LOCATION_TYPES.has(type?.key)).map((type) => Number(type.id)));
+    return {
+        ...payload,
+        locations: payload.locations.filter((item) => !MICRO_LOCATION_TYPES.has(item?.type_key)),
+        proposals: payload.proposals.filter((item) => !MICRO_LOCATION_TYPES.has(item?.type_key)),
+        allowedTypes: continuationTypes.filter((type) => allowedTypeIds.has(Number(type.id))),
+        effectiveAllowedTypes: [],
+    };
+};
 const projectScopePayload = (payload) => ({
     locations: payload.locations, proposals: [],
     allowedTypes: payload.allowedTypes.map((type) => ({ ...type, proposal_allowed: false })),
@@ -168,7 +180,7 @@ const buildProposalPanel = (host, allowedTypes, parentLocationId, onCreated) => 
 
 const initializeLocationSelector = async (host) => {
     const levels = host.querySelector('[data-location-levels]');
-    const context = host.dataset.locationPurpose || host.dataset.locationSelectorContext || 'residence'; const isProjectScope = context === 'project-scope';
+    const context = host.dataset.locationPurpose || host.dataset.locationSelectorContext || 'residence'; const isProjectScope = context === 'project-scope'; const isRegistration = context === 'registration';
     const locationId = isProjectScope ? host.querySelector('[data-location-id][name="target_location_id"]') : host.querySelector('[data-location-id][name="location_id"]');
     const proposalId = isProjectScope ? host.querySelector('[data-location-proposal-id]') : host.querySelector('[data-location-proposal-id][name="location_proposal_id"]');
     const governanceAreaId = isProjectScope ? host.querySelector('[data-project-governance-area-id][name="governance_area_id"]') : null;
@@ -191,7 +203,7 @@ const initializeLocationSelector = async (host) => {
         if (values.locationId && item?.is_residence_endpoint) { if (submit) submit.disabled = false; setStatus('این نقطه برای ثبت محل سکونت معتبر است. در صورت وجود گزینه‌های دقیق‌تر، می‌توانید مسیر را ادامه دهید.'); return; }
         if (submit) submit.disabled = true; setStatus('برای ادامه، مسیر را تا یک نقطهٔ معتبر برای سکونت اصلی تکمیل کنید.');
     };
-    const load = async (url) => { setPickerState(PICKER_STATES.loading, host.dataset.loadingLabel || 'در حال دریافت گزینه‌های مکانی...'); const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' }); if (!response.ok) throw new Error(`Location options request failed: ${response.status}`); const normalized = normalizePickerPayload(await response.json()); return isProjectScope ? projectScopePayload(normalized) : normalized; };
+    const load = async (url) => { setPickerState(PICKER_STATES.loading, host.dataset.loadingLabel || 'در حال دریافت گزینه‌های مکانی...'); const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' }); if (!response.ok) throw new Error(`Location options request failed: ${response.status}`); const normalized = normalizePickerPayload(await response.json()); return isProjectScope ? projectScopePayload(normalized) : (isRegistration ? registrationPayload(normalized) : normalized); };
     const removeDeeperLevels = (depth) => { levels.querySelectorAll('[data-location-depth]').forEach((element) => { if (Number(element.dataset.locationDepth) > depth) element.remove(); }); };
     const appendLevel = (payload, depth, parentLocationId = null) => {
         if (!shouldRenderNextLevel(payload)) { setPickerState(PICKER_STATES.empty, 'در این سطح گزینهٔ فعال دیگری ثبت نشده است.'); return; }
@@ -270,4 +282,4 @@ const initializeLocationSelector = async (host) => {
 };
 
 selectors.forEach((host) => { void initializeLocationSelector(host); });
-export { initializeLocationSelector, normalizePickerPayload, projectScopePayload, projectScopeSelectionValues, pickerLevelLabel, selectionValues, shouldRenderNextLevel, locationDisplayLabel };
+export { initializeLocationSelector, normalizePickerPayload, registrationPayload, projectScopePayload, projectScopeSelectionValues, pickerLevelLabel, selectionValues, shouldRenderNextLevel, locationDisplayLabel };
