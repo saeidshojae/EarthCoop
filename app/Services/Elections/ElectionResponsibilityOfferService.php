@@ -416,7 +416,7 @@ class ElectionResponsibilityOfferService
         if ($membership === null || (int) $membership->status !== 1) return false;
 
         $role = (int) $membership->role;
-        return $role === 1;
+        return in_array($role, [1, 2, 3], true);
     }
 
     private function resolve(ElectionResponsibilityOffer $offer, ElectionResponsibilityOfferStatus $status, string $reason): void
