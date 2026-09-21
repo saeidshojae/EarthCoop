@@ -1,6 +1,7 @@
 import {
     initializeLocationSelector,
     normalizePickerPayload,
+    registrationPayload,
     projectScopePayload,
     projectScopeSelectionValues,
     pickerLevelLabel,
@@ -81,15 +82,15 @@ async function loadProposalChildren(host, select, proposalId) {
 
 if (typeof document !== 'undefined') {
     document.addEventListener('change', (event) => {
-        const select = event.target?.closest?.('[data-location-select]'); if (!select) return; const host = select.closest('[data-location-selector]'); if (!host || (host.dataset.locationPurpose || host.dataset.locationSelectorContext) === 'project-scope') return;
+        const select = event.target?.closest?.('[data-location-select]'); if (!select) return; const host = select.closest('[data-location-selector]'); if (!host || ['project-scope', 'registration'].includes(host.dataset.locationPurpose || host.dataset.locationSelectorContext)) return;
         const value = String(select.value || ''); if (!value.startsWith('proposal:')) return; event.preventDefault(); event.stopImmediatePropagation(); const id = Number(value.slice(9)); setSelection(host, id); void loadProposalChildren(host, select, id);
     }, true);
     document.addEventListener('location-proposal-created', (event) => {
         const select = event.target?.closest?.('[data-location-select]'); const host = select?.closest?.('[data-location-selector]');
         const id = Number(event.detail?.proposalId || 0); if (!select || !host || !id) return;
-        if ((host.dataset.locationPurpose || host.dataset.locationSelectorContext) === 'project-scope') return;
+        if (['project-scope', 'registration'].includes(host.dataset.locationPurpose || host.dataset.locationSelectorContext)) return;
         void loadProposalChildren(host, select, id);
     });
 }
 
-export { initializeLocationSelector, normalizePickerPayload, projectScopePayload, projectScopeSelectionValues, pickerLevelLabel, selectionValues, shouldRenderNextLevel, locationDisplayLabel, localizeLocationTypeLabel, proposalParentPayload };
+export { initializeLocationSelector, normalizePickerPayload, registrationPayload, projectScopePayload, projectScopeSelectionValues, pickerLevelLabel, selectionValues, shouldRenderNextLevel, locationDisplayLabel, localizeLocationTypeLabel, proposalParentPayload };
