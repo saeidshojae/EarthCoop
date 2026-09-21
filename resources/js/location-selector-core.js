@@ -125,6 +125,18 @@ const buildSelect = (host, payload, depth) => {
     });
     wrapper.append(label, select); return { wrapper, select };
 };
+const STRUCTURAL_CLAIM_GROUPS = Object.freeze({
+    urban_region: {
+        claimTypes: ['single_urban_region', 'no_urban_region'],
+        question: 'ساختار منطقه‌ای این شهر چگونه است؟',
+        normalLabel: 'چند منطقه دارد',
+    },
+    neighborhood: {
+        claimTypes: ['single_neighborhood', 'no_neighborhood'],
+        question: 'ساختار محله‌ای این محدوده چگونه است؟',
+        normalLabel: 'چند محله دارد',
+    },
+});
 const STRUCTURAL_CLAIM_COPY = Object.freeze({
     single_urban_region: { title: 'این شهر فقط یک منطقهٔ شهری دارد', detail: 'منطقهٔ واقعی حفظ و انتخاب می‌شود؛ چون تنها منطقهٔ شهر است، مرز شهر و منطقه انتخابات تکراری ایجاد نمی‌کند.' },
     no_urban_region: { title: 'این شهر منطقهٔ شهری جداگانه ندارد', detail: 'خود شهر نمایندهٔ این سطح حکمرانی است؛ مکان دقیق‌تر همچنان می‌تواند ثبت شود.' },
@@ -147,31 +159,51 @@ const clearStructuralClaimsAfterDepth = (form, depth) => {
 
 const buildStructuralClaimPanel = (host, choices, locationId, depth, onChanged) => {
     if (!locationId || !Array.isArray(choices) || choices.length === 0) return null;
-    const shell = document.createElement('div'); shell.className = 'location-structural-claims vstack gap-2'; shell.dataset.locationStructuralClaims = '';
-    const heading = document.createElement('div'); heading.className = 'small fw-bold'; heading.textContent = 'ساختار این محدوده متفاوت است؟';
-    shell.appendChild(heading);
-    choices.forEach((choice) => {
-        const copy = STRUCTURAL_CLAIM_COPY[choice.claim_type]; if (!copy) return;
-        const row = document.createElement('div'); row.className = 'border rounded-3 p-2';
-        const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-link text-decoration-none p-0 fw-semibold'; button.textContent = copy.title;
-        const detail = document.createElement('div'); detail.className = 'small text-secondary mt-1'; detail.textContent = copy.detail;
-        const state = document.createElement('div'); state.className = 'small mt-1'; state.setAttribute('aria-live','polite');
-        const statusValue = String(choice.status || 'available');
-        if (statusValue === 'approved') { button.disabled = true; state.textContent = 'تأیید شده'; }
-        else if (OPEN_PROPOSAL_STATUSES.has(statusValue)) { button.disabled = true; state.textContent = 'در انتظار بررسی؛ پس از ثبت محل سکونت، حمایت شما نیز ثبت می‌شود.'; }
-        button.addEventListener('click', async () => {
-            const form = host.closest('[data-location-form]') || host.closest('form'); const csrf = form?.querySelector('input[name="_token"]')?.value || '';
-            button.disabled = true; state.textContent = 'در حال ثبت...';
-            try {
-                const response = await fetch('/locations/structure-claims', { method:'POST', credentials:'same-origin', headers:{ Accept:'application/json','Content-Type':'application/json', ...(csrf ? {'X-CSRF-TOKEN':csrf}:{}) }, body:JSON.stringify({ location_id:Number(locationId), claim_type:choice.claim_type }) });
-                if (!response.ok) throw new Error('Structural claim request failed: ' + response.status);
-                const result = await response.json(); rememberStructuralClaim(host, result.id, depth); state.textContent = 'در انتظار بررسی؛ می‌توانید مسیر واقعی محل سکونت را ادامه دهید.';
-                await onChanged(result);
-            } catch (error) { console.warn('EarthCoop structural claim failed:', error); button.disabled = false; state.textContent = 'ثبت این وضعیت ممکن نشد؛ دوباره تلاش کنید.'; }
+    const shell = document.createElement('div'); shell.className = 'location-structural-claims vstack gap-3'; shell.dataset.locationStructuralClaims = '';
+    const byType = new Map(choices.map((choice) => [choice.claim_type, choice]));
+
+    Object.values(STRUCTURAL_CLAIM_GROUPS).forEach((group) => {
+        const available = group.claimTypes.map((type) => byType.get(type)).filter(Boolean);
+        if (available.length === 0) return;
+
+        const section = document.createElement('fieldset'); section.className = 'border rounded-3 p-3';
+        const legend = document.createElement('legend'); legend.className = 'small fw-bold float-none w-auto px-1 mb-2'; legend.textContent = group.question;
+        const hint = document.createElement('div'); hint.className = 'small text-secondary mb-2'; hint.textContent = 'اگر تقسیم‌بندی معمولی است، نیازی به ثبت وضعیت ساختاری نیست.';
+        const actions = document.createElement('div'); actions.className = 'd-flex flex-wrap gap-2';
+        const normal = document.createElement('span'); normal.className = 'badge text-bg-light border'; normal.textContent = group.normalLabel; actions.appendChild(normal);
+        const state = document.createElement('div'); state.className = 'small mt-2'; state.setAttribute('aria-live','polite');
+
+        available.forEach((choice) => {
+            const copy = STRUCTURAL_CLAIM_COPY[choice.claim_type]; if (!copy) return;
+            const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-outline-secondary btn-sm';
+            button.dataset.locationStructuralChoice = choice.claim_type; button.textContent = copy.title; button.setAttribute('aria-pressed', 'false');
+            const statusValue = String(choice.status || 'available');
+            if (statusValue === 'approved') { button.disabled = true; button.setAttribute('aria-pressed','true'); state.textContent = 'این وضعیت تأیید شده است.'; }
+            else if (OPEN_PROPOSAL_STATUSES.has(statusValue)) { button.disabled = true; button.setAttribute('aria-pressed','true'); state.textContent = 'این وضعیت در انتظار بررسی است؛ پس از ثبت محل سکونت، حمایت شما نیز ثبت می‌شود.'; }
+
+            button.addEventListener('click', async () => {
+                const form = host.closest('[data-location-form]') || host.closest('form'); const csrf = form?.querySelector('input[name="_token"]')?.value || '';
+                actions.querySelectorAll('[data-location-structural-choice]').forEach((candidate) => { candidate.disabled = true; });
+                state.textContent = 'در حال ثبت...';
+                try {
+                    const response = await fetch('/locations/structure-claims', { method:'POST', credentials:'same-origin', headers:{ Accept:'application/json','Content-Type':'application/json', ...(csrf ? {'X-CSRF-TOKEN':csrf}:{}) }, body:JSON.stringify({ location_id:Number(locationId), claim_type:choice.claim_type }) });
+                    const result = await response.json().catch(() => ({}));
+                    if (!response.ok) throw new Error(result.message || ('Structural claim request failed: ' + response.status));
+                    rememberStructuralClaim(host, result.id, depth); button.setAttribute('aria-pressed','true');
+                    state.textContent = 'در انتظار بررسی؛ مسیر محل سکونت بر اساس همین وضعیت ادامه پیدا می‌کند.';
+                    await onChanged(result);
+                } catch (error) {
+                    console.warn('EarthCoop structural claim failed:', error);
+                    actions.querySelectorAll('[data-location-structural-choice]').forEach((candidate) => { candidate.disabled = false; });
+                    state.textContent = error?.message || 'ثبت این وضعیت ممکن نشد؛ دوباره تلاش کنید.';
+                }
+            });
+            actions.appendChild(button);
+            const detail = document.createElement('div'); detail.className = 'small text-secondary w-100'; detail.textContent = copy.detail; actions.appendChild(detail);
         });
-        row.append(button, detail, state); shell.appendChild(row);
+        section.append(legend, hint, actions, state); shell.appendChild(section);
     });
-    return shell;
+    return shell.children.length ? shell : null;
 };
 
 const buildProposalPanel = (host, allowedTypes, parentLocationId, onCreated) => {
