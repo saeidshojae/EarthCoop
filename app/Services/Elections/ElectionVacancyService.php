@@ -271,6 +271,6 @@ class ElectionVacancyService
         }
 
         $role = (int) $membership->role;
-        return $role === 1;
+        return in_array($role, [1, 2, 3], true);
     }
 }
