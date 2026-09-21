@@ -103,23 +103,15 @@ const mountResidenceUx = (selector) => {
         const option = Array.from(levels?.querySelectorAll('[data-location-select] option') || []).find((candidate) => candidate.value === identity);
         return option?.dataset.typeKey || null;
     };
-    const fetchIdentityTypeKey = async (identity) => {
-        const value = String(identity || '');
-        if (!value.startsWith('location:')) return null;
-        try {
-            const response = await fetch('/location/options/' + encodeURIComponent(value.slice('location:'.length)) + '/path', { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
-            if (!response.ok) return null;
-            const payload = await response.json(); const items = Array.isArray(payload?.data) ? payload.data : [];
-            return items[items.length - 1]?.type_key || null;
-        } catch (error) { return null; }
-    };
     const waitForPersistedOption = async (depth, identity) => {
         for (let attempt = 0; attempt < 160; attempt += 1) {
             const select = levels?.querySelector(`[data-location-select="${depth}"]`);
             if (select && Array.from(select.options).some((option) => option.value === identity)) return select;
             const choice = levels?.querySelector(`[data-location-depth="${depth}"][data-location-type-choice]`);
             if (choice) {
-                const typeKey = identityTypeKey(identity) || await fetchIdentityTypeKey(identity);
+                const nextMicroTypes = ['street', 'alley', 'complex', 'building'];
+                const expectedTypeKey = nextMicroTypes.find((key) => identity.includes(':' + key + ':')) || null;
+                const typeKey = identityTypeKey(identity) || expectedTypeKey;
                 const button = typeKey ? choice.querySelector(`[data-location-type-choice-key="${typeKey}"]`) : null;
                 if (button) { button.click(); await sleep(0); continue; }
             }
