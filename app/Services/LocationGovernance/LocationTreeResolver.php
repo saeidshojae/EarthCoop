@@ -33,6 +33,21 @@ class LocationTreeResolver
         return $ancestors->values();
     }
 
+    /**
+     * Registration stops at the governance/residence base. Micro-location detail
+     * (street, alley, complex, building) belongs to post-registration profile flows.
+     */
+    public function registrationEndpointAllowed(Location $location): bool
+    {
+        if (! $this->residenceEndpointAllowed($location)) {
+            return false;
+        }
+
+        $typeKey = $location->type?->key;
+
+        return ! in_array($typeKey, ['street', 'alley', 'complex', 'building'], true);
+    }
+
     public function residenceEndpointAllowed(Location $location): bool
     {
         if (!$location->location_schema_id || !$location->location_type_id) {
