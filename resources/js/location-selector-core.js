@@ -98,6 +98,18 @@ const pickerLevelLabel = (payload, depth) => {
     if (keys.length > 0 && keys.every((key) => Object.prototype.hasOwnProperty.call(TYPE_LABELS, key))) return keys.map((key) => TYPE_LABELS[key]).join(' / ');
     return `سطح مکانی ${depth + 1}`;
 };
+const buildMicroTypeChoice = (host, payload, depth, onChosen) => {
+    const types = microContinuationTypes(payload); if (types.length < 2) return null;
+    const wrapper = document.createElement('div'); wrapper.dataset.locationDepth = String(depth); wrapper.dataset.locationTypeChoice = ''; wrapper.className = 'vstack gap-2';
+    const label = document.createElement('div'); label.className = 'form-label small text-secondary mb-0'; label.textContent = 'نوع ادامه مسیر';
+    const hint = document.createElement('div'); hint.className = 'small text-secondary'; hint.textContent = 'ابتدا نوع مکان بعدی را انتخاب کنید تا فقط گزینه‌های همان نوع نمایش داده شوند.';
+    const actions = document.createElement('div'); actions.className = 'd-flex flex-wrap gap-2';
+    types.forEach((type) => {
+        const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-outline-secondary btn-sm'; button.dataset.locationTypeChoiceKey = type.key; button.textContent = TYPE_LABELS[type.key] || type.label || type.key;
+        button.addEventListener('click', () => onChosen(type.key, wrapper)); actions.appendChild(button);
+    });
+    wrapper.append(label, hint, actions); return wrapper;
+};
 const buildSelect = (host, payload, depth) => {
     const wrapper = document.createElement('div'); wrapper.dataset.locationDepth = String(depth); wrapper.className = 'vstack gap-2';
     const label = document.createElement('label');
@@ -221,8 +233,15 @@ const initializeLocationSelector = async (host) => {
     };
     const load = async (url) => { setPickerState(PICKER_STATES.loading, host.dataset.loadingLabel || 'در حال دریافت گزینه‌های مکانی...'); const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' }); if (!response.ok) throw new Error(`Location options request failed: ${response.status}`); const normalized = normalizePickerPayload(await response.json()); return isProjectScope ? projectScopePayload(normalized) : (isRegistration ? registrationPayload(normalized) : normalized); };
     const removeDeeperLevels = (depth) => { levels.querySelectorAll('[data-location-depth]').forEach((element) => { if (Number(element.dataset.locationDepth) > depth) element.remove(); }); };
-    const appendLevel = (payload, depth, parentLocationId = null) => {
+    const appendLevel = (payload, depth, parentLocationId = null, skipTypeChoice = false) => {
         if (!shouldRenderNextLevel(payload)) { setPickerState(PICKER_STATES.empty, 'در این سطح گزینهٔ فعال دیگری ثبت نشده است.'); return; }
+        if (!isProjectScope && !isRegistration && !skipTypeChoice) {
+            const typeChoice = buildMicroTypeChoice(host, payload, depth, (typeKey, choiceWrapper) => {
+                choiceWrapper.remove(); appendLevel(filterPayloadByType(payload, typeKey), depth, parentLocationId, true);
+                setStatus('گزینه‌های ' + (TYPE_LABELS[typeKey] || typeKey) + ' آماده‌اند.');
+            });
+            if (typeChoice) { levels.appendChild(typeChoice); setStatus('نوع ادامه مسیر را انتخاب کنید.'); return; }
+        }
         const { wrapper, select } = buildSelect(host, payload, depth); levels.appendChild(wrapper);
         const refreshAfterProposal = async (result) => {
             if (result?.kind === 'proposal') { setSelection({ id: result.id, identity: `proposal:${result.id}`, label: result.canonical_name, status: result.status, selectable: true }); setStatus('پیشنهاد مکان ثبت شد و به‌عنوان محل دقیق در انتظار تأیید انتخاب شد.'); return; }
