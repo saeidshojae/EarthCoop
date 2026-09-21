@@ -3,6 +3,7 @@
 namespace Tests\Feature\LocationGovernance;
 
 use App\Models\User;
+use App\Services\LocationGovernance\LocationStructureClaimService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\LocationFixture;
 use Tests\Support\LocationGovernance\MembershipFixture;
@@ -22,9 +23,11 @@ class RegistrationPrimaryResidenceTest extends TestCase
 
         ['endpoint' => $city] = RegistrationFixture::urbanSari();
         $user = User::factory()->create();
+        $claims = $this->cityWithoutRegionOrNeighborhoodClaims($city, $user);
 
         $response = $this->actingAs($user)->post('/register/step3', [
             'location_id' => $city->id,
+            'location_structure_claim_ids' => $claims,
         ]);
 
         $response->assertRedirect(route('home'));
@@ -76,9 +79,11 @@ class RegistrationPrimaryResidenceTest extends TestCase
 
         ['user' => $user, 'endpoint' => $endpoint] = MembershipFixture::canonicalUser();
         $user->locationRelationships()->delete();
+        $claims = $this->cityWithoutRegionOrNeighborhoodClaims($endpoint, $user);
 
         $response = $this->actingAs($user)->post('/register/step3', [
             'location_id' => $endpoint->id,
+            'location_structure_claim_ids' => $claims,
         ]);
 
         $response->assertRedirect(route('home'));
@@ -104,9 +109,11 @@ class RegistrationPrimaryResidenceTest extends TestCase
 
         ['endpoint' => $village] = RegistrationFixture::ruralVillage();
         $user = User::factory()->create();
+        $claim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($village, 'no_neighborhood', $user);
 
         $response = $this->actingAs($user)->post('/register/step3', [
             'location_id' => $village->id,
+            'location_structure_claim_ids' => [$claim->id],
         ]);
 
         $response->assertRedirect(route('home'));
@@ -129,8 +136,10 @@ class RegistrationPrimaryResidenceTest extends TestCase
         $this->assertFalse($village->children()->exists());
 
         $user = User::factory()->create();
+        $claim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($village, 'no_neighborhood', $user);
         $response = $this->actingAs($user)->post('/register/step3', [
             'location_id' => $village->id,
+            'location_structure_claim_ids' => [$claim->id],
         ]);
 
         $response->assertRedirect(route('home'));
@@ -196,4 +205,15 @@ class RegistrationPrimaryResidenceTest extends TestCase
             'relationship_type' => 'primary_residence',
         ]);
     }
+    /** @return array<int, int> */
+    private function cityWithoutRegionOrNeighborhoodClaims($city, User $user): array
+    {
+        $service = app(LocationStructureClaimService::class);
+
+        return [
+            $service->findOrCreateOpenClaim($city, 'no_urban_region', $user)->id,
+            $service->findOrCreateOpenClaim($city, 'no_neighborhood', $user)->id,
+        ];
+    }
+
 }
