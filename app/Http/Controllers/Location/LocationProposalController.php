@@ -87,6 +87,8 @@ class LocationProposalController extends Controller
         return response()->json([
             'kind' => 'proposal', 'id' => $result->id, 'canonical_name' => $result->canonical_name,
             'status' => $result->status->value,
+            'type_key' => $result->type?->key,
+            'children_url' => '/location/proposals/'.$result->id.'/children',
         ], $result->wasRecentlyCreated ? 201 : 200);
     }
 
