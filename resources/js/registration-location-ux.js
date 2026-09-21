@@ -99,10 +99,24 @@ const mountResidenceUx = (selector) => {
         }
     };
 
+    const identityTypeKey = (identity) => {
+        const option = Array.from(levels?.querySelectorAll('[data-location-select] option') || []).find((candidate) => candidate.value === identity);
+        return option?.dataset.typeKey || null;
+    };
     const waitForPersistedOption = async (depth, identity) => {
         for (let attempt = 0; attempt < 160; attempt += 1) {
             const select = levels?.querySelector(`[data-location-select="${depth}"]`);
             if (select && Array.from(select.options).some((option) => option.value === identity)) return select;
+            const choice = levels?.querySelector(`[data-location-depth="${depth}"][data-location-type-choice]`);
+            if (choice) {
+                const typeKey = identityTypeKey(identity) || (() => {
+                    const nextIdentity = currentPath[depth];
+                    const priorOption = Array.from(levels?.querySelectorAll('[data-location-select] option') || []).find((candidate) => candidate.value === nextIdentity);
+                    return priorOption?.dataset.typeKey || null;
+                })();
+                const button = typeKey ? choice.querySelector(`[data-location-type-choice-key="${typeKey}"]`) : null;
+                if (button) { button.click(); await sleep(0); continue; }
+            }
             await sleep(25);
         }
         return null;
