@@ -126,9 +126,9 @@ const buildSelect = (host, payload, depth) => {
     wrapper.append(label, select); return { wrapper, select };
 };
 const STRUCTURAL_CLAIM_COPY = Object.freeze({
-    single_urban_region: { title: 'این شهر فقط یک حوزهٔ منطقه‌ای دارد', detail: 'سطح منطقهٔ شهری جداگانه ساخته نمی‌شود و مسیر به سطح واقعی بعدی ادامه پیدا می‌کند.' },
+    single_urban_region: { title: 'این شهر فقط یک منطقهٔ شهری دارد', detail: 'منطقهٔ واقعی حفظ و انتخاب می‌شود؛ چون تنها منطقهٔ شهر است، مرز شهر و منطقه انتخابات تکراری ایجاد نمی‌کند.' },
     no_urban_region: { title: 'این شهر منطقهٔ شهری جداگانه ندارد', detail: 'خود شهر نمایندهٔ این سطح حکمرانی است؛ مکان دقیق‌تر همچنان می‌تواند ثبت شود.' },
-    single_neighborhood: { title: 'این محدوده فقط یک حوزهٔ محله‌ای دارد', detail: 'محلهٔ مصنوعی ساخته نمی‌شود و خود محدوده می‌تواند مبنای رسمی باشد.' },
+    single_neighborhood: { title: 'این محدوده فقط یک محله دارد', detail: 'محلهٔ واقعی حفظ و انتخاب می‌شود؛ چون تنها محلهٔ این محدوده است، این مرز انتخابات تکراری ایجاد نمی‌کند.' },
     no_neighborhood: { title: 'این محدوده محلهٔ جداگانه ندارد', detail: 'پایان حوزهٔ رسمی به معنی پایان مسیر مکانی نیست و می‌توانید خیابان یا مکان دقیق‌تر را ادامه دهید.' },
 });
 const rememberStructuralClaim = (host, claimId, depth) => {
