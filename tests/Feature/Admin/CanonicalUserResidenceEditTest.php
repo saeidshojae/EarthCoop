@@ -85,6 +85,17 @@ class CanonicalUserResidenceEditTest extends TestCase
         $this->assertStringContainsString("route('admin.users.residence.update', \$user)", $partial);
     }
 
+    public function test_admin_canonical_residence_card_exposes_persisted_path_for_deep_type_first_hydration(): void
+    {
+        $partial = file_get_contents(resource_path('views/admin/user/partials/canonical-residence.blade.php'));
+        $controller = file_get_contents(app_path('Http/Controllers/Admin/SafeUserController.php'));
+
+        $this->assertStringContainsString('data-location-current-id', $partial);
+        $this->assertStringContainsString('data-location-current-proposal-id', $partial);
+        $this->assertStringContainsString('data-location-current-path', $partial);
+        $this->assertStringContainsString('residenceHydrationPath', $controller);
+    }
+
     public function test_admin_can_move_user_to_approved_residence_with_actor_and_reason(): void
     {
         [$target, $oldHome, $newHome] = $this->makeApprovedMoveScenario();
