@@ -19,6 +19,9 @@
             <div
                 data-location-selector
                 data-location-selector-context="admin-user-residence"
+                data-location-current-id="{{ ($pendingResidenceIntent ?? null) ? '' : ($primaryResidence?->location_id ?? '') }}"
+                data-location-current-proposal-id="{{ $pendingResidenceIntent?->location_proposal_id ?? '' }}"
+                data-location-current-path='@json($residenceHydrationPath ?? [])'
                 data-country-code="{{ $user->locationRelationships()->where('relationship_type', 'primary_residence')->whereNull('ended_at')->with('location')->latest('started_at')->first()?->location?->country_code ?: 'IR' }}"
                 data-empty-label="یک گزینه را انتخاب کنید"
                 data-loading-label="در حال دریافت گزینه‌های مکانی..."
