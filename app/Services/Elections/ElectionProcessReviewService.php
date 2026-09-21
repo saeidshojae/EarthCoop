@@ -135,6 +135,7 @@ class ElectionProcessReviewService
 
     public function setInterimStay(ElectionProcessReview $review, User $authority, string $reason): ElectionProcessReview
     {
+        $this->assertReviewAuthority($authority);
         if (trim($reason) === '') {
             throw new InvalidArgumentException('Interim stay reason is required.');
         }
@@ -159,6 +160,7 @@ class ElectionProcessReviewService
         string $reason,
         ?string $remediationReference = null,
     ): ElectionProcessReview {
+        $this->assertReviewAuthority($authority);
         if (! in_array($decision, ['upheld', 'corrected', 'dismissed'], true)) {
             throw new InvalidArgumentException('Unsupported review decision.');
         }
@@ -203,6 +205,13 @@ class ElectionProcessReviewService
             'scope' => $scope,
             'accessed_at' => now(),
         ]);
+    }
+
+    private function assertReviewAuthority(User $authority): void
+    {
+        if (! $authority->hasPermission('elections.review.manage')) {
+            throw new RuntimeException('Election review management authority is required.');
+        }
     }
 
     private function endorseLocked(ElectionProcessReview $review, User $member): void
