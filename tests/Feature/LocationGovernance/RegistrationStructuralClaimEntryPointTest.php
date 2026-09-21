@@ -45,11 +45,14 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
         $city=$path->last();
         $other=LocationFixture::createPath($schema,['country','province','county','section','city'], ['کشور دوم','استان دوم','شهرستان دوم','بخش دوم','شهر دیگر'])->last();
         $user=User::factory()->create();
-        $claim=app(LocationStructureClaimService::class)->findOrCreateOpenClaim($other,'no_urban_region',$user);
+        $service=app(LocationStructureClaimService::class);
+        $noRegion=$service->findOrCreateOpenClaim($city,'no_urban_region',$user);
+        $noNeighborhood=$service->findOrCreateOpenClaim($city,'no_neighborhood',$user);
+        $claim=$service->findOrCreateOpenClaim($other,'no_urban_region',$user);
 
         $this->actingAs($user)->from(route('register.step3'))->post(route('register.step3.process'),[
             'location_id'=>$city->id,
-            'location_structure_claim_ids'=>[$claim->id],
+            'location_structure_claim_ids'=>[$noRegion->id,$noNeighborhood->id,$claim->id],
         ])->assertSessionHasErrors('location_structure_claim_ids');
 
         $this->assertSame(0,$user->fresh()->locationRelationships()->count());
@@ -126,7 +129,9 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
         $city = $path->first(fn ($location) => $location->type?->key === 'city');
         $region = $path->last();
         $user = User::factory()->create();
-        $claim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'single_urban_region', $user);
+        $service = app(LocationStructureClaimService::class);
+        $claim = $service->findOrCreateOpenClaim($city, 'single_urban_region', $user);
+        $noNeighborhood = $service->findOrCreateOpenClaim($region, 'no_neighborhood', $user);
 
         $this->actingAs($user)->from(route('register.step3'))->post(route('register.step3.process'), [
             'location_id' => $city->id,
@@ -135,7 +140,7 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
 
         $this->actingAs($user)->post(route('register.step3.process'), [
             'location_id' => $region->id,
-            'location_structure_claim_ids' => [$claim->id],
+            'location_structure_claim_ids' => [$claim->id, $noNeighborhood->id],
         ])->assertRedirect(route('home'));
     }
 
