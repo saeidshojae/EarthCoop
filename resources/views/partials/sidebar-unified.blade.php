@@ -2,7 +2,19 @@
 
 @if(auth()->check())
     @php
-        $groups = auth()->user()->groups;
+        $sidebarUser = auth()->user();
+        if ((bool) config('location-governance.groups_enabled', false)) {
+            $sidebarMaterializedIds = collect(app(\App\Services\Groups\CanonicalGroupMembershipReconciler::class)->reconcile($sidebarUser))
+                ->pluck('id')->filter()->values();
+            $groups = $sidebarMaterializedIds->isEmpty()
+                ? collect()
+                : $sidebarUser->groups()
+                    ->whereIn('groups.id', $sidebarMaterializedIds->all())
+                    ->wherePivot('status', 1)
+                    ->get();
+        } else {
+            $groups = $sidebarUser->groups()->wherePivot('status', 1)->get();
+        }
         $generalGroups = $groups->where('type', 'general');
         $specializedGroups = $groups->where('type', 'specialized');
         $exclusiveGroups = $groups->where('type', 'exclusive');
