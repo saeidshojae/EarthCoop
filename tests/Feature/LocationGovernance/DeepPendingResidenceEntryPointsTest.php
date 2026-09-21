@@ -132,28 +132,20 @@ class DeepPendingResidenceEntryPointsTest extends TestCase
             ->assertSuccessful();
     }
 
-    public function test_registration_accepts_deepest_pending_proposal_and_keeps_nearest_canonical_anchor(): void
+    public function test_registration_rejects_deepest_pending_micro_proposal_while_profile_and_admin_remain_deep_capable(): void
     {
-        [$user, $anchor, $deepest] = $this->makeDeepProposalScenario();
+        [$user, , $deepest] = $this->makeDeepProposalScenario();
 
-        $response = $this->actingAs($user)->post(route('register.step3.process'), [
-            'location_proposal_id' => $deepest->id,
-        ]);
+        $response = $this->actingAs($user)
+            ->from(route('register.step3'))
+            ->post(route('register.step3.process'), [
+                'location_proposal_id' => $deepest->id,
+            ]);
 
-        $response->assertRedirect(route('home'));
-        $response->assertSessionHasNoErrors();
-
-        $current = $user->fresh()->locationRelationships()
-            ->where('relationship_type', 'primary_residence')
-            ->whereNull('ended_at')
-            ->sole();
-        $intent = $user->fresh()->pendingResidenceIntents()
-            ->where('status', 'pending')
-            ->sole();
-
-        $this->assertSame($anchor->id, $current->location_id);
-        $this->assertSame($deepest->id, $intent->location_proposal_id);
-        $this->assertSame($current->id, $intent->anchor_relationship_id);
+        $response->assertRedirect(route('register.step3'));
+        $response->assertSessionHasErrors('location_proposal_id');
+        $this->assertSame(0, $user->fresh()->locationRelationships()->count());
+        $this->assertSame(0, $user->fresh()->pendingResidenceIntents()->count());
     }
 
     public function test_profile_accepts_deepest_pending_proposal_without_transferring_from_canonical_anchor(): void
