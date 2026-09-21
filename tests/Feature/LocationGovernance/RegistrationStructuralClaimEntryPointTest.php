@@ -134,4 +134,51 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
     }
 
 
+    public function test_city_without_region_must_continue_to_real_neighborhood_before_registration_can_finish(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $neighborhoodType = $schema->types->firstWhere('key', 'neighborhood');
+        $neighborhood = \App\Models\Location::create([
+            'location_schema_id' => $schema->id,
+            'location_type_id' => $neighborhoodType->id,
+            'parent_id' => $city->id,
+            'country_code' => 'IR',
+            'canonical_name' => 'Direct Neighborhood',
+            'status' => 'active',
+        ]);
+        $user = User::factory()->create();
+        $claim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+
+        $this->actingAs($user)->from(route('register.step3'))->post(route('register.step3.process'), [
+            'location_id' => $city->id,
+            'location_structure_claim_ids' => [$claim->id],
+        ])->assertSessionHasErrors('location_id');
+
+        $this->actingAs($user)->post(route('register.step3.process'), [
+            'location_id' => $neighborhood->id,
+            'location_structure_claim_ids' => [$claim->id],
+        ])->assertRedirect(route('home'));
+    }
+
+    public function test_city_without_region_and_without_neighborhood_can_finish_registration_at_city(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $user = User::factory()->create();
+        $service = app(LocationStructureClaimService::class);
+        $noRegion = $service->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+        $noNeighborhood = $service->findOrCreateOpenClaim($city, 'no_neighborhood', $user);
+
+        $this->actingAs($user)->post(route('register.step3.process'), [
+            'location_id' => $city->id,
+            'location_structure_claim_ids' => [$noRegion->id, $noNeighborhood->id],
+        ])->assertRedirect(route('home'));
+
+        $relationship = $user->fresh()->locationRelationships()->where('relationship_type','primary_residence')->whereNull('ended_at')->sole();
+        $this->assertSame($city->id, $relationship->location_id);
+        $this->assertEqualsCanonicalizing([$noRegion->id, $noNeighborhood->id], $relationship->metadata['structural_claim_ids']);
+    }
+
+
 }
