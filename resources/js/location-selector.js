@@ -17,7 +17,11 @@ const FA_TYPE_LABELS = Object.freeze({
     section: 'بخش', city: 'شهر', rural_district: 'دهستان', village: 'روستا', urban_region: 'منطقه',
     neighborhood: 'محله', street: 'خیابان', alley: 'کوچه', complex: 'مجتمع', building: 'ساختمان',
 });
-const localizeLocationTypeLabel = (type, locale = (typeof document !== 'undefined' ? document.documentElement.lang : 'fa')) => String(locale || '').toLowerCase().startsWith('fa') && FA_TYPE_LABELS[type?.key] ? FA_TYPE_LABELS[type.key] : (type?.label || type?.canonical_name || type?.key || '');
+const localizeLocationTypeLabel = (type, locale = (typeof document !== 'undefined' ? document.documentElement.lang : 'fa')) => {
+    const documentIsRtl = typeof document !== 'undefined' && String(document.documentElement.dir || '').toLowerCase() === 'rtl';
+    const usePersianLabel = documentIsRtl || String(locale || '').toLowerCase().startsWith('fa');
+    return usePersianLabel && FA_TYPE_LABELS[type?.key] ? FA_TYPE_LABELS[type.key] : (type?.label || type?.canonical_name || type?.key || '');
+};
 const proposalParentPayload = (identity) => {
     const value = String(identity || '');
     if (value.startsWith('location:')) return { parent_location_id: Number(value.slice(9)) };
@@ -36,7 +40,7 @@ const removeAfter = (levels, depth) => levels.querySelectorAll('[data-location-d
 const addProposalPanel = (host, wrapper, payload, parentIdentity, select) => {
     const types = allowedTypes(payload); if (!types.length) return;
     const shell = document.createElement('div'); shell.dataset.locationProposalShell = ''; shell.className = 'location-proposal-shell';
-    const toggle = document.createElement('button'); toggle.type = 'button'; toggle.dataset.locationProposalToggle = ''; toggle.className = 'btn btn-sm location-proposal-toggle'; toggle.textContent = '+ افزودن مکان جدید';
+    const toggle = document.createElement('button'); toggle.type = 'button'; toggle.dataset.locationProposalToggle = ''; toggle.className = 'btn btn-sm location-proposal-toggle'; toggle.textContent = types.length === 1 ? `+ افزودن ${localizeLocationTypeLabel(types[0])} جدید` : '+ افزودن مکان جدید';
     const panel = document.createElement('div'); panel.dataset.locationProposalPanel = ''; panel.className = 'location-proposal-panel d-none';
     const heading = document.createElement('div'); heading.className = 'location-proposal-heading'; heading.textContent = types.length === 1 ? `افزودن ${localizeLocationTypeLabel(types[0])} جدید` : 'افزودن مکان جدید';
     const type = document.createElement('select'); type.dataset.locationProposalType = ''; type.className = 'form-select form-select-sm';
@@ -83,7 +87,13 @@ const appendPendingLevel = (host, payload, depth, parentIdentity, selectedTypeKe
     const wrapper = document.createElement('div'); wrapper.dataset.locationDepth = String(depth); wrapper.className = 'vstack gap-2';
     const label = document.createElement('label'); label.className = 'form-label small text-secondary mb-0'; const visibleKeys = [...new Set([...proposals.map((item) => item.type_key), ...types.map((item) => item.key)].filter(Boolean))]; label.textContent = visibleKeys.map((key) => localizeLocationTypeLabel({ key, label: key })).join(' / ');
     const select = document.createElement('select'); select.className = 'form-select'; select.dataset.locationSelect = String(depth); const empty = document.createElement('option'); empty.value = ''; empty.textContent = 'یک گزینه را انتخاب کنید'; select.appendChild(empty);
-    proposals.forEach((item) => { const option = document.createElement('option'); option.value = `proposal:${item.id}`; option.textContent = `${item.label} — در انتظار تأیید`; option.dataset.locationPendingBadge = ''; select.appendChild(option); }); wrapper.append(label, select); addProposalPanel(host, wrapper, payload, parentIdentity, select); levels.appendChild(wrapper);
+    proposals.forEach((item) => { const option = document.createElement('option'); option.value = `proposal:${item.id}`; option.textContent = `${item.label} — در انتظار تأیید`; option.dataset.locationPendingBadge = ''; option.dataset.typeKey = item.type_key || ''; select.appendChild(option); });
+    wrapper.append(label, select);
+    const proposalPayload = selectedTypeKey
+        ? { ...payload, proposals, allowed_types: types, effective_allowed_types: types }
+        : payload;
+    addProposalPanel(host, wrapper, proposalPayload, parentIdentity, select);
+    levels.appendChild(wrapper);
 };
 
 async function loadProposalChildren(host, select, proposalId) {
