@@ -45,6 +45,9 @@ final class MyLocationGovernanceController extends Controller
             ->first();
 
         $governanceAreas = $residenceService->officialGovernanceAreasFor($user);
+        $governanceRankById = $governanceAreas
+            ->values()
+            ->mapWithKeys(fn ($area, $index): array => [(int) $area->id => $index]);
 
         $canonicalMemberships = $user->groups()
             ->whereNotNull('governance_area_id')
@@ -53,9 +56,10 @@ final class MyLocationGovernanceController extends Controller
             ->get();
 
         $membershipsByDimension = collect(self::DIMENSIONS)
-            ->mapWithKeys(function (string $dimension) use ($canonicalMemberships): array {
+            ->mapWithKeys(function (string $dimension) use ($canonicalMemberships, $governanceRankById): array {
                 $memberships = $canonicalMemberships
                     ->where('dimension_key', $dimension)
+                    ->sortByDesc(fn ($group): int => $governanceRankById->get((int) $group->governance_area_id, -1))
                     ->values();
 
                 return [$dimension => collect([
