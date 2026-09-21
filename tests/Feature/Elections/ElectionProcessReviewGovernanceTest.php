@@ -93,6 +93,17 @@ class ElectionProcessReviewGovernanceTest extends TestCase
         $this->assertSame('provisional', $appointment->refresh()->review_state);
 
         $authority = User::factory()->create();
+        $role = \App\Models\Role::create([
+            'name' => 'Review governance authority',
+            'slug' => 'review-governance-authority',
+            'description' => 'Election review governance test authority.',
+            'is_system' => false,
+            'order' => 20,
+        ]);
+        $permission = \App\Models\Permission::query()->where('slug', 'elections.review.manage')->firstOrFail();
+        $role->permissions()->attach($permission->id);
+        $authority->roles()->attach($role->id);
+
         $review = $service->setInterimStay($review, $authority, 'خطر اثرگذاری غیرقابل بازگشت تا پایان بازبینی');
         $this->assertSame('stayed', $review->interim_state);
         $this->assertSame('stayed', $appointment->refresh()->review_state);
