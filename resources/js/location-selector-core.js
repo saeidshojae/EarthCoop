@@ -237,6 +237,8 @@ const initializeLocationSelector = async (host) => {
         if (!shouldRenderNextLevel(payload)) { setPickerState(PICKER_STATES.empty, 'در این سطح گزینهٔ فعال دیگری ثبت نشده است.'); return; }
         if (!isProjectScope && !isRegistration && !skipTypeChoice) {
             const typeChoice = buildMicroTypeChoice(host, payload, depth, (typeKey, choiceWrapper) => {
+                clearSelection(); clearStructuralClaimsAfterDepth(form, depth); removeDeeperLevels(depth - 1);
+                [...selectedPath.keys()].filter((key) => key >= depth).forEach((key) => selectedPath.delete(key)); renderLocationPath();
                 choiceWrapper.remove(); appendLevel(filterPayloadByType(payload, typeKey), depth, parentLocationId, true);
                 setStatus('گزینه‌های ' + (TYPE_LABELS[typeKey] || typeKey) + ' آماده‌اند.');
             });
