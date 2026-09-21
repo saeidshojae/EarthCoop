@@ -50,7 +50,7 @@ $electionAvailable = ($election ?? null) && optional($groupSetting)->election_st
 $canParticipateElection = $electionAvailable
     && !$checkBlockElection
     && (int)($pivotUser?->status ?? 0) === 1
-    && (int)$yourRole === 1;
+    && in_array((int)$yourRole, [1, 2, 3], true);
 @endphp
 <div id="group-chat-main-container"
     class="container mx-auto max-w-7xl px-4 md:px-8 pt-0 pb-8 space-y-6 md:space-y-10 group-chat-container"
