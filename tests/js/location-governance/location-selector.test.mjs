@@ -32,6 +32,13 @@ test('normalizes active locations, open proposals, and allowed types without fix
     assert.deepEqual(alleyPayload.allowedTypes.map((type) => type.key), ['complex']);
 });
 
+test('changing a micro branch clears deeper selection state before rendering the new branch', () => {
+    assert.match(source, /removeDeeperLevels\(depth\)/);
+    assert.match(source, /selectedPath\.keys\(\).*key > depth/);
+    assert.match(source, /clearSelection\(\)/);
+    assert.match(source, /clearStructuralClaimsAfterDepth\(form, depth\)/);
+});
+
 test('maps canonical and proposal identities to mutually exclusive hidden values', () => {
     assert.deepEqual(selectionValues({ id: 41, identity: 'location:41', is_residence_endpoint: true, status: 'active' }), { locationId: '41', proposalId: '' });
     assert.deepEqual(selectionValues({ id: 17, identity: 'proposal:17', status: 'pending', selectable: true }), { locationId: '', proposalId: '17' });
