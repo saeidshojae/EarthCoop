@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 import {
     normalizePickerPayload,
     registrationPayload,
+    microContinuationTypes,
+    filterPayloadByType,
     projectScopePayload,
     projectScopeSelectionValues,
     pickerLevelLabel,
@@ -61,6 +63,28 @@ test('registration keeps non-micro governance continuation available', () => {
     assert.deepEqual(registration.locations.map((item) => item.type_key), ['urban_region']);
     assert.deepEqual(registration.allowedTypes.map((item) => item.key), ['urban_region']);
     assert.equal(shouldRenderNextLevel(registration), true);
+});
+
+test('micro residence continuation requires choosing one child type before showing mixed children', () => {
+    const normalized = normalizePickerPayload({
+        data: [
+            { id: 101, identity: 'location:101', type_key: 'alley', label: 'کوچه دوستی', status: 'active' },
+            { id: 102, identity: 'location:102', type_key: 'complex', label: 'مجتمع بهارستان', status: 'active' },
+            { id: 103, identity: 'location:103', type_key: 'building', label: 'ساختمان ۳۵', status: 'active' },
+        ],
+        proposals: [{ id: 104, identity: 'proposal:104', type_key: 'building', label: 'ساختمان پیشنهادی', status: 'pending', selectable: true }],
+        allowed_types: [
+            { id: 201, key: 'alley', label: 'Alley', proposal_allowed: true },
+            { id: 202, key: 'complex', label: 'Complex', proposal_allowed: true },
+            { id: 203, key: 'building', label: 'Building', proposal_allowed: true },
+        ],
+    });
+
+    assert.deepEqual(microContinuationTypes(normalized).map((type) => type.key), ['alley', 'complex', 'building']);
+    const buildings = filterPayloadByType(normalized, 'building');
+    assert.deepEqual(buildings.locations.map((item) => item.id), [103]);
+    assert.deepEqual(buildings.proposals.map((item) => item.id), [104]);
+    assert.deepEqual(buildings.allowedTypes.map((type) => type.key), ['building']);
 });
 
 test('project scope reuses canonical traversal but excludes pending proposals and proposal creation', () => {
