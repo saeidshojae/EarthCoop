@@ -52,6 +52,14 @@ test('proposal form hides redundant type selector when exactly one type is allow
   assert.match(selectorSource, /dataset\.locationProposalType/);
 });
 
+test('mixed micro children expose type-first controls before location choices', () => {
+  const coreSource = fs.readFileSync(new URL('../../../resources/js/location-selector-core.js', import.meta.url), 'utf8');
+  assert.match(coreSource, /dataset\.locationTypeChoice/);
+  assert.match(coreSource, /نوع ادامه مسیر/);
+  assert.match(coreSource, /filterPayloadByType/);
+  assert.match(selectorSource, /dataset\.locationTypeChoice/);
+});
+
 test('proposal actions expose clear mobile-first primary secondary and pending hooks', () => {
   assert.match(selectorSource, /dataset\.locationProposalSubmit/);
   assert.match(selectorSource, /dataset\.locationProposalCancel/);
