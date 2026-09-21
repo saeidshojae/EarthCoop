@@ -103,7 +103,7 @@ class Step3Controller extends Controller
                 }
                 app(ProfileCompletionService::class)->maybeAward($user->fresh());
 
-                return redirect()->route('home')->with('success', 'تبریک میگوییم، محل سکونت اصلی شما ثبت شد و ثبت نام شما تکمیل شد.');
+                return redirect()->route('home')->with('success', 'تبریک می‌گوییم! اطلاعات شما با موفقیت دریافت شد، ثبت‌نام شما تکمیل شد و در گروه‌های مربوط به خود عضو شدید. به EarthCoop خوش آمدید.');
             }
 
             DB::transaction(function () use (
