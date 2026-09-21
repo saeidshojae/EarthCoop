@@ -9889,83 +9889,34 @@
 
     // Initialize on page load
 
-
-
-
-
-
-
-
-
     document.addEventListener('DOMContentLoaded', function() {
+        const requestedSection = new URLSearchParams(window.location.search).get('section');
+        const allowedSections = ['general', 'password', 'social', 'occupation', 'location'];
+        const initialSection = allowedSections.includes(requestedSection) ? requestedSection : 'general';
 
+        document.querySelectorAll('.edit-section').forEach(section => {
+            section.classList.remove('active');
+            section.querySelector('.section-content')?.classList.remove('active');
+        });
+        document.querySelectorAll('.stepper-item').forEach(item => item.classList.remove('active'));
 
+        const section = document.getElementById(`section-${initialSection}`);
+        const content = section?.querySelector('.section-content');
+        const stepperItem = document.querySelector(`[data-step="${initialSection}"]`);
 
+        if (section && content) {
+            section.classList.add('active');
+            content.classList.add('active');
+            stepperItem?.classList.add('active');
 
-
-
-
-
-
-        // Open first section by default
-
-
-
-
-
-
-
-
-
-        toggleSection('general');
-
-
-
-
-
-
-
-
-
-        
-
-
-
-
-
-
-
-
+            if (initialSection !== 'general') {
+                requestAnimationFrame(() => section.scrollIntoView({ behavior: 'auto', block: 'start' }));
+            }
+        }
 
         // Update stepper
-
-
-
-
-
-
-
-
-
         updateStepperProgress();
-
-
-
-
-
-
-
-
-
     });
-
-
-
-
-
-
-
-
 
 </script>
 
