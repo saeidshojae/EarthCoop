@@ -82,7 +82,25 @@
         : collect();
     $displayAreaName = static function ($area) {
         $localized = is_array($area?->localized_names) ? $area->localized_names : [];
-        return $localized['fa'] ?? $localized['fa-IR'] ?? $area?->canonical_name ?? '—';
+        $location = $area?->locations?->first();
+        $locationLocalized = is_array($location?->localized_names) ? $location->localized_names : [];
+
+        return $localized['fa']
+            ?? $localized['fa-IR']
+            ?? $locationLocalized['fa']
+            ?? $locationLocalized['fa-IR']
+            ?? $location?->name
+            ?? $area?->canonical_name
+            ?? '—';
+    };
+    $displayLocationName = static function ($location) {
+        $localized = is_array($location?->localized_names) ? $location->localized_names : [];
+
+        return $localized['fa']
+            ?? $localized['fa-IR']
+            ?? $location?->name
+            ?? $location?->canonical_name
+            ?? '—';
     };
 @endphp
 
@@ -102,7 +120,7 @@
                         <span class="text-muted small">محل سکونت من</span>
                         @if($currentResidence)<span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">تأییدشده</span>@endif
                     </div>
-                    <div class="location-hero-name mb-2">{{ $currentResidence?->location?->name ?: $currentResidence?->location?->canonical_name ?: 'محل سکونت ثبت نشده است.' }}</div>
+                    <div class="location-hero-name mb-2">{{ $currentResidence?->location ? $displayLocationName($currentResidence->location) : 'محل سکونت ثبت نشده است.' }}</div>
                     <div class="d-flex flex-wrap align-items-center gap-2 small">
                         <span class="text-muted">حوزه پایه حکمرانی:</span>
                         <strong>{{ $displayAreaName($baseGovernanceArea) }}</strong>
@@ -113,7 +131,7 @@
                             <summary><i class="fas fa-route ms-1" aria-hidden="true"></i>مشاهده مسیر کامل محل سکونت</summary>
                             <div class="location-path" aria-label="مسیر محل سکونت">
                                 @foreach($residencePath as $location)
-                                    <span class="location-path-item">{{ $location->name ?: $location->canonical_name }}</span>
+                                    <span class="location-path-item">{{ $displayLocationName($location) }}</span>
                                 @endforeach
                             </div>
                         </details>
