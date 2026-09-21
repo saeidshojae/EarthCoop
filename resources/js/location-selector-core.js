@@ -177,21 +177,23 @@ const buildStructuralClaimPanel = (host, choices, locationId, depth, onChanged) 
 const buildProposalPanel = (host, allowedTypes, parentLocationId, onCreated) => {
     const proposableTypes = allowedTypes.filter((type) => type?.proposal_allowed === true); if (!parentLocationId || proposableTypes.length === 0) return null;
     const shell = document.createElement('div'); shell.className = 'border rounded-3 p-3 bg-light'; shell.dataset.locationProposalShell = '';
-    const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'btn btn-outline-secondary btn-sm'; toggle.textContent = 'مکان من در فهرست نیست'; toggle.dataset.locationProposalToggle = '';
+    const proposalTypeLabel = (type) => TYPE_LABELS[type?.key] || type?.label || type?.key || 'مکان';
+    const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'btn btn-outline-secondary btn-sm'; toggle.textContent = proposableTypes.length === 1 ? `+ افزودن ${proposalTypeLabel(proposableTypes[0])} جدید` : '+ افزودن مکان جدید'; toggle.dataset.locationProposalToggle = '';
     const panel = document.createElement('div'); panel.className = 'vstack gap-2 mt-3 d-none'; panel.dataset.locationProposalPanel = '';
     const typeLabel = document.createElement('label'); typeLabel.className = 'form-label small text-secondary mb-0'; typeLabel.textContent = 'نوع مکان پیشنهادی';
     const typeSelect = document.createElement('select'); typeSelect.className = 'form-select form-select-sm'; typeSelect.setAttribute('aria-label', 'نوع مکان پیشنهادی');
     if (proposableTypes.length === 1) { typeLabel.classList.add('d-none'); typeSelect.classList.add('d-none'); }
-    proposableTypes.forEach((type) => { const option = document.createElement('option'); option.value = String(type.id); option.textContent = type.label || type.key; typeSelect.appendChild(option); });
-    const nameLabel = document.createElement('label'); nameLabel.className = 'form-label small text-secondary mb-0'; nameLabel.textContent = 'نام مکان';
-    const nameInput = document.createElement('input'); nameInput.type = 'text'; nameInput.className = 'form-control form-control-sm'; nameInput.maxLength = 255; nameInput.placeholder = 'نام مکان را وارد کنید'; nameInput.setAttribute('aria-label', 'نام مکان پیشنهادی');
+    proposableTypes.forEach((type) => { const option = document.createElement('option'); option.value = String(type.id); option.textContent = proposalTypeLabel(type); typeSelect.appendChild(option); });
+    const nameLabel = document.createElement('label'); nameLabel.className = 'form-label small text-secondary mb-0'; nameLabel.textContent = proposableTypes.length === 1 ? `نام ${proposalTypeLabel(proposableTypes[0])}` : 'نام مکان';
+    const nameInput = document.createElement('input'); nameInput.type = 'text'; nameInput.className = 'form-control form-control-sm'; nameInput.maxLength = 255; nameInput.placeholder = proposableTypes.length === 1 ? `نام ${proposalTypeLabel(proposableTypes[0])} را وارد کنید` : 'نام مکان را وارد کنید'; nameInput.setAttribute('aria-label', 'نام مکان پیشنهادی');
     const actions = document.createElement('div'); actions.className = 'd-flex flex-wrap gap-2';
-    const submit = document.createElement('button'); submit.type = 'button'; submit.className = 'btn btn-primary btn-sm'; submit.textContent = 'ثبت پیشنهاد مکان';
+    const submit = document.createElement('button'); submit.type = 'button'; submit.className = 'btn btn-primary btn-sm'; submit.textContent = proposableTypes.length === 1 ? `ثبت ${proposalTypeLabel(proposableTypes[0])}` : 'ثبت مکان';
     const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'btn btn-link btn-sm text-decoration-none'; cancel.textContent = 'انصراف';
     const feedback = document.createElement('div'); feedback.className = 'small text-secondary'; feedback.setAttribute('aria-live', 'polite');
     actions.append(submit, cancel); panel.append(typeLabel, typeSelect, nameLabel, nameInput, actions, feedback); shell.append(toggle, panel);
-    toggle.addEventListener('click', () => { panel.classList.toggle('d-none'); if (!panel.classList.contains('d-none')) nameInput.focus(); });
-    cancel.addEventListener('click', () => { panel.classList.add('d-none'); feedback.textContent = ''; });
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.addEventListener('click', () => { const opening = panel.classList.contains('d-none'); panel.classList.toggle('d-none'); toggle.setAttribute('aria-expanded', opening ? 'true' : 'false'); if (opening) nameInput.focus(); });
+    cancel.addEventListener('click', () => { panel.classList.add('d-none'); toggle.setAttribute('aria-expanded', 'false'); feedback.textContent = ''; });
     submit.addEventListener('click', async () => {
         const canonicalName = nameInput.value.trim(); if (!canonicalName) { feedback.textContent = 'نام مکان را وارد کنید.'; feedback.classList.add('text-danger'); return; }
         submit.disabled = true; feedback.classList.remove('text-danger'); feedback.textContent = 'در حال بررسی و ثبت پیشنهاد...';
