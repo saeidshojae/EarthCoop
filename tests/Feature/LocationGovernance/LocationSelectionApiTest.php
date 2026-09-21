@@ -347,4 +347,40 @@ class LocationSelectionApiTest extends TestCase
         $this->assertFalse($rows[$rural->id]['is_residence_endpoint']);
         $this->assertFalse($rows[$rural->id]['has_children']);
     }
+    public function test_single_structural_claims_preserve_real_location_tiers_and_do_not_mark_parent_as_governance_base(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+
+        $schema = LocationFixture::iranSchema();
+        $user = User::factory()->create();
+        $cityPath = LocationFixture::createPath($schema, ['country','province','county','section','city','urban_region','neighborhood']);
+        $city = $cityPath->first(fn ($location) => $location->type?->key === 'city');
+        $region = $cityPath->first(fn ($location) => $location->type?->key === 'urban_region');
+
+        LocationStructureClaim::create([
+            'location_id' => $city->id,
+            'claim_type' => 'single_urban_region',
+            'status' => 'approved',
+            'proposer_user_id' => $user->id,
+            'approved_at' => now(),
+        ]);
+        LocationStructureClaim::create([
+            'location_id' => $region->id,
+            'claim_type' => 'single_neighborhood',
+            'status' => 'approved',
+            'proposer_user_id' => $user->id,
+            'approved_at' => now(),
+        ]);
+
+        $cityResponse = $this->getJson('/location/options/'.$city->id.'/children')->assertOk();
+        $this->assertContains('urban_region', collect($cityResponse->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertFalse((bool) $cityResponse->json('official_governance_base'));
+        $this->assertNotContains('single_neighborhood', collect($cityResponse->json('structural_choices'))->pluck('claim_type')->all());
+
+        $regionResponse = $this->getJson('/location/options/'.$region->id.'/children')->assertOk();
+        $this->assertContains('neighborhood', collect($regionResponse->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertFalse((bool) $regionResponse->json('official_governance_base'));
+    }
+
+
 }
