@@ -74,7 +74,7 @@ class StructuralClaimResidenceCommitTest extends TestCase
         $user = User::factory()->create();
         $claimService = app(LocationStructureClaimService::class);
         $valid = $claimService->findOrCreateOpenClaim($city, 'no_urban_region', $user);
-        $terminal = $claimService->findOrCreateOpenClaim($city, 'single_urban_region', $user);
+        $terminal = $claimService->findOrCreateOpenClaim($city, 'no_neighborhood', $user);
         $claimService->reject($terminal, User::factory()->create(), 'force terminal after hydration');
 
         try {
