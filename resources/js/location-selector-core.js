@@ -206,8 +206,8 @@ const buildStructuralClaimPanel = (host, choices, locationId, depth, onChanged) 
     return shell.children.length ? shell : null;
 };
 
-const buildProposalPanel = (host, allowedTypes, parentLocationId, onCreated) => {
-    const proposableTypes = allowedTypes.filter((type) => type?.proposal_allowed === true); if (!parentLocationId || proposableTypes.length === 0) return null;
+const buildProposalPanel = (host, allowedTypes, parentLocationId, onCreated, parentProposalId = null) => {
+    const proposableTypes = allowedTypes.filter((type) => type?.proposal_allowed === true); if ((!parentLocationId && !parentProposalId) || proposableTypes.length === 0) return null;
     const shell = document.createElement('div'); shell.className = 'border rounded-3 p-3 bg-light'; shell.dataset.locationProposalShell = '';
     const proposalTypeLabel = (type) => TYPE_LABELS[type?.key] || type?.label || type?.key || 'مکان';
     const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'btn btn-outline-secondary btn-sm'; toggle.textContent = proposableTypes.length === 1 ? `+ افزودن ${proposalTypeLabel(proposableTypes[0])} جدید` : '+ افزودن مکان جدید'; toggle.dataset.locationProposalToggle = '';
@@ -231,7 +231,7 @@ const buildProposalPanel = (host, allowedTypes, parentLocationId, onCreated) => 
         submit.disabled = true; feedback.classList.remove('text-danger'); feedback.textContent = 'در حال بررسی و ثبت پیشنهاد...';
         const form = host.closest('[data-location-form]') || host.closest('form'); const csrf = form?.querySelector('input[name="_token"]')?.value || ''; const locale = document.documentElement.lang || 'fa';
         try {
-            const response = await fetch('/locations/proposals', { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}) }, body: JSON.stringify({ parent_location_id: Number(parentLocationId), location_type_id: Number(typeSelect.value), canonical_name: canonicalName, localized_names: { [locale]: canonicalName }, location_structure_claim_ids: form ? Array.from(form.querySelectorAll('input[name="location_structure_claim_ids[]"]')).map((input) => Number(input.value)).filter((id) => Number.isInteger(id) && id > 0) : [] }) });
+            const response = await fetch('/locations/proposals', { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}) }, body: JSON.stringify({ ...(parentProposalId ? { parent_location_proposal_id: Number(parentProposalId) } : { parent_location_id: Number(parentLocationId) }), location_type_id: Number(typeSelect.value), canonical_name: canonicalName, localized_names: { [locale]: canonicalName }, location_structure_claim_ids: form ? Array.from(form.querySelectorAll('input[name="location_structure_claim_ids[]"]')).map((input) => Number(input.value)).filter((id) => Number.isInteger(id) && id > 0) : [] }) });
             if (!response.ok) throw new Error(`Location proposal request failed: ${response.status}`);
             const result = await response.json(); await onCreated(result); panel.classList.add('d-none'); feedback.textContent = '';
         } catch (error) { console.warn('EarthCoop location proposal could not be created:', error); feedback.textContent = 'ثبت پیشنهاد مکان ممکن نشد. متن شما حفظ شده است؛ دوباره تلاش کنید.'; feedback.classList.add('text-danger'); }
@@ -273,7 +273,7 @@ const initializeLocationSelector = async (host) => {
     };
     const load = async (url) => { setPickerState(PICKER_STATES.loading, host.dataset.loadingLabel || 'در حال دریافت گزینه‌های مکانی...'); const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' }); if (!response.ok) throw new Error(`Location options request failed: ${response.status}`); const normalized = normalizePickerPayload(await response.json()); return isProjectScope ? projectScopePayload(normalized) : (isRegistration ? registrationPayload(normalized) : normalized); };
     const removeDeeperLevels = (depth) => { levels.querySelectorAll('[data-location-depth]').forEach((element) => { if (Number(element.dataset.locationDepth) > depth) element.remove(); }); };
-    const appendLevel = (payload, depth, parentLocationId = null, skipTypeChoice = false) => {
+    const appendLevel = (payload, depth, parentLocationId = null, skipTypeChoice = false, parentProposalId = null) => {
         if (!shouldRenderNextLevel(payload)) { setPickerState(PICKER_STATES.empty, 'در این سطح گزینهٔ فعال دیگری ثبت نشده است.'); return; }
         if (!isProjectScope && !isRegistration && !skipTypeChoice) {
             const typeChoice = buildMicroTypeChoice(host, payload, depth, (typeKey, choiceWrapper) => {
@@ -286,7 +286,7 @@ const initializeLocationSelector = async (host) => {
         }
         const { wrapper, select } = buildSelect(host, payload, depth); levels.appendChild(wrapper);
         const refreshAfterProposal = async (result) => {
-            if (result?.kind === 'proposal') { const identity = `proposal:${result.id}`; let option = Array.from(select.options).find((item) => item.value === identity); if (!option) { option = document.createElement('option'); option.value = identity; option.textContent = `${result.canonical_name || result.label || 'مکان پیشنهادی'} — در انتظار تأیید`; option.dataset.endpoint = result.is_residence_endpoint ? '1' : '0'; option.dataset.hasChildren = '1'; option.dataset.typeKey = result.type_key || ''; option.dataset.pickerKind = 'proposal'; option.dataset.locationPendingBadge = ''; select.appendChild(option); } select.value = identity; const proposal = { ...result, identity, label: result.canonical_name || result.label, status: result.status || 'pending', selectable: true, picker_kind: 'proposal' }; selectedPath.set(depth, proposal); renderLocationPath(); setSelection(proposal); setStatus('پیشنهاد مکان ثبت شد و در فهرست همین سطح انتخاب شد؛ می‌توانید مسیر را ادامه دهید.'); return; }
+            if (result?.kind === 'proposal') { const identity = `proposal:${result.id}`; let option = Array.from(select.options).find((item) => item.value === identity); if (!option) { option = document.createElement('option'); option.value = identity; option.textContent = `${result.canonical_name || result.label || 'مکان پیشنهادی'} — در انتظار تأیید`; option.dataset.endpoint = result.is_residence_endpoint ? '1' : '0'; option.dataset.hasChildren = '1'; option.dataset.typeKey = result.type_key || ''; option.dataset.pickerKind = 'proposal'; option.dataset.locationPendingBadge = ''; select.appendChild(option); } select.value = identity; const proposal = { ...result, identity, label: result.canonical_name || result.label, status: result.status || 'pending', selectable: true, picker_kind: 'proposal' }; selectedPath.set(depth, proposal); renderLocationPath(); setSelection(proposal); setStatus('پیشنهاد مکان ثبت شد و در فهرست همین سطح انتخاب شد؛ می‌توانید مسیر را ادامه دهید.'); const children = await load(result.children_url || `/location/proposals/${encodeURIComponent(result.id)}/children`); if (shouldRenderNextLevel(children)) appendLevel(children, depth + 1, null, false, result.id); return; }
             if (result?.kind === 'location' && parentLocationId) {
                 const refreshed = await load(`/location/options/${encodeURIComponent(parentLocationId)}/children`); const matched = refreshed.locations.find((item) => Number(item.id) === Number(result.id));
                 if (matched) { setSelection(matched); if (matched.identity && !Array.from(select.options).some((option) => option.value === matched.identity)) { const option = document.createElement('option'); option.value = matched.identity; option.textContent = matched.label; select.appendChild(option); } select.value = matched.identity; }
@@ -301,7 +301,7 @@ const initializeLocationSelector = async (host) => {
             });
             if (structuralPanel) wrapper.appendChild(structuralPanel);
             const proposalTypes = payload.effectiveAllowedTypes.length ? payload.effectiveAllowedTypes : payload.allowedTypes;
-            const proposalPanel = buildProposalPanel(host, proposalTypes, parentLocationId, refreshAfterProposal); if (proposalPanel) wrapper.appendChild(proposalPanel);
+            const proposalPanel = buildProposalPanel(host, proposalTypes, parentLocationId, refreshAfterProposal, parentProposalId); if (proposalPanel) wrapper.appendChild(proposalPanel);
         }
         select.addEventListener('change', async () => {
             if (!isProjectScope) clearStructuralClaimsAfterDepth(form, depth); removeDeeperLevels(depth); [...selectedPath.keys()].filter((key) => key > depth).forEach((key) => selectedPath.delete(key)); const selected = pickerItems(payload).find((item) => (item.identity || `${item.picker_kind}:${item.id}`) === select.value) || null;
@@ -309,11 +309,10 @@ const initializeLocationSelector = async (host) => {
             selectedPath.set(depth, selected); renderLocationPath();
             if (selected.navigation_only === true) { clearSelection(); setStatus('سطح بعدی را برای تعیین محل سکونت انتخاب کنید.'); }
             else setSelection(selected);
-            if (selected.picker_kind === 'proposal') return;
             const previousLocationId = locationId.value; const previousProposalId = proposalId?.value || ''; const previousGovernanceAreaId = governanceAreaId?.value || ''; const previousSubmitDisabled = submit?.disabled ?? true;
             try {
-                const childrenUrl = selected.children_url || `/location/options/${encodeURIComponent(selected.id)}/children`; const children = await load(childrenUrl);
-                if (shouldRenderNextLevel(children)) { appendLevel(children, depth + 1, selected.identity?.startsWith('location:') ? selected.id : null); setStatus(isProjectScope ? 'گزینه‌های دقیق‌تر آماده‌اند؛ می‌توانید همین سطح را نگه دارید یا پایین‌تر بروید.' : 'گزینه‌های سطح بعد آماده‌اند.'); }
+                const childrenUrl = selected.children_url || (selected.picker_kind === 'proposal' ? `/location/proposals/${encodeURIComponent(selected.id)}/children` : `/location/options/${encodeURIComponent(selected.id)}/children`); const children = await load(childrenUrl);
+                if (shouldRenderNextLevel(children)) { appendLevel(children, depth + 1, selected.identity?.startsWith('location:') ? selected.id : null, false, selected.picker_kind === 'proposal' ? selected.id : null); setStatus(isProjectScope ? 'گزینه‌های دقیق‌تر آماده‌اند؛ می‌توانید همین سطح را نگه دارید یا پایین‌تر بروید.' : 'گزینه‌های سطح بعد آماده‌اند.'); }
                 else { setSelection(selected); if (!isProjectScope && !selected.is_residence_endpoint) setPickerState(PICKER_STATES.empty, 'این شاخه فعلاً نقطهٔ معتبر دیگری برای سکونت ندارد.'); }
             } catch (error) { console.warn('EarthCoop location selector could not load children:', error); locationId.value = previousLocationId; if (proposalId) proposalId.value = previousProposalId; if (governanceAreaId) governanceAreaId.value = previousGovernanceAreaId; if (submit && !isProjectScope) submit.disabled = previousSubmitDisabled; setPickerState(PICKER_STATES.stale, 'دریافت گزینه‌های جدید ممکن نشد؛ انتخاب معتبر فعلی شما حفظ شده است.', true); }
         });
