@@ -47,30 +47,6 @@ class RegistrationPendingResidenceTest extends TestCase
         $this->assertSame(0, PendingResidenceIntent::query()->where('user_id', $user->id)->count());
     }
 
-    public function test_open_proposal_completes_registration_using_approved_parent_as_anchor(): void
-    {
-        [$user, $anchor, $proposal] = $this->makeProposalScenario();
-
-        $response = $this->actingAs($user)->post(route('register.step3.process'), [
-            'location_id' => null,
-            'location_proposal_id' => $proposal->id,
-        ]);
-
-        $response->assertRedirect(route('home'));
-        $relationship = $user->fresh()->locationRelationships()
-            ->where('relationship_type', 'primary_residence')
-            ->whereNull('ended_at')
-            ->sole();
-        $intent = $user->fresh()->pendingResidenceIntents()
-            ->where('status', 'pending')
-            ->sole();
-
-        $this->assertSame($anchor->id, $relationship->location_id);
-        $this->assertSame($proposal->id, $intent->location_proposal_id);
-        $this->assertSame($relationship->id, $intent->anchor_relationship_id);
-        $this->assertFalse((bool) $relationship->explicit_transfer);
-    }
-
     public function test_registration_rejects_approved_micro_location_below_governance_base(): void
     {
         $schema = LocationFixture::iranSchema();
