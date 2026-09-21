@@ -44,8 +44,18 @@ class LocationTreeResolver
         }
 
         $typeKey = $location->type?->key;
+        $microTypes = ['street', 'alley', 'complex', 'building'];
 
-        return ! in_array($typeKey, ['street', 'alley', 'complex', 'building'], true);
+        if (in_array($typeKey, $microTypes, true)) {
+            return false;
+        }
+
+        // A normal urban/rural branch must continue to its real governance base.
+        // Only deeper micro-local detail is excluded from registration.
+        return ! $location->children()
+            ->where('status', 'active')
+            ->whereHas('type', fn ($query) => $query->whereNotIn('key', $microTypes))
+            ->exists();
     }
 
     public function residenceEndpointAllowed(Location $location): bool
