@@ -23,16 +23,19 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
         $schema=LocationFixture::iranSchema();
         $city=LocationFixture::createPath($schema,['country','province','county','section','city'])->last();
         $user=User::factory()->create();
-        $claim=app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city,'no_urban_region',$user);
+        $service=app(LocationStructureClaimService::class);
+        $noRegion=$service->findOrCreateOpenClaim($city,'no_urban_region',$user);
+        $noNeighborhood=$service->findOrCreateOpenClaim($city,'no_neighborhood',$user);
 
         $this->actingAs($user)->post(route('register.step3.process'),[
             'location_id'=>$city->id,
-            'location_structure_claim_ids'=>[$claim->id],
+            'location_structure_claim_ids'=>[$noRegion->id,$noNeighborhood->id],
         ])->assertRedirect(route('home'));
 
         $relationship=$user->fresh()->locationRelationships()->where('relationship_type','primary_residence')->whereNull('ended_at')->sole();
-        $this->assertSame([$claim->id],$relationship->metadata['structural_claim_ids']);
-        $this->assertTrue($claim->fresh()->evidence()->where('user_id',$user->id)->exists());
+        $this->assertEqualsCanonicalizing([$noRegion->id,$noNeighborhood->id],$relationship->metadata['structural_claim_ids']);
+        $this->assertTrue($noRegion->fresh()->evidence()->where('user_id',$user->id)->exists());
+        $this->assertTrue($noNeighborhood->fresh()->evidence()->where('user_id',$user->id)->exists());
     }
 
     public function test_registration_rejects_structural_claim_belonging_to_another_location(): void
@@ -58,17 +61,20 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
         $schema=LocationFixture::iranSchema();
         $city=LocationFixture::createPath($schema,['country','province','county','section','city'])->last();
         $user=User::factory()->create();
-        $claim=app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city,'no_urban_region',$user);
+        $service=app(LocationStructureClaimService::class);
+        $noRegion=$service->findOrCreateOpenClaim($city,'no_urban_region',$user);
+        $noNeighborhood=$service->findOrCreateOpenClaim($city,'no_neighborhood',$user);
 
         $this->actingAs($user)->post(route('register.step3.process'),[
             'location_id'=>$city->id,
-            'location_structure_claim_ids'=>[$claim->id],
+            'location_structure_claim_ids'=>[$noRegion->id,$noNeighborhood->id],
         ])->assertRedirect(route('home'));
 
         $relationship=$user->fresh()->locationRelationships()->where('relationship_type','primary_residence')->whereNull('ended_at')->sole();
         $this->assertSame($city->id,$relationship->location_id);
-        $this->assertSame([$claim->id],$relationship->metadata['structural_claim_ids']);
-        $this->assertTrue($claim->fresh()->evidence()->where('user_id',$user->id)->exists());
+        $this->assertEqualsCanonicalizing([$noRegion->id,$noNeighborhood->id],$relationship->metadata['structural_claim_ids']);
+        $this->assertTrue($noRegion->fresh()->evidence()->where('user_id',$user->id)->exists());
+        $this->assertTrue($noNeighborhood->fresh()->evidence()->where('user_id',$user->id)->exists());
     }
 
     public function test_registration_rejects_pending_micro_detail_even_with_structural_claims(): void
