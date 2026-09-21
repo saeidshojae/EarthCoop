@@ -69,8 +69,8 @@ class LocationStructureClaimPolicy
 
         $typeKey = $location->type()->value('key');
 
-        if ($typeKey === 'city' && $claims->intersect(['single_urban_region', 'no_urban_region'])->isNotEmpty()) {
-            if ($claims->intersect(['single_neighborhood', 'no_neighborhood'])->isNotEmpty()) {
+        if ($typeKey === 'city' && $claims->contains('no_urban_region')) {
+            if ($claims->contains('no_neighborhood')) {
                 return $this->descendantTypeCodes($location, ['urban_region', 'neighborhood']);
             }
 
@@ -78,7 +78,7 @@ class LocationStructureClaimPolicy
         }
 
         if (in_array($typeKey, ['urban_region', 'village'], true)
-            && $claims->intersect(['single_neighborhood', 'no_neighborhood'])->isNotEmpty()) {
+            && $claims->contains('no_neighborhood')) {
             return $this->descendantTypeCodes($location, ['neighborhood']);
         }
 
