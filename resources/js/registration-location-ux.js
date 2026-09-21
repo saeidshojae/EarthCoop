@@ -109,9 +109,13 @@ const mountResidenceUx = (selector) => {
             if (select && Array.from(select.options).some((option) => option.value === identity)) return select;
             const choice = levels?.querySelector(`[data-location-depth="${depth}"][data-location-type-choice]`);
             if (choice) {
-                const nextMicroTypes = ['street', 'alley', 'complex', 'building'];
-                const expectedTypeKey = nextMicroTypes.find((key) => identity.includes(':' + key + ':')) || null;
-                const typeKey = identityTypeKey(identity) || expectedTypeKey;
+                let typeKey = identityTypeKey(identity);
+                if (!typeKey) {
+                    try {
+                        const map = JSON.parse(choice.dataset.locationTypePayload || '[]');
+                        typeKey = map.find((entry) => Array.isArray(entry.ids) && entry.ids.includes(identity))?.key || null;
+                    } catch (error) { typeKey = null; }
+                }
                 const button = typeKey ? choice.querySelector(`[data-location-type-choice-key="${typeKey}"]`) : null;
                 if (button) { button.click(); await sleep(0); continue; }
             }
