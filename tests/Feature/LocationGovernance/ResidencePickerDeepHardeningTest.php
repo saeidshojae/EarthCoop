@@ -339,4 +339,42 @@ class ResidencePickerDeepHardeningTest extends TestCase
         $proposalService->approve($proposal, $reviewer, 'نباید تأیید شود');
     }
 
+
+    public function test_pending_region_exposes_neighborhood_structure_and_reanchors_claim_on_approval(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $regionType = $schema->types->firstWhere('key', 'urban_region');
+        $user = User::factory()->create();
+        $reviewer = User::factory()->create(['is_admin' => true]);
+        $proposal = app(LocationProposalService::class)->propose($user, $city, $regionType, ['canonical_name' => 'منطقه پیشنهادی']);
+
+        $this->actingAs($user)->getJson('/location/proposals/'.$proposal->id.'/children')->assertOk()
+            ->assertJsonFragment(['claim_type' => 'single_neighborhood'])->assertJsonFragment(['claim_type' => 'no_neighborhood']);
+        $claimResponse = $this->actingAs($user)->postJson('/location/proposals/'.$proposal->id.'/structure-claims', ['claim_type' => 'no_neighborhood'])->assertCreated();
+        $this->actingAs($user)->getJson('/location/proposals/'.$proposal->id.'/children')->assertOk()->assertJsonPath('effective_allowed_types.0.key', 'street');
+
+        $location = app(LocationProposalService::class)->approve($proposal, $reviewer, 'verified');
+        $claim = LocationStructureClaim::query()->findOrFail((int) $claimResponse->json('id'));
+        $this->assertSame($location->id, $claim->location_id);
+        $this->assertNull($claim->location_proposal_id);
+    }
+
+    public function test_pending_city_and_village_expose_their_structural_choices(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+        $schema = LocationFixture::iranSchema();
+        $user = User::factory()->create();
+        $section = LocationFixture::createPath($schema, ['country','province','county','section'])->last();
+        $rural = LocationFixture::createPath($schema, ['country','province','county','section','rural_district'])->last();
+
+        foreach ([['parent' => $section, 'type' => 'city', 'claims' => ['single_urban_region','no_urban_region']], ['parent' => $rural, 'type' => 'village', 'claims' => ['single_neighborhood','no_neighborhood']]] as $case) {
+            $type = $schema->types->firstWhere('key', $case['type']);
+            $proposal = app(LocationProposalService::class)->propose($user, $case['parent'], $type, ['canonical_name' => 'پیشنهاد '.$case['type']]);
+            $response = $this->actingAs($user)->getJson('/location/proposals/'.$proposal->id.'/children')->assertOk();
+            foreach ($case['claims'] as $claimType) $response->assertJsonFragment(['claim_type' => $claimType]);
+        }
+    }
+
 }
