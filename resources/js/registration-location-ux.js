@@ -19,8 +19,14 @@ const installResidenceStyles = () => {
         .location-proposal-panel { margin-top: .5rem; padding: .75rem; border: 1px solid rgba(100,116,139,.2); border-radius: .75rem; background: rgba(248,250,252,.72); display: grid; gap: .65rem; }
         .location-proposal-heading { font-size: .875rem; font-weight: 800; color: #334155; }
         .location-proposal-actions { display: flex; align-items: center; gap: .5rem; }
-        .location-proposal-actions .btn-primary { min-height: 42px; font-weight: 700; }
-        .location-proposal-actions .btn-link { min-height: 42px; text-decoration: none; color: #64748b; }
+        .location-proposal-actions .btn-primary,
+        [data-location-proposal-panel] .btn-primary { min-height: 42px; font-weight: 700; background: #6f42c1; border-color: #6f42c1; color: #fff; }
+        .location-proposal-actions .btn-primary:hover, .location-proposal-actions .btn-primary:focus,
+        [data-location-proposal-panel] .btn-primary:hover, [data-location-proposal-panel] .btn-primary:focus { background: #5f37aa; border-color: #5f37aa; color: #fff; }
+        .location-proposal-actions .btn-primary:disabled,
+        [data-location-proposal-panel] .btn-primary:disabled { opacity: .55; }
+        .location-proposal-actions .btn-link,
+        [data-location-proposal-panel] .btn-link { min-height: 42px; text-decoration: none; color: #64748b; }
         [data-location-pending-badge] { font-weight: 600; }
         [data-location-type-choice] { padding: .65rem .75rem; border: 1px solid rgba(100,116,139,.18); border-radius: .75rem; background: rgba(248,250,252,.72); }
         [data-location-type-choice] .btn { min-height: 42px; font-weight: 700; }
