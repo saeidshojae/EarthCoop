@@ -44,6 +44,22 @@ const registrationPayload = (payload) => {
         effectiveAllowedTypes: [],
     };
 };
+const microContinuationTypes = (payload) => {
+    const types = payload.effectiveAllowedTypes.length ? payload.effectiveAllowedTypes : payload.allowedTypes;
+    const byKey = new Map();
+    types.filter((type) => MICRO_LOCATION_TYPES.has(type?.key)).forEach((type) => byKey.set(type.key, type));
+    [...payload.locations, ...payload.proposals].filter((item) => MICRO_LOCATION_TYPES.has(item?.type_key)).forEach((item) => {
+        if (!byKey.has(item.type_key)) byKey.set(item.type_key, { id: item.location_type_id || null, key: item.type_key, label: TYPE_LABELS[item.type_key] || item.type_key, proposal_allowed: false });
+    });
+    return [...byKey.values()];
+};
+const filterPayloadByType = (payload, typeKey) => ({
+    ...payload,
+    locations: payload.locations.filter((item) => item?.type_key === typeKey),
+    proposals: payload.proposals.filter((item) => item?.type_key === typeKey),
+    allowedTypes: payload.allowedTypes.filter((type) => type?.key === typeKey),
+    effectiveAllowedTypes: payload.effectiveAllowedTypes.filter((type) => type?.key === typeKey),
+});
 const projectScopePayload = (payload) => ({
     locations: payload.locations, proposals: [],
     allowedTypes: payload.allowedTypes.map((type) => ({ ...type, proposal_allowed: false })),
@@ -282,4 +298,4 @@ const initializeLocationSelector = async (host) => {
 };
 
 selectors.forEach((host) => { void initializeLocationSelector(host); });
-export { initializeLocationSelector, normalizePickerPayload, registrationPayload, projectScopePayload, projectScopeSelectionValues, pickerLevelLabel, selectionValues, shouldRenderNextLevel, locationDisplayLabel };
+export { initializeLocationSelector, normalizePickerPayload, registrationPayload, microContinuationTypes, filterPayloadByType, projectScopePayload, projectScopeSelectionValues, pickerLevelLabel, selectionValues, shouldRenderNextLevel, locationDisplayLabel };
