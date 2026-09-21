@@ -2,6 +2,8 @@ import {
     initializeLocationSelector,
     normalizePickerPayload,
     registrationPayload,
+    microContinuationTypes,
+    filterPayloadByType,
     projectScopePayload,
     projectScopeSelectionValues,
     pickerLevelLabel,
@@ -93,4 +95,4 @@ if (typeof document !== 'undefined') {
     });
 }
 
-export { initializeLocationSelector, normalizePickerPayload, registrationPayload, projectScopePayload, projectScopeSelectionValues, pickerLevelLabel, selectionValues, shouldRenderNextLevel, locationDisplayLabel, localizeLocationTypeLabel, proposalParentPayload };
+export { initializeLocationSelector, normalizePickerPayload, registrationPayload, microContinuationTypes, filterPayloadByType, projectScopePayload, projectScopeSelectionValues, pickerLevelLabel, selectionValues, shouldRenderNextLevel, locationDisplayLabel, localizeLocationTypeLabel, proposalParentPayload };
