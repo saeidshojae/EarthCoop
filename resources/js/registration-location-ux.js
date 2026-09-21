@@ -1,5 +1,5 @@
 const residenceSelectors = Array.from(document.querySelectorAll(
-    '[data-location-selector-context="registration"], [data-location-selector-context="profile"]'
+    '[data-location-selector-context="registration"], [data-location-selector-context="profile"], [data-location-selector-context="admin-user-residence"]'
 ));
 
 const installResidenceStyles = () => {
