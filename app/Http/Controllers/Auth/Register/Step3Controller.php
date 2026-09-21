@@ -88,7 +88,7 @@ class Step3Controller extends Controller
             if ($locationId !== null) {
                 $location = Location::query()->findOrFail($locationId);
 
-                if ($location->status !== 'active' || ! $locationTreeResolver->registrationEndpointAllowed($location)) {
+                if ($location->status !== 'active' || ! $locationTreeResolver->registrationEndpointAllowed($location, $structuralClaims)) {
                     throw ValidationException::withMessages([
                         'location_id' => 'لطفاً یک محل سکونت معتبر و قابل انتخاب را مشخص کنید.',
                     ]);
