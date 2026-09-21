@@ -35,6 +35,36 @@ class RegistrationPrimaryResidenceTest extends TestCase
         ]);
     }
 
+    public function test_registration_requires_deepest_available_governance_base_before_micro_detail(): void
+    {
+        config([
+            'location-governance.runtime_enabled' => true,
+            'location-governance.registration_enabled' => true,
+        ]);
+
+        $schema = LocationFixture::iranSchema();
+        $path = LocationFixture::createPath($schema, [
+            'country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood',
+        ]);
+        $city = $path->firstWhere('level', 'city');
+        $neighborhood = $path->last();
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->from('/register/step3')->post('/register/step3', [
+            'location_id' => $city->id,
+        ])->assertRedirect('/register/step3')->assertSessionHasErrors('location_id');
+
+        $this->actingAs($user)->post('/register/step3', [
+            'location_id' => $neighborhood->id,
+        ])->assertRedirect(route('home'));
+
+        $this->assertDatabaseHas('user_location_relationships', [
+            'user_id' => $user->id,
+            'location_id' => $neighborhood->id,
+            'relationship_type' => 'primary_residence',
+        ]);
+    }
+
     public function test_canonical_registration_accepts_a_rural_village_at_variable_depth(): void
     {
         config([
