@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class LocationStructureClaim extends Model
 {
     protected $fillable = [
-        'location_id', 'claim_type', 'status', 'proposer_user_id',
+        'location_id', 'location_proposal_id', 'claim_type', 'status', 'proposer_user_id',
         'reviewed_by_user_id', 'review_reason', 'approved_at', 'metadata', 'audit_log',
     ];
 
