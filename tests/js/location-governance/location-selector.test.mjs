@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 import {
     normalizePickerPayload,
+    registrationPayload,
     projectScopePayload,
     projectScopeSelectionValues,
     pickerLevelLabel,
@@ -32,6 +33,34 @@ test('normalizes active locations, open proposals, and allowed types without fix
 test('maps canonical and proposal identities to mutually exclusive hidden values', () => {
     assert.deepEqual(selectionValues({ id: 41, identity: 'location:41', is_residence_endpoint: true, status: 'active' }), { locationId: '41', proposalId: '' });
     assert.deepEqual(selectionValues({ id: 17, identity: 'proposal:17', status: 'pending', selectable: true }), { locationId: '', proposalId: '17' });
+});
+
+test('registration traversal stops before micro locations while ordinary residence remains deep capable', () => {
+    const normalized = normalizePickerPayload({
+        data: [{ id: 80, identity: 'location:80', type_key: 'street', label: 'Street', status: 'active', is_residence_endpoint: true }],
+        proposals: [{ id: 81, identity: 'proposal:81', type_key: 'street', label: 'Pending street', status: 'pending', selectable: true }],
+        allowed_types: [{ id: 82, key: 'urban_region', label: 'Region', proposal_allowed: false }],
+        effective_allowed_types: [{ id: 83, key: 'street', label: 'Street', proposal_allowed: true }],
+    });
+
+    assert.equal(shouldRenderNextLevel(normalized), true);
+    const registration = registrationPayload(normalized);
+    assert.deepEqual(registration.locations, []);
+    assert.deepEqual(registration.proposals, []);
+    assert.deepEqual(registration.allowedTypes, []);
+    assert.equal(shouldRenderNextLevel(registration), false);
+});
+
+test('registration keeps non-micro governance continuation available', () => {
+    const normalized = normalizePickerPayload({
+        data: [{ id: 90, identity: 'location:90', type_key: 'urban_region', label: 'Region', status: 'active' }],
+        proposals: [],
+        allowed_types: [{ id: 91, key: 'urban_region', label: 'Region', proposal_allowed: false }],
+    });
+    const registration = registrationPayload(normalized);
+    assert.deepEqual(registration.locations.map((item) => item.type_key), ['urban_region']);
+    assert.deepEqual(registration.allowedTypes.map((item) => item.key), ['urban_region']);
+    assert.equal(shouldRenderNextLevel(registration), true);
 });
 
 test('project scope reuses canonical traversal but excludes pending proposals and proposal creation', () => {
