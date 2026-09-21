@@ -71,7 +71,11 @@ const appendPendingLevel = (host, payload, depth, parentIdentity, selectedTypeKe
         const choice = document.createElement('div'); choice.dataset.locationDepth = String(depth); choice.dataset.locationTypeChoice = ''; choice.className = 'vstack gap-2';
         const label = document.createElement('div'); label.className = 'form-label small text-secondary mb-0'; label.textContent = 'نوع ادامه مسیر';
         const actions = document.createElement('div'); actions.className = 'd-flex flex-wrap gap-2';
-        keys.forEach((key) => { const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-outline-secondary btn-sm'; button.dataset.locationTypeChoiceKey = key; button.textContent = localizeLocationTypeLabel({ key, label: key }); button.addEventListener('click', () => { choice.remove(); appendPendingLevel(host, payload, depth, parentIdentity, key); }); actions.appendChild(button); });
+        keys.forEach((key) => { const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-outline-secondary btn-sm'; button.dataset.locationTypeChoiceKey = key; button.textContent = localizeLocationTypeLabel({ key, label: key }); button.addEventListener('click', () => {
+            const locationInput = host.querySelector('[data-location-id][name="location_id"]'); const proposalInput = host.querySelector('[data-location-proposal-id][name="location_proposal_id"]'); const submit = host.closest('form')?.querySelector('[data-location-submit]');
+            if (locationInput) locationInput.value = ''; if (proposalInput) proposalInput.value = ''; if (submit) submit.disabled = true;
+            choice.remove(); appendPendingLevel(host, payload, depth, parentIdentity, key);
+        }); actions.appendChild(button); });
         choice.append(label, actions); levels.appendChild(choice); status(host, 'نوع ادامه مسیر را انتخاب کنید.'); return;
     }
     const proposals = selectedTypeKey ? allProposals.filter((item) => item.type_key === selectedTypeKey) : allProposals; const types = selectedTypeKey ? allTypes.filter((item) => item.key === selectedTypeKey) : allTypes;
