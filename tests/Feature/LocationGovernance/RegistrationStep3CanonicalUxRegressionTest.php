@@ -41,4 +41,14 @@ class RegistrationStep3CanonicalUxRegressionTest extends TestCase
         $this->assertStringContainsString('suggested_location_id', $source);
         $this->assertStringContainsString('location:hydrate', $source);
     }
+    public function test_registration_explains_required_governance_path_and_optional_micro_location_details(): void
+    {
+        $view = file_get_contents(resource_path('views/auth/register_step3_canonical.blade.php'));
+
+        $this->assertIsString($view);
+        $this->assertStringContainsString('تا سطح محله', $view);
+        $this->assertStringContainsString('خیابان، کوچه، مجتمع یا ساختمان اختیاری است', $view);
+        $this->assertStringContainsString('بعداً نیز می‌توانید', $view);
+    }
+
 }

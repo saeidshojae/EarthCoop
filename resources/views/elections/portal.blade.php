@@ -2,14 +2,39 @@
 
 @section('title', 'پرتال انتخابات - ' . $group->name)
 
+@push('styles')
+<style>
+    .election-user-portal { max-width: 1180px; padding-bottom: 6rem; min-width: 0; }
+    .election-user-portal .card,
+    .election-user-portal .card-body,
+    .election-user-portal article,
+    .election-user-portal .row > * { min-width: 0; }
+    .election-user-portal p,
+    .election-user-portal small,
+    .election-user-portal strong,
+    .election-user-portal .alert { overflow-wrap: anywhere; }
+    .election-user-portal .btn,
+    .election-user-portal .form-select,
+    .election-user-portal .form-control { min-height: 44px; }
+    @media (max-width: 767.98px) {
+        .election-user-portal { padding-inline: .75rem; }
+        .election-user-portal__header-actions,
+        .election-user-portal [data-process-review-form] .btn,
+        .election-user-portal [data-topic-response-form] .btn { width: 100%; }
+        .election-user-portal__header-actions .btn { flex: 1 1 100%; }
+        .election-user-portal .card-body { padding: .9rem; }
+    }
+</style>
+@endpush
+
 @section('content')
-<div class="container py-4" dir="rtl" data-election-user-portal="v1">
+<div class="container py-4 election-user-portal" dir="rtl" data-election-user-portal="v1">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
         <div>
             <h1 class="h3 mb-1">انتخابات سیستمی — {{ $group->name }}</h1>
             <p class="text-muted mb-0">وضعیت چرخه، بازخورد مجاز، گزارش امن، پاسخ‌های موضوعی و بازبینی رویه‌ای</p>
         </div>
-        <div class="d-flex flex-wrap gap-2">
+        <div class="d-flex flex-wrap gap-2 election-user-portal__header-actions">
             <a href="{{ route('elections.guideline') }}" class="btn btn-outline-success"><i class="fas fa-book-open ms-1"></i>شیوه‌نامه انتخابات</a>
             <a href="{{ route('groups.chat', $group) }}" class="btn btn-outline-primary">بازگشت به گفت‌وگوی گروه و برگه رأی</a>
         </div>

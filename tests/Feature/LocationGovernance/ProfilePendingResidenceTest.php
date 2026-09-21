@@ -3,7 +3,9 @@
 namespace Tests\Feature\LocationGovernance;
 
 use App\Models\Location;
+use App\Models\LocationProposal;
 use App\Models\User;
+use App\Services\LocationGovernance\LocationStructureClaimService;
 use App\Services\LocationGovernance\LocationProposalService;
 use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -81,6 +83,87 @@ class ProfilePendingResidenceTest extends TestCase
         $this->assertSame('profile_pending_residence_anchor', $current->change_reason);
         $this->assertSame($current->id, $intent->anchor_relationship_id);
         $this->assertSame(1, $user->fresh()->locationRelationships()->where('explicit_transfer', true)->count());
+    }
+
+    public function test_pending_direct_street_under_city_requires_and_persists_complete_structural_claim_chain(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city'])->last();
+        $streetType = $schema->types->firstWhere('key', 'street');
+        $user = User::factory()->create();
+        $regionClaim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+        $neighborhoodClaim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'no_neighborhood', $user);
+        $proposal = LocationProposal::query()->create([
+            'parent_location_id' => $city->id,
+            'location_schema_id' => $schema->id,
+            'country_code' => 'IR',
+            'location_type_id' => $streetType->id,
+            'canonical_name' => 'خیابان مستقیم پیشنهادی پروفایل',
+            'normalized_name' => 'خیابان مستقیم پیشنهادی پروفایل',
+            'localized_names' => ['fa' => 'خیابان مستقیم پیشنهادی پروفایل'],
+            'status' => \App\Enums\LocationGovernance\LocationProposalStatus::Pending,
+            'proposer_user_id' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)->put(route('profile.update.address'), [
+            'location_proposal_id' => $proposal->id,
+            'location_structure_claim_ids' => [$regionClaim->id, $neighborhoodClaim->id],
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $current = $user->fresh()->locationRelationships()
+            ->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')
+            ->sole();
+
+        $this->assertSame($city->id, $current->location_id);
+        $this->assertEqualsCanonicalizing(
+            [$regionClaim->id, $neighborhoodClaim->id],
+            $current->metadata['structural_claim_ids']
+        );
+        $this->assertTrue($regionClaim->fresh()->evidence()->where('user_id', $user->id)->exists());
+        $this->assertTrue($neighborhoodClaim->fresh()->evidence()->where('user_id', $user->id)->exists());
+        $this->assertSame($proposal->id, $user->fresh()->pendingResidenceIntents()->where('status', 'pending')->sole()->location_proposal_id);
+    }
+
+    public function test_pending_structural_proposal_refreshes_claims_when_profile_anchor_is_unchanged(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city'])->last();
+        $streetType = $schema->types->firstWhere('key', 'street');
+        $user = User::factory()->create();
+        app(ResidenceService::class)->setInitialPrimaryResidence($user, $city, ['source' => 'test']);
+
+        $regionClaim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+        $neighborhoodClaim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'no_neighborhood', $user);
+        $proposal = app(LocationProposalService::class)->propose(
+            $user,
+            $city,
+            $streetType,
+            ['canonical_name' => 'خیابان ساختاری پیشنهادی'],
+            [$regionClaim, $neighborhoodClaim],
+        );
+
+        $response = $this->actingAs($user)->put(route('profile.update.address'), [
+            'location_proposal_id' => $proposal->id,
+            'location_structure_claim_ids' => [$regionClaim->id, $neighborhoodClaim->id],
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $current = $user->fresh()->locationRelationships()
+            ->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')
+            ->sole();
+
+        $this->assertSame($city->id, $current->location_id);
+        $this->assertEqualsCanonicalizing(
+            [$regionClaim->id, $neighborhoodClaim->id],
+            $current->metadata['structural_claim_ids']
+        );
+        $this->assertTrue($regionClaim->fresh()->evidence()->where('user_id', $user->id)->exists());
+        $this->assertTrue($neighborhoodClaim->fresh()->evidence()->where('user_id', $user->id)->exists());
+        $this->assertSame(0, $user->fresh()->locationRelationships()->where('explicit_transfer', true)->count());
+        $this->assertSame($proposal->id, $user->fresh()->pendingResidenceIntents()->where('status', 'pending')->sole()->location_proposal_id);
     }
 
     public function test_selecting_current_approved_location_cancels_old_pending_intent_without_transfer(): void

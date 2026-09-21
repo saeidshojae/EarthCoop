@@ -22,8 +22,8 @@ use RuntimeException;
 class ElectionAppointmentService
 {
     private const ACTIVE_MEMBER_ROLE = 1;
-    private const MANAGER_ROLE = 2;
-    private const INSPECTOR_ROLE = 3;
+    private const INSPECTOR_ROLE = 2;
+    private const MANAGER_ROLE = 3;
 
     public function __construct(
         private readonly ElectionLifecycleService $lifecycle,

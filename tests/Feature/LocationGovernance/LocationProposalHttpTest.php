@@ -3,6 +3,7 @@
 namespace Tests\Feature\LocationGovernance;
 
 use App\Enums\LocationGovernance\LocationProposalStatus;
+use App\Models\Setting;
 use App\Models\Location;
 use App\Models\LocationProposal;
 use App\Models\User;
@@ -80,7 +81,7 @@ class LocationProposalHttpTest extends TestCase
 
     public function test_authenticated_user_can_support_a_proposal_and_same_user_remains_one_verifier(): void
     {
-        config()->set('location-governance.location_proposal_verification_threshold', 2);
+        Setting::singleton()->forceFill(['location_proposal_verification_threshold' => 2])->save();
 
         $schema = LocationFixture::iranSchema();
         $parent = LocationFixture::createPath($schema, [

@@ -51,6 +51,15 @@ final class LocationFixture
                 'is_residence_endpoint' => (bool) $type->is_residence_endpoint,
                 'metadata' => json_encode([
                     'crowdsourced_proposal_allowed' => $crowdsourcableTypes->contains($key),
+                    'structural_claim_types' => match ($key) {
+                        'city' => ['single_urban_region', 'no_urban_region'],
+                        'urban_region', 'village' => ['single_neighborhood', 'no_neighborhood'],
+                        default => [],
+                    },
+                    'structural_claim_types_after' => $key === 'city' ? [
+                        'single_urban_region' => ['single_neighborhood', 'no_neighborhood'],
+                        'no_urban_region' => ['single_neighborhood', 'no_neighborhood'],
+                    ] : [],
                 ], JSON_UNESCAPED_UNICODE),
             ]);
         }

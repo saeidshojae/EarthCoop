@@ -62,7 +62,7 @@ class ElectionAppointmentRevocationTest extends TestCase
             'responsibility_offer_id' => $offer->id,
             'user_id' => $user->id,
             'group_id' => $source->id,
-            'position' => 'manager', 'group_role' => 2,
+            'position' => 'manager', 'group_role' => 3,
             'appointment_kind' => 'direct', 'status' => 'active',
             'appointed_at' => now()->subDay(),
         ]);
@@ -71,7 +71,7 @@ class ElectionAppointmentRevocationTest extends TestCase
             'responsibility_offer_id' => $offer->id,
             'user_id' => $user->id,
             'group_id' => $inheritedGroup->id,
-            'position' => 'manager', 'group_role' => 2,
+            'position' => 'manager', 'group_role' => 3,
             'appointment_kind' => 'inherited', 'source_appointment_id' => $direct->id,
             'status' => 'active', 'appointed_at' => now()->subDay(),
         ]);

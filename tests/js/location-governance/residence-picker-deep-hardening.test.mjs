@@ -14,13 +14,16 @@ const uxSource = fs.readFileSync(new URL('../../../resources/js/registration-loc
 test('known residence type keys render Persian labels for fa locale', () => {
   const expected = {
     country: 'کشور', province: 'استان / ایالت', county: 'شهرستان / ناحیه', section: 'بخش', city: 'شهر',
-    rural_district: 'دهستان', village: 'روستا', urban_region: 'منطقه شهری', neighborhood: 'محله',
+    rural_district: 'دهستان', village: 'روستا', urban_region: 'منطقه', neighborhood: 'محله',
     street: 'خیابان', alley: 'کوچه', complex: 'مجتمع', building: 'ساختمان',
   };
   for (const [key, label] of Object.entries(expected)) {
     assert.equal(localizeLocationTypeLabel({ key, label: key }, 'fa'), label);
   }
   assert.equal(localizeLocationTypeLabel({ key: 'campus', label: 'Campus' }, 'fa'), 'Campus');
+  assert.equal(localizeLocationTypeLabel({ key: 'alley', label: 'alley' }, 'fa'), 'کوچه');
+  assert.equal(localizeLocationTypeLabel({ key: 'building', label: 'building' }, 'fa'), 'ساختمان');
+  assert.equal(localizeLocationTypeLabel({ key: 'complex', label: 'complex' }, 'fa'), 'مجتمع');
 });
 
 test('proposal parent payload never fabricates a canonical location id', () => {
@@ -61,3 +64,16 @@ test('Persian path rendering uses selected localized labels rather than canonica
   assert.match(uxSource, /option\.textContent/);
   assert.doesNotMatch(uxSource, /Urban region|Neighborhood|Street|Alley|Residential complex|Building/);
 });
+
+
+test('proposal type controls never render raw backend English labels for known Persian location types', () => {
+  assert.match(selectorSource, /localizeLocationTypeLabel\(item\)/);
+  assert.doesNotMatch(selectorSource, /option\.textContent\s*=\s*item\.label\s*\|\|\s*item\.key/);
+});
+
+test('registration and profile residence path uses the unified Persian region label', () => {
+    const source = uxSource;
+    assert.match(source, /urban_region:\s*'منطقه'/);
+    assert.doesNotMatch(source, /urban_region:\s*'منطقه شهری'/);
+});
+

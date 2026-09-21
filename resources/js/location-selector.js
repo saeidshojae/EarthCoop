@@ -6,11 +6,12 @@ import {
     pickerLevelLabel,
     selectionValues,
     shouldRenderNextLevel,
+    locationDisplayLabel,
 } from './location-selector-core.js';
 
 const FA_TYPE_LABELS = Object.freeze({
     global: 'جهانی', continent: 'قاره', country: 'کشور', province: 'استان / ایالت', county: 'شهرستان / ناحیه',
-    section: 'بخش', city: 'شهر', rural_district: 'دهستان', village: 'روستا', urban_region: 'منطقه شهری',
+    section: 'بخش', city: 'شهر', rural_district: 'دهستان', village: 'روستا', urban_region: 'منطقه',
     neighborhood: 'محله', street: 'خیابان', alley: 'کوچه', complex: 'مجتمع', building: 'ساختمان',
 });
 const localizeLocationTypeLabel = (type, locale = (typeof document !== 'undefined' ? document.documentElement.lang : 'fa')) => String(locale || '').toLowerCase().startsWith('fa') && FA_TYPE_LABELS[type?.key] ? FA_TYPE_LABELS[type.key] : (type?.label || type?.canonical_name || type?.key || '');
@@ -91,4 +92,4 @@ if (typeof document !== 'undefined') {
     });
 }
 
-export { initializeLocationSelector, normalizePickerPayload, projectScopePayload, projectScopeSelectionValues, pickerLevelLabel, selectionValues, shouldRenderNextLevel, localizeLocationTypeLabel, proposalParentPayload };
+export { initializeLocationSelector, normalizePickerPayload, projectScopePayload, projectScopeSelectionValues, pickerLevelLabel, selectionValues, shouldRenderNextLevel, locationDisplayLabel, localizeLocationTypeLabel, proposalParentPayload };

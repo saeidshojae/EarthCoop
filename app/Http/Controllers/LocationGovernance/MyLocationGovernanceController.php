@@ -4,7 +4,9 @@ namespace App\Http\Controllers\LocationGovernance;
 
 use App\Http\Controllers\Controller;
 use App\Models\GovernanceArea;
+use App\Services\LocationGovernance\CommunityAreaService;
 use App\Services\LocationGovernance\CommunityCreationPolicy;
+use App\Services\LocationGovernance\LocationTreeResolver;
 use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -24,6 +26,8 @@ final class MyLocationGovernanceController extends Controller
         Request $request,
         ResidenceService $residenceService,
         CommunityCreationPolicy $communityCreationPolicy,
+        CommunityAreaService $communityAreaService,
+        LocationTreeResolver $locationTreeResolver,
     ): View {
         abort_unless((bool) config('location-governance.runtime_enabled'), 404);
 
@@ -64,11 +68,41 @@ final class MyLocationGovernanceController extends Controller
                 ])];
             });
 
-        $communities = $this->communitiesForResidence($currentResidence?->location_id);
-        $canCreateCommunity = $pendingResidenceIntent === null
-            && $communities->isEmpty()
-            && $currentResidence?->location !== null
-            && $communityCreationPolicy->mayCreateFor($currentResidence->location, $user);
+        $localCommunityLocations = collect();
+        if ($currentResidence?->location !== null) {
+            $localCommunityLocations = $locationTreeResolver->ancestors($currentResidence->location)
+                ->push($currentResidence->location)
+                ->filter(fn ($location): bool => in_array($location->type?->key, ['street', 'alley', 'complex', 'building'], true))
+                ->values();
+        }
+
+        $communities = $this->communitiesForLocations($localCommunityLocations->pluck('id'));
+        $communitiesByLocation = $communities
+            ->flatMap(fn ($community) => $community->locations->map(fn ($location) => [$location->id, $community]))
+            ->mapWithKeys(fn ($pair) => [$pair[0] => $pair[1]]);
+
+        $communityOptions = $localCommunityLocations->map(function ($location) use ($communitiesByLocation, $communityCreationPolicy, $communityAreaService, $user): array {
+            $community = $communitiesByLocation->get($location->id);
+            $group = $community !== null ? $communityAreaService->publicAssemblyFor($community) : null;
+            $membership = $group !== null
+                ? $user->groups()
+                    ->where('groups.id', $group->id)
+                    ->wherePivot('status', 1)
+                    ->first()
+                : null;
+
+            return [
+                'location' => $location,
+                'community' => $community,
+                'group' => $group,
+                'is_member' => $membership !== null,
+                'can_join' => $community !== null
+                    && $membership === null
+                    && $communityCreationPolicy->mayCreateFor($location, $user),
+                'can_create' => $community === null
+                    && $communityCreationPolicy->mayCreateFor($location, $user),
+            ];
+        });
 
         return view('location-governance.my-location-governance', compact(
             'currentResidence',
@@ -76,20 +110,21 @@ final class MyLocationGovernanceController extends Controller
             'governanceAreas',
             'membershipsByDimension',
             'communities',
-            'canCreateCommunity',
+            'communityOptions',
         ));
     }
 
-    private function communitiesForResidence(?int $locationId): Collection
+    private function communitiesForLocations(Collection $locationIds): Collection
     {
-        if ($locationId === null) {
+        if ($locationIds->isEmpty()) {
             return collect();
         }
 
         return GovernanceArea::query()
             ->where('area_kind', 'community')
             ->where('status', 'active')
-            ->whereHas('locations', fn ($query) => $query->whereKey($locationId))
+            ->whereHas('locations', fn ($query) => $query->whereIn('locations.id', $locationIds->all()))
+            ->with(['locations' => fn ($query) => $query->whereIn('locations.id', $locationIds->all())->with('type')])
             ->orderBy('rank')
             ->orderBy('id')
             ->get();

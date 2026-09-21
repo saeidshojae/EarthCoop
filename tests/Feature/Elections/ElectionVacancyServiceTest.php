@@ -173,7 +173,7 @@ class ElectionVacancyServiceTest extends TestCase
             GroupUser::create([
                 'group_id' => $group->id,
                 'user_id' => $user->id,
-                'role' => $user->id === $incumbent->id ? 2 : 1,
+                'role' => $user->id === $incumbent->id ? 3 : 1,
                 'status' => 1,
             ]);
         }
@@ -226,7 +226,7 @@ class ElectionVacancyServiceTest extends TestCase
             'user_id' => $incumbent->id,
             'group_id' => $group->id,
             'position' => 'manager',
-            'group_role' => 2,
+            'group_role' => 3,
             'appointment_kind' => 'direct',
             'status' => 'active',
             'appointed_at' => now()->subWeeks(3),

@@ -348,7 +348,8 @@
 
 
 
-            4 => 'مهمان'
+            4 => 'مهمان',
+            5 => 'فعال موقت'
 
 
 
@@ -2349,7 +2350,8 @@
 
 
 
-                                        4 => 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                                        4 => 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+                                        5 => 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
 
 
 

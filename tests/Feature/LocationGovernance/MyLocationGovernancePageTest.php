@@ -5,9 +5,11 @@ namespace Tests\Feature\LocationGovernance;
 use App\Models\GovernanceArea;
 use App\Models\Group;
 use App\Models\User;
+use App\Models\UserLocationRelationship;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
+use Tests\Support\LocationGovernance\LocationFixture;
 use Tests\Support\LocationGovernance\MembershipFixture;
 use Tests\TestCase;
 
@@ -37,6 +39,16 @@ class MyLocationGovernancePageTest extends TestCase
         $sidebar = file_get_contents(resource_path('views/partials/sidebar-unified.blade.php'));
         $this->assertStringContainsString("route('location-governance.me')", $sidebar);
         $this->assertStringContainsString('مکان و حکمرانی من', $sidebar);
+    }
+
+    public function test_sidebar_group_badge_uses_canonical_active_memberships_during_cutover(): void
+    {
+        $sidebar = file_get_contents(resource_path('views/partials/sidebar-unified.blade.php'));
+
+        $this->assertStringContainsString('CanonicalGroupMembershipReconciler::class', $sidebar);
+        $this->assertStringContainsString("wherePivot('status', 1)", $sidebar);
+        $this->assertStringContainsString("config('location-governance.groups_enabled'", $sidebar);
+        $this->assertStringNotContainsString('$groups = auth()->user()->groups;', $sidebar);
     }
 
     public function test_page_uses_official_governance_chain_and_separates_active_from_observer_memberships(): void
@@ -89,7 +101,7 @@ class MyLocationGovernancePageTest extends TestCase
         $response->assertSee('Sari Official Governance');
         $response->assertSee('Iran Official Governance');
         $response->assertSee('عضویت فعال');
-        $response->assertSee('عضویت ناظر');
+        $response->assertSee('عضویت‌های ناظر');
     }
 
     public function test_page_shows_current_approved_residence_without_treating_community_as_official_governance(): void
@@ -116,7 +128,73 @@ class MyLocationGovernancePageTest extends TestCase
         $response->assertViewHas('governanceAreas', fn ($areas): bool =>
             ! collect($areas)->contains(fn ($area): bool => (int) $area->id === (int) $community->id)
         );
-        $response->assertSee('محل سکونت تأییدشده');
+        $response->assertSee('محل سکونت');
+        $response->assertSee('تأییدشده');
         $response->assertSee('اجتماعات محلی');
     }
+
+    public function test_page_uses_mobile_first_dashboard_contract_and_collapses_observer_lists(): void
+    {
+        ['user' => $user] = MembershipFixture::canonicalUser();
+
+        app(CanonicalGroupMembershipReconciler::class)->reconcile($user);
+
+        $response = $this->actingAs($user)->get(route('location-governance.me'));
+
+        $response->assertOk();
+        $response->assertSee('data-base-governance-summary', false);
+        $response->assertSee('data-governance-chain', false);
+        $response->assertSee('class="observer-memberships', false);
+        $response->assertSee('<details', false);
+        $response->assertSee('عضویت‌های ناظر');
+        $response->assertSee('حوزه پایه حکمرانی');
+        $response->assertDontSee('Governance Area');
+    }
+
+
+    public function test_page_defaults_to_official_tab_and_guides_user_without_micro_location(): void
+    {
+        ['user' => $user] = MembershipFixture::canonicalUser();
+
+        $response = $this->actingAs($user)->get(route('location-governance.me'));
+
+        $response->assertOk();
+        $response->assertSee('id="official-tab"', false);
+        $response->assertSee('nav-link active', false);
+        $response->assertSee('اجتماعات محلی');
+        $response->assertSee('data-community-location-guide', false);
+        $response->assertSee('تکمیل نشانی و افزودن مکان محلی');
+    }
+
+
+    public function test_local_communities_tab_lists_every_micro_location_in_residence_path_independently(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $path = LocationFixture::createPath(
+            $schema,
+            ['country', 'province', 'county', 'section', 'city', 'urban_region', 'neighborhood', 'street', 'alley', 'complex', 'building'],
+            ['ایران', 'مازندران', 'ساری', 'مرکزی', 'ساری', 'منطقه یک', 'محله مرجع', 'خیابان الف', 'کوچه دوستی', 'مجتمع بهارستان', 'ساختمان ۳۵'],
+        );
+        $user = User::factory()->create();
+
+        UserLocationRelationship::create([
+            'user_id' => $user->id,
+            'location_id' => $path->last()->id,
+            'relationship_type' => 'primary_residence',
+            'started_at' => now()->subDay(),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('location-governance.me'));
+
+        $response->assertOk();
+        $response->assertViewHas('communityOptions', fn ($options): bool =>
+            collect($options)->pluck('location.type.key')->values()->all() === ['street', 'alley', 'complex', 'building']
+        );
+        foreach (['خیابان الف', 'کوچه دوستی', 'مجتمع بهارستان', 'ساختمان ۳۵'] as $name) {
+            $response->assertSee($name);
+        }
+        $response->assertSee('data-local-communities-tab', false);
+        $response->assertSee('هرکدام می‌توانند اجتماع محلی مستقل خود را داشته باشند');
+    }
+
 }

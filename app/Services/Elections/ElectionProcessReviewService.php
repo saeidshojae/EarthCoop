@@ -135,6 +135,7 @@ class ElectionProcessReviewService
 
     public function setInterimStay(ElectionProcessReview $review, User $authority, string $reason): ElectionProcessReview
     {
+        $this->assertReviewAuthority($authority);
         if (trim($reason) === '') {
             throw new InvalidArgumentException('Interim stay reason is required.');
         }
@@ -159,6 +160,7 @@ class ElectionProcessReviewService
         string $reason,
         ?string $remediationReference = null,
     ): ElectionProcessReview {
+        $this->assertReviewAuthority($authority);
         if (! in_array($decision, ['upheld', 'corrected', 'dismissed'], true)) {
             throw new InvalidArgumentException('Unsupported review decision.');
         }
@@ -205,6 +207,13 @@ class ElectionProcessReviewService
         ]);
     }
 
+    private function assertReviewAuthority(User $authority): void
+    {
+        if (! $authority->hasPermission('elections.review.manage')) {
+            throw new RuntimeException('Election review management authority is required.');
+        }
+    }
+
     private function endorseLocked(ElectionProcessReview $review, User $member): void
     {
         ElectionProcessReviewEndorsement::query()->firstOrCreate(
@@ -233,14 +242,34 @@ class ElectionProcessReviewService
 
     private function assertActiveGroupMember(Election $election, User $user): void
     {
-        $active = GroupUser::query()
+        if ((bool) $user->is_system) {
+            throw new RuntimeException('Only an eligible systemic elector may use the election review process.');
+        }
+
+        $snapshot = ElectionEligibilitySnapshot::query()
+            ->where('election_id', $election->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($snapshot !== null) {
+            if (! (bool) $snapshot->voter_eligible) {
+                throw new RuntimeException('Only an eligible systemic elector may use the election review process.');
+            }
+
+            return;
+        }
+
+        // Compatibility for historical elections that predate eligibility snapshots:
+        // active members retain electoral rights while serving as inspector/manager.
+        $eligible = GroupUser::query()
             ->where('group_id', $election->group_id)
             ->where('user_id', $user->id)
             ->where('status', 1)
-            ->where('role', '!=', 4)
+            ->whereIn('role', [1, 2, 3])
             ->exists();
-        if (! $active || (bool) $user->is_system) {
-            throw new RuntimeException('Only an active group member may use the election review process.');
+
+        if (! $eligible) {
+            throw new RuntimeException('Only an eligible systemic elector may use the election review process.');
         }
     }
 

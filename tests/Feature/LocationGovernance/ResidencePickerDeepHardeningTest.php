@@ -7,6 +7,7 @@ use App\Models\Location;
 use App\Models\LocationProposal;
 use App\Models\User;
 use App\Services\LocationGovernance\LocationProposalService;
+use App\Services\LocationGovernance\LocationStructureClaimService;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -29,7 +30,63 @@ class ResidencePickerDeepHardeningTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('allowed_types.0.key', 'urban_region');
-        $response->assertJsonPath('allowed_types.0.label', 'منطقه شهری');
+        $response->assertJsonPath('allowed_types.0.label', 'منطقه');
+    }
+
+    public function test_structural_claim_chain_exposes_only_the_real_next_residence_level(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+        app()->setLocale('fa');
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city'])->last();
+        $user = User::factory()->create();
+        $service = app(LocationStructureClaimService::class);
+
+        $regionClaim = $service->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+
+        $afterRegion = $this->getJson('/location/options/'.$city->id.'/children');
+        $afterRegion->assertOk();
+        $afterRegion->assertJsonPath('effective_allowed_types.0.key', 'neighborhood');
+        $this->assertSame(['neighborhood'], collect($afterRegion->json('effective_allowed_types'))->pluck('key')->all());
+
+        $neighborhoodClaim = $service->findOrCreateOpenClaim($city, 'no_neighborhood', $user);
+
+        $afterNeighborhood = $this->getJson('/location/options/'.$city->id.'/children');
+        $afterNeighborhood->assertOk();
+        $afterNeighborhood->assertJsonPath('effective_allowed_types.0.key', 'street');
+        $afterNeighborhood->assertJsonPath('effective_allowed_types.0.proposal_allowed', true);
+        $this->assertSame(['street'], collect($afterNeighborhood->json('effective_allowed_types'))->pluck('key')->all());
+        $this->assertSame($regionClaim->id, collect($afterNeighborhood->json('structural_choices'))->firstWhere('claim_type', 'no_urban_region')['claim_id']);
+        $this->assertSame($neighborhoodClaim->id, collect($afterNeighborhood->json('structural_choices'))->firstWhere('claim_type', 'no_neighborhood')['claim_id']);
+    }
+
+    public function test_region_and_village_without_neighborhood_expose_street_for_pending_and_approved_claims(): void
+    {
+        config(['location-governance.runtime_enabled' => true]);
+        $schema = LocationFixture::iranSchema();
+        $user = User::factory()->create();
+        $service = app(LocationStructureClaimService::class);
+        $region = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city', 'urban_region'])->last();
+        $village = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'rural_district', 'village'])->last();
+
+        $regionClaim = $service->findOrCreateOpenClaim($region, 'no_neighborhood', $user);
+        $villageClaim = $service->findOrCreateOpenClaim($village, 'no_neighborhood', $user);
+
+        foreach ([$region, $village] as $location) {
+            $response = $this->getJson('/location/options/'.$location->id.'/children');
+            $response->assertOk();
+            $this->assertSame(['street'], collect($response->json('effective_allowed_types'))->pluck('key')->all());
+            $response->assertJsonPath('effective_allowed_types.0.proposal_allowed', true);
+        }
+
+        $regionClaim->forceFill(['status' => 'approved', 'approved_at' => now()])->save();
+        $villageClaim->forceFill(['status' => 'approved', 'approved_at' => now()])->save();
+
+        foreach ([$region, $village] as $location) {
+            $response = $this->getJson('/location/options/'.$location->id.'/children');
+            $response->assertOk();
+            $this->assertSame(['street'], collect($response->json('effective_allowed_types'))->pluck('key')->all());
+        }
     }
 
     public function test_location_proposals_have_an_additive_nullable_proposal_parent_column(): void
@@ -154,4 +211,116 @@ class ResidencePickerDeepHardeningTest extends TestCase
             'canonical_name' => 'والد مبهم',
         ])->assertUnprocessable();
     }
+
+    public function test_direct_street_proposal_under_city_requires_complete_structural_claim_chain(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city'])->last();
+        $streetType = $schema->types->firstWhere('key', 'street');
+        $user = User::factory()->create();
+        $claimService = app(\App\Services\LocationGovernance\LocationStructureClaimService::class);
+
+        $noRegion = $claimService->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+        $noNeighborhood = $claimService->findOrCreateOpenClaim($city, 'no_neighborhood', $user);
+
+        $this->actingAs($user)->postJson('/locations/proposals', [
+            'parent_location_id' => $city->id,
+            'location_type_id' => $streetType->id,
+            'canonical_name' => 'خیابان مستقیم بدون ادعا',
+        ])->assertStatus(422);
+
+        $response = $this->actingAs($user)->postJson('/locations/proposals', [
+            'parent_location_id' => $city->id,
+            'location_type_id' => $streetType->id,
+            'canonical_name' => 'خیابان مستقیم ساختاری',
+            'location_structure_claim_ids' => [$noRegion->id, $noNeighborhood->id],
+        ])->assertSuccessful()->assertJsonPath('kind', 'proposal');
+
+        $proposal = \App\Models\LocationProposal::query()->findOrFail((int) $response->json('id'));
+        $this->assertSame([$noRegion->id, $noNeighborhood->id], $proposal->metadata['structural_claim_ids']);
+    }
+
+    public function test_second_user_can_create_structural_street_proposal_with_shared_open_city_claims(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city'])->last();
+        $streetType = $schema->types->firstWhere('key', 'street');
+        $firstUser = User::factory()->create();
+        $secondUser = User::factory()->create();
+        $claimService = app(LocationStructureClaimService::class);
+
+        $noRegion = $claimService->findOrCreateOpenClaim($city, 'no_urban_region', $firstUser);
+        $noNeighborhood = $claimService->findOrCreateOpenClaim($city, 'no_neighborhood', $firstUser);
+
+        $this->assertSame(
+            $noRegion->id,
+            $claimService->findOrCreateOpenClaim($city, 'no_urban_region', $secondUser)->id,
+        );
+        $this->assertSame(
+            $noNeighborhood->id,
+            $claimService->findOrCreateOpenClaim($city, 'no_neighborhood', $secondUser)->id,
+        );
+
+        $response = $this->actingAs($secondUser)->postJson('/locations/proposals', [
+            'parent_location_id' => $city->id,
+            'location_type_id' => $streetType->id,
+            'canonical_name' => 'خیابان پیشنهادی کاربر دوم',
+            'location_structure_claim_ids' => [$noRegion->id, $noNeighborhood->id],
+        ])->assertCreated()->assertJsonPath('kind', 'proposal');
+
+        $proposal = LocationProposal::query()->findOrFail((int) $response->json('id'));
+        $this->assertSame($secondUser->id, $proposal->proposer_user_id);
+        $this->assertSame([$noRegion->id, $noNeighborhood->id], $proposal->metadata['structural_claim_ids']);
+    }
+
+    public function test_structural_street_proposal_is_revalidated_and_preserves_claim_provenance_on_approval(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city'])->last();
+        $streetType = $schema->types->firstWhere('key', 'street');
+        $user = User::factory()->create();
+        $reviewer = User::factory()->create(['is_admin' => true]);
+        $claimService = app(LocationStructureClaimService::class);
+        $proposalService = app(LocationProposalService::class);
+
+        $noRegion = $claimService->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+        $noNeighborhood = $claimService->findOrCreateOpenClaim($city, 'no_neighborhood', $user);
+
+        $proposal = $proposalService->propose($user, $city, $streetType, [
+            'canonical_name' => 'خیابان مستقیم قابل تأیید',
+        ], [$noRegion, $noNeighborhood]);
+
+        $approved = $proposalService->approve($proposal, $reviewer, 'ساختار شهر بررسی شد');
+
+        $this->assertSame($city->id, $approved->parent_id);
+        $this->assertSame('street', $approved->level);
+        $this->assertSame($proposal->id, data_get($approved->provenance, 'location_proposal_id'));
+        $this->assertSame(
+            [$noRegion->id, $noNeighborhood->id],
+            data_get($approved->provenance, 'structural_claim_ids')
+        );
+    }
+
+    public function test_structural_street_proposal_cannot_be_approved_after_supporting_claim_is_rejected(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city'])->last();
+        $streetType = $schema->types->firstWhere('key', 'street');
+        $user = User::factory()->create();
+        $reviewer = User::factory()->create(['is_admin' => true]);
+        $claimService = app(LocationStructureClaimService::class);
+        $proposalService = app(LocationProposalService::class);
+
+        $noRegion = $claimService->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+        $noNeighborhood = $claimService->findOrCreateOpenClaim($city, 'no_neighborhood', $user);
+        $proposal = $proposalService->propose($user, $city, $streetType, [
+            'canonical_name' => 'خیابان مستقیم با ادعای ردشده',
+        ], [$noRegion, $noNeighborhood]);
+
+        $claimService->reject($noNeighborhood, $reviewer, 'ادعای ساختاری تأیید نشد');
+
+        $this->expectException(DomainException::class);
+        $proposalService->approve($proposal, $reviewer, 'نباید تأیید شود');
+    }
+
 }

@@ -23,6 +23,9 @@ class ElectionEligibilitySnapshotServiceTest extends TestCase
         $active = $this->member($group, 1, 1, false);
         $observer = $this->member($group, 0, 1, false);
         $guest = $this->member($group, 4, 1, false);
+        $temporaryActive = $this->member($group, 5, 1, false);
+        $inspector = $this->member($group, 2, 1, false);
+        $manager = $this->member($group, 3, 1, false);
         $inactive = $this->member($group, 1, 0, false);
         $system = $this->member($group, 1, 1, true);
         $election = $this->scheduledElection($group);
@@ -62,6 +65,23 @@ class ElectionEligibilitySnapshotServiceTest extends TestCase
             'voter_eligible' => 0,
             'voter_exclusion_reason' => 'guest_role',
         ]);
+        $this->assertDatabaseHas('election_eligibility_snapshots', [
+            'election_id' => $election->id,
+            'user_id' => $temporaryActive->id,
+            'voter_eligible' => 0,
+            'selectable_eligible' => 0,
+            'voter_exclusion_reason' => 'temporary_active_role',
+        ]);
+        foreach ([$inspector, $manager] as $officeHolder) {
+            $this->assertDatabaseHas('election_eligibility_snapshots', [
+                'election_id' => $election->id,
+                'user_id' => $officeHolder->id,
+                'voter_eligible' => 1,
+                'selectable_eligible' => 1,
+                'voter_exclusion_reason' => null,
+                'selectable_exclusion_reason' => null,
+            ]);
+        }
         $this->assertDatabaseHas('election_eligibility_snapshots', [
             'election_id' => $election->id,
             'user_id' => $inactive->id,

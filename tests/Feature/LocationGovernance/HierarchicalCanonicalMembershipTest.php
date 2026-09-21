@@ -4,6 +4,7 @@ namespace Tests\Feature\LocationGovernance;
 
 use App\Models\ExperienceField;
 use App\Models\GovernanceArea;
+use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\OccupationalField;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
@@ -77,6 +78,48 @@ class HierarchicalCanonicalMembershipTest extends TestCase
             'occupational_field:'.$first->id,
             'occupational_field:'.$second->id,
         ], $values);
+    }
+
+
+    public function test_official_reconciliation_never_deactivates_opted_in_community_membership(): void
+    {
+        config(['location-governance.groups_enabled' => true]);
+
+        ['user' => $user] = MembershipFixture::canonicalUser();
+
+        $community = GovernanceArea::create([
+            'key' => 'community-reconciler-isolation',
+            'country_code' => 'IR',
+            'governance_type' => 'community',
+            'area_kind' => 'community',
+            'canonical_name' => 'Community reconciler isolation',
+            'rank' => 1000,
+            'status' => 'active',
+        ]);
+        $group = Group::create([
+            'governance_area_id' => $community->id,
+            'dimension_key' => 'public',
+            'dimension_value_key' => 'public',
+            'name' => 'Local community',
+            'group_type' => '0',
+            'is_open' => 1,
+        ]);
+        GroupUser::create([
+            'group_id' => $group->id,
+            'user_id' => $user->id,
+            'role' => 1,
+            'status' => 1,
+        ]);
+
+        app(CanonicalGroupMembershipReconciler::class)->reconcile($user);
+
+        $membership = GroupUser::query()
+            ->where('group_id', $group->id)
+            ->where('user_id', $user->id)
+            ->sole();
+
+        $this->assertSame(1, (int) $membership->status);
+        $this->assertSame(1, (int) $membership->role);
     }
 
     public function test_minimum_three_level_profession_and_specialty_contract_materializes_81_memberships_on_nine_governance_scopes(): void

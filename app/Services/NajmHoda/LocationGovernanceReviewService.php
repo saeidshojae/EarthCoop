@@ -4,6 +4,7 @@ namespace App\Services\NajmHoda;
 
 use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\LocationProposal;
+use App\Models\Setting;
 use App\Services\LocationGovernance\LocationDuplicateDetector;
 
 class LocationGovernanceReviewService
@@ -96,7 +97,7 @@ class LocationGovernanceReviewService
             return ['needs_evidence', 'The proposal is explicitly waiting for additional evidence.'];
         }
 
-        $threshold = max(1, (int) config('location-governance.location_proposal_verification_threshold', 10));
+        $threshold = max(1, (int) (Setting::singleton()->location_proposal_verification_threshold ?? config('location-governance.location_proposal_verification_threshold', 10)));
         if ($proposal->status === LocationProposalStatus::ReadyForReview && $distinctVerifiers >= $threshold) {
             return ['approve', 'Distinct-user verification threshold is met; final approval still requires a human administrator.'];
         }

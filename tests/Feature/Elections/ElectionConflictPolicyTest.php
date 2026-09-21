@@ -59,7 +59,7 @@ class ElectionConflictPolicyTest extends TestCase
         ]);
         return ElectionAppointment::create([
             'election_id'=>$election->id,'responsibility_offer_id'=>$offer->id,'user_id'=>$user->id,'group_id'=>$group->id,
-            'position'=>$position,'group_role'=>$position==='manager'?2:3,'appointment_kind'=>'direct','status'=>'active','appointed_at'=>now(),
+            'position'=>$position,'group_role'=>$position==='manager'?3:2,'appointment_kind'=>'direct','status'=>'active','appointed_at'=>now(),
             'actor'=>'test','reason'=>'test',
         ]);
     }

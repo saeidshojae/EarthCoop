@@ -258,12 +258,23 @@ class ElectionEligibilitySnapshotService
         }
 
         $role = (int) $member->role;
-        if ($role < 1) {
+        if ($role === 0) {
             return [false, 'observer_role'];
         }
 
         if ($role === 4) {
             return [false, 'guest_role'];
+        }
+
+        if ($role === 5) {
+            return [false, 'temporary_active_role'];
+        }
+
+        // Elected managers and inspectors remain active members of their group.
+        // Holding responsibility must not remove either their vote or their
+        // ordinary selectable-member status in the continuous election.
+        if (! in_array($role, [1, 2, 3], true)) {
+            return [false, 'non_elector_role'];
         }
 
         return [true, null];

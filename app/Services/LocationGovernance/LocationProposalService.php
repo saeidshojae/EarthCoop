@@ -5,7 +5,9 @@ namespace App\Services\LocationGovernance;
 use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\Location;
 use App\Models\LocationProposal;
+use App\Models\Setting;
 use App\Models\LocationType;
+use App\Models\LocationStructureClaim;
 use App\Models\User;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -25,9 +27,9 @@ class LocationProposalService
     ) {
     }
 
-    public function propose(User $proposer, Location $parent, LocationType $type, array $data): LocationProposal|Location
+    public function propose(User $proposer, Location $parent, LocationType $type, array $data, array $structuralClaims = []): LocationProposal|Location
     {
-        if (! $this->proposalPolicy->allows($parent, $type)) {
+        if (! $this->proposalPolicy->allowsForResidence($parent, $type, $structuralClaims)) {
             throw new DomainException('Crowdsourced proposals are not permitted for this location type in the active schema.');
         }
 
@@ -63,7 +65,9 @@ class LocationProposalService
             'normalized_name' => $normalizedName,
             'localized_names' => $data['localized_names'] ?? null,
             'status' => LocationProposalStatus::Pending,
-            'metadata' => $data['metadata'] ?? null,
+            'metadata' => array_merge($data['metadata'] ?? [], [
+                'structural_claim_ids' => collect($structuralClaims)->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+            ]),
             'audit_log' => [],
         ]);
     }
@@ -108,6 +112,35 @@ class LocationProposalService
         ]);
     }
 
+    public function rename(LocationProposal $proposal, User $reviewer, string $canonicalName, string $reason): void
+    {
+        $this->guardOpen($proposal);
+
+        $canonicalName = $this->canonicalName(['canonical_name' => $canonicalName]);
+        $normalizedName = $this->duplicateDetector->normalizeName($canonicalName);
+        $reason = trim($reason);
+        if ($reason === '') {
+            throw new DomainException('A review reason is required when renaming a location proposal.');
+        }
+
+        $proposal->refresh();
+        $fromName = $proposal->canonical_name;
+        $audit = $proposal->audit_log ?? [];
+        $audit[] = [
+            'action' => 'rename',
+            'actor_user_id' => $reviewer->id,
+            'reason' => $reason,
+            'from_name' => $fromName,
+            'to_name' => $canonicalName,
+            'at' => now()->toIso8601String(),
+        ];
+
+        $proposal->canonical_name = $canonicalName;
+        $proposal->normalized_name = $normalizedName;
+        $proposal->audit_log = $audit;
+        $proposal->save();
+    }
+
     public function support(LocationProposal $proposal, User $user, array $evidence): void
     {
         $this->guardOpen($proposal);
@@ -115,7 +148,7 @@ class LocationProposalService
         DB::transaction(function () use ($proposal, $user, $evidence): void {
             $proposal->evidence()->updateOrCreate(['user_id' => $user->id], ['evidence' => $evidence]);
             $proposal->refresh();
-            $threshold = max(1, (int) config('location-governance.location_proposal_verification_threshold', 10));
+            $threshold = max(1, (int) (Setting::singleton()->location_proposal_verification_threshold ?? config('location-governance.location_proposal_verification_threshold', 10)));
             $distinctVerifiers = $proposal->evidence()->distinct()->count('user_id');
 
             if ($proposal->status === LocationProposalStatus::Pending && $distinctVerifiers >= $threshold) {
@@ -142,6 +175,29 @@ class LocationProposalService
                 throw new DomainException('Approve the pending parent proposal before approving this descendant.');
             }
 
+            $structuralClaimIds = collect($proposal->metadata['structural_claim_ids'] ?? [])
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values();
+
+            $structuralClaims = LocationStructureClaim::query()
+                ->whereIn('id', $structuralClaimIds)
+                ->get();
+
+            if (! $this->proposalPolicy->allowsForResidence($parent, $proposal->type, $structuralClaims->all())) {
+                throw new DomainException('The proposal no longer satisfies the canonical location structure.');
+            }
+
+            if ($structuralClaimIds->isNotEmpty()
+                && ($structuralClaims->count() !== $structuralClaimIds->count()
+                    || $structuralClaims->contains(fn (LocationStructureClaim $claim): bool =>
+                        (int) $claim->location_id !== (int) $parent->id
+                        || ! in_array($claim->status, ['pending', 'ready_for_review', 'needs_evidence', 'approved'], true)
+                    ))) {
+                throw new DomainException('The structural claims supporting this proposal are no longer valid.');
+            }
+
             $duplicate = $this->duplicateDetector->findLikelyDuplicate($parent, $proposal->type, $proposal->canonical_name);
             if ($duplicate !== null) {
                 throw new DomainException('A matching canonical location already exists; merge the proposal instead.');
@@ -157,7 +213,11 @@ class LocationProposalService
                 'localized_names' => $proposal->localized_names,
                 'level' => $proposal->type?->key,
                 'status' => 'active',
-                'provenance' => ['source' => 'community_proposal', 'location_proposal_id' => $proposal->id],
+                'provenance' => [
+                    'source' => 'community_proposal',
+                    'location_proposal_id' => $proposal->id,
+                    'structural_claim_ids' => $structuralClaimIds->all(),
+                ],
             ]);
 
             $proposal->resolved_location_id = $location->id;

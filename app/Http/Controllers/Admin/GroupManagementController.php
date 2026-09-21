@@ -50,11 +50,12 @@ class GroupManagementController extends Controller
     public function updateRole(Request $request, Group $group, User $user, TemporaryGroupRoleService $roleService)
     {
         $validated = $request->validate([
-            'role' => 'required|integer|in:0,1,2,3,4',
+            'role' => 'required|integer|in:0,1,2,3,4,5',
             'duration_unit' => ['required', Rule::in(['day', 'month', 'unlimited'])],
             'duration_value' => ['nullable', 'integer', 'min:1', 'max:31', 'required_unless:duration_unit,unlimited'],
         ]);
         abort_if($validated['duration_unit'] === 'month' && (int) $validated['duration_value'] > 12, 422, 'مدت ماهانه حداکثر ۱۲ ماه است.');
+        abort_if((int) $validated['role'] === 5 && $validated['duration_unit'] === 'unlimited', 422, 'نقش فعال موقت باید تاریخ انقضا داشته باشد.');
 
         $membership = GroupUser::query()
             ->where('group_id', $group->id)

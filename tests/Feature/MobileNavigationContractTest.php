@@ -150,4 +150,16 @@ class MobileNavigationContractTest extends TestCase
         $this->assertStringContainsString('.mobile-navigation-drawer', $polish);
         $this->assertStringContainsString('z-index: 1500 !important;', $polish);
     }
+
+    public function test_authenticated_mobile_navigation_exposes_location_governance_and_counts_direct_active_groups(): void
+    {
+        $drawer = file_get_contents(resource_path('views/components/mobile-navigation-drawer.blade.php'));
+
+        $this->assertStringContainsString("route('location-governance.me')", $drawer);
+        $this->assertStringContainsString('مکان و حکمرانی من', $drawer);
+        $this->assertStringContainsString('CanonicalGroupMembershipReconciler', $drawer);
+        $this->assertStringContainsString("whereIn('groups.id', \$mobileMaterializedGroupIds->all())", $drawer);
+        $this->assertStringContainsString("wherePivot('status', 1)", $drawer);
+    }
+
 }

@@ -94,6 +94,62 @@ class ElectionCanonicalCutoverTest extends TestCase
         $this->assertTrue($resolver->isSoleStructuralConstituency($child, $parent));
     }
 
+    public function test_collapsed_city_topology_skips_synthetic_region_and_uses_real_neighborhoods(): void
+    {
+        config()->set('location-governance.elections_enabled', true);
+
+        $cityArea = GovernanceArea::factory()->official()->create([
+            'governance_type' => 'city',
+            'status' => 'active',
+            'parent_id' => null,
+            'rank' => 500,
+        ]);
+        $firstNeighborhoodArea = GovernanceArea::factory()->official()->create([
+            'governance_type' => 'neighborhood',
+            'status' => 'active',
+            'parent_id' => $cityArea->id,
+            'rank' => 900,
+        ]);
+        $secondNeighborhoodArea = GovernanceArea::factory()->official()->create([
+            'governance_type' => 'neighborhood',
+            'status' => 'active',
+            'parent_id' => $cityArea->id,
+            'rank' => 900,
+        ]);
+
+        $city = $this->canonicalPublicGroup($cityArea, 'Collapsed city');
+        $firstNeighborhood = $this->canonicalPublicGroup($firstNeighborhoodArea, 'Real neighborhood A');
+        $this->canonicalPublicGroup($secondNeighborhoodArea, 'Real neighborhood B');
+
+        $resolver = app(ElectionGroupHierarchyResolver::class);
+        $user = User::factory()->create();
+
+        $this->assertSame($city->id, $resolver->higherGroup($firstNeighborhood, $user)?->id);
+        $this->assertSame(2, $resolver->effectiveStructuralChildCount($city));
+        $this->assertFalse($resolver->isSoleStructuralConstituency($firstNeighborhood, $city));
+        $this->assertSame([], $resolver->compressionChain($firstNeighborhood, $user));
+    }
+
+    public function test_collapsed_neighborhood_topology_makes_region_or_village_the_official_local_layer(): void
+    {
+        config()->set('location-governance.elections_enabled', true);
+
+        foreach (['urban_region', 'village'] as $type) {
+            $parentArea = GovernanceArea::factory()->official()->create([
+                'governance_type' => $type,
+                'status' => 'active',
+                'parent_id' => null,
+                'rank' => 700,
+            ]);
+            $parent = $this->canonicalPublicGroup($parentArea, 'Collapsed '.$type);
+
+            $resolver = app(ElectionGroupHierarchyResolver::class);
+
+            $this->assertSame(0, $resolver->effectiveStructuralChildCount($parent));
+            $this->assertTrue($resolver->isIndependentElectoralLayer($parent));
+        }
+    }
+
     public function test_canonical_policy_key_uses_governance_type_and_canonical_dimension(): void
     {
         config()->set('location-governance.elections_enabled', true);
@@ -138,5 +194,15 @@ class ElectionCanonicalCutoverTest extends TestCase
             'location_level' => 'city',
             'experience_id' => 22,
         ])));
+    }
+    private function canonicalPublicGroup(GovernanceArea $area, string $name): Group
+    {
+        return Group::create([
+            'name' => $name,
+            'group_type' => 0,
+            'governance_area_id' => $area->id,
+            'dimension_key' => 'public',
+            'dimension_value_key' => 'public',
+        ]);
     }
 }

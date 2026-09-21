@@ -4,6 +4,7 @@ namespace App\Services\LocationGovernance;
 
 use App\Models\Location;
 use App\Models\User;
+use App\Models\UserLocationRelationship;
 
 class CommunityCreationPolicy
 {
@@ -17,7 +18,36 @@ class CommunityCreationPolicy
             return false;
         }
 
-        return in_array($this->typeKey($location), ['complex', 'building'], true);
+        if (! in_array($this->typeKey($location), ['street', 'alley', 'complex', 'building'], true)) {
+            return false;
+        }
+
+        $residenceLocationId = UserLocationRelationship::query()
+            ->where('user_id', $actor->id)
+            ->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')
+            ->latest('started_at')
+            ->value('location_id');
+
+        if ($residenceLocationId === null) {
+            return false;
+        }
+
+        $current = Location::query()->find($residenceLocationId);
+        $visited = [];
+
+        while ($current !== null && ! isset($visited[$current->id])) {
+            if ($current->id === $location->id) {
+                return true;
+            }
+
+            $visited[$current->id] = true;
+            $current = $current->parent_id !== null
+                ? Location::query()->find($current->parent_id)
+                : null;
+        }
+
+        return false;
     }
 
     private function typeKey(Location $location): ?string

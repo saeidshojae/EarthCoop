@@ -9,6 +9,7 @@ use App\Models\LocationSchema;
 use App\Models\User;
 use App\Services\LocationGovernance\CommunityAreaService;
 use App\Services\LocationGovernance\LocationProposalService;
+use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\LocationGovernance\LocationFixture;
@@ -130,6 +131,20 @@ class LocationGovernanceControlCenterTest extends TestCase
         }
     }
 
+    public function test_review_action_forms_stack_on_phone_widths_and_expand_from_medium_up(): void
+    {
+        foreach ([
+            'proposal-queue',
+            'structure-claim-queue',
+        ] as $partial) {
+            $source = file_get_contents(resource_path("views/admin/location-governance/partials/{$partial}.blade.php"));
+
+            $this->assertIsString($source);
+            $this->assertStringContainsString('d-flex flex-column flex-md-row gap-2', $source);
+            $this->assertStringNotContainsString('class="d-flex gap-2"', $source);
+        }
+    }
+
     public function test_control_center_exposes_bounded_reference_topology_community_import_and_health_read_models(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
@@ -148,7 +163,12 @@ class LocationGovernanceControlCenterTest extends TestCase
         ]);
         $official->locations()->attach($neighborhood->id);
 
-        $community = app(CommunityAreaService::class)->createFor($complex, $admin);
+        // Admin access to the control center must not bypass the same residence-bound
+        // community creation policy enforced for every other user. Seed a genuine
+        // resident actor for the read-model fixture and keep the admin as reviewer.
+        $resident = User::factory()->create();
+        app(ResidenceService::class)->setInitialPrimaryResidence($resident, $complex, ['source' => 'control-center-test']);
+        $community = app(CommunityAreaService::class)->createFor($complex, $resident);
         $this->makeProposal('پیشنهاد سلامت کنترل', $schema);
 
         DB::table('location_import_runs')->insert([

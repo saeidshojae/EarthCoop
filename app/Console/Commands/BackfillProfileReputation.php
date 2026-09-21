@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Address;
 use App\Models\User;
 use App\Models\UserExperience;
 use App\Models\UserPoint;
@@ -41,11 +40,7 @@ class BackfillProfileReputation extends Command
                 &$pointsUpdated
             ) {
                 foreach ($users as $user) {
-                    $step1Complete = $user->first_name && $user->last_name && $user->gender && $user->national_id && $user->phone;
-                    $hasExperience = UserExperience::where('user_id', $user->id)->exists();
-                    $hasAddress = Address::where('user_id', $user->id)->exists();
-
-                    if ($step1Complete && $hasExperience && $hasAddress) {
+                    if ($profileCompletion->isComplete($user)) {
                         $eligible++;
                         if (! $dryRun) {
                             if ($profileCompletion->maybeAward($user)) {

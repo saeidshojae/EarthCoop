@@ -3,6 +3,7 @@
 namespace Tests\Feature\LocationGovernance;
 
 use App\Enums\LocationGovernance\LocationProposalStatus;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\LocationGovernance\LocationProposalService;
 use App\Services\LocationGovernance\ResidenceService;
@@ -24,6 +25,7 @@ class DeepProposalReviewWorkflowTest extends TestCase
             'location-governance.registration_enabled' => true,
             'location-governance.location_proposal_verification_threshold' => 1,
         ]);
+        Setting::singleton()->forceFill(['location_proposal_verification_threshold' => 1])->save();
     }
 
     public function test_admin_queue_exposes_pending_parent_context_and_blocks_invalid_deep_proposal_actions(): void
@@ -43,6 +45,76 @@ class DeepProposalReviewWorkflowTest extends TestCase
 
         $response->assertSee(route('admin.location-governance.proposals.approve', $parentProposal), false);
         $response->assertSee(route('admin.location-governance.proposals.request-evidence', $childProposal), false);
+    }
+
+    public function test_admin_queue_exposes_complete_mixed_canonical_and_pending_ancestry(): void
+    {
+        [$parentProposal, $childProposal, $anchor] = $this->makeDeepProposalScenario();
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $response = $this->actingAs($admin)->get(route('admin.location-governance.index'));
+
+        $response->assertOk();
+        $canonicalPath = [];
+        for ($location = $anchor; $location !== null; $location = $location->parent()->first()) {
+            $canonicalPath[] = $location;
+        }
+        foreach (array_reverse($canonicalPath) as $location) {
+            $response->assertSee($location->canonical_name);
+        }
+        $response->assertSee($parentProposal->canonical_name);
+        $response->assertSee($childProposal->canonical_name);
+        $response->assertSee('در انتظار بررسی');
+    }
+
+    public function test_admin_queue_renders_dedicated_full_path_and_audited_rename_form_for_each_proposal(): void
+    {
+        [$parentProposal, $childProposal, $anchor] = $this->makeDeepProposalScenario();
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $response = $this->actingAs($admin)->get(route('admin.location-governance.index'));
+
+        $response->assertOk()
+            ->assertSee('data-proposal-path="'.$childProposal->id.'"', false)
+            ->assertSee('data-proposal-rename-form="'.$childProposal->id.'"', false)
+            ->assertSee('action="'.route('admin.location-governance.proposals.update', $childProposal).'"', false)
+            ->assertSee('name="canonical_name"', false)
+            ->assertSee('name="reason"', false);
+
+        $html = $response->getContent();
+        $pathStart = strpos($html, 'data-proposal-path="'.$childProposal->id.'"');
+        $pathEnd = strpos($html, '</div>', $pathStart);
+        $this->assertNotFalse($pathStart);
+        $this->assertNotFalse($pathEnd);
+        $pathHtml = substr($html, $pathStart, $pathEnd - $pathStart);
+
+        $canonicalPath = [];
+        for ($location = $anchor; $location !== null; $location = $location->parent()->first()) {
+            $canonicalPath[] = $location->canonical_name;
+        }
+        foreach (array_reverse($canonicalPath) as $name) {
+            $this->assertStringContainsString($name, $pathHtml);
+        }
+        $this->assertStringContainsString($parentProposal->canonical_name, $pathHtml);
+        $this->assertStringContainsString($childProposal->canonical_name, $pathHtml);
+    }
+
+    public function test_admin_can_rename_open_proposal_and_change_is_audited_without_resolving_it(): void
+    {
+        [$proposal] = $this->makeDeepProposalScenario();
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $response = $this->actingAs($admin)->putJson(
+            route('admin.location-governance.proposals.update', $proposal),
+            ['canonical_name' => 'خیابان اصلاح‌شده توسط مدیر', 'reason' => 'اصلاح نگارشی پیش از بررسی نهایی'],
+        );
+
+        $response->assertOk();
+        $proposal->refresh();
+        $this->assertSame('خیابان اصلاح‌شده توسط مدیر', $proposal->canonical_name);
+        $this->assertSame(LocationProposalStatus::Pending, $proposal->status);
+        $this->assertSame($admin->id, data_get($proposal->audit_log, '0.actor_user_id'));
+        $this->assertSame('rename', data_get($proposal->audit_log, '0.action'));
     }
 
     public function test_hoda_treats_pending_proposal_parent_as_valid_structure_but_never_recommends_approval_before_parent_resolution(): void

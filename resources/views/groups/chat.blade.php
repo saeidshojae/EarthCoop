@@ -42,12 +42,15 @@ $roleTitle = match($roleValue) {
 2 => 'بازرس',
 3 => 'مدیر',
 4 => 'مهمان',
-5 => 'فعال ۲',
+5 => 'فعال موقت',
 default => 'عضو'
 };
 $membershipStatusLabel = (int)($pivotUser?->status ?? 0) === 1 ? 'فعال' : 'غیرفعال';
 $electionAvailable = ($election ?? null) && optional($groupSetting)->election_status == 1;
-$canParticipateElection = $electionAvailable && !$checkBlockElection && (int)($pivotUser?->status ?? 0) === 1;
+$canParticipateElection = $electionAvailable
+    && !$checkBlockElection
+    && (int)($pivotUser?->status ?? 0) === 1
+    && in_array((int)$yourRole, [1, 2, 3], true);
 @endphp
 <div id="group-chat-main-container"
     class="container mx-auto max-w-7xl px-4 md:px-8 pt-0 pb-8 space-y-6 md:space-y-10 group-chat-container"

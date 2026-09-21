@@ -26,6 +26,19 @@ class ElectionCycleService
             $lockedGroup = Group::query()->lockForUpdate()->findOrFail($group->getKey());
             $attributes = $lockedGroup->getAttributes();
 
+            if ((bool) config('location-governance.elections_enabled', false)) {
+                $lockedGroup->loadMissing('governanceArea');
+                $area = $lockedGroup->governanceArea;
+
+                if ($area === null
+                    || $area->area_kind !== 'official'
+                    || $area->status !== 'active'
+                    || empty($attributes['dimension_key'])
+                    || empty($attributes['dimension_value_key'])) {
+                    return [null, false, false];
+                }
+            }
+
             if (($attributes['group_type'] ?? null) === 'private') {
                 return [null, false, false];
             }
@@ -60,7 +73,9 @@ class ElectionCycleService
                 ->join('users', 'users.id', '=', 'group_user.user_id')
                 ->where('group_user.group_id', $lockedGroup->id)
                 ->where('group_user.status', 1)
-                ->where('group_user.role', '>=', 1)
+                // Managers and inspectors are still active members/electors.
+                // Responsibility changes role, not citizenship in the electorate.
+                ->whereIn('group_user.role', [1, 2, 3])
                 ->where('users.is_system', false);
 
             if ((clone $activeMemberQuery)->count() < $this->policyResolver->startThreshold($policy)) {

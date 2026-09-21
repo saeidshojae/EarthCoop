@@ -208,6 +208,41 @@ class StageCDProductionHardeningTest extends TestCase
         $this->assertNotContains($legacyGroup->id, $groupIds);
     }
 
+    public function test_election_surfaces_reject_active_membership_when_canonical_area_is_not_active_official(): void
+    {
+        $this->enableStageCD();
+
+        ['user' => $user, 'area' => $area] = MembershipFixture::canonicalUser();
+        $this->actingAs($user)->get('/groups')->assertOk();
+
+        $group = Group::query()
+            ->where('governance_area_id', $area->id)
+            ->where('dimension_key', 'public')
+            ->where('dimension_value_key', 'public')
+            ->firstOrFail();
+
+        Election::create([
+            'group_id' => $group->id,
+            'governance_area_id' => $area->id,
+            'starts_at' => now()->subHour(),
+            'ends_at' => now()->addDay(),
+            'is_closed' => false,
+            'lifecycle_status' => 'open',
+            'cycle_number' => 1,
+        ]);
+
+        $area->update(['area_kind' => 'community', 'status' => 'active']);
+
+        $this->actingAs($user)->get(route('elections.portal', $group))->assertForbidden();
+
+        $groupIds = app(CurrentElectionCenterService::class)
+            ->forUser($user)['systemic']
+            ->pluck('group_id')
+            ->all();
+
+        $this->assertNotContains($group->id, $groupIds);
+    }
+
     public function test_current_internal_election_center_excludes_stale_canonical_branch_after_residence_transfer(): void
     {
         $this->enableStageCD();

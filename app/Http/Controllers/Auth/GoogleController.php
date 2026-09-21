@@ -7,6 +7,7 @@ use App\Models\Address;
 use App\Models\User;
 use App\Models\UserExperience;
 use App\Services\NajmHoda\Runtime\NajmHodaDomainEventPolicyLinkService;
+use App\Services\ProfileCompletionService;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
@@ -27,7 +28,7 @@ class GoogleController extends Controller
     private function getIncompleteStep(User $user): ?string
     {
         if ($user->password == null || $user->national_id == null) {
-            if (Address::where('user_id', $user->id)->exists()) {
+            if (app(ProfileCompletionService::class)->hasRequiredResidence($user)) {
                 return 'home';
             }
 
@@ -38,7 +39,7 @@ class GoogleController extends Controller
             return 'register.step2';
         }
 
-        if (!Address::where('user_id', $user->id)->exists()) {
+        if (! app(ProfileCompletionService::class)->hasRequiredResidence($user)) {
             return 'register.step3';
         }
 

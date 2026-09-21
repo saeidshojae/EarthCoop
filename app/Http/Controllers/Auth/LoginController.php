@@ -8,6 +8,7 @@ use App\Models\Address;
 use App\Models\EmailVerification;
 use App\Models\User;
 use App\Models\UserExperience;
+use App\Services\ProfileCompletionService;
 use App\Services\NajmHoda\Runtime\NajmHodaDomainEventPolicyLinkService;
 use App\Services\NajmHoda\Runtime\RuntimeEventBus;
 use Carbon\Carbon;
@@ -43,7 +44,7 @@ class LoginController extends Controller
             return route('register.step2');
         }
 
-        if (!Address::where('user_id', auth()->user()->id)->exists()) {
+        if (! app(ProfileCompletionService::class)->hasRequiredResidence(auth()->user())) {
             return route('register.step3');
         }
 

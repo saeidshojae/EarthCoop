@@ -41,9 +41,14 @@ class InvitationLifecycleService
             && $user->national_id
             && $user->phone;
 
+        $hasResidence = (bool) config('location-governance.runtime_enabled')
+            && (bool) config('location-governance.registration_enabled')
+                ? app(ProfileCompletionService::class)->hasRequiredResidence($user)
+                : Address::where('user_id', $user->id)->exists();
+
         return (bool) $identityComplete
             && UserExperience::where('user_id', $user->id)->exists()
-            && Address::where('user_id', $user->id)->exists();
+            && $hasResidence;
     }
 
     /**

@@ -4,6 +4,7 @@ namespace Tests\Feature\NajmHoda;
 
 use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\Location;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\LocationGovernance\LocationProposalService;
 use App\Services\NajmHoda\LocationGovernanceReviewService;
@@ -28,6 +29,25 @@ class LocationGovernanceReviewServiceTest extends TestCase
         $this->assertArrayHasKey('duplicate_candidate_id', $review);
         $this->assertSame(LocationProposalStatus::Pending, $proposal->fresh()->status);
         $this->assertNull($proposal->fresh()->reviewed_by_user_id);
+    }
+
+    public function test_hoda_review_uses_persisted_admin_proposal_threshold(): void
+    {
+        config(['location-governance.location_proposal_verification_threshold' => 10]);
+        Setting::singleton()->update(['location_proposal_verification_threshold' => 2]);
+
+        [$proposal] = $this->makeProposal('مجتمع آستانه پویا');
+        $service = app(LocationProposalService::class);
+        $service->support($proposal, User::factory()->create(), ['source' => 'test']);
+        $service->support($proposal, User::factory()->create(), ['source' => 'test']);
+
+        $this->assertSame(LocationProposalStatus::ReadyForReview, $proposal->fresh()->status);
+
+        $review = app(LocationGovernanceReviewService::class)->review($proposal->fresh());
+
+        $this->assertSame(2, $review['distinct_verifiers']);
+        $this->assertSame('approve', $review['recommendation']);
+        $this->assertTrue($review['human_approval_required']);
     }
 
     public function test_hoda_flags_likely_duplicate_as_merge_recommendation_without_merging_it(): void

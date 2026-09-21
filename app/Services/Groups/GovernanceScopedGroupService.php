@@ -22,7 +22,7 @@ class GovernanceScopedGroupService
         }
 
         $area = GovernanceArea::query()->find($intent->governanceAreaId);
-        if ($area === null || $area->status !== 'active') {
+        if ($area === null || $area->area_kind !== 'official' || $area->status !== 'active') {
             return null;
         }
 

@@ -66,6 +66,33 @@ class GroupRoleManagementTest extends TestCase
         $this->assertDatabaseHas('group_user', ['group_id' => $group->id, 'user_id' => $first->id, 'role' => 1]);
     }
 
+    public function test_system_admin_can_apply_expiring_temporary_active_role_five(): void
+    {
+        $admin = $this->makeUser(true);
+        $member = $this->makeUser();
+        $group = $this->makeGroup();
+        GroupUser::create(['group_id' => $group->id, 'user_id' => $member->id, 'role' => 0, 'status' => 1]);
+
+        $this->actingAs($admin)->put(route('admin.groups.updateRole', [$group, $member]), [
+            'role' => 5,
+            'duration_unit' => 'day',
+            'duration_value' => 1,
+        ])->assertRedirect(route('admin.groups.manage', $group));
+
+        $this->assertDatabaseHas('group_user', [
+            'group_id' => $group->id,
+            'user_id' => $member->id,
+            'role' => 5,
+            'role_override_active' => true,
+            'role_override_original_role' => 0,
+        ]);
+
+        $this->actingAs($admin)->put(route('admin.groups.updateRole', [$group, $member]), [
+            'role' => 5,
+            'duration_unit' => 'unlimited',
+        ])->assertStatus(422);
+    }
+
     public function test_expired_override_is_lazily_restored_without_a_scheduler(): void
     {
         $admin = $this->makeUser(true);
@@ -74,7 +101,7 @@ class GroupRoleManagementTest extends TestCase
         $membership = GroupUser::create([
             'group_id' => $group->id,
             'user_id' => $member->id,
-            'role' => 1,
+            'role' => 5,
             'status' => 1,
             'role_override_active' => true,
             'role_override_original_role' => 0,

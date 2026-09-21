@@ -21,7 +21,7 @@ class SendElectionStartedNotifications
         // گیرندگان: اعضای فعال گروه (status=1) که می‌توانند رای دهند
         $recipientIds = GroupUser::where('group_id', $group->id)
             ->where('status', 1)
-            ->where('role', '>=', 1) // فقط کاربران فعال (نه ناظر)
+            ->whereIn('role', [1, 2, 3]) // عضو فعال، بازرس و مدیر منتخب همگی حق رأی دارند
             ->pluck('user_id')
             ->all();
 

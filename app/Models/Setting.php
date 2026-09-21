@@ -37,6 +37,8 @@ class Setting extends Model
         'najm_bahar_membership_fee_burn_amount',
         'reputation_to_gol_ratio',
         'reputation_conversion_enabled',
+        'location_proposal_verification_threshold',
+        'location_structure_claim_verification_threshold',
     ];
 
     public static function singleton(): self

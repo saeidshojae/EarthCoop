@@ -205,8 +205,7 @@ class SystemicElectionChatController extends Controller
             ->join('group_user', 'group_user.user_id', '=', 'users.id')
             ->where('group_user.group_id', $group->id)
             ->where('group_user.status', 1)
-            ->where('group_user.role', '>=', 1)
-            ->where('group_user.role', '!=', 4)
+            ->whereIn('group_user.role', [1, 2, 3])
             ->where('users.is_system', false)
             ->select('users.id', 'users.first_name', 'users.last_name', 'users.avatar', 'group_user.role as membership_role')
             ->orderBy('users.first_name')->orderBy('users.last_name')->orderBy('users.id')->get();

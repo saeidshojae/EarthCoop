@@ -11,6 +11,7 @@ use App\Modules\NajmBahar\Services\AccountService;
 use App\Modules\NajmBahar\Services\MonetaryService;
 use App\Services\InvitationLifecycleService;
 use App\Services\ProfileCompletionService;
+use Tests\Support\LocationGovernance\LocationFixture;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -18,6 +19,50 @@ use Tests\TestCase;
 class InvitationLifecycleServiceTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_canonical_primary_residence_makes_completed_member_eligible_without_legacy_address_shadow(): void
+    {
+        config()->set('location-governance.runtime_enabled', true);
+        config()->set('location-governance.registration_enabled', true);
+
+        $user = User::factory()->create([
+            'gender' => 'male',
+            'national_id' => 'T' . fake()->unique()->numerify('#########'),
+            'phone' => fake()->unique()->numerify('09#########'),
+        ]);
+
+        $experienceFieldId = DB::table('experience_fields')->insertGetId([
+            'name' => 'Canonical Experience ' . $user->id,
+            'status' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('user_experience_field')->insert([
+            'user_id' => $user->id,
+            'experience_field_id' => $experienceFieldId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $schema = LocationFixture::iranSchema();
+        $residence = LocationFixture::createPath(
+            $schema,
+            ['country', 'province', 'county', 'section', 'city']
+        )->last();
+
+        DB::table('user_location_relationships')->insert([
+            'user_id' => $user->id,
+            'location_id' => $residence->id,
+            'relationship_type' => 'primary_residence',
+            'started_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->assertDatabaseMissing('addresses', ['user_id' => $user->id]);
+        $this->assertTrue(app(ProfileCompletionService::class)->hasRequiredResidence($user));
+        $this->assertTrue(app(InvitationLifecycleService::class)->isEligibleMember($user));
+    }
 
     public function test_expired_unused_or_abandoned_claim_releases_slot_while_live_code_reserves_it(): void
     {

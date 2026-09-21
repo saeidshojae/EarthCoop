@@ -24,3 +24,10 @@ test('visible residence path contains only actual location picker selections', (
     assert.match(source, /querySelectorAll\('\[data-location-select\]'\)/);
     assert.doesNotMatch(source, /querySelectorAll\('select'\)/);
 });
+
+
+test('pending residence path uses one compact review indicator instead of repeating review text per proposal level', () => {
+    assert.match(source, /pendingCount/);
+    assert.match(source, /در انتظار بررسی/);
+    assert.doesNotMatch(source, /\`\$\{item\.label\} \(در انتظار بررسی\)\`/);
+});

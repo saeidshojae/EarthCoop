@@ -8,6 +8,7 @@ use App\Models\Election;
 use App\Models\ElectionBallotEvent;
 use App\Models\ElectionEligibilitySnapshot;
 use App\Models\Group;
+use App\Models\GovernanceArea;
 use App\Models\GroupSetting;
 use App\Models\User;
 use App\Models\Vote;
@@ -19,6 +20,31 @@ use Tests\TestCase;
 class ElectionBallotServiceTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_ballot_rejects_canonical_election_when_governance_area_is_not_active_official(): void
+    {
+        config(['location-governance.elections_enabled' => true]);
+
+        [$election, $voter, $manager] = $this->fixture();
+        $area = GovernanceArea::factory()->create(['area_kind' => 'community', 'status' => 'active']);
+
+        $election->group->forceFill([
+            'governance_area_id' => $area->id,
+            'dimension_key' => 'public',
+            'dimension_value_key' => 'public',
+        ])->save();
+        $election->forceFill(['governance_area_id' => $area->id])->save();
+
+        try {
+            app(ElectionBallotService::class)->submit($election->fresh(), $voter->id, [$manager->id], [], 'req-non-official');
+            $this->fail('Expected canonical governance boundary validation failure.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('active official governance area', $e->getMessage());
+        }
+
+        $this->assertSame(0, Vote::where('election_id', $election->id)->count());
+        $this->assertSame(0, ElectionBallotEvent::where('election_id', $election->id)->count());
+    }
 
     public function test_ballot_projection_changes_without_losing_audit_history(): void
     {

@@ -64,6 +64,25 @@ class GovernanceScopedGroupTest extends TestCase
         $this->assertSame(2, Group::query()->where('dimension_key', 'public')->where('dimension_value_key', 'public')->count());
     }
 
+    public function test_non_official_or_inactive_governance_area_cannot_materialize_system_group(): void
+    {
+        $service = app(\App\Services\Groups\GovernanceScopedGroupService::class);
+        $community = GovernanceArea::factory()->create(['area_kind' => 'community', 'status' => 'active']);
+        $pendingOfficial = GovernanceArea::factory()->create(['area_kind' => 'official', 'status' => 'pending']);
+
+        $communityGroup = $service->materialize(
+            new MembershipIntent('public', 'public', $community->id, 'automatic', null, 'v1', null)
+        );
+        $pendingGroup = $service->materialize(
+            new MembershipIntent('public', 'public', $pendingOfficial->id, 'automatic', null, 'v1', null)
+        );
+
+        $this->assertNull($communityGroup);
+        $this->assertNull($pendingGroup);
+        $this->assertFalse(Group::query()->where('governance_area_id', $community->id)->exists());
+        $this->assertFalse(Group::query()->where('governance_area_id', $pendingOfficial->id)->exists());
+    }
+
     public function test_suppressed_intent_is_not_materialized(): void
     {
         $area = GovernanceArea::factory()->create(['area_kind' => 'official', 'status' => 'active']);

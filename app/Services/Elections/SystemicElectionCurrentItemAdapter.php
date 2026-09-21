@@ -34,7 +34,10 @@ class SystemicElectionCurrentItemAdapter
                 ->whereHas('group', fn ($query) => $query
                     ->whereNotNull('governance_area_id')
                     ->whereNotNull('dimension_key')
-                    ->whereNotNull('dimension_value_key'));
+                    ->whereNotNull('dimension_value_key')
+                    ->whereHas('governanceArea', fn ($area) => $area
+                        ->where('area_kind', 'official')
+                        ->where('status', 'active')));
         }
 
         $elections = $electionsQuery
@@ -138,6 +141,8 @@ class SystemicElectionCurrentItemAdapter
         return match ($reason) {
             'observer_role' => 'به‌عنوان ناظر حق رأی ندارید',
             'guest_role' => 'به‌عنوان مهمان حق رأی ندارید',
+            'temporary_active_role' => 'فعال‌سازی موقت، حق رأی در انتخابات سیستمی ایجاد نمی‌کند',
+            'non_elector_role' => 'این نقش مسئولیتی در انتخابات سیستمی حق رأی ایجاد نمی‌کند',
             'inactive_membership' => 'عضویت فعال برای رأی دادن ندارید',
             'system_user' => 'حساب سیستمی حق رأی ندارد',
             default => 'در این انتخابات حق رأی ندارید',

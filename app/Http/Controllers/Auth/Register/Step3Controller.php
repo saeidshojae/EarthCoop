@@ -10,6 +10,7 @@ use App\Models\Continent;
 use App\Models\Country;
 use App\Models\Location;
 use App\Models\LocationProposal;
+use App\Models\LocationStructureClaim;
 use App\Models\Neighborhood;
 use App\Models\Province;
 use App\Models\Region;
@@ -66,10 +67,16 @@ class Step3Controller extends Controller
             $validated = $request->validate([
                 'location_id' => ['nullable', 'integer', 'exists:locations,id'],
                 'location_proposal_id' => ['nullable', 'integer', 'exists:location_proposals,id'],
+                'location_structure_claim_ids' => ['nullable', 'array'],
+                'location_structure_claim_ids.*' => ['integer', 'distinct', 'exists:location_structure_claims,id'],
             ]);
 
             $locationId = $validated['location_id'] ?? null;
             $proposalId = $validated['location_proposal_id'] ?? null;
+            $structuralClaims = LocationStructureClaim::query()
+                ->whereIn('id', $validated['location_structure_claim_ids'] ?? [])
+                ->get()
+                ->all();
 
             if (($locationId === null) === ($proposalId === null)) {
                 throw ValidationException::withMessages([
@@ -88,7 +95,7 @@ class Step3Controller extends Controller
 
                 $residenceService->setInitialPrimaryResidence($user, $location, [
                     'source' => 'registration_step3',
-                ]);
+                ], $structuralClaims);
 
                 app(ProfileCompletionService::class)->maybeAward($user->fresh());
 
@@ -101,6 +108,7 @@ class Step3Controller extends Controller
                 $locationTreeResolver,
                 $residenceService,
                 $proposalPolicy,
+                $structuralClaims,
             ): void {
                 $proposal = LocationProposal::query()
                     ->with(['parentLocation', 'parentProposal', 'type'])
@@ -122,14 +130,13 @@ class Step3Controller extends Controller
                 $type = $proposal->type;
                 $parentProposal = $proposal->parentProposal;
                 $proposalPathAllowed = $proposal->parent_location_id !== null
-                    ? ($anchor !== null && $type !== null && $proposalPolicy->allows($anchor, $type))
+                    ? ($anchor !== null && $type !== null && $proposalPolicy->allowsForResidence($anchor, $type, $structuralClaims))
                     : ($parentProposal !== null && $type !== null && $proposalPolicy->allowsProposalParent($parentProposal, $type));
 
                 if (
                     $anchor === null
                     || $type === null
                     || $anchor->status !== 'active'
-                    || ! $locationTreeResolver->residenceEndpointAllowed($anchor)
                     || ! $proposalPathAllowed
                 ) {
                     throw ValidationException::withMessages([
@@ -140,7 +147,7 @@ class Step3Controller extends Controller
                 $residenceService->setInitialPrimaryResidence($user, $anchor, [
                     'source' => 'registration_step3_pending_anchor',
                     'location_proposal_id' => $proposal->id,
-                ]);
+                ], $structuralClaims);
 
                 $residenceService->setPendingResidenceIntent($user, $proposal, [
                     'source' => 'registration_step3',
