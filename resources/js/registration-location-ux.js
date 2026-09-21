@@ -22,6 +22,8 @@ const installResidenceStyles = () => {
         .location-proposal-actions .btn-primary { min-height: 42px; font-weight: 700; }
         .location-proposal-actions .btn-link { min-height: 42px; text-decoration: none; color: #64748b; }
         [data-location-pending-badge] { font-weight: 600; }
+        [data-location-type-choice] { padding: .65rem .75rem; border: 1px solid rgba(100,116,139,.18); border-radius: .75rem; background: rgba(248,250,252,.72); }
+        [data-location-type-choice] .btn { min-height: 42px; font-weight: 700; }
         @media (max-width: 640px) {
             .location-geolocation-actions { display: grid !important; grid-template-columns: minmax(0, 1fr); }
             .location-geolocation-actions .btn { width: 100%; }
@@ -31,6 +33,8 @@ const installResidenceStyles = () => {
             .location-proposal-actions .btn-primary { width: 100%; }
             .location-residence-surface [data-location-levels] { min-width: 0; }
             .location-residence-surface [data-location-levels] .form-select { width: 100%; max-width: 100%; }
+            [data-location-type-choice] .d-flex { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); width: 100%; }
+            [data-location-type-choice] .btn { width: 100%; }
         }
     `;
     document.head.appendChild(style);
