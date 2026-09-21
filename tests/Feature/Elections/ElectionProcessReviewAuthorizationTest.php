@@ -8,6 +8,8 @@ use App\Models\Group;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Elections\ElectionProcessReviewService;
+use RuntimeException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -43,6 +45,35 @@ class ElectionProcessReviewAuthorizationTest extends TestCase
 
         $this->assertSame('pending', $review->refresh()->human_status);
         $this->assertSame('none', $review->interim_state);
+    }
+
+
+    public function test_service_rejects_direct_stay_and_decision_without_review_permission(): void
+    {
+        $review = $this->pendingReview();
+        $unauthorized = User::factory()->create(['is_system' => false]);
+        $service = app(ElectionProcessReviewService::class);
+
+        try {
+            $service->setInterimStay($review, $unauthorized, 'direct service bypass attempt');
+            $this->fail('Direct service stay must require election review authority.');
+        } catch (RuntimeException $exception) {
+            $this->assertStringContainsString('authority', $exception->getMessage());
+        }
+
+        try {
+            $service->decide($review->refresh(), $unauthorized, 'dismissed', 'direct service bypass attempt');
+            $this->fail('Direct service decision must require election review authority.');
+        } catch (RuntimeException $exception) {
+            $this->assertStringContainsString('authority', $exception->getMessage());
+        }
+
+        $this->assertSame('pending', $review->refresh()->human_status);
+        $this->assertSame('none', $review->interim_state);
+        $this->assertDatabaseMissing('election_review_audit_accesses', [
+            'review_id' => $review->id,
+            'actor_user_id' => $unauthorized->id,
+        ]);
     }
 
     public function test_dedicated_review_authority_permission_can_use_routes_and_actions_are_audited(): void
