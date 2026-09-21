@@ -13,6 +13,7 @@ use App\Models\LocationTypeRelation;
 use App\Services\LocationGovernance\LocationProposalPolicy;
 use App\Services\LocationGovernance\LocationSchemaResolver;
 use App\Services\LocationGovernance\LocationStructureClaimPolicy;
+use App\Services\LocationGovernance\LocationStructureClaimService;
 use App\Support\LocationDisplayName;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
