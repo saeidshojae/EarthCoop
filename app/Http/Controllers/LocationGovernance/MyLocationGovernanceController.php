@@ -45,6 +45,7 @@ final class MyLocationGovernanceController extends Controller
             ->first();
 
         $governanceAreas = $residenceService->officialGovernanceAreasFor($user);
+        $governanceAreas->loadMissing('locations');
         $governanceRankById = $governanceAreas
             ->values()
             ->mapWithKeys(fn ($area, $index): array => [(int) $area->id => $index]);
