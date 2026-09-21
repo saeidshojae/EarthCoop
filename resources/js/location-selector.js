@@ -63,12 +63,21 @@ const addProposalPanel = (host, wrapper, payload, parentIdentity, select) => {
     });
     actions.append(submit, cancel); panel.append(heading, type, name, actions, feedback); shell.append(toggle, panel); wrapper.appendChild(shell);
 };
-const appendPendingLevel = (host, payload, depth, parentIdentity) => {
+const appendPendingLevel = (host, payload, depth, parentIdentity, selectedTypeKey = null) => {
     const levels = host.querySelector('[data-location-levels]'); if (!levels) return;
-    const proposals = (Array.isArray(payload?.proposals) ? payload.proposals : []).filter(openProposal); const types = allowedTypes(payload);
+    const allProposals = (Array.isArray(payload?.proposals) ? payload.proposals : []).filter(openProposal); const allTypes = allowedTypes(payload);
+    const keys = [...new Set([...allProposals.map((item) => item.type_key), ...allTypes.map((item) => item.key)].filter(Boolean))];
+    if (!selectedTypeKey && keys.length > 1) {
+        const choice = document.createElement('div'); choice.dataset.locationDepth = String(depth); choice.dataset.locationTypeChoice = ''; choice.className = 'vstack gap-2';
+        const label = document.createElement('div'); label.className = 'form-label small text-secondary mb-0'; label.textContent = 'نوع ادامه مسیر';
+        const actions = document.createElement('div'); actions.className = 'd-flex flex-wrap gap-2';
+        keys.forEach((key) => { const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-outline-secondary btn-sm'; button.dataset.locationTypeChoiceKey = key; button.textContent = localizeLocationTypeLabel({ key, label: key }); button.addEventListener('click', () => { choice.remove(); appendPendingLevel(host, payload, depth, parentIdentity, key); }); actions.appendChild(button); });
+        choice.append(label, actions); levels.appendChild(choice); status(host, 'نوع ادامه مسیر را انتخاب کنید.'); return;
+    }
+    const proposals = selectedTypeKey ? allProposals.filter((item) => item.type_key === selectedTypeKey) : allProposals; const types = selectedTypeKey ? allTypes.filter((item) => item.key === selectedTypeKey) : allTypes;
     if (!proposals.length && !types.length) { status(host, 'در این مسیر پیشنهادی، سطح دقیق‌تری برای ثبت وجود ندارد.'); return; }
     const wrapper = document.createElement('div'); wrapper.dataset.locationDepth = String(depth); wrapper.className = 'vstack gap-2';
-    const label = document.createElement('label'); label.className = 'form-label small text-secondary mb-0'; const keys = [...new Set([...proposals.map((item) => item.type_key), ...types.map((item) => item.key)].filter(Boolean))]; label.textContent = keys.map((key) => localizeLocationTypeLabel({ key, label: key })).join(' / ');
+    const label = document.createElement('label'); label.className = 'form-label small text-secondary mb-0'; const visibleKeys = [...new Set([...proposals.map((item) => item.type_key), ...types.map((item) => item.key)].filter(Boolean))]; label.textContent = visibleKeys.map((key) => localizeLocationTypeLabel({ key, label: key })).join(' / ');
     const select = document.createElement('select'); select.className = 'form-select'; select.dataset.locationSelect = String(depth); const empty = document.createElement('option'); empty.value = ''; empty.textContent = 'یک گزینه را انتخاب کنید'; select.appendChild(empty);
     proposals.forEach((item) => { const option = document.createElement('option'); option.value = `proposal:${item.id}`; option.textContent = `${item.label} — در انتظار تأیید`; option.dataset.locationPendingBadge = ''; select.appendChild(option); }); wrapper.append(label, select); addProposalPanel(host, wrapper, payload, parentIdentity, select); levels.appendChild(wrapper);
 };
