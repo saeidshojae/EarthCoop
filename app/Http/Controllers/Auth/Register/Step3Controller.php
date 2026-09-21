@@ -87,7 +87,7 @@ class Step3Controller extends Controller
             if ($locationId !== null) {
                 $location = Location::query()->findOrFail($locationId);
 
-                if ($location->status !== 'active' || ! $locationTreeResolver->residenceEndpointAllowed($location)) {
+                if ($location->status !== 'active' || ! $locationTreeResolver->registrationEndpointAllowed($location)) {
                     throw ValidationException::withMessages([
                         'location_id' => 'لطفاً یک محل سکونت معتبر و قابل انتخاب را مشخص کنید.',
                     ]);
@@ -138,6 +138,7 @@ class Step3Controller extends Controller
                     || $type === null
                     || $anchor->status !== 'active'
                     || ! $proposalPathAllowed
+                    || in_array($type->key, ['street', 'alley', 'complex', 'building'], true)
                 ) {
                     throw ValidationException::withMessages([
                         'location_proposal_id' => 'پیشنهاد مکان انتخاب‌شده با مسیر معتبر محل سکونت سازگار نیست.',
