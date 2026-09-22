@@ -216,5 +216,8 @@ class HierarchicalCanonicalMembershipTest extends TestCase
         $this->assertNotEmpty($cityMemberships);
         $this->assertSame(0, $cityMemberships->where('role', 1)->count());
         $this->assertSame($cityMemberships->count(), $cityMemberships->where('role', 0)->count());
+        $this->assertTrue($cityMemberships->every(
+            fn ($membership) => str_contains((string) $membership->group?->name, 'شهر ')
+        ));
     }
 }
