@@ -80,12 +80,14 @@
         'section' => 'بخش',
         'city' => 'شهر',
         'rural_district' => 'دهستان',
-        'urban_region' => 'منطقه شهری',
+        'urban_region' => 'منطقه',
         'village' => 'روستا',
         'local' => 'حوزه محلی',
         'neighborhood' => 'محله',
     ];
+    $pendingBaseProposal = collect($pendingGovernanceProposals ?? [])->first();
     $baseGovernanceArea = collect($governanceAreas)->first();
+    $baseDisplayName = $pendingBaseProposal?->canonical_name ?? $displayAreaName ?? null;
     $membershipTotal = collect($membershipsByDimension)->sum(function ($bucket) {
         $bucket = collect($bucket);
         return collect($bucket->get('active', []))->count() + collect($bucket->get('observer', []))->count();
@@ -117,6 +119,9 @@
             ?? $location?->canonical_name
             ?? '—';
     };
+    $baseDisplayName = $pendingBaseProposal?->canonical_name
+        ?? ($baseGovernanceArea ? $displayAreaName($baseGovernanceArea) : '—');
+    $baseDisplayType = $pendingBaseProposal?->type?->key ?? $baseGovernanceArea?->governance_type;
 @endphp
 
 <div class="container py-3 py-md-5 location-governance-dashboard" dir="rtl" data-my-location-governance>
@@ -138,8 +143,9 @@
                     <div class="location-hero-name mb-2">{{ $currentResidence?->location ? $displayLocationName($currentResidence->location) : 'محل سکونت ثبت نشده است.' }}</div>
                     <div class="d-flex flex-wrap align-items-center gap-2 small">
                         <span class="text-muted">حوزه پایه حکمرانی:</span>
-                        <strong>{{ $displayAreaName($baseGovernanceArea) }}</strong>
-                        @if($baseGovernanceArea)<span class="badge text-bg-light border">{{ $governanceTypeLabels[$baseGovernanceArea->governance_type] ?? $baseGovernanceArea->governance_type }}</span>@endif
+                        <strong>{{ $baseDisplayName }}</strong>
+                        @if($baseDisplayType)<span class="badge text-bg-light border">{{ $governanceTypeLabels[$baseDisplayType] ?? $baseDisplayType }}</span>@endif
+                        @if($pendingBaseProposal)<span class="badge bg-warning text-dark">در انتظار تأیید</span>@endif
                     </div>
                     @if($residencePath->isNotEmpty())
                         <details class="location-path-disclosure">
@@ -159,7 +165,7 @@
             @if($pendingResidenceIntent?->locationProposal)
                 <div class="alert alert-warning mt-3 mb-0" data-pending-residence-intent>
                     <div class="d-flex flex-wrap align-items-center gap-2"><strong>جزئیات دقیق در انتظار تأیید</strong><span class="badge bg-warning text-dark">در انتظار تأیید</span></div>
-                    <div class="small mt-1">{{ $pendingResidenceIntent->locationProposal->canonical_name }} — تا زمان بررسی، حکمرانی از محل تأییدشده محاسبه می‌شود.</div>
+                    <div class="small mt-1">{{ $pendingResidenceIntent->locationProposal->canonical_name }} — عضویت‌های این سطح تا زمان بررسی مکان، در انتظار تأیید می‌مانند.</div>
                 </div>
             @endif
         </div>
@@ -178,14 +184,23 @@
                         <div><h2 id="governance-heading" class="h5 mb-1">حکمرانی رسمی من</h2><p class="text-muted small mb-0">حوزه پایه شما مبنای حضور رسمی است و سطوح بالاتر به‌صورت ناظر در دسترس‌اند.</p></div>
                     </div>
                     <div class="governance-overview mb-3">
-                        <div class="governance-stat"><strong>{{ collect($governanceAreas)->count() }}</strong><span class="small text-muted">سطح حکمرانی</span></div>
+                        <div class="governance-stat"><strong>{{ $governanceLevelCount ?? collect($governanceAreas)->count() }}</strong><span class="small text-muted">سطح حکمرانی</span></div>
                         <div class="governance-stat"><strong>{{ $activeMembershipTotal }}</strong><span class="small text-muted">عضویت فعال</span></div>
                         <div class="governance-stat"><strong>{{ $observerMembershipTotal }}</strong><span class="small text-muted">عضویت ناظر</span></div>
                     </div>
                     <details class="governance-disclosure">
-                        <summary><span>مشاهده زنجیره {{ collect($governanceAreas)->count() }} سطحی</span><i class="fas fa-chevron-down text-muted" aria-hidden="true"></i></summary>
+                        <summary><span>مشاهده زنجیره {{ $governanceLevelCount ?? collect($governanceAreas)->count() }} سطحی</span><i class="fas fa-chevron-down text-muted" aria-hidden="true"></i></summary>
                         <div class="governance-disclosure-body">
                             <div class="governance-chain" data-governance-chain>
+                                @foreach(($pendingGovernanceProposals ?? collect()) as $proposal)
+                                    <div class="governance-chain-item" data-pending-governance-proposal="{{ $proposal->id }}">
+                                        <span class="governance-chain-dot" aria-hidden="true"></span>
+                                        <div class="min-w-0">
+                                            <div class="fw-semibold">{{ $proposal->canonical_name }} <span class="badge bg-warning text-dark me-1">در انتظار تأیید</span></div>
+                                            <div class="small text-muted">{{ $governanceTypeLabels[$proposal->type?->key] ?? $proposal->type?->key }}</div>
+                                        </div>
+                                    </div>
+                                @endforeach
                                 @forelse($governanceAreas as $area)
                                     <div class="governance-chain-item" data-governance-area="{{ $area->id }}"><span class="governance-chain-dot" aria-hidden="true"></span><div class="min-w-0"><div class="fw-semibold">{{ $displayAreaName($area) }}</div><div class="small text-muted">{{ $governanceTypeLabels[$area->governance_type] ?? $area->governance_type }}</div></div></div>
                                 @empty
