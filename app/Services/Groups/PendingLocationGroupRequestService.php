@@ -258,7 +258,43 @@ final class PendingLocationGroupRequestService
     {
         LocationScopedGroupRequest::query()->where('requester_user_id', $user->id)
             ->where('status', 'ready_to_materialize')->get()
-            ->each(fn (LocationScopedGroupRequest $request) => $this->tryMaterializeOfficialRequest($request));
+            ->each(function (LocationScopedGroupRequest $request): void {
+                $this->healApprovedOfficialTopologyForRequest($request);
+                $this->tryMaterializeOfficialRequest($request);
+            });
+    }
+
+    private function healApprovedOfficialTopologyForRequest(LocationScopedGroupRequest $request): void
+    {
+        if ($request->scope_kind !== self::SCOPE || $request->location_id === null) {
+            return;
+        }
+
+        $location = Location::query()->find($request->location_id);
+        if ($location === null || $location->governanceAreas()->official()->active()->exists()) {
+            return;
+        }
+
+        $resolvedProposalId = (int) (($request->metadata ?? [])['resolved_from_proposal_id'] ?? 0);
+        if ($resolvedProposalId <= 0) {
+            return;
+        }
+
+        $proposal = LocationProposal::query()
+            ->with('type')
+            ->whereKey($resolvedProposalId)
+            ->where('resolved_location_id', $location->id)
+            ->whereIn('status', [
+                LocationProposalStatus::Approved->value,
+                LocationProposalStatus::Merged->value,
+            ])
+            ->first();
+
+        if ($proposal === null) {
+            return;
+        }
+
+        $this->ensureApprovedOfficialTopology($proposal, $location);
     }
 
     private function tryMaterializeOfficialRequest(LocationScopedGroupRequest $request): void
