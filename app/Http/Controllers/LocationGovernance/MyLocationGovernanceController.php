@@ -58,8 +58,7 @@ final class MyLocationGovernanceController extends Controller
         $governanceAreas = $residenceService->officialGovernanceAreasFor($user);
         $governanceAreas->each->loadMissing('locations');
         $governanceRankById = $governanceAreas
-            ->values()
-            ->mapWithKeys(fn ($area, $index): array => [(int) $area->id => $index]);
+            ->mapWithKeys(fn ($area): array => [(int) $area->id => $this->governanceDepth((string) $area->governance_type]);
 
         $canonicalMemberships = $user->groups()
             ->whereNotNull('governance_area_id')
@@ -83,7 +82,7 @@ final class MyLocationGovernanceController extends Controller
             ->unique('location_proposal_id')
             ->map(fn ($request) => $request->locationProposal()->with('type')->first())
             ->filter()
-            ->sortByDesc(fn ($proposal): int => $this->proposalDepth((string) $proposal->type?->key))
+            ->sortByDesc(fn ($proposal): int => $this->governanceDepth((string) $proposal->type?->key))
             ->values();
 
         $governanceLevelCount = $governanceAreas->count() + $pendingGovernanceProposals->count();
@@ -152,12 +151,18 @@ final class MyLocationGovernanceController extends Controller
         ));
     }
 
-    private function proposalDepth(string $type): int
+    private function governanceDepth(string $type): int
     {
         return match ($type) {
-            'neighborhood' => 9,
-            'urban_region', 'village' => 8,
+            'global' => 1,
+            'continent' => 2,
+            'country' => 3,
+            'province' => 4,
+            'county' => 5,
+            'section' => 6,
             'city', 'rural_district' => 7,
+            'urban_region', 'village' => 8,
+            'local', 'neighborhood' => 9,
             default => 0,
         };
     }
