@@ -14,6 +14,12 @@ class RegistrationPrimaryResidenceTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_registration_steps_require_an_authenticated_user(): void
+    {
+        $this->get('/register/step3')->assertRedirect(route('login'));
+        $this->post('/register/step3', [])->assertRedirect(route('login'));
+    }
+
     public function test_canonical_registration_accepts_urban_sari_as_a_residence_endpoint(): void
     {
         config([

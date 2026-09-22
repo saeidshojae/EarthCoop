@@ -136,7 +136,7 @@ Route::get('/register', [StartController::class, 'showRegisterForm'])->name('reg
 Route::post('/register', [StartController::class, 'processRegister'])->name('register.process');
 
 // مراحل ثبت‌نام که نیاز به احراز هویت و تایید ایمیل دارند
-Route::middleware(EnsureEmailIsVerified::class)->group(function () {
+Route::middleware([Authenticate::class, EnsureEmailIsVerified::class])->group(function () {
     // مرحله ۱: اطلاعات هویتی
     Route::get('/register/step1', [Step1Controller::class, 'show'])->name('register.step1');
     Route::post('/register/step1/validate', [Step1Controller::class, 'validateData'])->name('register.step1.validate');
