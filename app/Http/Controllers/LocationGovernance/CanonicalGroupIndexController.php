@@ -54,9 +54,17 @@ final class CanonicalGroupIndexController extends Controller
             );
         });
 
+        $canonicalGroups->each(fn (Group $group) => $group->setAttribute(
+            'presentation_rank',
+            (int) ($group->governanceArea?->rank ?? -1),
+        ));
+
         $pendingService = app(PendingLocationGroupRequestService::class);
         $pendingGroups = $pendingService->presentationGroups($pendingService->openForUser($user));
-        $allGroups = $canonicalGroups->concat($pendingGroups)->values();
+        $allGroups = $canonicalGroups
+            ->concat($pendingGroups)
+            ->sortByDesc(fn (Group $group): int => (int) ($group->presentation_rank ?? -1))
+            ->values();
 
         return view('groups.index', [
             'generalGroups' => $this->dimension($allGroups, 'public'),
