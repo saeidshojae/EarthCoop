@@ -32,6 +32,22 @@ class MembershipEngine
         ])->keyBy(fn ($resolver) => $resolver->dimensionKey())->all();
     }
 
+    /** @return \Illuminate\Support\Collection<string, \Illuminate\Support\Collection<int, string>> */
+    public function dimensionValuesFor(User $user): \Illuminate\Support\Collection
+    {
+        $enabled = MembershipDimension::query()
+            ->where('enabled', true)
+            ->whereIn('key', array_keys($this->resolvers))
+            ->pluck('key')
+            ->all();
+
+        return collect($this->resolvers)
+            ->filter(fn ($resolver, string $key): bool => in_array($key, $enabled, true))
+            ->map(fn ($resolver) => $resolver->valuesFor($user)
+                ->map(fn ($value) => (string) $value)
+                ->unique()->sort()->values());
+    }
+
     public function resolve(User $user, bool $materialize = false): MembershipResolution
     {
         $residence = $user->locationRelationships()
@@ -58,17 +74,11 @@ class MembershipEngine
             ->get()
             ->keyBy('key');
 
-        foreach ($this->resolvers as $dimensionKey => $resolver) {
+        foreach ($this->dimensionValuesFor($user) as $dimensionKey => $values) {
             $dimension = $dimensions->get($dimensionKey);
             if ($dimension === null) {
                 continue;
             }
-
-            $values = $resolver->valuesFor($user)
-                ->map(fn ($value) => (string) $value)
-                ->unique()
-                ->sort()
-                ->values();
 
             foreach ($officialAreas as $area) {
                 $policy = $this->policyFor($dimension->id, $area->id);
