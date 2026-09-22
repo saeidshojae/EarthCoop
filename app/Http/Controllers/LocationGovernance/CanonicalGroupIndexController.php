@@ -54,20 +54,16 @@ final class CanonicalGroupIndexController extends Controller
             );
         });
 
-        $pendingLocationGroups = $user->locationScopedGroupRequests()
-            ->with(['locationProposal.type'])
-            ->where('scope_kind', 'official_public')
-            ->whereIn('status', ['pending_location', 'ready_to_materialize'])
-            ->orderBy('id')
-            ->get();
+        $pendingService = app(PendingLocationGroupRequestService::class);
+        $pendingGroups = $pendingService->presentationGroups($pendingService->openForUser($user));
+        $allGroups = $canonicalGroups->concat($pendingGroups)->values();
 
         return view('groups.index', [
-            'pendingLocationGroups' => $pendingLocationGroups,
-            'generalGroups' => $this->dimension($canonicalGroups, 'public'),
-            'specialityGroups' => $this->dimension($canonicalGroups, 'profession'),
-            'experienceGroups' => $this->dimension($canonicalGroups, 'specialty'),
-            'ageGroups' => $this->dimension($canonicalGroups, 'age'),
-            'genderGroups' => $this->dimension($canonicalGroups, 'gender'),
+            'generalGroups' => $this->dimension($allGroups, 'public'),
+            'specialityGroups' => $this->dimension($allGroups, 'profession'),
+            'experienceGroups' => $this->dimension($allGroups, 'specialty'),
+            'ageGroups' => $this->dimension($allGroups, 'age'),
+            'genderGroups' => $this->dimension($allGroups, 'gender'),
             // Exclusive/user-managed groups are not canonical spatial memberships.
             // Preserve their mature legacy path unchanged during Stage C.
             'managedGroups' => $user->groups()
