@@ -66,6 +66,68 @@ class PendingResidenceAncestorResolutionTest extends TestCase
         $this->assertSame($neighborhood->id, $intent->location_proposal_id);
     }
 
+    public function test_ready_shell_from_pre_deploy_approval_self_heals_missing_official_topology(): void
+    {
+        config([
+            'location-governance.runtime_enabled' => true,
+            'location-governance.groups_enabled' => true,
+        ]);
+
+        ['user' => $user, 'endpoint' => $city, 'area' => $cityArea] = MembershipFixture::canonicalUser();
+        $schema = $city->schema()->firstOrFail();
+        $regionType = $schema->types()->where('key', 'urban_region')->firstOrFail();
+        $neighborhoodType = $schema->types()->where('key', 'neighborhood')->firstOrFail();
+
+        $proposals = app(LocationProposalService::class);
+        $region = $proposals->propose($user, $city, $regionType, ['canonical_name' => '۵ ساری']);
+        $neighborhood = $proposals->proposeUnderProposal($user, $region, $neighborhoodType, ['canonical_name' => 'آزمایشی ۲']);
+        app(ResidenceService::class)->setPendingResidenceIntent($user, $neighborhood, ['source' => 'uat-regression']);
+        $pendingGroups = app(\App\Services\Groups\PendingLocationGroupRequestService::class);
+        $pendingGroups->syncForPendingResidence($user, $neighborhood);
+
+        $resolvedRegion = $proposals->approve($region, User::factory()->create(), 'تأیید منطقه');
+
+        $regionArea = $resolvedRegion->governanceAreas()->official()->active()->sole();
+        $regionArea->locations()->detach($resolvedRegion->id);
+        $regionArea->delete();
+
+        $regionRequests = $user->locationScopedGroupRequests()
+            ->where('location_id', $resolvedRegion->id)->get();
+        foreach ($regionRequests as $request) {
+            $request->forceFill([
+                'status' => 'ready_to_materialize',
+                'group_id' => null,
+                'governance_area_id' => null,
+            ])->save();
+        }
+
+        $this->assertFalse($resolvedRegion->fresh()->governanceAreas()->official()->active()->exists());
+
+        $pendingGroups->reconcileReadyForUser($user);
+
+        $healedArea = $resolvedRegion->fresh()->governanceAreas()->official()->active()->sole();
+        $this->assertSame($cityArea->id, $healedArea->parent_id);
+        $this->assertSame('urban_region', $healedArea->governance_type);
+
+        $regionRequests = $user->locationScopedGroupRequests()
+            ->where('location_id', $resolvedRegion->id)->get();
+        $this->assertNotEmpty($regionRequests);
+        $this->assertTrue($regionRequests->every(fn ($request) => $request->status === 'materialized'));
+        $this->assertTrue($regionRequests->every(fn ($request) => (int) $request->governance_area_id === (int) $healedArea->id));
+
+        $pendingChildRequests = $user->locationScopedGroupRequests()
+            ->where('location_proposal_id', $neighborhood->id)->get();
+        $this->assertNotEmpty($pendingChildRequests);
+        $this->assertTrue($pendingChildRequests->every(fn ($request) => $request->status === 'pending_location'));
+
+        $regionGroupIds = $regionRequests->pluck('group_id')->filter()->all();
+        $this->assertSame(
+            count($regionGroupIds),
+            GroupUser::query()->where('user_id', $user->id)->whereIn('group_id', $regionGroupIds)
+                ->where('status', 1)->where('role', 0)->count(),
+        );
+    }
+
     public function test_approving_deepest_pending_neighborhood_resolves_it_as_active_base_and_keeps_region_upstream(): void
     {
         config([
