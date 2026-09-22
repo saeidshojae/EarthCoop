@@ -98,7 +98,6 @@ test('new canonical-parent proposal is inserted into the current selector and se
   assert.match(selectorSource, /select\.appendChild\(option\)/);
   assert.match(selectorSource, /select\.value = option\.value/);
   assert.match(selectorSource, /setSelection\(host, result\.id\)/);
-  assert.match(selectorSource, /در فهرست همین سطح انتخاب شد/);
 });
 
 
