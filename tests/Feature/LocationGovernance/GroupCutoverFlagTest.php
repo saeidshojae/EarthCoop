@@ -30,7 +30,10 @@ class GroupCutoverFlagTest extends TestCase
         $this->assertFileExists($path);
         $source = file_get_contents($path);
 
-        foreach (['address_id', 'location_level', "'alley'", "'street'", "'neighborhood'"] as $legacyAuthority) {
+        // Geographic type labels may legitimately appear in presentation naming.
+        // The canonical materialization contract must not use legacy address columns
+        // as membership authority.
+        foreach (['address_id', 'location_level'] as $legacyAuthority) {
             $this->assertStringNotContainsString($legacyAuthority, $source);
         }
 
