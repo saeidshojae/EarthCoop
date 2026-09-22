@@ -231,6 +231,14 @@ class LocationProposalService
             $proposal->save();
             $this->transition($proposal, LocationProposalStatus::Approved, $reviewer, $reason, true);
             $this->reanchorOpenChildren($proposal, $location);
+
+            // A human-approved official location becomes part of EarthCoop's
+            // official governance topology before residence/group reconciliation.
+            // This keeps Location and GovernanceArea independent while ensuring
+            // an approved crowdsourced official scope is no longer presented as pending.
+            app(PendingLocationGroupRequestService::class)
+                ->ensureApprovedOfficialTopology($proposal->fresh()->loadMissing('type'), $location);
+
             $this->residenceService->refreshPendingResidenceAnchorsForResolvedAncestry($location);
             $this->residenceService->resolvePendingResidenceIntents($proposal->fresh(), $location);
             app(PendingLocationGroupRequestService::class)->reconcileResolvedProposal($proposal->fresh(), $location);
