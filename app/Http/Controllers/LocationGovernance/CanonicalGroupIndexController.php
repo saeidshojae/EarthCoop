@@ -56,7 +56,7 @@ final class CanonicalGroupIndexController extends Controller
 
         $canonicalGroups->each(fn (Group $group) => $group->setAttribute(
             'presentation_rank',
-            (int) ($group->governanceArea?->rank ?? -1),
+            $this->presentationDepthFor((string) ($group->governanceArea?->governance_type ?? '')),
         ));
 
         $pendingService = app(PendingLocationGroupRequestService::class);
@@ -87,6 +87,22 @@ final class CanonicalGroupIndexController extends Controller
         return $groups
             ->filter(fn (Group $group): bool => $group->dimension_key === $dimensionKey)
             ->values();
+    }
+
+    private function presentationDepthFor(string $governanceType): int
+    {
+        return match ($governanceType) {
+            'global' => 1,
+            'continent' => 2,
+            'country' => 3,
+            'province' => 4,
+            'county' => 5,
+            'section' => 6,
+            'city', 'rural_district' => 7,
+            'urban_region', 'village' => 8,
+            'local', 'neighborhood' => 9,
+            default => 0,
+        };
     }
 
     private function presentationLevelFor(string $governanceType): ?string
