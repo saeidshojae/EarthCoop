@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\LocationGovernance;
 
+use App\Models\LocationStructureClaim;
 use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\Location;
 use App\Models\LocationProposal;
