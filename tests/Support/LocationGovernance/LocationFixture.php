@@ -43,7 +43,7 @@ final class LocationFixture
             ])];
         });
 
-        $crowdsourcableTypes = collect(['street', 'alley', 'complex', 'building']);
+        $crowdsourcableTypes = collect(['village', 'urban_region', 'neighborhood', 'street', 'alley', 'complex', 'building']);
 
         foreach ($types as $key => $type) {
             $schema->types()->attach($type->id, [

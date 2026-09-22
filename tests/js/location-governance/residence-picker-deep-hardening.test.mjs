@@ -97,7 +97,7 @@ test('registration and profile residence path uses the unified Persian region la
 test('new canonical-parent proposal is inserted into the current selector and selected immediately', () => {
   assert.match(selectorSource, /select\.appendChild\(option\)/);
   assert.match(selectorSource, /select\.value = option\.value/);
-  assert.match(selectorSource, /setSelection\(host, result\.id\)/);
+  assert.match(selectorSource, /setSelection\(host, result\.id, result\.type_key \|\| option\.dataset\.typeKey \|\| ''\)/);
 });
 
 
