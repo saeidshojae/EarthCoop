@@ -49,8 +49,11 @@ class MyLocationGovernancePendingSyncTest extends TestCase
             });
 
         $response->assertSee('آزمایشی ۲')
-            ->assertSee('در انتظار تأیید')
-            ->assertSee('5 فعال')
-            ->assertSee('10 ناظر');
+            ->assertSee('در انتظار تأیید');
+
+        // The UI presents counts per dimension (1 active + 2 observers in each
+        // of five dimensions), while the aggregate contract above proves 5/10.
+        $response->assertSee('1 فعال')
+            ->assertSee('2 ناظر');
     }
 }
