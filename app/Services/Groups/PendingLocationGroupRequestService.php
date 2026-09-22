@@ -223,9 +223,9 @@ final class PendingLocationGroupRequestService
     private function presentationRankFor(string $type): int
     {
         return match ($type) {
-            'neighborhood' => 900,
-            'urban_region', 'village' => 800,
-            'city', 'rural_district' => 700,
+            'neighborhood' => 9,
+            'urban_region', 'village' => 8,
+            'city', 'rural_district' => 7,
             default => 0,
         };
     }
