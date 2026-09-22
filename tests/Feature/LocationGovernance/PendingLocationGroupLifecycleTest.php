@@ -6,6 +6,8 @@ use App\Models\GovernanceArea;
 use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\Location;
+use App\Models\MembershipDimension;
+use App\Services\Membership\PublicDimensionResolver;
 use App\Models\User;
 use App\Services\Groups\PendingLocationGroupRequestService;
 use App\Services\LocationGovernance\LocationProposalService;
@@ -17,6 +19,12 @@ use Tests\TestCase;
 class PendingLocationGroupLifecycleTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        MembershipDimension::create(['key' => 'public', 'name' => 'Public', 'resolver_class' => PublicDimensionResolver::class, 'enabled' => true]);
+    }
 
     public function test_approved_proposal_moves_pending_shell_to_ready_without_premature_group(): void
     {
