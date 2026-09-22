@@ -58,7 +58,7 @@ final class MyLocationGovernanceController extends Controller
         $governanceAreas = $residenceService->officialGovernanceAreasFor($user);
         $governanceAreas->each->loadMissing('locations');
         $governanceRankById = $governanceAreas
-            ->mapWithKeys(fn ($area): array => [(int) $area->id => $this->governanceDepth((string) $area->governance_type]);
+            ->mapWithKeys(fn ($area): array => [(int) $area->id => $this->governanceDepth((string) $area->governance_type)]);
 
         $canonicalMemberships = $user->groups()
             ->whereNotNull('governance_area_id')
