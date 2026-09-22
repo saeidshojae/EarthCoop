@@ -75,6 +75,11 @@ class User extends Authenticatable
         return $this->hasMany(PendingResidenceIntent::class);
     }
 
+    public function locationScopedGroupRequests()
+    {
+        return $this->hasMany(LocationScopedGroupRequest::class, 'requester_user_id');
+    }
+
     public function groups()
     {
         $relation = $this->belongsToMany(Group::class, 'group_user', 'user_id', 'group_id')

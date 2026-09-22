@@ -137,11 +137,25 @@ class Step3Controller extends Controller
                     ? ($anchor !== null && $type !== null && $proposalPolicy->allowsForResidence($anchor, $type, $structuralClaims))
                     : ($parentProposal !== null && $type !== null && $proposalPolicy->allowsProposalParent($parentProposal, $type));
 
+                $proposalClaimTypes = collect($structuralClaims)
+                    ->filter(fn (LocationStructureClaim $claim): bool =>
+                        (int) $claim->location_proposal_id === (int) $proposal->id
+                        && in_array($claim->status, ['pending', 'ready_for_review', 'needs_evidence', 'approved'], true)
+                    )
+                    ->pluck('claim_type');
+                $pendingEndpointAllowed = match ($type?->key) {
+                    'neighborhood' => true,
+                    'urban_region', 'village' => $proposalClaimTypes->contains('no_neighborhood'),
+                    'city' => $proposalClaimTypes->contains('no_urban_region') && $proposalClaimTypes->contains('no_neighborhood'),
+                    default => false,
+                };
+
                 if (
                     $anchor === null
                     || $type === null
                     || $anchor->status !== 'active'
                     || ! $proposalPathAllowed
+                    || ! $pendingEndpointAllowed
                     || in_array($type->key, ['street', 'alley', 'complex', 'building'], true)
                 ) {
                     throw ValidationException::withMessages([
@@ -161,6 +175,8 @@ class Step3Controller extends Controller
 
             if ((bool) config('location-governance.groups_enabled', false)) {
                 app(CanonicalGroupMembershipReconciler::class)->reconcile($user->fresh());
+                app(\App\Services\Groups\PendingLocationGroupRequestService::class)
+                    ->syncForPendingResidence($user->fresh(), LocationProposal::query()->findOrFail($proposalId));
             }
             app(ProfileCompletionService::class)->maybeAward($user->fresh());
 

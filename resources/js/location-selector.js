@@ -30,18 +30,27 @@ const proposalParentPayload = (identity) => {
 };
 const openProposal = (item) => ['pending', 'ready_for_review', 'needs_evidence'].includes(String(item?.status || '')) && item?.selectable !== false;
 const allowedTypes = (payload) => (Array.isArray(payload?.allowed_types) ? payload.allowed_types : []).filter((type) => type?.proposal_allowed === true);
-const setSelection = (host, id) => {
+const pendingRegistrationEndpointAllowed = (host, typeKey) => {
+    if ((host.dataset.locationPurpose || host.dataset.locationSelectorContext) !== 'registration') return true;
+    if (typeKey === 'neighborhood') return true;
+    const claimTypes = new Set(Array.from(host.closest('form')?.querySelectorAll('input[name="location_structure_claim_ids[]"][data-location-structure-claim-type]') || []).map((input) => input.dataset.locationStructureClaimType));
+    if (['urban_region', 'village'].includes(typeKey)) return claimTypes.has('no_neighborhood');
+    if (typeKey === 'city') return claimTypes.has('no_urban_region') && claimTypes.has('no_neighborhood');
+    return false;
+};
+const setSelection = (host, id, typeKey = '') => {
     const location = host.querySelector('[data-location-id][name="location_id"]'); const proposal = host.querySelector('[data-location-proposal-id][name="location_proposal_id"]'); const submit = host.closest('form')?.querySelector('[data-location-submit]');
-    if (location) location.value = ''; if (proposal) proposal.value = String(id); if (submit) submit.disabled = false;
+    if (location) location.value = ''; if (proposal) proposal.value = String(id); if (submit) submit.disabled = !pendingRegistrationEndpointAllowed(host, typeKey);
 };
 const status = (host, text, error = false) => { const node = host.querySelector('[data-location-status]'); if (node) { node.textContent = text; node.classList.toggle('text-danger', error); } };
 const removeAfter = (levels, depth) => levels.querySelectorAll('[data-location-depth]').forEach((node) => { if (Number(node.dataset.locationDepth) > depth) node.remove(); });
 
-const rememberPendingStructuralClaim = (host, id, depth) => {
+const rememberPendingStructuralClaim = (host, id, depth, claimType = '') => {
     const form = host.closest('form'); if (!form || !id) return;
     let input = form.querySelector(`input[name="location_structure_claim_ids[]"][value="${id}"]`);
     if (!input) { input = document.createElement('input'); input.type = 'hidden'; input.name = 'location_structure_claim_ids[]'; input.value = String(id); form.appendChild(input); }
     input.dataset.locationStructureClaimDepth = String(depth);
+    if (claimType) input.dataset.locationStructureClaimType = claimType;
 };
 const addPendingStructuralPanel = (host, wrapper, payload, parentIdentity, depth) => {
     const choices = Array.isArray(payload?.structural_choices) ? payload.structural_choices : [];
@@ -59,13 +68,13 @@ const addPendingStructuralPanel = (host, wrapper, payload, parentIdentity, depth
         const state = document.createElement('div'); state.className = 'small text-secondary'; state.setAttribute('aria-live','polite');
         available.forEach((choice) => {
             const button = document.createElement('button'); button.type='button'; button.className='btn btn-outline-secondary btn-sm'; button.dataset.locationStructuralChoice=choice.claim_type; button.textContent=group.labels[choice.claim_type];
-            if (choice.claim_id) { button.disabled=true; button.setAttribute('aria-pressed','true'); rememberPendingStructuralClaim(host, choice.claim_id, depth); }
+            if (choice.claim_id) { button.disabled=true; button.setAttribute('aria-pressed','true'); rememberPendingStructuralClaim(host, choice.claim_id, depth, choice.claim_type); }
             button.addEventListener('click', async () => {
                 const csrf=host.closest('form')?.querySelector('input[name="_token"]')?.value||''; actions.querySelectorAll('button').forEach((item)=>{item.disabled=true;}); state.textContent='در حال ثبت...';
                 try {
                     const response=await fetch(`/location/proposals/${encodeURIComponent(proposalId)}/structure-claims`,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json',...(csrf?{'X-CSRF-TOKEN':csrf}:{})},body:JSON.stringify({claim_type:choice.claim_type})});
                     const result=await response.json().catch(()=>({})); if(!response.ok) throw new Error(result.message||'ثبت وضعیت ساختاری ممکن نشد.');
-                    rememberPendingStructuralClaim(host,result.id,depth); button.setAttribute('aria-pressed','true'); state.textContent='در انتظار بررسی؛ مسیر بر اساس همین وضعیت ادامه پیدا می‌کند.';
+                    rememberPendingStructuralClaim(host,result.id,depth, choice.claim_type); button.setAttribute('aria-pressed','true'); state.textContent='در انتظار بررسی؛ مسیر بر اساس همین وضعیت ادامه پیدا می‌کند.';
                     const refreshed=await fetch(`/location/proposals/${encodeURIComponent(proposalId)}/children`,{headers:{Accept:'application/json'},credentials:'same-origin'}); if(!refreshed.ok) throw new Error('دریافت مسیر بعد ممکن نشد.');
                     removeAfter(host.querySelector('[data-location-levels]'),depth-1); appendPendingLevel(host,await refreshed.json(),depth,parentIdentity);
                 } catch(error) { state.textContent=error?.message||'ثبت وضعیت ساختاری ممکن نشد.'; actions.querySelectorAll('button').forEach((item)=>{if(item.getAttribute('aria-pressed')!=='true')item.disabled=false;}); }
@@ -100,7 +109,7 @@ const addProposalPanel = (host, wrapper, payload, parentIdentity, select) => {
             const response = await fetch('/locations/proposals', { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}) }, body: JSON.stringify({ ...proposalParentPayload(parentIdentity), location_type_id: Number(type.value), canonical_name: canonicalName, localized_names: { fa: canonicalName } }) });
             if (!response.ok) throw new Error(`Location proposal request failed: ${response.status}`); const result = await response.json(); if (result?.kind !== 'proposal') throw new Error('Unexpected canonical result below pending parent.');
             let option = Array.from(select.options).find((item) => item.value === `proposal:${result.id}`); if (!option) { option = document.createElement('option'); option.value = `proposal:${result.id}`; option.textContent = `${result.canonical_name} — در انتظار تأیید`; option.dataset.locationPendingBadge = ''; select.appendChild(option); }
-            select.value = option.value; setSelection(host, result.id); closePanel(); feedback.textContent = ''; select.dispatchEvent(new CustomEvent('location-proposal-created', { bubbles: true, detail: { proposalId: Number(result.id) } }));
+            select.value = option.value; setSelection(host, result.id, result.type_key || option.dataset.typeKey || ''); closePanel(); feedback.textContent = ''; select.dispatchEvent(new CustomEvent('location-proposal-created', { bubbles: true, detail: { proposalId: Number(result.id) } }));
         } catch (error) { console.warn('EarthCoop deeper proposal failed:', error); feedback.textContent = 'ثبت پیشنهاد مکان ممکن نشد. متن شما حفظ شده است؛ دوباره تلاش کنید.'; feedback.classList.add('text-danger'); } finally { submit.disabled = false; submit.removeAttribute('aria-busy'); }
     });
     actions.append(submit, cancel); panel.append(heading, type, name, actions, feedback); shell.append(toggle, panel); wrapper.appendChild(shell);
@@ -165,7 +174,7 @@ async function loadProposalChildren(host, select, proposalId) {
 if (typeof document !== 'undefined') {
     document.addEventListener('change', (event) => {
         const select = event.target?.closest?.('[data-location-select]'); if (!select) return; const host = select.closest('[data-location-selector]'); if (!host || (host.dataset.locationPurpose || host.dataset.locationSelectorContext) === 'project-scope') return;
-        const value = String(select.value || ''); if (!value.startsWith('proposal:')) return; event.preventDefault(); event.stopImmediatePropagation(); const id = Number(value.slice(9)); setSelection(host, id); void loadProposalChildren(host, select, id);
+        const value = String(select.value || ''); if (!value.startsWith('proposal:')) return; event.preventDefault(); event.stopImmediatePropagation(); const id = Number(value.slice(9)); const typeKey = select.options[select.selectedIndex]?.dataset?.typeKey || ''; setSelection(host, id, typeKey); void loadProposalChildren(host, select, id);
     }, true);
     document.addEventListener('location-proposal-created', (event) => {
         const select = event.target?.closest?.('[data-location-select]'); const host = select?.closest?.('[data-location-selector]');
