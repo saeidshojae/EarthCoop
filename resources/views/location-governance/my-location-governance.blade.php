@@ -87,7 +87,6 @@
     ];
     $pendingBaseProposal = collect($pendingGovernanceProposals ?? [])->first();
     $baseGovernanceArea = collect($governanceAreas)->first();
-    $baseDisplayName = $pendingBaseProposal?->canonical_name ?? $displayAreaName ?? null;
     $membershipTotal = collect($membershipsByDimension)->sum(function ($bucket) {
         $bucket = collect($bucket);
         return collect($bucket->get('active', []))->count() + collect($bucket->get('observer', []))->count();
