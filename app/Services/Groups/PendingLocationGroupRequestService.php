@@ -150,6 +150,7 @@ final class PendingLocationGroupRequestService
             ]);
             $group->setAttribute('pending_location_request_id', $request->id);
             $group->setAttribute('pending_location', true);
+            $group->setAttribute('presentation_rank', $this->presentationRankFor((string) ($metadata['type_key'] ?? '')));
             $group->setRelation('pivot', new GroupUser([
                 'user_id' => $request->requester_user_id,
                 'role' => $level === 'neighborhood' ? 1 : 0,
@@ -217,6 +218,16 @@ final class PendingLocationGroupRequestService
             ->where('user_id', $request->requester_user_id)->where('status', 1)->exists()) return;
 
         $request->forceFill(['governance_area_id' => $area->id, 'group_id' => $group->id, 'status' => 'materialized'])->save();
+    }
+
+    private function presentationRankFor(string $type): int
+    {
+        return match ($type) {
+            'neighborhood' => 900,
+            'urban_region', 'village' => 800,
+            'city', 'rural_district' => 700,
+            default => 0,
+        };
     }
 
     private function presentationLevelFor(string $type): ?string
