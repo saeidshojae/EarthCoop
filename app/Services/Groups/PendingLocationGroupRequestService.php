@@ -139,7 +139,12 @@ final class PendingLocationGroupRequestService
             $valueKey = (string) $request->dimension_value_key;
             $level = $this->presentationLevelFor((string) ($metadata['type_key'] ?? ''));
             $group = new Group([
-                'name' => $namer->pendingNameFor($dimensionKey, $valueKey, $areaName),
+                'name' => $namer->pendingNameFor(
+                    $dimensionKey,
+                    $valueKey,
+                    $areaName,
+                    (string) ($metadata['type_key'] ?? ''),
+                ),
                 'group_type' => match ($dimensionKey) {
                     'public' => '0', 'profession' => '1', 'specialty' => '2',
                     'age' => '3', 'gender' => '4', default => '0',
