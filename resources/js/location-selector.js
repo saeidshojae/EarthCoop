@@ -136,7 +136,14 @@ const appendPendingLevel = (host, payload, depth, parentIdentity, selectedTypeKe
 };
 
 async function loadProposalChildren(host, select, proposalId) {
-    const levels = host.querySelector('[data-location-levels]'); if (!levels) return; const depth = Number(select.dataset.locationSelect || 0); removeAfter(levels, depth); status(host, 'در حال دریافت گزینه‌های سطح بعد...');
+    const levels = host.querySelector('[data-location-levels]'); if (!levels) return; const depth = Number(select.dataset.locationSelect || 0); removeAfter(levels, depth);
+    const isRegistration = (host.dataset.locationPurpose || host.dataset.locationSelectorContext) === 'registration';
+    const selectedTypeKey = select.options[select.selectedIndex]?.dataset?.typeKey || '';
+    if (isRegistration && selectedTypeKey === 'neighborhood') {
+        status(host, 'سطح پایهٔ محل سکونت شما مشخص شد. برای تکمیل ثبت‌نام، «ثبت محل سکونت و ادامه» را بزنید؛ جزئیات محلی مانند خیابان، کوچه، مجتمع یا ساختمان را می‌توانید بعداً از بخش «مکان و حکمرانی من» تکمیل کنید.');
+        return;
+    }
+    status(host, 'در حال دریافت گزینه‌های سطح بعد...');
     try {
         const response = await fetch(`/location/proposals/${encodeURIComponent(proposalId)}/children`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
         if (!response.ok) throw new Error(`Proposal children request failed: ${response.status}`);

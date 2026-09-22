@@ -119,3 +119,9 @@ test('pending structural choices render even when no child proposal type is curr
   assert.match(selectorSource, /!allProposals\.length && !allTypes\.length && hasStructuralChoices/);
   assert.match(selectorSource, /addPendingStructuralPanel\(host, wrapper, payload, `proposal:\$\{proposalId\}`, depth \+ 1\)/);
 });
+
+test('registration stops after a pending neighborhood while ordinary residence may continue deeper', () => {
+  assert.match(selectorSource, /isRegistration && selectedTypeKey === 'neighborhood'/);
+  assert.match(selectorSource, /مکان و حکمرانی من/);
+  assert.match(selectorSource, /return;[\s\S]*status\(host, 'در حال دریافت گزینه‌های سطح بعد/);
+});
