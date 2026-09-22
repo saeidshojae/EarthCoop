@@ -105,5 +105,7 @@ class PendingRegistrationGroupContractTest extends TestCase
         $this->assertCount(9, $regionGroups);
         $this->assertTrue($neighborhoodGroups->every(fn ($group) => (int) $group->pivot->role === 1));
         $this->assertTrue($regionGroups->every(fn ($group) => (int) $group->pivot->role === 0));
+        $this->assertTrue($neighborhoodGroups->every(fn ($group) => str_contains($group->name, 'محله محله در انتظار')));
+        $this->assertTrue($regionGroups->every(fn ($group) => str_contains($group->name, 'منطقه منطقه در انتظار')));
     }
 }
