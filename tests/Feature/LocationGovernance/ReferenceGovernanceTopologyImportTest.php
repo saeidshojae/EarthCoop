@@ -31,8 +31,8 @@ class ReferenceGovernanceTopologyImportTest extends TestCase
             '--apply' => true,
         ]));
 
-        $this->assertSame(13, GovernanceArea::query()->count());
-        $this->assertSame(11, DB::table('governance_area_locations')->count());
+        $this->assertSame(14, GovernanceArea::query()->count());
+        $this->assertSame(12, DB::table('governance_area_locations')->count());
 
         $global = GovernanceArea::query()->where('key', 'earthcoop-global')->firstOrFail();
         $asia = GovernanceArea::query()->where('key', 'earthcoop-continent-asia')->firstOrFail();
@@ -59,7 +59,19 @@ class ReferenceGovernanceTopologyImportTest extends TestCase
             ->firstOrFail()
             ->location;
 
+        $kiasar = LocationExternalId::query()
+            ->where('source', 'earthcoop-reference')
+            ->where('dataset_version', 'v1')
+            ->where('external_id', 'IR-MAZ-SARI-CHAHARDANGEH-KIASAR')
+            ->firstOrFail()
+            ->location;
+
         $resolver = app(GovernanceResolver::class);
+        $kiasarArea = $resolver->baseOfficialAreaForResidence($kiasar);
+        $this->assertNotNull($kiasarArea);
+        $this->assertSame('city', $kiasarArea->governance_type);
+        $this->assertSame('ir-reference-v1-chahardangeh-section', $kiasarArea->parent?->key);
+
         $urbanArea = $resolver->baseOfficialAreaForResidence($urbanResidence);
         $ruralArea = $resolver->baseOfficialAreaForResidence($ruralResidence);
 
@@ -107,6 +119,6 @@ class ReferenceGovernanceTopologyImportTest extends TestCase
         $this->assertStringContainsString('create: 0', $output);
         $this->assertStringContainsString('update: 0', $output);
         $this->assertStringContainsString('conflict: 0', $output);
-        $this->assertStringContainsString('unchanged: 13', $output);
+        $this->assertStringContainsString('unchanged: 14', $output);
     }
 }
