@@ -47,7 +47,7 @@ class GovernanceScopedGroupService
         return $group;
     }
 
-    public function pendingNameFor(string $dimensionKey, string $valueKey, string $areaName): string
+    public function pendingNameFor(string $dimensionKey, string $valueKey, string $areaName, ?string $governanceType = null): string
     {
         $intent = new MembershipIntent(
             dimensionKey: $dimensionKey,
@@ -56,6 +56,7 @@ class GovernanceScopedGroupService
             mode: 'automatic',
         );
         $valueLabel = $this->valueLabel($intent);
+        $areaName = $this->qualifiedAreaLabel($areaName, $governanceType);
 
         return match ($dimensionKey) {
             'public' => "مجمع عمومی {$areaName}",
@@ -69,7 +70,38 @@ class GovernanceScopedGroupService
 
     private function nameFor(MembershipIntent $intent, GovernanceArea $area): string
     {
-        return $this->pendingNameFor($intent->dimensionKey, $intent->valueKey, $this->areaLabel($area));
+        return $this->pendingNameFor(
+            $intent->dimensionKey,
+            $intent->valueKey,
+            $this->areaLabel($area),
+            $area->governance_type,
+        );
+    }
+
+    private function qualifiedAreaLabel(string $areaName, ?string $governanceType): string
+    {
+        $label = match ($governanceType) {
+            'global' => 'جهان',
+            'continent' => 'قاره',
+            'country' => 'کشور',
+            'province' => 'استان',
+            'county' => 'شهرستان',
+            'section' => 'بخش',
+            'city' => 'شهر',
+            'rural_district' => 'دهستان',
+            'urban_region' => 'منطقه',
+            'village' => 'روستا',
+            'local', 'neighborhood' => 'محله',
+            default => null,
+        };
+
+        if ($label === null) return $areaName;
+        if ($governanceType === 'global') return 'جهان';
+
+        $normalized = trim($areaName);
+        return str_starts_with($normalized, $label.' ') || $normalized === $label
+            ? $normalized
+            : $label.' '.$normalized;
     }
 
     private function areaLabel(GovernanceArea $area): string
