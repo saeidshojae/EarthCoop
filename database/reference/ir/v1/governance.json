@@ -116,6 +116,17 @@
       "location_external_ids": ["IR-MAZ-SARI-CHAHARDANGEH-SECTION"]
     },
     {
+      "key": "ir-reference-v1-kiasar",
+      "parent_key": "ir-reference-v1-chahardangeh-section",
+      "governance_type": "city",
+      "area_kind": "official",
+      "canonical_name": "Kiasar",
+      "localized_names": {"fa": "کیاسر", "en": "Kiasar"},
+      "rank": 500,
+      "status": "active",
+      "location_external_ids": ["IR-MAZ-SARI-CHAHARDANGEH-KIASAR"]
+    },
+    {
       "key": "ir-reference-v1-chahardangeh-rural-district",
       "parent_key": "ir-reference-v1-chahardangeh-section",
       "governance_type": "rural_district",
