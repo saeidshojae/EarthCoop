@@ -138,9 +138,20 @@ const appendPendingLevel = (host, payload, depth, parentIdentity, selectedTypeKe
 async function loadProposalChildren(host, select, proposalId) {
     const levels = host.querySelector('[data-location-levels]'); if (!levels) return; const depth = Number(select.dataset.locationSelect || 0); removeAfter(levels, depth); status(host, 'در حال دریافت گزینه‌های سطح بعد...');
     try {
-        const selected = { id: proposalId };
-        const response = await fetch(`/location/proposals/${encodeURIComponent(selected.id)}/children`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
-        if (!response.ok) throw new Error(`Proposal children request failed: ${response.status}`); appendPendingLevel(host, await response.json(), depth + 1, `proposal:${proposalId}`); status(host, 'این مکان در انتظار تأیید است؛ در صورت نیاز می‌توانید مسیر دقیق‌تر را هم پیشنهاد کنید.');
+        const response = await fetch(`/location/proposals/${encodeURIComponent(proposalId)}/children`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+        if (!response.ok) throw new Error(`Proposal children request failed: ${response.status}`);
+        const payload = await response.json();
+        const allProposals = (Array.isArray(payload?.proposals) ? payload.proposals : []).filter(openProposal);
+        const allTypes = allowedTypes(payload);
+        const hasStructuralChoices = Array.isArray(payload?.structural_choices) && payload.structural_choices.length > 0;
+        if (!allProposals.length && !allTypes.length && hasStructuralChoices) {
+            const wrapper = document.createElement('div'); wrapper.dataset.locationDepth = String(depth + 1); wrapper.className = 'vstack gap-2';
+            addPendingStructuralPanel(host, wrapper, payload, `proposal:${proposalId}`, depth + 1);
+            levels.appendChild(wrapper);
+        } else {
+            appendPendingLevel(host, payload, depth + 1, `proposal:${proposalId}`);
+        }
+        status(host, 'این مکان در انتظار تأیید است؛ وضعیت ساختاری یا مسیر دقیق‌تر را مشخص کنید.');
     } catch (error) { console.warn('EarthCoop proposal children failed:', error); status(host, 'دریافت سطح بعد ممکن نشد؛ انتخاب فعلی شما حفظ شده است.', true); }
 }
 
