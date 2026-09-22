@@ -34,7 +34,7 @@ test('proposal parent payload never fabricates a canonical location id', () => {
 
 test('open proposal remains selectable while client supports loading deeper proposal children', () => {
   assert.deepEqual(selectionValues({ id: 34, identity: 'proposal:34', status: 'pending', selectable: true }), { locationId: '', proposalId: '34' });
-  assert.match(selectorSource, /location\/proposals\/\$\{encodeURIComponent\(selected\.id\)\}\/children/);
+  assert.match(selectorSource, /location\\/proposals\\/\\$\\{encodeURIComponent\\(proposalId\\)\\}\\/children/);
   assert.doesNotMatch(selectorSource, /if \(selected\.picker_kind === 'proposal'\) return;/);
 });
 
