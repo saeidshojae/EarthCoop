@@ -112,3 +112,10 @@ test('structural state UI supports canonical and pending parents', () => {
   assert.match(selectorSource, /`\/location\/proposals\/\$\{encodeURIComponent\(proposalId\)\}\/structure-claims`/);
   assert.match(selectorSource, /addPendingStructuralPanel/);
 });
+
+
+test('pending structural choices render even when no child proposal type is currently available', () => {
+  assert.match(selectorSource, /hasStructuralChoices/);
+  assert.match(selectorSource, /!allProposals\.length && !allTypes\.length && hasStructuralChoices/);
+  assert.match(selectorSource, /addPendingStructuralPanel\(host, wrapper, payload, `proposal:\$\{proposalId\}`, depth \+ 1\)/);
+});
