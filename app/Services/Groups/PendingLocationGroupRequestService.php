@@ -5,6 +5,7 @@ namespace App\Services\Groups;
 use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\Group;
 use App\Models\GroupUser;
+use App\Models\GovernanceArea;
 use App\Models\Location;
 use App\Models\LocationProposal;
 use App\Models\LocationScopedGroupRequest;
@@ -163,6 +164,58 @@ final class PendingLocationGroupRequestService
             ]));
             return $group;
         })->values();
+    }
+
+    public function ensureApprovedOfficialTopology(LocationProposal $proposal, Location $location): ?GovernanceArea
+    {
+        $typeKey = (string) $proposal->type?->key;
+        if (! in_array($typeKey, self::OFFICIAL_TYPES, true)) {
+            return null;
+        }
+
+        $existing = $location->governanceAreas()->official()->active()
+            ->orderByDesc('rank')->orderBy('governance_areas.id')->first();
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $parentLocation = $location->parent()->first();
+        $parentArea = $parentLocation?->governanceAreas()->official()->active()
+            ->orderByDesc('rank')->orderBy('governance_areas.id')->first();
+
+        if ($parentArea === null) {
+            return null;
+        }
+
+        $governanceType = $typeKey === 'neighborhood' ? 'local' : $typeKey;
+        $rank = match ($typeKey) {
+            'city', 'rural_district' => 500,
+            'urban_region', 'village' => 700,
+            'neighborhood' => 900,
+            default => 0,
+        };
+
+        $area = GovernanceArea::query()->firstOrCreate(
+            ['key' => 'approved-location-'.$location->id],
+            [
+                'parent_id' => $parentArea->id,
+                'country_code' => $location->country_code,
+                'governance_type' => $governanceType,
+                'area_kind' => 'official',
+                'canonical_name' => $location->canonical_name,
+                'localized_names' => $location->localized_names,
+                'rank' => $rank,
+                'status' => 'active',
+                'metadata' => [
+                    'source' => 'approved_location_proposal',
+                    'location_proposal_id' => $proposal->id,
+                ],
+            ],
+        );
+
+        $area->locations()->syncWithoutDetaching([$location->id]);
+
+        return $area;
     }
 
     public function reconcileResolvedProposal(LocationProposal $proposal, Location $location): void
