@@ -571,9 +571,7 @@
         ])->render();
     }
 
-    $pendingLocationGroups = $pendingLocationGroups ?? collect();
-    $totalGroups = $pendingLocationGroups->count()
-        + ($generalGroups ?? collect())->count()
+    $totalGroups = ($generalGroups ?? collect())->count()
         + ($specialityGroups ?? collect())->count()
         + ($experienceGroups ?? collect())->count()
         + ($ageGroups ?? collect())->count()
@@ -590,38 +588,6 @@
             <div class="groups-section">
                 <h2>{{ __('navigation.footer_my_groups') }}</h2>
 
-                @if($pendingLocationGroups->isNotEmpty())
-                    <section class="mb-4" data-pending-location-groups>
-                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-                            <h3 class="h5 mb-0">گروه‌های مکانی در انتظار تأیید</h3>
-                            <span class="badge bg-warning text-dark">{{ $pendingLocationGroups->count() }} گروه</span>
-                        </div>
-                        <div class="row g-3">
-                            @foreach($pendingLocationGroups as $pendingGroup)
-                                @php
-                                    $proposal = $pendingGroup->locationProposal;
-                                    $typeLabels = ['city'=>'شهر','rural_district'=>'دهستان','urban_region'=>'منطقه','village'=>'روستا','neighborhood'=>'محله'];
-                                    $typeKey = $proposal?->type?->key;
-                                    $typeLabel = $typeLabels[$typeKey] ?? 'مکان';
-                                    $label = \App\Support\LocationDisplayName::for($proposal);
-                                @endphp
-                                <div class="col-12 col-md-6">
-                                    <div class="border rounded-3 p-3 h-100" data-pending-location-group="{{ $pendingGroup->id }}">
-                                        <div class="d-flex align-items-start justify-content-between gap-2">
-                                            <div>
-                                                <strong>مجمع عمومی {{ $typeLabel }} {{ $label }}</strong>
-                                                <div class="small text-secondary mt-1">این حوزه در مسیر محل سکونت ثبت‌شده شماست.</div>
-                                            </div>
-                                            <span class="badge bg-warning text-dark">در انتظار تأیید</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    </section>
-                @endif
-
-                {{-- Main Tabs (desktop) --}}
                 <div class="tab-buttons">
                     <button class="tab-button active" data-target="public">
                         گروه‌های مجمع عمومی
