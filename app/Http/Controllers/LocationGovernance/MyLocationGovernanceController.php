@@ -4,6 +4,9 @@ namespace App\Http\Controllers\LocationGovernance;
 
 use App\Http\Controllers\Controller;
 use App\Models\GovernanceArea;
+use App\Models\Group;
+use App\Services\Groups\CanonicalGroupMembershipReconciler;
+use App\Services\Groups\PendingLocationGroupRequestService;
 use App\Services\LocationGovernance\CommunityAreaService;
 use App\Services\LocationGovernance\CommunityCreationPolicy;
 use App\Services\LocationGovernance\LocationTreeResolver;
@@ -28,6 +31,8 @@ final class MyLocationGovernanceController extends Controller
         CommunityCreationPolicy $communityCreationPolicy,
         CommunityAreaService $communityAreaService,
         LocationTreeResolver $locationTreeResolver,
+        CanonicalGroupMembershipReconciler $groupMembershipReconciler,
+        PendingLocationGroupRequestService $pendingGroupService,
     ): View {
         abort_unless((bool) config('location-governance.runtime_enabled'), 404);
 
@@ -44,6 +49,12 @@ final class MyLocationGovernanceController extends Controller
             ->latest('selected_at')
             ->first();
 
+        // Keep this dashboard derived from the same canonical + pending membership
+        // contracts as "My Groups", rather than maintaining a second count model.
+        if ((bool) config('location-governance.groups_enabled', false)) {
+            $groupMembershipReconciler->reconcile($user);
+        }
+
         $governanceAreas = $residenceService->officialGovernanceAreasFor($user);
         $governanceAreas->each->loadMissing('locations');
         $governanceRankById = $governanceAreas
@@ -54,13 +65,33 @@ final class MyLocationGovernanceController extends Controller
             ->whereNotNull('governance_area_id')
             ->wherePivot('status', 1)
             ->with('governanceArea')
-            ->get();
+            ->get()
+            ->each(fn (Group $group) => $group->setAttribute(
+                'presentation_rank',
+                $governanceRankById->get((int) $group->governance_area_id, -1),
+            ));
+
+        $pendingRequests = $pendingGroupService->openForUser($user);
+        $pendingMemberships = $pendingGroupService->presentationGroups($pendingRequests);
+        $allMemberships = $canonicalMemberships
+            ->concat($pendingMemberships)
+            ->sortByDesc(fn (Group $group): int => (int) ($group->presentation_rank ?? -1))
+            ->values();
+
+        $pendingGovernanceProposals = $pendingRequests
+            ->whereNotNull('location_proposal_id')
+            ->unique('location_proposal_id')
+            ->map(fn ($request) => $request->locationProposal()->with('type')->first())
+            ->filter()
+            ->sortByDesc(fn ($proposal): int => $this->proposalDepth((string) $proposal->type?->key))
+            ->values();
+
+        $governanceLevelCount = $governanceAreas->count() + $pendingGovernanceProposals->count();
 
         $membershipsByDimension = collect(self::DIMENSIONS)
-            ->mapWithKeys(function (string $dimension) use ($canonicalMemberships, $governanceRankById): array {
-                $memberships = $canonicalMemberships
+            ->mapWithKeys(function (string $dimension) use ($allMemberships): array {
+                $memberships = $allMemberships
                     ->where('dimension_key', $dimension)
-                    ->sortByDesc(fn ($group): int => $governanceRankById->get((int) $group->governance_area_id, -1))
                     ->values();
 
                 return [$dimension => collect([
@@ -113,10 +144,22 @@ final class MyLocationGovernanceController extends Controller
             'currentResidence',
             'pendingResidenceIntent',
             'governanceAreas',
+            'pendingGovernanceProposals',
+            'governanceLevelCount',
             'membershipsByDimension',
             'communities',
             'communityOptions',
         ));
+    }
+
+    private function proposalDepth(string $type): int
+    {
+        return match ($type) {
+            'neighborhood' => 9,
+            'urban_region', 'village' => 8,
+            'city', 'rural_district' => 7,
+            default => 0,
+        };
     }
 
     private function communitiesForLocations(Collection $locationIds): Collection
