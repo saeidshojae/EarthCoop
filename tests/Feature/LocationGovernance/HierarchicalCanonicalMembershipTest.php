@@ -8,6 +8,8 @@ use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\OccupationalField;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
+use App\Services\LocationGovernance\LocationProposalService;
+use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\MembershipFixture;
 use Tests\TestCase;
@@ -180,5 +182,39 @@ class HierarchicalCanonicalMembershipTest extends TestCase
         $this->assertCount(81, $canonicalMemberships);
         $this->assertSame(9, $canonicalMemberships->where('role', 1)->count());
         $this->assertSame(72, $canonicalMemberships->where('role', 0)->count());
+    }
+
+    public function test_pending_official_residence_base_keeps_nearest_approved_ancestor_as_observer(): void
+    {
+        config(['location-governance.groups_enabled' => true]);
+
+        ['user' => $user, 'area' => $cityArea, 'endpoint' => $city] = MembershipFixture::canonicalUser();
+        $schema = $city->schema()->firstOrFail();
+
+        $region = app(LocationProposalService::class)->propose(
+            $user,
+            $city,
+            $schema->types()->where('key', 'urban_region')->firstOrFail(),
+            ['canonical_name' => 'منطقه در انتظار'],
+        );
+        $neighborhood = app(LocationProposalService::class)->proposeUnderProposal(
+            $user,
+            $region,
+            $schema->types()->where('key', 'neighborhood')->firstOrFail(),
+            ['canonical_name' => 'محله در انتظار'],
+        );
+        app(ResidenceService::class)->setPendingResidenceIntent($user, $neighborhood);
+
+        app(CanonicalGroupMembershipReconciler::class)->reconcile($user);
+
+        $cityMemberships = GroupUser::query()
+            ->where('user_id', $user->id)
+            ->where('status', 1)
+            ->whereHas('group', fn ($query) => $query->where('governance_area_id', $cityArea->id))
+            ->get();
+
+        $this->assertNotEmpty($cityMemberships);
+        $this->assertSame(0, $cityMemberships->where('role', 1)->count());
+        $this->assertSame($cityMemberships->count(), $cityMemberships->where('role', 0)->count());
     }
 }
