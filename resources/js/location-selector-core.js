@@ -88,6 +88,8 @@ const shouldRenderNextLevel = (payload) => {
     const normalized = payload?.locations ? payload : normalizePickerPayload(payload);
     return normalized.locations.length > 0 || normalized.proposals.length > 0 || normalized.allowedTypes.some((type) => type?.proposal_allowed === true);
 };
+const shouldStopRegistrationAtProposal = (context, item) =>
+    context === 'registration' && item?.type_key === 'neighborhood';
 const pickerItems = (payload) => [
     ...payload.locations.map((item) => ({ ...item, picker_kind: String(item?.identity || '').startsWith('governance:') ? 'governance' : 'location' })),
     ...payload.proposals.map((item) => ({ ...item, picker_kind: 'proposal' })),
@@ -286,7 +288,12 @@ const initializeLocationSelector = async (host) => {
         }
         const { wrapper, select } = buildSelect(host, payload, depth); levels.appendChild(wrapper);
         const refreshAfterProposal = async (result) => {
-            if (result?.kind === 'proposal') { const identity = `proposal:${result.id}`; let option = Array.from(select.options).find((item) => item.value === identity); if (!option) { option = document.createElement('option'); option.value = identity; option.textContent = `${result.canonical_name || result.label || 'مکان پیشنهادی'} — در انتظار تأیید`; option.dataset.endpoint = result.is_residence_endpoint ? '1' : '0'; option.dataset.hasChildren = '1'; option.dataset.typeKey = result.type_key || ''; option.dataset.pickerKind = 'proposal'; option.dataset.locationPendingBadge = ''; select.appendChild(option); } select.value = identity; const proposal = { ...result, identity, label: result.canonical_name || result.label, status: result.status || 'pending', selectable: true, picker_kind: 'proposal' }; selectedPath.set(depth, proposal); renderLocationPath(); setSelection(proposal); setStatus('پیشنهاد مکان ثبت شد و در فهرست همین سطح انتخاب شد؛ می‌توانید مسیر را ادامه دهید.'); const children = await load(result.children_url || `/location/proposals/${encodeURIComponent(result.id)}/children`); if (shouldRenderNextLevel(children)) appendLevel(children, depth + 1, null, false, result.id); return; }
+            if (result?.kind === 'proposal') { const identity = `proposal:${result.id}`; let option = Array.from(select.options).find((item) => item.value === identity); if (!option) { option = document.createElement('option'); option.value = identity; option.textContent = `${result.canonical_name || result.label || 'مکان پیشنهادی'} — در انتظار تأیید`; option.dataset.endpoint = result.is_residence_endpoint ? '1' : '0'; option.dataset.hasChildren = '1'; option.dataset.typeKey = result.type_key || ''; option.dataset.pickerKind = 'proposal'; option.dataset.locationPendingBadge = ''; select.appendChild(option); } select.value = identity; const proposal = { ...result, identity, label: result.canonical_name || result.label, status: result.status || 'pending', selectable: true, picker_kind: 'proposal' }; selectedPath.set(depth, proposal); renderLocationPath(); setSelection(proposal);
+                if (shouldStopRegistrationAtProposal(context, proposal)) {
+                    setStatus('سطح پایهٔ محل سکونت شما مشخص شد. برای تکمیل ثبت‌نام، «ثبت محل سکونت و ادامه» را بزنید؛ جزئیات محلی مانند خیابان، کوچه، مجتمع یا ساختمان را می‌توانید بعداً از بخش «مکان و حکمرانی من» تکمیل کنید.');
+                    return;
+                }
+                setStatus('پیشنهاد مکان ثبت شد و در فهرست همین سطح انتخاب شد؛ می‌توانید مسیر را ادامه دهید.'); const children = await load(result.children_url || `/location/proposals/${encodeURIComponent(result.id)}/children`); if (shouldRenderNextLevel(children)) appendLevel(children, depth + 1, null, false, result.id); return; }
             if (result?.kind === 'location' && parentLocationId) {
                 const refreshed = await load(`/location/options/${encodeURIComponent(parentLocationId)}/children`); const matched = refreshed.locations.find((item) => Number(item.id) === Number(result.id));
                 if (matched) { setSelection(matched); if (matched.identity && !Array.from(select.options).some((option) => option.value === matched.identity)) { const option = document.createElement('option'); option.value = matched.identity; option.textContent = matched.label; select.appendChild(option); } select.value = matched.identity; }
@@ -358,4 +365,4 @@ const initializeLocationSelector = async (host) => {
 };
 
 selectors.forEach((host) => { void initializeLocationSelector(host); });
-export { initializeLocationSelector, normalizePickerPayload, registrationPayload, microContinuationTypes, filterPayloadByType, projectScopePayload, projectScopeSelectionValues, pickerLevelLabel, selectionValues, shouldRenderNextLevel, locationDisplayLabel };
+export { initializeLocationSelector, normalizePickerPayload, registrationPayload, microContinuationTypes, filterPayloadByType, projectScopePayload, projectScopeSelectionValues, pickerLevelLabel, selectionValues, shouldRenderNextLevel, shouldStopRegistrationAtProposal, locationDisplayLabel };

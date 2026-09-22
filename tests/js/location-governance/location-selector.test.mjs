@@ -12,6 +12,7 @@ import {
     pickerLevelLabel,
     selectionValues,
     shouldRenderNextLevel,
+    shouldStopRegistrationAtProposal,
     locationDisplayLabel,
 } from '../../../resources/js/location-selector.js';
 
@@ -59,6 +60,18 @@ test('registration traversal stops before micro locations while ordinary residen
     assert.deepEqual(registration.proposals, []);
     assert.deepEqual(registration.allowedTypes, []);
     assert.equal(shouldRenderNextLevel(registration), false);
+});
+
+test('registration stops immediately after a pending neighborhood proposal becomes the residence base', () => {
+    assert.equal(shouldStopRegistrationAtProposal('registration', { type_key: 'neighborhood', status: 'pending' }), true);
+    assert.equal(shouldStopRegistrationAtProposal('registration', { type_key: 'street', status: 'pending' }), false);
+    assert.equal(shouldStopRegistrationAtProposal('residence', { type_key: 'neighborhood', status: 'pending' }), false);
+
+    const source = selectorSource();
+    const stopIndex = source.indexOf('shouldStopRegistrationAtProposal(context, proposal)');
+    const childrenFetchIndex = source.indexOf('result.children_url', stopIndex);
+    assert.ok(stopIndex >= 0, 'registration proposal completion must have an explicit terminal guard');
+    assert.ok(childrenFetchIndex > stopIndex, 'the terminal guard must run before any pending-child request');
 });
 
 test('registration keeps non-micro governance continuation available', () => {
