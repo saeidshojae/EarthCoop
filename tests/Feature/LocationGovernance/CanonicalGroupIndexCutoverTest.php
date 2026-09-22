@@ -5,6 +5,9 @@ namespace Tests\Feature\LocationGovernance;
 use App\Models\GovernanceArea;
 use App\Models\Group;
 use App\Models\Location;
+use App\Models\User;
+use App\Services\Groups\PendingLocationGroupRequestService;
+use App\Services\LocationGovernance\LocationProposalService;
 use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\MembershipFixture;
@@ -46,6 +49,63 @@ class CanonicalGroupIndexCutoverTest extends TestCase
             $hasLegacySpatial = $groups->contains(fn (Group $group): bool => $group->is($legacyGroup));
 
             return $hasCanonicalPublic && ! $hasLegacySpatial;
+        });
+    }
+
+    public function test_my_groups_same_response_includes_canonical_region_healed_from_pre_deploy_ready_shell(): void
+    {
+        $this->enableStageC();
+
+        ['user' => $user, 'area' => $cityArea, 'endpoint' => $city] = MembershipFixture::canonicalUser();
+        $schema = $city->schema()->firstOrFail();
+        $regionType = $schema->types()->where('key', 'urban_region')->firstOrFail();
+        $neighborhoodType = $schema->types()->where('key', 'neighborhood')->firstOrFail();
+
+        $proposals = app(LocationProposalService::class);
+        $region = $proposals->propose($user, $city, $regionType, ['canonical_name' => '۵ ساری']);
+        $neighborhood = $proposals->proposeUnderProposal($user, $region, $neighborhoodType, ['canonical_name' => 'آزمایشی ۲']);
+        app(ResidenceService::class)->setPendingResidenceIntent($user, $neighborhood, ['source' => 'uat-regression']);
+
+        $pending = app(PendingLocationGroupRequestService::class);
+        $pending->syncForPendingResidence($user, $neighborhood);
+        $resolvedRegion = $proposals->approve($region, User::factory()->create(), 'تأیید منطقه');
+
+        $regionArea = $resolvedRegion->governanceAreas()->official()->active()->sole();
+        $regionArea->locations()->detach($resolvedRegion->id);
+        $regionArea->delete();
+
+        foreach ($user->locationScopedGroupRequests()->where('location_id', $resolvedRegion->id)->get() as $request) {
+            $request->forceFill([
+                'status' => 'ready_to_materialize',
+                'group_id' => null,
+                'governance_area_id' => null,
+            ])->save();
+        }
+
+        $response = $this->actingAs($user)->get('/groups');
+
+        $response->assertOk();
+        $healedArea = $resolvedRegion->fresh()->governanceAreas()->official()->active()->sole();
+        $this->assertSame($cityArea->id, $healedArea->parent_id);
+
+        $response->assertViewHas('generalGroups', function ($groups) use ($healedArea, $neighborhood): bool {
+            $groups = collect($groups);
+
+            $canonicalRegion = $groups->first(fn (Group $group): bool =>
+                (int) $group->governance_area_id === (int) $healedArea->id
+                && $group->dimension_key === 'public'
+                && ! (bool) $group->getAttribute('pending_location')
+            );
+
+            $pendingNeighborhood = $groups->first(fn (Group $group): bool =>
+                (bool) $group->getAttribute('pending_location')
+                && str_contains((string) $group->name, $neighborhood->canonical_name)
+            );
+
+            return $canonicalRegion !== null
+                && (int) $canonicalRegion->pivot->role === 0
+                && $pendingNeighborhood !== null
+                && (int) $pendingNeighborhood->pivot->role === 1;
         });
     }
 
