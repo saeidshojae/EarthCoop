@@ -2,7 +2,9 @@
 
 namespace App\Services\Groups;
 
+use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\GroupUser;
+use App\Models\PendingResidenceIntent;
 use App\Models\User;
 use App\Services\GroupService;
 use App\Services\LocationGovernance\GovernanceResolver;
@@ -105,6 +107,35 @@ final class CanonicalGroupMembershipReconciler
 
     private function baseGovernanceAreaId(User $user): ?int
     {
+        // An open official residence refinement is already the user's chosen
+        // base, even though it cannot materialize yet. Never promote the
+        // nearest approved ancestor to active merely because the chosen base
+        // is awaiting review.
+        $pendingOfficialBase = PendingResidenceIntent::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->with('locationProposal.type')
+            ->latest('id')
+            ->first();
+
+        if ($pendingOfficialBase?->locationProposal !== null) {
+            $proposal = $pendingOfficialBase->locationProposal;
+            $status = $proposal->status instanceof LocationProposalStatus
+                ? $proposal->status
+                : LocationProposalStatus::tryFrom((string) $proposal->status);
+
+            if ($status !== null
+                && in_array($status, [
+                    LocationProposalStatus::Pending,
+                    LocationProposalStatus::ReadyForReview,
+                    LocationProposalStatus::NeedsEvidence,
+                ], true)
+                && in_array($proposal->type?->key, ['city', 'rural_district', 'urban_region', 'village', 'neighborhood'], true)
+            ) {
+                return null;
+            }
+        }
+
         $location = $user->locationRelationships()
             ->where('relationship_type', 'primary_residence')
             ->whereNull('ended_at')
