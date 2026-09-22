@@ -10,8 +10,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('location_scoped_group_requests', function (Blueprint $table): void {
-            $table->string('dimension_key')->nullable()->after('scope_kind');
-            $table->string('dimension_value_key')->nullable()->after('dimension_key');
+            $table->string('dimension_key', 64)->nullable()->after('scope_kind');
+            $table->string('dimension_value_key', 191)->nullable()->after('dimension_key');
         });
 
         DB::table('location_scoped_group_requests')->where('scope_kind', 'official_public')->update([
