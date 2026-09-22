@@ -66,6 +66,71 @@ class PendingResidenceAncestorResolutionTest extends TestCase
         $this->assertSame($neighborhood->id, $intent->location_proposal_id);
     }
 
+    public function test_approving_deepest_pending_neighborhood_resolves_it_as_active_base_and_keeps_region_upstream(): void
+    {
+        config([
+            'location-governance.runtime_enabled' => true,
+            'location-governance.groups_enabled' => true,
+        ]);
+
+        ['user' => $user, 'endpoint' => $city] = MembershipFixture::canonicalUser();
+        $schema = $city->schema()->firstOrFail();
+        $regionType = $schema->types()->where('key', 'urban_region')->firstOrFail();
+        $neighborhoodType = $schema->types()->where('key', 'neighborhood')->firstOrFail();
+
+        $proposals = app(LocationProposalService::class);
+        $region = $proposals->propose($user, $city, $regionType, ['canonical_name' => '۵ ساری']);
+        $neighborhood = $proposals->proposeUnderProposal($user, $region, $neighborhoodType, ['canonical_name' => 'آزمایشی ۲']);
+        app(ResidenceService::class)->setPendingResidenceIntent($user, $neighborhood, ['source' => 'uat-regression']);
+        app(\App\Services\Groups\PendingLocationGroupRequestService::class)->syncForPendingResidence($user, $neighborhood);
+
+        $resolvedRegion = $proposals->approve($region, User::factory()->create(), 'تأیید منطقه');
+        $resolvedNeighborhood = $proposals->approve($neighborhood->fresh(), User::factory()->create(), 'تأیید محله');
+
+        $intent = PendingResidenceIntent::query()->where('user_id', $user->id)->sole();
+        $this->assertSame('resolved', $intent->status);
+        $this->assertSame($resolvedNeighborhood->id, $intent->resolved_location_id);
+
+        $currentResidence = UserLocationRelationship::query()
+            ->where('user_id', $user->id)->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')->sole();
+        $this->assertSame($resolvedNeighborhood->id, $currentResidence->location_id);
+
+        $regionArea = $resolvedRegion->governanceAreas()->official()->active()->sole();
+        $neighborhoodArea = $resolvedNeighborhood->governanceAreas()->official()->active()->sole();
+        $this->assertSame($regionArea->id, $neighborhoodArea->parent_id);
+        $this->assertSame('local', $neighborhoodArea->governance_type);
+
+        $resolvedRequests = $user->locationScopedGroupRequests()
+            ->whereIn('location_id', [$resolvedRegion->id, $resolvedNeighborhood->id])->get();
+        $this->assertNotEmpty($resolvedRequests);
+        $this->assertTrue($resolvedRequests->every(fn ($request) => $request->status === 'materialized'));
+
+        $this->assertSame(
+            0,
+            $user->locationScopedGroupRequests()
+                ->whereIn('status', ['pending_location', 'ready_to_materialize'])->count(),
+        );
+
+        $neighborhoodGroupIds = $resolvedRequests->where('location_id', $resolvedNeighborhood->id)
+            ->pluck('group_id')->filter()->all();
+        $regionGroupIds = $resolvedRequests->where('location_id', $resolvedRegion->id)
+            ->pluck('group_id')->filter()->all();
+
+        $this->assertNotEmpty($neighborhoodGroupIds);
+        $this->assertNotEmpty($regionGroupIds);
+        $this->assertSame(
+            count($neighborhoodGroupIds),
+            GroupUser::query()->where('user_id', $user->id)->whereIn('group_id', $neighborhoodGroupIds)
+                ->where('status', 1)->where('role', 1)->count(),
+        );
+        $this->assertSame(
+            count($regionGroupIds),
+            GroupUser::query()->where('user_id', $user->id)->whereIn('group_id', $regionGroupIds)
+                ->where('status', 1)->where('role', 0)->count(),
+        );
+    }
+
     public function test_approving_pending_parent_advances_anchor_without_resolving_deepest_intent(): void
     {
         $schema = LocationFixture::iranSchema();
