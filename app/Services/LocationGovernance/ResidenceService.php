@@ -202,8 +202,13 @@ class ResidenceService
                 ->get();
 
             foreach ($intents as $intent) {
-                $deepest = $intent->locationProposal;
-                if ($deepest === null || (int) ($deepest->nearestCanonicalParent()?->id ?? 0) !== (int) $resolvedLocation->id) {
+                $deepest = $intent->locationProposal?->loadMissing('type');
+                $typeKey = $deepest?->type?->key;
+                if (
+                    $deepest === null
+                    || ! in_array($typeKey, ['city', 'rural_district', 'urban_region', 'village', 'neighborhood'], true)
+                    || (int) ($deepest->nearestCanonicalParent()?->id ?? 0) !== (int) $resolvedLocation->id
+                ) {
                     continue;
                 }
 
