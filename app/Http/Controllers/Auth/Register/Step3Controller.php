@@ -139,6 +139,16 @@ class Step3Controller extends Controller
                     ? ($anchor !== null && $type !== null && $proposalPolicy->allowsForResidence($anchor, $type, $structuralClaims))
                     : ($parentProposal !== null && $type !== null && $proposalPolicy->allowsProposalParent($parentProposal, $type));
 
+                if (
+                    ! $proposalPathAllowed
+                    && $anchor !== null
+                    && $type !== null
+                    && $proposal->parent_location_id !== null
+                    && $type->key === 'neighborhood'
+                ) {
+                    $proposalPathAllowed = $proposalPolicy->allowsForResidence($anchor, $type, $structuralClaims);
+                }
+
                 $proposalClaimTypes = collect($structuralClaims)
                     ->filter(fn (LocationStructureClaim $claim): bool =>
                         (int) $claim->location_proposal_id === (int) $proposal->id

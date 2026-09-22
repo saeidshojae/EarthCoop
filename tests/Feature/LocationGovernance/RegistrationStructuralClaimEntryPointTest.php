@@ -145,6 +145,45 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
     }
 
 
+    public function test_registration_accepts_pending_neighborhood_directly_below_city_with_open_no_region_claim(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $city = LocationFixture::createPath($schema, ['country','province','county','section','city'])->last();
+        $neighborhoodType = $schema->types->firstWhere('key', 'neighborhood');
+        $user = User::factory()->create();
+        $claim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'no_urban_region', $user);
+
+        $proposal = \App\Models\LocationProposal::query()->create([
+            'parent_location_id' => $city->id,
+            'location_schema_id' => $schema->id,
+            'country_code' => 'IR',
+            'location_type_id' => $neighborhoodType->id,
+            'canonical_name' => 'محله آزمایشی کیاسر',
+            'normalized_name' => 'محله آزمایشی کیاسر',
+            'localized_names' => ['fa' => 'محله آزمایشی کیاسر'],
+            'status' => \App\Enums\LocationGovernance\LocationProposalStatus::Pending,
+            'proposer_user_id' => $user->id,
+        ]);
+
+        $this->actingAs($user)->post(route('register.step3.process'), [
+            'location_proposal_id' => $proposal->id,
+            'location_structure_claim_ids' => [$claim->id],
+        ])->assertRedirect(route('home'));
+
+        $relationship = $user->fresh()->locationRelationships()
+            ->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')
+            ->sole();
+
+        $this->assertSame($city->id, $relationship->location_id);
+        $this->assertEqualsCanonicalizing([$claim->id], $relationship->metadata['structural_claim_ids']);
+        $this->assertDatabaseHas('pending_residence_intents', [
+            'user_id' => $user->id,
+            'location_proposal_id' => $proposal->id,
+            'status' => 'pending',
+        ]);
+    }
+
     public function test_city_without_region_must_continue_to_real_neighborhood_before_registration_can_finish(): void
     {
         $schema = LocationFixture::iranSchema();
