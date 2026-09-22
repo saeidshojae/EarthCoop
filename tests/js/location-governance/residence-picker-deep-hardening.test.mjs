@@ -103,8 +103,8 @@ test('new canonical-parent proposal is inserted into the current selector and se
 
 test('pending proposals continue through their own children endpoint', () => {
   assert.match(selectorSource, /parent_location_proposal_id/);
-  assert.match(selectorSource, /\/location\/proposals\/\$\{encodeURIComponent\(selected\.id\)\}\/children/);
-  assert.match(selectorSource, /appendPendingLevel\(host, await response\.json\(\), depth \+ 1, `proposal:\$\{proposalId\}`\)/);
+  assert.ok(selectorSource.includes('/location/proposals/${encodeURIComponent(proposalId)}/children'));
+  assert.match(selectorSource, /appendPendingLevel\(host, payload, depth \+ 1, `proposal:\$\{proposalId\}`\)/);
   assert.doesNotMatch(selectorSource, /if \(selected\.picker_kind === 'proposal'\) return/);
 });
 
