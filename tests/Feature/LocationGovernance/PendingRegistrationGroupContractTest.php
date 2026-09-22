@@ -83,8 +83,8 @@ class PendingRegistrationGroupContractTest extends TestCase
         $user->experienceFields()->attach($s3->id);
         AgeGroup::create(['title' => '۲۵ تا ۳۵', 'min_age' => 25, 'max_age' => 35]);
 
-        $region = app(LocationProposalService::class)->propose($user, $city, $schema->types->firstWhere('key', 'urban_region'), ['canonical_name' => 'منطقه در انتظار']);
-        $neighborhood = app(LocationProposalService::class)->proposeUnderProposal($user, $region, $schema->types->firstWhere('key', 'neighborhood'), ['canonical_name' => 'محله در انتظار']);
+        $region = app(LocationProposalService::class)->propose($user, $city, $schema->types->firstWhere('key', 'urban_region'), ['canonical_name' => '۵ ساری']);
+        $neighborhood = app(LocationProposalService::class)->proposeUnderProposal($user, $region, $schema->types->firstWhere('key', 'neighborhood'), ['canonical_name' => 'آزمایشی ۲']);
 
         $requests = app(PendingLocationGroupRequestService::class)->syncForPendingResidence($user, $neighborhood);
 
@@ -105,7 +105,7 @@ class PendingRegistrationGroupContractTest extends TestCase
         $this->assertCount(9, $regionGroups);
         $this->assertTrue($neighborhoodGroups->every(fn ($group) => (int) $group->pivot->role === 1));
         $this->assertTrue($regionGroups->every(fn ($group) => (int) $group->pivot->role === 0));
-        $this->assertTrue($neighborhoodGroups->every(fn ($group) => str_contains($group->name, 'محله محله در انتظار')));
-        $this->assertTrue($regionGroups->every(fn ($group) => str_contains($group->name, 'منطقه منطقه در انتظار')));
+        $this->assertTrue($neighborhoodGroups->every(fn ($group) => str_contains($group->name, 'محله آزمایشی ۲')));
+        $this->assertTrue($regionGroups->every(fn ($group) => str_contains($group->name, 'منطقه ۵ ساری')));
     }
 }
