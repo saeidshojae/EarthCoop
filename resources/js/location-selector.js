@@ -9,6 +9,7 @@ import {
     pickerLevelLabel,
     selectionValues,
     shouldRenderNextLevel,
+    shouldStopRegistrationAtProposal,
     locationDisplayLabel,
 } from './location-selector-core.js';
 
@@ -184,4 +185,4 @@ if (typeof document !== 'undefined') {
     });
 }
 
-export { initializeLocationSelector, normalizePickerPayload, registrationPayload, microContinuationTypes, filterPayloadByType, projectScopePayload, projectScopeSelectionValues, pickerLevelLabel, selectionValues, shouldRenderNextLevel, locationDisplayLabel, localizeLocationTypeLabel, proposalParentPayload };
+export { initializeLocationSelector, normalizePickerPayload, registrationPayload, microContinuationTypes, filterPayloadByType, projectScopePayload, projectScopeSelectionValues, pickerLevelLabel, selectionValues, shouldRenderNextLevel, shouldStopRegistrationAtProposal, locationDisplayLabel, localizeLocationTypeLabel, proposalParentPayload };
