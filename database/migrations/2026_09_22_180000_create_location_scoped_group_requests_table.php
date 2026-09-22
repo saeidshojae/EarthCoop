@@ -13,7 +13,8 @@ return new class extends Migration
             $table->foreignId('requester_user_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('location_id')->nullable()->constrained('locations')->nullOnDelete();
             $table->foreignId('location_proposal_id')->nullable()->constrained('location_proposals')->cascadeOnDelete();
-            $table->foreignId('location_structure_claim_id')->nullable()->constrained('location_structure_claims')->cascadeOnDelete();
+            $table->unsignedBigInteger('location_structure_claim_id')->nullable();
+            $table->foreign('location_structure_claim_id', 'loc_group_req_struct_claim_fk')->references('id')->on('location_structure_claims')->cascadeOnDelete();
             $table->string('scope_kind');
             $table->string('status')->default('pending_location')->index();
             $table->foreignId('group_id')->nullable()->constrained('groups')->nullOnDelete();
