@@ -272,6 +272,20 @@ test('changing an ancestor selection clears remembered structural claim ids from
     assert.match(source, /clearStructuralClaimsAfterDepth\(form, depth\)/);
 });
 
+test('structural claims are owned by the selected parent depth and survive choosing its effective child', () => {
+    const source = selectorSource();
+    assert.match(
+        source,
+        /buildStructuralClaimPanel\(host, payload\.structuralChoices, parentLocationId, Math\.max\(depth - 1, 0\)/,
+        'a city topology claim rendered with its neighborhood choices must be remembered at the city depth'
+    );
+    assert.match(
+        source,
+        /select\.addEventListener\(['"]change['"][\s\S]*?clearStructuralClaimsAfterDepth\(form, depth\)/,
+        'choosing the effective child may clear claims owned by that child or deeper, but not the parent topology claim'
+    );
+});
+
 
 test('structural claim UI presents mutually exclusive tier states as one grouped question', () => {
     const source = selectorSource();

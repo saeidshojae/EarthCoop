@@ -301,7 +301,7 @@ const initializeLocationSelector = async (host) => {
             }
         };
         if (!isProjectScope) {
-            const structuralPanel = buildStructuralClaimPanel(host, payload.structuralChoices, parentLocationId, depth, async () => {
+            const structuralPanel = buildStructuralClaimPanel(host, payload.structuralChoices, parentLocationId, Math.max(depth - 1, 0), async () => {
                 const refreshed = await load(parentProposalId ? `/location/proposals/${encodeURIComponent(parentProposalId)}/children` : `/location/options/${encodeURIComponent(parentLocationId)}/children`);
                 removeDeeperLevels(depth); wrapper.remove(); appendLevel(refreshed, depth, parentLocationId);
                 setStatus('وضعیت ساختاری ثبت شد. مسیر واقعی بعدی بدون ساخت سطح مصنوعی در دسترس است.');
