@@ -21,7 +21,7 @@
     $memberCounts = $groups->isEmpty()
         ? collect()
         : \App\Models\GroupUser::query()
-            ->whereIn('group_id', $groups->pluck('id')->filter())
+            ->whereIn('group_id', $groups->pluck('id'))
             ->selectRaw('group_id, COUNT(*) as aggregate')
             ->groupBy('group_id')
             ->pluck('aggregate', 'group_id');
