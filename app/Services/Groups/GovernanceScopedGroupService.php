@@ -47,12 +47,17 @@ class GovernanceScopedGroupService
         return $group;
     }
 
-    private function nameFor(MembershipIntent $intent, GovernanceArea $area): string
+    public function pendingNameFor(string $dimensionKey, string $valueKey, string $areaName): string
     {
-        $areaName = $this->areaLabel($area);
+        $intent = new MembershipIntent(
+            dimensionKey: $dimensionKey,
+            valueKey: $valueKey,
+            governanceAreaId: null,
+            mode: 'automatic',
+        );
         $valueLabel = $this->valueLabel($intent);
 
-        return match ($intent->dimensionKey) {
+        return match ($dimensionKey) {
             'public' => "مجمع عمومی {$areaName}",
             'profession' => "مجمع صنفی {$valueLabel} در {$areaName}",
             'specialty' => "مجمع تخصصی {$valueLabel} در {$areaName}",
@@ -60,6 +65,11 @@ class GovernanceScopedGroupService
             'gender' => "مجمع جنسیتی {$valueLabel} در {$areaName}",
             default => "گروه {$valueLabel} در {$areaName}",
         };
+    }
+
+    private function nameFor(MembershipIntent $intent, GovernanceArea $area): string
+    {
+        return $this->pendingNameFor($intent->dimensionKey, $intent->valueKey, $this->areaLabel($area));
     }
 
     private function areaLabel(GovernanceArea $area): string
