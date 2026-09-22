@@ -99,8 +99,8 @@ class PendingRegistrationGroupContractTest extends TestCase
         $presented = app(PendingLocationGroupRequestService::class)->presentationGroups($requests);
         $this->assertCount(18, $presented);
         $this->assertTrue($presented->every(fn ($group) => $group->pending_location === true));
-        $neighborhoodGroups = $presented->where('presentation_rank', 900);
-        $regionGroups = $presented->where('presentation_rank', 800);
+        $neighborhoodGroups = $presented->where('presentation_rank', 9);
+        $regionGroups = $presented->where('presentation_rank', 8);
         $this->assertCount(9, $neighborhoodGroups);
         $this->assertCount(9, $regionGroups);
         $this->assertTrue($neighborhoodGroups->every(fn ($group) => (int) $group->pivot->role === 1));
