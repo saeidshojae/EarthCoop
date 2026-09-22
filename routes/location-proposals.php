@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 // Registration Step 3 is intentionally usable before an authenticated session exists.
 // Write actions below validate their actor in the controller/service; read-only proposal
 // traversal must remain available to the registration picker.
-Route::group(function () {
+Route::group([], function () {
     Route::post('/locations/structure-claims', [LocationStructureClaimController::class, 'store'])
         ->name('locations.structure-claims.store');
     Route::post('/location/proposals/{locationProposal}/structure-claims', [LocationProposalStructureClaimController::class, 'store'])
