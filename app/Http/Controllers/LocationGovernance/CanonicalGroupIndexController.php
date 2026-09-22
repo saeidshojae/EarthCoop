@@ -26,7 +26,14 @@ final class CanonicalGroupIndexController extends Controller
             ->filter()
             ->values();
 
+        // Healing a pre-deploy ready shell can create its missing official
+        // GovernanceArea and canonical groups. Reconcile once more afterwards
+        // so this same response includes those newly materialized groups.
         app(PendingLocationGroupRequestService::class)->reconcileReadyForUser($user);
+        $materializedIds = collect($reconciler->reconcile($user))
+            ->pluck('id')
+            ->filter()
+            ->values();
 
         $canonicalGroups = $materializedIds->isEmpty()
             ? collect()
