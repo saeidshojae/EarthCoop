@@ -9,7 +9,7 @@ class LocationScopedGroupRequest extends Model
 {
     protected $fillable = [
         'requester_user_id', 'location_id', 'location_proposal_id', 'location_structure_claim_id',
-        'scope_kind', 'status', 'group_id', 'governance_area_id', 'metadata',
+        'scope_kind', 'dimension_key', 'dimension_value_key', 'status', 'group_id', 'governance_area_id', 'metadata',
     ];
 
     protected $casts = ['metadata' => 'array'];
