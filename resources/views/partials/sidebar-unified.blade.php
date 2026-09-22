@@ -16,7 +16,7 @@
             $groups = $sidebarUser->groups()->wherePivot('status', 1)->get();
         }
         $pendingLocationGroupCount = (bool) config('location-governance.groups_enabled', false)
-            ? $sidebarUser->locationScopedGroupRequests()->where('scope_kind', 'official_public')->whereIn('status', ['pending_location', 'ready_to_materialize'])->count()
+            ? app(\App\Services\Groups\PendingLocationGroupRequestService::class)->openForUser($sidebarUser)->count()
             : 0;
         $sidebarGroupCount = $groups->count() + $pendingLocationGroupCount;
         $generalGroups = $groups->where('type', 'general');
