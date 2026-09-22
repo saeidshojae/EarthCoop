@@ -6,6 +6,7 @@ use App\Models\Location;
 use App\Models\LocationStructureClaim;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\Groups\PendingLocationGroupRequestService;
 use Illuminate\Support\Facades\DB;
 
 class LocationStructureClaimService
@@ -119,6 +120,10 @@ class LocationStructureClaimService
                 'approved_at' => $to === 'approved' ? now() : null,
                 'audit_log' => $audit,
             ])->save();
+
+            if (in_array($to, ['approved', 'rejected'], true)) {
+                app(PendingLocationGroupRequestService::class)->reconcileStructuralClaim($locked->fresh());
+            }
 
             return $locked;
         });

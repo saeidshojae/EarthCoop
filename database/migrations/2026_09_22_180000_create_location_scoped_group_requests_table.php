@@ -22,6 +22,7 @@ return new class extends Migration
             $table->json('metadata')->nullable();
             $table->timestamps();
             $table->unique(['requester_user_id', 'location_proposal_id', 'scope_kind'], 'location_group_request_user_proposal_scope_unique');
+            $table->unique(['requester_user_id', 'location_structure_claim_id', 'scope_kind'], 'loc_group_req_user_claim_scope_uq');
             $table->index(['requester_user_id', 'scope_kind', 'status'], 'location_group_request_user_scope_status_index');
         });
     }

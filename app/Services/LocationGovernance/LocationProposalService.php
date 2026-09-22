@@ -9,6 +9,7 @@ use App\Models\Setting;
 use App\Models\LocationType;
 use App\Models\LocationStructureClaim;
 use App\Models\User;
+use App\Services\Groups\PendingLocationGroupRequestService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
@@ -230,7 +231,9 @@ class LocationProposalService
             $proposal->save();
             $this->transition($proposal, LocationProposalStatus::Approved, $reviewer, $reason, true);
             $this->reanchorOpenChildren($proposal, $location);
+            $this->residenceService->refreshPendingResidenceAnchorsForResolvedAncestry($location);
             $this->residenceService->resolvePendingResidenceIntents($proposal->fresh(), $location);
+            app(PendingLocationGroupRequestService::class)->reconcileResolvedProposal($proposal->fresh(), $location);
 
             return $location;
         });
@@ -241,6 +244,7 @@ class LocationProposalService
         $this->guardOpen($proposal);
         $this->guardNoOpenChildren($proposal);
         $this->transition($proposal, LocationProposalStatus::Rejected, $reviewer, $reason, true);
+        app(PendingLocationGroupRequestService::class)->rejectForProposal($proposal->fresh());
     }
 
     public function merge(LocationProposal $proposal, Location $existing, User $reviewer, string $reason): void
@@ -265,7 +269,9 @@ class LocationProposalService
             $proposal->save();
             $this->transition($proposal, LocationProposalStatus::Merged, $reviewer, $reason, true);
             $this->reanchorOpenChildren($proposal, $existing);
+            $this->residenceService->refreshPendingResidenceAnchorsForResolvedAncestry($existing);
             $this->residenceService->resolvePendingResidenceIntents($proposal->fresh(), $existing);
+            app(PendingLocationGroupRequestService::class)->reconcileResolvedProposal($proposal->fresh(), $existing);
         });
     }
 

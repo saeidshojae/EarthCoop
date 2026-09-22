@@ -100,6 +100,8 @@ class Step3Controller extends Controller
 
                 if ((bool) config('location-governance.groups_enabled', false)) {
                     app(CanonicalGroupMembershipReconciler::class)->reconcile($user->fresh());
+                    app(\App\Services\Groups\PendingLocationGroupRequestService::class)
+                        ->syncForStructuralClaims($user->fresh(), $location, $structuralClaims);
                 }
                 app(ProfileCompletionService::class)->maybeAward($user->fresh());
 

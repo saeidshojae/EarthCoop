@@ -189,6 +189,67 @@ class ResidenceService
         });
     }
 
+    public function refreshPendingResidenceAnchorsForResolvedAncestry(Location $resolvedLocation): int
+    {
+        return DB::transaction(function () use ($resolvedLocation): int {
+            $updated = 0;
+            $at = now();
+
+            $intents = PendingResidenceIntent::query()
+                ->where('status', 'pending')
+                ->with('locationProposal')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($intents as $intent) {
+                $deepest = $intent->locationProposal;
+                if ($deepest === null || (int) ($deepest->nearestCanonicalParent()?->id ?? 0) !== (int) $resolvedLocation->id) {
+                    continue;
+                }
+
+                $current = UserLocationRelationship::query()
+                    ->where('user_id', $intent->user_id)
+                    ->where('relationship_type', 'primary_residence')
+                    ->whereNull('ended_at')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($current === null || (int) $current->id !== (int) $intent->anchor_relationship_id) {
+                    continue;
+                }
+
+                if ((int) $current->location_id === (int) $resolvedLocation->id) {
+                    continue;
+                }
+
+                $current->forceFill(['ended_at' => $at])->save();
+                $next = UserLocationRelationship::query()->create([
+                    'user_id' => $intent->user_id,
+                    'location_id' => $resolvedLocation->id,
+                    'relationship_type' => 'primary_residence',
+                    'started_at' => $at,
+                    'ended_at' => null,
+                    'evidence' => [
+                        'source' => 'pending_location_ancestor_resolution',
+                        'proposal_id' => $deepest->id,
+                    ],
+                    'explicit_transfer' => false,
+                    'transfer_override' => false,
+                    'metadata' => [
+                        'pending_residence_intent_id' => $intent->id,
+                        'refined_from_relationship_id' => $current->id,
+                    ],
+                ]);
+
+                $intent->forceFill(['anchor_relationship_id' => $next->id])->save();
+                $updated++;
+                $this->reconcileCanonicalGroupsIfEnabled(User::query()->findOrFail($intent->user_id));
+            }
+
+            return $updated;
+        });
+    }
+
     public function resolvePendingResidenceIntents(LocationProposal $proposal, Location $resolvedLocation): int
     {
         return DB::transaction(function () use ($proposal, $resolvedLocation): int {

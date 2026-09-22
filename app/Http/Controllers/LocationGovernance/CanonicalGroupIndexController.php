@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Group\GroupController;
 use App\Models\Group;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
+use App\Services\Groups\PendingLocationGroupRequestService;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
@@ -24,6 +25,8 @@ final class CanonicalGroupIndexController extends Controller
             ->pluck('id')
             ->filter()
             ->values();
+
+        app(PendingLocationGroupRequestService::class)->reconcileReadyForUser($user);
 
         $canonicalGroups = $materializedIds->isEmpty()
             ? collect()
