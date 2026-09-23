@@ -60,7 +60,7 @@ final class IranSettlementResidenceClaimController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $isUnverified = $settlement->classification === 'unverified_settlement'
+            $isUnverified = in_array($settlement->classification, ['unverified_settlement', 'needs_review'], true)
                 && $settlement->residential_eligibility === 'unverified';
             $hasVerifiedResidentialEvidence = $settlement->classification === 'verified_residential_village'
                 && $settlement->residential_eligibility === 'verified';
