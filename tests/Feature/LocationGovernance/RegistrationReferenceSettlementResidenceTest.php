@@ -6,6 +6,8 @@ use App\Models\LocationExternalId;
 use App\Models\PendingResidenceIntent;
 use App\Models\ReferenceSettlement;
 use App\Models\ReferenceSettlementResidenceClaim;
+use App\Models\MembershipDimension;
+use App\Services\Membership\PublicDimensionResolver;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -68,6 +70,13 @@ final class RegistrationReferenceSettlementResidenceTest extends TestCase
         $anchor = $this->anchor();
         $settlement = $this->settlement();
         $user = User::factory()->create();
+        config()->set('location-governance.groups_enabled', true);
+        MembershipDimension::query()->create([
+            'key' => 'public',
+            'name' => 'Public',
+            'resolver_class' => PublicDimensionResolver::class,
+            'enabled' => true,
+        ]);
         $locationsBefore = DB::table('locations')->count();
 
         $response = $this->actingAs($user)->post(route('register.step3.process'), [
@@ -92,6 +101,16 @@ final class RegistrationReferenceSettlementResidenceTest extends TestCase
         $this->assertNull($intent->location_proposal_id);
         $this->assertSame($claim->id, $intent->reference_settlement_residence_claim_id);
         $this->assertSame($settlement->external_id, $intent->metadata['reference_settlement_external_id']);
+
+        $pendingGroupRequest = DB::table('location_scoped_group_requests')
+            ->where('requester_user_id', $user->id)
+            ->where('reference_settlement_residence_claim_id', $claim->id)
+            ->where('dimension_key', 'public')
+            ->sole();
+        $this->assertSame('pending_location', $pendingGroupRequest->status);
+        $this->assertNull($pendingGroupRequest->group_id);
+        $this->assertNull($pendingGroupRequest->governance_area_id);
+        $this->assertNull($pendingGroupRequest->location_id);
         $this->assertSame(0, DB::table('governance_areas')->count());
 
         $admin = User::factory()->create(['is_admin' => true]);
