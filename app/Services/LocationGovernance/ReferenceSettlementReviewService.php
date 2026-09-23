@@ -60,6 +60,16 @@ final class ReferenceSettlementReviewService
                     'governance_authorized' => false,
                     'operational_promotion_allowed' => false,
                 ])->save();
+
+                ReferenceSettlementResidenceClaim::query()
+                    ->where('reference_settlement_id', $locked->id)
+                    ->whereIn('status', ['pending', 'needs_evidence'])
+                    ->update([
+                        'status' => 'residential_evidence_verified',
+                        'reviewed_at' => now(),
+                        'reviewed_by_user_id' => $actor->id,
+                        'updated_at' => now(),
+                    ]);
             } elseif ($decision === self::DECISION_NONRESIDENTIAL) {
                 $locked->forceFill([
                     'classification' => self::DECISION_NONRESIDENTIAL,
