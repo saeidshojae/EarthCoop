@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\GovernanceArea;
 use App\Models\Location;
 use App\Services\LocationGovernance\LocationSchemaResolver;
+use App\Support\GovernanceAreaDisplayName;
+use App\Support\LocationDisplayName;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -98,13 +100,11 @@ final class ProjectScopeOptionsController extends Controller
 
     private function serializeArea(GovernanceArea $area): array
     {
-        $locale = app()->getLocale();
-        $localizedNames = $area->localized_names ?? [];
         return [
             'id' => $area->id,
             'identity' => 'governance:'.$area->id,
             'type_key' => $area->governance_type,
-            'label' => $localizedNames[$locale] ?? $area->canonical_name,
+            'label' => GovernanceAreaDisplayName::for($area),
             'status' => $area->status,
             'has_children' => $area->children()->official()->active()->exists(),
             'governance_area_id' => $area->id,
@@ -125,8 +125,6 @@ final class ProjectScopeOptionsController extends Controller
 
     private function serializeLocation(Location $location): array
     {
-        $locale = app()->getLocale();
-        $localizedNames = $location->localized_names ?? [];
         $allowedChildTypeIds = app(LocationSchemaResolver::class)->allowedChildTypes($location)->pluck('id');
         $hasChildren = $allowedChildTypeIds->isNotEmpty() && $location->children()->where('status', 'active')
             ->where('location_schema_id', $location->location_schema_id)->whereIn('location_type_id', $allowedChildTypeIds)->exists();
@@ -134,7 +132,7 @@ final class ProjectScopeOptionsController extends Controller
             'id' => $location->id,
             'identity' => 'location:'.$location->id,
             'type_key' => $location->type?->key,
-            'label' => $localizedNames[$locale] ?? $location->canonical_name ?? $location->name,
+            'label' => LocationDisplayName::for($location),
             'status' => $location->status,
             'has_children' => $hasChildren,
             'children_url' => '/location/options/'.$location->id.'/children',
