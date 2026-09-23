@@ -43,20 +43,23 @@ class PendingResidenceProposalSupportReconcileTest extends TestCase
         $this->assertSame(0, $proposal->fresh()->evidence()->count());
 
         $this->assertSame(0, Artisan::call('location:reconcile-residence-support'));
-        $this->assertStringContainsString('mode: dry-run', Artisan::output());
-        $this->assertStringContainsString('missing: 1', Artisan::output());
+        $dryRunOutput = Artisan::output();
+        $this->assertStringContainsString('mode: dry-run', $dryRunOutput);
+        $this->assertStringContainsString('missing: 1', $dryRunOutput);
         $this->assertSame(0, $proposal->fresh()->evidence()->count());
 
         $this->assertSame(0, Artisan::call('location:reconcile-residence-support', ['--apply' => true]));
-        $this->assertStringContainsString('mode: apply', Artisan::output());
-        $this->assertStringContainsString('created: 1', Artisan::output());
+        $applyOutput = Artisan::output();
+        $this->assertStringContainsString('mode: apply', $applyOutput);
+        $this->assertStringContainsString('created: 1', $applyOutput);
 
         $evidence = $proposal->fresh()->evidence()->where('user_id', $user->id)->sole();
         $this->assertSame('residence_commit_reconcile', data_get($evidence->evidence, 'source'));
         $this->assertSame($intent->id, data_get($evidence->evidence, 'pending_residence_intent_id'));
 
         $this->assertSame(0, Artisan::call('location:reconcile-residence-support', ['--apply' => true]));
-        $this->assertStringContainsString('created: 0', Artisan::output());
+        $repeatOutput = Artisan::output();
+        $this->assertStringContainsString('created: 0', $repeatOutput);
         $this->assertSame(1, $proposal->fresh()->evidence()->count());
     }
 }
