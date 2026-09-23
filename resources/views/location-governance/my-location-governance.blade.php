@@ -291,7 +291,7 @@
                                     </div>
                                 </div>
                                 @if($community)
-                                    <div class="small mt-3">اجتماع «{{ $community->canonical_name }}» برای این مکان فعال است. عضویت در اجتماعات محلی اختیاری است.</div>
+                                    <div class="small mt-3">اجتماع «{{ \App\Support\GovernanceAreaDisplayName::for($community) }}» برای این مکان فعال است. عضویت در اجتماعات محلی اختیاری است.</div>
                                     @if($isCommunityMember && $communityGroup)
                                         <div class="d-flex flex-column flex-md-row gap-2 mt-3">
                                             <a href="{{ route('groups.show', $communityGroup) }}" class="btn btn-primary" data-community-enter-action>ورود به اجتماع محلی</a>
