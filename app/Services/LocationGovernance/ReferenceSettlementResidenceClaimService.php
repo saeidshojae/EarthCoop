@@ -23,9 +23,12 @@ final class ReferenceSettlementResidenceClaimService
             ->first();
 
         $location = $identity?->location;
-        if ($location === null || $location->status !== 'active' || $location->country_code !== 'IR') {
+        if ($location === null
+            || $location->status !== 'active'
+            || $location->country_code !== 'IR'
+            || $location->type?->key !== 'rural_district') {
             throw ValidationException::withMessages([
-                'reference_settlement_external_id' => 'والد رسمی این آبادی هنوز در ساختار فعال مکان قابل تطبیق نیست.',
+                'reference_settlement_external_id' => 'والد رسمی این آبادی هنوز به یک دهستان فعال و معتبر در مرجع ۱۴۰۴ قابل تطبیق نیست.',
             ]);
         }
 
