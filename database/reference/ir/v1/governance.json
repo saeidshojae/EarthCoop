@@ -164,8 +164,8 @@
       "parent_key": "ir-reference-v1-chahardangeh-rural-district",
       "governance_type": "village",
       "area_kind": "official",
-      "canonical_name": "Chahardangeh Village Without Neighborhood",
-      "localized_names": {"fa": "روستای چهاردانگه بدون محله", "en": "Chahardangeh Village Without Neighborhood"},
+      "canonical_name": "Reference Village Without Neighborhood",
+      "localized_names": {"fa": "روستای مرجع بدون محله", "en": "Reference Village Without Neighborhood"},
       "rank": 700,
       "status": "active",
       "location_external_ids": ["IR-MAZ-SARI-CHAHARDANGEH-VILLAGE-NONEIGHBORHOOD"]
