@@ -9,9 +9,11 @@ use App\Models\Location;
 use App\Models\LocationProposal;
 use App\Models\LocationStructureClaim;
 use App\Models\PendingResidenceIntent;
+use App\Models\ReferenceSettlement;
 use App\Models\Setting;
 use App\Services\LocationGovernance\LocationProposalService;
 use App\Services\LocationGovernance\LocationStructureClaimService;
+use App\Services\LocationGovernance\ReferenceSettlementReviewService;
 use App\Services\Admin\AdminSettingManagementService;
 use App\Services\NajmHoda\LocationGovernanceReviewService;
 use App\Support\LocationDisplayName;
@@ -77,6 +79,17 @@ class LocationGovernanceController extends Controller
         $structureClaimPaths = $structureClaims->mapWithKeys(fn (LocationStructureClaim $claim): array => [
             $claim->id => $this->locationPath($claim->location),
         ]);
+
+        $settlementClaimReviewThreshold = max(1, (int) config('iran_settlement_catalog.claim_review_threshold', 10));
+        $settlementReviewQueue = ReferenceSettlement::query()
+            ->withCount([
+                'residenceClaims as open_residence_claims_count' => fn ($query) => $query->whereIn('status', ['pending', 'needs_evidence']),
+            ])
+            ->whereHas('residenceClaims', fn ($query) => $query->whereIn('status', ['pending', 'needs_evidence']))
+            ->orderByDesc('open_residence_claims_count')
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get();
 
         $referenceLocations = Location::query()
             ->with(['parent', 'type'])
@@ -161,6 +174,8 @@ class LocationGovernanceController extends Controller
             'structureClaims' => $structureClaims,
             'structureClaimPaths' => $structureClaimPaths,
             'hodaReviews' => $hodaReviews,
+            'settlementReviewQueue' => $settlementReviewQueue,
+            'settlementClaimReviewThreshold' => $settlementClaimReviewThreshold,
             'referenceLocations' => $referenceLocations,
             'officialTopology' => $officialTopology,
             'communityAreas' => $communityAreas,
@@ -315,6 +330,48 @@ class LocationGovernanceController extends Controller
         }
 
         return $path;
+    }
+
+    public function reviewSettlement(
+        Request $request,
+        ReferenceSettlement $referenceSettlement,
+        ReferenceSettlementReviewService $service,
+    ): JsonResponse|RedirectResponse {
+        $validated = $request->validate([
+            'decision' => ['required', 'in:needs_evidence,verified_residential_village,verified_nonresidential_place'],
+            'reason' => ['required', 'string', 'min:4', 'max:1000'],
+            'evidence_source' => ['nullable', 'string', 'max:255'],
+            'evidence_date' => ['nullable', 'date', 'before_or_equal:today'],
+            'evidence_reference' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        try {
+            $review = $service->review(
+                $referenceSettlement,
+                $request->user(),
+                $validated['decision'],
+                $validated['reason'],
+                $validated['evidence_source'] ?? null,
+                $validated['evidence_date'] ?? null,
+                $validated['evidence_reference'] ?? null,
+            );
+        } catch (DomainException $exception) {
+            throw ValidationException::withMessages([
+                'settlement' => $exception->getMessage(),
+            ]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'settlement_id' => $referenceSettlement->id,
+                'review_id' => $review->id,
+                'decision' => $review->decision,
+                'classification' => $referenceSettlement->fresh()->classification,
+                'governance_authorized' => false,
+            ]);
+        }
+
+        return back()->with('success', 'بازبینی آبادی ثبت شد؛ این تصمیم به‌تنهایی حوزهٔ حکمرانی یا اقامت رسمی ایجاد نمی‌کند.');
     }
 
     /** @return array<int, string> */
