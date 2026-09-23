@@ -500,6 +500,14 @@ final class PendingLocationGroupRequestService
         }
     }
 
+    public function rejectForReferenceSettlementClaim(ReferenceSettlementResidenceClaim $claim): void
+    {
+        LocationScopedGroupRequest::query()
+            ->where('reference_settlement_residence_claim_id', $claim->id)
+            ->whereIn('status', ['pending_location', 'ready_to_materialize'])
+            ->update(['status' => 'rejected', 'updated_at' => now()]);
+    }
+
     public function rejectForProposal(LocationProposal $proposal): void
     {
         LocationScopedGroupRequest::query()->where('location_proposal_id', $proposal->id)
