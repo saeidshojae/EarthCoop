@@ -3,6 +3,8 @@
 namespace Tests\Feature\LocationGovernance;
 
 use App\Models\ReferenceSettlement;
+use App\Models\LocationExternalId;
+use Tests\Support\LocationGovernance\LocationFixture;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -46,6 +48,40 @@ final class IranSettlementCatalogSearchTest extends TestCase
             ->assertJsonPath('data.0.residence_endpoint_allowed', false)
             ->assertJsonPath('data.0.governance_authorized', false)
             ->assertJsonPath('data.0.requires_residence_review', true);
+    }
+
+    public function test_registration_search_can_resolve_verified_v1_parent_location_to_v2_source_parent(): void
+    {
+        config()->set('iran_settlement_catalog.enabled', true);
+        $schema = LocationFixture::iranSchema();
+        $parent = LocationFixture::createPath($schema, [
+            'country', 'province', 'county', 'section', 'rural_district',
+        ])->last();
+
+        LocationExternalId::query()->create([
+            'location_id' => $parent->id,
+            'source' => 'earthcoop-reference',
+            'dataset_version' => 'v1',
+            'external_id' => 'IR-MAZ-SARI-CHAHARDANGEH-RD',
+            'metadata' => ['fixture' => true],
+        ]);
+        $this->settlement('IR-1404-201', 'IR-1404-1938', 'آبادی بهار');
+
+        $this->getJson('/location/reference-settlements?parent_location_id='.$parent->id.'&q='.rawurlencode('آبادی'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.external_id', 'IR-1404-201');
+    }
+
+    public function test_registration_search_fails_closed_for_unmapped_parent_location(): void
+    {
+        config()->set('iran_settlement_catalog.enabled', true);
+        $schema = LocationFixture::iranSchema();
+        $parent = LocationFixture::createPath($schema, ['country'])->last();
+
+        $this->getJson('/location/reference-settlements?parent_location_id='.$parent->id.'&q='.rawurlencode('آبادی'))
+            ->assertUnprocessable()
+            ->assertJsonPath('data', []);
     }
 
     public function test_search_requires_source_parent_and_rejects_wildcards(): void
