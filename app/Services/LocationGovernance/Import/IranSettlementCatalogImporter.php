@@ -146,10 +146,14 @@ final class IranSettlementCatalogImporter
             // Re-import is safe ONLY when source identity and protected
             // classification have not drifted. Never overwrite evidence.
             foreach (['parent_external_id', 'source_code', 'source_row_id', 'name_fa',
-                'classification', 'residential_eligibility',
-                'governance_authorized', 'operational_promotion_allowed'] as $field) {
+                'classification', 'residential_eligibility'] as $field) {
                 if ((string) $prior->{$field} !== (string) $row[$field]) {
                     throw new RuntimeException('Existing settlement identity or classification changed: '.$row['external_id']);
+                }
+            }
+            foreach (['governance_authorized', 'operational_promotion_allowed'] as $field) {
+                if ((bool) $prior->{$field} !== (bool) $row[$field]) {
+                    throw new RuntimeException('Existing settlement classification changed: '.$row['external_id']);
                 }
             }
             if (json_decode((string) $prior->provenance, true) !== json_decode($row['provenance'], true)) {
