@@ -49,6 +49,12 @@ final class IranV1V2RuntimeAuditCommand extends Command
             ->count();
         $mappedPresent = collect($rows)->where('present', true)->count();
         $unreviewedPresent = max(0, $allV1 - $mappedPresent);
+        $dependencyTotal = collect($rows)->sum(function (array $row): int {
+            return array_sum($row['dependencies']);
+        });
+        $mappedDependencyRows = collect($rows)->filter(function (array $row): bool {
+            return $row['present'] && array_sum($row['dependencies']) > 0;
+        })->count();
         $blocked = collect($rows)->contains(fn (array $row): bool =>
             $row['mapping_status'] !== 'verified_identity' && $row['present']
         );
@@ -62,7 +68,9 @@ final class IranV1V2RuntimeAuditCommand extends Command
             'reviewed_mapping_count' => count($map),
             'reviewed_mapping_present' => $mappedPresent,
             'unreviewed_v1_identity_count' => $unreviewedPresent,
-            'shared_cutover_blocked' => $blocked || $unreviewedPresent > 0,
+            'dependency_count_total' => $dependencyTotal,
+            'mapped_dependency_rows' => $mappedDependencyRows,
+            'shared_cutover_blocked' => $blocked || $unreviewedPresent > 0 || $dependencyTotal > 0,
             'rows' => $rows,
             'warning' => 'Audit only. This command performs no UPDATE/DELETE/INSERT and is not migration authorization.',
         ];
@@ -76,6 +84,7 @@ final class IranV1V2RuntimeAuditCommand extends Command
         $this->line('v1 identities: '.$allV1);
         $this->line('reviewed mappings present: '.$mappedPresent.'/'.count($map));
         $this->line('unreviewed v1 identities: '.$unreviewedPresent);
+        $this->line('dependency references: '.$dependencyTotal.' across '.$mappedDependencyRows.' mapped rows');
         $this->line('shared cutover blocked: '.($report['shared_cutover_blocked'] ? 'YES' : 'NO'));
         foreach ($rows as $row) {
             $deps = $row['dependencies'];
