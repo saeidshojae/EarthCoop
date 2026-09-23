@@ -19,6 +19,7 @@ final class RegistrationReferenceSettlementResidenceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withoutVite();
         config()->set('location-governance.registration_enabled', true);
         config()->set('location-governance.runtime_enabled', true);
         config()->set('iran_settlement_catalog.enabled', true);
