@@ -67,7 +67,9 @@ final class CanonicalGroupIndexController extends Controller
         ));
 
         $pendingService = app(PendingLocationGroupRequestService::class);
-        $pendingGroups = $pendingService->presentationGroups($pendingService->openForUser($user));
+        $pendingRequests = $pendingService->openForUser($user);
+        $canonicalGroups = $pendingService->presentableCanonicalGroups($canonicalGroups, $pendingRequests);
+        $pendingGroups = $pendingService->presentationGroups($pendingRequests);
         $allGroups = $canonicalGroups
             ->concat($pendingGroups)
             ->sortByDesc(fn (Group $group): int => (int) ($group->presentation_rank ?? -1))
