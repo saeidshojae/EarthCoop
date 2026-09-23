@@ -36,6 +36,17 @@ The command refuses Production, a DB without geo_uat in its name, a missing exac
 
 Repeat dry-run: unchanged=6158 and create/update/deactivate/conflict all zero. Record import time, memory, schema/identity row counts and successful paths such as Iran → Mazandaran → Sari → Chahardangeh → Kiasar. Do not infer that all village paths are ready; settlements await classification.
 
+## V1 → v2 identity review (non-mutating)
+
+Before considering any shared-database transition, run the reviewed crosswalk auditor against the pinned 1404 source and the 18-row v1 fixture:
+
+    python3 -m unittest -v scripts/location_governance/test_audit_v1_iran_crosswalk.py
+    python3 scripts/location_governance/audit_v1_iran_crosswalk.py --source-dir database/reference/source/ir/1404 --v1-locations database/reference/ir/v1/locations.jsonl --output storage/app/iran-v1-crosswalk-review.json
+
+This creates a NEW JSON report only. It does not access a database or write into importable reference directories. Expect eight verified real source identities, one municipality-dependent Sari urban zone and nine synthetic UAT places held without automatic mapping. In particular, the real Kiasar city is not discarded just because the v1 fixture included it to exercise a no-urban-region path.
+
+The pinned mapping is deliberately narrow: Iran, Mazandaran, Sari county, Sari central section, Sari city, Chahardangeh section, Kiasar city, Chahardangeh rural district; Sari urban region 1 still requires a municipality check. Never convert this JSON report into SQL or a mass update without an explicit, separately reviewed database identity/reconciliation plan. Existing user-generated proposals and other non-v1 Location rows must be inventoried before a shared-database change.
+
 ## Release blockers
 
 1. Obtain valid residential eligibility for settlements; a source type called settlement does not automatically authorize village governance, voting or group creation.
