@@ -85,6 +85,28 @@ final class IranSettlementResidenceClaimTest extends TestCase
         $this->assertDatabaseCount('reference_settlement_residence_claims', 2);
     }
 
+    public function test_needs_review_settlement_remains_open_for_additional_distinct_claimants(): void
+    {
+        config()->set('iran_settlement_catalog.enabled', true);
+        config()->set('iran_settlement_catalog.claims_enabled', true);
+        $settlement = $this->settlement([
+            'classification' => 'needs_review',
+            'residential_eligibility' => 'unverified',
+        ]);
+
+        $this->actingAs(User::factory()->create())->postJson('/location/reference-settlement-residence-claims', [
+            'external_id' => $settlement->external_id,
+        ])->assertCreated()->assertJsonPath('status', 'pending');
+
+        $this->actingAs(User::factory()->create())->postJson('/location/reference-settlement-residence-claims', [
+            'external_id' => $settlement->external_id,
+        ])->assertCreated()->assertJsonPath('status', 'pending');
+
+        $this->assertDatabaseCount('reference_settlement_residence_claims', 2);
+        $this->assertSame('needs_review', $settlement->fresh()->classification);
+        $this->assertSame(0, DB::table('governance_areas')->count());
+    }
+
     public function test_verified_residential_evidence_can_accept_claim_without_confirming_residence(): void
     {
         config()->set('iran_settlement_catalog.enabled', true);
