@@ -13,6 +13,7 @@ use App\Models\LocationProposal;
 use App\Models\LocationStructureClaim;
 use App\Models\Neighborhood;
 use App\Models\Province;
+use App\Models\ReferenceSettlement;
 use App\Models\Region;
 use App\Models\Street;
 use App\Models\Village;
@@ -21,6 +22,7 @@ use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\LocationGovernance\LocationProposalPolicy;
 use App\Services\LocationGovernance\LocationTreeResolver;
 use App\Services\LocationGovernance\ResidenceService;
+use App\Services\LocationGovernance\ReferenceSettlementResidenceClaimService;
 use App\Services\ProfileCompletionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -58,6 +60,7 @@ class Step3Controller extends Controller
         LocationTreeResolver $locationTreeResolver,
         ResidenceService $residenceService,
         LocationProposalPolicy $proposalPolicy,
+        ReferenceSettlementResidenceClaimService $settlementClaimService,
     ) {
         $user = auth()->user();
         if (! $user) {
@@ -68,21 +71,70 @@ class Step3Controller extends Controller
             $validated = $request->validate([
                 'location_id' => ['nullable', 'integer', 'exists:locations,id'],
                 'location_proposal_id' => ['nullable', 'integer', 'exists:location_proposals,id'],
+                'reference_settlement_external_id' => ['nullable', 'string', 'regex:/^IR-1404-[1-9][0-9]*$/D'],
                 'location_structure_claim_ids' => ['nullable', 'array'],
                 'location_structure_claim_ids.*' => ['integer', 'distinct', 'exists:location_structure_claims,id'],
             ]);
 
             $locationId = $validated['location_id'] ?? null;
             $proposalId = $validated['location_proposal_id'] ?? null;
+            $settlementExternalId = $validated['reference_settlement_external_id'] ?? null;
             $structuralClaims = LocationStructureClaim::query()
                 ->whereIn('id', $validated['location_structure_claim_ids'] ?? [])
                 ->get()
                 ->all();
 
-            if (($locationId === null) === ($proposalId === null)) {
+            $selectionCount = collect([$locationId, $proposalId, $settlementExternalId])
+                ->filter(fn ($value) => $value !== null && $value !== '')
+                ->count();
+            if ($selectionCount !== 1) {
                 throw ValidationException::withMessages([
-                    'location_id' => 'لطفاً دقیقاً یک محل تأییدشده یا یک پیشنهاد مکان در انتظار بررسی را انتخاب کنید.',
+                    'location_id' => 'لطفاً دقیقاً یک محل تأییدشده، پیشنهاد مکان، یا آبادی مرجع را انتخاب کنید.',
                 ]);
+            }
+
+            if ($settlementExternalId !== null) {
+                if (! (bool) config('iran_settlement_catalog.enabled', false)
+                    || ! (bool) config('iran_settlement_catalog.claims_enabled', false)
+                    || ! (bool) config('iran_settlement_catalog.registration_bridge_enabled', false)) {
+                    throw ValidationException::withMessages([
+                        'reference_settlement_external_id' => 'انتخاب آبادی مرجع برای ثبت‌نام هنوز فعال نشده است.',
+                    ]);
+                }
+                if ($structuralClaims !== []) {
+                    throw ValidationException::withMessages([
+                        'location_structure_claim_ids' => 'ادعاهای ساختاری را نمی‌توان همزمان با آبادی مرجع ثبت کرد.',
+                    ]);
+                }
+
+                $settlement = ReferenceSettlement::query()
+                    ->where('source', 'IranCountryDivisions/geo_1404')
+                    ->where('dataset_version', 'v2')
+                    ->where('external_id', $settlementExternalId)
+                    ->firstOrFail();
+                $anchor = $settlementClaimService->resolveAnchor($settlement);
+
+                DB::transaction(function () use (
+                    $user,
+                    $settlement,
+                    $settlementExternalId,
+                    $anchor,
+                    $residenceService,
+                    $settlementClaimService,
+                ): void {
+                    $relationship = $residenceService->setInitialPrimaryResidence($user, $anchor, [
+                        'source' => 'registration_step3_reference_settlement_anchor',
+                        'reference_settlement_external_id' => $settlementExternalId,
+                    ]);
+                    $settlementClaimService->claim($user, $settlement, $relationship);
+                });
+
+                app(ProfileCompletionService::class)->maybeAward($user->fresh());
+
+                return redirect()->route('home')->with(
+                    'success',
+                    'ثبت‌نام شما تکمیل شد. آبادی دقیق انتخابی برای بررسی ثبت شده است و تا تعیین تکلیف، حوزهٔ رسمی شما بر پایهٔ نزدیک‌ترین مکان مرجع تأییدشده محاسبه می‌شود.'
+                );
             }
 
             if ($locationId !== null) {
