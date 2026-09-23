@@ -5,6 +5,7 @@ namespace Tests\Feature\LocationGovernance;
 use App\Models\GovernanceArea;
 use App\Models\ReferenceSettlement;
 use App\Models\ReferenceSettlementResidenceClaim;
+use App\Models\LocationScopedGroupRequest;
 use App\Models\ReferenceSettlementReview;
 use App\Models\User;
 use App\Services\LocationGovernance\ReferenceSettlementReviewService;
@@ -140,6 +141,15 @@ final class ReferenceSettlementReviewTest extends TestCase
         $admin = User::factory()->create(['is_admin' => true]);
         $settlement = $this->settlement();
         $claim = $this->claim($settlement, User::factory()->create());
+        $groupRequest = LocationScopedGroupRequest::query()->create([
+            'requester_user_id' => $claim->user_id,
+            'reference_settlement_residence_claim_id' => $claim->id,
+            'scope_kind' => 'official_system',
+            'dimension_key' => 'public',
+            'dimension_value_key' => 'public',
+            'status' => 'pending_location',
+            'metadata' => ['source' => 'test'],
+        ]);
 
         $this->actingAs($admin)->postJson(
             "/admin/location-governance/reference-settlements/{$settlement->id}/review",
@@ -160,6 +170,9 @@ final class ReferenceSettlementReviewTest extends TestCase
             'governance_authorized' => 0,
         ]);
         $this->assertSame('rejected', $claim->fresh()->status);
+        $this->assertSame('rejected', $groupRequest->fresh()->status);
+        $this->assertNull($groupRequest->fresh()->group_id);
+        $this->assertNull($groupRequest->fresh()->governance_area_id);
     }
 
     public function test_verified_classification_cannot_be_silently_flipped_by_same_review_endpoint(): void
