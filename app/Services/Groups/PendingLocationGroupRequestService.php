@@ -13,6 +13,7 @@ use App\Models\LocationStructureClaim;
 use App\Models\PendingResidenceIntent;
 use App\Models\User;
 use App\Services\Membership\MembershipEngine;
+use App\Support\LocationDisplayName;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -187,6 +188,7 @@ final class PendingLocationGroupRequestService
         return LocationScopedGroupRequest::query()
             ->where('requester_user_id', $user->id)->where('scope_kind', self::SCOPE)
             ->whereIn('status', ['pending_location', 'ready_to_materialize'])
+            ->with(['locationProposal', 'locationStructureClaim.location', 'location'])
             ->orderBy('id')->get();
     }
 
@@ -261,7 +263,15 @@ final class PendingLocationGroupRequestService
         $namer = app(GovernanceScopedGroupService::class);
         return $requests->map(function (LocationScopedGroupRequest $request) use ($namer): Group {
             $metadata = $request->metadata ?? [];
-            $areaName = (string) ($metadata['canonical_name'] ?? $request->location?->canonical_name ?? 'حوزه در انتظار');
+            // Resolve the current model name rather than the canonical-name snapshot.
+            // Existing pending requests may predate localized metadata; no rewrite
+            // or migration of those requests is required for Persian presentation.
+            $area = $request->locationStructureClaim?->location
+                ?? $request->locationProposal
+                ?? $request->location;
+            $areaName = $area instanceof Location || $area instanceof LocationProposal
+                ? LocationDisplayName::for($area)
+                : (string) ($metadata['canonical_name'] ?? 'حوزه در انتظار');
             $dimensionKey = (string) $request->dimension_key;
             $valueKey = (string) $request->dimension_value_key;
             $level = $this->presentationLevelFor((string) ($metadata['type_key'] ?? ''));
