@@ -179,6 +179,7 @@ def convert(payload: bytes, output_dir: Path, schema_template: Path, allow_fixtu
         with (output_dir / name).open('w', encoding='utf-8', newline='\n') as handle:
             for row in data:
                 handle.write(json.dumps(row, ensure_ascii=False, separators=(',', ':')) + '\n')
+    manifest['settlements_review_sha256'] = hashlib.sha256((output_dir / 'settlements.review.jsonl').read_bytes()).hexdigest()
     (output_dir / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     return manifest
 
