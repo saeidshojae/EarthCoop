@@ -76,6 +76,7 @@ jobs:
           if-no-files-found: error
 
   php-isolated-import-guard:
+    needs: validate-and-stage
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -131,9 +132,10 @@ jobs:
           FILESYSTEM_DISK=local
           EOF
           php artisan key:generate --force
-          mysql --host=127.0.0.1 --port=3306 --user=root -e 'CREATE DATABASE IF NOT EXISTS `newearthcoop-test` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
+          mysql --host=127.0.0.1 --port=3306 --user=root -e 'CREATE DATABASE IF NOT EXISTS `newearthcoop-test` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS newearthcoop_geo_uat CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
           php artisan migrate --force
           DB_DATABASE=newearthcoop-test php artisan migrate --force
+          DB_DATABASE=newearthcoop_geo_uat php artisan migrate --force
 
       - name: Syntax and targeted import safety regressions
         run: |
@@ -142,3 +144,28 @@ jobs:
           php artisan test \
             tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php \
             tests/Feature/LocationGovernance/ReferenceGeographyImportTest.php
+
+      - name: Download pinned NON-PRODUCTION v2 candidate
+        uses: actions/download-artifact@v4
+        with:
+          name: iran-1404-v2-STAGING-${{ github.sha }}
+          path: ${{ runner.temp }}/iran-1404-v2-candidate/
+
+      - name: Dry-run and import 6158 rows in disposable geo_uat database only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e database/reference/ir/v2
+          mkdir -p database/reference/ir/v2
+          cp "$RUNNER_TEMP/iran-1404-v2-candidate/schema.json" database/reference/ir/v2/schema.json
+          cp "$RUNNER_TEMP/iran-1404-v2-candidate/locations.jsonl" database/reference/ir/v2/locations.jsonl
+          DB_DATABASE=newearthcoop_geo_uat php artisan location:reference-import IR --dataset-version=v2 --dry-run | tee "$RUNNER_TEMP/iran-v2-dry-run.log"
+          grep -Fx 'create: 6158' "$RUNNER_TEMP/iran-v2-dry-run.log"
+          grep -Fx 'conflict: 0' "$RUNNER_TEMP/iran-v2-dry-run.log"
+          grep -Fx 'deactivate: 0' "$RUNNER_TEMP/iran-v2-dry-run.log"
+          DB_DATABASE=newearthcoop_geo_uat php artisan location:reference-import IR --dataset-version=v2 --apply --confirm=APPLY-IR-1404-V2-ISOLATED | tee "$RUNNER_TEMP/iran-v2-apply.log"
+          grep -Fx 'create: 6158' "$RUNNER_TEMP/iran-v2-apply.log"
+          grep -Fx 'conflict: 0' "$RUNNER_TEMP/iran-v2-apply.log"
+          DB_DATABASE=newearthcoop_geo_uat php artisan location:reference-import IR --dataset-version=v2 --dry-run | tee "$RUNNER_TEMP/iran-v2-repeat.log"
+          grep -Fx 'unchanged: 6158' "$RUNNER_TEMP/iran-v2-repeat.log"
+          grep -Fx 'deactivate: 0' "$RUNNER_TEMP/iran-v2-repeat.log"
