@@ -98,27 +98,27 @@
         ? app(\App\Services\LocationGovernance\LocationTreeResolver::class)->ancestors($currentResidence->location)->push($currentResidence->location)
         : collect();
     $displayAreaName = static function ($area) {
-        $localized = is_array($area?->localized_names) ? $area->localized_names : [];
-        $location = $area?->locations?->first();
+        if ($area === null) {
+            return '—';
+        }
+
+        $locale = app()->getLocale();
+        $language = strtolower((string) strtok(str_replace('_', '-', $locale), '-'));
+        $localized = is_array($area->localized_names) ? $area->localized_names : [];
+        $location = $area->locations?->first();
         $locationLocalized = is_array($location?->localized_names) ? $location->localized_names : [];
 
-        return $localized['fa']
-            ?? $localized['fa-IR']
-            ?? $locationLocalized['fa']
-            ?? $locationLocalized['fa-IR']
-            ?? $location?->name
-            ?? $area?->canonical_name
-            ?? '—';
+        // Preserve the independent governance-area name when localized, then
+        // fall back to its mapped location before using a canonical identifier.
+        return $localized[$locale]
+            ?? $localized[$language]
+            ?? $locationLocalized[$locale]
+            ?? $locationLocalized[$language]
+            ?? \App\Support\GovernanceAreaDisplayName::for($area);
     };
-    $displayLocationName = static function ($location) {
-        $localized = is_array($location?->localized_names) ? $location->localized_names : [];
-
-        return $localized['fa']
-            ?? $localized['fa-IR']
-            ?? $location?->name
-            ?? $location?->canonical_name
-            ?? '—';
-    };
+    $displayLocationName = static fn ($location): string => $location
+        ? \App\Support\LocationDisplayName::for($location)
+        : '—';
     $baseDisplayName = $pendingBaseProposal ? \App\Support\LocationDisplayName::for($pendingBaseProposal) : null
         ?? ($pendingBaseStructuralClaim?->location ? $displayLocationName($pendingBaseStructuralClaim->location) : null)
         ?? ($baseGovernanceArea ? $displayAreaName($baseGovernanceArea) : '—');
