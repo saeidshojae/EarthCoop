@@ -36,8 +36,28 @@ jobs:
       - name: Checkout exact candidate
         uses: actions/checkout@v4
 
-      - name: Test fail-closed converter
-        run: python3 -m unittest -v scripts/location_governance/test_convert_iran_1404.py
+      - name: Test fail-closed converter and read-only v1 identity audit
+        run: |
+          python3 -m unittest -v \
+            scripts/location_governance/test_convert_iran_1404.py \
+            scripts/location_governance/test_audit_v1_iran_crosswalk.py
+
+      - name: Cross-check reviewed UAT identities against pinned real 1404 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/location_governance/audit_v1_iran_crosswalk.py \
+            --source-dir database/reference/source/ir/1404 \
+            --v1-locations database/reference/ir/v1/locations.jsonl \
+            --output "$RUNNER_TEMP/iran-v1-crosswalk-review.json"
+          python3 - "$RUNNER_TEMP/iran-v1-crosswalk-review.json" <<'PY'
+          import json, pathlib, sys
+          report = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          assert report['v1_rows'] == 18
+          assert report['counts'] == {'verified_identity': 8, 'municipal_review': 1, 'synthetic_hold': 9}
+          assert all(item['action'] == 'review_only_no_database_changes' for item in report['matches'])
+          print('PASS: eight reviewed real identities, one municipal review, nine synthetic holds')
+          PY
 
       - name: Validate pinned source and build NON-PRODUCTION candidate
         shell: bash
