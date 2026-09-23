@@ -129,6 +129,20 @@ final class IranSettlementCatalogImporter
         return $summary;
     }
 
+    private function canonicalValue(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+        foreach ($value as $key => $item) {
+            $value[$key] = $this->canonicalValue($item);
+        }
+        if (! array_is_list($value)) {
+            ksort($value, SORT_STRING);
+        }
+        return $value;
+    }
+
     private function insertNewBatch(array $batch): int
     {
         $ids = array_column($batch, 'external_id');
@@ -155,7 +169,7 @@ final class IranSettlementCatalogImporter
                     throw new RuntimeException('Existing settlement classification changed: '.$row['external_id']);
                 }
             }
-            if (json_decode((string) $prior->provenance, true) !== json_decode($row['provenance'], true)) {
+            if ($this->canonicalValue(json_decode((string) $prior->provenance, true)) !== $this->canonicalValue(json_decode($row['provenance'], true))) {
                 throw new RuntimeException('Existing settlement provenance changed: '.$row['external_id']);
             }
         }
