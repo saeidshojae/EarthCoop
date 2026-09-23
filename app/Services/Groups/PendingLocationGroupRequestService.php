@@ -11,6 +11,8 @@ use App\Models\LocationProposal;
 use App\Models\LocationScopedGroupRequest;
 use App\Models\LocationStructureClaim;
 use App\Models\PendingResidenceIntent;
+use App\Models\ReferenceSettlement;
+use App\Models\ReferenceSettlementResidenceClaim;
 use App\Models\User;
 use App\Services\Membership\MembershipEngine;
 use App\Support\LocationDisplayName;
@@ -27,11 +29,17 @@ final class PendingLocationGroupRequestService
     {
         $intent = PendingResidenceIntent::query()
             ->where('user_id', $user->id)->where('status', 'pending')
-            ->with('locationProposal.type')->latest('id')->first();
+            ->with(['locationProposal.type', 'referenceSettlementResidenceClaim.settlement'])
+            ->latest('id')->first();
 
-        return $intent?->locationProposal
-            ? $this->syncForPendingResidence($user, $intent->locationProposal)
-            : collect();
+        if ($intent?->locationProposal) {
+            return $this->syncForPendingResidence($user, $intent->locationProposal);
+        }
+        if ($intent?->referenceSettlementResidenceClaim) {
+            return $this->syncForReferenceSettlementClaim($user, $intent->referenceSettlementResidenceClaim);
+        }
+
+        return collect();
     }
 
     public function syncForPendingResidence(User $user, LocationProposal $deepest): Collection
@@ -98,6 +106,76 @@ final class PendingLocationGroupRequestService
                     }
                 }
             }
+            return $requests->values();
+        });
+    }
+
+    public function syncForReferenceSettlementClaim(User $user, ReferenceSettlementResidenceClaim $claim): Collection
+    {
+        return DB::transaction(function () use ($user, $claim): Collection {
+            $lockedClaim = ReferenceSettlementResidenceClaim::query()
+                ->with('settlement')
+                ->whereKey($claim->id)
+                ->where('user_id', $user->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! in_array($lockedClaim->status, ['pending', 'needs_evidence', 'residential_evidence_verified'], true)
+                || ! $lockedClaim->settlement instanceof ReferenceSettlement) {
+                LocationScopedGroupRequest::query()
+                    ->where('requester_user_id', $user->id)
+                    ->where('reference_settlement_residence_claim_id', $lockedClaim->id)
+                    ->whereIn('status', ['pending_location', 'ready_to_materialize'])
+                    ->update(['status' => 'cancelled', 'updated_at' => now()]);
+                return collect();
+            }
+
+            LocationScopedGroupRequest::query()
+                ->where('requester_user_id', $user->id)
+                ->whereNotNull('reference_settlement_residence_claim_id')
+                ->where('reference_settlement_residence_claim_id', '<>', $lockedClaim->id)
+                ->whereIn('status', ['pending_location', 'ready_to_materialize'])
+                ->update(['status' => 'cancelled', 'updated_at' => now()]);
+
+            $settlement = $lockedClaim->settlement;
+            $dimensions = app(MembershipEngine::class)->dimensionValuesFor($user);
+            $requests = collect();
+            $displayName = trim((string) $settlement->name_fa);
+            if ($displayName !== '' && ! str_starts_with($displayName, 'آبادی ') && ! str_starts_with($displayName, 'روستای ')) {
+                $displayName = 'آبادی '.$displayName;
+            }
+
+            foreach ($dimensions as $dimensionKey => $values) {
+                foreach ($values as $valueKey) {
+                    $requests->push(LocationScopedGroupRequest::query()->updateOrCreate(
+                        [
+                            'requester_user_id' => $user->id,
+                            'reference_settlement_residence_claim_id' => $lockedClaim->id,
+                            'scope_kind' => self::SCOPE,
+                            'dimension_key' => $dimensionKey,
+                            'dimension_value_key' => $valueKey,
+                        ],
+                        [
+                            'location_id' => null,
+                            'location_proposal_id' => null,
+                            'location_structure_claim_id' => null,
+                            'status' => 'pending_location',
+                            'group_id' => null,
+                            'governance_area_id' => null,
+                            'metadata' => [
+                                'type_key' => $settlement->classification === 'verified_residential_village' ? 'village' : 'settlement',
+                                'canonical_name' => $displayName !== '' ? $displayName : $settlement->external_id,
+                                'source' => 'pending_reference_settlement_residence',
+                                'is_pending_base' => true,
+                                'reference_settlement_external_id' => $settlement->external_id,
+                                'reference_settlement_parent_external_id' => $settlement->parent_external_id,
+                                'residential_eligibility' => $settlement->residential_eligibility,
+                            ],
+                        ]
+                    ));
+                }
+            }
+
             return $requests->values();
         });
     }
@@ -188,7 +266,7 @@ final class PendingLocationGroupRequestService
         return LocationScopedGroupRequest::query()
             ->where('requester_user_id', $user->id)->where('scope_kind', self::SCOPE)
             ->whereIn('status', ['pending_location', 'ready_to_materialize'])
-            ->with(['locationProposal', 'locationStructureClaim.location', 'location'])
+            ->with(['locationProposal', 'locationStructureClaim.location', 'referenceSettlementResidenceClaim.settlement', 'location'])
             ->orderBy('id')->get();
     }
 
@@ -268,10 +346,13 @@ final class PendingLocationGroupRequestService
             // or migration of those requests is required for Persian presentation.
             $area = $request->locationStructureClaim?->location
                 ?? $request->locationProposal
-                ?? $request->location;
+                ?? $request->location
+                ?? $request->referenceSettlementResidenceClaim?->settlement;
             $areaName = $area instanceof Location || $area instanceof LocationProposal
                 ? LocationDisplayName::for($area)
-                : (string) ($metadata['canonical_name'] ?? 'حوزه در انتظار');
+                : ($area instanceof ReferenceSettlement
+                    ? (string) ($metadata['canonical_name'] ?? $area->name_fa)
+                    : (string) ($metadata['canonical_name'] ?? 'حوزه در انتظار'));
             $dimensionKey = (string) $request->dimension_key;
             $valueKey = (string) $request->dimension_value_key;
             $level = $this->presentationLevelFor((string) ($metadata['type_key'] ?? ''));
