@@ -139,6 +139,57 @@ final class RegistrationReferenceSettlementResidenceTest extends TestCase
             );
     }
 
+    public function test_pending_settlement_base_does_not_promote_canonical_parent_group_to_active_base(): void
+    {
+        $anchor = $this->anchor();
+        $settlement = $this->settlement();
+        $user = User::factory()->create();
+        config()->set('location-governance.groups_enabled', true);
+
+        MembershipDimension::query()->create([
+            'key' => 'public',
+            'name' => 'Public',
+            'resolver_class' => PublicDimensionResolver::class,
+            'enabled' => true,
+        ]);
+
+        $area = \App\Models\GovernanceArea::factory()->official()->create([
+            'key' => 'settlement-anchor-'.$anchor->id,
+            'country_code' => 'IR',
+            'governance_type' => 'rural_district',
+            'canonical_name' => 'دهستان والد آبادی',
+            'rank' => 500,
+        ]);
+        $area->locations()->attach($anchor->id);
+
+        $this->actingAs($user)->post(route('register.step3.process'), [
+            'reference_settlement_external_id' => $settlement->external_id,
+        ])->assertRedirect(route('home'));
+
+        $canonicalMembership = DB::table('group_user')
+            ->join('groups', 'groups.id', '=', 'group_user.group_id')
+            ->where('group_user.user_id', $user->id)
+            ->where('groups.governance_area_id', $area->id)
+            ->where('groups.dimension_key', 'public')
+            ->where('group_user.status', 1)
+            ->first();
+
+        $this->assertNotNull($canonicalMembership);
+        $this->assertSame(0, (int) $canonicalMembership->role);
+
+        $claim = ReferenceSettlementResidenceClaim::query()
+            ->where('reference_settlement_id', $settlement->id)
+            ->where('user_id', $user->id)
+            ->sole();
+
+        $this->assertDatabaseHas('location_scoped_group_requests', [
+            'requester_user_id' => $user->id,
+            'reference_settlement_residence_claim_id' => $claim->id,
+            'dimension_key' => 'public',
+            'status' => 'pending_location',
+        ]);
+    }
+
     public function test_unmapped_settlement_parent_fails_closed_without_partial_residence_or_claim(): void
     {
         $this->anchor();
