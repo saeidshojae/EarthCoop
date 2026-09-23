@@ -32,6 +32,10 @@ final class ReferenceSettlementReviewService
             throw new DomainException('Unsupported settlement review decision.');
         }
 
+        if (! in_array($settlement->classification, ['unverified_settlement', 'needs_review'], true)) {
+            throw new DomainException('Reviewed settlement classification requires a separate correction workflow.');
+        }
+
         if ($settlement->governance_authorized || $settlement->operational_promotion_allowed) {
             throw new DomainException('Settlement catalog review cannot modify governance-authorized records.');
         }
@@ -88,6 +92,13 @@ final class ReferenceSettlementReviewService
                         'updated_at' => now(),
                     ]);
             } else {
+                $locked->forceFill([
+                    'classification' => 'needs_review',
+                    'residential_eligibility' => 'unverified',
+                    'governance_authorized' => false,
+                    'operational_promotion_allowed' => false,
+                ])->save();
+
                 ReferenceSettlementResidenceClaim::query()
                     ->where('reference_settlement_id', $locked->id)
                     ->where('status', 'pending')
