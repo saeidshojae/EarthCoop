@@ -118,7 +118,12 @@ final class ProjectScopeOptionsController extends Controller
         $locale = app()->getLocale();
         $locationLocalizedNames = $location->localized_names ?? [];
         $areaLocalizedNames = $area->localized_names ?? [];
-        $item['label'] = $locationLocalizedNames[$locale] ?? $areaLocalizedNames[$locale] ?? $location->canonical_name ?? $area->canonical_name;
+        $language = strtolower((string) strtok(str_replace('_', '-', $locale), '-'));
+        $item['label'] = $locationLocalizedNames[$locale]
+            ?? $locationLocalizedNames[$language]
+            ?? $areaLocalizedNames[$locale]
+            ?? $areaLocalizedNames[$language]
+            ?? LocationDisplayName::for($location);
         $item['governance_area_id'] = $area->id;
         return $item;
     }
