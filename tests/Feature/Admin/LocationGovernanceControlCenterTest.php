@@ -43,6 +43,37 @@ class LocationGovernanceControlCenterTest extends TestCase
         $response->assertSee('نگاشت حکمرانی');
     }
 
+    public function test_admin_displays_persian_location_proposal_reference_and_governance_names_without_rewriting_canonical_edit_fields(): void
+    {
+        app()->setLocale('fa');
+        $admin = User::factory()->create(['is_admin' => true]);
+        [$proposal, $parent] = $this->makeProposal('English Pending Complex');
+        $proposal->forceFill(['localized_names' => ['fa' => 'مجتمع پیشنهادی فارسی']])->save();
+        $parent->forceFill([
+            'canonical_name' => 'English Reference Street',
+            'localized_names' => ['fa' => 'خیابان مرجع فارسی'],
+        ])->save();
+
+        $area = GovernanceArea::factory()->official()->create([
+            'key' => 'localized-admin-review-area-'.$parent->id,
+            'canonical_name' => 'English Governance Area',
+            'localized_names' => ['fa' => 'حوزه حکمرانی فارسی'],
+        ]);
+        $area->locations()->attach($parent->id);
+
+        $response = $this->actingAs($admin)->get('/admin/location-governance');
+        $response->assertOk();
+        $response->assertSee('<h3 class="h6 mb-1">مجتمع پیشنهادی فارسی</h3>', false);
+        $response->assertSee('والد: خیابان مرجع فارسی');
+        $response->assertSee('<td>خیابان مرجع فارسی</td>', false);
+        $response->assertSee('<strong>حوزه حکمرانی فارسی</strong>', false);
+        // The operator can still edit the canonical source name explicitly;
+        // presentation localization must not silently rewrite submitted data.
+        $response->assertSee('name="canonical_name"', false);
+        $this->assertSame('English Pending Complex', $proposal->fresh()->canonical_name);
+        $this->assertSame('English Governance Area', $area->fresh()->canonical_name);
+    }
+
     public function test_admin_sidebar_exposes_location_governance_control_center(): void
     {
         $sidebar = file_get_contents(resource_path('views/admin/partials/sidebar.blade.php'));
