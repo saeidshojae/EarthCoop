@@ -66,6 +66,7 @@ class IranCandidateConversionTests(unittest.TestCase):
             review = [json.loads(line) for line in (out / 'settlements.review.jsonl').read_text(encoding='utf-8').splitlines()]
             self.assertEqual(7, result['staged_active_rows'])
             self.assertEqual(1, result['quarantined_settlements'])
+            self.assertEqual(result['settlements_review_sha256'], module.hashlib.sha256((out / 'settlements.review.jsonl').read_bytes()).hexdigest())
             self.assertEqual('IR-1404-4', main[4]['parent_external_id'])
             self.assertEqual('IR-1404-5', review[0]['parent_external_id'])
             self.assertFalse(review[0]['metadata']['governance_authorized'])
