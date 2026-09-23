@@ -23,6 +23,17 @@ on:
       - 'resources/views/admin/location-governance/partials/settlement-review-queue.blade.php'
       - 'tests/Feature/LocationGovernance/IranSettlement*.php'
       - 'tests/Feature/LocationGovernance/ReferenceSettlementReviewTest.php'
+      - 'app/Http/Controllers/Auth/Register/Step3Controller.php'
+      - 'app/Services/LocationGovernance/IranSettlementAnchorResolver.php'
+      - 'app/Services/LocationGovernance/ResidenceService.php'
+      - 'app/Services/Groups/PendingLocationGroupRequestService.php'
+      - 'app/Services/Groups/CanonicalGroupMembershipReconciler.php'
+      - 'app/Models/PendingResidenceIntent.php'
+      - 'app/Models/LocationScopedGroupRequest.php'
+      - 'config/iran_v1_v2_crosswalk.php'
+      - 'resources/views/auth/register_step3_canonical.blade.php'
+      - 'tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php'
+      - 'tests/Feature/Admin/LocationGovernanceControlCenterTest.php'
   pull_request:
     paths:
       - 'database/reference/source/ir/1404/**'
@@ -43,6 +54,17 @@ on:
       - 'resources/views/admin/location-governance/partials/settlement-review-queue.blade.php'
       - 'tests/Feature/LocationGovernance/IranSettlement*.php'
       - 'tests/Feature/LocationGovernance/ReferenceSettlementReviewTest.php'
+      - 'app/Http/Controllers/Auth/Register/Step3Controller.php'
+      - 'app/Services/LocationGovernance/IranSettlementAnchorResolver.php'
+      - 'app/Services/LocationGovernance/ResidenceService.php'
+      - 'app/Services/Groups/PendingLocationGroupRequestService.php'
+      - 'app/Services/Groups/CanonicalGroupMembershipReconciler.php'
+      - 'app/Models/PendingResidenceIntent.php'
+      - 'app/Models/LocationScopedGroupRequest.php'
+      - 'config/iran_v1_v2_crosswalk.php'
+      - 'resources/views/auth/register_step3_canonical.blade.php'
+      - 'tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php'
+      - 'tests/Feature/Admin/LocationGovernanceControlCenterTest.php'
   workflow_dispatch:
 
 permissions:
