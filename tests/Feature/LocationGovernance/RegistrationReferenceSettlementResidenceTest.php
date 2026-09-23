@@ -92,6 +92,14 @@ final class RegistrationReferenceSettlementResidenceTest extends TestCase
         $this->assertSame($claim->id, $intent->reference_settlement_residence_claim_id);
         $this->assertSame($settlement->external_id, $intent->metadata['reference_settlement_external_id']);
         $this->assertSame(0, DB::table('governance_areas')->count());
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $this->actingAs($admin)->get('/admin/location-governance')
+            ->assertOk()
+            ->assertViewHas('healthDiagnostics', fn (array $diagnostics): bool =>
+                ($diagnostics['invalid_pending_residence_intents'] ?? null) === 0
+                && ($diagnostics['pending_residence_intents'] ?? null) === 1
+            );
     }
 
     public function test_unmapped_settlement_parent_fails_closed_without_partial_residence_or_claim(): void
