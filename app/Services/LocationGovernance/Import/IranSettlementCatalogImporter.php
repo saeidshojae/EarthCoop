@@ -120,8 +120,7 @@ final class IranSettlementCatalogImporter
                     }
                 }
                 if ($batch !== []) {
-                    $this->insertNewBatch($batch);
-                    $summary['applied'] += count($batch);
+                    $summary['applied'] += $this->insertNewBatch($batch);
                 }
             });
         } finally {
