@@ -190,6 +190,72 @@ final class PendingLocationGroupRequestService
             ->orderBy('id')->get();
     }
 
+    /**
+     * Present a chosen pending no-neighborhood base once. Its canonical official
+     * group remains materialized with its observer pivot for audit/approval, but
+     * the pending shell represents that same area and dimension in user-facing
+     * group counts. Do not suppress unrelated upstream observers or other groups.
+     *
+     * @param Collection<int, Group> $canonicalGroups
+     * @param Collection<int, LocationScopedGroupRequest> $pendingRequests
+     * @return Collection<int, Group>
+     */
+    public function presentableCanonicalGroups(Collection $canonicalGroups, Collection $pendingRequests): Collection
+    {
+        if ($canonicalGroups->isEmpty() || $pendingRequests->isEmpty()) {
+            return $canonicalGroups->values();
+        }
+
+        $structuralRequests = $pendingRequests
+            ->filter(fn (LocationScopedGroupRequest $request): bool =>
+                $request->location_structure_claim_id !== null
+                && (bool) data_get($request->metadata, 'is_pending_base', false))
+            ->values();
+        if ($structuralRequests->isEmpty()) {
+            return $canonicalGroups->values();
+        }
+
+        $claims = LocationStructureClaim::query()
+            ->whereIn('id', $structuralRequests->pluck('location_structure_claim_id')->unique())
+            ->where('claim_type', 'no_neighborhood')
+            ->whereIn('status', ['pending', 'ready_for_review', 'needs_evidence'])
+            ->whereNotNull('location_id')
+            ->get(['id', 'location_id'])
+            ->keyBy('id');
+        if ($claims->isEmpty()) {
+            return $canonicalGroups->values();
+        }
+
+        $areas = GovernanceArea::query()
+            ->official()->active()
+            ->whereIn('id', $canonicalGroups->pluck('governance_area_id')->filter()->unique())
+            ->whereHas('locations', fn ($query) => $query->whereIn('locations.id', $claims->pluck('location_id')->unique()))
+            ->with(['locations' => fn ($query) => $query->whereIn('locations.id', $claims->pluck('location_id')->unique())])
+            ->get();
+
+        $suppressed = [];
+        foreach ($structuralRequests as $request) {
+            $locationId = $claims->get($request->location_structure_claim_id)?->location_id;
+            if ($locationId === null) {
+                continue;
+            }
+            foreach ($areas as $area) {
+                if ($area->locations->contains('id', (int) $locationId)) {
+                    $key = $request->dimension_key.'|'.$request->dimension_value_key;
+                    $suppressed[(int) $area->id][$key] = true;
+                }
+            }
+        }
+
+        return $canonicalGroups->reject(function (Group $group) use ($suppressed): bool {
+            if ((int) ($group->pivot?->role ?? -1) !== 0) {
+                return false;
+            }
+            $key = $group->dimension_key.'|'.$group->dimension_value_key;
+            return isset($suppressed[(int) $group->governance_area_id][$key]);
+        })->values();
+    }
+
     public function presentationGroups(Collection $requests): Collection
     {
         $namer = app(GovernanceScopedGroupService::class);
