@@ -7,6 +7,8 @@ use App\Models\ReferenceSettlement;
 use App\Models\ReferenceSettlementResidenceClaim;
 use App\Models\ReferenceSettlementReview;
 use App\Models\User;
+use App\Services\LocationGovernance\ReferenceSettlementReviewService;
+use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -188,6 +190,35 @@ final class ReferenceSettlementReviewTest extends TestCase
 
         $this->assertSame('verified_nonresidential_place', $settlement->fresh()->classification);
         $this->assertDatabaseCount('reference_settlement_reviews', 1);
+    }
+
+    public function test_stale_model_cannot_bypass_locked_verified_classification_guard(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $staleSettlement = $this->settlement();
+
+        ReferenceSettlement::query()->whereKey($staleSettlement->id)->update([
+            'classification' => 'verified_nonresidential_place',
+            'residential_eligibility' => 'ineligible',
+        ]);
+
+        try {
+            app(ReferenceSettlementReviewService::class)->review(
+                $staleSettlement,
+                $admin,
+                'verified_residential_village',
+                'مدل قدیمی نباید بتواند تصمیم جدید را روی طبقه‌بندی نهایی اعمال کند.',
+                'مرجع رسمی نمونه',
+                now()->subDay()->toDateString(),
+                'STALE-GUARD-201',
+            );
+            $this->fail('Stale model bypassed locked review invariants.');
+        } catch (DomainException $exception) {
+            $this->assertStringContainsString('separate correction workflow', $exception->getMessage());
+        }
+
+        $this->assertSame('verified_nonresidential_place', ReferenceSettlement::query()->findOrFail($staleSettlement->id)->classification);
+        $this->assertDatabaseCount('reference_settlement_reviews', 0);
     }
 
     public function test_non_admin_cannot_review_reference_settlement(): void
