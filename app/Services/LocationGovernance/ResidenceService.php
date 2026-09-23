@@ -279,6 +279,26 @@ class ResidenceService
         });
     }
 
+    public function cancelPendingReferenceSettlementIntent(
+        ReferenceSettlementResidenceClaim $claim,
+        string $reason,
+    ): int {
+        return DB::transaction(function () use ($claim, $reason): int {
+            $at = now();
+            $intents = PendingResidenceIntent::query()
+                ->where('reference_settlement_residence_claim_id', $claim->id)
+                ->where('status', 'pending')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($intents as $intent) {
+                $this->cancelIntent($intent, $reason, $at);
+            }
+
+            return $intents->count();
+        });
+    }
+
     public function clearPendingResidenceIntent(User $user, string $reason): void
     {
         DB::transaction(function () use ($user, $reason): void {
