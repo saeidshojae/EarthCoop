@@ -6,7 +6,7 @@ Status: staging only. This document is not permission to delete any existing dat
 
 Upstream source: Hameds/IranCountryDivisions, commit 68687cf96cc1852d5d38c7283353c80829331758. Git blob ca9f4a0d69c7c9d77e6434447c7fe123a322271e. Retain the supplied MIT license and its copyright notice.
 
-The generated candidate holds 6,158 administrative places: 1 country, 31 provinces, 484 counties, 1,193 sections, 2,777 rural districts, 1,481 cities and 191 urban zones. A separate review file holds 99,317 settlements not yet classified as residential villages. These are not imported or deleted. Urban zones have municipal_reconciliation_required=true; Sari shows only three source zones whereas our local UAT includes region five.
+The generated candidate holds 6,158 administrative places: 1 country, 31 provinces, 484 counties, 1,193 sections, 2,777 rural districts, 1,481 cities and 191 urban zones. A separate review file holds 99,317 **geographically verified but residentially unverified** settlements, each with `type=settlement`, `residential_eligibility=unverified`, `is_residence_endpoint=false`, `importable=false` and `governance_authorized=false`. These are not imported or deleted. Settlement geography, residential eligibility and governance authorization are independent decisions; see `docs/location-governance/IR_1404_SETTLEMENT_CLASSIFICATION_DECISION.md`. Urban zones have municipal_reconciliation_required=true; Sari shows only three source zones whereas our local UAT includes region five.
 
 ## Generate on an isolated Windows checkout
 
