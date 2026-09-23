@@ -140,6 +140,41 @@ final class RegistrationReferenceSettlementBridgeTest extends TestCase
         $this->assertDatabaseCount('reference_settlement_residence_claims', 0);
     }
 
+    public function test_needs_review_settlement_still_accepts_user_claim_as_evidence_needed(): void
+    {
+        [$anchor, $settlement] = $this->scenario();
+        $settlement->forceFill(['classification' => 'needs_review'])->save();
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post(route('register.step3.process'), [
+            'reference_settlement_external_id' => $settlement->external_id,
+        ])->assertRedirect(route('home'));
+
+        $relationship = $user->fresh()->locationRelationships()
+            ->where('relationship_type', 'primary_residence')->whereNull('ended_at')->sole();
+        $claim = ReferenceSettlementResidenceClaim::query()->where('user_id', $user->id)->sole();
+
+        $this->assertSame($anchor->id, $relationship->location_id);
+        $this->assertSame('needs_evidence', $claim->status);
+        $this->assertFalse($settlement->fresh()->governance_authorized);
+    }
+
+    public function test_registration_rejects_wrong_v2_parent_type_even_when_external_identity_exists(): void
+    {
+        [$anchor, $settlement] = $this->scenario();
+        $cityType = $anchor->schema->types->firstWhere('key', 'city');
+        $anchor->forceFill(['location_type_id' => $cityType->id, 'level' => 'city'])->save();
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->from(route('register.step3'))->post(route('register.step3.process'), [
+            'reference_settlement_external_id' => $settlement->external_id,
+        ])->assertRedirect(route('register.step3'))
+          ->assertSessionHasErrors('reference_settlement_external_id');
+
+        $this->assertSame(0, $user->fresh()->locationRelationships()->count());
+        $this->assertDatabaseCount('reference_settlement_residence_claims', 0);
+    }
+
     public function test_verified_residential_evidence_still_does_not_convert_claim_to_official_residence(): void
     {
         [$anchor, $settlement] = $this->scenario();
