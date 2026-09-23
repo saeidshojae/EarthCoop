@@ -71,6 +71,7 @@ final class MyLocationGovernanceController extends Controller
             ));
 
         $pendingRequests = $pendingGroupService->openForUser($user);
+        $canonicalMemberships = $pendingGroupService->presentableCanonicalGroups($canonicalMemberships, $pendingRequests);
         $pendingMemberships = $pendingGroupService->presentationGroups($pendingRequests);
         $allMemberships = $canonicalMemberships
             ->concat($pendingMemberships)
