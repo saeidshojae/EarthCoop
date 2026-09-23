@@ -172,6 +172,23 @@
                     <div class="small mt-1">{{ \App\Support\LocationDisplayName::for($pendingResidenceIntent->locationProposal) }} — عضویت‌های این سطح تا زمان بررسی مکان، در انتظار تأیید می‌مانند.</div>
                 </div>
             @endif
+            @if($pendingResidenceIntent?->referenceSettlementResidenceClaim?->settlement)
+                @php
+                    $pendingSettlement = $pendingResidenceIntent->referenceSettlementResidenceClaim->settlement;
+                    $pendingSettlementClaim = $pendingResidenceIntent->referenceSettlementResidenceClaim;
+                @endphp
+                <div class="alert alert-warning mt-3 mb-0" data-pending-reference-settlement>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <strong>محل دقیق آبادی در انتظار بررسی</strong>
+                        <span class="badge bg-warning text-dark">در انتظار تأیید</span>
+                    </div>
+                    <div class="small mt-1">
+                        {{ $pendingSettlement->name_fa ?: $pendingSettlement->external_id }}
+                        — وضعیت درخواست: {{ $pendingSettlementClaim->status }}.
+                        حوزهٔ رسمی و حق رأی این آبادی تا تصمیم مستقل حکمرانی ایجاد نمی‌شود.
+                    </div>
+                </div>
+            @endif
             @if($pendingBaseStructuralClaim?->location)
                 <div class="alert alert-warning mt-3 mb-0" data-pending-structural-base>
                     <div class="d-flex flex-wrap align-items-center gap-2"><strong>حوزه پایه در انتظار تأیید ساختار</strong><span class="badge bg-warning text-dark">در انتظار تأیید</span></div>
