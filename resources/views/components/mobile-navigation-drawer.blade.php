@@ -16,10 +16,10 @@
             $mobileNavGroups = $mobileNavUser->groups()->wherePivot('status', 1)->get();
         }
         if ((bool) config('location-governance.groups_enabled', false)) {
-            $mobileNavPendingGroupCount = $mobileNavUser->locationScopedGroupRequests()
-                ->where('scope_kind', 'official_public')
-                ->whereIn('status', ['pending_location', 'ready_to_materialize'])
-                ->count();
+            $mobilePendingService = app(\App\Services\Groups\PendingLocationGroupRequestService::class);
+            $mobilePendingRequests = $mobilePendingService->openForUser($mobileNavUser);
+            $mobileNavGroups = $mobilePendingService->presentableCanonicalGroups($mobileNavGroups, $mobilePendingRequests);
+            $mobileNavPendingGroupCount = $mobilePendingRequests->count();
         }
     }
     $mobileUnreadNotifications = $mobileNavUser?->unreadNotifications?->count() ?? 0;
