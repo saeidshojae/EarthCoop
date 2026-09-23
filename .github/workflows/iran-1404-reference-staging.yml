@@ -11,6 +11,18 @@ on:
       - 'database/reference/ir/v1/schema.json'
       - 'app/Console/Commands/LocationReferenceImportCommand.php'
       - 'tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php'
+      - 'app/Models/ReferenceSettlement*.php'
+      - 'app/Services/LocationGovernance/Import/IranSettlementCatalogImporter.php'
+      - 'app/Services/LocationGovernance/ReferenceSettlementReviewService.php'
+      - 'app/Http/Controllers/LocationGovernance/IranSettlement*Controller.php'
+      - 'app/Http/Controllers/Admin/LocationGovernanceController.php'
+      - 'config/iran_settlement_catalog.php'
+      - 'routes/location-proposals.php'
+      - 'routes/location-governance-admin.php'
+      - 'database/migrations/2026_09_24_00000*_*.php'
+      - 'resources/views/admin/location-governance/partials/settlement-review-queue.blade.php'
+      - 'tests/Feature/LocationGovernance/IranSettlement*.php'
+      - 'tests/Feature/LocationGovernance/ReferenceSettlementReviewTest.php'
   pull_request:
     paths:
       - 'database/reference/source/ir/1404/**'
@@ -19,6 +31,18 @@ on:
       - 'database/reference/ir/v1/schema.json'
       - 'app/Console/Commands/LocationReferenceImportCommand.php'
       - 'tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php'
+      - 'app/Models/ReferenceSettlement*.php'
+      - 'app/Services/LocationGovernance/Import/IranSettlementCatalogImporter.php'
+      - 'app/Services/LocationGovernance/ReferenceSettlementReviewService.php'
+      - 'app/Http/Controllers/LocationGovernance/IranSettlement*Controller.php'
+      - 'app/Http/Controllers/Admin/LocationGovernanceController.php'
+      - 'config/iran_settlement_catalog.php'
+      - 'routes/location-proposals.php'
+      - 'routes/location-governance-admin.php'
+      - 'database/migrations/2026_09_24_00000*_*.php'
+      - 'resources/views/admin/location-governance/partials/settlement-review-queue.blade.php'
+      - 'tests/Feature/LocationGovernance/IranSettlement*.php'
+      - 'tests/Feature/LocationGovernance/ReferenceSettlementReviewTest.php'
   workflow_dispatch:
 
 permissions:
