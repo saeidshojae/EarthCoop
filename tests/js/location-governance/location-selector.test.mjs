@@ -287,6 +287,15 @@ test('structural claims are owned by the selected parent depth and survive choos
 });
 
 
+test('existing open or approved structural claims are rehydrated into the registration form', () => {
+    const source = selectorSource();
+    assert.match(
+        source,
+        /\(statusValue === 'approved' \|\| OPEN_PROPOSAL_STATUSES\.has\(statusValue\)\)[\s\S]*?Number\(choice\.claim_id\) > 0[\s\S]*?rememberStructuralClaim\(host, choice\.claim_id, depth\)/,
+        'an existing structural claim returned by the options API must be submitted again after refresh'
+    );
+});
+
 test('structural claim UI presents mutually exclusive tier states as one grouped question', () => {
     const source = selectorSource();
     assert.match(source, /STRUCTURAL_CLAIM_GROUPS/);

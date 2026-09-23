@@ -180,6 +180,9 @@ const buildStructuralClaimPanel = (host, choices, locationId, depth, onChanged, 
             const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-outline-secondary btn-sm';
             button.dataset.locationStructuralChoice = choice.claim_type; button.textContent = copy.title; button.setAttribute('aria-pressed', 'false');
             const statusValue = String(choice.status || 'available');
+            if ((statusValue === 'approved' || OPEN_PROPOSAL_STATUSES.has(statusValue)) && Number(choice.claim_id) > 0) {
+                rememberStructuralClaim(host, choice.claim_id, depth);
+            }
             if (statusValue === 'approved') { button.disabled = true; button.setAttribute('aria-pressed','true'); state.textContent = 'این وضعیت تأیید شده است.'; }
             else if (OPEN_PROPOSAL_STATUSES.has(statusValue)) { button.disabled = true; button.setAttribute('aria-pressed','true'); state.textContent = 'این وضعیت در انتظار بررسی است؛ پس از ثبت محل سکونت، حمایت شما نیز ثبت می‌شود.'; }
 

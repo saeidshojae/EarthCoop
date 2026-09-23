@@ -133,7 +133,9 @@ class LocationSelectionApiTest extends TestCase
         $cityResponse = $this->getJson('/location/options/'.$city->id.'/children')->assertOk();
         $this->assertContains('single_urban_region', collect($cityResponse->json('structural_choices'))->pluck('claim_type')->all());
         $this->assertContains('urban_region', collect($cityResponse->json('effective_allowed_types'))->pluck('key')->all());
-        $this->assertSame('pending', collect($cityResponse->json('structural_choices'))->firstWhere('claim_type', 'single_urban_region')['status']);
+        $singleRegionChoice = collect($cityResponse->json('structural_choices'))->firstWhere('claim_type', 'single_urban_region');
+        $this->assertSame('pending', $singleRegionChoice['status']);
+        $this->assertSame($singleRegion->id, $singleRegionChoice['claim_id']);
 
         foreach ([$region, $village] as $base) {
             $response = $this->getJson('/location/options/'.$base->id.'/children')->assertOk();
