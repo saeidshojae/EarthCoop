@@ -14,3 +14,5 @@ Route::post('/proposals/{locationProposal}/request-evidence', [LocationGovernanc
 Route::post('/structure-claims/{locationStructureClaim}/approve', [LocationGovernanceController::class, 'approveStructureClaim'])->name('structure-claims.approve');
 Route::post('/structure-claims/{locationStructureClaim}/reject', [LocationGovernanceController::class, 'rejectStructureClaim'])->name('structure-claims.reject');
 Route::post('/structure-claims/{locationStructureClaim}/request-evidence', [LocationGovernanceController::class, 'requestStructureClaimEvidence'])->name('structure-claims.request-evidence');
+
+Route::post('/reference-settlements/{referenceSettlement}/review', [LocationGovernanceController::class, 'reviewSettlement'])->name('reference-settlements.review');
