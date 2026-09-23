@@ -84,20 +84,38 @@ final class PendingStructuralBaseMembershipTest extends TestCase
             $groups = collect($reconciler->reconcile($user));
             $requests = $pending->openForUser($user);
 
-            $this->assertCount(1, $groups->where('dimension_key', 'public'));
-            $this->assertSame($parentArea->id, (int) $groups->first()->governance_area_id);
-            $this->assertFalse($user->groups()->where('governance_area_id', $baseArea->id)->wherePivot('status', 1)->exists());
+            // Canonical groups must still exist for audit and later approval.
+            $this->assertCount(2, $groups->where('dimension_key', 'public'));
+            $baseGroup = $user->groups()->where('governance_area_id', $baseArea->id)
+                ->wherePivot('status', 1)->firstOrFail();
+            $this->assertSame(0, (int) $baseGroup->pivot->role);
             $this->assertCount(1, $requests->where('dimension_key', 'public'));
             $this->assertSame($claim->id, (int) $requests->first()->location_structure_claim_id);
-            $this->assertSame(2, $groups->where('dimension_key', 'public')->count() + $requests->where('dimension_key', 'public')->count());
 
-            // Approval turns the pending base into the one canonical active base;
-            // repeated reconciliation must never count both representations.
+            // Only presentation deduplicates the observer base against its chosen
+            // pending shell. Official ancestor observers must stay visible.
+            $visible = $pending->presentableCanonicalGroups(
+                $user->groups()->wherePivot('status', 1)->get(),
+                $requests,
+            );
+            $this->assertCount(1, $visible->where('dimension_key', 'public'));
+            $this->assertSame($parentArea->id, (int) $visible->first()->governance_area_id);
+            $this->assertSame(2, $visible->count() + $pending->presentationGroups($requests)->count());
+
+            // Approval turns the pending base into the same canonical active base;
+            // repeated reconciliation must never leave a duplicate pending shell.
             $claim->forceFill(['status' => 'approved'])->save();
             $groups = collect($reconciler->reconcile($user));
             $this->assertCount(2, $groups->where('dimension_key', 'public'));
-            $this->assertTrue($user->groups()->where('governance_area_id', $baseArea->id)->wherePivot('status', 1)->exists());
-            $this->assertCount(0, $pending->openForUser($user)->where('dimension_key', 'public'));
+            $this->assertSame(1, (int) $user->groups()
+                ->where('governance_area_id', $baseArea->id)->wherePivot('status', 1)
+                ->firstOrFail()->pivot->role);
+            $resolvedRequests = $pending->openForUser($user);
+            $this->assertCount(0, $resolvedRequests->where('dimension_key', 'public'));
+            $this->assertCount(2, $pending->presentableCanonicalGroups(
+                $user->groups()->wherePivot('status', 1)->get(),
+                $resolvedRequests,
+            )->where('dimension_key', 'public'));
         }
     }
 }
