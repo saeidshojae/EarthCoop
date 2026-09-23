@@ -291,9 +291,14 @@ test('only approved structural claims auto-hydrate while open claims remain an e
     const source = selectorSource();
     assert.match(source, /statusValue === 'approved'[\s\S]*?rememberStructuralClaim\(host, claimId, depth\)/);
     assert.match(source, /OPEN_PROPOSAL_STATUSES\.has\(statusValue\)[\s\S]*?فقط در صورت انتخاب شما روی مسیرتان اعمال می‌شود/);
+    assert.match(
+        source,
+        /OPEN_PROPOSAL_STATUSES\.has\(statusValue\)[\s\S]*?if \(explicitlySelected\) rememberStructuralClaim\(host, claimId, depth\)/,
+        'an open claim may be restored only when that user explicitly selected it'
+    );
     assert.doesNotMatch(
         source,
-        /OPEN_PROPOSAL_STATUSES\.has\(statusValue\)[\s\S]{0,180}?rememberStructuralClaim\(host, claimId, depth\)/,
+        /\(statusValue === 'approved' \|\| OPEN_PROPOSAL_STATUSES\.has\(statusValue\)\)[\s\S]{0,220}?rememberStructuralClaim\(host, claimId, depth\)/,
         'a pending community claim must not silently become the next user\'s residence choice'
     );
 });
