@@ -40,7 +40,14 @@ final class IranV1V2RuntimeAuditCommandTest extends TestCase
 
         $area = GovernanceArea::factory()->official()->create(['country_code' => 'IR']);
         $area->locations()->attach($location->id);
-        Group::factory()->create(['governance_area_id' => $area->id]);
+        Group::query()->create([
+            'group_type' => 'public',
+            'name' => 'گروه تست وابستگی v1',
+            'governance_area_id' => $area->id,
+            'dimension_key' => 'public',
+            'dimension_value_key' => 'audit-fixture',
+            'is_open' => true,
+        ]);
 
         $before = [
             'locations' => DB::table('locations')->count(),
@@ -55,7 +62,7 @@ final class IranV1V2RuntimeAuditCommandTest extends TestCase
         $this->assertSame('read_only', $report['mode']);
         $this->assertSame(1, $report['v1_identity_count']);
         $this->assertSame(1, $report['reviewed_mapping_present']);
-        $this->assertTrue($report['shared_cutover_blocked']); // other reviewed mappings are missing in this partial fixture
+        $this->assertFalse($report['shared_cutover_blocked']); // absent reviewed IDs are not dependencies; only present unresolved IDs block
         $country = collect($report['rows'])->firstWhere('v1_external_id', 'IR-COUNTRY');
         $this->assertSame('IR-1404-1', $country['candidate_v2_external_id']);
         $this->assertSame(1, $country['dependencies']['user_location_relationships']);
