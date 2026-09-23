@@ -5,7 +5,6 @@ namespace App\Services\LocationGovernance;
 use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\Location;
 use App\Models\LocationProposal;
-use App\Models\Setting;
 use App\Models\LocationType;
 use App\Models\LocationStructureClaim;
 use App\Models\User;
@@ -25,6 +24,7 @@ class LocationProposalService
         private readonly LocationDuplicateDetector $duplicateDetector,
         private readonly ResidenceService $residenceService,
         private readonly LocationProposalPolicy $proposalPolicy,
+        private readonly LocationProposalSupportService $proposalSupportService,
     ) {
     }
 
@@ -151,18 +151,7 @@ class LocationProposalService
 
     public function support(LocationProposal $proposal, User $user, array $evidence): void
     {
-        $this->guardOpen($proposal);
-
-        DB::transaction(function () use ($proposal, $user, $evidence): void {
-            $proposal->evidence()->updateOrCreate(['user_id' => $user->id], ['evidence' => $evidence]);
-            $proposal->refresh();
-            $threshold = max(1, (int) (Setting::singleton()->location_proposal_verification_threshold ?? config('location-governance.location_proposal_verification_threshold', 10)));
-            $distinctVerifiers = $proposal->evidence()->distinct()->count('user_id');
-
-            if ($proposal->status === LocationProposalStatus::Pending && $distinctVerifiers >= $threshold) {
-                $this->transition($proposal, LocationProposalStatus::ReadyForReview, $user, 'verification_threshold_reached');
-            }
-        });
+        $this->proposalSupportService->record($proposal, $user, $evidence);
     }
 
     public function requestMoreEvidence(LocationProposal $proposal, User $reviewer, string $reason): void

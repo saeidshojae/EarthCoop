@@ -63,6 +63,27 @@ class PendingResidenceIntentTest extends TestCase
         $this->assertSame(1, PendingResidenceIntent::query()->where('user_id', $user->id)->where('status', 'pending')->count());
     }
 
+    public function test_committing_pending_residence_records_one_distinct_proposal_support_and_is_idempotent_for_the_same_user(): void
+    {
+        [$user, , , $proposal] = $this->makePendingScenario();
+        $service = app(ResidenceService::class);
+
+        $firstIntent = $service->setPendingResidenceIntent($user, $proposal, ['source' => 'first_commit']);
+
+        $this->assertSame(1, $proposal->fresh()->evidence()->distinct()->count('user_id'));
+        $evidence = $proposal->fresh()->evidence()->where('user_id', $user->id)->sole();
+        $this->assertSame('residence_commit', data_get($evidence->evidence, 'source'));
+        $this->assertSame($firstIntent->id, data_get($evidence->evidence, 'pending_residence_intent_id'));
+
+        $secondIntent = $service->setPendingResidenceIntent($user, $proposal->fresh(), ['source' => 'repeat_commit']);
+
+        $this->assertSame('cancelled', $firstIntent->fresh()->status);
+        $this->assertSame('pending', $secondIntent->fresh()->status);
+        $this->assertSame(1, $proposal->fresh()->evidence()->distinct()->count('user_id'));
+        $updatedEvidence = $proposal->fresh()->evidence()->where('user_id', $user->id)->sole();
+        $this->assertSame($secondIntent->id, data_get($updatedEvidence->evidence, 'pending_residence_intent_id'));
+    }
+
     public function test_resolving_current_pending_intent_refines_residence_without_explicit_transfer(): void
     {
         [$user, $anchor, $relationship, $proposal, $schema] = $this->makePendingScenario();

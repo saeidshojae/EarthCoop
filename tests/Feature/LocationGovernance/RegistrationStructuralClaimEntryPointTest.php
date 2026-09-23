@@ -153,17 +153,19 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
         $user = User::factory()->create();
         $claim = app(LocationStructureClaimService::class)->findOrCreateOpenClaim($city, 'no_urban_region', $user);
 
-        $proposal = \App\Models\LocationProposal::query()->create([
-            'parent_location_id' => $city->id,
-            'location_schema_id' => $schema->id,
-            'country_code' => 'IR',
-            'location_type_id' => $neighborhoodType->id,
-            'canonical_name' => 'محله آزمایشی کیاسر',
-            'normalized_name' => 'محله آزمایشی کیاسر',
-            'localized_names' => ['fa' => 'محله آزمایشی کیاسر'],
-            'status' => \App\Enums\LocationGovernance\LocationProposalStatus::Pending,
-            'proposer_user_id' => $user->id,
-        ]);
+        $proposal = app(\App\Services\LocationGovernance\LocationProposalService::class)->propose(
+            $user,
+            $city,
+            $neighborhoodType,
+            [
+                'canonical_name' => 'محله آزمایشی کیاسر',
+                'localized_names' => ['fa' => 'محله آزمایشی کیاسر'],
+            ],
+            [$claim],
+        );
+
+        $this->assertInstanceOf(\App\Models\LocationProposal::class, $proposal);
+        $this->assertSame([$claim->id], data_get($proposal->metadata, 'structural_claim_ids'));
 
         $this->actingAs($user)->post(route('register.step3.process'), [
             'location_proposal_id' => $proposal->id,
@@ -182,6 +184,9 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
             'location_proposal_id' => $proposal->id,
             'status' => 'pending',
         ]);
+        $this->assertSame(1, $proposal->fresh()->evidence()->distinct()->count('user_id'));
+        $proposalEvidence = $proposal->fresh()->evidence()->where('user_id', $user->id)->sole();
+        $this->assertSame('residence_commit', data_get($proposalEvidence->evidence, 'source'));
     }
 
     public function test_city_without_region_must_continue_to_real_neighborhood_before_registration_can_finish(): void

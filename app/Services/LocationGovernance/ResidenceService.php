@@ -22,6 +22,7 @@ class ResidenceService
         private readonly GovernanceResolver $governanceResolver,
         private readonly CanonicalGroupMembershipReconciler $groupMembershipReconciler,
         private readonly CommunityAreaService $communityAreaService,
+        private readonly LocationProposalSupportService $proposalSupportService,
     ) {
     }
 
@@ -171,7 +172,7 @@ class ResidenceService
             $at = now();
             $this->cancelPendingIntentRows($user, 'replaced_by_new_pending_residence', $at);
 
-            return PendingResidenceIntent::query()->create([
+            $intent = PendingResidenceIntent::query()->create([
                 'user_id' => $user->id,
                 'anchor_relationship_id' => $current->id,
                 'location_proposal_id' => $proposal->id,
@@ -179,6 +180,14 @@ class ResidenceService
                 'selected_at' => $at,
                 'metadata' => $metadata,
             ]);
+
+            $this->proposalSupportService->record($proposal, $user, [
+                'source' => 'residence_commit',
+                'pending_residence_intent_id' => $intent->id,
+                'anchor_relationship_id' => $current->id,
+            ]);
+
+            return $intent;
         });
     }
 
