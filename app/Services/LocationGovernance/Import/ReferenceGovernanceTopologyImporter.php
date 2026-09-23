@@ -40,6 +40,10 @@ class ReferenceGovernanceTopologyImporter
                 && $area->governance_type === $definition['governance_type']
                 && $area->area_kind === $definition['area_kind']
                 && $area->canonical_name === $definition['canonical_name']
+                // Localized-name-only changes must appear in the dry-run before
+                // an authorized import updates any existing reference row.
+                && collect($area->localized_names ?? [])->sortKeys()->all()
+                    === collect($definition['localized_names'] ?? [])->sortKeys()->all()
                 && $area->rank === (int) $definition['rank']
                 && $area->status === $definition['status']
                 && $parentKey === ($definition['parent_key'] ?? null)
