@@ -115,7 +115,7 @@ final class CanonicalGroupMembershipReconciler
         $pendingOfficialBase = PendingResidenceIntent::query()
             ->where('user_id', $user->id)
             ->where('status', 'pending')
-            ->with('locationProposal.type')
+            ->with(['locationProposal.type', 'referenceSettlementResidenceClaim.settlement'])
             ->latest('id')
             ->first();
 
@@ -133,6 +133,21 @@ final class CanonicalGroupMembershipReconciler
                 ], true)
                 && in_array($proposal->type?->key, ['city', 'rural_district', 'urban_region', 'village', 'neighborhood'], true)
             ) {
+                return null;
+            }
+        }
+
+        if ($pendingOfficialBase?->referenceSettlementResidenceClaim !== null) {
+            $settlementClaim = $pendingOfficialBase->referenceSettlementResidenceClaim;
+            $settlement = $settlementClaim->settlement;
+
+            if ($settlement !== null
+                && in_array($settlementClaim->status, ['pending', 'needs_evidence', 'residential_evidence_verified'], true)
+                && in_array($settlement->classification, ['unverified_settlement', 'needs_review', 'verified_residential_village'], true)
+            ) {
+                // The exact chosen base is still a settlement claim. Keep all
+                // canonical ancestors observer-only; the pending shell represents
+                // the user's chosen base until a separate governance materialization.
                 return null;
             }
         }
