@@ -135,9 +135,21 @@ def convert(payload: bytes, output_dir: Path, schema_template: Path, allow_fixtu
     main = [reference_row(row) for row in rows if row['type'] not in QUARANTINED_TYPES]
     quarantine = [
         {
+            # DivisionType=6 means an administrative آبادی, which can be a
+            # village, farm, place or mine. Keep the verified geography but
+            # never present an unverified settlement as an official village.
             **reference_row(row),
+            'type': 'settlement',
             'classification': 'unverified_settlement',
             'review_reason': 'Administrative settlement type does not establish residential village eligibility',
+            'metadata': {
+                **reference_row(row)['metadata'],
+                'settlement_kind': 'unknown',
+                'residential_eligibility': 'unverified',
+                'is_residence_endpoint': False,
+                'importable': False,
+                'governance_authorized': False,
+            },
         }
         for row in rows if row['type'] in QUARANTINED_TYPES
     ]
@@ -152,6 +164,13 @@ def convert(payload: bytes, output_dir: Path, schema_template: Path, allow_fixtu
         'dataset_version': 'v2',
         'staged_active_rows': len(main),
         'quarantined_settlements': len(quarantine),
+        'settlement_classification': {
+            'geographic_identity_verified': len(quarantine),
+            'residential_eligibility_unverified': len(quarantine),
+            'residential_villages_verified': 0,
+            'nonresidential_settlements_verified': 0,
+            'governance_authorized': 0,
+        },
         'warning': 'STAGING ONLY. Not approved for existing DB, Production, governance groups or elections.',
     })
     output_dir.mkdir(parents=True, exist_ok=False)
