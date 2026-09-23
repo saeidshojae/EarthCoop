@@ -8,7 +8,7 @@ import {
 test('settlement search is scoped by canonical parent location id', () => {
   assert.equal(
     settlementSearchUrl(42, 'آبادی نمونه'),
-    '/location/reference-settlements?parent_location_id=42&q=' + encodeURIComponent('آبادی نمونه')
+    '/location/reference-settlements?' + new URLSearchParams({ parent_location_id: '42', q: 'آبادی نمونه' }).toString()
   );
   assert.equal(
     settlementSearchUrl(42, ''),
