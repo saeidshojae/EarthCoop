@@ -121,7 +121,7 @@ class LocationGovernanceController extends Controller
 
         $pendingIntentSample = PendingResidenceIntent::query()
             ->where('status', 'pending')
-            ->with(['anchorRelationship', 'locationProposal'])
+            ->with(['anchorRelationship', 'locationProposal', 'referenceSettlementResidenceClaim.settlement'])
             ->latest('id')
             ->limit(1000)
             ->get();
@@ -137,15 +137,22 @@ class LocationGovernanceController extends Controller
                 ->filter(function (PendingResidenceIntent $intent) use ($openStatuses): bool {
                     $anchor = $intent->anchorRelationship;
                     $proposal = $intent->locationProposal;
+                    $settlementClaim = $intent->referenceSettlementResidenceClaim;
                     $proposalStatus = $proposal?->status instanceof LocationProposalStatus
                         ? $proposal->status->value
                         : $proposal?->status;
+                    $hasExactlyOnePendingTarget = ($proposal === null) !== ($settlementClaim === null);
+                    $proposalValid = $proposal !== null && in_array($proposalStatus, $openStatuses, true);
+                    $settlementClaimValid = $settlementClaim !== null
+                        && (int) $settlementClaim->user_id === (int) $intent->user_id
+                        && in_array($settlementClaim->status, ['pending', 'needs_evidence', 'residential_evidence_verified'], true)
+                        && $settlementClaim->settlement !== null;
 
                     return $anchor === null
-                        || $proposal === null
                         || $anchor->relationship_type !== 'primary_residence'
                         || $anchor->ended_at !== null
-                        || ! in_array($proposalStatus, $openStatuses, true);
+                        || ! $hasExactlyOnePendingTarget
+                        || (! $proposalValid && ! $settlementClaimValid);
                 })
                 ->count(),
             'locations_missing_schema_or_type' => Location::query()
