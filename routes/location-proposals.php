@@ -25,6 +25,10 @@ Route::middleware(Authenticate::class)->group(function () {
         ->middleware('throttle:10,1')
         ->name('location.reference-settlement-residence-claims.store');
 
+    Route::get('/location/reference-settlement-residence-claims', [\App\Http\Controllers\LocationGovernance\IranSettlementResidenceClaimController::class, 'index'])
+        ->middleware('throttle:30,1')
+        ->name('location.reference-settlement-residence-claims.index');
+
     Route::post('/locations/structure-claims', [LocationStructureClaimController::class, 'store'])
         ->name('locations.structure-claims.store');
 
