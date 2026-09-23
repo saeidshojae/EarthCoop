@@ -33,6 +33,7 @@ on:
       - 'config/iran_v1_v2_crosswalk.php'
       - 'resources/views/auth/register_step3_canonical.blade.php'
       - 'tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php'
+      - 'tests/Feature/LocationGovernance/ReferenceSettlementMigrationRollbackContractTest.php'
       - 'tests/Feature/Admin/LocationGovernanceControlCenterTest.php'
       - 'app/Http/Controllers/LocationGovernance/MyLocationGovernanceController.php'
       - 'app/Http/Controllers/LocationGovernance/ProfileEditController.php'
@@ -68,6 +69,7 @@ on:
       - 'config/iran_v1_v2_crosswalk.php'
       - 'resources/views/auth/register_step3_canonical.blade.php'
       - 'tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php'
+      - 'tests/Feature/LocationGovernance/ReferenceSettlementMigrationRollbackContractTest.php'
       - 'tests/Feature/Admin/LocationGovernanceControlCenterTest.php'
       - 'app/Http/Controllers/LocationGovernance/MyLocationGovernanceController.php'
       - 'app/Http/Controllers/LocationGovernance/ProfileEditController.php'
@@ -242,6 +244,7 @@ jobs:
           php -l app/Console/Commands/IranV1V2RuntimeAuditCommand.php
           php -l tests/Feature/LocationGovernance/IranV1V2RuntimeAuditCommandTest.php
           php -l tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php
+          php -l tests/Feature/LocationGovernance/ReferenceSettlementMigrationRollbackContractTest.php
           php -l tests/Feature/Admin/LocationGovernanceControlCenterTest.php
           php -l app/Services/LocationGovernance/IranSettlementAnchorResolver.php
           php -l database/migrations/2026_09_24_000004_allow_reference_settlement_claim_pending_intents.php
@@ -270,7 +273,7 @@ jobs:
           php -l tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php
           php -l tests/Unit/LocationGovernance/ReferenceImporterComparableTest.php
           php artisan test \
-            tests/Unit/LocationGovernance/ReferenceImporterComparableTest.php \
+            tests/Unit/LocationGovernance/ReferenceImporterCo tests/Feature/LocationGovernance/ReferenceSettlementMigrationRollbackContractTest.phpmparableTest.php \
             tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php \
             tests/Feature/LocationGovernance/ReferenceGeographyImportTest.php
 
