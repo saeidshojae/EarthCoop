@@ -34,6 +34,10 @@ on:
       - 'resources/views/auth/register_step3_canonical.blade.php'
       - 'tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php'
       - 'tests/Feature/Admin/LocationGovernanceControlCenterTest.php'
+      - 'app/Http/Controllers/LocationGovernance/MyLocationGovernanceController.php'
+      - 'app/Http/Controllers/LocationGovernance/ProfileEditController.php'
+      - 'resources/views/location-governance/my-location-governance.blade.php'
+      - 'resources/views/profile/partials/location_canonical.blade.php'
   pull_request:
     paths:
       - 'database/reference/source/ir/1404/**'
@@ -65,6 +69,10 @@ on:
       - 'resources/views/auth/register_step3_canonical.blade.php'
       - 'tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php'
       - 'tests/Feature/Admin/LocationGovernanceControlCenterTest.php'
+      - 'app/Http/Controllers/LocationGovernance/MyLocationGovernanceController.php'
+      - 'app/Http/Controllers/LocationGovernance/ProfileEditController.php'
+      - 'resources/views/location-governance/my-location-governance.blade.php'
+      - 'resources/views/profile/partials/location_canonical.blade.php'
   workflow_dispatch:
 
 permissions:
@@ -249,6 +257,8 @@ jobs:
           php -l app/Http/Controllers/LocationGovernance/IranSettlementResidenceClaimController.php
           php -l app/Services/LocationGovernance/ReferenceSettlementReviewService.php
           php -l app/Http/Controllers/Admin/LocationGovernanceController.php
+          php -l app/Http/Controllers/LocationGovernance/MyLocationGovernanceController.php
+          php -l app/Http/Controllers/LocationGovernance/ProfileEditController.php
           php -l routes/location-governance-admin.php
           php -l app/Models/ReferenceSettlementReview.php
           php -l database/migrations/2026_09_24_000003_create_reference_settlement_reviews.php
