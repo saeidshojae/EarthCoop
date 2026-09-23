@@ -148,7 +148,12 @@ const STRUCTURAL_CLAIM_COPY = Object.freeze({
 const rememberStructuralClaim = (host, claimId, depth) => {
     const id = Number(claimId); if (!Number.isInteger(id) || id <= 0) return;
     const form = host.closest('[data-location-form]') || host.closest('form'); if (!form) return;
-    const selector = `input[data-location-structure-claim-id][value="${id}"]`; if (form.querySelector(selector)) return;
+    const selector = `input[data-location-structure-claim-id][value="${id}"]`;
+    const existing = form.querySelector(selector);
+    if (existing) {
+        existing.dataset.locationStructureClaimDepth = String(depth);
+        return;
+    }
     const input = document.createElement('input'); input.type = 'hidden'; input.name = 'location_structure_claim_ids[]'; input.value = String(id); input.dataset.locationStructureClaimId = ''; input.dataset.locationStructureClaimDepth = String(depth);
     form.appendChild(input);
 };
@@ -156,6 +161,27 @@ const clearStructuralClaimsAfterDepth = (form, depth) => {
     if (!form) return;
     form.querySelectorAll('[data-location-structure-claim-id][data-location-structure-claim-depth]').forEach((input) => {
         if (Number(input.dataset.locationStructureClaimDepth) >= depth) input.remove();
+    });
+};
+
+const selectedStructuralClaimIds = (form) => {
+    if (!form) return [];
+    return Array.from(form.querySelectorAll('input[name="location_structure_claim_ids[]"]'))
+        .map((input) => Number(input.value))
+        .filter((id) => Number.isInteger(id) && id > 0);
+};
+const structuralClaimContextUrl = (url, form) => {
+    const ids = selectedStructuralClaimIds(form);
+    if (!ids.length) return url;
+    const separator = url.includes('?') ? '&' : '?';
+    const query = ids.map((id) => `location_structure_claim_ids%5B%5D=${encodeURIComponent(id)}`).join('&');
+    return `${url}${separator}${query}`;
+};
+const removeStructuralClaimIds = (form, ids) => {
+    if (!form) return;
+    const idSet = new Set(ids.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0));
+    form.querySelectorAll('[data-location-structure-claim-id]').forEach((input) => {
+        if (idSet.has(Number(input.value))) input.remove();
     });
 };
 
@@ -172,22 +198,47 @@ const buildStructuralClaimPanel = (host, choices, locationId, depth, onChanged, 
         const legend = document.createElement('legend'); legend.className = 'small fw-bold float-none w-auto px-1 mb-2'; legend.textContent = group.question;
         const hint = document.createElement('div'); hint.className = 'small text-secondary mb-2'; hint.textContent = 'اگر تقسیم‌بندی معمولی است، نیازی به ثبت وضعیت ساختاری نیست.';
         const actions = document.createElement('div'); actions.className = 'd-flex flex-wrap gap-2';
-        const normal = document.createElement('span'); normal.className = 'badge text-bg-light border'; normal.textContent = group.normalLabel; actions.appendChild(normal);
         const state = document.createElement('div'); state.className = 'small mt-2'; state.setAttribute('aria-live','polite');
+        const form = host.closest('[data-location-form]') || host.closest('form');
+        const groupClaimIds = available.map((choice) => Number(choice.claim_id)).filter((id) => Number.isInteger(id) && id > 0);
+        const hasApprovedChoice = available.some((choice) => String(choice.status || '') === 'approved');
+        const normal = document.createElement('button'); normal.type = 'button'; normal.className = 'btn btn-outline-secondary btn-sm'; normal.textContent = group.normalLabel;
+        normal.disabled = hasApprovedChoice;
+        normal.setAttribute('aria-pressed', hasApprovedChoice ? 'false' : (groupClaimIds.some((id) => selectedStructuralClaimIds(form).includes(id)) ? 'false' : 'true'));
+        if (!hasApprovedChoice) {
+            normal.addEventListener('click', async () => {
+                removeStructuralClaimIds(form, groupClaimIds);
+                actions.querySelectorAll('button').forEach((candidate) => { candidate.setAttribute('aria-pressed', 'false'); });
+                normal.setAttribute('aria-pressed', 'true');
+                state.textContent = 'مسیر معمولی انتخاب شد؛ ادعای در انتظار بررسی روی مسیر شما اعمال نمی‌شود.';
+                await onChanged({ mode: 'normal' });
+            });
+        }
+        actions.appendChild(normal);
 
         available.forEach((choice) => {
             const copy = STRUCTURAL_CLAIM_COPY[choice.claim_type]; if (!copy) return;
             const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-outline-secondary btn-sm';
             button.dataset.locationStructuralChoice = choice.claim_type; button.textContent = copy.title; button.setAttribute('aria-pressed', 'false');
             const statusValue = String(choice.status || 'available');
-            if ((statusValue === 'approved' || OPEN_PROPOSAL_STATUSES.has(statusValue)) && Number(choice.claim_id) > 0) {
-                rememberStructuralClaim(host, choice.claim_id, depth);
+            const claimId = Number(choice.claim_id);
+            const explicitlySelected = Number.isInteger(claimId) && claimId > 0 && selectedStructuralClaimIds(form).includes(claimId);
+            if (statusValue === 'approved' && claimId > 0) {
+                rememberStructuralClaim(host, claimId, depth);
+                button.disabled = true;
+                button.setAttribute('aria-pressed','true');
+                normal.disabled = true;
+                state.textContent = 'این وضعیت تأیید شده است و ساختار رسمی مسیر را تعیین می‌کند.';
+            } else if (OPEN_PROPOSAL_STATUSES.has(statusValue)) {
+                if (explicitlySelected) rememberStructuralClaim(host, claimId, depth);
+                button.setAttribute('aria-pressed', explicitlySelected ? 'true' : 'false');
+                state.textContent = explicitlySelected
+                    ? 'این ادعا در مسیر شما انتخاب شده است؛ با ثبت محل سکونت، حمایت شما ثبت می‌شود.'
+                    : 'این ادعا در انتظار بررسی است؛ فقط در صورت انتخاب شما روی مسیرتان اعمال می‌شود.';
             }
-            if (statusValue === 'approved') { button.disabled = true; button.setAttribute('aria-pressed','true'); state.textContent = 'این وضعیت تأیید شده است.'; }
-            else if (OPEN_PROPOSAL_STATUSES.has(statusValue)) { button.disabled = true; button.setAttribute('aria-pressed','true'); state.textContent = 'این وضعیت در انتظار بررسی است؛ پس از ثبت محل سکونت، حمایت شما نیز ثبت می‌شود.'; }
 
             button.addEventListener('click', async () => {
-                const form = host.closest('[data-location-form]') || host.closest('form'); const csrf = form?.querySelector('input[name="_token"]')?.value || '';
+                const csrf = form?.querySelector('input[name="_token"]')?.value || '';
                 actions.querySelectorAll('[data-location-structural-choice]').forEach((candidate) => { candidate.disabled = true; });
                 state.textContent = 'در حال ثبت...';
                 try {
@@ -296,7 +347,7 @@ const initializeLocationSelector = async (host) => {
                     setStatus('سطح پایهٔ محل سکونت شما مشخص شد. برای تکمیل ثبت‌نام، «ثبت محل سکونت و ادامه» را بزنید؛ جزئیات محلی مانند خیابان، کوچه، مجتمع یا ساختمان را می‌توانید بعداً از بخش «مکان و حکمرانی من» تکمیل کنید.');
                     return;
                 }
-                setStatus('پیشنهاد مکان ثبت شد و در فهرست همین سطح انتخاب شد؛ می‌توانید مسیر را ادامه دهید.'); const children = await load(result.children_url || `/location/proposals/${encodeURIComponent(result.id)}/children`); if (shouldRenderNextLevel(children)) appendLevel(children, depth + 1, null, false, result.id); return; }
+                setStatus('پیشنهاد مکان ثبت شد و در فهرست همین سطح انتخاب شد؛ می‌توانید مسیر را ادامه دهید.'); const childUrl = result.children_url || `/location/proposals/${encodeURIComponent(result.id)}/children`; const children = await load(structuralClaimContextUrl(childUrl, form)); if (shouldRenderNextLevel(children)) appendLevel(children, depth + 1, null, false, result.id); return; }
             if (result?.kind === 'location' && parentLocationId) {
                 const refreshed = await load(`/location/options/${encodeURIComponent(parentLocationId)}/children`); const matched = refreshed.locations.find((item) => Number(item.id) === Number(result.id));
                 if (matched) { setSelection(matched); if (matched.identity && !Array.from(select.options).some((option) => option.value === matched.identity)) { const option = document.createElement('option'); option.value = matched.identity; option.textContent = matched.label; select.appendChild(option); } select.value = matched.identity; }
@@ -305,9 +356,10 @@ const initializeLocationSelector = async (host) => {
         };
         if (!isProjectScope) {
             const structuralPanel = buildStructuralClaimPanel(host, payload.structuralChoices, parentLocationId, Math.max(depth - 1, 0), async () => {
-                const refreshed = await load(parentProposalId ? `/location/proposals/${encodeURIComponent(parentProposalId)}/children` : `/location/options/${encodeURIComponent(parentLocationId)}/children`);
-                removeDeeperLevels(depth); wrapper.remove(); appendLevel(refreshed, depth, parentLocationId);
-                setStatus('وضعیت ساختاری ثبت شد. مسیر واقعی بعدی بدون ساخت سطح مصنوعی در دسترس است.');
+                const baseUrl = parentProposalId ? `/location/proposals/${encodeURIComponent(parentProposalId)}/children` : `/location/options/${encodeURIComponent(parentLocationId)}/children`;
+                const refreshed = await load(structuralClaimContextUrl(baseUrl, form));
+                removeDeeperLevels(depth); wrapper.remove(); appendLevel(refreshed, depth, parentLocationId, false, parentProposalId);
+                setStatus('وضعیت ساختاری مسیر به‌روزرسانی شد.');
             }, parentProposalId);
             if (structuralPanel) wrapper.appendChild(structuralPanel);
             const proposalTypes = payload.effectiveAllowedTypes.length ? payload.effectiveAllowedTypes : payload.allowedTypes;
@@ -321,7 +373,7 @@ const initializeLocationSelector = async (host) => {
             else setSelection(selected);
             const previousLocationId = locationId.value; const previousProposalId = proposalId?.value || ''; const previousGovernanceAreaId = governanceAreaId?.value || ''; const previousSubmitDisabled = submit?.disabled ?? true;
             try {
-                const childrenUrl = selected.children_url || (selected.picker_kind === 'proposal' ? `/location/proposals/${encodeURIComponent(selected.id)}/children` : `/location/options/${encodeURIComponent(selected.id)}/children`); const children = await load(childrenUrl);
+                const childrenUrl = selected.children_url || (selected.picker_kind === 'proposal' ? `/location/proposals/${encodeURIComponent(selected.id)}/children` : `/location/options/${encodeURIComponent(selected.id)}/children`); const children = await load(structuralClaimContextUrl(childrenUrl, form));
                 if (shouldRenderNextLevel(children)) { appendLevel(children, depth + 1, selected.identity?.startsWith('location:') ? selected.id : null, false, selected.picker_kind === 'proposal' ? selected.id : null); setStatus(isProjectScope ? 'گزینه‌های دقیق‌تر آماده‌اند؛ می‌توانید همین سطح را نگه دارید یا پایین‌تر بروید.' : 'گزینه‌های سطح بعد آماده‌اند.'); }
                 else { setSelection(selected); if (!isProjectScope && !selected.is_residence_endpoint) setPickerState(PICKER_STATES.empty, 'این شاخه فعلاً نقطهٔ معتبر دیگری برای سکونت ندارد.'); }
             } catch (error) { console.warn('EarthCoop location selector could not load children:', error); locationId.value = previousLocationId; if (proposalId) proposalId.value = previousProposalId; if (governanceAreaId) governanceAreaId.value = previousGovernanceAreaId; if (submit && !isProjectScope) submit.disabled = previousSubmitDisabled; setPickerState(PICKER_STATES.stale, 'دریافت گزینه‌های جدید ممکن نشد؛ انتخاب معتبر فعلی شما حفظ شده است.', true); }

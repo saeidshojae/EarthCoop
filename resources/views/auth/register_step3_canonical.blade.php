@@ -55,6 +55,9 @@
         @if ($errors->any())<div class="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-4 sm:mb-6 text-sm sm:text-base" role="alert"><ul class="list-disc list-inside mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
         @if(session('error'))<div class="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-4 sm:mb-6 text-sm sm:text-base" role="alert">{{ session('error') }}</div>@endif
         <form method="POST" action="{{ route('register.step3.process') }}" data-location-form id="step3Form">@csrf
+            @foreach (collect(old('location_structure_claim_ids', []))->map(fn ($id) => (int) $id)->filter()->unique() as $claimId)
+                <input type="hidden" name="location_structure_claim_ids[]" value="{{ $claimId }}" data-location-structure-claim-id>
+            @endforeach
             <div data-location-selector data-location-selector-context="registration" data-empty-label="یک گزینه را انتخاب کنید" data-loading-label="در حال دریافت گزینه‌های مکانی..." data-error-label="دریافت گزینه‌های مکانی ممکن نشد. دوباره تلاش کنید.">
                 <input type="hidden" name="location_id" value="{{ old('location_id') }}" data-location-id><input type="hidden" name="location_proposal_id" value="{{ old('location_proposal_id') }}" data-location-proposal-id>
                 <div class="location-actions" data-location-geolocation><button type="button" class="location-action-btn location-detect-btn" data-location-geolocation-detect><i class="fas fa-location-crosshairs ml-1"></i>تشخیص موقعیت من</button><button type="button" class="location-action-btn location-manual-btn" data-location-geolocation-manual><i class="fas fa-list ml-1"></i>انتخاب دستی</button></div>

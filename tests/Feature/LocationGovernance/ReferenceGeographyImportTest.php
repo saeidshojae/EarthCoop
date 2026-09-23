@@ -92,6 +92,14 @@ class ReferenceGeographyImportTest extends TestCase
             $this->assertFalse((bool) data_get($rows[$key]?->metadata, 'crowdsourced_proposal_allowed'), "{$key} must not become crowdsourcable implicitly.");
         }
 
+        foreach (['urban_region', 'village'] as $key) {
+            $this->assertEqualsCanonicalizing(
+                ['single_neighborhood', 'no_neighborhood'],
+                data_get($rows[$key]?->metadata, 'structural_claim_types', []),
+                "{$key} must expose the canonical no/single-neighborhood structural contract."
+            );
+        }
+
         $city = Location::query()->where('level', 'city')->firstOrFail();
         $ruralDistrict = Location::query()->where('level', 'rural_district')->firstOrFail();
         $urbanRegion = Location::query()->where('level', 'urban_region')->firstOrFail();

@@ -46,6 +46,35 @@ class LocationProposalPolicy
             && $this->schemaAllowsCrowdsourcing((int) $parent->location_schema_id, $type);
     }
 
+    public function allowsProposalParentForResidence(LocationProposal $parent, LocationType $type, array $structuralClaims = []): bool
+    {
+        if ($this->allowsProposalParent($parent, $type)) {
+            return true;
+        }
+
+        if (! $parent->location_schema_id || ! $parent->location_type_id) {
+            return false;
+        }
+
+        $claimTypes = collect($structuralClaims)
+            ->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim
+                && (int) $claim->location_proposal_id === (int) $parent->id
+                && in_array($claim->status, array_merge(LocationStructureClaimService::OPEN_STATUSES, ['approved']), true))
+            ->pluck('claim_type')
+            ->unique();
+
+        $parentType = $parent->type?->key;
+        $effectiveTypeCodes = match (true) {
+            $parentType === 'city' && $claimTypes->contains('no_urban_region') && $claimTypes->contains('no_neighborhood') => ['street'],
+            $parentType === 'city' && $claimTypes->contains('no_urban_region') => ['neighborhood'],
+            in_array($parentType, ['urban_region', 'village'], true) && $claimTypes->contains('no_neighborhood') => ['street'],
+            default => [],
+        };
+
+        return in_array($type->key, $effectiveTypeCodes, true)
+            && $this->schemaAllowsCrowdsourcing((int) $parent->location_schema_id, $type);
+    }
+
     public function allowsProposalParent(LocationProposal $parent, LocationType $type): bool
     {
         if (! $parent->location_schema_id || ! $parent->location_type_id) {

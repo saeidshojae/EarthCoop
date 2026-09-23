@@ -29,6 +29,15 @@
             >
                 <input type="hidden" name="location_id" value="{{ old('location_id') }}" data-location-id>
                 <input type="hidden" name="location_proposal_id" value="{{ old('location_proposal_id') }}" data-location-proposal-id>
+                @php
+                    $persistedStructuralClaimIds = collect(old(
+                        'location_structure_claim_ids',
+                        data_get($primaryResidence?->metadata, 'structural_claim_ids', [])
+                    ))->map(fn ($id) => (int) $id)->filter()->unique()->values();
+                @endphp
+                @foreach ($persistedStructuralClaimIds as $claimId)
+                    <input type="hidden" name="location_structure_claim_ids[]" value="{{ $claimId }}" data-location-structure-claim-id>
+                @endforeach
                 <div class="vstack gap-3" data-location-levels></div>
                 <p class="user-form-help mt-3 mb-0" data-location-status aria-live="polite">
                     محل جدید یا جزئیات دقیق‌تر محل سکونت را انتخاب کنید.

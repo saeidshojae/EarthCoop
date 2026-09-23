@@ -77,7 +77,25 @@ class LocationProposalController extends Controller
         }
         } else {
             $parent = LocationProposal::query()->findOrFail($parentProposalId);
-            $result = $this->proposals->proposeUnderProposal($request->user(), $parent, $type, $data);
+            if ($structuralClaims->contains(fn (LocationStructureClaim $claim): bool =>
+                (int) $claim->location_proposal_id !== (int) $parent->id
+            )) {
+                throw ValidationException::withMessages([
+                    'location_structure_claim_ids' => 'Structural claims must belong to the selected pending parent proposal.',
+                ]);
+            }
+
+            try {
+                $result = $this->proposals->proposeUnderProposal(
+                    $request->user(),
+                    $parent,
+                    $type,
+                    $data,
+                    $structuralClaims->all(),
+                );
+            } catch (DomainException $exception) {
+                return response()->json(['message' => $exception->getMessage()], 422);
+            }
         }
 
         if ($result instanceof Location) {

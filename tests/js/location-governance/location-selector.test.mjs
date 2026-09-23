@@ -287,13 +287,26 @@ test('structural claims are owned by the selected parent depth and survive choos
 });
 
 
-test('existing open or approved structural claims are rehydrated into the registration form', () => {
+test('only approved structural claims auto-hydrate while open claims remain an explicit user choice', () => {
     const source = selectorSource();
-    assert.match(
+    assert.match(source, /statusValue === 'approved'[\s\S]*?rememberStructuralClaim\(host, claimId, depth\)/);
+    assert.match(source, /OPEN_PROPOSAL_STATUSES\.has\(statusValue\)[\s\S]*?فقط در صورت انتخاب شما روی مسیرتان اعمال می‌شود/);
+    assert.doesNotMatch(
         source,
-        /\(statusValue === 'approved' \|\| OPEN_PROPOSAL_STATUSES\.has\(statusValue\)\)[\s\S]*?Number\(choice\.claim_id\) > 0[\s\S]*?rememberStructuralClaim\(host, choice\.claim_id, depth\)/,
-        'an existing structural claim returned by the options API must be submitted again after refresh'
+        /OPEN_PROPOSAL_STATUSES\.has\(statusValue\)[\s\S]{0,180}?rememberStructuralClaim\(host, claimId, depth\)/,
+        'a pending community claim must not silently become the next user\'s residence choice'
     );
+});
+
+test('structural-claim navigation sends only explicitly selected claim ids and offers a normal-path reset', () => {
+    const source = selectorSource();
+    assert.match(source, /structuralClaimContextUrl\(baseUrl, form\)/);
+    assert.match(source, /location_structure_claim_ids%5B%5D=/);
+    assert.match(source, /removeStructuralClaimIds\(form, groupClaimIds\)/);
+    assert.match(source, /pendingStructuralClaimContextUrl/);
+    assert.match(source, /removePendingStructuralClaimIds\(host, claimIds\)/);
+    assert.match(source, /location_structure_claim_ids: pendingStructuralClaimIds\(host\)/);
+    assert.match(source, /مسیر معمولی انتخاب شد/);
 });
 
 test('structural claim UI presents mutually exclusive tier states as one grouped question', () => {

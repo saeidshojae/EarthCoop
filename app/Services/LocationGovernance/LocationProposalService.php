@@ -73,11 +73,16 @@ class LocationProposalService
         ]);
     }
 
-    public function proposeUnderProposal(User $proposer, LocationProposal $parent, LocationType $type, array $data): LocationProposal
-    {
+    public function proposeUnderProposal(
+        User $proposer,
+        LocationProposal $parent,
+        LocationType $type,
+        array $data,
+        array $structuralClaims = [],
+    ): LocationProposal {
         $this->guardOpen($parent);
 
-        if (! $this->proposalPolicy->allowsProposalParent($parent, $type)) {
+        if (! $this->proposalPolicy->allowsProposalParentForResidence($parent, $type, $structuralClaims)) {
             throw new DomainException('The requested location type is not a permitted crowdsourced child of this proposal.');
         }
 
@@ -108,7 +113,9 @@ class LocationProposalService
             'normalized_name' => $normalizedName,
             'localized_names' => $data['localized_names'] ?? null,
             'status' => LocationProposalStatus::Pending,
-            'metadata' => $data['metadata'] ?? null,
+            'metadata' => array_merge($data['metadata'] ?? [], [
+                'structural_claim_ids' => collect($structuralClaims)->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+            ]),
             'audit_log' => [],
         ]);
     }

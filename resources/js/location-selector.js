@@ -46,10 +46,28 @@ const setSelection = (host, id, typeKey = '') => {
 const status = (host, text, error = false) => { const node = host.querySelector('[data-location-status]'); if (node) { node.textContent = text; node.classList.toggle('text-danger', error); } };
 const removeAfter = (levels, depth) => levels.querySelectorAll('[data-location-depth]').forEach((node) => { if (Number(node.dataset.locationDepth) > depth) node.remove(); });
 
+const pendingStructuralClaimIds = (host) => Array.from(host.closest('form')?.querySelectorAll('input[name="location_structure_claim_ids[]"]') || [])
+    .map((input) => Number(input.value))
+    .filter((id) => Number.isInteger(id) && id > 0);
+const pendingStructuralClaimContextUrl = (url, host) => {
+    const ids = pendingStructuralClaimIds(host);
+    if (!ids.length) return url;
+    const separator = url.includes('?') ? '&' : '?';
+    return url + separator + ids.map((id) => `location_structure_claim_ids%5B%5D=${encodeURIComponent(id)}`).join('&');
+};
+const removePendingStructuralClaimIds = (host, ids) => {
+    const form = host.closest('form'); if (!form) return;
+    const idSet = new Set(ids.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0));
+    form.querySelectorAll('input[name="location_structure_claim_ids[]"]').forEach((input) => {
+        if (idSet.has(Number(input.value))) input.remove();
+    });
+};
+
 const rememberPendingStructuralClaim = (host, id, depth, claimType = '') => {
     const form = host.closest('form'); if (!form || !id) return;
     let input = form.querySelector(`input[name="location_structure_claim_ids[]"][value="${id}"]`);
     if (!input) { input = document.createElement('input'); input.type = 'hidden'; input.name = 'location_structure_claim_ids[]'; input.value = String(id); form.appendChild(input); }
+    input.dataset.locationStructureClaimId = '';
     input.dataset.locationStructureClaimDepth = String(depth);
     if (claimType) input.dataset.locationStructureClaimType = claimType;
 };
@@ -58,8 +76,8 @@ const addPendingStructuralPanel = (host, wrapper, payload, parentIdentity, depth
     if (!String(parentIdentity || '').startsWith('proposal:') || !choices.length) return;
     const proposalId = Number(String(parentIdentity).slice(9)); if (!proposalId) return;
     const groups = [
-        { types:['single_urban_region','no_urban_region'], question:'ساختار منطقه‌ای این شهر چگونه است؟', labels:{single_urban_region:'این شهر فقط یک منطقهٔ شهری دارد',no_urban_region:'این شهر منطقهٔ شهری ندارد'} },
-        { types:['single_neighborhood','no_neighborhood'], question:'ساختار محله‌ای این محدوده چگونه است؟', labels:{single_neighborhood:'این محدوده فقط یک محله دارد',no_neighborhood:'این محدوده محله ندارد'} },
+        { types:['single_urban_region','no_urban_region'], question:'ساختار منطقه‌ای این شهر چگونه است؟', normalLabel:'چند منطقه دارد', labels:{single_urban_region:'این شهر فقط یک منطقهٔ شهری دارد',no_urban_region:'این شهر منطقهٔ شهری ندارد'} },
+        { types:['single_neighborhood','no_neighborhood'], question:'ساختار محله‌ای این محدوده چگونه است؟', normalLabel:'چند محله دارد', labels:{single_neighborhood:'این محدوده فقط یک محله دارد',no_neighborhood:'این محدوده محله ندارد'} },
     ];
     groups.forEach((group) => {
         const available = choices.filter((choice) => group.types.includes(choice.claim_type)); if (!available.length) return;
@@ -67,18 +85,45 @@ const addPendingStructuralPanel = (host, wrapper, payload, parentIdentity, depth
         const title = document.createElement('div'); title.className = 'small fw-bold'; title.textContent = group.question;
         const actions = document.createElement('div'); actions.className = 'd-flex flex-wrap gap-2';
         const state = document.createElement('div'); state.className = 'small text-secondary'; state.setAttribute('aria-live','polite');
+        const claimIds = available.map((choice) => Number(choice.claim_id)).filter((id) => Number.isInteger(id) && id > 0);
+        const hasApproved = available.some((choice) => String(choice.status || '') === 'approved');
+        const normal = document.createElement('button'); normal.type='button'; normal.className='btn btn-outline-secondary btn-sm'; normal.textContent=group.normalLabel; normal.disabled=hasApproved;
+        normal.setAttribute('aria-pressed', hasApproved ? 'false' : (claimIds.some((id) => pendingStructuralClaimIds(host).includes(id)) ? 'false' : 'true'));
+        if (!hasApproved) {
+            normal.addEventListener('click', async () => {
+                removePendingStructuralClaimIds(host, claimIds);
+                const url = pendingStructuralClaimContextUrl(`/location/proposals/${encodeURIComponent(proposalId)}/children`, host);
+                const refreshed = await fetch(url,{headers:{Accept:'application/json'},credentials:'same-origin'}); if(!refreshed.ok) throw new Error('دریافت مسیر معمولی ممکن نشد.');
+                removeAfter(host.querySelector('[data-location-levels]'),depth-1);
+                appendPendingLevel(host,await refreshed.json(),depth,parentIdentity);
+                status(host,'مسیر معمولی انتخاب شد؛ ادعای در انتظار بررسی روی مسیر شما اعمال نمی‌شود.');
+            });
+        }
+        actions.appendChild(normal);
         available.forEach((choice) => {
             const button = document.createElement('button'); button.type='button'; button.className='btn btn-outline-secondary btn-sm'; button.dataset.locationStructuralChoice=choice.claim_type; button.textContent=group.labels[choice.claim_type];
-            if (choice.claim_id) { button.disabled=true; button.setAttribute('aria-pressed','true'); rememberPendingStructuralClaim(host, choice.claim_id, depth, choice.claim_type); }
+            const claimId = Number(choice.claim_id); const statusValue = String(choice.status || 'available');
+            const selected = Number.isInteger(claimId) && claimId > 0 && pendingStructuralClaimIds(host).includes(claimId);
+            if (statusValue === 'approved' && claimId > 0) {
+                rememberPendingStructuralClaim(host, claimId, depth, choice.claim_type);
+                button.disabled=true; button.setAttribute('aria-pressed','true');
+                state.textContent='این وضعیت تأیید شده است و ساختار رسمی مسیر را تعیین می‌کند.';
+            } else if (['pending','ready_for_review','needs_evidence'].includes(statusValue)) {
+                if (selected) rememberPendingStructuralClaim(host, claimId, depth, choice.claim_type);
+                button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+                state.textContent = selected ? 'این ادعا در مسیر شما انتخاب شده است؛ با ثبت محل سکونت، حمایت شما ثبت می‌شود.' : 'این ادعا در انتظار بررسی است؛ فقط در صورت انتخاب شما روی مسیرتان اعمال می‌شود.';
+            }
             button.addEventListener('click', async () => {
-                const csrf=host.closest('form')?.querySelector('input[name="_token"]')?.value||''; actions.querySelectorAll('button').forEach((item)=>{item.disabled=true;}); state.textContent='در حال ثبت...';
+                const csrf=host.closest('form')?.querySelector('input[name="_token"]')?.value||''; actions.querySelectorAll('[data-location-structural-choice]').forEach((item)=>{item.disabled=true;}); state.textContent='در حال ثبت...';
                 try {
                     const response=await fetch(`/location/proposals/${encodeURIComponent(proposalId)}/structure-claims`,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json',...(csrf?{'X-CSRF-TOKEN':csrf}:{})},body:JSON.stringify({claim_type:choice.claim_type})});
                     const result=await response.json().catch(()=>({})); if(!response.ok) throw new Error(result.message||'ثبت وضعیت ساختاری ممکن نشد.');
-                    rememberPendingStructuralClaim(host,result.id,depth, choice.claim_type); button.setAttribute('aria-pressed','true'); state.textContent='در انتظار بررسی؛ مسیر بر اساس همین وضعیت ادامه پیدا می‌کند.';
-                    const refreshed=await fetch(`/location/proposals/${encodeURIComponent(proposalId)}/children`,{headers:{Accept:'application/json'},credentials:'same-origin'}); if(!refreshed.ok) throw new Error('دریافت مسیر بعد ممکن نشد.');
+                    rememberPendingStructuralClaim(host,result.id,depth, choice.claim_type); button.setAttribute('aria-pressed','true');
+                    const url=pendingStructuralClaimContextUrl(`/location/proposals/${encodeURIComponent(proposalId)}/children`,host);
+                    const refreshed=await fetch(url,{headers:{Accept:'application/json'},credentials:'same-origin'}); if(!refreshed.ok) throw new Error('دریافت مسیر بعد ممکن نشد.');
                     removeAfter(host.querySelector('[data-location-levels]'),depth-1); appendPendingLevel(host,await refreshed.json(),depth,parentIdentity);
-                } catch(error) { state.textContent=error?.message||'ثبت وضعیت ساختاری ممکن نشد.'; actions.querySelectorAll('button').forEach((item)=>{if(item.getAttribute('aria-pressed')!=='true')item.disabled=false;}); }
+                    status(host,'ادعای در انتظار بررسی برای مسیر شما انتخاب شد.');
+                } catch(error) { state.textContent=error?.message||'ثبت وضعیت ساختاری ممکن نشد.'; actions.querySelectorAll('[data-location-structural-choice]').forEach((item)=>{if(item.getAttribute('aria-pressed')!=='true')item.disabled=false;}); }
             }); actions.appendChild(button);
         });
         box.append(title,actions,state); wrapper.appendChild(box);
@@ -107,7 +152,7 @@ const addProposalPanel = (host, wrapper, payload, parentIdentity, select) => {
         const canonicalName = name.value.trim(); if (!canonicalName) { feedback.textContent = 'نام مکان را وارد کنید.'; return; }
         const csrf = host.closest('form')?.querySelector('input[name="_token"]')?.value || ''; submit.disabled = true; submit.setAttribute('aria-busy', 'true'); feedback.classList.remove('text-danger'); feedback.textContent = 'در حال بررسی و ثبت پیشنهاد...';
         try {
-            const response = await fetch('/locations/proposals', { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}) }, body: JSON.stringify({ ...proposalParentPayload(parentIdentity), location_type_id: Number(type.value), canonical_name: canonicalName, localized_names: { fa: canonicalName } }) });
+            const response = await fetch('/locations/proposals', { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}) }, body: JSON.stringify({ ...proposalParentPayload(parentIdentity), location_type_id: Number(type.value), canonical_name: canonicalName, localized_names: { fa: canonicalName }, location_structure_claim_ids: pendingStructuralClaimIds(host) }) });
             if (!response.ok) throw new Error(`Location proposal request failed: ${response.status}`); const result = await response.json(); if (result?.kind !== 'proposal') throw new Error('Unexpected canonical result below pending parent.');
             let option = Array.from(select.options).find((item) => item.value === `proposal:${result.id}`); if (!option) { option = document.createElement('option'); option.value = `proposal:${result.id}`; option.textContent = `${result.canonical_name} — در انتظار تأیید`; option.dataset.locationPendingBadge = ''; option.dataset.typeKey = result.type_key || ''; select.appendChild(option); }
             select.value = option.value; setSelection(host, result.id, result.type_key || option.dataset.typeKey || ''); closePanel(); feedback.textContent = ''; select.dispatchEvent(new CustomEvent('location-proposal-created', { bubbles: true, detail: { proposalId: Number(result.id) } }));
@@ -155,7 +200,7 @@ async function loadProposalChildren(host, select, proposalId) {
     }
     status(host, 'در حال دریافت گزینه‌های سطح بعد...');
     try {
-        const response = await fetch(`/location/proposals/${encodeURIComponent(proposalId)}/children`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+        const response = await fetch(pendingStructuralClaimContextUrl(`/location/proposals/${encodeURIComponent(proposalId)}/children`, host), { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
         if (!response.ok) throw new Error(`Proposal children request failed: ${response.status}`);
         const payload = await response.json();
         const allProposals = (Array.isArray(payload?.proposals) ? payload.proposals : []).filter(openProposal);

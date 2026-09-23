@@ -111,6 +111,19 @@ class CanonicalResidenceUiContractTest extends TestCase
         $this->assertStringContainsString('data-location-structure-claim-id', $selector);
         $this->assertStringContainsString("input.type = 'hidden'", $selector);
         $this->assertStringContainsString('result.id', $selector);
+
+        $registration = file_get_contents(resource_path('views/auth/register_step3_canonical.blade.php'));
+        $profile = file_get_contents(resource_path('views/profile/partials/location_canonical.blade.php'));
+        $admin = file_get_contents(resource_path('views/admin/user/partials/canonical-residence.blade.php'));
+        foreach ([$registration, $profile, $admin] as $view) {
+            $this->assertStringContainsString('name="location_structure_claim_ids[]"', $view);
+            $this->assertStringContainsString('data-location-structure-claim-id', $view);
+        }
+
+        $wrapper = file_get_contents(resource_path('js/location-selector.js'));
+        $this->assertStringContainsString('pendingStructuralClaimContextUrl', $wrapper);
+        $this->assertStringContainsString('location_structure_claim_ids: pendingStructuralClaimIds(host)', $wrapper);
+        $this->assertStringContainsString('فقط در صورت انتخاب شما روی مسیرتان اعمال می‌شود', $wrapper);
     }
 
 }

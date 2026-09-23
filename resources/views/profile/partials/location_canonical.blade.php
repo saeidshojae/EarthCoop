@@ -38,6 +38,10 @@
         $persistedLocationId = $persistedProposalId
             ? old('location_id')
             : old('location_id', $primaryResidence?->location_id);
+        $persistedStructuralClaimIds = collect(old(
+            'location_structure_claim_ids',
+            data_get($primaryResidence?->metadata, 'structural_claim_ids', [])
+        ))->map(fn ($id) => (int) $id)->filter()->unique()->values();
     @endphp
 
     <form method="POST" action="{{ route('profile.update.address') }}" data-location-form>
@@ -55,6 +59,10 @@
         >
             <input type="hidden" name="location_id" value="{{ $persistedLocationId }}" data-location-id>
             <input type="hidden" name="location_proposal_id" value="{{ $persistedProposalId }}" data-location-proposal-id>
+
+            @foreach ($persistedStructuralClaimIds as $claimId)
+                <input type="hidden" name="location_structure_claim_ids[]" value="{{ $claimId }}" data-location-structure-claim-id>
+            @endforeach
 
             <div class="location-geolocation-actions d-flex flex-wrap align-items-center gap-2 mb-3" data-location-geolocation>
                 <button type="button" class="btn btn-outline-primary btn-sm" data-location-geolocation-detect>تشخیص موقعیت من</button>
