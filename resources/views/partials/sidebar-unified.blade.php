@@ -15,9 +15,13 @@
         } else {
             $groups = $sidebarUser->groups()->wherePivot('status', 1)->get();
         }
-        $pendingLocationGroupCount = (bool) config('location-governance.groups_enabled', false)
-            ? app(\App\Services\Groups\PendingLocationGroupRequestService::class)->openForUser($sidebarUser)->count()
-            : 0;
+        $pendingLocationGroupCount = 0;
+        if ((bool) config('location-governance.groups_enabled', false)) {
+            $pendingGroupService = app(\App\Services\Groups\PendingLocationGroupRequestService::class);
+            $pendingRequests = $pendingGroupService->openForUser($sidebarUser);
+            $groups = $pendingGroupService->presentableCanonicalGroups($groups, $pendingRequests);
+            $pendingLocationGroupCount = $pendingRequests->count();
+        }
         $sidebarGroupCount = $groups->count() + $pendingLocationGroupCount;
         $generalGroups = $groups->where('type', 'general');
         $specializedGroups = $groups->where('type', 'specialized');
