@@ -29,7 +29,7 @@
             <article class="border rounded-3 p-3 mb-3">
                 <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
                     <div>
-                        <h3 class="h6 mb-1">{{ $proposal->canonical_name }}</h3>
+                        <h3 class="h6 mb-1">{{ \App\Support\LocationDisplayName::for($proposal) }}</h3>
                         <div class="small text-muted">
                             وضعیت: {{ $proposal->status->value ?? $proposal->status }} ·
                             نوع: {{ $proposal->type?->key ?: '—' }} ·
@@ -37,9 +37,9 @@
                         </div>
                         <div class="small text-muted mt-1">
                             @if($proposal->parentProposal)
-                                والد پیشنهادی: {{ $proposal->parentProposal->canonical_name }}
+                                والد پیشنهادی: {{ \App\Support\LocationDisplayName::for($proposal->parentProposal) }}
                             @else
-                                والد: {{ $proposal->parentLocation?->canonical_name ?: $proposal->parentLocation?->name ?: '—' }}
+                                والد: {{ $proposal->parentLocation ? \App\Support\LocationDisplayName::for($proposal->parentLocation) : '—' }}
                             @endif
                         </div>
                         <div class="small mt-2" data-proposal-path="{{ $proposal->id }}">
