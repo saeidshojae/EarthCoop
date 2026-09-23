@@ -6,6 +6,7 @@ use App\Data\Membership\MembershipIntent;
 use App\Data\Membership\MembershipResolution;
 use App\Models\GroupCreationPolicy;
 use App\Models\MembershipDimension;
+use App\Models\LocationStructureClaim;
 use App\Models\User;
 use App\Services\LocationGovernance\GovernanceResolver;
 
@@ -50,18 +51,41 @@ class MembershipEngine
 
     public function resolve(User $user, bool $materialize = false): MembershipResolution
     {
-        $residence = $user->locationRelationships()
+        $relationship = $user->locationRelationships()
             ->where('relationship_type', 'primary_residence')
             ->whereNull('ended_at')
             ->with('location')
             ->latest('started_at')
-            ->first()?->location;
+            ->latest('id')
+            ->first();
+        $residence = $relationship?->location;
 
         $officialAreas = $residence === null
             ? collect()
             : $this->governanceResolver->officialAreasForResidence($residence)
                 ->sortBy(fn ($area) => sprintf('%010d:%s', (int) $area->rank, (string) $area->key))
                 ->values();
+
+        // A chosen but unapproved no-neighborhood base is represented by a
+        // pending group request. Do not ALSO materialize its canonical official
+        // group as an observer: that double-counts the same village/region in
+        // Home, My Groups and Location/Governance. Retain all upstream areas.
+        $selectedClaimIds = collect(($relationship?->metadata ?? [])['structural_claim_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+        if ($residence !== null && $selectedClaimIds->isNotEmpty()
+            && LocationStructureClaim::query()
+                ->whereIn('id', $selectedClaimIds)
+                ->where('location_id', $residence->id)
+                ->where('claim_type', 'no_neighborhood')
+                ->whereIn('status', ['pending', 'ready_for_review', 'needs_evidence'])
+                ->exists()) {
+            $officialAreas = $officialAreas
+                ->reject(fn ($area): bool => $area->locations()->whereKey($residence->id)->exists())
+                ->values();
+        }
 
         $communityAreas = collect();
         $materializable = collect();
