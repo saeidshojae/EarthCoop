@@ -146,7 +146,9 @@ jobs:
         run: |
           php -l app/Console/Commands/LocationReferenceImportCommand.php
           php -l tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php
+          php -l tests/Unit/LocationGovernance/ReferenceImporterComparableTest.php
           php artisan test \
+            tests/Unit/LocationGovernance/ReferenceImporterComparableTest.php \
             tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php \
             tests/Feature/LocationGovernance/ReferenceGeographyImportTest.php
 
