@@ -14,6 +14,12 @@ final class ReferenceSettlementReviewTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutVite();
+    }
+
     private function settlement(): ReferenceSettlement
     {
         return ReferenceSettlement::create([
