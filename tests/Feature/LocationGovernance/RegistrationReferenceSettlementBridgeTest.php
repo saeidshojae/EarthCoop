@@ -155,7 +155,7 @@ final class RegistrationReferenceSettlementBridgeTest extends TestCase
         $claim = ReferenceSettlementResidenceClaim::query()->where('user_id', $user->id)->sole();
 
         $this->assertSame($anchor->id, $relationship->location_id);
-        $this->assertSame('needs_evidence', $claim->status);
+        $this->assertSame('pending', $claim->status);
         $this->assertFalse($settlement->fresh()->governance_authorized);
     }
 
