@@ -98,11 +98,6 @@ class Step3Controller extends Controller
                     'source' => 'registration_step3',
                 ], $structuralClaims);
 
-                if ((bool) config('location-governance.groups_enabled', false)) {
-                    app(CanonicalGroupMembershipReconciler::class)->reconcile($user->fresh());
-                    app(\App\Services\Groups\PendingLocationGroupRequestService::class)
-                        ->syncForStructuralClaims($user->fresh(), $location, $structuralClaims);
-                }
                 app(ProfileCompletionService::class)->maybeAward($user->fresh());
 
                 return redirect()->route('home')->with('success', 'تبریک می‌گوییم! اطلاعات شما با موفقیت دریافت شد، ثبت‌نام شما تکمیل شد و در گروه‌های مربوط به خود عضو شدید. به EarthCoop خوش آمدید.');
@@ -135,22 +130,21 @@ class Step3Controller extends Controller
                 $anchor = $proposal->nearestCanonicalParent();
                 $type = $proposal->type;
                 $parentProposal = $proposal->parentProposal;
+                $canonicalStructuralClaims = array_values(array_filter(
+                    $structuralClaims,
+                    fn (LocationStructureClaim $claim): bool => $claim->location_id !== null,
+                ));
+                $proposalStructuralClaims = array_values(array_filter(
+                    $structuralClaims,
+                    fn (LocationStructureClaim $claim): bool => $claim->location_proposal_id !== null,
+                ));
                 $proposalPathAllowed = $proposal->parent_location_id !== null
-                    ? ($anchor !== null && $type !== null && $proposalPolicy->allowsForResidence($anchor, $type, $structuralClaims))
-                    : ($parentProposal !== null && $type !== null && $proposalPolicy->allowsProposalParent($parentProposal, $type));
-
-                $proposalClaimTypes = collect($structuralClaims)
-                    ->filter(fn (LocationStructureClaim $claim): bool =>
-                        (int) $claim->location_proposal_id === (int) $proposal->id
-                        && in_array($claim->status, ['pending', 'ready_for_review', 'needs_evidence', 'approved'], true)
-                    )
-                    ->pluck('claim_type');
-                $pendingEndpointAllowed = match ($type?->key) {
-                    'neighborhood' => true,
-                    'urban_region', 'village' => $proposalClaimTypes->contains('no_neighborhood'),
-                    'city' => $proposalClaimTypes->contains('no_urban_region') && $proposalClaimTypes->contains('no_neighborhood'),
-                    default => false,
-                };
+                    ? ($anchor !== null && $type !== null && $proposalPolicy->allowsForResidence($anchor, $type, $canonicalStructuralClaims))
+                    : ($parentProposal !== null && $type !== null && $proposalPolicy->allowsProposalParentForResidence($parentProposal, $type, $structuralClaims));
+                $pendingEndpointAllowed = $locationTreeResolver->proposalRegistrationEndpointAllowed(
+                    $proposal,
+                    $proposalStructuralClaims,
+                );
 
                 if (
                     $anchor === null
@@ -168,11 +162,11 @@ class Step3Controller extends Controller
                 $residenceService->setInitialPrimaryResidence($user, $anchor, [
                     'source' => 'registration_step3_pending_anchor',
                     'location_proposal_id' => $proposal->id,
-                ], $structuralClaims);
+                ], $canonicalStructuralClaims);
 
                 $residenceService->setPendingResidenceIntent($user, $proposal, [
                     'source' => 'registration_step3',
-                ]);
+                ], $proposalStructuralClaims);
             });
 
             if ((bool) config('location-governance.groups_enabled', false)) {

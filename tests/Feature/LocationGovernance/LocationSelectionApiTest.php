@@ -249,12 +249,14 @@ class LocationSelectionApiTest extends TestCase
             $default = $this->getJson('/location/options/'.$base->id.'/children')->assertOk();
             $this->assertContains('neighborhood', collect($default->json('effective_allowed_types'))->pluck('key')->all());
             $this->assertFalse((bool) $default->json('official_governance_base'));
+            $this->assertFalse((bool) $default->json('registration_endpoint_allowed'));
 
             $selected = $this->getJson('/location/options/'.$base->id.'/children?'.http_build_query([
                 'location_structure_claim_ids' => [$claim->id],
             ]))->assertOk();
             $this->assertSame(['street'], collect($selected->json('effective_allowed_types'))->pluck('key')->all());
             $this->assertFalse((bool) $selected->json('official_governance_base'));
+            $this->assertTrue((bool) $selected->json('registration_endpoint_allowed'));
         }
     }
 
@@ -291,6 +293,7 @@ class LocationSelectionApiTest extends TestCase
         $approved = $this->getJson('/location/options/'.$village->id.'/children')->assertOk();
         $this->assertContains('street', collect($approved->json('effective_allowed_types'))->pluck('key')->all());
         $this->assertTrue((bool) $approved->json('official_governance_base'));
+        $this->assertTrue((bool) $approved->json('registration_endpoint_allowed'));
         $this->assertSame($beforeLocationIds, Location::query()->pluck('id')->sort()->values()->all());
         $this->assertFalse(Location::query()->where('parent_id', $village->id)->where('level', 'neighborhood')->exists());
     }

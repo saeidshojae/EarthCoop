@@ -32,6 +32,7 @@ const normalizePickerPayload = (payload) => ({
     effectiveAllowedTypes: Array.isArray(payload?.effective_allowed_types) ? payload.effective_allowed_types : [],
     structuralChoices: Array.isArray(payload?.structural_choices) ? payload.structural_choices : [],
     officialGovernanceBase: payload?.official_governance_base === true,
+    registrationEndpointAllowed: payload?.registration_endpoint_allowed === true,
 });
 const registrationPayload = (payload) => {
     const continuationTypes = payload.effectiveAllowedTypes.length ? payload.effectiveAllowedTypes : payload.allowedTypes;
@@ -86,7 +87,10 @@ const projectScopeSelectionValues = (item) => {
 };
 const shouldRenderNextLevel = (payload) => {
     const normalized = payload?.locations ? payload : normalizePickerPayload(payload);
-    return normalized.locations.length > 0 || normalized.proposals.length > 0 || normalized.allowedTypes.some((type) => type?.proposal_allowed === true);
+    return normalized.locations.length > 0
+        || normalized.proposals.length > 0
+        || normalized.structuralChoices.length > 0
+        || normalized.allowedTypes.some((type) => type?.proposal_allowed === true);
 };
 const shouldStopRegistrationAtProposal = (context, item) =>
     context === 'registration' && item?.type_key === 'neighborhood';
@@ -317,8 +321,27 @@ const initializeLocationSelector = async (host) => {
         }
         const values = selectionValues(item); locationId.value = values.locationId; if (proposalId) proposalId.value = values.proposalId;
         if (!values.locationId && !values.proposalId) { if (submit) submit.disabled = true; setPickerState(PICKER_STATES.stale, 'این گزینه دیگر معتبر نیست. لطفاً یک مکان فعال را انتخاب کنید.', true); return; }
-        if (values.proposalId) { if (submit) submit.disabled = false; setStatus('این مکان هنوز در انتظار تأیید است. می‌توانید ادامه دهید؛ حوزهٔ رسمی شما تا زمان تأیید بر مبنای نزدیک‌ترین مکان تأییدشده باقی می‌ماند.'); return; }
+        if (values.proposalId) {
+            if (isRegistration) {
+                if (item?.type_key === 'neighborhood') {
+                    if (submit) submit.disabled = false;
+                    setStatus('سطح پایهٔ محل سکونت شما مشخص شد. برای تکمیل ثبت‌نام، «ثبت محل سکونت و ادامه» را بزنید؛ جزئیات محلی مانند خیابان، کوچه، مجتمع یا ساختمان را می‌توانید بعداً از بخش «مکان و حکمرانی من» تکمیل کنید.');
+                } else {
+                    if (submit) submit.disabled = true;
+                    setStatus('برای تکمیل ثبت‌نام، وضعیت ساختاری این محدوده را تا تعیین حوزهٔ پایه مشخص کنید.');
+                }
+                return;
+            }
+            if (submit) submit.disabled = false;
+            setStatus('این مکان هنوز در انتظار تأیید است. می‌توانید ادامه دهید؛ حوزهٔ رسمی شما تا زمان تأیید بر مبنای نزدیک‌ترین مکان تأییدشده باقی می‌ماند.');
+            return;
+        }
         if (values.locationId && item?.is_residence_endpoint) {
+            if (isRegistration && item?.type_key !== 'neighborhood') {
+                if (submit) submit.disabled = true;
+                setStatus('برای تکمیل ثبت‌نام، مسیر را تا محله یا نزدیک‌ترین حوزهٔ پایهٔ ساختاری ادامه دهید.');
+                return;
+            }
             if (submit) submit.disabled = false;
             setStatus(isRegistration
                 ? 'سطح پایهٔ محل سکونت شما مشخص شد. برای تکمیل ثبت‌نام، «ثبت محل سکونت و ادامه» را بزنید؛ جزئیات محلی مانند خیابان، کوچه، مجتمع یا ساختمان را می‌توانید بعداً از بخش «مکان و حکمرانی من» تکمیل کنید.'
@@ -326,6 +349,16 @@ const initializeLocationSelector = async (host) => {
             return;
         }
         if (submit) submit.disabled = true; setStatus('برای ادامه، مسیر را تا یک نقطهٔ معتبر برای سکونت اصلی تکمیل کنید.');
+    };
+    const setRegistrationEndpoint = (item) => {
+        if (!isRegistration || !item) return false;
+        const values = selectionValues(item);
+        if (!values.locationId && !values.proposalId) return false;
+        locationId.value = values.locationId;
+        if (proposalId) proposalId.value = values.proposalId;
+        if (submit) submit.disabled = false;
+        setStatus('سطح پایهٔ محل سکونت شما مشخص شد. برای تکمیل ثبت‌نام، «ثبت محل سکونت و ادامه» را بزنید؛ جزئیات محلی مانند خیابان، کوچه، مجتمع یا ساختمان را می‌توانید بعداً از بخش «مکان و حکمرانی من» تکمیل کنید.');
+        return true;
     };
     const load = async (url) => { setPickerState(PICKER_STATES.loading, host.dataset.loadingLabel || 'در حال دریافت گزینه‌های مکانی...'); const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' }); if (!response.ok) throw new Error(`Location options request failed: ${response.status}`); const normalized = normalizePickerPayload(await response.json()); return isProjectScope ? projectScopePayload(normalized) : (isRegistration ? registrationPayload(normalized) : normalized); };
     const removeDeeperLevels = (depth) => { levels.querySelectorAll('[data-location-depth]').forEach((element) => { if (Number(element.dataset.locationDepth) > depth) element.remove(); }); };
@@ -347,7 +380,7 @@ const initializeLocationSelector = async (host) => {
                     setStatus('سطح پایهٔ محل سکونت شما مشخص شد. برای تکمیل ثبت‌نام، «ثبت محل سکونت و ادامه» را بزنید؛ جزئیات محلی مانند خیابان، کوچه، مجتمع یا ساختمان را می‌توانید بعداً از بخش «مکان و حکمرانی من» تکمیل کنید.');
                     return;
                 }
-                setStatus('پیشنهاد مکان ثبت شد و در فهرست همین سطح انتخاب شد؛ می‌توانید مسیر را ادامه دهید.'); const childUrl = result.children_url || `/location/proposals/${encodeURIComponent(result.id)}/children`; const children = await load(structuralClaimContextUrl(childUrl, form)); if (shouldRenderNextLevel(children)) appendLevel(children, depth + 1, null, false, result.id); return; }
+                setStatus('پیشنهاد مکان ثبت شد و در فهرست همین سطح انتخاب شد؛ می‌توانید مسیر را ادامه دهید.'); const childUrl = result.children_url || `/location/proposals/${encodeURIComponent(result.id)}/children`; const children = await load(structuralClaimContextUrl(childUrl, form)); if (isRegistration && children.registrationEndpointAllowed) { setRegistrationEndpoint(proposal); return; } if (shouldRenderNextLevel(children)) appendLevel(children, depth + 1, null, false, result.id); return; }
             if (result?.kind === 'location' && parentLocationId) {
                 const refreshed = await load(`/location/options/${encodeURIComponent(parentLocationId)}/children`); const matched = refreshed.locations.find((item) => Number(item.id) === Number(result.id));
                 if (matched) { setSelection(matched); if (matched.identity && !Array.from(select.options).some((option) => option.value === matched.identity)) { const option = document.createElement('option'); option.value = matched.identity; option.textContent = matched.label; select.appendChild(option); } select.value = matched.identity; }
@@ -358,6 +391,14 @@ const initializeLocationSelector = async (host) => {
             const structuralPanel = buildStructuralClaimPanel(host, payload.structuralChoices, parentLocationId, Math.max(depth - 1, 0), async () => {
                 const baseUrl = parentProposalId ? `/location/proposals/${encodeURIComponent(parentProposalId)}/children` : `/location/options/${encodeURIComponent(parentLocationId)}/children`;
                 const refreshed = await load(structuralClaimContextUrl(baseUrl, form));
+                if (isRegistration && refreshed.registrationEndpointAllowed) {
+                    const parentItem = selectedPath.get(depth - 1);
+                    removeDeeperLevels(depth - 1);
+                    [...selectedPath.keys()].filter((key) => key >= depth).forEach((key) => selectedPath.delete(key));
+                    renderLocationPath();
+                    setRegistrationEndpoint(parentItem);
+                    return;
+                }
                 removeDeeperLevels(depth); wrapper.remove(); appendLevel(refreshed, depth, parentLocationId, false, parentProposalId);
                 setStatus('وضعیت ساختاری مسیر به‌روزرسانی شد.');
             }, parentProposalId);
@@ -374,7 +415,10 @@ const initializeLocationSelector = async (host) => {
             const previousLocationId = locationId.value; const previousProposalId = proposalId?.value || ''; const previousGovernanceAreaId = governanceAreaId?.value || ''; const previousSubmitDisabled = submit?.disabled ?? true;
             try {
                 const childrenUrl = selected.children_url || (selected.picker_kind === 'proposal' ? `/location/proposals/${encodeURIComponent(selected.id)}/children` : `/location/options/${encodeURIComponent(selected.id)}/children`); const children = await load(structuralClaimContextUrl(childrenUrl, form));
-                if (shouldRenderNextLevel(children)) { appendLevel(children, depth + 1, selected.identity?.startsWith('location:') ? selected.id : null, false, selected.picker_kind === 'proposal' ? selected.id : null); setStatus(isProjectScope ? 'گزینه‌های دقیق‌تر آماده‌اند؛ می‌توانید همین سطح را نگه دارید یا پایین‌تر بروید.' : 'گزینه‌های سطح بعد آماده‌اند.'); }
+                if (isRegistration && children.registrationEndpointAllowed) {
+                    removeDeeperLevels(depth);
+                    setRegistrationEndpoint(selected);
+                } else if (shouldRenderNextLevel(children)) { appendLevel(children, depth + 1, selected.identity?.startsWith('location:') ? selected.id : null, false, selected.picker_kind === 'proposal' ? selected.id : null); setStatus(isProjectScope ? 'گزینه‌های دقیق‌تر آماده‌اند؛ می‌توانید همین سطح را نگه دارید یا پایین‌تر بروید.' : 'گزینه‌های سطح بعد آماده‌اند.'); }
                 else { setSelection(selected); if (!isProjectScope && !selected.is_residence_endpoint) setPickerState(PICKER_STATES.empty, 'این شاخه فعلاً نقطهٔ معتبر دیگری برای سکونت ندارد.'); }
             } catch (error) { console.warn('EarthCoop location selector could not load children:', error); locationId.value = previousLocationId; if (proposalId) proposalId.value = previousProposalId; if (governanceAreaId) governanceAreaId.value = previousGovernanceAreaId; if (submit && !isProjectScope) submit.disabled = previousSubmitDisabled; setPickerState(PICKER_STATES.stale, 'دریافت گزینه‌های جدید ممکن نشد؛ انتخاب معتبر فعلی شما حفظ شده است.', true); }
         });

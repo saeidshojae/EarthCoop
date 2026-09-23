@@ -58,7 +58,7 @@ class ResidenceService
                         'relationship_id' => $existing->id,
                     ]);
                 }
-                $this->reconcileCanonicalGroupsIfEnabled($user);
+                $this->reconcileCanonicalGroupsIfEnabled($user, $location, $claims);
                 return $existing;
             }
 
@@ -83,7 +83,7 @@ class ResidenceService
                 ]);
             }
 
-            $this->reconcileCanonicalGroupsIfEnabled($user);
+            $this->reconcileCanonicalGroupsIfEnabled($user, $location, $claims);
 
             return $relationship;
         });
@@ -127,7 +127,7 @@ class ResidenceService
                 ]);
             }
 
-            $this->reconcileCanonicalGroupsIfEnabled($user);
+            $this->reconcileCanonicalGroupsIfEnabled($user, $location, $claims);
 
             return $current;
         });
@@ -137,6 +137,7 @@ class ResidenceService
         User $user,
         LocationProposal $proposal,
         array $metadata = [],
+        array $structuralClaims = [],
     ): PendingResidenceIntent {
         if (! in_array($proposal->status, [
             LocationProposalStatus::Pending,
@@ -148,7 +149,31 @@ class ResidenceService
             ]);
         }
 
-        return DB::transaction(function () use ($user, $proposal, $metadata): PendingResidenceIntent {
+        return DB::transaction(function () use ($user, $proposal, $metadata, $structuralClaims): PendingResidenceIntent {
+            $proposalChainIds = collect();
+            $cursor = $proposal->loadMissing('parentProposal');
+            $visited = [];
+            while ($cursor !== null && ! isset($visited[$cursor->id])) {
+                $visited[$cursor->id] = true;
+                $proposalChainIds->push((int) $cursor->id);
+                $cursor = $cursor->parentProposal()->first();
+            }
+
+            $claims = collect($structuralClaims)->map(function ($claim) use ($proposalChainIds): LocationStructureClaim {
+                $locked = LocationStructureClaim::query()->lockForUpdate()->findOrFail($claim->id);
+                if (
+                    $locked->location_proposal_id === null
+                    || ! $proposalChainIds->contains((int) $locked->location_proposal_id)
+                    || (! in_array($locked->status, LocationStructureClaimService::OPEN_STATUSES, true) && $locked->status !== 'approved')
+                ) {
+                    throw ValidationException::withMessages([
+                        'location_structure_claim_ids' => 'ادعای ساختاری انتخاب‌شده دیگر برای مسیر پیشنهادی محل سکونت قابل استفاده نیست.',
+                    ]);
+                }
+
+                return $locked;
+            });
+
             $current = UserLocationRelationship::query()
                 ->where('user_id', $user->id)
                 ->where('relationship_type', 'primary_residence')
@@ -172,6 +197,10 @@ class ResidenceService
             $at = now();
             $this->cancelPendingIntentRows($user, 'replaced_by_new_pending_residence', $at);
 
+            if ($claims->isNotEmpty()) {
+                $metadata['structural_claim_ids'] = $claims->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+            }
+
             $intent = PendingResidenceIntent::query()->create([
                 'user_id' => $user->id,
                 'anchor_relationship_id' => $current->id,
@@ -186,6 +215,13 @@ class ResidenceService
                 'pending_residence_intent_id' => $intent->id,
                 'anchor_relationship_id' => $current->id,
             ]);
+
+            foreach ($claims->whereIn('status', LocationStructureClaimService::OPEN_STATUSES) as $claim) {
+                app(LocationStructureClaimService::class)->recordCommittedSupport($claim, $user, [
+                    'source' => 'residence_commit',
+                    'pending_residence_intent_id' => $intent->id,
+                ]);
+            }
 
             return $intent;
         });
@@ -296,6 +332,21 @@ class ResidenceService
                     continue;
                 }
 
+                $resolvedStructuralClaimIds = collect(($intent->metadata ?? [])['structural_claim_ids'] ?? [])
+                    ->map(fn ($id) => (int) $id)
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                if ($resolvedStructuralClaimIds !== [] && LocationStructureClaim::query()
+                    ->whereIn('id', $resolvedStructuralClaimIds)
+                    ->where('status', 'rejected')
+                    ->exists()) {
+                    $this->cancelIntent($intent, 'structural_claim_rejected', $at);
+                    continue;
+                }
+
                 if ((int) $current->location_id !== (int) $resolvedLocation->id) {
                     $current->forceFill(['ended_at' => $at])->save();
 
@@ -313,11 +364,21 @@ class ResidenceService
                         'transfer_override' => false,
                         'changed_by_user_id' => $proposal->reviewed_by_user_id,
                         'change_reason' => 'location_proposal_resolution',
-                        'metadata' => [
+                        'metadata' => array_filter([
                             'pending_residence_intent_id' => $intent->id,
                             'refined_from_relationship_id' => $anchor->id,
-                        ],
+                            'structural_claim_ids' => $resolvedStructuralClaimIds !== [] ? $resolvedStructuralClaimIds : null,
+                        ], fn ($value) => $value !== null),
                     ]);
+                } elseif ($resolvedStructuralClaimIds !== []) {
+                    $currentMetadata = $current->metadata ?? [];
+                    $currentMetadata['structural_claim_ids'] = collect($currentMetadata['structural_claim_ids'] ?? [])
+                        ->merge($resolvedStructuralClaimIds)
+                        ->map(fn ($id) => (int) $id)
+                        ->unique()
+                        ->values()
+                        ->all();
+                    $current->forceFill(['metadata' => $currentMetadata])->save();
                 }
 
                 $intent->forceFill([
@@ -387,7 +448,7 @@ class ResidenceService
                 ]);
             }
 
-            $this->reconcileCanonicalGroupsIfEnabled($user);
+            $this->reconcileCanonicalGroupsIfEnabled($user, $to, $claims);
 
             return $relationship;
         });
@@ -413,7 +474,33 @@ class ResidenceService
             return collect();
         }
 
-        return $this->governanceResolver->officialAreasForResidence($primaryResidence->location);
+        $areas = $this->governanceResolver->officialAreasForResidence($primaryResidence->location);
+        $structuralClaimIds = collect(($primaryResidence->metadata ?? [])['structural_claim_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($structuralClaimIds->isEmpty() || $areas->isEmpty()) {
+            return $areas;
+        }
+
+        $hasPendingBaseClaim = LocationStructureClaim::query()
+            ->whereIn('id', $structuralClaimIds)
+            ->where('location_id', $primaryResidence->location_id)
+            ->where('claim_type', 'no_neighborhood')
+            ->where('status', '<>', 'approved')
+            ->exists();
+
+        if (! $hasPendingBaseClaim) {
+            return $areas;
+        }
+
+        $base = $areas->first();
+        $baseMapsCurrentResidence = $base !== null
+            && $base->locations()->whereKey($primaryResidence->location_id)->exists();
+
+        return $baseMapsCurrentResidence ? $areas->skip(1)->values() : $areas;
     }
 
     private function validatedStructuralClaimsForResidence(Location $location, array $structuralClaims): Collection
@@ -461,10 +548,17 @@ class ResidenceService
         ])->save();
     }
 
-    private function reconcileCanonicalGroupsIfEnabled(User $user): void
-    {
+    private function reconcileCanonicalGroupsIfEnabled(
+        User $user,
+        ?Location $location = null,
+        array|Collection $structuralClaims = [],
+    ): void {
         if ((bool) config('location-governance.groups_enabled', false)) {
             $this->groupMembershipReconciler->reconcile($user);
+            if ($location !== null && collect($structuralClaims)->isNotEmpty()) {
+                app(\App\Services\Groups\PendingLocationGroupRequestService::class)
+                    ->syncForStructuralClaims($user, $location, collect($structuralClaims)->all());
+            }
         }
 
         if ((bool) config('location-governance.runtime_enabled', false)) {

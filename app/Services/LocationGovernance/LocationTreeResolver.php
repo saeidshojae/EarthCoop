@@ -4,6 +4,7 @@ namespace App\Services\LocationGovernance;
 
 use App\Exceptions\InvalidLocationHierarchy;
 use App\Models\Location;
+use App\Models\LocationProposal;
 use App\Models\LocationStructureClaim;
 use Illuminate\Support\Collection;
 
@@ -76,6 +77,46 @@ class LocationTreeResolver
             'city' => $claims->contains('no_urban_region') && $claims->contains('no_neighborhood'),
             'urban_region', 'village' => $claims->contains('no_neighborhood'),
             default => true,
+        };
+    }
+
+    public function residenceSelectionEndpointAllowed(Location $location, array|Collection $structuralClaims = []): bool
+    {
+        if ($this->residenceEndpointAllowed($location)) {
+            return true;
+        }
+
+        $claims = collect($structuralClaims)
+            ->filter(fn ($claim) => $claim instanceof LocationStructureClaim)
+            ->filter(fn (LocationStructureClaim $claim) =>
+                (int) $claim->location_id === (int) $location->id
+                && in_array($claim->status, ['pending', 'ready_for_review', 'needs_evidence', 'approved'], true)
+            )
+            ->pluck('claim_type');
+
+        return $location->type?->key === 'urban_region'
+            && $claims->contains('no_neighborhood');
+    }
+
+    public function proposalRegistrationEndpointAllowed(LocationProposal $proposal, array|Collection $structuralClaims = []): bool
+    {
+        $typeKey = $proposal->type?->key;
+        if ($typeKey === 'neighborhood') {
+            return true;
+        }
+
+        $claims = collect($structuralClaims)
+            ->filter(fn ($claim) => $claim instanceof LocationStructureClaim)
+            ->filter(fn (LocationStructureClaim $claim) =>
+                (int) $claim->location_proposal_id === (int) $proposal->id
+                && in_array($claim->status, ['pending', 'ready_for_review', 'needs_evidence', 'approved'], true)
+            )
+            ->pluck('claim_type');
+
+        return match ($typeKey) {
+            'urban_region', 'village' => $claims->contains('no_neighborhood'),
+            'city' => $claims->contains('no_urban_region') && $claims->contains('no_neighborhood'),
+            default => false,
         };
     }
 

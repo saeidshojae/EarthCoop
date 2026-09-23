@@ -5,9 +5,11 @@ namespace Tests\Feature\LocationGovernance;
 use App\Models\GovernanceArea;
 use App\Models\Group;
 use App\Models\Location;
+use App\Models\LocationStructureClaim;
 use App\Models\User;
 use App\Services\Groups\PendingLocationGroupRequestService;
 use App\Services\LocationGovernance\LocationProposalService;
+use App\Services\LocationGovernance\LocationStructureClaimService;
 use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\MembershipFixture;
@@ -107,6 +109,139 @@ class CanonicalGroupIndexCutoverTest extends TestCase
                 && $pendingNeighborhood !== null
                 && (int) $pendingNeighborhood->pivot->role === 1;
         });
+    }
+
+    public function test_approved_pending_region_waits_for_its_no_neighborhood_claim_before_pending_base_materializes(): void
+    {
+        $this->enableStageC();
+
+        ['user' => $user, 'area' => $cityArea, 'endpoint' => $city] = MembershipFixture::canonicalUser();
+        $schema = $city->schema()->firstOrFail();
+        $regionType = $schema->types()->where('key', 'urban_region')->firstOrFail();
+
+        $proposal = app(LocationProposalService::class)->propose(
+            $user,
+            $city,
+            $regionType,
+            ['canonical_name' => 'منطقه پیشنهادی بدون محله'],
+        );
+        $claim = LocationStructureClaim::query()->create([
+            'location_id' => null,
+            'location_proposal_id' => $proposal->id,
+            'claim_type' => 'no_neighborhood',
+            'status' => 'pending',
+            'proposer_user_id' => $user->id,
+            'audit_log' => [],
+        ]);
+
+        app(ResidenceService::class)->setPendingResidenceIntent(
+            $user,
+            $proposal,
+            ['source' => 'pending_region_without_neighborhood'],
+            [$claim],
+        );
+        $pending = app(PendingLocationGroupRequestService::class);
+        $pending->syncForPendingResidence($user, $proposal);
+
+        $publicRequest = $user->locationScopedGroupRequests()
+            ->where('location_proposal_id', $proposal->id)
+            ->where('dimension_key', 'public')
+            ->where('dimension_value_key', 'public')
+            ->sole();
+        $this->assertTrue((bool) data_get($publicRequest->metadata, 'is_pending_base'));
+
+        $resolved = app(LocationProposalService::class)->approve(
+            $proposal,
+            User::factory()->create(),
+            'تأیید مکان منطقه',
+        );
+        $claim->refresh();
+        $publicRequest->refresh();
+
+        $this->assertSame($resolved->id, $claim->location_id);
+        $this->assertNull($claim->location_proposal_id);
+        $this->assertSame($claim->id, $publicRequest->location_structure_claim_id);
+        $this->assertNull($publicRequest->location_proposal_id);
+        $this->assertSame('pending_location', $publicRequest->status);
+
+        $regionArea = $resolved->governanceAreas()->official()->active()->sole();
+        $this->assertSame($cityArea->id, $regionArea->parent_id);
+        app(CanonicalGroupMembershipReconciler::class)->reconcile($user);
+
+        $regionPublic = Group::query()
+            ->where('governance_area_id', $regionArea->id)
+            ->where('dimension_key', 'public')
+            ->where('dimension_value_key', 'public')
+            ->firstOrFail();
+        $this->assertSame(0, (int) $user->groups()->whereKey($regionPublic->id)->firstOrFail()->pivot->role);
+
+        app(LocationStructureClaimService::class)->approve(
+            $claim,
+            User::factory()->create(),
+            'تأیید ساختار بدون محله',
+        );
+
+        $publicRequest->refresh();
+        $this->assertSame('materialized', $publicRequest->status);
+        $this->assertSame($regionArea->id, $publicRequest->governance_area_id);
+        $this->assertSame($regionPublic->id, $publicRequest->group_id);
+        $this->assertSame(1, (int) $user->groups()->whereKey($regionPublic->id)->firstOrFail()->pivot->role);
+    }
+
+    public function test_rejected_structural_dependency_cancels_pending_base_when_location_itself_is_later_approved(): void
+    {
+        $this->enableStageC();
+
+        ['user' => $user, 'endpoint' => $city] = MembershipFixture::canonicalUser();
+        $schema = $city->schema()->firstOrFail();
+        $regionType = $schema->types()->where('key', 'urban_region')->firstOrFail();
+
+        $proposal = app(LocationProposalService::class)->propose(
+            $user,
+            $city,
+            $regionType,
+            ['canonical_name' => 'منطقه با ادعای ساختاری مردود'],
+        );
+        $claim = LocationStructureClaim::query()->create([
+            'location_id' => null,
+            'location_proposal_id' => $proposal->id,
+            'claim_type' => 'no_neighborhood',
+            'status' => 'pending',
+            'proposer_user_id' => $user->id,
+            'audit_log' => [],
+        ]);
+
+        $intent = app(ResidenceService::class)->setPendingResidenceIntent(
+            $user,
+            $proposal,
+            ['source' => 'rejected_structural_dependency'],
+            [$claim],
+        );
+        app(PendingLocationGroupRequestService::class)->syncForPendingResidence($user, $proposal);
+
+        app(LocationStructureClaimService::class)->reject(
+            $claim,
+            User::factory()->create(),
+            'این منطقه در واقع محله دارد',
+        );
+        $resolved = app(LocationProposalService::class)->approve(
+            $proposal,
+            User::factory()->create(),
+            'خود منطقه معتبر است',
+        );
+
+        $this->assertSame('cancelled', $intent->fresh()->status);
+        $this->assertSame('structural_claim_rejected', data_get($intent->fresh()->metadata, 'cancellation_reason'));
+        $this->assertSame($city->id, $user->fresh()->locationRelationships()->whereNull('ended_at')->sole()->location_id);
+        $this->assertNotSame($resolved->id, $city->id);
+
+        $request = $user->locationScopedGroupRequests()
+            ->where('location_structure_claim_id', $claim->id)
+            ->where('dimension_key', 'public')
+            ->where('dimension_value_key', 'public')
+            ->latest('id')
+            ->firstOrFail();
+        $this->assertSame('rejected', $request->status);
     }
 
     public function test_residence_transfer_atomically_deactivates_stale_canonical_memberships_and_activates_current_scope(): void

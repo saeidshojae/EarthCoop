@@ -14,6 +14,7 @@ use App\Services\LocationGovernance\LocationProposalPolicy;
 use App\Services\LocationGovernance\LocationSchemaResolver;
 use App\Services\LocationGovernance\LocationStructureClaimPolicy;
 use App\Services\LocationGovernance\LocationStructureClaimService;
+use App\Services\LocationGovernance\LocationTreeResolver;
 use App\Support\LocationDisplayName;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -46,7 +47,7 @@ final class LocationOptionsController extends Controller
         return response()->json(['data' => $locations->map(fn (Location $location) => $this->serialize($location))->values(), 'proposals' => [], 'allowed_types' => []]);
     }
 
-    public function children(Request $request, Location $location, LocationSchemaResolver $schemaResolver, LocationProposalPolicy $proposalPolicy, LocationStructureClaimPolicy $structurePolicy): JsonResponse
+    public function children(Request $request, Location $location, LocationSchemaResolver $schemaResolver, LocationProposalPolicy $proposalPolicy, LocationStructureClaimPolicy $structurePolicy, LocationTreeResolver $treeResolver): JsonResponse
     {
         $this->assertRuntimeEnabled();
         if ($location->status !== 'active' || ! $location->location_schema_id || ! $location->location_type_id) abort(404);
@@ -96,10 +97,11 @@ final class LocationOptionsController extends Controller
             'effective_allowed_types' => $effectiveTypes->map(fn (LocationType $type) => $this->serializeAllowedType($type, $proposalPolicy->allowsForResidence($location, $type, $effectiveClaims->all())))->values(),
             'structural_choices' => $structuralChoices,
             'official_governance_base' => $officialBase,
+            'registration_endpoint_allowed' => $treeResolver->registrationEndpointAllowed($location, $effectiveClaims),
         ]);
     }
 
-    public function proposalChildren(Request $request, LocationProposal $locationProposal, LocationProposalPolicy $proposalPolicy): JsonResponse
+    public function proposalChildren(Request $request, LocationProposal $locationProposal, LocationProposalPolicy $proposalPolicy, LocationTreeResolver $treeResolver): JsonResponse
     {
         $this->assertRuntimeEnabled();
         $status = $locationProposal->status instanceof LocationProposalStatus ? $locationProposal->status->value : (string) $locationProposal->status;
@@ -154,6 +156,7 @@ final class LocationOptionsController extends Controller
             ))->values(),
             'structural_choices' => $structuralChoices,
             'structural_parent_proposal_id' => $locationProposal->id,
+            'registration_endpoint_allowed' => $treeResolver->proposalRegistrationEndpointAllowed($locationProposal, $effectiveClaims),
         ]);
     }
 

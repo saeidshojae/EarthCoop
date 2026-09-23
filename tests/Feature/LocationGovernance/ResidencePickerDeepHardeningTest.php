@@ -364,11 +364,14 @@ class ResidencePickerDeepHardeningTest extends TestCase
             ->assertJsonFragment(['claim_type' => 'single_neighborhood'])->assertJsonFragment(['claim_type' => 'no_neighborhood']);
         $claimResponse = $this->actingAs($user)->postJson('/location/proposals/'.$proposal->id.'/structure-claims', ['claim_type' => 'no_neighborhood'])->assertCreated();
         $claimId = (int) $claimResponse->json('id');
-        $this->actingAs($user)->getJson('/location/proposals/'.$proposal->id.'/children')->assertOk()
-            ->assertJsonPath('effective_allowed_types.0.key', 'neighborhood');
+        $default = $this->actingAs($user)->getJson('/location/proposals/'.$proposal->id.'/children')->assertOk()
+            ->assertJsonPath('effective_allowed_types.0.key', 'neighborhood')
+            ->assertJsonPath('registration_endpoint_allowed', false);
         $this->actingAs($user)->getJson('/location/proposals/'.$proposal->id.'/children?'.http_build_query([
             'location_structure_claim_ids' => [$claimId],
-        ]))->assertOk()->assertJsonPath('effective_allowed_types.0.key', 'street');
+        ]))->assertOk()
+            ->assertJsonPath('effective_allowed_types.0.key', 'street')
+            ->assertJsonPath('registration_endpoint_allowed', true);
 
         $location = app(LocationProposalService::class)->approve($proposal, $reviewer, 'verified');
         $claim = LocationStructureClaim::query()->findOrFail((int) $claimResponse->json('id'));

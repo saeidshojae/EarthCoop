@@ -59,7 +59,7 @@ final class UserResidenceController extends Controller
         if ($locationId !== null) {
             $location = Location::query()->findOrFail($locationId);
 
-            if ($location->status !== 'active' || ! $locationTreeResolver->residenceEndpointAllowed($location)) {
+            if ($location->status !== 'active' || ! $locationTreeResolver->residenceSelectionEndpointAllowed($location, $structuralClaims)) {
                 throw ValidationException::withMessages([
                     'location_id' => 'این مکان برای ثبت محل سکونت معتبر نیست.',
                 ]);
@@ -86,7 +86,7 @@ final class UserResidenceController extends Controller
                         $actor,
                         $reason,
                         false,
-                        $structuralClaims,
+                        $canonicalStructuralClaims,
                     );
                 } else {
                     $residenceService->refreshPrimaryResidenceStructuralClaims($user, $location, $structuralClaims);
@@ -132,15 +132,22 @@ final class UserResidenceController extends Controller
             $anchor = $proposal->nearestCanonicalParent();
             $type = $proposal->type;
             $parentProposal = $proposal->parentProposal;
+            $canonicalStructuralClaims = array_values(array_filter(
+                $structuralClaims,
+                fn (LocationStructureClaim $claim): bool => $claim->location_id !== null,
+            ));
+            $proposalStructuralClaims = array_values(array_filter(
+                $structuralClaims,
+                fn (LocationStructureClaim $claim): bool => $claim->location_proposal_id !== null,
+            ));
             $proposalPathAllowed = $proposal->parent_location_id !== null
-                ? ($anchor !== null && $type !== null && $proposalPolicy->allowsForResidence($anchor, $type, $structuralClaims))
-                : ($parentProposal !== null && $type !== null && $proposalPolicy->allowsProposalParent($parentProposal, $type));
+                ? ($anchor !== null && $type !== null && $proposalPolicy->allowsForResidence($anchor, $type, $canonicalStructuralClaims))
+                : ($parentProposal !== null && $type !== null && $proposalPolicy->allowsProposalParentForResidence($parentProposal, $type, $structuralClaims));
 
             if (
                 $anchor === null
                 || $type === null
                 || $anchor->status !== 'active'
-                || ! $locationTreeResolver->residenceEndpointAllowed($anchor)
                 || ! $proposalPathAllowed
             ) {
                 throw ValidationException::withMessages([
@@ -163,7 +170,7 @@ final class UserResidenceController extends Controller
                         'actor_user_id' => $actor->id,
                         'reason' => $reason,
                         'location_proposal_id' => $proposal->id,
-                    ], $structuralClaims);
+                    ], $canonicalStructuralClaims);
                 } elseif ((int) $current->location_id !== (int) $anchor->id) {
                     $residenceService->transferPrimaryResidence(
                         $user,
@@ -171,17 +178,17 @@ final class UserResidenceController extends Controller
                         $actor,
                         $reason,
                         false,
-                        $structuralClaims,
+                        $canonicalStructuralClaims,
                     );
                 } else {
-                    $residenceService->refreshPrimaryResidenceStructuralClaims($user, $anchor, $structuralClaims);
+                    $residenceService->refreshPrimaryResidenceStructuralClaims($user, $anchor, $canonicalStructuralClaims);
                 }
 
                 $residenceService->setPendingResidenceIntent($user, $proposal, [
                     'source' => 'admin_user_residence',
                     'actor_user_id' => $actor->id,
                     'reason' => $reason,
-                ]);
+                ], $proposalStructuralClaims);
             } catch (DomainException $exception) {
                 throw ValidationException::withMessages([
                     'location_proposal_id' => $exception->getMessage(),

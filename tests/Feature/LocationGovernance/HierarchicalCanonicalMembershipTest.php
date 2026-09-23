@@ -6,9 +6,12 @@ use App\Models\ExperienceField;
 use App\Models\GovernanceArea;
 use App\Models\Group;
 use App\Models\GroupUser;
+use App\Models\Location;
 use App\Models\OccupationalField;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
+use App\Services\Groups\PendingLocationGroupRequestService;
 use App\Services\LocationGovernance\LocationProposalService;
+use App\Services\LocationGovernance\LocationStructureClaimService;
 use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LocationGovernance\MembershipFixture;
@@ -182,6 +185,98 @@ class HierarchicalCanonicalMembershipTest extends TestCase
         $this->assertCount(81, $canonicalMemberships);
         $this->assertSame(9, $canonicalMemberships->where('role', 1)->count());
         $this->assertSame(72, $canonicalMemberships->where('role', 0)->count());
+    }
+
+    public function test_pending_no_neighborhood_structural_base_is_not_formally_active_until_claim_approval(): void
+    {
+        config([
+            'location-governance.runtime_enabled' => true,
+            'location-governance.groups_enabled' => true,
+        ]);
+
+        ['user' => $user, 'area' => $cityArea, 'endpoint' => $city] = MembershipFixture::canonicalUser();
+        $schema = $city->schema()->firstOrFail();
+        $regionType = $schema->types()->where('key', 'urban_region')->firstOrFail();
+
+        $region = Location::query()->create([
+            'parent_id' => $city->id,
+            'location_schema_id' => $schema->id,
+            'location_type_id' => $regionType->id,
+            'country_code' => 'IR',
+            'canonical_name' => 'منطقه بدون محله در انتظار',
+            'status' => 'active',
+        ]);
+        $regionArea = GovernanceArea::query()->create([
+            'parent_id' => $cityArea->id,
+            'key' => 'ir.pending-no-neighborhood-region',
+            'country_code' => 'IR',
+            'governance_type' => 'urban_region',
+            'area_kind' => 'official',
+            'canonical_name' => 'منطقه بدون محله در انتظار',
+            'rank' => 20,
+            'status' => 'active',
+        ]);
+        $regionArea->locations()->attach($region->id);
+
+        $user->locationRelationships()
+            ->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')
+            ->update(['ended_at' => now()->subSecond()]);
+
+        $claim = app(LocationStructureClaimService::class)
+            ->findOrCreateOpenClaim($region, 'no_neighborhood', $user);
+
+        app(ResidenceService::class)->setInitialPrimaryResidence(
+            $user,
+            $region,
+            ['source' => 'pending_no_neighborhood_test'],
+            [$claim],
+        );
+
+        app(CanonicalGroupMembershipReconciler::class)->reconcile($user);
+
+        $user->locationScopedGroupRequests()
+            ->where('location_structure_claim_id', $claim->id)
+            ->delete();
+        $healedRequests = app(PendingLocationGroupRequestService::class)->openForUser($user)
+            ->where('location_structure_claim_id', $claim->id);
+        $this->assertNotEmpty($healedRequests, 'Current residence metadata must self-heal a missing pending structural group shell.');
+
+        $regionPublic = Group::query()
+            ->where('governance_area_id', $regionArea->id)
+            ->where('dimension_key', 'public')
+            ->where('dimension_value_key', 'public')
+            ->firstOrFail();
+        $regionPivot = $user->groups()->whereKey($regionPublic->id)->firstOrFail()->pivot;
+        $this->assertSame(0, (int) $regionPivot->role, 'Pending structural base must not gain formal active membership.');
+
+        $pending = app(PendingLocationGroupRequestService::class)->openForUser($user)
+            ->where('location_structure_claim_id', $claim->id);
+        $this->assertNotEmpty($pending);
+        $pendingPublic = app(PendingLocationGroupRequestService::class)
+            ->presentationGroups($pending)
+            ->first(fn (Group $group): bool => $group->dimension_key === 'public');
+        $this->assertNotNull($pendingPublic);
+        $this->assertSame(1, (int) $pendingPublic->pivot->role, 'Chosen pending base must still be presented as the pending base.');
+
+        app(LocationStructureClaimService::class)->approve(
+            $claim,
+            User::factory()->create(),
+            'ساختار بدون محله تایید شد',
+        );
+
+        app(CanonicalGroupMembershipReconciler::class)->reconcile($user);
+        $this->assertSame(
+            1,
+            (int) $user->groups()->whereKey($regionPublic->id)->firstOrFail()->pivot->role,
+            'Approved structural base must become the formal active membership.',
+        );
+        $this->assertSame(
+            0,
+            app(PendingLocationGroupRequestService::class)->openForUser($user)
+                ->where('location_structure_claim_id', $claim->id)
+                ->count(),
+        );
     }
 
     public function test_pending_official_residence_base_keeps_nearest_approved_ancestor_as_observer(): void

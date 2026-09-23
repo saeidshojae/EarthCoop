@@ -85,7 +85,17 @@ final class MyLocationGovernanceController extends Controller
             ->sortByDesc(fn ($proposal): int => $this->governanceDepth((string) $proposal->type?->key))
             ->values();
 
-        $governanceLevelCount = $governanceAreas->count() + $pendingGovernanceProposals->count();
+        $pendingGovernanceStructuralClaims = $pendingRequests
+            ->whereNotNull('location_structure_claim_id')
+            ->unique('location_structure_claim_id')
+            ->map(fn ($request) => $request->locationStructureClaim()->with('location.type')->first())
+            ->filter(fn ($claim): bool => $claim !== null && $claim->claim_type === 'no_neighborhood')
+            ->sortByDesc(fn ($claim): int => $this->governanceDepth((string) $claim->location?->type?->key))
+            ->values();
+
+        $governanceLevelCount = $governanceAreas->count()
+            + $pendingGovernanceProposals->count()
+            + $pendingGovernanceStructuralClaims->count();
 
         $membershipsByDimension = collect(self::DIMENSIONS)
             ->mapWithKeys(function (string $dimension) use ($allMemberships): array {
@@ -144,6 +154,7 @@ final class MyLocationGovernanceController extends Controller
             'pendingResidenceIntent',
             'governanceAreas',
             'pendingGovernanceProposals',
+            'pendingGovernanceStructuralClaims',
             'governanceLevelCount',
             'membershipsByDimension',
             'communities',

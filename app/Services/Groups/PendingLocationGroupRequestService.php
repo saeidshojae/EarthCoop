@@ -36,6 +36,19 @@ final class PendingLocationGroupRequestService
     public function syncForPendingResidence(User $user, LocationProposal $deepest): Collection
     {
         return DB::transaction(function () use ($user, $deepest): Collection {
+            $pendingIntent = PendingResidenceIntent::query()
+                ->where('user_id', $user->id)
+                ->where('location_proposal_id', $deepest->id)
+                ->where('status', 'pending')
+                ->latest('id')
+                ->first();
+            $structuralClaimIds = collect(($pendingIntent?->metadata ?? [])['structural_claim_ids'] ?? [])
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
             $chain = collect();
             $cursor = $deepest->loadMissing('type');
             $visited = [];
@@ -76,6 +89,8 @@ final class PendingLocationGroupRequestService
                                     'type_key' => $proposal->type?->key,
                                     'canonical_name' => $proposal->canonical_name,
                                     'source' => 'pending_primary_residence',
+                                    'is_pending_base' => (int) $proposal->id === (int) $deepest->id,
+                                    'structural_claim_ids' => $structuralClaimIds,
                                 ],
                             ]
                         ));
@@ -86,14 +101,56 @@ final class PendingLocationGroupRequestService
         });
     }
 
+    public function syncCurrentStructuralClaims(User $user): Collection
+    {
+        $relationship = $user->locationRelationships()
+            ->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')
+            ->latest('started_at')
+            ->latest('id')
+            ->first();
+
+        if ($relationship === null) {
+            return collect();
+        }
+
+        $claimIds = collect(($relationship->metadata ?? [])['structural_claim_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($claimIds->isEmpty()) {
+            $this->cancelStaleStructuralRequests($user, []);
+            return collect();
+        }
+
+        $claims = LocationStructureClaim::query()
+            ->whereIn('id', $claimIds)
+            ->where('location_id', $relationship->location_id)
+            ->where('claim_type', 'no_neighborhood')
+            ->whereIn('status', ['pending', 'ready_for_review', 'needs_evidence'])
+            ->get();
+
+        return $this->syncForStructuralClaims(
+            $user,
+            Location::query()->findOrFail($relationship->location_id),
+            $claims->all(),
+        );
+    }
+
     public function syncForStructuralClaims(User $user, Location $location, array $claims): Collection
     {
-        $dimensions = app(MembershipEngine::class)->dimensionValuesFor($user);
-        $requests = collect();
-        foreach (collect($claims)->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim
+        $activeClaims = collect($claims)->filter(fn ($claim): bool => $claim instanceof LocationStructureClaim
             && (int) $claim->location_id === (int) $location->id
             && in_array($claim->status, ['pending', 'ready_for_review', 'needs_evidence'], true)
-            && $claim->claim_type === 'no_neighborhood') as $claim) {
+            && $claim->claim_type === 'no_neighborhood')->values();
+
+        $this->cancelStaleStructuralRequests($user, $activeClaims->pluck('id')->map(fn ($id) => (int) $id)->all());
+
+        $dimensions = app(MembershipEngine::class)->dimensionValuesFor($user);
+        $requests = collect();
+        foreach ($activeClaims as $claim) {
             foreach ($dimensions as $dimensionKey => $values) {
                 foreach ($values as $valueKey) {
                     $requests->push(LocationScopedGroupRequest::query()->updateOrCreate(
@@ -112,6 +169,7 @@ final class PendingLocationGroupRequestService
                                 'type_key' => $location->type?->key,
                                 'canonical_name' => $location->canonical_name,
                                 'source' => 'pending_primary_residence_structure',
+                                'is_pending_base' => true,
                             ],
                         ]
                     ));
@@ -124,6 +182,8 @@ final class PendingLocationGroupRequestService
     public function openForUser(User $user): Collection
     {
         $this->syncCurrentPendingResidence($user);
+        $this->syncCurrentStructuralClaims($user);
+
         return LocationScopedGroupRequest::query()
             ->where('requester_user_id', $user->id)->where('scope_kind', self::SCOPE)
             ->whereIn('status', ['pending_location', 'ready_to_materialize'])
@@ -159,7 +219,7 @@ final class PendingLocationGroupRequestService
             $group->setAttribute('presentation_rank', $this->presentationRankFor((string) ($metadata['type_key'] ?? '')));
             $group->setRelation('pivot', new GroupUser([
                 'user_id' => $request->requester_user_id,
-                'role' => $level === 'neighborhood' ? 1 : 0,
+                'role' => (bool) ($metadata['is_pending_base'] ?? false) ? 1 : 0,
                 'status' => 1,
             ]));
             return $group;
@@ -225,7 +285,60 @@ final class PendingLocationGroupRequestService
         foreach ($requests as $request) {
             $metadata = $request->metadata ?? [];
             $metadata['resolved_from_proposal_id'] = $proposal->id;
-            $request->forceFill(['location_id' => $location->id, 'location_proposal_id' => null, 'status' => 'ready_to_materialize', 'metadata' => $metadata])->save();
+
+            $dependencyIds = collect($metadata['structural_claim_ids'] ?? [])
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values();
+
+            $rejectedDependency = $dependencyIds->isNotEmpty()
+                ? LocationStructureClaim::query()
+                    ->whereIn('id', $dependencyIds)
+                    ->where('status', 'rejected')
+                    ->orderBy('id')
+                    ->first()
+                : null;
+
+            if ((bool) ($metadata['is_pending_base'] ?? false) && $rejectedDependency !== null) {
+                $request->forceFill([
+                    'location_id' => null,
+                    'location_proposal_id' => null,
+                    'location_structure_claim_id' => $rejectedDependency->id,
+                    'status' => 'rejected',
+                    'metadata' => $metadata,
+                ])->save();
+                continue;
+            }
+
+            $blockingClaim = $dependencyIds->isNotEmpty()
+                ? LocationStructureClaim::query()
+                    ->whereIn('id', $dependencyIds)
+                    ->where('location_id', $location->id)
+                    ->where('claim_type', 'no_neighborhood')
+                    ->whereIn('status', ['pending', 'ready_for_review', 'needs_evidence'])
+                    ->orderBy('id')
+                    ->first()
+                : null;
+
+            if ((bool) ($metadata['is_pending_base'] ?? false) && $blockingClaim !== null) {
+                $request->forceFill([
+                    'location_id' => null,
+                    'location_proposal_id' => null,
+                    'location_structure_claim_id' => $blockingClaim->id,
+                    'status' => 'pending_location',
+                    'metadata' => $metadata,
+                ])->save();
+                continue;
+            }
+
+            $request->forceFill([
+                'location_id' => $location->id,
+                'location_proposal_id' => null,
+                'location_structure_claim_id' => null,
+                'status' => 'ready_to_materialize',
+                'metadata' => $metadata,
+            ])->save();
             $this->tryMaterializeOfficialRequest($request);
         }
     }
@@ -308,10 +421,35 @@ final class PendingLocationGroupRequestService
         $group = Group::query()->where('governance_area_id', $area->id)
             ->where('dimension_key', $request->dimension_key)
             ->where('dimension_value_key', $request->dimension_value_key)->first();
-        if ($group === null || ! GroupUser::query()->where('group_id', $group->id)
-            ->where('user_id', $request->requester_user_id)->where('status', 1)->exists()) return;
+        if ($group === null) return;
+
+        $membership = GroupUser::query()
+            ->where('group_id', $group->id)
+            ->where('user_id', $request->requester_user_id)
+            ->where('status', 1);
+
+        if ((bool) (($request->metadata ?? [])['is_pending_base'] ?? false)) {
+            $membership->where('role', '<>', 0);
+        }
+
+        if (! $membership->exists()) return;
 
         $request->forceFill(['governance_area_id' => $area->id, 'group_id' => $group->id, 'status' => 'materialized'])->save();
+    }
+
+    private function cancelStaleStructuralRequests(User $user, array $activeClaimIds): void
+    {
+        $stale = LocationScopedGroupRequest::query()
+            ->where('requester_user_id', $user->id)
+            ->where('scope_kind', self::SCOPE)
+            ->whereIn('status', ['pending_location', 'ready_to_materialize'])
+            ->whereNotNull('location_structure_claim_id');
+
+        if ($activeClaimIds !== []) {
+            $stale->whereNotIn('location_structure_claim_id', $activeClaimIds);
+        }
+
+        $stale->update(['status' => 'cancelled', 'updated_at' => now()]);
     }
 
     private function presentationRankFor(string $type): int

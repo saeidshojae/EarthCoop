@@ -94,6 +94,17 @@
       "location_external_ids": ["IR-SARI-URBAN-01"]
     },
     {
+      "key": "ir-reference-v1-sari-urban-region-no-neighborhood",
+      "parent_key": "ir-reference-v1-sari",
+      "governance_type": "urban_region",
+      "area_kind": "official",
+      "canonical_name": "Sari Reference Region Without Neighborhood",
+      "localized_names": {"fa": "منطقه مرجع بدون محله ساری", "en": "Sari Reference Region Without Neighborhood"},
+      "rank": 700,
+      "status": "active",
+      "location_external_ids": ["IR-SARI-URBAN-NONEIGHBORHOOD"]
+    },
+    {
       "key": "ir-reference-v1-sari-neighborhood-01",
       "parent_key": "ir-reference-v1-sari-urban-region-01",
       "governance_type": "local",

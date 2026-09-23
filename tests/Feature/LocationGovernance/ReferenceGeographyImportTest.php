@@ -37,6 +37,8 @@ class ReferenceGeographyImportTest extends TestCase
         $this->assertStringContainsString('Chahardangeh', $dataset);
         $this->assertStringContainsString('IR-MAZ-SARI-CHAHARDANGEH-KIASAR', $dataset);
         $this->assertStringContainsString('Kiasar', $dataset);
+        $this->assertStringContainsString('IR-SARI-URBAN-NONEIGHBORHOOD', $dataset);
+        $this->assertStringContainsString('Sari Reference Region Without Neighborhood', $dataset);
         $this->assertStringContainsString('rural_district', $dataset);
         $this->assertStringContainsString('village', $dataset);
         $this->assertStringContainsString('without-neighborhood', $dataset);

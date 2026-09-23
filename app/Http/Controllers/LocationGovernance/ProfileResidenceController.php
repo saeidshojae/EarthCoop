@@ -53,7 +53,7 @@ final class ProfileResidenceController extends Controller
         if ($locationId !== null) {
             $location = Location::query()->findOrFail($locationId);
 
-            if ($location->status !== 'active' || ! $locationTreeResolver->residenceEndpointAllowed($location)) {
+            if ($location->status !== 'active' || ! $locationTreeResolver->residenceSelectionEndpointAllowed($location, $structuralClaims)) {
                 throw ValidationException::withMessages([
                     'location_id' => 'لطفاً یک محل سکونت معتبر و قابل انتخاب را مشخص کنید.',
                 ]);
@@ -77,7 +77,7 @@ final class ProfileResidenceController extends Controller
                     $user,
                     'profile_location_update',
                     false,
-                    $structuralClaims,
+                    $canonicalStructuralClaims,
                 );
             } else {
                 $residenceService->refreshPrimaryResidenceStructuralClaims($user, $location, $structuralClaims);
@@ -116,15 +116,22 @@ final class ProfileResidenceController extends Controller
             $anchor = $proposal->nearestCanonicalParent();
             $type = $proposal->type;
             $parentProposal = $proposal->parentProposal;
+            $canonicalStructuralClaims = array_values(array_filter(
+                $structuralClaims,
+                fn (LocationStructureClaim $claim): bool => $claim->location_id !== null,
+            ));
+            $proposalStructuralClaims = array_values(array_filter(
+                $structuralClaims,
+                fn (LocationStructureClaim $claim): bool => $claim->location_proposal_id !== null,
+            ));
             $proposalPathAllowed = $proposal->parent_location_id !== null
-                ? ($anchor !== null && $type !== null && $proposalPolicy->allowsForResidence($anchor, $type, $structuralClaims))
-                : ($parentProposal !== null && $type !== null && $proposalPolicy->allowsProposalParent($parentProposal, $type));
+                ? ($anchor !== null && $type !== null && $proposalPolicy->allowsForResidence($anchor, $type, $canonicalStructuralClaims))
+                : ($parentProposal !== null && $type !== null && $proposalPolicy->allowsProposalParentForResidence($parentProposal, $type, $structuralClaims));
 
             if (
                 $anchor === null
                 || $type === null
                 || $anchor->status !== 'active'
-                || ! $locationTreeResolver->residenceEndpointAllowed($anchor)
                 || ! $proposalPathAllowed
             ) {
                 throw ValidationException::withMessages([
@@ -144,7 +151,7 @@ final class ProfileResidenceController extends Controller
                 $residenceService->setInitialPrimaryResidence($user, $anchor, [
                     'source' => 'profile_pending_residence_anchor',
                     'location_proposal_id' => $proposal->id,
-                ], $structuralClaims);
+                ], $canonicalStructuralClaims);
             } elseif ((int) $current->location_id !== (int) $anchor->id) {
                 $residenceService->transferPrimaryResidence(
                     $user,
@@ -152,15 +159,15 @@ final class ProfileResidenceController extends Controller
                     $user,
                     'profile_pending_residence_anchor',
                     false,
-                    $structuralClaims,
+                    $canonicalStructuralClaims,
                 );
             } else {
-                $residenceService->refreshPrimaryResidenceStructuralClaims($user, $anchor, $structuralClaims);
+                $residenceService->refreshPrimaryResidenceStructuralClaims($user, $anchor, $canonicalStructuralClaims);
             }
 
             $residenceService->setPendingResidenceIntent($user, $proposal, [
                 'source' => 'profile_location_update',
-            ]);
+            ], $proposalStructuralClaims);
         });
 
         $profileCompletionService->maybeAward($user->fresh());

@@ -4,9 +4,12 @@ namespace Tests\Feature\LocationGovernance;
 
 use App\Models\GovernanceArea;
 use App\Models\Group;
+use App\Models\Location;
 use App\Models\User;
 use App\Models\UserLocationRelationship;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
+use App\Services\LocationGovernance\LocationStructureClaimService;
+use App\Services\LocationGovernance\ResidenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Tests\Support\LocationGovernance\LocationFixture;
@@ -154,6 +157,62 @@ class MyLocationGovernancePageTest extends TestCase
         $response->assertDontSee('Governance Area');
     }
 
+
+    public function test_page_presents_pending_no_neighborhood_base_separately_from_formal_governance_chain(): void
+    {
+        ['user' => $user, 'area' => $cityArea, 'endpoint' => $city] = MembershipFixture::canonicalUser();
+        $schema = $city->schema()->firstOrFail();
+        $regionType = $schema->types()->where('key', 'urban_region')->firstOrFail();
+
+        $region = Location::query()->create([
+            'parent_id' => $city->id,
+            'location_schema_id' => $schema->id,
+            'location_type_id' => $regionType->id,
+            'country_code' => 'IR',
+            'canonical_name' => 'منطقه پایه در انتظار ساختار',
+            'localized_names' => ['fa' => 'منطقه پایه در انتظار ساختار'],
+            'status' => 'active',
+        ]);
+        $regionArea = GovernanceArea::query()->create([
+            'parent_id' => $cityArea->id,
+            'key' => 'ir.pending-structural-base-page',
+            'country_code' => 'IR',
+            'governance_type' => 'urban_region',
+            'area_kind' => 'official',
+            'canonical_name' => 'Pending Structural Region',
+            'rank' => 20,
+            'status' => 'active',
+        ]);
+        $regionArea->locations()->attach($region->id);
+
+        $user->locationRelationships()
+            ->where('relationship_type', 'primary_residence')
+            ->whereNull('ended_at')
+            ->update(['ended_at' => now()->subSecond()]);
+
+        $claim = app(LocationStructureClaimService::class)
+            ->findOrCreateOpenClaim($region, 'no_neighborhood', $user);
+        app(ResidenceService::class)->setInitialPrimaryResidence(
+            $user,
+            $region,
+            ['source' => 'my_location_pending_structural_base'],
+            [$claim],
+        );
+
+        $response = $this->actingAs($user)->get(route('location-governance.me'));
+
+        $response->assertOk();
+        $response->assertViewHas('governanceAreas', fn ($areas): bool =>
+            ! collect($areas)->contains('id', $regionArea->id)
+            && collect($areas)->contains('id', $cityArea->id)
+        );
+        $response->assertViewHas('pendingGovernanceStructuralClaims', fn ($claims): bool =>
+            collect($claims)->contains('id', $claim->id)
+        );
+        $response->assertSee('data-pending-structural-base', false);
+        $response->assertSee('منطقه پایه در انتظار ساختار');
+        $response->assertSee('حوزه پایه در انتظار تأیید ساختار');
+    }
 
     public function test_page_defaults_to_official_tab_and_guides_user_without_micro_location(): void
     {

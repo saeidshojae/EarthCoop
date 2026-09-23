@@ -33,6 +33,16 @@ test('normalizes active locations, open proposals, and allowed types without fix
     assert.deepEqual(alleyPayload.allowedTypes.map((type) => type.key), ['complex']);
 });
 
+test('structural choices keep a sparse governance level renderable even before any child exists', () => {
+    const normalized = normalizePickerPayload({
+        data: [],
+        proposals: [],
+        allowed_types: [],
+        structural_choices: [{ claim_type: 'no_neighborhood', status: 'available', claim_id: null }],
+    });
+    assert.equal(shouldRenderNextLevel(normalized), true);
+});
+
 test('changing a micro branch clears deeper selection state before rendering the new branch', () => {
     const source = selectorSource();
     assert.match(source, /removeDeeperLevels\(depth - 1\)/);
@@ -60,6 +70,24 @@ test('registration traversal stops before micro locations while ordinary residen
     assert.deepEqual(registration.proposals, []);
     assert.deepEqual(registration.allowedTypes, []);
     assert.equal(shouldRenderNextLevel(registration), false);
+});
+
+test('registration structural endpoint signal survives micro filtering and controls terminal submit state', () => {
+    const normalized = normalizePickerPayload({
+        data: [{ id: 301, identity: 'location:301', type_key: 'street', label: 'Street', status: 'active', is_residence_endpoint: true }],
+        proposals: [],
+        allowed_types: [{ id: 302, key: 'street', label: 'Street', proposal_allowed: true }],
+        registration_endpoint_allowed: true,
+    });
+
+    const registration = registrationPayload(normalized);
+    assert.equal(registration.registrationEndpointAllowed, true);
+    assert.equal(shouldRenderNextLevel(registration), false);
+
+    const source = selectorSource();
+    assert.match(source, /item\?\.type_key !== 'neighborhood'/, 'village/city schema endpoints must not enable registration before structural validation');
+    assert.match(source, /children\.registrationEndpointAllowed/, 'registration must use the server terminal signal after structural selection');
+    assert.match(source, /refreshed\.registrationEndpointAllowed/, 'structural refresh must terminalize the selected parent when micro levels are filtered');
 });
 
 test('registration stops immediately after a pending neighborhood proposal becomes the residence base', () => {

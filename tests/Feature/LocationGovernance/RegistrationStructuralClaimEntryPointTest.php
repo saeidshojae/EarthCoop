@@ -189,6 +189,59 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
         $this->assertSame('residence_commit', data_get($proposalEvidence->evidence, 'source'));
     }
 
+    public function test_registration_accepts_pending_region_or_village_without_neighborhood_and_keeps_proposal_claim_separate_from_canonical_anchor(): void
+    {
+        foreach ([
+            [
+                'parent_path' => ['country','province','county','section','city'],
+                'proposal_type' => 'urban_region',
+                'name' => 'منطقه پیشنهادی بدون محله',
+            ],
+            [
+                'parent_path' => ['country','province','county','section','rural_district'],
+                'proposal_type' => 'village',
+                'name' => 'روستای پیشنهادی بدون محله',
+            ],
+        ] as $scenario) {
+            $schema = LocationFixture::iranSchema();
+            $anchor = LocationFixture::createPath($schema, $scenario['parent_path'])->last();
+            $type = $schema->types->firstWhere('key', $scenario['proposal_type']);
+            $user = User::factory()->create();
+
+            $proposal = app(\App\Services\LocationGovernance\LocationProposalService::class)->propose(
+                $user,
+                $anchor,
+                $type,
+                ['canonical_name' => $scenario['name']],
+            );
+            $this->assertInstanceOf(\App\Models\LocationProposal::class, $proposal);
+
+            $claimResponse = $this->actingAs($user)->postJson(
+                '/location/proposals/'.$proposal->id.'/structure-claims',
+                ['claim_type' => 'no_neighborhood'],
+            )->assertCreated();
+            $claimId = (int) $claimResponse->json('id');
+
+            $this->actingAs($user)->post(route('register.step3.process'), [
+                'location_proposal_id' => $proposal->id,
+                'location_structure_claim_ids' => [$claimId],
+            ])->assertRedirect(route('home'));
+
+            $relationship = $user->fresh()->locationRelationships()
+                ->where('relationship_type', 'primary_residence')
+                ->whereNull('ended_at')
+                ->sole();
+            $intent = $user->fresh()->pendingResidenceIntents()->where('status', 'pending')->sole();
+            $claim = \App\Models\LocationStructureClaim::query()->findOrFail($claimId);
+
+            $this->assertSame($anchor->id, $relationship->location_id);
+            $this->assertSame([], collect($relationship->metadata['structural_claim_ids'] ?? [])->values()->all());
+            $this->assertSame([$claimId], collect($intent->metadata['structural_claim_ids'] ?? [])->map(fn ($id) => (int) $id)->values()->all());
+            $this->assertTrue($claim->evidence()->where('user_id', $user->id)->exists());
+            $this->assertTrue($proposal->fresh()->evidence()->where('user_id', $user->id)->exists());
+        }
+    }
+
     public function test_city_without_region_must_continue_to_real_neighborhood_before_registration_can_finish(): void
     {
         $schema = LocationFixture::iranSchema();

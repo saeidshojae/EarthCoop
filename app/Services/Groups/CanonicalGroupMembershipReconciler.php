@@ -4,6 +4,7 @@ namespace App\Services\Groups;
 
 use App\Enums\LocationGovernance\LocationProposalStatus;
 use App\Models\GroupUser;
+use App\Models\LocationStructureClaim;
 use App\Models\PendingResidenceIntent;
 use App\Models\User;
 use App\Services\GroupService;
@@ -136,15 +137,36 @@ final class CanonicalGroupMembershipReconciler
             }
         }
 
-        $location = $user->locationRelationships()
+        $currentResidence = $user->locationRelationships()
             ->where('relationship_type', 'primary_residence')
             ->whereNull('ended_at')
             ->with('location')
             ->latest('started_at')
-            ->first()?->location;
+            ->latest('id')
+            ->first();
 
+        $location = $currentResidence?->location;
         if ($location === null) {
             return null;
+        }
+
+        $structuralClaimIds = collect(($currentResidence->metadata ?? [])['structural_claim_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($structuralClaimIds->isNotEmpty()) {
+            $pendingBaseClaim = LocationStructureClaim::query()
+                ->whereIn('id', $structuralClaimIds)
+                ->where('location_id', $location->id)
+                ->where('claim_type', 'no_neighborhood')
+                ->where('status', '<>', 'approved')
+                ->exists();
+
+            if ($pendingBaseClaim) {
+                return null;
+            }
         }
 
         $area = $this->governanceResolver->baseOfficialAreaForResidence($location);

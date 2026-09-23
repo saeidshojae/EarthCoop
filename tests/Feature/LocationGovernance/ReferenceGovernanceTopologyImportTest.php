@@ -31,8 +31,8 @@ class ReferenceGovernanceTopologyImportTest extends TestCase
             '--apply' => true,
         ]));
 
-        $this->assertSame(14, GovernanceArea::query()->count());
-        $this->assertSame(12, DB::table('governance_area_locations')->count());
+        $this->assertSame(15, GovernanceArea::query()->count());
+        $this->assertSame(13, DB::table('governance_area_locations')->count());
 
         $global = GovernanceArea::query()->where('key', 'earthcoop-global')->firstOrFail();
         $asia = GovernanceArea::query()->where('key', 'earthcoop-continent-asia')->firstOrFail();
@@ -59,6 +59,13 @@ class ReferenceGovernanceTopologyImportTest extends TestCase
             ->firstOrFail()
             ->location;
 
+        $urbanRegionWithoutNeighborhood = LocationExternalId::query()
+            ->where('source', 'earthcoop-reference')
+            ->where('dataset_version', 'v1')
+            ->where('external_id', 'IR-SARI-URBAN-NONEIGHBORHOOD')
+            ->firstOrFail()
+            ->location;
+
         $kiasar = LocationExternalId::query()
             ->where('source', 'earthcoop-reference')
             ->where('dataset_version', 'v1')
@@ -73,7 +80,12 @@ class ReferenceGovernanceTopologyImportTest extends TestCase
         $this->assertSame('ir-reference-v1-chahardangeh-section', $kiasarArea->parent?->key);
 
         $urbanArea = $resolver->baseOfficialAreaForResidence($urbanResidence);
+        $urbanRegionWithoutNeighborhoodArea = $resolver->baseOfficialAreaForResidence($urbanRegionWithoutNeighborhood);
         $ruralArea = $resolver->baseOfficialAreaForResidence($ruralResidence);
+
+        $this->assertNotNull($urbanRegionWithoutNeighborhoodArea);
+        $this->assertSame('urban_region', $urbanRegionWithoutNeighborhoodArea->governance_type);
+        $this->assertSame('ir-reference-v1-sari', $urbanRegionWithoutNeighborhoodArea->parent?->key);
 
         $this->assertNotNull($urbanArea);
         $this->assertSame('local', $urbanArea->governance_type);
@@ -119,6 +131,6 @@ class ReferenceGovernanceTopologyImportTest extends TestCase
         $this->assertStringContainsString('create: 0', $output);
         $this->assertStringContainsString('update: 0', $output);
         $this->assertStringContainsString('conflict: 0', $output);
-        $this->assertStringContainsString('unchanged: 14', $output);
+        $this->assertStringContainsString('unchanged: 15', $output);
     }
 }

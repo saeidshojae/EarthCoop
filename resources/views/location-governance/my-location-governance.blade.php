@@ -86,6 +86,7 @@
         'neighborhood' => 'محله',
     ];
     $pendingBaseProposal = collect($pendingGovernanceProposals ?? [])->first();
+    $pendingBaseStructuralClaim = collect($pendingGovernanceStructuralClaims ?? [])->first();
     $baseGovernanceArea = collect($governanceAreas)->first();
     $membershipTotal = collect($membershipsByDimension)->sum(function ($bucket) {
         $bucket = collect($bucket);
@@ -119,8 +120,12 @@
             ?? '—';
     };
     $baseDisplayName = $pendingBaseProposal?->canonical_name
+        ?? ($pendingBaseStructuralClaim?->location ? $displayLocationName($pendingBaseStructuralClaim->location) : null)
         ?? ($baseGovernanceArea ? $displayAreaName($baseGovernanceArea) : '—');
-    $baseDisplayType = $pendingBaseProposal?->type?->key ?? $baseGovernanceArea?->governance_type;
+    $baseDisplayType = $pendingBaseProposal?->type?->key
+        ?? $pendingBaseStructuralClaim?->location?->type?->key
+        ?? $baseGovernanceArea?->governance_type;
+    $hasPendingBase = $pendingBaseProposal !== null || $pendingBaseStructuralClaim !== null;
 @endphp
 
 <div class="container py-3 py-md-5 location-governance-dashboard" dir="rtl" data-my-location-governance>
@@ -144,7 +149,7 @@
                         <span class="text-muted">حوزه پایه حکمرانی:</span>
                         <strong>{{ $baseDisplayName }}</strong>
                         @if($baseDisplayType)<span class="badge text-bg-light border">{{ $governanceTypeLabels[$baseDisplayType] ?? $baseDisplayType }}</span>@endif
-                        @if($pendingBaseProposal)<span class="badge bg-warning text-dark">در انتظار تأیید</span>@endif
+                        @if($hasPendingBase)<span class="badge bg-warning text-dark">در انتظار تأیید</span>@endif
                     </div>
                     @if($residencePath->isNotEmpty())
                         <details class="location-path-disclosure">
@@ -165,6 +170,12 @@
                 <div class="alert alert-warning mt-3 mb-0" data-pending-residence-intent>
                     <div class="d-flex flex-wrap align-items-center gap-2"><strong>جزئیات دقیق در انتظار تأیید</strong><span class="badge bg-warning text-dark">در انتظار تأیید</span></div>
                     <div class="small mt-1">{{ $pendingResidenceIntent->locationProposal->canonical_name }} — عضویت‌های این سطح تا زمان بررسی مکان، در انتظار تأیید می‌مانند.</div>
+                </div>
+            @endif
+            @if($pendingBaseStructuralClaim?->location)
+                <div class="alert alert-warning mt-3 mb-0" data-pending-structural-base>
+                    <div class="d-flex flex-wrap align-items-center gap-2"><strong>حوزه پایه در انتظار تأیید ساختار</strong><span class="badge bg-warning text-dark">در انتظار تأیید</span></div>
+                    <div class="small mt-1">{{ $displayLocationName($pendingBaseStructuralClaim->location) }} — تا تأیید «بدون محله»، عضویت این سطح رسمی و انتخاباتی نمی‌شود و سطوح بالاتر ناظر می‌مانند.</div>
                 </div>
             @endif
         </div>
@@ -199,6 +210,17 @@
                                             <div class="small text-muted">{{ $governanceTypeLabels[$proposal->type?->key] ?? $proposal->type?->key }}</div>
                                         </div>
                                     </div>
+                                @endforeach
+                                @foreach(($pendingGovernanceStructuralClaims ?? collect()) as $claim)
+                                    @if($claim?->location)
+                                        <div class="governance-chain-item" data-pending-governance-structure-claim="{{ $claim->id }}">
+                                            <span class="governance-chain-dot" aria-hidden="true"></span>
+                                            <div class="min-w-0">
+                                                <div class="fw-semibold">{{ $displayLocationName($claim->location) }} <span class="badge bg-warning text-dark me-1">ساختار در انتظار تأیید</span></div>
+                                                <div class="small text-muted">{{ $governanceTypeLabels[$claim->location?->type?->key] ?? $claim->location?->type?->key }}</div>
+                                            </div>
+                                        </div>
+                                    @endif
                                 @endforeach
                                 @forelse($governanceAreas as $area)
                                     <div class="governance-chain-item" data-governance-area="{{ $area->id }}"><span class="governance-chain-dot" aria-hidden="true"></span><div class="min-w-0"><div class="fw-semibold">{{ $displayAreaName($area) }}</div><div class="small text-muted">{{ $governanceTypeLabels[$area->governance_type] ?? $area->governance_type }}</div></div></div>
