@@ -39,7 +39,7 @@ final class ReferenceSettlementResidenceClaimService
     ): ReferenceSettlementResidenceClaim {
         return DB::transaction(function () use ($user, $settlement, $anchorRelationship): ReferenceSettlementResidenceClaim {
             $locked = ReferenceSettlement::query()->lockForUpdate()->findOrFail($settlement->id);
-            $isUnverified = $locked->classification === 'unverified_settlement'
+            $isUnverified = in_array($locked->classification, ['unverified_settlement', 'needs_review'], true)
                 && $locked->residential_eligibility === 'unverified';
             $hasVerifiedResidentialEvidence = $locked->classification === 'verified_residential_village'
                 && $locked->residential_eligibility === 'verified';
@@ -55,7 +55,9 @@ final class ReferenceSettlementResidenceClaimService
             $claim = ReferenceSettlementResidenceClaim::query()->firstOrCreate(
                 ['reference_settlement_id' => $locked->id, 'user_id' => $user->id],
                 [
-                    'status' => $hasVerifiedResidentialEvidence ? 'residential_evidence_verified' : 'pending',
+                    'status' => $hasVerifiedResidentialEvidence
+                        ? 'residential_evidence_verified'
+                        : ($locked->classification === 'needs_review' ? 'needs_evidence' : 'pending'),
                     'submitted_at' => now(),
                     'anchor_relationship_id' => $anchorRelationship?->id,
                 ],
