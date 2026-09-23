@@ -1,0 +1,72 @@
+name: Iran 1404 Reference Staging Validation
+
+on:
+  push:
+    branches:
+      - agent/iran-reference-data-audit-20260923
+    paths:
+      - 'database/reference/source/ir/1404/**'
+      - 'scripts/location_governance/**'
+      - '.github/workflows/iran-1404-reference-staging.yml'
+      - 'database/reference/ir/v1/schema.json'
+  pull_request:
+    paths:
+      - 'database/reference/source/ir/1404/**'
+      - 'scripts/location_governance/**'
+      - '.github/workflows/iran-1404-reference-staging.yml'
+      - 'database/reference/ir/v1/schema.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iran-1404-staging-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-and-stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+
+      - name: Test fail-closed converter
+        run: python3 -m unittest -v scripts/location_governance/test_convert_iran_1404.py
+
+      - name: Validate pinned source and build NON-PRODUCTION candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/location_governance/convert_iran_1404.py \
+            --source-dir database/reference/source/ir/1404 \
+            --schema-template database/reference/ir/v1/schema.json \
+            --output-dir "$RUNNER_TEMP/iran-1404-v2-candidate"
+
+      - name: Assert full candidate counts, hierarchy and quarantine
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - "$RUNNER_TEMP/iran-1404-v2-candidate" <<'PY'
+          import json, pathlib, sys
+          root = pathlib.Path(sys.argv[1])
+          manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
+          assert manifest['total_rows'] == 105475, manifest
+          assert manifest['staged_active_rows'] == 6158, manifest
+          assert manifest['quarantined_settlements'] == 99317, manifest
+          assert manifest['source_git_blob_sha1'] == 'ca9f4a0d69c7c9d77e6434447c7fe123a322271e'
+          assert sum(1 for _ in (root / 'locations.jsonl').open(encoding='utf-8')) == 6158
+          assert sum(1 for _ in (root / 'settlements.review.jsonl').open(encoding='utf-8')) == 99317
+          schema = json.loads((root / 'schema.json').read_text(encoding='utf-8'))
+          assert (schema['key'], schema['version']) == ('ir-reference-v2', 'v2')
+          print('PASS: full 1404 source, v2 staged locations and quarantined settlements verified')
+          PY
+
+      - name: Upload candidate as short-lived review artifact (NEVER deployed)
+        uses: actions/upload-artifact@v4
+        with:
+          name: iran-1404-v2-STAGING-${{ github.sha }}
+          path: ${{ runner.temp }}/iran-1404-v2-candidate/
+          retention-days: 7
+          if-no-files-found: error
