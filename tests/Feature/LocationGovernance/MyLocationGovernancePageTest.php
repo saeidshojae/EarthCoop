@@ -54,6 +54,23 @@ class MyLocationGovernancePageTest extends TestCase
         $this->assertStringNotContainsString('$groups = auth()->user()->groups;', $sidebar);
     }
 
+    public function test_official_governance_name_uses_active_locale_and_language_fallback(): void
+    {
+        ['user' => $user, 'area' => $area] = MembershipFixture::canonicalUser();
+        $area->forceFill([
+            'canonical_name' => 'English Governance Area',
+            'localized_names' => ['fa' => 'حوزه حکمرانی فارسی', 'en' => 'English Governance Area'],
+        ])->save();
+
+        app()->setLocale('fa-IR');
+        $this->actingAs($user)->get(route('location-governance.me'))
+            ->assertOk()->assertSee('حوزه حکمرانی فارسی');
+
+        app()->setLocale('en');
+        $this->actingAs($user)->get(route('location-governance.me'))
+            ->assertOk()->assertSee('English Governance Area');
+    }
+
     public function test_page_uses_official_governance_chain_and_separates_active_from_observer_memberships(): void
     {
         ['user' => $user, 'area' => $baseArea] = MembershipFixture::canonicalUser();
