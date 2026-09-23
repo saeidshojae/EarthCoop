@@ -139,9 +139,9 @@ final class RegistrationReferenceSettlementResidenceTest extends TestCase
             );
     }
 
-    public function test_pending_settlement_base_does_not_promote_canonical_parent_group_to_active_base(): void
+    public function test_pending_settlement_base_has_no_canonical_active_base_area(): void
     {
-        $anchor = $this->anchor();
+        $this->anchor();
         $settlement = $this->settlement();
         $user = User::factory()->create();
         config()->set('location-governance.groups_enabled', true);
@@ -153,29 +153,15 @@ final class RegistrationReferenceSettlementResidenceTest extends TestCase
             'enabled' => true,
         ]);
 
-        $area = \App\Models\GovernanceArea::factory()->official()->create([
-            'key' => 'settlement-anchor-'.$anchor->id,
-            'country_code' => 'IR',
-            'governance_type' => 'rural_district',
-            'canonical_name' => 'دهستان والد آبادی',
-            'rank' => 500,
-        ]);
-        $area->locations()->attach($anchor->id);
-
         $this->actingAs($user)->post(route('register.step3.process'), [
             'reference_settlement_external_id' => $settlement->external_id,
         ])->assertRedirect(route('home'));
 
-        $canonicalMembership = DB::table('group_user')
-            ->join('groups', 'groups.id', '=', 'group_user.group_id')
-            ->where('group_user.user_id', $user->id)
-            ->where('groups.governance_area_id', $area->id)
-            ->where('groups.dimension_key', 'public')
-            ->where('group_user.status', 1)
-            ->first();
+        $reconciler = app(\App\Services\Groups\CanonicalGroupMembershipReconciler::class);
+        $method = new \ReflectionMethod($reconciler, 'baseGovernanceAreaId');
+        $method->setAccessible(true);
 
-        $this->assertNotNull($canonicalMembership);
-        $this->assertSame(0, (int) $canonicalMembership->role);
+        $this->assertNull($method->invoke($reconciler, $user->fresh()));
 
         $claim = ReferenceSettlementResidenceClaim::query()
             ->where('reference_settlement_id', $settlement->id)
