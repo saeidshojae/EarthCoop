@@ -77,7 +77,7 @@ final class ProfileResidenceController extends Controller
                     $user,
                     'profile_location_update',
                     false,
-                    $canonicalStructuralClaims,
+                    $structuralClaims,
                 );
             } else {
                 $residenceService->refreshPrimaryResidenceStructuralClaims($user, $location, $structuralClaims);

@@ -191,6 +191,8 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
 
     public function test_registration_accepts_pending_region_or_village_without_neighborhood_and_keeps_proposal_claim_separate_from_canonical_anchor(): void
     {
+        $schema = LocationFixture::iranSchema();
+
         foreach ([
             [
                 'parent_path' => ['country','province','county','section','city'],
@@ -203,7 +205,6 @@ class RegistrationStructuralClaimEntryPointTest extends TestCase
                 'name' => 'روستای پیشنهادی بدون محله',
             ],
         ] as $scenario) {
-            $schema = LocationFixture::iranSchema();
             $anchor = LocationFixture::createPath($schema, $scenario['parent_path'])->last();
             $type = $schema->types->firstWhere('key', $scenario['proposal_type']);
             $user = User::factory()->create();

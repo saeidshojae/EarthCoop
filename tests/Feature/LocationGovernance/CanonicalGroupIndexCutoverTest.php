@@ -7,6 +7,7 @@ use App\Models\Group;
 use App\Models\Location;
 use App\Models\LocationStructureClaim;
 use App\Models\User;
+use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\Groups\PendingLocationGroupRequestService;
 use App\Services\LocationGovernance\LocationProposalService;
 use App\Services\LocationGovernance\LocationStructureClaimService;

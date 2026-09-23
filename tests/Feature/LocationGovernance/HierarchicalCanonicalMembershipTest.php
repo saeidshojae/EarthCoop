@@ -8,6 +8,7 @@ use App\Models\Group;
 use App\Models\GroupUser;
 use App\Models\Location;
 use App\Models\OccupationalField;
+use App\Models\User;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
 use App\Services\Groups\PendingLocationGroupRequestService;
 use App\Services\LocationGovernance\LocationProposalService;

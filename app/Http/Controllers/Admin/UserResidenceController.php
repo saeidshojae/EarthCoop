@@ -86,7 +86,7 @@ final class UserResidenceController extends Controller
                         $actor,
                         $reason,
                         false,
-                        $canonicalStructuralClaims,
+                        $structuralClaims,
                     );
                 } else {
                     $residenceService->refreshPrimaryResidenceStructuralClaims($user, $location, $structuralClaims);
