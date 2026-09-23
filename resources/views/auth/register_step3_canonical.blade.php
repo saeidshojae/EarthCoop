@@ -59,15 +59,107 @@
                 <input type="hidden" name="location_structure_claim_ids[]" value="{{ $claimId }}" data-location-structure-claim-id>
             @endforeach
             <div data-location-selector data-location-selector-context="registration" data-empty-label="یک گزینه را انتخاب کنید" data-loading-label="در حال دریافت گزینه‌های مکانی..." data-error-label="دریافت گزینه‌های مکانی ممکن نشد. دوباره تلاش کنید.">
-                <input type="hidden" name="location_id" value="{{ old('location_id') }}" data-location-id><input type="hidden" name="location_proposal_id" value="{{ old('location_proposal_id') }}" data-location-proposal-id>
+                <input type="hidden" name="location_id" value="{{ old('location_id') }}" data-location-id><input type="hidden" name="location_proposal_id" value="{{ old('location_proposal_id') }}" data-location-proposal-id><input type="hidden" name="reference_settlement_external_id" value="{{ old('reference_settlement_external_id') }}" data-reference-settlement-external-id>
                 <div class="location-actions" data-location-geolocation><button type="button" class="location-action-btn location-detect-btn" data-location-geolocation-detect><i class="fas fa-location-crosshairs ml-1"></i>تشخیص موقعیت من</button><button type="button" class="location-action-btn location-manual-btn" data-location-geolocation-manual><i class="fas fa-list ml-1"></i>انتخاب دستی</button></div>
                 <p class="text-xs sm:text-sm text-gray-500 mb-3 hidden" data-location-geolocation-status aria-live="polite"></p>
                 <div class="location-path text-center" id="location_path_display" data-location-path aria-live="polite"><i class="fas fa-map-marker-alt ml-2"></i><span>مسیر انتخاب نشده</span></div>
                 <div data-location-levels></div><div class="text-xs sm:text-sm text-gray-500 mt-3" data-location-status aria-live="polite">برای ادامه، یک محل معتبر برای سکونت اصلی انتخاب کنید.</div>
             </div>
+            @if(config('iran_settlement_catalog.enabled') && config('iran_settlement_catalog.claims_enabled'))
+                <section class="mt-4 border rounded-lg p-3 bg-white/70" data-reference-settlement-picker>
+                    <h3 class="font-bold text-sm sm:text-base mb-1">آبادی یا روستای من در مسیر بالا نمایش داده نمی‌شود</h3>
+                    <p class="text-xs sm:text-sm text-gray-500 mb-3">ابتدا نزدیک‌ترین والد تأییدشده (مثلاً دهستان یا شهر) را در مسیر بالا انتخاب کنید، سپس نام آبادی را جست‌وجو کنید. انتخاب آبادی مرجع به‌معنای تأیید خودکار سکونت یا حکمرانی نیست.</p>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="search" minlength="2" maxlength="60" class="form-control flex-1" placeholder="نام آبادی" data-reference-settlement-query>
+                        <button type="button" class="location-action-btn location-manual-btn" data-reference-settlement-search>جست‌وجوی آبادی</button>
+                    </div>
+                    <div class="mt-3 text-xs sm:text-sm text-gray-500" data-reference-settlement-status aria-live="polite"></div>
+                    <div class="mt-2 grid gap-2" data-reference-settlement-results></div>
+                </section>
+            @endif
             <button type="submit" id="continueBtn" class="submit-btn mt-5" data-location-submit disabled>ثبت محل سکونت و ادامه</button>
         </form>
     </div>
 </div>
+@if(config('iran_settlement_catalog.enabled') && config('iran_settlement_catalog.claims_enabled'))
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('step3Form');
+    const shell = form?.querySelector('[data-reference-settlement-picker]');
+    if (!form || !shell) return;
+
+    const locationInput = form.querySelector('[data-location-id]');
+    const proposalInput = form.querySelector('[data-location-proposal-id]');
+    const settlementInput = form.querySelector('[data-reference-settlement-external-id]');
+    const queryInput = shell.querySelector('[data-reference-settlement-query]');
+    const searchButton = shell.querySelector('[data-reference-settlement-search]');
+    const status = shell.querySelector('[data-reference-settlement-status]');
+    const results = shell.querySelector('[data-reference-settlement-results]');
+    const submit = form.querySelector('[data-location-submit]');
+    const selector = form.querySelector('[data-location-selector]');
+
+    const clearSettlement = () => {
+        settlementInput.value = '';
+        results.innerHTML = '';
+        status.textContent = '';
+    };
+
+    selector?.addEventListener('change', () => {
+        if (settlementInput.value) clearSettlement();
+    });
+
+    searchButton?.addEventListener('click', async () => {
+        const parentLocationId = Number(locationInput?.value || 0);
+        const q = String(queryInput?.value || '').trim();
+        results.innerHTML = '';
+        settlementInput.value = '';
+
+        if (!Number.isInteger(parentLocationId) || parentLocationId <= 0) {
+            status.textContent = 'ابتدا والد تأییدشدهٔ آبادی را در مسیر بالا انتخاب کنید.';
+            return;
+        }
+        if (q.length < 2) {
+            status.textContent = 'حداقل دو حرف از نام آبادی را وارد کنید.';
+            return;
+        }
+
+        searchButton.disabled = true;
+        status.textContent = 'در حال جست‌وجو...';
+        try {
+            const url = '/location/reference-settlements?parent_location_id=' + encodeURIComponent(parentLocationId) + '&q=' + encodeURIComponent(q);
+            const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.message || 'جست‌وجوی آبادی ممکن نشد.');
+            const items = Array.isArray(payload.data) ? payload.data : [];
+            if (!items.length) {
+                status.textContent = 'آبادی مطابق این نام زیر والد انتخاب‌شده پیدا نشد.';
+                return;
+            }
+            status.textContent = 'آبادی درست را انتخاب کنید.';
+            items.forEach((item) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn btn-outline-secondary text-right';
+                button.textContent = item.name_fa + ' — در انتظار بررسی سکونت';
+                button.addEventListener('click', () => {
+                    settlementInput.value = item.external_id;
+                    if (locationInput) locationInput.value = '';
+                    if (proposalInput) proposalInput.value = '';
+                    results.querySelectorAll('button').forEach((candidate) => candidate.classList.remove('btn-primary'));
+                    button.classList.add('btn-primary');
+                    status.textContent = 'آبادی مرجع انتخاب شد. ثبت‌نام با نزدیک‌ترین والد canonical قطعی ادامه می‌یابد و محل دقیق در انتظار بررسی می‌ماند.';
+                    if (submit) submit.disabled = false;
+                });
+                results.appendChild(button);
+            });
+        } catch (error) {
+            status.textContent = error?.message || 'جست‌وجوی آبادی ممکن نشد.';
+        } finally {
+            searchButton.disabled = false;
+        }
+    });
+});
+</script>
+@endif
 </body>
 </html>
