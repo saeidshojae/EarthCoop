@@ -130,6 +130,17 @@ final class RegistrationReferenceSettlementResidenceTest extends TestCase
         $this->assertNull($pendingGroupRequest->location_id);
         $this->assertSame(0, DB::table('governance_areas')->count());
 
+        $this->actingAs($user)->get(route('location-governance.me'))
+            ->assertOk()
+            ->assertSee('data-pending-reference-settlement', false)
+            ->assertSee('آبادی ثبت‌نام نمونه')
+            ->assertSee('حوزهٔ رسمی و حق رأی این آبادی تا تصمیم مستقل حکمرانی ایجاد نمی‌شود.');
+
+        $this->actingAs($user)->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('data-pending-reference-settlement-state', false)
+            ->assertSee('آبادی ثبت‌نام نمونه');
+
         $admin = User::factory()->create(['is_admin' => true]);
         $this->actingAs($admin)->get('/admin/location-governance')
             ->assertOk()
