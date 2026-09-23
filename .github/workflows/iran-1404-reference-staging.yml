@@ -84,7 +84,26 @@ jobs:
           assert sum(1 for _ in (root / 'settlements.review.jsonl').open(encoding='utf-8')) == 99317
           schema = json.loads((root / 'schema.json').read_text(encoding='utf-8'))
           assert (schema['key'], schema['version']) == ('ir-reference-v2', 'v2')
-          print('PASS: full 1404 source, v2 staged locations and quarantined settlements verified')
+          assert 'settlement' not in {item['key'] for item in schema['types']}
+          assert manifest['settlement_classification'] == {
+              'geographic_identity_verified': 99317,
+              'residential_eligibility_unverified': 99317,
+              'residential_villages_verified': 0,
+              'nonresidential_settlements_verified': 0,
+              'governance_authorized': 0,
+          }
+          with (root / 'settlements.review.jsonl').open(encoding='utf-8') as review:
+              for line in review:
+                  settlement = json.loads(line)
+                  flags = settlement['metadata']
+                  assert settlement['type'] == 'settlement'
+                  assert settlement['classification'] == 'unverified_settlement'
+                  assert flags['residential_eligibility'] == 'unverified'
+                  assert flags['settlement_kind'] == 'unknown'
+                  assert not flags['is_residence_endpoint']
+                  assert not flags['importable']
+                  assert not flags['governance_authorized']
+          print('PASS: full 1404 source, v2 staged locations and 99317 nonimportable settlements verified')
           PY
 
       - name: Upload candidate as short-lived review artifact (NEVER deployed)
