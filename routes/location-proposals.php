@@ -8,7 +8,7 @@ use App\Http\Middleware\Authenticate;
 use Illuminate\Support\Facades\Route;
 
 // Neutral source catalog only: no residence confirmation, claim, group or election side effects.
-Route::get('/location/reference-settlements', [\\App\\Http\\Controllers\\LocationGovernance\\IranSettlementCatalogController::class, 'index'])
+Route::get('/location/reference-settlements', [\App\Http\Controllers\LocationGovernance\IranSettlementCatalogController::class, 'index'])
     ->middleware('throttle:30,1')
     ->name('location.reference-settlements.index');
 
