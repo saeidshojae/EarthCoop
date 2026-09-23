@@ -77,4 +77,20 @@ class LocationDisplayNameTest extends TestCase
         $this->assertSame('قاره آسیا', LocationDisplayName::typed($continent, 'fa'));
     }
 
+    public function test_typed_persian_village_name_does_not_repeat_roosta_prefix(): void
+    {
+        app()->setLocale('fa');
+        $schema = LocationFixture::iranSchema();
+        $village = LocationFixture::createPath($schema, [
+            'country', 'province', 'county', 'section', 'rural_district', 'village',
+        ])->last();
+        $village->forceFill([
+            'canonical_name' => 'Reference Village Without Neighborhood',
+            'localized_names' => ['fa' => 'روستای مرجع بدون محله'],
+        ]);
+
+        $this->assertSame('روستای مرجع بدون محله', LocationDisplayName::typed($village));
+        $this->assertSame('روستای مرجع بدون محله', LocationDisplayName::for($village, 'fa-IR'));
+    }
+
 }
