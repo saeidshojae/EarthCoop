@@ -86,6 +86,25 @@ class IranCandidateConversionTests(unittest.TestCase):
                 module.convert(payload(ROWS), out, schema, allow_fixture=True)
             self.assertTrue((out / 'locations.jsonl').exists())
 
+    def test_village_sounding_name_cannot_self_certify_residence_or_governance(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            schema = root / 'schema.json'
+            schema.write_text(json.dumps({'key': 'ir-reference-v1', 'country_code': 'IR', 'version': 'v1',
+                                          'name': 'Iran v1', 'types': [], 'relations': []}), encoding='utf-8')
+            village_sounding = [list(row) for row in ROWS]
+            village_sounding[6][2] = 'روستای نمونه مسکونی'
+            out = root / 'candidate'
+            module.convert(payload(village_sounding), out, schema, allow_fixture=True)
+            review = json.loads((out / 'settlements.review.jsonl').read_text(encoding='utf-8').strip())
+            self.assertEqual('روستای نمونه مسکونی', review['canonical_name'])
+            self.assertEqual('settlement', review['type'])
+            self.assertEqual('unverified_settlement', review['classification'])
+            self.assertEqual('unverified', review['metadata']['residential_eligibility'])
+            self.assertFalse(review['metadata']['is_residence_endpoint'])
+            self.assertFalse(review['metadata']['importable'])
+            self.assertFalse(review['metadata']['governance_authorized'])
+
     def test_v1_target_is_always_rejected(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
