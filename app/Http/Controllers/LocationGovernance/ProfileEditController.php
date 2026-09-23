@@ -33,7 +33,7 @@ final class ProfileEditController extends Controller
             ->first();
 
         $pendingResidenceIntent = $user->pendingResidenceIntents()
-            ->with(['locationProposal.type', 'resolvedLocation'])
+            ->with(['locationProposal.type', 'referenceSettlementResidenceClaim.settlement', 'resolvedLocation'])
             ->where('status', 'pending')
             ->latest('selected_at')
             ->latest('id')
