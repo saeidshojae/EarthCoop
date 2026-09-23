@@ -21,6 +21,10 @@ Route::get('/location/proposals/{locationProposal}/children', [LocationOptionsCo
 // Keeping these routes authenticated also preserves the non-null User contract used
 // by the proposal and structural-claim services.
 Route::middleware(Authenticate::class)->group(function () {
+    Route::post('/location/reference-settlement-residence-claims', [\App\Http\Controllers\LocationGovernance\IranSettlementResidenceClaimController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('location.reference-settlement-residence-claims.store');
+
     Route::post('/locations/structure-claims', [LocationStructureClaimController::class, 'store'])
         ->name('locations.structure-claims.store');
 
