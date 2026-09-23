@@ -57,7 +57,9 @@ class HomeController extends Controller
             // Canonical identity is dimension-based. Legacy group_type is only a
             // presentation/backward-compatibility field and must not drive counts.
             $pendingService = app(\App\Services\Groups\PendingLocationGroupRequestService::class);
-            $pendingGroups = $pendingService->presentationGroups($pendingService->openForUser($user));
+            $pendingRequests = $pendingService->openForUser($user);
+            $groups = $pendingService->presentableCanonicalGroups($groups, $pendingRequests);
+            $pendingGroups = $pendingService->presentationGroups($pendingRequests);
             $allSystemGroups = $groups->concat($pendingGroups);
             $generalGroups = $allSystemGroups->where('dimension_key', 'public');
             $specializedGroups = $allSystemGroups->whereIn('dimension_key', ['profession', 'specialty']);
