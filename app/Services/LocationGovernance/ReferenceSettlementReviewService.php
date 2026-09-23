@@ -89,15 +89,25 @@ final class ReferenceSettlementReviewService
                     'operational_promotion_allowed' => false,
                 ])->save();
 
-                ReferenceSettlementResidenceClaim::query()
+                $claims = ReferenceSettlementResidenceClaim::query()
                     ->where('reference_settlement_id', $locked->id)
-                    ->whereIn('status', ['pending', 'needs_evidence'])
-                    ->update([
+                    ->whereIn('status', ['pending', 'needs_evidence', 'residential_evidence_verified'])
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($claims as $claim) {
+                    $claim->forceFill([
                         'status' => 'rejected',
                         'reviewed_at' => now(),
                         'reviewed_by_user_id' => $actor->id,
-                        'updated_at' => now(),
-                    ]);
+                    ])->save();
+                    app(ResidenceService::class)->cancelPendingReferenceSettlementIntent(
+                        $claim,
+                        'reference_settlement_classified_nonresidential',
+                    );
+                    app(\App\Services\Groups\PendingLocationGroupRequestService::class)
+                        ->rejectForReferenceSettlementClaim($claim);
+                }
 
                 $rejectedClaimIds = ReferenceSettlementResidenceClaim::query()
                     ->where('reference_settlement_id', $locked->id)
