@@ -110,7 +110,7 @@ final class IranSettlementCatalogImportTest extends TestCase
         try {
             $importer->import($review, $manifest, true, 2);
             $this->fail('Changed evidence was silently overwritten.');
-        } catch (\\RuntimeException $e) {
+        } catch (\RuntimeException $e) {
             $this->assertStringContainsString('classification changed', $e->getMessage());
         }
         $this->assertSame('verified', DB::table('reference_settlements')
