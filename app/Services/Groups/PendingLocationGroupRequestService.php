@@ -51,6 +51,12 @@ final class PendingLocationGroupRequestService
                 ->where('status', 'pending')
                 ->latest('id')
                 ->first();
+
+            LocationScopedGroupRequest::query()
+                ->where('requester_user_id', $user->id)
+                ->whereNotNull('reference_settlement_residence_claim_id')
+                ->whereIn('status', ['pending_location', 'ready_to_materialize'])
+                ->update(['status' => 'cancelled', 'updated_at' => now()]);
             $structuralClaimIds = collect(($pendingIntent?->metadata ?? [])['structural_claim_ids'] ?? [])
                 ->map(fn ($id) => (int) $id)
                 ->filter()
@@ -134,6 +140,12 @@ final class PendingLocationGroupRequestService
                 ->where('requester_user_id', $user->id)
                 ->whereNotNull('reference_settlement_residence_claim_id')
                 ->where('reference_settlement_residence_claim_id', '<>', $lockedClaim->id)
+                ->whereIn('status', ['pending_location', 'ready_to_materialize'])
+                ->update(['status' => 'cancelled', 'updated_at' => now()]);
+
+            LocationScopedGroupRequest::query()
+                ->where('requester_user_id', $user->id)
+                ->whereNotNull('location_proposal_id')
                 ->whereIn('status', ['pending_location', 'ready_to_materialize'])
                 ->update(['status' => 'cancelled', 'updated_at' => now()]);
 
