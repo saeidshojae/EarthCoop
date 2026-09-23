@@ -270,10 +270,11 @@ jobs:
           php -l tests/Feature/LocationGovernance/IranSettlementResidenceClaimTest.php
           php -l database/migrations/2026_09_24_000001_create_reference_settlements_table.php
           php artisan test tests/Feature/LocationGovernance/IranSettlementCatalogImportTest.php tests/Feature/LocationGovernance/IranSettlementCatalogSearchTest.php tests/Feature/LocationGovernance/IranSettlementResidenceClaimTest.php tests/Feature/LocationGovernance/ReferenceSettlementReviewTest.php tests/Feature/LocationGovernance/IranV1V2RuntimeAuditCommandTest.php tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php
+          php artisan test tests/Feature/LocationGovernance/ReferenceSettlementMigrationRollbackContractTest.php
           php -l tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php
           php -l tests/Unit/LocationGovernance/ReferenceImporterComparableTest.php
           php artisan test \
-            tests/Unit/LocationGovernance/ReferenceImporterCo tests/Feature/LocationGovernance/ReferenceSettlementMigrationRollbackContractTest.phpmparableTest.php \
+            tests/Unit/LocationGovernance/ReferenceImporterComparableTest.php \
             tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php \
             tests/Feature/LocationGovernance/ReferenceGeographyImportTest.php
 
