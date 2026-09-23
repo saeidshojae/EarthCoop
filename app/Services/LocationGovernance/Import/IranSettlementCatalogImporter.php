@@ -114,9 +114,8 @@ final class IranSettlementCatalogImporter
                         'created_at' => now(),
                         'updated_at' => now(),
                     ];
-                    if (count($batch) === 250) {
-                        $this->insertNewBatch($batch);
-                        $summary['applied'] += count($batch);
+                    if (count($batch) === 40) {
+                        $summary['applied'] += $this->insertNewBatch($batch);
                         $batch = [];
                     }
                 }
@@ -131,17 +130,35 @@ final class IranSettlementCatalogImporter
         return $summary;
     }
 
-    private function insertNewBatch(array $batch): void
+    private function insertNewBatch(array $batch): int
     {
         $ids = array_column($batch, 'external_id');
         $existing = DB::table('reference_settlements')
             ->where('source', self::SOURCE)->where('dataset_version', 'v2')
-            ->whereIn('external_id', $ids)
-            ->pluck('external_id')->all();
-        if ($existing !== []) {
-            // Never silently overwrite reviewed evidence or changed source identity.
-            throw new RuntimeException('Catalog import already contains identities; use a fresh disposable database.');
+            ->whereIn('external_id', $ids)->get()->keyBy('external_id');
+        $new = [];
+        foreach ($batch as $row) {
+            $prior = $existing->get($row['external_id']);
+            if ($prior === null) {
+                $new[] = $row;
+                continue;
+            }
+            // Re-import is safe ONLY when source identity and protected
+            // classification have not drifted. Never overwrite evidence.
+            foreach (['parent_external_id', 'source_code', 'source_row_id', 'name_fa',
+                'classification', 'residential_eligibility',
+                'governance_authorized', 'operational_promotion_allowed'] as $field) {
+                if ((string) $prior->{$field} !== (string) $row[$field]) {
+                    throw new RuntimeException('Existing settlement identity or classification changed: '.$row['external_id']);
+                }
+            }
+            if (json_decode((string) $prior->provenance, true) !== json_decode($row['provenance'], true)) {
+                throw new RuntimeException('Existing settlement provenance changed: '.$row['external_id']);
+            }
         }
-        DB::table('reference_settlements')->insert($batch);
+        if ($new !== []) {
+            DB::table('reference_settlements')->insert($new);
+        }
+        return count($new);
     }
 }
