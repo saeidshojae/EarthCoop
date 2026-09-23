@@ -175,6 +175,60 @@ final class ReferenceSettlementReviewTest extends TestCase
         $this->assertNull($groupRequest->fresh()->governance_area_id);
     }
 
+    public function test_nonresidential_review_closes_pending_intent_and_group_shell_immediately(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $user = User::factory()->create();
+        $settlement = $this->settlement();
+        $claim = $this->claim($settlement, $user);
+
+        $schema = \Tests\Support\LocationGovernance\LocationFixture::iranSchema();
+        $anchor = \Tests\Support\LocationGovernance\LocationFixture::createPath($schema, ['country'])->last();
+        $relationship = app(\App\Services\LocationGovernance\ResidenceService::class)
+            ->setInitialPrimaryResidence($user, $anchor, ['source' => 'nonresidential-review-test']);
+        $intent = \App\Models\PendingResidenceIntent::query()->create([
+            'user_id' => $user->id,
+            'anchor_relationship_id' => $relationship->id,
+            'location_proposal_id' => null,
+            'reference_settlement_residence_claim_id' => $claim->id,
+            'status' => 'pending',
+            'selected_at' => now(),
+            'metadata' => ['source' => 'fixture'],
+        ]);
+        $groupRequest = \App\Models\LocationScopedGroupRequest::query()->create([
+            'requester_user_id' => $user->id,
+            'location_id' => null,
+            'location_proposal_id' => null,
+            'location_structure_claim_id' => null,
+            'reference_settlement_residence_claim_id' => $claim->id,
+            'scope_kind' => 'official_system',
+            'dimension_key' => 'public',
+            'dimension_value_key' => 'all',
+            'status' => 'pending_location',
+            'metadata' => ['source' => 'fixture'],
+        ]);
+
+        $this->actingAs($admin)->postJson(
+            "/admin/location-governance/reference-settlements/{$settlement->id}/review",
+            [
+                'decision' => 'verified_nonresidential_place',
+                'reason' => 'مدرک رسمی نشان می‌دهد این مکان محل سکونت نیست.',
+                'evidence_source' => 'مرجع رسمی نمونه',
+                'evidence_date' => now()->subDay()->toDateString(),
+                'evidence_reference' => 'NONRES-CLOSE-201',
+            ],
+        )->assertOk();
+
+        $this->assertSame('rejected', $claim->fresh()->status);
+        $this->assertSame('cancelled', $intent->fresh()->status);
+        $this->assertSame(
+            'reference_settlement_classified_nonresidential',
+            $intent->fresh()->metadata['cancellation_reason'] ?? null,
+        );
+        $this->assertSame('rejected', $groupRequest->fresh()->status);
+        $this->assertSame($anchor->id, $user->fresh()->locationRelationships()->whereNull('ended_at')->sole()->location_id);
+    }
+
     public function test_verified_classification_cannot_be_silently_flipped_by_same_review_endpoint(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
