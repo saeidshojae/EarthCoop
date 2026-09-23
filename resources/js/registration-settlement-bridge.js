@@ -7,7 +7,7 @@ const settlementSearchUrl = (parentLocationId, query = '') => {
 
 const settlementSelectableForClaim = (item) => {
     if (!item || item.governance_authorized === true) return false;
-    if (item.classification === 'unverified_settlement' && item.residential_eligibility === 'unverified') return true;
+    if (['unverified_settlement', 'needs_review'].includes(item.classification) && item.residential_eligibility === 'unverified') return true;
     return item.classification === 'verified_residential_village' && item.residential_eligibility === 'verified';
 };
 
