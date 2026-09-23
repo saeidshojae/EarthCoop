@@ -184,6 +184,11 @@ jobs:
       - name: Syntax and targeted import safety regressions
         run: |
           php -l app/Console/Commands/LocationReferenceImportCommand.php
+          php -l app/Console/Commands/ImportIranSettlementCatalog.php
+          php -l app/Services/LocationGovernance/Import/IranSettlementCatalogImporter.php
+          php -l app/Http/Controllers/LocationGovernance/IranSettlementCatalogController.php
+          php -l database/migrations/2026_09_24_000001_create_reference_settlements_table.php
+          php artisan test tests/Feature/LocationGovernance/IranSettlementCatalogImportTest.php tests/Feature/LocationGovernance/IranSettlementCatalogSearchTest.php
           php -l tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php
           php -l tests/Unit/LocationGovernance/ReferenceImporterComparableTest.php
           php artisan test \
