@@ -60,18 +60,25 @@ final class IranSettlementResidenceClaimController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($settlement->classification !== 'unverified_settlement'
-                || $settlement->residential_eligibility !== 'unverified'
+            $isUnverified = $settlement->classification === 'unverified_settlement'
+                && $settlement->residential_eligibility === 'unverified';
+            $hasVerifiedResidentialEvidence = $settlement->classification === 'verified_residential_village'
+                && $settlement->residential_eligibility === 'verified';
+
+            if ((! $isUnverified && ! $hasVerifiedResidentialEvidence)
                 || $settlement->governance_authorized
                 || $settlement->operational_promotion_allowed) {
                 throw ValidationException::withMessages([
-                    'external_id' => 'این آبادی در وضعیت درخواست سکونتِ در انتظار بررسی نیست.',
+                    'external_id' => 'این آبادی در وضعیت قابل ثبت برای درخواست سکونت نیست.',
                 ]);
             }
 
             return ReferenceSettlementResidenceClaim::query()->firstOrCreate(
                 ['reference_settlement_id' => $settlement->id, 'user_id' => $request->user()->id],
-                ['status' => 'pending', 'submitted_at' => now()],
+                [
+                    'status' => $hasVerifiedResidentialEvidence ? 'residential_evidence_verified' : 'pending',
+                    'submitted_at' => now(),
+                ],
             );
         });
 
