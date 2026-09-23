@@ -62,7 +62,9 @@ final class IranV1V2RuntimeAuditCommandTest extends TestCase
         $this->assertSame('read_only', $report['mode']);
         $this->assertSame(1, $report['v1_identity_count']);
         $this->assertSame(1, $report['reviewed_mapping_present']);
-        $this->assertFalse($report['shared_cutover_blocked']); // absent reviewed IDs are not dependencies; only present unresolved IDs block
+        $this->assertTrue($report['shared_cutover_blocked']);
+        $this->assertGreaterThanOrEqual(3, $report['dependency_count_total']);
+        $this->assertSame(1, $report['mapped_dependency_rows']);
         $country = collect($report['rows'])->firstWhere('v1_external_id', 'IR-COUNTRY');
         $this->assertSame('IR-1404-1', $country['candidate_v2_external_id']);
         $this->assertSame(1, $country['dependencies']['user_location_relationships']);
