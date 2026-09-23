@@ -63,6 +63,28 @@ final class IranSettlementResidenceClaimTest extends TestCase
         $this->assertSame(0, DB::table('governance_areas')->count());
     }
 
+    public function test_private_claim_status_does_not_expose_other_users(): void
+    {
+        config()->set('iran_settlement_catalog.enabled', true);
+        config()->set('iran_settlement_catalog.claims_enabled', true);
+        $settlement = $this->settlement();
+        $first = User::factory()->create();
+        $second = User::factory()->create();
+        $this->actingAs($first)->postJson('/location/reference-settlement-residence-claims', [
+            'external_id' => $settlement->external_id,
+        ])->assertCreated();
+        $this->actingAs($second)->getJson('/location/reference-settlement-residence-claims')
+            ->assertOk()->assertJsonCount(0, 'data');
+        $this->actingAs($second)->postJson('/location/reference-settlement-residence-claims', [
+            'external_id' => $settlement->external_id,
+        ])->assertCreated();
+        $this->actingAs($first)->getJson('/location/reference-settlement-residence-claims')
+            ->assertOk()->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.external_id', $settlement->external_id)
+            ->assertJsonPath('data.0.residence_confirmed', false);
+        $this->assertDatabaseCount('reference_settlement_residence_claims', 2);
+    }
+
     public function test_unauthenticated_or_nonresidential_records_cannot_create_claim(): void
     {
         config()->set('iran_settlement_catalog.enabled', true);
