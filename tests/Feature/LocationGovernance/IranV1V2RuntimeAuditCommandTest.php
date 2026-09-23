@@ -78,6 +78,27 @@ final class IranV1V2RuntimeAuditCommandTest extends TestCase
         $this->assertSame($before, $after);
     }
 
+    public function test_present_municipal_review_mapping_blocks_shared_cutover(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $location = LocationFixture::createPath($schema, ['country', 'province', 'county', 'section', 'city', 'urban_region'])->last();
+        LocationExternalId::query()->create([
+            'location_id' => $location->id,
+            'source' => 'earthcoop-reference',
+            'dataset_version' => 'v1',
+            'external_id' => 'IR-SARI-URBAN-01',
+            'metadata' => ['fixture' => true],
+        ]);
+
+        $this->assertSame(0, Artisan::call('location:iran-v1-v2-runtime-audit', ['--json' => true]));
+        $report = json_decode(trim(Artisan::output()), true, 512, JSON_THROW_ON_ERROR);
+        $row = collect($report['rows'])->firstWhere('v1_external_id', 'IR-SARI-URBAN-01');
+
+        $this->assertSame('municipal_review', $row['mapping_status']);
+        $this->assertSame('IR-1404-5984', $row['candidate_v2_external_id']);
+        $this->assertTrue($report['shared_cutover_blocked']);
+    }
+
     public function test_unreviewed_v1_identity_blocks_shared_cutover_without_mutation(): void
     {
         $schema = LocationFixture::iranSchema();
