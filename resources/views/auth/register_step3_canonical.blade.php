@@ -32,6 +32,9 @@
         [data-location-proposal-shell] { margin-top:.75rem; }
         .submit-btn { width:100%; min-height:3rem; border:0; border-radius:.65rem; background:linear-gradient(135deg,var(--color-ocean-blue),var(--color-dark-blue)); color:white; font-weight:800; box-shadow:0 8px 18px rgba(59,130,246,.24); }
         .submit-btn:disabled { opacity:.5; cursor:not-allowed; box-shadow:none; }
+        .settlement-reference-shell { margin-top:1rem; border:1px solid #cbd5e1; border-radius:.75rem; padding:1rem; background:#f8fafc; }
+        .settlement-reference-shell [data-settlement-search-results] { display:grid; gap:.5rem; margin-top:.75rem; max-height:16rem; overflow:auto; }
+        .settlement-reference-shell button[aria-pressed="true"] { outline:2px solid var(--color-earth-green); border-color:var(--color-earth-green); }
         @media(max-width:640px){ html,body{margin:0!important;padding:0!important;width:100%!important;min-height:100%!important;overflow-x:hidden!important} body{padding-top:.25rem!important;padding-bottom:.25rem!important;align-items:flex-start!important}.form-card-gradient{padding:.75rem!important;border-radius:12px;margin:.25rem auto!important;width:calc(100% - .5rem)!important;max-width:calc(100% - .5rem)!important}.form-card-gradient::before{border-radius:12px 12px 0 0}.location-path{padding:.625rem .75rem!important;font-size:.75rem!important;margin-bottom:1rem!important;line-height:1.5!important}.create-location-btn{font-size:.8125rem!important;padding:.5rem 1rem!important;min-height:44px}[data-location-proposal-toggle]{font-size:.8125rem!important;padding:.5rem .25rem!important;min-height:40px;background:transparent!important;color:#087f5b!important;box-shadow:none!important}.location-actions>*{flex:1 1 140px;min-height:44px}[data-location-levels] .form-select{min-height:44px;font-size:.875rem} }
     </style>
 </head>
@@ -65,6 +68,19 @@
                 <div class="location-path text-center" id="location_path_display" data-location-path aria-live="polite"><i class="fas fa-map-marker-alt ml-2"></i><span>مسیر انتخاب نشده</span></div>
                 <div data-location-levels></div><div class="text-xs sm:text-sm text-gray-500 mt-3" data-location-status aria-live="polite">برای ادامه، یک محل معتبر برای سکونت اصلی انتخاب کنید.</div>
             </div>
+            @if ((bool) config('iran_settlement_catalog.enabled', false) && (bool) config('iran_settlement_catalog.claims_enabled', false) && (bool) config('iran_settlement_catalog.registration_bridge_enabled', false))
+                <input type="hidden" name="reference_settlement_external_id" value="{{ old('reference_settlement_external_id') }}" data-reference-settlement-external-id>
+                <section class="settlement-reference-shell d-none" data-settlement-registration-bridge aria-live="polite">
+                    <div class="fw-bold mb-1">آبادی‌های مرجع این دهستان</div>
+                    <p class="small text-muted mb-3">اگر آبادی شما در بانک مرجع موجود است، همان رکورد را انتخاب کنید؛ برای یک آبادی موجود پیشنهاد مکان تکراری ساخته نمی‌شود.</p>
+                    <div class="d-flex flex-column flex-sm-row gap-2">
+                        <input type="search" class="form-control" data-settlement-search-input maxlength="60" placeholder="نام آبادی (اختیاری؛ حداقل ۲ نویسه)">
+                        <button type="button" class="btn btn-outline-primary" data-settlement-search-submit>جست‌وجو</button>
+                    </div>
+                    <div class="small text-muted mt-2" data-settlement-search-status></div>
+                    <div data-settlement-search-results></div>
+                </section>
+            @endif
             <button type="submit" id="continueBtn" class="submit-btn mt-5" data-location-submit disabled>ثبت محل سکونت و ادامه</button>
         </form>
     </div>
