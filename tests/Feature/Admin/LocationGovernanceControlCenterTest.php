@@ -251,6 +251,55 @@ class LocationGovernanceControlCenterTest extends TestCase
         $response->assertSee('4');
     }
 
+    public function test_health_diagnostics_accepts_reference_settlement_backed_pending_intent(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $user = User::factory()->create();
+        $schema = LocationFixture::iranSchema();
+        $anchor = LocationFixture::createPath($schema, ['country'])->last();
+
+        $relationship = app(ResidenceService::class)->setInitialPrimaryResidence($user, $anchor, [
+            'source' => 'health-reference-settlement-test',
+        ]);
+        $settlement = \App\Models\ReferenceSettlement::query()->create([
+            'source' => 'IranCountryDivisions/geo_1404',
+            'dataset_version' => 'v2',
+            'external_id' => 'IR-1404-99001',
+            'parent_external_id' => 'IR-1404-1',
+            'source_code' => '99001',
+            'source_row_id' => 99001,
+            'name_fa' => 'آبادی سلامت',
+            'search_name' => 'آبادی سلامت',
+            'classification' => 'unverified_settlement',
+            'residential_eligibility' => 'unverified',
+            'governance_authorized' => false,
+            'operational_promotion_allowed' => false,
+            'provenance' => ['source' => 'fixture'],
+        ]);
+        $claim = \App\Models\ReferenceSettlementResidenceClaim::query()->create([
+            'reference_settlement_id' => $settlement->id,
+            'user_id' => $user->id,
+            'status' => 'pending',
+            'submitted_at' => now(),
+        ]);
+        \App\Models\PendingResidenceIntent::query()->create([
+            'user_id' => $user->id,
+            'anchor_relationship_id' => $relationship->id,
+            'location_proposal_id' => null,
+            'reference_settlement_residence_claim_id' => $claim->id,
+            'status' => 'pending',
+            'selected_at' => now(),
+            'metadata' => ['source' => 'fixture'],
+        ]);
+
+        $this->actingAs($admin)->get('/admin/location-governance')
+            ->assertOk()
+            ->assertViewHas('healthDiagnostics', fn ($diagnostics) =>
+                $diagnostics['pending_residence_intents'] === 1
+                && $diagnostics['invalid_pending_residence_intents'] === 0
+            );
+    }
+
     /** @return array{0: \App\Models\LocationProposal, 1: Location} */
     private function makeProposal(string $name, ?LocationSchema $schema = null): array
     {
