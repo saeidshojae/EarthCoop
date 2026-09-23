@@ -65,6 +65,23 @@ final class RegistrationReferenceSettlementResidenceTest extends TestCase
         ]);
     }
 
+    public function test_step3_settlement_picker_is_visible_only_when_both_feature_flags_are_enabled(): void
+    {
+        $user = User::factory()->create();
+
+        $enabled = $this->actingAs($user)->get(route('register.step3'));
+        $enabled->assertOk()
+            ->assertSee('data-reference-settlement-picker', false)
+            ->assertSee('name="reference_settlement_external_id"', false)
+            ->assertSee('data-reference-settlement-search', false);
+
+        config()->set('iran_settlement_catalog.claims_enabled', false);
+        $disabled = $this->actingAs($user)->get(route('register.step3'));
+        $disabled->assertOk()
+            ->assertDontSee('data-reference-settlement-picker', false)
+            ->assertSee('name="reference_settlement_external_id"', false);
+    }
+
     public function test_reference_settlement_can_complete_registration_only_via_verified_parent_crosswalk(): void
     {
         $anchor = $this->anchor();
