@@ -45,6 +45,7 @@ final class MyLocationGovernanceController extends Controller
             ->with([
                 'locationProposal.parentLocation',
                 'locationProposal.type',
+                'referenceSettlementResidenceClaim.settlement',
             ])
             ->latest('selected_at')
             ->first();
