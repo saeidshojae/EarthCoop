@@ -8,6 +8,7 @@ use App\Models\Location;
 use App\Models\LocationProposal;
 use App\Models\LocationStructureClaim;
 use App\Models\PendingResidenceIntent;
+use App\Models\ReferenceSettlementResidenceClaim;
 use App\Models\User;
 use App\Models\UserLocationRelationship;
 use App\Services\Groups\CanonicalGroupMembershipReconciler;
@@ -224,6 +225,57 @@ class ResidenceService
             }
 
             return $intent;
+        });
+    }
+
+    public function setPendingReferenceSettlementIntent(
+        User $user,
+        ReferenceSettlementResidenceClaim $claim,
+        Location $anchor,
+        array $metadata = [],
+    ): PendingResidenceIntent {
+        return DB::transaction(function () use ($user, $claim, $anchor, $metadata): PendingResidenceIntent {
+            $lockedClaim = ReferenceSettlementResidenceClaim::query()
+                ->with('settlement')
+                ->whereKey($claim->id)
+                ->where('user_id', $user->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! in_array($lockedClaim->status, ['pending', 'needs_evidence', 'residential_evidence_verified'], true)) {
+                throw ValidationException::withMessages([
+                    'reference_settlement_external_id' => 'درخواست سکونت این آبادی دیگر در وضعیت قابل استفاده برای ثبت‌نام نیست.',
+                ]);
+            }
+
+            $current = UserLocationRelationship::query()
+                ->where('user_id', $user->id)
+                ->where('relationship_type', 'primary_residence')
+                ->whereNull('ended_at')
+                ->lockForUpdate()
+                ->first();
+
+            if ($current === null || (int) $current->location_id !== (int) $anchor->id) {
+                throw ValidationException::withMessages([
+                    'reference_settlement_external_id' => 'مبنای canonical محل سکونت با والد تطبیق‌یافتهٔ این آبادی هم‌خوان نیست.',
+                ]);
+            }
+
+            $at = now();
+            $this->cancelPendingIntentRows($user, 'replaced_by_reference_settlement_claim', $at);
+
+            return PendingResidenceIntent::query()->create([
+                'user_id' => $user->id,
+                'anchor_relationship_id' => $current->id,
+                'location_proposal_id' => null,
+                'reference_settlement_residence_claim_id' => $lockedClaim->id,
+                'status' => 'pending',
+                'selected_at' => $at,
+                'metadata' => array_merge($metadata, [
+                    'reference_settlement_external_id' => $lockedClaim->settlement?->external_id,
+                    'reference_settlement_parent_external_id' => $lockedClaim->settlement?->parent_external_id,
+                ]),
+            ]);
         });
     }
 
