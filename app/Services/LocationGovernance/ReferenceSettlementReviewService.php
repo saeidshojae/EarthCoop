@@ -49,6 +49,12 @@ final class ReferenceSettlementReviewService
             $settlement, $actor, $decision, $reason, $evidenceSource, $evidenceDate, $evidenceReference
         ): ReferenceSettlementReview {
             $locked = ReferenceSettlement::query()->lockForUpdate()->findOrFail($settlement->id);
+            if (! in_array($locked->classification, ['unverified_settlement', 'needs_review'], true)) {
+                throw new DomainException('Reviewed settlement classification requires a separate correction workflow.');
+            }
+            if ($locked->governance_authorized || $locked->operational_promotion_allowed) {
+                throw new DomainException('Settlement catalog review cannot modify governance-authorized records.');
+            }
             $before = [
                 'classification' => $locked->classification,
                 'residential_eligibility' => $locked->residential_eligibility,
