@@ -33,6 +33,24 @@
         </div>
     @endif
 
+    @if (isset($pendingResidenceIntent) && $pendingResidenceIntent?->referenceSettlementResidenceClaim?->settlement)
+        @php
+            $settlementClaim = $pendingResidenceIntent->referenceSettlementResidenceClaim;
+            $settlement = $settlementClaim->settlement;
+        @endphp
+        <div class="alert alert-warning border mb-3" data-pending-reference-settlement-state>
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                <span class="fw-semibold">آبادی انتخابی در انتظار بررسی</span>
+                <span class="badge text-bg-warning">در انتظار تأیید</span>
+            </div>
+            <div>{{ $settlement->name_fa ?: $settlement->external_id }}</div>
+            <div class="small mt-2">
+                محل دقیق شما با شناسهٔ مرجع ثبت شده است، اما هنوز Location رسمی یا حوزهٔ حکمرانی مستقل ایجاد نکرده است.
+                مبنای رسمی فعلی همان مکان canonical بالاست.
+            </div>
+        </div>
+    @endif
+
     @php
         $persistedProposalId = old('location_proposal_id', $pendingResidenceIntent?->location_proposal_id);
         $persistedLocationId = $persistedProposalId
