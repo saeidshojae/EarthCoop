@@ -132,5 +132,42 @@ class ReferenceGovernanceTopologyImportTest extends TestCase
         $this->assertStringContainsString('update: 0', $output);
         $this->assertStringContainsString('conflict: 0', $output);
         $this->assertStringContainsString('unchanged: 15', $output);
+
+        // The reference Location and its official GovernanceArea represent one
+        // physical village, with one stable mapping and one localized name.
+        $this->assertSame('Reference Village Without Neighborhood', $ruralResidence->canonical_name);
+        $this->assertSame('Reference Village Without Neighborhood', $ruralArea->canonical_name);
+        $this->assertSame('روستای مرجع بدون محله', $ruralResidence->localized_names['fa']);
+        $this->assertSame($ruralResidence->localized_names['fa'], $ruralArea->localized_names['fa']);
+
+        // Simulate the older deployed reference name. A localized-name-only
+        // mismatch must be visible in dry-run, then corrected without changing
+        // the location, area identity, mappings, or any other reference row.
+        $stableAreaId = $ruralArea->id;
+        $stableLocationId = $ruralResidence->id;
+        $ruralArea->forceFill(['localized_names' => [
+            'fa' => 'روستای چهاردانگه بدون محله',
+            'en' => 'Reference Village Without Neighborhood',
+        ]])->save();
+
+        $this->assertSame(0, Artisan::call('location-governance:reference-topology', [
+            'country' => 'IR', '--dataset-version' => 'v1', '--dry-run' => true,
+        ]));
+        $this->assertStringContainsString('update: 1', Artisan::output());
+        $this->assertSame('روستای چهاردانگه بدون محله', $ruralArea->fresh()->localized_names['fa']);
+
+        $this->assertSame(0, Artisan::call('location-governance:reference-topology', [
+            'country' => 'IR', '--dataset-version' => 'v1', '--apply' => true,
+        ]));
+        $this->assertSame($stableAreaId, $ruralArea->fresh()->id);
+        $this->assertSame($stableLocationId, $ruralResidence->fresh()->id);
+        $this->assertSame('روستای مرجع بدون محله', $ruralArea->fresh()->localized_names['fa']);
+        $this->assertSame([$stableLocationId], $ruralArea->locations()->pluck('locations.id')->all());
+        $this->assertSame(15, GovernanceArea::query()->count());
+
+        $this->assertSame(0, Artisan::call('location-governance:reference-topology', [
+            'country' => 'IR', '--dataset-version' => 'v1', '--dry-run' => true,
+        ]));
+        $this->assertStringContainsString('update: 0', Artisan::output());
     }
 }
