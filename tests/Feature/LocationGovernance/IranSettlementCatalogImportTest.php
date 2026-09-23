@@ -97,6 +97,26 @@ final class IranSettlementCatalogImportTest extends TestCase
         app(IranSettlementCatalogImporter::class)->import($review, $manifest, true, 2);
     }
 
+    public function test_repeat_import_is_idempotent_and_changed_evidence_is_not_overwritten(): void
+    {
+        [$review, $manifest] = $this->fixture();
+        $importer = app(IranSettlementCatalogImporter::class);
+        $this->assertSame(2, $importer->import($review, $manifest, true, 2)['applied']);
+        $this->assertSame(0, $importer->import($review, $manifest, true, 2)['applied']);
+        $this->assertSame(2, DB::table('reference_settlements')->count());
+
+        DB::table('reference_settlements')->where('external_id', 'IR-1404-201')
+            ->update(['residential_eligibility' => 'verified']);
+        try {
+            $importer->import($review, $manifest, true, 2);
+            $this->fail('Changed evidence was silently overwritten.');
+        } catch (\\RuntimeException $e) {
+            $this->assertStringContainsString('classification changed', $e->getMessage());
+        }
+        $this->assertSame('verified', DB::table('reference_settlements')
+            ->where('external_id', 'IR-1404-201')->value('residential_eligibility'));
+    }
+
     public function test_valid_settlements_do_not_create_operational_locations(): void
     {
         [$review, $manifest] = $this->fixture();
