@@ -6,4 +6,5 @@ return [
     'enabled' => env('IR_SETTLEMENT_CATALOG_ENABLED', false),
     // Independent, explicitly gated intake; no automatic primary residence or group assignment.
     'claims_enabled' => env('IR_SETTLEMENT_CLAIMS_ENABLED', false),
+    'claim_review_threshold' => (int) env('IR_SETTLEMENT_CLAIM_REVIEW_THRESHOLD', 10),
 ];
