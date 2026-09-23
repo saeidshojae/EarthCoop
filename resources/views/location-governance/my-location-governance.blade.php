@@ -119,7 +119,7 @@
             ?? $location?->canonical_name
             ?? '—';
     };
-    $baseDisplayName = $pendingBaseProposal?->canonical_name
+    $baseDisplayName = $pendingBaseProposal ? \App\Support\LocationDisplayName::for($pendingBaseProposal) : null
         ?? ($pendingBaseStructuralClaim?->location ? $displayLocationName($pendingBaseStructuralClaim->location) : null)
         ?? ($baseGovernanceArea ? $displayAreaName($baseGovernanceArea) : '—');
     $baseDisplayType = $pendingBaseProposal?->type?->key
@@ -169,7 +169,7 @@
             @if($pendingResidenceIntent?->locationProposal)
                 <div class="alert alert-warning mt-3 mb-0" data-pending-residence-intent>
                     <div class="d-flex flex-wrap align-items-center gap-2"><strong>جزئیات دقیق در انتظار تأیید</strong><span class="badge bg-warning text-dark">در انتظار تأیید</span></div>
-                    <div class="small mt-1">{{ $pendingResidenceIntent->locationProposal->canonical_name }} — عضویت‌های این سطح تا زمان بررسی مکان، در انتظار تأیید می‌مانند.</div>
+                    <div class="small mt-1">{{ \App\Support\LocationDisplayName::for($pendingResidenceIntent->locationProposal) }} — عضویت‌های این سطح تا زمان بررسی مکان، در انتظار تأیید می‌مانند.</div>
                 </div>
             @endif
             @if($pendingBaseStructuralClaim?->location)
@@ -206,7 +206,7 @@
                                     <div class="governance-chain-item" data-pending-governance-proposal="{{ $proposal->id }}">
                                         <span class="governance-chain-dot" aria-hidden="true"></span>
                                         <div class="min-w-0">
-                                            <div class="fw-semibold">{{ $proposal->canonical_name }} <span class="badge bg-warning text-dark me-1">در انتظار تأیید</span></div>
+                                            <div class="fw-semibold">{{ \App\Support\LocationDisplayName::for($proposal) }} <span class="badge bg-warning text-dark me-1">در انتظار تأیید</span></div>
                                             <div class="small text-muted">{{ $governanceTypeLabels[$proposal->type?->key] ?? $proposal->type?->key }}</div>
                                         </div>
                                     </div>
@@ -284,7 +284,7 @@
                             <article class="community-option" data-community-location="{{ $location->id }}">
                                 <div class="d-flex align-items-start gap-3">
                                     <span class="community-location-icon"><i class="fas fa-people-roof"></i></span>
-                                    <div class="flex-grow-1 min-w-0"><div class="small text-muted">{{ $localTypeLabels[$location->type?->key] ?? 'مکان محلی' }}</div><h3 class="h6 mb-1">{{ $location->name ?: $location->canonical_name }}</h3>
+                                    <div class="flex-grow-1 min-w-0"><div class="small text-muted">{{ $localTypeLabels[$location->type?->key] ?? 'مکان محلی' }}</div><h3 class="h6 mb-1">{{ $displayLocationName($location) }}</h3>
                                         @if($community)<span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">اجتماع فعال</span>
                                         @elseif($pendingResidenceIntent)<span class="badge bg-warning text-dark">در انتظار تأیید نشانی</span>
                                         @else<span class="badge text-bg-light border">هنوز ایجاد نشده</span>@endif
