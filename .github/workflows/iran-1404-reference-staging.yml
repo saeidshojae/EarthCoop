@@ -23,6 +23,15 @@ on:
       - 'resources/views/admin/location-governance/partials/settlement-review-queue.blade.php'
       - 'tests/Feature/LocationGovernance/IranSettlement*.php'
       - 'tests/Feature/LocationGovernance/ReferenceSettlementReviewTest.php'
+      - 'app/Http/Controllers/Auth/Register/Step3Controller.php'
+      - 'app/Services/LocationGovernance/ReferenceSettlementResidenceClaimService.php'
+      - 'resources/views/auth/register_step3_canonical.blade.php'
+      - 'resources/js/location-selector-core.js'
+      - 'resources/js/registration-settlement-bridge.js'
+      - 'resources/js/app.js'
+      - 'tests/Feature/LocationGovernance/RegistrationReferenceSettlementBridgeTest.php'
+      - 'tests/Feature/LocationGovernance/RegistrationSettlementBridgeUiContractTest.php'
+      - 'tests/js/location-governance/iran-settlement-registration-bridge.test.mjs'
   pull_request:
     paths:
       - 'database/reference/source/ir/1404/**'
@@ -43,6 +52,15 @@ on:
       - 'resources/views/admin/location-governance/partials/settlement-review-queue.blade.php'
       - 'tests/Feature/LocationGovernance/IranSettlement*.php'
       - 'tests/Feature/LocationGovernance/ReferenceSettlementReviewTest.php'
+      - 'app/Http/Controllers/Auth/Register/Step3Controller.php'
+      - 'app/Services/LocationGovernance/ReferenceSettlementResidenceClaimService.php'
+      - 'resources/views/auth/register_step3_canonical.blade.php'
+      - 'resources/js/location-selector-core.js'
+      - 'resources/js/registration-settlement-bridge.js'
+      - 'resources/js/app.js'
+      - 'tests/Feature/LocationGovernance/RegistrationReferenceSettlementBridgeTest.php'
+      - 'tests/Feature/LocationGovernance/RegistrationSettlementBridgeUiContractTest.php'
+      - 'tests/js/location-governance/iran-settlement-registration-bridge.test.mjs'
   workflow_dispatch:
 
 permissions:
@@ -221,10 +239,15 @@ jobs:
           php -l app/Models/ReferenceSettlementReview.php
           php -l database/migrations/2026_09_24_000003_create_reference_settlement_reviews.php
           php -l tests/Feature/LocationGovernance/ReferenceSettlementReviewTest.php
+          php -l app/Http/Controllers/Auth/Register/Step3Controller.php
+          php -l app/Services/LocationGovernance/ReferenceSettlementResidenceClaimService.php
+          php -l tests/Feature/LocationGovernance/RegistrationReferenceSettlementBridgeTest.php
+          php -l tests/Feature/LocationGovernance/RegistrationSettlementBridgeUiContractTest.php
           php -l database/migrations/2026_09_24_000002_create_reference_settlement_residence_claims.php
           php -l tests/Feature/LocationGovernance/IranSettlementResidenceClaimTest.php
           php -l database/migrations/2026_09_24_000001_create_reference_settlements_table.php
-          php artisan test tests/Feature/LocationGovernance/IranSettlementCatalogImportTest.php tests/Feature/LocationGovernance/IranSettlementCatalogSearchTest.php tests/Feature/LocationGovernance/IranSettlementResidenceClaimTest.php tests/Feature/LocationGovernance/ReferenceSettlementReviewTest.php
+          php artisan test tests/Feature/LocationGovernance/IranSettlementCatalogImportTest.php tests/Feature/LocationGovernance/IranSettlementCatalogSearchTest.php tests/Feature/LocationGovernance/IranSettlementResidenceClaimTest.php tests/Feature/LocationGovernance/ReferenceSettlementReviewTest.php tests/Feature/LocationGovernance/RegistrationReferenceSettlementBridgeTest.php tests/Feature/LocationGovernance/RegistrationSettlementBridgeUiContractTest.php
+          node --test tests/js/location-governance/iran-settlement-registration-bridge.test.mjs
           php -l tests/Feature/LocationGovernance/IranV2IsolatedImportGuardTest.php
           php -l tests/Unit/LocationGovernance/ReferenceImporterComparableTest.php
           php artisan test \
