@@ -99,6 +99,12 @@ class GovernanceScopedGroupService
         if ($governanceType === 'global') return 'جهان';
 
         $normalized = trim($areaName);
+        // Persian village names conventionally begin with «روستای», not «روستا».
+        // Never turn «روستای مرجع» into «روستا روستای مرجع».
+        if ($governanceType === 'village' && str_starts_with($normalized, 'روستای ')) {
+            return $normalized;
+        }
+
         return str_starts_with($normalized, $label.' ') || $normalized === $label
             ? $normalized
             : $label.' '.$normalized;
