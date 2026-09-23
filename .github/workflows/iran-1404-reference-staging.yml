@@ -210,14 +210,11 @@ jobs:
           php -l app/Console/Commands/LocationReferenceImportCommand.php
           php -l app/Console/Commands/ImportIranSettlementCatalog.php
           php -l app/Console/Commands/IranV1V2RuntimeAuditCommand.php
-          php -l tests/Feature/LocationGovernance/IranV1V2RuntimeAuditCommandTest.php tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php tests/Feature/Admin/LocationGovernanceControlCenterTest.php
-          php -l app/Services/LocationGovernance/IranSettlementAnchorResolver.php
-          php -l database/migrations/2026_09_24_000004_allow_reference_settlement_claim_pending_intents.php
+          php -l tests/Feature/LocationGovernance/IranV1V2RuntimeAuditCommandTest.php
           php -l tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php
           php -l tests/Feature/Admin/LocationGovernanceControlCenterTest.php
           php -l app/Services/LocationGovernance/IranSettlementAnchorResolver.php
           php -l database/migrations/2026_09_24_000004_allow_reference_settlement_claim_pending_intents.php
-          php -l tests/Feature/LocationGovernance/RegistrationReferenceSettlementResidenceTest.php
           php -l app/Services/Groups/PendingLocationGroupRequestService.php
           php -l app/Models/LocationScopedGroupRequest.php
           php -l database/migrations/2026_09_24_000005_link_pending_group_requests_to_reference_settlement_claims.php
