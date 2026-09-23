@@ -185,6 +185,9 @@ jobs:
         run: |
           php -l app/Console/Commands/LocationReferenceImportCommand.php
           php -l app/Console/Commands/ImportIranSettlementCatalog.php
+          php -l routes/location-proposals.php
+          php -l tests/Feature/LocationGovernance/IranSettlementCatalogImportTest.php
+          php -l tests/Feature/LocationGovernance/IranSettlementCatalogSearchTest.php
           php -l app/Services/LocationGovernance/Import/IranSettlementCatalogImporter.php
           php -l app/Http/Controllers/LocationGovernance/IranSettlementCatalogController.php
           php -l database/migrations/2026_09_24_000001_create_reference_settlements_table.php
@@ -220,3 +223,25 @@ jobs:
           DB_DATABASE=newearthcoop_geo_uat php artisan location:reference-import IR --dataset-version=v2 --dry-run | tee "$RUNNER_TEMP/iran-v2-repeat.log"
           grep -Fx 'unchanged: 6158' "$RUNNER_TEMP/iran-v2-repeat.log"
           grep -Fx 'deactivate: 0' "$RUNNER_TEMP/iran-v2-repeat.log"
+
+      - name: Validate and import 99317 neutral settlements in disposable geo_uat only
+        shell: bash
+        run: |
+          set -euo pipefail
+          REVIEW="$RUNNER_TEMP/iran-1404-v2-candidate/settlements.review.jsonl"
+          MANIFEST="$RUNNER_TEMP/iran-1404-v2-candidate/manifest.json"
+          test -s "$REVIEW"
+          test -s "$MANIFEST"
+          DB_DATABASE=newearthcoop_geo_uat php artisan location:iran-settlement-catalog "$REVIEW" "$MANIFEST" | tee "$RUNNER_TEMP/settlements-dry-run.log"
+          grep -Fx 'validated: 99317' "$RUNNER_TEMP/settlements-dry-run.log"
+          grep -Fx 'applied: 0' "$RUNNER_TEMP/settlements-dry-run.log"
+          started=$SECONDS
+          DB_DATABASE=newearthcoop_geo_uat php artisan location:iran-settlement-catalog "$REVIEW" "$MANIFEST" --apply --confirm=APPLY-IR-SETTLEMENT-CATALOG-ISOLATED | tee "$RUNNER_TEMP/settlements-apply.log"
+          echo "Isolated full-volume import seconds: $((SECONDS-started))"
+          grep -Fx 'applied: 99317' "$RUNNER_TEMP/settlements-apply.log"
+          test "$(mysql -N --host=127.0.0.1 --user=root --database=newearthcoop_geo_uat -e 'SELECT COUNT(*) FROM reference_settlements')" -eq 99317
+          test "$(mysql -N --host=127.0.0.1 --user=root --database=newearthcoop_geo_uat -e 'SELECT COUNT(*) FROM reference_settlements WHERE residential_eligibility <> "unverified" OR governance_authorized <> 0 OR operational_promotion_allowed <> 0')" -eq 0
+          test "$(mysql -N --host=127.0.0.1 --user=root --database=newearthcoop_geo_uat -e 'SELECT COUNT(*) FROM locations WHERE country_code="IR"')" -eq 6158
+          DB_DATABASE=newearthcoop_geo_uat php artisan location:iran-settlement-catalog "$REVIEW" "$MANIFEST" --apply --confirm=APPLY-IR-SETTLEMENT-CATALOG-ISOLATED | tee "$RUNNER_TEMP/settlements-repeat.log"
+          grep -Fx 'applied: 0' "$RUNNER_TEMP/settlements-repeat.log"
+          test "$(mysql -N --host=127.0.0.1 --user=root --database=newearthcoop_geo_uat -e 'SELECT COUNT(*) FROM reference_settlements')" -eq 99317
