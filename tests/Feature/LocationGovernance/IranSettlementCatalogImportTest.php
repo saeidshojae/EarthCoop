@@ -55,6 +55,7 @@ final class IranSettlementCatalogImportTest extends TestCase
             fn (array $row): string => json_encode($row, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), $rows
         ))."\n");
         file_put_contents($manifest, json_encode([
+            'settlements_review_sha256' => hash_file('sha256', $review),
             'source_commit' => IranSettlementCatalogImporter::SOURCE_COMMIT,
             'dataset_version' => 'v2',
             'quarantined_settlements' => 2,
@@ -86,6 +87,14 @@ final class IranSettlementCatalogImportTest extends TestCase
             $this->assertStringContainsString('Invalid, duplicate or privileged', $e->getMessage());
         }
         $this->assertSame(0, DB::table('reference_settlements')->count());
+    }
+
+    public function test_tampered_review_file_fails_closed(): void
+    {
+        [$review, $manifest] = $this->fixture();
+        file_put_contents($review, "{}", FILE_APPEND);
+        $this->expectException(InvalidArgumentException::class);
+        app(IranSettlementCatalogImporter::class)->import($review, $manifest, true, 2);
     }
 
     public function test_valid_settlements_do_not_create_operational_locations(): void
