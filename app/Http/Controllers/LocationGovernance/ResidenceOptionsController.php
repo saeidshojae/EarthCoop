@@ -7,6 +7,7 @@ use App\Models\GovernanceArea;
 use App\Models\Location;
 use App\Models\LocationSchemaType;
 use App\Services\LocationGovernance\LocationSchemaResolver;
+use App\Support\GovernanceAreaDisplayName;
 use App\Support\LocationDisplayName;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
@@ -60,12 +61,11 @@ final class ResidenceOptionsController extends Controller
 
     private function serializeContinent(GovernanceArea $area): array
     {
-        $localizedNames = $area->localized_names ?? [];
         return [
             'id' => $area->id,
             'identity' => 'governance:'.$area->id,
             'type_key' => 'continent',
-            'label' => $localizedNames[app()->getLocale()] ?? $area->canonical_name,
+            'label' => GovernanceAreaDisplayName::for($area),
             'status' => $area->status,
             'has_children' => true,
             'navigation_only' => true,
