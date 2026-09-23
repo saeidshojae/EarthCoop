@@ -7,12 +7,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class ReferenceSettlementResidenceClaim extends Model
 {
-    protected $fillable = ['reference_settlement_id', 'user_id', 'status', 'submitted_at'];
+    protected $fillable = ['reference_settlement_id', 'user_id', 'anchor_relationship_id', 'status', 'submitted_at'];
     protected $casts = ['submitted_at' => 'datetime', 'reviewed_at' => 'datetime'];
 
     public function settlement(): BelongsTo
     {
         return $this->belongsTo(ReferenceSettlement::class, 'reference_settlement_id');
+    }
+
+    public function anchorRelationship(): BelongsTo
+    {
+        return $this->belongsTo(UserLocationRelationship::class, 'anchor_relationship_id');
     }
 
     public function claimant(): BelongsTo
