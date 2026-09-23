@@ -82,13 +82,13 @@ final class ReferenceSettlementReviewTest extends TestCase
 
         $response->assertOk()->assertJsonPath('decision', 'needs_evidence')
             ->assertJsonPath('governance_authorized', false);
-        $this->assertSame('unverified_settlement', $settlement->fresh()->classification);
+        $this->assertSame('needs_review', $settlement->fresh()->classification);
         $this->assertSame('unverified', $settlement->fresh()->residential_eligibility);
         $this->assertSame('needs_evidence', $claim->fresh()->status);
         $review = ReferenceSettlementReview::query()->sole();
         $this->assertSame($admin->id, $review->reviewed_by_user_id);
         $this->assertSame('unverified_settlement', $review->snapshot['before']['classification']);
-        $this->assertSame('unverified_settlement', $review->snapshot['after']['classification']);
+        $this->assertSame('needs_review', $review->snapshot['after']['classification']);
     }
 
     public function test_residential_evidence_requires_dated_source_and_never_grants_governance_or_primary_residence(): void
@@ -158,6 +158,36 @@ final class ReferenceSettlementReviewTest extends TestCase
             'governance_authorized' => 0,
         ]);
         $this->assertSame('rejected', $claim->fresh()->status);
+    }
+
+    public function test_verified_classification_cannot_be_silently_flipped_by_same_review_endpoint(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $settlement = $this->settlement();
+        $this->actingAs($admin)->postJson(
+            "/admin/location-governance/reference-settlements/{$settlement->id}/review",
+            [
+                'decision' => 'verified_nonresidential_place',
+                'reason' => 'سند رسمی وضعیت غیرمسکونی را اثبات می‌کند.',
+                'evidence_source' => 'مرجع رسمی نمونه',
+                'evidence_date' => now()->subDay()->toDateString(),
+                'evidence_reference' => 'NONRES-LOCK-201',
+            ],
+        )->assertOk();
+
+        $this->actingAs($admin)->postJson(
+            "/admin/location-governance/reference-settlements/{$settlement->id}/review",
+            [
+                'decision' => 'verified_residential_village',
+                'reason' => 'تلاش برای تغییر بدون جریان اصلاح مستقل.',
+                'evidence_source' => 'مرجع دیگر',
+                'evidence_date' => now()->subDay()->toDateString(),
+                'evidence_reference' => 'OTHER-201',
+            ],
+        )->assertUnprocessable();
+
+        $this->assertSame('verified_nonresidential_place', $settlement->fresh()->classification);
+        $this->assertDatabaseCount('reference_settlement_reviews', 1);
     }
 
     public function test_non_admin_cannot_review_reference_settlement(): void
