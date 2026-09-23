@@ -120,12 +120,12 @@ class Step3Controller extends Controller
                     ]);
                 }
 
-                DB::transaction(function () use (
+                $settlementClaim = DB::transaction(function () use (
                     $user,
                     $referenceSettlementExternalId,
                     $settlementAnchorResolver,
                     $residenceService,
-                ): void {
+                ): ReferenceSettlementResidenceClaim {
                     $settlement = ReferenceSettlement::query()
                         ->where('source', 'IranCountryDivisions/geo_1404')
                         ->where('dataset_version', 'v2')
@@ -165,10 +165,14 @@ class Step3Controller extends Controller
                     $residenceService->setPendingReferenceSettlementIntent($user, $claim, $anchor, [
                         'source' => 'registration_step3_reference_settlement',
                     ]);
+
+                    return $claim;
                 });
 
                 if ((bool) config('location-governance.groups_enabled', false)) {
                     app(CanonicalGroupMembershipReconciler::class)->reconcile($user->fresh());
+                    app(\App\Services\Groups\PendingLocationGroupRequestService::class)
+                        ->syncForReferenceSettlementClaim($user->fresh(), $settlementClaim);
                 }
                 app(ProfileCompletionService::class)->maybeAward($user->fresh());
 
