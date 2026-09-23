@@ -12,12 +12,14 @@ return new class extends Migration
             $table->id();
             $table->foreignId('reference_settlement_id');
             $table->foreignId('user_id');
+            $table->foreignId('anchor_relationship_id')->nullable();
             $table->string('status', 32)->default('pending')->index();
             $table->dateTime('submitted_at');
             $table->dateTime('reviewed_at')->nullable();
             $table->foreignId('reviewed_by_user_id')->nullable();
             $table->foreign('reference_settlement_id', 'rsrc_settlement_fk')->references('id')->on('reference_settlements')->restrictOnDelete();
             $table->foreign('user_id', 'rsrc_user_fk')->references('id')->on('users')->restrictOnDelete();
+            $table->foreign('anchor_relationship_id', 'rsrc_anchor_fk')->references('id')->on('user_location_relationships')->nullOnDelete();
             $table->foreign('reviewed_by_user_id', 'rsrc_reviewer_fk')->references('id')->on('users')->nullOnDelete();
             $table->timestamps();
             $table->unique(['reference_settlement_id', 'user_id'], 'ref_settlement_claim_identity_unique');
