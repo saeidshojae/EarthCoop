@@ -7,7 +7,7 @@ use App\Models\ReferenceSettlement;
 use App\Models\ReferenceSettlementResidenceClaim;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use App\Services\LocationGovernance\ReferenceSettlementResidenceClaimService;
 use Illuminate\Validation\ValidationException;
 
 final class IranSettlementResidenceClaimController extends Controller
@@ -43,7 +43,7 @@ final class IranSettlementResidenceClaimController extends Controller
      * A geographic assertion, not a registered residence or group membership.
      * This isolated intake is OFF by default and must never call ResidenceService.
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, ReferenceSettlementResidenceClaimService $service): JsonResponse
     {
         abort_unless((bool) config('iran_settlement_catalog.enabled', false)
             && (bool) config('iran_settlement_catalog.claims_enabled', false), 404);
@@ -52,35 +52,13 @@ final class IranSettlementResidenceClaimController extends Controller
             'external_id' => ['required', 'string', 'regex:/^IR-1404-[1-9][0-9]*$/D'],
         ]);
 
-        $claim = DB::transaction(function () use ($request, $input): ReferenceSettlementResidenceClaim {
-            $settlement = ReferenceSettlement::query()
-                ->where('source', 'IranCountryDivisions/geo_1404')
-                ->where('dataset_version', 'v2')
-                ->where('external_id', $input['external_id'])
-                ->lockForUpdate()
-                ->firstOrFail();
+        $settlement = ReferenceSettlement::query()
+            ->where('source', 'IranCountryDivisions/geo_1404')
+            ->where('dataset_version', 'v2')
+            ->where('external_id', $input['external_id'])
+            ->firstOrFail();
 
-            $isUnverified = $settlement->classification === 'unverified_settlement'
-                && $settlement->residential_eligibility === 'unverified';
-            $hasVerifiedResidentialEvidence = $settlement->classification === 'verified_residential_village'
-                && $settlement->residential_eligibility === 'verified';
-
-            if ((! $isUnverified && ! $hasVerifiedResidentialEvidence)
-                || $settlement->governance_authorized
-                || $settlement->operational_promotion_allowed) {
-                throw ValidationException::withMessages([
-                    'external_id' => 'این آبادی در وضعیت قابل ثبت برای درخواست سکونت نیست.',
-                ]);
-            }
-
-            return ReferenceSettlementResidenceClaim::query()->firstOrCreate(
-                ['reference_settlement_id' => $settlement->id, 'user_id' => $request->user()->id],
-                [
-                    'status' => $hasVerifiedResidentialEvidence ? 'residential_evidence_verified' : 'pending',
-                    'submitted_at' => now(),
-                ],
-            );
-        });
+        $claim = $service->claim($request->user(), $settlement);
 
         return response()->json([
             'claim_id' => $claim->id,
