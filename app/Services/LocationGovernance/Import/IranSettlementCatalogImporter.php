@@ -25,6 +25,8 @@ final class IranSettlementCatalogImporter
         if (($manifest['source_commit'] ?? null) !== self::SOURCE_COMMIT
             || ($manifest['dataset_version'] ?? null) !== 'v2'
             || ($manifest['quarantined_settlements'] ?? null) !== $expectedCount
+            || ! is_string($manifest['settlements_review_sha256'] ?? null)
+            || ! hash_equals($manifest['settlements_review_sha256'], hash_file('sha256', $reviewPath))
             || ($manifest['settlement_classification']['residential_villages_verified'] ?? null) !== 0
             || ($manifest['settlement_classification']['governance_authorized'] ?? null) !== 0) {
             throw new InvalidArgumentException('Untrusted or mismatched Iran 1404 settlement manifest.');
@@ -56,6 +58,7 @@ final class IranSettlementCatalogImporter
                     || ($row['metadata']['governance_authorized'] ?? null) !== false
                     || ($row['provenance']['source_commit'] ?? null) !== self::SOURCE_COMMIT
                     || ($row['provenance']['source_division_type'] ?? null) !== 6
+                    || ($row['provenance']['source_row_id'] ?? null) !== (int) substr($id, strlen('IR-1404-'))
                     || ! is_string($row['canonical_name'] ?? null) || trim($row['canonical_name']) === '') {
                     throw new InvalidArgumentException('Invalid, duplicate or privileged settlement review record at line '.($count + 1));
                 }
