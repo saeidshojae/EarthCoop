@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -26,6 +27,14 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::table('pending_residence_intents')
+            ->whereNotNull('reference_settlement_residence_claim_id')
+            ->exists()) {
+            throw new RuntimeException(
+                'Cannot roll back settlement-backed pending residence support while settlement intents still exist.'
+            );
+        }
+
         Schema::table('pending_residence_intents', function (Blueprint $table): void {
             $table->dropForeign('pending_residence_settlement_claim_fk');
             $table->dropIndex('pending_residence_settlement_claim_status_idx');
