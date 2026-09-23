@@ -188,6 +188,17 @@ settlementای با parent بدون crosswalk قطعی انتخاب کنید.
 - ساخت دستی GovernanceArea برای settlement؛
 - اصلاح دستی claim/intent/group shell در DB برای سبزکردن UAT.
 
+## قرارداد rollback این قابلیت
+
+migrationهای اتصال settlement به `pending_residence_intents` و `location_scoped_group_requests` عمداً rollback غیرمخرب دارند.
+
+اگر هنوز هر رکوردی با `reference_settlement_residence_claim_id` وجود داشته باشد، rollback با خطا متوقف می‌شود و ستون را حذف نمی‌کند. بنابراین:
+
+- هیچ rollbackای نباید برای «پاک‌کردن» claim/intent/group shell استفاده شود؛
+- ابتدا باید مسیر انتقال/cleanup داده جداگانه طراحی و تأیید شود؛
+- سپس بعد از صفرشدن وابستگی‌ها rollback schema مجاز است؛
+- این guard برای جلوگیری از orphan شدن shellها یا شکست تبدیل دوبارهٔ `location_proposal_id` به NOT NULL است.
+
 ## مرحلهٔ بعد از UAT
 
 اگر همه سناریوهای بالا سبز باشند:
