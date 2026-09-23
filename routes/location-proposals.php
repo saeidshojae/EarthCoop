@@ -7,6 +7,11 @@ use App\Http\Controllers\LocationGovernance\LocationProposalStructureClaimContro
 use App\Http\Middleware\Authenticate;
 use Illuminate\Support\Facades\Route;
 
+// Neutral source catalog only: no residence confirmation, claim, group or election side effects.
+Route::get('/location/reference-settlements', [\\App\\Http\\Controllers\\LocationGovernance\\IranSettlementCatalogController::class, 'index'])
+    ->middleware('throttle:30,1')
+    ->name('location.reference-settlements.index');
+
 // Registration Step 3 must be able to traverse an already-open proposal before
 // authentication completes. Keep only that read-only traversal public.
 Route::get('/location/proposals/{locationProposal}/children', [LocationOptionsController::class, 'proposalChildren'])
