@@ -4,6 +4,7 @@ namespace App\Services\LocationGovernance;
 
 use App\Models\ReferenceSettlement;
 use App\Models\ReferenceSettlementResidenceClaim;
+use App\Models\LocationScopedGroupRequest;
 use App\Models\ReferenceSettlementReview;
 use App\Models\User;
 use DomainException;
@@ -97,6 +98,17 @@ final class ReferenceSettlementReviewService
                         'reviewed_by_user_id' => $actor->id,
                         'updated_at' => now(),
                     ]);
+
+                $rejectedClaimIds = ReferenceSettlementResidenceClaim::query()
+                    ->where('reference_settlement_id', $locked->id)
+                    ->where('status', 'rejected')
+                    ->pluck('id');
+                if ($rejectedClaimIds->isNotEmpty()) {
+                    LocationScopedGroupRequest::query()
+                        ->whereIn('reference_settlement_residence_claim_id', $rejectedClaimIds)
+                        ->whereIn('status', ['pending_location', 'ready_to_materialize'])
+                        ->update(['status' => 'rejected', 'updated_at' => now()]);
+                }
             } else {
                 $locked->forceFill([
                     'classification' => 'needs_review',
