@@ -40,6 +40,22 @@ class ProjectScopeTraversalProductionRegressionTest extends TestCase
             ->assertJsonPath('data.0.governance_area_id', $iran->id);
     }
 
+    public function test_project_scope_labels_fall_back_to_persian_for_regional_locale(): void
+    {
+        app()->setLocale('fa-IR');
+        $schema = LocationFixture::iranSchema();
+        $country = LocationFixture::createPath($schema, ['country'])->last();
+        [$global, $asia, $iran] = $this->governancePathFor($country);
+
+        $this->getJson('/location/project-scope/options/root')->assertOk()
+            ->assertJsonPath('data.0.label', 'جهانی');
+        $this->getJson('/location/project-scope/options/governance/'.$global->id.'/children')->assertOk()
+            ->assertJsonPath('data.0.label', 'آسیا');
+        $this->getJson('/location/project-scope/options/governance/'.$asia->id.'/children')->assertOk()
+            ->assertJsonPath('data.0.label', 'ایران')
+            ->assertJsonPath('data.0.governance_area_id', $iran->id);
+    }
+
     public function test_saved_governance_scope_path_can_stop_at_continent(): void
     {
         $schema = LocationFixture::iranSchema();
