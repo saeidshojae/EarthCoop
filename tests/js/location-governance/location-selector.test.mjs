@@ -352,3 +352,33 @@ test('structural claim UI presents mutually exclusive tier states as one grouped
     assert.match(source, /data-location-structural-choice/);
     assert.match(source, /aria-pressed/);
 });
+
+test('canonical registration proposal events bypass legacy capture and keep server terminal authority', async () => {
+    const listeners = [];
+    const originalDocument = globalThis.document;
+    globalThis.document = {
+        addEventListener(type, handler, capture) { listeners.push({ type, handler, capture }); },
+    };
+    try {
+        await import('../../../resources/js/location-selector.js?canonical-registration-capture-regression');
+        const captured = listeners.find(({ type, capture }) => type === 'change' && capture === true);
+        assert.ok(captured, 'legacy capture listener must be present for non-registration consumers');
+        let intercepted = false;
+        const host = { dataset: { locationSelectorContext: 'registration' } };
+        const select = {
+            value: 'proposal:9',
+            closest(selector) { return selector === '[data-location-selector]' ? host : null; },
+        };
+        captured.handler({
+            target: { closest(selector) { return selector === '[data-location-select]' ? select : null; } },
+            preventDefault() { intercepted = true; },
+            stopImmediatePropagation() { intercepted = true; },
+        });
+        assert.equal(intercepted, false, 'registration change must reach canonical selector');
+        const source = readFileSync(new URL('../../../resources/js/location-selector.js', import.meta.url), 'utf8');
+        assert.match(source, /\['project-scope', 'registration'\]\.includes\(host\.dataset\.locationPurpose \|\| host\.dataset\.locationSelectorContext\)/);
+    } finally {
+        if (originalDocument === undefined) delete globalThis.document;
+        else globalThis.document = originalDocument;
+    }
+});
