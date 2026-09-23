@@ -58,9 +58,7 @@ final class ReferenceSettlementResidenceClaimService
             $claim = ReferenceSettlementResidenceClaim::query()->firstOrCreate(
                 ['reference_settlement_id' => $locked->id, 'user_id' => $user->id],
                 [
-                    'status' => $hasVerifiedResidentialEvidence
-                        ? 'residential_evidence_verified'
-                        : ($locked->classification === 'needs_review' ? 'needs_evidence' : 'pending'),
+                    'status' => $hasVerifiedResidentialEvidence ? 'residential_evidence_verified' : 'pending',
                     'submitted_at' => now(),
                     'anchor_relationship_id' => $anchorRelationship?->id,
                 ],
