@@ -115,6 +115,73 @@ final class IranSettlementNeighborhoodBridgeTest extends TestCase
         $this->assertDatabaseCount('location_proposals', 1);
     }
 
+    public function test_profile_can_continue_from_pending_settlement_neighborhood_to_street_alley_complex_and_building(): void
+    {
+        [$schema, $anchor, $settlement] = $this->scenario();
+        $user = User::factory()->create();
+        app(\App\Services\LocationGovernance\ResidenceService::class)
+            ->setInitialPrimaryResidence($user, $anchor, ['source' => 'test']);
+
+        $service = app(LocationProposalService::class);
+        $neighborhood = $service->proposeUnderReferenceSettlement(
+            $user,
+            $settlement,
+            $schema->types->firstWhere('key', 'neighborhood'),
+            ['canonical_name' => 'محله آزمایشی وری ۱'],
+        );
+        $street = $service->proposeUnderProposal(
+            $user,
+            $neighborhood,
+            $schema->types->firstWhere('key', 'street'),
+            ['canonical_name' => 'خیابان نمونه وری'],
+        );
+        $alley = $service->proposeUnderProposal(
+            $user,
+            $street,
+            $schema->types->firstWhere('key', 'alley'),
+            ['canonical_name' => 'کوچه نمونه وری'],
+        );
+        $complex = $service->proposeUnderProposal(
+            $user,
+            $alley,
+            $schema->types->firstWhere('key', 'complex'),
+            ['canonical_name' => 'مجتمع نمونه وری'],
+        );
+        $building = $service->proposeUnderProposal(
+            $user,
+            $complex,
+            $schema->types->firstWhere('key', 'building'),
+            ['canonical_name' => 'ساختمان نمونه وری'],
+        );
+
+        $this->assertSame($neighborhood->id, $street->parent_location_proposal_id);
+        $this->assertSame($street->id, $alley->parent_location_proposal_id);
+        $this->assertSame($alley->id, $complex->parent_location_proposal_id);
+        $this->assertSame($complex->id, $building->parent_location_proposal_id);
+        $this->assertSame($neighborhood->id, $building->referenceSettlementRootProposal()?->id);
+
+        $this->actingAs($user)->put(route('profile.update.address'), [
+            'reference_settlement_external_id' => $settlement->external_id,
+            'location_proposal_id' => $building->id,
+        ])->assertSessionHasNoErrors();
+
+        $intent = \App\Models\PendingResidenceIntent::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->sole();
+
+        $this->assertSame($building->id, $intent->location_proposal_id);
+        $this->assertNotNull($intent->reference_settlement_residence_claim_id);
+        $this->assertSame($neighborhood->id, data_get($intent->metadata, 'reference_settlement_root_proposal_id'));
+        $this->assertSame('building', data_get($intent->metadata, 'reference_settlement_exact_type'));
+
+        $response = $this->actingAs($user)->get(route('profile.edit'))->assertOk();
+        $this->assertSame(
+            [$neighborhood->id, $street->id, $alley->id, $complex->id, $building->id],
+            array_values($response->viewData('referenceSettlementProposalPath')),
+        );
+    }
+
     public function test_reference_settlement_neighborhood_cannot_materialize_before_parent_promotion(): void
     {
         [$schema, , $settlement] = $this->scenario();
@@ -223,6 +290,13 @@ final class IranSettlementNeighborhoodBridgeTest extends TestCase
             'location_proposal_id' => $proposal->id,
         ])->assertRedirect(route('home'));
 
+        $street = app(LocationProposalService::class)->proposeUnderProposal(
+            $user,
+            $proposal,
+            $schema->types->firstWhere('key', 'street'),
+            ['canonical_name' => 'خیابان وابسته قابل رد'],
+        );
+
         app(ReferenceSettlementReviewService::class)->review(
             $settlement,
             User::factory()->create(['is_admin' => true]),
@@ -233,6 +307,7 @@ final class IranSettlementNeighborhoodBridgeTest extends TestCase
             'fixture://settlement',
         );
 
+        $this->assertSame(LocationProposalStatus::Rejected, $street->fresh()->status);
         $this->assertSame(LocationProposalStatus::Rejected, $proposal->fresh()->status);
         $this->assertSame(
             'cancelled',
