@@ -133,21 +133,23 @@ const buildSelect = (host, payload, depth) => {
 };
 const STRUCTURAL_CLAIM_GROUPS = Object.freeze({
     urban_region: {
-        claimTypes: ['single_urban_region', 'no_urban_region'],
-        question: 'ساختار منطقه‌ای این شهر چگونه است؟',
-        normalLabel: 'چند منطقه دارد',
+        claimTypes: ['no_urban_region'],
+        question: 'اگر این شهر منطقه‌بندی ندارد',
     },
     neighborhood: {
-        claimTypes: ['single_neighborhood', 'no_neighborhood'],
-        question: 'ساختار محله‌ای این محدوده چگونه است؟',
-        normalLabel: 'چند محله دارد',
+        claimTypes: ['no_neighborhood'],
+        question: 'اگر این محدوده محله‌بندی ندارد',
     },
 });
 const STRUCTURAL_CLAIM_COPY = Object.freeze({
-    single_urban_region: { title: 'این شهر فقط یک منطقهٔ شهری دارد', detail: 'منطقهٔ واقعی حفظ و انتخاب می‌شود؛ چون تنها منطقهٔ شهر است، مرز شهر و منطقه انتخابات تکراری ایجاد نمی‌کند.' },
-    no_urban_region: { title: 'این شهر منطقهٔ شهری جداگانه ندارد', detail: 'خود شهر نمایندهٔ این سطح حکمرانی است؛ مکان دقیق‌تر همچنان می‌تواند ثبت شود.' },
-    single_neighborhood: { title: 'این محدوده فقط یک محله دارد', detail: 'محلهٔ واقعی حفظ و انتخاب می‌شود؛ چون تنها محلهٔ این محدوده است، این مرز انتخابات تکراری ایجاد نمی‌کند.' },
-    no_neighborhood: { title: 'این محدوده محلهٔ جداگانه ندارد', detail: 'پایان حوزهٔ رسمی به معنی پایان مسیر مکانی نیست و می‌توانید خیابان یا مکان دقیق‌تر را ادامه دهید.' },
+    no_urban_region: {
+        title: 'این شهر منطقه‌بندی ندارد',
+        detail: 'خود شهر نمایندهٔ این سطح رسمی است و مسیر مکانی می‌تواند به سطح بعد ادامه پیدا کند.',
+    },
+    no_neighborhood: {
+        title: 'این محدوده محله‌بندی ندارد',
+        detail: 'پایان حوزهٔ رسمی به معنی پایان نشانی نیست؛ در ویرایش مکان می‌توانید خیابان و جزئیات پایین‌تر را ادامه دهید.',
+    },
 });
 const rememberStructuralClaim = (host, claimId, depth) => {
     const id = Number(claimId); if (!Number.isInteger(id) || id <= 0) return;
@@ -181,49 +183,39 @@ const structuralClaimContextUrl = (url, form) => {
     const query = ids.map((id) => `location_structure_claim_ids%5B%5D=${encodeURIComponent(id)}`).join('&');
     return `${url}${separator}${query}`;
 };
-const removeStructuralClaimIds = (form, ids) => {
-    if (!form) return;
-    const idSet = new Set(ids.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0));
-    form.querySelectorAll('[data-location-structure-claim-id]').forEach((input) => {
-        if (idSet.has(Number(input.value))) input.remove();
-    });
-};
 
 const buildStructuralClaimPanel = (host, choices, locationId, depth, onChanged, proposalId = null) => {
     if ((!locationId && !proposalId) || !Array.isArray(choices) || choices.length === 0) return null;
-    const shell = document.createElement('div'); shell.className = 'location-structural-claims vstack gap-3'; shell.dataset.locationStructuralClaims = '';
+    const shell = document.createElement('div');
+    shell.className = 'location-structural-claims vstack gap-3';
+    shell.dataset.locationStructuralClaims = '';
     const byType = new Map(choices.map((choice) => [choice.claim_type, choice]));
 
     Object.values(STRUCTURAL_CLAIM_GROUPS).forEach((group) => {
         const available = group.claimTypes.map((type) => byType.get(type)).filter(Boolean);
         if (available.length === 0) return;
 
-        const section = document.createElement('fieldset'); section.className = 'border rounded-3 p-3';
-        const legend = document.createElement('legend'); legend.className = 'small fw-bold float-none w-auto px-1 mb-2'; legend.textContent = group.question;
-        const hint = document.createElement('div'); hint.className = 'small text-secondary mb-2'; hint.textContent = 'اگر تقسیم‌بندی معمولی است، نیازی به ثبت وضعیت ساختاری نیست.';
-        const actions = document.createElement('div'); actions.className = 'd-flex flex-wrap gap-2';
-        const state = document.createElement('div'); state.className = 'small mt-2'; state.setAttribute('aria-live','polite');
+        const section = document.createElement('div');
+        section.className = 'border-top pt-3';
+        const title = document.createElement('div');
+        title.className = 'small fw-semibold mb-2';
+        title.textContent = group.question;
+        const actions = document.createElement('div');
+        actions.className = 'vstack gap-2';
+        const state = document.createElement('div');
+        state.className = 'small text-secondary';
+        state.setAttribute('aria-live','polite');
         const form = host.closest('[data-location-form]') || host.closest('form');
-        const groupClaimIds = available.map((choice) => Number(choice.claim_id)).filter((id) => Number.isInteger(id) && id > 0);
-        const hasApprovedChoice = available.some((choice) => String(choice.status || '') === 'approved');
-        const normal = document.createElement('button'); normal.type = 'button'; normal.className = 'btn btn-outline-secondary btn-sm'; normal.textContent = group.normalLabel;
-        normal.disabled = hasApprovedChoice;
-        normal.setAttribute('aria-pressed', hasApprovedChoice ? 'false' : (groupClaimIds.some((id) => selectedStructuralClaimIds(form).includes(id)) ? 'false' : 'true'));
-        if (!hasApprovedChoice) {
-            normal.addEventListener('click', async () => {
-                removeStructuralClaimIds(form, groupClaimIds);
-                actions.querySelectorAll('button').forEach((candidate) => { candidate.setAttribute('aria-pressed', 'false'); });
-                normal.setAttribute('aria-pressed', 'true');
-                state.textContent = 'مسیر معمولی انتخاب شد؛ ادعای در انتظار بررسی روی مسیر شما اعمال نمی‌شود.';
-                await onChanged({ mode: 'normal' });
-            });
-        }
-        actions.appendChild(normal);
 
         available.forEach((choice) => {
             const copy = STRUCTURAL_CLAIM_COPY[choice.claim_type]; if (!copy) return;
-            const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-outline-secondary btn-sm';
-            button.dataset.locationStructuralChoice = choice.claim_type; button.textContent = copy.title; button.setAttribute('aria-pressed', 'false');
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'btn btn-outline-secondary btn-sm align-self-start';
+            button.dataset.locationStructuralChoice = choice.claim_type;
+            button.textContent = copy.title;
+            button.setAttribute('aria-pressed', 'false');
+
             const statusValue = String(choice.status || 'available');
             const claimId = Number(choice.claim_id);
             const explicitlySelected = Number.isInteger(claimId) && claimId > 0 && selectedStructuralClaimIds(form).includes(claimId);
@@ -231,39 +223,84 @@ const buildStructuralClaimPanel = (host, choices, locationId, depth, onChanged, 
                 rememberStructuralClaim(host, claimId, depth);
                 button.disabled = true;
                 button.setAttribute('aria-pressed','true');
-                normal.disabled = true;
-                state.textContent = 'این وضعیت تأیید شده است و ساختار رسمی مسیر را تعیین می‌کند.';
+                state.textContent = 'این وضعیت قبلاً تأیید شده است.';
             } else if (OPEN_PROPOSAL_STATUSES.has(statusValue)) {
                 if (explicitlySelected) rememberStructuralClaim(host, claimId, depth);
                 button.setAttribute('aria-pressed', explicitlySelected ? 'true' : 'false');
                 state.textContent = explicitlySelected
-                    ? 'این ادعا در مسیر شما انتخاب شده است؛ با ثبت محل سکونت، حمایت شما ثبت می‌شود.'
-                    : 'این ادعا در انتظار بررسی است؛ فقط در صورت انتخاب شما روی مسیرتان اعمال می‌شود.';
+                    ? 'این اعلام در مسیر شما انتخاب شده و در انتظار بررسی است.'
+                    : 'این اعلام قبلاً ثبت شده است؛ در صورت تطابق می‌توانید همان را انتخاب کنید.';
             }
 
             button.addEventListener('click', async () => {
                 const csrf = form?.querySelector('input[name="_token"]')?.value || '';
-                actions.querySelectorAll('[data-location-structural-choice]').forEach((candidate) => { candidate.disabled = true; });
+                button.disabled = true;
                 state.textContent = 'در حال ثبت...';
                 try {
-                    const response = await fetch(proposalId ? `/location/proposals/${encodeURIComponent(proposalId)}/structure-claims` : '/locations/structure-claims', { method:'POST', credentials:'same-origin', headers:{ Accept:'application/json','Content-Type':'application/json', ...(csrf ? {'X-CSRF-TOKEN':csrf}:{}) }, body:JSON.stringify(proposalId ? { claim_type:choice.claim_type } : { location_id:Number(locationId), claim_type:choice.claim_type }) });
+                    const response = await fetch(
+                        proposalId ? `/location/proposals/${encodeURIComponent(proposalId)}/structure-claims` : '/locations/structure-claims',
+                        {
+                            method:'POST',
+                            credentials:'same-origin',
+                            headers:{ Accept:'application/json','Content-Type':'application/json', ...(csrf ? {'X-CSRF-TOKEN':csrf}:{}) },
+                            body:JSON.stringify(proposalId ? { claim_type:choice.claim_type } : { location_id:Number(locationId), claim_type:choice.claim_type }),
+                        },
+                    );
                     const result = await response.json().catch(() => ({}));
                     if (!response.ok) throw new Error(result.message || ('Structural claim request failed: ' + response.status));
-                    rememberStructuralClaim(host, result.id, depth); button.setAttribute('aria-pressed','true');
-                    state.textContent = 'در انتظار بررسی؛ مسیر محل سکونت بر اساس همین وضعیت ادامه پیدا می‌کند.';
+                    rememberStructuralClaim(host, result.id, depth);
+                    button.setAttribute('aria-pressed','true');
+                    state.textContent = 'ثبت شد و در انتظار بررسی است.';
                     await onChanged(result);
                 } catch (error) {
                     console.warn('EarthCoop structural claim failed:', error);
-                    actions.querySelectorAll('[data-location-structural-choice]').forEach((candidate) => { candidate.disabled = false; });
+                    button.disabled = false;
                     state.textContent = error?.message || 'ثبت این وضعیت ممکن نشد؛ دوباره تلاش کنید.';
                 }
             });
-            actions.appendChild(button);
-            const detail = document.createElement('div'); detail.className = 'small text-secondary w-100'; detail.textContent = copy.detail; actions.appendChild(detail);
+
+            const detail = document.createElement('div');
+            detail.className = 'small text-secondary';
+            detail.textContent = copy.detail;
+            actions.append(button, detail);
         });
-        section.append(legend, hint, actions, state); shell.appendChild(section);
+        section.append(title, actions, state);
+        shell.appendChild(section);
     });
+
     return shell.children.length ? shell : null;
+};
+
+const exceptionTargetKeys = (payload) => {
+    const keys = [
+        ...(Array.isArray(payload?.locations) ? payload.locations : []).map((item) => item?.type_key),
+        ...(Array.isArray(payload?.proposals) ? payload.proposals : []).map((item) => item?.type_key),
+        ...(Array.isArray(payload?.effectiveAllowedTypes) ? payload.effectiveAllowedTypes : []).map((item) => item?.key),
+        ...(Array.isArray(payload?.allowedTypes) ? payload.allowedTypes : []).map((item) => item?.key),
+    ].filter(Boolean);
+    return [...new Set(keys)];
+};
+const exceptionLinkLabel = (payload) => {
+    const keys = exceptionTargetKeys(payload);
+    const priority = [
+        ['urban_region', 'منطقه من در فهرست نیست'],
+        ['village', 'روستا یا آبادی من در فهرست نیست'],
+        ['settlement', 'روستا یا آبادی من در فهرست نیست'],
+        ['neighborhood', 'محله من در فهرست نیست'],
+        ['street', 'خیابان من در فهرست نیست'],
+        ['alley', 'کوچه من در فهرست نیست'],
+        ['complex', 'مجتمع من در فهرست نیست'],
+        ['building', 'ساختمان من در فهرست نیست'],
+    ];
+    for (const [key, label] of priority) if (keys.includes(key)) return label;
+    return 'مکان من در فهرست نیست';
+};
+const closeExceptionPanel = (panel) => {
+    if (!panel) return;
+    panel.classList.add('d-none');
+    const shell = panel.closest('[data-location-exception-shell]');
+    const toggle = shell?.querySelector('[data-location-exception-toggle]');
+    toggle?.setAttribute('aria-expanded', 'false');
 };
 
 const buildProposalPanel = (host, allowedTypes, parentLocationId, onCreated, parentProposalId = null) => {
