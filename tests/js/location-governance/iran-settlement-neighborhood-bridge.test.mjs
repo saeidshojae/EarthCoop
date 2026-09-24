@@ -48,3 +48,11 @@ test('selecting a deep pending descendant preserves the active reference-settlem
   const hide = source.indexOf('hide();', guard);
   assert.ok(guard >= 0 && hide > guard, 'reference branch preservation guard must run before hide()');
 });
+
+
+test('settlement bridge restores its stable mount before a dynamic ancestor wrapper is removed', () => {
+  const source = readFileSync(new URL('../../../resources/js/registration-settlement-bridge.js', import.meta.url), 'utf8');
+  assert.match(source, /earthcoop-reference-settlement-picker-origin/);
+  assert.match(source, /originMarker\.parentNode\.insertBefore\(shell, originMarker\.nextSibling\)/);
+  assert.doesNotMatch(source, /selectorContext !== 'registration'\) return/);
+});
