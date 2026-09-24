@@ -99,6 +99,11 @@ final class ProfileEditController extends Controller
         ?Location $primaryResidenceLocation,
         ?PendingResidenceIntent $intent,
     ): array {
+        $referenceAnchor = $this->referenceSettlementAnchor($intent);
+        if ($referenceAnchor instanceof Location) {
+            return $this->canonicalLocationPath($referenceAnchor);
+        }
+
         $proposal = $intent?->locationProposal;
         if (! $proposal instanceof LocationProposal) {
             return $this->canonicalLocationPath($primaryResidenceLocation);
@@ -129,6 +134,22 @@ final class ProfileEditController extends Controller
         }
 
         return [...$this->canonicalLocationPath($canonicalAnchor), ...$proposalPath];
+    }
+
+    private function referenceSettlementAnchor(?PendingResidenceIntent $intent): ?Location
+    {
+        $settlement = $intent?->referenceSettlementResidenceClaim?->settlement;
+        $parentExternalId = $settlement?->parent_external_id;
+        if (! is_string($parentExternalId) || $parentExternalId === '') {
+            return null;
+        }
+
+        return LocationExternalId::query()
+            ->with('location')
+            ->where('source', 'earthcoop-reference')
+            ->where('dataset_version', 'v2')
+            ->where('external_id', $parentExternalId)
+            ->first()?->location;
     }
 
     /** @return array<int, int> */
