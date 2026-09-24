@@ -337,9 +337,9 @@ const closeExceptionPanel = (panel) => {
 
 const buildProposalPanel = (host, allowedTypes, parentLocationId, onCreated, parentProposalId = null, parentReferenceSettlementId = null) => {
     const proposableTypes = allowedTypes.filter((type) => type?.proposal_allowed === true); if ((!parentLocationId && !parentProposalId && !parentReferenceSettlementId) || proposableTypes.length === 0) return null;
-    const shell = document.createElement('div'); shell.className = 'border rounded-3 p-3 bg-light'; shell.dataset.locationProposalShell = '';
+    const shell = document.createElement('div'); shell.className = 'vstack gap-2'; shell.dataset.locationProposalShell = '';
     const proposalTypeLabel = (type) => TYPE_LABELS[type?.key] || type?.label || type?.key || 'مکان';
-    const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'btn btn-outline-secondary btn-sm'; toggle.textContent = proposableTypes.length === 1 ? `+ افزودن ${proposalTypeLabel(proposableTypes[0])} جدید` : '+ افزودن مکان جدید'; toggle.dataset.locationProposalToggle = '';
+    const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'btn btn-outline-secondary btn-sm align-self-start'; toggle.textContent = proposableTypes.length === 1 ? `افزودن ${proposalTypeLabel(proposableTypes[0])} جدید` : 'افزودن مکان جدید'; toggle.dataset.locationProposalToggle = '';
     const panel = document.createElement('div'); panel.className = 'vstack gap-2 mt-3 d-none'; panel.dataset.locationProposalPanel = '';
     const typeLabel = document.createElement('label'); typeLabel.className = 'form-label small text-secondary mb-0'; typeLabel.textContent = 'نوع مکان پیشنهادی';
     const typeSelect = document.createElement('select'); typeSelect.className = 'form-select form-select-sm'; typeSelect.setAttribute('aria-label', 'نوع مکان پیشنهادی');
