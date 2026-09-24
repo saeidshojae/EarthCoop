@@ -41,6 +41,76 @@ class ResidenceContinentTraversalTest extends TestCase
             ->assertJsonPath('data.0.label', 'ایران');
     }
 
+    public function test_residence_country_menu_prefers_v2_iran_when_v1_and_v2_coexist(): void
+    {
+        $schema = LocationFixture::iranSchema();
+        $countryType = $schema->types->firstWhere('key', 'country');
+        $v1Location = \App\Models\Location::factory()->create([
+            'location_schema_id' => $schema->id,
+            'location_type_id' => $countryType->id,
+            'country_code' => 'IR',
+            'name' => 'Iran legacy',
+            'canonical_name' => 'Iran legacy',
+            'localized_names' => ['fa' => 'ایران قدیمی'],
+            'level' => 'country',
+            'status' => 'active',
+        ]);
+        $v2Location = \App\Models\Location::factory()->create([
+            'location_schema_id' => $schema->id,
+            'location_type_id' => $countryType->id,
+            'country_code' => 'IR',
+            'name' => 'ایران',
+            'canonical_name' => 'ایران',
+            'localized_names' => ['fa' => 'ایران'],
+            'level' => 'country',
+            'status' => 'active',
+        ]);
+
+        $global = GovernanceArea::factory()->official()->create([
+            'key' => 'earthcoop-global',
+            'parent_id' => null,
+            'governance_type' => 'global',
+            'canonical_name' => 'EarthCoop Global',
+            'localized_names' => ['fa' => 'جهانی'],
+            'status' => 'active',
+        ]);
+        $asia = GovernanceArea::factory()->official()->create([
+            'key' => 'earthcoop-continent-asia',
+            'parent_id' => $global->id,
+            'governance_type' => 'continent',
+            'canonical_name' => 'Asia',
+            'localized_names' => ['fa' => 'آسیا'],
+            'status' => 'active',
+        ]);
+        $v1 = GovernanceArea::factory()->official()->create([
+            'key' => 'ir-reference-v1-country',
+            'parent_id' => $asia->id,
+            'country_code' => 'IR',
+            'governance_type' => 'country',
+            'canonical_name' => 'Iran legacy',
+            'localized_names' => ['fa' => 'ایران قدیمی'],
+            'metadata' => ['reference_topology' => true, 'source' => 'earthcoop-reference-governance', 'dataset_version' => 'v1'],
+            'status' => 'active',
+        ]);
+        $v2 = GovernanceArea::factory()->official()->create([
+            'key' => 'ir-reference-v2-ir-1404-1',
+            'parent_id' => $asia->id,
+            'country_code' => 'IR',
+            'governance_type' => 'country',
+            'canonical_name' => 'ایران',
+            'localized_names' => ['fa' => 'ایران'],
+            'metadata' => ['reference_topology' => true, 'source' => 'earthcoop-reference-governance', 'dataset_version' => 'v2'],
+            'status' => 'active',
+        ]);
+        $v1->locations()->attach($v1Location->id);
+        $v2->locations()->attach($v2Location->id);
+
+        $response = $this->getJson('/location/residence/options/governance/'.$asia->id.'/children')->assertOk();
+        $response->assertJsonCount(1, 'data');
+        $response->assertJsonPath('data.0.identity', 'location:'.$v2Location->id);
+        $response->assertJsonPath('data.0.label', 'ایران');
+    }
+
     public function test_profile_hydration_path_prepends_continent_but_not_global_or_type_titles(): void
     {
         $schema = LocationFixture::iranSchema();
