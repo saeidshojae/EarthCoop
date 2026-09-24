@@ -56,7 +56,7 @@ final class PendingLocationGroupRequestService
 
     public function syncForPendingResidence(User $user, LocationProposal $deepest, bool $preserveSettlementRequests = false): Collection
     {
-        return DB::transaction(function () use ($user, $deepest): Collection {
+        return DB::transaction(function () use ($user, $deepest, $preserveSettlementRequests): Collection {
             $pendingIntent = PendingResidenceIntent::query()
                 ->where('user_id', $user->id)
                 ->where('location_proposal_id', $deepest->id)
