@@ -335,8 +335,12 @@ const mountSettlementRegistrationBridge = (shell) => {
     });
 
     selector.addEventListener('earthcoop-location-selection-changed', async (event) => {
-        hide();
         const item = event.detail?.item || null;
+        if (selectedSettlement && item?.picker_kind === 'proposal' && event.detail?.proposalId) {
+            return;
+        }
+
+        hide();
         if (item?.type_key !== 'rural_district' || !event.detail?.locationId) return;
 
         parentLocationId = String(event.detail.locationId);
