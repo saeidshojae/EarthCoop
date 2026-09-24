@@ -29,6 +29,7 @@ class CanonicalUserResidenceEditTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withoutVite();
 
         config([
             'location-governance.runtime_enabled' => true,
