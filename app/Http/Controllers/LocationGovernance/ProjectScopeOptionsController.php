@@ -29,6 +29,22 @@ final class ProjectScopeOptionsController extends Controller
         $children = $governanceArea->children()->official()->active()
             ->with(['locations' => fn ($query) => $query->where('locations.status', 'active')->with(['type', 'schema'])])
             ->orderBy('rank')->orderBy('canonical_name')->get();
+
+        if ($governanceArea->key === 'earthcoop-continent-asia') {
+            $hasIranV2 = $children->contains(fn (GovernanceArea $child): bool =>
+                $child->country_code === 'IR'
+                && $child->governance_type === 'country'
+                && data_get($child->metadata, 'dataset_version') === 'v2'
+            );
+            if ($hasIranV2) {
+                $children = $children->reject(fn (GovernanceArea $child): bool =>
+                    $child->country_code === 'IR'
+                    && $child->governance_type === 'country'
+                    && data_get($child->metadata, 'dataset_version') !== 'v2'
+                )->values();
+            }
+        }
+
         $items = $children->map(function (GovernanceArea $child): array {
             $location = $child->locations->first(fn (Location $candidate): bool =>
                 $candidate->status === 'active' && $candidate->location_schema_id !== null && $candidate->location_type_id !== null);
