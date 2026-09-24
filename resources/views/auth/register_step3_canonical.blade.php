@@ -75,7 +75,6 @@
                     </div>
                     <div class="mt-3 text-xs sm:text-sm text-gray-500" data-reference-settlement-status aria-live="polite"></div>
                     <div class="mt-2 grid gap-2" data-reference-settlement-results></div>
-                    <div class="mt-3" data-reference-settlement-neighborhood></div>
                 </section>
             @endif
             <button type="submit" id="continueBtn" class="submit-btn mt-5" data-location-submit disabled>ثبت محل سکونت و ادامه</button>
